@@ -27,12 +27,15 @@ import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.settings.ClusterSettings
 import org.opensearch.common.settings.Settings
 import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
-import org.opensearch.indexmanagement.indexstatemanagement.model.action.SnapshotActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.ActionMetaData
 import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.ActionProperties
+import org.opensearch.indexmanagement.indexstatemanagement.randomSnapshotActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.SNAPSHOT_DENY_LIST
 import org.opensearch.indexmanagement.indexstatemanagement.step.snapshot.AttemptSnapshotStep
+import org.opensearch.ingest.TestTemplateService.MockTemplateScript
 import org.opensearch.rest.RestStatus
+import org.opensearch.script.ScriptService
+import org.opensearch.script.TemplateScript
 import org.opensearch.snapshots.ConcurrentSnapshotExecutionException
 import org.opensearch.test.OpenSearchTestCase
 import org.opensearch.transport.RemoteTransportException
@@ -40,12 +43,14 @@ import org.opensearch.transport.RemoteTransportException
 class AttemptSnapshotStepTests : OpenSearchTestCase() {
 
     private val clusterService: ClusterService = mock()
-    private val config = SnapshotActionConfig("repo", "snapshot-name", 0)
+    private val scriptService: ScriptService = mock()
+    private val config = randomSnapshotActionConfig("repo", "snapshot-name")
     private val metadata = ManagedIndexMetaData("test", "indexUuid", "policy_id", null, null, null, null, null, null, ActionMetaData(AttemptSnapshotStep.name, 1, 0, false, 0, null, ActionProperties(snapshotName = "snapshot-name")), null, null, null)
 
     @Before
     fun settings() {
         whenever(clusterService.clusterSettings).doReturn(ClusterSettings(Settings.EMPTY, setOf(SNAPSHOT_DENY_LIST)))
+        whenever(scriptService.compile(config.snapshot, TemplateScript.CONTEXT)).doReturn(MockTemplateScript.Factory("snapshot-name"))
     }
 
     fun `test snapshot response when block`() {
@@ -54,7 +59,7 @@ class AttemptSnapshotStepTests : OpenSearchTestCase() {
 
         whenever(response.status()).doReturn(RestStatus.ACCEPTED)
         runBlocking {
-            val step = AttemptSnapshotStep(clusterService, client, config, metadata)
+            val step = AttemptSnapshotStep(clusterService, scriptService, client, config, metadata)
             step.execute()
             val updatedManagedIndexMetaData = step.getUpdatedManagedIndexMetaData(metadata)
             assertEquals("Step status is not COMPLETED", Step.StepStatus.COMPLETED, updatedManagedIndexMetaData.stepMetaData?.stepStatus)
@@ -62,7 +67,7 @@ class AttemptSnapshotStepTests : OpenSearchTestCase() {
 
         whenever(response.status()).doReturn(RestStatus.OK)
         runBlocking {
-            val step = AttemptSnapshotStep(clusterService, client, config, metadata)
+            val step = AttemptSnapshotStep(clusterService, scriptService, client, config, metadata)
             step.execute()
             val updatedManagedIndexMetaData = step.getUpdatedManagedIndexMetaData(metadata)
             assertEquals("Step status is not COMPLETED", Step.StepStatus.COMPLETED, updatedManagedIndexMetaData.stepMetaData?.stepStatus)
@@ -70,7 +75,7 @@ class AttemptSnapshotStepTests : OpenSearchTestCase() {
 
         whenever(response.status()).doReturn(RestStatus.INTERNAL_SERVER_ERROR)
         runBlocking {
-            val step = AttemptSnapshotStep(clusterService, client, config, metadata)
+            val step = AttemptSnapshotStep(clusterService, scriptService, client, config, metadata)
             step.execute()
             val updatedManagedIndexMetaData = step.getUpdatedManagedIndexMetaData(metadata)
             assertEquals("Step status is not FAILED", Step.StepStatus.FAILED, updatedManagedIndexMetaData.stepMetaData?.stepStatus)
@@ -81,7 +86,7 @@ class AttemptSnapshotStepTests : OpenSearchTestCase() {
         val exception = IllegalArgumentException("example")
         val client = getClient(getAdminClient(getClusterAdminClient(null, exception)))
         runBlocking {
-            val step = AttemptSnapshotStep(clusterService, client, config, metadata)
+            val step = AttemptSnapshotStep(clusterService, scriptService, client, config, metadata)
             step.execute()
             val updatedManagedIndexMetaData = step.getUpdatedManagedIndexMetaData(metadata)
             assertEquals("Step status is not FAILED", Step.StepStatus.FAILED, updatedManagedIndexMetaData.stepMetaData?.stepStatus)
@@ -93,7 +98,7 @@ class AttemptSnapshotStepTests : OpenSearchTestCase() {
         val exception = ConcurrentSnapshotExecutionException("repo", "other-snapshot", "concurrent snapshot in progress")
         val client = getClient(getAdminClient(getClusterAdminClient(null, exception)))
         runBlocking {
-            val step = AttemptSnapshotStep(clusterService, client, config, metadata)
+            val step = AttemptSnapshotStep(clusterService, scriptService, client, config, metadata)
             step.execute()
             val updatedManagedIndexMetaData = step.getUpdatedManagedIndexMetaData(metadata)
             assertEquals("Step status is not CONDITION_NOT_MET", Step.StepStatus.CONDITION_NOT_MET, updatedManagedIndexMetaData.stepMetaData?.stepStatus)
@@ -105,7 +110,7 @@ class AttemptSnapshotStepTests : OpenSearchTestCase() {
         val exception = RemoteTransportException("rte", ConcurrentSnapshotExecutionException("repo", "other-snapshot", "concurrent snapshot in progress"))
         val client = getClient(getAdminClient(getClusterAdminClient(null, exception)))
         runBlocking {
-            val step = AttemptSnapshotStep(clusterService, client, config, metadata)
+            val step = AttemptSnapshotStep(clusterService, scriptService, client, config, metadata)
             step.execute()
             val updatedManagedIndexMetaData = step.getUpdatedManagedIndexMetaData(metadata)
             assertEquals("Step status is not CONDITION_NOT_MET", Step.StepStatus.CONDITION_NOT_MET, updatedManagedIndexMetaData.stepMetaData?.stepStatus)
@@ -117,7 +122,7 @@ class AttemptSnapshotStepTests : OpenSearchTestCase() {
         val exception = RemoteTransportException("rte", IllegalArgumentException("some error"))
         val client = getClient(getAdminClient(getClusterAdminClient(null, exception)))
         runBlocking {
-            val step = AttemptSnapshotStep(clusterService, client, config, metadata)
+            val step = AttemptSnapshotStep(clusterService, scriptService, client, config, metadata)
             step.execute()
             val updatedManagedIndexMetaData = step.getUpdatedManagedIndexMetaData(metadata)
             assertEquals("Step status is not FAILED", Step.StepStatus.FAILED, updatedManagedIndexMetaData.stepMetaData?.stepStatus)

@@ -194,7 +194,8 @@
                       "type": "keyword"
                     },
                     "snapshot": {
-                      "type": "keyword"
+                      "type": "object",
+                      "enabled": false
                     },
                     "include_global_state": {
                       "type": "boolean"

@@ -45,6 +45,8 @@ import org.opensearch.indexmanagement.indexstatemanagement.model.action.Snapshot
 import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.ActionMetaData
 import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.ActionProperties
 import org.opensearch.indexmanagement.indexstatemanagement.step.snapshot.WaitForSnapshotStep
+import org.opensearch.script.Script
+import org.opensearch.script.ScriptType
 import org.opensearch.snapshots.Snapshot
 import org.opensearch.snapshots.SnapshotId
 import org.opensearch.test.OpenSearchTestCase
@@ -53,13 +55,14 @@ import org.opensearch.transport.RemoteTransportException
 class WaitForSnapshotStepTests : OpenSearchTestCase() {
 
     private val clusterService: ClusterService = mock()
+    val snapshot = Script(ScriptType.INLINE, Script.DEFAULT_TEMPLATE_LANG, "snapshot-name", emptyMap())
 
     fun `test snapshot missing snapshot name in action properties`() {
         val exception = IllegalArgumentException("not used")
         val client = getClient(getAdminClient(getClusterAdminClient(null, exception)))
         runBlocking {
             val emptyActionProperties = ActionProperties()
-            val config = SnapshotActionConfig("repo", "snapshot-name", 0)
+            val config = SnapshotActionConfig("repo", snapshot, 0)
             val metadata = ManagedIndexMetaData("test", "indexUuid", "policy_id", null, null, null, null, null, null, ActionMetaData(WaitForSnapshotStep.name, 1, 0, false, 0, null, emptyActionProperties), null, null, null)
             val step = WaitForSnapshotStep(clusterService, client, config, metadata)
             step.execute()
@@ -70,7 +73,7 @@ class WaitForSnapshotStepTests : OpenSearchTestCase() {
 
         runBlocking {
             val nullActionProperties = null
-            val config = SnapshotActionConfig("repo", "snapshot-name", 0)
+            val config = SnapshotActionConfig("repo", snapshot, 0)
             val metadata = ManagedIndexMetaData("test", "indexUuid", "policy_id", null, null, null, null, null, null, ActionMetaData(WaitForSnapshotStep.name, 1, 0, false, 0, null, nullActionProperties), null, null, null)
             val step = WaitForSnapshotStep(clusterService, client, config, metadata)
             step.execute()
@@ -89,7 +92,7 @@ class WaitForSnapshotStepTests : OpenSearchTestCase() {
 
         whenever(snapshotStatus.state).doReturn(SnapshotsInProgress.State.INIT)
         runBlocking {
-            val config = SnapshotActionConfig("repo", "snapshot-name", 0)
+            val config = SnapshotActionConfig("repo", snapshot, 0)
             val metadata = ManagedIndexMetaData("test", "indexUuid", "policy_id", null, null, null, null, null, null, ActionMetaData(WaitForSnapshotStep.name, 1, 0, false, 0, null, ActionProperties(snapshotName = "snapshot-name")), null, null, null)
             val step = WaitForSnapshotStep(clusterService, client, config, metadata)
             step.execute()
@@ -100,7 +103,7 @@ class WaitForSnapshotStepTests : OpenSearchTestCase() {
 
         whenever(snapshotStatus.state).doReturn(SnapshotsInProgress.State.STARTED)
         runBlocking {
-            val config = SnapshotActionConfig("repo", "snapshot-name", 0)
+            val config = SnapshotActionConfig("repo", snapshot, 0)
             val metadata = ManagedIndexMetaData("test", "indexUuid", "policy_id", null, null, null, null, null, null, ActionMetaData(WaitForSnapshotStep.name, 1, 0, false, 0, null, ActionProperties(snapshotName = "snapshot-name")), null, null, null)
             val step = WaitForSnapshotStep(clusterService, client, config, metadata)
             step.execute()
@@ -111,7 +114,7 @@ class WaitForSnapshotStepTests : OpenSearchTestCase() {
 
         whenever(snapshotStatus.state).doReturn(SnapshotsInProgress.State.SUCCESS)
         runBlocking {
-            val config = SnapshotActionConfig("repo", "snapshot-name", 0)
+            val config = SnapshotActionConfig("repo", snapshot, 0)
             val metadata = ManagedIndexMetaData("test", "indexUuid", "policy_id", null, null, null, null, null, null, ActionMetaData(WaitForSnapshotStep.name, 1, 0, false, 0, null, ActionProperties(snapshotName = "snapshot-name")), null, null, null)
             val step = WaitForSnapshotStep(clusterService, client, config, metadata)
             step.execute()
@@ -122,7 +125,7 @@ class WaitForSnapshotStepTests : OpenSearchTestCase() {
 
         whenever(snapshotStatus.state).doReturn(SnapshotsInProgress.State.ABORTED)
         runBlocking {
-            val config = SnapshotActionConfig("repo", "snapshot-name", 0)
+            val config = SnapshotActionConfig("repo", snapshot, 0)
             val metadata = ManagedIndexMetaData("test", "indexUuid", "policy_id", null, null, null, null, null, null, ActionMetaData(WaitForSnapshotStep.name, 1, 0, false, 0, null, ActionProperties(snapshotName = "snapshot-name")), null, null, null)
             val step = WaitForSnapshotStep(clusterService, client, config, metadata)
             step.execute()
@@ -133,7 +136,7 @@ class WaitForSnapshotStepTests : OpenSearchTestCase() {
 
         whenever(snapshotStatus.state).doReturn(SnapshotsInProgress.State.FAILED)
         runBlocking {
-            val config = SnapshotActionConfig("repo", "snapshot-name", 0)
+            val config = SnapshotActionConfig("repo", snapshot, 0)
             val metadata = ManagedIndexMetaData("test", "indexUuid", "policy_id", null, null, null, null, null, null, ActionMetaData(WaitForSnapshotStep.name, 1, 0, false, 0, null, ActionProperties(snapshotName = "snapshot-name")), null, null, null)
             val step = WaitForSnapshotStep(clusterService, client, config, metadata)
             step.execute()
@@ -151,7 +154,7 @@ class WaitForSnapshotStepTests : OpenSearchTestCase() {
         val client = getClient(getAdminClient(getClusterAdminClient(response, null)))
 
         runBlocking {
-            val config = SnapshotActionConfig("repo", "snapshot-name", 0)
+            val config = SnapshotActionConfig("repo", snapshot, 0)
             val metadata = ManagedIndexMetaData("test", "indexUuid", "policy_id", null, null, null, null, null, null, ActionMetaData(WaitForSnapshotStep.name, 1, 0, false, 0, null, ActionProperties(snapshotName = "snapshot-name")), null, null, null)
             val step = WaitForSnapshotStep(clusterService, client, config, metadata)
             step.execute()
@@ -165,7 +168,7 @@ class WaitForSnapshotStepTests : OpenSearchTestCase() {
         val exception = IllegalArgumentException("example")
         val client = getClient(getAdminClient(getClusterAdminClient(null, exception)))
         runBlocking {
-            val config = SnapshotActionConfig("repo", "snapshot-name", 0)
+            val config = SnapshotActionConfig("repo", snapshot, 0)
             val metadata = ManagedIndexMetaData("test", "indexUuid", "policy_id", null, null, null, null, null, null, ActionMetaData(WaitForSnapshotStep.name, 1, 0, false, 0, null, ActionProperties(snapshotName = "snapshot-name")), null, null, null)
             val step = WaitForSnapshotStep(clusterService, client, config, metadata)
             step.execute()
@@ -179,7 +182,7 @@ class WaitForSnapshotStepTests : OpenSearchTestCase() {
         val exception = RemoteTransportException("rte", IllegalArgumentException("nested"))
         val client = getClient(getAdminClient(getClusterAdminClient(null, exception)))
         runBlocking {
-            val config = SnapshotActionConfig("repo", "snapshot-name", 0)
+            val config = SnapshotActionConfig("repo", snapshot, 0)
             val metadata = ManagedIndexMetaData("test", "indexUuid", "policy_id", null, null, null, null, null, null, ActionMetaData(WaitForSnapshotStep.name, 1, 0, false, 0, null, ActionProperties(snapshotName = "snapshot-name")), null, null, null)
             val step = WaitForSnapshotStep(clusterService, client, config, metadata)
             step.execute()

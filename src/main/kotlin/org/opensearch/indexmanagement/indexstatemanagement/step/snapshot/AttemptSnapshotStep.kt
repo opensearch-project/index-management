@@ -39,8 +39,12 @@ import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmet
 import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.StepMetaData
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.SNAPSHOT_DENY_LIST
 import org.opensearch.indexmanagement.indexstatemanagement.step.Step
+import org.opensearch.indexmanagement.opensearchapi.convertToMap
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.rest.RestStatus
+import org.opensearch.script.Script
+import org.opensearch.script.ScriptService
+import org.opensearch.script.TemplateScript
 import org.opensearch.snapshots.ConcurrentSnapshotExecutionException
 import org.opensearch.transport.RemoteTransportException
 import java.time.LocalDateTime
@@ -50,6 +54,7 @@ import java.util.Locale
 
 class AttemptSnapshotStep(
     val clusterService: ClusterService,
+    val scriptService: ScriptService,
     val client: Client,
     val config: SnapshotActionConfig,
     managedIndexMetaData: ManagedIndexMetaData
@@ -74,15 +79,12 @@ class AttemptSnapshotStep(
                 info = mutableInfo.toMap()
                 return this
             }
+            val snapshotNamePrefix = "-".plus(
+                LocalDateTime.now(ZoneId.of("UTC"))
+                    .format(DateTimeFormatter.ofPattern("uuuu.MM.dd-HH:mm:ss.SSS", Locale.ROOT))
+            )
 
-            snapshotName = config
-                .snapshot
-                .plus("-")
-                .plus(
-                    LocalDateTime
-                        .now(ZoneId.of("UTC"))
-                        .format(DateTimeFormatter.ofPattern("uuuu.MM.dd-HH:mm:ss.SSS", Locale.ROOT))
-                )
+            snapshotName = compileTemplate(config.snapshot, managedIndexMetaData, indexName).plus(snapshotNamePrefix)
 
             val createSnapshotRequest = CreateSnapshotRequest()
                 .userMetadata(mapOf("snapshot_created" to "Open Distro for Elasticsearch Index Management"))
@@ -148,6 +150,16 @@ class AttemptSnapshotStep(
         info = mutableInfo.toMap()
     }
 
+    private fun compileTemplate(template: Script, managedIndexMetaData: ManagedIndexMetaData, defaultValue: String): String {
+        val contextMap = managedIndexMetaData.convertToMap().filterKeys { key ->
+            key in validTopContextFields
+        }
+        val compiledValue = scriptService.compile(template, TemplateScript.CONTEXT)
+            .newInstance(template.params + mapOf("ctx" to contextMap))
+            .execute()
+        return if (compiledValue.isBlank()) defaultValue else compiledValue
+    }
+
     override fun getUpdatedManagedIndexMetaData(currentMetaData: ManagedIndexMetaData): ManagedIndexMetaData {
         val currentActionMetaData = currentMetaData.actionMetaData
         return currentMetaData.copy(
@@ -159,6 +171,7 @@ class AttemptSnapshotStep(
     }
 
     companion object {
+        val validTopContextFields = setOf("index", "indexUuid")
         const val name = "attempt_snapshot"
         fun getBlockedMessage(denyList: List<String>, repoName: String, index: String) =
             "Snapshot repository [$repoName] is blocked in $denyList [index=$index]"
