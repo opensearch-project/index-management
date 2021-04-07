@@ -15,20 +15,20 @@
 
 package com.amazon.opendistroforelasticsearch.indexmanagement.rollup.model
 
-import com.amazon.opendistroforelasticsearch.indexmanagement.elasticapi.instant
+import com.amazon.opendistroforelasticsearch.indexmanagement.opensearchapi.instant
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.util.WITH_TYPE
-import org.elasticsearch.action.search.SearchResponse
-import org.elasticsearch.common.io.stream.StreamInput
-import org.elasticsearch.common.io.stream.StreamOutput
-import org.elasticsearch.common.io.stream.Writeable
-import org.elasticsearch.common.xcontent.ToXContent
-import org.elasticsearch.common.xcontent.ToXContentObject
-import org.elasticsearch.common.xcontent.XContentBuilder
-import org.elasticsearch.common.xcontent.XContentParser
-import org.elasticsearch.common.xcontent.XContentParser.Token
-import org.elasticsearch.common.xcontent.XContentParserUtils.ensureExpectedToken
-import org.elasticsearch.index.seqno.SequenceNumbers
-import org.elasticsearch.search.aggregations.bucket.composite.InternalComposite
+import org.opensearch.action.search.SearchResponse
+import org.opensearch.common.io.stream.StreamInput
+import org.opensearch.common.io.stream.StreamOutput
+import org.opensearch.common.io.stream.Writeable
+import org.opensearch.common.xcontent.ToXContent
+import org.opensearch.common.xcontent.ToXContentObject
+import org.opensearch.common.xcontent.XContentBuilder
+import org.opensearch.common.xcontent.XContentParser
+import org.opensearch.common.xcontent.XContentParser.Token
+import org.opensearch.common.xcontent.XContentParserUtils.ensureExpectedToken
+import org.opensearch.index.seqno.SequenceNumbers
+import org.opensearch.search.aggregations.bucket.composite.InternalComposite
 import java.io.IOException
 import java.time.Instant
 import java.util.Locale

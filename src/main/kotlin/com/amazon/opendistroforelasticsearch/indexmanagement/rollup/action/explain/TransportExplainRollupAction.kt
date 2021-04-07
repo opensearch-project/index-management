@@ -16,28 +16,28 @@
 package com.amazon.opendistroforelasticsearch.indexmanagement.rollup.action.explain
 
 import com.amazon.opendistroforelasticsearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
-import com.amazon.opendistroforelasticsearch.indexmanagement.elasticapi.contentParser
-import com.amazon.opendistroforelasticsearch.indexmanagement.elasticapi.parseWithType
+import com.amazon.opendistroforelasticsearch.indexmanagement.opensearchapi.contentParser
+import com.amazon.opendistroforelasticsearch.indexmanagement.opensearchapi.parseWithType
 import com.amazon.opendistroforelasticsearch.indexmanagement.rollup.model.ExplainRollup
 import com.amazon.opendistroforelasticsearch.indexmanagement.rollup.model.Rollup
 import com.amazon.opendistroforelasticsearch.indexmanagement.rollup.model.RollupMetadata
 import org.apache.logging.log4j.LogManager
-import org.elasticsearch.ExceptionsHelper
-import org.elasticsearch.ResourceNotFoundException
-import org.elasticsearch.action.ActionListener
-import org.elasticsearch.action.search.SearchRequest
-import org.elasticsearch.action.search.SearchResponse
-import org.elasticsearch.action.support.ActionFilters
-import org.elasticsearch.action.support.HandledTransportAction
-import org.elasticsearch.client.Client
-import org.elasticsearch.common.inject.Inject
-import org.elasticsearch.index.query.BoolQueryBuilder
-import org.elasticsearch.index.query.IdsQueryBuilder
-import org.elasticsearch.index.query.WildcardQueryBuilder
-import org.elasticsearch.search.builder.SearchSourceBuilder
-import org.elasticsearch.tasks.Task
-import org.elasticsearch.transport.RemoteTransportException
-import org.elasticsearch.transport.TransportService
+import org.opensearch.ExceptionsHelper
+import org.opensearch.ResourceNotFoundException
+import org.opensearch.action.ActionListener
+import org.opensearch.action.search.SearchRequest
+import org.opensearch.action.search.SearchResponse
+import org.opensearch.action.support.ActionFilters
+import org.opensearch.action.support.HandledTransportAction
+import org.opensearch.client.Client
+import org.opensearch.common.inject.Inject
+import org.opensearch.index.query.BoolQueryBuilder
+import org.opensearch.index.query.IdsQueryBuilder
+import org.opensearch.index.query.WildcardQueryBuilder
+import org.opensearch.search.builder.SearchSourceBuilder
+import org.opensearch.tasks.Task
+import org.opensearch.transport.RemoteTransportException
+import org.opensearch.transport.TransportService
 import kotlin.Exception
 
 class TransportExplainRollupAction @Inject constructor(

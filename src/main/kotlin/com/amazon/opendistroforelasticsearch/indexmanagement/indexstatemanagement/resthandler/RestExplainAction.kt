@@ -25,15 +25,15 @@ import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagemen
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.util.DEFAULT_QUERY_STRING
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.util.DEFAULT_SORT_ORDER
 import org.apache.logging.log4j.LogManager
-import org.elasticsearch.action.support.master.MasterNodeRequest
-import org.elasticsearch.client.node.NodeClient
-import org.elasticsearch.common.Strings
-import org.elasticsearch.rest.BaseRestHandler
-import org.elasticsearch.rest.BaseRestHandler.RestChannelConsumer
-import org.elasticsearch.rest.RestHandler.Route
-import org.elasticsearch.rest.RestRequest
-import org.elasticsearch.rest.RestRequest.Method.GET
-import org.elasticsearch.rest.action.RestToXContentListener
+import org.opensearch.action.support.master.MasterNodeRequest
+import org.opensearch.client.node.NodeClient
+import org.opensearch.common.Strings
+import org.opensearch.rest.BaseRestHandler
+import org.opensearch.rest.BaseRestHandler.RestChannelConsumer
+import org.opensearch.rest.RestHandler.Route
+import org.opensearch.rest.RestRequest
+import org.opensearch.rest.RestRequest.Method.GET
+import org.opensearch.rest.action.RestToXContentListener
 
 private val log = LogManager.getLogger(RestExplainAction::class.java)
 

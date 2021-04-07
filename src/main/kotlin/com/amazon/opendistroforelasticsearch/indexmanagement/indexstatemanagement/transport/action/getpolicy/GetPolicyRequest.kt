@@ -15,12 +15,12 @@
 
 package com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.transport.action.getpolicy
 
-import org.elasticsearch.action.ActionRequest
-import org.elasticsearch.action.ActionRequestValidationException
-import org.elasticsearch.action.ValidateActions
-import org.elasticsearch.common.io.stream.StreamInput
-import org.elasticsearch.common.io.stream.StreamOutput
-import org.elasticsearch.search.fetch.subphase.FetchSourceContext
+import org.opensearch.action.ActionRequest
+import org.opensearch.action.ActionRequestValidationException
+import org.opensearch.action.ValidateActions
+import org.opensearch.common.io.stream.StreamInput
+import org.opensearch.common.io.stream.StreamOutput
+import org.opensearch.search.fetch.subphase.FetchSourceContext
 import java.io.IOException
 
 class GetPolicyRequest : ActionRequest {

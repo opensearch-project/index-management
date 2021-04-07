@@ -18,13 +18,13 @@ package com.amazon.opendistroforelasticsearch.indexmanagement.rollup.resthandler
 import com.amazon.opendistroforelasticsearch.indexmanagement.IndexManagementPlugin.Companion.ROLLUP_JOBS_BASE_URI
 import com.amazon.opendistroforelasticsearch.indexmanagement.rollup.action.explain.ExplainRollupAction
 import com.amazon.opendistroforelasticsearch.indexmanagement.rollup.action.explain.ExplainRollupRequest
-import org.elasticsearch.client.node.NodeClient
-import org.elasticsearch.common.Strings
-import org.elasticsearch.rest.BaseRestHandler
-import org.elasticsearch.rest.RestHandler.Route
-import org.elasticsearch.rest.RestRequest
-import org.elasticsearch.rest.RestRequest.Method.GET
-import org.elasticsearch.rest.action.RestToXContentListener
+import org.opensearch.client.node.NodeClient
+import org.opensearch.common.Strings
+import org.opensearch.rest.BaseRestHandler
+import org.opensearch.rest.RestHandler.Route
+import org.opensearch.rest.RestRequest
+import org.opensearch.rest.RestRequest.Method.GET
+import org.opensearch.rest.action.RestToXContentListener
 
 class RestExplainRollupAction : BaseRestHandler() {
 

@@ -24,16 +24,16 @@ import com.nhaarman.mockitokotlin2.doReturn
 import com.nhaarman.mockitokotlin2.mock
 import com.nhaarman.mockitokotlin2.whenever
 import kotlinx.coroutines.runBlocking
-import org.elasticsearch.action.ActionListener
-import org.elasticsearch.action.admin.indices.open.OpenIndexResponse
-import org.elasticsearch.client.AdminClient
-import org.elasticsearch.client.Client
-import org.elasticsearch.client.IndicesAdminClient
-import org.elasticsearch.cluster.service.ClusterService
-import org.elasticsearch.test.ESTestCase
-import org.elasticsearch.transport.RemoteTransportException
+import org.opensearch.action.ActionListener
+import org.opensearch.action.admin.indices.open.OpenIndexResponse
+import org.opensearch.client.AdminClient
+import org.opensearch.client.Client
+import org.opensearch.client.IndicesAdminClient
+import org.opensearch.cluster.service.ClusterService
+import org.opensearch.test.OpenSearchTestCase
+import org.opensearch.transport.RemoteTransportException
 
-class AttemptOpenStepTests : ESTestCase() {
+class AttemptOpenStepTests : OpenSearchTestCase() {
 
     private val clusterService: ClusterService = mock()
 

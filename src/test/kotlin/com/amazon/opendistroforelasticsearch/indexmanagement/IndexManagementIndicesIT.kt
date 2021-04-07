@@ -16,9 +16,9 @@ import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagemen
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.util.UPDATED_INDICES
 import org.apache.http.entity.ContentType
 import org.apache.http.entity.StringEntity
-import org.elasticsearch.common.settings.Settings
-import org.elasticsearch.rest.RestRequest
-import org.elasticsearch.test.ESTestCase
+import org.opensearch.common.settings.Settings
+import org.opensearch.rest.RestRequest
+import org.opensearch.test.OpenSearchTestCase
 import java.util.Locale
 
 class IndexManagementIndicesIT : IndexStateManagementRestTestCase() {
@@ -49,7 +49,7 @@ class IndexManagementIndicesIT : IndexStateManagementRestTestCase() {
 
     fun `test create index management`() {
         val policy = randomPolicy()
-        val policyId = ESTestCase.randomAlphaOfLength(10)
+        val policyId = OpenSearchTestCase.randomAlphaOfLength(10)
         client().makeRequest("PUT", "$POLICY_BASE_URI/$policyId", emptyMap(), policy.toHttpEntity())
         assertIndexExists(INDEX_MANAGEMENT_INDEX)
         verifyIndexSchemaVersion(INDEX_MANAGEMENT_INDEX, configSchemaVersion)
@@ -68,7 +68,7 @@ class IndexManagementIndicesIT : IndexStateManagementRestTestCase() {
         verifyIndexSchemaVersion(INDEX_MANAGEMENT_INDEX, 0)
 
         val policy = randomPolicy()
-        val policyId = ESTestCase.randomAlphaOfLength(10)
+        val policyId = OpenSearchTestCase.randomAlphaOfLength(10)
         client().makeRequest("PUT", "$POLICY_BASE_URI/$policyId", emptyMap(), policy.toHttpEntity())
 
         assertIndexExists(INDEX_MANAGEMENT_INDEX)

@@ -15,14 +15,14 @@
 
 package com.amazon.opendistroforelasticsearch.indexmanagement.util
 
-import org.elasticsearch.ElasticsearchException
-import org.elasticsearch.common.Strings
-import org.elasticsearch.common.ValidationException
-import org.elasticsearch.index.IndexNotFoundException
-import org.elasticsearch.rest.RestStatus
+import org.opensearch.OpenSearchException
+import org.opensearch.common.Strings
+import org.opensearch.common.ValidationException
+import org.opensearch.index.IndexNotFoundException
+import org.opensearch.rest.RestStatus
 import java.lang.IllegalArgumentException
 
-class IndexManagementException(message: String, val status: RestStatus, ex: Exception) : ElasticsearchException(message, ex) {
+class IndexManagementException(message: String, val status: RestStatus, ex: Exception) : OpenSearchException(message, ex) {
 
     override fun status(): RestStatus {
         return status
@@ -30,7 +30,7 @@ class IndexManagementException(message: String, val status: RestStatus, ex: Exce
 
     companion object {
         @JvmStatic
-        fun wrap(ex: Exception): ElasticsearchException {
+        fun wrap(ex: Exception): OpenSearchException {
 
             var friendlyMsg = ex.message as String
             var status = RestStatus.INTERNAL_SERVER_ERROR

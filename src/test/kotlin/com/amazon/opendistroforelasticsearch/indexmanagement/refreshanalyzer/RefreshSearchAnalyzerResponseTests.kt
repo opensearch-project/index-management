@@ -15,12 +15,12 @@
 
 package com.amazon.opendistroforelasticsearch.indexmanagement.refreshanalyzer
 
-import org.elasticsearch.action.support.DefaultShardOperationFailedException
-import org.elasticsearch.index.shard.ShardId
-import org.elasticsearch.test.ESTestCase
+import org.opensearch.action.support.DefaultShardOperationFailedException
+import org.opensearch.index.shard.ShardId
+import org.opensearch.test.OpenSearchTestCase
 import org.junit.Assert
 
-class RefreshSearchAnalyzerResponseTests : ESTestCase() {
+class RefreshSearchAnalyzerResponseTests : OpenSearchTestCase() {
 
     fun `test get successful refresh details`() {
         val index1 = "index1"

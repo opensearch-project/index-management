@@ -15,7 +15,7 @@
 
 package com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.step.rollup
 
-import com.amazon.opendistroforelasticsearch.indexmanagement.elasticapi.suspendUntil
+import com.amazon.opendistroforelasticsearch.indexmanagement.opensearchapi.suspendUntil
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.StepMetaData
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.step.Step
@@ -24,9 +24,9 @@ import com.amazon.opendistroforelasticsearch.indexmanagement.rollup.action.expla
 import com.amazon.opendistroforelasticsearch.indexmanagement.rollup.action.explain.ExplainRollupResponse
 import com.amazon.opendistroforelasticsearch.indexmanagement.rollup.model.RollupMetadata
 import org.apache.logging.log4j.LogManager
-import org.elasticsearch.client.Client
-import org.elasticsearch.cluster.service.ClusterService
-import org.elasticsearch.transport.RemoteTransportException
+import org.opensearch.client.Client
+import org.opensearch.cluster.service.ClusterService
+import org.opensearch.transport.RemoteTransportException
 import java.lang.Exception
 
 class WaitForRollupCompletionStep(

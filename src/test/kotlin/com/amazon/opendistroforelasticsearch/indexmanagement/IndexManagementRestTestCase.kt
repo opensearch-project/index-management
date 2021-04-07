@@ -17,12 +17,12 @@ package com.amazon.opendistroforelasticsearch.indexmanagement
 
 import org.apache.http.entity.ContentType
 import org.apache.http.entity.StringEntity
-import org.elasticsearch.client.Request
-import org.elasticsearch.client.RequestOptions
-import org.elasticsearch.client.Response
-import org.elasticsearch.client.RestClient
-import org.elasticsearch.common.settings.Settings
-import org.elasticsearch.rest.RestStatus
+import org.opensearch.client.Request
+import org.opensearch.client.RequestOptions
+import org.opensearch.client.Response
+import org.opensearch.client.RestClient
+import org.opensearch.common.settings.Settings
+import org.opensearch.rest.RestStatus
 import org.junit.AfterClass
 import org.junit.Before
 import org.junit.rules.DisableOnDebug

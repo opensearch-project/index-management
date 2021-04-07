@@ -16,12 +16,12 @@
 package com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.transport.action.updateindexmetadata
 
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
-import org.elasticsearch.action.ActionRequestValidationException
-import org.elasticsearch.action.ValidateActions.addValidationError
-import org.elasticsearch.action.support.master.AcknowledgedRequest
-import org.elasticsearch.common.io.stream.StreamInput
-import org.elasticsearch.common.io.stream.StreamOutput
-import org.elasticsearch.index.Index
+import org.opensearch.action.ActionRequestValidationException
+import org.opensearch.action.ValidateActions.addValidationError
+import org.opensearch.action.support.master.AcknowledgedRequest
+import org.opensearch.common.io.stream.StreamInput
+import org.opensearch.common.io.stream.StreamOutput
+import org.opensearch.index.Index
 
 class UpdateManagedIndexMetaDataRequest : AcknowledgedRequest<UpdateManagedIndexMetaDataRequest> {
 

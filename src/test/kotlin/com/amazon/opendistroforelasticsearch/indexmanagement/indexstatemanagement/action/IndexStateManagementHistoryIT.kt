@@ -31,7 +31,7 @@ import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagemen
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.step.Step
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.step.readonly.SetReadOnlyStep
 import com.amazon.opendistroforelasticsearch.indexmanagement.waitFor
-import org.elasticsearch.action.search.SearchResponse
+import org.opensearch.action.search.SearchResponse
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 import java.util.Locale

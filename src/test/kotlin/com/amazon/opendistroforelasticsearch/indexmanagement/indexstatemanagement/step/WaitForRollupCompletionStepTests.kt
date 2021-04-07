@@ -8,12 +8,12 @@ import com.amazon.opendistroforelasticsearch.indexmanagement.rollup.model.Rollup
 import com.amazon.opendistroforelasticsearch.indexmanagement.rollup.model.RollupStats
 import com.nhaarman.mockitokotlin2.mock
 import kotlinx.coroutines.runBlocking
-import org.elasticsearch.client.Client
-import org.elasticsearch.cluster.service.ClusterService
-import org.elasticsearch.test.ESTestCase
+import org.opensearch.client.Client
+import org.opensearch.cluster.service.ClusterService
+import org.opensearch.test.OpenSearchTestCase
 import java.time.Instant
 
-class WaitForRollupCompletionStepTests : ESTestCase() {
+class WaitForRollupCompletionStepTests : OpenSearchTestCase() {
 
     private val clusterService: ClusterService = mock()
     private val rollupId: String = "dummy-id"

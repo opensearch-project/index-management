@@ -18,13 +18,13 @@ package com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanageme
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.model.destination.Chime
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.model.destination.CustomWebhook
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.model.destination.Slack
-import org.elasticsearch.test.ESTestCase
+import org.opensearch.test.OpenSearchTestCase
 
 /**
  * Temporary import from alerting, this will be removed once we pull notifications out of
  * alerting so all plugins can consume and use.
  */
-class DestinationTests : ESTestCase() {
+class DestinationTests : OpenSearchTestCase() {
 
     fun `test chime destination`() {
         val chime = Chime("http://abc.com")

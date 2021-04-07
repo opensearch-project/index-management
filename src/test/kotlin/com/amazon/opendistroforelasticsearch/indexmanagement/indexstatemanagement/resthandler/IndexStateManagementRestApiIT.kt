@@ -30,14 +30,14 @@ import com.amazon.opendistroforelasticsearch.indexmanagement.util._PRIMARY_TERM
 import com.amazon.opendistroforelasticsearch.indexmanagement.util._SEQ_NO
 import org.apache.http.entity.ContentType.APPLICATION_JSON
 import org.apache.http.entity.StringEntity
-import org.elasticsearch.action.search.SearchResponse
-import org.elasticsearch.client.ResponseException
-import org.elasticsearch.common.xcontent.XContentType
-import org.elasticsearch.common.xcontent.json.JsonXContent.jsonXContent
-import org.elasticsearch.rest.RestRequest
-import org.elasticsearch.rest.RestStatus
-import org.elasticsearch.test.ESTestCase
-import org.elasticsearch.test.junit.annotations.TestLogging
+import org.opensearch.action.search.SearchResponse
+import org.opensearch.client.ResponseException
+import org.opensearch.common.xcontent.XContentType
+import org.opensearch.common.xcontent.json.JsonXContent.jsonXContent
+import org.opensearch.rest.RestRequest
+import org.opensearch.rest.RestStatus
+import org.opensearch.test.OpenSearchTestCase
+import org.opensearch.test.junit.annotations.TestLogging
 
 @TestLogging(value = "level:DEBUG", reason = "Debugging tests")
 @Suppress("UNCHECKED_CAST")
@@ -71,7 +71,7 @@ class IndexStateManagementRestApiIT : IndexStateManagementRestTestCase() {
     @Throws(Exception::class)
     fun `test creating a policy`() {
         val policy = randomPolicy()
-        val policyId = ESTestCase.randomAlphaOfLength(10)
+        val policyId = OpenSearchTestCase.randomAlphaOfLength(10)
         val createResponse =
             client().makeRequest("PUT", "$POLICY_BASE_URI/$policyId", emptyMap(), policy.toHttpEntity())
 

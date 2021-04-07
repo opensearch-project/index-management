@@ -12,21 +12,21 @@ import com.nhaarman.mockitokotlin2.doReturn
 import com.nhaarman.mockitokotlin2.mock
 import com.nhaarman.mockitokotlin2.whenever
 import kotlinx.coroutines.runBlocking
-import org.elasticsearch.action.ActionListener
-import org.elasticsearch.action.admin.cluster.snapshots.create.CreateSnapshotResponse
-import org.elasticsearch.client.AdminClient
-import org.elasticsearch.client.Client
-import org.elasticsearch.client.ClusterAdminClient
-import org.elasticsearch.cluster.service.ClusterService
-import org.elasticsearch.common.settings.ClusterSettings
-import org.elasticsearch.common.settings.Settings
-import org.elasticsearch.rest.RestStatus
-import org.elasticsearch.snapshots.ConcurrentSnapshotExecutionException
-import org.elasticsearch.test.ESTestCase
-import org.elasticsearch.transport.RemoteTransportException
+import org.opensearch.action.ActionListener
+import org.opensearch.action.admin.cluster.snapshots.create.CreateSnapshotResponse
+import org.opensearch.client.AdminClient
+import org.opensearch.client.Client
+import org.opensearch.client.ClusterAdminClient
+import org.opensearch.cluster.service.ClusterService
+import org.opensearch.common.settings.ClusterSettings
+import org.opensearch.common.settings.Settings
+import org.opensearch.rest.RestStatus
+import org.opensearch.snapshots.ConcurrentSnapshotExecutionException
+import org.opensearch.test.OpenSearchTestCase
+import org.opensearch.transport.RemoteTransportException
 import org.junit.Before
 
-class AttemptSnapshotStepTests : ESTestCase() {
+class AttemptSnapshotStepTests : OpenSearchTestCase() {
 
     private val clusterService: ClusterService = mock()
     private val config = SnapshotActionConfig("repo", "snapshot-name", 0)

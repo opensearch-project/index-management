@@ -23,25 +23,25 @@ import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagemen
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.util.deleteManagedIndexRequest
 import com.amazon.opendistroforelasticsearch.indexmanagement.util.IndexManagementException
 import org.apache.logging.log4j.LogManager
-import org.elasticsearch.ExceptionsHelper
-import org.elasticsearch.action.ActionListener
-import org.elasticsearch.action.admin.cluster.state.ClusterStateRequest
-import org.elasticsearch.action.admin.cluster.state.ClusterStateResponse
-import org.elasticsearch.action.bulk.BulkRequest
-import org.elasticsearch.action.bulk.BulkResponse
-import org.elasticsearch.action.get.MultiGetRequest
-import org.elasticsearch.action.get.MultiGetResponse
-import org.elasticsearch.action.support.ActionFilters
-import org.elasticsearch.action.support.HandledTransportAction
-import org.elasticsearch.action.support.IndicesOptions
-import org.elasticsearch.client.node.NodeClient
-import org.elasticsearch.cluster.ClusterState
-import org.elasticsearch.cluster.block.ClusterBlockException
-import org.elasticsearch.common.inject.Inject
-import org.elasticsearch.index.Index
-import org.elasticsearch.index.IndexNotFoundException
-import org.elasticsearch.tasks.Task
-import org.elasticsearch.transport.TransportService
+import org.opensearch.ExceptionsHelper
+import org.opensearch.action.ActionListener
+import org.opensearch.action.admin.cluster.state.ClusterStateRequest
+import org.opensearch.action.admin.cluster.state.ClusterStateResponse
+import org.opensearch.action.bulk.BulkRequest
+import org.opensearch.action.bulk.BulkResponse
+import org.opensearch.action.get.MultiGetRequest
+import org.opensearch.action.get.MultiGetResponse
+import org.opensearch.action.support.ActionFilters
+import org.opensearch.action.support.HandledTransportAction
+import org.opensearch.action.support.IndicesOptions
+import org.opensearch.client.node.NodeClient
+import org.opensearch.cluster.ClusterState
+import org.opensearch.cluster.block.ClusterBlockException
+import org.opensearch.common.inject.Inject
+import org.opensearch.index.Index
+import org.opensearch.index.IndexNotFoundException
+import org.opensearch.tasks.Task
+import org.opensearch.transport.TransportService
 
 private val log = LogManager.getLogger(TransportRemovePolicyAction::class.java)
 

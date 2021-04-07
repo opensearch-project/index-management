@@ -25,14 +25,14 @@ import com.amazon.opendistroforelasticsearch.indexmanagement.rollup.action.get.G
 import com.amazon.opendistroforelasticsearch.indexmanagement.rollup.action.get.GetRollupsRequest.Companion.DEFAULT_SIZE
 import com.amazon.opendistroforelasticsearch.indexmanagement.rollup.action.get.GetRollupsRequest.Companion.DEFAULT_SORT_DIRECTION
 import com.amazon.opendistroforelasticsearch.indexmanagement.rollup.action.get.GetRollupsRequest.Companion.DEFAULT_SORT_FIELD
-import org.elasticsearch.client.node.NodeClient
-import org.elasticsearch.rest.BaseRestHandler
-import org.elasticsearch.rest.RestHandler.Route
-import org.elasticsearch.rest.RestRequest
-import org.elasticsearch.rest.RestRequest.Method.GET
-import org.elasticsearch.rest.RestRequest.Method.HEAD
-import org.elasticsearch.rest.action.RestToXContentListener
-import org.elasticsearch.search.fetch.subphase.FetchSourceContext
+import org.opensearch.client.node.NodeClient
+import org.opensearch.rest.BaseRestHandler
+import org.opensearch.rest.RestHandler.Route
+import org.opensearch.rest.RestRequest
+import org.opensearch.rest.RestRequest.Method.GET
+import org.opensearch.rest.RestRequest.Method.HEAD
+import org.opensearch.rest.action.RestToXContentListener
+import org.opensearch.search.fetch.subphase.FetchSourceContext
 
 class RestGetRollupAction : BaseRestHandler() {
 

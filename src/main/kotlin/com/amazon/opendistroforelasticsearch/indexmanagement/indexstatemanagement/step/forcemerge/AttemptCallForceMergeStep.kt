@@ -15,8 +15,8 @@
 
 package com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.step.forcemerge
 
-import com.amazon.opendistroforelasticsearch.indexmanagement.elasticapi.getUsefulCauseString
-import com.amazon.opendistroforelasticsearch.indexmanagement.elasticapi.suspendUntil
+import com.amazon.opendistroforelasticsearch.indexmanagement.opensearchapi.getUsefulCauseString
+import com.amazon.opendistroforelasticsearch.indexmanagement.opensearchapi.suspendUntil
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.model.action.ForceMergeActionConfig
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.ActionProperties
@@ -27,14 +27,14 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import org.elasticsearch.client.Client
-import org.elasticsearch.cluster.service.ClusterService
+import org.opensearch.client.Client
+import org.opensearch.cluster.service.ClusterService
 import org.apache.logging.log4j.LogManager
-import org.elasticsearch.ExceptionsHelper
-import org.elasticsearch.action.admin.indices.forcemerge.ForceMergeRequest
-import org.elasticsearch.action.admin.indices.forcemerge.ForceMergeResponse
-import org.elasticsearch.rest.RestStatus
-import org.elasticsearch.transport.RemoteTransportException
+import org.opensearch.ExceptionsHelper
+import org.opensearch.action.admin.indices.forcemerge.ForceMergeRequest
+import org.opensearch.action.admin.indices.forcemerge.ForceMergeResponse
+import org.opensearch.rest.RestStatus
+import org.opensearch.transport.RemoteTransportException
 import java.time.Instant
 
 class AttemptCallForceMergeStep(

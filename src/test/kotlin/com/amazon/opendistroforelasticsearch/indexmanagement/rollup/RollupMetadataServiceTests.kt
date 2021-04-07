@@ -26,20 +26,20 @@ import com.nhaarman.mockitokotlin2.doReturn
 import com.nhaarman.mockitokotlin2.mock
 import com.nhaarman.mockitokotlin2.whenever
 import kotlinx.coroutines.runBlocking
-import org.elasticsearch.action.ActionListener
-import org.elasticsearch.action.DocWriteResponse
-import org.elasticsearch.action.get.GetResponse
-import org.elasticsearch.action.index.IndexResponse
-import org.elasticsearch.action.search.SearchResponse
-import org.elasticsearch.client.Client
-import org.elasticsearch.common.bytes.BytesArray
-import org.elasticsearch.common.bytes.BytesReference
-import org.elasticsearch.common.document.DocumentField
-import org.elasticsearch.common.xcontent.NamedXContentRegistry
-import org.elasticsearch.common.xcontent.ToXContent
-import org.elasticsearch.search.SearchHit
-import org.elasticsearch.search.SearchHits
-import org.elasticsearch.test.ESTestCase
+import org.opensearch.action.ActionListener
+import org.opensearch.action.DocWriteResponse
+import org.opensearch.action.get.GetResponse
+import org.opensearch.action.index.IndexResponse
+import org.opensearch.action.search.SearchResponse
+import org.opensearch.client.Client
+import org.opensearch.common.bytes.BytesArray
+import org.opensearch.common.bytes.BytesReference
+import org.opensearch.common.document.DocumentField
+import org.opensearch.common.xcontent.NamedXContentRegistry
+import org.opensearch.common.xcontent.ToXContent
+import org.opensearch.search.SearchHit
+import org.opensearch.search.SearchHits
+import org.opensearch.test.OpenSearchTestCase
 import org.junit.Before
 import java.time.Instant
 import java.time.LocalDateTime
@@ -49,7 +49,7 @@ import java.time.temporal.ChronoUnit
 
 // TODO: Given the way these tests are mocking data, only entries that work with ZonedDateTime.parse
 //   are being tested, should mock the data more generically to test all cases
-class RollupMetadataServiceTests : ESTestCase() {
+class RollupMetadataServiceTests : OpenSearchTestCase() {
 
     private lateinit var xContentRegistry: NamedXContentRegistry
 

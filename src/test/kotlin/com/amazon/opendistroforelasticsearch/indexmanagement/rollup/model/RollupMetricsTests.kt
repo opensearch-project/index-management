@@ -17,11 +17,11 @@ package com.amazon.opendistroforelasticsearch.indexmanagement.rollup.model
 
 import com.amazon.opendistroforelasticsearch.indexmanagement.rollup.randomAverage
 import com.amazon.opendistroforelasticsearch.indexmanagement.rollup.randomRollupMetrics
-import org.elasticsearch.test.ESTestCase
-import org.elasticsearch.test.rest.ESRestTestCase
+import org.opensearch.test.OpenSearchTestCase
+import org.opensearch.test.rest.OpenSearchRestTestCase
 import kotlin.test.assertFailsWith
 
-class RollupMetricsTests : ESTestCase() {
+class RollupMetricsTests : OpenSearchTestCase() {
     fun `test rollup metrics empty fields`() {
         assertFailsWith(IllegalArgumentException::class, "Source and target field must not be empty") {
             randomRollupMetrics().copy(sourceField = "", targetField = "")
@@ -37,7 +37,7 @@ class RollupMetricsTests : ESTestCase() {
     }
 
     fun `test rollup metrics needs at least one metric`() {
-        val field = ESRestTestCase.randomAlphaOfLength(10)
+        val field = OpenSearchRestTestCase.randomAlphaOfLength(10)
         assertFailsWith(IllegalArgumentException::class, "Must specify at least one metric to aggregate on for $field") {
             randomRollupMetrics().copy(sourceField = field, targetField = field, metrics = emptyList())
         }

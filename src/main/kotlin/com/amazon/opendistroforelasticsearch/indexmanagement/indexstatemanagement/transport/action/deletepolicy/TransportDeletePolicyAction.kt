@@ -16,15 +16,15 @@
 package com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.transport.action.deletepolicy
 
 import com.amazon.opendistroforelasticsearch.indexmanagement.IndexManagementPlugin
-import org.elasticsearch.action.ActionListener
-import org.elasticsearch.action.delete.DeleteRequest
-import org.elasticsearch.action.delete.DeleteResponse
-import org.elasticsearch.action.support.ActionFilters
-import org.elasticsearch.action.support.HandledTransportAction
-import org.elasticsearch.client.node.NodeClient
-import org.elasticsearch.common.inject.Inject
-import org.elasticsearch.tasks.Task
-import org.elasticsearch.transport.TransportService
+import org.opensearch.action.ActionListener
+import org.opensearch.action.delete.DeleteRequest
+import org.opensearch.action.delete.DeleteResponse
+import org.opensearch.action.support.ActionFilters
+import org.opensearch.action.support.HandledTransportAction
+import org.opensearch.client.node.NodeClient
+import org.opensearch.common.inject.Inject
+import org.opensearch.tasks.Task
+import org.opensearch.transport.TransportService
 
 class TransportDeletePolicyAction @Inject constructor(
     val client: NodeClient,

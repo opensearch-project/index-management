@@ -19,11 +19,11 @@ import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagemen
 import com.amazon.opendistroforelasticsearch.indexmanagement.util.IndexManagementException
 import org.apache.logging.log4j.LogManager
 import org.apache.lucene.util.automaton.Operations
-import org.elasticsearch.ElasticsearchException
-import org.elasticsearch.cluster.metadata.IndexMetadata
-import org.elasticsearch.common.Strings
-import org.elasticsearch.common.ValidationException
-import org.elasticsearch.common.regex.Regex
+import org.opensearch.OpenSearchException
+import org.opensearch.cluster.metadata.IndexMetadata
+import org.opensearch.common.Strings
+import org.opensearch.common.ValidationException
+import org.opensearch.common.regex.Regex
 
 private val log = LogManager.getLogger("ISMTemplateService")
 
@@ -72,7 +72,7 @@ fun Map<String, ISMTemplate>.findMatchingPolicy(indexMetadata: IndexMetadata): S
  * acknowledge https://github.com/a2lin who should be the first contributor
  */
 @Suppress("ComplexMethod")
-fun validateFormat(indexPatterns: List<String>): ElasticsearchException? {
+fun validateFormat(indexPatterns: List<String>): OpenSearchException? {
     val indexPatternFormatErrors = mutableListOf<String>()
     for (indexPattern in indexPatterns) {
         if (indexPattern.contains("#")) {

@@ -16,11 +16,11 @@
 package com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.transport.action.getpolicy
 
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.randomPolicy
-import org.elasticsearch.common.io.stream.BytesStreamOutput
-import org.elasticsearch.common.io.stream.StreamInput
-import org.elasticsearch.test.ESTestCase
+import org.opensearch.common.io.stream.BytesStreamOutput
+import org.opensearch.common.io.stream.StreamInput
+import org.opensearch.test.OpenSearchTestCase
 
-class GetPoliciesResponseTests : ESTestCase() {
+class GetPoliciesResponseTests : OpenSearchTestCase() {
 
     fun `test get policies response`() {
         val policy = randomPolicy()

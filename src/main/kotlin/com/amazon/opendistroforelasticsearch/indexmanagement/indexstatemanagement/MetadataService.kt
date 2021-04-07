@@ -16,8 +16,8 @@
 package com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement
 
 import com.amazon.opendistroforelasticsearch.indexmanagement.IndexManagementIndices
-import com.amazon.opendistroforelasticsearch.indexmanagement.elasticapi.retry
-import com.amazon.opendistroforelasticsearch.indexmanagement.elasticapi.suspendUntil
+import com.amazon.opendistroforelasticsearch.indexmanagement.opensearchapi.retry
+import com.amazon.opendistroforelasticsearch.indexmanagement.opensearchapi.suspendUntil
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.elasticapi.getManagedIndexMetadata
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.transport.action.updateindexmetadata.UpdateManagedIndexMetaDataAction
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.transport.action.updateindexmetadata.UpdateManagedIndexMetaDataRequest
@@ -25,18 +25,18 @@ import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagemen
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.util.revertManagedIndexMetadataID
 import com.amazon.opendistroforelasticsearch.indexmanagement.util.OpenForTesting
 import org.apache.logging.log4j.LogManager
-import org.elasticsearch.ExceptionsHelper
-import org.elasticsearch.action.DocWriteRequest
-import org.elasticsearch.action.bulk.BackoffPolicy
-import org.elasticsearch.action.bulk.BulkItemResponse
-import org.elasticsearch.action.bulk.BulkRequest
-import org.elasticsearch.action.bulk.BulkResponse
-import org.elasticsearch.action.support.master.AcknowledgedResponse
-import org.elasticsearch.client.Client
-import org.elasticsearch.cluster.service.ClusterService
-import org.elasticsearch.common.unit.TimeValue
-import org.elasticsearch.index.Index
-import org.elasticsearch.rest.RestStatus
+import org.opensearch.ExceptionsHelper
+import org.opensearch.action.DocWriteRequest
+import org.opensearch.action.bulk.BackoffPolicy
+import org.opensearch.action.bulk.BulkItemResponse
+import org.opensearch.action.bulk.BulkRequest
+import org.opensearch.action.bulk.BulkResponse
+import org.opensearch.action.support.master.AcknowledgedResponse
+import org.opensearch.client.Client
+import org.opensearch.cluster.service.ClusterService
+import org.opensearch.common.unit.TimeValue
+import org.opensearch.index.Index
+import org.opensearch.rest.RestStatus
 import java.lang.Exception
 
 /**

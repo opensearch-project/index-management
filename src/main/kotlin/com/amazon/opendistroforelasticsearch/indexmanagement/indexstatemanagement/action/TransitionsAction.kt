@@ -20,8 +20,8 @@ import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagemen
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.model.action.TransitionsActionConfig
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.step.transition.AttemptTransitionStep
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.step.Step
-import org.elasticsearch.client.Client
-import org.elasticsearch.cluster.service.ClusterService
+import org.opensearch.client.Client
+import org.opensearch.cluster.service.ClusterService
 
 class TransitionsAction(
     clusterService: ClusterService,

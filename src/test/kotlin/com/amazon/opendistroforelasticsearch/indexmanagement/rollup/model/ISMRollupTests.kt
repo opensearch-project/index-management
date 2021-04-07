@@ -6,12 +6,12 @@ import com.amazon.opendistroforelasticsearch.indexmanagement.rollup.randomTerms
 import com.amazon.opendistroforelasticsearch.indexmanagement.util.IndexUtils
 import com.amazon.opendistroforelasticsearch.jobscheduler.spi.schedule.IntervalSchedule
 import org.apache.commons.codec.digest.DigestUtils
-import org.elasticsearch.index.seqno.SequenceNumbers
-import org.elasticsearch.test.ESTestCase
+import org.opensearch.index.seqno.SequenceNumbers
+import org.opensearch.test.OpenSearchTestCase
 import java.time.temporal.ChronoUnit
 import kotlin.test.assertFailsWith
 
-class ISMRollupTests : ESTestCase() {
+class ISMRollupTests : OpenSearchTestCase() {
 
     fun `test ism rollup requires only one date histogram and it should be first dimension`() {
         assertFailsWith(IllegalArgumentException:: class, "The first dimension must be a date histogram") {

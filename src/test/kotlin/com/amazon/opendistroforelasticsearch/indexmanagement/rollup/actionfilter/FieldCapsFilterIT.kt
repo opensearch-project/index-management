@@ -18,9 +18,9 @@ package com.amazon.opendistroforelasticsearch.indexmanagement.rollup.actionfilte
 import com.amazon.opendistroforelasticsearch.indexmanagement.makeRequest
 import com.amazon.opendistroforelasticsearch.indexmanagement.rollup.RollupRestTestCase
 import com.amazon.opendistroforelasticsearch.indexmanagement.rollup.settings.RollupSettings
-import org.elasticsearch.client.ResponseException
-import org.elasticsearch.common.settings.Settings
-import org.elasticsearch.rest.RestStatus
+import org.opensearch.client.ResponseException
+import org.opensearch.common.settings.Settings
+import org.opensearch.rest.RestStatus
 
 // TODO: Add assertions on fields
 @Suppress("UNCHECKED_CAST")

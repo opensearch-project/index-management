@@ -19,25 +19,25 @@ import com.amazon.opendistroforelasticsearch.indexmanagement.IndexManagementIndi
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.ManagedIndexCoordinator
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.MetadataService
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings
-import org.elasticsearch.Version
-import org.elasticsearch.client.Client
-import org.elasticsearch.cluster.ESAllocationTestCase
-import org.elasticsearch.cluster.metadata.IndexMetadata
-import org.elasticsearch.cluster.metadata.IndexMetadata.SETTING_INDEX_UUID
-import org.elasticsearch.cluster.node.DiscoveryNode
-import org.elasticsearch.cluster.service.ClusterService
-import org.elasticsearch.common.settings.ClusterSettings
-import org.elasticsearch.common.settings.Setting
-import org.elasticsearch.common.settings.Settings
-import org.elasticsearch.common.xcontent.NamedXContentRegistry
-import org.elasticsearch.test.ClusterServiceUtils
-import org.elasticsearch.test.ESTestCase
-import org.elasticsearch.threadpool.Scheduler
-import org.elasticsearch.threadpool.ThreadPool
+import org.opensearch.Version
+import org.opensearch.client.Client
+import org.opensearch.cluster.OpenSearchAllocationTestCase
+import org.opensearch.cluster.metadata.IndexMetadata
+import org.opensearch.cluster.metadata.IndexMetadata.SETTING_INDEX_UUID
+import org.opensearch.cluster.node.DiscoveryNode
+import org.opensearch.cluster.service.ClusterService
+import org.opensearch.common.settings.ClusterSettings
+import org.opensearch.common.settings.Setting
+import org.opensearch.common.settings.Settings
+import org.opensearch.common.xcontent.NamedXContentRegistry
+import org.opensearch.test.ClusterServiceUtils
+import org.opensearch.test.OpenSearchTestCase
+import org.opensearch.threadpool.Scheduler
+import org.opensearch.threadpool.ThreadPool
 import org.mockito.Mockito
 import org.junit.Before
 
-class ManagedIndexCoordinatorTests : ESAllocationTestCase() {
+class ManagedIndexCoordinatorTests : OpenSearchAllocationTestCase() {
 
     private lateinit var client: Client
     private lateinit var clusterService: ClusterService
@@ -64,7 +64,7 @@ class ManagedIndexCoordinatorTests : ESAllocationTestCase() {
 
         settings = Settings.builder().build()
 
-        discoveryNode = DiscoveryNode("node", ESTestCase.buildNewFakeTransportAddress(), Version.CURRENT)
+        discoveryNode = DiscoveryNode("node", OpenSearchTestCase.buildNewFakeTransportAddress(), Version.CURRENT)
 
         val settingSet = hashSetOf<Setting<*>>()
         settingSet.addAll(ClusterSettings.BUILT_IN_CLUSTER_SETTINGS)

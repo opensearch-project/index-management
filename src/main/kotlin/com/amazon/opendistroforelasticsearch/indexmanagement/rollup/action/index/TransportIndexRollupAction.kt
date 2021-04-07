@@ -23,22 +23,22 @@ import com.amazon.opendistroforelasticsearch.indexmanagement.rollup.action.get.G
 import com.amazon.opendistroforelasticsearch.indexmanagement.rollup.model.Rollup
 import com.amazon.opendistroforelasticsearch.indexmanagement.util.IndexUtils
 import org.apache.logging.log4j.LogManager
-import org.elasticsearch.ElasticsearchStatusException
-import org.elasticsearch.action.ActionListener
-import org.elasticsearch.action.DocWriteRequest
-import org.elasticsearch.action.index.IndexRequest
-import org.elasticsearch.action.index.IndexResponse
-import org.elasticsearch.action.support.ActionFilters
-import org.elasticsearch.action.support.HandledTransportAction
-import org.elasticsearch.action.support.master.AcknowledgedResponse
-import org.elasticsearch.client.Client
-import org.elasticsearch.cluster.service.ClusterService
-import org.elasticsearch.common.inject.Inject
-import org.elasticsearch.common.xcontent.ToXContent
-import org.elasticsearch.common.xcontent.XContentFactory.jsonBuilder
-import org.elasticsearch.rest.RestStatus
-import org.elasticsearch.tasks.Task
-import org.elasticsearch.transport.TransportService
+import org.opensearch.OpenSearchStatusException
+import org.opensearch.action.ActionListener
+import org.opensearch.action.DocWriteRequest
+import org.opensearch.action.index.IndexRequest
+import org.opensearch.action.index.IndexResponse
+import org.opensearch.action.support.ActionFilters
+import org.opensearch.action.support.HandledTransportAction
+import org.opensearch.action.support.master.AcknowledgedResponse
+import org.opensearch.client.Client
+import org.opensearch.cluster.service.ClusterService
+import org.opensearch.common.inject.Inject
+import org.opensearch.common.xcontent.ToXContent
+import org.opensearch.common.xcontent.XContentFactory.jsonBuilder
+import org.opensearch.rest.RestStatus
+import org.opensearch.tasks.Task
+import org.opensearch.transport.TransportService
 
 // TODO: Field and mappings validations of source and target index, i.e. reject a histogram agg on example_field if its not possible
 class TransportIndexRollupAction @Inject constructor(
@@ -78,7 +78,7 @@ class TransportIndexRollupAction @Inject constructor(
             } else {
                 val message = "Unable to create or update $INDEX_MANAGEMENT_INDEX with newest mapping."
                 log.error(message)
-                actionListener.onFailure(ElasticsearchStatusException(message, RestStatus.INTERNAL_SERVER_ERROR))
+                actionListener.onFailure(OpenSearchStatusException(message, RestStatus.INTERNAL_SERVER_ERROR))
             }
         }
 
@@ -90,13 +90,13 @@ class TransportIndexRollupAction @Inject constructor(
         @Suppress("ReturnCount")
         private fun onGetRollup(response: GetRollupResponse) {
             if (response.status != RestStatus.OK) {
-                return actionListener.onFailure(ElasticsearchStatusException("Unable to get existing rollup", response.status))
+                return actionListener.onFailure(OpenSearchStatusException("Unable to get existing rollup", response.status))
             }
             val rollup = response.rollup
-                ?: return actionListener.onFailure(ElasticsearchStatusException("The current rollup is null", RestStatus.INTERNAL_SERVER_ERROR))
+                ?: return actionListener.onFailure(OpenSearchStatusException("The current rollup is null", RestStatus.INTERNAL_SERVER_ERROR))
             val modified = modifiedImmutableProperties(rollup, request.rollup)
             if (modified.isNotEmpty()) {
-                return actionListener.onFailure(ElasticsearchStatusException("Not allowed to modify $modified", RestStatus.BAD_REQUEST))
+                return actionListener.onFailure(OpenSearchStatusException("Not allowed to modify $modified", RestStatus.BAD_REQUEST))
             }
             putRollup()
         }
@@ -122,7 +122,7 @@ class TransportIndexRollupAction @Inject constructor(
                 override fun onResponse(response: IndexResponse) {
                     if (response.shardInfo.failed > 0) {
                         val failureReasons = response.shardInfo.failures.joinToString(", ") { it.reason() }
-                        actionListener.onFailure(ElasticsearchStatusException(failureReasons, response.status()))
+                        actionListener.onFailure(OpenSearchStatusException(failureReasons, response.status()))
                     } else {
                         val status = if (request.opType() == DocWriteRequest.OpType.CREATE) RestStatus.CREATED else RestStatus.OK
                         actionListener.onResponse(

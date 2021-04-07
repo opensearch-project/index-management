@@ -18,10 +18,10 @@ package com.amazon.opendistroforelasticsearch.indexmanagement.refreshanalyzer
 import com.amazon.opendistroforelasticsearch.indexmanagement.IndexManagementRestTestCase
 import com.amazon.opendistroforelasticsearch.indexmanagement.makeRequest
 import com.amazon.opendistroforelasticsearch.indexmanagement.refreshanalyzer.RestRefreshSearchAnalyzerAction.Companion.REFRESH_SEARCH_ANALYZER_BASE_URI
-import org.elasticsearch.client.ResponseException
-import org.elasticsearch.common.settings.Settings
-import org.elasticsearch.rest.RestRequest.Method.POST
-import org.elasticsearch.rest.RestStatus
+import org.opensearch.client.ResponseException
+import org.opensearch.common.settings.Settings
+import org.opensearch.rest.RestRequest.Method.POST
+import org.opensearch.rest.RestStatus
 
 class RestRefreshSearchAnalyzerActionIT : IndexManagementRestTestCase() {
 

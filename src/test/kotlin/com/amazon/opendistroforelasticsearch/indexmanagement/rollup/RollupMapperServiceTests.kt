@@ -24,20 +24,20 @@ import com.nhaarman.mockitokotlin2.doReturn
 import com.nhaarman.mockitokotlin2.mock
 import com.nhaarman.mockitokotlin2.whenever
 import kotlinx.coroutines.runBlocking
-import org.elasticsearch.action.ActionListener
-import org.elasticsearch.action.admin.indices.mapping.get.GetMappingsResponse
-import org.elasticsearch.client.AdminClient
-import org.elasticsearch.client.Client
-import org.elasticsearch.client.IndicesAdminClient
-import org.elasticsearch.cluster.metadata.IndexNameExpressionResolver
-import org.elasticsearch.cluster.metadata.MappingMetadata
-import org.elasticsearch.cluster.service.ClusterService
-import org.elasticsearch.common.collect.ImmutableOpenMap
-import org.elasticsearch.common.xcontent.XContentType
-import org.elasticsearch.test.ESTestCase
+import org.opensearch.action.ActionListener
+import org.opensearch.action.admin.indices.mapping.get.GetMappingsResponse
+import org.opensearch.client.AdminClient
+import org.opensearch.client.Client
+import org.opensearch.client.IndicesAdminClient
+import org.opensearch.cluster.metadata.IndexNameExpressionResolver
+import org.opensearch.cluster.metadata.MappingMetadata
+import org.opensearch.cluster.service.ClusterService
+import org.opensearch.common.collect.ImmutableOpenMap
+import org.opensearch.common.xcontent.XContentType
+import org.opensearch.test.OpenSearchTestCase
 import java.time.Instant
 
-class RollupMapperServiceTests : ESTestCase() {
+class RollupMapperServiceTests : OpenSearchTestCase() {
 
     fun `test source index validation`() {
         val sourceIndex = "test-index"

@@ -27,23 +27,23 @@ import com.nhaarman.mockitokotlin2.doReturn
 import com.nhaarman.mockitokotlin2.mock
 import com.nhaarman.mockitokotlin2.whenever
 import kotlinx.coroutines.runBlocking
-import org.elasticsearch.action.ActionListener
-import org.elasticsearch.action.admin.indices.stats.CommonStats
-import org.elasticsearch.action.admin.indices.stats.IndicesStatsResponse
-import org.elasticsearch.client.AdminClient
-import org.elasticsearch.client.Client
-import org.elasticsearch.client.IndicesAdminClient
-import org.elasticsearch.cluster.ClusterState
-import org.elasticsearch.cluster.metadata.IndexMetadata
-import org.elasticsearch.cluster.metadata.Metadata
-import org.elasticsearch.cluster.service.ClusterService
-import org.elasticsearch.index.shard.DocsStats
-import org.elasticsearch.rest.RestStatus
-import org.elasticsearch.test.ESTestCase
-import org.elasticsearch.transport.RemoteTransportException
+import org.opensearch.action.ActionListener
+import org.opensearch.action.admin.indices.stats.CommonStats
+import org.opensearch.action.admin.indices.stats.IndicesStatsResponse
+import org.opensearch.client.AdminClient
+import org.opensearch.client.Client
+import org.opensearch.client.IndicesAdminClient
+import org.opensearch.cluster.ClusterState
+import org.opensearch.cluster.metadata.IndexMetadata
+import org.opensearch.cluster.metadata.Metadata
+import org.opensearch.cluster.service.ClusterService
+import org.opensearch.index.shard.DocsStats
+import org.opensearch.rest.RestStatus
+import org.opensearch.test.OpenSearchTestCase
+import org.opensearch.transport.RemoteTransportException
 import java.time.Instant
 
-class AttemptTransitionStepTests : ESTestCase() {
+class AttemptTransitionStepTests : OpenSearchTestCase() {
 
     private val indexMetadata: IndexMetadata = mock()
     private val metadata: Metadata = mock { on { index(any<String>()) } doReturn indexMetadata }

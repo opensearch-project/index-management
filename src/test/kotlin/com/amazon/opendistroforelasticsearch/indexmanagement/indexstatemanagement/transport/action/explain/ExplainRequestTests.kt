@@ -16,12 +16,12 @@
 package com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.transport.action.explain
 
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.model.SearchParams
-import org.elasticsearch.common.io.stream.BytesStreamOutput
-import org.elasticsearch.common.io.stream.StreamInput
-import org.elasticsearch.common.unit.TimeValue
-import org.elasticsearch.test.ESTestCase
+import org.opensearch.common.io.stream.BytesStreamOutput
+import org.opensearch.common.io.stream.StreamInput
+import org.opensearch.common.unit.TimeValue
+import org.opensearch.test.OpenSearchTestCase
 
-class ExplainRequestTests : ESTestCase() {
+class ExplainRequestTests : OpenSearchTestCase() {
 
     fun `test explain request`() {
         val indices = listOf("index1", "index2")

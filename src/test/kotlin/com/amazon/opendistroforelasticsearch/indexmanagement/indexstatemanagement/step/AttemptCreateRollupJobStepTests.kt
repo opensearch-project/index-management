@@ -6,12 +6,12 @@ import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagemen
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.randomRollupActionConfig
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.step.rollup.AttemptCreateRollupJobStep
 import com.nhaarman.mockitokotlin2.mock
-import org.elasticsearch.client.Client
-import org.elasticsearch.cluster.service.ClusterService
-import org.elasticsearch.test.ESTestCase
+import org.opensearch.client.Client
+import org.opensearch.cluster.service.ClusterService
+import org.opensearch.test.OpenSearchTestCase
 import java.lang.Exception
 
-class AttemptCreateRollupJobStepTests : ESTestCase() {
+class AttemptCreateRollupJobStepTests : OpenSearchTestCase() {
 
     private val rollupActionConfig = randomRollupActionConfig()
     private val indexName = "test"

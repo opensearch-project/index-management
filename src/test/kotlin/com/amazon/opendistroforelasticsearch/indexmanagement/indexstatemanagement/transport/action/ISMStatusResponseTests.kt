@@ -16,11 +16,11 @@
 package com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.transport.action
 
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.util.FailedIndex
-import org.elasticsearch.common.io.stream.BytesStreamOutput
-import org.elasticsearch.common.io.stream.StreamInput
-import org.elasticsearch.test.ESTestCase
+import org.opensearch.common.io.stream.BytesStreamOutput
+import org.opensearch.common.io.stream.StreamInput
+import org.opensearch.test.OpenSearchTestCase
 
-class ISMStatusResponseTests : ESTestCase() {
+class ISMStatusResponseTests : OpenSearchTestCase() {
 
     fun `test ISM status response`() {
         val updated = 1

@@ -17,15 +17,15 @@ package com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanageme
 
 import com.amazon.opendistroforelasticsearch.indexmanagement.util.OpenForTesting
 import org.apache.logging.log4j.LogManager
-import org.elasticsearch.action.ActionListener
-import org.elasticsearch.action.admin.cluster.node.info.NodesInfoAction
-import org.elasticsearch.action.admin.cluster.node.info.NodesInfoRequest
-import org.elasticsearch.action.admin.cluster.node.info.NodesInfoResponse
-import org.elasticsearch.action.admin.cluster.node.info.PluginsAndModules
-import org.elasticsearch.client.Client
-import org.elasticsearch.cluster.ClusterChangedEvent
-import org.elasticsearch.cluster.ClusterStateListener
-import org.elasticsearch.cluster.service.ClusterService
+import org.opensearch.action.ActionListener
+import org.opensearch.action.admin.cluster.node.info.NodesInfoAction
+import org.opensearch.action.admin.cluster.node.info.NodesInfoRequest
+import org.opensearch.action.admin.cluster.node.info.NodesInfoResponse
+import org.opensearch.action.admin.cluster.node.info.PluginsAndModules
+import org.opensearch.client.Client
+import org.opensearch.cluster.ClusterChangedEvent
+import org.opensearch.cluster.ClusterStateListener
+import org.opensearch.cluster.service.ClusterService
 
 // TODO this can be moved to job scheduler, so that all extended plugin
 //  can avoid running jobs in an upgrading cluster

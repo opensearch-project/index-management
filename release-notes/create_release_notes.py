@@ -23,7 +23,7 @@ if app_num is 2:
 app_version = raw_input(app + ' compatibility version (x.x.x): ')
 
 for line in fileinput.input(file_path, inplace=True):
-    # Add title and ES/Kibana compatibility
+    # Add title and OpenSearch/OpenSearchDashboards compatibility
     if fileinput.isfirstline():
         line = "## Version " + plugin_version + " " + current_date + "\n\n" \
             "Compatible with " + app + " " + app_version + "\n"

@@ -15,7 +15,7 @@
 
 @file:Suppress("TooManyFunctions", "MatchingDeclarationName")
 
-package com.amazon.opendistroforelasticsearch.indexmanagement.elasticapi
+package com.amazon.opendistroforelasticsearch.indexmanagement.opensearchapi
 
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.model.ISMTemplate
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.model.Policy
@@ -23,27 +23,27 @@ import com.amazon.opendistroforelasticsearch.indexmanagement.util.NO_ID
 import com.amazon.opendistroforelasticsearch.jobscheduler.spi.utils.LockService
 import kotlinx.coroutines.delay
 import org.apache.logging.log4j.Logger
-import org.elasticsearch.ElasticsearchException
-import org.elasticsearch.ExceptionsHelper
-import org.elasticsearch.action.ActionListener
-import org.elasticsearch.action.bulk.BackoffPolicy
-import org.elasticsearch.action.support.DefaultShardOperationFailedException
-import org.elasticsearch.client.ElasticsearchClient
-import org.elasticsearch.common.bytes.BytesReference
-import org.elasticsearch.common.unit.TimeValue
-import org.elasticsearch.common.xcontent.LoggingDeprecationHandler
-import org.elasticsearch.common.xcontent.NamedXContentRegistry
-import org.elasticsearch.common.xcontent.ToXContent
-import org.elasticsearch.common.xcontent.XContentBuilder
-import org.elasticsearch.common.xcontent.XContentHelper
-import org.elasticsearch.common.xcontent.XContentParser
-import org.elasticsearch.common.xcontent.XContentParser.Token
-import org.elasticsearch.common.xcontent.XContentParserUtils
-import org.elasticsearch.common.xcontent.XContentParserUtils.ensureExpectedToken
-import org.elasticsearch.common.xcontent.XContentType
-import org.elasticsearch.index.seqno.SequenceNumbers
-import org.elasticsearch.rest.RestStatus
-import org.elasticsearch.transport.RemoteTransportException
+import org.opensearch.OpenSearchException
+import org.opensearch.ExceptionsHelper
+import org.opensearch.action.ActionListener
+import org.opensearch.action.bulk.BackoffPolicy
+import org.opensearch.action.support.DefaultShardOperationFailedException
+import org.opensearch.client.OpenSearchClient
+import org.opensearch.common.bytes.BytesReference
+import org.opensearch.common.unit.TimeValue
+import org.opensearch.common.xcontent.LoggingDeprecationHandler
+import org.opensearch.common.xcontent.NamedXContentRegistry
+import org.opensearch.common.xcontent.ToXContent
+import org.opensearch.common.xcontent.XContentBuilder
+import org.opensearch.common.xcontent.XContentHelper
+import org.opensearch.common.xcontent.XContentParser
+import org.opensearch.common.xcontent.XContentParser.Token
+import org.opensearch.common.xcontent.XContentParserUtils
+import org.opensearch.common.xcontent.XContentParserUtils.ensureExpectedToken
+import org.opensearch.common.xcontent.XContentType
+import org.opensearch.index.seqno.SequenceNumbers
+import org.opensearch.rest.RestStatus
+import org.opensearch.transport.RemoteTransportException
 import java.io.IOException
 import java.time.Instant
 import kotlin.coroutines.resume
@@ -89,10 +89,10 @@ fun XContentBuilder.optionalISMTemplateField(name: String, ismTemplate: ISMTempl
 
 /**
  * Retries the given [block] of code as specified by the receiver [BackoffPolicy],
- * if [block] throws an [ElasticsearchException] that is retriable (502, 503, 504).
+ * if [block] throws an [OpenSearchException] that is retriable (502, 503, 504).
  *
  * If all retries fail the final exception will be rethrown. Exceptions caught during intermediate retries are
- * logged as warnings to [logger]. Similar to [org.elasticsearch.action.bulk.Retry], except this retries on
+ * logged as warnings to [logger]. Similar to [org.opensearch.action.bulk.Retry], except this retries on
  * 502, 503, 504 error codes as well as 429.
  *
  * @param logger - logger used to log intermediate failures
@@ -109,7 +109,7 @@ suspend fun <T> BackoffPolicy.retry(
     do {
         try {
             return block(backoff)
-        } catch (e: ElasticsearchException) {
+        } catch (e: OpenSearchException) {
             if (iter.hasNext() && (e.isRetryable() || retryOn.contains(e.status()))) {
                 backoff = iter.next()
                 logger.warn("Operation failed. Retrying in $backoff.", e)
@@ -125,21 +125,21 @@ suspend fun <T> BackoffPolicy.retry(
  * Retries on 502, 503 and 504 per elastic client's behavior: https://github.com/elastic/elasticsearch-net/issues/2061
  * 429 must be retried manually as it's not clear if it's ok to retry for requests other than Bulk requests.
  */
-fun ElasticsearchException.isRetryable(): Boolean {
+fun OpenSearchException.isRetryable(): Boolean {
     return (status() in listOf(RestStatus.BAD_GATEWAY, RestStatus.SERVICE_UNAVAILABLE, RestStatus.GATEWAY_TIMEOUT))
 }
 
 /**
- * Extension function for ES 6.3 and above that duplicates the ES 6.2 XContentBuilder.string() method.
+ * Extension function for OpenSearch 6.3 and above that duplicates the OpenSearch 6.2 XContentBuilder.string() method.
  */
 fun XContentBuilder.string(): String = BytesReference.bytes(this).utf8ToString()
 
 /**
- * Converts [ElasticsearchClient] methods that take a callback into a kotlin suspending function.
+ * Converts [OpenSearchClient] methods that take a callback into a kotlin suspending function.
  *
- * @param block - a block of code that is passed an [ActionListener] that should be passed to the ES client API.
+ * @param block - a block of code that is passed an [ActionListener] that should be passed to the OpenSearch client API.
  */
-suspend fun <C : ElasticsearchClient, T> C.suspendUntil(block: C.(ActionListener<T>) -> Unit): T =
+suspend fun <C : OpenSearchClient, T> C.suspendUntil(block: C.(ActionListener<T>) -> Unit): T =
     suspendCoroutine { cont ->
         block(object : ActionListener<T> {
             override fun onResponse(response: T) = cont.resume(response)

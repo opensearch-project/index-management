@@ -19,10 +19,10 @@ import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagemen
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.randomReplicaCountActionConfig
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.randomState
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.randomTransition
-import org.elasticsearch.test.ESTestCase
+import org.opensearch.test.OpenSearchTestCase
 import kotlin.test.assertFailsWith
 
-class StateTests : ESTestCase() {
+class StateTests : OpenSearchTestCase() {
 
     fun `test invalid state name`() {
         assertFailsWith(IllegalArgumentException::class, "Expected IllegalArgumentException for blank state name") {

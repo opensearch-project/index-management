@@ -18,18 +18,18 @@ package com.amazon.opendistroforelasticsearch.indexmanagement.rollup.util
 import com.amazon.opendistroforelasticsearch.indexmanagement.rollup.model.RollupFieldMapping
 import com.amazon.opendistroforelasticsearch.indexmanagement.rollup.randomRollup
 import com.amazon.opendistroforelasticsearch.indexmanagement.rollup.randomTermQuery
-import org.elasticsearch.index.query.BoolQueryBuilder
-import org.elasticsearch.index.query.ConstantScoreQueryBuilder
-import org.elasticsearch.index.query.DisMaxQueryBuilder
-import org.elasticsearch.index.query.MatchAllQueryBuilder
-import org.elasticsearch.index.query.MatchPhraseQueryBuilder
-import org.elasticsearch.index.query.RangeQueryBuilder
-import org.elasticsearch.index.query.TermQueryBuilder
-import org.elasticsearch.index.query.TermsQueryBuilder
-import org.elasticsearch.index.search.MatchQuery
-import org.elasticsearch.test.ESTestCase
+import org.opensearch.index.query.BoolQueryBuilder
+import org.opensearch.index.query.ConstantScoreQueryBuilder
+import org.opensearch.index.query.DisMaxQueryBuilder
+import org.opensearch.index.query.MatchAllQueryBuilder
+import org.opensearch.index.query.MatchPhraseQueryBuilder
+import org.opensearch.index.query.RangeQueryBuilder
+import org.opensearch.index.query.TermQueryBuilder
+import org.opensearch.index.query.TermsQueryBuilder
+import org.opensearch.index.search.MatchQuery
+import org.opensearch.test.OpenSearchTestCase
 
-class RollupUtilsTests : ESTestCase() {
+class RollupUtilsTests : OpenSearchTestCase() {
 
     fun `test rewriteQueryBuilder term query`() {
         val termQuery = randomTermQuery()
