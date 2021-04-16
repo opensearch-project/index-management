@@ -5,9 +5,9 @@
 ![PRs welcome!](https://img.shields.io/badge/PRs-welcome!-success)
 
 
-# Open Distro for OpenSearch Index Management
+# OpenSearch Index Management
 
-Open Distro for OpenSearch Index Management provides a suite of features to monitor and manage indexes.
+OpenSearch Index Management provides a suite of features to monitor and manage indexes.
 
 It currently contains an automated system for managing and optimizing indices throughout their life, Index State Management.
 
