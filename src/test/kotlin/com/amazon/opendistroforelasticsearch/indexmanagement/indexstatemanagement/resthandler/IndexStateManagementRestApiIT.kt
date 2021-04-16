@@ -53,7 +53,7 @@ class IndexStateManagementRestApiIT : IndexStateManagementRestTestCase() {
             val plugins = nodeInfo["plugins"] as List<Map<String, Any>>
 
             for (plugin in plugins) {
-                if (plugin["name"] == "opendistro-index-management") {
+                if (plugin["name"] == "opensearch-index-management") {
                     hasIndexStateManagementPlugin = true
                 }
                 if (plugin["name"] == "opendistro-job-scheduler") {

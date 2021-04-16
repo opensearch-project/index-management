@@ -90,8 +90,8 @@ if (!usingRemoteCluster && !usingMultiNode) {
 check.dependsOn jacocoTestReport
 
 opensearchplugin {
-    name 'opendistro-index-management'
-    description 'Open Distro Index Management Plugin'
+    name 'opensearch-index-management'
+    description 'OpenSearch Index Management Plugin'
     classname 'com.amazon.opendistroforelasticsearch.indexmanagement.IndexManagementPlugin'
     extendedPlugins = ['opendistro-job-scheduler']
 }
