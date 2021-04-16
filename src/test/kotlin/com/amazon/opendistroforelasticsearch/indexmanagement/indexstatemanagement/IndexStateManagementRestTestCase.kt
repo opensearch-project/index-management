@@ -22,7 +22,7 @@ import com.amazon.opendistroforelasticsearch.indexmanagement.IndexManagementIndi
 import com.amazon.opendistroforelasticsearch.indexmanagement.IndexManagementPlugin
 import com.amazon.opendistroforelasticsearch.indexmanagement.IndexManagementPlugin.Companion.ISM_BASE_URI
 import com.amazon.opendistroforelasticsearch.indexmanagement.IndexManagementRestTestCase
-import com.amazon.opendistroforelasticsearch.indexmanagement.elasticapi.parseWithType
+import com.amazon.opendistroforelasticsearch.indexmanagement.opensearchapi.parseWithType
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.model.ChangePolicy
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.model.ISMTemplate
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.model.ManagedIndexConfig
@@ -54,26 +54,26 @@ import org.apache.http.HttpHeaders
 import org.apache.http.entity.ContentType.APPLICATION_JSON
 import org.apache.http.entity.StringEntity
 import org.apache.http.message.BasicHeader
-import org.elasticsearch.ElasticsearchParseException
-import org.elasticsearch.action.get.GetResponse
-import org.elasticsearch.action.search.SearchResponse
-import org.elasticsearch.client.Request
-import org.elasticsearch.client.Response
-import org.elasticsearch.client.ResponseException
-import org.elasticsearch.cluster.metadata.IndexMetadata
-import org.elasticsearch.common.settings.Settings
-import org.elasticsearch.common.unit.TimeValue
-import org.elasticsearch.common.xcontent.DeprecationHandler
-import org.elasticsearch.common.xcontent.LoggingDeprecationHandler
-import org.elasticsearch.common.xcontent.NamedXContentRegistry
-import org.elasticsearch.common.xcontent.XContentParser.Token
-import org.elasticsearch.common.xcontent.XContentParserUtils.ensureExpectedToken
-import org.elasticsearch.common.xcontent.XContentType
-import org.elasticsearch.common.xcontent.json.JsonXContent.jsonXContent
-import org.elasticsearch.index.seqno.SequenceNumbers
-import org.elasticsearch.rest.RestRequest
-import org.elasticsearch.rest.RestStatus
-import org.elasticsearch.test.ESTestCase
+import org.opensearch.OpenSearchParseException
+import org.opensearch.action.get.GetResponse
+import org.opensearch.action.search.SearchResponse
+import org.opensearch.client.Request
+import org.opensearch.client.Response
+import org.opensearch.client.ResponseException
+import org.opensearch.cluster.metadata.IndexMetadata
+import org.opensearch.common.settings.Settings
+import org.opensearch.common.unit.TimeValue
+import org.opensearch.common.xcontent.DeprecationHandler
+import org.opensearch.common.xcontent.LoggingDeprecationHandler
+import org.opensearch.common.xcontent.NamedXContentRegistry
+import org.opensearch.common.xcontent.XContentParser.Token
+import org.opensearch.common.xcontent.XContentParserUtils.ensureExpectedToken
+import org.opensearch.common.xcontent.XContentType
+import org.opensearch.common.xcontent.json.JsonXContent.jsonXContent
+import org.opensearch.index.seqno.SequenceNumbers
+import org.opensearch.rest.RestRequest
+import org.opensearch.rest.RestStatus
+import org.opensearch.test.OpenSearchTestCase
 import java.io.IOException
 import java.time.Duration
 import java.time.Instant
@@ -83,7 +83,7 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
 
     protected fun createPolicy(
         policy: Policy,
-        policyId: String = ESTestCase.randomAlphaOfLength(10),
+        policyId: String = OpenSearchTestCase.randomAlphaOfLength(10),
         refresh: Boolean = true
     ): Policy {
         val response = createPolicyJson(policy.toJsonString(), policyId, refresh)
@@ -481,7 +481,7 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
                     .createParser(NamedXContentRegistry.EMPTY, DeprecationHandler.THROW_UNSUPPORTED_OPERATION, response.entity.content)
                     .use { parser -> parser.list() }.map { element -> (element as Map<String, String>)["name"]!! }.toMutableSet()
         } catch (e: IOException) {
-            throw ElasticsearchParseException("Failed to parse content to list", e)
+            throw OpenSearchParseException("Failed to parse content to list", e)
         }
     }
 
@@ -537,7 +537,7 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
                     .createParser(NamedXContentRegistry.EMPTY, DeprecationHandler.THROW_UNSUPPORTED_OPERATION, response.entity.content)
                     .use { parser -> parser.list() }
         } catch (e: IOException) {
-            throw ElasticsearchParseException("Failed to parse content to list", e)
+            throw OpenSearchParseException("Failed to parse content to list", e)
         }
     }
 
@@ -554,7 +554,7 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
                 .createParser(NamedXContentRegistry.EMPTY, DeprecationHandler.THROW_UNSUPPORTED_OPERATION, response.entity.content)
                 .use { parser -> parser.list() }
         } catch (e: IOException) {
-            throw ElasticsearchParseException("Failed to parse content to list", e)
+            throw OpenSearchParseException("Failed to parse content to list", e)
         }
     }
 

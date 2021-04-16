@@ -25,27 +25,27 @@ import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagemen
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.validateFormat
 import com.amazon.opendistroforelasticsearch.indexmanagement.util.IndexUtils
 import org.apache.logging.log4j.LogManager
-import org.elasticsearch.ElasticsearchStatusException
-import org.elasticsearch.ExceptionsHelper
-import org.elasticsearch.action.ActionListener
-import org.elasticsearch.action.DocWriteRequest
-import org.elasticsearch.action.index.IndexRequest
-import org.elasticsearch.action.index.IndexResponse
-import org.elasticsearch.action.search.SearchRequest
-import org.elasticsearch.action.search.SearchResponse
-import org.elasticsearch.action.support.ActionFilters
-import org.elasticsearch.action.support.HandledTransportAction
-import org.elasticsearch.action.support.master.AcknowledgedResponse
-import org.elasticsearch.client.node.NodeClient
-import org.elasticsearch.common.inject.Inject
-import org.elasticsearch.common.xcontent.NamedXContentRegistry
-import org.elasticsearch.common.xcontent.XContentFactory
-import org.elasticsearch.index.query.QueryBuilders
-import org.elasticsearch.index.seqno.SequenceNumbers
-import org.elasticsearch.rest.RestStatus
-import org.elasticsearch.search.builder.SearchSourceBuilder
-import org.elasticsearch.tasks.Task
-import org.elasticsearch.transport.TransportService
+import org.opensearch.OpenSearchStatusException
+import org.opensearch.ExceptionsHelper
+import org.opensearch.action.ActionListener
+import org.opensearch.action.DocWriteRequest
+import org.opensearch.action.index.IndexRequest
+import org.opensearch.action.index.IndexResponse
+import org.opensearch.action.search.SearchRequest
+import org.opensearch.action.search.SearchResponse
+import org.opensearch.action.support.ActionFilters
+import org.opensearch.action.support.HandledTransportAction
+import org.opensearch.action.support.master.AcknowledgedResponse
+import org.opensearch.client.node.NodeClient
+import org.opensearch.common.inject.Inject
+import org.opensearch.common.xcontent.NamedXContentRegistry
+import org.opensearch.common.xcontent.XContentFactory
+import org.opensearch.index.query.QueryBuilders
+import org.opensearch.index.seqno.SequenceNumbers
+import org.opensearch.rest.RestStatus
+import org.opensearch.search.builder.SearchSourceBuilder
+import org.opensearch.tasks.Task
+import org.opensearch.transport.TransportService
 
 private val log = LogManager.getLogger(TransportIndexPolicyAction::class.java)
 
@@ -91,7 +91,7 @@ class TransportIndexPolicyAction @Inject constructor(
             } else {
                 log.error("Unable to create or update ${IndexManagementPlugin.INDEX_MANAGEMENT_INDEX} with newest mapping.")
 
-                actionListener.onFailure(ElasticsearchStatusException(
+                actionListener.onFailure(OpenSearchStatusException(
                     "Unable to create or update ${IndexManagementPlugin.INDEX_MANAGEMENT_INDEX} with newest mapping.",
                     RestStatus.INTERNAL_SERVER_ERROR))
             }
@@ -151,7 +151,7 @@ class TransportIndexPolicyAction @Inject constructor(
                 override fun onResponse(response: IndexResponse) {
                     val failureReasons = checkShardsFailure(response)
                     if (failureReasons != null) {
-                        actionListener.onFailure(ElasticsearchStatusException(failureReasons.toString(), response.status()))
+                        actionListener.onFailure(OpenSearchStatusException(failureReasons.toString(), response.status()))
                         return
                     }
                     actionListener.onResponse(IndexPolicyResponse(

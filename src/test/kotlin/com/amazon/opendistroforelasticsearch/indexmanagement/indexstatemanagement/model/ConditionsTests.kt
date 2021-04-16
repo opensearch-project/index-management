@@ -17,11 +17,11 @@ package com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanageme
 
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.randomByteSizeValue
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.randomTimeValueObject
-import org.elasticsearch.common.unit.ByteSizeValue
-import org.elasticsearch.test.ESTestCase
+import org.opensearch.common.unit.ByteSizeValue
+import org.opensearch.test.OpenSearchTestCase
 import kotlin.test.assertFailsWith
 
-class ConditionsTests : ESTestCase() {
+class ConditionsTests : OpenSearchTestCase() {
 
     fun `test supplying more than one transition condition fails`() {
         assertFailsWith(

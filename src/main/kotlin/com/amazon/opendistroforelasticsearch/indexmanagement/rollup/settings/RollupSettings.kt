@@ -15,8 +15,8 @@
 
 package com.amazon.opendistroforelasticsearch.indexmanagement.rollup.settings
 
-import org.elasticsearch.common.settings.Setting
-import org.elasticsearch.common.unit.TimeValue
+import org.opensearch.common.settings.Setting
+import org.opensearch.common.unit.TimeValue
 
 class RollupSettings {
 

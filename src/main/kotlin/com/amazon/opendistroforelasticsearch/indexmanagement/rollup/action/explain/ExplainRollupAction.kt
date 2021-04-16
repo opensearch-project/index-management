@@ -15,7 +15,7 @@
 
 package com.amazon.opendistroforelasticsearch.indexmanagement.rollup.action.explain
 
-import org.elasticsearch.action.ActionType
+import org.opensearch.action.ActionType
 
 class ExplainRollupAction private constructor() : ActionType<ExplainRollupResponse>(NAME, ::ExplainRollupResponse) {
     companion object {

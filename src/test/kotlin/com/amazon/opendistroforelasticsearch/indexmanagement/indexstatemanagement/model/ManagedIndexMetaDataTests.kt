@@ -21,13 +21,13 @@ import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagemen
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.StateMetaData
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.StepMetaData
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.step.Step
-import org.elasticsearch.common.io.stream.InputStreamStreamInput
-import org.elasticsearch.common.io.stream.OutputStreamStreamOutput
-import org.elasticsearch.test.ESTestCase
+import org.opensearch.common.io.stream.InputStreamStreamInput
+import org.opensearch.common.io.stream.OutputStreamStreamOutput
+import org.opensearch.test.OpenSearchTestCase
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 
-class ManagedIndexMetaDataTests : ESTestCase() {
+class ManagedIndexMetaDataTests : OpenSearchTestCase() {
 
     fun `test basic`() {
         val expectedManagedIndexMetaData = ManagedIndexMetaData(

@@ -20,9 +20,9 @@ import com.amazon.opendistroforelasticsearch.indexmanagement.makeRequest
 import com.amazon.opendistroforelasticsearch.indexmanagement.rollup.RollupRestTestCase
 import com.amazon.opendistroforelasticsearch.indexmanagement.rollup.action.get.GetRollupsRequest.Companion.DEFAULT_SIZE
 import com.amazon.opendistroforelasticsearch.indexmanagement.rollup.randomRollup
-import org.elasticsearch.client.ResponseException
-import org.elasticsearch.rest.RestStatus
-import org.elasticsearch.test.junit.annotations.TestLogging
+import org.opensearch.client.ResponseException
+import org.opensearch.rest.RestStatus
+import org.opensearch.test.junit.annotations.TestLogging
 
 @TestLogging(value = "level:DEBUG", reason = "Debugging tests")
 @Suppress("UNCHECKED_CAST")

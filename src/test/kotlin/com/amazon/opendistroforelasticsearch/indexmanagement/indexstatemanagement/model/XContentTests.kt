@@ -15,7 +15,7 @@
 
 package com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.model
 
-import com.amazon.opendistroforelasticsearch.indexmanagement.elasticapi.parseWithType
+import com.amazon.opendistroforelasticsearch.indexmanagement.opensearchapi.parseWithType
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.model.action.ActionConfig
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.model.action.RollupActionConfig
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.nonNullRandomConditions
@@ -38,12 +38,12 @@ import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagemen
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.toJsonString
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.model.destination.DestinationType
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.randomRollupActionConfig
-import org.elasticsearch.common.xcontent.LoggingDeprecationHandler
-import org.elasticsearch.common.xcontent.XContentParser
-import org.elasticsearch.common.xcontent.XContentType
-import org.elasticsearch.test.ESTestCase
+import org.opensearch.common.xcontent.LoggingDeprecationHandler
+import org.opensearch.common.xcontent.XContentParser
+import org.opensearch.common.xcontent.XContentType
+import org.opensearch.test.OpenSearchTestCase
 
-class XContentTests : ESTestCase() {
+class XContentTests : OpenSearchTestCase() {
 
     fun `test policy parsing`() {
         val policy = randomPolicy()

@@ -15,7 +15,7 @@
 
 package com.amazon.opendistroforelasticsearch.indexmanagement.rollup.action.get
 
-import org.elasticsearch.action.ActionType
+import org.opensearch.action.ActionType
 
 class GetRollupAction private constructor() : ActionType<GetRollupResponse>(NAME, ::GetRollupResponse) {
     companion object {

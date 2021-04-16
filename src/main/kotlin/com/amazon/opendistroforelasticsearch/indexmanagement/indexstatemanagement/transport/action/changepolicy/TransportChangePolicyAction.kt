@@ -16,8 +16,8 @@
 package com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.transport.action.changepolicy
 
 import com.amazon.opendistroforelasticsearch.indexmanagement.IndexManagementPlugin
-import com.amazon.opendistroforelasticsearch.indexmanagement.elasticapi.contentParser
-import com.amazon.opendistroforelasticsearch.indexmanagement.elasticapi.parseWithType
+import com.amazon.opendistroforelasticsearch.indexmanagement.opensearchapi.contentParser
+import com.amazon.opendistroforelasticsearch.indexmanagement.opensearchapi.parseWithType
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.elasticapi.buildMgetMetadataRequest
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.elasticapi.getManagedIndexMetadata
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.elasticapi.mgetResponseToList
@@ -33,34 +33,34 @@ import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagemen
 import com.amazon.opendistroforelasticsearch.indexmanagement.util.IndexUtils
 import com.amazon.opendistroforelasticsearch.indexmanagement.util.NO_ID
 import org.apache.logging.log4j.LogManager
-import org.elasticsearch.ElasticsearchStatusException
-import org.elasticsearch.ExceptionsHelper
-import org.elasticsearch.action.ActionListener
-import org.elasticsearch.action.admin.cluster.state.ClusterStateRequest
-import org.elasticsearch.action.admin.cluster.state.ClusterStateResponse
-import org.elasticsearch.action.bulk.BulkRequest
-import org.elasticsearch.action.bulk.BulkResponse
-import org.elasticsearch.action.get.GetRequest
-import org.elasticsearch.action.get.GetResponse
-import org.elasticsearch.action.get.MultiGetRequest
-import org.elasticsearch.action.get.MultiGetResponse
-import org.elasticsearch.action.support.ActionFilters
-import org.elasticsearch.action.support.HandledTransportAction
-import org.elasticsearch.action.support.IndicesOptions
-import org.elasticsearch.action.support.master.AcknowledgedResponse
-import org.elasticsearch.client.node.NodeClient
-import org.elasticsearch.cluster.ClusterState
-import org.elasticsearch.cluster.service.ClusterService
-import org.elasticsearch.common.inject.Inject
-import org.elasticsearch.common.xcontent.LoggingDeprecationHandler
-import org.elasticsearch.common.xcontent.NamedXContentRegistry
-import org.elasticsearch.common.xcontent.XContentHelper
-import org.elasticsearch.common.xcontent.XContentType
-import org.elasticsearch.index.Index
-import org.elasticsearch.rest.RestStatus
-import org.elasticsearch.search.fetch.subphase.FetchSourceContext
-import org.elasticsearch.tasks.Task
-import org.elasticsearch.transport.TransportService
+import org.opensearch.OpenSearchStatusException
+import org.opensearch.ExceptionsHelper
+import org.opensearch.action.ActionListener
+import org.opensearch.action.admin.cluster.state.ClusterStateRequest
+import org.opensearch.action.admin.cluster.state.ClusterStateResponse
+import org.opensearch.action.bulk.BulkRequest
+import org.opensearch.action.bulk.BulkResponse
+import org.opensearch.action.get.GetRequest
+import org.opensearch.action.get.GetResponse
+import org.opensearch.action.get.MultiGetRequest
+import org.opensearch.action.get.MultiGetResponse
+import org.opensearch.action.support.ActionFilters
+import org.opensearch.action.support.HandledTransportAction
+import org.opensearch.action.support.IndicesOptions
+import org.opensearch.action.support.master.AcknowledgedResponse
+import org.opensearch.client.node.NodeClient
+import org.opensearch.cluster.ClusterState
+import org.opensearch.cluster.service.ClusterService
+import org.opensearch.common.inject.Inject
+import org.opensearch.common.xcontent.LoggingDeprecationHandler
+import org.opensearch.common.xcontent.NamedXContentRegistry
+import org.opensearch.common.xcontent.XContentHelper
+import org.opensearch.common.xcontent.XContentType
+import org.opensearch.index.Index
+import org.opensearch.rest.RestStatus
+import org.opensearch.search.fetch.subphase.FetchSourceContext
+import org.opensearch.tasks.Task
+import org.opensearch.transport.TransportService
 
 private val log = LogManager.getLogger(TransportChangePolicyAction::class.java)
 
@@ -101,7 +101,7 @@ class TransportChangePolicyAction @Inject constructor(
 
         private fun onGetPolicyResponse(response: GetResponse) {
             if (!response.isExists || response.isSourceEmpty) {
-                actionListener.onFailure(ElasticsearchStatusException("Could not find policy=${request.changePolicy.policyID}", RestStatus.NOT_FOUND))
+                actionListener.onFailure(OpenSearchStatusException("Could not find policy=${request.changePolicy.policyID}", RestStatus.NOT_FOUND))
                 return
             }
             this.getPolicyResponse = response
@@ -115,7 +115,7 @@ class TransportChangePolicyAction @Inject constructor(
 
         private fun onUpdateMapping(acknowledgedResponse: AcknowledgedResponse) {
             if (!acknowledgedResponse.isAcknowledged) {
-                actionListener.onFailure(ElasticsearchStatusException(
+                actionListener.onFailure(OpenSearchStatusException(
                     "Could not update ${IndexManagementPlugin.INDEX_MANAGEMENT_INDEX} with new mapping.",
                     RestStatus.FAILED_DEPENDENCY))
                 return

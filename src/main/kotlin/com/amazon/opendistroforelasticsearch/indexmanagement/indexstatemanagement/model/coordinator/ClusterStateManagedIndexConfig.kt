@@ -16,8 +16,8 @@
 package com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.model.coordinator
 
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.model.ManagedIndexConfig
-import org.elasticsearch.common.xcontent.ToXContentObject
-import org.elasticsearch.index.seqno.SequenceNumbers
+import org.opensearch.common.xcontent.ToXContentObject
+import org.opensearch.index.seqno.SequenceNumbers
 
 /**
  * Data class to hold index metadata from cluster state.

@@ -21,9 +21,9 @@ import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagemen
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.util.FAILURES
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.util.UPDATED_INDICES
 import com.amazon.opendistroforelasticsearch.indexmanagement.waitFor
-import org.elasticsearch.client.ResponseException
-import org.elasticsearch.rest.RestRequest.Method.POST
-import org.elasticsearch.rest.RestStatus
+import org.opensearch.client.ResponseException
+import org.opensearch.rest.RestRequest.Method.POST
+import org.opensearch.rest.RestStatus
 
 class RestRemovePolicyActionIT : IndexStateManagementRestTestCase() {
 

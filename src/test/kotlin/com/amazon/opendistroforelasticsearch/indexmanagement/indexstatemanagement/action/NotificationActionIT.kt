@@ -25,8 +25,8 @@ import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagemen
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.randomErrorNotification
 import com.amazon.opendistroforelasticsearch.indexmanagement.makeRequest
 import com.amazon.opendistroforelasticsearch.indexmanagement.waitFor
-import org.elasticsearch.script.Script
-import org.elasticsearch.script.ScriptType
+import org.opensearch.script.Script
+import org.opensearch.script.ScriptType
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 import java.util.Locale

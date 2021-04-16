@@ -20,10 +20,10 @@ import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagemen
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.model.action.NotificationActionConfig
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.step.Step
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.step.notification.AttemptNotificationStep
-import org.elasticsearch.client.Client
-import org.elasticsearch.cluster.service.ClusterService
-import org.elasticsearch.common.settings.Settings
-import org.elasticsearch.script.ScriptService
+import org.opensearch.client.Client
+import org.opensearch.cluster.service.ClusterService
+import org.opensearch.common.settings.Settings
+import org.opensearch.script.ScriptService
 
 class NotificationAction(
     clusterService: ClusterService,

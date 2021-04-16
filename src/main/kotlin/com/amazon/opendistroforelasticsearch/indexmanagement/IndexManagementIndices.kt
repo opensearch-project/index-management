@@ -17,7 +17,7 @@
 package com.amazon.opendistroforelasticsearch.indexmanagement
 
 import com.amazon.opendistroforelasticsearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
-import com.amazon.opendistroforelasticsearch.indexmanagement.elasticapi.suspendUntil
+import com.amazon.opendistroforelasticsearch.indexmanagement.opensearchapi.suspendUntil
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.util.INDEX_HIDDEN
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.util.INDEX_NUMBER_OF_REPLICAS
@@ -26,19 +26,19 @@ import com.amazon.opendistroforelasticsearch.indexmanagement.util.IndexUtils
 import com.amazon.opendistroforelasticsearch.indexmanagement.util.OpenForTesting
 import com.amazon.opendistroforelasticsearch.indexmanagement.util._DOC
 import org.apache.logging.log4j.LogManager
-import org.elasticsearch.ResourceAlreadyExistsException
-import org.elasticsearch.action.ActionListener
-import org.elasticsearch.action.admin.indices.alias.Alias
-import org.elasticsearch.action.admin.indices.create.CreateIndexRequest
-import org.elasticsearch.action.admin.indices.create.CreateIndexResponse
-import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsRequest
-import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsResponse
-import org.elasticsearch.action.support.master.AcknowledgedResponse
-import org.elasticsearch.client.Client
-import org.elasticsearch.client.IndicesAdminClient
-import org.elasticsearch.cluster.service.ClusterService
-import org.elasticsearch.common.settings.Settings
-import org.elasticsearch.common.xcontent.XContentType
+import org.opensearch.ResourceAlreadyExistsException
+import org.opensearch.action.ActionListener
+import org.opensearch.action.admin.indices.alias.Alias
+import org.opensearch.action.admin.indices.create.CreateIndexRequest
+import org.opensearch.action.admin.indices.create.CreateIndexResponse
+import org.opensearch.action.admin.indices.exists.indices.IndicesExistsRequest
+import org.opensearch.action.admin.indices.exists.indices.IndicesExistsResponse
+import org.opensearch.action.support.master.AcknowledgedResponse
+import org.opensearch.client.Client
+import org.opensearch.client.IndicesAdminClient
+import org.opensearch.cluster.service.ClusterService
+import org.opensearch.common.settings.Settings
+import org.opensearch.common.xcontent.XContentType
 
 @OpenForTesting
 class IndexManagementIndices(

@@ -26,9 +26,9 @@ import com.amazon.opendistroforelasticsearch.indexmanagement.rollup.model.dimens
 import com.amazon.opendistroforelasticsearch.indexmanagement.rollup.randomRollup
 import com.amazon.opendistroforelasticsearch.indexmanagement.waitFor
 import com.amazon.opendistroforelasticsearch.jobscheduler.spi.schedule.IntervalSchedule
-import org.elasticsearch.client.ResponseException
-import org.elasticsearch.rest.RestStatus
-import org.elasticsearch.test.junit.annotations.TestLogging
+import org.opensearch.client.ResponseException
+import org.opensearch.rest.RestStatus
+import org.opensearch.test.junit.annotations.TestLogging
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 

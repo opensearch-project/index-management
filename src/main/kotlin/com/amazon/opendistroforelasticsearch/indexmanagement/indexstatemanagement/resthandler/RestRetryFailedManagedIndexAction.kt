@@ -19,16 +19,16 @@ import com.amazon.opendistroforelasticsearch.indexmanagement.IndexManagementPlug
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.transport.action.retryfailedmanagedindex.RetryFailedManagedIndexAction
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.transport.action.retryfailedmanagedindex.RetryFailedManagedIndexRequest
 import org.apache.logging.log4j.LogManager
-import org.elasticsearch.action.support.master.MasterNodeRequest.DEFAULT_MASTER_NODE_TIMEOUT
-import org.elasticsearch.client.node.NodeClient
-import org.elasticsearch.common.Strings
-import org.elasticsearch.common.xcontent.XContentHelper
-import org.elasticsearch.rest.BaseRestHandler
-import org.elasticsearch.rest.BaseRestHandler.RestChannelConsumer
-import org.elasticsearch.rest.RestHandler.Route
-import org.elasticsearch.rest.RestRequest
-import org.elasticsearch.rest.RestRequest.Method.POST
-import org.elasticsearch.rest.action.RestToXContentListener
+import org.opensearch.action.support.master.MasterNodeRequest.DEFAULT_MASTER_NODE_TIMEOUT
+import org.opensearch.client.node.NodeClient
+import org.opensearch.common.Strings
+import org.opensearch.common.xcontent.XContentHelper
+import org.opensearch.rest.BaseRestHandler
+import org.opensearch.rest.BaseRestHandler.RestChannelConsumer
+import org.opensearch.rest.RestHandler.Route
+import org.opensearch.rest.RestRequest
+import org.opensearch.rest.RestRequest.Method.POST
+import org.opensearch.rest.action.RestToXContentListener
 
 class RestRetryFailedManagedIndexAction : BaseRestHandler() {
 

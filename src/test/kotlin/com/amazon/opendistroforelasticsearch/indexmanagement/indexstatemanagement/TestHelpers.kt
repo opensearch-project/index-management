@@ -15,7 +15,7 @@
 
 package com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement
 
-import com.amazon.opendistroforelasticsearch.indexmanagement.elasticapi.string
+import com.amazon.opendistroforelasticsearch.indexmanagement.opensearchapi.string
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.model.ChangePolicy
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.model.Conditions
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.model.ErrorNotification
@@ -49,25 +49,25 @@ import com.amazon.opendistroforelasticsearch.indexmanagement.rollup.randomISMRol
 import com.amazon.opendistroforelasticsearch.jobscheduler.spi.schedule.CronSchedule
 import com.amazon.opendistroforelasticsearch.jobscheduler.spi.schedule.IntervalSchedule
 import com.amazon.opendistroforelasticsearch.jobscheduler.spi.schedule.Schedule
-import org.elasticsearch.common.unit.ByteSizeValue
-import org.elasticsearch.common.unit.TimeValue
-import org.elasticsearch.common.xcontent.ToXContent
-import org.elasticsearch.common.xcontent.XContentFactory
-import org.elasticsearch.index.seqno.SequenceNumbers
-import org.elasticsearch.script.Script
-import org.elasticsearch.script.ScriptType
-import org.elasticsearch.test.rest.ESRestTestCase
+import org.opensearch.common.unit.ByteSizeValue
+import org.opensearch.common.unit.TimeValue
+import org.opensearch.common.xcontent.ToXContent
+import org.opensearch.common.xcontent.XContentFactory
+import org.opensearch.index.seqno.SequenceNumbers
+import org.opensearch.script.Script
+import org.opensearch.script.ScriptType
+import org.opensearch.test.rest.OpenSearchRestTestCase
 import java.time.Instant
 import java.time.ZoneId
 import java.time.temporal.ChronoUnit
 
 fun randomPolicy(
-    id: String = ESRestTestCase.randomAlphaOfLength(10),
-    description: String = ESRestTestCase.randomAlphaOfLength(10),
-    schemaVersion: Long = ESRestTestCase.randomLong(),
+    id: String = OpenSearchRestTestCase.randomAlphaOfLength(10),
+    description: String = OpenSearchRestTestCase.randomAlphaOfLength(10),
+    schemaVersion: Long = OpenSearchRestTestCase.randomLong(),
     lastUpdatedTime: Instant = Instant.now().truncatedTo(ChronoUnit.MILLIS),
     errorNotification: ErrorNotification? = randomErrorNotification(),
-    states: List<State> = List(ESRestTestCase.randomIntBetween(1, 10)) { randomState() },
+    states: List<State> = List(OpenSearchRestTestCase.randomIntBetween(1, 10)) { randomState() },
     ismTemplate: ISMTemplate? = null
 ): Policy {
     return Policy(id = id, schemaVersion = schemaVersion, lastUpdatedTime = lastUpdatedTime,
@@ -75,7 +75,7 @@ fun randomPolicy(
 }
 
 fun randomState(
-    name: String = ESRestTestCase.randomAlphaOfLength(10),
+    name: String = OpenSearchRestTestCase.randomAlphaOfLength(10),
     actions: List<ActionConfig> = listOf(),
     transitions: List<Transition> = listOf()
 ): State {
@@ -83,7 +83,7 @@ fun randomState(
 }
 
 fun randomTransition(
-    stateName: String = ESRestTestCase.randomAlphaOfLength(10),
+    stateName: String = OpenSearchRestTestCase.randomAlphaOfLength(10),
     conditions: Conditions? = randomConditions()
 ): Transition {
     return Transition(stateName = stateName, conditions = conditions)
@@ -97,7 +97,7 @@ fun randomTransition(
  */
 fun randomConditions(
     condition: Pair<String, Any>? =
-        ESRestTestCase.randomFrom(listOf(randomIndexAge(), randomDocCount(), randomSize(), null))
+        OpenSearchRestTestCase.randomFrom(listOf(randomIndexAge(), randomDocCount(), randomSize(), null))
 ): Conditions? {
 
     if (condition == null) return null
@@ -115,7 +115,7 @@ fun randomConditions(
 }
 
 fun nonNullRandomConditions(): Conditions =
-    randomConditions(ESRestTestCase.randomFrom(listOf(randomIndexAge(), randomDocCount(), randomSize())))!!
+    randomConditions(OpenSearchRestTestCase.randomFrom(listOf(randomIndexAge(), randomDocCount(), randomSize())))!!
 
 fun randomDeleteActionConfig(): DeleteActionConfig {
     return DeleteActionConfig(index = 0)
@@ -123,7 +123,7 @@ fun randomDeleteActionConfig(): DeleteActionConfig {
 
 fun randomRolloverActionConfig(
     minSize: ByteSizeValue = randomByteSizeValue(),
-    minDocs: Long = ESRestTestCase.randomLongBetween(1, 1000),
+    minDocs: Long = OpenSearchRestTestCase.randomLongBetween(1, 1000),
     minAge: TimeValue = randomTimeValueObject()
 ): RolloverActionConfig {
     return RolloverActionConfig(
@@ -142,16 +142,16 @@ fun randomReadWriteActionConfig(): ReadWriteActionConfig {
     return ReadWriteActionConfig(index = 0)
 }
 
-fun randomReplicaCountActionConfig(numOfReplicas: Int = ESRestTestCase.randomIntBetween(0, 200)): ReplicaCountActionConfig {
+fun randomReplicaCountActionConfig(numOfReplicas: Int = OpenSearchRestTestCase.randomIntBetween(0, 200)): ReplicaCountActionConfig {
     return ReplicaCountActionConfig(index = 0, numOfReplicas = numOfReplicas)
 }
 
-fun randomIndexPriorityActionConfig(indexPriority: Int = ESRestTestCase.randomIntBetween(0, 100)): IndexPriorityActionConfig {
+fun randomIndexPriorityActionConfig(indexPriority: Int = OpenSearchRestTestCase.randomIntBetween(0, 100)): IndexPriorityActionConfig {
     return IndexPriorityActionConfig(index = 0, indexPriority = indexPriority)
 }
 
 fun randomForceMergeActionConfig(
-    maxNumSegments: Int = ESRestTestCase.randomIntBetween(1, 50)
+    maxNumSegments: Int = OpenSearchRestTestCase.randomIntBetween(1, 50)
 ): ForceMergeActionConfig {
     return ForceMergeActionConfig(maxNumSegments = maxNumSegments, index = 0)
 }
@@ -183,7 +183,7 @@ fun randomDestination(type: DestinationType = randomDestinationType()): Destinat
 
 fun randomDestinationType(): DestinationType {
     val types = listOf(DestinationType.SLACK, DestinationType.CHIME, DestinationType.CUSTOM_WEBHOOK)
-    return ESRestTestCase.randomSubsetOf(1, types).first()
+    return OpenSearchRestTestCase.randomSubsetOf(1, types).first()
 }
 
 fun randomChime(): Chime {
@@ -222,18 +222,18 @@ fun randomSnapshotActionConfig(repository: String = "repo", snapshot: String = "
  */
 fun randomIndexAge(indexAge: TimeValue = randomTimeValueObject()) = Conditions.MIN_INDEX_AGE_FIELD to indexAge
 
-fun randomDocCount(docCount: Long = ESRestTestCase.randomLongBetween(1, 1000)) = Conditions.MIN_DOC_COUNT_FIELD to docCount
+fun randomDocCount(docCount: Long = OpenSearchRestTestCase.randomLongBetween(1, 1000)) = Conditions.MIN_DOC_COUNT_FIELD to docCount
 
 fun randomSize(size: ByteSizeValue = randomByteSizeValue()) = Conditions.MIN_SIZE_FIELD to size
 
 fun randomCronSchedule(cron: CronSchedule = CronSchedule("0 * * * *", ZoneId.of("UTC"))) =
     Conditions.CRON_FIELD to cron
 
-fun randomTimeValueObject(): TimeValue = TimeValue.parseTimeValue(ESRestTestCase.randomPositiveTimeValue(), "")
+fun randomTimeValueObject(): TimeValue = TimeValue.parseTimeValue(OpenSearchRestTestCase.randomPositiveTimeValue(), "")
 
 fun randomByteSizeValue(): ByteSizeValue =
     ByteSizeValue.parseBytesSizeValue(
-        ESRestTestCase.randomIntBetween(1, 1000).toString() + ESRestTestCase.randomFrom(listOf("b", "kb", "mb", "gb")),
+        OpenSearchRestTestCase.randomIntBetween(1, 1000).toString() + OpenSearchRestTestCase.randomFrom(listOf("b", "kb", "mb", "gb")),
         ""
     )
 /**
@@ -241,8 +241,8 @@ fun randomByteSizeValue(): ByteSizeValue =
  */
 
 fun randomChangePolicy(
-    policyID: String = ESRestTestCase.randomAlphaOfLength(10),
-    state: String? = if (ESRestTestCase.randomBoolean()) ESRestTestCase.randomAlphaOfLength(10) else null,
+    policyID: String = OpenSearchRestTestCase.randomAlphaOfLength(10),
+    state: String? = if (OpenSearchRestTestCase.randomBoolean()) OpenSearchRestTestCase.randomAlphaOfLength(10) else null,
     include: List<StateFilter> = emptyList(),
     isSafe: Boolean = false
 ): ChangePolicy {
@@ -253,14 +253,14 @@ fun randomChangePolicy(
 fun randomErrorNotification(): ErrorNotification? = null
 
 fun randomManagedIndexConfig(
-    name: String = ESRestTestCase.randomAlphaOfLength(10),
-    index: String = ESRestTestCase.randomAlphaOfLength(10),
-    uuid: String = ESRestTestCase.randomAlphaOfLength(20),
-    enabled: Boolean = ESRestTestCase.randomBoolean(),
+    name: String = OpenSearchRestTestCase.randomAlphaOfLength(10),
+    index: String = OpenSearchRestTestCase.randomAlphaOfLength(10),
+    uuid: String = OpenSearchRestTestCase.randomAlphaOfLength(20),
+    enabled: Boolean = OpenSearchRestTestCase.randomBoolean(),
     schedule: Schedule = IntervalSchedule(Instant.ofEpochMilli(Instant.now().toEpochMilli()), 5, ChronoUnit.MINUTES),
     lastUpdatedTime: Instant = Instant.now().truncatedTo(ChronoUnit.MILLIS),
     enabledTime: Instant? = if (enabled) Instant.now().truncatedTo(ChronoUnit.MILLIS) else null,
-    policyID: String = ESRestTestCase.randomAlphaOfLength(10),
+    policyID: String = OpenSearchRestTestCase.randomAlphaOfLength(10),
     policy: Policy? = randomPolicy(),
     changePolicy: ChangePolicy? = randomChangePolicy()
 ): ManagedIndexConfig {
@@ -281,9 +281,9 @@ fun randomManagedIndexConfig(
 }
 
 fun randomClusterStateManagedIndexConfig(
-    index: String = ESRestTestCase.randomAlphaOfLength(10),
-    uuid: String = ESRestTestCase.randomAlphaOfLength(20),
-    policyID: String = ESRestTestCase.randomAlphaOfLength(10),
+    index: String = OpenSearchRestTestCase.randomAlphaOfLength(10),
+    uuid: String = OpenSearchRestTestCase.randomAlphaOfLength(20),
+    policyID: String = OpenSearchRestTestCase.randomAlphaOfLength(10),
     seqNo: Long = SequenceNumbers.UNASSIGNED_SEQ_NO,
     primaryTerm: Long = SequenceNumbers.UNASSIGNED_PRIMARY_TERM
 ): ClusterStateManagedIndexConfig {
@@ -297,9 +297,9 @@ fun randomClusterStateManagedIndexConfig(
 }
 
 fun randomSweptManagedIndexConfig(
-    index: String = ESRestTestCase.randomAlphaOfLength(10),
-    uuid: String = ESRestTestCase.randomAlphaOfLength(20),
-    policyID: String = ESRestTestCase.randomAlphaOfLength(10),
+    index: String = OpenSearchRestTestCase.randomAlphaOfLength(10),
+    uuid: String = OpenSearchRestTestCase.randomAlphaOfLength(20),
+    policyID: String = OpenSearchRestTestCase.randomAlphaOfLength(10),
     seqNo: Long = SequenceNumbers.UNASSIGNED_SEQ_NO,
     primaryTerm: Long = SequenceNumbers.UNASSIGNED_PRIMARY_TERM,
     changePolicy: ChangePolicy? = null,
@@ -317,8 +317,8 @@ fun randomSweptManagedIndexConfig(
 }
 
 fun randomISMTemplate(
-    indexPatterns: List<String> = listOf(ESRestTestCase.randomAlphaOfLength(10) + "*"),
-    priority: Int = ESRestTestCase.randomIntBetween(0, 100),
+    indexPatterns: List<String> = listOf(OpenSearchRestTestCase.randomAlphaOfLength(10) + "*"),
+    priority: Int = OpenSearchRestTestCase.randomIntBetween(0, 100),
     lastUpdatedTime: Instant = Instant.now().truncatedTo(ChronoUnit.MILLIS)
 ): ISMTemplate {
     return ISMTemplate(

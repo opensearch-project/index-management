@@ -1,9 +1,9 @@
 package com.amazon.opendistroforelasticsearch.indexmanagement.rollup.model
 
 import com.amazon.opendistroforelasticsearch.indexmanagement.rollup.model.RollupFieldMapping.Companion.UNKNOWN_MAPPING
-import org.elasticsearch.test.ESTestCase
+import org.opensearch.test.OpenSearchTestCase
 
-class RollupFieldMappingTests : ESTestCase() {
+class RollupFieldMappingTests : OpenSearchTestCase() {
 
     fun `test toIssue`() {
         var fieldMapping = RollupFieldMapping(RollupFieldMapping.Companion.FieldType.DIMENSION, "dummy-field", "terms")

@@ -13,4 +13,4 @@
  * permissions and limitations under the License.
  */
 
-rootProject.name = 'opendistro-index-management'
+rootProject.name = 'opensearch-index-management'

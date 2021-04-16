@@ -20,25 +20,25 @@ import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagemen
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.SkipExecution
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings
 import com.carrotsearch.randomizedtesting.annotations.ThreadLeakScope
-import org.elasticsearch.Version
-import org.elasticsearch.action.index.IndexResponse
-import org.elasticsearch.client.Client
-import org.elasticsearch.cluster.node.DiscoveryNode
-import org.elasticsearch.cluster.service.ClusterService
-import org.elasticsearch.common.settings.ClusterSettings
-import org.elasticsearch.common.settings.Setting
-import org.elasticsearch.common.settings.Settings
-import org.elasticsearch.common.xcontent.NamedXContentRegistry
-import org.elasticsearch.env.Environment
-import org.elasticsearch.script.ScriptService
-import org.elasticsearch.test.ClusterServiceUtils
-import org.elasticsearch.test.ESTestCase
-import org.elasticsearch.threadpool.ThreadPool
+import org.opensearch.Version
+import org.opensearch.action.index.IndexResponse
+import org.opensearch.client.Client
+import org.opensearch.cluster.node.DiscoveryNode
+import org.opensearch.cluster.service.ClusterService
+import org.opensearch.common.settings.ClusterSettings
+import org.opensearch.common.settings.Setting
+import org.opensearch.common.settings.Settings
+import org.opensearch.common.xcontent.NamedXContentRegistry
+import org.opensearch.env.Environment
+import org.opensearch.script.ScriptService
+import org.opensearch.test.ClusterServiceUtils
+import org.opensearch.test.OpenSearchTestCase
+import org.opensearch.threadpool.ThreadPool
 import org.junit.Before
 import org.mockito.Mockito
 
 @ThreadLeakScope(ThreadLeakScope.Scope.NONE)
-class ManagedIndexRunnerTests : ESTestCase() {
+class ManagedIndexRunnerTests : OpenSearchTestCase() {
 
     private lateinit var client: Client
     private lateinit var clusterService: ClusterService

@@ -20,8 +20,8 @@ import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagemen
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.model.action.DeleteActionConfig
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.step.delete.AttemptDeleteStep
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.step.Step
-import org.elasticsearch.client.Client
-import org.elasticsearch.cluster.service.ClusterService
+import org.opensearch.client.Client
+import org.opensearch.cluster.service.ClusterService
 
 class DeleteAction(
     clusterService: ClusterService,

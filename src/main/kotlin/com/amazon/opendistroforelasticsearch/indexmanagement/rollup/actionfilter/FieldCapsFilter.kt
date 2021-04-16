@@ -23,20 +23,20 @@ import com.amazon.opendistroforelasticsearch.indexmanagement.rollup.util.getRoll
 import com.amazon.opendistroforelasticsearch.indexmanagement.rollup.util.populateFieldMappings
 import com.amazon.opendistroforelasticsearch.indexmanagement.util.IndexUtils.Companion.getFieldFromMappings
 import org.apache.logging.log4j.LogManager
-import org.elasticsearch.action.ActionListener
-import org.elasticsearch.action.ActionRequest
-import org.elasticsearch.action.ActionResponse
-import org.elasticsearch.action.fieldcaps.FieldCapabilities
-import org.elasticsearch.action.fieldcaps.FieldCapabilitiesRequest
-import org.elasticsearch.action.fieldcaps.FieldCapabilitiesResponse
-import org.elasticsearch.action.support.ActionFilter
-import org.elasticsearch.action.support.ActionFilterChain
-import org.elasticsearch.action.support.IndicesOptions
-import org.elasticsearch.cluster.metadata.IndexNameExpressionResolver
-import org.elasticsearch.cluster.service.ClusterService
-import org.elasticsearch.common.settings.Settings
-import org.elasticsearch.tasks.Task
-import org.elasticsearch.transport.RemoteClusterAware
+import org.opensearch.action.ActionListener
+import org.opensearch.action.ActionRequest
+import org.opensearch.action.ActionResponse
+import org.opensearch.action.fieldcaps.FieldCapabilities
+import org.opensearch.action.fieldcaps.FieldCapabilitiesRequest
+import org.opensearch.action.fieldcaps.FieldCapabilitiesResponse
+import org.opensearch.action.support.ActionFilter
+import org.opensearch.action.support.ActionFilterChain
+import org.opensearch.action.support.IndicesOptions
+import org.opensearch.cluster.metadata.IndexNameExpressionResolver
+import org.opensearch.cluster.service.ClusterService
+import org.opensearch.common.settings.Settings
+import org.opensearch.tasks.Task
+import org.opensearch.transport.RemoteClusterAware
 
 private val logger = LogManager.getLogger(FieldCapsFilter::class.java)
 

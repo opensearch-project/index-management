@@ -16,7 +16,7 @@
 package com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement
 
 import com.amazon.opendistroforelasticsearch.indexmanagement.IndexManagementPlugin
-import com.amazon.opendistroforelasticsearch.indexmanagement.elasticapi.parseWithType
+import com.amazon.opendistroforelasticsearch.indexmanagement.opensearchapi.parseWithType
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.model.ManagedIndexConfig
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.model.Policy
@@ -32,36 +32,36 @@ import com.amazon.opendistroforelasticsearch.indexmanagement.waitFor
 import com.amazon.opendistroforelasticsearch.jobscheduler.spi.schedule.IntervalSchedule
 import org.apache.http.entity.ContentType
 import org.apache.http.entity.StringEntity
-import org.elasticsearch.ElasticsearchParseException
-import org.elasticsearch.action.ActionRequest
-import org.elasticsearch.action.ActionResponse
-import org.elasticsearch.action.admin.cluster.reroute.ClusterRerouteRequest
-import org.elasticsearch.action.search.SearchResponse
-import org.elasticsearch.client.Request
-import org.elasticsearch.client.Response
-import org.elasticsearch.cluster.metadata.IndexMetadata
-import org.elasticsearch.cluster.routing.allocation.command.MoveAllocationCommand
-import org.elasticsearch.common.Strings
-import org.elasticsearch.common.settings.Settings
-import org.elasticsearch.common.xcontent.DeprecationHandler
-import org.elasticsearch.common.xcontent.LoggingDeprecationHandler
-import org.elasticsearch.common.xcontent.NamedXContentRegistry
-import org.elasticsearch.common.xcontent.XContentHelper
-import org.elasticsearch.common.xcontent.XContentParser
-import org.elasticsearch.common.xcontent.XContentParserUtils
-import org.elasticsearch.common.xcontent.XContentType
-import org.elasticsearch.common.xcontent.json.JsonXContent
-import org.elasticsearch.plugins.ActionPlugin
-import org.elasticsearch.plugins.Plugin
-import org.elasticsearch.rest.RestRequest
-import org.elasticsearch.rest.RestStatus
-import org.elasticsearch.test.ESIntegTestCase
-import org.elasticsearch.test.rest.ESRestTestCase.entityAsMap
+import org.opensearch.OpenSearchParseException
+import org.opensearch.action.ActionRequest
+import org.opensearch.action.ActionResponse
+import org.opensearch.action.admin.cluster.reroute.ClusterRerouteRequest
+import org.opensearch.action.search.SearchResponse
+import org.opensearch.client.Request
+import org.opensearch.client.Response
+import org.opensearch.cluster.metadata.IndexMetadata
+import org.opensearch.cluster.routing.allocation.command.MoveAllocationCommand
+import org.opensearch.common.Strings
+import org.opensearch.common.settings.Settings
+import org.opensearch.common.xcontent.DeprecationHandler
+import org.opensearch.common.xcontent.LoggingDeprecationHandler
+import org.opensearch.common.xcontent.NamedXContentRegistry
+import org.opensearch.common.xcontent.XContentHelper
+import org.opensearch.common.xcontent.XContentParser
+import org.opensearch.common.xcontent.XContentParserUtils
+import org.opensearch.common.xcontent.XContentType
+import org.opensearch.common.xcontent.json.JsonXContent
+import org.opensearch.plugins.ActionPlugin
+import org.opensearch.plugins.Plugin
+import org.opensearch.rest.RestRequest
+import org.opensearch.rest.RestStatus
+import org.opensearch.test.OpenSearchIntegTestCase
+import org.opensearch.test.rest.OpenSearchRestTestCase.entityAsMap
 import java.io.IOException
 import java.time.Duration
 import java.time.Instant
 
-abstract class IndexStateManagementIntegTestCase : ESIntegTestCase() {
+abstract class IndexStateManagementIntegTestCase : OpenSearchIntegTestCase() {
 
     protected val isMixedNodeRegressionTest = System.getProperty("cluster.mixed", "false")!!.toBoolean()
 
@@ -311,7 +311,7 @@ abstract class IndexStateManagementIntegTestCase : ESIntegTestCase() {
                 )
                 .use { parser -> parser.list() }
         } catch (e: IOException) {
-            throw ElasticsearchParseException("Failed to parse content to list", e)
+            throw OpenSearchParseException("Failed to parse content to list", e)
         }
     }
 

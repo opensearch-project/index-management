@@ -17,10 +17,10 @@ package com.amazon.opendistroforelasticsearch.indexmanagement.refreshanalyzer
 
 import com.amazon.opendistroforelasticsearch.indexmanagement.IndexManagementRestTestCase
 import com.amazon.opendistroforelasticsearch.indexmanagement.refreshanalyzer.RestRefreshSearchAnalyzerAction.Companion.REFRESH_SEARCH_ANALYZER_BASE_URI
-import org.elasticsearch.client.Request
-import org.elasticsearch.common.io.Streams
-import org.elasticsearch.common.settings.Settings
-import org.elasticsearch.common.xcontent.XContentType
+import org.opensearch.client.Request
+import org.opensearch.common.io.Streams
+import org.opensearch.common.settings.Settings
+import org.opensearch.common.xcontent.XContentType
 import org.junit.Assume
 import org.junit.Before
 import java.io.InputStreamReader
@@ -177,12 +177,12 @@ class RefreshSearchAnalyzerActionIT : IndexManagementRestTestCase() {
     companion object {
 
         fun writeToFile(filePath: String, contents: String) {
-            var path = org.elasticsearch.common.io.PathUtils.get(filePath)
+            var path = org.opensearch.common.io.PathUtils.get(filePath)
             Files.newBufferedWriter(path, Charset.forName("UTF-8")).use { writer -> writer.write(contents) }
         }
 
         fun deleteFile(filePath: String) {
-            Files.deleteIfExists(org.elasticsearch.common.io.PathUtils.get(filePath))
+            Files.deleteIfExists(org.opensearch.common.io.PathUtils.get(filePath))
         }
 
         fun ingestData(indexName: String) {

@@ -5,9 +5,9 @@
 ![PRs welcome!](https://img.shields.io/badge/PRs-welcome!-success)
 
 
-# Open Distro for Elasticsearch Index Management
+# OpenSearch Index Management
 
-Open Distro for Elasticsearch Index Management provides a suite of features to monitor and manage indexes.
+OpenSearch Index Management provides a suite of features to monitor and manage indexes.
 
 It currently contains an automated system for managing and optimizing indices throughout their life, Index State Management.
 
@@ -62,7 +62,7 @@ Please see our [documentation](https://opendistro.github.io/for-elasticsearch-do
 
 The project in this package uses the [Gradle](https://docs.gradle.org/current/userguide/userguide.html) build system. Gradle comes with excellent documentation that should be your first stop when trying to figure out how to operate or modify the build.
 
-However, to build the `index management` plugin project, we also use the Elastic build tools for Gradle.  These tools are idiosyncratic and don't always follow the conventions and instructions for building regular Java code using Gradle. Not everything in `index management` will work the way it's described in the Gradle documentation. If you encounter such a situation, the Elastic build tools [source code](https://github.com/elastic/elasticsearch/tree/master/buildSrc/src/main/groovy/org/elasticsearch/gradle) is your best bet for figuring out what's going on.
+However, to build the `index management` plugin project, we also use the OpenSearch build tools for Gradle.  These tools are idiosyncratic and don't always follow the conventions and instructions for building regular Java code using Gradle. Not everything in `index management` will work the way it's described in the Gradle documentation. If you encounter such a situation, the OpenSearch build tools [source code](https://github.com/opensearch-project/OpenSearch/tree/main/buildSrc/src/main/groovy/org/opensearch/gradle) is your best bet for figuring out what's going on.
 
 ### Building from the command line
 
@@ -78,7 +78,7 @@ When launching a cluster using one of the above commands, logs are placed in `bu
 
 ### Debugging
 
-Sometimes it is useful to attach a debugger to either the Elasticsearch cluster or the integ tests to see what's going on. When running unit tests, hit **Debug** from the IDE's gutter to debug the tests.  For the Elasticsearch cluster or the integ tests, first, make sure start a debugger listening on port `5005`. 
+Sometimes it is useful to attach a debugger to either the OpenSearch cluster or the integ tests to see what's going on. When running unit tests, hit **Debug** from the IDE's gutter to debug the tests.  For the OpenSearch cluster or the integ tests, first, make sure start a debugger listening on port `5005`. 
 
 To debug the server code, run:
 
@@ -92,7 +92,7 @@ OR
 ./gradlew run --debug-jvm # to just start a cluster that can be debugged
 ```
 
-The Elasticsearch server JVM will connect to a debugger attached to `localhost:5005`.
+The OpenSearch server JVM will connect to a debugger attached to `localhost:5005`.
 
 The IDE needs to listen for the remote JVM. If using Intellij you must set your debug configuration to "Listen to remote JVM" and make sure "Auto Restart" is checked.
 You must start your debugger to listen for remote JVM before running the commands.

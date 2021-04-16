@@ -21,9 +21,9 @@ import com.amazon.opendistroforelasticsearch.indexmanagement.rollup.action.get.G
 import com.amazon.opendistroforelasticsearch.indexmanagement.rollup.action.index.IndexRollupAction
 import com.amazon.opendistroforelasticsearch.indexmanagement.rollup.action.start.StartRollupAction
 import com.amazon.opendistroforelasticsearch.indexmanagement.rollup.action.stop.StopRollupAction
-import org.elasticsearch.test.ESTestCase
+import org.opensearch.test.OpenSearchTestCase
 
-class ActionTests : ESTestCase() {
+class ActionTests : OpenSearchTestCase() {
 
     fun `test delete action name`() {
         assertNotNull(DeleteRollupAction.INSTANCE.name())

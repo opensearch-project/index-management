@@ -1,11 +1,11 @@
 package com.amazon.opendistroforelasticsearch.indexmanagement.util
 
-import org.elasticsearch.cluster.metadata.IndexMetadata
-import org.elasticsearch.common.xcontent.XContentType
-import org.elasticsearch.test.ESTestCase
+import org.opensearch.cluster.metadata.IndexMetadata
+import org.opensearch.common.xcontent.XContentType
+import org.opensearch.test.OpenSearchTestCase
 import kotlin.test.assertFailsWith
 
-class IndexUtilsTests : ESTestCase() {
+class IndexUtilsTests : OpenSearchTestCase() {
 
     fun `test get schema version`() {
         val message = "{\"user\":{ \"name\":\"test\"},\"_meta\":{\"schema_version\": 1}}"

@@ -15,20 +15,20 @@
 
 package com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.step.replicacount
 
-import com.amazon.opendistroforelasticsearch.indexmanagement.elasticapi.suspendUntil
+import com.amazon.opendistroforelasticsearch.indexmanagement.opensearchapi.suspendUntil
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.model.action.ReplicaCountActionConfig
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.StepMetaData
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.step.Step
 import org.apache.logging.log4j.LogManager
-import org.elasticsearch.ExceptionsHelper
-import org.elasticsearch.action.admin.indices.settings.put.UpdateSettingsRequest
-import org.elasticsearch.action.support.master.AcknowledgedResponse
-import org.elasticsearch.client.Client
-import org.elasticsearch.cluster.metadata.IndexMetadata.SETTING_NUMBER_OF_REPLICAS
-import org.elasticsearch.cluster.service.ClusterService
-import org.elasticsearch.common.settings.Settings
-import org.elasticsearch.transport.RemoteTransportException
+import org.opensearch.ExceptionsHelper
+import org.opensearch.action.admin.indices.settings.put.UpdateSettingsRequest
+import org.opensearch.action.support.master.AcknowledgedResponse
+import org.opensearch.client.Client
+import org.opensearch.cluster.metadata.IndexMetadata.SETTING_NUMBER_OF_REPLICAS
+import org.opensearch.cluster.service.ClusterService
+import org.opensearch.common.settings.Settings
+import org.opensearch.transport.RemoteTransportException
 
 class AttemptSetReplicaCountStep(
     val clusterService: ClusterService,

@@ -23,9 +23,9 @@ import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagemen
 import com.amazon.opendistroforelasticsearch.indexmanagement.waitFor
 import org.apache.http.entity.ContentType.APPLICATION_JSON
 import org.apache.http.entity.StringEntity
-import org.elasticsearch.client.ResponseException
-import org.elasticsearch.rest.RestRequest.Method.POST
-import org.elasticsearch.rest.RestStatus
+import org.opensearch.client.ResponseException
+import org.opensearch.rest.RestRequest.Method.POST
+import org.opensearch.rest.RestStatus
 
 class RestAddPolicyActionIT : IndexStateManagementRestTestCase() {
 

@@ -19,13 +19,13 @@ import com.amazon.opendistroforelasticsearch.indexmanagement.IndexManagementPlug
 import com.amazon.opendistroforelasticsearch.indexmanagement.rollup.action.delete.DeleteRollupAction
 import com.amazon.opendistroforelasticsearch.indexmanagement.rollup.action.delete.DeleteRollupRequest
 import com.amazon.opendistroforelasticsearch.indexmanagement.util.REFRESH
-import org.elasticsearch.action.support.WriteRequest.RefreshPolicy
-import org.elasticsearch.client.node.NodeClient
-import org.elasticsearch.rest.BaseRestHandler
-import org.elasticsearch.rest.RestHandler.Route
-import org.elasticsearch.rest.RestRequest
-import org.elasticsearch.rest.RestRequest.Method.DELETE
-import org.elasticsearch.rest.action.RestToXContentListener
+import org.opensearch.action.support.WriteRequest.RefreshPolicy
+import org.opensearch.client.node.NodeClient
+import org.opensearch.rest.BaseRestHandler
+import org.opensearch.rest.RestHandler.Route
+import org.opensearch.rest.RestRequest
+import org.opensearch.rest.RestRequest.Method.DELETE
+import org.opensearch.rest.action.RestToXContentListener
 import java.io.IOException
 
 class RestDeleteRollupAction : BaseRestHandler() {

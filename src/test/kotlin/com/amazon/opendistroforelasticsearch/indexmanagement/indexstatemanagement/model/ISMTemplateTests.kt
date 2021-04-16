@@ -1,13 +1,13 @@
 package com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.model
 
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.randomISMTemplate
-import org.elasticsearch.common.io.stream.InputStreamStreamInput
-import org.elasticsearch.common.io.stream.OutputStreamStreamOutput
-import org.elasticsearch.test.ESTestCase
+import org.opensearch.common.io.stream.InputStreamStreamInput
+import org.opensearch.common.io.stream.OutputStreamStreamOutput
+import org.opensearch.test.OpenSearchTestCase
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 
-class ISMTemplateTests : ESTestCase() {
+class ISMTemplateTests : OpenSearchTestCase() {
 
     fun `test basic`() {
         val expectedISMTemplate = randomISMTemplate()

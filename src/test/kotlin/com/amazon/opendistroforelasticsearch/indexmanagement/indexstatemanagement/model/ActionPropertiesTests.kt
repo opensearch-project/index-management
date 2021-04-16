@@ -1,10 +1,10 @@
 package com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.model
 
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.ActionProperties
-import org.elasticsearch.common.xcontent.XContentType
-import org.elasticsearch.test.ESTestCase
+import org.opensearch.common.xcontent.XContentType
+import org.opensearch.test.OpenSearchTestCase
 
-class ActionPropertiesTests : ESTestCase() {
+class ActionPropertiesTests : OpenSearchTestCase() {
 
     @Suppress("UNCHECKED_CAST")
     fun `test action properties exist in history index`() {

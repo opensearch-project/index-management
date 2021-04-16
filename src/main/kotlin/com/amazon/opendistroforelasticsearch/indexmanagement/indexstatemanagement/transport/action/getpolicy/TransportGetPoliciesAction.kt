@@ -16,29 +16,29 @@
 package com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.transport.action.getpolicy
 
 import com.amazon.opendistroforelasticsearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
-import com.amazon.opendistroforelasticsearch.indexmanagement.elasticapi.parseWithType
+import com.amazon.opendistroforelasticsearch.indexmanagement.opensearchapi.parseWithType
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.model.Policy
 import org.apache.logging.log4j.LogManager
-import org.elasticsearch.ExceptionsHelper
-import org.elasticsearch.action.ActionListener
-import org.elasticsearch.action.search.SearchRequest
-import org.elasticsearch.action.search.SearchResponse
-import org.elasticsearch.action.support.ActionFilters
-import org.elasticsearch.action.support.HandledTransportAction
-import org.elasticsearch.client.Client
-import org.elasticsearch.common.inject.Inject
-import org.elasticsearch.common.xcontent.LoggingDeprecationHandler
-import org.elasticsearch.common.xcontent.NamedXContentRegistry
-import org.elasticsearch.common.xcontent.XContentFactory
-import org.elasticsearch.common.xcontent.XContentType
-import org.elasticsearch.index.IndexNotFoundException
-import org.elasticsearch.index.query.Operator
-import org.elasticsearch.index.query.QueryBuilders
-import org.elasticsearch.search.builder.SearchSourceBuilder
-import org.elasticsearch.search.sort.SortBuilders
-import org.elasticsearch.search.sort.SortOrder
-import org.elasticsearch.tasks.Task
-import org.elasticsearch.transport.TransportService
+import org.opensearch.ExceptionsHelper
+import org.opensearch.action.ActionListener
+import org.opensearch.action.search.SearchRequest
+import org.opensearch.action.search.SearchResponse
+import org.opensearch.action.support.ActionFilters
+import org.opensearch.action.support.HandledTransportAction
+import org.opensearch.client.Client
+import org.opensearch.common.inject.Inject
+import org.opensearch.common.xcontent.LoggingDeprecationHandler
+import org.opensearch.common.xcontent.NamedXContentRegistry
+import org.opensearch.common.xcontent.XContentFactory
+import org.opensearch.common.xcontent.XContentType
+import org.opensearch.index.IndexNotFoundException
+import org.opensearch.index.query.Operator
+import org.opensearch.index.query.QueryBuilders
+import org.opensearch.search.builder.SearchSourceBuilder
+import org.opensearch.search.sort.SortBuilders
+import org.opensearch.search.sort.SortOrder
+import org.opensearch.tasks.Task
+import org.opensearch.transport.TransportService
 
 private val log = LogManager.getLogger(TransportGetPoliciesAction::class.java)
 

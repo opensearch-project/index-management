@@ -15,12 +15,12 @@
 
 package com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.transport.action.deletepolicy
 
-import org.elasticsearch.action.support.WriteRequest
-import org.elasticsearch.common.io.stream.BytesStreamOutput
-import org.elasticsearch.common.io.stream.StreamInput
-import org.elasticsearch.test.ESTestCase
+import org.opensearch.action.support.WriteRequest
+import org.opensearch.common.io.stream.BytesStreamOutput
+import org.opensearch.common.io.stream.StreamInput
+import org.opensearch.test.OpenSearchTestCase
 
-class DeletePolicyRequestTests : ESTestCase() {
+class DeletePolicyRequestTests : OpenSearchTestCase() {
 
     fun `test delete policy request`() {
         val policyID = "policyID"

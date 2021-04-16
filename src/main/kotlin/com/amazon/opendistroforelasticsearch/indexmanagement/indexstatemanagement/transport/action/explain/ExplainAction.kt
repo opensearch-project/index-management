@@ -15,7 +15,7 @@
 
 package com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.transport.action.explain
 
-import org.elasticsearch.action.ActionType
+import org.opensearch.action.ActionType
 
 class ExplainAction private constructor() : ActionType<ExplainResponse>(NAME, ::ExplainResponse) {
     companion object {

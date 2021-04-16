@@ -15,14 +15,14 @@
 
 package com.amazon.opendistroforelasticsearch.indexmanagement.refreshanalyzer
 
-import org.elasticsearch.action.support.DefaultShardOperationFailedException
-import org.elasticsearch.action.support.broadcast.BroadcastResponse
-import org.elasticsearch.common.io.stream.StreamInput
-import org.elasticsearch.common.io.stream.StreamOutput
-import org.elasticsearch.common.xcontent.ConstructingObjectParser
-import org.elasticsearch.common.xcontent.ToXContent.Params
-import org.elasticsearch.common.xcontent.XContentBuilder
-import org.elasticsearch.rest.action.RestActions
+import org.opensearch.action.support.DefaultShardOperationFailedException
+import org.opensearch.action.support.broadcast.BroadcastResponse
+import org.opensearch.common.io.stream.StreamInput
+import org.opensearch.common.io.stream.StreamOutput
+import org.opensearch.common.xcontent.ConstructingObjectParser
+import org.opensearch.common.xcontent.ToXContent.Params
+import org.opensearch.common.xcontent.XContentBuilder
+import org.opensearch.rest.action.RestActions
 import java.io.IOException
 import java.util.function.Function
 

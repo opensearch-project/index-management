@@ -32,18 +32,18 @@ import org.apache.http.HttpHeaders
 import org.apache.http.entity.ContentType.APPLICATION_JSON
 import org.apache.http.entity.StringEntity
 import org.apache.http.message.BasicHeader
-import org.elasticsearch.client.Response
-import org.elasticsearch.client.ResponseException
-import org.elasticsearch.common.settings.Settings
-import org.elasticsearch.common.xcontent.LoggingDeprecationHandler
-import org.elasticsearch.common.xcontent.NamedXContentRegistry
-import org.elasticsearch.common.xcontent.XContentParser.Token
-import org.elasticsearch.common.xcontent.XContentParserUtils.ensureExpectedToken
-import org.elasticsearch.common.xcontent.XContentType
-import org.elasticsearch.common.xcontent.json.JsonXContent
-import org.elasticsearch.index.seqno.SequenceNumbers
-import org.elasticsearch.rest.RestStatus
-import org.elasticsearch.test.ESTestCase
+import org.opensearch.client.Response
+import org.opensearch.client.ResponseException
+import org.opensearch.common.settings.Settings
+import org.opensearch.common.xcontent.LoggingDeprecationHandler
+import org.opensearch.common.xcontent.NamedXContentRegistry
+import org.opensearch.common.xcontent.XContentParser.Token
+import org.opensearch.common.xcontent.XContentParserUtils.ensureExpectedToken
+import org.opensearch.common.xcontent.XContentType
+import org.opensearch.common.xcontent.json.JsonXContent
+import org.opensearch.index.seqno.SequenceNumbers
+import org.opensearch.rest.RestStatus
+import org.opensearch.test.OpenSearchTestCase
 import java.time.Duration
 import java.time.Instant
 
@@ -53,7 +53,7 @@ abstract class RollupRestTestCase : IndexManagementRestTestCase() {
 
     protected fun createRollup(
         rollup: Rollup,
-        rollupId: String = ESTestCase.randomAlphaOfLength(10),
+        rollupId: String = OpenSearchTestCase.randomAlphaOfLength(10),
         refresh: Boolean = true
     ): Rollup {
         val response = createRollupJson(rollup.toJsonString(), rollupId, refresh)

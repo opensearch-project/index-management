@@ -15,12 +15,12 @@
 
 package com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.transport.action.getpolicy
 
-import org.elasticsearch.common.io.stream.BytesStreamOutput
-import org.elasticsearch.common.io.stream.StreamInput
-import org.elasticsearch.search.fetch.subphase.FetchSourceContext
-import org.elasticsearch.test.ESTestCase
+import org.opensearch.common.io.stream.BytesStreamOutput
+import org.opensearch.common.io.stream.StreamInput
+import org.opensearch.search.fetch.subphase.FetchSourceContext
+import org.opensearch.test.OpenSearchTestCase
 
-class GetPolicyRequestTests : ESTestCase() {
+class GetPolicyRequestTests : OpenSearchTestCase() {
 
     fun `test get policy request`() {
         val policyID = "policyID"

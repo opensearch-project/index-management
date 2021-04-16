@@ -18,7 +18,7 @@ package com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanageme
 import com.amazon.opendistroforelasticsearch.alerting.destination.message.BaseMessage
 import com.amazon.opendistroforelasticsearch.alerting.destination.message.CustomWebhookMessage
 import com.amazon.opendistroforelasticsearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
-import com.amazon.opendistroforelasticsearch.indexmanagement.elasticapi.parseWithType
+import com.amazon.opendistroforelasticsearch.indexmanagement.opensearchapi.parseWithType
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.model.Conditions
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.model.ManagedIndexConfig
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.model.Transition
@@ -30,20 +30,20 @@ import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagemen
 import com.nhaarman.mockitokotlin2.doReturn
 import com.nhaarman.mockitokotlin2.mock
 import com.nhaarman.mockitokotlin2.whenever
-import org.elasticsearch.action.delete.DeleteRequest
-import org.elasticsearch.cluster.metadata.IndexMetadata
-import org.elasticsearch.common.bytes.BytesReference
-import org.elasticsearch.common.unit.ByteSizeValue
-import org.elasticsearch.common.unit.TimeValue
-import org.elasticsearch.common.xcontent.LoggingDeprecationHandler
-import org.elasticsearch.common.xcontent.XContentHelper
-import org.elasticsearch.common.xcontent.XContentParser
-import org.elasticsearch.common.xcontent.XContentType
-import org.elasticsearch.index.Index
-import org.elasticsearch.test.ESTestCase
+import org.opensearch.action.delete.DeleteRequest
+import org.opensearch.cluster.metadata.IndexMetadata
+import org.opensearch.common.bytes.BytesReference
+import org.opensearch.common.unit.ByteSizeValue
+import org.opensearch.common.unit.TimeValue
+import org.opensearch.common.xcontent.LoggingDeprecationHandler
+import org.opensearch.common.xcontent.XContentHelper
+import org.opensearch.common.xcontent.XContentParser
+import org.opensearch.common.xcontent.XContentType
+import org.opensearch.index.Index
+import org.opensearch.test.OpenSearchTestCase
 import java.time.Instant
 
-class ManagedIndexUtilsTests : ESTestCase() {
+class ManagedIndexUtilsTests : OpenSearchTestCase() {
 
     fun `test create managed index request`() {
         val index = randomAlphaOfLength(10)

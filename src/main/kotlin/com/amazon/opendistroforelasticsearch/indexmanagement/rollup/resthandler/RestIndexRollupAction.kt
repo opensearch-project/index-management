@@ -16,7 +16,7 @@
 package com.amazon.opendistroforelasticsearch.indexmanagement.rollup.resthandler
 
 import com.amazon.opendistroforelasticsearch.indexmanagement.IndexManagementPlugin.Companion.ROLLUP_JOBS_BASE_URI
-import com.amazon.opendistroforelasticsearch.indexmanagement.elasticapi.parseWithType
+import com.amazon.opendistroforelasticsearch.indexmanagement.opensearchapi.parseWithType
 import com.amazon.opendistroforelasticsearch.indexmanagement.util.IF_PRIMARY_TERM
 import com.amazon.opendistroforelasticsearch.indexmanagement.util.IF_SEQ_NO
 import com.amazon.opendistroforelasticsearch.indexmanagement.util.REFRESH
@@ -24,20 +24,20 @@ import com.amazon.opendistroforelasticsearch.indexmanagement.rollup.action.index
 import com.amazon.opendistroforelasticsearch.indexmanagement.rollup.action.index.IndexRollupRequest
 import com.amazon.opendistroforelasticsearch.indexmanagement.rollup.action.index.IndexRollupResponse
 import com.amazon.opendistroforelasticsearch.indexmanagement.rollup.model.Rollup
-import org.elasticsearch.action.support.WriteRequest
-import org.elasticsearch.client.node.NodeClient
-import org.elasticsearch.common.xcontent.ToXContent
-import org.elasticsearch.index.seqno.SequenceNumbers
-import org.elasticsearch.rest.BaseRestHandler
-import org.elasticsearch.rest.RestHandler.Route
-import org.elasticsearch.rest.BaseRestHandler.RestChannelConsumer
-import org.elasticsearch.rest.BytesRestResponse
-import org.elasticsearch.rest.RestChannel
-import org.elasticsearch.rest.RestRequest
-import org.elasticsearch.rest.RestRequest.Method.PUT
-import org.elasticsearch.rest.RestResponse
-import org.elasticsearch.rest.RestStatus
-import org.elasticsearch.rest.action.RestResponseListener
+import org.opensearch.action.support.WriteRequest
+import org.opensearch.client.node.NodeClient
+import org.opensearch.common.xcontent.ToXContent
+import org.opensearch.index.seqno.SequenceNumbers
+import org.opensearch.rest.BaseRestHandler
+import org.opensearch.rest.RestHandler.Route
+import org.opensearch.rest.BaseRestHandler.RestChannelConsumer
+import org.opensearch.rest.BytesRestResponse
+import org.opensearch.rest.RestChannel
+import org.opensearch.rest.RestRequest
+import org.opensearch.rest.RestRequest.Method.PUT
+import org.opensearch.rest.RestResponse
+import org.opensearch.rest.RestStatus
+import org.opensearch.rest.action.RestResponseListener
 import java.io.IOException
 import java.time.Instant
 

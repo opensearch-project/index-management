@@ -18,10 +18,10 @@ package com.amazon.opendistroforelasticsearch.indexmanagement.rollup.model
 import com.amazon.opendistroforelasticsearch.indexmanagement.rollup.randomDateHistogram
 import com.amazon.opendistroforelasticsearch.indexmanagement.rollup.randomHistogram
 import com.amazon.opendistroforelasticsearch.indexmanagement.rollup.randomTerms
-import org.elasticsearch.test.ESTestCase
+import org.opensearch.test.OpenSearchTestCase
 import kotlin.test.assertFailsWith
 
-class DimensionTests : ESTestCase() {
+class DimensionTests : OpenSearchTestCase() {
 
     fun `test date histogram empty fields`() {
         assertFailsWith(IllegalArgumentException::class, "Source and target field must not be empty") {

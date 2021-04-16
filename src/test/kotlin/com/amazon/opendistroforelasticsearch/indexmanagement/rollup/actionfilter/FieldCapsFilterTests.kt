@@ -23,18 +23,18 @@ import com.amazon.opendistroforelasticsearch.indexmanagement.rollup.settings.Rol
 import com.nhaarman.mockitokotlin2.doReturn
 import com.nhaarman.mockitokotlin2.mock
 import com.nhaarman.mockitokotlin2.whenever
-import org.elasticsearch.action.fieldcaps.FieldCapabilitiesResponse
-import org.elasticsearch.cluster.ClusterState
-import org.elasticsearch.cluster.metadata.IndexMetadata
-import org.elasticsearch.cluster.metadata.IndexNameExpressionResolver
-import org.elasticsearch.cluster.metadata.Metadata
-import org.elasticsearch.cluster.service.ClusterService
-import org.elasticsearch.common.settings.ClusterSettings
-import org.elasticsearch.common.settings.Settings
-import org.elasticsearch.test.ESTestCase
+import org.opensearch.action.fieldcaps.FieldCapabilitiesResponse
+import org.opensearch.cluster.ClusterState
+import org.opensearch.cluster.metadata.IndexMetadata
+import org.opensearch.cluster.metadata.IndexNameExpressionResolver
+import org.opensearch.cluster.metadata.Metadata
+import org.opensearch.cluster.service.ClusterService
+import org.opensearch.common.settings.ClusterSettings
+import org.opensearch.common.settings.Settings
+import org.opensearch.test.OpenSearchTestCase
 import org.junit.Before
 
-class FieldCapsFilterTests : ESTestCase() {
+class FieldCapsFilterTests : OpenSearchTestCase() {
     private val indexNameExpressionResolver: IndexNameExpressionResolver = mock()
     private val clusterService: ClusterService = mock()
     private val clusterState: ClusterState = mock()

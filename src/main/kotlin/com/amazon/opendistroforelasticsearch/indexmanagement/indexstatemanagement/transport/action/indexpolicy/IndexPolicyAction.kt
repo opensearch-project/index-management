@@ -15,7 +15,7 @@
 
 package com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.transport.action.indexpolicy
 
-import org.elasticsearch.action.ActionType
+import org.opensearch.action.ActionType
 
 class IndexPolicyAction private constructor() : ActionType<IndexPolicyResponse>(NAME, ::IndexPolicyResponse) {
     companion object {

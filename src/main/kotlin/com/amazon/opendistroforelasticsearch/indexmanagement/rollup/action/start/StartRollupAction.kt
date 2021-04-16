@@ -15,8 +15,8 @@
 
 package com.amazon.opendistroforelasticsearch.indexmanagement.rollup.action.start
 
-import org.elasticsearch.action.ActionType
-import org.elasticsearch.action.support.master.AcknowledgedResponse
+import org.opensearch.action.ActionType
+import org.opensearch.action.support.master.AcknowledgedResponse
 
 class StartRollupAction private constructor() : ActionType<AcknowledgedResponse>(NAME, ::AcknowledgedResponse) {
     companion object {

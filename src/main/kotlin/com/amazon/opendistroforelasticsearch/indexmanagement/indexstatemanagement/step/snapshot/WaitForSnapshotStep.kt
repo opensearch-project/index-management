@@ -15,21 +15,21 @@
 
 package com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.step.snapshot
 
-import com.amazon.opendistroforelasticsearch.indexmanagement.elasticapi.suspendUntil
+import com.amazon.opendistroforelasticsearch.indexmanagement.opensearchapi.suspendUntil
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.model.action.SnapshotActionConfig
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.ActionProperties
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.StepMetaData
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.step.Step
 import org.apache.logging.log4j.LogManager
-import org.elasticsearch.ExceptionsHelper
-import org.elasticsearch.action.admin.cluster.snapshots.status.SnapshotStatus
-import org.elasticsearch.action.admin.cluster.snapshots.status.SnapshotsStatusRequest
-import org.elasticsearch.action.admin.cluster.snapshots.status.SnapshotsStatusResponse
-import org.elasticsearch.client.Client
-import org.elasticsearch.cluster.SnapshotsInProgress.State
-import org.elasticsearch.cluster.service.ClusterService
-import org.elasticsearch.transport.RemoteTransportException
+import org.opensearch.ExceptionsHelper
+import org.opensearch.action.admin.cluster.snapshots.status.SnapshotStatus
+import org.opensearch.action.admin.cluster.snapshots.status.SnapshotsStatusRequest
+import org.opensearch.action.admin.cluster.snapshots.status.SnapshotsStatusResponse
+import org.opensearch.client.Client
+import org.opensearch.cluster.SnapshotsInProgress.State
+import org.opensearch.cluster.service.ClusterService
+import org.opensearch.transport.RemoteTransportException
 
 class WaitForSnapshotStep(
     val clusterService: ClusterService,

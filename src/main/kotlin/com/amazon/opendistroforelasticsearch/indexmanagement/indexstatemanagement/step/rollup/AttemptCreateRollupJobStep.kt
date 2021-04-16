@@ -15,7 +15,7 @@
 
 package com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.step.rollup
 
-import com.amazon.opendistroforelasticsearch.indexmanagement.elasticapi.suspendUntil
+import com.amazon.opendistroforelasticsearch.indexmanagement.opensearchapi.suspendUntil
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.ActionProperties
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.StepMetaData
@@ -27,13 +27,13 @@ import com.amazon.opendistroforelasticsearch.indexmanagement.rollup.action.start
 import com.amazon.opendistroforelasticsearch.indexmanagement.rollup.action.start.StartRollupRequest
 import com.amazon.opendistroforelasticsearch.indexmanagement.rollup.model.ISMRollup
 import org.apache.logging.log4j.LogManager
-import org.elasticsearch.ExceptionsHelper
-import org.elasticsearch.action.support.WriteRequest
-import org.elasticsearch.action.support.master.AcknowledgedResponse
-import org.elasticsearch.client.Client
-import org.elasticsearch.cluster.service.ClusterService
-import org.elasticsearch.index.engine.VersionConflictEngineException
-import org.elasticsearch.transport.RemoteTransportException
+import org.opensearch.ExceptionsHelper
+import org.opensearch.action.support.WriteRequest
+import org.opensearch.action.support.master.AcknowledgedResponse
+import org.opensearch.client.Client
+import org.opensearch.cluster.service.ClusterService
+import org.opensearch.index.engine.VersionConflictEngineException
+import org.opensearch.transport.RemoteTransportException
 import java.lang.Exception
 
 class AttemptCreateRollupJobStep(

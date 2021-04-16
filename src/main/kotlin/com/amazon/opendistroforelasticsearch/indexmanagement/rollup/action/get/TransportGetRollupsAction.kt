@@ -16,27 +16,27 @@
 package com.amazon.opendistroforelasticsearch.indexmanagement.rollup.action.get
 
 import com.amazon.opendistroforelasticsearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
-import com.amazon.opendistroforelasticsearch.indexmanagement.elasticapi.contentParser
-import com.amazon.opendistroforelasticsearch.indexmanagement.elasticapi.parseWithType
+import com.amazon.opendistroforelasticsearch.indexmanagement.opensearchapi.contentParser
+import com.amazon.opendistroforelasticsearch.indexmanagement.opensearchapi.parseWithType
 import com.amazon.opendistroforelasticsearch.indexmanagement.rollup.model.Rollup
-import org.elasticsearch.ElasticsearchStatusException
-import org.elasticsearch.ExceptionsHelper
-import org.elasticsearch.action.ActionListener
-import org.elasticsearch.action.search.SearchRequest
-import org.elasticsearch.action.search.SearchResponse
-import org.elasticsearch.action.support.ActionFilters
-import org.elasticsearch.action.support.HandledTransportAction
-import org.elasticsearch.client.Client
-import org.elasticsearch.common.inject.Inject
-import org.elasticsearch.common.xcontent.NamedXContentRegistry
-import org.elasticsearch.index.query.BoolQueryBuilder
-import org.elasticsearch.index.query.ExistsQueryBuilder
-import org.elasticsearch.index.query.WildcardQueryBuilder
-import org.elasticsearch.rest.RestStatus
-import org.elasticsearch.search.builder.SearchSourceBuilder
-import org.elasticsearch.search.sort.SortOrder
-import org.elasticsearch.tasks.Task
-import org.elasticsearch.transport.TransportService
+import org.opensearch.OpenSearchStatusException
+import org.opensearch.ExceptionsHelper
+import org.opensearch.action.ActionListener
+import org.opensearch.action.search.SearchRequest
+import org.opensearch.action.search.SearchResponse
+import org.opensearch.action.support.ActionFilters
+import org.opensearch.action.support.HandledTransportAction
+import org.opensearch.client.Client
+import org.opensearch.common.inject.Inject
+import org.opensearch.common.xcontent.NamedXContentRegistry
+import org.opensearch.index.query.BoolQueryBuilder
+import org.opensearch.index.query.ExistsQueryBuilder
+import org.opensearch.index.query.WildcardQueryBuilder
+import org.opensearch.rest.RestStatus
+import org.opensearch.search.builder.SearchSourceBuilder
+import org.opensearch.search.sort.SortOrder
+import org.opensearch.tasks.Task
+import org.opensearch.transport.TransportService
 import kotlin.Exception
 
 class TransportGetRollupsAction @Inject constructor(
@@ -68,7 +68,7 @@ class TransportGetRollupsAction @Inject constructor(
 
                 if (response.shardFailures.isNotEmpty()) {
                     val failure = response.shardFailures.reduce { s1, s2 -> if (s1.status().status > s2.status().status) s1 else s2 }
-                    listener.onFailure(ElasticsearchStatusException("Get rollups failed on some shards", failure.status(), failure.cause))
+                    listener.onFailure(OpenSearchStatusException("Get rollups failed on some shards", failure.status(), failure.cause))
                 } else {
                     try {
                         val rollups = response.hits.hits.map {
@@ -76,7 +76,7 @@ class TransportGetRollupsAction @Inject constructor(
                         }
                         listener.onResponse(GetRollupsResponse(rollups, totalRollups.toInt(), RestStatus.OK))
                     } catch (e: Exception) {
-                        listener.onFailure(ElasticsearchStatusException("Failed to parse rollups",
+                        listener.onFailure(OpenSearchStatusException("Failed to parse rollups",
                             RestStatus.INTERNAL_SERVER_ERROR, ExceptionsHelper.unwrapCause(e)))
                     }
                 }

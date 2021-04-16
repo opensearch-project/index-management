@@ -15,11 +15,11 @@
 
 package com.amazon.opendistroforelasticsearch.indexmanagement.rollup.action.delete
 
-import org.elasticsearch.action.ActionRequestValidationException
-import org.elasticsearch.action.ValidateActions.addValidationError
-import org.elasticsearch.action.delete.DeleteRequest
-import org.elasticsearch.common.io.stream.StreamInput
-import org.elasticsearch.common.io.stream.StreamOutput
+import org.opensearch.action.ActionRequestValidationException
+import org.opensearch.action.ValidateActions.addValidationError
+import org.opensearch.action.delete.DeleteRequest
+import org.opensearch.common.io.stream.StreamInput
+import org.opensearch.common.io.stream.StreamOutput
 import java.io.IOException
 
 class DeleteRollupRequest : DeleteRequest {

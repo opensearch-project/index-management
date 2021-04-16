@@ -36,11 +36,11 @@ import com.amazon.opendistroforelasticsearch.indexmanagement.rollup.randomRollup
 import com.amazon.opendistroforelasticsearch.indexmanagement.rollup.randomRollupMetrics
 import com.amazon.opendistroforelasticsearch.indexmanagement.util._ID
 import com.amazon.opendistroforelasticsearch.indexmanagement.util._SEQ_NO
-import org.elasticsearch.client.ResponseException
-import org.elasticsearch.common.xcontent.XContentType
-import org.elasticsearch.rest.RestStatus
-import org.elasticsearch.test.ESTestCase
-import org.elasticsearch.test.junit.annotations.TestLogging
+import org.opensearch.client.ResponseException
+import org.opensearch.common.xcontent.XContentType
+import org.opensearch.rest.RestStatus
+import org.opensearch.test.OpenSearchTestCase
+import org.opensearch.test.junit.annotations.TestLogging
 
 @TestLogging(value = "level:DEBUG", reason = "Debugging tests")
 @Suppress("UNCHECKED_CAST")
@@ -205,7 +205,7 @@ class RestIndexRollupActionIT : RollupRestTestCase() {
             val dimensions = randomRollupDimensions()
             val newDimensions: List<Dimension> = dimensions.map {
                 when (it.type) {
-                    Dimension.Type.DATE_HISTOGRAM -> (it as DateHistogram).copy(timezone = ESTestCase.randomZone())
+                    Dimension.Type.DATE_HISTOGRAM -> (it as DateHistogram).copy(timezone = OpenSearchTestCase.randomZone())
                     Dimension.Type.HISTOGRAM -> (it as Histogram).copy(interval = 5.5)
                     Dimension.Type.TERMS -> (it as Terms).copy(targetField = "some_other_target_field")
                 }

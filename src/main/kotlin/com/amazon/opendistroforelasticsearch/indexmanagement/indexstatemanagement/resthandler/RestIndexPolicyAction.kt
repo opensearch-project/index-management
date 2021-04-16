@@ -16,7 +16,7 @@
 package com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.resthandler
 
 import com.amazon.opendistroforelasticsearch.indexmanagement.IndexManagementPlugin.Companion.POLICY_BASE_URI
-import com.amazon.opendistroforelasticsearch.indexmanagement.elasticapi.parseWithType
+import com.amazon.opendistroforelasticsearch.indexmanagement.opensearchapi.parseWithType
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.model.Policy
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.ALLOW_LIST
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.transport.action.indexpolicy.IndexPolicyAction
@@ -27,21 +27,21 @@ import com.amazon.opendistroforelasticsearch.indexmanagement.util.IF_PRIMARY_TER
 import com.amazon.opendistroforelasticsearch.indexmanagement.util.IF_SEQ_NO
 import com.amazon.opendistroforelasticsearch.indexmanagement.util.REFRESH
 import org.apache.logging.log4j.LogManager
-import org.elasticsearch.action.support.WriteRequest
-import org.elasticsearch.client.node.NodeClient
-import org.elasticsearch.cluster.service.ClusterService
-import org.elasticsearch.common.settings.Settings
-import org.elasticsearch.common.xcontent.ToXContent
-import org.elasticsearch.index.seqno.SequenceNumbers
-import org.elasticsearch.rest.BaseRestHandler
-import org.elasticsearch.rest.BaseRestHandler.RestChannelConsumer
-import org.elasticsearch.rest.BytesRestResponse
-import org.elasticsearch.rest.RestHandler.Route
-import org.elasticsearch.rest.RestRequest
-import org.elasticsearch.rest.RestRequest.Method.PUT
-import org.elasticsearch.rest.RestResponse
-import org.elasticsearch.rest.RestStatus
-import org.elasticsearch.rest.action.RestResponseListener
+import org.opensearch.action.support.WriteRequest
+import org.opensearch.client.node.NodeClient
+import org.opensearch.cluster.service.ClusterService
+import org.opensearch.common.settings.Settings
+import org.opensearch.common.xcontent.ToXContent
+import org.opensearch.index.seqno.SequenceNumbers
+import org.opensearch.rest.BaseRestHandler
+import org.opensearch.rest.BaseRestHandler.RestChannelConsumer
+import org.opensearch.rest.BytesRestResponse
+import org.opensearch.rest.RestHandler.Route
+import org.opensearch.rest.RestRequest
+import org.opensearch.rest.RestRequest.Method.PUT
+import org.opensearch.rest.RestResponse
+import org.opensearch.rest.RestStatus
+import org.opensearch.rest.action.RestResponseListener
 import java.io.IOException
 import java.time.Instant
 

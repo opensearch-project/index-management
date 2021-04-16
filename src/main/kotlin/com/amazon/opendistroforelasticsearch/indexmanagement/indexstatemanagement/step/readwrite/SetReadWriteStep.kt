@@ -15,20 +15,20 @@
 
 package com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.step.readwrite
 
-import com.amazon.opendistroforelasticsearch.indexmanagement.elasticapi.suspendUntil
+import com.amazon.opendistroforelasticsearch.indexmanagement.opensearchapi.suspendUntil
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.model.action.ReadWriteActionConfig
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.StepMetaData
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.step.Step
 import org.apache.logging.log4j.LogManager
-import org.elasticsearch.ExceptionsHelper
-import org.elasticsearch.action.admin.indices.settings.put.UpdateSettingsRequest
-import org.elasticsearch.action.support.master.AcknowledgedResponse
-import org.elasticsearch.client.Client
-import org.elasticsearch.cluster.metadata.IndexMetadata.SETTING_BLOCKS_WRITE
-import org.elasticsearch.cluster.service.ClusterService
-import org.elasticsearch.common.settings.Settings
-import org.elasticsearch.transport.RemoteTransportException
+import org.opensearch.ExceptionsHelper
+import org.opensearch.action.admin.indices.settings.put.UpdateSettingsRequest
+import org.opensearch.action.support.master.AcknowledgedResponse
+import org.opensearch.client.Client
+import org.opensearch.cluster.metadata.IndexMetadata.SETTING_BLOCKS_WRITE
+import org.opensearch.cluster.service.ClusterService
+import org.opensearch.common.settings.Settings
+import org.opensearch.transport.RemoteTransportException
 
 class SetReadWriteStep(
     val clusterService: ClusterService,

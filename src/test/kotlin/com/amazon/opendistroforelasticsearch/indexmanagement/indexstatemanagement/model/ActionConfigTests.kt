@@ -15,7 +15,7 @@
 
 package com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.model
 
-import com.amazon.opendistroforelasticsearch.indexmanagement.elasticapi.string
+import com.amazon.opendistroforelasticsearch.indexmanagement.opensearchapi.string
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.model.action.ActionConfig
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.model.action.ActionRetry
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.model.action.ActionTimeout
@@ -28,19 +28,19 @@ import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagemen
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.randomRolloverActionConfig
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.randomSnapshotActionConfig
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.randomTimeValueObject
-import org.elasticsearch.common.io.stream.InputStreamStreamInput
-import org.elasticsearch.common.io.stream.OutputStreamStreamOutput
-import org.elasticsearch.common.unit.ByteSizeValue
-import org.elasticsearch.common.unit.TimeValue
-import org.elasticsearch.common.xcontent.LoggingDeprecationHandler
-import org.elasticsearch.common.xcontent.XContentFactory
-import org.elasticsearch.common.xcontent.XContentType
-import org.elasticsearch.test.ESTestCase
+import org.opensearch.common.io.stream.InputStreamStreamInput
+import org.opensearch.common.io.stream.OutputStreamStreamOutput
+import org.opensearch.common.unit.ByteSizeValue
+import org.opensearch.common.unit.TimeValue
+import org.opensearch.common.xcontent.LoggingDeprecationHandler
+import org.opensearch.common.xcontent.XContentFactory
+import org.opensearch.common.xcontent.XContentType
+import org.opensearch.test.OpenSearchTestCase
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import kotlin.test.assertFailsWith
 
-class ActionConfigTests : ESTestCase() {
+class ActionConfigTests : OpenSearchTestCase() {
 
     fun `test invalid timeout for delete action config fails`() {
         assertFailsWith(IllegalArgumentException::class, "Expected IllegalArgumentException for invalid timeout") {

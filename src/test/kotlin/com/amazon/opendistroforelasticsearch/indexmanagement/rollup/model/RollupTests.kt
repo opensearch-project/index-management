@@ -19,10 +19,10 @@ import com.amazon.opendistroforelasticsearch.indexmanagement.rollup.randomDateHi
 import com.amazon.opendistroforelasticsearch.indexmanagement.randomInstant
 import com.amazon.opendistroforelasticsearch.indexmanagement.rollup.randomRollup
 import com.amazon.opendistroforelasticsearch.indexmanagement.rollup.randomTerms
-import org.elasticsearch.test.ESTestCase
+import org.opensearch.test.OpenSearchTestCase
 import kotlin.test.assertFailsWith
 
-class RollupTests : ESTestCase() {
+class RollupTests : OpenSearchTestCase() {
     fun `test rollup same indices`() {
         assertFailsWith(IllegalArgumentException::class, "Your source and target index cannot be the same") {
             randomRollup().copy(sourceIndex = "the_same", targetIndex = "the_same")

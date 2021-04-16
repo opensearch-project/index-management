@@ -39,10 +39,10 @@ import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagemen
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.util.FAILURES
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.util.UPDATED_INDICES
 import com.amazon.opendistroforelasticsearch.indexmanagement.waitFor
-import org.elasticsearch.client.ResponseException
-import org.elasticsearch.common.settings.Settings
-import org.elasticsearch.rest.RestRequest
-import org.elasticsearch.rest.RestStatus
+import org.opensearch.client.ResponseException
+import org.opensearch.common.settings.Settings
+import org.opensearch.rest.RestRequest
+import org.opensearch.rest.RestStatus
 import org.junit.Before
 import java.time.Instant
 import java.util.Locale

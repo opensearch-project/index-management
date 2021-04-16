@@ -26,20 +26,20 @@ import com.nhaarman.mockitokotlin2.doReturn
 import com.nhaarman.mockitokotlin2.mock
 import com.nhaarman.mockitokotlin2.whenever
 import kotlinx.coroutines.runBlocking
-import org.elasticsearch.action.ActionListener
-import org.elasticsearch.action.admin.cluster.snapshots.status.SnapshotStatus
-import org.elasticsearch.action.admin.cluster.snapshots.status.SnapshotsStatusResponse
-import org.elasticsearch.client.AdminClient
-import org.elasticsearch.client.Client
-import org.elasticsearch.client.ClusterAdminClient
-import org.elasticsearch.cluster.SnapshotsInProgress
-import org.elasticsearch.cluster.service.ClusterService
-import org.elasticsearch.snapshots.Snapshot
-import org.elasticsearch.snapshots.SnapshotId
-import org.elasticsearch.test.ESTestCase
-import org.elasticsearch.transport.RemoteTransportException
+import org.opensearch.action.ActionListener
+import org.opensearch.action.admin.cluster.snapshots.status.SnapshotStatus
+import org.opensearch.action.admin.cluster.snapshots.status.SnapshotsStatusResponse
+import org.opensearch.client.AdminClient
+import org.opensearch.client.Client
+import org.opensearch.client.ClusterAdminClient
+import org.opensearch.cluster.SnapshotsInProgress
+import org.opensearch.cluster.service.ClusterService
+import org.opensearch.snapshots.Snapshot
+import org.opensearch.snapshots.SnapshotId
+import org.opensearch.test.OpenSearchTestCase
+import org.opensearch.transport.RemoteTransportException
 
-class WaitForSnapshotStepTests : ESTestCase() {
+class WaitForSnapshotStepTests : OpenSearchTestCase() {
 
     private val clusterService: ClusterService = mock()
 

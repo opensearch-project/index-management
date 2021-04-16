@@ -18,10 +18,10 @@ package com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanageme
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.randomPolicy
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.randomState
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.randomTransition
-import org.elasticsearch.test.ESTestCase
+import org.opensearch.test.OpenSearchTestCase
 import kotlin.test.assertFailsWith
 
-class PolicyTests : ESTestCase() {
+class PolicyTests : OpenSearchTestCase() {
 
     fun `test invalid default state`() {
         assertFailsWith(IllegalArgumentException::class, "Expected IllegalArgumentException for invalid default state") {

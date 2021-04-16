@@ -15,13 +15,13 @@
 
 package com.amazon.opendistroforelasticsearch.indexmanagement.refreshanalyzer
 
-import org.elasticsearch.common.io.stream.BytesStreamOutput
-import org.elasticsearch.index.Index
-import org.elasticsearch.index.shard.ShardId
-import org.elasticsearch.test.ESTestCase
+import org.opensearch.common.io.stream.BytesStreamOutput
+import org.opensearch.index.Index
+import org.opensearch.index.shard.ShardId
+import org.opensearch.test.OpenSearchTestCase
 import org.junit.Assert
 
-class RefreshSearchAnalyzerShardResponseTests : ESTestCase() {
+class RefreshSearchAnalyzerShardResponseTests : OpenSearchTestCase() {
 
     fun `test shard refresh response parsing`() {
         val reloadedAnalyzers = listOf("analyzer1", "analyzer2")

@@ -22,8 +22,8 @@ import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagemen
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.step.forcemerge.AttemptCallForceMergeStep
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.step.forcemerge.AttemptSetReadOnlyStep
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.step.forcemerge.WaitForForceMergeStep
-import org.elasticsearch.client.Client
-import org.elasticsearch.cluster.service.ClusterService
+import org.opensearch.client.Client
+import org.opensearch.cluster.service.ClusterService
 
 class ForceMergeAction(
     clusterService: ClusterService,

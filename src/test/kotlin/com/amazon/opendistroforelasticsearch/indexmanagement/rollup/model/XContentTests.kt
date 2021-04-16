@@ -15,7 +15,7 @@
 
 package com.amazon.opendistroforelasticsearch.indexmanagement.rollup.model
 
-import com.amazon.opendistroforelasticsearch.indexmanagement.elasticapi.parseWithType
+import com.amazon.opendistroforelasticsearch.indexmanagement.opensearchapi.parseWithType
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.util.XCONTENT_WITHOUT_TYPE
 import com.amazon.opendistroforelasticsearch.indexmanagement.rollup.model.dimension.Dimension
 import com.amazon.opendistroforelasticsearch.indexmanagement.rollup.model.metric.Metric
@@ -31,13 +31,13 @@ import com.amazon.opendistroforelasticsearch.indexmanagement.rollup.randomSum
 import com.amazon.opendistroforelasticsearch.indexmanagement.rollup.randomTerms
 import com.amazon.opendistroforelasticsearch.indexmanagement.rollup.randomValueCount
 import com.amazon.opendistroforelasticsearch.indexmanagement.rollup.toJsonString
-import org.elasticsearch.common.xcontent.LoggingDeprecationHandler
-import org.elasticsearch.common.xcontent.XContentParser
-import org.elasticsearch.common.xcontent.XContentType
-import org.elasticsearch.test.ESTestCase
+import org.opensearch.common.xcontent.LoggingDeprecationHandler
+import org.opensearch.common.xcontent.XContentParser
+import org.opensearch.common.xcontent.XContentType
+import org.opensearch.test.OpenSearchTestCase
 import kotlin.test.assertFailsWith
 
-class XContentTests : ESTestCase() {
+class XContentTests : OpenSearchTestCase() {
 
     fun `test invalid dimension parsing`() {
         assertFailsWith(IllegalArgumentException::class, "Invalid dimension type [invalid_dimension] found in dimensions") {

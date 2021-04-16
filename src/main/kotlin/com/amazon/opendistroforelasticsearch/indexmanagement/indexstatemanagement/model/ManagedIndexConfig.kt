@@ -15,18 +15,18 @@
 
 package com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.model
 
-import com.amazon.opendistroforelasticsearch.indexmanagement.elasticapi.instant
-import com.amazon.opendistroforelasticsearch.indexmanagement.elasticapi.optionalTimeField
+import com.amazon.opendistroforelasticsearch.indexmanagement.opensearchapi.instant
+import com.amazon.opendistroforelasticsearch.indexmanagement.opensearchapi.optionalTimeField
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.util.XCONTENT_WITHOUT_TYPE
 import com.amazon.opendistroforelasticsearch.jobscheduler.spi.ScheduledJobParameter
 import com.amazon.opendistroforelasticsearch.jobscheduler.spi.schedule.Schedule
 import com.amazon.opendistroforelasticsearch.jobscheduler.spi.schedule.ScheduleParser
-import org.elasticsearch.common.xcontent.ToXContent
-import org.elasticsearch.common.xcontent.XContentBuilder
-import org.elasticsearch.common.xcontent.XContentParser
-import org.elasticsearch.common.xcontent.XContentParser.Token
-import org.elasticsearch.common.xcontent.XContentParserUtils.ensureExpectedToken
-import org.elasticsearch.index.seqno.SequenceNumbers
+import org.opensearch.common.xcontent.ToXContent
+import org.opensearch.common.xcontent.XContentBuilder
+import org.opensearch.common.xcontent.XContentParser
+import org.opensearch.common.xcontent.XContentParser.Token
+import org.opensearch.common.xcontent.XContentParserUtils.ensureExpectedToken
+import org.opensearch.index.seqno.SequenceNumbers
 import java.io.IOException
 import java.time.Instant
 

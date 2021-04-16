@@ -16,15 +16,15 @@
 package com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.coordinator
 
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.SkipExecution
-import org.elasticsearch.action.admin.cluster.node.info.NodesInfoAction
-import org.elasticsearch.client.Client
-import org.elasticsearch.cluster.ClusterChangedEvent
-import org.elasticsearch.cluster.ESAllocationTestCase
-import org.elasticsearch.cluster.service.ClusterService
+import org.opensearch.action.admin.cluster.node.info.NodesInfoAction
+import org.opensearch.client.Client
+import org.opensearch.cluster.ClusterChangedEvent
+import org.opensearch.cluster.OpenSearchAllocationTestCase
+import org.opensearch.cluster.service.ClusterService
 import org.junit.Before
 import org.mockito.Mockito
 
-class SkipExecutionTests : ESAllocationTestCase() {
+class SkipExecutionTests : OpenSearchAllocationTestCase() {
 
     private lateinit var client: Client
     private lateinit var clusterService: ClusterService

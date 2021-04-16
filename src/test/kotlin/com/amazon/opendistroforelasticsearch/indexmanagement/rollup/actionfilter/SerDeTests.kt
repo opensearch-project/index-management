@@ -16,10 +16,10 @@
 package com.amazon.opendistroforelasticsearch.indexmanagement.rollup.actionfilter
 
 import com.amazon.opendistroforelasticsearch.indexmanagement.rollup.randomISMFieldCaps
-import org.elasticsearch.action.fieldcaps.FieldCapabilitiesResponse
-import org.elasticsearch.test.ESTestCase
+import org.opensearch.action.fieldcaps.FieldCapabilitiesResponse
+import org.opensearch.test.OpenSearchTestCase
 
-class SerDeTests : ESTestCase() {
+class SerDeTests : OpenSearchTestCase() {
 
     fun `test round trip empty`() {
         val fieldCaps = FieldCapabilitiesResponse(arrayOf(), mapOf())

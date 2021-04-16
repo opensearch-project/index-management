@@ -15,7 +15,7 @@
 
 package com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.step.snapshot
 
-import com.amazon.opendistroforelasticsearch.indexmanagement.elasticapi.suspendUntil
+import com.amazon.opendistroforelasticsearch.indexmanagement.opensearchapi.suspendUntil
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.model.action.SnapshotActionConfig
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.ActionProperties
@@ -23,15 +23,15 @@ import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagemen
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.SNAPSHOT_DENY_LIST
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.step.Step
 import org.apache.logging.log4j.LogManager
-import org.elasticsearch.common.regex.Regex
-import org.elasticsearch.ExceptionsHelper
-import org.elasticsearch.action.admin.cluster.snapshots.create.CreateSnapshotRequest
-import org.elasticsearch.action.admin.cluster.snapshots.create.CreateSnapshotResponse
-import org.elasticsearch.client.Client
-import org.elasticsearch.cluster.service.ClusterService
-import org.elasticsearch.rest.RestStatus
-import org.elasticsearch.snapshots.ConcurrentSnapshotExecutionException
-import org.elasticsearch.transport.RemoteTransportException
+import org.opensearch.common.regex.Regex
+import org.opensearch.ExceptionsHelper
+import org.opensearch.action.admin.cluster.snapshots.create.CreateSnapshotRequest
+import org.opensearch.action.admin.cluster.snapshots.create.CreateSnapshotResponse
+import org.opensearch.client.Client
+import org.opensearch.cluster.service.ClusterService
+import org.opensearch.rest.RestStatus
+import org.opensearch.snapshots.ConcurrentSnapshotExecutionException
+import org.opensearch.transport.RemoteTransportException
 import java.time.LocalDateTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter

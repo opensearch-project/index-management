@@ -25,15 +25,15 @@ import com.amazon.opendistroforelasticsearch.indexmanagement.rollup.action.start
 import com.amazon.opendistroforelasticsearch.indexmanagement.rollup.action.stop.StopRollupRequest
 import com.amazon.opendistroforelasticsearch.indexmanagement.rollup.model.Rollup
 import com.amazon.opendistroforelasticsearch.indexmanagement.rollup.randomRollup
-import org.elasticsearch.action.DocWriteRequest
-import org.elasticsearch.action.support.WriteRequest
-import org.elasticsearch.common.io.stream.BytesStreamOutput
-import org.elasticsearch.common.io.stream.StreamInput
-import org.elasticsearch.index.seqno.SequenceNumbers
-import org.elasticsearch.search.fetch.subphase.FetchSourceContext
-import org.elasticsearch.test.ESTestCase
+import org.opensearch.action.DocWriteRequest
+import org.opensearch.action.support.WriteRequest
+import org.opensearch.common.io.stream.BytesStreamOutput
+import org.opensearch.common.io.stream.StreamInput
+import org.opensearch.index.seqno.SequenceNumbers
+import org.opensearch.search.fetch.subphase.FetchSourceContext
+import org.opensearch.test.OpenSearchTestCase
 
-class RequestTests : ESTestCase() {
+class RequestTests : OpenSearchTestCase() {
 
     fun `test delete rollup request`() {
         val id = "some_id"

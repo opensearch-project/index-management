@@ -20,39 +20,39 @@ import com.amazon.opendistroforelasticsearch.jobscheduler.spi.schedule.IntervalS
 import com.amazon.opendistroforelasticsearch.jobscheduler.spi.schedule.Schedule
 import org.apache.http.Header
 import org.apache.http.HttpEntity
-import org.elasticsearch.client.Request
-import org.elasticsearch.client.RequestOptions
-import org.elasticsearch.client.Response
-import org.elasticsearch.client.RestClient
-import org.elasticsearch.test.rest.ESRestTestCase
+import org.opensearch.client.Request
+import org.opensearch.client.RequestOptions
+import org.opensearch.client.Response
+import org.opensearch.client.RestClient
+import org.opensearch.test.rest.OpenSearchRestTestCase
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 
-fun randomDayOfWeekCronField(): String = if (ESRestTestCase.randomBoolean()) "*" else ESRestTestCase.randomIntBetween(0, 7).toString()
+fun randomDayOfWeekCronField(): String = if (OpenSearchRestTestCase.randomBoolean()) "*" else OpenSearchRestTestCase.randomIntBetween(0, 7).toString()
 
-fun randomMonthCronField(): String = if (ESRestTestCase.randomBoolean()) "*" else ESRestTestCase.randomIntBetween(1, 12).toString()
+fun randomMonthCronField(): String = if (OpenSearchRestTestCase.randomBoolean()) "*" else OpenSearchRestTestCase.randomIntBetween(1, 12).toString()
 
-fun randomDayOfMonthCronField(): String = if (ESRestTestCase.randomBoolean()) "*" else ESRestTestCase.randomIntBetween(1, 31).toString()
+fun randomDayOfMonthCronField(): String = if (OpenSearchRestTestCase.randomBoolean()) "*" else OpenSearchRestTestCase.randomIntBetween(1, 31).toString()
 
-fun randomHourCronField(): String = if (ESRestTestCase.randomBoolean()) "*" else ESRestTestCase.randomIntBetween(0, 23).toString()
+fun randomHourCronField(): String = if (OpenSearchRestTestCase.randomBoolean()) "*" else OpenSearchRestTestCase.randomIntBetween(0, 23).toString()
 
-fun randomMinuteCronField(): String = if (ESRestTestCase.randomBoolean()) "*" else ESRestTestCase.randomIntBetween(0, 59).toString()
+fun randomMinuteCronField(): String = if (OpenSearchRestTestCase.randomBoolean()) "*" else OpenSearchRestTestCase.randomIntBetween(0, 59).toString()
 
 fun randomCronExpression(): String = "${randomMinuteCronField()} ${randomHourCronField()} ${randomDayOfMonthCronField()} ${randomMonthCronField()} ${randomDayOfWeekCronField()}"
 
 val chronoUnits = listOf(ChronoUnit.MINUTES, ChronoUnit.HOURS, ChronoUnit.DAYS)
 
-fun randomChronoUnit(): ChronoUnit = ESRestTestCase.randomSubsetOf(1, chronoUnits).first()
+fun randomChronoUnit(): ChronoUnit = OpenSearchRestTestCase.randomSubsetOf(1, chronoUnits).first()
 
-fun randomEpochMillis(): Long = ESRestTestCase.randomLongBetween(0, Instant.now().toEpochMilli())
+fun randomEpochMillis(): Long = OpenSearchRestTestCase.randomLongBetween(0, Instant.now().toEpochMilli())
 
 fun randomInstant(): Instant = Instant.ofEpochMilli(randomEpochMillis())
 
-fun randomCronSchedule(): CronSchedule = CronSchedule(randomCronExpression(), ESRestTestCase.randomZone())
+fun randomCronSchedule(): CronSchedule = CronSchedule(randomCronExpression(), OpenSearchRestTestCase.randomZone())
 
-fun randomIntervalSchedule(): IntervalSchedule = IntervalSchedule(randomInstant(), ESRestTestCase.randomIntBetween(1, 100), randomChronoUnit())
+fun randomIntervalSchedule(): IntervalSchedule = IntervalSchedule(randomInstant(), OpenSearchRestTestCase.randomIntBetween(1, 100), randomChronoUnit())
 
-fun randomSchedule(): Schedule = if (ESRestTestCase.randomBoolean()) randomIntervalSchedule() else randomCronSchedule()
+fun randomSchedule(): Schedule = if (OpenSearchRestTestCase.randomBoolean()) randomIntervalSchedule() else randomCronSchedule()
 
 /**
 * Wrapper for [RestClient.performRequest] which was deprecated in ES 6.5 and is used in tests. This provides

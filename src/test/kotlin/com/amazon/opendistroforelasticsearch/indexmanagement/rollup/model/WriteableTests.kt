@@ -38,11 +38,11 @@ import com.amazon.opendistroforelasticsearch.indexmanagement.rollup.randomRollup
 import com.amazon.opendistroforelasticsearch.indexmanagement.rollup.randomSum
 import com.amazon.opendistroforelasticsearch.indexmanagement.rollup.randomTerms
 import com.amazon.opendistroforelasticsearch.indexmanagement.rollup.randomValueCount
-import org.elasticsearch.common.io.stream.BytesStreamOutput
-import org.elasticsearch.common.io.stream.StreamInput
-import org.elasticsearch.test.ESTestCase
+import org.opensearch.common.io.stream.BytesStreamOutput
+import org.opensearch.common.io.stream.StreamInput
+import org.opensearch.test.OpenSearchTestCase
 
-class WriteableTests : ESTestCase() {
+class WriteableTests : OpenSearchTestCase() {
 
     fun `test date histogram dimension as stream`() {
         val dateHistogram = randomDateHistogram()

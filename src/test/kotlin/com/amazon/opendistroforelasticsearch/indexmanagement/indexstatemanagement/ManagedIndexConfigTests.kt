@@ -15,15 +15,15 @@
 
 package com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement
 
-import com.amazon.opendistroforelasticsearch.indexmanagement.elasticapi.parseWithType
+import com.amazon.opendistroforelasticsearch.indexmanagement.opensearchapi.parseWithType
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.model.ManagedIndexConfig
-import org.elasticsearch.common.xcontent.LoggingDeprecationHandler
-import org.elasticsearch.common.xcontent.XContentParser
-import org.elasticsearch.common.xcontent.XContentType
-import org.elasticsearch.test.ESTestCase
+import org.opensearch.common.xcontent.LoggingDeprecationHandler
+import org.opensearch.common.xcontent.XContentParser
+import org.opensearch.common.xcontent.XContentType
+import org.opensearch.test.OpenSearchTestCase
 import kotlin.test.assertFailsWith
 
-class ManagedIndexConfigTests : ESTestCase() {
+class ManagedIndexConfigTests : OpenSearchTestCase() {
 
     fun `test managed index config parsing`() {
 

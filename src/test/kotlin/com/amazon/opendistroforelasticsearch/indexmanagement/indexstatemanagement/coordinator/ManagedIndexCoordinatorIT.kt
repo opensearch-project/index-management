@@ -32,10 +32,10 @@ import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagemen
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.step.forcemerge.WaitForForceMergeStep
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.step.rollover.AttemptRolloverStep
 import com.amazon.opendistroforelasticsearch.indexmanagement.waitFor
-import org.elasticsearch.client.ResponseException
-import org.elasticsearch.common.xcontent.XContentType
-import org.elasticsearch.rest.RestRequest
-import org.elasticsearch.rest.RestStatus
+import org.opensearch.client.ResponseException
+import org.opensearch.common.xcontent.XContentType
+import org.opensearch.rest.RestRequest
+import org.opensearch.rest.RestStatus
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 

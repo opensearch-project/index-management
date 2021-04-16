@@ -17,11 +17,11 @@ package com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanageme
 
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.model.ChangePolicy
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.model.StateFilter
-import org.elasticsearch.common.io.stream.BytesStreamOutput
-import org.elasticsearch.common.io.stream.StreamInput
-import org.elasticsearch.test.ESTestCase
+import org.opensearch.common.io.stream.BytesStreamOutput
+import org.opensearch.common.io.stream.StreamInput
+import org.opensearch.test.OpenSearchTestCase
 
-class ChangePolicyRequestTests : ESTestCase() {
+class ChangePolicyRequestTests : OpenSearchTestCase() {
 
     fun `test change policy request`() {
         val indices = listOf("index1", "index2")

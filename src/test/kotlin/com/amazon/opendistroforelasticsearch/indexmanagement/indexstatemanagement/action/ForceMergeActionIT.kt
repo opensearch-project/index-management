@@ -24,8 +24,8 @@ import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagemen
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.step.forcemerge.AttemptSetReadOnlyStep
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.step.forcemerge.WaitForForceMergeStep
 import com.amazon.opendistroforelasticsearch.indexmanagement.waitFor
-import org.elasticsearch.cluster.metadata.IndexMetadata
-import org.elasticsearch.common.settings.Settings
+import org.opensearch.cluster.metadata.IndexMetadata
+import org.opensearch.common.settings.Settings
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 import java.util.Locale

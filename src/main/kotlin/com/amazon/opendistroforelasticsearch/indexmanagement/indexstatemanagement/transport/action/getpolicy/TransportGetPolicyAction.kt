@@ -16,24 +16,24 @@
 package com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.transport.action.getpolicy
 
 import com.amazon.opendistroforelasticsearch.indexmanagement.IndexManagementPlugin
-import com.amazon.opendistroforelasticsearch.indexmanagement.elasticapi.parseWithType
+import com.amazon.opendistroforelasticsearch.indexmanagement.opensearchapi.parseWithType
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.model.Policy
-import org.elasticsearch.ElasticsearchStatusException
-import org.elasticsearch.ExceptionsHelper
-import org.elasticsearch.action.ActionListener
-import org.elasticsearch.action.get.GetRequest
-import org.elasticsearch.action.get.GetResponse
-import org.elasticsearch.action.support.ActionFilters
-import org.elasticsearch.action.support.HandledTransportAction
-import org.elasticsearch.client.node.NodeClient
-import org.elasticsearch.common.inject.Inject
-import org.elasticsearch.common.xcontent.LoggingDeprecationHandler
-import org.elasticsearch.common.xcontent.NamedXContentRegistry
-import org.elasticsearch.common.xcontent.XContentHelper
-import org.elasticsearch.common.xcontent.XContentType
-import org.elasticsearch.rest.RestStatus
-import org.elasticsearch.tasks.Task
-import org.elasticsearch.transport.TransportService
+import org.opensearch.OpenSearchStatusException
+import org.opensearch.ExceptionsHelper
+import org.opensearch.action.ActionListener
+import org.opensearch.action.get.GetRequest
+import org.opensearch.action.get.GetResponse
+import org.opensearch.action.support.ActionFilters
+import org.opensearch.action.support.HandledTransportAction
+import org.opensearch.client.node.NodeClient
+import org.opensearch.common.inject.Inject
+import org.opensearch.common.xcontent.LoggingDeprecationHandler
+import org.opensearch.common.xcontent.NamedXContentRegistry
+import org.opensearch.common.xcontent.XContentHelper
+import org.opensearch.common.xcontent.XContentType
+import org.opensearch.rest.RestStatus
+import org.opensearch.tasks.Task
+import org.opensearch.transport.TransportService
 
 class TransportGetPolicyAction @Inject constructor(
     val client: NodeClient,
@@ -70,7 +70,7 @@ class TransportGetPolicyAction @Inject constructor(
 
         fun onGetResponse(response: GetResponse) {
             if (!response.isExists) {
-                actionListener.onFailure(ElasticsearchStatusException("Policy not found", RestStatus.NOT_FOUND))
+                actionListener.onFailure(OpenSearchStatusException("Policy not found", RestStatus.NOT_FOUND))
                 return
             }
 

@@ -15,15 +15,15 @@
 
 package com.amazon.opendistroforelasticsearch.indexmanagement.rollup.model.dimension
 
-import org.elasticsearch.common.io.stream.StreamInput
-import org.elasticsearch.common.io.stream.StreamOutput
-import org.elasticsearch.common.xcontent.ToXContent
-import org.elasticsearch.common.xcontent.XContentBuilder
-import org.elasticsearch.common.xcontent.XContentParser
-import org.elasticsearch.common.xcontent.XContentParser.Token
-import org.elasticsearch.common.xcontent.XContentParserUtils.ensureExpectedToken
-import org.elasticsearch.search.aggregations.AggregatorFactories
-import org.elasticsearch.search.aggregations.bucket.terms.TermsAggregationBuilder
+import org.opensearch.common.io.stream.StreamInput
+import org.opensearch.common.io.stream.StreamOutput
+import org.opensearch.common.xcontent.ToXContent
+import org.opensearch.common.xcontent.XContentBuilder
+import org.opensearch.common.xcontent.XContentParser
+import org.opensearch.common.xcontent.XContentParser.Token
+import org.opensearch.common.xcontent.XContentParserUtils.ensureExpectedToken
+import org.opensearch.search.aggregations.AggregatorFactories
+import org.opensearch.search.aggregations.bucket.terms.TermsAggregationBuilder
 import java.io.IOException
 
 data class Terms(

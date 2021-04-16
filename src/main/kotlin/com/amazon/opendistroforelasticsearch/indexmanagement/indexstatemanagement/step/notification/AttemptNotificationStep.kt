@@ -15,7 +15,7 @@
 
 package com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.step.notification
 
-import com.amazon.opendistroforelasticsearch.indexmanagement.elasticapi.convertToMap
+import com.amazon.opendistroforelasticsearch.indexmanagement.opensearchapi.convertToMap
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.model.action.NotificationActionConfig
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.StepMetaData
@@ -24,12 +24,12 @@ import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagemen
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.apache.logging.log4j.LogManager
-import org.elasticsearch.client.Client
-import org.elasticsearch.cluster.service.ClusterService
-import org.elasticsearch.common.settings.Settings
-import org.elasticsearch.script.Script
-import org.elasticsearch.script.ScriptService
-import org.elasticsearch.script.TemplateScript
+import org.opensearch.client.Client
+import org.opensearch.cluster.service.ClusterService
+import org.opensearch.common.settings.Settings
+import org.opensearch.script.Script
+import org.opensearch.script.ScriptService
+import org.opensearch.script.TemplateScript
 
 class AttemptNotificationStep(
     val clusterService: ClusterService,

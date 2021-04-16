@@ -15,11 +15,11 @@
 
 package com.amazon.opendistroforelasticsearch.indexmanagement.rollup.actionfilter
 
-import org.elasticsearch.action.fieldcaps.FieldCapabilitiesResponse
-import org.elasticsearch.common.io.stream.BytesStreamOutput
-import org.elasticsearch.common.io.stream.StreamInput
-import org.elasticsearch.common.io.stream.StreamOutput
-import org.elasticsearch.common.io.stream.Writeable
+import org.opensearch.action.fieldcaps.FieldCapabilitiesResponse
+import org.opensearch.common.io.stream.BytesStreamOutput
+import org.opensearch.common.io.stream.StreamInput
+import org.opensearch.common.io.stream.StreamOutput
+import org.opensearch.common.io.stream.Writeable
 
 /**
  * To support rollup indices being returned in correct format in FieldCaps API we have to rewrite the FieldCapabilitiesResponse

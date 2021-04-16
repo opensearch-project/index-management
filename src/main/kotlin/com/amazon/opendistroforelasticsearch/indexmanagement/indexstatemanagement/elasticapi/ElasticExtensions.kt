@@ -18,9 +18,9 @@
 package com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.elasticapi
 
 import com.amazon.opendistroforelasticsearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
-import com.amazon.opendistroforelasticsearch.indexmanagement.elasticapi.contentParser
-import com.amazon.opendistroforelasticsearch.indexmanagement.elasticapi.parseWithType
-import com.amazon.opendistroforelasticsearch.indexmanagement.elasticapi.suspendUntil
+import com.amazon.opendistroforelasticsearch.indexmanagement.opensearchapi.contentParser
+import com.amazon.opendistroforelasticsearch.indexmanagement.opensearchapi.parseWithType
+import com.amazon.opendistroforelasticsearch.indexmanagement.opensearchapi.suspendUntil
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.model.ISMTemplate
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.model.Policy
@@ -29,26 +29,26 @@ import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagemen
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.apache.logging.log4j.LogManager
-import org.elasticsearch.action.ActionRequestValidationException
-import org.elasticsearch.action.NoShardAvailableActionException
-import org.elasticsearch.action.get.GetRequest
-import org.elasticsearch.action.get.GetResponse
-import org.elasticsearch.action.get.MultiGetRequest
-import org.elasticsearch.action.get.MultiGetResponse
-import org.elasticsearch.cluster.ClusterState
-import org.elasticsearch.action.search.SearchResponse
-import org.elasticsearch.client.Client
-import org.elasticsearch.cluster.metadata.IndexMetadata
-import org.elasticsearch.common.xcontent.LoggingDeprecationHandler
-import org.elasticsearch.common.xcontent.NamedXContentRegistry
-import org.elasticsearch.common.xcontent.ToXContent
-import org.elasticsearch.common.xcontent.ToXContentFragment
-import org.elasticsearch.common.xcontent.XContentBuilder
-import org.elasticsearch.common.xcontent.XContentFactory
-import org.elasticsearch.common.xcontent.XContentHelper
-import org.elasticsearch.common.xcontent.XContentType
-import org.elasticsearch.index.Index
-import org.elasticsearch.index.IndexNotFoundException
+import org.opensearch.action.ActionRequestValidationException
+import org.opensearch.action.NoShardAvailableActionException
+import org.opensearch.action.get.GetRequest
+import org.opensearch.action.get.GetResponse
+import org.opensearch.action.get.MultiGetRequest
+import org.opensearch.action.get.MultiGetResponse
+import org.opensearch.cluster.ClusterState
+import org.opensearch.action.search.SearchResponse
+import org.opensearch.client.Client
+import org.opensearch.cluster.metadata.IndexMetadata
+import org.opensearch.common.xcontent.LoggingDeprecationHandler
+import org.opensearch.common.xcontent.NamedXContentRegistry
+import org.opensearch.common.xcontent.ToXContent
+import org.opensearch.common.xcontent.ToXContentFragment
+import org.opensearch.common.xcontent.XContentBuilder
+import org.opensearch.common.xcontent.XContentFactory
+import org.opensearch.common.xcontent.XContentHelper
+import org.opensearch.common.xcontent.XContentType
+import org.opensearch.index.Index
+import org.opensearch.index.IndexNotFoundException
 
 private val log = LogManager.getLogger("Index Management Helper")
 

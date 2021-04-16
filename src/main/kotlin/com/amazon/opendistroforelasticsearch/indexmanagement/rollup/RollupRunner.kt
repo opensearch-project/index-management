@@ -15,8 +15,8 @@
 
 package com.amazon.opendistroforelasticsearch.indexmanagement.rollup
 
-import com.amazon.opendistroforelasticsearch.indexmanagement.elasticapi.retry
-import com.amazon.opendistroforelasticsearch.indexmanagement.elasticapi.suspendUntil
+import com.amazon.opendistroforelasticsearch.indexmanagement.opensearchapi.retry
+import com.amazon.opendistroforelasticsearch.indexmanagement.opensearchapi.suspendUntil
 import com.amazon.opendistroforelasticsearch.indexmanagement.rollup.action.get.GetRollupAction
 import com.amazon.opendistroforelasticsearch.indexmanagement.rollup.action.get.GetRollupRequest
 import com.amazon.opendistroforelasticsearch.indexmanagement.rollup.action.get.GetRollupResponse
@@ -40,17 +40,17 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import org.apache.logging.log4j.LogManager
-import org.elasticsearch.action.ActionListener
-import org.elasticsearch.action.bulk.BackoffPolicy
-import org.elasticsearch.action.support.WriteRequest
-import org.elasticsearch.client.Client
-import org.elasticsearch.cluster.service.ClusterService
-import org.elasticsearch.common.settings.Settings
-import org.elasticsearch.common.unit.TimeValue
-import org.elasticsearch.common.xcontent.NamedXContentRegistry
-import org.elasticsearch.script.ScriptService
-import org.elasticsearch.search.aggregations.bucket.composite.InternalComposite
-import org.elasticsearch.threadpool.ThreadPool
+import org.opensearch.action.ActionListener
+import org.opensearch.action.bulk.BackoffPolicy
+import org.opensearch.action.support.WriteRequest
+import org.opensearch.client.Client
+import org.opensearch.cluster.service.ClusterService
+import org.opensearch.common.settings.Settings
+import org.opensearch.common.unit.TimeValue
+import org.opensearch.common.xcontent.NamedXContentRegistry
+import org.opensearch.script.ScriptService
+import org.opensearch.search.aggregations.bucket.composite.InternalComposite
+import org.opensearch.threadpool.ThreadPool
 
 @Suppress("TooManyFunctions")
 object RollupRunner : ScheduledJobRunner,

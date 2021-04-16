@@ -15,19 +15,19 @@
 
 package com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.step.close
 
-import com.amazon.opendistroforelasticsearch.indexmanagement.elasticapi.suspendUntil
+import com.amazon.opendistroforelasticsearch.indexmanagement.opensearchapi.suspendUntil
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.model.action.CloseActionConfig
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.StepMetaData
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.step.Step
 import org.apache.logging.log4j.LogManager
-import org.elasticsearch.ExceptionsHelper
-import org.elasticsearch.action.admin.indices.close.CloseIndexRequest
-import org.elasticsearch.action.admin.indices.close.CloseIndexResponse
-import org.elasticsearch.client.Client
-import org.elasticsearch.cluster.service.ClusterService
-import org.elasticsearch.snapshots.SnapshotInProgressException
-import org.elasticsearch.transport.RemoteTransportException
+import org.opensearch.ExceptionsHelper
+import org.opensearch.action.admin.indices.close.CloseIndexRequest
+import org.opensearch.action.admin.indices.close.CloseIndexResponse
+import org.opensearch.client.Client
+import org.opensearch.cluster.service.ClusterService
+import org.opensearch.snapshots.SnapshotInProgressException
+import org.opensearch.transport.RemoteTransportException
 
 class AttemptCloseStep(
     val clusterService: ClusterService,

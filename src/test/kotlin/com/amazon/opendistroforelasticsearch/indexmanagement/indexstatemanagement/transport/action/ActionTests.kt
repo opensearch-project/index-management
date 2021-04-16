@@ -24,9 +24,9 @@ import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagemen
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.transport.action.getpolicy.GetPolicyAction
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.transport.action.removepolicy.RemovePolicyAction
 import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.transport.action.retryfailedmanagedindex.RetryFailedManagedIndexAction
-import org.elasticsearch.test.ESTestCase
+import org.opensearch.test.OpenSearchTestCase
 
-class ActionTests : ESTestCase() {
+class ActionTests : OpenSearchTestCase() {
     fun `test add policy action name`() {
         assertNotNull(AddPolicyAction.INSTANCE.name())
         assertEquals(AddPolicyAction.INSTANCE.name(), AddPolicyAction.NAME)
