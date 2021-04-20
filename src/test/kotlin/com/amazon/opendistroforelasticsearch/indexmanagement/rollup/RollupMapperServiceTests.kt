@@ -67,7 +67,7 @@ class RollupMapperServiceTests : OpenSearchTestCase() {
         )
 
         val client = getClient(getAdminClient(getIndicesAdminClient(
-            getMappingsResponse = getKibanaSampleDataMappingResponse(sourceIndex),
+            getMappingsResponse = getMappingResponse(sourceIndex),
             getMappingsException = null
         )))
         val clusterService = getClusterService()
@@ -77,6 +77,66 @@ class RollupMapperServiceTests : OpenSearchTestCase() {
         runBlocking {
             val sourceIndexValidationResult = mapperService.isSourceIndexValid(rollup)
             require(sourceIndexValidationResult is RollupJobValidationResult.Valid) { "Source index validation returned unexpected results" }
+        }
+    }
+
+    fun `test source index validation with custom type`() {
+        val sourceIndex = "test-index"
+
+        val dimensions = listOf(randomDateHistogram().copy(
+            sourceField = "order_date"
+        ))
+        val metrics = listOf(randomRollupMetrics().copy(
+            sourceField = "total_quantity"
+        ))
+        val rollup = randomRollup().copy(
+            enabled = true,
+            jobEnabledTime = Instant.now(),
+            dimensions = dimensions,
+            metrics = metrics
+        )
+
+        val client = getClient(getAdminClient(getIndicesAdminClient(
+            getMappingsResponse = getMappingResponse(sourceIndex, "custom_type"),
+            getMappingsException = null
+        )))
+        val clusterService = getClusterService()
+        val indexNameExpressionResolver = getIndexNameExpressionResolver(listOf(sourceIndex))
+        val mapperService = RollupMapperService(client, clusterService, indexNameExpressionResolver)
+
+        runBlocking {
+            val sourceIndexValidationResult = mapperService.isSourceIndexValid(rollup)
+            require(sourceIndexValidationResult is RollupJobValidationResult.Valid) { "Source index validation returned unexpected results" }
+        }
+    }
+
+    fun `test source index validation with empty mappings`() {
+        val sourceIndex = "test-index"
+
+        val dimensions = listOf(randomDateHistogram().copy(
+            sourceField = "order_date"
+        ))
+        val metrics = listOf(randomRollupMetrics().copy(
+            sourceField = "total_quantity"
+        ))
+        val rollup = randomRollup().copy(
+            enabled = true,
+            jobEnabledTime = Instant.now(),
+            dimensions = dimensions,
+            metrics = metrics
+        )
+
+        val client = getClient(getAdminClient(getIndicesAdminClient(
+            getMappingsResponse = getMappingResponse(sourceIndex, "custom_type", true),
+            getMappingsException = null
+        )))
+        val clusterService = getClusterService()
+        val indexNameExpressionResolver = getIndexNameExpressionResolver(listOf(sourceIndex))
+        val mapperService = RollupMapperService(client, clusterService, indexNameExpressionResolver)
+
+        runBlocking {
+            val sourceIndexValidationResult = mapperService.isSourceIndexValid(rollup)
+            require(sourceIndexValidationResult is RollupJobValidationResult.Invalid) { "Source index validation returned unexpected results" }
         }
     }
 
@@ -97,7 +157,7 @@ class RollupMapperServiceTests : OpenSearchTestCase() {
         )
 
         val client = getClient(getAdminClient(getIndicesAdminClient(
-            getMappingsResponse = getKibanaSampleDataMappingResponse(sourceIndex),
+            getMappingsResponse = getMappingResponse(sourceIndex),
             getMappingsException = null
         )))
         val clusterService = getClusterService()
@@ -127,7 +187,7 @@ class RollupMapperServiceTests : OpenSearchTestCase() {
         )
 
         val client = getClient(getAdminClient(getIndicesAdminClient(
-            getMappingsResponse = getKibanaSampleDataMappingResponse(sourceIndex),
+            getMappingsResponse = getMappingResponse(sourceIndex),
             getMappingsException = null
         )))
         val clusterService = getClusterService()
@@ -154,7 +214,7 @@ class RollupMapperServiceTests : OpenSearchTestCase() {
         )
 
         val client = getClient(getAdminClient(getIndicesAdminClient(
-            getMappingsResponse = getKibanaSampleDataMappingResponse(sourceIndex),
+            getMappingsResponse = getMappingResponse(sourceIndex),
             getMappingsException = null
         )))
         val clusterService = getClusterService()
@@ -182,7 +242,7 @@ class RollupMapperServiceTests : OpenSearchTestCase() {
         getMappingsException: Exception?
     ): IndicesAdminClient {
         assertTrue("Must provide either a getMappingsResponse or getMappingsException",
-            (getMappingsResponse != null).xor(getMappingsException != null))
+                   (getMappingsResponse != null).xor(getMappingsException != null))
 
         return mock {
             doAnswer { invocationOnMock ->
@@ -199,16 +259,19 @@ class RollupMapperServiceTests : OpenSearchTestCase() {
     private fun getIndexNameExpressionResolver(concreteIndices: List<String>): IndexNameExpressionResolver =
         mock { on { concreteIndexNames(any(), any(), anyVararg<String>()) } doReturn concreteIndices.toTypedArray() }
 
-    private fun getKibanaSampleDataMappingResponse(indexName: String): GetMappingsResponse {
-        val mappingSourceMap = createParser(
-            XContentType.JSON.xContent(),
-            javaClass.classLoader.getResource("mappings/kibana-sample-data.json").readText()
-        ).map()
-        val mappingMetadata = MappingMetadata(_DOC, mappingSourceMap)
-
-        val docMappings = ImmutableOpenMap.Builder<String, MappingMetadata>()
-            .fPut(_DOC, mappingMetadata)
-            .build()
+    private fun getMappingResponse(indexName: String, mappingType: String = _DOC, emptyMapping: Boolean = false): GetMappingsResponse {
+        val docMappings = if (emptyMapping) {
+            ImmutableOpenMap.Builder<String, MappingMetadata>().build()
+        } else {
+            val mappingSourceMap = createParser(
+                XContentType.JSON.xContent(),
+                javaClass.classLoader.getResource("mappings/kibana-sample-data.json").readText()
+            ).map()
+            val mappingMetadata = MappingMetadata(mappingType, mappingSourceMap)
+            ImmutableOpenMap.Builder<String, MappingMetadata>()
+                .fPut(mappingType, mappingMetadata)
+                .build()
+        }
 
         val mappings = ImmutableOpenMap.Builder<String, ImmutableOpenMap<String, MappingMetadata>>()
             .fPut(indexName, docMappings)
