@@ -162,9 +162,8 @@ class RollupMapperService(
                 return RollupJobValidationResult.Invalid("Source index [$index] mappings are empty, cannot validate the job.")
             }
 
-            // Starting from 6.0.0 an index can only have one mapping, but mapping type is still part of the APIs in 7.x
-            // Since a custom mapping type can be set for index using the first type mappings instead of _DOC mappings to validate
-            // https://www.elastic.co/guide/en/elasticsearch/reference/7.x/removal-of-types.html
+            // Starting from 6.0.0 an index can only have one mapping type, but mapping type is still part of the APIs in 7.x, allowing users to
+            // set a custom mapping type. As a result using first mapping type found instead of _DOC mapping type to validate
             val indexMappingSource = indexTypeMappings.first().value.sourceAsMap
 
             val issues = mutableSetOf<String>()
