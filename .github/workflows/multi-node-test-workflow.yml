@@ -17,14 +17,51 @@ jobs:
     # This job runs on Linux
     runs-on: ubuntu-latest
     steps:
-      # This step uses the checkout Github action: https://github.com/actions/checkout
-      - name: Checkout Branch
-        uses: actions/checkout@v2
       # This step uses the setup-java Github action: https://github.com/actions/setup-java
       - name: Set Up JDK 14
         uses: actions/setup-java@v1
         with:
           java-version: 14
+      # dependencies: OpenSearch
+      - name: Checkout OpenSearch
+        uses: actions/checkout@v2
+        with:
+          repository: 'opensearch-project/OpenSearch'
+          path: OpenSearch
+      - name: Build OpenSearch
+        working-directory: ./OpenSearch
+        run: ./gradlew publishToMavenLocal
+      # dependencies: common-utils
+      - name: Checkout common-utils
+        uses: actions/checkout@v2
+        with:
+          repository: 'opensearch-project/common-utils'
+          path: common-utils
+      - name: Build common-utils
+        working-directory: ./common-utils
+        run: ./gradlew publishToMavenLocal -Dopensearch.version=1.0.0-SNAPSHOT
+      # dependencies: job-scheduler
+      - name: Checkout job-scheduler
+        uses: actions/checkout@v2
+        with:
+          repository: 'opensearch-project/job-scheduler'
+          path: job-scheduler
+      - name: Build job-scheduler
+        working-directory: ./job-scheduler
+        run: ./gradlew publishToMavenLocal -Dopensearch.version=1.0.0-SNAPSHOT -Dbuild.snapshot=false
+      # dependencies: notification
+      - name: Checkout alerting
+        uses: actions/checkout@v2
+        with:
+          repository: 'opensearch-project/alerting'
+          ref: 'beta'
+          path: alerting
+      - name: Build alerting
+        working-directory: ./alerting
+        run: ./gradlew :alerting-notification:publishToMavenLocal
+      # index-management
+      - name: Checkout Branch
+        uses: actions/checkout@v2
       - name: Run integration tests with multi node config
         run: ./gradlew integTest -PnumNodes=3
       - name: Upload failed logs

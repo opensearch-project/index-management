@@ -31,25 +31,18 @@ import java.util.function.Predicate
 
 buildscript {
     ext {
-        es_version = System.getProperty("es.version", "7.10.3")
+        opensearch_version = System.getProperty("opensearch_version", "1.0.0")
         kotlin_version = System.getProperty("kotlin.version", "1.3.72")
     }
 
     repositories {
-        mavenCentral()
-        maven {
-            url = 's3://search-vemsarat/'
-            credentials(AwsCredentials) {
-                accessKey = System.env.AWS_ACCESS_KEY_ID ?: findProperty('aws_access_key_id')
-                secretKey = System.env.AWS_SECRET_ACCESS_KEY ?: findProperty('aws_secret_access_key')
-            }
-        }
-        // For local publish dependency
         mavenLocal()
+        mavenCentral()
+        maven { url "https://plugins.gradle.org/m2/" }
     }
 
     dependencies {
-        classpath "org.opensearch.gradle:build-tools:${es_version}-SNAPSHOT"
+        classpath "org.opensearch.gradle:build-tools:${opensearch_version}-SNAPSHOT"
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:${kotlin_version}"
         classpath "org.jetbrains.kotlin:kotlin-allopen:${kotlin_version}"
         classpath "io.gitlab.arturbosch.detekt:detekt-gradle-plugin:1.0.0-RC15"
@@ -140,17 +133,17 @@ group = "com.amazon.opendistroforelasticsearch"
 version = "${opendistroVersion}.0"
 
 dependencies {
-    compileOnly "org.opensearch:opensearch:${es_version}-SNAPSHOT"
-    compileOnly "com.amazon.opendistroforelasticsearch:opendistro-job-scheduler-spi:1.15.0.0-SNAPSHOT"
+    compileOnly "org.opensearch:opensearch:${opensearch_version}-SNAPSHOT"
+    compileOnly "com.amazon.opendistroforelasticsearch:opendistro-job-scheduler-spi:1.0.0.0-SNAPSHOT"
     compile "org.jetbrains.kotlin:kotlin-stdlib:${kotlin_version}"
     compile "org.jetbrains.kotlin:kotlin-stdlib-common:${kotlin_version}"
     compile 'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.3.7'
     compile "org.jetbrains:annotations:13.0"
-    compile "com.amazon.opendistroforelasticsearch:notification:1.15.0.0"
-    compile "com.amazon.opendistroforelasticsearch:common-utils:1.15.0.0"
+    compile "com.amazon.opendistroforelasticsearch:notification:1.0.0.1"
+    compile "com.amazon.opendistroforelasticsearch:common-utils:1.0.0.0"
     compile "com.github.seancfoley:ipaddress:5.3.3"
 
-    testCompile "org.opensearch.test:framework:${es_version}-SNAPSHOT"
+    testCompile "org.opensearch.test:framework:${opensearch_version}-SNAPSHOT"
     testCompile "org.jetbrains.kotlin:kotlin-test:${kotlin_version}"
     testImplementation "com.nhaarman.mockitokotlin2:mockito-kotlin:2.2.0"
     testCompile "org.mockito:mockito-core:2.23.0"
@@ -159,14 +152,6 @@ dependencies {
 }
 
 repositories {
-    maven {
-        url = 's3://search-vemsarat/'
-        credentials(AwsCredentials) {
-            accessKey = System.env.AWS_ACCESS_KEY_ID ?: findProperty('aws_access_key_id')
-            secretKey = System.env.AWS_SECRET_ACCESS_KEY ?: findProperty('aws_secret_access_key')
-        }
-    }
-    // TODO: remove mavenLocal once notification is published to maven
     mavenLocal()
 }
 
@@ -189,8 +174,8 @@ thirdPartyAudit.enabled = false
 loggerUsageCheck.enabled = false
 validateNebulaPom.enabled = false
 
-def es_tmp_dir = rootProject.file('build/private/es_tmp').absoluteFile
-es_tmp_dir.mkdirs()
+def opensearch_tmp_dir = rootProject.file('build/private/opensearch_tmp').absoluteFile
+opensearch_tmp_dir.mkdirs()
 
 def securityEnabled = System.getProperty("security", "false") == "true"
 afterEvaluate {
@@ -267,7 +252,7 @@ testClusters.integTest {
 }
 integTest {
     systemProperty 'tests.security.manager', 'false'
-    systemProperty 'java.io.tmpdir', es_tmp_dir.absolutePath
+    systemProperty 'java.io.tmpdir', opensearch_tmp_dir.absolutePath
     systemProperty 'buildDir', buildDir.path
     systemProperty "https", System.getProperty("https")
     systemProperty "security", System.getProperty("security")
