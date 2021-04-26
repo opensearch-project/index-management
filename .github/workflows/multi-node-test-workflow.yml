@@ -58,7 +58,7 @@ jobs:
           path: alerting
       - name: Build alerting
         working-directory: ./alerting
-        run: ./gradlew :alerting-notification:publishToMavenLocal -Dopensearch.version=1.0.0-alpha2
+        run: ./gradlew :alerting-notification:publishToMavenLocal -Dopensearch_version=1.0.0-alpha2
       # index-management
       - name: Checkout Branch
         uses: actions/checkout@v2
