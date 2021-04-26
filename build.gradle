@@ -97,7 +97,7 @@ opensearchplugin {
     name 'opensearch-index-management'
     description 'OpenSearch Index Management Plugin'
     classname 'com.amazon.opendistroforelasticsearch.indexmanagement.IndexManagementPlugin'
-    extendedPlugins = ['opendistro-job-scheduler']
+    extendedPlugins = ['opensearch-job-scheduler']
 }
 
 tasks.named("integTest").configure {
