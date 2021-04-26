@@ -2,12 +2,10 @@
 
 Compatible with OpenSearch 1.0.0.0-alpha1
 
-
 ### Enhancements
 
 * migrate plugin to be compatible with OpenSearch [#1](https://github.com/opensearch-project/index-management/pull/1)
 * rename plugin [#5](https://github.com/opensearch-project/index-management/pull/5)
-
 
 ### Infrastructure
 
