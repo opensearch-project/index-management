@@ -67,7 +67,7 @@ class IndexStateManagementRestApiIT : IndexStateManagementRestTestCase() {
                 if (plugin["name"] == "opensearch-index-management") {
                     hasIndexStateManagementPlugin = true
                 }
-                if (plugin["name"] == "opendistro-job-scheduler") {
+                if (plugin["name"] == "opensearch-job-scheduler") {
                     hasJobSchedulerPlugin = true
                 }
             }
