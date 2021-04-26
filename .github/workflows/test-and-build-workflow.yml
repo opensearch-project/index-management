@@ -52,7 +52,7 @@ jobs:
       - name: Build job-scheduler
         working-directory: ./job-scheduler
         run: ./gradlew publishToMavenLocal -Dopensearch.version=1.0.0-alpha1 -Dbuild.snapshot=false
-      # dependencies: notification
+      # dependencies: alerting-notification
       - name: Checkout alerting
         uses: actions/checkout@v2
         with:
