@@ -6,7 +6,7 @@ import sys
 import fileinput
 import re
 
-link_prefix = "https://github.com/opendistro-for-elasticsearch/index-management/pull/"
+link_prefix = "https://github.com/opensearch-project/index-management/pull/"
 searchExp = re.compile("([\(\[]).*?([\)\]])")
 
 current_date = raw_input("what day is today (e.g. 2020-06-29): ")
@@ -14,11 +14,7 @@ file_path = raw_input("Path to raw note file (e.g., note.md): ")
 plugin_name = "index-management"
 plugin_version = raw_input('Plugin version (x.x.x.x): ')
 
-app_num = int(
-    raw_input('Elasticsearch plugin (enter 1) or Kibana plugin (enter 2)? '))
-app = 'Elasticsearch'
-if app_num is 2:
-    app = 'Kibana'
+app = 'OpenSearch'
 
 app_version = raw_input(app + ' compatibility version (x.x.x): ')
 

@@ -538,7 +538,7 @@ class ManagedIndexCoordinator(
 
             if (requestsToRetry.isNotEmpty()) {
                 val retryCause = failedResponses.first { it.status() == RestStatus.TOO_MANY_REQUESTS }.failure.cause
-                throw ExceptionsHelper.convertToElastic(retryCause)
+                throw ExceptionsHelper.convertToOpenSearchException(retryCause)
             }
         }
     }
