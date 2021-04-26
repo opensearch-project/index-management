@@ -31,7 +31,7 @@ import java.util.function.Predicate
 
 buildscript {
     ext {
-        opensearch_version = System.getProperty("opensearch_version", "1.0.0-alpha1")
+        opensearch_version = System.getProperty("opensearch_version", "1.0.0-alpha2")
         kotlin_version = System.getProperty("kotlin.version", "1.3.72")
     }
 
@@ -130,17 +130,17 @@ ext {
 }
 
 group = "com.amazon.opendistroforelasticsearch"
-version = "${opendistroVersion}.0"
+version = "${opendistroVersion}.0-beta1"
 
 dependencies {
     compileOnly "org.opensearch:opensearch:${opensearch_version}"
-    compileOnly "com.amazon.opendistroforelasticsearch:opensearch-job-scheduler-spi:1.0.0.0-beta1"
+    compileOnly "com.amazon.opendistroforelasticsearch:opensearch-job-scheduler-spi:1.0.0.0-alpha2"
     compile "org.jetbrains.kotlin:kotlin-stdlib:${kotlin_version}"
     compile "org.jetbrains.kotlin:kotlin-stdlib-common:${kotlin_version}"
     compile 'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.3.7'
     compile "org.jetbrains:annotations:13.0"
-    compile "com.amazon.opendistroforelasticsearch:notification:1.0.0.1"
-    compile "com.amazon.opendistroforelasticsearch:common-utils:1.0.0.0"
+    compile "com.amazon.opendistroforelasticsearch:notification:1.0.0.0-beta1"
+    compile "com.amazon.opendistroforelasticsearch:common-utils:1.0.0.0-alpha2"
     compile "com.github.seancfoley:ipaddress:5.3.3"
 
     testCompile "org.opensearch.test:framework:${opensearch_version}"
@@ -220,7 +220,7 @@ File repo = file("$buildDir/testclusters/repo")
 def _numNodes = findProperty('numNodes') as Integer ?: 1
 testClusters.integTest {
     plugin(project.tasks.bundlePlugin.archiveFile)
-    testDistribution = "OSS"
+    testDistribution = "ARCHIVE"
     // Cluster shrink exception thrown if we try to set numberOfNodes to 1, so only apply if > 1
     if (_numNodes > 1) numberOfNodes = _numNodes
     // When running integration tests it doesn't forward the --debug-jvm to the cluster anymore
@@ -335,7 +335,7 @@ println("mixed cluster flag: $mixedClusterFlag")
 mixedClusterTest.dependsOn(bundlePlugin)
 
 testClusters.mixedCluster {
-    testDistribution = "OSS"
+    testDistribution = "ARCHIVE"
     if (_numNodes > 1) numberOfNodes = _numNodes
     getNodes().each { node ->
         node.plugin(provider({
