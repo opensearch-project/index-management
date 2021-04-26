@@ -130,7 +130,7 @@ ext {
 }
 
 group = "com.amazon.opendistroforelasticsearch"
-version = "${opendistroVersion}.0"
+version = "${opendistroVersion}.0-beta1"
 
 dependencies {
     compileOnly "org.opensearch:opensearch:${opensearch_version}"
