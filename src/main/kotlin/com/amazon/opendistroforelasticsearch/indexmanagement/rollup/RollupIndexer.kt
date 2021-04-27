@@ -80,7 +80,7 @@ class RollupIndexer(
             if (requestsToRetry.isNotEmpty()) {
                 retryIngestPolicy.retry(logger, listOf(RestStatus.TOO_MANY_REQUESTS)) {
                     if (it.seconds >= (Rollup.ROLLUP_LOCK_DURATION_SECONDS / 2)) {
-                        throw ExceptionsHelper.convertToElastic(
+                        throw ExceptionsHelper.convertToOpenSearchException(
                             IllegalStateException("Cannot retry ingestion with a delay more than half of the rollup lock TTL")
                         )
                     }
@@ -93,7 +93,7 @@ class RollupIndexer(
 
                     if (requestsToRetry.isNotEmpty()) {
                         val retryCause = failedResponses.first { it.status() == RestStatus.TOO_MANY_REQUESTS }.failure.cause
-                        throw ExceptionsHelper.convertToElastic(retryCause)
+                        throw ExceptionsHelper.convertToOpenSearchException(retryCause)
                     }
                 }
             }

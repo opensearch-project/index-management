@@ -1,4 +1,4 @@
-[![Test and Build Workflow](https://github.com/opendistro-for-elasticsearch/index-management/workflows/Test%20and%20Build%20Workflow/badge.svg)](https://github.com/opendistro-for-elasticsearch/index-management/actions)
+[![Test and Build Workflow](https://github.com/opensearch-project/index-management/workflows/Test%20and%20Build%20Workflow/badge.svg)](https://github.com/opensearch-project/index-management/actions)
 [![codecov](https://codecov.io/gh/opendistro-for-elasticsearch/index-management/branch/main/graph/badge.svg)](https://codecov.io/gh/opendistro-for-elasticsearch/index-management)
 [![Documentation](https://img.shields.io/badge/api-reference-blue.svg)](https://opendistro.github.io/for-elasticsearch-docs/docs/ism/api/)
 [![Chat](https://img.shields.io/badge/chat-on%20forums-blue)](https://discuss.opendistrocommunity.dev/c/index-management/)
