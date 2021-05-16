@@ -72,9 +72,9 @@ class AttemptRolloverStep(
             return this
         }
 
-        val alias = getAliasOrUpdateInfo()
-        // If alias is null we already updated failed info from getAliasOrUpdateInfo and can return early
-        alias ?: return this
+        val (rolloverTarget, isDataStream) = getRolloverTargetOrUpdateInfo()
+        // If the rolloverTarget is null, we would've already updated the failed info from getRolloverTargetOrUpdateInfo and can return early
+        rolloverTarget ?: return this
 
         val statsResponse = getIndexStatsOrUpdateInfo()
         // If statsResponse is null we already updated failed info from getIndexStatsOrUpdateInfo and can return early
@@ -115,7 +115,7 @@ class AttemptRolloverStep(
         if (config.evaluateConditions(indexAgeTimeValue, numDocs, indexSize)) {
             logger.info("$indexName rollover conditions evaluated to true [indexCreationDate=$indexCreationDate," +
                     " numDocs=$numDocs, indexSize=${indexSize.bytes}]")
-            executeRollover(alias, conditions)
+            executeRollover(rolloverTarget, isDataStream, conditions)
         } else {
             stepStatus = StepStatus.CONDITION_NOT_MET
             info = mapOf("message" to getPendingMessage(indexName), "conditions" to conditions)
@@ -125,15 +125,17 @@ class AttemptRolloverStep(
     }
 
     @Suppress("ComplexMethod")
-    private suspend fun executeRollover(alias: String, conditions: Map<String, Map<String, Any?>>) {
+    private suspend fun executeRollover(rolloverTarget: String, isDataStream: Boolean, conditions: Map<String, Map<String, Any?>>) {
         try {
-            val request = RolloverRequest(alias, null)
+            val request = RolloverRequest(rolloverTarget, null)
             val response: RolloverResponse = client.admin().indices().suspendUntil { rolloverIndex(request, it) }
 
             // Do not need to check for isRolledOver as we are not passing any conditions or dryrun=true
             // which are the only two ways it comes back as false
 
-            // If response isAcknowledged it means the index was created and alias was added to new index
+            // If the response is acknowledged, then the new index is created and added to one of the following index abstractions:
+            // 1. IndexAbstraction.Type.DATA_STREAM - the new index is added to the data stream indicated by the 'rolloverTarget'
+            // 2. IndexAbstraction.Type.ALIAS - the new index is added to the alias indicated by the 'rolloverTarget'
             if (response.isAcknowledged) {
                 stepStatus = StepStatus.COMPLETED
                 info = listOfNotNull(
@@ -141,9 +143,12 @@ class AttemptRolloverStep(
                     if (conditions.isEmpty()) null else "conditions" to conditions // don't show empty conditions object if no conditions specified
                 ).toMap()
             } else {
-                // If the alias update response is NOT acknowledged we will get back isAcknowledged=false
-                // This means the new index was created but we failed to swap the alias
-                val message = getFailedAliasUpdateMessage(indexName, response.newIndex)
+                val message = when {
+                    isDataStream -> getFailedDataStreamUpdateMessage(rolloverTarget)
+
+                    // If the alias update response was NOT acknowledged, then the new index was created but we failed to swap the alias
+                    else -> getFailedAliasUpdateMessage(indexName, response.newIndex)
+                }
                 logger.warn(message)
                 stepStatus = StepStatus.FAILED
                 info = listOfNotNull(
@@ -158,17 +163,24 @@ class AttemptRolloverStep(
         }
     }
 
-    private fun getAliasOrUpdateInfo(): String? {
-        val alias = clusterService.state().metadata().index(indexName).getRolloverAlias()
+    private fun getRolloverTargetOrUpdateInfo(): Pair<String?, Boolean> {
+        val metadata = clusterService.state().metadata()
+        val indexAbstraction = metadata.indicesLookup[indexName]!!
+        val isDataStreamIndex = indexAbstraction.parentDataStream != null
 
-        if (alias == null) {
+        val rolloverTarget = when {
+            isDataStreamIndex -> indexAbstraction.parentDataStream!!.name!!
+            else -> metadata.index(indexName).getRolloverAlias()
+        }
+
+        if (rolloverTarget == null) {
             val message = getFailedNoValidAliasMessage(indexName)
             logger.warn(message)
             stepStatus = StepStatus.FAILED
             info = mapOf("message" to message)
         }
 
-        return alias
+        return rolloverTarget to isDataStreamIndex
     }
 
     private suspend fun getIndexStatsOrUpdateInfo(): IndicesStatsResponse? {
@@ -219,6 +231,7 @@ class AttemptRolloverStep(
         fun getFailedMessage(index: String) = "Failed to rollover index [index=$index]"
         fun getFailedAliasUpdateMessage(index: String, newIndex: String) =
             "New index created, but failed to update alias [index=$index, newIndex=$newIndex]"
+        fun getFailedDataStreamUpdateMessage(dataStream: String) = "Failed to rollover data stream [data_stream=$dataStream]"
         fun getFailedNoValidAliasMessage(index: String) = "Missing rollover_alias index setting [index=$index]"
         fun getFailedDuplicateRolloverMessage(index: String) = "Index has already been rolled over [index=$index]"
         fun getFailedEvaluateMessage(index: String) = "Failed to evaluate conditions for rollover [index=$index]"

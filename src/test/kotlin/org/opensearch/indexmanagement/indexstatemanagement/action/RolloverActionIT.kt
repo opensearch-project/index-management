@@ -28,7 +28,9 @@ package org.opensearch.indexmanagement.indexstatemanagement.action
 
 import org.apache.http.entity.ContentType
 import org.apache.http.entity.StringEntity
+import org.opensearch.cluster.metadata.DataStream
 import org.opensearch.indexmanagement.indexstatemanagement.IndexStateManagementRestTestCase
+import org.opensearch.indexmanagement.indexstatemanagement.model.ISMTemplate
 import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
 import org.opensearch.indexmanagement.indexstatemanagement.model.State
 import org.opensearch.indexmanagement.indexstatemanagement.model.action.RolloverActionConfig
@@ -263,5 +265,144 @@ class RolloverActionIT : IndexStateManagementRestTestCase() {
             assertEquals("Did not have min doc count current", 5, minDocCount["current"])
         }
         Assert.assertTrue("New rollover index does not exist.", indexExists("$indexNameBase-000002"))
+    }
+
+    fun `test data stream rollover no condition`() {
+        val dataStreamName = "${testIndexName}_data_stream"
+        val policyID = "${testIndexName}_rollover_policy"
+
+        // Create the rollover policy
+        val rolloverActionConfig = RolloverActionConfig(null, null, null, 0)
+        val states = listOf(State(name = "default", actions = listOf(rolloverActionConfig), transitions = listOf()))
+        val policy = Policy(
+            id = policyID,
+            description = "rollover policy description",
+            schemaVersion = 1L,
+            lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
+            errorNotification = randomErrorNotification(),
+            defaultState = states[0].name,
+            states = states,
+            ismTemplate = ISMTemplate(listOf(dataStreamName), 100, Instant.now().truncatedTo(ChronoUnit.MILLIS))
+        )
+        createPolicy(policy, policyID)
+
+        // Create the data stream
+        val firstIndexName = DataStream.getDefaultBackingIndexName(dataStreamName, 1L)
+        client().makeRequest(
+            "PUT",
+            "/_index_template/rollover-data-stream-template",
+            StringEntity("{ \"index_patterns\": [ \"$dataStreamName\" ], \"data_stream\": { } }", ContentType.APPLICATION_JSON)
+        )
+        client().makeRequest("PUT", "/_data_stream/$dataStreamName")
+
+        val managedIndexConfig = getExistingManagedIndexConfig(firstIndexName)
+
+        // Change the start time so that the job will trigger in 2 seconds. This will trigger the first initialization of the policy.
+        updateManagedIndexConfigStartTime(managedIndexConfig)
+        waitFor { assertEquals(policyID, getExplainManagedIndexMetaData(firstIndexName).policyID) }
+
+        // Speed up to the second execution of the policy where it will trigger the first execution of the action.
+        updateManagedIndexConfigStartTime(managedIndexConfig)
+        waitFor {
+            val info = getExplainManagedIndexMetaData(firstIndexName).info as Map<String, Any?>
+            assertEquals("Index did not rollover.", AttemptRolloverStep.getSuccessMessage(firstIndexName), info["message"])
+            assertNull("Should not have conditions if none specified", info["conditions"])
+        }
+
+        val secondIndexName = DataStream.getDefaultBackingIndexName(dataStreamName, 2L)
+        Assert.assertTrue("New rollover index does not exist.", indexExists(secondIndexName))
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    fun `test data stream rollover multi condition doc size`() {
+        val dataStreamName = "${testIndexName}_data_stream_multi"
+        val policyID = "${testIndexName}_rollover_policy_multi"
+
+        // Create the rollover policy
+        val rolloverActionConfig = RolloverActionConfig(null, 3, TimeValue.timeValueDays(2), 0)
+        val states = listOf(State(name = "default", actions = listOf(rolloverActionConfig), transitions = listOf()))
+        val policy = Policy(
+            id = policyID,
+            description = "rollover policy description",
+            schemaVersion = 1L,
+            lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
+            errorNotification = randomErrorNotification(),
+            defaultState = states[0].name,
+            states = states,
+            ismTemplate = ISMTemplate(listOf(dataStreamName), 100, Instant.now().truncatedTo(ChronoUnit.MILLIS))
+        )
+        createPolicy(policy, policyID)
+
+        // Create the data stream
+        val firstIndexName = DataStream.getDefaultBackingIndexName(dataStreamName, 1L)
+        client().makeRequest(
+            "PUT",
+            "/_index_template/rollover-data-stream-template",
+            StringEntity("{ \"index_patterns\": [ \"$dataStreamName\" ], \"data_stream\": { } }", ContentType.APPLICATION_JSON)
+        )
+        client().makeRequest("PUT", "/_data_stream/$dataStreamName")
+
+        val managedIndexConfig = getExistingManagedIndexConfig(firstIndexName)
+
+        // Change the start time so that the job will trigger in 2 seconds. This will trigger the first initialization of the policy.
+        updateManagedIndexConfigStartTime(managedIndexConfig)
+        waitFor { assertEquals(policyID, getExplainManagedIndexMetaData(firstIndexName).policyID) }
+
+        // Speed up to the second execution of the policy where it will trigger the first execution of the action.
+        // Rollover shouldn't have happened yet as the conditions aren't met.
+        updateManagedIndexConfigStartTime(managedIndexConfig)
+        waitFor {
+            val info = getExplainManagedIndexMetaData(firstIndexName).info as Map<String, Any?>
+            assertEquals(
+                "Index rollover before it met the condition.",
+                AttemptRolloverStep.getPendingMessage(firstIndexName),
+                info["message"]
+            )
+
+            val conditions = info["conditions"] as Map<String, Any?>
+            assertEquals(
+                "Did not have exclusively min age and min doc count conditions",
+                setOf(RolloverActionConfig.MIN_INDEX_AGE_FIELD, RolloverActionConfig.MIN_DOC_COUNT_FIELD),
+                conditions.keys
+            )
+
+            val minAge = conditions[RolloverActionConfig.MIN_INDEX_AGE_FIELD] as Map<String, Any?>
+            val minDocCount = conditions[RolloverActionConfig.MIN_DOC_COUNT_FIELD] as Map<String, Any?>
+            assertEquals("Incorrect min age condition", "2d", minAge["condition"])
+            assertEquals("Incorrect min docs condition", 3, minDocCount["condition"])
+            assertThat("Missing min age current", minAge["current"], isA(String::class.java))
+            assertEquals("Incorrect min docs current", 0, minDocCount["current"])
+        }
+
+        insertSampleData(index = dataStreamName, docCount = 5, jsonString = "{ \"@timestamp\": \"2020-12-06T11:04:05.000Z\" }")
+
+        // Speed up to the third execution of the policy where it will trigger the second execution of the action.
+        // Rollover should have happened as the conditions were met.
+        updateManagedIndexConfigStartTime(managedIndexConfig)
+        waitFor {
+            val info = getExplainManagedIndexMetaData(firstIndexName).info as Map<String, Any?>
+            assertEquals(
+                "Index did not rollover",
+                AttemptRolloverStep.getSuccessMessage(firstIndexName),
+                info["message"]
+            )
+
+            val conditions = info["conditions"] as Map<String, Any?>
+            assertEquals(
+                "Did not have exclusively min age and min doc count conditions",
+                setOf(RolloverActionConfig.MIN_INDEX_AGE_FIELD, RolloverActionConfig.MIN_DOC_COUNT_FIELD),
+                conditions.keys
+            )
+
+            val minAge = conditions[RolloverActionConfig.MIN_INDEX_AGE_FIELD] as Map<String, Any?>
+            val minDocCount = conditions[RolloverActionConfig.MIN_DOC_COUNT_FIELD] as Map<String, Any?>
+            assertEquals("Incorrect min age condition", "2d", minAge["condition"])
+            assertEquals("Incorrect min docs condition", 3, minDocCount["condition"])
+            assertThat("Missing min age current", minAge["current"], isA(String::class.java))
+            assertEquals("Incorrect min docs current", 5, minDocCount["current"])
+        }
+
+        val secondIndexName = DataStream.getDefaultBackingIndexName(dataStreamName, 2L)
+        Assert.assertTrue("New rollover index does not exist.", indexExists(secondIndexName))
     }
 }

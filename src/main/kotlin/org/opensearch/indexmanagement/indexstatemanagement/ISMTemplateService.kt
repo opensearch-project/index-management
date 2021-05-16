@@ -31,6 +31,7 @@ import org.opensearch.indexmanagement.util.IndexManagementException
 import org.apache.logging.log4j.LogManager
 import org.apache.lucene.util.automaton.Operations
 import org.opensearch.OpenSearchException
+import org.opensearch.cluster.ClusterState
 import org.opensearch.cluster.metadata.IndexMetadata
 import org.opensearch.common.Strings
 import org.opensearch.common.ValidationException
@@ -49,18 +50,26 @@ private val log = LogManager.getLogger("ISMTemplateService")
  * @return policyID
  */
 @Suppress("ReturnCount")
-fun Map<String, ISMTemplate>.findMatchingPolicy(indexMetadata: IndexMetadata): String? {
+fun Map<String, ISMTemplate>.findMatchingPolicy(clusterState: ClusterState, indexName: String): String? {
     if (this.isEmpty()) return null
 
-    val indexName = indexMetadata.index.name
+    val indexMetadata = clusterState.metadata.index(indexName)
+    val indexAbstraction = clusterState.metadata.indicesLookup[indexName]!!
+    val isDataStreamIndex = indexAbstraction.parentDataStream != null
 
-    // don't include hidden index
+    // Don't include hidden index unless it belongs to a data stream.
     val isHidden = IndexMetadata.INDEX_HIDDEN_SETTING.get(indexMetadata.settings)
-    if (isHidden) return null
+    if (!isDataStreamIndex && isHidden) return null
+
+    // If the index belongs to a data stream, then find the matching policy using the data stream name.
+    val lookupName = when {
+        isDataStreamIndex -> indexAbstraction.parentDataStream!!.name!!
+        else -> indexName
+    }
 
     // only process indices created after template
     // traverse all ism templates for matching ones
-    val patternMatchPredicate = { pattern: String -> Regex.simpleMatch(pattern, indexName) }
+    val patternMatchPredicate = { pattern: String -> Regex.simpleMatch(pattern, lookupName) }
     var matchedPolicy: String? = null
     var highestPriority: Int = -1
     this.filter { (_, template) ->

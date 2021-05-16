@@ -302,7 +302,7 @@ class ManagedIndexCoordinator(
         val templates = getISMTemplates()
 
         val indexToMatchedPolicy = indexNames.map { indexName ->
-            indexName to templates.findMatchingPolicy(indexMetadatas[indexName])
+            indexName to templates.findMatchingPolicy(clusterState, indexName)
         }.toMap()
 
         indexToMatchedPolicy.filterNotNullValues()
