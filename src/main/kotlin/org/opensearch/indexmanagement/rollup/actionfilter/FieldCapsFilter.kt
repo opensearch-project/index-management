@@ -84,7 +84,7 @@ class FieldCapsFilter(
             val localIndices = remoteClusterIndices.remove(RemoteClusterAware.LOCAL_CLUSTER_GROUP_KEY)
 
             localIndices?.let {
-                val concreteIndices = indexNameExpressionResolver.concreteIndexNames(clusterService.state(), request.indicesOptions(), it)
+                val concreteIndices = indexNameExpressionResolver.concreteIndexNames(clusterService.state(), it)
                 for (index in concreteIndices) {
                     val isRollupIndex = isRollupIndex(index, clusterService.state())
                     if (isRollupIndex) {
@@ -216,7 +216,12 @@ class FieldCapsFilter(
 
     private fun populateSourceFieldMappingsForRollupJob(rollup: Rollup): Set<RollupFieldMapping> {
         val rollupFieldMappings = rollup.populateFieldMappings()
-        val sourceIndices = indexNameExpressionResolver.concreteIndexNames(clusterService.state(), IndicesOptions.lenientExpand(), rollup.sourceIndex)
+        val sourceIndices = indexNameExpressionResolver.concreteIndexNames(
+            clusterService.state(),
+            IndicesOptions.lenientExpand(),
+            true,
+            rollup.sourceIndex
+        )
         sourceIndices.forEach {
             val mappings = clusterService.state().metadata.index(it).mapping()?.sourceAsMap ?: return rollupFieldMappings
             rollupFieldMappings.forEach { fieldMapping ->

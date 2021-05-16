@@ -35,6 +35,7 @@ import com.nhaarman.mockitokotlin2.doReturn
 import com.nhaarman.mockitokotlin2.mock
 import com.nhaarman.mockitokotlin2.whenever
 import kotlinx.coroutines.runBlocking
+import org.mockito.ArgumentMatchers.anyBoolean
 import org.opensearch.action.ActionListener
 import org.opensearch.action.admin.indices.mapping.get.GetMappingsResponse
 import org.opensearch.client.AdminClient
@@ -197,7 +198,7 @@ class RollupMapperServiceTests : OpenSearchTestCase() {
 
     // Returns a mocked IndexNameExpressionResolver which returns the provided list of concrete indices
     private fun getIndexNameExpressionResolver(concreteIndices: List<String>): IndexNameExpressionResolver =
-        mock { on { concreteIndexNames(any(), any(), anyVararg<String>()) } doReturn concreteIndices.toTypedArray() }
+        mock { on { concreteIndexNames(any(), any(), anyBoolean(), anyVararg<String>()) } doReturn concreteIndices.toTypedArray() }
 
     private fun getKibanaSampleDataMappingResponse(indexName: String): GetMappingsResponse {
         val mappingSourceMap = createParser(

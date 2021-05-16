@@ -11,13 +11,18 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.action
 
+import org.apache.http.entity.ContentType
+import org.apache.http.entity.StringEntity
+import org.opensearch.cluster.metadata.DataStream
 import org.opensearch.indexmanagement.indexstatemanagement.IndexStateManagementRestTestCase
+import org.opensearch.indexmanagement.indexstatemanagement.model.ISMTemplate
 import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
 import org.opensearch.indexmanagement.indexstatemanagement.model.State
 import org.opensearch.indexmanagement.indexstatemanagement.model.action.RollupActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomErrorNotification
 import org.opensearch.indexmanagement.indexstatemanagement.step.rollup.AttemptCreateRollupJobStep
 import org.opensearch.indexmanagement.indexstatemanagement.step.rollup.WaitForRollupCompletionStep
+import org.opensearch.indexmanagement.makeRequest
 import org.opensearch.indexmanagement.rollup.model.ISMRollup
 import org.opensearch.indexmanagement.rollup.model.RollupMetadata
 import org.opensearch.indexmanagement.rollup.model.RollupMetrics
@@ -56,7 +61,6 @@ class RollupActionIT : IndexStateManagementRestTestCase() {
                 RollupMetrics(sourceField = "total_amount", targetField = "total_amount", metrics = listOf(Max(), Min()))
             )
         )
-        val rollupId = rollup.toRollup(indexName).id
         val actionConfig = RollupActionConfig(rollup, 0)
         val states = listOf(
             State("rollup", listOf(actionConfig), listOf())
@@ -76,38 +80,69 @@ class RollupActionIT : IndexStateManagementRestTestCase() {
         createPolicy(policy, policyID)
         createIndex(indexName, policyID, mapping = sourceIndexMappingString)
 
-        val managedIndexConfig = getExistingManagedIndexConfig(indexName)
+        assertIndexRolledUp(indexName, policyID, rollup)
+    }
 
-        // Change the start time so the job will initialize the policy
-        updateManagedIndexConfigStartTime(managedIndexConfig)
-        waitFor { assertEquals(policyID, getExplainManagedIndexMetaData(indexName).policyID) }
+    fun `test data stream rollup action`() {
+        val dataStreamName = "${testIndexName}_data_stream"
+        val policyID = "${testIndexName}_rollup_policy"
 
-        // Change the start time so we attempt to create rollup step will execute
-        updateManagedIndexConfigStartTime(managedIndexConfig)
-        waitFor {
-            assertEquals(
-                AttemptCreateRollupJobStep.getSuccessMessage(rollupId, indexName),
-                getExplainManagedIndexMetaData(indexName).info?.get("message")
+        val rollup = ISMRollup(
+            description = "data stream rollup",
+            targetIndex = "target_rollup_search",
+            pageSize = 100,
+            dimensions = listOf(
+                DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "1h"),
+                Terms("RatecodeID", "RatecodeID"),
+                Terms("PULocationID", "PULocationID")
+            ),
+            metrics = listOf(
+                RollupMetrics(
+                    sourceField = "passenger_count",
+                    targetField = "passenger_count",
+                    metrics = listOf(Sum(), Min(), Max(), ValueCount(), Average())
+                ),
+                RollupMetrics(
+                    sourceField = "total_amount",
+                    targetField = "total_amount",
+                    metrics = listOf(Max(), Min())
+                )
             )
-        }
+        )
 
-        Thread.sleep(60000)
+        // Create an ISM policy to rollup backing indices of a data stream.
+        val actionConfig = RollupActionConfig(rollup, 0)
+        val states = listOf(State("rollup", listOf(actionConfig), listOf()))
+        val policy = Policy(
+            id = policyID,
+            description = "data stream rollup policy",
+            schemaVersion = 1L,
+            lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
+            errorNotification = randomErrorNotification(),
+            defaultState = states[0].name,
+            states = states,
+            ismTemplate = ISMTemplate(listOf(dataStreamName), 100, Instant.now().truncatedTo(ChronoUnit.MILLIS))
+        )
+        createPolicy(policy, policyID)
 
-        // Change the start time so wait for rollup step will execute
-        updateManagedIndexConfigStartTime(managedIndexConfig)
-        waitFor {
-            assertEquals(
-                WaitForRollupCompletionStep.getJobCompletionMessage(rollupId, indexName),
-                getExplainManagedIndexMetaData(indexName).info?.get("message")
-            )
-        }
+        val sourceIndexMappingString = "\"properties\": {\"tpep_pickup_datetime\": { \"type\": \"date\" }, \"RatecodeID\": { \"type\": " +
+                "\"keyword\" }, \"PULocationID\": { \"type\": \"keyword\" }, \"passenger_count\": { \"type\": \"integer\" }, \"total_amount\": " +
+                "{ \"type\": \"double\" }}"
 
-        val rollupJob = getRollup(rollupId = rollupId)
-        waitFor {
-            assertNotNull("Rollup job doesn't have metadata set", rollupJob.metadataID)
-            val rollupMetadata = getRollupMetadata(rollupJob.metadataID!!)
-            assertEquals("Rollup is not finished", RollupMetadata.Status.FINISHED, rollupMetadata.status)
-        }
+        // Create an index template for a data stream with the given source index mapping.
+        client().makeRequest(
+            "PUT",
+            "/_index_template/rollup-data-stream-template",
+            StringEntity("{ " +
+                    "\"index_patterns\": [ \"$dataStreamName\" ], " +
+                    "\"data_stream\": { \"timestamp_field\": { \"name\": \"tpep_pickup_datetime\" } }, " +
+                    "\"template\": { \"mappings\": { $sourceIndexMappingString } } }", ContentType.APPLICATION_JSON)
+        )
+        client().makeRequest("PUT", "/_data_stream/$dataStreamName")
+
+        // Ensure rollup works on backing indices of a data stream.
+        val indexName = DataStream.getDefaultBackingIndexName(dataStreamName, 1L)
+        assertIndexRolledUp(indexName, policyID, rollup)
     }
 
     fun `test rollup action failure`() {
@@ -234,6 +269,42 @@ class RollupActionIT : IndexStateManagementRestTestCase() {
                 WaitForRollupCompletionStep.getJobFailedMessage(rollupId, indexName),
                 getExplainManagedIndexMetaData(indexName).info?.get("message")
             )
+        }
+    }
+
+    private fun assertIndexRolledUp(indexName: String, policyId: String, rollup: ISMRollup) {
+        val rollupId = rollup.toRollup(indexName).id
+        val managedIndexConfig = getExistingManagedIndexConfig(indexName)
+
+        // Change the start time so that the policy will be initialized.
+        updateManagedIndexConfigStartTime(managedIndexConfig)
+        waitFor { assertEquals(policyId, getExplainManagedIndexMetaData(indexName).policyID) }
+
+        // Change the start time so that the rollup action will be attempted.
+        updateManagedIndexConfigStartTime(managedIndexConfig)
+        waitFor {
+            assertEquals(
+                AttemptCreateRollupJobStep.getSuccessMessage(rollupId, indexName),
+                getExplainManagedIndexMetaData(indexName).info?.get("message")
+            )
+        }
+
+        Thread.sleep(60000)
+
+        // Change the start time so that the rollup action will be attempted.
+        updateManagedIndexConfigStartTime(managedIndexConfig)
+        waitFor {
+            assertEquals(
+                WaitForRollupCompletionStep.getJobCompletionMessage(rollupId, indexName),
+                getExplainManagedIndexMetaData(indexName).info?.get("message")
+            )
+        }
+
+        val rollupJob = getRollup(rollupId = rollupId)
+        waitFor {
+            assertNotNull("Rollup job doesn't have metadata set", rollupJob.metadataID)
+            val rollupMetadata = getRollupMetadata(rollupJob.metadataID!!)
+            assertEquals("Rollup is not finished", RollupMetadata.Status.FINISHED, rollupMetadata.status)
         }
     }
 }

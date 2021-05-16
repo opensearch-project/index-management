@@ -62,6 +62,8 @@ abstract class RollupRestTestCase : IndexManagementRestTestCase() {
 
     override fun preserveIndicesUponCompletion(): Boolean = true
 
+    override fun preserveDataStreamsUponCompletion(): Boolean = true
+
     protected fun createRollup(
         rollup: Rollup,
         rollupId: String = OpenSearchTestCase.randomAlphaOfLength(10),
@@ -104,7 +106,7 @@ abstract class RollupRestTestCase : IndexManagementRestTestCase() {
     }
 
     // TODO: Maybe clean-up and use XContentFactory.jsonBuilder() to create mappings json
-    protected fun createRollupSourceIndex(rollup: Rollup, settings: Settings = Settings.EMPTY) {
+    protected fun createRollupMappingString(rollup: Rollup): String {
         var mappingString = ""
         var addCommaPrefix = false
         rollup.dimensions.forEach {
@@ -123,7 +125,11 @@ abstract class RollupRestTestCase : IndexManagementRestTestCase() {
             mappingString += string
         }
         mappingString = "\"properties\":{$mappingString}"
-        createIndex(rollup.sourceIndex, settings, mappingString)
+        return mappingString
+    }
+
+    protected fun createRollupSourceIndex(rollup: Rollup, settings: Settings = Settings.EMPTY) {
+        createIndex(rollup.sourceIndex, settings, createRollupMappingString(rollup))
     }
 
     protected fun putDateDocumentInSourceIndex(rollup: Rollup) {

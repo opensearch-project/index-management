@@ -134,7 +134,7 @@ class RollupMapperService(
         // Allow no indices, open and closed
         // Rolling up on closed indices will not be caught here
         val concreteIndices =
-            indexNameExpressionResolver.concreteIndexNames(clusterService.state(), IndicesOptions.lenientExpand(), rollup.sourceIndex)
+            indexNameExpressionResolver.concreteIndexNames(clusterService.state(), IndicesOptions.lenientExpand(), true, rollup.sourceIndex)
         if (concreteIndices.isEmpty()) return RollupJobValidationResult.Invalid("No indices found for [${rollup.sourceIndex}]")
 
         // Validate mappings for each concrete index resolved from the rollup source index
