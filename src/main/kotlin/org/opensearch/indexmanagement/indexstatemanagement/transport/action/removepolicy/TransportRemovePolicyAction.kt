@@ -27,7 +27,7 @@
 package org.opensearch.indexmanagement.indexstatemanagement.transport.action.removepolicy
 
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
-import org.opensearch.indexmanagement.indexstatemanagement.elasticapi.getUuidsForClosedIndices
+import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.getUuidsForClosedIndices
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.ISMStatusResponse
 import org.opensearch.indexmanagement.indexstatemanagement.util.FailedIndex
 import org.opensearch.indexmanagement.indexstatemanagement.util.deleteManagedIndexMetadataRequest

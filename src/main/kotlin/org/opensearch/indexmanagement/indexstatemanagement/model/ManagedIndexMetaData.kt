@@ -26,7 +26,7 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.model
 
-import org.opensearch.indexmanagement.indexstatemanagement.elasticapi.addObject
+import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.addObject
 import org.opensearch.indexmanagement.indexstatemanagement.model.action.ActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.ActionMetaData
 import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.PolicyRetryInfoMetaData

@@ -29,9 +29,9 @@ package org.opensearch.indexmanagement.indexstatemanagement.transport.action.cha
 import org.opensearch.indexmanagement.IndexManagementPlugin
 import org.opensearch.indexmanagement.opensearchapi.contentParser
 import org.opensearch.indexmanagement.opensearchapi.parseWithType
-import org.opensearch.indexmanagement.indexstatemanagement.elasticapi.buildMgetMetadataRequest
-import org.opensearch.indexmanagement.indexstatemanagement.elasticapi.getManagedIndexMetadata
-import org.opensearch.indexmanagement.indexstatemanagement.elasticapi.mgetResponseToList
+import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.buildMgetMetadataRequest
+import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.getManagedIndexMetadata
+import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.mgetResponseToList
 import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexConfig
 import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.indexstatemanagement.model.Policy

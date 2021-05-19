@@ -33,10 +33,10 @@ import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANA
 import org.opensearch.indexmanagement.opensearchapi.contentParser
 import org.opensearch.indexmanagement.opensearchapi.parseWithType
 import org.opensearch.indexmanagement.opensearchapi.retry
-import org.opensearch.indexmanagement.indexstatemanagement.elasticapi.filterNotNullValues
-import org.opensearch.indexmanagement.indexstatemanagement.elasticapi.getPolicyToTemplateMap
+import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.filterNotNullValues
+import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.getPolicyToTemplateMap
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
-import org.opensearch.indexmanagement.indexstatemanagement.elasticapi.mgetManagedIndexMetadata
+import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.mgetManagedIndexMetadata
 import org.opensearch.indexmanagement.indexstatemanagement.model.ISMTemplate
 import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexConfig
 import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData

@@ -28,8 +28,8 @@ package org.opensearch.indexmanagement.indexstatemanagement.transport.action.ind
 
 import org.opensearch.indexmanagement.IndexManagementIndices
 import org.opensearch.indexmanagement.IndexManagementPlugin
-import org.opensearch.indexmanagement.indexstatemanagement.elasticapi.filterNotNullValues
-import org.opensearch.indexmanagement.indexstatemanagement.elasticapi.getPolicyToTemplateMap
+import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.filterNotNullValues
+import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.getPolicyToTemplateMap
 import org.opensearch.indexmanagement.indexstatemanagement.findConflictingPolicyTemplates
 import org.opensearch.indexmanagement.util.IndexManagementException
 import org.opensearch.indexmanagement.indexstatemanagement.util.ISM_TEMPLATE_FIELD

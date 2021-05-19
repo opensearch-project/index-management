@@ -28,7 +28,7 @@ package org.opensearch.indexmanagement.indexstatemanagement.transport.action.add
 
 import org.opensearch.indexmanagement.IndexManagementIndices
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
-import org.opensearch.indexmanagement.indexstatemanagement.elasticapi.getUuidsForClosedIndices
+import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.getUuidsForClosedIndices
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.ISMStatusResponse
 import org.opensearch.indexmanagement.indexstatemanagement.util.FailedIndex

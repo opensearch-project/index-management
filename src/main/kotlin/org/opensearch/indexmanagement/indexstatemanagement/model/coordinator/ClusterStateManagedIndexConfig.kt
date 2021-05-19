@@ -33,7 +33,7 @@ import org.opensearch.index.seqno.SequenceNumbers
 /**
  * Data class to hold index metadata from cluster state.
  *
- * This data class is used in the [com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.ManagedIndexCoordinator]
+ * This data class is used in the [org.opensearch.indexmanagement.indexstatemanagement.ManagedIndexCoordinator]
  * when reading in index metadata from cluster state and implements [ToXContentObject] for partial updates
  * of the [ManagedIndexConfig] job document.
  */

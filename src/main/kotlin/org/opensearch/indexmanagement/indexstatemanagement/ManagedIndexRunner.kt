@@ -32,7 +32,7 @@ import org.opensearch.indexmanagement.opensearchapi.convertToMap
 import org.opensearch.indexmanagement.opensearchapi.parseWithType
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.updateindexmetadata.UpdateManagedIndexMetaDataAction
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.updateindexmetadata.UpdateManagedIndexMetaDataRequest
-import org.opensearch.indexmanagement.indexstatemanagement.elasticapi.getManagedIndexMetadata
+import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.getManagedIndexMetadata
 import org.opensearch.indexmanagement.opensearchapi.retry
 import org.opensearch.indexmanagement.opensearchapi.string
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil

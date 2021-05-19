@@ -26,7 +26,7 @@
 
 @file:Suppress("TooManyFunctions")
 
-package org.opensearch.indexmanagement.indexstatemanagement.elasticapi
+package org.opensearch.indexmanagement.indexstatemanagement.opensearchapi
 
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
 import org.opensearch.indexmanagement.opensearchapi.contentParser

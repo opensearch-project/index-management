@@ -28,7 +28,7 @@ package org.opensearch.indexmanagement.indexstatemanagement.transport.action.exp
 
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
 import org.opensearch.indexmanagement.indexstatemanagement.ManagedIndexCoordinator.Companion.MAX_HITS
-import org.opensearch.indexmanagement.indexstatemanagement.elasticapi.getManagedIndexMetadata
+import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.getManagedIndexMetadata
 import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.indexstatemanagement.util.isMetadataMoved
 import org.opensearch.indexmanagement.indexstatemanagement.util.managedIndexMetadataID

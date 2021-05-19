@@ -26,7 +26,7 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.step.rollover
 
-import org.opensearch.indexmanagement.indexstatemanagement.elasticapi.getRolloverAlias
+import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.getRolloverAlias
 import org.opensearch.indexmanagement.opensearchapi.getUsefulCauseString
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData

@@ -38,7 +38,7 @@ import java.io.IOException
 /**
  * Data class to hold partial [ManagedIndexConfig] data.
  *
- * This data class is used in the [com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.ManagedIndexCoordinator]
+ * This data class is used in the [org.opensearch.indexmanagement.indexstatemanagement.ManagedIndexCoordinator]
  * to hold partial data when reading in the [ManagedIndexConfig] document from the index.
  */
 data class SweptManagedIndexConfig(
