@@ -1,1 +1,1 @@
-com.amazon.opendistroforelasticsearch.indexmanagement.IndexManagementPlugin
+org.opensearch.indexmanagement.IndexManagementPlugin

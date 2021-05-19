@@ -96,7 +96,7 @@ check.dependsOn jacocoTestReport
 opensearchplugin {
     name 'opensearch-index-management'
     description 'OpenSearch Index Management Plugin'
-    classname 'com.amazon.opendistroforelasticsearch.indexmanagement.IndexManagementPlugin'
+    classname 'org.opensearch.indexmanagement.IndexManagementPlugin'
     extendedPlugins = ['opensearch-job-scheduler']
 }
 
@@ -105,7 +105,7 @@ tasks.named("integTest").configure {
 }
 
 allOpen {
-    annotation("com.amazon.opendistroforelasticsearch.indexmanagement.util.OpenForTesting")
+    annotation("org.opensearch.indexmanagement.util.OpenForTesting")
 }
 
 configurations {
@@ -279,7 +279,7 @@ integTest {
     // TODO: Fix running notification test against remote cluster with security plugin installed
     if (System.getProperty("https") != null) {
         filter {
-            excludeTestsMatching "com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.action.NotificationActionIT"
+            excludeTestsMatching "org.opensearch.indexmanagement.indexstatemanagement.action.NotificationActionIT"
         }
     }
 }
