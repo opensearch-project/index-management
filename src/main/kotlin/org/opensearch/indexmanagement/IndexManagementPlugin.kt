@@ -98,9 +98,9 @@ import org.opensearch.indexmanagement.rollup.resthandler.RestIndexRollupAction
 import org.opensearch.indexmanagement.rollup.resthandler.RestStartRollupAction
 import org.opensearch.indexmanagement.rollup.resthandler.RestStopRollupAction
 import org.opensearch.indexmanagement.rollup.settings.RollupSettings
-import com.amazon.opendistroforelasticsearch.jobscheduler.spi.JobSchedulerExtension
-import com.amazon.opendistroforelasticsearch.jobscheduler.spi.ScheduledJobParser
-import com.amazon.opendistroforelasticsearch.jobscheduler.spi.ScheduledJobRunner
+import org.opensearch.jobscheduler.spi.JobSchedulerExtension
+import org.opensearch.jobscheduler.spi.ScheduledJobParser
+import org.opensearch.jobscheduler.spi.ScheduledJobRunner
 import org.apache.logging.log4j.LogManager
 import org.opensearch.action.ActionRequest
 import org.opensearch.action.ActionResponse

@@ -44,7 +44,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.step.readonly.SetRead
 import org.opensearch.indexmanagement.indexstatemanagement.step.readwrite.SetReadWriteStep
 import org.opensearch.indexmanagement.indexstatemanagement.step.transition.AttemptTransitionStep
 import org.opensearch.indexmanagement.waitFor
-import com.amazon.opendistroforelasticsearch.jobscheduler.spi.schedule.IntervalSchedule
+import org.opensearch.jobscheduler.spi.schedule.IntervalSchedule
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 

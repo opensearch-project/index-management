@@ -29,9 +29,9 @@ package org.opensearch.indexmanagement.indexstatemanagement.model
 import org.opensearch.indexmanagement.opensearchapi.instant
 import org.opensearch.indexmanagement.opensearchapi.optionalTimeField
 import org.opensearch.indexmanagement.indexstatemanagement.util.XCONTENT_WITHOUT_TYPE
-import com.amazon.opendistroforelasticsearch.jobscheduler.spi.ScheduledJobParameter
-import com.amazon.opendistroforelasticsearch.jobscheduler.spi.schedule.Schedule
-import com.amazon.opendistroforelasticsearch.jobscheduler.spi.schedule.ScheduleParser
+import org.opensearch.jobscheduler.spi.ScheduledJobParameter
+import org.opensearch.jobscheduler.spi.schedule.Schedule
+import org.opensearch.jobscheduler.spi.schedule.ScheduleParser
 import org.opensearch.common.xcontent.ToXContent
 import org.opensearch.common.xcontent.XContentBuilder
 import org.opensearch.common.xcontent.XContentParser

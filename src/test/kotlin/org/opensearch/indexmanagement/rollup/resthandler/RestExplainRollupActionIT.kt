@@ -32,7 +32,7 @@ import org.opensearch.indexmanagement.rollup.RollupRestTestCase
 import org.opensearch.indexmanagement.rollup.model.RollupMetadata
 import org.opensearch.indexmanagement.rollup.randomRollup
 import org.opensearch.indexmanagement.waitFor
-import com.amazon.opendistroforelasticsearch.jobscheduler.spi.schedule.IntervalSchedule
+import org.opensearch.jobscheduler.spi.schedule.IntervalSchedule
 import org.opensearch.client.ResponseException
 import org.opensearch.rest.RestStatus
 import org.opensearch.test.junit.annotations.TestLogging

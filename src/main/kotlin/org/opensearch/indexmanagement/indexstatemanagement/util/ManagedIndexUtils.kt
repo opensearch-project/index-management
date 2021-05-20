@@ -27,7 +27,7 @@
 @file:JvmName("ManagedIndexUtils")
 package org.opensearch.indexmanagement.indexstatemanagement.util
 
-import com.amazon.opendistroforelasticsearch.alerting.destination.message.BaseMessage
+import org.opensearch.alerting.destination.message.BaseMessage
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
 import org.opensearch.indexmanagement.indexstatemanagement.ManagedIndexCoordinator
 import org.opensearch.indexmanagement.indexstatemanagement.action.Action
@@ -49,7 +49,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmet
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings
 import org.opensearch.indexmanagement.indexstatemanagement.step.Step
 import org.opensearch.indexmanagement.indexstatemanagement.step.delete.AttemptDeleteStep
-import com.amazon.opendistroforelasticsearch.jobscheduler.spi.schedule.IntervalSchedule
+import org.opensearch.jobscheduler.spi.schedule.IntervalSchedule
 import inet.ipaddr.IPAddressString
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger

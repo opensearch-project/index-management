@@ -40,7 +40,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.transport.action.upda
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.updateindexmetadata.UpdateManagedIndexMetaDataAction
 import org.opensearch.indexmanagement.makeRequest
 import org.opensearch.indexmanagement.waitFor
-import com.amazon.opendistroforelasticsearch.jobscheduler.spi.schedule.IntervalSchedule
+import org.opensearch.jobscheduler.spi.schedule.IntervalSchedule
 import org.apache.http.entity.ContentType
 import org.apache.http.entity.StringEntity
 import org.opensearch.OpenSearchParseException

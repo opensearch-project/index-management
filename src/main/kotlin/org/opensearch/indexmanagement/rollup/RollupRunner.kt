@@ -41,10 +41,10 @@ import org.opensearch.indexmanagement.rollup.model.RollupStats
 import org.opensearch.indexmanagement.rollup.model.incrementStats
 import org.opensearch.indexmanagement.rollup.model.mergeStats
 import org.opensearch.indexmanagement.rollup.settings.RollupSettings
-import com.amazon.opendistroforelasticsearch.jobscheduler.spi.JobExecutionContext
-import com.amazon.opendistroforelasticsearch.jobscheduler.spi.LockModel
-import com.amazon.opendistroforelasticsearch.jobscheduler.spi.ScheduledJobParameter
-import com.amazon.opendistroforelasticsearch.jobscheduler.spi.ScheduledJobRunner
+import org.opensearch.jobscheduler.spi.JobExecutionContext
+import org.opensearch.jobscheduler.spi.LockModel
+import org.opensearch.jobscheduler.spi.ScheduledJobParameter
+import org.opensearch.jobscheduler.spi.ScheduledJobRunner
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers

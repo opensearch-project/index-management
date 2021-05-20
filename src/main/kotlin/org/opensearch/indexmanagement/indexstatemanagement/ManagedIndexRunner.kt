@@ -69,11 +69,11 @@ import org.opensearch.indexmanagement.indexstatemanagement.util.managedIndexMeta
 import org.opensearch.indexmanagement.indexstatemanagement.util.shouldBackoff
 import org.opensearch.indexmanagement.indexstatemanagement.util.shouldChangePolicy
 import org.opensearch.indexmanagement.indexstatemanagement.util.updateDisableManagedIndexRequest
-import com.amazon.opendistroforelasticsearch.jobscheduler.spi.JobExecutionContext
-import com.amazon.opendistroforelasticsearch.jobscheduler.spi.LockModel
-import com.amazon.opendistroforelasticsearch.jobscheduler.spi.ScheduledJobParameter
-import com.amazon.opendistroforelasticsearch.jobscheduler.spi.ScheduledJobRunner
-import com.amazon.opendistroforelasticsearch.jobscheduler.spi.schedule.IntervalSchedule
+import org.opensearch.jobscheduler.spi.JobExecutionContext
+import org.opensearch.jobscheduler.spi.LockModel
+import org.opensearch.jobscheduler.spi.ScheduledJobParameter
+import org.opensearch.jobscheduler.spi.ScheduledJobRunner
+import org.opensearch.jobscheduler.spi.schedule.IntervalSchedule
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers

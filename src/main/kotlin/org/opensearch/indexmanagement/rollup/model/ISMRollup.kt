@@ -31,8 +31,8 @@ import org.opensearch.indexmanagement.rollup.model.dimension.Dimension
 import org.opensearch.indexmanagement.rollup.model.dimension.Histogram
 import org.opensearch.indexmanagement.rollup.model.dimension.Terms
 import org.opensearch.indexmanagement.util.IndexUtils
-import com.amazon.opendistroforelasticsearch.jobscheduler.spi.schedule.IntervalSchedule
-import com.amazon.opendistroforelasticsearch.notification.repackage.org.apache.commons.codec.digest.DigestUtils
+import org.opensearch.jobscheduler.spi.schedule.IntervalSchedule
+import org.opensearch.notification.repackage.org.apache.commons.codec.digest.DigestUtils
 import org.opensearch.common.io.stream.StreamInput
 import org.opensearch.common.io.stream.StreamOutput
 import org.opensearch.common.io.stream.Writeable

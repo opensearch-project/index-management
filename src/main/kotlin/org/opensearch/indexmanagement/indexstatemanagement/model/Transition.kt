@@ -26,8 +26,8 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.model
 
-import com.amazon.opendistroforelasticsearch.jobscheduler.spi.schedule.CronSchedule
-import com.amazon.opendistroforelasticsearch.jobscheduler.spi.schedule.ScheduleParser
+import org.opensearch.jobscheduler.spi.schedule.CronSchedule
+import org.opensearch.jobscheduler.spi.schedule.ScheduleParser
 import org.opensearch.common.io.stream.StreamInput
 import org.opensearch.common.io.stream.StreamOutput
 import org.opensearch.common.io.stream.Writeable

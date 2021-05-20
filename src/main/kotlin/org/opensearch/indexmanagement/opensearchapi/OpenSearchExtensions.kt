@@ -31,7 +31,7 @@ package org.opensearch.indexmanagement.opensearchapi
 import org.opensearch.indexmanagement.indexstatemanagement.model.ISMTemplate
 import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
 import org.opensearch.indexmanagement.util.NO_ID
-import com.amazon.opendistroforelasticsearch.jobscheduler.spi.utils.LockService
+import org.opensearch.jobscheduler.spi.utils.LockService
 import kotlinx.coroutines.delay
 import org.apache.logging.log4j.Logger
 import org.opensearch.OpenSearchException

@@ -35,11 +35,11 @@ import org.opensearch.indexmanagement.rollup.model.dimension.Histogram
 import org.opensearch.indexmanagement.rollup.model.dimension.Terms
 import org.opensearch.indexmanagement.util.IndexUtils
 import org.opensearch.indexmanagement.util._ID
-import com.amazon.opendistroforelasticsearch.jobscheduler.spi.ScheduledJobParameter
-import com.amazon.opendistroforelasticsearch.jobscheduler.spi.schedule.CronSchedule
-import com.amazon.opendistroforelasticsearch.jobscheduler.spi.schedule.IntervalSchedule
-import com.amazon.opendistroforelasticsearch.jobscheduler.spi.schedule.Schedule
-import com.amazon.opendistroforelasticsearch.jobscheduler.spi.schedule.ScheduleParser
+import org.opensearch.jobscheduler.spi.ScheduledJobParameter
+import org.opensearch.jobscheduler.spi.schedule.CronSchedule
+import org.opensearch.jobscheduler.spi.schedule.IntervalSchedule
+import org.opensearch.jobscheduler.spi.schedule.Schedule
+import org.opensearch.jobscheduler.spi.schedule.ScheduleParser
 import org.opensearch.common.io.stream.StreamInput
 import org.opensearch.common.io.stream.StreamOutput
 import org.opensearch.common.io.stream.Writeable

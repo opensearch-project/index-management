@@ -15,7 +15,7 @@ import org.opensearch.indexmanagement.rollup.randomDateHistogram
 import org.opensearch.indexmanagement.rollup.randomISMRollup
 import org.opensearch.indexmanagement.rollup.randomTerms
 import org.opensearch.indexmanagement.util.IndexUtils
-import com.amazon.opendistroforelasticsearch.jobscheduler.spi.schedule.IntervalSchedule
+import org.opensearch.jobscheduler.spi.schedule.IntervalSchedule
 import org.apache.commons.codec.digest.DigestUtils
 import org.opensearch.index.seqno.SequenceNumbers
 import org.opensearch.test.OpenSearchTestCase

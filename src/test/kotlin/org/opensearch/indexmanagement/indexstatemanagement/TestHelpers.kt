@@ -57,9 +57,9 @@ import org.opensearch.indexmanagement.indexstatemanagement.model.destination.Des
 import org.opensearch.indexmanagement.indexstatemanagement.model.destination.DestinationType
 import org.opensearch.indexmanagement.indexstatemanagement.model.destination.Slack
 import org.opensearch.indexmanagement.rollup.randomISMRollup
-import com.amazon.opendistroforelasticsearch.jobscheduler.spi.schedule.CronSchedule
-import com.amazon.opendistroforelasticsearch.jobscheduler.spi.schedule.IntervalSchedule
-import com.amazon.opendistroforelasticsearch.jobscheduler.spi.schedule.Schedule
+import org.opensearch.jobscheduler.spi.schedule.CronSchedule
+import org.opensearch.jobscheduler.spi.schedule.IntervalSchedule
+import org.opensearch.jobscheduler.spi.schedule.Schedule
 import org.opensearch.common.unit.ByteSizeValue
 import org.opensearch.common.unit.TimeValue
 import org.opensearch.common.xcontent.ToXContent

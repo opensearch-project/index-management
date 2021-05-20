@@ -26,12 +26,12 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.model.destination
 
-import com.amazon.opendistroforelasticsearch.alerting.destination.Notification
-import com.amazon.opendistroforelasticsearch.alerting.destination.message.BaseMessage
-import com.amazon.opendistroforelasticsearch.alerting.destination.message.ChimeMessage
-import com.amazon.opendistroforelasticsearch.alerting.destination.message.CustomWebhookMessage
-import com.amazon.opendistroforelasticsearch.alerting.destination.message.SlackMessage
-import com.amazon.opendistroforelasticsearch.alerting.destination.response.DestinationResponse
+import org.opensearch.alerting.destination.Notification
+import org.opensearch.alerting.destination.message.BaseMessage
+import org.opensearch.alerting.destination.message.ChimeMessage
+import org.opensearch.alerting.destination.message.CustomWebhookMessage
+import org.opensearch.alerting.destination.message.SlackMessage
+import org.opensearch.alerting.destination.response.DestinationResponse
 import org.opensearch.indexmanagement.opensearchapi.convertToMap
 import org.opensearch.indexmanagement.indexstatemanagement.util.isHostInDenylist
 import org.apache.logging.log4j.LogManager

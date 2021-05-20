@@ -26,8 +26,8 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.util
 
-import com.amazon.opendistroforelasticsearch.alerting.destination.message.BaseMessage
-import com.amazon.opendistroforelasticsearch.alerting.destination.message.CustomWebhookMessage
+import org.opensearch.alerting.destination.message.BaseMessage
+import org.opensearch.alerting.destination.message.CustomWebhookMessage
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
 import org.opensearch.indexmanagement.opensearchapi.parseWithType
 import org.opensearch.indexmanagement.indexstatemanagement.model.Conditions

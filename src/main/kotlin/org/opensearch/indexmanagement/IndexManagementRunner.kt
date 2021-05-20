@@ -30,9 +30,9 @@ import org.opensearch.indexmanagement.indexstatemanagement.ManagedIndexRunner
 import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexConfig
 import org.opensearch.indexmanagement.rollup.RollupRunner
 import org.opensearch.indexmanagement.rollup.model.Rollup
-import com.amazon.opendistroforelasticsearch.jobscheduler.spi.JobExecutionContext
-import com.amazon.opendistroforelasticsearch.jobscheduler.spi.ScheduledJobParameter
-import com.amazon.opendistroforelasticsearch.jobscheduler.spi.ScheduledJobRunner
+import org.opensearch.jobscheduler.spi.JobExecutionContext
+import org.opensearch.jobscheduler.spi.ScheduledJobParameter
+import org.opensearch.jobscheduler.spi.ScheduledJobRunner
 import org.apache.logging.log4j.LogManager
 
 object IndexManagementRunner : ScheduledJobRunner {
