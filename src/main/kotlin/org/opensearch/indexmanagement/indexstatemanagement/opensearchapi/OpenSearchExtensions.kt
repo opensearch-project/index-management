@@ -67,7 +67,13 @@ private val log = LogManager.getLogger("Index Management Helper")
  * Returns the current rollover_alias if it exists otherwise returns null.
  */
 fun IndexMetadata.getRolloverAlias(): String? {
-    if (this.settings.get(ManagedIndexSettings.ROLLOVER_ALIAS.key).isNullOrBlank()) return null
+    if (this.settings.get(ManagedIndexSettings.ROLLOVER_ALIAS.key).isNullOrBlank()) {
+        return if (this.settings.get(LegacyOpenDistroManagedIndexSettings.ROLLOVER_ALIAS.key).isNullOrBlank()) {
+            null
+        } else {
+            this.settings.get(LegacyOpenDistroManagedIndexSettings.ROLLOVER_ALIAS.key)
+        }
+    }
 
     return this.settings.get(ManagedIndexSettings.ROLLOVER_ALIAS.key)
 }

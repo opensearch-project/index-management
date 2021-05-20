@@ -24,14 +24,15 @@
  * permissions and limitations under the License.
  */
 
-package org.opensearch.indexmanagement.indexstatemanagement.settings
+package com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.settings
 
-import org.opensearch.indexmanagement.indexstatemanagement.model.action.ActionConfig
+import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.model.action.ActionConfig
 import org.opensearch.common.settings.Setting
 import org.opensearch.common.unit.TimeValue
+import java.util.concurrent.TimeUnit
 import java.util.function.Function
 
-class ManagedIndexSettings {
+class LegacyOpenDistroManagedIndexSettings {
     companion object {
         const val DEFAULT_ISM_ENABLED = true
         const val DEFAULT_METADATA_SERVICE_ENABLED = true
@@ -42,126 +43,143 @@ class ManagedIndexSettings {
         const val HOST_DENY_LIST = "opendistro.destination.host.deny_list"
 
         val INDEX_STATE_MANAGEMENT_ENABLED: Setting<Boolean> = Setting.boolSetting(
-            "plugins.index_state_management.enabled",
-            LegacyOpenDistroManagedIndexSettings.INDEX_STATE_MANAGEMENT_ENABLED,
+            "opendistro.index_state_management.enabled",
+            DEFAULT_ISM_ENABLED,
             Setting.Property.NodeScope,
-            Setting.Property.Dynamic
+            Setting.Property.Dynamic,
+            Setting.Property.Deprecated
         )
 
         val METADATA_SERVICE_ENABLED: Setting<Boolean> = Setting.boolSetting(
-            "plugins.index_state_management.metadata_service.enabled",
-            LegacyOpenDistroManagedIndexSettings.METADATA_SERVICE_ENABLED,
+            "opendistro.index_state_management.metadata_service.enabled",
+            DEFAULT_METADATA_SERVICE_ENABLED,
             Setting.Property.NodeScope,
-            Setting.Property.Dynamic
+            Setting.Property.Dynamic,
+            Setting.Property.Deprecated
         )
 
         val POLICY_ID: Setting<String> = Setting.simpleString(
-            "index.plugins.index_state_management.policy_id",
+            "index.opendistro.index_state_management.policy_id",
             Setting.Property.IndexScope,
-            Setting.Property.Dynamic
+            Setting.Property.Dynamic,
+            Setting.Property.Deprecated
         )
 
         val ROLLOVER_ALIAS: Setting<String> = Setting.simpleString(
-            "index.plugins.index_state_management.rollover_alias",
+            "index.opendistro.index_state_management.rollover_alias",
             Setting.Property.IndexScope,
-            Setting.Property.Dynamic
+            Setting.Property.Dynamic,
+            Setting.Property.Deprecated
         )
 
         val JOB_INTERVAL: Setting<Int> = Setting.intSetting(
-            "plugins.index_state_management.job_interval",
-            LegacyOpenDistroManagedIndexSettings.JOB_INTERVAL,
+            "opendistro.index_state_management.job_interval",
+            DEFAULT_JOB_INTERVAL,
             1,
             Setting.Property.NodeScope,
-            Setting.Property.Dynamic
+            Setting.Property.Dynamic,
+            Setting.Property.Deprecated
         )
 
         val SWEEP_PERIOD: Setting<TimeValue> = Setting.timeSetting(
-            "plugins.index_state_management.coordinator.sweep_period",
-            LegacyOpenDistroManagedIndexSettings.SWEEP_PERIOD,
+            "opendistro.index_state_management.coordinator.sweep_period",
+            TimeValue.timeValueMinutes(10),
             TimeValue.timeValueMinutes(5),
             Setting.Property.NodeScope,
-            Setting.Property.Dynamic
+            Setting.Property.Dynamic,
+            Setting.Property.Deprecated
         )
 
         val COORDINATOR_BACKOFF_MILLIS: Setting<TimeValue> = Setting.positiveTimeSetting(
-            "plugins.index_state_management.coordinator.backoff_millis",
-            LegacyOpenDistroManagedIndexSettings.COORDINATOR_BACKOFF_MILLIS,
+            "opendistro.index_state_management.coordinator.backoff_millis",
+            TimeValue.timeValueMillis(50),
             Setting.Property.NodeScope,
-            Setting.Property.Dynamic
+            Setting.Property.Dynamic,
+            Setting.Property.Deprecated
         )
 
         val COORDINATOR_BACKOFF_COUNT: Setting<Int> = Setting.intSetting(
-            "plugins.index_state_management.coordinator.backoff_count",
-            LegacyOpenDistroManagedIndexSettings.COORDINATOR_BACKOFF_COUNT,
+            "opendistro.index_state_management.coordinator.backoff_count",
+            2,
             0,
             Setting.Property.NodeScope,
-            Setting.Property.Dynamic
+            Setting.Property.Dynamic,
+            Setting.Property.Deprecated
         )
 
         val HISTORY_ENABLED: Setting<Boolean> = Setting.boolSetting(
-            "plugins.index_state_management.history.enabled",
-            LegacyOpenDistroManagedIndexSettings.HISTORY_ENABLED,
+            "opendistro.index_state_management.history.enabled",
+            true,
             Setting.Property.NodeScope,
-            Setting.Property.Dynamic
+            Setting.Property.Dynamic,
+            Setting.Property.Deprecated
         )
 
         val HISTORY_MAX_DOCS: Setting<Long> = Setting.longSetting(
-            "plugins.index_state_management.history.max_docs",
-            LegacyOpenDistroManagedIndexSettings.HISTORY_MAX_DOCS, // 1 doc is ~10kb or less. This many doc is roughly 25gb
+            "opendistro.index_state_management.history.max_docs",
+            2500000L, // 1 doc is ~10kb or less. This many doc is roughly 25gb
             0L,
             Setting.Property.NodeScope,
-            Setting.Property.Dynamic
+            Setting.Property.Dynamic,
+            Setting.Property.Deprecated
         )
 
         val HISTORY_INDEX_MAX_AGE: Setting<TimeValue> = Setting.positiveTimeSetting(
-            "plugins.index_state_management.history.max_age",
-            LegacyOpenDistroManagedIndexSettings.HISTORY_INDEX_MAX_AGE,
+            "opendistro.index_state_management.history.max_age",
+            TimeValue.timeValueHours(24),
             Setting.Property.NodeScope,
-            Setting.Property.Dynamic
+            Setting.Property.Dynamic,
+            Setting.Property.Deprecated
         )
 
         val HISTORY_ROLLOVER_CHECK_PERIOD: Setting<TimeValue> = Setting.positiveTimeSetting(
-            "plugins.index_state_management.history.rollover_check_period",
-            LegacyOpenDistroManagedIndexSettings.HISTORY_ROLLOVER_CHECK_PERIOD,
+            "opendistro.index_state_management.history.rollover_check_period",
+            TimeValue.timeValueHours(8),
             Setting.Property.NodeScope,
-            Setting.Property.Dynamic
+            Setting.Property.Dynamic,
+            Setting.Property.Deprecated
         )
 
         val HISTORY_RETENTION_PERIOD: Setting<TimeValue> = Setting.positiveTimeSetting(
-            "plugins.index_state_management.history.rollover_retention_period",
-            LegacyOpenDistroManagedIndexSettings.HISTORY_RETENTION_PERIOD,
+            "opendistro.index_state_management.history.rollover_retention_period",
+            TimeValue(30, TimeUnit.DAYS),
             Setting.Property.NodeScope,
-            Setting.Property.Dynamic
+            Setting.Property.Dynamic,
+            Setting.Property.Deprecated
         )
 
         val HISTORY_NUMBER_OF_SHARDS: Setting<Int> = Setting.intSetting(
-            "plugins.index_state_management.history.number_of_shards",
-            LegacyOpenDistroManagedIndexSettings.HISTORY_NUMBER_OF_SHARDS,
+            "opendistro.index_state_management.history.number_of_shards",
+            1,
             Setting.Property.NodeScope,
-            Setting.Property.Dynamic
+            Setting.Property.Dynamic,
+            Setting.Property.Deprecated
         )
 
         val HISTORY_NUMBER_OF_REPLICAS: Setting<Int> = Setting.intSetting(
-            "plugins.index_state_management.history.number_of_replicas",
-            LegacyOpenDistroManagedIndexSettings.HISTORY_NUMBER_OF_REPLICAS,
+            "opendistro.index_state_management.history.number_of_replicas",
+            1,
             Setting.Property.NodeScope,
-            Setting.Property.Dynamic
+            Setting.Property.Dynamic,
+            Setting.Property.Deprecated
         )
 
         val ALLOW_LIST: Setting<List<String>> = Setting.listSetting(
-            "plugins.index_state_management.allow_list",
-            LegacyOpenDistroManagedIndexSettings.ALLOW_LIST,
+            "opendistro.index_state_management.allow_list",
+            ALLOW_LIST_ALL,
             Function.identity(),
             Setting.Property.NodeScope,
-            Setting.Property.Dynamic
+            Setting.Property.Dynamic,
+            Setting.Property.Deprecated
         )
 
         val SNAPSHOT_DENY_LIST: Setting<List<String>> = Setting.listSetting(
-            "plugins.index_state_management.snapshot.deny_list",
-            LegacyOpenDistroManagedIndexSettings.SNAPSHOT_DENY_LIST,
+            "opendistro.index_state_management.snapshot.deny_list",
+            SNAPSHOT_DENY_LIST_NONE,
             Function.identity(),
             Setting.Property.NodeScope,
-            Setting.Property.Dynamic
+            Setting.Property.Dynamic,
+            Setting.Property.Deprecated
         )
     }
 }

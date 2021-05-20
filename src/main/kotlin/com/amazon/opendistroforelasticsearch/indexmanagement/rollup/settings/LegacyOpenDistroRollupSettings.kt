@@ -24,12 +24,12 @@
  * permissions and limitations under the License.
  */
 
-package org.opensearch.indexmanagement.rollup.settings
+package com.amazon.opendistroforelasticsearch.indexmanagement.rollup.settings
 
 import org.opensearch.common.settings.Setting
 import org.opensearch.common.unit.TimeValue
 
-class RollupSettings {
+class LegacyOpenDistroRollupSettings {
 
     companion object {
         const val DEFAULT_ROLLUP_ENABLED = true
@@ -41,59 +41,67 @@ class RollupSettings {
         const val DEFAULT_CLIENT_REQUEST_RETRY_DELAY = 1000L
 
         val ROLLUP_ENABLED: Setting<Boolean> = Setting.boolSetting(
-            "plugins.rollup.enabled",
-            LegacyOpenDistroRollupSettings.ROLLUP_ENABLED,
+            "opendistro.rollup.enabled",
+            DEFAULT_ROLLUP_ENABLED,
             Setting.Property.NodeScope,
-            Setting.Property.Dynamic
+            Setting.Property.Dynamic,
+            Setting.Property.Deprecated
         )
 
         val ROLLUP_SEARCH_ENABLED: Setting<Boolean> = Setting.boolSetting(
-            "plugins.rollup.search.enabled",
-            LegacyOpenDistroRollupSettings.ROLLUP_SEARCH_ENABLED,
+            "opendistro.rollup.search.enabled",
+            true,
             Setting.Property.NodeScope,
-            Setting.Property.Dynamic
+            Setting.Property.Dynamic,
+            Setting.Property.Deprecated
         )
 
         val ROLLUP_INDEX: Setting<Boolean> = Setting.boolSetting(
-            "index.plugins.rollup_index",
-            LegacyOpenDistroRollupSettings.ROLLUP_INDEX,
+            "index.opendistro.rollup_index",
+            false,
             Setting.Property.IndexScope,
-            Setting.Property.InternalIndex
+            Setting.Property.InternalIndex,
+            Setting.Property.Deprecated
         )
 
         val ROLLUP_INGEST_BACKOFF_MILLIS: Setting<TimeValue> = Setting.positiveTimeSetting(
-            "plugins.rollup.ingest.backoff_millis",
-            LegacyOpenDistroRollupSettings.ROLLUP_INGEST_BACKOFF_MILLIS,
+            "opendistro.rollup.ingest.backoff_millis",
+            TimeValue.timeValueMillis(1000),
             Setting.Property.NodeScope,
-            Setting.Property.Dynamic
+            Setting.Property.Dynamic,
+            Setting.Property.Deprecated
         )
 
         val ROLLUP_INGEST_BACKOFF_COUNT: Setting<Int> = Setting.intSetting(
-            "plugins.rollup.ingest.backoff_count",
-            LegacyOpenDistroRollupSettings.ROLLUP_INGEST_BACKOFF_COUNT,
+            "opendistro.rollup.ingest.backoff_count",
+            5,
             Setting.Property.NodeScope,
-            Setting.Property.Dynamic
+            Setting.Property.Dynamic,
+            Setting.Property.Deprecated
         )
 
         val ROLLUP_SEARCH_BACKOFF_MILLIS: Setting<TimeValue> = Setting.positiveTimeSetting(
-            "plugins.rollup.search.backoff_millis",
-            LegacyOpenDistroRollupSettings.ROLLUP_SEARCH_BACKOFF_MILLIS,
+            "opendistro.rollup.search.backoff_millis",
+            TimeValue.timeValueMillis(1000),
             Setting.Property.NodeScope,
-            Setting.Property.Dynamic
+            Setting.Property.Dynamic,
+            Setting.Property.Deprecated
         )
 
         val ROLLUP_SEARCH_BACKOFF_COUNT: Setting<Int> = Setting.intSetting(
-            "plugins.rollup.search.backoff_count",
-            LegacyOpenDistroRollupSettings.ROLLUP_SEARCH_BACKOFF_COUNT,
+            "opendistro.rollup.search.backoff_count",
+            5,
             Setting.Property.NodeScope,
-            Setting.Property.Dynamic
+            Setting.Property.Dynamic,
+            Setting.Property.Deprecated
         )
 
         val ROLLUP_DASHBOARDS: Setting<Boolean> = Setting.boolSetting(
-            "plugins.rollup.dashboards.enabled",
-            LegacyOpenDistroRollupSettings.ROLLUP_DASHBOARDS,
+            "opendistro.rollup.dashboards.enabled",
+            DEFAULT_ROLLUP_ENABLED,
             Setting.Property.NodeScope,
-            Setting.Property.Dynamic
+            Setting.Property.Dynamic,
+            Setting.Property.Deprecated
         )
     }
 }
