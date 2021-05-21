@@ -72,7 +72,7 @@ class RestGetTransformActionIT : TransformRestTestCase() {
             assertEquals(testTransform.seqNo, (foundTransform["_seq_no"] as Int).toLong())
             assertEquals(testTransform.primaryTerm, (foundTransform["_primary_term"] as Int).toLong())
             assertEquals(testTransform.id, innerTransform["transform_id"] as String)
-            assertEquals(7, (innerTransform["schema_version"] as Int).toLong())
+            assertEquals(configSchemaVersion, innerTransform["schema_version"] as Int)
             assertEquals(testTransform.enabled, innerTransform["enabled"] as Boolean)
             assertEquals(testTransform.enabledAt?.toEpochMilli(), (innerTransform["enabled_at"] as Number?)?.toLong())
 
