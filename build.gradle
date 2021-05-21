@@ -31,7 +31,7 @@ import java.util.function.Predicate
 
 buildscript {
     ext {
-        opensearch_version = System.getProperty("opensearch_version", "1.0.0-beta1")
+        opensearch_version = System.getProperty("opensearch.version", "1.0.0-rc1")
         kotlin_version = System.getProperty("kotlin.version", "1.3.72")
     }
 
@@ -96,7 +96,7 @@ check.dependsOn jacocoTestReport
 opensearchplugin {
     name 'opensearch-index-management'
     description 'OpenSearch Index Management Plugin'
-    classname 'com.amazon.opendistroforelasticsearch.indexmanagement.IndexManagementPlugin'
+    classname 'org.opensearch.indexmanagement.IndexManagementPlugin'
     extendedPlugins = ['opensearch-job-scheduler']
 }
 
@@ -105,7 +105,7 @@ tasks.named("integTest").configure {
 }
 
 allOpen {
-    annotation("com.amazon.opendistroforelasticsearch.indexmanagement.util.OpenForTesting")
+    annotation("org.opensearch.indexmanagement.util.OpenForTesting")
 }
 
 configurations {
@@ -129,18 +129,18 @@ ext {
     noticeFile = rootProject.file('NOTICE')
 }
 
-group = "com.amazon.opendistroforelasticsearch"
+group = "org.opensearch"
 version = "${opensearchVersion}.0-beta1"
 
 dependencies {
     compileOnly "org.opensearch:opensearch:${opensearch_version}"
-    compileOnly "com.amazon.opendistroforelasticsearch:opensearch-job-scheduler-spi:1.0.0.0-beta1"
+    compileOnly "org.opensearch:opensearch-job-scheduler-spi:1.0.0.0-beta1"
     compile "org.jetbrains.kotlin:kotlin-stdlib:${kotlin_version}"
     compile "org.jetbrains.kotlin:kotlin-stdlib-common:${kotlin_version}"
     compile 'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.3.7'
     compile "org.jetbrains:annotations:13.0"
-    compile "com.amazon.opendistroforelasticsearch:notification:1.0.0.0-beta1"
-    compile "com.amazon.opendistroforelasticsearch:common-utils:1.0.0.0-beta1"
+    compile "org.opensearch:notification:1.0.0.0-beta1"
+    compile "org.opensearch:common-utils:1.0.0.0-beta1"
     compile "com.github.seancfoley:ipaddress:5.3.3"
 
     testCompile "org.opensearch.test:framework:${opensearch_version}"
@@ -279,7 +279,7 @@ integTest {
     // TODO: Fix running notification test against remote cluster with security plugin installed
     if (System.getProperty("https") != null) {
         filter {
-            excludeTestsMatching "com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.action.NotificationActionIT"
+            excludeTestsMatching "org.opensearch.indexmanagement.indexstatemanagement.action.NotificationActionIT"
         }
     }
 }
