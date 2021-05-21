@@ -48,10 +48,7 @@ class RestRetryFailedManagedIndexAction : BaseRestHandler() {
     private val log = LogManager.getLogger(javaClass)
 
     override fun routes(): List<Route> {
-        return listOf(
-            Route(POST, RETRY_BASE_URI),
-            Route(POST, "$RETRY_BASE_URI/{index}")
-        )
+        return emptyList()
     }
 
     override fun replacedRoutes(): List<ReplacedRoute> {

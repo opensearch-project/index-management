@@ -45,10 +45,16 @@ import org.opensearch.action.search.SearchResponse
 import org.opensearch.client.ResponseException
 import org.opensearch.common.xcontent.XContentType
 import org.opensearch.common.xcontent.json.JsonXContent.jsonXContent
+import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.LEGACY_POLICY_BASE_URI
+import org.opensearch.indexmanagement.indexstatemanagement.resthandler.RestAddPolicyAction.Companion.LEGACY_ADD_POLICY_BASE_URI
+import org.opensearch.indexmanagement.indexstatemanagement.resthandler.RestExplainAction.Companion.LEGACY_EXPLAIN_BASE_URI
+import org.opensearch.indexmanagement.indexstatemanagement.resthandler.RestRemovePolicyAction.Companion.LEGACY_REMOVE_POLICY_BASE_URI
+import org.opensearch.indexmanagement.indexstatemanagement.resthandler.RestRetryFailedManagedIndexAction.Companion.LEGACY_RETRY_BASE_URI
 import org.opensearch.rest.RestRequest
 import org.opensearch.rest.RestStatus
 import org.opensearch.test.OpenSearchTestCase
 import org.opensearch.test.junit.annotations.TestLogging
+import java.io.IOException
 
 @TestLogging(value = "level:DEBUG", reason = "Debugging tests")
 @Suppress("UNCHECKED_CAST")

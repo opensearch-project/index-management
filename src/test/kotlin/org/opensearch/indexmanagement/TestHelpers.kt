@@ -26,18 +26,20 @@
 
 package org.opensearch.indexmanagement
 
-import org.opensearch.jobscheduler.spi.schedule.CronSchedule
-import org.opensearch.jobscheduler.spi.schedule.IntervalSchedule
-import org.opensearch.jobscheduler.spi.schedule.Schedule
 import org.apache.http.Header
 import org.apache.http.HttpEntity
 import org.opensearch.client.Request
 import org.opensearch.client.RequestOptions
 import org.opensearch.client.Response
 import org.opensearch.client.RestClient
+import org.opensearch.client.WarningsHandler
+import org.opensearch.jobscheduler.spi.schedule.CronSchedule
+import org.opensearch.jobscheduler.spi.schedule.IntervalSchedule
+import org.opensearch.jobscheduler.spi.schedule.Schedule
 import org.opensearch.test.rest.OpenSearchRestTestCase
 import java.time.Instant
 import java.time.temporal.ChronoUnit
+
 
 fun randomDayOfWeekCronField(): String = if (OpenSearchRestTestCase.randomBoolean()) "*" else OpenSearchRestTestCase.randomIntBetween(0, 7).toString()
 
@@ -76,10 +78,12 @@ fun RestClient.makeRequest(
     endpoint: String,
     params: Map<String, String> = emptyMap(),
     entity: HttpEntity? = null,
-    vararg headers: Header
+    vararg headers: Header,
+    strictDeprecationMode: Boolean = false
 ): Response {
     val request = Request(method, endpoint)
     val options = RequestOptions.DEFAULT.toBuilder()
+    options.setWarningsHandler(if (strictDeprecationMode) WarningsHandler.STRICT else WarningsHandler.PERMISSIVE)
     headers.forEach { options.addHeader(it.name, it.value) }
     request.options = options.build()
     params.forEach { request.addParameter(it.key, it.value) }
@@ -99,10 +103,12 @@ fun RestClient.makeRequest(
     method: String,
     endpoint: String,
     entity: HttpEntity? = null,
-    vararg headers: Header
+    vararg headers: Header,
+    strictDeprecationMode: Boolean = false
 ): Response {
     val request = Request(method, endpoint)
     val options = RequestOptions.DEFAULT.toBuilder()
+    options.setWarningsHandler(if (strictDeprecationMode) WarningsHandler.STRICT else WarningsHandler.PERMISSIVE)
     headers.forEach { options.addHeader(it.name, it.value) }
     request.options = options.build()
     if (entity != null) {
