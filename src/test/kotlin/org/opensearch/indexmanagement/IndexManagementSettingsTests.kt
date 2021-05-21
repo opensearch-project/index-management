@@ -24,15 +24,15 @@
  *   permissions and limitations under the License.
  */
 
-package com.amazon.opendistroforelasticsearch.indexmanagement
+package org.opensearch.indexmanagement
 
-import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.settings.LegacyOpenDistroManagedIndexSettings
-import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings
-import com.amazon.opendistroforelasticsearch.indexmanagement.rollup.settings.LegacyOpenDistroRollupSettings
-import com.amazon.opendistroforelasticsearch.indexmanagement.rollup.settings.RollupSettings
+import org.opensearch.indexmanagement.indexstatemanagement.settings.LegacyOpenDistroManagedIndexSettings
+import org.opensearch.indexmanagement.rollup.settings.LegacyOpenDistroRollupSettings
 import org.junit.Before
 import org.opensearch.common.settings.Settings
 import org.opensearch.common.unit.TimeValue
+import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings
+import org.opensearch.indexmanagement.rollup.settings.RollupSettings
 import org.opensearch.test.OpenSearchTestCase
 
 class IndexManagementSettingsTests : OpenSearchTestCase() {

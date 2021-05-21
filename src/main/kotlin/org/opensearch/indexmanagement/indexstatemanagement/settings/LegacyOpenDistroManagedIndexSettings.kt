@@ -24,11 +24,11 @@
  * permissions and limitations under the License.
  */
 
-package com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.settings
+package org.opensearch.indexmanagement.indexstatemanagement.settings
 
-import com.amazon.opendistroforelasticsearch.indexmanagement.indexstatemanagement.model.action.ActionConfig
 import org.opensearch.common.settings.Setting
 import org.opensearch.common.unit.TimeValue
+import org.opensearch.indexmanagement.indexstatemanagement.model.action.ActionConfig
 import java.util.concurrent.TimeUnit
 import java.util.function.Function
 

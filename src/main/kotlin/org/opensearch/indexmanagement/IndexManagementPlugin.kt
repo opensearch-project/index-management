@@ -136,6 +136,8 @@ import org.opensearch.common.component.Lifecycle
 import org.opensearch.common.component.LifecycleComponent
 import org.opensearch.common.component.LifecycleListener
 import org.opensearch.common.inject.Inject
+import org.opensearch.indexmanagement.indexstatemanagement.settings.LegacyOpenDistroManagedIndexSettings
+import org.opensearch.indexmanagement.rollup.settings.LegacyOpenDistroRollupSettings
 import org.opensearch.transport.RemoteClusterService
 import org.opensearch.transport.TransportService
 

@@ -24,7 +24,7 @@
  * permissions and limitations under the License.
  */
 
-package com.amazon.opendistroforelasticsearch.indexmanagement.rollup.settings
+package org.opensearch.indexmanagement.rollup.settings
 
 import org.opensearch.common.settings.Setting
 import org.opensearch.common.unit.TimeValue
