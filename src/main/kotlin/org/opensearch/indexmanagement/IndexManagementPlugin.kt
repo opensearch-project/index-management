@@ -407,8 +407,7 @@ internal class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, Act
             ActionPlugin.ActionHandler(DeleteTransformsAction.INSTANCE, TransportDeleteTransformsAction::class.java),
             ActionPlugin.ActionHandler(ExplainTransformAction.INSTANCE, TransportExplainTransformAction::class.java),
             ActionPlugin.ActionHandler(StartTransformAction.INSTANCE, TransportStartTransformAction::class.java),
-            ActionPlugin.ActionHandler(StopTransformAction.INSTANCE, TransportStopTransformAction::class.java),
-            ActionPlugin.ActionHandler(UpdateRollupMappingAction.INSTANCE, TransportUpdateRollupMappingAction::class.java)
+            ActionPlugin.ActionHandler(StopTransformAction.INSTANCE, TransportStopTransformAction::class.java)
         )
     }
 

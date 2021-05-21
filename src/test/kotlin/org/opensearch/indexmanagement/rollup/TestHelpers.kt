@@ -50,8 +50,6 @@ import org.opensearch.indexmanagement.rollup.model.metric.Metric
 import org.opensearch.indexmanagement.rollup.model.metric.Min
 import org.opensearch.indexmanagement.rollup.model.metric.Sum
 import org.opensearch.indexmanagement.rollup.model.metric.ValueCount
-import org.opensearch.indexmanagement.transform.model.ExplainTransform
-import org.opensearch.indexmanagement.transform.randomTransformMetadata
 import org.opensearch.common.xcontent.ToXContent
 import org.opensearch.common.xcontent.XContentFactory
 import org.opensearch.index.query.TermQueryBuilder
