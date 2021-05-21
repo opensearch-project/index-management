@@ -40,8 +40,6 @@ import org.opensearch.common.unit.ByteSizeValue
 import org.opensearch.common.unit.TimeValue
 import org.hamcrest.core.Is.isA
 import org.junit.Assert
-import org.opensearch.common.settings.Settings
-import org.opensearch.indexmanagement.indexstatemanagement.settings.LegacyOpenDistroManagedIndexSettings
 import org.opensearch.indexmanagement.makeRequest
 import java.time.Instant
 import java.time.temporal.ChronoUnit
@@ -91,12 +89,8 @@ class RolloverActionIT : IndexStateManagementRestTestCase() {
 
     fun `test rollover with open distro rollover_alias setting`() {
         val indexNameBase = "bwc_index"
-        val firstIndex = "${indexNameBase}-1"
+        val firstIndex = "$indexNameBase-1"
         val aliasName = "bwc_alias"
-        val settings = Settings.builder().let {
-            it.put(LegacyOpenDistroManagedIndexSettings.ROLLOVER_ALIAS.key, aliasName)
-        }.build()
-//        createIndex(firstIndex, settings, "", "\"$aliasName\": { \"is_write_index\": true }")
         client().makeRequest("PUT", "/$firstIndex",
         StringEntity("{\n" +
             "  \"settings\": {\n" +

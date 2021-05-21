@@ -133,7 +133,6 @@ class IndexManagementSettingsTests : OpenSearchTestCase() {
         val settings = Settings.builder()
             .put("opendistro.index_state_management.enabled", false)
             .put("opendistro.index_state_management.metadata_service.enabled", false)
-            .put("index.opendistro.index_state_management.rollover_alias", "1")
             .put("opendistro.index_state_management.job_interval", 1)
             .put("opendistro.index_state_management.coordinator.sweep_period", "6m")
             .put("opendistro.index_state_management.coordinator.backoff_millis", "1ms")
@@ -149,7 +148,6 @@ class IndexManagementSettingsTests : OpenSearchTestCase() {
             .putList("opendistro.index_state_management.snapshot.deny_list", listOf("1"))
             .put("opendistro.rollup.enabled", false)
             .put("opendistro.rollup.search.enabled", false)
-            .put("index.opendistro.rollup_index", true)
             .put("opendistro.rollup.ingest.backoff_millis", "1ms")
             .put("opendistro.rollup.ingest.backoff_count", 1)
             .put("opendistro.rollup.search.backoff_millis", "1ms")
@@ -159,7 +157,6 @@ class IndexManagementSettingsTests : OpenSearchTestCase() {
 
         assertEquals(ManagedIndexSettings.INDEX_STATE_MANAGEMENT_ENABLED.get(settings), false)
         assertEquals(ManagedIndexSettings.METADATA_SERVICE_ENABLED.get(settings), false)
-        assertEquals(ManagedIndexSettings.ROLLOVER_ALIAS.get(settings), "1")
         assertEquals(ManagedIndexSettings.JOB_INTERVAL.get(settings), 1)
         assertEquals(ManagedIndexSettings.SWEEP_PERIOD.get(settings), TimeValue.timeValueMinutes(6))
         assertEquals(ManagedIndexSettings.COORDINATOR_BACKOFF_MILLIS.get(settings), TimeValue.timeValueMillis(1))
@@ -175,7 +172,6 @@ class IndexManagementSettingsTests : OpenSearchTestCase() {
         assertEquals(ManagedIndexSettings.SNAPSHOT_DENY_LIST.get(settings), listOf("1"))
         assertEquals(RollupSettings.ROLLUP_ENABLED.get(settings), false)
         assertEquals(RollupSettings.ROLLUP_SEARCH_ENABLED.get(settings), false)
-        assertEquals(RollupSettings.ROLLUP_INDEX.get(settings), true)
         assertEquals(RollupSettings.ROLLUP_INGEST_BACKOFF_MILLIS.get(settings), TimeValue.timeValueMillis(1))
         assertEquals(RollupSettings.ROLLUP_INGEST_BACKOFF_COUNT.get(settings), 1)
         assertEquals(RollupSettings.ROLLUP_SEARCH_BACKOFF_MILLIS.get(settings), TimeValue.timeValueMillis(1))
@@ -185,7 +181,6 @@ class IndexManagementSettingsTests : OpenSearchTestCase() {
         assertSettingDeprecationsAndWarnings(arrayOf(
             LegacyOpenDistroManagedIndexSettings.INDEX_STATE_MANAGEMENT_ENABLED,
             LegacyOpenDistroManagedIndexSettings.METADATA_SERVICE_ENABLED,
-            LegacyOpenDistroManagedIndexSettings.ROLLOVER_ALIAS,
             LegacyOpenDistroManagedIndexSettings.JOB_INTERVAL,
             LegacyOpenDistroManagedIndexSettings.SWEEP_PERIOD,
             LegacyOpenDistroManagedIndexSettings.COORDINATOR_BACKOFF_MILLIS,
@@ -201,7 +196,6 @@ class IndexManagementSettingsTests : OpenSearchTestCase() {
             LegacyOpenDistroManagedIndexSettings.SNAPSHOT_DENY_LIST,
             LegacyOpenDistroRollupSettings.ROLLUP_ENABLED,
             LegacyOpenDistroRollupSettings.ROLLUP_SEARCH_ENABLED,
-            LegacyOpenDistroRollupSettings.ROLLUP_INDEX,
             LegacyOpenDistroRollupSettings.ROLLUP_INGEST_BACKOFF_MILLIS,
             LegacyOpenDistroRollupSettings.ROLLUP_INGEST_BACKOFF_COUNT,
             LegacyOpenDistroRollupSettings.ROLLUP_SEARCH_BACKOFF_MILLIS,
