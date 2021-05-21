@@ -46,6 +46,7 @@ import org.opensearch.action.support.IndicesOptions
 import org.opensearch.cluster.metadata.IndexNameExpressionResolver
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.settings.Settings
+import org.opensearch.indexmanagement.rollup.util.isRollupIndex
 import org.opensearch.tasks.Task
 import org.opensearch.transport.RemoteClusterAware
 
@@ -85,7 +86,7 @@ class FieldCapsFilter(
             localIndices?.let {
                 val concreteIndices = indexNameExpressionResolver.concreteIndexNames(clusterService.state(), request.indicesOptions(), it)
                 for (index in concreteIndices) {
-                    val isRollupIndex = RollupSettings.ROLLUP_INDEX.get(clusterService.state().metadata.index(index).settings)
+                    val isRollupIndex = isRollupIndex(index, clusterService.state())
                     if (isRollupIndex) {
                         rollupIndices.add(index)
                     } else {
