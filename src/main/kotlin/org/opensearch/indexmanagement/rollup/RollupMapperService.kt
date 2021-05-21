@@ -50,11 +50,14 @@ import org.opensearch.action.admin.indices.mapping.get.GetMappingsResponse
 import org.opensearch.action.support.IndicesOptions
 import org.opensearch.action.support.master.AcknowledgedResponse
 import org.opensearch.client.Client
+import org.opensearch.cluster.ClusterState
 import org.opensearch.cluster.metadata.IndexNameExpressionResolver
 import org.opensearch.cluster.metadata.MappingMetadata
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.settings.Settings
 import org.opensearch.common.xcontent.XContentType
+import org.opensearch.indexmanagement.rollup.settings.LegacyOpenDistroRollupSettings
+import org.opensearch.indexmanagement.rollup.util.isRollupIndex
 import org.opensearch.transport.RemoteTransportException
 
 // TODO: Validation of fields across source and target indices overwriting existing rollup data
@@ -73,7 +76,7 @@ class RollupMapperService(
     // confirm it does not conflict with existing jobs and is a valid job
     @Suppress("ReturnCount")
     private suspend fun validateAndAttemptToUpdateTargetIndex(rollup: Rollup): RollupJobValidationResult {
-        if (!isRollupIndex(rollup.targetIndex)) {
+        if (!isRollupIndex(rollup.targetIndex, clusterService.state())) {
             return RollupJobValidationResult.Invalid("Target index [${rollup.targetIndex}] is a non rollup index")
         }
 
@@ -246,8 +249,6 @@ class RollupMapperService(
             return GetMappingsResult.Failure(errorMessage, e)
         }
     }
-
-    fun isRollupIndex(index: String): Boolean = RollupSettings.ROLLUP_INDEX.get(clusterService.state().metadata.index(index).settings)
 
     fun indexExists(index: String): Boolean = clusterService.state().routingTable.hasIndex(index)
 

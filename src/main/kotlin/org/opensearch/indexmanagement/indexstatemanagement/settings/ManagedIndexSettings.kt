@@ -57,12 +57,14 @@ class ManagedIndexSettings {
 
         val POLICY_ID: Setting<String> = Setting.simpleString(
             "index.plugins.index_state_management.policy_id",
+            LegacyOpenDistroManagedIndexSettings.POLICY_ID,
             Setting.Property.IndexScope,
             Setting.Property.Dynamic
         )
 
         val ROLLOVER_ALIAS: Setting<String> = Setting.simpleString(
             "index.plugins.index_state_management.rollover_alias",
+            LegacyOpenDistroManagedIndexSettings.ROLLOVER_ALIAS,
             Setting.Property.IndexScope,
             Setting.Property.Dynamic
         )

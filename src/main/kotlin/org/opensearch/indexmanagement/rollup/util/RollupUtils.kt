@@ -44,6 +44,7 @@ import org.opensearch.indexmanagement.rollup.model.metric.Sum
 import org.opensearch.indexmanagement.rollup.model.metric.ValueCount
 import org.opensearch.indexmanagement.util.IndexUtils
 import org.opensearch.action.search.SearchRequest
+import org.opensearch.cluster.ClusterState
 import org.opensearch.cluster.metadata.IndexMetadata
 import org.opensearch.common.xcontent.LoggingDeprecationHandler
 import org.opensearch.common.xcontent.NamedXContentRegistry
@@ -61,6 +62,8 @@ import org.opensearch.index.query.QueryBuilder
 import org.opensearch.index.query.RangeQueryBuilder
 import org.opensearch.index.query.TermQueryBuilder
 import org.opensearch.index.query.TermsQueryBuilder
+import org.opensearch.indexmanagement.rollup.settings.LegacyOpenDistroRollupSettings
+import org.opensearch.indexmanagement.rollup.settings.RollupSettings
 import org.opensearch.script.Script
 import org.opensearch.script.ScriptType
 import org.opensearch.search.aggregations.AggregationBuilder
@@ -83,6 +86,15 @@ import org.opensearch.search.aggregations.metrics.ValueCountAggregationBuilder
 import org.opensearch.search.builder.SearchSourceBuilder
 
 const val DATE_FIELD_EPOCH_MILLIS_FORMAT = "epoch_millis"
+
+fun isRollupIndex(index: String, clusterState: ClusterState): Boolean {
+    if (RollupSettings.ROLLUP_INDEX.get(clusterState.metadata.index(index).settings)) {
+        return true
+    } else if (LegacyOpenDistroRollupSettings.ROLLUP_INDEX.get(clusterState.metadata.index(index).settings)) {
+        return true
+    }
+    return false
+}
 
 fun Rollup.getRollupSearchRequest(metadata: RollupMetadata): SearchRequest {
     val query = if (metadata.continuous != null) {

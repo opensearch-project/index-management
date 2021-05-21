@@ -133,6 +133,7 @@ class IndexManagementSettingsTests : OpenSearchTestCase() {
         val settings = Settings.builder()
             .put("opendistro.index_state_management.enabled", false)
             .put("opendistro.index_state_management.metadata_service.enabled", false)
+            .put("index.opendistro.index_state_management.rollover_alias", "1")
             .put("opendistro.index_state_management.job_interval", 1)
             .put("opendistro.index_state_management.coordinator.sweep_period", "6m")
             .put("opendistro.index_state_management.coordinator.backoff_millis", "1ms")
@@ -158,6 +159,7 @@ class IndexManagementSettingsTests : OpenSearchTestCase() {
 
         assertEquals(ManagedIndexSettings.INDEX_STATE_MANAGEMENT_ENABLED.get(settings), false)
         assertEquals(ManagedIndexSettings.METADATA_SERVICE_ENABLED.get(settings), false)
+        assertEquals(ManagedIndexSettings.ROLLOVER_ALIAS.get(settings), "1")
         assertEquals(ManagedIndexSettings.JOB_INTERVAL.get(settings), 1)
         assertEquals(ManagedIndexSettings.SWEEP_PERIOD.get(settings), TimeValue.timeValueMinutes(6))
         assertEquals(ManagedIndexSettings.COORDINATOR_BACKOFF_MILLIS.get(settings), TimeValue.timeValueMillis(1))
@@ -183,6 +185,7 @@ class IndexManagementSettingsTests : OpenSearchTestCase() {
         assertSettingDeprecationsAndWarnings(arrayOf(
             LegacyOpenDistroManagedIndexSettings.INDEX_STATE_MANAGEMENT_ENABLED,
             LegacyOpenDistroManagedIndexSettings.METADATA_SERVICE_ENABLED,
+            LegacyOpenDistroManagedIndexSettings.ROLLOVER_ALIAS,
             LegacyOpenDistroManagedIndexSettings.JOB_INTERVAL,
             LegacyOpenDistroManagedIndexSettings.SWEEP_PERIOD,
             LegacyOpenDistroManagedIndexSettings.COORDINATOR_BACKOFF_MILLIS,
