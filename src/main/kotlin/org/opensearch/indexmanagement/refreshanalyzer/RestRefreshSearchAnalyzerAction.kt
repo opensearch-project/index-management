@@ -29,7 +29,7 @@ package org.opensearch.indexmanagement.refreshanalyzer
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.OPEN_DISTRO_BASE_URI
 import org.opensearch.client.node.NodeClient
 import org.opensearch.common.Strings
-import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.IM_BASE_URI
+import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.PLUGINS_BASE_URI
 import org.opensearch.rest.BaseRestHandler
 import org.opensearch.rest.RestHandler.Route
 import org.opensearch.rest.RestHandler.ReplacedRoute
@@ -79,7 +79,7 @@ class RestRefreshSearchAnalyzerAction : BaseRestHandler() {
     }
 
     companion object {
-        const val REFRESH_SEARCH_ANALYZER_BASE_URI = "$IM_BASE_URI/_refresh_search_analyzers"
+        const val REFRESH_SEARCH_ANALYZER_BASE_URI = "$PLUGINS_BASE_URI/_refresh_search_analyzers"
         const val LEGACY_REFRESH_SEARCH_ANALYZER_BASE_URI = "$OPEN_DISTRO_BASE_URI/_refresh_search_analyzers"
     }
 }

@@ -150,9 +150,9 @@ internal class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, Act
 
     companion object {
         const val PLUGIN_NAME = "opendistro-im"
-        const val IM_BASE_URI = "/_plugins"
-        const val ISM_BASE_URI = "$IM_BASE_URI/_ism"
-        const val ROLLUP_BASE_URI = "$IM_BASE_URI/_rollup"
+        const val PLUGINS_BASE_URI = "/_plugins"
+        const val ISM_BASE_URI = "$PLUGINS_BASE_URI/_ism"
+        const val ROLLUP_BASE_URI = "$PLUGINS_BASE_URI/_rollup"
         const val POLICY_BASE_URI = "$ISM_BASE_URI/policies"
         const val ROLLUP_JOBS_BASE_URI = "$ROLLUP_BASE_URI/jobs"
         const val INDEX_MANAGEMENT_INDEX = ".opendistro-ism-config"
