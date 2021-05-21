@@ -39,8 +39,10 @@ import org.opensearch.action.support.WriteRequest
 import org.opensearch.client.node.NodeClient
 import org.opensearch.common.xcontent.ToXContent
 import org.opensearch.index.seqno.SequenceNumbers
+import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.LEGACY_ROLLUP_JOBS_BASE_URI
 import org.opensearch.rest.BaseRestHandler
 import org.opensearch.rest.RestHandler.Route
+import org.opensearch.rest.RestHandler.ReplacedRoute
 import org.opensearch.rest.BaseRestHandler.RestChannelConsumer
 import org.opensearch.rest.BytesRestResponse
 import org.opensearch.rest.RestChannel
@@ -55,9 +57,19 @@ import java.time.Instant
 class RestIndexRollupAction : BaseRestHandler() {
 
     override fun routes(): List<Route> {
+        return emptyList()
+    }
+
+    override fun replacedRoutes(): List<ReplacedRoute> {
         return listOf(
-            Route(PUT, ROLLUP_JOBS_BASE_URI),
-            Route(PUT, "$ROLLUP_JOBS_BASE_URI/{rollupID}")
+            ReplacedRoute(
+                PUT, ROLLUP_JOBS_BASE_URI,
+                PUT, LEGACY_ROLLUP_JOBS_BASE_URI
+            ),
+            ReplacedRoute(
+                PUT,"$ROLLUP_JOBS_BASE_URI/{rollupID}",
+                PUT, "$LEGACY_ROLLUP_JOBS_BASE_URI/{rollupID}"
+            )
         )
     }
 

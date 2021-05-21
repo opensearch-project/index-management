@@ -39,9 +39,12 @@ import org.opensearch.indexmanagement.indexstatemanagement.util.DEFAULT_QUERY_ST
 import org.opensearch.indexmanagement.indexstatemanagement.util.DEFAULT_SORT_ORDER
 import org.apache.logging.log4j.LogManager
 import org.opensearch.client.node.NodeClient
+import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.LEGACY_POLICY_BASE_URI
+import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.LEGACY_ROLLUP_BASE_URI
 import org.opensearch.rest.BaseRestHandler
 import org.opensearch.rest.BaseRestHandler.RestChannelConsumer
 import org.opensearch.rest.RestHandler.Route
+import org.opensearch.rest.RestHandler.ReplacedRoute
 import org.opensearch.rest.RestRequest
 import org.opensearch.rest.RestRequest.Method.GET
 import org.opensearch.rest.RestRequest.Method.HEAD
@@ -54,10 +57,23 @@ private val log = LogManager.getLogger(RestGetPolicyAction::class.java)
 class RestGetPolicyAction : BaseRestHandler() {
 
     override fun routes(): List<Route> {
+        return emptyList()
+    }
+
+    override fun replacedRoutes(): List<ReplacedRoute> {
         return listOf(
-            Route(GET, POLICY_BASE_URI),
-            Route(GET, "$POLICY_BASE_URI/{policyID}"),
-            Route(HEAD, "$POLICY_BASE_URI/{policyID}")
+            ReplacedRoute(
+                GET, POLICY_BASE_URI,
+                GET, LEGACY_ROLLUP_BASE_URI
+            ),
+            ReplacedRoute(
+                GET,"$POLICY_BASE_URI/{policyID}",
+                GET,"$LEGACY_POLICY_BASE_URI/{policyID}"
+            ),
+            ReplacedRoute(
+                HEAD,"$POLICY_BASE_URI/{policyID}",
+                HEAD,"$LEGACY_POLICY_BASE_URI/{policyID}"
+            )
         )
     }
 

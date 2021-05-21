@@ -31,8 +31,10 @@ import org.opensearch.indexmanagement.indexstatemanagement.transport.action.remo
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.removepolicy.RemovePolicyRequest
 import org.opensearch.client.node.NodeClient
 import org.opensearch.common.Strings
+import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.LEGACY_ISM_BASE_URI
 import org.opensearch.rest.BaseRestHandler
 import org.opensearch.rest.RestHandler.Route
+import org.opensearch.rest.RestHandler.ReplacedRoute
 import org.opensearch.rest.RestRequest
 import org.opensearch.rest.RestRequest.Method.POST
 import org.opensearch.rest.action.RestToXContentListener
@@ -41,9 +43,19 @@ import java.io.IOException
 class RestRemovePolicyAction : BaseRestHandler() {
 
     override fun routes(): List<Route> {
+        return emptyList()
+    }
+
+    override fun replacedRoutes(): List<ReplacedRoute> {
         return listOf(
-            Route(POST, REMOVE_POLICY_BASE_URI),
-            Route(POST, "$REMOVE_POLICY_BASE_URI/{index}")
+            ReplacedRoute(
+                POST, REMOVE_POLICY_BASE_URI,
+                POST,LEGACY_REMOVE_POLICY_BASE_URI
+            ),
+            ReplacedRoute(
+                POST,"$REMOVE_POLICY_BASE_URI/{index}",
+                POST, "$LEGACY_REMOVE_POLICY_BASE_URI/{index}"
+            )
         )
     }
 
@@ -67,5 +79,6 @@ class RestRemovePolicyAction : BaseRestHandler() {
 
     companion object {
         const val REMOVE_POLICY_BASE_URI = "$ISM_BASE_URI/remove"
+        const val LEGACY_REMOVE_POLICY_BASE_URI = "$LEGACY_ISM_BASE_URI/remove"
     }
 }
