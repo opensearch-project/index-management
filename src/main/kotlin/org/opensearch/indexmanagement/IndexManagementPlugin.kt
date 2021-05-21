@@ -150,14 +150,20 @@ internal class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, Act
 
     companion object {
         const val PLUGIN_NAME = "opendistro-im"
-        const val OPEN_DISTRO_BASE_URI = "/_opendistro"
-        const val ISM_BASE_URI = "$OPEN_DISTRO_BASE_URI/_ism"
-        const val ROLLUP_BASE_URI = "$OPEN_DISTRO_BASE_URI/_rollup"
+        const val PLUGINS_BASE_URI = "/_plugins"
+        const val ISM_BASE_URI = "$PLUGINS_BASE_URI/_ism"
+        const val ROLLUP_BASE_URI = "$PLUGINS_BASE_URI/_rollup"
         const val POLICY_BASE_URI = "$ISM_BASE_URI/policies"
         const val ROLLUP_JOBS_BASE_URI = "$ROLLUP_BASE_URI/jobs"
         const val INDEX_MANAGEMENT_INDEX = ".opendistro-ism-config"
         const val INDEX_MANAGEMENT_JOB_TYPE = "opendistro-index-management"
         const val INDEX_STATE_MANAGEMENT_HISTORY_TYPE = "managed_index_meta_data"
+
+        const val OPEN_DISTRO_BASE_URI = "/_opendistro"
+        const val LEGACY_ISM_BASE_URI = "$OPEN_DISTRO_BASE_URI/_ism"
+        const val LEGACY_ROLLUP_BASE_URI = "$OPEN_DISTRO_BASE_URI/_rollup"
+        const val LEGACY_POLICY_BASE_URI = "$LEGACY_ISM_BASE_URI/policies"
+        const val LEGACY_ROLLUP_JOBS_BASE_URI = "$LEGACY_ROLLUP_BASE_URI/jobs"
     }
 
     override fun getJobIndex(): String = INDEX_MANAGEMENT_INDEX

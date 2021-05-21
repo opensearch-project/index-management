@@ -28,7 +28,17 @@ import org.opensearch.indexmanagement.indexstatemanagement.util.UPDATED_INDICES
 import org.apache.http.entity.ContentType
 import org.apache.http.entity.StringEntity
 import org.opensearch.common.settings.Settings
+import org.opensearch.common.xcontent.ToXContent
+import org.opensearch.common.xcontent.XContentFactory
+import org.opensearch.indexmanagement.indexstatemanagement.resthandler.RestAddPolicyAction
+import org.opensearch.indexmanagement.indexstatemanagement.resthandler.RestExplainAction
+import org.opensearch.indexmanagement.indexstatemanagement.resthandler.RestRemovePolicyAction
+import org.opensearch.indexmanagement.indexstatemanagement.resthandler.RestRetryFailedManagedIndexAction
+import org.opensearch.indexmanagement.opensearchapi.string
+import org.opensearch.indexmanagement.refreshanalyzer.RestRefreshSearchAnalyzerAction
+import org.opensearch.indexmanagement.rollup.randomRollup
 import org.opensearch.rest.RestRequest
+import org.opensearch.rest.RestStatus
 import org.opensearch.test.OpenSearchTestCase
 import java.util.Locale
 
@@ -146,5 +156,81 @@ class IndexManagementIndicesIT : IndexStateManagementRestTestCase() {
         assertAffectedIndicesResponseIsEqual(mapOf(FAILURES to false, FAILED_INDICES to emptyList<Any>(), UPDATED_INDICES to 1), response.asMap())
 
         waitFor { assertEquals(newPolicy.id, getManagedIndexConfig(index)?.changePolicy?.policyID) }
+    }
+
+    fun `test ISM backward compatibility with opendistro`() {
+        val policy = randomPolicy()
+        val policyId = OpenSearchTestCase.randomAlphaOfLength(10)
+        val createIndexResponse =
+            client().makeRequest("PUT", "${IndexManagementPlugin.LEGACY_POLICY_BASE_URI}/$policyId", emptyMap(), policy.toHttpEntity())
+        assertEquals("Create policy failed", RestStatus.CREATED, createIndexResponse.restStatus())
+
+        val indexName = "bwc_index"
+        createIndex(indexName, null)
+        val addPolicyResponse = client().makeRequest(
+            RestRequest.Method.POST.toString(),
+            "${RestAddPolicyAction.LEGACY_ADD_POLICY_BASE_URI}/$indexName",
+            StringEntity("{ \"policy_id\": \"$policyId\" }", ContentType.APPLICATION_JSON)
+        )
+        assertEquals("Unexpected RestStatus", RestStatus.OK, addPolicyResponse.restStatus())
+
+        val changePolicyResponse = client().makeRequest(
+            RestRequest.Method.POST.toString(),
+            "${RestAddPolicyAction.LEGACY_ADD_POLICY_BASE_URI}/$indexName",
+            StringEntity("{ \"policy_id\": \"$policyId\" }", ContentType.APPLICATION_JSON)
+        )
+        assertEquals("Unexpected RestStatus", RestStatus.OK, changePolicyResponse.restStatus())
+
+        val retryFailedResponse = client().makeRequest(
+            RestRequest.Method.POST.toString(),
+            "${RestRetryFailedManagedIndexAction.LEGACY_RETRY_BASE_URI}/$indexName")
+        assertEquals("Unexpected RestStatus", RestStatus.OK, retryFailedResponse.restStatus())
+
+        val explainResponse = client().makeRequest(
+            RestRequest.Method.GET.toString(),
+            "${RestExplainAction.LEGACY_EXPLAIN_BASE_URI}/$indexName")
+        assertEquals("Unexpected RestStatus", RestStatus.OK, explainResponse.restStatus())
+
+        val removePolicyResponse = client().makeRequest(
+            RestRequest.Method.POST.toString(),
+            "${RestRemovePolicyAction.LEGACY_REMOVE_POLICY_BASE_URI}/$indexName")
+        assertEquals("Unexpected RestStatus", RestStatus.OK, removePolicyResponse.restStatus())
+
+        val deletePolicyResponse = client().makeRequest(
+            RestRequest.Method.DELETE.toString(),
+            "${IndexManagementPlugin.LEGACY_POLICY_BASE_URI}/$policyId")
+        assertEquals("Unexpected RestStatus", RestStatus.OK, deletePolicyResponse.restStatus())
+    }
+
+    fun `test refresh search analyzer backward compatibility with opendistro`() {
+        val indexName = "bwc_index"
+        val settings = Settings.builder().build()
+        createIndex(indexName, settings)
+        val response = client().makeRequest(RestRequest.Method.POST.toString(), "${RestRefreshSearchAnalyzerAction.LEGACY_REFRESH_SEARCH_ANALYZER_BASE_URI}/$indexName")
+        assertEquals("Unexpected RestStatus", RestStatus.OK, response.restStatus())
+    }
+
+    fun `test rollup backward compatibility with opendistro`() {
+        val rollup = randomRollup()
+        val rollupJsonString = rollup.toXContent(XContentFactory.jsonBuilder(), ToXContent.EMPTY_PARAMS).string()
+        val createRollupResponse = client().makeRequest("PUT", "${IndexManagementPlugin.LEGACY_ROLLUP_JOBS_BASE_URI}/${rollup.id}", emptyMap(), StringEntity(rollupJsonString,
+            ContentType.APPLICATION_JSON
+        ))
+        assertEquals("Create rollup failed", RestStatus.CREATED, createRollupResponse.restStatus())
+
+        val getRollupResponse = client().makeRequest("GET", "${IndexManagementPlugin.LEGACY_ROLLUP_JOBS_BASE_URI}/${rollup.id}")
+        assertEquals("Get rollup failed", RestStatus.OK, getRollupResponse.restStatus())
+
+        val explainRollupResponse = client().makeRequest("GET", "${IndexManagementPlugin.LEGACY_ROLLUP_JOBS_BASE_URI}/${rollup.id}/_explain")
+        assertEquals("Explain rollup failed", RestStatus.OK, explainRollupResponse.restStatus())
+
+        val startRollupResponse = client().makeRequest("POST", "${IndexManagementPlugin.LEGACY_ROLLUP_JOBS_BASE_URI}/${rollup.id}/_start")
+        assertEquals("Start rollup failed", RestStatus.OK, startRollupResponse.restStatus())
+
+        val stopRollupResponse = client().makeRequest("POST", "${IndexManagementPlugin.LEGACY_ROLLUP_JOBS_BASE_URI}/${rollup.id}/_stop")
+        assertEquals("Stop rollup failed", RestStatus.OK, stopRollupResponse.restStatus())
+
+        val deleteRollupResponse = client().makeRequest("DELETE", "${IndexManagementPlugin.LEGACY_ROLLUP_JOBS_BASE_URI}/${rollup.id}")
+        assertEquals("Delete rollup failed", RestStatus.OK, deleteRollupResponse.restStatus())
     }
 }

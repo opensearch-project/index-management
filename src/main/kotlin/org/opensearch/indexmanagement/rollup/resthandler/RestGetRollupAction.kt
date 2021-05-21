@@ -37,8 +37,10 @@ import org.opensearch.indexmanagement.rollup.action.get.GetRollupsRequest.Compan
 import org.opensearch.indexmanagement.rollup.action.get.GetRollupsRequest.Companion.DEFAULT_SORT_DIRECTION
 import org.opensearch.indexmanagement.rollup.action.get.GetRollupsRequest.Companion.DEFAULT_SORT_FIELD
 import org.opensearch.client.node.NodeClient
+import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.LEGACY_ROLLUP_JOBS_BASE_URI
 import org.opensearch.rest.BaseRestHandler
 import org.opensearch.rest.RestHandler.Route
+import org.opensearch.rest.RestHandler.ReplacedRoute
 import org.opensearch.rest.RestRequest
 import org.opensearch.rest.RestRequest.Method.GET
 import org.opensearch.rest.RestRequest.Method.HEAD
@@ -48,10 +50,23 @@ import org.opensearch.search.fetch.subphase.FetchSourceContext
 class RestGetRollupAction : BaseRestHandler() {
 
     override fun routes(): List<Route> {
+        return emptyList()
+    }
+
+    override fun replacedRoutes(): List<ReplacedRoute> {
         return listOf(
-            Route(GET, ROLLUP_JOBS_BASE_URI),
-            Route(GET, "$ROLLUP_JOBS_BASE_URI/{rollupID}"),
-            Route(HEAD, "$ROLLUP_JOBS_BASE_URI/{rollupID}")
+            ReplacedRoute(
+                GET, ROLLUP_JOBS_BASE_URI,
+                GET, LEGACY_ROLLUP_JOBS_BASE_URI
+            ),
+            ReplacedRoute(
+                GET, "$ROLLUP_JOBS_BASE_URI/{rollupID}",
+                GET, "$LEGACY_ROLLUP_JOBS_BASE_URI/{rollupID}"
+            ),
+            ReplacedRoute(
+                HEAD, "$ROLLUP_JOBS_BASE_URI/{rollupID}",
+                HEAD, "$LEGACY_ROLLUP_JOBS_BASE_URI/{rollupID}"
+            )
         )
     }
 

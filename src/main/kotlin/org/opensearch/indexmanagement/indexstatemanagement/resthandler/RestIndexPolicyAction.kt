@@ -44,10 +44,12 @@ import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.settings.Settings
 import org.opensearch.common.xcontent.ToXContent
 import org.opensearch.index.seqno.SequenceNumbers
+import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.LEGACY_POLICY_BASE_URI
 import org.opensearch.rest.BaseRestHandler
 import org.opensearch.rest.BaseRestHandler.RestChannelConsumer
 import org.opensearch.rest.BytesRestResponse
 import org.opensearch.rest.RestHandler.Route
+import org.opensearch.rest.RestHandler.ReplacedRoute
 import org.opensearch.rest.RestRequest
 import org.opensearch.rest.RestRequest.Method.PUT
 import org.opensearch.rest.RestResponse
@@ -70,9 +72,19 @@ class RestIndexPolicyAction(
     }
 
     override fun routes(): List<Route> {
+        return emptyList()
+    }
+
+    override fun replacedRoutes(): List<ReplacedRoute> {
         return listOf(
-            Route(PUT, POLICY_BASE_URI),
-            Route(PUT, "$POLICY_BASE_URI/{policyID}")
+            ReplacedRoute(
+                PUT, POLICY_BASE_URI,
+                PUT, LEGACY_POLICY_BASE_URI
+            ),
+            ReplacedRoute(
+                PUT, "$POLICY_BASE_URI/{policyID}",
+                PUT, "$LEGACY_POLICY_BASE_URI/{policyID}"
+            )
         )
     }
 

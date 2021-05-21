@@ -31,8 +31,10 @@ import org.opensearch.indexmanagement.rollup.action.stop.StopRollupAction
 import org.opensearch.indexmanagement.rollup.action.stop.StopRollupRequest
 import org.opensearch.indexmanagement.rollup.model.Rollup
 import org.opensearch.client.node.NodeClient
+import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.LEGACY_ROLLUP_JOBS_BASE_URI
 import org.opensearch.rest.BaseRestHandler
 import org.opensearch.rest.RestHandler.Route
+import org.opensearch.rest.RestHandler.ReplacedRoute
 import org.opensearch.rest.BaseRestHandler.RestChannelConsumer
 import org.opensearch.rest.RestRequest
 import org.opensearch.rest.RestRequest.Method.POST
@@ -42,8 +44,15 @@ import java.io.IOException
 class RestStopRollupAction : BaseRestHandler() {
 
     override fun routes(): List<Route> {
+        return emptyList()
+    }
+
+    override fun replacedRoutes(): List<ReplacedRoute> {
         return listOf(
-            Route(POST, "$ROLLUP_JOBS_BASE_URI/{rollupID}/_stop")
+            ReplacedRoute(
+                POST, "$ROLLUP_JOBS_BASE_URI/{rollupID}/_stop",
+                POST, "$LEGACY_ROLLUP_JOBS_BASE_URI/{rollupID}/_stop"
+            )
         )
     }
 
