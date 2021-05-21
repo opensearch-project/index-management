@@ -40,10 +40,10 @@ import org.opensearch.indexmanagement.rollup.model.Rollup
 import org.opensearch.indexmanagement.rollup.model.RollupMetadata
 import org.opensearch.indexmanagement.rollup.model.RollupMetrics
 import org.opensearch.indexmanagement.rollup.model.RollupStats
-import org.opensearch.indexmanagement.rollup.model.dimension.DateHistogram
-import org.opensearch.indexmanagement.rollup.model.dimension.Dimension
-import org.opensearch.indexmanagement.rollup.model.dimension.Histogram
-import org.opensearch.indexmanagement.rollup.model.dimension.Terms
+import org.opensearch.indexmanagement.common.model.dimension.DateHistogram
+import org.opensearch.indexmanagement.common.model.dimension.Dimension
+import org.opensearch.indexmanagement.common.model.dimension.Histogram
+import org.opensearch.indexmanagement.common.model.dimension.Terms
 import org.opensearch.indexmanagement.rollup.model.metric.Average
 import org.opensearch.indexmanagement.rollup.model.metric.Max
 import org.opensearch.indexmanagement.rollup.model.metric.Metric
@@ -234,6 +234,11 @@ fun randomISMFieldCaps(): ISMFieldCapabilitiesResponse {
         responseMap = mapOf(OpenSearchRestTestCase.randomAlphaOfLength(10) to mapOf(OpenSearchRestTestCase.randomAlphaOfLength(10) to randomISMFieldCapabilities())),
         indexResponses = OpenSearchRestTestCase.randomList(4, ::randomISMFieldCapabilitiesIndexResponse)
     )
+}
+
+fun randomDimension(): Dimension {
+    val dimensions = listOf(randomTerms(), randomHistogram(), randomDateHistogram())
+    return OpenSearchRestTestCase.randomSubsetOf(1, dimensions).first()
 }
 
 fun randomTermQuery(): TermQueryBuilder { return TermQueryBuilder(OpenSearchRestTestCase.randomAlphaOfLength(5), OpenSearchRestTestCase.randomAlphaOfLength(5)) }

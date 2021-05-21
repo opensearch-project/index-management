@@ -26,6 +26,8 @@
 
 package org.opensearch.indexmanagement.util
 
+import java.nio.ByteBuffer
+import java.util.Base64
 import org.opensearch.indexmanagement.IndexManagementIndices
 import org.opensearch.indexmanagement.IndexManagementPlugin
 import org.apache.logging.log4j.LogManager
@@ -36,6 +38,7 @@ import org.opensearch.client.IndicesAdminClient
 import org.opensearch.cluster.ClusterState
 import org.opensearch.cluster.metadata.IndexAbstraction
 import org.opensearch.cluster.metadata.IndexMetadata
+import org.opensearch.common.hash.MurmurHash3
 import org.opensearch.common.xcontent.LoggingDeprecationHandler
 import org.opensearch.common.xcontent.NamedXContentRegistry
 import org.opensearch.common.xcontent.XContentParser.Token
@@ -49,6 +52,9 @@ class IndexUtils {
         const val FIELDS = "fields"
         const val SCHEMA_VERSION = "schema_version"
         const val DEFAULT_SCHEMA_VERSION = 1L
+        const val ODFE_MAGIC_NULL = "#ODFE-MAGIC-NULL-MAGIC-ODFE#"
+        private const val BYTE_ARRAY_SIZE = 16
+        private const val DOCUMENT_ID_SEED = 72390L
         val logger = LogManager.getLogger(IndexUtils::class.java)
 
         var indexManagementConfigSchemaVersion: Long
@@ -195,6 +201,13 @@ class IndexUtils {
             }
 
             return currMap
+        }
+
+        fun hashToFixedSize(id: String): String {
+            val docByteArray = id.toByteArray()
+            val hash = MurmurHash3.hash128(docByteArray, 0, docByteArray.size, DOCUMENT_ID_SEED, MurmurHash3.Hash128())
+            val byteArray = ByteBuffer.allocate(BYTE_ARRAY_SIZE).putLong(hash.h1).putLong(hash.h2).array()
+            return Base64.getUrlEncoder().withoutPadding().encodeToString(byteArray)
         }
     }
 }

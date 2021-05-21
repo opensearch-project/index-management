@@ -33,6 +33,8 @@ import org.opensearch.indexmanagement.rollup.model.RollupStats
 import org.opensearch.indexmanagement.rollup.settings.RollupSettings.Companion.ROLLUP_INGEST_BACKOFF_COUNT
 import org.opensearch.indexmanagement.rollup.settings.RollupSettings.Companion.ROLLUP_INGEST_BACKOFF_MILLIS
 import org.opensearch.indexmanagement.rollup.util.getInitialDocValues
+import org.opensearch.indexmanagement.util.IndexUtils.Companion.ODFE_MAGIC_NULL
+import org.opensearch.indexmanagement.util.IndexUtils.Companion.hashToFixedSize
 import org.apache.logging.log4j.LogManager
 import org.opensearch.ExceptionsHelper
 import org.opensearch.action.DocWriteRequest
@@ -42,7 +44,6 @@ import org.opensearch.action.bulk.BulkResponse
 import org.opensearch.action.index.IndexRequest
 import org.opensearch.client.Client
 import org.opensearch.cluster.service.ClusterService
-import org.opensearch.common.hash.MurmurHash3
 import org.opensearch.common.settings.Settings
 import org.opensearch.common.xcontent.XContentType
 import org.opensearch.rest.RestStatus
@@ -53,8 +54,6 @@ import org.opensearch.search.aggregations.metrics.InternalMin
 import org.opensearch.search.aggregations.metrics.InternalSum
 import org.opensearch.search.aggregations.metrics.InternalValueCount
 import org.opensearch.transport.RemoteTransportException
-import java.nio.ByteBuffer
-import java.util.Base64
 
 class RollupIndexer(
     settings: Settings,
@@ -115,11 +114,8 @@ class RollupIndexer(
     fun convertResponseToRequests(job: Rollup, internalComposite: InternalComposite): List<DocWriteRequest<*>> {
         val requests = mutableListOf<DocWriteRequest<*>>()
         internalComposite.buckets.forEach {
-            val docId = job.id + "#" + it.key.entries.joinToString("#") { it.value?.toString() ?: "#ODFE-MAGIC-NULL-MAGIC-ODFE#" }
-            val docByteArray = docId.toByteArray()
-            val hash = MurmurHash3.hash128(docByteArray, 0, docByteArray.size, DOCUMENT_ID_SEED, MurmurHash3.Hash128())
-            val byteArray = ByteBuffer.allocate(BYTE_ARRAY_SIZE).putLong(hash.h1).putLong(hash.h2).array()
-            val documentId = Base64.getUrlEncoder().withoutPadding().encodeToString(byteArray)
+            val docId = job.id + "#" + it.key.entries.joinToString("#") { it.value?.toString() ?: ODFE_MAGIC_NULL }
+            val documentId = hashToFixedSize(docId)
 
             val mapOfKeyValues = job.getInitialDocValues(it.docCount)
             val aggResults = mutableMapOf<String, Any?>()
@@ -141,11 +137,6 @@ class RollupIndexer(
             requests.add(indexRequest)
         }
         return requests
-    }
-
-    companion object {
-        const val BYTE_ARRAY_SIZE = 16
-        const val DOCUMENT_ID_SEED = 72390L
     }
 }
 

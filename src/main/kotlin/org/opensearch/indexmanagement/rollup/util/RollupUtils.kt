@@ -31,12 +31,11 @@ package org.opensearch.indexmanagement.rollup.util
 import org.opensearch.indexmanagement.rollup.RollupMapperService
 import org.opensearch.indexmanagement.rollup.model.Rollup
 import org.opensearch.indexmanagement.rollup.model.RollupFieldMapping
-
 import org.opensearch.indexmanagement.rollup.model.RollupMetadata
-import org.opensearch.indexmanagement.rollup.model.dimension.DateHistogram
-import org.opensearch.indexmanagement.rollup.model.dimension.Dimension
-import org.opensearch.indexmanagement.rollup.model.dimension.Histogram
-import org.opensearch.indexmanagement.rollup.model.dimension.Terms
+import org.opensearch.indexmanagement.common.model.dimension.DateHistogram
+import org.opensearch.indexmanagement.common.model.dimension.Dimension
+import org.opensearch.indexmanagement.common.model.dimension.Histogram
+import org.opensearch.indexmanagement.common.model.dimension.Terms
 import org.opensearch.indexmanagement.rollup.model.metric.Average
 import org.opensearch.indexmanagement.rollup.model.metric.Max
 import org.opensearch.indexmanagement.rollup.model.metric.Min
@@ -67,11 +66,7 @@ import org.opensearch.search.aggregations.AggregationBuilder
 import org.opensearch.search.aggregations.AggregatorFactories
 import org.opensearch.search.aggregations.bucket.composite.CompositeAggregationBuilder
 import org.opensearch.search.aggregations.bucket.composite.CompositeValuesSourceBuilder
-import org.opensearch.search.aggregations.bucket.composite.DateHistogramValuesSourceBuilder
-import org.opensearch.search.aggregations.bucket.composite.HistogramValuesSourceBuilder
-import org.opensearch.search.aggregations.bucket.composite.TermsValuesSourceBuilder
 import org.opensearch.search.aggregations.bucket.histogram.DateHistogramAggregationBuilder
-import org.opensearch.search.aggregations.bucket.histogram.DateHistogramInterval
 import org.opensearch.search.aggregations.bucket.histogram.HistogramAggregationBuilder
 import org.opensearch.search.aggregations.bucket.terms.TermsAggregationBuilder
 import org.opensearch.search.aggregations.metrics.AvgAggregationBuilder
@@ -106,39 +101,7 @@ fun Rollup.getRollupSearchRequest(metadata: RollupMetadata): SearchRequest {
 @Suppress("ComplexMethod", "NestedBlockDepth")
 fun Rollup.getCompositeAggregationBuilder(afterKey: Map<String, Any>?): CompositeAggregationBuilder {
     val sources = mutableListOf<CompositeValuesSourceBuilder<*>>()
-    this.dimensions.forEach { dimension ->
-        when (dimension) {
-            is DateHistogram -> {
-                DateHistogramValuesSourceBuilder(dimension.targetField + ".date_histogram")
-                    .missingBucket(true) // TODO: Should this always be true or be user-defined?
-                    .apply {
-                        this.field(dimension.sourceField)
-                        this.timeZone(dimension.timezone)
-                        dimension.calendarInterval?.let { it ->
-                            this.calendarInterval(DateHistogramInterval(it))
-                        }
-                        dimension.fixedInterval?.let { it ->
-                            this.fixedInterval(DateHistogramInterval(it))
-                        }
-                    }.also { sources.add(it) }
-            }
-            is Terms -> {
-                TermsValuesSourceBuilder(dimension.targetField + ".terms")
-                    .missingBucket(true)
-                    .apply {
-                        this.field(dimension.sourceField)
-                    }.also { sources.add(it) }
-            }
-            is Histogram -> {
-                HistogramValuesSourceBuilder(dimension.targetField + ".histogram")
-                    .missingBucket(true)
-                    .apply {
-                        this.field(dimension.sourceField)
-                        this.interval(dimension.interval)
-                    }.also { sources.add(it) }
-            }
-        }
-    }
+    this.dimensions.forEach { dimension -> sources.add(dimension.toSourceBuilder(appendType = true)) }
     return CompositeAggregationBuilder(this.id, sources).size(this.pageSize).also { compositeAgg ->
         afterKey?.let { compositeAgg.aggregateAfter(it) }
         this.metrics.forEach { metric ->
