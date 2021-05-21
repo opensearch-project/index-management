@@ -26,6 +26,8 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.action
 
+import org.apache.http.entity.ContentType
+import org.apache.http.entity.StringEntity
 import org.opensearch.indexmanagement.indexstatemanagement.IndexStateManagementRestTestCase
 import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
 import org.opensearch.indexmanagement.indexstatemanagement.model.State
@@ -38,6 +40,9 @@ import org.opensearch.common.unit.ByteSizeValue
 import org.opensearch.common.unit.TimeValue
 import org.hamcrest.core.Is.isA
 import org.junit.Assert
+import org.opensearch.common.settings.Settings
+import org.opensearch.indexmanagement.indexstatemanagement.settings.LegacyOpenDistroManagedIndexSettings
+import org.opensearch.indexmanagement.makeRequest
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 import java.util.Locale
@@ -67,6 +72,58 @@ class RolloverActionIT : IndexStateManagementRestTestCase() {
         createPolicy(policy, policyID)
         // create index defaults
         createIndex(firstIndex, policyID, aliasName)
+
+        val managedIndexConfig = getExistingManagedIndexConfig(firstIndex)
+
+        // Change the start time so the job will trigger in 2 seconds, this will trigger the first initialization of the policy
+        updateManagedIndexConfigStartTime(managedIndexConfig)
+        waitFor { assertEquals(policyID, getExplainManagedIndexMetaData(firstIndex).policyID) }
+
+        // Need to speed up to second execution where it will trigger the first execution of the action
+        updateManagedIndexConfigStartTime(managedIndexConfig)
+        waitFor {
+            val info = getExplainManagedIndexMetaData(firstIndex).info as Map<String, Any?>
+            assertEquals("Index did not rollover.", AttemptRolloverStep.getSuccessMessage(firstIndex), info["message"])
+            assertNull("Should not have conditions if none specified", info["conditions"])
+        }
+        Assert.assertTrue("New rollover index does not exist.", indexExists("$indexNameBase-000002"))
+    }
+
+    fun `test rollover with open distro rollover_alias setting`() {
+        val indexNameBase = "bwc_index"
+        val firstIndex = "${indexNameBase}-1"
+        val aliasName = "bwc_alias"
+        val settings = Settings.builder().let {
+            it.put(LegacyOpenDistroManagedIndexSettings.ROLLOVER_ALIAS.key, aliasName)
+        }.build()
+//        createIndex(firstIndex, settings, "", "\"$aliasName\": { \"is_write_index\": true }")
+        client().makeRequest("PUT", "/$firstIndex",
+        StringEntity("{\n" +
+            "  \"settings\": {\n" +
+            "    \"index\": {\n" +
+            "      \"opendistro.index_state_management.rollover_alias\": \"$aliasName\"\n" +
+            "    }\n" +
+            "  },\n" +
+            "  \"aliases\": {\n" +
+            "    \"$aliasName\": {\"is_write_index\": true}\n" +
+            "  }\n" +
+            "}", ContentType.APPLICATION_JSON))
+
+        val policyID = "${testIndexName}_bwc"
+        val actionConfig = RolloverActionConfig(null, null, null, 0)
+        val states = listOf(State(name = "RolloverAction", actions = listOf(actionConfig), transitions = listOf()))
+        val policy = Policy(
+            id = policyID,
+            description = "$testIndexName description",
+            schemaVersion = 1L,
+            lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
+            errorNotification = randomErrorNotification(),
+            defaultState = states[0].name,
+            states = states
+        )
+        createPolicy(policy, policyID)
+
+        addPolicyToIndex(firstIndex, policyID)
 
         val managedIndexConfig = getExistingManagedIndexConfig(firstIndex)
 
