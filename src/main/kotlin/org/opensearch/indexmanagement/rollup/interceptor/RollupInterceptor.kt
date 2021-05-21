@@ -50,6 +50,7 @@ import org.opensearch.index.query.RangeQueryBuilder
 import org.opensearch.index.query.TermQueryBuilder
 import org.opensearch.index.query.TermsQueryBuilder
 import org.opensearch.index.search.MatchQuery
+import org.opensearch.indexmanagement.rollup.util.isRollupIndex
 import org.opensearch.search.aggregations.AggregationBuilder
 import org.opensearch.search.aggregations.bucket.histogram.DateHistogramAggregationBuilder
 import org.opensearch.search.aggregations.bucket.histogram.DateHistogramInterval
@@ -94,7 +95,7 @@ class RollupInterceptor(
             override fun messageReceived(request: T, channel: TransportChannel, task: Task) {
                 if (searchEnabled && request is ShardSearchRequest) {
                     val index = request.shardId().indexName
-                    val isRollupIndex = RollupSettings.ROLLUP_INDEX.get(clusterService.state().metadata.index(index).settings)
+                    val isRollupIndex = isRollupIndex(index, clusterService.state())
                     if (isRollupIndex) {
                         if (request.source().size() != 0) {
                             throw IllegalArgumentException("Rollup search must have size explicitly set to 0, but found ${request.source().size()}")

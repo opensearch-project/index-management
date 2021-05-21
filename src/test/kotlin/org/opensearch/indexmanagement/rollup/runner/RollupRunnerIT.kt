@@ -45,6 +45,7 @@ import org.opensearch.indexmanagement.waitFor
 import org.opensearch.jobscheduler.spi.schedule.IntervalSchedule
 import org.apache.http.entity.ContentType
 import org.apache.http.entity.StringEntity
+import org.opensearch.indexmanagement.rollup.settings.RollupSettings.Companion.ROLLUP_SEARCH_BACKOFF_COUNT
 import org.opensearch.rest.RestStatus
 import java.time.Instant
 import java.time.temporal.ChronoUnit
@@ -450,7 +451,7 @@ class RollupRunnerIT : RollupRestTestCase() {
     fun `test search max buckets breaker`() {
         generateNYCTaxiData("source_runner_seventh")
         // Set the search max buckets to 50 and rollup search retry count to 0 so it won't retry on failure. This is to confirm first that yes we do get an error and moved into failed state.
-        client().makeRequest("PUT", "/_cluster/settings", StringEntity("""{"persistent":{"search.max_buckets":"50", "opendistro.rollup.search.backoff_count": 0 }}""", ContentType.APPLICATION_JSON))
+        client().makeRequest("PUT", "/_cluster/settings", StringEntity("""{"persistent":{"search.max_buckets":"50", "${ROLLUP_SEARCH_BACKOFF_COUNT.key}": 0 }}""", ContentType.APPLICATION_JSON))
 
         val rollup = Rollup(
             id = "page_size_no_retry_first_runner_seventh",
@@ -485,7 +486,7 @@ class RollupRunnerIT : RollupRestTestCase() {
 
         // If we get to this point it means that yes it does fail with too many buckets error, now we'll try with backoff and having it reduce below the max buckets limit
 
-        client().makeRequest("PUT", "/_cluster/settings", StringEntity("""{"persistent":{"search.max_buckets":"50", "opendistro.rollup.search.backoff_count": 5 }}""", ContentType.APPLICATION_JSON))
+        client().makeRequest("PUT", "/_cluster/settings", StringEntity("""{"persistent":{"search.max_buckets":"50", "${ROLLUP_SEARCH_BACKOFF_COUNT.key}": 5 }}""", ContentType.APPLICATION_JSON))
 
         val secondRollup = Rollup(
             id = "page_size_with_retry_second_runner_seventh",

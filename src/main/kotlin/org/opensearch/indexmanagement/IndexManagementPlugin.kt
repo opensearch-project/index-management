@@ -164,10 +164,12 @@ import org.opensearch.common.component.Lifecycle
 import org.opensearch.common.component.LifecycleComponent
 import org.opensearch.common.component.LifecycleListener
 import org.opensearch.common.inject.Inject
+import org.opensearch.indexmanagement.indexstatemanagement.settings.LegacyOpenDistroManagedIndexSettings
+import org.opensearch.indexmanagement.rollup.settings.LegacyOpenDistroRollupSettings
 import org.opensearch.transport.RemoteClusterService
 import org.opensearch.transport.TransportService
 
-internal class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin, Plugin() {
+class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin, Plugin() {
 
     private val logger = LogManager.getLogger(javaClass)
     lateinit var indexManagementIndices: IndexManagementIndices
@@ -375,7 +377,32 @@ internal class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, Act
             TransformSettings.TRANSFORM_JOB_SEARCH_BACKOFF_COUNT,
             TransformSettings.TRANSFORM_JOB_SEARCH_BACKOFF_MILLIS,
             TransformSettings.TRANSFORM_CIRCUIT_BREAKER_ENABLED,
-            TransformSettings.TRANSFORM_CIRCUIT_BREAKER_JVM_THRESHOLD
+            TransformSettings.TRANSFORM_CIRCUIT_BREAKER_JVM_THRESHOLD,
+            LegacyOpenDistroManagedIndexSettings.HISTORY_ENABLED,
+            LegacyOpenDistroManagedIndexSettings.HISTORY_INDEX_MAX_AGE,
+            LegacyOpenDistroManagedIndexSettings.HISTORY_MAX_DOCS,
+            LegacyOpenDistroManagedIndexSettings.HISTORY_RETENTION_PERIOD,
+            LegacyOpenDistroManagedIndexSettings.HISTORY_ROLLOVER_CHECK_PERIOD,
+            LegacyOpenDistroManagedIndexSettings.HISTORY_NUMBER_OF_SHARDS,
+            LegacyOpenDistroManagedIndexSettings.HISTORY_NUMBER_OF_REPLICAS,
+            LegacyOpenDistroManagedIndexSettings.POLICY_ID,
+            LegacyOpenDistroManagedIndexSettings.ROLLOVER_ALIAS,
+            LegacyOpenDistroManagedIndexSettings.INDEX_STATE_MANAGEMENT_ENABLED,
+            LegacyOpenDistroManagedIndexSettings.METADATA_SERVICE_ENABLED,
+            LegacyOpenDistroManagedIndexSettings.JOB_INTERVAL,
+            LegacyOpenDistroManagedIndexSettings.SWEEP_PERIOD,
+            LegacyOpenDistroManagedIndexSettings.COORDINATOR_BACKOFF_COUNT,
+            LegacyOpenDistroManagedIndexSettings.COORDINATOR_BACKOFF_MILLIS,
+            LegacyOpenDistroManagedIndexSettings.ALLOW_LIST,
+            LegacyOpenDistroManagedIndexSettings.SNAPSHOT_DENY_LIST,
+            LegacyOpenDistroRollupSettings.ROLLUP_INGEST_BACKOFF_COUNT,
+            LegacyOpenDistroRollupSettings.ROLLUP_INGEST_BACKOFF_MILLIS,
+            LegacyOpenDistroRollupSettings.ROLLUP_SEARCH_BACKOFF_COUNT,
+            LegacyOpenDistroRollupSettings.ROLLUP_SEARCH_BACKOFF_MILLIS,
+            LegacyOpenDistroRollupSettings.ROLLUP_INDEX,
+            LegacyOpenDistroRollupSettings.ROLLUP_ENABLED,
+            LegacyOpenDistroRollupSettings.ROLLUP_SEARCH_ENABLED,
+            LegacyOpenDistroRollupSettings.ROLLUP_DASHBOARDS
         )
     }
 

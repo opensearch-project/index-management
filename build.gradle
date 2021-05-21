@@ -130,7 +130,7 @@ ext {
 }
 
 group = "org.opensearch"
-version = "${opensearchVersion}.0-beta1"
+version = "${opensearchVersion}.0-rc1"
 
 dependencies {
     compileOnly "org.opensearch:opensearch:${opensearch_version}"
