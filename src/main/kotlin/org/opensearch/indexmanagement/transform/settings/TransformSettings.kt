@@ -21,42 +21,42 @@ class TransformSettings {
         const val DEFAULT_RENEW_LOCK_RETRY_DELAY = 1000L
 
         val TRANSFORM_JOB_SEARCH_BACKOFF_COUNT: Setting<Int> = Setting.intSetting(
-            "opendistro.transform.internal.search.backoff_count",
+            "plugins.transform.internal.search.backoff_count",
             5,
             Setting.Property.NodeScope,
             Setting.Property.Dynamic
         )
 
         val TRANSFORM_JOB_SEARCH_BACKOFF_MILLIS: Setting<TimeValue> = Setting.positiveTimeSetting(
-            "opendistro.transform.internal.search.backoff_millis",
+            "plugins.transform.internal.search.backoff_millis",
             TimeValue.timeValueMillis(1000),
             Setting.Property.NodeScope,
             Setting.Property.Dynamic
         )
 
         val TRANSFORM_JOB_INDEX_BACKOFF_COUNT: Setting<Int> = Setting.intSetting(
-            "opendistro.transform.internal.index.backoff_count",
+            "plugins.transform.internal.index.backoff_count",
             5,
             Setting.Property.NodeScope,
             Setting.Property.Dynamic
         )
 
         val TRANSFORM_JOB_INDEX_BACKOFF_MILLIS: Setting<TimeValue> = Setting.positiveTimeSetting(
-            "opendistro.transform.internal.index.backoff_millis",
+            "plugins.transform.internal.index.backoff_millis",
             TimeValue.timeValueMillis(1000),
             Setting.Property.NodeScope,
             Setting.Property.Dynamic
         )
 
         val TRANSFORM_CIRCUIT_BREAKER_ENABLED: Setting<Boolean> = Setting.boolSetting(
-            "opendistro.transform.circuit_breaker.enabled",
+            "plugins.transform.circuit_breaker.enabled",
             true,
             Setting.Property.NodeScope,
             Setting.Property.Dynamic
         )
 
         val TRANSFORM_CIRCUIT_BREAKER_JVM_THRESHOLD: Setting<Int> = Setting.intSetting(
-            "opendistro.transform.circuit_breaker.jvm.threshold",
+            "plugins.transform.circuit_breaker.jvm.threshold",
             85,
             0,
             100,
