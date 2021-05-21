@@ -58,7 +58,7 @@ class RestRetryFailedManagedIndexAction : BaseRestHandler() {
                 POST, LEGACY_RETRY_BASE_URI
             ),
             ReplacedRoute(
-                POST,"$RETRY_BASE_URI/{index}",
+                POST, "$RETRY_BASE_URI/{index}",
                 POST, "$LEGACY_RETRY_BASE_URI/{index}"
             )
         )

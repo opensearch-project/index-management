@@ -50,7 +50,7 @@ class RestStopRollupAction : BaseRestHandler() {
     override fun replacedRoutes(): List<ReplacedRoute> {
         return listOf(
             ReplacedRoute(
-                POST,"$ROLLUP_JOBS_BASE_URI/{rollupID}/_stop",
+                POST, "$ROLLUP_JOBS_BASE_URI/{rollupID}/_stop",
                 POST, "$LEGACY_ROLLUP_JOBS_BASE_URI/{rollupID}/_stop"
             )
         )

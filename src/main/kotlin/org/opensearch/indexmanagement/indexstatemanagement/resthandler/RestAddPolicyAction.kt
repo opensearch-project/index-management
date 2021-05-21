@@ -57,7 +57,7 @@ class RestAddPolicyAction : BaseRestHandler() {
                 POST, LEGACY_ADD_POLICY_BASE_URI
             ),
             ReplacedRoute(
-                POST,"$ADD_POLICY_BASE_URI/{index}",
+                POST, "$ADD_POLICY_BASE_URI/{index}",
                 POST, "$LEGACY_ADD_POLICY_BASE_URI/{index}"
             )
         )

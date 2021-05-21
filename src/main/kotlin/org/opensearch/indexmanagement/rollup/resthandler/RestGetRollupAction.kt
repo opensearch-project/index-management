@@ -60,11 +60,11 @@ class RestGetRollupAction : BaseRestHandler() {
                 GET, LEGACY_ROLLUP_JOBS_BASE_URI
             ),
             ReplacedRoute(
-                GET,"$ROLLUP_JOBS_BASE_URI/{rollupID}",
+                GET, "$ROLLUP_JOBS_BASE_URI/{rollupID}",
                 GET, "$LEGACY_ROLLUP_JOBS_BASE_URI/{rollupID}"
             ),
             ReplacedRoute(
-                HEAD,"$ROLLUP_JOBS_BASE_URI/{rollupID}",
+                HEAD, "$ROLLUP_JOBS_BASE_URI/{rollupID}",
                 HEAD, "$LEGACY_ROLLUP_JOBS_BASE_URI/{rollupID}"
             )
         )

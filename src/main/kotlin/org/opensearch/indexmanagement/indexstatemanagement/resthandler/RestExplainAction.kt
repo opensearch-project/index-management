@@ -68,7 +68,7 @@ class RestExplainAction : BaseRestHandler() {
                 GET, LEGACY_EXPLAIN_BASE_URI
             ),
             ReplacedRoute(
-                GET,"$EXPLAIN_BASE_URI/{index}",
+                GET, "$EXPLAIN_BASE_URI/{index}",
                 GET, "$LEGACY_EXPLAIN_BASE_URI/{index}"
             )
         )

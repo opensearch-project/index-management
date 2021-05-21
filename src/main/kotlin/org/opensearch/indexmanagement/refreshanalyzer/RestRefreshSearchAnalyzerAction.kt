@@ -53,7 +53,7 @@ class RestRefreshSearchAnalyzerAction : BaseRestHandler() {
                 POST, LEGACY_REFRESH_SEARCH_ANALYZER_BASE_URI
             ),
             ReplacedRoute(
-                POST,"$REFRESH_SEARCH_ANALYZER_BASE_URI/{index}" ,
+                POST, "$REFRESH_SEARCH_ANALYZER_BASE_URI/{index}",
                 POST, "$LEGACY_REFRESH_SEARCH_ANALYZER_BASE_URI/{index}"
             )
         )

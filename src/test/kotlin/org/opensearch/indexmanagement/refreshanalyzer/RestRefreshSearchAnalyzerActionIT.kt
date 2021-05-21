@@ -31,7 +31,6 @@ import org.opensearch.indexmanagement.makeRequest
 import org.opensearch.indexmanagement.refreshanalyzer.RestRefreshSearchAnalyzerAction.Companion.REFRESH_SEARCH_ANALYZER_BASE_URI
 import org.opensearch.client.ResponseException
 import org.opensearch.common.settings.Settings
-import org.opensearch.indexmanagement.refreshanalyzer.RestRefreshSearchAnalyzerAction.Companion.LEGACY_REFRESH_SEARCH_ANALYZER_BASE_URI
 import org.opensearch.rest.RestRequest.Method.POST
 import org.opensearch.rest.RestStatus
 

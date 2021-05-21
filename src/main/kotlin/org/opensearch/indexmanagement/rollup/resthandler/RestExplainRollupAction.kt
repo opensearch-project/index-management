@@ -48,7 +48,7 @@ class RestExplainRollupAction : BaseRestHandler() {
     override fun replacedRoutes(): List<ReplacedRoute> {
         return listOf(
             ReplacedRoute(
-                GET,"$ROLLUP_JOBS_BASE_URI/{rollupID}/_explain",
+                GET, "$ROLLUP_JOBS_BASE_URI/{rollupID}/_explain",
                 GET, "$LEGACY_ROLLUP_JOBS_BASE_URI/{rollupID}/_explain"
             )
         )

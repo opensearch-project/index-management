@@ -50,7 +50,7 @@ class RestDeletePolicyAction : BaseRestHandler() {
     override fun replacedRoutes(): List<ReplacedRoute> {
         return listOf(
             ReplacedRoute(
-                DELETE,"$POLICY_BASE_URI/{policyID}",
+                DELETE, "$POLICY_BASE_URI/{policyID}",
                 DELETE, "$LEGACY_POLICY_BASE_URI/{policyID}"
             )
         )

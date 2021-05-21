@@ -67,7 +67,7 @@ class RestIndexRollupAction : BaseRestHandler() {
                 PUT, LEGACY_ROLLUP_JOBS_BASE_URI
             ),
             ReplacedRoute(
-                PUT,"$ROLLUP_JOBS_BASE_URI/{rollupID}",
+                PUT, "$ROLLUP_JOBS_BASE_URI/{rollupID}",
                 PUT, "$LEGACY_ROLLUP_JOBS_BASE_URI/{rollupID}"
             )
         )

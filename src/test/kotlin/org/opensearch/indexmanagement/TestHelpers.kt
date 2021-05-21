@@ -26,9 +26,6 @@
 
 package org.opensearch.indexmanagement
 
-import org.opensearch.jobscheduler.spi.schedule.CronSchedule
-import org.opensearch.jobscheduler.spi.schedule.IntervalSchedule
-import org.opensearch.jobscheduler.spi.schedule.Schedule
 import org.apache.http.Header
 import org.apache.http.HttpEntity
 import org.opensearch.client.Request
@@ -42,7 +39,6 @@ import org.opensearch.jobscheduler.spi.schedule.Schedule
 import org.opensearch.test.rest.OpenSearchRestTestCase
 import java.time.Instant
 import java.time.temporal.ChronoUnit
-
 
 fun randomDayOfWeekCronField(): String = if (OpenSearchRestTestCase.randomBoolean()) "*" else OpenSearchRestTestCase.randomIntBetween(0, 7).toString()
 
