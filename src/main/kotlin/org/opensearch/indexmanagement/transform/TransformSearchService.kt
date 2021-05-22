@@ -50,6 +50,7 @@ import org.opensearch.ExceptionsHelper
 import org.opensearch.index.query.QueryBuilder
 import org.opensearch.transport.RemoteTransportException
 
+@Suppress("ThrowsCount")
 class TransformSearchService(
     val settings: Settings,
     val clusterService: ClusterService,

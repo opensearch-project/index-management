@@ -32,7 +32,7 @@ import org.opensearch.common.settings.Settings
 import org.opensearch.monitor.jvm.JvmService
 import org.opensearch.transport.RemoteTransportException
 
-@Suppress("SpreadOperator")
+@Suppress("SpreadOperator", "ReturnCount")
 class TransformValidator(
     private val indexNameExpressionResolver: IndexNameExpressionResolver,
     private val clusterService: ClusterService,

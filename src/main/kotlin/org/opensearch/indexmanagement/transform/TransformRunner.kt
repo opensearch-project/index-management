@@ -41,6 +41,7 @@ import org.opensearch.common.unit.TimeValue
 import org.opensearch.common.xcontent.NamedXContentRegistry
 import org.opensearch.monitor.jvm.JvmService
 
+@Suppress("LongParameterList")
 object TransformRunner : ScheduledJobRunner,
     CoroutineScope by CoroutineScope(SupervisorJob() + Dispatchers.Default + CoroutineName("TransformRunner")) {
 

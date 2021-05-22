@@ -34,7 +34,6 @@ import org.opensearch.search.aggregations.AggregationBuilders
 import org.opensearch.search.aggregations.AggregatorFactories
 import org.opensearch.test.rest.OpenSearchRestTestCase
 
-
 fun randomGroups(): List<Dimension> {
     val dimensions = mutableListOf<Dimension>()
     for (i in 0..OpenSearchRestTestCase.randomIntBetween(1, 10)) {
