@@ -21,8 +21,8 @@ import org.opensearch.indexmanagement.indexstatemanagement.step.rollup.WaitForRo
 import org.opensearch.indexmanagement.rollup.model.ISMRollup
 import org.opensearch.indexmanagement.rollup.model.RollupMetadata
 import org.opensearch.indexmanagement.rollup.model.RollupMetrics
-import org.opensearch.indexmanagement.rollup.model.dimension.DateHistogram
-import org.opensearch.indexmanagement.rollup.model.dimension.Terms
+import org.opensearch.indexmanagement.common.model.dimension.DateHistogram
+import org.opensearch.indexmanagement.common.model.dimension.Terms
 import org.opensearch.indexmanagement.rollup.model.metric.Average
 import org.opensearch.indexmanagement.rollup.model.metric.Max
 import org.opensearch.indexmanagement.rollup.model.metric.Min

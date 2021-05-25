@@ -26,9 +26,9 @@
 
 package org.opensearch.indexmanagement.rollup.model
 
-import org.opensearch.indexmanagement.rollup.model.dimension.DateHistogram
-import org.opensearch.indexmanagement.rollup.model.dimension.Histogram
-import org.opensearch.indexmanagement.rollup.model.dimension.Terms
+import org.opensearch.indexmanagement.common.model.dimension.DateHistogram
+import org.opensearch.indexmanagement.common.model.dimension.Histogram
+import org.opensearch.indexmanagement.common.model.dimension.Terms
 import org.opensearch.indexmanagement.rollup.model.metric.Average
 import org.opensearch.indexmanagement.rollup.model.metric.Max
 import org.opensearch.indexmanagement.rollup.model.metric.Min

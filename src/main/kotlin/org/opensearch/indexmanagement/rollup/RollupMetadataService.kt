@@ -34,7 +34,7 @@ import org.opensearch.indexmanagement.rollup.model.Rollup
 import org.opensearch.indexmanagement.rollup.model.RollupMetadata
 import org.opensearch.indexmanagement.rollup.model.RollupMetadata.Companion.NO_ID
 import org.opensearch.indexmanagement.rollup.model.RollupStats
-import org.opensearch.indexmanagement.rollup.model.dimension.DateHistogram
+import org.opensearch.indexmanagement.common.model.dimension.DateHistogram
 import org.opensearch.indexmanagement.rollup.util.DATE_FIELD_EPOCH_MILLIS_FORMAT
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext

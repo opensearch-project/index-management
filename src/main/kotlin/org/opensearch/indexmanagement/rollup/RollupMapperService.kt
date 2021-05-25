@@ -32,9 +32,9 @@ import org.opensearch.indexmanagement.rollup.action.mapping.UpdateRollupMappingA
 import org.opensearch.indexmanagement.rollup.action.mapping.UpdateRollupMappingRequest
 import org.opensearch.indexmanagement.rollup.model.Rollup
 import org.opensearch.indexmanagement.rollup.model.RollupJobValidationResult
-import org.opensearch.indexmanagement.rollup.model.dimension.DateHistogram
-import org.opensearch.indexmanagement.rollup.model.dimension.Histogram
-import org.opensearch.indexmanagement.rollup.model.dimension.Terms
+import org.opensearch.indexmanagement.common.model.dimension.DateHistogram
+import org.opensearch.indexmanagement.common.model.dimension.Histogram
+import org.opensearch.indexmanagement.common.model.dimension.Terms
 import org.opensearch.indexmanagement.rollup.settings.RollupSettings
 import org.opensearch.indexmanagement.util.IndexUtils.Companion._META
 import org.opensearch.indexmanagement.util.IndexUtils.Companion.getFieldFromMappings

@@ -32,7 +32,7 @@ import org.opensearch.indexmanagement.IndexManagementRestTestCase
 import org.opensearch.indexmanagement.makeRequest
 import org.opensearch.indexmanagement.rollup.model.Rollup
 import org.opensearch.indexmanagement.rollup.model.RollupMetadata
-import org.opensearch.indexmanagement.rollup.model.dimension.Dimension
+import org.opensearch.indexmanagement.common.model.dimension.Dimension
 import org.opensearch.indexmanagement.util._ID
 import org.opensearch.indexmanagement.util._PRIMARY_TERM
 import org.opensearch.indexmanagement.util._SEQ_NO

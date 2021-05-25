@@ -24,7 +24,7 @@
  * permissions and limitations under the License.
  */
 
-package org.opensearch.indexmanagement.rollup.model.dimension
+package org.opensearch.indexmanagement.common.model.dimension
 
 import org.opensearch.common.io.stream.Writeable
 import org.opensearch.common.xcontent.ToXContentObject
@@ -32,6 +32,7 @@ import org.opensearch.common.xcontent.XContentParser
 import org.opensearch.common.xcontent.XContentParser.Token
 import org.opensearch.common.xcontent.XContentParserUtils.ensureExpectedToken
 import java.io.IOException
+import org.opensearch.search.aggregations.bucket.composite.CompositeValuesSourceBuilder
 
 abstract class Dimension(
     val type: Type,
@@ -47,6 +48,15 @@ abstract class Dimension(
             return type
         }
     }
+
+    abstract fun toSourceBuilder(appendType: Boolean = false): CompositeValuesSourceBuilder<*>
+
+    /**
+     * Helper method that evaluates if the dimension can be realized using mappings provided.
+     *
+     * e.g. A date_histogram dimension on source_field "a" can only be possible in mappings that contain "date" type field "a".
+     */
+    abstract fun canBeRealizedInMappings(mappings: Map<String, Any>): Boolean
 
     companion object {
         const val DIMENSION_SOURCE_FIELD_FIELD = "source_field"

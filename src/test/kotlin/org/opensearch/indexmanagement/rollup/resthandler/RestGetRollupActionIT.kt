@@ -84,7 +84,7 @@ class RestGetRollupActionIT : RollupRestTestCase() {
             assertEquals(testRollup.seqNo, (foundRollup["_seq_no"] as Int).toLong())
             assertEquals(testRollup.primaryTerm, (foundRollup["_primary_term"] as Int).toLong())
             assertEquals(testRollup.id, innerRollup["rollup_id"] as String)
-            // Doesn't matter what rollup sets, current system is at schema version 5
+            // Doesn't matter what rollup sets, current system is at schema version 10
             assertEquals(configSchemaVersion, innerRollup["schema_version"] as Int)
             assertEquals(testRollup.enabled, innerRollup["enabled"] as Boolean)
             assertEquals(testRollup.enabledTime?.toEpochMilli(), (innerRollup["enabled_time"] as Number?)?.toLong())

@@ -31,8 +31,6 @@ import org.opensearch.indexmanagement.indexstatemanagement.ManagedIndexCoordinat
 import org.opensearch.indexmanagement.indexstatemanagement.ManagedIndexRunner
 import org.opensearch.indexmanagement.indexstatemanagement.MetadataService
 import org.opensearch.indexmanagement.indexstatemanagement.SkipExecution
-import org.opensearch.indexmanagement.indexstatemanagement.transport.action.updateindexmetadata.TransportUpdateManagedIndexMetaDataAction
-import org.opensearch.indexmanagement.indexstatemanagement.transport.action.updateindexmetadata.UpdateManagedIndexMetaDataAction
 import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexConfig
 import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
@@ -63,6 +61,8 @@ import org.opensearch.indexmanagement.indexstatemanagement.transport.action.remo
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.removepolicy.TransportRemovePolicyAction
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.retryfailedmanagedindex.RetryFailedManagedIndexAction
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.retryfailedmanagedindex.TransportRetryFailedManagedIndexAction
+import org.opensearch.indexmanagement.indexstatemanagement.transport.action.updateindexmetadata.TransportUpdateManagedIndexMetaDataAction
+import org.opensearch.indexmanagement.indexstatemanagement.transport.action.updateindexmetadata.UpdateManagedIndexMetaDataAction
 import org.opensearch.indexmanagement.refreshanalyzer.RefreshSearchAnalyzerAction
 import org.opensearch.indexmanagement.refreshanalyzer.RestRefreshSearchAnalyzerAction
 import org.opensearch.indexmanagement.refreshanalyzer.TransportRefreshSearchAnalyzerAction
@@ -73,20 +73,20 @@ import org.opensearch.indexmanagement.rollup.RollupRunner
 import org.opensearch.indexmanagement.rollup.RollupSearchService
 import org.opensearch.indexmanagement.rollup.action.delete.DeleteRollupAction
 import org.opensearch.indexmanagement.rollup.action.delete.TransportDeleteRollupAction
+import org.opensearch.indexmanagement.rollup.action.explain.ExplainRollupAction
+import org.opensearch.indexmanagement.rollup.action.explain.TransportExplainRollupAction
 import org.opensearch.indexmanagement.rollup.action.get.GetRollupAction
+import org.opensearch.indexmanagement.rollup.action.get.GetRollupsAction
 import org.opensearch.indexmanagement.rollup.action.get.TransportGetRollupAction
+import org.opensearch.indexmanagement.rollup.action.get.TransportGetRollupsAction
 import org.opensearch.indexmanagement.rollup.action.index.IndexRollupAction
 import org.opensearch.indexmanagement.rollup.action.index.TransportIndexRollupAction
+import org.opensearch.indexmanagement.rollup.action.mapping.TransportUpdateRollupMappingAction
+import org.opensearch.indexmanagement.rollup.action.mapping.UpdateRollupMappingAction
 import org.opensearch.indexmanagement.rollup.action.start.StartRollupAction
 import org.opensearch.indexmanagement.rollup.action.start.TransportStartRollupAction
 import org.opensearch.indexmanagement.rollup.action.stop.StopRollupAction
 import org.opensearch.indexmanagement.rollup.action.stop.TransportStopRollupAction
-import org.opensearch.indexmanagement.rollup.action.explain.ExplainRollupAction
-import org.opensearch.indexmanagement.rollup.action.explain.TransportExplainRollupAction
-import org.opensearch.indexmanagement.rollup.action.get.GetRollupsAction
-import org.opensearch.indexmanagement.rollup.action.get.TransportGetRollupsAction
-import org.opensearch.indexmanagement.rollup.action.mapping.TransportUpdateRollupMappingAction
-import org.opensearch.indexmanagement.rollup.action.mapping.UpdateRollupMappingAction
 import org.opensearch.indexmanagement.rollup.actionfilter.FieldCapsFilter
 import org.opensearch.indexmanagement.rollup.interceptor.RollupInterceptor
 import org.opensearch.indexmanagement.rollup.model.Rollup
@@ -98,6 +98,33 @@ import org.opensearch.indexmanagement.rollup.resthandler.RestIndexRollupAction
 import org.opensearch.indexmanagement.rollup.resthandler.RestStartRollupAction
 import org.opensearch.indexmanagement.rollup.resthandler.RestStopRollupAction
 import org.opensearch.indexmanagement.rollup.settings.RollupSettings
+import org.opensearch.indexmanagement.transform.TransformRunner
+import org.opensearch.indexmanagement.transform.action.delete.DeleteTransformsAction
+import org.opensearch.indexmanagement.transform.action.delete.TransportDeleteTransformsAction
+import org.opensearch.indexmanagement.transform.action.explain.ExplainTransformAction
+import org.opensearch.indexmanagement.transform.action.explain.TransportExplainTransformAction
+import org.opensearch.indexmanagement.transform.action.get.GetTransformAction
+import org.opensearch.indexmanagement.transform.action.get.GetTransformsAction
+import org.opensearch.indexmanagement.transform.action.get.TransportGetTransformAction
+import org.opensearch.indexmanagement.transform.action.get.TransportGetTransformsAction
+import org.opensearch.indexmanagement.transform.action.index.IndexTransformAction
+import org.opensearch.indexmanagement.transform.action.index.TransportIndexTransformAction
+import org.opensearch.indexmanagement.transform.action.preview.PreviewTransformAction
+import org.opensearch.indexmanagement.transform.action.preview.TransportPreviewTransformAction
+import org.opensearch.indexmanagement.transform.action.start.StartTransformAction
+import org.opensearch.indexmanagement.transform.action.start.TransportStartTransformAction
+import org.opensearch.indexmanagement.transform.action.stop.StopTransformAction
+import org.opensearch.indexmanagement.transform.action.stop.TransportStopTransformAction
+import org.opensearch.indexmanagement.transform.model.Transform
+import org.opensearch.indexmanagement.transform.model.TransformMetadata
+import org.opensearch.indexmanagement.transform.resthandler.RestDeleteTransformAction
+import org.opensearch.indexmanagement.transform.resthandler.RestExplainTransformAction
+import org.opensearch.indexmanagement.transform.resthandler.RestGetTransformAction
+import org.opensearch.indexmanagement.transform.resthandler.RestIndexTransformAction
+import org.opensearch.indexmanagement.transform.resthandler.RestPreviewTransformAction
+import org.opensearch.indexmanagement.transform.resthandler.RestStartTransformAction
+import org.opensearch.indexmanagement.transform.resthandler.RestStopTransformAction
+import org.opensearch.indexmanagement.transform.settings.TransformSettings
 import org.opensearch.jobscheduler.spi.JobSchedulerExtension
 import org.opensearch.jobscheduler.spi.ScheduledJobParser
 import org.opensearch.jobscheduler.spi.ScheduledJobRunner
@@ -132,6 +159,7 @@ import org.opensearch.threadpool.ThreadPool
 import org.opensearch.transport.TransportInterceptor
 import org.opensearch.watcher.ResourceWatcherService
 import java.util.function.Supplier
+import org.opensearch.monitor.jvm.JvmService
 import org.opensearch.common.component.Lifecycle
 import org.opensearch.common.component.LifecycleComponent
 import org.opensearch.common.component.LifecycleListener
@@ -154,6 +182,7 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
         const val PLUGINS_BASE_URI = "/_plugins"
         const val ISM_BASE_URI = "$PLUGINS_BASE_URI/_ism"
         const val ROLLUP_BASE_URI = "$PLUGINS_BASE_URI/_rollup"
+        const val TRANSFORM_BASE_URI = "$PLUGINS_BASE_URI/_transform"
         const val POLICY_BASE_URI = "$ISM_BASE_URI/policies"
         const val ROLLUP_JOBS_BASE_URI = "$ROLLUP_BASE_URI/jobs"
         const val INDEX_MANAGEMENT_INDEX = ".opendistro-ism-config"
@@ -198,6 +227,12 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
                     RollupMetadata.ROLLUP_METADATA_TYPE -> {
                         return@ScheduledJobParser null
                     }
+                    Transform.TRANSFORM_TYPE -> {
+                        return@ScheduledJobParser Transform.parse(xcp, id, jobDocVersion.seqNo, jobDocVersion.primaryTerm)
+                    }
+                    TransformMetadata.TRANSFORM_METADATA_TYPE -> {
+                        return@ScheduledJobParser null
+                    }
                     ManagedIndexMetaData.MANAGED_INDEX_METADATA_TYPE -> {
                         return@ScheduledJobParser null
                     }
@@ -235,7 +270,14 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
             RestIndexRollupAction(),
             RestStartRollupAction(),
             RestStopRollupAction(),
-            RestExplainRollupAction()
+            RestExplainRollupAction(),
+            RestIndexTransformAction(),
+            RestGetTransformAction(),
+            RestPreviewTransformAction(),
+            RestDeleteTransformAction(),
+            RestExplainTransformAction(),
+            RestStartTransformAction(),
+            RestStopTransformAction()
         )
     }
 
@@ -267,6 +309,8 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
             .registerMetadataServices(RollupMetadataService(client, xContentRegistry))
             .registerConsumers()
         rollupInterceptor = RollupInterceptor(clusterService, settings, indexNameExpressionResolver)
+        val jvmService = JvmService(environment.settings())
+        val transformRunner = TransformRunner.initialize(client, clusterService, xContentRegistry, settings, indexNameExpressionResolver, jvmService)
         fieldCapsFilter = FieldCapsFilter(clusterService, settings, indexNameExpressionResolver)
         this.indexNameExpressionResolver = indexNameExpressionResolver
 
@@ -296,7 +340,9 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
         val managedIndexCoordinator = ManagedIndexCoordinator(environment.settings(),
             client, clusterService, threadPool, indexManagementIndices, metadataService)
 
-        return listOf(managedIndexRunner, rollupRunner, indexManagementIndices, managedIndexCoordinator, indexStateManagementHistory)
+        return listOf(
+            managedIndexRunner, rollupRunner, transformRunner, indexManagementIndices, managedIndexCoordinator, indexStateManagementHistory
+        )
     }
 
     override fun getSettings(): List<Setting<*>> {
@@ -326,6 +372,12 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
             RollupSettings.ROLLUP_ENABLED,
             RollupSettings.ROLLUP_SEARCH_ENABLED,
             RollupSettings.ROLLUP_DASHBOARDS,
+            TransformSettings.TRANSFORM_JOB_INDEX_BACKOFF_COUNT,
+            TransformSettings.TRANSFORM_JOB_INDEX_BACKOFF_MILLIS,
+            TransformSettings.TRANSFORM_JOB_SEARCH_BACKOFF_COUNT,
+            TransformSettings.TRANSFORM_JOB_SEARCH_BACKOFF_MILLIS,
+            TransformSettings.TRANSFORM_CIRCUIT_BREAKER_ENABLED,
+            TransformSettings.TRANSFORM_CIRCUIT_BREAKER_JVM_THRESHOLD,
             LegacyOpenDistroManagedIndexSettings.HISTORY_ENABLED,
             LegacyOpenDistroManagedIndexSettings.HISTORY_INDEX_MAX_AGE,
             LegacyOpenDistroManagedIndexSettings.HISTORY_MAX_DOCS,
@@ -374,7 +426,15 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
             ActionPlugin.ActionHandler(StartRollupAction.INSTANCE, TransportStartRollupAction::class.java),
             ActionPlugin.ActionHandler(StopRollupAction.INSTANCE, TransportStopRollupAction::class.java),
             ActionPlugin.ActionHandler(ExplainRollupAction.INSTANCE, TransportExplainRollupAction::class.java),
-            ActionPlugin.ActionHandler(UpdateRollupMappingAction.INSTANCE, TransportUpdateRollupMappingAction::class.java)
+            ActionPlugin.ActionHandler(UpdateRollupMappingAction.INSTANCE, TransportUpdateRollupMappingAction::class.java),
+            ActionPlugin.ActionHandler(IndexTransformAction.INSTANCE, TransportIndexTransformAction::class.java),
+            ActionPlugin.ActionHandler(GetTransformAction.INSTANCE, TransportGetTransformAction::class.java),
+            ActionPlugin.ActionHandler(GetTransformsAction.INSTANCE, TransportGetTransformsAction::class.java),
+            ActionPlugin.ActionHandler(PreviewTransformAction.INSTANCE, TransportPreviewTransformAction::class.java),
+            ActionPlugin.ActionHandler(DeleteTransformsAction.INSTANCE, TransportDeleteTransformsAction::class.java),
+            ActionPlugin.ActionHandler(ExplainTransformAction.INSTANCE, TransportExplainTransformAction::class.java),
+            ActionPlugin.ActionHandler(StartTransformAction.INSTANCE, TransportStartTransformAction::class.java),
+            ActionPlugin.ActionHandler(StopTransformAction.INSTANCE, TransportStopTransformAction::class.java)
         )
     }
 

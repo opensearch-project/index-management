@@ -24,8 +24,9 @@
  * permissions and limitations under the License.
  */
 
-package org.opensearch.indexmanagement.rollup.model.dimension
+package org.opensearch.indexmanagement.common.model.dimension
 
+import org.opensearch.indexmanagement.util.IndexUtils.Companion.getFieldFromMappings
 import org.opensearch.common.io.stream.StreamInput
 import org.opensearch.common.io.stream.StreamOutput
 import org.opensearch.common.xcontent.ToXContent
@@ -34,41 +35,37 @@ import org.opensearch.common.xcontent.XContentParser
 import org.opensearch.common.xcontent.XContentParser.Token
 import org.opensearch.common.xcontent.XContentParserUtils.ensureExpectedToken
 import org.opensearch.search.aggregations.AggregatorFactories
-import org.opensearch.search.aggregations.bucket.histogram.DateHistogramAggregationBuilder
+import org.opensearch.search.aggregations.bucket.histogram.HistogramAggregationBuilder
 import java.io.IOException
-import java.time.ZoneId
+import org.opensearch.index.mapper.NumberFieldMapper
+import org.opensearch.search.aggregations.bucket.composite.CompositeValuesSourceBuilder
+import org.opensearch.search.aggregations.bucket.composite.HistogramValuesSourceBuilder
 
-data class DateHistogram(
+// TODO: Verify if offset, missing value, min_doc_count, extended_bounds are usable in Composite histogram source
+data class Histogram(
     override val sourceField: String,
-    override val targetField: String = sourceField,
-    val fixedInterval: String? = null,
-    val calendarInterval: String? = null,
-    val timezone: ZoneId = ZoneId.of(UTC)
-) : Dimension(Type.DATE_HISTOGRAM, sourceField, targetField) {
+    override val targetField: String,
+    val interval: Double
+) : Dimension(Type.HISTOGRAM, sourceField, targetField) {
 
     init {
         require(sourceField.isNotEmpty() && targetField.isNotEmpty()) { "Source and target field must not be empty" }
-        require(fixedInterval != null || calendarInterval != null) { "Must specify a fixed or calendar interval" }
-        require(fixedInterval == null || calendarInterval == null) { "Can only specify a fixed or calendar interval" }
+        require(interval > 0.0) { "Interval must be a positive decimal" }
     }
 
     @Throws(IOException::class)
     constructor(sin: StreamInput) : this(
         sourceField = sin.readString(),
         targetField = sin.readString(),
-        fixedInterval = sin.readOptionalString(),
-        calendarInterval = sin.readOptionalString(),
-        timezone = sin.readZoneId()
+        interval = sin.readDouble()
     )
 
     override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
-        builder.startObject()
+        return builder.startObject()
             .startObject(type.type)
-        if (fixedInterval != null) builder.field(FIXED_INTERVAL_FIELD, fixedInterval)
-        if (calendarInterval != null) builder.field(CALENDAR_INTERVAL_FIELD, calendarInterval)
-        return builder.field(DIMENSION_SOURCE_FIELD_FIELD, sourceField)
+            .field(DIMENSION_SOURCE_FIELD_FIELD, sourceField)
             .field(DIMENSION_TARGET_FIELD_FIELD, targetField)
-            .field(DATE_HISTOGRAM_TIMEZONE_FIELD, timezone.id)
+            .field(HISTOGRAM_INTERVAL_FIELD, interval)
             .endObject()
             .endObject()
     }
@@ -76,19 +73,39 @@ data class DateHistogram(
     override fun writeTo(out: StreamOutput) {
         out.writeString(sourceField)
         out.writeString(targetField)
-        out.writeOptionalString(fixedInterval)
-        out.writeOptionalString(calendarInterval)
-        out.writeZoneId(timezone)
+        out.writeDouble(interval)
+    }
+
+    override fun toSourceBuilder(appendType: Boolean): CompositeValuesSourceBuilder<*> {
+        val name = if (appendType) "${this.targetField}.${Type.HISTOGRAM.type}" else this.targetField
+        return HistogramValuesSourceBuilder(name)
+            .missingBucket(true)
+            .field(this.sourceField)
+            .interval(this.interval)
+    }
+
+    override fun canBeRealizedInMappings(mappings: Map<String, Any>): Boolean {
+        val fieldType = getFieldFromMappings(sourceField, mappings)?.get("type") ?: return false
+
+        val numberTypes = mutableSetOf<String>()
+        NumberFieldMapper.NumberType.values().forEach {
+            numberTypes.add(it.typeName())
+        }
+
+        return fieldType in numberTypes
     }
 
     fun getRewrittenAggregation(
-        aggregationBuilder: DateHistogramAggregationBuilder,
+        aggregationBuilder: HistogramAggregationBuilder,
         subAggregations: AggregatorFactories.Builder
-    ): DateHistogramAggregationBuilder =
-        DateHistogramAggregationBuilder(aggregationBuilder.name)
-            .also { aggregationBuilder.calendarInterval?.apply { it.calendarInterval(this) } }
-            .also { aggregationBuilder.fixedInterval?.apply { it.fixedInterval(this) } }
-            .also { aggregationBuilder.extendedBounds()?.apply { it.extendedBounds(this) } }
+    ): HistogramAggregationBuilder =
+        HistogramAggregationBuilder(aggregationBuilder.name)
+            .interval(aggregationBuilder.interval())
+            .also {
+                if (aggregationBuilder.minBound().isFinite() && aggregationBuilder.maxBound().isFinite()) {
+                    it.extendedBounds(aggregationBuilder.minBound(), aggregationBuilder.maxBound())
+                }
+            }
             .keyed(aggregationBuilder.keyed())
             .also {
                 if (aggregationBuilder.minDocCount() >= 0) {
@@ -97,26 +114,19 @@ data class DateHistogram(
             }
             .offset(aggregationBuilder.offset())
             .also { aggregationBuilder.order()?.apply { it.order(this) } }
-            .field(this.targetField + ".date_histogram")
-            // TODO: Should we reject all other timezones if they are specified in the query?: aggregationBuilder.timeZone()
-            .timeZone(timezone)
+            .field(this.targetField + ".histogram")
             .subAggregations(subAggregations)
 
     companion object {
-        const val UTC = "UTC"
-        const val FIXED_INTERVAL_FIELD = "fixed_interval"
-        const val CALENDAR_INTERVAL_FIELD = "calendar_interval"
-        const val DATE_HISTOGRAM_TIMEZONE_FIELD = "timezone"
+        const val HISTOGRAM_INTERVAL_FIELD = "interval"
 
         @Suppress("ComplexMethod", "LongMethod")
         @JvmStatic
         @Throws(IOException::class)
-        fun parse(xcp: XContentParser): DateHistogram {
+        fun parse(xcp: XContentParser): Histogram {
             var sourceField: String? = null
             var targetField: String? = null
-            var fixedInterval: String? = null
-            var calendarInterval: String? = null
-            var timezone = ZoneId.of(UTC)
+            var interval: Double? = null
 
             ensureExpectedToken(Token.START_OBJECT, xcp.currentToken(), xcp)
             while (xcp.nextToken() != Token.END_OBJECT) {
@@ -124,26 +134,22 @@ data class DateHistogram(
                 xcp.nextToken()
 
                 when (fieldName) {
-                    FIXED_INTERVAL_FIELD -> fixedInterval = xcp.text()
-                    CALENDAR_INTERVAL_FIELD -> calendarInterval = xcp.text()
-                    DATE_HISTOGRAM_TIMEZONE_FIELD -> timezone = ZoneId.of(xcp.text())
                     DIMENSION_SOURCE_FIELD_FIELD -> sourceField = xcp.text()
                     DIMENSION_TARGET_FIELD_FIELD -> targetField = xcp.text()
-                    else -> throw IllegalArgumentException("Invalid field [$fieldName] found in date histogram")
+                    HISTOGRAM_INTERVAL_FIELD -> interval = xcp.doubleValue()
+                    else -> throw IllegalArgumentException("Invalid field [$fieldName] found in histogram dimension.")
                 }
             }
             if (targetField == null) targetField = sourceField
-            return DateHistogram(
-                sourceField = requireNotNull(sourceField) { "Source field must not be null" },
-                targetField = requireNotNull(targetField) { "Target field must not be null" },
-                fixedInterval = fixedInterval,
-                calendarInterval = calendarInterval,
-                timezone = timezone
+            return Histogram(
+                requireNotNull(sourceField) { "Source field must not be null" },
+                requireNotNull(targetField) { "Target field must not be null" },
+                requireNotNull(interval) { "Interval field must not be null" }
             )
         }
 
         @JvmStatic
         @Throws(IOException::class)
-        fun readFrom(sin: StreamInput) = DateHistogram(sin)
+        fun readFrom(sin: StreamInput) = Histogram(sin)
     }
 }

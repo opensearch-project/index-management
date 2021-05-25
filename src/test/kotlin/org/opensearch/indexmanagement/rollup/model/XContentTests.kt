@@ -28,7 +28,7 @@ package org.opensearch.indexmanagement.rollup.model
 
 import org.opensearch.indexmanagement.opensearchapi.parseWithType
 import org.opensearch.indexmanagement.indexstatemanagement.util.XCONTENT_WITHOUT_TYPE
-import org.opensearch.indexmanagement.rollup.model.dimension.Dimension
+import org.opensearch.indexmanagement.common.model.dimension.Dimension
 import org.opensearch.indexmanagement.rollup.model.metric.Metric
 import org.opensearch.indexmanagement.rollup.randomAverage
 import org.opensearch.indexmanagement.rollup.randomDateHistogram
