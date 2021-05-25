@@ -143,7 +143,10 @@ class TransportStartRollupAction @Inject constructor(
                         actionListener.onResponse(AcknowledgedResponse(true))
                     } else {
                         val metadata = response.sourceAsBytesRef?.let {
-                            val xcp = XContentHelper.createParser(NamedXContentRegistry.EMPTY, LoggingDeprecationHandler.INSTANCE, it, XContentType.JSON)
+                            val xcp = XContentHelper.createParser(
+                                NamedXContentRegistry.EMPTY,
+                                LoggingDeprecationHandler.INSTANCE, it, XContentType.JSON
+                            )
                             xcp.parseWithType(response.id, response.seqNo, response.primaryTerm, RollupMetadata.Companion::parse)
                         }
                         if (metadata == null) {

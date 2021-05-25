@@ -89,7 +89,8 @@ const val DATE_FIELD_EPOCH_MILLIS_FORMAT = "epoch_millis"
 fun isRollupIndex(index: String, clusterState: ClusterState): Boolean {
     if (RollupSettings.ROLLUP_INDEX.get(clusterState.metadata.index(index).settings)) {
         return true
-    } else if (LegacyOpenDistroRollupSettings.ROLLUP_INDEX.get(clusterState.metadata.index(index).settings)) {
+    } else if (LegacyOpenDistroRollupSettings.ROLLUP_INDEX.get(clusterState.metadata.index(index).settings)
+    ) {
         return true
     }
     return false

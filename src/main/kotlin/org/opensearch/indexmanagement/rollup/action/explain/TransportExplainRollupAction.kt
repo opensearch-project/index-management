@@ -103,7 +103,10 @@ class TransportExplainRollupAction @Inject constructor(
                                     response.hits.hits.forEach {
                                         val metadata = contentParser(it.sourceRef)
                                             .parseWithType(it.id, it.seqNo, it.primaryTerm, RollupMetadata.Companion::parse)
-                                        idsToExplain.computeIfPresent(metadata.rollupID) { _, explainRollup -> explainRollup.copy(metadata = metadata) }
+                                        idsToExplain.computeIfPresent(metadata.rollupID) { _,
+                                            explainRollup ->
+                                            explainRollup.copy(metadata = metadata)
+                                        }
                                     }
                                     actionListener.onResponse(ExplainRollupResponse(idsToExplain.toMap()))
                                 } catch (e: Exception) {
