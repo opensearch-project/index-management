@@ -95,7 +95,7 @@ class TransportUpdateManagedIndexMetaDataAction : TransportMasterNodeAction<Upda
         listener: ActionListener<AcknowledgedResponse>
     ) {
         clusterService.submitStateUpdateTask(
-            IndexManagementPlugin.PLUGIN_NAME,
+            IndexManagementPlugin.OLD_PLUGIN_NAME,
             ManagedIndexMetaDataTask(request.indicesToAddManagedIndexMetaDataTo, request.indicesToRemoveManagedIndexMetaDataFrom),
             ClusterStateTaskConfig.build(Priority.NORMAL),
             executor,

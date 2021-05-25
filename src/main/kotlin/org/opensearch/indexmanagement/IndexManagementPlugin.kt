@@ -151,7 +151,6 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
     lateinit var fieldCapsFilter: FieldCapsFilter
 
     companion object {
-        const val PLUGIN_NAME = "opendistro-im"
         const val PLUGINS_BASE_URI = "/_plugins"
         const val ISM_BASE_URI = "$PLUGINS_BASE_URI/_ism"
         const val ROLLUP_BASE_URI = "$PLUGINS_BASE_URI/_rollup"
@@ -161,6 +160,7 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
         const val INDEX_MANAGEMENT_JOB_TYPE = "opendistro-index-management"
         const val INDEX_STATE_MANAGEMENT_HISTORY_TYPE = "managed_index_meta_data"
 
+        const val OLD_PLUGIN_NAME = "opendistro-im"
         const val OPEN_DISTRO_BASE_URI = "/_opendistro"
         const val LEGACY_ISM_BASE_URI = "$OPEN_DISTRO_BASE_URI/_ism"
         const val LEGACY_ROLLUP_BASE_URI = "$OPEN_DISTRO_BASE_URI/_rollup"
