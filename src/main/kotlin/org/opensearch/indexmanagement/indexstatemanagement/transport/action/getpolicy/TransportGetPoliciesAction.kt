@@ -26,9 +26,6 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.transport.action.getpolicy
 
-import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
-import org.opensearch.indexmanagement.opensearchapi.parseWithType
-import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
 import org.apache.logging.log4j.LogManager
 import org.opensearch.ExceptionsHelper
 import org.opensearch.action.ActionListener
@@ -45,6 +42,9 @@ import org.opensearch.common.xcontent.XContentType
 import org.opensearch.index.IndexNotFoundException
 import org.opensearch.index.query.Operator
 import org.opensearch.index.query.QueryBuilders
+import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
+import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
+import org.opensearch.indexmanagement.opensearchapi.parseWithType
 import org.opensearch.search.builder.SearchSourceBuilder
 import org.opensearch.search.sort.SortBuilders
 import org.opensearch.search.sort.SortOrder
@@ -59,7 +59,7 @@ class TransportGetPoliciesAction @Inject constructor(
     actionFilters: ActionFilters,
     val xContentRegistry: NamedXContentRegistry
 ) : HandledTransportAction<GetPoliciesRequest, GetPoliciesResponse>(
-        GetPoliciesAction.NAME, transportService, actionFilters, ::GetPoliciesRequest
+    GetPoliciesAction.NAME, transportService, actionFilters, ::GetPoliciesRequest
 ) {
 
     override fun doExecute(
@@ -76,10 +76,12 @@ class TransportGetPoliciesAction @Inject constructor(
         val queryBuilder = QueryBuilders.boolQuery()
             .must(QueryBuilders.existsQuery("policy"))
 
-        queryBuilder.must(QueryBuilders
-            .queryStringQuery(params.queryString)
-            .defaultOperator(Operator.AND)
-            .field("policy.policy_id"))
+        queryBuilder.must(
+            QueryBuilders
+                .queryStringQuery(params.queryString)
+                .defaultOperator(Operator.AND)
+                .field("policy.policy_id")
+        )
 
         val searchSourceBuilder = SearchSourceBuilder()
             .query(queryBuilder)
@@ -92,30 +94,33 @@ class TransportGetPoliciesAction @Inject constructor(
             .source(searchSourceBuilder)
             .indices(INDEX_MANAGEMENT_INDEX)
 
-        client.search(searchRequest, object : ActionListener<SearchResponse> {
-            override fun onResponse(response: SearchResponse) {
-                val totalPolicies = response.hits.totalHits?.value ?: 0
-                val policies = response.hits.hits.map {
-                    val id = it.id
-                    val seqNo = it.seqNo
-                    val primaryTerm = it.primaryTerm
-                    val xcp = XContentFactory.xContent(XContentType.JSON)
+        client.search(
+            searchRequest,
+            object : ActionListener<SearchResponse> {
+                override fun onResponse(response: SearchResponse) {
+                    val totalPolicies = response.hits.totalHits?.value ?: 0
+                    val policies = response.hits.hits.map {
+                        val id = it.id
+                        val seqNo = it.seqNo
+                        val primaryTerm = it.primaryTerm
+                        val xcp = XContentFactory.xContent(XContentType.JSON)
                             .createParser(xContentRegistry, LoggingDeprecationHandler.INSTANCE, it.sourceAsString)
-                    xcp.parseWithType(id, seqNo, primaryTerm, Policy.Companion::parse)
+                        xcp.parseWithType(id, seqNo, primaryTerm, Policy.Companion::parse)
                             .copy(id = id, seqNo = seqNo, primaryTerm = primaryTerm)
+                    }
+
+                    actionListener.onResponse(GetPoliciesResponse(policies, totalPolicies.toInt()))
                 }
 
-                actionListener.onResponse(GetPoliciesResponse(policies, totalPolicies.toInt()))
-            }
-
-            override fun onFailure(t: Exception) {
-                if (t is IndexNotFoundException) {
-                    // config index hasn't been initialized, catch this here and show empty result on Kibana
-                    actionListener.onResponse(GetPoliciesResponse(emptyList(), 0))
-                    return
+                override fun onFailure(t: Exception) {
+                    if (t is IndexNotFoundException) {
+                        // config index hasn't been initialized, catch this here and show empty result on Kibana
+                        actionListener.onResponse(GetPoliciesResponse(emptyList(), 0))
+                        return
+                    }
+                    actionListener.onFailure(ExceptionsHelper.unwrapCause(t) as Exception)
                 }
-                actionListener.onFailure(ExceptionsHelper.unwrapCause(t) as Exception)
             }
-        })
+        )
     }
 }

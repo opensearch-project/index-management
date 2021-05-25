@@ -26,13 +26,13 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.action
 
+import org.opensearch.common.settings.Settings
 import org.opensearch.indexmanagement.indexstatemanagement.IndexStateManagementRestTestCase
 import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
 import org.opensearch.indexmanagement.indexstatemanagement.model.State
 import org.opensearch.indexmanagement.indexstatemanagement.model.action.ReadWriteActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomErrorNotification
 import org.opensearch.indexmanagement.waitFor
-import org.opensearch.common.settings.Settings
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 import java.util.Locale

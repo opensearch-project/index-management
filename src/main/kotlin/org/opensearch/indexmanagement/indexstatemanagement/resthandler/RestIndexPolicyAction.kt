@@ -26,17 +26,6 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.resthandler
 
-import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.POLICY_BASE_URI
-import org.opensearch.indexmanagement.opensearchapi.parseWithType
-import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
-import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.ALLOW_LIST
-import org.opensearch.indexmanagement.indexstatemanagement.transport.action.indexpolicy.IndexPolicyAction
-import org.opensearch.indexmanagement.indexstatemanagement.transport.action.indexpolicy.IndexPolicyRequest
-import org.opensearch.indexmanagement.indexstatemanagement.transport.action.indexpolicy.IndexPolicyResponse
-import org.opensearch.indexmanagement.indexstatemanagement.util.getDisallowedActions
-import org.opensearch.indexmanagement.util.IF_PRIMARY_TERM
-import org.opensearch.indexmanagement.util.IF_SEQ_NO
-import org.opensearch.indexmanagement.util.REFRESH
 import org.apache.logging.log4j.LogManager
 import org.opensearch.action.support.WriteRequest
 import org.opensearch.client.node.NodeClient
@@ -45,11 +34,22 @@ import org.opensearch.common.settings.Settings
 import org.opensearch.common.xcontent.ToXContent
 import org.opensearch.index.seqno.SequenceNumbers
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.LEGACY_POLICY_BASE_URI
+import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.POLICY_BASE_URI
+import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
+import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.ALLOW_LIST
+import org.opensearch.indexmanagement.indexstatemanagement.transport.action.indexpolicy.IndexPolicyAction
+import org.opensearch.indexmanagement.indexstatemanagement.transport.action.indexpolicy.IndexPolicyRequest
+import org.opensearch.indexmanagement.indexstatemanagement.transport.action.indexpolicy.IndexPolicyResponse
+import org.opensearch.indexmanagement.indexstatemanagement.util.getDisallowedActions
+import org.opensearch.indexmanagement.opensearchapi.parseWithType
+import org.opensearch.indexmanagement.util.IF_PRIMARY_TERM
+import org.opensearch.indexmanagement.util.IF_SEQ_NO
+import org.opensearch.indexmanagement.util.REFRESH
 import org.opensearch.rest.BaseRestHandler
 import org.opensearch.rest.BaseRestHandler.RestChannelConsumer
 import org.opensearch.rest.BytesRestResponse
-import org.opensearch.rest.RestHandler.Route
 import org.opensearch.rest.RestHandler.ReplacedRoute
+import org.opensearch.rest.RestHandler.Route
 import org.opensearch.rest.RestRequest
 import org.opensearch.rest.RestRequest.Method.PUT
 import org.opensearch.rest.RestResponse
@@ -125,16 +125,19 @@ class RestIndexPolicyAction(
         val indexPolicyRequest = IndexPolicyRequest(id, policy, seqNo, primaryTerm, refreshPolicy)
 
         return RestChannelConsumer { channel ->
-            client.execute(IndexPolicyAction.INSTANCE, indexPolicyRequest, object : RestResponseListener<IndexPolicyResponse>(channel) {
-                override fun buildResponse(response: IndexPolicyResponse): RestResponse {
-                    val restResponse = BytesRestResponse(response.status, response.toXContent(channel.newBuilder(), ToXContent.EMPTY_PARAMS))
-                    if (response.status == RestStatus.CREATED) {
-                        val location = "$POLICY_BASE_URI/${response.id}"
-                        restResponse.addHeader("Location", location)
+            client.execute(
+                IndexPolicyAction.INSTANCE, indexPolicyRequest,
+                object : RestResponseListener<IndexPolicyResponse>(channel) {
+                    override fun buildResponse(response: IndexPolicyResponse): RestResponse {
+                        val restResponse = BytesRestResponse(response.status, response.toXContent(channel.newBuilder(), ToXContent.EMPTY_PARAMS))
+                        if (response.status == RestStatus.CREATED) {
+                            val location = "$POLICY_BASE_URI/${response.id}"
+                            restResponse.addHeader("Location", location)
+                        }
+                        return restResponse
                     }
-                    return restResponse
                 }
-            })
+            )
         }
     }
 }

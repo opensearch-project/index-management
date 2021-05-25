@@ -26,7 +26,6 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.model.destination
 
-import org.opensearch.indexmanagement.opensearchapi.string
 import org.opensearch.common.Strings
 import org.opensearch.common.io.stream.StreamInput
 import org.opensearch.common.io.stream.StreamOutput
@@ -38,6 +37,7 @@ import org.opensearch.common.xcontent.XContentParser
 import org.opensearch.common.xcontent.XContentParser.Token
 import org.opensearch.common.xcontent.XContentParserUtils.ensureExpectedToken
 import org.opensearch.common.xcontent.XContentType
+import org.opensearch.indexmanagement.opensearchapi.string
 import java.io.IOException
 import java.lang.IllegalStateException
 
@@ -94,8 +94,8 @@ data class Chime(val url: String) : ToXContent, Writeable {
         val messageContent: String? = if (Strings.isNullOrEmpty(subject)) message else "$subject \n\n $message"
         val builder = XContentFactory.contentBuilder(XContentType.JSON)
         builder.startObject()
-                .field("Content", messageContent)
-                .endObject()
+            .field("Content", messageContent)
+            .endObject()
         return builder.string()
     }
 }

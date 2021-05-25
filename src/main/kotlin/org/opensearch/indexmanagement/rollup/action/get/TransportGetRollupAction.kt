@@ -26,9 +26,6 @@
 
 package org.opensearch.indexmanagement.rollup.action.get
 
-import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
-import org.opensearch.indexmanagement.opensearchapi.parseWithType
-import org.opensearch.indexmanagement.rollup.model.Rollup
 import org.opensearch.OpenSearchStatusException
 import org.opensearch.action.ActionListener
 import org.opensearch.action.get.GetRequest
@@ -41,6 +38,9 @@ import org.opensearch.common.xcontent.LoggingDeprecationHandler
 import org.opensearch.common.xcontent.NamedXContentRegistry
 import org.opensearch.common.xcontent.XContentHelper
 import org.opensearch.common.xcontent.XContentType
+import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
+import org.opensearch.indexmanagement.opensearchapi.parseWithType
+import org.opensearch.indexmanagement.rollup.model.Rollup
 import org.opensearch.rest.RestStatus
 import org.opensearch.tasks.Task
 import org.opensearch.transport.TransportService
@@ -58,26 +58,31 @@ class TransportGetRollupAction @Inject constructor(
     override fun doExecute(task: Task, request: GetRollupRequest, listener: ActionListener<GetRollupResponse>) {
         val getRequest = GetRequest(INDEX_MANAGEMENT_INDEX, request.id)
             .fetchSourceContext(request.srcContext).preference(request.preference)
-        client.get(getRequest, object : ActionListener<GetResponse> {
-            override fun onResponse(response: GetResponse) {
-                if (!response.isExists) {
-                    return listener.onFailure(OpenSearchStatusException("Rollup not found", RestStatus.NOT_FOUND))
-                }
-
-                var rollup: Rollup? = null
-                if (!response.isSourceEmpty) {
-                    XContentHelper.createParser(xContentRegistry, LoggingDeprecationHandler.INSTANCE,
-                    response.sourceAsBytesRef, XContentType.JSON).use { xcp ->
-                        rollup = xcp.parseWithType(response.id, response.seqNo, response.primaryTerm, Rollup.Companion::parse)
+        client.get(
+            getRequest,
+            object : ActionListener<GetResponse> {
+                override fun onResponse(response: GetResponse) {
+                    if (!response.isExists) {
+                        return listener.onFailure(OpenSearchStatusException("Rollup not found", RestStatus.NOT_FOUND))
                     }
+
+                    var rollup: Rollup? = null
+                    if (!response.isSourceEmpty) {
+                        XContentHelper.createParser(
+                            xContentRegistry, LoggingDeprecationHandler.INSTANCE,
+                            response.sourceAsBytesRef, XContentType.JSON
+                        ).use { xcp ->
+                            rollup = xcp.parseWithType(response.id, response.seqNo, response.primaryTerm, Rollup.Companion::parse)
+                        }
+                    }
+
+                    listener.onResponse(GetRollupResponse(response.id, response.version, response.seqNo, response.primaryTerm, RestStatus.OK, rollup))
                 }
 
-                listener.onResponse(GetRollupResponse(response.id, response.version, response.seqNo, response.primaryTerm, RestStatus.OK, rollup))
+                override fun onFailure(e: Exception) {
+                    listener.onFailure(e)
+                }
             }
-
-            override fun onFailure(e: Exception) {
-                listener.onFailure(e)
-            }
-        })
+        )
     }
 }

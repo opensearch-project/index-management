@@ -73,8 +73,10 @@ class ActionRetryIT : IndexStateManagementRestTestCase() {
         waitFor {
             val managedIndexMetaData = getExplainManagedIndexMetaData(indexName)
             assertEquals(
-                ActionMetaData("rollover", managedIndexMetaData.actionMetaData?.startTime, 0, false, 1,
-                    managedIndexMetaData.actionMetaData?.lastRetryTime, null),
+                ActionMetaData(
+                    "rollover", managedIndexMetaData.actionMetaData?.startTime, 0, false, 1,
+                    managedIndexMetaData.actionMetaData?.lastRetryTime, null
+                ),
                 managedIndexMetaData.actionMetaData
             )
 
@@ -87,8 +89,10 @@ class ActionRetryIT : IndexStateManagementRestTestCase() {
         waitFor {
             val managedIndexMetaData = getExplainManagedIndexMetaData(indexName)
             assertEquals(
-                ActionMetaData("rollover", managedIndexMetaData.actionMetaData?.startTime, 0, false, 2,
-                    managedIndexMetaData.actionMetaData?.lastRetryTime, null),
+                ActionMetaData(
+                    "rollover", managedIndexMetaData.actionMetaData?.startTime, 0, false, 2,
+                    managedIndexMetaData.actionMetaData?.lastRetryTime, null
+                ),
                 managedIndexMetaData.actionMetaData
             )
 
@@ -101,8 +105,10 @@ class ActionRetryIT : IndexStateManagementRestTestCase() {
         waitFor {
             val managedIndexMetaData = getExplainManagedIndexMetaData(indexName)
             assertEquals(
-                ActionMetaData("rollover", managedIndexMetaData.actionMetaData?.startTime, 0, true, 2,
-                    managedIndexMetaData.actionMetaData?.lastRetryTime, null),
+                ActionMetaData(
+                    "rollover", managedIndexMetaData.actionMetaData?.startTime, 0, true, 2,
+                    managedIndexMetaData.actionMetaData?.lastRetryTime, null
+                ),
                 managedIndexMetaData.actionMetaData
             )
 
@@ -176,7 +182,9 @@ class ActionRetryIT : IndexStateManagementRestTestCase() {
                             assertRetryInfoEquals(PolicyRetryInfoMetaData(false, 0), retryInfoMetaDataMap),
                         ManagedIndexMetaData.INFO to fun(info: Any?): Boolean = expectedInfoString == info.toString()
                     )
-                ), getExplainMap(indexName))
+                ),
+                getExplainMap(indexName)
+            )
         }
     }
 }

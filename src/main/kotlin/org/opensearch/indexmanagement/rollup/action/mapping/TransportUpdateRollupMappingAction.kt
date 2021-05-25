@@ -26,9 +26,6 @@
 
 package org.opensearch.indexmanagement.rollup.action.mapping
 
-import org.opensearch.indexmanagement.indexstatemanagement.util.XCONTENT_WITHOUT_TYPE
-import org.opensearch.indexmanagement.util.IndexUtils.Companion._META
-import org.opensearch.indexmanagement.util._DOC
 import org.apache.logging.log4j.LogManager
 import org.opensearch.action.ActionListener
 import org.opensearch.action.admin.indices.mapping.put.PutMappingRequest
@@ -48,6 +45,9 @@ import org.opensearch.common.io.stream.Writeable
 import org.opensearch.common.xcontent.XContentFactory
 import org.opensearch.common.xcontent.XContentHelper
 import org.opensearch.common.xcontent.XContentType
+import org.opensearch.indexmanagement.indexstatemanagement.util.XCONTENT_WITHOUT_TYPE
+import org.opensearch.indexmanagement.util.IndexUtils.Companion._META
+import org.opensearch.indexmanagement.util._DOC
 import org.opensearch.threadpool.ThreadPool
 import org.opensearch.transport.TransportService
 import java.lang.Exception
@@ -136,15 +136,18 @@ class TransportUpdateRollupMappingAction @Inject constructor(
 
         // TODO: Does schema_version get overwritten?
         val putMappingRequest = PutMappingRequest(request.rollup.targetIndex).type(_DOC).source(metaMappings)
-        client.admin().indices().putMapping(putMappingRequest, object : ActionListener<AcknowledgedResponse> {
-            override fun onResponse(response: AcknowledgedResponse) {
-                listener.onResponse(response)
-            }
+        client.admin().indices().putMapping(
+            putMappingRequest,
+            object : ActionListener<AcknowledgedResponse> {
+                override fun onResponse(response: AcknowledgedResponse) {
+                    listener.onResponse(response)
+                }
 
-            override fun onFailure(e: Exception) {
-                listener.onFailure(e)
+                override fun onFailure(e: Exception) {
+                    listener.onFailure(e)
+                }
             }
-        })
+        )
     }
 
     override fun read(sin: StreamInput): AcknowledgedResponse = AcknowledgedResponse(sin)

@@ -26,12 +26,6 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.model
 
-import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.addObject
-import org.opensearch.indexmanagement.indexstatemanagement.model.action.ActionConfig
-import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.ActionMetaData
-import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.PolicyRetryInfoMetaData
-import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.StateMetaData
-import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.StepMetaData
 import org.opensearch.common.Strings
 import org.opensearch.common.io.stream.StreamInput
 import org.opensearch.common.io.stream.StreamOutput
@@ -46,6 +40,12 @@ import org.opensearch.common.xcontent.XContentParser.Token
 import org.opensearch.common.xcontent.XContentParserUtils.ensureExpectedToken
 import org.opensearch.common.xcontent.json.JsonXContent
 import org.opensearch.index.seqno.SequenceNumbers
+import org.opensearch.indexmanagement.indexstatemanagement.model.action.ActionConfig
+import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.ActionMetaData
+import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.PolicyRetryInfoMetaData
+import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.StateMetaData
+import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.StepMetaData
+import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.addObject
 import java.io.IOException
 
 data class ManagedIndexMetaData(
@@ -93,21 +93,21 @@ data class ManagedIndexMetaData(
 
         builder
             .startObject()
-                .startObject(MANAGED_INDEX_METADATA_TYPE)
-                    .field(INDEX, index)
-                    .field(INDEX_UUID, indexUuid)
-                    .field(POLICY_ID, policyID)
-                    .field(POLICY_SEQ_NO, policySeqNo)
-                    .field(POLICY_PRIMARY_TERM, policyPrimaryTerm)
-                    .field(POLICY_COMPLETED, policyCompleted)
-                    .field(ROLLED_OVER, rolledOver)
-                    .field(TRANSITION_TO, transitionTo)
-                    .addObject(StateMetaData.STATE, stateMetaData, params, true)
-                    .addObject(ActionMetaData.ACTION, actionMetaData, params, true)
-                    .addObject(StepMetaData.STEP, stepMetaData, params, true)
-                    .addObject(PolicyRetryInfoMetaData.RETRY_INFO, policyRetryInfo, params, true)
-                    .field(INFO, info)
-                .endObject()
+            .startObject(MANAGED_INDEX_METADATA_TYPE)
+            .field(INDEX, index)
+            .field(INDEX_UUID, indexUuid)
+            .field(POLICY_ID, policyID)
+            .field(POLICY_SEQ_NO, policySeqNo)
+            .field(POLICY_PRIMARY_TERM, policyPrimaryTerm)
+            .field(POLICY_COMPLETED, policyCompleted)
+            .field(ROLLED_OVER, rolledOver)
+            .field(TRANSITION_TO, transitionTo)
+            .addObject(StateMetaData.STATE, stateMetaData, params, true)
+            .addObject(ActionMetaData.ACTION, actionMetaData, params, true)
+            .addObject(StepMetaData.STEP, stepMetaData, params, true)
+            .addObject(PolicyRetryInfoMetaData.RETRY_INFO, policyRetryInfo, params, true)
+            .field(INFO, info)
+            .endObject()
             .endObject()
         return builder
     }

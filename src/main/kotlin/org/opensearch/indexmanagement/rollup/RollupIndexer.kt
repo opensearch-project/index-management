@@ -26,13 +26,6 @@
 
 package org.opensearch.indexmanagement.rollup
 
-import org.opensearch.indexmanagement.opensearchapi.retry
-import org.opensearch.indexmanagement.opensearchapi.suspendUntil
-import org.opensearch.indexmanagement.rollup.model.Rollup
-import org.opensearch.indexmanagement.rollup.model.RollupStats
-import org.opensearch.indexmanagement.rollup.settings.RollupSettings.Companion.ROLLUP_INGEST_BACKOFF_COUNT
-import org.opensearch.indexmanagement.rollup.settings.RollupSettings.Companion.ROLLUP_INGEST_BACKOFF_MILLIS
-import org.opensearch.indexmanagement.rollup.util.getInitialDocValues
 import org.apache.logging.log4j.LogManager
 import org.opensearch.ExceptionsHelper
 import org.opensearch.action.DocWriteRequest
@@ -45,6 +38,13 @@ import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.hash.MurmurHash3
 import org.opensearch.common.settings.Settings
 import org.opensearch.common.xcontent.XContentType
+import org.opensearch.indexmanagement.opensearchapi.retry
+import org.opensearch.indexmanagement.opensearchapi.suspendUntil
+import org.opensearch.indexmanagement.rollup.model.Rollup
+import org.opensearch.indexmanagement.rollup.model.RollupStats
+import org.opensearch.indexmanagement.rollup.settings.RollupSettings.Companion.ROLLUP_INGEST_BACKOFF_COUNT
+import org.opensearch.indexmanagement.rollup.settings.RollupSettings.Companion.ROLLUP_INGEST_BACKOFF_MILLIS
+import org.opensearch.indexmanagement.rollup.util.getInitialDocValues
 import org.opensearch.rest.RestStatus
 import org.opensearch.search.aggregations.bucket.composite.InternalComposite
 import org.opensearch.search.aggregations.metrics.InternalAvg
@@ -68,7 +68,8 @@ class RollupIndexer(
 
     init {
         clusterService.clusterSettings.addSettingsUpdateConsumer(ROLLUP_INGEST_BACKOFF_MILLIS, ROLLUP_INGEST_BACKOFF_COUNT) {
-                millis, count -> retryIngestPolicy = BackoffPolicy.constantBackoff(millis, count)
+            millis, count ->
+            retryIngestPolicy = BackoffPolicy.constantBackoff(millis, count)
         }
     }
 

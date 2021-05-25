@@ -26,11 +26,11 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement
 
-import org.opensearch.indexmanagement.opensearchapi.parseWithType
-import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexConfig
 import org.opensearch.common.xcontent.LoggingDeprecationHandler
 import org.opensearch.common.xcontent.XContentParser
 import org.opensearch.common.xcontent.XContentType
+import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexConfig
+import org.opensearch.indexmanagement.opensearchapi.parseWithType
 import org.opensearch.test.OpenSearchTestCase
 import kotlin.test.assertFailsWith
 

@@ -26,11 +26,6 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.step.replicacount
 
-import org.opensearch.indexmanagement.opensearchapi.suspendUntil
-import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
-import org.opensearch.indexmanagement.indexstatemanagement.model.action.ReplicaCountActionConfig
-import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.StepMetaData
-import org.opensearch.indexmanagement.indexstatemanagement.step.Step
 import org.apache.logging.log4j.LogManager
 import org.opensearch.ExceptionsHelper
 import org.opensearch.action.admin.indices.settings.put.UpdateSettingsRequest
@@ -39,6 +34,11 @@ import org.opensearch.client.Client
 import org.opensearch.cluster.metadata.IndexMetadata.SETTING_NUMBER_OF_REPLICAS
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.settings.Settings
+import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
+import org.opensearch.indexmanagement.indexstatemanagement.model.action.ReplicaCountActionConfig
+import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.StepMetaData
+import org.opensearch.indexmanagement.indexstatemanagement.step.Step
+import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.transport.RemoteTransportException
 
 class AttemptSetReplicaCountStep(
@@ -59,10 +59,10 @@ class AttemptSetReplicaCountStep(
     override suspend fun execute(): AttemptSetReplicaCountStep {
         try {
             val updateSettingsRequest = UpdateSettingsRequest()
-                    .indices(indexName)
-                    .settings(Settings.builder().put(SETTING_NUMBER_OF_REPLICAS, numOfReplicas))
+                .indices(indexName)
+                .settings(Settings.builder().put(SETTING_NUMBER_OF_REPLICAS, numOfReplicas))
             val response: AcknowledgedResponse = client.admin().indices()
-                    .suspendUntil { updateSettings(updateSettingsRequest, it) }
+                .suspendUntil { updateSettings(updateSettingsRequest, it) }
 
             if (response.isAcknowledged) {
                 stepStatus = StepStatus.COMPLETED

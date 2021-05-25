@@ -26,16 +26,9 @@
 
 package org.opensearch.indexmanagement.rollup.action.stop
 
-import org.opensearch.indexmanagement.IndexManagementPlugin
-import org.opensearch.indexmanagement.opensearchapi.parseWithType
-import org.opensearch.indexmanagement.rollup.action.get.GetRollupAction
-import org.opensearch.indexmanagement.rollup.action.get.GetRollupRequest
-import org.opensearch.indexmanagement.rollup.action.get.GetRollupResponse
-import org.opensearch.indexmanagement.rollup.model.Rollup
-import org.opensearch.indexmanagement.rollup.model.RollupMetadata
 import org.apache.logging.log4j.LogManager
-import org.opensearch.OpenSearchStatusException
 import org.opensearch.ExceptionsHelper
+import org.opensearch.OpenSearchStatusException
 import org.opensearch.action.ActionListener
 import org.opensearch.action.DocWriteResponse
 import org.opensearch.action.get.GetRequest
@@ -51,6 +44,13 @@ import org.opensearch.common.xcontent.LoggingDeprecationHandler
 import org.opensearch.common.xcontent.NamedXContentRegistry
 import org.opensearch.common.xcontent.XContentHelper
 import org.opensearch.common.xcontent.XContentType
+import org.opensearch.indexmanagement.IndexManagementPlugin
+import org.opensearch.indexmanagement.opensearchapi.parseWithType
+import org.opensearch.indexmanagement.rollup.action.get.GetRollupAction
+import org.opensearch.indexmanagement.rollup.action.get.GetRollupRequest
+import org.opensearch.indexmanagement.rollup.action.get.GetRollupResponse
+import org.opensearch.indexmanagement.rollup.model.Rollup
+import org.opensearch.indexmanagement.rollup.model.RollupMetadata
 import org.opensearch.rest.RestStatus
 import org.opensearch.tasks.Task
 import org.opensearch.transport.TransportService
@@ -82,53 +82,59 @@ class TransportStopRollupAction @Inject constructor(
     override fun doExecute(task: Task, request: StopRollupRequest, actionListener: ActionListener<AcknowledgedResponse>) {
         log.debug("Executing StopRollupAction on ${request.id()}")
         val getReq = GetRollupRequest(request.id(), null)
-        client.execute(GetRollupAction.INSTANCE, getReq, object : ActionListener<GetRollupResponse> {
-            override fun onResponse(response: GetRollupResponse) {
-                val rollup = response.rollup
-                if (rollup == null) {
-                    return actionListener.onFailure(
-                        OpenSearchStatusException("Could not find rollup [${request.id()}]", RestStatus.NOT_FOUND)
-                    )
+        client.execute(
+            GetRollupAction.INSTANCE, getReq,
+            object : ActionListener<GetRollupResponse> {
+                override fun onResponse(response: GetRollupResponse) {
+                    val rollup = response.rollup
+                    if (rollup == null) {
+                        return actionListener.onFailure(
+                            OpenSearchStatusException("Could not find rollup [${request.id()}]", RestStatus.NOT_FOUND)
+                        )
+                    }
+
+                    if (rollup.metadataID != null) {
+                        getRollupMetadata(rollup, request, actionListener)
+                    } else {
+                        updateRollupJob(rollup, request, actionListener)
+                    }
                 }
 
-                if (rollup.metadataID != null) {
-                    getRollupMetadata(rollup, request, actionListener)
-                } else {
-                    updateRollupJob(rollup, request, actionListener)
+                override fun onFailure(e: Exception) {
+                    actionListener.onFailure(ExceptionsHelper.unwrapCause(e) as Exception)
                 }
             }
-
-            override fun onFailure(e: Exception) {
-                actionListener.onFailure(ExceptionsHelper.unwrapCause(e) as Exception)
-            }
-        })
+        )
     }
 
     private fun getRollupMetadata(rollup: Rollup, request: StopRollupRequest, actionListener: ActionListener<AcknowledgedResponse>) {
         val req = GetRequest(IndexManagementPlugin.INDEX_MANAGEMENT_INDEX, rollup.metadataID).routing(rollup.id)
-        client.get(req, object : ActionListener<GetResponse> {
-            override fun onResponse(response: GetResponse) {
-                if (!response.isExists || response.isSourceEmpty) {
-                    // If there is no metadata there is nothing to stop, proceed to disable job
-                    updateRollupJob(rollup, request, actionListener)
-                } else {
-                    val metadata = response.sourceAsBytesRef?.let {
-                        val xcp = XContentHelper.createParser(NamedXContentRegistry.EMPTY, LoggingDeprecationHandler.INSTANCE, it, XContentType.JSON)
-                        xcp.parseWithType(response.id, response.seqNo, response.primaryTerm, RollupMetadata.Companion::parse)
-                    }
-                    if (metadata == null) {
+        client.get(
+            req,
+            object : ActionListener<GetResponse> {
+                override fun onResponse(response: GetResponse) {
+                    if (!response.isExists || response.isSourceEmpty) {
                         // If there is no metadata there is nothing to stop, proceed to disable job
                         updateRollupJob(rollup, request, actionListener)
                     } else {
-                        updateRollupMetadata(rollup, metadata, request, actionListener)
+                        val metadata = response.sourceAsBytesRef?.let {
+                            val xcp = XContentHelper.createParser(NamedXContentRegistry.EMPTY, LoggingDeprecationHandler.INSTANCE, it, XContentType.JSON)
+                            xcp.parseWithType(response.id, response.seqNo, response.primaryTerm, RollupMetadata.Companion::parse)
+                        }
+                        if (metadata == null) {
+                            // If there is no metadata there is nothing to stop, proceed to disable job
+                            updateRollupJob(rollup, request, actionListener)
+                        } else {
+                            updateRollupMetadata(rollup, metadata, request, actionListener)
+                        }
                     }
                 }
-            }
 
-            override fun onFailure(e: Exception) {
-                actionListener.onFailure(ExceptionsHelper.unwrapCause(e) as Exception)
+                override fun onFailure(e: Exception) {
+                    actionListener.onFailure(ExceptionsHelper.unwrapCause(e) as Exception)
+                }
             }
-        })
+        )
     }
 
     /**
@@ -154,35 +160,53 @@ class TransportStopRollupAction @Inject constructor(
         val failureReason = if (metadata.status == RollupMetadata.Status.RETRY)
             "Stopped a rollup that was in retry, rolling back to failed status" else null
         val updateRequest = UpdateRequest(IndexManagementPlugin.INDEX_MANAGEMENT_INDEX, rollup.metadataID)
-            .doc(mapOf(RollupMetadata.ROLLUP_METADATA_TYPE to mapOf(RollupMetadata.STATUS_FIELD to updatedStatus.type,
-                RollupMetadata.FAILURE_REASON to failureReason, RollupMetadata.LAST_UPDATED_FIELD to now)))
-        client.update(updateRequest, object : ActionListener<UpdateResponse> {
-            override fun onResponse(response: UpdateResponse) {
-                if (response.result == DocWriteResponse.Result.UPDATED) {
-                    updateRollupJob(rollup, request, actionListener)
-                } else {
-                    actionListener.onResponse(AcknowledgedResponse(false))
+            .doc(
+                mapOf(
+                    RollupMetadata.ROLLUP_METADATA_TYPE to mapOf(
+                        RollupMetadata.STATUS_FIELD to updatedStatus.type,
+                        RollupMetadata.FAILURE_REASON to failureReason, RollupMetadata.LAST_UPDATED_FIELD to now
+                    )
+                )
+            )
+        client.update(
+            updateRequest,
+            object : ActionListener<UpdateResponse> {
+                override fun onResponse(response: UpdateResponse) {
+                    if (response.result == DocWriteResponse.Result.UPDATED) {
+                        updateRollupJob(rollup, request, actionListener)
+                    } else {
+                        actionListener.onResponse(AcknowledgedResponse(false))
+                    }
+                }
+
+                override fun onFailure(e: Exception) {
+                    actionListener.onFailure(ExceptionsHelper.unwrapCause(e) as Exception)
                 }
             }
-
-            override fun onFailure(e: Exception) {
-                actionListener.onFailure(ExceptionsHelper.unwrapCause(e) as Exception)
-            }
-        })
+        )
     }
 
     private fun updateRollupJob(rollup: Rollup, request: StopRollupRequest, actionListener: ActionListener<AcknowledgedResponse>) {
         val now = Instant.now().toEpochMilli()
         request.index(IndexManagementPlugin.INDEX_MANAGEMENT_INDEX).setIfSeqNo(rollup.seqNo).setIfPrimaryTerm(rollup.primaryTerm)
-            .doc(mapOf(Rollup.ROLLUP_TYPE to mapOf(Rollup.ENABLED_FIELD to false,
-                Rollup.ENABLED_TIME_FIELD to null, Rollup.LAST_UPDATED_TIME_FIELD to now)))
-        client.update(request, object : ActionListener<UpdateResponse> {
-            override fun onResponse(response: UpdateResponse) {
-                actionListener.onResponse(AcknowledgedResponse(response.result == DocWriteResponse.Result.UPDATED))
+            .doc(
+                mapOf(
+                    Rollup.ROLLUP_TYPE to mapOf(
+                        Rollup.ENABLED_FIELD to false,
+                        Rollup.ENABLED_TIME_FIELD to null, Rollup.LAST_UPDATED_TIME_FIELD to now
+                    )
+                )
+            )
+        client.update(
+            request,
+            object : ActionListener<UpdateResponse> {
+                override fun onResponse(response: UpdateResponse) {
+                    actionListener.onResponse(AcknowledgedResponse(response.result == DocWriteResponse.Result.UPDATED))
+                }
+                override fun onFailure(e: Exception) {
+                    actionListener.onFailure(ExceptionsHelper.unwrapCause(e) as Exception)
+                }
             }
-            override fun onFailure(e: Exception) {
-                actionListener.onFailure(ExceptionsHelper.unwrapCause(e) as Exception)
-            }
-        })
+        )
     }
 }

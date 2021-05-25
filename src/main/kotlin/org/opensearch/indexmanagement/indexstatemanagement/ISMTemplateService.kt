@@ -26,8 +26,6 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement
 
-import org.opensearch.indexmanagement.indexstatemanagement.model.ISMTemplate
-import org.opensearch.indexmanagement.util.IndexManagementException
 import org.apache.logging.log4j.LogManager
 import org.apache.lucene.util.automaton.Operations
 import org.opensearch.OpenSearchException
@@ -35,6 +33,8 @@ import org.opensearch.cluster.metadata.IndexMetadata
 import org.opensearch.common.Strings
 import org.opensearch.common.ValidationException
 import org.opensearch.common.regex.Regex
+import org.opensearch.indexmanagement.indexstatemanagement.model.ISMTemplate
+import org.opensearch.indexmanagement.util.IndexManagementException
 
 private val log = LogManager.getLogger("ISMTemplateService")
 
@@ -96,8 +96,10 @@ fun validateFormat(indexPatterns: List<String>): OpenSearchException? {
             indexPatternFormatErrors.add("index_pattern [$indexPattern] must not start with '_'")
         }
         if (!Strings.validFileNameExcludingAstrix(indexPattern)) {
-            indexPatternFormatErrors.add("index_pattern [" + indexPattern + "] must not contain the following characters " +
-                Strings.INVALID_FILENAME_CHARS)
+            indexPatternFormatErrors.add(
+                "index_pattern [" + indexPattern + "] must not contain the following characters " +
+                    Strings.INVALID_FILENAME_CHARS
+            )
         }
     }
 
@@ -126,12 +128,12 @@ fun Map<String, ISMTemplate>.findConflictingPolicyTemplates(
     // focus on template with same priority
     this.filter { it.value.priority == priority }
         .forEach { (policyID, template) ->
-        val automaton2 = Regex.simpleMatchToAutomaton(*template.indexPatterns.toTypedArray())
-        if (!Operations.isEmpty(Operations.intersection(automaton1, automaton2))) {
-            log.info("Existing ism_template for $policyID overlaps candidate $candidate")
-            overlappingTemplates[policyID] = template.indexPatterns
+            val automaton2 = Regex.simpleMatchToAutomaton(*template.indexPatterns.toTypedArray())
+            if (!Operations.isEmpty(Operations.intersection(automaton1, automaton2))) {
+                log.info("Existing ism_template for $policyID overlaps candidate $candidate")
+                overlappingTemplates[policyID] = template.indexPatterns
+            }
         }
-    }
     overlappingTemplates.remove(candidate)
 
     return overlappingTemplates

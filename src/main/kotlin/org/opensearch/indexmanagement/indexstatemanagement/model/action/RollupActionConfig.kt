@@ -26,10 +26,6 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.model.action
 
-import org.opensearch.indexmanagement.indexstatemanagement.action.Action
-import org.opensearch.indexmanagement.indexstatemanagement.action.RollupAction
-import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
-import org.opensearch.indexmanagement.rollup.model.ISMRollup
 import org.opensearch.client.Client
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.io.stream.StreamInput
@@ -40,6 +36,10 @@ import org.opensearch.common.xcontent.ToXContentObject
 import org.opensearch.common.xcontent.XContentBuilder
 import org.opensearch.common.xcontent.XContentParser
 import org.opensearch.common.xcontent.XContentParserUtils
+import org.opensearch.indexmanagement.indexstatemanagement.action.Action
+import org.opensearch.indexmanagement.indexstatemanagement.action.RollupAction
+import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
+import org.opensearch.indexmanagement.rollup.model.ISMRollup
 import org.opensearch.script.ScriptService
 import java.io.IOException
 
@@ -51,10 +51,10 @@ class RollupActionConfig(
     override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
         builder.startObject()
         super.toXContent(builder, params)
-                .startObject(ActionType.ROLLUP.type)
-                .field(ISM_ROLLUP_FIELD, ismRollup)
-                .endObject()
-                .endObject()
+            .startObject(ActionType.ROLLUP.type)
+            .field(ISM_ROLLUP_FIELD, ismRollup)
+            .endObject()
+            .endObject()
         return builder
     }
 
@@ -97,8 +97,9 @@ class RollupActionConfig(
             }
 
             return RollupActionConfig(
-                    ismRollup = requireNotNull(ismRollup) { "RollupActionConfig rollup is null" },
-                    index = actionIndex)
+                ismRollup = requireNotNull(ismRollup) { "RollupActionConfig rollup is null" },
+                index = actionIndex
+            )
         }
     }
 }

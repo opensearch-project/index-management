@@ -26,6 +26,12 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.resthandler
 
+import org.apache.http.entity.ContentType.APPLICATION_JSON
+import org.apache.http.entity.StringEntity
+import org.opensearch.action.search.SearchResponse
+import org.opensearch.client.ResponseException
+import org.opensearch.common.xcontent.XContentType
+import org.opensearch.common.xcontent.json.JsonXContent.jsonXContent
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.POLICY_BASE_URI
 import org.opensearch.indexmanagement.indexstatemanagement.IndexStateManagementRestTestCase
@@ -39,12 +45,6 @@ import org.opensearch.indexmanagement.makeRequest
 import org.opensearch.indexmanagement.util._ID
 import org.opensearch.indexmanagement.util._PRIMARY_TERM
 import org.opensearch.indexmanagement.util._SEQ_NO
-import org.apache.http.entity.ContentType.APPLICATION_JSON
-import org.apache.http.entity.StringEntity
-import org.opensearch.action.search.SearchResponse
-import org.opensearch.client.ResponseException
-import org.opensearch.common.xcontent.XContentType
-import org.opensearch.common.xcontent.json.JsonXContent.jsonXContent
 import org.opensearch.rest.RestRequest
 import org.opensearch.rest.RestStatus
 import org.opensearch.test.OpenSearchTestCase
@@ -310,27 +310,29 @@ class IndexStateManagementRestApiIT : IndexStateManagementRestTestCase() {
         val actualMessage = response.asMap()
         val expectedMessage = mapOf(
             "total_policies" to 1,
-            "policies" to listOf(mapOf(
-                _SEQ_NO to policy.seqNo,
-                _ID to policy.id,
-                _PRIMARY_TERM to policy.primaryTerm,
-                Policy.POLICY_TYPE to mapOf(
-                    "schema_version" to policy.schemaVersion,
-                    "policy_id" to policy.id,
-                    "last_updated_time" to policy.lastUpdatedTime.toEpochMilli(),
-                    "default_state" to policy.defaultState,
-                    "ism_template" to null,
-                    "description" to policy.description,
-                    "error_notification" to policy.errorNotification,
-                    "states" to policy.states.map {
-                        mapOf(
-                            "name" to it.name,
-                            "transitions" to it.transitions,
-                            "actions" to it.actions
-                        )
-                    }
+            "policies" to listOf(
+                mapOf(
+                    _SEQ_NO to policy.seqNo,
+                    _ID to policy.id,
+                    _PRIMARY_TERM to policy.primaryTerm,
+                    Policy.POLICY_TYPE to mapOf(
+                        "schema_version" to policy.schemaVersion,
+                        "policy_id" to policy.id,
+                        "last_updated_time" to policy.lastUpdatedTime.toEpochMilli(),
+                        "default_state" to policy.defaultState,
+                        "ism_template" to null,
+                        "description" to policy.description,
+                        "error_notification" to policy.errorNotification,
+                        "states" to policy.states.map {
+                            mapOf(
+                                "name" to it.name,
+                                "transitions" to it.transitions,
+                                "actions" to it.actions
+                            )
+                        }
+                    )
                 )
-            ))
+            )
         )
 
         assertEquals(expectedMessage.toString(), actualMessage.toString())

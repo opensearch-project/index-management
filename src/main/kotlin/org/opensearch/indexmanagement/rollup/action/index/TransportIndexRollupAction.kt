@@ -26,13 +26,6 @@
 
 package org.opensearch.indexmanagement.rollup.action.index
 
-import org.opensearch.indexmanagement.IndexManagementIndices
-import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
-import org.opensearch.indexmanagement.rollup.action.get.GetRollupAction
-import org.opensearch.indexmanagement.rollup.action.get.GetRollupRequest
-import org.opensearch.indexmanagement.rollup.action.get.GetRollupResponse
-import org.opensearch.indexmanagement.rollup.model.Rollup
-import org.opensearch.indexmanagement.util.IndexUtils
 import org.apache.logging.log4j.LogManager
 import org.opensearch.OpenSearchStatusException
 import org.opensearch.action.ActionListener
@@ -47,6 +40,13 @@ import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.inject.Inject
 import org.opensearch.common.xcontent.ToXContent
 import org.opensearch.common.xcontent.XContentFactory.jsonBuilder
+import org.opensearch.indexmanagement.IndexManagementIndices
+import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
+import org.opensearch.indexmanagement.rollup.action.get.GetRollupAction
+import org.opensearch.indexmanagement.rollup.action.get.GetRollupRequest
+import org.opensearch.indexmanagement.rollup.action.get.GetRollupResponse
+import org.opensearch.indexmanagement.rollup.model.Rollup
+import org.opensearch.indexmanagement.util.IndexUtils
 import org.opensearch.rest.RestStatus
 import org.opensearch.tasks.Task
 import org.opensearch.transport.TransportService
@@ -129,24 +129,29 @@ class TransportIndexRollupAction @Inject constructor(
                 .id(request.rollup.id)
                 .source(rollup.toXContent(jsonBuilder(), ToXContent.EMPTY_PARAMS))
                 .timeout(IndexRequest.DEFAULT_TIMEOUT)
-            client.index(request, object : ActionListener<IndexResponse> {
-                override fun onResponse(response: IndexResponse) {
-                    if (response.shardInfo.failed > 0) {
-                        val failureReasons = response.shardInfo.failures.joinToString(", ") { it.reason() }
-                        actionListener.onFailure(OpenSearchStatusException(failureReasons, response.status()))
-                    } else {
-                        val status = if (request.opType() == DocWriteRequest.OpType.CREATE) RestStatus.CREATED else RestStatus.OK
-                        actionListener.onResponse(
-                            IndexRollupResponse(response.id, response.version, response.seqNo, response.primaryTerm, status,
-                                rollup.copy(seqNo = response.seqNo, primaryTerm = response.primaryTerm))
-                        )
+            client.index(
+                request,
+                object : ActionListener<IndexResponse> {
+                    override fun onResponse(response: IndexResponse) {
+                        if (response.shardInfo.failed > 0) {
+                            val failureReasons = response.shardInfo.failures.joinToString(", ") { it.reason() }
+                            actionListener.onFailure(OpenSearchStatusException(failureReasons, response.status()))
+                        } else {
+                            val status = if (request.opType() == DocWriteRequest.OpType.CREATE) RestStatus.CREATED else RestStatus.OK
+                            actionListener.onResponse(
+                                IndexRollupResponse(
+                                    response.id, response.version, response.seqNo, response.primaryTerm, status,
+                                    rollup.copy(seqNo = response.seqNo, primaryTerm = response.primaryTerm)
+                                )
+                            )
+                        }
+                    }
+
+                    override fun onFailure(e: Exception) {
+                        actionListener.onFailure(e)
                     }
                 }
-
-                override fun onFailure(e: Exception) {
-                    actionListener.onFailure(e)
-                }
-            })
+            )
         }
     }
 }

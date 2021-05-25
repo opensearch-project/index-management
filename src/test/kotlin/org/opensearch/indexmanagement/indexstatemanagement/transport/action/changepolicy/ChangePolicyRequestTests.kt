@@ -26,10 +26,10 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.transport.action.changepolicy
 
-import org.opensearch.indexmanagement.indexstatemanagement.model.ChangePolicy
-import org.opensearch.indexmanagement.indexstatemanagement.model.StateFilter
 import org.opensearch.common.io.stream.BytesStreamOutput
 import org.opensearch.common.io.stream.StreamInput
+import org.opensearch.indexmanagement.indexstatemanagement.model.ChangePolicy
+import org.opensearch.indexmanagement.indexstatemanagement.model.StateFilter
 import org.opensearch.test.OpenSearchTestCase
 
 class ChangePolicyRequestTests : OpenSearchTestCase() {

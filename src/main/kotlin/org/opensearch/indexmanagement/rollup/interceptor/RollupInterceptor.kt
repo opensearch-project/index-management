@@ -26,15 +26,6 @@
 
 package org.opensearch.indexmanagement.rollup.interceptor
 
-import org.opensearch.indexmanagement.rollup.model.Rollup
-import org.opensearch.indexmanagement.rollup.model.RollupFieldMapping
-import org.opensearch.indexmanagement.rollup.model.RollupFieldMapping.Companion.UNKNOWN_MAPPING
-import org.opensearch.indexmanagement.rollup.model.dimension.Dimension
-import org.opensearch.indexmanagement.rollup.settings.RollupSettings
-import org.opensearch.indexmanagement.rollup.util.getDateHistogram
-import org.opensearch.indexmanagement.rollup.util.getRollupJobs
-import org.opensearch.indexmanagement.rollup.util.populateFieldMappings
-import org.opensearch.indexmanagement.rollup.util.rewriteSearchSourceBuilder
 import org.apache.logging.log4j.LogManager
 import org.opensearch.cluster.metadata.IndexNameExpressionResolver
 import org.opensearch.cluster.service.ClusterService
@@ -50,7 +41,16 @@ import org.opensearch.index.query.RangeQueryBuilder
 import org.opensearch.index.query.TermQueryBuilder
 import org.opensearch.index.query.TermsQueryBuilder
 import org.opensearch.index.search.MatchQuery
+import org.opensearch.indexmanagement.rollup.model.Rollup
+import org.opensearch.indexmanagement.rollup.model.RollupFieldMapping
+import org.opensearch.indexmanagement.rollup.model.RollupFieldMapping.Companion.UNKNOWN_MAPPING
+import org.opensearch.indexmanagement.rollup.model.dimension.Dimension
+import org.opensearch.indexmanagement.rollup.settings.RollupSettings
+import org.opensearch.indexmanagement.rollup.util.getDateHistogram
+import org.opensearch.indexmanagement.rollup.util.getRollupJobs
 import org.opensearch.indexmanagement.rollup.util.isRollupIndex
+import org.opensearch.indexmanagement.rollup.util.populateFieldMappings
+import org.opensearch.indexmanagement.rollup.util.rewriteSearchSourceBuilder
 import org.opensearch.search.aggregations.AggregationBuilder
 import org.opensearch.search.aggregations.bucket.histogram.DateHistogramAggregationBuilder
 import org.opensearch.search.aggregations.bucket.histogram.DateHistogramInterval
@@ -103,16 +103,18 @@ class RollupInterceptor(
 
                         val indices = request.indices().map { it.toString() }.toTypedArray()
                         val concreteIndices = indexNameExpressionResolver
-                                .concreteIndexNames(clusterService.state(), request.indicesOptions(), *indices)
+                            .concreteIndexNames(clusterService.state(), request.indicesOptions(), *indices)
 
                         if (concreteIndices.size > 1) {
-                            logger.warn("There can be only one index in search request if its a rollup search - requested to search [${concreteIndices
-                                    .size}] indices including rollup index [$index]")
+                            logger.warn(
+                                "There can be only one index in search request if its a rollup search - requested to search [${concreteIndices
+                                    .size}] indices including rollup index [$index]"
+                            )
                             throw IllegalArgumentException("Searching rollup index with other indices is not supported currently")
                         }
 
                         val rollupJobs = clusterService.state().metadata.index(index).getRollupJobs()
-                                ?: throw IllegalArgumentException("Could not find any valid rollup job on the index")
+                            ?: throw IllegalArgumentException("Could not find any valid rollup job on the index")
 
                         val queryFieldMappings = getQueryMetadata(request.source().query())
                         val aggregationFieldMappings = getAggregationMetadata(request.source().aggregations()?.aggregatorFactories)
@@ -218,9 +220,12 @@ class RollupInterceptor(
             }
             is MatchPhraseQueryBuilder -> {
                 if (!query.analyzer().isNullOrEmpty() || query.slop() != MatchQuery.DEFAULT_PHRASE_SLOP ||
-                        query.zeroTermsQuery() != MatchQuery.DEFAULT_ZERO_TERMS_QUERY) {
-                    throw IllegalArgumentException("The ${query.name} query is currently not supported with analyzer/slop/zero_terms_query in " +
-                            "rollups")
+                    query.zeroTermsQuery() != MatchQuery.DEFAULT_ZERO_TERMS_QUERY
+                ) {
+                    throw IllegalArgumentException(
+                        "The ${query.name} query is currently not supported with analyzer/slop/zero_terms_query in " +
+                            "rollups"
+                    )
                 }
                 fieldMappings.add(RollupFieldMapping(RollupFieldMapping.Companion.FieldType.DIMENSION, query.fieldName(), Dimension.Type.TERMS.type))
             }

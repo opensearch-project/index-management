@@ -26,17 +26,6 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement
 
-import org.opensearch.indexmanagement.IndexManagementIndices
-import org.opensearch.indexmanagement.IndexManagementPlugin
-import org.opensearch.indexmanagement.opensearchapi.suspendUntil
-import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
-import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings
-import org.opensearch.indexmanagement.indexstatemanagement.step.Step
-import org.opensearch.indexmanagement.indexstatemanagement.util.INDEX_HIDDEN
-import org.opensearch.indexmanagement.indexstatemanagement.util.INDEX_NUMBER_OF_REPLICAS
-import org.opensearch.indexmanagement.indexstatemanagement.util.INDEX_NUMBER_OF_SHARDS
-import org.opensearch.indexmanagement.util.OpenForTesting
-import org.opensearch.indexmanagement.util._DOC
 import org.apache.logging.log4j.LogManager
 import org.opensearch.action.DocWriteRequest
 import org.opensearch.action.admin.cluster.state.ClusterStateRequest
@@ -54,6 +43,17 @@ import org.opensearch.common.xcontent.ToXContent
 import org.opensearch.common.xcontent.XContentFactory
 import org.opensearch.common.xcontent.XContentType
 import org.opensearch.index.IndexNotFoundException
+import org.opensearch.indexmanagement.IndexManagementIndices
+import org.opensearch.indexmanagement.IndexManagementPlugin
+import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
+import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings
+import org.opensearch.indexmanagement.indexstatemanagement.step.Step
+import org.opensearch.indexmanagement.indexstatemanagement.util.INDEX_HIDDEN
+import org.opensearch.indexmanagement.indexstatemanagement.util.INDEX_NUMBER_OF_REPLICAS
+import org.opensearch.indexmanagement.indexstatemanagement.util.INDEX_NUMBER_OF_SHARDS
+import org.opensearch.indexmanagement.opensearchapi.suspendUntil
+import org.opensearch.indexmanagement.util.OpenForTesting
+import org.opensearch.indexmanagement.util._DOC
 import org.opensearch.threadpool.Scheduler
 import org.opensearch.threadpool.ThreadPool
 import java.time.Instant
@@ -105,8 +105,10 @@ class IndexStateManagementHistory(
             // try to rollover immediately as we might be restarting the cluster
             rolloverHistoryIndex()
             // schedule the next rollover for approx MAX_AGE later
-            scheduledRollover = threadPool.scheduleWithFixedDelay({ rolloverAndDeleteHistoryIndex() },
-                historyRolloverCheckPeriod, ThreadPool.Names.MANAGEMENT)
+            scheduledRollover = threadPool.scheduleWithFixedDelay(
+                { rolloverAndDeleteHistoryIndex() },
+                historyRolloverCheckPeriod, ThreadPool.Names.MANAGEMENT
+            )
         } catch (e: Exception) {
             // This should be run on cluster startup
             logger.error("Error creating ISM history index.", e)
@@ -120,8 +122,10 @@ class IndexStateManagementHistory(
     private fun rescheduleRollover() {
         if (clusterService.state().nodes.isLocalNodeElectedMaster) {
             scheduledRollover?.cancel()
-            scheduledRollover = threadPool.scheduleWithFixedDelay({ rolloverAndDeleteHistoryIndex() },
-                historyRolloverCheckPeriod, ThreadPool.Names.MANAGEMENT)
+            scheduledRollover = threadPool.scheduleWithFixedDelay(
+                { rolloverAndDeleteHistoryIndex() },
+                historyRolloverCheckPeriod, ThreadPool.Names.MANAGEMENT
+            )
         }
     }
 

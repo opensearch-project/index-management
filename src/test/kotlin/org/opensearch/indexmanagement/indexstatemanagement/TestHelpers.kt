@@ -26,7 +26,11 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement
 
-import org.opensearch.indexmanagement.opensearchapi.string
+import org.opensearch.common.unit.ByteSizeValue
+import org.opensearch.common.unit.TimeValue
+import org.opensearch.common.xcontent.ToXContent
+import org.opensearch.common.xcontent.XContentFactory
+import org.opensearch.index.seqno.SequenceNumbers
 import org.opensearch.indexmanagement.indexstatemanagement.model.ChangePolicy
 import org.opensearch.indexmanagement.indexstatemanagement.model.Conditions
 import org.opensearch.indexmanagement.indexstatemanagement.model.ErrorNotification
@@ -41,11 +45,11 @@ import org.opensearch.indexmanagement.indexstatemanagement.model.action.ActionCo
 import org.opensearch.indexmanagement.indexstatemanagement.model.action.AllocationActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.model.action.DeleteActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.model.action.ForceMergeActionConfig
+import org.opensearch.indexmanagement.indexstatemanagement.model.action.IndexPriorityActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.model.action.NotificationActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.model.action.ReadOnlyActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.model.action.ReadWriteActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.model.action.ReplicaCountActionConfig
-import org.opensearch.indexmanagement.indexstatemanagement.model.action.IndexPriorityActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.model.action.RolloverActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.model.action.RollupActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.model.action.SnapshotActionConfig
@@ -56,15 +60,11 @@ import org.opensearch.indexmanagement.indexstatemanagement.model.destination.Cus
 import org.opensearch.indexmanagement.indexstatemanagement.model.destination.Destination
 import org.opensearch.indexmanagement.indexstatemanagement.model.destination.DestinationType
 import org.opensearch.indexmanagement.indexstatemanagement.model.destination.Slack
+import org.opensearch.indexmanagement.opensearchapi.string
 import org.opensearch.indexmanagement.rollup.randomISMRollup
 import org.opensearch.jobscheduler.spi.schedule.CronSchedule
 import org.opensearch.jobscheduler.spi.schedule.IntervalSchedule
 import org.opensearch.jobscheduler.spi.schedule.Schedule
-import org.opensearch.common.unit.ByteSizeValue
-import org.opensearch.common.unit.TimeValue
-import org.opensearch.common.xcontent.ToXContent
-import org.opensearch.common.xcontent.XContentFactory
-import org.opensearch.index.seqno.SequenceNumbers
 import org.opensearch.script.Script
 import org.opensearch.script.ScriptType
 import org.opensearch.test.rest.OpenSearchRestTestCase
@@ -81,8 +81,10 @@ fun randomPolicy(
     states: List<State> = List(OpenSearchRestTestCase.randomIntBetween(1, 10)) { randomState() },
     ismTemplate: ISMTemplate? = null
 ): Policy {
-    return Policy(id = id, schemaVersion = schemaVersion, lastUpdatedTime = lastUpdatedTime,
-            errorNotification = errorNotification, defaultState = states[0].name, states = states, description = description, ismTemplate = ismTemplate)
+    return Policy(
+        id = id, schemaVersion = schemaVersion, lastUpdatedTime = lastUpdatedTime,
+        errorNotification = errorNotification, defaultState = states[0].name, states = states, description = description, ismTemplate = ismTemplate
+    )
 }
 
 fun randomState(

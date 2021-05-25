@@ -26,11 +26,9 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.runner
 
-import org.opensearch.indexmanagement.indexstatemanagement.IndexStateManagementHistory
-import org.opensearch.indexmanagement.indexstatemanagement.ManagedIndexRunner
-import org.opensearch.indexmanagement.indexstatemanagement.SkipExecution
-import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings
 import com.carrotsearch.randomizedtesting.annotations.ThreadLeakScope
+import org.junit.Before
+import org.mockito.Mockito
 import org.opensearch.Version
 import org.opensearch.action.index.IndexResponse
 import org.opensearch.client.Client
@@ -41,12 +39,14 @@ import org.opensearch.common.settings.Setting
 import org.opensearch.common.settings.Settings
 import org.opensearch.common.xcontent.NamedXContentRegistry
 import org.opensearch.env.Environment
+import org.opensearch.indexmanagement.indexstatemanagement.IndexStateManagementHistory
+import org.opensearch.indexmanagement.indexstatemanagement.ManagedIndexRunner
+import org.opensearch.indexmanagement.indexstatemanagement.SkipExecution
+import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings
 import org.opensearch.script.ScriptService
 import org.opensearch.test.ClusterServiceUtils
 import org.opensearch.test.OpenSearchTestCase
 import org.opensearch.threadpool.ThreadPool
-import org.junit.Before
-import org.mockito.Mockito
 
 @ThreadLeakScope(ThreadLeakScope.Scope.NONE)
 class ManagedIndexRunnerTests : OpenSearchTestCase() {
@@ -92,12 +92,12 @@ class ManagedIndexRunnerTests : OpenSearchTestCase() {
         Mockito.`when`(environment.settings()).thenReturn(settings)
 
         runner = ManagedIndexRunner
-                .registerClusterService(clusterService)
-                .registerNamedXContentRegistry(xContentRegistry)
-                .registerScriptService(scriptService)
-                .registerSettings(environment.settings())
-                .registerConsumers()
-                .registerHistoryIndex(indexStateManagementHistory)
-                .registerSkipFlag(skipFlag)
+            .registerClusterService(clusterService)
+            .registerNamedXContentRegistry(xContentRegistry)
+            .registerScriptService(scriptService)
+            .registerSettings(environment.settings())
+            .registerConsumers()
+            .registerHistoryIndex(indexStateManagementHistory)
+            .registerSkipFlag(skipFlag)
     }
 }

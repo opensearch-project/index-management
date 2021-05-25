@@ -26,13 +26,6 @@
 
 package org.opensearch.indexmanagement.rollup
 
-import org.opensearch.indexmanagement.opensearchapi.retry
-import org.opensearch.indexmanagement.opensearchapi.suspendUntil
-import org.opensearch.indexmanagement.rollup.model.Rollup
-import org.opensearch.indexmanagement.rollup.model.RollupMetadata
-import org.opensearch.indexmanagement.rollup.settings.RollupSettings.Companion.ROLLUP_SEARCH_BACKOFF_COUNT
-import org.opensearch.indexmanagement.rollup.settings.RollupSettings.Companion.ROLLUP_SEARCH_BACKOFF_MILLIS
-import org.opensearch.indexmanagement.rollup.util.getRollupSearchRequest
 import org.apache.logging.log4j.LogManager
 import org.opensearch.ExceptionsHelper
 import org.opensearch.action.ActionListener
@@ -43,6 +36,13 @@ import org.opensearch.client.Client
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.breaker.CircuitBreakingException
 import org.opensearch.common.settings.Settings
+import org.opensearch.indexmanagement.opensearchapi.retry
+import org.opensearch.indexmanagement.opensearchapi.suspendUntil
+import org.opensearch.indexmanagement.rollup.model.Rollup
+import org.opensearch.indexmanagement.rollup.model.RollupMetadata
+import org.opensearch.indexmanagement.rollup.settings.RollupSettings.Companion.ROLLUP_SEARCH_BACKOFF_COUNT
+import org.opensearch.indexmanagement.rollup.settings.RollupSettings.Companion.ROLLUP_SEARCH_BACKOFF_MILLIS
+import org.opensearch.indexmanagement.rollup.util.getRollupSearchRequest
 import org.opensearch.search.aggregations.MultiBucketConsumerService
 import org.opensearch.transport.RemoteTransportException
 import java.time.Instant
@@ -66,7 +66,8 @@ class RollupSearchService(
 
     init {
         clusterService.clusterSettings.addSettingsUpdateConsumer(ROLLUP_SEARCH_BACKOFF_MILLIS, ROLLUP_SEARCH_BACKOFF_COUNT) {
-                millis, count -> retrySearchPolicy = BackoffPolicy.constantBackoff(millis, count)
+            millis, count ->
+            retrySearchPolicy = BackoffPolicy.constantBackoff(millis, count)
         }
     }
 
@@ -119,8 +120,10 @@ class RollupSearchService(
                     val decay = 2f.pow(retryCount++)
                     client.suspendUntil { listener: ActionListener<SearchResponse> ->
                         val pageSize = max(1, job.pageSize.div(decay.toInt()))
-                        if (decay > 1) logger.warn("Composite search failed for rollup, retrying [#${retryCount - 1}] -" +
-                            " reducing page size of composite aggregation from ${job.pageSize} to $pageSize")
+                        if (decay > 1) logger.warn(
+                            "Composite search failed for rollup, retrying [#${retryCount - 1}] -" +
+                                " reducing page size of composite aggregation from ${job.pageSize} to $pageSize"
+                        )
                         search(job.copy(pageSize = pageSize).getRollupSearchRequest(metadata), listener)
                     }
                 }

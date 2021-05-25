@@ -26,12 +26,12 @@
 
 package org.opensearch.indexmanagement
 
-import org.opensearch.indexmanagement.indexstatemanagement.settings.LegacyOpenDistroManagedIndexSettings
-import org.opensearch.indexmanagement.rollup.settings.LegacyOpenDistroRollupSettings
 import org.junit.Before
 import org.opensearch.common.settings.Settings
 import org.opensearch.common.unit.TimeValue
+import org.opensearch.indexmanagement.indexstatemanagement.settings.LegacyOpenDistroManagedIndexSettings
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings
+import org.opensearch.indexmanagement.rollup.settings.LegacyOpenDistroRollupSettings
 import org.opensearch.indexmanagement.rollup.settings.RollupSettings
 import org.opensearch.test.OpenSearchTestCase
 
@@ -178,29 +178,31 @@ class IndexManagementSettingsTests : OpenSearchTestCase() {
         assertEquals(RollupSettings.ROLLUP_SEARCH_BACKOFF_COUNT.get(settings), 1)
         assertEquals(RollupSettings.ROLLUP_DASHBOARDS.get(settings), false)
 
-        assertSettingDeprecationsAndWarnings(arrayOf(
-            LegacyOpenDistroManagedIndexSettings.INDEX_STATE_MANAGEMENT_ENABLED,
-            LegacyOpenDistroManagedIndexSettings.METADATA_SERVICE_ENABLED,
-            LegacyOpenDistroManagedIndexSettings.JOB_INTERVAL,
-            LegacyOpenDistroManagedIndexSettings.SWEEP_PERIOD,
-            LegacyOpenDistroManagedIndexSettings.COORDINATOR_BACKOFF_MILLIS,
-            LegacyOpenDistroManagedIndexSettings.COORDINATOR_BACKOFF_COUNT,
-            LegacyOpenDistroManagedIndexSettings.HISTORY_ENABLED,
-            LegacyOpenDistroManagedIndexSettings.HISTORY_MAX_DOCS,
-            LegacyOpenDistroManagedIndexSettings.HISTORY_INDEX_MAX_AGE,
-            LegacyOpenDistroManagedIndexSettings.HISTORY_ROLLOVER_CHECK_PERIOD,
-            LegacyOpenDistroManagedIndexSettings.HISTORY_RETENTION_PERIOD,
-            LegacyOpenDistroManagedIndexSettings.HISTORY_NUMBER_OF_SHARDS,
-            LegacyOpenDistroManagedIndexSettings.HISTORY_NUMBER_OF_REPLICAS,
-            LegacyOpenDistroManagedIndexSettings.ALLOW_LIST,
-            LegacyOpenDistroManagedIndexSettings.SNAPSHOT_DENY_LIST,
-            LegacyOpenDistroRollupSettings.ROLLUP_ENABLED,
-            LegacyOpenDistroRollupSettings.ROLLUP_SEARCH_ENABLED,
-            LegacyOpenDistroRollupSettings.ROLLUP_INGEST_BACKOFF_MILLIS,
-            LegacyOpenDistroRollupSettings.ROLLUP_INGEST_BACKOFF_COUNT,
-            LegacyOpenDistroRollupSettings.ROLLUP_SEARCH_BACKOFF_MILLIS,
-            LegacyOpenDistroRollupSettings.ROLLUP_SEARCH_BACKOFF_COUNT,
-            LegacyOpenDistroRollupSettings.ROLLUP_DASHBOARDS
-        ))
+        assertSettingDeprecationsAndWarnings(
+            arrayOf(
+                LegacyOpenDistroManagedIndexSettings.INDEX_STATE_MANAGEMENT_ENABLED,
+                LegacyOpenDistroManagedIndexSettings.METADATA_SERVICE_ENABLED,
+                LegacyOpenDistroManagedIndexSettings.JOB_INTERVAL,
+                LegacyOpenDistroManagedIndexSettings.SWEEP_PERIOD,
+                LegacyOpenDistroManagedIndexSettings.COORDINATOR_BACKOFF_MILLIS,
+                LegacyOpenDistroManagedIndexSettings.COORDINATOR_BACKOFF_COUNT,
+                LegacyOpenDistroManagedIndexSettings.HISTORY_ENABLED,
+                LegacyOpenDistroManagedIndexSettings.HISTORY_MAX_DOCS,
+                LegacyOpenDistroManagedIndexSettings.HISTORY_INDEX_MAX_AGE,
+                LegacyOpenDistroManagedIndexSettings.HISTORY_ROLLOVER_CHECK_PERIOD,
+                LegacyOpenDistroManagedIndexSettings.HISTORY_RETENTION_PERIOD,
+                LegacyOpenDistroManagedIndexSettings.HISTORY_NUMBER_OF_SHARDS,
+                LegacyOpenDistroManagedIndexSettings.HISTORY_NUMBER_OF_REPLICAS,
+                LegacyOpenDistroManagedIndexSettings.ALLOW_LIST,
+                LegacyOpenDistroManagedIndexSettings.SNAPSHOT_DENY_LIST,
+                LegacyOpenDistroRollupSettings.ROLLUP_ENABLED,
+                LegacyOpenDistroRollupSettings.ROLLUP_SEARCH_ENABLED,
+                LegacyOpenDistroRollupSettings.ROLLUP_INGEST_BACKOFF_MILLIS,
+                LegacyOpenDistroRollupSettings.ROLLUP_INGEST_BACKOFF_COUNT,
+                LegacyOpenDistroRollupSettings.ROLLUP_SEARCH_BACKOFF_MILLIS,
+                LegacyOpenDistroRollupSettings.ROLLUP_SEARCH_BACKOFF_COUNT,
+                LegacyOpenDistroRollupSettings.ROLLUP_DASHBOARDS
+            )
+        )
     }
 }

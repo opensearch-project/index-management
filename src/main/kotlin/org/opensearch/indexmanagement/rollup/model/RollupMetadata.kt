@@ -26,8 +26,6 @@
 
 package org.opensearch.indexmanagement.rollup.model
 
-import org.opensearch.indexmanagement.opensearchapi.instant
-import org.opensearch.indexmanagement.indexstatemanagement.util.WITH_TYPE
 import org.opensearch.action.search.SearchResponse
 import org.opensearch.common.io.stream.StreamInput
 import org.opensearch.common.io.stream.StreamOutput
@@ -39,6 +37,8 @@ import org.opensearch.common.xcontent.XContentParser
 import org.opensearch.common.xcontent.XContentParser.Token
 import org.opensearch.common.xcontent.XContentParserUtils.ensureExpectedToken
 import org.opensearch.index.seqno.SequenceNumbers
+import org.opensearch.indexmanagement.indexstatemanagement.util.WITH_TYPE
+import org.opensearch.indexmanagement.opensearchapi.instant
 import org.opensearch.search.aggregations.bucket.composite.InternalComposite
 import java.io.IOException
 import java.time.Instant
@@ -123,7 +123,7 @@ data class RollupStats(
             .field(ROLLUPS_INDEXED_FIELD, rollupsIndexed)
             .field(INDEX_TIME_IN_MILLIS_FIELD, indexTimeInMillis)
             .field(SEARCH_TIME_IN_MILLIS_FIELD, searchTimeInMillis)
-        .endObject()
+            .endObject()
     }
 
     override fun writeTo(out: StreamOutput) {

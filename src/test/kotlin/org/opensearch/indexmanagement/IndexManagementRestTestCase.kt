@@ -28,15 +28,15 @@ package org.opensearch.indexmanagement
 
 import org.apache.http.entity.ContentType
 import org.apache.http.entity.StringEntity
+import org.junit.AfterClass
+import org.junit.Before
+import org.junit.rules.DisableOnDebug
 import org.opensearch.client.Request
 import org.opensearch.client.RequestOptions
 import org.opensearch.client.Response
 import org.opensearch.client.RestClient
 import org.opensearch.common.settings.Settings
 import org.opensearch.rest.RestStatus
-import org.junit.AfterClass
-import org.junit.Before
-import org.junit.rules.DisableOnDebug
 import java.nio.file.Files
 import java.nio.file.Path
 import javax.management.MBeanServerInvocationHandler
@@ -54,7 +54,8 @@ abstract class IndexManagementRestTestCase : ODFERestTestCase() {
     // jobs themselves to finish and gracefully shut them down.. but for now seeing if this works.
     @Before
     fun setAutoCreateIndex() {
-        client().makeRequest("PUT", "_cluster/settings",
+        client().makeRequest(
+            "PUT", "_cluster/settings",
             StringEntity("""{"persistent":{"action.auto_create_index":"-.opendistro-*,*"}}""", ContentType.APPLICATION_JSON)
         )
     }

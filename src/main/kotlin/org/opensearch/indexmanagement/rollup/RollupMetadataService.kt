@@ -26,16 +26,6 @@
 
 package org.opensearch.indexmanagement.rollup
 
-import org.opensearch.indexmanagement.IndexManagementPlugin
-import org.opensearch.indexmanagement.opensearchapi.parseWithType
-import org.opensearch.indexmanagement.opensearchapi.suspendUntil
-import org.opensearch.indexmanagement.rollup.model.ContinuousMetadata
-import org.opensearch.indexmanagement.rollup.model.Rollup
-import org.opensearch.indexmanagement.rollup.model.RollupMetadata
-import org.opensearch.indexmanagement.rollup.model.RollupMetadata.Companion.NO_ID
-import org.opensearch.indexmanagement.rollup.model.RollupStats
-import org.opensearch.indexmanagement.rollup.model.dimension.DateHistogram
-import org.opensearch.indexmanagement.rollup.util.DATE_FIELD_EPOCH_MILLIS_FORMAT
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.apache.logging.log4j.LogManager
@@ -57,6 +47,16 @@ import org.opensearch.common.xcontent.XContentFactory
 import org.opensearch.common.xcontent.XContentHelper
 import org.opensearch.common.xcontent.XContentType
 import org.opensearch.index.query.MatchAllQueryBuilder
+import org.opensearch.indexmanagement.IndexManagementPlugin
+import org.opensearch.indexmanagement.opensearchapi.parseWithType
+import org.opensearch.indexmanagement.opensearchapi.suspendUntil
+import org.opensearch.indexmanagement.rollup.model.ContinuousMetadata
+import org.opensearch.indexmanagement.rollup.model.Rollup
+import org.opensearch.indexmanagement.rollup.model.RollupMetadata
+import org.opensearch.indexmanagement.rollup.model.RollupMetadata.Companion.NO_ID
+import org.opensearch.indexmanagement.rollup.model.RollupStats
+import org.opensearch.indexmanagement.rollup.model.dimension.DateHistogram
+import org.opensearch.indexmanagement.rollup.util.DATE_FIELD_EPOCH_MILLIS_FORMAT
 import org.opensearch.search.aggregations.bucket.composite.InternalComposite
 import org.opensearch.search.aggregations.bucket.histogram.DateHistogramAggregationBuilder
 import org.opensearch.search.builder.SearchSourceBuilder
@@ -101,9 +101,14 @@ class RollupMetadataService(val client: Client, val xContentRegistry: NamedXCont
                 }
             } else {
                 // The existing metadata was not found, create a new metadata in FAILED status
-                return submitMetadataUpdate(RollupMetadata(rollupID = rollup.id, lastUpdatedTime = Instant.now(),
-                    status = RollupMetadata.Status.FAILED, failureReason = "Not able to get the rollup metadata [${rollup.metadataID}]",
-                    stats = RollupStats(0, 0, 0, 0, 0)), false)
+                return submitMetadataUpdate(
+                    RollupMetadata(
+                        rollupID = rollup.id, lastUpdatedTime = Instant.now(),
+                        status = RollupMetadata.Status.FAILED, failureReason = "Not able to get the rollup metadata [${rollup.metadataID}]",
+                        stats = RollupStats(0, 0, 0, 0, 0)
+                    ),
+                    false
+                )
             }
         }
 
@@ -140,8 +145,12 @@ class RollupMetadataService(val client: Client, val xContentRegistry: NamedXCont
 
     // This returns the first instantiation of a RollupMetadata for a non-continuous rollup
     private fun createNonContinuousMetadata(rollup: Rollup): MetadataResult =
-        MetadataResult.Success(RollupMetadata(rollupID = rollup.id, lastUpdatedTime = Instant.now(), status = RollupMetadata.Status.INIT,
-            stats = RollupStats(0, 0, 0, 0, 0)))
+        MetadataResult.Success(
+            RollupMetadata(
+                rollupID = rollup.id, lastUpdatedTime = Instant.now(), status = RollupMetadata.Status.INIT,
+                stats = RollupStats(0, 0, 0, 0, 0)
+            )
+        )
 
     // This updates the metadata for a non-continuous rollup after an execution of the composite search and ingestion of rollup data
     private fun getUpdatedNonContinuousMetadata(

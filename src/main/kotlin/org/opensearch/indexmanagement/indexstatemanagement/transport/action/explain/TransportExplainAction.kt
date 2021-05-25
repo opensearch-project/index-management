@@ -26,15 +26,8 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.transport.action.explain
 
-import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
-import org.opensearch.indexmanagement.indexstatemanagement.ManagedIndexCoordinator.Companion.MAX_HITS
-import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.getManagedIndexMetadata
-import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
-import org.opensearch.indexmanagement.indexstatemanagement.util.isMetadataMoved
-import org.opensearch.indexmanagement.indexstatemanagement.util.managedIndexMetadataID
 import org.apache.logging.log4j.LogManager
 import org.opensearch.ExceptionsHelper
-import org.opensearch.index.IndexNotFoundException
 import org.opensearch.action.ActionListener
 import org.opensearch.action.admin.cluster.state.ClusterStateRequest
 import org.opensearch.action.admin.cluster.state.ClusterStateResponse
@@ -53,8 +46,15 @@ import org.opensearch.common.xcontent.LoggingDeprecationHandler
 import org.opensearch.common.xcontent.NamedXContentRegistry
 import org.opensearch.common.xcontent.XContentHelper
 import org.opensearch.common.xcontent.XContentType
+import org.opensearch.index.IndexNotFoundException
 import org.opensearch.index.query.Operator
 import org.opensearch.index.query.QueryBuilders
+import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
+import org.opensearch.indexmanagement.indexstatemanagement.ManagedIndexCoordinator.Companion.MAX_HITS
+import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
+import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.getManagedIndexMetadata
+import org.opensearch.indexmanagement.indexstatemanagement.util.isMetadataMoved
+import org.opensearch.indexmanagement.indexstatemanagement.util.managedIndexMetadataID
 import org.opensearch.search.builder.SearchSourceBuilder
 import org.opensearch.search.fetch.subphase.FetchSourceContext.FETCH_SOURCE
 import org.opensearch.search.sort.SortBuilders
@@ -70,7 +70,7 @@ class TransportExplainAction @Inject constructor(
     actionFilters: ActionFilters,
     val xContentRegistry: NamedXContentRegistry
 ) : HandledTransportAction<ExplainRequest, ExplainResponse>(
-        ExplainAction.NAME, transportService, actionFilters, ::ExplainRequest
+    ExplainAction.NAME, transportService, actionFilters, ::ExplainRequest
 ) {
     override fun doExecute(task: Task, request: ExplainRequest, listener: ActionListener<ExplainResponse>) {
         ExplainHandler(client, listener, request).start()
@@ -109,10 +109,12 @@ class TransportExplainAction @Inject constructor(
                 .order(SortOrder.fromString(params.sortOrder))
 
             val queryBuilder = QueryBuilders.boolQuery()
-                .must(QueryBuilders
-                    .queryStringQuery(params.queryString)
-                    .defaultField("managed_index.name")
-                    .defaultOperator(Operator.AND))
+                .must(
+                    QueryBuilders
+                        .queryStringQuery(params.queryString)
+                        .defaultField("managed_index.name")
+                        .defaultOperator(Operator.AND)
+                )
 
             var searchSourceBuilder = SearchSourceBuilder()
                 .from(params.from)
@@ -145,62 +147,65 @@ class TransportExplainAction @Inject constructor(
                 .indices(INDEX_MANAGEMENT_INDEX)
                 .source(searchSourceBuilder)
 
-            client.search(searchRequest, object : ActionListener<SearchResponse> {
-                override fun onResponse(response: SearchResponse) {
-                    val totalHits = response.hits.totalHits
-                    if (totalHits != null) {
-                        totalManagedIndices = totalHits.value.toInt()
+            client.search(
+                searchRequest,
+                object : ActionListener<SearchResponse> {
+                    override fun onResponse(response: SearchResponse) {
+                        val totalHits = response.hits.totalHits
+                        if (totalHits != null) {
+                            totalManagedIndices = totalHits.value.toInt()
+                        }
+
+                        response.hits.hits.map {
+                            val hitMap = it.sourceAsMap["managed_index"] as Map<String, Any>
+                            val managedIndex = hitMap["index"] as String
+                            managedIndices.add(managedIndex)
+                            enabledState[managedIndex] = hitMap["enabled"] as Boolean
+                            val user = hitMap["user"] as Map<String, Any>?
+                            rolesMap[managedIndex] = user?.get("roles") as List<String>?
+                            managedIndicesMetaDataMap[managedIndex] = mapOf(
+                                "index" to hitMap["index"] as String?,
+                                "index_uuid" to hitMap["index_uuid"] as String?,
+                                "policy_id" to hitMap["policy_id"] as String?,
+                                "enabled" to hitMap["enabled"]?.toString()
+                            )
+                        }
+
+                        // explain all only return managed indices
+                        if (explainAll) {
+                            if (managedIndices.size == 0) {
+                                // edge case: if specify query param pagination size to be 0
+                                // we still show total managed indices
+                                emptyResponse(totalManagedIndices)
+                                return
+                            } else {
+                                indexNames.addAll(managedIndices)
+                                getMetadata(managedIndices)
+                                return
+                            }
+                        }
+
+                        // explain/{index} return results for all indices
+                        indexNames.addAll(indices)
+                        getMetadata(indices)
                     }
 
-                    response.hits.hits.map {
-                        val hitMap = it.sourceAsMap["managed_index"] as Map<String, Any>
-                        val managedIndex = hitMap["index"] as String
-                        managedIndices.add(managedIndex)
-                        enabledState[managedIndex] = hitMap["enabled"] as Boolean
-                        val user = hitMap["user"] as Map<String, Any>?
-                        rolesMap[managedIndex] = user?.get("roles") as List<String>?
-                        managedIndicesMetaDataMap[managedIndex] = mapOf(
-                            "index" to hitMap["index"] as String?,
-                            "index_uuid" to hitMap["index_uuid"] as String?,
-                            "policy_id" to hitMap["policy_id"] as String?,
-                            "enabled" to hitMap["enabled"]?.toString()
-                        )
-                    }
-
-                    // explain all only return managed indices
-                    if (explainAll) {
-                        if (managedIndices.size == 0) {
-                            // edge case: if specify query param pagination size to be 0
-                            // we still show total managed indices
-                            emptyResponse(totalManagedIndices)
-                            return
-                        } else {
-                            indexNames.addAll(managedIndices)
-                            getMetadata(managedIndices)
+                    override fun onFailure(t: Exception) {
+                        if (t is IndexNotFoundException) {
+                            // config index hasn't been initialized
+                            // show all requested indices not managed
+                            if (indices.isNotEmpty()) {
+                                indexNames.addAll(indices)
+                                getMetadata(indices)
+                                return
+                            }
+                            emptyResponse()
                             return
                         }
+                        actionListener.onFailure(ExceptionsHelper.unwrapCause(t) as Exception)
                     }
-
-                    // explain/{index} return results for all indices
-                    indexNames.addAll(indices)
-                    getMetadata(indices)
                 }
-
-                override fun onFailure(t: Exception) {
-                    if (t is IndexNotFoundException) {
-                        // config index hasn't been initialized
-                        // show all requested indices not managed
-                        if (indices.isNotEmpty()) {
-                            indexNames.addAll(indices)
-                            getMetadata(indices)
-                            return
-                        }
-                        emptyResponse()
-                        return
-                    }
-                    actionListener.onFailure(ExceptionsHelper.unwrapCause(t) as Exception)
-                }
-            })
+            )
         }
 
         @Suppress("SpreadOperator")
@@ -215,15 +220,18 @@ class TransportExplainAction @Inject constructor(
                 .masterNodeTimeout(request.masterTimeout)
                 .indicesOptions(strictExpandIndicesOptions)
 
-            client.admin().cluster().state(clusterStateRequest, object : ActionListener<ClusterStateResponse> {
-                override fun onResponse(response: ClusterStateResponse) {
-                    onClusterStateResponse(response)
-                }
+            client.admin().cluster().state(
+                clusterStateRequest,
+                object : ActionListener<ClusterStateResponse> {
+                    override fun onResponse(response: ClusterStateResponse) {
+                        onClusterStateResponse(response)
+                    }
 
-                override fun onFailure(t: Exception) {
-                    actionListener.onFailure(ExceptionsHelper.unwrapCause(t) as Exception)
+                    override fun onFailure(t: Exception) {
+                        actionListener.onFailure(ExceptionsHelper.unwrapCause(t) as Exception)
+                    }
                 }
-            })
+            )
         }
 
         fun onClusterStateResponse(clusterStateResponse: ClusterStateResponse) {
@@ -239,16 +247,19 @@ class TransportExplainAction @Inject constructor(
             indices.map { it.value }.forEach { uuid ->
                 mgetMetadataReq.add(MultiGetRequest.Item(INDEX_MANAGEMENT_INDEX, managedIndexMetadataID(uuid)).routing(uuid))
             }
-            client.multiGet(mgetMetadataReq, object : ActionListener<MultiGetResponse> {
-                override fun onResponse(response: MultiGetResponse) {
-                    val metadataMap = response.responses.map { it.id to getMetadata(it.response)?.toMap() }.toMap()
-                    buildResponse(indices, metadataMap, clusterStateIndexMetadatas)
-                }
+            client.multiGet(
+                mgetMetadataReq,
+                object : ActionListener<MultiGetResponse> {
+                    override fun onResponse(response: MultiGetResponse) {
+                        val metadataMap = response.responses.map { it.id to getMetadata(it.response)?.toMap() }.toMap()
+                        buildResponse(indices, metadataMap, clusterStateIndexMetadatas)
+                    }
 
-                override fun onFailure(t: Exception) {
-                    actionListener.onFailure(ExceptionsHelper.unwrapCause(t) as Exception)
+                    override fun onFailure(t: Exception) {
+                        actionListener.onFailure(ExceptionsHelper.unwrapCause(t) as Exception)
+                    }
                 }
-            })
+            )
         }
 
         // metadataMap: doc id -> metadataMap, doc id for metadata is [managedIndexMetadataID(indexUuid)]
@@ -268,7 +279,7 @@ class TransportExplainAction @Inject constructor(
 
                 val clusterStateMetadata = clusterStateIndexMetadatas[indexName]?.getManagedIndexMetadata()
                 var managedIndexMetadata: ManagedIndexMetaData? = null
-                val configIndexMetadataMap = metadataMap[indices[indexName]?.let { managedIndexMetadataID(it) } ]
+                val configIndexMetadataMap = metadataMap[indices[indexName]?.let { managedIndexMetadataID(it) }]
                 if (managedIndexMetadataMap != null) {
                     if (configIndexMetadataMap != null) { // if has metadata saved, use that
                         managedIndexMetadataMap = configIndexMetadataMap
@@ -301,9 +312,12 @@ class TransportExplainAction @Inject constructor(
                 xContentRegistry,
                 LoggingDeprecationHandler.INSTANCE,
                 response.sourceAsBytesRef,
-                XContentType.JSON)
-            return ManagedIndexMetaData.parseWithType(xcp,
-                response.id, response.seqNo, response.primaryTerm)
+                XContentType.JSON
+            )
+            return ManagedIndexMetaData.parseWithType(
+                xcp,
+                response.id, response.seqNo, response.primaryTerm
+            )
         }
 
         private fun emptyResponse(size: Int = 0) {

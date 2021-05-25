@@ -26,9 +26,6 @@
 
 package org.opensearch.indexmanagement.rollup.util
 
-import org.opensearch.indexmanagement.rollup.model.RollupFieldMapping
-import org.opensearch.indexmanagement.rollup.randomRollup
-import org.opensearch.indexmanagement.rollup.randomTermQuery
 import org.opensearch.index.query.BoolQueryBuilder
 import org.opensearch.index.query.ConstantScoreQueryBuilder
 import org.opensearch.index.query.DisMaxQueryBuilder
@@ -38,6 +35,9 @@ import org.opensearch.index.query.RangeQueryBuilder
 import org.opensearch.index.query.TermQueryBuilder
 import org.opensearch.index.query.TermsQueryBuilder
 import org.opensearch.index.search.MatchQuery
+import org.opensearch.indexmanagement.rollup.model.RollupFieldMapping
+import org.opensearch.indexmanagement.rollup.randomRollup
+import org.opensearch.indexmanagement.rollup.randomTermQuery
 import org.opensearch.test.OpenSearchTestCase
 
 class RollupUtilsTests : OpenSearchTestCase() {

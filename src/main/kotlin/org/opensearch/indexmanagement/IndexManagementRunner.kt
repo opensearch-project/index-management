@@ -26,6 +26,7 @@
 
 package org.opensearch.indexmanagement
 
+import org.apache.logging.log4j.LogManager
 import org.opensearch.indexmanagement.indexstatemanagement.ManagedIndexRunner
 import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexConfig
 import org.opensearch.indexmanagement.rollup.RollupRunner
@@ -33,7 +34,6 @@ import org.opensearch.indexmanagement.rollup.model.Rollup
 import org.opensearch.jobscheduler.spi.JobExecutionContext
 import org.opensearch.jobscheduler.spi.ScheduledJobParameter
 import org.opensearch.jobscheduler.spi.ScheduledJobRunner
-import org.apache.logging.log4j.LogManager
 
 object IndexManagementRunner : ScheduledJobRunner {
 

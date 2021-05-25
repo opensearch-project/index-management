@@ -26,7 +26,6 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.model
 
-import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.StateMetaData
 import org.opensearch.common.io.stream.StreamInput
 import org.opensearch.common.io.stream.StreamOutput
 import org.opensearch.common.io.stream.Writeable
@@ -36,6 +35,7 @@ import org.opensearch.common.xcontent.XContentBuilder
 import org.opensearch.common.xcontent.XContentParser
 import org.opensearch.common.xcontent.XContentParser.Token
 import org.opensearch.common.xcontent.XContentParserUtils.ensureExpectedToken
+import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.StateMetaData
 import java.io.IOException
 
 /**
@@ -66,9 +66,9 @@ data class ChangePolicy(
     override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
         builder
             .startObject()
-                .field(ManagedIndexConfig.POLICY_ID_FIELD, policyID)
-                .field(StateMetaData.STATE, state)
-                .field(IS_SAFE_FIELD, isSafe)
+            .field(ManagedIndexConfig.POLICY_ID_FIELD, policyID)
+            .field(StateMetaData.STATE, state)
+            .field(IS_SAFE_FIELD, isSafe)
             .endObject()
         return builder
     }

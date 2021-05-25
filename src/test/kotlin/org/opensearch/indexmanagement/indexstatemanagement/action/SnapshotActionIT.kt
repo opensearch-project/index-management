@@ -88,19 +88,19 @@ class SnapshotActionIT : IndexStateManagementRestTestCase() {
         val snapshot = "snapshot_success_test"
         val actionConfig = SnapshotActionConfig(repository, snapshot, 0)
         val states = listOf(
-                State("Snapshot", listOf(actionConfig), listOf())
+            State("Snapshot", listOf(actionConfig), listOf())
         )
 
         createRepository(repository)
 
         val policy = Policy(
-                id = policyID,
-                description = "$testIndexName description",
-                schemaVersion = 1L,
-                lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
-                errorNotification = randomErrorNotification(),
-                defaultState = states[0].name,
-                states = states
+            id = policyID,
+            description = "$testIndexName description",
+            schemaVersion = 1L,
+            lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
+            errorNotification = randomErrorNotification(),
+            defaultState = states[0].name,
+            states = states
         )
         createPolicy(policy, policyID)
         createIndex(indexName, policyID)
@@ -137,19 +137,19 @@ class SnapshotActionIT : IndexStateManagementRestTestCase() {
         val snapshot = "snapshot_failed_test"
         val actionConfig = SnapshotActionConfig(repository, snapshot, 0)
         val states = listOf(
-                State("Snapshot", listOf(actionConfig), listOf())
+            State("Snapshot", listOf(actionConfig), listOf())
         )
 
         createRepository(repository)
 
         val policy = Policy(
-                id = policyID,
-                description = "$testIndexName description",
-                schemaVersion = 1L,
-                lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
-                errorNotification = randomErrorNotification(),
-                defaultState = states[0].name,
-                states = states
+            id = policyID,
+            description = "$testIndexName description",
+            schemaVersion = 1L,
+            lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
+            errorNotification = randomErrorNotification(),
+            defaultState = states[0].name,
+            states = states
         )
         createPolicy(policy, policyID)
         createIndex(indexName, policyID)

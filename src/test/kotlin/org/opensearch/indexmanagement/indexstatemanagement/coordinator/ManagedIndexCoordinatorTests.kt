@@ -26,10 +26,8 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.coordinator
 
-import org.opensearch.indexmanagement.IndexManagementIndices
-import org.opensearch.indexmanagement.indexstatemanagement.ManagedIndexCoordinator
-import org.opensearch.indexmanagement.indexstatemanagement.MetadataService
-import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings
+import org.junit.Before
+import org.mockito.Mockito
 import org.opensearch.Version
 import org.opensearch.client.Client
 import org.opensearch.cluster.OpenSearchAllocationTestCase
@@ -41,12 +39,14 @@ import org.opensearch.common.settings.ClusterSettings
 import org.opensearch.common.settings.Setting
 import org.opensearch.common.settings.Settings
 import org.opensearch.common.xcontent.NamedXContentRegistry
+import org.opensearch.indexmanagement.IndexManagementIndices
+import org.opensearch.indexmanagement.indexstatemanagement.ManagedIndexCoordinator
+import org.opensearch.indexmanagement.indexstatemanagement.MetadataService
+import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings
 import org.opensearch.test.ClusterServiceUtils
 import org.opensearch.test.OpenSearchTestCase
 import org.opensearch.threadpool.Scheduler
 import org.opensearch.threadpool.ThreadPool
-import org.mockito.Mockito
-import org.junit.Before
 
 class ManagedIndexCoordinatorTests : OpenSearchAllocationTestCase() {
 

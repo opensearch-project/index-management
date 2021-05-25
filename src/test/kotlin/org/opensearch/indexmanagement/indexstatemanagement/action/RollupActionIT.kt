@@ -51,8 +51,13 @@ class RollupActionIT : IndexStateManagementRestTestCase() {
                 Terms("PULocationID", "PULocationID")
             ),
             metrics = listOf(
-                RollupMetrics(sourceField = "passenger_count", targetField = "passenger_count", metrics = listOf(Sum(), Min(), Max(),
-                    ValueCount(), Average())),
+                RollupMetrics(
+                    sourceField = "passenger_count", targetField = "passenger_count",
+                    metrics = listOf(
+                        Sum(), Min(), Max(),
+                        ValueCount(), Average()
+                    )
+                ),
                 RollupMetrics(sourceField = "total_amount", targetField = "total_amount", metrics = listOf(Max(), Min()))
             )
         )
@@ -123,8 +128,13 @@ class RollupActionIT : IndexStateManagementRestTestCase() {
                 Terms("PULocationID", "PULocationID")
             ),
             metrics = listOf(
-                RollupMetrics(sourceField = "passenger_count", targetField = "passenger_count", metrics = listOf(Sum(), Min(), Max(),
-                    ValueCount(), Average()))
+                RollupMetrics(
+                    sourceField = "passenger_count", targetField = "passenger_count",
+                    metrics = listOf(
+                        Sum(), Min(), Max(),
+                        ValueCount(), Average()
+                    )
+                )
             )
         )
         val rollupId = rollup.toRollup(indexName).id
@@ -187,8 +197,13 @@ class RollupActionIT : IndexStateManagementRestTestCase() {
                 Terms("PULocationID", "PULocationID")
             ),
             metrics = listOf(
-                RollupMetrics(sourceField = "passenger_count", targetField = "passenger_count", metrics = listOf(Sum(), Min(), Max(),
-                    ValueCount(), Average()))
+                RollupMetrics(
+                    sourceField = "passenger_count", targetField = "passenger_count",
+                    metrics = listOf(
+                        Sum(), Min(), Max(),
+                        ValueCount(), Average()
+                    )
+                )
             )
         )
         val rollupId = rollup.toRollup(indexName).id

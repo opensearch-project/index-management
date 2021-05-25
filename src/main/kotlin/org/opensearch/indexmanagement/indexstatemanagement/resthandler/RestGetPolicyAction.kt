@@ -26,6 +26,10 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.resthandler
 
+import org.apache.logging.log4j.LogManager
+import org.opensearch.client.node.NodeClient
+import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.LEGACY_POLICY_BASE_URI
+import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.LEGACY_ROLLUP_BASE_URI
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.POLICY_BASE_URI
 import org.opensearch.indexmanagement.indexstatemanagement.model.SearchParams
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.getpolicy.GetPoliciesAction
@@ -37,14 +41,10 @@ import org.opensearch.indexmanagement.indexstatemanagement.util.DEFAULT_PAGINATI
 import org.opensearch.indexmanagement.indexstatemanagement.util.DEFAULT_POLICY_SORT_FIELD
 import org.opensearch.indexmanagement.indexstatemanagement.util.DEFAULT_QUERY_STRING
 import org.opensearch.indexmanagement.indexstatemanagement.util.DEFAULT_SORT_ORDER
-import org.apache.logging.log4j.LogManager
-import org.opensearch.client.node.NodeClient
-import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.LEGACY_POLICY_BASE_URI
-import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.LEGACY_ROLLUP_BASE_URI
 import org.opensearch.rest.BaseRestHandler
 import org.opensearch.rest.BaseRestHandler.RestChannelConsumer
-import org.opensearch.rest.RestHandler.Route
 import org.opensearch.rest.RestHandler.ReplacedRoute
+import org.opensearch.rest.RestHandler.Route
 import org.opensearch.rest.RestRequest
 import org.opensearch.rest.RestRequest.Method.GET
 import org.opensearch.rest.RestRequest.Method.HEAD

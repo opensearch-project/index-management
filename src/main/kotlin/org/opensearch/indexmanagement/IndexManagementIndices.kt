@@ -27,15 +27,6 @@
 @file:Suppress("ReturnCount")
 package org.opensearch.indexmanagement
 
-import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
-import org.opensearch.indexmanagement.opensearchapi.suspendUntil
-import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings
-import org.opensearch.indexmanagement.indexstatemanagement.util.INDEX_HIDDEN
-import org.opensearch.indexmanagement.indexstatemanagement.util.INDEX_NUMBER_OF_REPLICAS
-import org.opensearch.indexmanagement.indexstatemanagement.util.INDEX_NUMBER_OF_SHARDS
-import org.opensearch.indexmanagement.util.IndexUtils
-import org.opensearch.indexmanagement.util.OpenForTesting
-import org.opensearch.indexmanagement.util._DOC
 import org.apache.logging.log4j.LogManager
 import org.opensearch.ResourceAlreadyExistsException
 import org.opensearch.action.ActionListener
@@ -50,6 +41,15 @@ import org.opensearch.client.IndicesAdminClient
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.settings.Settings
 import org.opensearch.common.xcontent.XContentType
+import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
+import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings
+import org.opensearch.indexmanagement.indexstatemanagement.util.INDEX_HIDDEN
+import org.opensearch.indexmanagement.indexstatemanagement.util.INDEX_NUMBER_OF_REPLICAS
+import org.opensearch.indexmanagement.indexstatemanagement.util.INDEX_NUMBER_OF_SHARDS
+import org.opensearch.indexmanagement.opensearchapi.suspendUntil
+import org.opensearch.indexmanagement.util.IndexUtils
+import org.opensearch.indexmanagement.util.OpenForTesting
+import org.opensearch.indexmanagement.util._DOC
 
 @OpenForTesting
 class IndexManagementIndices(
@@ -75,17 +75,20 @@ class IndexManagementIndices(
     fun checkAndUpdateIMConfigIndex(actionListener: ActionListener<AcknowledgedResponse>) {
         if (!indexManagementIndexExists()) {
             val indexRequest = CreateIndexRequest(INDEX_MANAGEMENT_INDEX)
-                    .mapping(_DOC, indexManagementMappings, XContentType.JSON)
-                    .settings(Settings.builder().put(INDEX_HIDDEN, true).build())
-            client.create(indexRequest, object : ActionListener<CreateIndexResponse> {
-                override fun onFailure(e: Exception) {
-                    actionListener.onFailure(e)
-                }
+                .mapping(_DOC, indexManagementMappings, XContentType.JSON)
+                .settings(Settings.builder().put(INDEX_HIDDEN, true).build())
+            client.create(
+                indexRequest,
+                object : ActionListener<CreateIndexResponse> {
+                    override fun onFailure(e: Exception) {
+                        actionListener.onFailure(e)
+                    }
 
-                override fun onResponse(response: CreateIndexResponse) {
-                    actionListener.onResponse(response)
+                    override fun onResponse(response: CreateIndexResponse) {
+                        actionListener.onResponse(response)
+                    }
                 }
-            })
+            )
         } else {
             IndexUtils.checkAndUpdateConfigIndexMapping(clusterService.state(), client, actionListener)
         }
@@ -117,7 +120,8 @@ class IndexManagementIndices(
     suspend fun attemptUpdateConfigIndexMapping(): Boolean {
         return try {
             val response: AcknowledgedResponse = client.suspendUntil {
-                IndexUtils.checkAndUpdateConfigIndexMapping(clusterService.state(), client, it) }
+                IndexUtils.checkAndUpdateConfigIndexMapping(clusterService.state(), client, it)
+            }
             if (response.isAcknowledged) return true
             logger.error("Trying to update config index mapping not acknowledged.")
             return false
@@ -158,13 +162,13 @@ class IndexManagementIndices(
         if (existsResponse.isExists) return true
 
         val request = CreateIndexRequest(index)
-                .mapping(_DOC, indexStateManagementHistoryMappings, XContentType.JSON)
-                .settings(
-                    Settings.builder()
-                        .put(INDEX_HIDDEN, true)
-                        .put(INDEX_NUMBER_OF_SHARDS, historyNumberOfShards)
-                        .put(INDEX_NUMBER_OF_REPLICAS, historyNumberOfReplicas).build()
-                )
+            .mapping(_DOC, indexStateManagementHistoryMappings, XContentType.JSON)
+            .settings(
+                Settings.builder()
+                    .put(INDEX_HIDDEN, true)
+                    .put(INDEX_NUMBER_OF_SHARDS, historyNumberOfShards)
+                    .put(INDEX_NUMBER_OF_REPLICAS, historyNumberOfReplicas).build()
+            )
         if (alias != null) request.alias(Alias(alias))
         return try {
             val createIndexResponse: CreateIndexResponse = client.suspendUntil { client.create(request, it) }

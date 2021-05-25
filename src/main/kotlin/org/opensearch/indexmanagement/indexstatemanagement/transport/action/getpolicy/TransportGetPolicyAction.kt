@@ -26,11 +26,8 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.transport.action.getpolicy
 
-import org.opensearch.indexmanagement.IndexManagementPlugin
-import org.opensearch.indexmanagement.opensearchapi.parseWithType
-import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
-import org.opensearch.OpenSearchStatusException
 import org.opensearch.ExceptionsHelper
+import org.opensearch.OpenSearchStatusException
 import org.opensearch.action.ActionListener
 import org.opensearch.action.get.GetRequest
 import org.opensearch.action.get.GetResponse
@@ -42,6 +39,9 @@ import org.opensearch.common.xcontent.LoggingDeprecationHandler
 import org.opensearch.common.xcontent.NamedXContentRegistry
 import org.opensearch.common.xcontent.XContentHelper
 import org.opensearch.common.xcontent.XContentType
+import org.opensearch.indexmanagement.IndexManagementPlugin
+import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
+import org.opensearch.indexmanagement.opensearchapi.parseWithType
 import org.opensearch.rest.RestStatus
 import org.opensearch.tasks.Task
 import org.opensearch.transport.TransportService
@@ -68,15 +68,18 @@ class TransportGetPolicyAction @Inject constructor(
                 .version(request.version)
                 .fetchSourceContext(request.fetchSrcContext)
 
-            client.get(getRequest, object : ActionListener<GetResponse> {
-                override fun onResponse(response: GetResponse) {
-                    onGetResponse(response)
-                }
+            client.get(
+                getRequest,
+                object : ActionListener<GetResponse> {
+                    override fun onResponse(response: GetResponse) {
+                        onGetResponse(response)
+                    }
 
-                override fun onFailure(t: Exception) {
-                    actionListener.onFailure(ExceptionsHelper.unwrapCause(t) as Exception)
+                    override fun onFailure(t: Exception) {
+                        actionListener.onFailure(ExceptionsHelper.unwrapCause(t) as Exception)
+                    }
                 }
-            })
+            )
         }
 
         fun onGetResponse(response: GetResponse) {

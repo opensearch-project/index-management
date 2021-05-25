@@ -26,17 +26,6 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.step.rollup
 
-import org.opensearch.indexmanagement.opensearchapi.suspendUntil
-import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
-import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.ActionProperties
-import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.StepMetaData
-import org.opensearch.indexmanagement.indexstatemanagement.step.Step
-import org.opensearch.indexmanagement.rollup.action.index.IndexRollupAction
-import org.opensearch.indexmanagement.rollup.action.index.IndexRollupRequest
-import org.opensearch.indexmanagement.rollup.action.index.IndexRollupResponse
-import org.opensearch.indexmanagement.rollup.action.start.StartRollupAction
-import org.opensearch.indexmanagement.rollup.action.start.StartRollupRequest
-import org.opensearch.indexmanagement.rollup.model.ISMRollup
 import org.apache.logging.log4j.LogManager
 import org.opensearch.ExceptionsHelper
 import org.opensearch.action.support.WriteRequest
@@ -44,6 +33,17 @@ import org.opensearch.action.support.master.AcknowledgedResponse
 import org.opensearch.client.Client
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.index.engine.VersionConflictEngineException
+import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
+import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.ActionProperties
+import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.StepMetaData
+import org.opensearch.indexmanagement.indexstatemanagement.step.Step
+import org.opensearch.indexmanagement.opensearchapi.suspendUntil
+import org.opensearch.indexmanagement.rollup.action.index.IndexRollupAction
+import org.opensearch.indexmanagement.rollup.action.index.IndexRollupRequest
+import org.opensearch.indexmanagement.rollup.action.index.IndexRollupResponse
+import org.opensearch.indexmanagement.rollup.action.start.StartRollupAction
+import org.opensearch.indexmanagement.rollup.action.start.StartRollupRequest
+import org.opensearch.indexmanagement.rollup.model.ISMRollup
 import org.opensearch.transport.RemoteTransportException
 import java.lang.Exception
 

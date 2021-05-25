@@ -26,9 +26,10 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.coordinator
 
+import org.opensearch.client.ResponseException
+import org.opensearch.common.xcontent.XContentType
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
 import org.opensearch.indexmanagement.indexstatemanagement.IndexStateManagementRestTestCase
-import org.opensearch.indexmanagement.makeRequest
 import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexConfig
 import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
@@ -42,9 +43,8 @@ import org.opensearch.indexmanagement.indexstatemanagement.resthandler.RestExpla
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings
 import org.opensearch.indexmanagement.indexstatemanagement.step.forcemerge.WaitForForceMergeStep
 import org.opensearch.indexmanagement.indexstatemanagement.step.rollover.AttemptRolloverStep
+import org.opensearch.indexmanagement.makeRequest
 import org.opensearch.indexmanagement.waitFor
-import org.opensearch.client.ResponseException
-import org.opensearch.common.xcontent.XContentType
 import org.opensearch.rest.RestRequest
 import org.opensearch.rest.RestStatus
 import java.time.Instant
@@ -125,8 +125,12 @@ class ManagedIndexCoordinatorIT : IndexStateManagementRestTestCase() {
         // Only ManagedIndexSettings.POLICY_ID set to null should be left in explain output
         waitFor {
             assertPredicatesOnMetaData(
-                listOf(index to listOf(ManagedIndexSettings.POLICY_ID.key to fun(policyID: Any?): Boolean =
-                    policyID == null)),
+                listOf(
+                    index to listOf(
+                        ManagedIndexSettings.POLICY_ID.key to fun(policyID: Any?): Boolean =
+                            policyID == null
+                    )
+                ),
                 getExplainMap(index),
                 true
             )

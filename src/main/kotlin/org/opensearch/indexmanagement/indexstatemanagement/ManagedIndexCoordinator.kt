@@ -27,39 +27,6 @@
 @file:Suppress("ReturnCount")
 package org.opensearch.indexmanagement.indexstatemanagement
 
-import org.opensearch.indexmanagement.IndexManagementIndices
-import org.opensearch.indexmanagement.IndexManagementPlugin
-import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
-import org.opensearch.indexmanagement.opensearchapi.contentParser
-import org.opensearch.indexmanagement.opensearchapi.parseWithType
-import org.opensearch.indexmanagement.opensearchapi.retry
-import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.filterNotNullValues
-import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.getPolicyToTemplateMap
-import org.opensearch.indexmanagement.opensearchapi.suspendUntil
-import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.mgetManagedIndexMetadata
-import org.opensearch.indexmanagement.indexstatemanagement.model.ISMTemplate
-import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexConfig
-import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
-import org.opensearch.indexmanagement.indexstatemanagement.model.coordinator.ClusterStateManagedIndexConfig
-import org.opensearch.indexmanagement.indexstatemanagement.model.coordinator.SweptManagedIndexConfig
-import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.COORDINATOR_BACKOFF_COUNT
-import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.COORDINATOR_BACKOFF_MILLIS
-import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.INDEX_STATE_MANAGEMENT_ENABLED
-import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.JOB_INTERVAL
-import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.METADATA_SERVICE_ENABLED
-import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.SWEEP_PERIOD
-import org.opensearch.indexmanagement.indexstatemanagement.util.ISM_TEMPLATE_FIELD
-import org.opensearch.indexmanagement.indexstatemanagement.util.deleteManagedIndexMetadataRequest
-import org.opensearch.indexmanagement.indexstatemanagement.util.deleteManagedIndexRequest
-import org.opensearch.indexmanagement.indexstatemanagement.util.getDeleteManagedIndexRequests
-import org.opensearch.indexmanagement.indexstatemanagement.util.getManagedIndicesToDelete
-import org.opensearch.indexmanagement.indexstatemanagement.util.getSweptManagedIndexSearchRequest
-import org.opensearch.indexmanagement.indexstatemanagement.util.isFailed
-import org.opensearch.indexmanagement.indexstatemanagement.util.isPolicyCompleted
-import org.opensearch.indexmanagement.indexstatemanagement.util.managedIndexConfigIndexRequest
-import org.opensearch.indexmanagement.indexstatemanagement.util.updateEnableManagedIndexRequest
-import org.opensearch.indexmanagement.util.NO_ID
-import org.opensearch.indexmanagement.util.OpenForTesting
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -89,6 +56,39 @@ import org.opensearch.common.unit.TimeValue
 import org.opensearch.index.Index
 import org.opensearch.index.IndexNotFoundException
 import org.opensearch.index.query.QueryBuilders
+import org.opensearch.indexmanagement.IndexManagementIndices
+import org.opensearch.indexmanagement.IndexManagementPlugin
+import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
+import org.opensearch.indexmanagement.indexstatemanagement.model.ISMTemplate
+import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexConfig
+import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
+import org.opensearch.indexmanagement.indexstatemanagement.model.coordinator.ClusterStateManagedIndexConfig
+import org.opensearch.indexmanagement.indexstatemanagement.model.coordinator.SweptManagedIndexConfig
+import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.filterNotNullValues
+import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.getPolicyToTemplateMap
+import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.mgetManagedIndexMetadata
+import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.COORDINATOR_BACKOFF_COUNT
+import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.COORDINATOR_BACKOFF_MILLIS
+import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.INDEX_STATE_MANAGEMENT_ENABLED
+import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.JOB_INTERVAL
+import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.METADATA_SERVICE_ENABLED
+import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.SWEEP_PERIOD
+import org.opensearch.indexmanagement.indexstatemanagement.util.ISM_TEMPLATE_FIELD
+import org.opensearch.indexmanagement.indexstatemanagement.util.deleteManagedIndexMetadataRequest
+import org.opensearch.indexmanagement.indexstatemanagement.util.deleteManagedIndexRequest
+import org.opensearch.indexmanagement.indexstatemanagement.util.getDeleteManagedIndexRequests
+import org.opensearch.indexmanagement.indexstatemanagement.util.getManagedIndicesToDelete
+import org.opensearch.indexmanagement.indexstatemanagement.util.getSweptManagedIndexSearchRequest
+import org.opensearch.indexmanagement.indexstatemanagement.util.isFailed
+import org.opensearch.indexmanagement.indexstatemanagement.util.isPolicyCompleted
+import org.opensearch.indexmanagement.indexstatemanagement.util.managedIndexConfigIndexRequest
+import org.opensearch.indexmanagement.indexstatemanagement.util.updateEnableManagedIndexRequest
+import org.opensearch.indexmanagement.opensearchapi.contentParser
+import org.opensearch.indexmanagement.opensearchapi.parseWithType
+import org.opensearch.indexmanagement.opensearchapi.retry
+import org.opensearch.indexmanagement.opensearchapi.suspendUntil
+import org.opensearch.indexmanagement.util.NO_ID
+import org.opensearch.indexmanagement.util.OpenForTesting
 import org.opensearch.rest.RestStatus
 import org.opensearch.search.builder.SearchSourceBuilder
 import org.opensearch.threadpool.Scheduler
@@ -133,7 +133,7 @@ class ManagedIndexCoordinator(
     @Volatile private var metadataServiceEnabled = METADATA_SERVICE_ENABLED.get(settings)
     @Volatile private var sweepPeriod = SWEEP_PERIOD.get(settings)
     @Volatile private var retryPolicy =
-            BackoffPolicy.constantBackoff(COORDINATOR_BACKOFF_MILLIS.get(settings), COORDINATOR_BACKOFF_COUNT.get(settings))
+        BackoffPolicy.constantBackoff(COORDINATOR_BACKOFF_MILLIS.get(settings), COORDINATOR_BACKOFF_COUNT.get(settings))
     @Volatile private var jobInterval = JOB_INTERVAL.get(settings)
 
     @Volatile private var isMaster = false
@@ -158,7 +158,8 @@ class ManagedIndexCoordinator(
             else initMoveMetadata()
         }
         clusterService.clusterSettings.addSettingsUpdateConsumer(COORDINATOR_BACKOFF_MILLIS, COORDINATOR_BACKOFF_COUNT) {
-            millis, count -> retryPolicy = BackoffPolicy.constantBackoff(millis, count)
+            millis, count ->
+            retryPolicy = BackoffPolicy.constantBackoff(millis, count)
         }
     }
 
@@ -315,8 +316,10 @@ class ManagedIndexCoordinator(
                         managedIndexConfigIndexRequest(index, indexUuid, policyID, jobInterval)
                     )
                 } else {
-                    logger.warn("Index [$index] has index uuid [$indexUuid] and/or " +
-                        "a matching template [$ismTemplate] that is null.")
+                    logger.warn(
+                        "Index [$index] has index uuid [$indexUuid] and/or " +
+                            "a matching template [$ismTemplate] that is null."
+                    )
                 }
             }
 
@@ -476,8 +479,10 @@ class ManagedIndexCoordinator(
         val managedIndexSearchRequest = getSweptManagedIndexSearchRequest()
         val response: SearchResponse = client.suspendUntil { search(managedIndexSearchRequest, it) }
         return response.hits.map {
-            it.id to contentParser(it.sourceRef).parseWithType(NO_ID, it.seqNo,
-                it.primaryTerm, SweptManagedIndexConfig.Companion::parse)
+            it.id to contentParser(it.sourceRef).parseWithType(
+                NO_ID, it.seqNo,
+                it.primaryTerm, SweptManagedIndexConfig.Companion::parse
+            )
         }.toMap()
     }
 
@@ -534,7 +539,7 @@ class ManagedIndexCoordinator(
             val bulkResponse: BulkResponse = client.suspendUntil { bulk(bulkRequest, it) }
             val failedResponses = (bulkResponse.items ?: arrayOf()).filter { it.isFailed }
             requestsToRetry = failedResponses.filter { it.status() == RestStatus.TOO_MANY_REQUESTS }
-                    .map { bulkRequest.requests()[it.itemId] }
+                .map { bulkRequest.requests()[it.itemId] }
 
             if (requestsToRetry.isNotEmpty()) {
                 val retryCause = failedResponses.first { it.status() == RestStatus.TOO_MANY_REQUESTS }.failure.cause
@@ -571,8 +576,10 @@ class ManagedIndexCoordinator(
                 val bulkRequest = BulkRequest().add(deleteRequests)
                 val bulkResponse: BulkResponse = client.suspendUntil { bulk(bulkRequest, it) }
                 bulkResponse.forEach {
-                    if (it.isFailed) logger.error("Failed to clear ManagedIndexMetadata for " +
-                        "index uuid: [${it.id}], failureMessage: ${it.failureMessage}")
+                    if (it.isFailed) logger.error(
+                        "Failed to clear ManagedIndexMetadata for " +
+                            "index uuid: [${it.id}], failureMessage: ${it.failureMessage}"
+                    )
                 }
             }
         } catch (e: Exception) {

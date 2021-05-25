@@ -26,13 +26,35 @@
 
 package org.opensearch.indexmanagement
 
+import org.apache.logging.log4j.LogManager
+import org.opensearch.action.ActionRequest
+import org.opensearch.action.ActionResponse
+import org.opensearch.action.support.ActionFilter
+import org.opensearch.client.Client
+import org.opensearch.cluster.metadata.IndexNameExpressionResolver
+import org.opensearch.cluster.node.DiscoveryNodes
+import org.opensearch.cluster.service.ClusterService
+import org.opensearch.common.component.Lifecycle
+import org.opensearch.common.component.LifecycleComponent
+import org.opensearch.common.component.LifecycleListener
+import org.opensearch.common.inject.Inject
+import org.opensearch.common.io.stream.NamedWriteableRegistry
+import org.opensearch.common.settings.ClusterSettings
+import org.opensearch.common.settings.IndexScopedSettings
+import org.opensearch.common.settings.Setting
+import org.opensearch.common.settings.Settings
+import org.opensearch.common.settings.SettingsFilter
+import org.opensearch.common.util.concurrent.ThreadContext
+import org.opensearch.common.xcontent.NamedXContentRegistry
+import org.opensearch.common.xcontent.XContentParser.Token
+import org.opensearch.common.xcontent.XContentParserUtils.ensureExpectedToken
+import org.opensearch.env.Environment
+import org.opensearch.env.NodeEnvironment
 import org.opensearch.indexmanagement.indexstatemanagement.IndexStateManagementHistory
 import org.opensearch.indexmanagement.indexstatemanagement.ManagedIndexCoordinator
 import org.opensearch.indexmanagement.indexstatemanagement.ManagedIndexRunner
 import org.opensearch.indexmanagement.indexstatemanagement.MetadataService
 import org.opensearch.indexmanagement.indexstatemanagement.SkipExecution
-import org.opensearch.indexmanagement.indexstatemanagement.transport.action.updateindexmetadata.TransportUpdateManagedIndexMetaDataAction
-import org.opensearch.indexmanagement.indexstatemanagement.transport.action.updateindexmetadata.UpdateManagedIndexMetaDataAction
 import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexConfig
 import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
@@ -44,6 +66,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.resthandler.RestGetPo
 import org.opensearch.indexmanagement.indexstatemanagement.resthandler.RestIndexPolicyAction
 import org.opensearch.indexmanagement.indexstatemanagement.resthandler.RestRemovePolicyAction
 import org.opensearch.indexmanagement.indexstatemanagement.resthandler.RestRetryFailedManagedIndexAction
+import org.opensearch.indexmanagement.indexstatemanagement.settings.LegacyOpenDistroManagedIndexSettings
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.addpolicy.AddPolicyAction
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.addpolicy.TransportAddPolicyAction
@@ -63,6 +86,8 @@ import org.opensearch.indexmanagement.indexstatemanagement.transport.action.remo
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.removepolicy.TransportRemovePolicyAction
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.retryfailedmanagedindex.RetryFailedManagedIndexAction
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.retryfailedmanagedindex.TransportRetryFailedManagedIndexAction
+import org.opensearch.indexmanagement.indexstatemanagement.transport.action.updateindexmetadata.TransportUpdateManagedIndexMetaDataAction
+import org.opensearch.indexmanagement.indexstatemanagement.transport.action.updateindexmetadata.UpdateManagedIndexMetaDataAction
 import org.opensearch.indexmanagement.refreshanalyzer.RefreshSearchAnalyzerAction
 import org.opensearch.indexmanagement.refreshanalyzer.RestRefreshSearchAnalyzerAction
 import org.opensearch.indexmanagement.refreshanalyzer.TransportRefreshSearchAnalyzerAction
@@ -73,20 +98,20 @@ import org.opensearch.indexmanagement.rollup.RollupRunner
 import org.opensearch.indexmanagement.rollup.RollupSearchService
 import org.opensearch.indexmanagement.rollup.action.delete.DeleteRollupAction
 import org.opensearch.indexmanagement.rollup.action.delete.TransportDeleteRollupAction
+import org.opensearch.indexmanagement.rollup.action.explain.ExplainRollupAction
+import org.opensearch.indexmanagement.rollup.action.explain.TransportExplainRollupAction
 import org.opensearch.indexmanagement.rollup.action.get.GetRollupAction
+import org.opensearch.indexmanagement.rollup.action.get.GetRollupsAction
 import org.opensearch.indexmanagement.rollup.action.get.TransportGetRollupAction
+import org.opensearch.indexmanagement.rollup.action.get.TransportGetRollupsAction
 import org.opensearch.indexmanagement.rollup.action.index.IndexRollupAction
 import org.opensearch.indexmanagement.rollup.action.index.TransportIndexRollupAction
+import org.opensearch.indexmanagement.rollup.action.mapping.TransportUpdateRollupMappingAction
+import org.opensearch.indexmanagement.rollup.action.mapping.UpdateRollupMappingAction
 import org.opensearch.indexmanagement.rollup.action.start.StartRollupAction
 import org.opensearch.indexmanagement.rollup.action.start.TransportStartRollupAction
 import org.opensearch.indexmanagement.rollup.action.stop.StopRollupAction
 import org.opensearch.indexmanagement.rollup.action.stop.TransportStopRollupAction
-import org.opensearch.indexmanagement.rollup.action.explain.ExplainRollupAction
-import org.opensearch.indexmanagement.rollup.action.explain.TransportExplainRollupAction
-import org.opensearch.indexmanagement.rollup.action.get.GetRollupsAction
-import org.opensearch.indexmanagement.rollup.action.get.TransportGetRollupsAction
-import org.opensearch.indexmanagement.rollup.action.mapping.TransportUpdateRollupMappingAction
-import org.opensearch.indexmanagement.rollup.action.mapping.UpdateRollupMappingAction
 import org.opensearch.indexmanagement.rollup.actionfilter.FieldCapsFilter
 import org.opensearch.indexmanagement.rollup.interceptor.RollupInterceptor
 import org.opensearch.indexmanagement.rollup.model.Rollup
@@ -97,30 +122,11 @@ import org.opensearch.indexmanagement.rollup.resthandler.RestGetRollupAction
 import org.opensearch.indexmanagement.rollup.resthandler.RestIndexRollupAction
 import org.opensearch.indexmanagement.rollup.resthandler.RestStartRollupAction
 import org.opensearch.indexmanagement.rollup.resthandler.RestStopRollupAction
+import org.opensearch.indexmanagement.rollup.settings.LegacyOpenDistroRollupSettings
 import org.opensearch.indexmanagement.rollup.settings.RollupSettings
 import org.opensearch.jobscheduler.spi.JobSchedulerExtension
 import org.opensearch.jobscheduler.spi.ScheduledJobParser
 import org.opensearch.jobscheduler.spi.ScheduledJobRunner
-import org.apache.logging.log4j.LogManager
-import org.opensearch.action.ActionRequest
-import org.opensearch.action.ActionResponse
-import org.opensearch.action.support.ActionFilter
-import org.opensearch.client.Client
-import org.opensearch.cluster.metadata.IndexNameExpressionResolver
-import org.opensearch.cluster.node.DiscoveryNodes
-import org.opensearch.cluster.service.ClusterService
-import org.opensearch.common.io.stream.NamedWriteableRegistry
-import org.opensearch.common.settings.ClusterSettings
-import org.opensearch.common.settings.IndexScopedSettings
-import org.opensearch.common.settings.Setting
-import org.opensearch.common.settings.Settings
-import org.opensearch.common.settings.SettingsFilter
-import org.opensearch.common.util.concurrent.ThreadContext
-import org.opensearch.common.xcontent.NamedXContentRegistry
-import org.opensearch.common.xcontent.XContentParser.Token
-import org.opensearch.common.xcontent.XContentParserUtils.ensureExpectedToken
-import org.opensearch.env.Environment
-import org.opensearch.env.NodeEnvironment
 import org.opensearch.plugins.ActionPlugin
 import org.opensearch.plugins.NetworkPlugin
 import org.opensearch.plugins.Plugin
@@ -129,17 +135,11 @@ import org.opensearch.rest.RestController
 import org.opensearch.rest.RestHandler
 import org.opensearch.script.ScriptService
 import org.opensearch.threadpool.ThreadPool
+import org.opensearch.transport.RemoteClusterService
 import org.opensearch.transport.TransportInterceptor
+import org.opensearch.transport.TransportService
 import org.opensearch.watcher.ResourceWatcherService
 import java.util.function.Supplier
-import org.opensearch.common.component.Lifecycle
-import org.opensearch.common.component.LifecycleComponent
-import org.opensearch.common.component.LifecycleListener
-import org.opensearch.common.inject.Inject
-import org.opensearch.indexmanagement.indexstatemanagement.settings.LegacyOpenDistroManagedIndexSettings
-import org.opensearch.indexmanagement.rollup.settings.LegacyOpenDistroRollupSettings
-import org.opensearch.transport.RemoteClusterService
-import org.opensearch.transport.TransportService
 
 class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin, Plugin() {
 
@@ -293,8 +293,10 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
 
         val metadataService = MetadataService(client, clusterService, skipFlag, indexManagementIndices)
 
-        val managedIndexCoordinator = ManagedIndexCoordinator(environment.settings(),
-            client, clusterService, threadPool, indexManagementIndices, metadataService)
+        val managedIndexCoordinator = ManagedIndexCoordinator(
+            environment.settings(),
+            client, clusterService, threadPool, indexManagementIndices, metadataService
+        )
 
         return listOf(managedIndexRunner, rollupRunner, indexManagementIndices, managedIndexCoordinator, indexStateManagementHistory)
     }

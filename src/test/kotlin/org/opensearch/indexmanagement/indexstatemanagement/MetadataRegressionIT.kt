@@ -26,6 +26,14 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement
 
+import com.carrotsearch.randomizedtesting.RandomizedTest.sleep
+import org.junit.After
+import org.junit.Assume
+import org.junit.Before
+import org.opensearch.action.support.master.AcknowledgedResponse
+import org.opensearch.cluster.metadata.IndexMetadata
+import org.opensearch.common.settings.Settings
+import org.opensearch.index.Index
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
 import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
 import org.opensearch.indexmanagement.indexstatemanagement.model.State
@@ -34,14 +42,6 @@ import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndex
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.updateindexmetadata.UpdateManagedIndexMetaDataAction
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.updateindexmetadata.UpdateManagedIndexMetaDataRequest
 import org.opensearch.indexmanagement.waitFor
-import com.carrotsearch.randomizedtesting.RandomizedTest.sleep
-import org.opensearch.action.support.master.AcknowledgedResponse
-import org.opensearch.cluster.metadata.IndexMetadata
-import org.opensearch.common.settings.Settings
-import org.opensearch.index.Index
-import org.junit.After
-import org.junit.Assume
-import org.junit.Before
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 import java.util.Locale

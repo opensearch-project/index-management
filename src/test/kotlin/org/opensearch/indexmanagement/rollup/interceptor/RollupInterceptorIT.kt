@@ -26,6 +26,9 @@
 
 package org.opensearch.indexmanagement.rollup.interceptor
 
+import org.apache.http.entity.ContentType
+import org.apache.http.entity.StringEntity
+import org.opensearch.client.ResponseException
 import org.opensearch.indexmanagement.makeRequest
 import org.opensearch.indexmanagement.rollup.RollupRestTestCase
 import org.opensearch.indexmanagement.rollup.model.Rollup
@@ -40,9 +43,6 @@ import org.opensearch.indexmanagement.rollup.model.metric.Sum
 import org.opensearch.indexmanagement.rollup.model.metric.ValueCount
 import org.opensearch.indexmanagement.waitFor
 import org.opensearch.jobscheduler.spi.schedule.IntervalSchedule
-import org.apache.http.entity.ContentType
-import org.apache.http.entity.StringEntity
-import org.opensearch.client.ResponseException
 import org.opensearch.rest.RestStatus
 import java.time.Instant
 import java.time.temporal.ChronoUnit
@@ -73,8 +73,13 @@ class RollupInterceptorIT : RollupRestTestCase() {
                 Terms("PULocationID", "PULocationID")
             ),
             metrics = listOf(
-                RollupMetrics(sourceField = "passenger_count", targetField = "passenger_count", metrics = listOf(Sum(), Min(), Max(),
-                    ValueCount(), Average())),
+                RollupMetrics(
+                    sourceField = "passenger_count", targetField = "passenger_count",
+                    metrics = listOf(
+                        Sum(), Min(), Max(),
+                        ValueCount(), Average()
+                    )
+                ),
                 RollupMetrics(sourceField = "total_amount", targetField = "total_amount", metrics = listOf(Max(), Min()))
             )
         ).let { createRollup(it, it.id) }
@@ -504,8 +509,13 @@ class RollupInterceptorIT : RollupRestTestCase() {
                 Terms("PULocationID", "PULocationID")
             ),
             metrics = listOf(
-                RollupMetrics(sourceField = "passenger_count", targetField = "passenger_count", metrics = listOf(Sum(), Min(), Max(),
-                    ValueCount(), Average())),
+                RollupMetrics(
+                    sourceField = "passenger_count", targetField = "passenger_count",
+                    metrics = listOf(
+                        Sum(), Min(), Max(),
+                        ValueCount(), Average()
+                    )
+                ),
                 RollupMetrics(sourceField = "total_amount", targetField = "total_amount", metrics = listOf(Max(), Min()))
             )
         ).let { createRollup(it, it.id) }
@@ -549,16 +559,26 @@ class RollupInterceptorIT : RollupRestTestCase() {
         assertEquals("Different bucket sizes", rawAggBuckets.size, rollupAggBuckets.size)
         rawAggBuckets.forEachIndexed { idx, rawAggBucket ->
             val rollupAggBucket = rollupAggBuckets[idx]
-            assertEquals("The sum aggregation had a different value raw[$rawAggBucket] rollup[$rollupAggBucket]",
-                rawAggBucket["sum"]!!["value"], rollupAggBucket["sum"]!!["value"])
-            assertEquals("The max aggregation had a different value raw[$rawAggBucket] rollup[$rollupAggBucket]",
-                rawAggBucket["max"]!!["value"], rollupAggBucket["max"]!!["value"])
-            assertEquals("The min aggregation had a different value raw[$rawAggBucket] rollup[$rollupAggBucket]",
-                rawAggBucket["min"]!!["value"], rollupAggBucket["min"]!!["value"])
-            assertEquals("The value_count aggregation had a different value raw[$rawAggBucket] rollup[$rollupAggBucket]",
-                rawAggBucket["value_count"]!!["value"], rollupAggBucket["value_count"]!!["value"])
-            assertEquals("The avg aggregation had a different value raw[$rawAggBucket] rollup[$rollupAggBucket]",
-                rawAggBucket["avg"]!!["value"], rollupAggBucket["avg"]!!["value"])
+            assertEquals(
+                "The sum aggregation had a different value raw[$rawAggBucket] rollup[$rollupAggBucket]",
+                rawAggBucket["sum"]!!["value"], rollupAggBucket["sum"]!!["value"]
+            )
+            assertEquals(
+                "The max aggregation had a different value raw[$rawAggBucket] rollup[$rollupAggBucket]",
+                rawAggBucket["max"]!!["value"], rollupAggBucket["max"]!!["value"]
+            )
+            assertEquals(
+                "The min aggregation had a different value raw[$rawAggBucket] rollup[$rollupAggBucket]",
+                rawAggBucket["min"]!!["value"], rollupAggBucket["min"]!!["value"]
+            )
+            assertEquals(
+                "The value_count aggregation had a different value raw[$rawAggBucket] rollup[$rollupAggBucket]",
+                rawAggBucket["value_count"]!!["value"], rollupAggBucket["value_count"]!!["value"]
+            )
+            assertEquals(
+                "The avg aggregation had a different value raw[$rawAggBucket] rollup[$rollupAggBucket]",
+                rawAggBucket["avg"]!!["value"], rollupAggBucket["avg"]!!["value"]
+            )
         }
     }
 
@@ -585,8 +605,13 @@ class RollupInterceptorIT : RollupRestTestCase() {
                 Terms("PULocationID", "PULocationID")
             ),
             metrics = listOf(
-                RollupMetrics(sourceField = "passenger_count", targetField = "passenger_count", metrics = listOf(Sum(), Min(), Max(),
-                    ValueCount(), Average())),
+                RollupMetrics(
+                    sourceField = "passenger_count", targetField = "passenger_count",
+                    metrics = listOf(
+                        Sum(), Min(), Max(),
+                        ValueCount(), Average()
+                    )
+                ),
                 RollupMetrics(sourceField = "total_amount", targetField = "total_amount", metrics = listOf(Max(), Min()))
             )
         ).let { createRollup(it, it.id) }
@@ -600,8 +625,10 @@ class RollupInterceptorIT : RollupRestTestCase() {
 
             // The test data does not have tpep_pickup_datetime going past "2019-01-01" so we can assume that
             // if the nextWindowStartTime is after 2019-01-02T00:00:00Z then all data has been rolled up
-            assertTrue("Rollup has not caught up yet, docs processed: ${rollupMetadata.stats.documentsProcessed}",
-                rollupMetadata.continuous!!.nextWindowStartTime.isAfter(Instant.parse("2019-01-02T00:00:00Z")))
+            assertTrue(
+                "Rollup has not caught up yet, docs processed: ${rollupMetadata.stats.documentsProcessed}",
+                rollupMetadata.continuous!!.nextWindowStartTime.isAfter(Instant.parse("2019-01-02T00:00:00Z"))
+            )
         }
 
         refreshAllIndices()

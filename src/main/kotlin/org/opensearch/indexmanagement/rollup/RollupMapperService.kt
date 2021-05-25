@@ -26,19 +26,6 @@
 
 package org.opensearch.indexmanagement.rollup
 
-import org.opensearch.indexmanagement.IndexManagementIndices
-import org.opensearch.indexmanagement.opensearchapi.suspendUntil
-import org.opensearch.indexmanagement.rollup.action.mapping.UpdateRollupMappingAction
-import org.opensearch.indexmanagement.rollup.action.mapping.UpdateRollupMappingRequest
-import org.opensearch.indexmanagement.rollup.model.Rollup
-import org.opensearch.indexmanagement.rollup.model.RollupJobValidationResult
-import org.opensearch.indexmanagement.rollup.model.dimension.DateHistogram
-import org.opensearch.indexmanagement.rollup.model.dimension.Histogram
-import org.opensearch.indexmanagement.rollup.model.dimension.Terms
-import org.opensearch.indexmanagement.rollup.settings.RollupSettings
-import org.opensearch.indexmanagement.util.IndexUtils.Companion._META
-import org.opensearch.indexmanagement.util.IndexUtils.Companion.getFieldFromMappings
-import org.opensearch.indexmanagement.util._DOC
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.apache.logging.log4j.LogManager
@@ -55,7 +42,20 @@ import org.opensearch.cluster.metadata.MappingMetadata
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.settings.Settings
 import org.opensearch.common.xcontent.XContentType
+import org.opensearch.indexmanagement.IndexManagementIndices
+import org.opensearch.indexmanagement.opensearchapi.suspendUntil
+import org.opensearch.indexmanagement.rollup.action.mapping.UpdateRollupMappingAction
+import org.opensearch.indexmanagement.rollup.action.mapping.UpdateRollupMappingRequest
+import org.opensearch.indexmanagement.rollup.model.Rollup
+import org.opensearch.indexmanagement.rollup.model.RollupJobValidationResult
+import org.opensearch.indexmanagement.rollup.model.dimension.DateHistogram
+import org.opensearch.indexmanagement.rollup.model.dimension.Histogram
+import org.opensearch.indexmanagement.rollup.model.dimension.Terms
+import org.opensearch.indexmanagement.rollup.settings.RollupSettings
 import org.opensearch.indexmanagement.rollup.util.isRollupIndex
+import org.opensearch.indexmanagement.util.IndexUtils.Companion._META
+import org.opensearch.indexmanagement.util.IndexUtils.Companion.getFieldFromMappings
+import org.opensearch.indexmanagement.util._DOC
 import org.opensearch.transport.RemoteTransportException
 
 // TODO: Validation of fields across source and target indices overwriting existing rollup data

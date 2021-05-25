@@ -26,6 +26,20 @@
 
 package org.opensearch.indexmanagement.rollup
 
+import kotlinx.coroutines.CoroutineName
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
+import org.apache.logging.log4j.LogManager
+import org.opensearch.action.ActionListener
+import org.opensearch.action.bulk.BackoffPolicy
+import org.opensearch.action.support.WriteRequest
+import org.opensearch.client.Client
+import org.opensearch.cluster.service.ClusterService
+import org.opensearch.common.settings.Settings
+import org.opensearch.common.unit.TimeValue
+import org.opensearch.common.xcontent.NamedXContentRegistry
 import org.opensearch.indexmanagement.opensearchapi.retry
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.rollup.action.get.GetRollupAction
@@ -45,26 +59,13 @@ import org.opensearch.jobscheduler.spi.JobExecutionContext
 import org.opensearch.jobscheduler.spi.LockModel
 import org.opensearch.jobscheduler.spi.ScheduledJobParameter
 import org.opensearch.jobscheduler.spi.ScheduledJobRunner
-import kotlinx.coroutines.CoroutineName
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.launch
-import org.apache.logging.log4j.LogManager
-import org.opensearch.action.ActionListener
-import org.opensearch.action.bulk.BackoffPolicy
-import org.opensearch.action.support.WriteRequest
-import org.opensearch.client.Client
-import org.opensearch.cluster.service.ClusterService
-import org.opensearch.common.settings.Settings
-import org.opensearch.common.unit.TimeValue
-import org.opensearch.common.xcontent.NamedXContentRegistry
 import org.opensearch.script.ScriptService
 import org.opensearch.search.aggregations.bucket.composite.InternalComposite
 import org.opensearch.threadpool.ThreadPool
 
 @Suppress("TooManyFunctions")
-object RollupRunner : ScheduledJobRunner,
+object RollupRunner :
+    ScheduledJobRunner,
     CoroutineScope by CoroutineScope(SupervisorJob() + Dispatchers.Default + CoroutineName("RollupRunner")) {
 
     private val logger = LogManager.getLogger(javaClass)
@@ -194,8 +195,10 @@ object RollupRunner : ScheduledJobRunner,
         try {
             // acquireLock will attempt to create the lock index if needed and then read/create a lock. This is purely for internal purposes
             // and should not need the role's context to run
-            BackoffPolicy.exponentialBackoff(TimeValue.timeValueMillis(
-                RollupSettings.DEFAULT_ACQUIRE_LOCK_RETRY_DELAY),
+            BackoffPolicy.exponentialBackoff(
+                TimeValue.timeValueMillis(
+                    RollupSettings.DEFAULT_ACQUIRE_LOCK_RETRY_DELAY
+                ),
                 RollupSettings.DEFAULT_ACQUIRE_LOCK_RETRY_COUNT
             ).retry(logger) {
                 lock = context.lockService.suspendUntil { acquireLock(rollupJob, context, it) }
@@ -266,8 +269,10 @@ object RollupRunner : ScheduledJobRunner,
                 when (val updateRollupJobResult = updateRollupJob(updatableJob.copy(metadataID = metadata.id), metadata)) {
                     is RollupJobResult.Success -> updatableJob = updateRollupJobResult.rollup
                     is RollupJobResult.Failure -> {
-                        logger.error("Failed to update the rollup job [${updatableJob.id}] with metadata id [${metadata.id}]",
-                            updateRollupJobResult.cause)
+                        logger.error(
+                            "Failed to update the rollup job [${updatableJob.id}] with metadata id [${metadata.id}]",
+                            updateRollupJobResult.cause
+                        )
                         return // Exit runner early
                     }
                 }
@@ -303,8 +308,10 @@ object RollupRunner : ScheduledJobRunner,
                         }
                         when (rollupResult) {
                             is RollupResult.Success -> {
-                                metadata = rollupMetadataService.updateMetadata(updatableJob,
-                                    metadata.mergeStats(rollupResult.stats), rollupResult.internalComposite)
+                                metadata = rollupMetadataService.updateMetadata(
+                                    updatableJob,
+                                    metadata.mergeStats(rollupResult.stats), rollupResult.internalComposite
+                                )
                                 updatableJob = client.suspendUntil { listener: ActionListener<GetRollupResponse> ->
                                     execute(GetRollupAction.INSTANCE, GetRollupRequest(updatableJob.id, null, "_local"), listener)
                                 }.rollup ?: throw IllegalStateException("Unable to get rollup job")
@@ -316,8 +323,10 @@ object RollupRunner : ScheduledJobRunner,
                             }
                         }
                         try {
-                            BackoffPolicy.exponentialBackoff(TimeValue.timeValueMillis(
-                                RollupSettings.DEFAULT_RENEW_LOCK_RETRY_DELAY),
+                            BackoffPolicy.exponentialBackoff(
+                                TimeValue.timeValueMillis(
+                                    RollupSettings.DEFAULT_RENEW_LOCK_RETRY_DELAY
+                                ),
                                 RollupSettings.DEFAULT_RENEW_LOCK_RETRY_COUNT
                             ).retry(logger) {
                                 updatableLock = context.lockService.suspendUntil { renewLock(updatableLock, it) }

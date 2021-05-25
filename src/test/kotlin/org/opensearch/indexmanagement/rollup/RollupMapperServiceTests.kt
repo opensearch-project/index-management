@@ -26,8 +26,6 @@
 
 package org.opensearch.indexmanagement.rollup
 
-import org.opensearch.indexmanagement.rollup.model.RollupJobValidationResult
-import org.opensearch.indexmanagement.util._DOC
 import com.nhaarman.mockitokotlin2.any
 import com.nhaarman.mockitokotlin2.anyVararg
 import com.nhaarman.mockitokotlin2.doAnswer
@@ -45,6 +43,8 @@ import org.opensearch.cluster.metadata.MappingMetadata
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.collect.ImmutableOpenMap
 import org.opensearch.common.xcontent.XContentType
+import org.opensearch.indexmanagement.rollup.model.RollupJobValidationResult
+import org.opensearch.indexmanagement.util._DOC
 import org.opensearch.test.OpenSearchTestCase
 import java.time.Instant
 
@@ -53,12 +53,16 @@ class RollupMapperServiceTests : OpenSearchTestCase() {
     fun `test source index validation`() {
         val sourceIndex = "test-index"
 
-        val dimensions = listOf(randomDateHistogram().copy(
-            sourceField = "order_date"
-        ))
-        val metrics = listOf(randomRollupMetrics().copy(
-            sourceField = "total_quantity"
-        ))
+        val dimensions = listOf(
+            randomDateHistogram().copy(
+                sourceField = "order_date"
+            )
+        )
+        val metrics = listOf(
+            randomRollupMetrics().copy(
+                sourceField = "total_quantity"
+            )
+        )
         val rollup = randomRollup().copy(
             enabled = true,
             jobEnabledTime = Instant.now(),
@@ -66,10 +70,14 @@ class RollupMapperServiceTests : OpenSearchTestCase() {
             metrics = metrics
         )
 
-        val client = getClient(getAdminClient(getIndicesAdminClient(
-            getMappingsResponse = getKibanaSampleDataMappingResponse(sourceIndex),
-            getMappingsException = null
-        )))
+        val client = getClient(
+            getAdminClient(
+                getIndicesAdminClient(
+                    getMappingsResponse = getKibanaSampleDataMappingResponse(sourceIndex),
+                    getMappingsException = null
+                )
+            )
+        )
         val clusterService = getClusterService()
         val indexNameExpressionResolver = getIndexNameExpressionResolver(listOf(sourceIndex))
         val mapperService = RollupMapperService(client, clusterService, indexNameExpressionResolver)
@@ -83,12 +91,16 @@ class RollupMapperServiceTests : OpenSearchTestCase() {
     fun `test source index validation with subfield`() {
         val sourceIndex = "test-index"
 
-        val dimensions = listOf(randomDateHistogram().copy(
-            sourceField = "category.keyword"
-        ))
-        val metrics = listOf(randomRollupMetrics().copy(
-            sourceField = "total_quantity"
-        ))
+        val dimensions = listOf(
+            randomDateHistogram().copy(
+                sourceField = "category.keyword"
+            )
+        )
+        val metrics = listOf(
+            randomRollupMetrics().copy(
+                sourceField = "total_quantity"
+            )
+        )
         val rollup = randomRollup().copy(
             enabled = true,
             jobEnabledTime = Instant.now(),
@@ -96,10 +108,14 @@ class RollupMapperServiceTests : OpenSearchTestCase() {
             metrics = metrics
         )
 
-        val client = getClient(getAdminClient(getIndicesAdminClient(
-            getMappingsResponse = getKibanaSampleDataMappingResponse(sourceIndex),
-            getMappingsException = null
-        )))
+        val client = getClient(
+            getAdminClient(
+                getIndicesAdminClient(
+                    getMappingsResponse = getKibanaSampleDataMappingResponse(sourceIndex),
+                    getMappingsException = null
+                )
+            )
+        )
         val clusterService = getClusterService()
         val indexNameExpressionResolver = getIndexNameExpressionResolver(listOf(sourceIndex))
         val mapperService = RollupMapperService(client, clusterService, indexNameExpressionResolver)
@@ -113,12 +129,16 @@ class RollupMapperServiceTests : OpenSearchTestCase() {
     fun `test source index validation with nested field`() {
         val sourceIndex = "test-index"
 
-        val dimensions = listOf(randomDateHistogram().copy(
-            sourceField = "order_date"
-        ))
-        val metrics = listOf(randomRollupMetrics().copy(
-            sourceField = "products.quantity"
-        ))
+        val dimensions = listOf(
+            randomDateHistogram().copy(
+                sourceField = "order_date"
+            )
+        )
+        val metrics = listOf(
+            randomRollupMetrics().copy(
+                sourceField = "products.quantity"
+            )
+        )
         val rollup = randomRollup().copy(
             enabled = true,
             jobEnabledTime = Instant.now(),
@@ -126,10 +146,14 @@ class RollupMapperServiceTests : OpenSearchTestCase() {
             metrics = metrics
         )
 
-        val client = getClient(getAdminClient(getIndicesAdminClient(
-            getMappingsResponse = getKibanaSampleDataMappingResponse(sourceIndex),
-            getMappingsException = null
-        )))
+        val client = getClient(
+            getAdminClient(
+                getIndicesAdminClient(
+                    getMappingsResponse = getKibanaSampleDataMappingResponse(sourceIndex),
+                    getMappingsException = null
+                )
+            )
+        )
         val clusterService = getClusterService()
         val indexNameExpressionResolver = getIndexNameExpressionResolver(listOf(sourceIndex))
         val mapperService = RollupMapperService(client, clusterService, indexNameExpressionResolver)
@@ -143,9 +167,11 @@ class RollupMapperServiceTests : OpenSearchTestCase() {
     fun `test source index validation when field is not in mapping`() {
         val sourceIndex = "test-index"
 
-        val dimensions = listOf(randomDateHistogram().copy(
-            sourceField = "nonexistent_field"
-        ))
+        val dimensions = listOf(
+            randomDateHistogram().copy(
+                sourceField = "nonexistent_field"
+            )
+        )
         val rollup = randomRollup().copy(
             enabled = true,
             jobEnabledTime = Instant.now(),
@@ -153,10 +179,14 @@ class RollupMapperServiceTests : OpenSearchTestCase() {
             metrics = emptyList()
         )
 
-        val client = getClient(getAdminClient(getIndicesAdminClient(
-            getMappingsResponse = getKibanaSampleDataMappingResponse(sourceIndex),
-            getMappingsException = null
-        )))
+        val client = getClient(
+            getAdminClient(
+                getIndicesAdminClient(
+                    getMappingsResponse = getKibanaSampleDataMappingResponse(sourceIndex),
+                    getMappingsException = null
+                )
+            )
+        )
         val clusterService = getClusterService()
         val indexNameExpressionResolver = getIndexNameExpressionResolver(listOf(sourceIndex))
         val mapperService = RollupMapperService(client, clusterService, indexNameExpressionResolver)
@@ -181,8 +211,10 @@ class RollupMapperServiceTests : OpenSearchTestCase() {
         getMappingsResponse: GetMappingsResponse?,
         getMappingsException: Exception?
     ): IndicesAdminClient {
-        assertTrue("Must provide either a getMappingsResponse or getMappingsException",
-            (getMappingsResponse != null).xor(getMappingsException != null))
+        assertTrue(
+            "Must provide either a getMappingsResponse or getMappingsException",
+            (getMappingsResponse != null).xor(getMappingsException != null)
+        )
 
         return mock {
             doAnswer { invocationOnMock ->

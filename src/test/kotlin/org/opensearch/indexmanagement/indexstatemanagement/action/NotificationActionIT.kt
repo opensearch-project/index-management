@@ -95,8 +95,13 @@ class NotificationActionIT : IndexStateManagementRestTestCase() {
         waitFor { assertEquals(policyID, getExplainManagedIndexMetaData(indexName).policyID) }
 
         // verify index does not have any docs
-        assertEquals("Notification index has docs before notification has been sent", 0, (client().makeRequest("GET", "$notificationIndex/_search")
-            .asMap() as Map<String, Map<String, Map<String, Any>>>)["hits"]!!["total"]!!["value"])
+        assertEquals(
+            "Notification index has docs before notification has been sent", 0,
+            (
+                client().makeRequest("GET", "$notificationIndex/_search")
+                    .asMap() as Map<String, Map<String, Map<String, Any>>>
+                )["hits"]!!["total"]!!["value"]
+        )
 
         // Speed up to second execution where it will trigger the first execution of the action which
         // should call notification custom webhook and create the doc in notification_index
@@ -104,8 +109,13 @@ class NotificationActionIT : IndexStateManagementRestTestCase() {
 
         // verify index gets a doc
         waitFor {
-            assertEquals("Notification index does not have a doc", 1, (client().makeRequest("GET", "$notificationIndex/_search")
-                .asMap() as Map<String, Map<String, Map<String, Any>>>)["hits"]!!["total"]!!["value"])
+            assertEquals(
+                "Notification index does not have a doc", 1,
+                (
+                    client().makeRequest("GET", "$notificationIndex/_search")
+                        .asMap() as Map<String, Map<String, Map<String, Any>>>
+                    )["hits"]!!["total"]!!["value"]
+            )
         }
     }
 }

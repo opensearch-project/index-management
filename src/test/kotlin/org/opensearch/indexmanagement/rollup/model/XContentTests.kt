@@ -26,8 +26,11 @@
 
 package org.opensearch.indexmanagement.rollup.model
 
-import org.opensearch.indexmanagement.opensearchapi.parseWithType
+import org.opensearch.common.xcontent.LoggingDeprecationHandler
+import org.opensearch.common.xcontent.XContentParser
+import org.opensearch.common.xcontent.XContentType
 import org.opensearch.indexmanagement.indexstatemanagement.util.XCONTENT_WITHOUT_TYPE
+import org.opensearch.indexmanagement.opensearchapi.parseWithType
 import org.opensearch.indexmanagement.rollup.model.dimension.Dimension
 import org.opensearch.indexmanagement.rollup.model.metric.Metric
 import org.opensearch.indexmanagement.rollup.randomAverage
@@ -42,9 +45,6 @@ import org.opensearch.indexmanagement.rollup.randomSum
 import org.opensearch.indexmanagement.rollup.randomTerms
 import org.opensearch.indexmanagement.rollup.randomValueCount
 import org.opensearch.indexmanagement.rollup.toJsonString
-import org.opensearch.common.xcontent.LoggingDeprecationHandler
-import org.opensearch.common.xcontent.XContentParser
-import org.opensearch.common.xcontent.XContentType
 import org.opensearch.test.OpenSearchTestCase
 import kotlin.test.assertFailsWith
 

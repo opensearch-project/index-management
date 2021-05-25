@@ -26,6 +26,8 @@
 
 package org.opensearch.indexmanagement.rollup.resthandler
 
+import org.opensearch.client.ResponseException
+import org.opensearch.common.xcontent.XContentType
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.ROLLUP_JOBS_BASE_URI
 import org.opensearch.indexmanagement.makeRequest
@@ -47,8 +49,6 @@ import org.opensearch.indexmanagement.rollup.randomRollupDimensions
 import org.opensearch.indexmanagement.rollup.randomRollupMetrics
 import org.opensearch.indexmanagement.util._ID
 import org.opensearch.indexmanagement.util._SEQ_NO
-import org.opensearch.client.ResponseException
-import org.opensearch.common.xcontent.XContentType
 import org.opensearch.rest.RestStatus
 import org.opensearch.test.OpenSearchTestCase
 import org.opensearch.test.junit.annotations.TestLogging
@@ -98,8 +98,11 @@ class RestIndexRollupActionIT : RollupRestTestCase() {
         val response = client().makeRequest("GET", "/$INDEX_MANAGEMENT_INDEX/_mapping")
         val parserMap = createParser(XContentType.JSON.xContent(), response.entity.content).map() as Map<String, Map<String, Any>>
         val mappingsMap = parserMap[INDEX_MANAGEMENT_INDEX]!!["mappings"] as Map<String, Any>
-        val expected = createParser(XContentType.JSON.xContent(), javaClass.classLoader.getResource("mappings/opendistro-ism-config.json")
-            .readText())
+        val expected = createParser(
+            XContentType.JSON.xContent(),
+            javaClass.classLoader.getResource("mappings/opendistro-ism-config.json")
+                .readText()
+        )
         val expectedMap = expected.map()
 
         assertEquals("Mappings are different", expectedMap, mappingsMap)
@@ -110,9 +113,11 @@ class RestIndexRollupActionIT : RollupRestTestCase() {
         val rollup = createRandomRollup()
 
         try {
-            client().makeRequest("PUT",
-                    "$ROLLUP_JOBS_BASE_URI/${rollup.id}?refresh=true&if_seq_no=10251989&if_primary_term=2342",
-                    emptyMap(), rollup.toHttpEntity())
+            client().makeRequest(
+                "PUT",
+                "$ROLLUP_JOBS_BASE_URI/${rollup.id}?refresh=true&if_seq_no=10251989&if_primary_term=2342",
+                emptyMap(), rollup.toHttpEntity()
+            )
             fail("expected 409 ResponseException")
         } catch (e: ResponseException) {
             assertEquals(RestStatus.CONFLICT, e.response.restStatus())
@@ -122,9 +127,11 @@ class RestIndexRollupActionIT : RollupRestTestCase() {
     @Throws(Exception::class)
     fun `test update rollup with correct seq_no and primary_term`() {
         val rollup = createRandomRollup()
-        val updateResponse = client().makeRequest("PUT",
-                "$ROLLUP_JOBS_BASE_URI/${rollup.id}?refresh=true&if_seq_no=${rollup.seqNo}&if_primary_term=${rollup.primaryTerm}",
-                emptyMap(), rollup.toHttpEntity())
+        val updateResponse = client().makeRequest(
+            "PUT",
+            "$ROLLUP_JOBS_BASE_URI/${rollup.id}?refresh=true&if_seq_no=${rollup.seqNo}&if_primary_term=${rollup.primaryTerm}",
+            emptyMap(), rollup.toHttpEntity()
+        )
 
         assertEquals("Update rollup failed", RestStatus.OK, updateResponse.restStatus())
         val responseBody = updateResponse.asMap()
@@ -139,9 +146,11 @@ class RestIndexRollupActionIT : RollupRestTestCase() {
     fun `test updating rollup source index`() {
         try {
             val rollup = createRandomRollup()
-            client().makeRequest("PUT",
+            client().makeRequest(
+                "PUT",
                 "$ROLLUP_JOBS_BASE_URI/${rollup.id}?refresh=true&if_seq_no=${rollup.seqNo}&if_primary_term=${rollup.primaryTerm}",
-                emptyMap(), rollup.copy(sourceIndex = "something_different").toHttpEntity())
+                emptyMap(), rollup.copy(sourceIndex = "something_different").toHttpEntity()
+            )
             fail("Expected 400 Method BAD_REQUEST response")
         } catch (e: ResponseException) {
             assertEquals("Unexpected status", RestStatus.BAD_REQUEST, e.response.restStatus())
@@ -164,9 +173,11 @@ class RestIndexRollupActionIT : RollupRestTestCase() {
     fun `test updating rollup target index`() {
         try {
             val rollup = createRandomRollup()
-            client().makeRequest("PUT",
+            client().makeRequest(
+                "PUT",
                 "$ROLLUP_JOBS_BASE_URI/${rollup.id}?refresh=true&if_seq_no=${rollup.seqNo}&if_primary_term=${rollup.primaryTerm}",
-                emptyMap(), rollup.copy(targetIndex = "something_different").toHttpEntity())
+                emptyMap(), rollup.copy(targetIndex = "something_different").toHttpEntity()
+            )
             fail("Expected 400 Method BAD_REQUEST response")
         } catch (e: ResponseException) {
             assertEquals("Unexpected status", RestStatus.BAD_REQUEST, e.response.restStatus())
@@ -189,9 +200,11 @@ class RestIndexRollupActionIT : RollupRestTestCase() {
     fun `test updating rollup continuous field`() {
         try {
             val rollup = createRandomRollup()
-            client().makeRequest("PUT",
+            client().makeRequest(
+                "PUT",
                 "$ROLLUP_JOBS_BASE_URI/${rollup.id}?refresh=true&if_seq_no=${rollup.seqNo}&if_primary_term=${rollup.primaryTerm}",
-                emptyMap(), rollup.copy(continuous = !rollup.continuous).toHttpEntity())
+                emptyMap(), rollup.copy(continuous = !rollup.continuous).toHttpEntity()
+            )
             fail("Expected 400 Method BAD_REQUEST response")
         } catch (e: ResponseException) {
             assertEquals("Unexpected status", RestStatus.BAD_REQUEST, e.response.restStatus())
@@ -222,9 +235,11 @@ class RestIndexRollupActionIT : RollupRestTestCase() {
                 }
             }
             val rollup = createRollup(rollup = randomRollup().copy(dimensions = dimensions))
-            client().makeRequest("PUT",
+            client().makeRequest(
+                "PUT",
                 "$ROLLUP_JOBS_BASE_URI/${rollup.id}?refresh=true&if_seq_no=${rollup.seqNo}&if_primary_term=${rollup.primaryTerm}",
-                emptyMap(), rollup.copy(dimensions = newDimensions).toHttpEntity())
+                emptyMap(), rollup.copy(dimensions = newDimensions).toHttpEntity()
+            )
             fail("Expected 400 Method BAD_REQUEST response")
         } catch (e: ResponseException) {
             assertEquals("Unexpected status", RestStatus.BAD_REQUEST, e.response.restStatus())
@@ -261,9 +276,11 @@ class RestIndexRollupActionIT : RollupRestTestCase() {
                 )
             }
             val rollup = createRollup(rollup = randomRollup().copy(metrics = metrics))
-            client().makeRequest("PUT",
+            client().makeRequest(
+                "PUT",
                 "$ROLLUP_JOBS_BASE_URI/${rollup.id}?refresh=true&if_seq_no=${rollup.seqNo}&if_primary_term=${rollup.primaryTerm}",
-                emptyMap(), rollup.copy(metrics = newMetrics).toHttpEntity())
+                emptyMap(), rollup.copy(metrics = newMetrics).toHttpEntity()
+            )
             fail("Expected 400 Method BAD_REQUEST response")
         } catch (e: ResponseException) {
             assertEquals("Unexpected status", RestStatus.BAD_REQUEST, e.response.restStatus())
