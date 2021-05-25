@@ -12,3 +12,7 @@ Compatible with OpenSearch 1.0.0-rc1
 * Rest APIs Backward Compatibility ([#15](https://github.com/opensearch-project/index-management/pull/15))
 * Settings Backwards Compatibility ([#16](https://github.com/opensearch-project/index-management/pull/16))
 * Point to correct version of notification ([#18](https://github.com/opensearch-project/index-management/pull/18))
+
+### Features
+
+* Adds support for Transform feature ([#17](https://github.com/opensearch-project/index-management/pull/17))
