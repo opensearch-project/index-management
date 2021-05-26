@@ -16,3 +16,7 @@ Compatible with OpenSearch 1.0.0-rc1
 ### Features
 
 * Adds support for Transform feature ([#17](https://github.com/opensearch-project/index-management/pull/17))
+
+### Enhancements
+
+* Improve integration with data streams ([#13](https://github.com/opensearch-project/index-management/pull/13))

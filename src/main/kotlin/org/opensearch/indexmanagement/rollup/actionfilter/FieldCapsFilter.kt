@@ -216,7 +216,12 @@ class FieldCapsFilter(
 
     private fun populateSourceFieldMappingsForRollupJob(rollup: Rollup): Set<RollupFieldMapping> {
         val rollupFieldMappings = rollup.populateFieldMappings()
-        val sourceIndices = indexNameExpressionResolver.concreteIndexNames(clusterService.state(), IndicesOptions.lenientExpand(), rollup.sourceIndex)
+        val sourceIndices = indexNameExpressionResolver.concreteIndexNames(
+            clusterService.state(),
+            IndicesOptions.lenientExpand(),
+            true,
+            rollup.sourceIndex
+        )
         sourceIndices.forEach {
             val mappings = clusterService.state().metadata.index(it).mapping()?.sourceAsMap ?: return rollupFieldMappings
             rollupFieldMappings.forEach { fieldMapping ->

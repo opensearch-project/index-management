@@ -103,7 +103,7 @@ class RollupInterceptor(
 
                         val indices = request.indices().map { it.toString() }.toTypedArray()
                         val concreteIndices = indexNameExpressionResolver
-                                .concreteIndexNames(clusterService.state(), request.indicesOptions(), *indices)
+                            .concreteIndexNames(clusterService.state(), request.indicesOptions(), *indices)
 
                         if (concreteIndices.size > 1) {
                             logger.warn("There can be only one index in search request if its a rollup search - requested to search [${concreteIndices

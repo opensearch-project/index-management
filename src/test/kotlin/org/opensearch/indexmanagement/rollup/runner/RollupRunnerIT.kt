@@ -88,6 +88,51 @@ class RollupRunnerIT : RollupRestTestCase() {
         }
     }
 
+    fun `test metadata is created for data stream rollup job when none exists`() {
+        val dataStreamName = "test-data-stream"
+
+        // Define the rollup job
+        var rollup = randomRollup().copy(
+            enabled = true,
+            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+            jobEnabledTime = Instant.now(),
+            sourceIndex = dataStreamName,
+            targetIndex = "$dataStreamName-rollup",
+            metadataID = null,
+            continuous = false
+        )
+
+        // Create the source data stream
+        client().makeRequest(
+            "PUT",
+            "/_index_template/test-data-stream-template",
+            StringEntity("{ " +
+                    "\"index_patterns\": [ \"$dataStreamName\" ], " +
+                    "\"data_stream\": { }, " +
+                    "\"template\": { \"mappings\": { ${createRollupMappingString(rollup)} } } }", ContentType.APPLICATION_JSON)
+        )
+        client().makeRequest("PUT", "/_data_stream/$dataStreamName")
+
+        // Create the rollup job
+        rollup = createRollup(rollup = rollup, rollupId = rollup.id)
+        assertEquals(dataStreamName, rollup.sourceIndex)
+        assertEquals(null, rollup.metadataID)
+
+        // Update the rollup start time to run the first execution
+        updateRollupStartTime(rollup)
+
+        waitFor {
+            val rollupJob = getRollup(rollupId = rollup.id)
+            assertNotNull("Rollup job not found", rollupJob)
+            assertNotNull("Rollup job doesn't have metadata set", rollupJob.metadataID)
+
+            val rollupMetadata = getRollupMetadata(rollupJob.metadataID!!)
+            assertNotNull("Rollup metadata not found", rollupMetadata)
+            // Non-continuous jobs will finish in a single execution
+            assertEquals("Unexpected metadata state", RollupMetadata.Status.FINISHED, rollupMetadata.status)
+        }
+    }
+
     fun `test metadata set to failed when rollup job has a metadata id but metadata doc doesn't exist`() {
         val indexName = "test_index_runner_second"
 
