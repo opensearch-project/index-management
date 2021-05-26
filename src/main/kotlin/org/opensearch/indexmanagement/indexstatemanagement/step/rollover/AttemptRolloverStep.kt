@@ -137,14 +137,19 @@ class AttemptRolloverStep(
             // 1. IndexAbstraction.Type.DATA_STREAM - the new index is added to the data stream indicated by the 'rolloverTarget'
             // 2. IndexAbstraction.Type.ALIAS - the new index is added to the alias indicated by the 'rolloverTarget'
             if (response.isAcknowledged) {
+                val message = when {
+                    isDataStream -> getSuccessDataStreamRolloverMessage(rolloverTarget, indexName)
+                    else -> getSuccessMessage(indexName)
+                }
+
                 stepStatus = StepStatus.COMPLETED
                 info = listOfNotNull(
-                    "message" to getSuccessMessage(indexName),
+                    "message" to message,
                     if (conditions.isEmpty()) null else "conditions" to conditions // don't show empty conditions object if no conditions specified
                 ).toMap()
             } else {
                 val message = when {
-                    isDataStream -> getFailedDataStreamUpdateMessage(rolloverTarget)
+                    isDataStream -> getFailedDataStreamRolloverMessage(rolloverTarget)
 
                     // If the alias update response was NOT acknowledged, then the new index was created but we failed to swap the alias
                     else -> getFailedAliasUpdateMessage(indexName, response.newIndex)
@@ -165,11 +170,11 @@ class AttemptRolloverStep(
 
     private fun getRolloverTargetOrUpdateInfo(): Pair<String?, Boolean> {
         val metadata = clusterService.state().metadata()
-        val indexAbstraction = metadata.indicesLookup[indexName]!!
-        val isDataStreamIndex = indexAbstraction.parentDataStream != null
+        val indexAbstraction = metadata.indicesLookup[indexName]
+        val isDataStreamIndex = indexAbstraction?.parentDataStream != null
 
         val rolloverTarget = when {
-            isDataStreamIndex -> indexAbstraction.parentDataStream!!.name!!
+            isDataStreamIndex -> indexAbstraction?.parentDataStream?.name
             else -> metadata.index(indexName).getRolloverAlias()
         }
 
@@ -231,11 +236,13 @@ class AttemptRolloverStep(
         fun getFailedMessage(index: String) = "Failed to rollover index [index=$index]"
         fun getFailedAliasUpdateMessage(index: String, newIndex: String) =
             "New index created, but failed to update alias [index=$index, newIndex=$newIndex]"
-        fun getFailedDataStreamUpdateMessage(dataStream: String) = "Failed to rollover data stream [data_stream=$dataStream]"
+        fun getFailedDataStreamRolloverMessage(dataStream: String) = "Failed to rollover data stream [data_stream=$dataStream]"
         fun getFailedNoValidAliasMessage(index: String) = "Missing rollover_alias index setting [index=$index]"
         fun getFailedDuplicateRolloverMessage(index: String) = "Index has already been rolled over [index=$index]"
         fun getFailedEvaluateMessage(index: String) = "Failed to evaluate conditions for rollover [index=$index]"
         fun getPendingMessage(index: String) = "Pending rollover of index [index=$index]"
         fun getSuccessMessage(index: String) = "Successfully rolled over index [index=$index]"
+        fun getSuccessDataStreamRolloverMessage(dataStream: String, index: String) =
+            "Successfully rolled over data stream [data_stream=$dataStream index=$index]"
     }
 }

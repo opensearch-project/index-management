@@ -295,7 +295,7 @@ class RolloverActionIT : IndexStateManagementRestTestCase() {
         )
         client().makeRequest("PUT", "/_data_stream/$dataStreamName")
 
-        val managedIndexConfig = getExistingManagedIndexConfig(firstIndexName)
+        var managedIndexConfig = getExistingManagedIndexConfig(firstIndexName)
 
         // Change the start time so that the job will trigger in 2 seconds. This will trigger the first initialization of the policy.
         updateManagedIndexConfigStartTime(managedIndexConfig)
@@ -305,12 +305,21 @@ class RolloverActionIT : IndexStateManagementRestTestCase() {
         updateManagedIndexConfigStartTime(managedIndexConfig)
         waitFor {
             val info = getExplainManagedIndexMetaData(firstIndexName).info as Map<String, Any?>
-            assertEquals("Index did not rollover.", AttemptRolloverStep.getSuccessMessage(firstIndexName), info["message"])
+            assertEquals(
+                "Data stream did not rollover.",
+                AttemptRolloverStep.getSuccessDataStreamRolloverMessage(dataStreamName, firstIndexName),
+                info["message"]
+            )
             assertNull("Should not have conditions if none specified", info["conditions"])
         }
 
         val secondIndexName = DataStream.getDefaultBackingIndexName(dataStreamName, 2L)
         Assert.assertTrue("New rollover index does not exist.", indexExists(secondIndexName))
+
+        // Ensure that that policy is applied to the newly created index as well.
+        managedIndexConfig = getExistingManagedIndexConfig(secondIndexName)
+        updateManagedIndexConfigStartTime(managedIndexConfig)
+        waitFor { assertEquals(policyID, getExplainManagedIndexMetaData(secondIndexName).policyID) }
     }
 
     @Suppress("UNCHECKED_CAST")
@@ -382,8 +391,8 @@ class RolloverActionIT : IndexStateManagementRestTestCase() {
         waitFor {
             val info = getExplainManagedIndexMetaData(firstIndexName).info as Map<String, Any?>
             assertEquals(
-                "Index did not rollover",
-                AttemptRolloverStep.getSuccessMessage(firstIndexName),
+                "Data stream did not rollover",
+                AttemptRolloverStep.getSuccessDataStreamRolloverMessage(dataStreamName, firstIndexName),
                 info["message"]
             )
 

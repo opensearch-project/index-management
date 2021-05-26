@@ -84,7 +84,7 @@ class FieldCapsFilter(
             val localIndices = remoteClusterIndices.remove(RemoteClusterAware.LOCAL_CLUSTER_GROUP_KEY)
 
             localIndices?.let {
-                val concreteIndices = indexNameExpressionResolver.concreteIndexNames(clusterService.state(), it)
+                val concreteIndices = indexNameExpressionResolver.concreteIndexNames(clusterService.state(), request.indicesOptions(), it)
                 for (index in concreteIndices) {
                     val isRollupIndex = isRollupIndex(index, clusterService.state())
                     if (isRollupIndex) {

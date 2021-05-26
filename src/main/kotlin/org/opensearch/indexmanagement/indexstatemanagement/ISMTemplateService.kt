@@ -54,8 +54,8 @@ fun Map<String, ISMTemplate>.findMatchingPolicy(clusterState: ClusterState, inde
     if (this.isEmpty()) return null
 
     val indexMetadata = clusterState.metadata.index(indexName)
-    val indexAbstraction = clusterState.metadata.indicesLookup[indexName]!!
-    val isDataStreamIndex = indexAbstraction.parentDataStream != null
+    val indexAbstraction = clusterState.metadata.indicesLookup[indexName]
+    val isDataStreamIndex = indexAbstraction?.parentDataStream != null
 
     // Don't include hidden index unless it belongs to a data stream.
     val isHidden = IndexMetadata.INDEX_HIDDEN_SETTING.get(indexMetadata.settings)
@@ -63,7 +63,7 @@ fun Map<String, ISMTemplate>.findMatchingPolicy(clusterState: ClusterState, inde
 
     // If the index belongs to a data stream, then find the matching policy using the data stream name.
     val lookupName = when {
-        isDataStreamIndex -> indexAbstraction.parentDataStream!!.name!!
+        isDataStreamIndex -> indexAbstraction?.parentDataStream?.name
         else -> indexName
     }
 
