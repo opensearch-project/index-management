@@ -101,10 +101,10 @@ class RestExplainTransformActionIT : TransformRestTestCase() {
     }
 
     @Throws(Exception::class)
-    fun `test explain transform for metadata_id but no metadata`() {
+    fun `test explain transform for new transform attempted to create with metadata id`() {
         createTransform(transform = randomTransform().copy(metadataId = "some_metadata_id"), transformId = "no_meta_some_id")
         val response = client().makeRequest("GET", "$TRANSFORM_BASE_URI/no_meta_some_id/_explain")
-        val expectedMap = mapOf("no_meta_some_id" to mapOf("metadata_id" to "some_metadata_id", "transform_metadata" to null))
+        val expectedMap = mapOf("no_meta_some_id" to mapOf("metadata_id" to null, "transform_metadata" to null))
         assertEquals("The explain response did not match expected", expectedMap, response.asMap())
     }
 
