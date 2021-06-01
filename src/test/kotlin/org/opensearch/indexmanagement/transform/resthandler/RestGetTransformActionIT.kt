@@ -35,7 +35,8 @@ class RestGetTransformActionIT : TransformRestTestCase() {
         transform = transform.copy(
             schemaVersion = indexedTransform.schemaVersion,
             updatedAt = indexedTransform.updatedAt,
-            jobSchedule = indexedTransform.jobSchedule
+            jobSchedule = indexedTransform.jobSchedule,
+            metadataId = null
         )
         assertEquals("Indexed and retrieved transform differ", transform, indexedTransform)
     }
