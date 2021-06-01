@@ -11,7 +11,6 @@
 
 package org.opensearch.indexmanagement.transform.model
 
-import org.junit.Assert
 import org.opensearch.indexmanagement.opensearchapi.parseWithType
 import org.opensearch.indexmanagement.indexstatemanagement.util.XCONTENT_WITHOUT_TYPE
 import org.opensearch.indexmanagement.transform.randomTransform
