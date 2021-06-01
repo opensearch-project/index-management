@@ -11,6 +11,7 @@
 
 package org.opensearch.indexmanagement.transform.model
 
+import org.junit.Assert
 import org.opensearch.indexmanagement.opensearchapi.parseWithType
 import org.opensearch.indexmanagement.indexstatemanagement.util.XCONTENT_WITHOUT_TYPE
 import org.opensearch.indexmanagement.transform.randomTransform
@@ -56,6 +57,13 @@ class XContentTests : OpenSearchTestCase() {
         val parser = parserWithType(transformString)
         val parsedTransform = parser.parseWithType(transform.id, transform.seqNo, transform.primaryTerm, Transform.Companion::parse)
         assertEquals("Round tripping Transform with type doesn't work", transform, parsedTransform)
+    }
+
+    fun `test transform parsing should ignore metadata id and startTime if its newly created transform`() {
+        val transform = randomTransform().copy(metadataId = "randomMetadata")
+        val transformString = transform.toJsonString(XCONTENT_WITHOUT_TYPE)
+        val parsedTransform = Transform.parse(parser(transformString), transform.id)
+        assertNull("MetadataId is not removed when parsing the transform during creation", parsedTransform.metadataId)
     }
 
     private fun parser(xc: String): XContentParser {

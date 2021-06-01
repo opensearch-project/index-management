@@ -68,6 +68,14 @@ data class Transform(
         aggregations.aggregatorFactories.forEach {
             require(supportedAggregations.contains(it.type)) { "Unsupported aggregation [${it.type}]" }
         }
+        when (jobSchedule) {
+            is CronSchedule -> {
+                // Job scheduler already correctly throws errors for this
+            }
+            is IntervalSchedule -> {
+                require(jobSchedule.interval >= MINIMUM_JOB_INTERVAL) { "Transform job schedule interval must be greater than 0" }
+            }
+        }
         require(groups.isNotEmpty()) { "Groupings are Empty" }
         require(sourceIndex != targetIndex) { "Source and target indices cannot be the same" }
         require(pageSize in MINIMUM_PAGE_SIZE..MAXIMUM_PAGE_SIZE) { "Page size must be between 1 and 10,000" }
@@ -220,6 +228,7 @@ data class Transform(
         const val SCHEMA_VERSION_FIELD = "schema_version"
         const val MINIMUM_PAGE_SIZE = 1
         const val MAXIMUM_PAGE_SIZE = 10_000
+        const val MINIMUM_JOB_INTERVAL = 1
         const val TRANSFORM_DOC_ID_FIELD = "$TRANSFORM_TYPE._id"
         const val TRANSFORM_DOC_COUNT_FIELD = "$TRANSFORM_TYPE._doc_count"
 
@@ -297,11 +306,15 @@ data class Transform(
                 enabledAt = null
             }
 
-            // If the seqNo/primaryTerm are unassigned this job hasn't been created yet so we instantiate the startTime
+            // If the seqNo/primaryTerm are unassigned this job hasn't been created yet
             if (seqNo == SequenceNumbers.UNASSIGNED_SEQ_NO || primaryTerm == SequenceNumbers.UNASSIGNED_PRIMARY_TERM) {
+                // we instantiate the start time
                 if (schedule is IntervalSchedule) {
                     schedule = IntervalSchedule(Instant.now(), schedule.interval, schedule.unit)
                 }
+
+                // we clear out metadata if its a new job
+                metadataId = null
             }
 
             return Transform(
