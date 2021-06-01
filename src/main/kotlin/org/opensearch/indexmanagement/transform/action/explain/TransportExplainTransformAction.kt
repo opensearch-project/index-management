@@ -58,7 +58,7 @@ class TransportExplainTransformAction @Inject constructor(
         val idsToExplain: MutableMap<String, ExplainTransform?> = ids.filter { !it.contains("*") }
             .map { it to null }.toMap(mutableMapOf())
         val searchRequest = SearchRequest(INDEX_MANAGEMENT_INDEX)
-            .source(SearchSourceBuilder().query(
+            .source(SearchSourceBuilder().seqNoAndPrimaryTerm(true).query(
                 BoolQueryBuilder().minimumShouldMatch(1).apply {
                     ids.forEach {
                         this.should(WildcardQueryBuilder("${ Transform.TRANSFORM_TYPE}.${Transform.TRANSFORM_ID_FIELD}.keyword", "*$it*"))
