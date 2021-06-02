@@ -26,18 +26,9 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.transport.action.indexpolicy
 
-import org.opensearch.indexmanagement.IndexManagementIndices
-import org.opensearch.indexmanagement.IndexManagementPlugin
-import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.filterNotNullValues
-import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.getPolicyToTemplateMap
-import org.opensearch.indexmanagement.indexstatemanagement.findConflictingPolicyTemplates
-import org.opensearch.indexmanagement.util.IndexManagementException
-import org.opensearch.indexmanagement.indexstatemanagement.util.ISM_TEMPLATE_FIELD
-import org.opensearch.indexmanagement.indexstatemanagement.validateFormat
-import org.opensearch.indexmanagement.util.IndexUtils
 import org.apache.logging.log4j.LogManager
-import org.opensearch.OpenSearchStatusException
 import org.opensearch.ExceptionsHelper
+import org.opensearch.OpenSearchStatusException
 import org.opensearch.action.ActionListener
 import org.opensearch.action.DocWriteRequest
 import org.opensearch.action.index.IndexRequest
@@ -53,6 +44,15 @@ import org.opensearch.common.xcontent.NamedXContentRegistry
 import org.opensearch.common.xcontent.XContentFactory
 import org.opensearch.index.query.QueryBuilders
 import org.opensearch.index.seqno.SequenceNumbers
+import org.opensearch.indexmanagement.IndexManagementIndices
+import org.opensearch.indexmanagement.IndexManagementPlugin
+import org.opensearch.indexmanagement.indexstatemanagement.findConflictingPolicyTemplates
+import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.filterNotNullValues
+import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.getPolicyToTemplateMap
+import org.opensearch.indexmanagement.indexstatemanagement.util.ISM_TEMPLATE_FIELD
+import org.opensearch.indexmanagement.indexstatemanagement.validateFormat
+import org.opensearch.indexmanagement.util.IndexManagementException
+import org.opensearch.indexmanagement.util.IndexUtils
 import org.opensearch.rest.RestStatus
 import org.opensearch.search.builder.SearchSourceBuilder
 import org.opensearch.tasks.Task
@@ -67,7 +67,7 @@ class TransportIndexPolicyAction @Inject constructor(
     val ismIndices: IndexManagementIndices,
     val xContentRegistry: NamedXContentRegistry
 ) : HandledTransportAction<IndexPolicyRequest, IndexPolicyResponse>(
-        IndexPolicyAction.NAME, transportService, actionFilters, ::IndexPolicyRequest
+    IndexPolicyAction.NAME, transportService, actionFilters, ::IndexPolicyRequest
 ) {
     override fun doExecute(task: Task, request: IndexPolicyRequest, listener: ActionListener<IndexPolicyResponse>) {
         IndexPolicyHandler(client, listener, request).start()
@@ -102,9 +102,12 @@ class TransportIndexPolicyAction @Inject constructor(
             } else {
                 log.error("Unable to create or update ${IndexManagementPlugin.INDEX_MANAGEMENT_INDEX} with newest mapping.")
 
-                actionListener.onFailure(OpenSearchStatusException(
-                    "Unable to create or update ${IndexManagementPlugin.INDEX_MANAGEMENT_INDEX} with newest mapping.",
-                    RestStatus.INTERNAL_SERVER_ERROR))
+                actionListener.onFailure(
+                    OpenSearchStatusException(
+                        "Unable to create or update ${IndexManagementPlugin.INDEX_MANAGEMENT_INDEX} with newest mapping.",
+                        RestStatus.INTERNAL_SERVER_ERROR
+                    )
+                )
             }
         }
 
@@ -118,28 +121,33 @@ class TransportIndexPolicyAction @Inject constructor(
             val searchRequest = SearchRequest()
                 .source(
                     SearchSourceBuilder().query(
-                    QueryBuilders.existsQuery(ISM_TEMPLATE_FIELD)))
+                        QueryBuilders.existsQuery(ISM_TEMPLATE_FIELD)
+                    )
+                )
                 .indices(IndexManagementPlugin.INDEX_MANAGEMENT_INDEX)
 
-            client.search(searchRequest, object : ActionListener<SearchResponse> {
-                override fun onResponse(response: SearchResponse) {
-                    val policyToTemplateMap = getPolicyToTemplateMap(response, xContentRegistry).filterNotNullValues()
-                    val conflictingPolicyTemplates = policyToTemplateMap.findConflictingPolicyTemplates(request.policyID, indexPatterns, priority)
-                    if (conflictingPolicyTemplates.isNotEmpty()) {
-                        val errorMessage = "New policy ${request.policyID} has an ISM template with index pattern $indexPatterns " +
-                            "matching existing policy templates," +
-                            " please use a different priority than $priority"
-                        actionListener.onFailure(IndexManagementException.wrap(IllegalArgumentException(errorMessage)))
-                        return
+            client.search(
+                searchRequest,
+                object : ActionListener<SearchResponse> {
+                    override fun onResponse(response: SearchResponse) {
+                        val policyToTemplateMap = getPolicyToTemplateMap(response, xContentRegistry).filterNotNullValues()
+                        val conflictingPolicyTemplates = policyToTemplateMap.findConflictingPolicyTemplates(request.policyID, indexPatterns, priority)
+                        if (conflictingPolicyTemplates.isNotEmpty()) {
+                            val errorMessage = "New policy ${request.policyID} has an ISM template with index pattern $indexPatterns " +
+                                "matching existing policy templates," +
+                                " please use a different priority than $priority"
+                            actionListener.onFailure(IndexManagementException.wrap(IllegalArgumentException(errorMessage)))
+                            return
+                        }
+
+                        putPolicy()
                     }
 
-                    putPolicy()
+                    override fun onFailure(t: Exception) {
+                        actionListener.onFailure(ExceptionsHelper.unwrapCause(t) as Exception)
+                    }
                 }
-
-                override fun onFailure(t: Exception) {
-                    actionListener.onFailure(ExceptionsHelper.unwrapCause(t) as Exception)
-                }
-            })
+            )
         }
 
         private fun putPolicy() {
@@ -155,39 +163,45 @@ class TransportIndexPolicyAction @Inject constructor(
                 indexRequest.opType(DocWriteRequest.OpType.CREATE)
             } else {
                 indexRequest.setIfSeqNo(request.seqNo)
-                        .setIfPrimaryTerm(request.primaryTerm)
+                    .setIfPrimaryTerm(request.primaryTerm)
             }
 
-            client.index(indexRequest, object : ActionListener<IndexResponse> {
-                override fun onResponse(response: IndexResponse) {
-                    val failureReasons = checkShardsFailure(response)
-                    if (failureReasons != null) {
-                        actionListener.onFailure(OpenSearchStatusException(failureReasons.toString(), response.status()))
-                        return
+            client.index(
+                indexRequest,
+                object : ActionListener<IndexResponse> {
+                    override fun onResponse(response: IndexResponse) {
+                        val failureReasons = checkShardsFailure(response)
+                        if (failureReasons != null) {
+                            actionListener.onFailure(OpenSearchStatusException(failureReasons.toString(), response.status()))
+                            return
+                        }
+                        actionListener.onResponse(
+                            IndexPolicyResponse(
+                                response.id,
+                                response.version,
+                                response.primaryTerm,
+                                response.seqNo,
+                                request.policy,
+                                response.status()
+                            )
+                        )
                     }
-                    actionListener.onResponse(IndexPolicyResponse(
-                        response.id,
-                        response.version,
-                        response.primaryTerm,
-                        response.seqNo,
-                        request.policy,
-                        response.status()
-                    ))
-                }
 
-                override fun onFailure(t: Exception) {
-                    // TODO should wrap document already exists exception
-                    //  provide a direct message asking user to use seqNo and primaryTerm
-                    actionListener.onFailure(ExceptionsHelper.unwrapCause(t) as Exception)
+                    override fun onFailure(t: Exception) {
+                        // TODO should wrap document already exists exception
+                        //  provide a direct message asking user to use seqNo and primaryTerm
+                        actionListener.onFailure(ExceptionsHelper.unwrapCause(t) as Exception)
+                    }
                 }
-            })
+            )
         }
 
         private fun checkShardsFailure(response: IndexResponse): String? {
             val failureReasons = StringBuilder()
             if (response.shardInfo.failed > 0) {
                 response.shardInfo.failures.forEach {
-                    entry -> failureReasons.append(entry.reason())
+                    entry ->
+                    failureReasons.append(entry.reason())
                 }
                 return failureReasons.toString()
             }

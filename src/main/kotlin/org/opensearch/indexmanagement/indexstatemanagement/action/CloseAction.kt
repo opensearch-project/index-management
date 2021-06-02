@@ -26,13 +26,13 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.action
 
+import org.opensearch.client.Client
+import org.opensearch.cluster.service.ClusterService
 import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.indexstatemanagement.model.action.ActionConfig.ActionType
 import org.opensearch.indexmanagement.indexstatemanagement.model.action.CloseActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.step.Step
 import org.opensearch.indexmanagement.indexstatemanagement.step.close.AttemptCloseStep
-import org.opensearch.client.Client
-import org.opensearch.cluster.service.ClusterService
 
 class CloseAction(
     clusterService: ClusterService,

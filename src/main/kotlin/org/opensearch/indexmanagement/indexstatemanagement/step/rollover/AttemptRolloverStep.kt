@@ -26,14 +26,6 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.step.rollover
 
-import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.getRolloverAlias
-import org.opensearch.indexmanagement.opensearchapi.getUsefulCauseString
-import org.opensearch.indexmanagement.opensearchapi.suspendUntil
-import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
-import org.opensearch.indexmanagement.indexstatemanagement.model.action.RolloverActionConfig
-import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.StepMetaData
-import org.opensearch.indexmanagement.indexstatemanagement.step.Step
-import org.opensearch.indexmanagement.indexstatemanagement.util.evaluateConditions
 import org.apache.logging.log4j.LogManager
 import org.opensearch.ExceptionsHelper
 import org.opensearch.action.admin.indices.rollover.RolloverRequest
@@ -44,6 +36,14 @@ import org.opensearch.client.Client
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.unit.ByteSizeValue
 import org.opensearch.common.unit.TimeValue
+import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
+import org.opensearch.indexmanagement.indexstatemanagement.model.action.RolloverActionConfig
+import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.StepMetaData
+import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.getRolloverAlias
+import org.opensearch.indexmanagement.indexstatemanagement.step.Step
+import org.opensearch.indexmanagement.indexstatemanagement.util.evaluateConditions
+import org.opensearch.indexmanagement.opensearchapi.getUsefulCauseString
+import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.rest.RestStatus
 import org.opensearch.transport.RemoteTransportException
 import java.time.Instant
@@ -91,30 +91,32 @@ class AttemptRolloverStep(
         val numDocs = statsResponse.primaries.docs?.count ?: 0
         val indexSize = ByteSizeValue(statsResponse.primaries.docs?.totalSizeInBytes ?: 0)
         val conditions = listOfNotNull(
-                config.minAge?.let {
-                    RolloverActionConfig.MIN_INDEX_AGE_FIELD to mapOf(
-                            "condition" to it.toString(),
-                            "current" to indexAgeTimeValue.toString(),
-                            "creationDate" to indexCreationDate
-                    )
-                },
-                config.minDocs?.let {
-                    RolloverActionConfig.MIN_DOC_COUNT_FIELD to mapOf(
-                            "condition" to it,
-                            "current" to numDocs
-                    )
-                },
-                config.minSize?.let {
-                    RolloverActionConfig.MIN_SIZE_FIELD to mapOf(
-                            "condition" to it.toString(),
-                            "current" to indexSize.toString()
-                    )
-                }
+            config.minAge?.let {
+                RolloverActionConfig.MIN_INDEX_AGE_FIELD to mapOf(
+                    "condition" to it.toString(),
+                    "current" to indexAgeTimeValue.toString(),
+                    "creationDate" to indexCreationDate
+                )
+            },
+            config.minDocs?.let {
+                RolloverActionConfig.MIN_DOC_COUNT_FIELD to mapOf(
+                    "condition" to it,
+                    "current" to numDocs
+                )
+            },
+            config.minSize?.let {
+                RolloverActionConfig.MIN_SIZE_FIELD to mapOf(
+                    "condition" to it.toString(),
+                    "current" to indexSize.toString()
+                )
+            }
         ).toMap()
 
         if (config.evaluateConditions(indexAgeTimeValue, numDocs, indexSize)) {
-            logger.info("$indexName rollover conditions evaluated to true [indexCreationDate=$indexCreationDate," +
-                    " numDocs=$numDocs, indexSize=${indexSize.bytes}]")
+            logger.info(
+                "$indexName rollover conditions evaluated to true [indexCreationDate=$indexCreationDate," +
+                    " numDocs=$numDocs, indexSize=${indexSize.bytes}]"
+            )
             executeRollover(rolloverTarget, isDataStream, conditions)
         } else {
             stepStatus = StepStatus.CONDITION_NOT_MET
@@ -191,7 +193,7 @@ class AttemptRolloverStep(
     private suspend fun getIndexStatsOrUpdateInfo(): IndicesStatsResponse? {
         try {
             val statsRequest = IndicesStatsRequest()
-                    .indices(indexName).clear().docs(true)
+                .indices(indexName).clear().docs(true)
             val statsResponse: IndicesStatsResponse = client.admin().indices().suspendUntil { stats(statsRequest, it) }
 
             if (statsResponse.status == RestStatus.OK) {

@@ -26,13 +26,6 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.transport.action.removepolicy
 
-import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
-import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.getUuidsForClosedIndices
-import org.opensearch.indexmanagement.indexstatemanagement.transport.action.ISMStatusResponse
-import org.opensearch.indexmanagement.indexstatemanagement.util.FailedIndex
-import org.opensearch.indexmanagement.indexstatemanagement.util.deleteManagedIndexMetadataRequest
-import org.opensearch.indexmanagement.indexstatemanagement.util.deleteManagedIndexRequest
-import org.opensearch.indexmanagement.util.IndexManagementException
 import org.apache.logging.log4j.LogManager
 import org.opensearch.ExceptionsHelper
 import org.opensearch.action.ActionListener
@@ -51,6 +44,13 @@ import org.opensearch.cluster.block.ClusterBlockException
 import org.opensearch.common.inject.Inject
 import org.opensearch.index.Index
 import org.opensearch.index.IndexNotFoundException
+import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
+import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.getUuidsForClosedIndices
+import org.opensearch.indexmanagement.indexstatemanagement.transport.action.ISMStatusResponse
+import org.opensearch.indexmanagement.indexstatemanagement.util.FailedIndex
+import org.opensearch.indexmanagement.indexstatemanagement.util.deleteManagedIndexMetadataRequest
+import org.opensearch.indexmanagement.indexstatemanagement.util.deleteManagedIndexRequest
+import org.opensearch.indexmanagement.util.IndexManagementException
 import org.opensearch.tasks.Task
 import org.opensearch.transport.TransportService
 
@@ -61,7 +61,7 @@ class TransportRemovePolicyAction @Inject constructor(
     transportService: TransportService,
     actionFilters: ActionFilters
 ) : HandledTransportAction<RemovePolicyRequest, ISMStatusResponse>(
-        RemovePolicyAction.NAME, transportService, actionFilters, ::RemovePolicyRequest
+    RemovePolicyAction.NAME, transportService, actionFilters, ::RemovePolicyRequest
 ) {
     override fun doExecute(task: Task, request: RemovePolicyRequest, listener: ActionListener<ISMStatusResponse>) {
         RemovePolicyHandler(client, listener, request).start()
@@ -89,19 +89,22 @@ class TransportRemovePolicyAction @Inject constructor(
 
             client.admin()
                 .cluster()
-                .state(clusterStateRequest, object : ActionListener<ClusterStateResponse> {
-                    override fun onResponse(response: ClusterStateResponse) {
-                        val indexMetadatas = response.state.metadata.indices
-                        indexMetadatas.forEach {
-                            indicesToRemove.putIfAbsent(it.value.indexUUID, it.key)
+                .state(
+                    clusterStateRequest,
+                    object : ActionListener<ClusterStateResponse> {
+                        override fun onResponse(response: ClusterStateResponse) {
+                            val indexMetadatas = response.state.metadata.indices
+                            indexMetadatas.forEach {
+                                indicesToRemove.putIfAbsent(it.value.indexUUID, it.key)
+                            }
+                            populateLists(response.state)
                         }
-                        populateLists(response.state)
-                    }
 
-                    override fun onFailure(t: Exception) {
-                        actionListener.onFailure(ExceptionsHelper.unwrapCause(t) as Exception)
+                        override fun onFailure(t: Exception) {
+                            actionListener.onFailure(ExceptionsHelper.unwrapCause(t) as Exception)
+                        }
                     }
-                })
+                )
         }
 
         private fun populateLists(state: ClusterState) {
@@ -117,34 +120,41 @@ class TransportRemovePolicyAction @Inject constructor(
             val multiGetReq = MultiGetRequest()
             indicesToRemove.forEach { multiGetReq.add(INDEX_MANAGEMENT_INDEX, it.key) }
 
-            client.multiGet(multiGetReq, object : ActionListener<MultiGetResponse> {
-                override fun onResponse(response: MultiGetResponse) {
-                    // config index may not be initialized
-                    val f = response.responses.first()
-                    if (f.isFailed && f.failure.failure is IndexNotFoundException) {
-                        indicesToRemove.forEach { (uuid, name) ->
-                            failedIndices.add(FailedIndex(name, uuid, "This index does not have a policy to remove"))
+            client.multiGet(
+                multiGetReq,
+                object : ActionListener<MultiGetResponse> {
+                    override fun onResponse(response: MultiGetResponse) {
+                        // config index may not be initialized
+                        val f = response.responses.first()
+                        if (f.isFailed && f.failure.failure is IndexNotFoundException) {
+                            indicesToRemove.forEach { (uuid, name) ->
+                                failedIndices.add(FailedIndex(name, uuid, "This index does not have a policy to remove"))
+                            }
+                            actionListener.onResponse(ISMStatusResponse(0, failedIndices))
+                            return
                         }
-                        actionListener.onResponse(ISMStatusResponse(0, failedIndices))
-                        return
+
+                        response.forEach {
+                            if (!it.response.isExists) {
+                                val docId = it.id // docId is managed index uuid
+                                failedIndices.add(
+                                    FailedIndex(
+                                        indicesToRemove[docId] as String, docId,
+                                        "This index does not have a policy to remove"
+                                    )
+                                )
+                                indicesToRemove.remove(docId)
+                            }
+                        }
+
+                        removeManagedIndices()
                     }
 
-                    response.forEach {
-                        if (!it.response.isExists) {
-                            val docId = it.id // docId is managed index uuid
-                            failedIndices.add(FailedIndex(indicesToRemove[docId] as String, docId,
-                                    "This index does not have a policy to remove"))
-                            indicesToRemove.remove(docId)
-                        }
+                    override fun onFailure(t: Exception) {
+                        actionListener.onFailure(ExceptionsHelper.unwrapCause(t) as Exception)
                     }
-
-                    removeManagedIndices()
                 }
-
-                override fun onFailure(t: Exception) {
-                    actionListener.onFailure(ExceptionsHelper.unwrapCause(t) as Exception)
-                }
-            })
+            )
         }
 
         @Suppress("SpreadOperator") // There is no way around dealing with java vararg without spread operator.
@@ -152,32 +162,40 @@ class TransportRemovePolicyAction @Inject constructor(
             if (indicesToRemove.isNotEmpty()) {
                 val bulkReq = BulkRequest()
                 indicesToRemove.forEach { bulkReq.add(deleteManagedIndexRequest(it.key)) }
-                client.bulk(bulkReq, object : ActionListener<BulkResponse> {
-                    override fun onResponse(response: BulkResponse) {
-                        response.forEach {
-                            val docId = it.id // docId is indexUuid of the managed index
-                            if (it.isFailed) {
-                                failedIndices.add(FailedIndex(indicesToRemove[docId] as String, docId, "Failed to remove policy"))
-                                indicesToRemove.remove(docId)
+                client.bulk(
+                    bulkReq,
+                    object : ActionListener<BulkResponse> {
+                        override fun onResponse(response: BulkResponse) {
+                            response.forEach {
+                                val docId = it.id // docId is indexUuid of the managed index
+                                if (it.isFailed) {
+                                    failedIndices.add(FailedIndex(indicesToRemove[docId] as String, docId, "Failed to remove policy"))
+                                    indicesToRemove.remove(docId)
+                                }
                             }
+
+                            // clean metadata for indicesToRemove
+                            val indicesToRemoveMetadata = indicesToRemove.map { Index(it.value, it.key) }
+                            removeMetadatas(indicesToRemoveMetadata)
                         }
 
-                        // clean metadata for indicesToRemove
-                        val indicesToRemoveMetadata = indicesToRemove.map { Index(it.value, it.key) }
-                        removeMetadatas(indicesToRemoveMetadata)
-                    }
-
-                    override fun onFailure(t: Exception) {
-                        if (t is ClusterBlockException) {
-                            indicesToRemove.forEach { (uuid, name) ->
-                                failedIndices.add(FailedIndex(name, uuid, "Failed to remove policy due to ClusterBlockingException: ${t.message}"))
+                        override fun onFailure(t: Exception) {
+                            if (t is ClusterBlockException) {
+                                indicesToRemove.forEach { (uuid, name) ->
+                                    failedIndices.add(
+                                        FailedIndex(
+                                            name, uuid,
+                                            "Failed to remove policy due to ClusterBlockingException: ${t.message}"
+                                        )
+                                    )
+                                }
+                                actionListener.onResponse(ISMStatusResponse(0, failedIndices))
+                            } else {
+                                actionListener.onFailure(ExceptionsHelper.unwrapCause(t) as Exception)
                             }
-                            actionListener.onResponse(ISMStatusResponse(0, failedIndices))
-                        } else {
-                            actionListener.onFailure(ExceptionsHelper.unwrapCause(t) as Exception)
                         }
                     }
-                })
+                )
             } else {
                 actionListener.onResponse(ISMStatusResponse(0, failedIndices))
             }
@@ -186,24 +204,34 @@ class TransportRemovePolicyAction @Inject constructor(
         fun removeMetadatas(indices: List<Index>) {
             val request = indices.map { deleteManagedIndexMetadataRequest(it.uuid) }
             val bulkReq = BulkRequest().add(request)
-            client.bulk(bulkReq, object : ActionListener<BulkResponse> {
-                override fun onResponse(response: BulkResponse) {
-                    response.forEach {
-                        val docId = it.id
-                        if (it.isFailed) {
-                            failedIndices.add(FailedIndex(indicesToRemove[docId] as String, docId,
-                                "Failed to clean metadata due to: ${it.failureMessage}"))
-                            indicesToRemove.remove(docId)
+            client.bulk(
+                bulkReq,
+                object : ActionListener<BulkResponse> {
+                    override fun onResponse(response: BulkResponse) {
+                        response.forEach {
+                            val docId = it.id
+                            if (it.isFailed) {
+                                failedIndices.add(
+                                    FailedIndex(
+                                        indicesToRemove[docId] as String, docId,
+                                        "Failed to clean metadata due to: ${it.failureMessage}"
+                                    )
+                                )
+                                indicesToRemove.remove(docId)
+                            }
                         }
+                        actionListener.onResponse(ISMStatusResponse(indicesToRemove.size, failedIndices))
                     }
-                    actionListener.onResponse(ISMStatusResponse(indicesToRemove.size, failedIndices))
-                }
 
-                override fun onFailure(e: Exception) {
-                    actionListener.onFailure(IndexManagementException.wrap(
-                        Exception("Failed to clean metadata for remove policy indices.", e)))
+                    override fun onFailure(e: Exception) {
+                        actionListener.onFailure(
+                            IndexManagementException.wrap(
+                                Exception("Failed to clean metadata for remove policy indices.", e)
+                            )
+                        )
+                    }
                 }
-            })
+            )
         }
     }
 }

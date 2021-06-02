@@ -26,6 +26,7 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.action
 
+import org.hamcrest.collection.IsMapContaining
 import org.opensearch.indexmanagement.indexstatemanagement.IndexStateManagementRestTestCase
 import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.indexstatemanagement.model.action.ActionConfig
@@ -33,7 +34,6 @@ import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmet
 import org.opensearch.indexmanagement.indexstatemanagement.step.open.AttemptOpenStep
 import org.opensearch.indexmanagement.indexstatemanagement.step.rollover.AttemptRolloverStep
 import org.opensearch.indexmanagement.waitFor
-import org.hamcrest.collection.IsMapContaining
 import java.time.Instant
 import java.util.Locale
 
@@ -74,9 +74,18 @@ class ActionTimeoutIT : IndexStateManagementRestTestCase() {
         updateManagedIndexConfigStartTime(managedIndexConfig)
         waitFor {
             assertPredicatesOnMetaData(
-                listOf(indexName to listOf(ActionMetaData.ACTION to fun(actionMetaDataMap: Any?): Boolean =
-                    assertActionEquals(ActionMetaData(name = ActionConfig.ActionType.ROLLOVER.type, startTime = Instant.now().toEpochMilli(), index = 0,
-                        failed = true, consumedRetries = 0, lastRetryTime = null, actionProperties = null), actionMetaDataMap))),
+                listOf(
+                    indexName to listOf(
+                        ActionMetaData.ACTION to fun(actionMetaDataMap: Any?): Boolean =
+                            assertActionEquals(
+                                ActionMetaData(
+                                    name = ActionConfig.ActionType.ROLLOVER.type, startTime = Instant.now().toEpochMilli(), index = 0,
+                                    failed = true, consumedRetries = 0, lastRetryTime = null, actionProperties = null
+                                ),
+                                actionMetaDataMap
+                            )
+                    )
+                ),
                 getExplainMap(indexName),
                 strict = false
             )

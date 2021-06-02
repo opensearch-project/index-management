@@ -11,20 +11,6 @@
 
 package org.opensearch.indexmanagement.transform
 
-import org.opensearch.indexmanagement.opensearchapi.suspendUntil
-import org.opensearch.indexmanagement.transform.action.index.IndexTransformAction
-import org.opensearch.indexmanagement.transform.action.index.IndexTransformRequest
-import org.opensearch.indexmanagement.transform.action.index.IndexTransformResponse
-import org.opensearch.indexmanagement.transform.model.Transform
-import org.opensearch.indexmanagement.transform.model.TransformMetadata
-import org.opensearch.indexmanagement.transform.settings.TransformSettings
-import org.opensearch.indexmanagement.util.acquireLockForScheduledJob
-import org.opensearch.indexmanagement.util.releaseLockForScheduledJob
-import org.opensearch.indexmanagement.util.renewLockForScheduledJob
-import org.opensearch.jobscheduler.spi.JobExecutionContext
-import org.opensearch.jobscheduler.spi.ScheduledJobParameter
-import org.opensearch.jobscheduler.spi.ScheduledJobRunner
-import java.time.Instant
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -39,10 +25,25 @@ import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.settings.Settings
 import org.opensearch.common.unit.TimeValue
 import org.opensearch.common.xcontent.NamedXContentRegistry
+import org.opensearch.indexmanagement.opensearchapi.suspendUntil
+import org.opensearch.indexmanagement.transform.action.index.IndexTransformAction
+import org.opensearch.indexmanagement.transform.action.index.IndexTransformRequest
+import org.opensearch.indexmanagement.transform.action.index.IndexTransformResponse
+import org.opensearch.indexmanagement.transform.model.Transform
+import org.opensearch.indexmanagement.transform.model.TransformMetadata
+import org.opensearch.indexmanagement.transform.settings.TransformSettings
+import org.opensearch.indexmanagement.util.acquireLockForScheduledJob
+import org.opensearch.indexmanagement.util.releaseLockForScheduledJob
+import org.opensearch.indexmanagement.util.renewLockForScheduledJob
+import org.opensearch.jobscheduler.spi.JobExecutionContext
+import org.opensearch.jobscheduler.spi.ScheduledJobParameter
+import org.opensearch.jobscheduler.spi.ScheduledJobRunner
 import org.opensearch.monitor.jvm.JvmService
+import java.time.Instant
 
 @Suppress("LongParameterList")
-object TransformRunner : ScheduledJobRunner,
+object TransformRunner :
+    ScheduledJobRunner,
     CoroutineScope by CoroutineScope(SupervisorJob() + Dispatchers.Default + CoroutineName("TransformRunner")) {
 
     private val logger = LogManager.getLogger(javaClass)

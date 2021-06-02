@@ -11,8 +11,6 @@
 
 package org.opensearch.indexmanagement.transform.action.get
 
-import org.opensearch.indexmanagement.transform.model.Transform
-import org.opensearch.indexmanagement.util.getJobs
 import org.opensearch.action.ActionListener
 import org.opensearch.action.ActionResponse
 import org.opensearch.action.support.ActionFilters
@@ -28,6 +26,8 @@ import org.opensearch.common.xcontent.XContentType
 import org.opensearch.index.query.BoolQueryBuilder
 import org.opensearch.index.query.ExistsQueryBuilder
 import org.opensearch.index.query.WildcardQueryBuilder
+import org.opensearch.indexmanagement.transform.model.Transform
+import org.opensearch.indexmanagement.util.getJobs
 import org.opensearch.search.builder.SearchSourceBuilder
 import org.opensearch.search.sort.SortOrder
 import org.opensearch.tasks.Task
@@ -66,7 +66,9 @@ class TransportGetTransformsAction @Inject constructor(
     }
 
     private fun contentParser(bytesReference: BytesReference): XContentParser {
-        return XContentHelper.createParser(xContentRegistry,
-            LoggingDeprecationHandler.INSTANCE, bytesReference, XContentType.JSON)
+        return XContentHelper.createParser(
+            xContentRegistry,
+            LoggingDeprecationHandler.INSTANCE, bytesReference, XContentType.JSON
+        )
     }
 }

@@ -26,13 +26,13 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.transport.action.indexpolicy
 
-import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
 import org.opensearch.action.ActionRequest
 import org.opensearch.action.ActionRequestValidationException
 import org.opensearch.action.ValidateActions
 import org.opensearch.action.support.WriteRequest
 import org.opensearch.common.io.stream.StreamInput
 import org.opensearch.common.io.stream.StreamOutput
+import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
 import java.io.IOException
 
 class IndexPolicyRequest : ActionRequest {

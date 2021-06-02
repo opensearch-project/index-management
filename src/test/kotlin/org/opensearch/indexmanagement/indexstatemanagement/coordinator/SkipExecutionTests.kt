@@ -26,14 +26,14 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.coordinator
 
-import org.opensearch.indexmanagement.indexstatemanagement.SkipExecution
+import org.junit.Before
+import org.mockito.Mockito
 import org.opensearch.action.admin.cluster.node.info.NodesInfoAction
 import org.opensearch.client.Client
 import org.opensearch.cluster.ClusterChangedEvent
 import org.opensearch.cluster.OpenSearchAllocationTestCase
 import org.opensearch.cluster.service.ClusterService
-import org.junit.Before
-import org.mockito.Mockito
+import org.opensearch.indexmanagement.indexstatemanagement.SkipExecution
 
 class SkipExecutionTests : OpenSearchAllocationTestCase() {
 

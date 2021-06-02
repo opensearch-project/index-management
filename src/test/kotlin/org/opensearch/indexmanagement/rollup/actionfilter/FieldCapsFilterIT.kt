@@ -26,11 +26,11 @@
 
 package org.opensearch.indexmanagement.rollup.actionfilter
 
+import org.opensearch.client.ResponseException
+import org.opensearch.common.settings.Settings
 import org.opensearch.indexmanagement.makeRequest
 import org.opensearch.indexmanagement.rollup.RollupRestTestCase
 import org.opensearch.indexmanagement.rollup.settings.RollupSettings
-import org.opensearch.client.ResponseException
-import org.opensearch.common.settings.Settings
 import org.opensearch.rest.RestStatus
 
 // TODO: Add assertions on fields

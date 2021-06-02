@@ -26,11 +26,11 @@
 
 package org.opensearch.indexmanagement.refreshanalyzer
 
+import org.junit.Assert
 import org.opensearch.common.io.stream.BytesStreamOutput
 import org.opensearch.index.Index
 import org.opensearch.index.shard.ShardId
 import org.opensearch.test.OpenSearchTestCase
-import org.junit.Assert
 
 class RefreshSearchAnalyzerShardResponseTests : OpenSearchTestCase() {
 

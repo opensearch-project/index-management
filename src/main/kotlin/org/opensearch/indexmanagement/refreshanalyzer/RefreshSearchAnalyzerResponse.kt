@@ -55,7 +55,7 @@ class RefreshSearchAnalyzerResponse : BroadcastResponse {
         shardFailures: List<DefaultShardOperationFailedException>,
         shardResponses: List<RefreshSearchAnalyzerShardResponse>
     ) : super(
-            totalShards, successfulShards, failedShards, shardFailures
+        totalShards, successfulShards, failedShards, shardFailures
     ) {
         this.shardResponses = shardResponses.toMutableList()
         this.shardFailures = shardFailures.toMutableList()
@@ -95,12 +95,16 @@ class RefreshSearchAnalyzerResponse : BroadcastResponse {
     }
 
     companion object {
-        private val PARSER = ConstructingObjectParser<RefreshSearchAnalyzerResponse, Void>("_refresh_search_analyzers", true,
-                Function { arg: Array<Any> ->
-                    val response = arg[0] as RefreshSearchAnalyzerResponse
-                    RefreshSearchAnalyzerResponse(response.totalShards, response.successfulShards, response.failedShards,
-                            response.shardFailures, response.shardResponses)
-                })
+        private val PARSER = ConstructingObjectParser<RefreshSearchAnalyzerResponse, Void>(
+            "_refresh_search_analyzers", true,
+            Function { arg: Array<Any> ->
+                val response = arg[0] as RefreshSearchAnalyzerResponse
+                RefreshSearchAnalyzerResponse(
+                    response.totalShards, response.successfulShards, response.failedShards,
+                    response.shardFailures, response.shardResponses
+                )
+            }
+        )
         init {
             declareBroadcastFields(PARSER)
         }

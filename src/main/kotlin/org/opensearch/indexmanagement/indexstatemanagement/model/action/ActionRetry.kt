@@ -26,7 +26,6 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.model.action
 
-import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.ActionMetaData
 import org.apache.logging.log4j.LogManager
 import org.opensearch.common.io.stream.StreamInput
 import org.opensearch.common.io.stream.StreamOutput
@@ -38,6 +37,7 @@ import org.opensearch.common.xcontent.XContentBuilder
 import org.opensearch.common.xcontent.XContentParser
 import org.opensearch.common.xcontent.XContentParser.Token
 import org.opensearch.common.xcontent.XContentParserUtils.ensureExpectedToken
+import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.ActionMetaData
 import java.io.IOException
 import java.time.Instant
 import java.util.Locale
@@ -54,9 +54,9 @@ data class ActionRetry(
     override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
         builder
             .startObject(RETRY_FIELD)
-                .field(COUNT_FIELD, count)
-                .field(BACKOFF_FIELD, backoff)
-                .field(DELAY_FIELD, delay.stringRep)
+            .field(COUNT_FIELD, count)
+            .field(BACKOFF_FIELD, backoff)
+            .field(DELAY_FIELD, delay.stringRep)
             .endObject()
         return builder
     }
@@ -109,15 +109,24 @@ data class ActionRetry(
     }
 
     enum class Backoff(val type: String, val getNextRetryTime: (consumedRetries: Int, timeValue: TimeValue) -> Long) {
-        EXPONENTIAL("exponential", { consumedRetries, timeValue ->
-            (2.0.pow(consumedRetries - 1)).toLong() * timeValue.millis
-        }),
-        CONSTANT("constant", { _, timeValue ->
-            timeValue.millis
-        }),
-        LINEAR("linear", { consumedRetries, timeValue ->
-            consumedRetries * timeValue.millis
-        });
+        EXPONENTIAL(
+            "exponential",
+            { consumedRetries, timeValue ->
+                (2.0.pow(consumedRetries - 1)).toLong() * timeValue.millis
+            }
+        ),
+        CONSTANT(
+            "constant",
+            { _, timeValue ->
+                timeValue.millis
+            }
+        ),
+        LINEAR(
+            "linear",
+            { consumedRetries, timeValue ->
+                consumedRetries * timeValue.millis
+            }
+        );
 
         private val logger = LogManager.getLogger(javaClass)
 

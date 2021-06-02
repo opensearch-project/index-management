@@ -11,10 +11,6 @@
 
 package org.opensearch.indexmanagement.transform
 
-import org.opensearch.indexmanagement.opensearchapi.retry
-import org.opensearch.indexmanagement.opensearchapi.suspendUntil
-import org.opensearch.indexmanagement.transform.exceptions.TransformIndexException
-import org.opensearch.indexmanagement.transform.settings.TransformSettings
 import org.apache.logging.log4j.LogManager
 import org.opensearch.ExceptionsHelper
 import org.opensearch.action.DocWriteRequest
@@ -25,6 +21,10 @@ import org.opensearch.action.index.IndexRequest
 import org.opensearch.client.Client
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.settings.Settings
+import org.opensearch.indexmanagement.opensearchapi.retry
+import org.opensearch.indexmanagement.opensearchapi.suspendUntil
+import org.opensearch.indexmanagement.transform.exceptions.TransformIndexException
+import org.opensearch.indexmanagement.transform.settings.TransformSettings
 import org.opensearch.rest.RestStatus
 import org.opensearch.transport.RemoteTransportException
 
@@ -47,7 +47,8 @@ class TransformIndexer(
             TransformSettings.TRANSFORM_JOB_INDEX_BACKOFF_MILLIS,
             TransformSettings.TRANSFORM_JOB_INDEX_BACKOFF_COUNT
         ) {
-            millis, count -> backoffPolicy = BackoffPolicy.constantBackoff(millis, count)
+            millis, count ->
+            backoffPolicy = BackoffPolicy.constantBackoff(millis, count)
         }
     }
 

@@ -26,7 +26,6 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement
 
-import org.opensearch.indexmanagement.util.OpenForTesting
 import org.apache.logging.log4j.LogManager
 import org.opensearch.action.ActionListener
 import org.opensearch.action.admin.cluster.node.info.NodesInfoAction
@@ -37,6 +36,7 @@ import org.opensearch.client.Client
 import org.opensearch.cluster.ClusterChangedEvent
 import org.opensearch.cluster.ClusterStateListener
 import org.opensearch.cluster.service.ClusterService
+import org.opensearch.indexmanagement.util.OpenForTesting
 
 // TODO this can be moved to job scheduler, so that all extended plugin
 //  can avoid running jobs in an upgrading cluster
@@ -63,28 +63,34 @@ class SkipExecution(
     fun sweepISMPluginVersion() {
         // if old version ISM plugin exists (2 versions ISM in one cluster), set skip flag to true
         val request = NodesInfoRequest().clear().addMetric("plugins")
-        client.execute(NodesInfoAction.INSTANCE, request, object : ActionListener<NodesInfoResponse> {
-            override fun onResponse(response: NodesInfoResponse) {
-                val versionSet = mutableSetOf<String>()
+        client.execute(
+            NodesInfoAction.INSTANCE, request,
+            object : ActionListener<NodesInfoResponse> {
+                override fun onResponse(response: NodesInfoResponse) {
+                    val versionSet = mutableSetOf<String>()
 
-                response.nodes.map { it.getInfo(PluginsAndModules::class.java).pluginInfos }
-                    .forEach { it.forEach { nodePlugin ->
-                        if (nodePlugin.name == "opensearch-index-management" ||
-                            nodePlugin.name == "opensearch_index_management") {
-                            versionSet.add(nodePlugin.version)
+                    response.nodes.map { it.getInfo(PluginsAndModules::class.java).pluginInfos }
+                        .forEach {
+                            it.forEach { nodePlugin ->
+                                if (nodePlugin.name == "opensearch-index-management" ||
+                                    nodePlugin.name == "opensearch_index_management"
+                                ) {
+                                    versionSet.add(nodePlugin.version)
+                                }
+                            }
                         }
-                    } }
 
-                if (versionSet.size > 1) {
-                    flag = true
-                    logger.info("There are multiple versions of Index Management plugins in the cluster: $versionSet")
-                } else flag = false
-            }
+                    if (versionSet.size > 1) {
+                        flag = true
+                        logger.info("There are multiple versions of Index Management plugins in the cluster: $versionSet")
+                    } else flag = false
+                }
 
-            override fun onFailure(e: Exception) {
-                logger.error("Failed sweeping nodes for ISM plugin versions: $e")
-                flag = false
+                override fun onFailure(e: Exception) {
+                    logger.error("Failed sweeping nodes for ISM plugin versions: $e")
+                    flag = false
+                }
             }
-        })
+        )
     }
 }

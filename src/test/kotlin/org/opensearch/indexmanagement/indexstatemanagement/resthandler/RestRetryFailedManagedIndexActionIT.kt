@@ -26,8 +26,8 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.resthandler
 
+import org.opensearch.client.ResponseException
 import org.opensearch.indexmanagement.indexstatemanagement.IndexStateManagementRestTestCase
-import org.opensearch.indexmanagement.makeRequest
 import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.ActionMetaData
 import org.opensearch.indexmanagement.indexstatemanagement.randomForceMergeActionConfig
@@ -36,8 +36,8 @@ import org.opensearch.indexmanagement.indexstatemanagement.randomState
 import org.opensearch.indexmanagement.indexstatemanagement.util.FAILED_INDICES
 import org.opensearch.indexmanagement.indexstatemanagement.util.FAILURES
 import org.opensearch.indexmanagement.indexstatemanagement.util.UPDATED_INDICES
+import org.opensearch.indexmanagement.makeRequest
 import org.opensearch.indexmanagement.waitFor
-import org.opensearch.client.ResponseException
 import org.opensearch.rest.RestRequest
 import org.opensearch.rest.RestStatus
 import java.time.Instant
@@ -269,10 +269,17 @@ class RestRetryFailedManagedIndexActionIT : IndexStateManagementRestTestCase() {
                 listOf(
                     indexName to listOf(
                         ActionMetaData.ACTION to fun(actionMetaDataMap: Any?): Boolean =
-                            assertActionEquals(ActionMetaData(name = "force_merge", startTime = Instant.now().toEpochMilli(), failed = false,
-                                index = 0, consumedRetries = 0, lastRetryTime = null, actionProperties = null), actionMetaDataMap)
+                            assertActionEquals(
+                                ActionMetaData(
+                                    name = "force_merge", startTime = Instant.now().toEpochMilli(), failed = false,
+                                    index = 0, consumedRetries = 0, lastRetryTime = null, actionProperties = null
+                                ),
+                                actionMetaDataMap
+                            )
                     )
-                ), getExplainMap(indexName), false)
+                ),
+                getExplainMap(indexName), false
+            )
         }
 
         // close the index to cause next execution to fail
@@ -291,11 +298,18 @@ class RestRetryFailedManagedIndexActionIT : IndexStateManagementRestTestCase() {
                             @Suppress("UNCHECKED_CAST")
                             actionMetaDataMap as Map<String, Any>
                             firstStartTime = actionMetaDataMap[ManagedIndexMetaData.START_TIME] as Long
-                            return assertActionEquals(ActionMetaData(name = "force_merge", startTime = Instant.now().toEpochMilli(), failed = true,
-                                index = 0, consumedRetries = 0, lastRetryTime = null, actionProperties = null), actionMetaDataMap)
+                            return assertActionEquals(
+                                ActionMetaData(
+                                    name = "force_merge", startTime = Instant.now().toEpochMilli(), failed = true,
+                                    index = 0, consumedRetries = 0, lastRetryTime = null, actionProperties = null
+                                ),
+                                actionMetaDataMap
+                            )
                         }
                     )
-                ), getExplainMap(indexName), false)
+                ),
+                getExplainMap(indexName), false
+            )
         }
 
         // retry
@@ -321,7 +335,9 @@ class RestRetryFailedManagedIndexActionIT : IndexStateManagementRestTestCase() {
                         return actionMetaDataMap[ManagedIndexMetaData.START_TIME] as Long? == null
                     }
                 )
-            ), getExplainMap(indexName), false)
+            ),
+            getExplainMap(indexName), false
+        )
 
         // should execute and set the startTime again
         updateManagedIndexConfigStartTime(managedIndexConfig)
@@ -337,7 +353,9 @@ class RestRetryFailedManagedIndexActionIT : IndexStateManagementRestTestCase() {
                             return actionMetaDataMap[ManagedIndexMetaData.START_TIME] as Long > firstStartTime
                         }
                     )
-                ), getExplainMap(indexName), false)
+                ),
+                getExplainMap(indexName), false
+            )
         }
     }
 }

@@ -26,6 +26,8 @@
 
 package org.opensearch.indexmanagement.rollup.model
 
+import org.opensearch.common.io.stream.BytesStreamOutput
+import org.opensearch.common.io.stream.StreamInput
 import org.opensearch.indexmanagement.common.model.dimension.DateHistogram
 import org.opensearch.indexmanagement.common.model.dimension.Histogram
 import org.opensearch.indexmanagement.common.model.dimension.Terms
@@ -49,8 +51,6 @@ import org.opensearch.indexmanagement.rollup.randomRollupStats
 import org.opensearch.indexmanagement.rollup.randomSum
 import org.opensearch.indexmanagement.rollup.randomTerms
 import org.opensearch.indexmanagement.rollup.randomValueCount
-import org.opensearch.common.io.stream.BytesStreamOutput
-import org.opensearch.common.io.stream.StreamInput
 import org.opensearch.test.OpenSearchTestCase
 
 class WriteableTests : OpenSearchTestCase() {

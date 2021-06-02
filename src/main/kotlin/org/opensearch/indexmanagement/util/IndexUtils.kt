@@ -26,10 +26,6 @@
 
 package org.opensearch.indexmanagement.util
 
-import java.nio.ByteBuffer
-import java.util.Base64
-import org.opensearch.indexmanagement.IndexManagementIndices
-import org.opensearch.indexmanagement.IndexManagementPlugin
 import org.apache.logging.log4j.LogManager
 import org.opensearch.action.ActionListener
 import org.opensearch.action.admin.indices.mapping.put.PutMappingRequest
@@ -43,6 +39,10 @@ import org.opensearch.common.xcontent.LoggingDeprecationHandler
 import org.opensearch.common.xcontent.NamedXContentRegistry
 import org.opensearch.common.xcontent.XContentParser.Token
 import org.opensearch.common.xcontent.XContentType
+import org.opensearch.indexmanagement.IndexManagementIndices
+import org.opensearch.indexmanagement.IndexManagementPlugin
+import java.nio.ByteBuffer
+import java.util.Base64
 
 class IndexUtils {
     companion object {
@@ -69,8 +69,10 @@ class IndexUtils {
 
         @Suppress("NestedBlockDepth")
         fun getSchemaVersion(mapping: String): Long {
-            val xcp = XContentType.JSON.xContent().createParser(NamedXContentRegistry.EMPTY,
-                LoggingDeprecationHandler.INSTANCE, mapping)
+            val xcp = XContentType.JSON.xContent().createParser(
+                NamedXContentRegistry.EMPTY,
+                LoggingDeprecationHandler.INSTANCE, mapping
+            )
 
             while (!xcp.isClosed) {
                 val token = xcp.currentToken()

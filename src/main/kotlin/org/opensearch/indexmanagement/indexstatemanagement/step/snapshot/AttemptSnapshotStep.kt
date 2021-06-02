@@ -26,20 +26,20 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.step.snapshot
 
-import org.opensearch.indexmanagement.opensearchapi.suspendUntil
+import org.apache.logging.log4j.LogManager
+import org.opensearch.ExceptionsHelper
+import org.opensearch.action.admin.cluster.snapshots.create.CreateSnapshotRequest
+import org.opensearch.action.admin.cluster.snapshots.create.CreateSnapshotResponse
+import org.opensearch.client.Client
+import org.opensearch.cluster.service.ClusterService
+import org.opensearch.common.regex.Regex
 import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.indexstatemanagement.model.action.SnapshotActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.ActionProperties
 import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.StepMetaData
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.SNAPSHOT_DENY_LIST
 import org.opensearch.indexmanagement.indexstatemanagement.step.Step
-import org.apache.logging.log4j.LogManager
-import org.opensearch.common.regex.Regex
-import org.opensearch.ExceptionsHelper
-import org.opensearch.action.admin.cluster.snapshots.create.CreateSnapshotRequest
-import org.opensearch.action.admin.cluster.snapshots.create.CreateSnapshotResponse
-import org.opensearch.client.Client
-import org.opensearch.cluster.service.ClusterService
+import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.rest.RestStatus
 import org.opensearch.snapshots.ConcurrentSnapshotExecutionException
 import org.opensearch.transport.RemoteTransportException
@@ -78,9 +78,11 @@ class AttemptSnapshotStep(
             snapshotName = config
                 .snapshot
                 .plus("-")
-                .plus(LocalDateTime
-                    .now(ZoneId.of("UTC"))
-                    .format(DateTimeFormatter.ofPattern("uuuu.MM.dd-HH:mm:ss.SSS", Locale.ROOT)))
+                .plus(
+                    LocalDateTime
+                        .now(ZoneId.of("UTC"))
+                        .format(DateTimeFormatter.ofPattern("uuuu.MM.dd-HH:mm:ss.SSS", Locale.ROOT))
+                )
 
             val createSnapshotRequest = CreateSnapshotRequest()
                 .userMetadata(mapOf("snapshot_created" to "Open Distro for Elasticsearch Index Management"))

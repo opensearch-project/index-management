@@ -26,15 +26,15 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.resthandler
 
-import org.opensearch.indexmanagement.indexstatemanagement.IndexStateManagementRestTestCase
-import org.opensearch.indexmanagement.makeRequest
-import org.opensearch.indexmanagement.indexstatemanagement.util.FAILED_INDICES
-import org.opensearch.indexmanagement.indexstatemanagement.util.FAILURES
-import org.opensearch.indexmanagement.indexstatemanagement.util.UPDATED_INDICES
-import org.opensearch.indexmanagement.waitFor
 import org.apache.http.entity.ContentType.APPLICATION_JSON
 import org.apache.http.entity.StringEntity
 import org.opensearch.client.ResponseException
+import org.opensearch.indexmanagement.indexstatemanagement.IndexStateManagementRestTestCase
+import org.opensearch.indexmanagement.indexstatemanagement.util.FAILED_INDICES
+import org.opensearch.indexmanagement.indexstatemanagement.util.FAILURES
+import org.opensearch.indexmanagement.indexstatemanagement.util.UPDATED_INDICES
+import org.opensearch.indexmanagement.makeRequest
+import org.opensearch.indexmanagement.waitFor
 import org.opensearch.rest.RestRequest.Method.POST
 import org.opensearch.rest.RestStatus
 

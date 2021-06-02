@@ -26,13 +26,13 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.resthandler
 
+import org.opensearch.client.ResponseException
 import org.opensearch.indexmanagement.indexstatemanagement.IndexStateManagementRestTestCase
-import org.opensearch.indexmanagement.makeRequest
 import org.opensearch.indexmanagement.indexstatemanagement.util.FAILED_INDICES
 import org.opensearch.indexmanagement.indexstatemanagement.util.FAILURES
 import org.opensearch.indexmanagement.indexstatemanagement.util.UPDATED_INDICES
+import org.opensearch.indexmanagement.makeRequest
 import org.opensearch.indexmanagement.waitFor
-import org.opensearch.client.ResponseException
 import org.opensearch.rest.RestRequest.Method.POST
 import org.opensearch.rest.RestStatus
 
@@ -48,7 +48,7 @@ class RestRemovePolicyActionIT : IndexStateManagementRestTestCase() {
             val expectedErrorMessage = mapOf(
                 "error" to mapOf(
                     "root_cause" to listOf<Map<String, Any>>(
-                            mapOf("type" to "illegal_argument_exception", "reason" to "Missing indices")
+                        mapOf("type" to "illegal_argument_exception", "reason" to "Missing indices")
                     ),
                     "type" to "illegal_argument_exception",
                     "reason" to "Missing indices"

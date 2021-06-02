@@ -26,17 +26,17 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.step.rollup
 
-import org.opensearch.indexmanagement.opensearchapi.suspendUntil
+import org.apache.logging.log4j.LogManager
+import org.opensearch.client.Client
+import org.opensearch.cluster.service.ClusterService
 import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.StepMetaData
 import org.opensearch.indexmanagement.indexstatemanagement.step.Step
+import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.rollup.action.explain.ExplainRollupAction
 import org.opensearch.indexmanagement.rollup.action.explain.ExplainRollupRequest
 import org.opensearch.indexmanagement.rollup.action.explain.ExplainRollupResponse
 import org.opensearch.indexmanagement.rollup.model.RollupMetadata
-import org.apache.logging.log4j.LogManager
-import org.opensearch.client.Client
-import org.opensearch.cluster.service.ClusterService
 import org.opensearch.transport.RemoteTransportException
 import java.lang.Exception
 
@@ -88,8 +88,11 @@ class WaitForRollupCompletionStep(
         val currentActionMetaData = currentMetaData.actionMetaData
         val currentActionProperties = currentActionMetaData?.actionProperties
         return currentMetaData.copy(
-            actionMetaData = currentActionMetaData?.copy(actionProperties = currentActionProperties?.copy(
-                hasRollupFailed = hasRollupFailed)),
+            actionMetaData = currentActionMetaData?.copy(
+                actionProperties = currentActionProperties?.copy(
+                    hasRollupFailed = hasRollupFailed
+                )
+            ),
             stepMetaData = StepMetaData(name, getStepStartTime().toEpochMilli(), stepStatus),
             transitionTo = null,
             info = info

@@ -14,6 +14,8 @@ package org.opensearch.indexmanagement.indexstatemanagement.action
 import org.apache.http.entity.ContentType
 import org.apache.http.entity.StringEntity
 import org.opensearch.cluster.metadata.DataStream
+import org.opensearch.indexmanagement.common.model.dimension.DateHistogram
+import org.opensearch.indexmanagement.common.model.dimension.Terms
 import org.opensearch.indexmanagement.indexstatemanagement.IndexStateManagementRestTestCase
 import org.opensearch.indexmanagement.indexstatemanagement.model.ISMTemplate
 import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
@@ -26,8 +28,6 @@ import org.opensearch.indexmanagement.makeRequest
 import org.opensearch.indexmanagement.rollup.model.ISMRollup
 import org.opensearch.indexmanagement.rollup.model.RollupMetadata
 import org.opensearch.indexmanagement.rollup.model.RollupMetrics
-import org.opensearch.indexmanagement.common.model.dimension.DateHistogram
-import org.opensearch.indexmanagement.common.model.dimension.Terms
 import org.opensearch.indexmanagement.rollup.model.metric.Average
 import org.opensearch.indexmanagement.rollup.model.metric.Max
 import org.opensearch.indexmanagement.rollup.model.metric.Min
@@ -56,8 +56,13 @@ class RollupActionIT : IndexStateManagementRestTestCase() {
                 Terms("PULocationID", "PULocationID")
             ),
             metrics = listOf(
-                RollupMetrics(sourceField = "passenger_count", targetField = "passenger_count", metrics = listOf(Sum(), Min(), Max(),
-                    ValueCount(), Average())),
+                RollupMetrics(
+                    sourceField = "passenger_count", targetField = "passenger_count",
+                    metrics = listOf(
+                        Sum(), Min(), Max(),
+                        ValueCount(), Average()
+                    )
+                ),
                 RollupMetrics(sourceField = "total_amount", targetField = "total_amount", metrics = listOf(Max(), Min()))
             )
         )
@@ -126,17 +131,20 @@ class RollupActionIT : IndexStateManagementRestTestCase() {
         createPolicy(policy, policyID)
 
         val sourceIndexMappingString = "\"properties\": {\"tpep_pickup_datetime\": { \"type\": \"date\" }, \"RatecodeID\": { \"type\": " +
-                "\"keyword\" }, \"PULocationID\": { \"type\": \"keyword\" }, \"passenger_count\": { \"type\": \"integer\" }, \"total_amount\": " +
-                "{ \"type\": \"double\" }}"
+            "\"keyword\" }, \"PULocationID\": { \"type\": \"keyword\" }, \"passenger_count\": { \"type\": \"integer\" }, \"total_amount\": " +
+            "{ \"type\": \"double\" }}"
 
         // Create an index template for a data stream with the given source index mapping.
         client().makeRequest(
             "PUT",
             "/_index_template/rollup-data-stream-template",
-            StringEntity("{ " +
+            StringEntity(
+                "{ " +
                     "\"index_patterns\": [ \"$dataStreamName\" ], " +
                     "\"data_stream\": { \"timestamp_field\": { \"name\": \"tpep_pickup_datetime\" } }, " +
-                    "\"template\": { \"mappings\": { $sourceIndexMappingString } } }", ContentType.APPLICATION_JSON)
+                    "\"template\": { \"mappings\": { $sourceIndexMappingString } } }",
+                ContentType.APPLICATION_JSON
+            )
         )
         client().makeRequest("PUT", "/_data_stream/$dataStreamName")
 
@@ -158,8 +166,13 @@ class RollupActionIT : IndexStateManagementRestTestCase() {
                 Terms("PULocationID", "PULocationID")
             ),
             metrics = listOf(
-                RollupMetrics(sourceField = "passenger_count", targetField = "passenger_count", metrics = listOf(Sum(), Min(), Max(),
-                    ValueCount(), Average()))
+                RollupMetrics(
+                    sourceField = "passenger_count", targetField = "passenger_count",
+                    metrics = listOf(
+                        Sum(), Min(), Max(),
+                        ValueCount(), Average()
+                    )
+                )
             )
         )
         val rollupId = rollup.toRollup(indexName).id
@@ -222,8 +235,13 @@ class RollupActionIT : IndexStateManagementRestTestCase() {
                 Terms("PULocationID", "PULocationID")
             ),
             metrics = listOf(
-                RollupMetrics(sourceField = "passenger_count", targetField = "passenger_count", metrics = listOf(Sum(), Min(), Max(),
-                    ValueCount(), Average()))
+                RollupMetrics(
+                    sourceField = "passenger_count", targetField = "passenger_count",
+                    metrics = listOf(
+                        Sum(), Min(), Max(),
+                        ValueCount(), Average()
+                    )
+                )
             )
         )
         val rollupId = rollup.toRollup(indexName).id

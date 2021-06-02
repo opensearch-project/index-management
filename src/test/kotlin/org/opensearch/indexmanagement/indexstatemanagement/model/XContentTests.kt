@@ -26,32 +26,32 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.model
 
-import org.opensearch.indexmanagement.opensearchapi.parseWithType
+import org.opensearch.common.xcontent.LoggingDeprecationHandler
+import org.opensearch.common.xcontent.XContentParser
+import org.opensearch.common.xcontent.XContentType
 import org.opensearch.indexmanagement.indexstatemanagement.model.action.ActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.model.action.RollupActionConfig
+import org.opensearch.indexmanagement.indexstatemanagement.model.destination.DestinationType
 import org.opensearch.indexmanagement.indexstatemanagement.nonNullRandomConditions
 import org.opensearch.indexmanagement.indexstatemanagement.randomAllocationActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomChangePolicy
 import org.opensearch.indexmanagement.indexstatemanagement.randomDeleteActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomDestination
 import org.opensearch.indexmanagement.indexstatemanagement.randomForceMergeActionConfig
+import org.opensearch.indexmanagement.indexstatemanagement.randomIndexPriorityActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomManagedIndexConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomNotificationActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomPolicy
 import org.opensearch.indexmanagement.indexstatemanagement.randomReadOnlyActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomReadWriteActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomReplicaCountActionConfig
-import org.opensearch.indexmanagement.indexstatemanagement.randomIndexPriorityActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomRolloverActionConfig
+import org.opensearch.indexmanagement.indexstatemanagement.randomRollupActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomSnapshotActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomState
 import org.opensearch.indexmanagement.indexstatemanagement.randomTransition
 import org.opensearch.indexmanagement.indexstatemanagement.toJsonString
-import org.opensearch.indexmanagement.indexstatemanagement.model.destination.DestinationType
-import org.opensearch.indexmanagement.indexstatemanagement.randomRollupActionConfig
-import org.opensearch.common.xcontent.LoggingDeprecationHandler
-import org.opensearch.common.xcontent.XContentParser
-import org.opensearch.common.xcontent.XContentType
+import org.opensearch.indexmanagement.opensearchapi.parseWithType
 import org.opensearch.test.OpenSearchTestCase
 
 class XContentTests : OpenSearchTestCase() {
@@ -159,18 +159,24 @@ class XContentTests : OpenSearchTestCase() {
 
         val chimeNotificationActionConfigString = chimeNotificationActionConfig.toJsonString()
         val chimeParsedNotificationActionConfig = ActionConfig.parse(parser(chimeNotificationActionConfigString), 0)
-        assertEquals("Round tripping chime NotificationActionConfig doesn't work",
-            chimeNotificationActionConfig, chimeParsedNotificationActionConfig)
+        assertEquals(
+            "Round tripping chime NotificationActionConfig doesn't work",
+            chimeNotificationActionConfig, chimeParsedNotificationActionConfig
+        )
 
         val slackNotificationActionConfigString = slackNotificationActionConfig.toJsonString()
         val slackParsedNotificationActionConfig = ActionConfig.parse(parser(slackNotificationActionConfigString), 0)
-        assertEquals("Round tripping slack NotificationActionConfig doesn't work",
-            slackNotificationActionConfig, slackParsedNotificationActionConfig)
+        assertEquals(
+            "Round tripping slack NotificationActionConfig doesn't work",
+            slackNotificationActionConfig, slackParsedNotificationActionConfig
+        )
 
         val customNotificationActionConfigString = customNotificationActionConfig.toJsonString()
         val customParsedNotificationActionConfig = ActionConfig.parse(parser(customNotificationActionConfigString), 0)
-        assertEquals("Round tripping custom webhook NotificationActionConfig doesn't work",
-            customNotificationActionConfig, customParsedNotificationActionConfig)
+        assertEquals(
+            "Round tripping custom webhook NotificationActionConfig doesn't work",
+            customNotificationActionConfig, customParsedNotificationActionConfig
+        )
     }
 
     fun `test snapshot action config parsing`() {

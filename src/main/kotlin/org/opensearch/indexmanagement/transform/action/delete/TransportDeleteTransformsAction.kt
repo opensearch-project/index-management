@@ -11,8 +11,6 @@
 
 package org.opensearch.indexmanagement.transform.action.delete
 
-import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
-import org.opensearch.indexmanagement.transform.model.Transform
 import org.opensearch.OpenSearchStatusException
 import org.opensearch.action.ActionListener
 import org.opensearch.action.bulk.BulkRequest
@@ -25,6 +23,8 @@ import org.opensearch.action.support.HandledTransportAction
 import org.opensearch.action.support.WriteRequest
 import org.opensearch.client.Client
 import org.opensearch.common.inject.Inject
+import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
+import org.opensearch.indexmanagement.transform.model.Transform
 import org.opensearch.rest.RestStatus
 import org.opensearch.search.fetch.subphase.FetchSourceContext
 import org.opensearch.tasks.Task
@@ -50,27 +50,30 @@ class TransportDeleteTransformsAction @Inject constructor(
             getRequest.add(MultiGetRequest.Item(INDEX_MANAGEMENT_INDEX, id).fetchSourceContext(fetchSourceContext))
         }
 
-        client.multiGet(getRequest, object : ActionListener<MultiGetResponse> {
-            override fun onResponse(response: MultiGetResponse) {
-                try {
-                    // response is failed only if managed index is not present
-                    if (response.responses.first().isFailed) {
-                        actionListener.onFailure(
-                            OpenSearchStatusException(
-                                "Cluster missing system index $INDEX_MANAGEMENT_INDEX, cannot execute the request", RestStatus.BAD_REQUEST
+        client.multiGet(
+            getRequest,
+            object : ActionListener<MultiGetResponse> {
+                override fun onResponse(response: MultiGetResponse) {
+                    try {
+                        // response is failed only if managed index is not present
+                        if (response.responses.first().isFailed) {
+                            actionListener.onFailure(
+                                OpenSearchStatusException(
+                                    "Cluster missing system index $INDEX_MANAGEMENT_INDEX, cannot execute the request", RestStatus.BAD_REQUEST
+                                )
                             )
-                        )
-                        return
+                            return
+                        }
+
+                        bulkDelete(response, request.ids, request.force, actionListener)
+                    } catch (e: Exception) {
+                        actionListener.onFailure(e)
                     }
-
-                    bulkDelete(response, request.ids, request.force, actionListener)
-                } catch (e: Exception) {
-                    actionListener.onFailure(e)
                 }
-            }
 
-            override fun onFailure(e: Exception) = actionListener.onFailure(e)
-        })
+                override fun onFailure(e: Exception) = actionListener.onFailure(e)
+            }
+        )
     }
 
     private fun bulkDelete(response: MultiGetResponse, ids: List<String>, forceDelete: Boolean, actionListener: ActionListener<BulkResponse>) {
@@ -91,16 +94,20 @@ class TransportDeleteTransformsAction @Inject constructor(
         }
 
         if (notTransform.isNotEmpty()) {
-            actionListener.onFailure(OpenSearchStatusException(
-                "$notTransform IDs are not transforms!", RestStatus.BAD_REQUEST
-            ))
+            actionListener.onFailure(
+                OpenSearchStatusException(
+                    "$notTransform IDs are not transforms!", RestStatus.BAD_REQUEST
+                )
+            )
             return
         }
 
         if (enabledIDs.isNotEmpty()) {
-            actionListener.onFailure(OpenSearchStatusException(
-                "$enabledIDs transform(s) are enabled, please disable them before deleting them or set force flag", RestStatus.CONFLICT
-            ))
+            actionListener.onFailure(
+                OpenSearchStatusException(
+                    "$enabledIDs transform(s) are enabled, please disable them before deleting them or set force flag", RestStatus.CONFLICT
+                )
+            )
             return
         }
 
@@ -110,12 +117,15 @@ class TransportDeleteTransformsAction @Inject constructor(
             bulkDeleteRequest.add(DeleteRequest(INDEX_MANAGEMENT_INDEX, id))
         }
 
-        client.bulk(bulkDeleteRequest, object : ActionListener<BulkResponse> {
-            override fun onResponse(response: BulkResponse) {
-                actionListener.onResponse(response)
-            }
+        client.bulk(
+            bulkDeleteRequest,
+            object : ActionListener<BulkResponse> {
+                override fun onResponse(response: BulkResponse) {
+                    actionListener.onResponse(response)
+                }
 
-            override fun onFailure(e: Exception) = actionListener.onFailure(e)
-        })
+                override fun onFailure(e: Exception) = actionListener.onFailure(e)
+            }
+        )
     }
 }

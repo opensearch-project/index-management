@@ -26,17 +26,17 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.resthandler
 
-import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.ISM_BASE_URI
-import org.opensearch.indexmanagement.indexstatemanagement.transport.action.addpolicy.AddPolicyAction
-import org.opensearch.indexmanagement.indexstatemanagement.transport.action.addpolicy.AddPolicyRequest
 import org.opensearch.client.node.NodeClient
 import org.opensearch.common.Strings
 import org.opensearch.common.xcontent.XContentHelper
+import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.ISM_BASE_URI
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.LEGACY_ISM_BASE_URI
+import org.opensearch.indexmanagement.indexstatemanagement.transport.action.addpolicy.AddPolicyAction
+import org.opensearch.indexmanagement.indexstatemanagement.transport.action.addpolicy.AddPolicyRequest
 import org.opensearch.rest.BaseRestHandler
 import org.opensearch.rest.BaseRestHandler.RestChannelConsumer
-import org.opensearch.rest.RestHandler.Route
 import org.opensearch.rest.RestHandler.ReplacedRoute
+import org.opensearch.rest.RestHandler.Route
 import org.opensearch.rest.RestRequest
 import org.opensearch.rest.RestRequest.Method.POST
 import org.opensearch.rest.action.RestToXContentListener

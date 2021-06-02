@@ -27,9 +27,6 @@
 @file:Suppress("TopLevelPropertyNaming", "MatchingDeclarationName")
 package org.opensearch.indexmanagement.indexstatemanagement.util
 
-import org.opensearch.indexmanagement.opensearchapi.optionalTimeField
-import org.opensearch.indexmanagement.indexstatemanagement.model.ChangePolicy
-import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexConfig
 import org.opensearch.common.io.stream.StreamInput
 import org.opensearch.common.io.stream.StreamOutput
 import org.opensearch.common.io.stream.Writeable
@@ -37,6 +34,9 @@ import org.opensearch.common.xcontent.ToXContent
 import org.opensearch.common.xcontent.ToXContentFragment
 import org.opensearch.common.xcontent.XContentBuilder
 import org.opensearch.common.xcontent.XContentFactory
+import org.opensearch.indexmanagement.indexstatemanagement.model.ChangePolicy
+import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexConfig
+import org.opensearch.indexmanagement.opensearchapi.optionalTimeField
 import java.time.Instant
 
 const val WITH_TYPE = "with_type"

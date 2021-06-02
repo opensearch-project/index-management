@@ -26,7 +26,6 @@
 
 package org.opensearch.indexmanagement.common.model.dimension
 
-import org.opensearch.indexmanagement.util.IndexUtils.Companion.getFieldFromMappings
 import org.opensearch.common.io.stream.StreamInput
 import org.opensearch.common.io.stream.StreamOutput
 import org.opensearch.common.xcontent.ToXContent
@@ -34,13 +33,14 @@ import org.opensearch.common.xcontent.XContentBuilder
 import org.opensearch.common.xcontent.XContentParser
 import org.opensearch.common.xcontent.XContentParser.Token
 import org.opensearch.common.xcontent.XContentParserUtils.ensureExpectedToken
+import org.opensearch.indexmanagement.util.IndexUtils.Companion.getFieldFromMappings
 import org.opensearch.search.aggregations.AggregatorFactories
-import org.opensearch.search.aggregations.bucket.histogram.DateHistogramAggregationBuilder
-import java.io.IOException
-import java.time.ZoneId
 import org.opensearch.search.aggregations.bucket.composite.CompositeValuesSourceBuilder
 import org.opensearch.search.aggregations.bucket.composite.DateHistogramValuesSourceBuilder
+import org.opensearch.search.aggregations.bucket.histogram.DateHistogramAggregationBuilder
 import org.opensearch.search.aggregations.bucket.histogram.DateHistogramInterval
+import java.io.IOException
+import java.time.ZoneId
 
 data class DateHistogram(
     override val sourceField: String,

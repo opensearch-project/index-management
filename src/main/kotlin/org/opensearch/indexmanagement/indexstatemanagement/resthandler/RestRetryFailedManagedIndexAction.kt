@@ -26,19 +26,19 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.resthandler
 
-import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.ISM_BASE_URI
-import org.opensearch.indexmanagement.indexstatemanagement.transport.action.retryfailedmanagedindex.RetryFailedManagedIndexAction
-import org.opensearch.indexmanagement.indexstatemanagement.transport.action.retryfailedmanagedindex.RetryFailedManagedIndexRequest
 import org.apache.logging.log4j.LogManager
 import org.opensearch.action.support.master.MasterNodeRequest.DEFAULT_MASTER_NODE_TIMEOUT
 import org.opensearch.client.node.NodeClient
 import org.opensearch.common.Strings
 import org.opensearch.common.xcontent.XContentHelper
+import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.ISM_BASE_URI
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.LEGACY_ISM_BASE_URI
+import org.opensearch.indexmanagement.indexstatemanagement.transport.action.retryfailedmanagedindex.RetryFailedManagedIndexAction
+import org.opensearch.indexmanagement.indexstatemanagement.transport.action.retryfailedmanagedindex.RetryFailedManagedIndexRequest
 import org.opensearch.rest.BaseRestHandler
 import org.opensearch.rest.BaseRestHandler.RestChannelConsumer
-import org.opensearch.rest.RestHandler.Route
 import org.opensearch.rest.RestHandler.ReplacedRoute
+import org.opensearch.rest.RestHandler.Route
 import org.opensearch.rest.RestRequest
 import org.opensearch.rest.RestRequest.Method.POST
 import org.opensearch.rest.action.RestToXContentListener
@@ -80,8 +80,10 @@ class RestRetryFailedManagedIndexAction : BaseRestHandler() {
             mapOf()
         }
 
-        val retryFailedRequest = RetryFailedManagedIndexRequest(indices.toList(), body["state"] as String?,
-                request.paramAsTime("master_timeout", DEFAULT_MASTER_NODE_TIMEOUT))
+        val retryFailedRequest = RetryFailedManagedIndexRequest(
+            indices.toList(), body["state"] as String?,
+            request.paramAsTime("master_timeout", DEFAULT_MASTER_NODE_TIMEOUT)
+        )
 
         return RestChannelConsumer { channel ->
             client.execute(RetryFailedManagedIndexAction.INSTANCE, retryFailedRequest, RestToXContentListener(channel))

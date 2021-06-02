@@ -26,18 +26,18 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.model
 
-import org.opensearch.indexmanagement.opensearchapi.instant
-import org.opensearch.indexmanagement.opensearchapi.optionalTimeField
-import org.opensearch.indexmanagement.indexstatemanagement.util.XCONTENT_WITHOUT_TYPE
-import org.opensearch.jobscheduler.spi.ScheduledJobParameter
-import org.opensearch.jobscheduler.spi.schedule.Schedule
-import org.opensearch.jobscheduler.spi.schedule.ScheduleParser
 import org.opensearch.common.xcontent.ToXContent
 import org.opensearch.common.xcontent.XContentBuilder
 import org.opensearch.common.xcontent.XContentParser
 import org.opensearch.common.xcontent.XContentParser.Token
 import org.opensearch.common.xcontent.XContentParserUtils.ensureExpectedToken
 import org.opensearch.index.seqno.SequenceNumbers
+import org.opensearch.indexmanagement.indexstatemanagement.util.XCONTENT_WITHOUT_TYPE
+import org.opensearch.indexmanagement.opensearchapi.instant
+import org.opensearch.indexmanagement.opensearchapi.optionalTimeField
+import org.opensearch.jobscheduler.spi.ScheduledJobParameter
+import org.opensearch.jobscheduler.spi.schedule.Schedule
+import org.opensearch.jobscheduler.spi.schedule.ScheduleParser
 import java.io.IOException
 import java.time.Instant
 
@@ -82,20 +82,20 @@ data class ManagedIndexConfig(
     override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
         builder
             .startObject()
-                .startObject(MANAGED_INDEX_TYPE)
-                    .field(NAME_FIELD, jobName)
-                    .field(ENABLED_FIELD, enabled)
-                    .field(INDEX_FIELD, index)
-                    .field(INDEX_UUID_FIELD, indexUuid)
-                    .field(SCHEDULE_FIELD, jobSchedule)
-                    .optionalTimeField(LAST_UPDATED_TIME_FIELD, jobLastUpdatedTime)
-                    .optionalTimeField(ENABLED_TIME_FIELD, jobEnabledTime)
-                    .field(POLICY_ID_FIELD, policyID)
-                    .field(POLICY_SEQ_NO_FIELD, policySeqNo)
-                    .field(POLICY_PRIMARY_TERM_FIELD, policyPrimaryTerm)
-                    .field(POLICY_FIELD, policy, XCONTENT_WITHOUT_TYPE)
-                    .field(CHANGE_POLICY_FIELD, changePolicy)
-                .endObject()
+            .startObject(MANAGED_INDEX_TYPE)
+            .field(NAME_FIELD, jobName)
+            .field(ENABLED_FIELD, enabled)
+            .field(INDEX_FIELD, index)
+            .field(INDEX_UUID_FIELD, indexUuid)
+            .field(SCHEDULE_FIELD, jobSchedule)
+            .optionalTimeField(LAST_UPDATED_TIME_FIELD, jobLastUpdatedTime)
+            .optionalTimeField(ENABLED_TIME_FIELD, jobEnabledTime)
+            .field(POLICY_ID_FIELD, policyID)
+            .field(POLICY_SEQ_NO_FIELD, policySeqNo)
+            .field(POLICY_PRIMARY_TERM_FIELD, policyPrimaryTerm)
+            .field(POLICY_FIELD, policy, XCONTENT_WITHOUT_TYPE)
+            .field(CHANGE_POLICY_FIELD, changePolicy)
+            .endObject()
             .endObject()
         return builder
     }
@@ -188,8 +188,10 @@ data class ManagedIndexConfig(
                 policyID = requireNotNull(policyID) { "ManagedIndexConfig policy id is null" },
                 policySeqNo = policySeqNo,
                 policyPrimaryTerm = policyPrimaryTerm,
-                policy = policy?.copy(seqNo = policySeqNo ?: SequenceNumbers.UNASSIGNED_SEQ_NO,
-                    primaryTerm = policyPrimaryTerm ?: SequenceNumbers.UNASSIGNED_PRIMARY_TERM),
+                policy = policy?.copy(
+                    seqNo = policySeqNo ?: SequenceNumbers.UNASSIGNED_SEQ_NO,
+                    primaryTerm = policyPrimaryTerm ?: SequenceNumbers.UNASSIGNED_PRIMARY_TERM
+                ),
                 changePolicy = changePolicy
             )
         }

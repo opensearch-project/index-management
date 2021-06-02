@@ -26,8 +26,6 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata
 
-import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData.Companion.NAME
-import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData.Companion.START_TIME
 import org.opensearch.common.Strings
 import org.opensearch.common.io.stream.StreamInput
 import org.opensearch.common.io.stream.StreamOutput
@@ -41,6 +39,8 @@ import org.opensearch.common.xcontent.XContentParser
 import org.opensearch.common.xcontent.XContentParser.Token
 import org.opensearch.common.xcontent.XContentParserUtils.ensureExpectedToken
 import org.opensearch.common.xcontent.XContentType
+import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData.Companion.NAME
+import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData.Companion.START_TIME
 import java.io.ByteArrayInputStream
 import java.nio.charset.StandardCharsets
 

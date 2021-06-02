@@ -26,7 +26,6 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.transport.action.deletepolicy
 
-import org.opensearch.indexmanagement.IndexManagementPlugin
 import org.opensearch.action.ActionListener
 import org.opensearch.action.delete.DeleteRequest
 import org.opensearch.action.delete.DeleteResponse
@@ -34,6 +33,7 @@ import org.opensearch.action.support.ActionFilters
 import org.opensearch.action.support.HandledTransportAction
 import org.opensearch.client.node.NodeClient
 import org.opensearch.common.inject.Inject
+import org.opensearch.indexmanagement.IndexManagementPlugin
 import org.opensearch.tasks.Task
 import org.opensearch.transport.TransportService
 
@@ -42,11 +42,11 @@ class TransportDeletePolicyAction @Inject constructor(
     transportService: TransportService,
     actionFilters: ActionFilters
 ) : HandledTransportAction<DeletePolicyRequest, DeleteResponse>(
-        DeletePolicyAction.NAME, transportService, actionFilters, ::DeletePolicyRequest
+    DeletePolicyAction.NAME, transportService, actionFilters, ::DeletePolicyRequest
 ) {
     override fun doExecute(task: Task, request: DeletePolicyRequest, listener: ActionListener<DeleteResponse>) {
         val deleteRequest = DeleteRequest(IndexManagementPlugin.INDEX_MANAGEMENT_INDEX, request.policyID)
-                .setRefreshPolicy(request.refreshPolicy)
+            .setRefreshPolicy(request.refreshPolicy)
 
         client.delete(deleteRequest, listener)
     }

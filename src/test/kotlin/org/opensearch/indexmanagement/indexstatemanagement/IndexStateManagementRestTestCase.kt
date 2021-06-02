@@ -26,40 +26,6 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement
 
-import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_STATE_MANAGEMENT_HISTORY_TYPE
-import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
-import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.POLICY_BASE_URI
-import org.opensearch.indexmanagement.IndexManagementIndices
-import org.opensearch.indexmanagement.IndexManagementPlugin
-import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.ISM_BASE_URI
-import org.opensearch.indexmanagement.IndexManagementRestTestCase
-import org.opensearch.indexmanagement.opensearchapi.parseWithType
-import org.opensearch.indexmanagement.indexstatemanagement.model.ChangePolicy
-import org.opensearch.indexmanagement.indexstatemanagement.model.ISMTemplate
-import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexConfig
-import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
-import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
-import org.opensearch.indexmanagement.indexstatemanagement.model.Policy.Companion.POLICY_TYPE
-import org.opensearch.indexmanagement.indexstatemanagement.model.StateFilter
-import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.ActionMetaData
-import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.PolicyRetryInfoMetaData
-import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.StateMetaData
-import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.StepMetaData
-import org.opensearch.indexmanagement.indexstatemanagement.resthandler.RestExplainAction
-import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings
-import org.opensearch.indexmanagement.indexstatemanagement.util.FAILED_INDICES
-import org.opensearch.indexmanagement.indexstatemanagement.util.FAILURES
-import org.opensearch.indexmanagement.indexstatemanagement.util.INDEX_NUMBER_OF_REPLICAS
-import org.opensearch.indexmanagement.indexstatemanagement.util.INDEX_NUMBER_OF_SHARDS
-import org.opensearch.indexmanagement.indexstatemanagement.util.UPDATED_INDICES
-import org.opensearch.indexmanagement.makeRequest
-import org.opensearch.indexmanagement.rollup.model.Rollup
-import org.opensearch.indexmanagement.rollup.model.RollupMetadata
-import org.opensearch.indexmanagement.util._ID
-import org.opensearch.indexmanagement.util._PRIMARY_TERM
-import org.opensearch.indexmanagement.util._SEQ_NO
-import org.opensearch.indexmanagement.waitFor
-import org.opensearch.jobscheduler.spi.schedule.IntervalSchedule
 import org.apache.http.HttpEntity
 import org.apache.http.HttpHeaders
 import org.apache.http.entity.ContentType.APPLICATION_JSON
@@ -82,6 +48,40 @@ import org.opensearch.common.xcontent.XContentParserUtils.ensureExpectedToken
 import org.opensearch.common.xcontent.XContentType
 import org.opensearch.common.xcontent.json.JsonXContent.jsonXContent
 import org.opensearch.index.seqno.SequenceNumbers
+import org.opensearch.indexmanagement.IndexManagementIndices
+import org.opensearch.indexmanagement.IndexManagementPlugin
+import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
+import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_STATE_MANAGEMENT_HISTORY_TYPE
+import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.ISM_BASE_URI
+import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.POLICY_BASE_URI
+import org.opensearch.indexmanagement.IndexManagementRestTestCase
+import org.opensearch.indexmanagement.indexstatemanagement.model.ChangePolicy
+import org.opensearch.indexmanagement.indexstatemanagement.model.ISMTemplate
+import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexConfig
+import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
+import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
+import org.opensearch.indexmanagement.indexstatemanagement.model.Policy.Companion.POLICY_TYPE
+import org.opensearch.indexmanagement.indexstatemanagement.model.StateFilter
+import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.ActionMetaData
+import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.PolicyRetryInfoMetaData
+import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.StateMetaData
+import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.StepMetaData
+import org.opensearch.indexmanagement.indexstatemanagement.resthandler.RestExplainAction
+import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings
+import org.opensearch.indexmanagement.indexstatemanagement.util.FAILED_INDICES
+import org.opensearch.indexmanagement.indexstatemanagement.util.FAILURES
+import org.opensearch.indexmanagement.indexstatemanagement.util.INDEX_NUMBER_OF_REPLICAS
+import org.opensearch.indexmanagement.indexstatemanagement.util.INDEX_NUMBER_OF_SHARDS
+import org.opensearch.indexmanagement.indexstatemanagement.util.UPDATED_INDICES
+import org.opensearch.indexmanagement.makeRequest
+import org.opensearch.indexmanagement.opensearchapi.parseWithType
+import org.opensearch.indexmanagement.rollup.model.Rollup
+import org.opensearch.indexmanagement.rollup.model.RollupMetadata
+import org.opensearch.indexmanagement.util._ID
+import org.opensearch.indexmanagement.util._PRIMARY_TERM
+import org.opensearch.indexmanagement.util._SEQ_NO
+import org.opensearch.indexmanagement.waitFor
+import org.opensearch.jobscheduler.spi.schedule.IntervalSchedule
 import org.opensearch.rest.RestRequest
 import org.opensearch.rest.RestStatus
 import org.opensearch.test.OpenSearchTestCase
@@ -241,8 +241,10 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
                 }
             }
         """.trimIndent()
-        val res = client().makeRequest("PUT", "_cluster/settings", emptyMap(),
-            StringEntity(request, APPLICATION_JSON))
+        val res = client().makeRequest(
+            "PUT", "_cluster/settings", emptyMap(),
+            StringEntity(request, APPLICATION_JSON)
+        )
         assertEquals("Request failed", RestStatus.OK, res.restStatus())
     }
 
@@ -257,8 +259,10 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
                 }
             }
         """.trimIndent()
-        val response = client().makeRequest("POST", "$INDEX_MANAGEMENT_INDEX/_search", emptyMap(),
-                StringEntity(request, APPLICATION_JSON))
+        val response = client().makeRequest(
+            "POST", "$INDEX_MANAGEMENT_INDEX/_search", emptyMap(),
+            StringEntity(request, APPLICATION_JSON)
+        )
         assertEquals("Request failed", RestStatus.OK, response.restStatus())
         val searchResponse = SearchResponse.fromXContent(createParser(jsonXContent, response.entity.content))
         assertTrue("Found more than one managed index config", searchResponse.hits.hits.size < 2)
@@ -295,8 +299,10 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
                 }
             }
         """.trimIndent()
-        val response = client().makeRequest("POST", "${IndexManagementIndices.HISTORY_ALL}/_search", emptyMap(),
-            StringEntity(request, APPLICATION_JSON))
+        val response = client().makeRequest(
+            "POST", "${IndexManagementIndices.HISTORY_ALL}/_search", emptyMap(),
+            StringEntity(request, APPLICATION_JSON)
+        )
         assertEquals("Request failed", RestStatus.OK, response.restStatus())
         return SearchResponse.fromXContent(createParser(jsonXContent, response.entity.content))
     }
@@ -339,22 +345,26 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
         val millis = Duration.of(intervalSchedule.interval.toLong(), intervalSchedule.unit).minusSeconds(2).toMillis()
         val startTimeMillis = desiredStartTimeMillis ?: Instant.now().toEpochMilli() - millis
         val waitForActiveShards = if (isMultiNode) "all" else "1"
-        val response = client().makeRequest("POST", "$INDEX_MANAGEMENT_INDEX/_update/${update.id}?wait_for_active_shards=$waitForActiveShards",
+        val response = client().makeRequest(
+            "POST", "$INDEX_MANAGEMENT_INDEX/_update/${update.id}?wait_for_active_shards=$waitForActiveShards",
             StringEntity(
                 "{\"doc\":{\"managed_index\":{\"schedule\":{\"interval\":{\"start_time\":" +
                     "\"$startTimeMillis\"}}}}}",
                 APPLICATION_JSON
-            ))
+            )
+        )
 
         assertEquals("Request failed", RestStatus.OK, response.restStatus())
     }
 
     protected fun updateManagedIndexConfigPolicySeqNo(update: ManagedIndexConfig) {
-        val response = client().makeRequest("POST", "$INDEX_MANAGEMENT_INDEX/_update/${update.id}",
+        val response = client().makeRequest(
+            "POST", "$INDEX_MANAGEMENT_INDEX/_update/${update.id}",
             StringEntity(
                 "{\"doc\":{\"managed_index\":{\"policy_seq_no\":\"${update.policySeqNo}\"}}}",
                 APPLICATION_JSON
-            ))
+            )
+        )
         assertEquals("Request failed", RestStatus.OK, response.restStatus())
     }
 
@@ -376,8 +386,8 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
     override fun restClientSettings(): Settings {
         return if (isDebuggingTest || isDebuggingRemoteCluster) {
             Settings.builder()
-                    .put(CLIENT_SOCKET_TIMEOUT, TimeValue.timeValueMinutes(10))
-                    .build()
+                .put(CLIENT_SOCKET_TIMEOUT, TimeValue.timeValueMinutes(10))
+                .build()
         } else {
             super.restClientSettings()
         }
@@ -458,7 +468,7 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
 
     @Suppress("UNCHECKED_CAST")
     protected fun getFlatSettings(indexName: String) =
-            (getIndexSettings(indexName) as Map<String, Map<String, Map<String, Any?>>>)[indexName]!!["settings"] as Map<String, String>
+        (getIndexSettings(indexName) as Map<String, Map<String, Map<String, Any?>>>)[indexName]!!["settings"] as Map<String, String>
 
     protected fun getExplainMap(indexName: String?): Map<String, Any> {
         var endpoint = RestExplainAction.EXPLAIN_BASE_URI
@@ -481,16 +491,16 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
     @Suppress("UNCHECKED_CAST")
     protected fun getNodes(): MutableSet<String> {
         val response = client()
-                .makeRequest(
-                        "GET",
-                        "_cat/nodes?format=json",
-                        emptyMap()
-                )
+            .makeRequest(
+                "GET",
+                "_cat/nodes?format=json",
+                emptyMap()
+            )
         assertEquals("Unable to get nodes", RestStatus.OK, response.restStatus())
         try {
             return jsonXContent
-                    .createParser(NamedXContentRegistry.EMPTY, DeprecationHandler.THROW_UNSUPPORTED_OPERATION, response.entity.content)
-                    .use { parser -> parser.list() }.map { element -> (element as Map<String, String>)["name"]!! }.toMutableSet()
+                .createParser(NamedXContentRegistry.EMPTY, DeprecationHandler.THROW_UNSUPPORTED_OPERATION, response.entity.content)
+                .use { parser -> parser.list() }.map { element -> (element as Map<String, String>)["name"]!! }.toMutableSet()
         } catch (e: IOException) {
             throw OpenSearchParseException("Failed to parse content to list", e)
         }
@@ -537,16 +547,16 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
 
     private fun getShardsList(): List<Any> {
         val response = client()
-                .makeRequest(
-                        "GET",
-                        "_cat/shards?format=json",
-                        emptyMap()
-                )
+            .makeRequest(
+                "GET",
+                "_cat/shards?format=json",
+                emptyMap()
+            )
         assertEquals("Unable to get allocation info", RestStatus.OK, response.restStatus())
         try {
             return jsonXContent
-                    .createParser(NamedXContentRegistry.EMPTY, DeprecationHandler.THROW_UNSUPPORTED_OPERATION, response.entity.content)
-                    .use { parser -> parser.list() }
+                .createParser(NamedXContentRegistry.EMPTY, DeprecationHandler.THROW_UNSUPPORTED_OPERATION, response.entity.content)
+                .use { parser -> parser.list() }
         } catch (e: IOException) {
             throw OpenSearchParseException("Failed to parse content to list", e)
         }

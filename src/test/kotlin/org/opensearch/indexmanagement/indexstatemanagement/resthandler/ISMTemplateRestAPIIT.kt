@@ -26,6 +26,8 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.resthandler
 
+import org.opensearch.client.ResponseException
+import org.opensearch.common.settings.Settings
 import org.opensearch.indexmanagement.indexstatemanagement.IndexStateManagementRestTestCase
 import org.opensearch.indexmanagement.indexstatemanagement.model.ISMTemplate
 import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
@@ -37,8 +39,6 @@ import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndex
 import org.opensearch.indexmanagement.indexstatemanagement.util.INDEX_HIDDEN
 import org.opensearch.indexmanagement.randomInstant
 import org.opensearch.indexmanagement.waitFor
-import org.opensearch.client.ResponseException
-import org.opensearch.common.settings.Settings
 import org.opensearch.rest.RestStatus
 import java.time.Instant
 import java.time.temporal.ChronoUnit

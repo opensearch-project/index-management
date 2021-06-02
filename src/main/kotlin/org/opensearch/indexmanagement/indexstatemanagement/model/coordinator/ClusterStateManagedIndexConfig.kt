@@ -26,9 +26,9 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.model.coordinator
 
-import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexConfig
 import org.opensearch.common.xcontent.ToXContentObject
 import org.opensearch.index.seqno.SequenceNumbers
+import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexConfig
 
 /**
  * Data class to hold index metadata from cluster state.

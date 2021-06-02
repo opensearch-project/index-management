@@ -26,11 +26,6 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.step
 
-import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
-import org.opensearch.indexmanagement.indexstatemanagement.model.action.SnapshotActionConfig
-import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.ActionMetaData
-import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.ActionProperties
-import org.opensearch.indexmanagement.indexstatemanagement.step.snapshot.WaitForSnapshotStep
 import com.nhaarman.mockitokotlin2.any
 import com.nhaarman.mockitokotlin2.doAnswer
 import com.nhaarman.mockitokotlin2.doReturn
@@ -45,6 +40,11 @@ import org.opensearch.client.Client
 import org.opensearch.client.ClusterAdminClient
 import org.opensearch.cluster.SnapshotsInProgress
 import org.opensearch.cluster.service.ClusterService
+import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
+import org.opensearch.indexmanagement.indexstatemanagement.model.action.SnapshotActionConfig
+import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.ActionMetaData
+import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.ActionProperties
+import org.opensearch.indexmanagement.indexstatemanagement.step.snapshot.WaitForSnapshotStep
 import org.opensearch.snapshots.Snapshot
 import org.opensearch.snapshots.SnapshotId
 import org.opensearch.test.OpenSearchTestCase

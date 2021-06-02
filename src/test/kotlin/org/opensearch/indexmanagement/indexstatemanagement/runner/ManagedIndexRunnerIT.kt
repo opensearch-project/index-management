@@ -85,11 +85,13 @@ class ManagedIndexRunnerIT : IndexStateManagementRestTestCase() {
         val expectedInfoString = mapOf("message" to "There is a version conflict between your previous execution and your managed index").toString()
         waitFor {
             assertPredicatesOnMetaData(
-                listOf(indexName to listOf(
-                    PolicyRetryInfoMetaData.RETRY_INFO to fun(retryInfoMetaDataMap: Any?): Boolean =
-                        assertRetryInfoEquals(PolicyRetryInfoMetaData(true, 0), retryInfoMetaDataMap),
-                    ManagedIndexMetaData.INFO to fun(info: Any?): Boolean = expectedInfoString == info.toString()
-                )),
+                listOf(
+                    indexName to listOf(
+                        PolicyRetryInfoMetaData.RETRY_INFO to fun(retryInfoMetaDataMap: Any?): Boolean =
+                            assertRetryInfoEquals(PolicyRetryInfoMetaData(true, 0), retryInfoMetaDataMap),
+                        ManagedIndexMetaData.INFO to fun(info: Any?): Boolean = expectedInfoString == info.toString()
+                    )
+                ),
                 getExplainMap(indexName),
                 strict = false
             )
@@ -104,8 +106,10 @@ class ManagedIndexRunnerIT : IndexStateManagementRestTestCase() {
 
         val managedIndexConfig = getExistingManagedIndexConfig(indexName)
 
-        assertEquals("Created managed index did not default to ${ManagedIndexSettings.DEFAULT_JOB_INTERVAL}minutes",
-                ManagedIndexSettings.DEFAULT_JOB_INTERVAL, (managedIndexConfig.jobSchedule as IntervalSchedule).interval)
+        assertEquals(
+            "Created managed index did not default to ${ManagedIndexSettings.DEFAULT_JOB_INTERVAL}minutes",
+            ManagedIndexSettings.DEFAULT_JOB_INTERVAL, (managedIndexConfig.jobSchedule as IntervalSchedule).interval
+        )
 
         // init policy
         updateManagedIndexConfigStartTime(managedIndexConfig)
@@ -122,10 +126,14 @@ class ManagedIndexRunnerIT : IndexStateManagementRestTestCase() {
     fun `test allow list fails execution`() {
         val indexName = "allow_list_index"
 
-        val firstState = randomState(name = "first_state", actions = listOf(randomReadOnlyActionConfig()),
-            transitions = listOf(randomTransition(stateName = "second_state", conditions = null)))
-        val secondState = randomState(name = "second_state", actions = listOf(randomReadWriteActionConfig()),
-            transitions = listOf(randomTransition(stateName = "first_state", conditions = null)))
+        val firstState = randomState(
+            name = "first_state", actions = listOf(randomReadOnlyActionConfig()),
+            transitions = listOf(randomTransition(stateName = "second_state", conditions = null))
+        )
+        val secondState = randomState(
+            name = "second_state", actions = listOf(randomReadWriteActionConfig()),
+            transitions = listOf(randomTransition(stateName = "first_state", conditions = null))
+        )
         val randomPolicy = randomPolicy(id = "allow_policy", states = listOf(firstState, secondState))
 
         val createdPolicy = createPolicy(randomPolicy, "allow_policy")

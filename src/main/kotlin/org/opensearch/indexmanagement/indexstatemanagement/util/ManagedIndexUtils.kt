@@ -27,29 +27,6 @@
 @file:JvmName("ManagedIndexUtils")
 package org.opensearch.indexmanagement.indexstatemanagement.util
 
-import org.opensearch.alerting.destination.message.BaseMessage
-import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
-import org.opensearch.indexmanagement.indexstatemanagement.ManagedIndexCoordinator
-import org.opensearch.indexmanagement.indexstatemanagement.action.Action
-import org.opensearch.indexmanagement.opensearchapi.optionalTimeField
-import org.opensearch.indexmanagement.indexstatemanagement.model.ChangePolicy
-import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexConfig
-import org.opensearch.indexmanagement.indexstatemanagement.model.Transition
-import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
-import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
-import org.opensearch.indexmanagement.indexstatemanagement.model.State
-import org.opensearch.indexmanagement.indexstatemanagement.model.action.ActionConfig
-import org.opensearch.indexmanagement.indexstatemanagement.model.action.ActionRetry
-import org.opensearch.indexmanagement.indexstatemanagement.model.action.RolloverActionConfig
-import org.opensearch.indexmanagement.indexstatemanagement.model.action.TransitionsActionConfig
-import org.opensearch.indexmanagement.indexstatemanagement.model.coordinator.SweptManagedIndexConfig
-import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.ActionMetaData
-import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.PolicyRetryInfoMetaData
-import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.StateMetaData
-import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings
-import org.opensearch.indexmanagement.indexstatemanagement.step.Step
-import org.opensearch.indexmanagement.indexstatemanagement.step.delete.AttemptDeleteStep
-import org.opensearch.jobscheduler.spi.schedule.IntervalSchedule
 import inet.ipaddr.IPAddressString
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
@@ -59,6 +36,7 @@ import org.opensearch.action.index.IndexRequest
 import org.opensearch.action.search.SearchRequest
 import org.opensearch.action.support.WriteRequest
 import org.opensearch.action.update.UpdateRequest
+import org.opensearch.alerting.destination.message.BaseMessage
 import org.opensearch.client.Client
 import org.opensearch.cluster.metadata.IndexMetadata
 import org.opensearch.cluster.service.ClusterService
@@ -70,6 +48,28 @@ import org.opensearch.common.xcontent.XContentFactory
 import org.opensearch.index.Index
 import org.opensearch.index.query.BoolQueryBuilder
 import org.opensearch.index.query.QueryBuilders
+import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
+import org.opensearch.indexmanagement.indexstatemanagement.ManagedIndexCoordinator
+import org.opensearch.indexmanagement.indexstatemanagement.action.Action
+import org.opensearch.indexmanagement.indexstatemanagement.model.ChangePolicy
+import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexConfig
+import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
+import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
+import org.opensearch.indexmanagement.indexstatemanagement.model.State
+import org.opensearch.indexmanagement.indexstatemanagement.model.Transition
+import org.opensearch.indexmanagement.indexstatemanagement.model.action.ActionConfig
+import org.opensearch.indexmanagement.indexstatemanagement.model.action.ActionRetry
+import org.opensearch.indexmanagement.indexstatemanagement.model.action.RolloverActionConfig
+import org.opensearch.indexmanagement.indexstatemanagement.model.action.TransitionsActionConfig
+import org.opensearch.indexmanagement.indexstatemanagement.model.coordinator.SweptManagedIndexConfig
+import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.ActionMetaData
+import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.PolicyRetryInfoMetaData
+import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.StateMetaData
+import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings
+import org.opensearch.indexmanagement.indexstatemanagement.step.Step
+import org.opensearch.indexmanagement.indexstatemanagement.step.delete.AttemptDeleteStep
+import org.opensearch.indexmanagement.opensearchapi.optionalTimeField
+import org.opensearch.jobscheduler.spi.schedule.IntervalSchedule
 import org.opensearch.script.ScriptService
 import org.opensearch.search.builder.SearchSourceBuilder
 import java.net.InetAddress
@@ -93,19 +93,19 @@ fun managedIndexConfigIndexRequest(index: String, uuid: String, policyID: String
     )
 
     return IndexRequest(INDEX_MANAGEMENT_INDEX)
-            .id(uuid)
-            .create(true)
-            .routing(managedIndexConfig.indexUuid)
-            .source(managedIndexConfig.toXContent(XContentFactory.jsonBuilder(), ToXContent.EMPTY_PARAMS))
+        .id(uuid)
+        .create(true)
+        .routing(managedIndexConfig.indexUuid)
+        .source(managedIndexConfig.toXContent(XContentFactory.jsonBuilder(), ToXContent.EMPTY_PARAMS))
 }
 
 fun managedIndexConfigIndexRequest(managedIndexConfig: ManagedIndexConfig): IndexRequest {
     return IndexRequest(INDEX_MANAGEMENT_INDEX)
-            .id(managedIndexConfig.indexUuid)
-            .setIfPrimaryTerm(managedIndexConfig.primaryTerm)
-            .setIfSeqNo(managedIndexConfig.seqNo)
-            .routing(managedIndexConfig.indexUuid) // we want job doc and its metadata doc be routed to same shard
-            .source(managedIndexConfig.toXContent(XContentFactory.jsonBuilder(), ToXContent.EMPTY_PARAMS))
+        .id(managedIndexConfig.indexUuid)
+        .setIfPrimaryTerm(managedIndexConfig.primaryTerm)
+        .setIfSeqNo(managedIndexConfig.seqNo)
+        .routing(managedIndexConfig.indexUuid) // we want job doc and its metadata doc be routed to same shard
+        .source(managedIndexConfig.toXContent(XContentFactory.jsonBuilder(), ToXContent.EMPTY_PARAMS))
 }
 
 const val METADATA_POST_FIX = "#metadata"
@@ -120,12 +120,12 @@ fun managedIndexMetadataIndexRequest(managedIndexMetadata: ManagedIndexMetaData,
     // routing set using managed index's uuid
     // so that metadata doc and managed-index doc are in the same place
     val req = IndexRequest(INDEX_MANAGEMENT_INDEX)
-            .id(managedIndexMetadataID(managedIndexMetadata.indexUuid))
-            .setIfPrimaryTerm(managedIndexMetadata.primaryTerm)
-            .setIfSeqNo(managedIndexMetadata.seqNo)
-            .routing(managedIndexMetadata.indexUuid)
-            .create(create)
-            .source(managedIndexMetadata.toXContent(XContentFactory.jsonBuilder(), ToXContent.EMPTY_PARAMS, true))
+        .id(managedIndexMetadataID(managedIndexMetadata.indexUuid))
+        .setIfPrimaryTerm(managedIndexMetadata.primaryTerm)
+        .setIfSeqNo(managedIndexMetadata.seqNo)
+        .routing(managedIndexMetadata.indexUuid)
+        .create(create)
+        .source(managedIndexMetadata.toXContent(XContentFactory.jsonBuilder(), ToXContent.EMPTY_PARAMS, true))
 
     if (waitRefresh)
         return req.setRefreshPolicy(WriteRequest.RefreshPolicy.WAIT_UNTIL)
@@ -135,11 +135,11 @@ fun managedIndexMetadataIndexRequest(managedIndexMetadata: ManagedIndexMetaData,
 private fun updateEnabledField(uuid: String, enabled: Boolean, enabledTime: Long?): UpdateRequest {
     val builder = XContentFactory.jsonBuilder()
         .startObject()
-            .startObject(ManagedIndexConfig.MANAGED_INDEX_TYPE)
-                .optionalTimeField(ManagedIndexConfig.LAST_UPDATED_TIME_FIELD, Instant.now())
-                .field(ManagedIndexConfig.ENABLED_FIELD, enabled)
-                .field(ManagedIndexConfig.ENABLED_TIME_FIELD, enabledTime)
-            .endObject()
+        .startObject(ManagedIndexConfig.MANAGED_INDEX_TYPE)
+        .optionalTimeField(ManagedIndexConfig.LAST_UPDATED_TIME_FIELD, Instant.now())
+        .field(ManagedIndexConfig.ENABLED_FIELD, enabled)
+        .field(ManagedIndexConfig.ENABLED_TIME_FIELD, enabledTime)
+        .endObject()
         .endObject()
     return UpdateRequest(INDEX_MANAGEMENT_INDEX, uuid).doc(builder)
 }
@@ -201,20 +201,22 @@ fun getSweptManagedIndexSearchRequest(): SearchRequest {
     val boolQueryBuilder = BoolQueryBuilder().filter(QueryBuilders.existsQuery(ManagedIndexConfig.MANAGED_INDEX_TYPE))
     return SearchRequest()
         .indices(INDEX_MANAGEMENT_INDEX)
-        .source(SearchSourceBuilder.searchSource()
-            // TODO: Get all ManagedIndices at once or split into searchAfter queries?
-            .size(ManagedIndexCoordinator.MAX_HITS)
-            .seqNoAndPrimaryTerm(true)
-            .fetchSource(
-                arrayOf(
-                    "${ManagedIndexConfig.MANAGED_INDEX_TYPE}.${ManagedIndexConfig.INDEX_FIELD}",
-                    "${ManagedIndexConfig.MANAGED_INDEX_TYPE}.${ManagedIndexConfig.INDEX_UUID_FIELD}",
-                    "${ManagedIndexConfig.MANAGED_INDEX_TYPE}.${ManagedIndexConfig.POLICY_ID_FIELD}",
-                    "${ManagedIndexConfig.MANAGED_INDEX_TYPE}.${ManagedIndexConfig.CHANGE_POLICY_FIELD}"
-                ),
-                emptyArray()
-            )
-            .query(boolQueryBuilder))
+        .source(
+            SearchSourceBuilder.searchSource()
+                // TODO: Get all ManagedIndices at once or split into searchAfter queries?
+                .size(ManagedIndexCoordinator.MAX_HITS)
+                .seqNoAndPrimaryTerm(true)
+                .fetchSource(
+                    arrayOf(
+                        "${ManagedIndexConfig.MANAGED_INDEX_TYPE}.${ManagedIndexConfig.INDEX_FIELD}",
+                        "${ManagedIndexConfig.MANAGED_INDEX_TYPE}.${ManagedIndexConfig.INDEX_UUID_FIELD}",
+                        "${ManagedIndexConfig.MANAGED_INDEX_TYPE}.${ManagedIndexConfig.POLICY_ID_FIELD}",
+                        "${ManagedIndexConfig.MANAGED_INDEX_TYPE}.${ManagedIndexConfig.CHANGE_POLICY_FIELD}"
+                    ),
+                    emptyArray()
+                )
+                .query(boolQueryBuilder)
+        )
 }
 
 @Suppress("ReturnCount")
@@ -261,7 +263,8 @@ fun RolloverActionConfig.evaluateConditions(
 ): Boolean {
     if (this.minDocs == null &&
         this.minAge == null &&
-        this.minSize == null) {
+        this.minSize == null
+    ) {
         // If no conditions specified we default to true
         return true
     }
@@ -415,7 +418,8 @@ fun ManagedIndexMetaData.getCompletedManagedIndexMetaData(
             else -> actionMetaData.copy(
                 failed = false,
                 consumedRetries = actionMetaData.consumedRetries + 1,
-                lastRetryTime = Instant.now().toEpochMilli())
+                lastRetryTime = Instant.now().toEpochMilli()
+            )
         }
     } else {
         actionMetaData
@@ -434,8 +438,8 @@ fun ManagedIndexMetaData.getCompletedManagedIndexMetaData(
 
 val ManagedIndexMetaData.isSuccessfulDelete: Boolean
     get() = (this.actionMetaData?.name == ActionConfig.ActionType.DELETE.type && !this.actionMetaData.failed) &&
-            (this.stepMetaData?.name == AttemptDeleteStep.name && this.stepMetaData.stepStatus == Step.StepStatus.COMPLETED) &&
-            (this.policyRetryInfo?.failed != true)
+        (this.stepMetaData?.name == AttemptDeleteStep.name && this.stepMetaData.stepStatus == Step.StepStatus.COMPLETED) &&
+        (this.policyRetryInfo?.failed != true)
 
 val ManagedIndexMetaData.isFailed: Boolean
     get() {

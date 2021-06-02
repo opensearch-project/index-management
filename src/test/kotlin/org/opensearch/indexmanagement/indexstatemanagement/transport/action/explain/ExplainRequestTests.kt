@@ -26,10 +26,10 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.transport.action.explain
 
-import org.opensearch.indexmanagement.indexstatemanagement.model.SearchParams
 import org.opensearch.common.io.stream.BytesStreamOutput
 import org.opensearch.common.io.stream.StreamInput
 import org.opensearch.common.unit.TimeValue
+import org.opensearch.indexmanagement.indexstatemanagement.model.SearchParams
 import org.opensearch.test.OpenSearchTestCase
 
 class ExplainRequestTests : OpenSearchTestCase() {

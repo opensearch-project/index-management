@@ -26,8 +26,8 @@
 
 package org.opensearch.indexmanagement.rollup.model
 
-import org.opensearch.indexmanagement.rollup.randomDateHistogram
 import org.opensearch.indexmanagement.randomInstant
+import org.opensearch.indexmanagement.rollup.randomDateHistogram
 import org.opensearch.indexmanagement.rollup.randomRollup
 import org.opensearch.indexmanagement.rollup.randomTerms
 import org.opensearch.test.OpenSearchTestCase

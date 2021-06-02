@@ -166,7 +166,9 @@ class RestExplainActionIT : IndexStateManagementRestTestCase() {
                             assertRetryInfoEquals(PolicyRetryInfoMetaData(false, 0), retryInfoMetaDataMap),
                         ManagedIndexMetaData.INFO to fun(info: Any?): Boolean = expectedInfoString == info.toString()
                     )
-                ), getExplainMap(indexName))
+                ),
+                getExplainMap(indexName)
+            )
         }
     }
 
@@ -192,7 +194,9 @@ class RestExplainActionIT : IndexStateManagementRestTestCase() {
                             assertRetryInfoEquals(PolicyRetryInfoMetaData(true, 0), retryInfoMetaDataMap),
                         ManagedIndexMetaData.INFO to fun(info: Any?): Boolean = expectedInfoString == info.toString()
                     )
-                ), getExplainMap(indexName))
+                ),
+                getExplainMap(indexName)
+            )
         }
     }
 

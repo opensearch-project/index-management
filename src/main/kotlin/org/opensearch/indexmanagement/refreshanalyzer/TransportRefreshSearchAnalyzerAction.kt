@@ -48,10 +48,10 @@ import org.opensearch.transport.TransportService
 import java.io.IOException
 
 class TransportRefreshSearchAnalyzerAction :
-        TransportBroadcastByNodeAction<
-                RefreshSearchAnalyzerRequest,
-                RefreshSearchAnalyzerResponse,
-                RefreshSearchAnalyzerShardResponse> {
+    TransportBroadcastByNodeAction<
+        RefreshSearchAnalyzerRequest,
+        RefreshSearchAnalyzerResponse,
+        RefreshSearchAnalyzerShardResponse> {
 
     private val log = LogManager.getLogger(javaClass)
 
@@ -64,13 +64,13 @@ class TransportRefreshSearchAnalyzerAction :
         analysisRegistry: AnalysisRegistry,
         indexNameExpressionResolver: IndexNameExpressionResolver?
     ) : super(
-            RefreshSearchAnalyzerAction.NAME,
-            clusterService,
-            transportService,
-            actionFilters,
-            indexNameExpressionResolver,
-            Writeable.Reader { RefreshSearchAnalyzerRequest() },
-            ThreadPool.Names.MANAGEMENT
+        RefreshSearchAnalyzerAction.NAME,
+        clusterService,
+        transportService,
+        actionFilters,
+        indexNameExpressionResolver,
+        Writeable.Reader { RefreshSearchAnalyzerRequest() },
+        ThreadPool.Names.MANAGEMENT
     ) {
         this.analysisRegistry = analysisRegistry
         this.indicesService = indicesService
@@ -105,8 +105,10 @@ class TransportRefreshSearchAnalyzerAction :
     override fun shardOperation(request: RefreshSearchAnalyzerRequest, shardRouting: ShardRouting): RefreshSearchAnalyzerShardResponse {
         val indexShard: IndexShard = indicesService.indexServiceSafe(shardRouting.shardId().index).getShard(shardRouting.shardId().id())
         val reloadedAnalyzers: List<String> = indexShard.mapperService().reloadSearchAnalyzers(analysisRegistry)
-        log.info("Reload successful, index: ${shardRouting.shardId().index.name}, shard: ${shardRouting.shardId().id}, " +
-                "is_primary: ${shardRouting.primary()}")
+        log.info(
+            "Reload successful, index: ${shardRouting.shardId().index.name}, shard: ${shardRouting.shardId().id}, " +
+                "is_primary: ${shardRouting.primary()}"
+        )
         return RefreshSearchAnalyzerShardResponse(shardRouting.shardId(), reloadedAnalyzers)
     }
 
@@ -122,7 +124,7 @@ class TransportRefreshSearchAnalyzerAction :
     }
 
     override fun checkRequestBlock(state: ClusterState, request: RefreshSearchAnalyzerRequest?, concreteIndices: Array<String?>?):
-            ClusterBlockException? {
+        ClusterBlockException? {
         return state.blocks().indicesBlockedException(ClusterBlockLevel.METADATA_WRITE, concreteIndices)
     }
 }

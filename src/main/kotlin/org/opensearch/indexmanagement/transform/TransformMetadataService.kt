@@ -11,6 +11,23 @@
 
 package org.opensearch.indexmanagement.transform
 
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import org.apache.logging.log4j.LogManager
+import org.opensearch.ExceptionsHelper
+import org.opensearch.action.DocWriteRequest
+import org.opensearch.action.DocWriteResponse
+import org.opensearch.action.get.GetRequest
+import org.opensearch.action.get.GetResponse
+import org.opensearch.action.index.IndexRequest
+import org.opensearch.action.index.IndexResponse
+import org.opensearch.client.Client
+import org.opensearch.common.xcontent.LoggingDeprecationHandler
+import org.opensearch.common.xcontent.NamedXContentRegistry
+import org.opensearch.common.xcontent.ToXContent
+import org.opensearch.common.xcontent.XContentFactory
+import org.opensearch.common.xcontent.XContentHelper
+import org.opensearch.common.xcontent.XContentType
 import org.opensearch.indexmanagement.IndexManagementPlugin
 import org.opensearch.indexmanagement.opensearchapi.parseWithType
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
@@ -19,25 +36,8 @@ import org.opensearch.indexmanagement.transform.model.Transform
 import org.opensearch.indexmanagement.transform.model.TransformMetadata
 import org.opensearch.indexmanagement.transform.model.TransformStats
 import org.opensearch.indexmanagement.util.IndexUtils.Companion.hashToFixedSize
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
-import org.apache.logging.log4j.LogManager
-import org.opensearch.action.DocWriteRequest
-import org.opensearch.action.get.GetRequest
-import org.opensearch.action.get.GetResponse
-import org.opensearch.action.index.IndexRequest
-import org.opensearch.action.index.IndexResponse
-import org.opensearch.client.Client
-import org.opensearch.common.xcontent.LoggingDeprecationHandler
-import org.opensearch.common.xcontent.NamedXContentRegistry
-import org.opensearch.common.xcontent.XContentFactory
-import org.opensearch.common.xcontent.XContentHelper
-import org.opensearch.common.xcontent.XContentType
-import java.time.Instant
-import org.opensearch.ExceptionsHelper
-import org.opensearch.action.DocWriteResponse
-import org.opensearch.common.xcontent.ToXContent
 import org.opensearch.transport.RemoteTransportException
+import java.time.Instant
 
 @SuppressWarnings("ReturnCount")
 class TransformMetadataService(private val esClient: Client, val xContentRegistry: NamedXContentRegistry) {
@@ -80,7 +80,7 @@ class TransformMetadataService(private val esClient: Client, val xContentRegistr
         return writeMetadata(metadata)
     }
 
-    @Suppress("BlockingMethodInNonBlockingContext", "ThrowsCount")
+    @Suppress("BlockingMethodInNonBlockingContext", "ThrowsCount", "ComplexMethod")
     suspend fun writeMetadata(metadata: TransformMetadata, updating: Boolean = false): TransformMetadata {
         val errorMessage = "Failed to ${if (updating) "update" else "create"} metadata doc ${metadata.id} for transform job ${metadata.transformId}"
         try {

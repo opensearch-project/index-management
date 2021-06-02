@@ -26,26 +26,9 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.transport.action.changepolicy
 
-import org.opensearch.indexmanagement.IndexManagementPlugin
-import org.opensearch.indexmanagement.opensearchapi.contentParser
-import org.opensearch.indexmanagement.opensearchapi.parseWithType
-import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.buildMgetMetadataRequest
-import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.getManagedIndexMetadata
-import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.mgetResponseToList
-import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexConfig
-import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
-import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
-import org.opensearch.indexmanagement.indexstatemanagement.model.coordinator.SweptManagedIndexConfig
-import org.opensearch.indexmanagement.indexstatemanagement.resthandler.RestChangePolicyAction
-import org.opensearch.indexmanagement.indexstatemanagement.transport.action.ISMStatusResponse
-import org.opensearch.indexmanagement.indexstatemanagement.util.FailedIndex
-import org.opensearch.indexmanagement.indexstatemanagement.util.isSafeToChange
-import org.opensearch.indexmanagement.indexstatemanagement.util.updateManagedIndexRequest
-import org.opensearch.indexmanagement.util.IndexUtils
-import org.opensearch.indexmanagement.util.NO_ID
 import org.apache.logging.log4j.LogManager
-import org.opensearch.OpenSearchStatusException
 import org.opensearch.ExceptionsHelper
+import org.opensearch.OpenSearchStatusException
 import org.opensearch.action.ActionListener
 import org.opensearch.action.admin.cluster.state.ClusterStateRequest
 import org.opensearch.action.admin.cluster.state.ClusterStateResponse
@@ -68,6 +51,23 @@ import org.opensearch.common.xcontent.NamedXContentRegistry
 import org.opensearch.common.xcontent.XContentHelper
 import org.opensearch.common.xcontent.XContentType
 import org.opensearch.index.Index
+import org.opensearch.indexmanagement.IndexManagementPlugin
+import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexConfig
+import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
+import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
+import org.opensearch.indexmanagement.indexstatemanagement.model.coordinator.SweptManagedIndexConfig
+import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.buildMgetMetadataRequest
+import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.getManagedIndexMetadata
+import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.mgetResponseToList
+import org.opensearch.indexmanagement.indexstatemanagement.resthandler.RestChangePolicyAction
+import org.opensearch.indexmanagement.indexstatemanagement.transport.action.ISMStatusResponse
+import org.opensearch.indexmanagement.indexstatemanagement.util.FailedIndex
+import org.opensearch.indexmanagement.indexstatemanagement.util.isSafeToChange
+import org.opensearch.indexmanagement.indexstatemanagement.util.updateManagedIndexRequest
+import org.opensearch.indexmanagement.opensearchapi.contentParser
+import org.opensearch.indexmanagement.opensearchapi.parseWithType
+import org.opensearch.indexmanagement.util.IndexUtils
+import org.opensearch.indexmanagement.util.NO_ID
 import org.opensearch.rest.RestStatus
 import org.opensearch.search.fetch.subphase.FetchSourceContext
 import org.opensearch.tasks.Task
@@ -126,9 +126,12 @@ class TransportChangePolicyAction @Inject constructor(
 
         private fun onUpdateMapping(acknowledgedResponse: AcknowledgedResponse) {
             if (!acknowledgedResponse.isAcknowledged) {
-                actionListener.onFailure(OpenSearchStatusException(
-                    "Could not update ${IndexManagementPlugin.INDEX_MANAGEMENT_INDEX} with new mapping.",
-                    RestStatus.FAILED_DEPENDENCY))
+                actionListener.onFailure(
+                    OpenSearchStatusException(
+                        "Could not update ${IndexManagementPlugin.INDEX_MANAGEMENT_INDEX} with new mapping.",
+                        RestStatus.FAILED_DEPENDENCY
+                    )
+                )
                 return
             }
 
@@ -180,20 +183,30 @@ class TransportChangePolicyAction @Inject constructor(
 
                 when {
                     mgetFailure != null ->
-                        failedIndices.add(FailedIndex(indexMetaData.index.name, indexMetaData.index.uuid,
-                            "Failed to get managed index metadata, $mgetFailure"
-                        ))
+                        failedIndices.add(
+                            FailedIndex(
+                                indexMetaData.index.name, indexMetaData.index.uuid,
+                                "Failed to get managed index metadata, $mgetFailure"
+                            )
+                        )
                     // if there exists a transitionTo on the ManagedIndexMetaData then we will
                     // fail as they might not of meant to add a ChangePolicy when its on the next state
                     managedIndexMetadata?.transitionTo != null ->
-                        failedIndices.add(FailedIndex(indexMetaData.index.name, indexMetaData.index.uuid,
-                            RestChangePolicyAction.INDEX_IN_TRANSITION
-                        ))
+                        failedIndices.add(
+                            FailedIndex(
+                                indexMetaData.index.name, indexMetaData.index.uuid,
+                                RestChangePolicyAction.INDEX_IN_TRANSITION
+                            )
+                        )
                     // else if there is no ManagedIndexMetaData yet then the managed index has not initialized and we can change the policy safely
                     managedIndexMetadata == null -> {
                         if (clusterStateMetadata != null) {
-                            failedIndices.add(FailedIndex(indexMetaData.index.name, indexMetaData.index.uuid,
-                            "Cannot change policy until metadata has finished migrating"))
+                            failedIndices.add(
+                                FailedIndex(
+                                    indexMetaData.index.name, indexMetaData.index.uuid,
+                                    "Cannot change policy until metadata has finished migrating"
+                                )
+                            )
                         } else {
                             managedIndicesToUpdate.add(indexMetaData.index.name to indexMetaData.index.uuid)
                         }
@@ -233,8 +246,10 @@ class TransportChangePolicyAction @Inject constructor(
                 }
                 if (!it.isFailed && !it.response.isSourceEmpty) {
                     foundManagedIndices.add(it.response.id)
-                    contentParser(it.response.sourceAsBytesRef).parseWithType(NO_ID, it.response.seqNo,
-                        it.response.primaryTerm, SweptManagedIndexConfig.Companion::parse)
+                    contentParser(it.response.sourceAsBytesRef).parseWithType(
+                        NO_ID, it.response.seqNo,
+                        it.response.primaryTerm, SweptManagedIndexConfig.Companion::parse
+                    )
                 } else {
                     null
                 }
@@ -260,15 +275,18 @@ class TransportChangePolicyAction @Inject constructor(
                 bulkUpdateManagedIndexRequest.add(updateManagedIndexRequest(sweptConfig.copy(changePolicy = updatedChangePolicy)))
                 mapOfItemIdToIndex[id] = Index(sweptConfig.index, sweptConfig.uuid)
             }
-            client.bulk(bulkUpdateManagedIndexRequest, object : ActionListener<BulkResponse> {
-                override fun onResponse(response: BulkResponse) {
-                    onBulkResponse(response, mapOfItemIdToIndex)
-                }
+            client.bulk(
+                bulkUpdateManagedIndexRequest,
+                object : ActionListener<BulkResponse> {
+                    override fun onResponse(response: BulkResponse) {
+                        onBulkResponse(response, mapOfItemIdToIndex)
+                    }
 
-                override fun onFailure(t: Exception) {
-                    actionListener.onFailure(ExceptionsHelper.unwrapCause(t) as Exception)
+                    override fun onFailure(t: Exception) {
+                        actionListener.onFailure(ExceptionsHelper.unwrapCause(t) as Exception)
+                    }
                 }
-            })
+            )
         }
 
         private fun onBulkResponse(bulkResponse: BulkResponse, mapOfItemIdToIndex: Map<Int, Index>) {
@@ -296,8 +314,13 @@ class TransportChangePolicyAction @Inject constructor(
             )
             val excludes = emptyArray<String>()
             val fetchSourceContext = FetchSourceContext(true, includes, excludes)
-            managedIndexUuids.forEach { request.add(MultiGetRequest.Item(
-                IndexManagementPlugin.INDEX_MANAGEMENT_INDEX, it).fetchSourceContext(fetchSourceContext).routing(it)) }
+            managedIndexUuids.forEach {
+                request.add(
+                    MultiGetRequest.Item(
+                        IndexManagementPlugin.INDEX_MANAGEMENT_INDEX, it
+                    ).fetchSourceContext(fetchSourceContext).routing(it)
+                )
+            }
             return request
         }
 

@@ -26,17 +26,10 @@ package org.opensearch.indexmanagement.indexstatemanagement.transport.action.add
  * permissions and limitations under the License.
  */
 
-import org.opensearch.indexmanagement.IndexManagementIndices
-import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
-import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.getUuidsForClosedIndices
-import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings
-import org.opensearch.indexmanagement.indexstatemanagement.transport.action.ISMStatusResponse
-import org.opensearch.indexmanagement.indexstatemanagement.util.FailedIndex
-import org.opensearch.indexmanagement.indexstatemanagement.util.managedIndexConfigIndexRequest
 import org.apache.logging.log4j.LogManager
+import org.opensearch.ExceptionsHelper
 import org.opensearch.OpenSearchStatusException
 import org.opensearch.OpenSearchTimeoutException
-import org.opensearch.ExceptionsHelper
 import org.opensearch.action.ActionListener
 import org.opensearch.action.admin.cluster.state.ClusterStateRequest
 import org.opensearch.action.admin.cluster.state.ClusterStateResponse
@@ -55,6 +48,13 @@ import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.inject.Inject
 import org.opensearch.common.settings.Settings
 import org.opensearch.common.unit.TimeValue
+import org.opensearch.indexmanagement.IndexManagementIndices
+import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
+import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.getUuidsForClosedIndices
+import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings
+import org.opensearch.indexmanagement.indexstatemanagement.transport.action.ISMStatusResponse
+import org.opensearch.indexmanagement.indexstatemanagement.util.FailedIndex
+import org.opensearch.indexmanagement.indexstatemanagement.util.managedIndexConfigIndexRequest
 import org.opensearch.rest.RestStatus
 import org.opensearch.tasks.Task
 import org.opensearch.transport.TransportService
@@ -72,7 +72,7 @@ class TransportAddPolicyAction @Inject constructor(
     val clusterService: ClusterService,
     val ismIndices: IndexManagementIndices
 ) : HandledTransportAction<AddPolicyRequest, ISMStatusResponse>(
-        AddPolicyAction.NAME, transportService, actionFilters, ::AddPolicyRequest
+    AddPolicyAction.NAME, transportService, actionFilters, ::AddPolicyRequest
 ) {
 
     @Volatile private var jobInterval = ManagedIndexSettings.JOB_INTERVAL.get(settings)
@@ -115,9 +115,12 @@ class TransportAddPolicyAction @Inject constructor(
             } else {
                 log.error("Unable to create or update $INDEX_MANAGEMENT_INDEX with newest mapping.")
 
-                actionListener.onFailure(OpenSearchStatusException(
-                    "Unable to create or update $INDEX_MANAGEMENT_INDEX with newest mapping.",
-                    RestStatus.INTERNAL_SERVER_ERROR))
+                actionListener.onFailure(
+                    OpenSearchStatusException(
+                        "Unable to create or update $INDEX_MANAGEMENT_INDEX with newest mapping.",
+                        RestStatus.INTERNAL_SERVER_ERROR
+                    )
+                )
             }
         }
 
@@ -137,19 +140,22 @@ class TransportAddPolicyAction @Inject constructor(
 
             client.admin()
                 .cluster()
-                .state(clusterStateRequest, object : ActionListener<ClusterStateResponse> {
-                    override fun onResponse(response: ClusterStateResponse) {
-                        response.state.metadata.indices.forEach {
-                            indicesToAdd.putIfAbsent(it.value.indexUUID, it.key)
+                .state(
+                    clusterStateRequest,
+                    object : ActionListener<ClusterStateResponse> {
+                        override fun onResponse(response: ClusterStateResponse) {
+                            response.state.metadata.indices.forEach {
+                                indicesToAdd.putIfAbsent(it.value.indexUUID, it.key)
+                            }
+
+                            populateLists(response.state)
                         }
 
-                        populateLists(response.state)
+                        override fun onFailure(t: Exception) {
+                            actionListener.onFailure(ExceptionsHelper.unwrapCause(t) as Exception)
+                        }
                     }
-
-                    override fun onFailure(t: Exception) {
-                        actionListener.onFailure(ExceptionsHelper.unwrapCause(t) as Exception)
-                    }
-                })
+                )
         }
 
         private fun populateLists(state: ClusterState) {
@@ -165,24 +171,31 @@ class TransportAddPolicyAction @Inject constructor(
             val multiGetReq = MultiGetRequest()
             indicesToAdd.forEach { multiGetReq.add(INDEX_MANAGEMENT_INDEX, it.key) }
 
-            client.multiGet(multiGetReq, object : ActionListener<MultiGetResponse> {
-                override fun onResponse(response: MultiGetResponse) {
-                    response.forEach {
-                        if (it.response.isExists) {
-                            val docId = it.id // docId is managed index uuid
-                            failedIndices.add(FailedIndex(indicesToAdd[docId] as String, docId,
-                                    "This index already has a policy, use the update policy API to update index policies"))
-                            indicesToAdd.remove(docId)
+            client.multiGet(
+                multiGetReq,
+                object : ActionListener<MultiGetResponse> {
+                    override fun onResponse(response: MultiGetResponse) {
+                        response.forEach {
+                            if (it.response.isExists) {
+                                val docId = it.id // docId is managed index uuid
+                                failedIndices.add(
+                                    FailedIndex(
+                                        indicesToAdd[docId] as String, docId,
+                                        "This index already has a policy, use the update policy API to update index policies"
+                                    )
+                                )
+                                indicesToAdd.remove(docId)
+                            }
                         }
+
+                        createManagedIndices()
                     }
 
-                    createManagedIndices()
+                    override fun onFailure(t: Exception) {
+                        actionListener.onFailure(ExceptionsHelper.unwrapCause(t) as Exception)
+                    }
                 }
-
-                override fun onFailure(t: Exception) {
-                    actionListener.onFailure(ExceptionsHelper.unwrapCause(t) as Exception)
-                }
-            })
+            )
         }
 
         private fun createManagedIndices() {
@@ -203,30 +216,37 @@ class TransportAddPolicyAction @Inject constructor(
                     bulkReq.add(managedIndexConfigIndexRequest(name, uuid, request.policyID, jobInterval))
                 }
 
-                client.bulk(bulkReq, object : ActionListener<BulkResponse> {
-                    override fun onResponse(response: BulkResponse) {
-                        response.forEach {
-                            val docId = it.id // docId is managed index uuid
-                            if (it.isFailed) {
-                                failedIndices.add(FailedIndex(indicesToAdd[docId] as String, docId,
-                                    "Failed to add policy due to: ${it.failureMessage}"))
-                                indicesToAdd.remove(docId)
+                client.bulk(
+                    bulkReq,
+                    object : ActionListener<BulkResponse> {
+                        override fun onResponse(response: BulkResponse) {
+                            response.forEach {
+                                val docId = it.id // docId is managed index uuid
+                                if (it.isFailed) {
+                                    failedIndices.add(
+                                        FailedIndex(
+                                            indicesToAdd[docId] as String, docId,
+                                            "Failed to add policy due to: ${it.failureMessage}"
+                                        )
+                                    )
+                                    indicesToAdd.remove(docId)
+                                }
                             }
+                            actionListener.onResponse(ISMStatusResponse(indicesToAdd.size, failedIndices))
                         }
-                        actionListener.onResponse(ISMStatusResponse(indicesToAdd.size, failedIndices))
-                    }
 
-                    override fun onFailure(t: Exception) {
-                        if (t is ClusterBlockException) {
-                            indicesToAdd.forEach { (uuid, name) ->
-                                failedIndices.add(FailedIndex(name, uuid, "Failed to add policy due to ClusterBlockingException: ${t.message}"))
+                        override fun onFailure(t: Exception) {
+                            if (t is ClusterBlockException) {
+                                indicesToAdd.forEach { (uuid, name) ->
+                                    failedIndices.add(FailedIndex(name, uuid, "Failed to add policy due to ClusterBlockingException: ${t.message}"))
+                                }
+                                actionListener.onResponse(ISMStatusResponse(0, failedIndices))
+                            } else {
+                                actionListener.onFailure(ExceptionsHelper.unwrapCause(t) as Exception)
                             }
-                            actionListener.onResponse(ISMStatusResponse(0, failedIndices))
-                        } else {
-                            actionListener.onFailure(ExceptionsHelper.unwrapCause(t) as Exception)
                         }
                     }
-                })
+                )
             } else {
                 actionListener.onResponse(ISMStatusResponse(0, failedIndices))
             }

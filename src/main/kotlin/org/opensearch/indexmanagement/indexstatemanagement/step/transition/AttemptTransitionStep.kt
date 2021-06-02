@@ -26,14 +26,6 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.step.transition
 
-import org.opensearch.indexmanagement.opensearchapi.getUsefulCauseString
-import org.opensearch.indexmanagement.opensearchapi.suspendUntil
-import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
-import org.opensearch.indexmanagement.indexstatemanagement.model.action.TransitionsActionConfig
-import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.StepMetaData
-import org.opensearch.indexmanagement.indexstatemanagement.step.Step
-import org.opensearch.indexmanagement.indexstatemanagement.util.evaluateConditions
-import org.opensearch.indexmanagement.indexstatemanagement.util.hasStatsConditions
 import org.apache.logging.log4j.LogManager
 import org.opensearch.ExceptionsHelper
 import org.opensearch.action.admin.indices.stats.IndicesStatsRequest
@@ -41,6 +33,14 @@ import org.opensearch.action.admin.indices.stats.IndicesStatsResponse
 import org.opensearch.client.Client
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.unit.ByteSizeValue
+import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
+import org.opensearch.indexmanagement.indexstatemanagement.model.action.TransitionsActionConfig
+import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.StepMetaData
+import org.opensearch.indexmanagement.indexstatemanagement.step.Step
+import org.opensearch.indexmanagement.indexstatemanagement.util.evaluateConditions
+import org.opensearch.indexmanagement.indexstatemanagement.util.hasStatsConditions
+import org.opensearch.indexmanagement.opensearchapi.getUsefulCauseString
+import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.rest.RestStatus
 import org.opensearch.transport.RemoteTransportException
 import java.time.Instant
@@ -110,8 +110,10 @@ class AttemptTransitionStep(
             val message: String
             val stateName = stateName // shadowed on purpose to prevent var from changing
             if (stateName != null) {
-                logger.info("$indexName transition conditions evaluated to true [indexCreationDate=$indexCreationDate," +
-                        " numDocs=$numDocs, indexSize=${indexSize?.bytes},stepStartTime=${stepStartTime.toEpochMilli()}]")
+                logger.info(
+                    "$indexName transition conditions evaluated to true [indexCreationDate=$indexCreationDate," +
+                        " numDocs=$numDocs, indexSize=${indexSize?.bytes},stepStartTime=${stepStartTime.toEpochMilli()}]"
+                )
                 stepStatus = StepStatus.COMPLETED
                 message = getSuccessMessage(indexName, stateName)
             } else {

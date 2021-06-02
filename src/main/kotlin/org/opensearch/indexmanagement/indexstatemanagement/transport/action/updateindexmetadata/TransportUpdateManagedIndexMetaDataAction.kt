@@ -26,8 +26,6 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.transport.action.updateindexmetadata
 
-import org.opensearch.indexmanagement.IndexManagementPlugin
-import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
 import org.apache.logging.log4j.LogManager
 import org.opensearch.action.ActionListener
 import org.opensearch.action.support.ActionFilters
@@ -50,6 +48,8 @@ import org.opensearch.common.inject.Inject
 import org.opensearch.common.io.stream.StreamInput
 import org.opensearch.common.io.stream.Writeable
 import org.opensearch.index.Index
+import org.opensearch.indexmanagement.IndexManagementPlugin
+import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.threadpool.ThreadPool
 import org.opensearch.transport.TransportService
 
@@ -137,8 +137,10 @@ class TransportUpdateManagedIndexMetaDataAction : TransportMasterNodeAction<Upda
         for (task in tasks) {
             for (pair in task.indicesToAddManagedIndexMetaDataTo) {
                 if (currentState.metadata.hasIndex(pair.first.name)) {
-                    metaDataBuilder.put(IndexMetadata.builder(currentState.metadata.index(pair.first))
-                            .putCustom(ManagedIndexMetaData.MANAGED_INDEX_METADATA_TYPE, pair.second.toMap()))
+                    metaDataBuilder.put(
+                        IndexMetadata.builder(currentState.metadata.index(pair.first))
+                            .putCustom(ManagedIndexMetaData.MANAGED_INDEX_METADATA_TYPE, pair.second.toMap())
+                    )
                 } else {
                     log.debug("No IndexMetadata found for [${pair.first.name}] when updating ManagedIndexMetaData")
                 }
