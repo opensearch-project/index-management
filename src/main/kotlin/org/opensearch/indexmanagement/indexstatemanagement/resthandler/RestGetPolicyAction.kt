@@ -40,7 +40,6 @@ import org.opensearch.indexmanagement.indexstatemanagement.util.DEFAULT_SORT_ORD
 import org.apache.logging.log4j.LogManager
 import org.opensearch.client.node.NodeClient
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.LEGACY_POLICY_BASE_URI
-import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.LEGACY_ROLLUP_BASE_URI
 import org.opensearch.rest.BaseRestHandler
 import org.opensearch.rest.BaseRestHandler.RestChannelConsumer
 import org.opensearch.rest.RestHandler.Route
@@ -64,7 +63,7 @@ class RestGetPolicyAction : BaseRestHandler() {
         return listOf(
             ReplacedRoute(
                 GET, POLICY_BASE_URI,
-                GET, LEGACY_ROLLUP_BASE_URI
+                GET, LEGACY_POLICY_BASE_URI
             ),
             ReplacedRoute(
                 GET, "$POLICY_BASE_URI/{policyID}",
