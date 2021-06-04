@@ -26,9 +26,6 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.model.action
 
-import org.opensearch.indexmanagement.indexstatemanagement.action.Action
-import org.opensearch.indexmanagement.indexstatemanagement.action.ReadWriteAction
-import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.client.Client
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.settings.Settings
@@ -38,6 +35,9 @@ import org.opensearch.common.xcontent.XContentBuilder
 import org.opensearch.common.xcontent.XContentParser
 import org.opensearch.common.xcontent.XContentParser.Token
 import org.opensearch.common.xcontent.XContentParserUtils.ensureExpectedToken
+import org.opensearch.indexmanagement.indexstatemanagement.action.Action
+import org.opensearch.indexmanagement.indexstatemanagement.action.ReadWriteAction
+import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.script.ScriptService
 import java.io.IOException
 

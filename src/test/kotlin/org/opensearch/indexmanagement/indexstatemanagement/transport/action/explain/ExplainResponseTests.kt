@@ -26,9 +26,9 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.transport.action.explain
 
-import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.common.io.stream.BytesStreamOutput
 import org.opensearch.common.io.stream.StreamInput
+import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.test.OpenSearchTestCase
 
 class ExplainResponseTests : OpenSearchTestCase() {

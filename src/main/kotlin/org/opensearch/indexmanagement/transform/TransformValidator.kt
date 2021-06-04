@@ -11,12 +11,6 @@
 
 package org.opensearch.indexmanagement.transform
 
-import org.opensearch.indexmanagement.opensearchapi.suspendUntil
-import org.opensearch.indexmanagement.transform.exceptions.TransformValidationException
-import org.opensearch.indexmanagement.transform.model.Transform
-import org.opensearch.indexmanagement.transform.model.TransformValidationResult
-import org.opensearch.indexmanagement.transform.settings.TransformSettings
-import java.lang.IllegalStateException
 import org.apache.logging.log4j.LogManager
 import org.opensearch.ExceptionsHelper
 import org.opensearch.action.admin.cluster.health.ClusterHealthAction
@@ -29,8 +23,14 @@ import org.opensearch.client.Client
 import org.opensearch.cluster.metadata.IndexNameExpressionResolver
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.settings.Settings
+import org.opensearch.indexmanagement.opensearchapi.suspendUntil
+import org.opensearch.indexmanagement.transform.exceptions.TransformValidationException
+import org.opensearch.indexmanagement.transform.model.Transform
+import org.opensearch.indexmanagement.transform.model.TransformValidationResult
+import org.opensearch.indexmanagement.transform.settings.TransformSettings
 import org.opensearch.monitor.jvm.JvmService
 import org.opensearch.transport.RemoteTransportException
+import java.lang.IllegalStateException
 
 @Suppress("SpreadOperator", "ReturnCount")
 class TransformValidator(
@@ -102,8 +102,10 @@ class TransformValidator(
         val request = GetMappingsRequest().indices(index)
         val issues = mutableListOf<String>()
         val result: GetMappingsResponse =
-            esClient.admin().indices().suspendUntil { getMappings(request, it) } ?: throw IllegalStateException("GetMappingResponse for [$index] " +
-                                                                                                                    "was null")
+            esClient.admin().indices().suspendUntil { getMappings(request, it) } ?: throw IllegalStateException(
+                "GetMappingResponse for [$index] " +
+                    "was null"
+            )
         val indexTypeMappings = result.mappings[index]
         if (indexTypeMappings.isEmpty) {
             issues.add("Source index [$index] mappings are empty, cannot validate the job.")

@@ -26,9 +26,9 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.settings
 
-import org.opensearch.indexmanagement.indexstatemanagement.model.action.ActionConfig
 import org.opensearch.common.settings.Setting
 import org.opensearch.common.unit.TimeValue
+import org.opensearch.indexmanagement.indexstatemanagement.model.action.ActionConfig
 import java.util.function.Function
 
 class ManagedIndexSettings {

@@ -26,12 +26,8 @@
 
 package org.opensearch.indexmanagement.rollup.action.get
 
-import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
-import org.opensearch.indexmanagement.opensearchapi.contentParser
-import org.opensearch.indexmanagement.opensearchapi.parseWithType
-import org.opensearch.indexmanagement.rollup.model.Rollup
-import org.opensearch.OpenSearchStatusException
 import org.opensearch.ExceptionsHelper
+import org.opensearch.OpenSearchStatusException
 import org.opensearch.action.ActionListener
 import org.opensearch.action.search.SearchRequest
 import org.opensearch.action.search.SearchResponse
@@ -43,6 +39,10 @@ import org.opensearch.common.xcontent.NamedXContentRegistry
 import org.opensearch.index.query.BoolQueryBuilder
 import org.opensearch.index.query.ExistsQueryBuilder
 import org.opensearch.index.query.WildcardQueryBuilder
+import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
+import org.opensearch.indexmanagement.opensearchapi.contentParser
+import org.opensearch.indexmanagement.opensearchapi.parseWithType
+import org.opensearch.indexmanagement.rollup.model.Rollup
 import org.opensearch.rest.RestStatus
 import org.opensearch.search.builder.SearchSourceBuilder
 import org.opensearch.search.sort.SortOrder
@@ -73,27 +73,34 @@ class TransportGetRollupsAction @Inject constructor(
         val searchSourceBuilder = SearchSourceBuilder().query(boolQueryBuilder).from(from).size(size).seqNoAndPrimaryTerm(true)
             .sort(sortField, SortOrder.fromString(sortDirection))
         val searchRequest = SearchRequest(INDEX_MANAGEMENT_INDEX).source(searchSourceBuilder)
-        client.search(searchRequest, object : ActionListener<SearchResponse> {
-            override fun onResponse(response: SearchResponse) {
-                val totalRollups = response.hits.totalHits?.value ?: 0
+        client.search(
+            searchRequest,
+            object : ActionListener<SearchResponse> {
+                override fun onResponse(response: SearchResponse) {
+                    val totalRollups = response.hits.totalHits?.value ?: 0
 
-                if (response.shardFailures.isNotEmpty()) {
-                    val failure = response.shardFailures.reduce { s1, s2 -> if (s1.status().status > s2.status().status) s1 else s2 }
-                    listener.onFailure(OpenSearchStatusException("Get rollups failed on some shards", failure.status(), failure.cause))
-                } else {
-                    try {
-                        val rollups = response.hits.hits.map {
-                            contentParser(it.sourceRef).parseWithType(it.id, it.seqNo, it.primaryTerm, Rollup.Companion::parse)
+                    if (response.shardFailures.isNotEmpty()) {
+                        val failure = response.shardFailures.reduce { s1, s2 -> if (s1.status().status > s2.status().status) s1 else s2 }
+                        listener.onFailure(OpenSearchStatusException("Get rollups failed on some shards", failure.status(), failure.cause))
+                    } else {
+                        try {
+                            val rollups = response.hits.hits.map {
+                                contentParser(it.sourceRef).parseWithType(it.id, it.seqNo, it.primaryTerm, Rollup.Companion::parse)
+                            }
+                            listener.onResponse(GetRollupsResponse(rollups, totalRollups.toInt(), RestStatus.OK))
+                        } catch (e: Exception) {
+                            listener.onFailure(
+                                OpenSearchStatusException(
+                                    "Failed to parse rollups",
+                                    RestStatus.INTERNAL_SERVER_ERROR, ExceptionsHelper.unwrapCause(e)
+                                )
+                            )
                         }
-                        listener.onResponse(GetRollupsResponse(rollups, totalRollups.toInt(), RestStatus.OK))
-                    } catch (e: Exception) {
-                        listener.onFailure(OpenSearchStatusException("Failed to parse rollups",
-                            RestStatus.INTERNAL_SERVER_ERROR, ExceptionsHelper.unwrapCause(e)))
                     }
                 }
-            }
 
-            override fun onFailure(e: Exception) = listener.onFailure(e)
-        })
+                override fun onFailure(e: Exception) = listener.onFailure(e)
+            }
+        )
     }
 }

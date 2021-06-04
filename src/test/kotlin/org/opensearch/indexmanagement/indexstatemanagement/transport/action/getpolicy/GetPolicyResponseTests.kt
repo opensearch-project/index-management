@@ -26,12 +26,12 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.transport.action.getpolicy
 
+import org.opensearch.common.io.stream.BytesStreamOutput
+import org.opensearch.common.io.stream.StreamInput
 import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
 import org.opensearch.indexmanagement.indexstatemanagement.model.State
 import org.opensearch.indexmanagement.indexstatemanagement.model.action.IndexPriorityActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomErrorNotification
-import org.opensearch.common.io.stream.BytesStreamOutput
-import org.opensearch.common.io.stream.StreamInput
 import org.opensearch.test.OpenSearchTestCase
 import java.time.Instant
 import java.time.temporal.ChronoUnit

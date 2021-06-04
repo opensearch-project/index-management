@@ -11,13 +11,13 @@
 
 package org.opensearch.indexmanagement.transform.action.explain
 
-import org.opensearch.indexmanagement.transform.model.ExplainTransform
 import org.opensearch.action.ActionResponse
 import org.opensearch.common.io.stream.StreamInput
 import org.opensearch.common.io.stream.StreamOutput
 import org.opensearch.common.xcontent.ToXContent
 import org.opensearch.common.xcontent.ToXContentObject
 import org.opensearch.common.xcontent.XContentBuilder
+import org.opensearch.indexmanagement.transform.model.ExplainTransform
 import java.io.IOException
 
 class ExplainTransformResponse(val idsToExplain: Map<String, ExplainTransform?>) : ActionResponse(), ToXContentObject {

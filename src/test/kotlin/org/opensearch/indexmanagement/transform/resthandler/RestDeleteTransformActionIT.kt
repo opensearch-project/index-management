@@ -11,12 +11,12 @@
 
 package org.opensearch.indexmanagement.transform.resthandler
 
+import org.opensearch.client.ResponseException
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.TRANSFORM_BASE_URI
 import org.opensearch.indexmanagement.makeRequest
 import org.opensearch.indexmanagement.transform.TransformRestTestCase
 import org.opensearch.indexmanagement.transform.randomTransform
-import org.opensearch.client.ResponseException
 import org.opensearch.rest.RestStatus
 import org.opensearch.test.junit.annotations.TestLogging
 
@@ -28,8 +28,10 @@ class RestDeleteTransformActionIT : TransformRestTestCase() {
         val transform = randomTransform().copy(enabled = false)
         createTransform(transform, transform.id, refresh = true)
 
-        val deleteResponse = client().makeRequest("DELETE",
-            "$TRANSFORM_BASE_URI/${transform.id}")
+        val deleteResponse = client().makeRequest(
+            "DELETE",
+            "$TRANSFORM_BASE_URI/${transform.id}"
+        )
         assertEquals("Delete failed", RestStatus.OK, deleteResponse.restStatus())
         val itemList = deleteResponse.asMap()["items"] as ArrayList<Map<String, Map<String, String>>>
         val deleteMap = itemList[0]["delete"]
@@ -45,8 +47,10 @@ class RestDeleteTransformActionIT : TransformRestTestCase() {
         createTransform(transform, transform.id, refresh = true)
 
         try {
-            client().makeRequest("DELETE",
-                "$TRANSFORM_BASE_URI/${transform.id}")
+            client().makeRequest(
+                "DELETE",
+                "$TRANSFORM_BASE_URI/${transform.id}"
+            )
             fail("Expected an Exception")
         } catch (e: Exception) {
             assertEquals("Expected ElasticsearchStatusException", ResponseException::class, e::class)

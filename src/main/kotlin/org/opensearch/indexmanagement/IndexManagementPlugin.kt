@@ -26,6 +26,30 @@
 
 package org.opensearch.indexmanagement
 
+import org.apache.logging.log4j.LogManager
+import org.opensearch.action.ActionRequest
+import org.opensearch.action.ActionResponse
+import org.opensearch.action.support.ActionFilter
+import org.opensearch.client.Client
+import org.opensearch.cluster.metadata.IndexNameExpressionResolver
+import org.opensearch.cluster.node.DiscoveryNodes
+import org.opensearch.cluster.service.ClusterService
+import org.opensearch.common.component.Lifecycle
+import org.opensearch.common.component.LifecycleComponent
+import org.opensearch.common.component.LifecycleListener
+import org.opensearch.common.inject.Inject
+import org.opensearch.common.io.stream.NamedWriteableRegistry
+import org.opensearch.common.settings.ClusterSettings
+import org.opensearch.common.settings.IndexScopedSettings
+import org.opensearch.common.settings.Setting
+import org.opensearch.common.settings.Settings
+import org.opensearch.common.settings.SettingsFilter
+import org.opensearch.common.util.concurrent.ThreadContext
+import org.opensearch.common.xcontent.NamedXContentRegistry
+import org.opensearch.common.xcontent.XContentParser.Token
+import org.opensearch.common.xcontent.XContentParserUtils.ensureExpectedToken
+import org.opensearch.env.Environment
+import org.opensearch.env.NodeEnvironment
 import org.opensearch.indexmanagement.indexstatemanagement.IndexStateManagementHistory
 import org.opensearch.indexmanagement.indexstatemanagement.ManagedIndexCoordinator
 import org.opensearch.indexmanagement.indexstatemanagement.ManagedIndexRunner
@@ -42,6 +66,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.resthandler.RestGetPo
 import org.opensearch.indexmanagement.indexstatemanagement.resthandler.RestIndexPolicyAction
 import org.opensearch.indexmanagement.indexstatemanagement.resthandler.RestRemovePolicyAction
 import org.opensearch.indexmanagement.indexstatemanagement.resthandler.RestRetryFailedManagedIndexAction
+import org.opensearch.indexmanagement.indexstatemanagement.settings.LegacyOpenDistroManagedIndexSettings
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.addpolicy.AddPolicyAction
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.addpolicy.TransportAddPolicyAction
@@ -97,6 +122,7 @@ import org.opensearch.indexmanagement.rollup.resthandler.RestGetRollupAction
 import org.opensearch.indexmanagement.rollup.resthandler.RestIndexRollupAction
 import org.opensearch.indexmanagement.rollup.resthandler.RestStartRollupAction
 import org.opensearch.indexmanagement.rollup.resthandler.RestStopRollupAction
+import org.opensearch.indexmanagement.rollup.settings.LegacyOpenDistroRollupSettings
 import org.opensearch.indexmanagement.rollup.settings.RollupSettings
 import org.opensearch.indexmanagement.transform.TransformRunner
 import org.opensearch.indexmanagement.transform.action.delete.DeleteTransformsAction
@@ -128,26 +154,7 @@ import org.opensearch.indexmanagement.transform.settings.TransformSettings
 import org.opensearch.jobscheduler.spi.JobSchedulerExtension
 import org.opensearch.jobscheduler.spi.ScheduledJobParser
 import org.opensearch.jobscheduler.spi.ScheduledJobRunner
-import org.apache.logging.log4j.LogManager
-import org.opensearch.action.ActionRequest
-import org.opensearch.action.ActionResponse
-import org.opensearch.action.support.ActionFilter
-import org.opensearch.client.Client
-import org.opensearch.cluster.metadata.IndexNameExpressionResolver
-import org.opensearch.cluster.node.DiscoveryNodes
-import org.opensearch.cluster.service.ClusterService
-import org.opensearch.common.io.stream.NamedWriteableRegistry
-import org.opensearch.common.settings.ClusterSettings
-import org.opensearch.common.settings.IndexScopedSettings
-import org.opensearch.common.settings.Setting
-import org.opensearch.common.settings.Settings
-import org.opensearch.common.settings.SettingsFilter
-import org.opensearch.common.util.concurrent.ThreadContext
-import org.opensearch.common.xcontent.NamedXContentRegistry
-import org.opensearch.common.xcontent.XContentParser.Token
-import org.opensearch.common.xcontent.XContentParserUtils.ensureExpectedToken
-import org.opensearch.env.Environment
-import org.opensearch.env.NodeEnvironment
+import org.opensearch.monitor.jvm.JvmService
 import org.opensearch.plugins.ActionPlugin
 import org.opensearch.plugins.NetworkPlugin
 import org.opensearch.plugins.Plugin
@@ -156,19 +163,13 @@ import org.opensearch.rest.RestController
 import org.opensearch.rest.RestHandler
 import org.opensearch.script.ScriptService
 import org.opensearch.threadpool.ThreadPool
+import org.opensearch.transport.RemoteClusterService
 import org.opensearch.transport.TransportInterceptor
+import org.opensearch.transport.TransportService
 import org.opensearch.watcher.ResourceWatcherService
 import java.util.function.Supplier
-import org.opensearch.monitor.jvm.JvmService
-import org.opensearch.common.component.Lifecycle
-import org.opensearch.common.component.LifecycleComponent
-import org.opensearch.common.component.LifecycleListener
-import org.opensearch.common.inject.Inject
-import org.opensearch.indexmanagement.indexstatemanagement.settings.LegacyOpenDistroManagedIndexSettings
-import org.opensearch.indexmanagement.rollup.settings.LegacyOpenDistroRollupSettings
-import org.opensearch.transport.RemoteClusterService
-import org.opensearch.transport.TransportService
 
+@Suppress("TooManyFunctions")
 class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin, Plugin() {
 
     private val logger = LogManager.getLogger(javaClass)
@@ -207,6 +208,7 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
         return mutableListOf<Class<out LifecycleComponent?>>(GuiceHolder::class.java)
     }
 
+    @Suppress("ComplexMethod")
     override fun getJobParser(): ScheduledJobParser {
         return ScheduledJobParser { xcp, id, jobDocVersion ->
             ensureExpectedToken(Token.START_OBJECT, xcp.nextToken(), xcp)
@@ -281,6 +283,7 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
         )
     }
 
+    @Suppress("LongMethod")
     override fun createComponents(
         client: Client,
         clusterService: ClusterService,
@@ -337,14 +340,17 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
 
         val metadataService = MetadataService(client, clusterService, skipFlag, indexManagementIndices)
 
-        val managedIndexCoordinator = ManagedIndexCoordinator(environment.settings(),
-            client, clusterService, threadPool, indexManagementIndices, metadataService)
+        val managedIndexCoordinator = ManagedIndexCoordinator(
+            environment.settings(),
+            client, clusterService, threadPool, indexManagementIndices, metadataService
+        )
 
         return listOf(
             managedIndexRunner, rollupRunner, transformRunner, indexManagementIndices, managedIndexCoordinator, indexStateManagementHistory
         )
     }
 
+    @Suppress("LongMethod")
     override fun getSettings(): List<Setting<*>> {
         return listOf(
             ManagedIndexSettings.HISTORY_ENABLED,

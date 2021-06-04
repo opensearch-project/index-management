@@ -26,12 +26,6 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.step.snapshot
 
-import org.opensearch.indexmanagement.opensearchapi.suspendUntil
-import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
-import org.opensearch.indexmanagement.indexstatemanagement.model.action.SnapshotActionConfig
-import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.ActionProperties
-import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.StepMetaData
-import org.opensearch.indexmanagement.indexstatemanagement.step.Step
 import org.apache.logging.log4j.LogManager
 import org.opensearch.ExceptionsHelper
 import org.opensearch.action.admin.cluster.snapshots.status.SnapshotStatus
@@ -40,6 +34,12 @@ import org.opensearch.action.admin.cluster.snapshots.status.SnapshotsStatusRespo
 import org.opensearch.client.Client
 import org.opensearch.cluster.SnapshotsInProgress.State
 import org.opensearch.cluster.service.ClusterService
+import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
+import org.opensearch.indexmanagement.indexstatemanagement.model.action.SnapshotActionConfig
+import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.ActionProperties
+import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.StepMetaData
+import org.opensearch.indexmanagement.indexstatemanagement.step.Step
+import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.transport.RemoteTransportException
 
 class WaitForSnapshotStep(
@@ -66,7 +66,7 @@ class WaitForSnapshotStep(
                 .snapshots
                 .find { snapshotStatus ->
                     snapshotStatus.snapshot.snapshotId.name == snapshotName &&
-                            snapshotStatus.snapshot.repository == config.repository
+                        snapshotStatus.snapshot.repository == config.repository
                 }
             if (status != null) {
                 when (status.state) {

@@ -26,6 +26,13 @@
 
 package org.opensearch.indexmanagement.rollup
 
+import org.opensearch.common.xcontent.ToXContent
+import org.opensearch.common.xcontent.XContentFactory
+import org.opensearch.index.query.TermQueryBuilder
+import org.opensearch.indexmanagement.common.model.dimension.DateHistogram
+import org.opensearch.indexmanagement.common.model.dimension.Dimension
+import org.opensearch.indexmanagement.common.model.dimension.Histogram
+import org.opensearch.indexmanagement.common.model.dimension.Terms
 import org.opensearch.indexmanagement.opensearchapi.string
 import org.opensearch.indexmanagement.randomInstant
 import org.opensearch.indexmanagement.randomSchedule
@@ -40,19 +47,12 @@ import org.opensearch.indexmanagement.rollup.model.Rollup
 import org.opensearch.indexmanagement.rollup.model.RollupMetadata
 import org.opensearch.indexmanagement.rollup.model.RollupMetrics
 import org.opensearch.indexmanagement.rollup.model.RollupStats
-import org.opensearch.indexmanagement.common.model.dimension.DateHistogram
-import org.opensearch.indexmanagement.common.model.dimension.Dimension
-import org.opensearch.indexmanagement.common.model.dimension.Histogram
-import org.opensearch.indexmanagement.common.model.dimension.Terms
 import org.opensearch.indexmanagement.rollup.model.metric.Average
 import org.opensearch.indexmanagement.rollup.model.metric.Max
 import org.opensearch.indexmanagement.rollup.model.metric.Metric
 import org.opensearch.indexmanagement.rollup.model.metric.Min
 import org.opensearch.indexmanagement.rollup.model.metric.Sum
 import org.opensearch.indexmanagement.rollup.model.metric.ValueCount
-import org.opensearch.common.xcontent.ToXContent
-import org.opensearch.common.xcontent.XContentFactory
-import org.opensearch.index.query.TermQueryBuilder
 import org.opensearch.test.rest.OpenSearchRestTestCase
 import java.util.Locale
 

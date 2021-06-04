@@ -26,6 +26,8 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.action
 
+import org.opensearch.cluster.metadata.IndexMetadata
+import org.opensearch.common.settings.Settings
 import org.opensearch.indexmanagement.indexstatemanagement.IndexStateManagementRestTestCase
 import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
 import org.opensearch.indexmanagement.indexstatemanagement.model.State
@@ -35,8 +37,6 @@ import org.opensearch.indexmanagement.indexstatemanagement.step.forcemerge.Attem
 import org.opensearch.indexmanagement.indexstatemanagement.step.forcemerge.AttemptSetReadOnlyStep
 import org.opensearch.indexmanagement.indexstatemanagement.step.forcemerge.WaitForForceMergeStep
 import org.opensearch.indexmanagement.waitFor
-import org.opensearch.cluster.metadata.IndexMetadata
-import org.opensearch.common.settings.Settings
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 import java.util.Locale

@@ -26,7 +26,13 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.model
 
-import org.opensearch.indexmanagement.opensearchapi.string
+import org.opensearch.common.io.stream.InputStreamStreamInput
+import org.opensearch.common.io.stream.OutputStreamStreamOutput
+import org.opensearch.common.unit.ByteSizeValue
+import org.opensearch.common.unit.TimeValue
+import org.opensearch.common.xcontent.LoggingDeprecationHandler
+import org.opensearch.common.xcontent.XContentFactory
+import org.opensearch.common.xcontent.XContentType
 import org.opensearch.indexmanagement.indexstatemanagement.model.action.ActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.model.action.ActionRetry
 import org.opensearch.indexmanagement.indexstatemanagement.model.action.ActionTimeout
@@ -39,13 +45,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.randomReplicaCountAct
 import org.opensearch.indexmanagement.indexstatemanagement.randomRolloverActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomSnapshotActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomTimeValueObject
-import org.opensearch.common.io.stream.InputStreamStreamInput
-import org.opensearch.common.io.stream.OutputStreamStreamOutput
-import org.opensearch.common.unit.ByteSizeValue
-import org.opensearch.common.unit.TimeValue
-import org.opensearch.common.xcontent.LoggingDeprecationHandler
-import org.opensearch.common.xcontent.XContentFactory
-import org.opensearch.common.xcontent.XContentType
+import org.opensearch.indexmanagement.opensearchapi.string
 import org.opensearch.test.OpenSearchTestCase
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
@@ -122,12 +122,12 @@ class ActionConfigTests : OpenSearchTestCase() {
             .startObject()
             .field(ActionTimeout.TIMEOUT_FIELD, randomTimeValueObject().stringRep)
             .startObject(ActionRetry.RETRY_FIELD)
-                .field(ActionRetry.COUNT_FIELD, 1)
-                .field(ActionRetry.BACKOFF_FIELD, ActionRetry.Backoff.EXPONENTIAL)
-                .field(ActionRetry.DELAY_FIELD, TimeValue.timeValueMinutes(1))
+            .field(ActionRetry.COUNT_FIELD, 1)
+            .field(ActionRetry.BACKOFF_FIELD, ActionRetry.Backoff.EXPONENTIAL)
+            .field(ActionRetry.DELAY_FIELD, TimeValue.timeValueMinutes(1))
             .endObject()
             .startObject(ActionConfig.ActionType.INDEX_PRIORITY.type)
-                .field(IndexPriorityActionConfig.INDEX_PRIORITY_FIELD, 10)
+            .field(IndexPriorityActionConfig.INDEX_PRIORITY_FIELD, 10)
             .endObject()
             .endObject()
 

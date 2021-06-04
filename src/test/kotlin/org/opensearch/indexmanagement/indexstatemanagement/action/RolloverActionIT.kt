@@ -28,7 +28,12 @@ package org.opensearch.indexmanagement.indexstatemanagement.action
 
 import org.apache.http.entity.ContentType
 import org.apache.http.entity.StringEntity
+import org.hamcrest.core.Is.isA
+import org.junit.Assert
 import org.opensearch.cluster.metadata.DataStream
+import org.opensearch.common.unit.ByteSizeUnit
+import org.opensearch.common.unit.ByteSizeValue
+import org.opensearch.common.unit.TimeValue
 import org.opensearch.indexmanagement.indexstatemanagement.IndexStateManagementRestTestCase
 import org.opensearch.indexmanagement.indexstatemanagement.model.ISMTemplate
 import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
@@ -36,13 +41,8 @@ import org.opensearch.indexmanagement.indexstatemanagement.model.State
 import org.opensearch.indexmanagement.indexstatemanagement.model.action.RolloverActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomErrorNotification
 import org.opensearch.indexmanagement.indexstatemanagement.step.rollover.AttemptRolloverStep
-import org.opensearch.indexmanagement.waitFor
-import org.opensearch.common.unit.ByteSizeUnit
-import org.opensearch.common.unit.ByteSizeValue
-import org.opensearch.common.unit.TimeValue
-import org.hamcrest.core.Is.isA
-import org.junit.Assert
 import org.opensearch.indexmanagement.makeRequest
+import org.opensearch.indexmanagement.waitFor
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 import java.util.Locale
@@ -93,17 +93,22 @@ class RolloverActionIT : IndexStateManagementRestTestCase() {
         val indexNameBase = "bwc_index"
         val firstIndex = "$indexNameBase-1"
         val aliasName = "bwc_alias"
-        client().makeRequest("PUT", "/$firstIndex",
-        StringEntity("{\n" +
-            "  \"settings\": {\n" +
-            "    \"index\": {\n" +
-            "      \"opendistro.index_state_management.rollover_alias\": \"$aliasName\"\n" +
-            "    }\n" +
-            "  },\n" +
-            "  \"aliases\": {\n" +
-            "    \"$aliasName\": {\"is_write_index\": true}\n" +
-            "  }\n" +
-            "}", ContentType.APPLICATION_JSON))
+        client().makeRequest(
+            "PUT", "/$firstIndex",
+            StringEntity(
+                "{\n" +
+                    "  \"settings\": {\n" +
+                    "    \"index\": {\n" +
+                    "      \"opendistro.index_state_management.rollover_alias\": \"$aliasName\"\n" +
+                    "    }\n" +
+                    "  },\n" +
+                    "  \"aliases\": {\n" +
+                    "    \"$aliasName\": {\"is_write_index\": true}\n" +
+                    "  }\n" +
+                    "}",
+                ContentType.APPLICATION_JSON
+            )
+        )
 
         val policyID = "${testIndexName}_bwc"
         val actionConfig = RolloverActionConfig(null, null, null, 0)
@@ -169,11 +174,15 @@ class RolloverActionIT : IndexStateManagementRestTestCase() {
         updateManagedIndexConfigStartTime(managedIndexConfig)
         waitFor {
             val info = getExplainManagedIndexMetaData(firstIndex).info as Map<String, Any?>
-            assertEquals("Index rollover before it met the condition.",
-                AttemptRolloverStep.getPendingMessage(firstIndex), info["message"])
+            assertEquals(
+                "Index rollover before it met the condition.",
+                AttemptRolloverStep.getPendingMessage(firstIndex), info["message"]
+            )
             val conditions = info["conditions"] as Map<String, Any?>
-            assertEquals("Did not have exclusively min size and min doc count conditions",
-                    setOf(RolloverActionConfig.MIN_SIZE_FIELD, RolloverActionConfig.MIN_DOC_COUNT_FIELD), conditions.keys)
+            assertEquals(
+                "Did not have exclusively min size and min doc count conditions",
+                setOf(RolloverActionConfig.MIN_SIZE_FIELD, RolloverActionConfig.MIN_DOC_COUNT_FIELD), conditions.keys
+            )
             val minSize = conditions[RolloverActionConfig.MIN_SIZE_FIELD] as Map<String, Any?>
             val minDocCount = conditions[RolloverActionConfig.MIN_DOC_COUNT_FIELD] as Map<String, Any?>
             assertEquals("Did not have min size condition", "10b", minSize["condition"])
@@ -190,8 +199,10 @@ class RolloverActionIT : IndexStateManagementRestTestCase() {
             val info = getExplainManagedIndexMetaData(firstIndex).info as Map<String, Any?>
             assertEquals("Index did not rollover", AttemptRolloverStep.getSuccessMessage(firstIndex), info["message"])
             val conditions = info["conditions"] as Map<String, Any?>
-            assertEquals("Did not have exclusively min size and min doc count conditions",
-                    setOf(RolloverActionConfig.MIN_SIZE_FIELD, RolloverActionConfig.MIN_DOC_COUNT_FIELD), conditions.keys)
+            assertEquals(
+                "Did not have exclusively min size and min doc count conditions",
+                setOf(RolloverActionConfig.MIN_SIZE_FIELD, RolloverActionConfig.MIN_DOC_COUNT_FIELD), conditions.keys
+            )
             val minSize = conditions[RolloverActionConfig.MIN_SIZE_FIELD] as Map<String, Any?>
             val minDocCount = conditions[RolloverActionConfig.MIN_DOC_COUNT_FIELD] as Map<String, Any?>
             assertEquals("Did not have min size condition", "10b", minSize["condition"])
@@ -234,11 +245,15 @@ class RolloverActionIT : IndexStateManagementRestTestCase() {
         updateManagedIndexConfigStartTime(managedIndexConfig)
         waitFor {
             val info = getExplainManagedIndexMetaData(firstIndex).info as Map<String, Any?>
-            assertEquals("Index rollover before it met the condition.",
-                AttemptRolloverStep.getPendingMessage(firstIndex), info["message"])
+            assertEquals(
+                "Index rollover before it met the condition.",
+                AttemptRolloverStep.getPendingMessage(firstIndex), info["message"]
+            )
             val conditions = info["conditions"] as Map<String, Any?>
-            assertEquals("Did not have exclusively min age and min doc count conditions",
-                    setOf(RolloverActionConfig.MIN_INDEX_AGE_FIELD, RolloverActionConfig.MIN_DOC_COUNT_FIELD), conditions.keys)
+            assertEquals(
+                "Did not have exclusively min age and min doc count conditions",
+                setOf(RolloverActionConfig.MIN_INDEX_AGE_FIELD, RolloverActionConfig.MIN_DOC_COUNT_FIELD), conditions.keys
+            )
             val minAge = conditions[RolloverActionConfig.MIN_INDEX_AGE_FIELD] as Map<String, Any?>
             val minDocCount = conditions[RolloverActionConfig.MIN_DOC_COUNT_FIELD] as Map<String, Any?>
             assertEquals("Did not have min age condition", "2d", minAge["condition"])
@@ -255,8 +270,10 @@ class RolloverActionIT : IndexStateManagementRestTestCase() {
             val info = getExplainManagedIndexMetaData(firstIndex).info as Map<String, Any?>
             assertEquals("Index did not rollover", AttemptRolloverStep.getSuccessMessage(firstIndex), info["message"])
             val conditions = info["conditions"] as Map<String, Any?>
-            assertEquals("Did not have exclusively min age and min doc count conditions",
-                    setOf(RolloverActionConfig.MIN_INDEX_AGE_FIELD, RolloverActionConfig.MIN_DOC_COUNT_FIELD), conditions.keys)
+            assertEquals(
+                "Did not have exclusively min age and min doc count conditions",
+                setOf(RolloverActionConfig.MIN_INDEX_AGE_FIELD, RolloverActionConfig.MIN_DOC_COUNT_FIELD), conditions.keys
+            )
             val minAge = conditions[RolloverActionConfig.MIN_INDEX_AGE_FIELD] as Map<String, Any?>
             val minDocCount = conditions[RolloverActionConfig.MIN_DOC_COUNT_FIELD] as Map<String, Any?>
             assertEquals("Did not have min age condition", "2d", minAge["condition"])

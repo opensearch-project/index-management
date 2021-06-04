@@ -11,13 +11,6 @@
 
 package org.opensearch.indexmanagement.transform.action.index
 
-import org.opensearch.indexmanagement.IndexManagementIndices
-import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
-import org.opensearch.indexmanagement.transform.action.get.GetTransformAction
-import org.opensearch.indexmanagement.transform.action.get.GetTransformRequest
-import org.opensearch.indexmanagement.transform.action.get.GetTransformResponse
-import org.opensearch.indexmanagement.transform.model.Transform
-import org.opensearch.indexmanagement.util.IndexUtils
 import org.apache.logging.log4j.LogManager
 import org.opensearch.OpenSearchStatusException
 import org.opensearch.action.ActionListener
@@ -32,6 +25,13 @@ import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.inject.Inject
 import org.opensearch.common.xcontent.ToXContent
 import org.opensearch.common.xcontent.XContentFactory.jsonBuilder
+import org.opensearch.indexmanagement.IndexManagementIndices
+import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
+import org.opensearch.indexmanagement.transform.action.get.GetTransformAction
+import org.opensearch.indexmanagement.transform.action.get.GetTransformRequest
+import org.opensearch.indexmanagement.transform.action.get.GetTransformResponse
+import org.opensearch.indexmanagement.transform.model.Transform
+import org.opensearch.indexmanagement.util.IndexUtils
 import org.opensearch.rest.RestStatus
 import org.opensearch.tasks.Task
 import org.opensearch.transport.TransportService
@@ -43,7 +43,7 @@ class TransportIndexTransformAction @Inject constructor(
     val indexManagementIndices: IndexManagementIndices,
     val clusterService: ClusterService
 ) : HandledTransportAction<IndexTransformRequest, IndexTransformResponse>(
-        IndexTransformAction.NAME, transportService, actionFilters, ::IndexTransformRequest
+    IndexTransformAction.NAME, transportService, actionFilters, ::IndexTransformRequest
 ) {
 
     private val log = LogManager.getLogger(javaClass)
@@ -113,24 +113,29 @@ class TransportIndexTransformAction @Inject constructor(
                 .id(request.transform.id)
                 .source(transform.toXContent(jsonBuilder(), ToXContent.EMPTY_PARAMS))
                 .timeout(IndexRequest.DEFAULT_TIMEOUT)
-            client.index(request, object : ActionListener<IndexResponse> {
-                override fun onResponse(response: IndexResponse) {
-                    if (response.shardInfo.failed > 0) {
-                        val failureReasons = response.shardInfo.failures.joinToString(",") { it.reason() }
-                        actionListener.onFailure(OpenSearchStatusException(failureReasons, response.status()))
-                    } else {
-                        val status = if (request.opType() == DocWriteRequest.OpType.CREATE) RestStatus.CREATED else RestStatus.OK
-                        actionListener.onResponse(
-                                IndexTransformResponse(response.id, response.version, response.seqNo, response.primaryTerm, status,
-                                        transform.copy(seqNo = response.seqNo, primaryTerm = response.primaryTerm))
-                        )
+            client.index(
+                request,
+                object : ActionListener<IndexResponse> {
+                    override fun onResponse(response: IndexResponse) {
+                        if (response.shardInfo.failed > 0) {
+                            val failureReasons = response.shardInfo.failures.joinToString(",") { it.reason() }
+                            actionListener.onFailure(OpenSearchStatusException(failureReasons, response.status()))
+                        } else {
+                            val status = if (request.opType() == DocWriteRequest.OpType.CREATE) RestStatus.CREATED else RestStatus.OK
+                            actionListener.onResponse(
+                                IndexTransformResponse(
+                                    response.id, response.version, response.seqNo, response.primaryTerm, status,
+                                    transform.copy(seqNo = response.seqNo, primaryTerm = response.primaryTerm)
+                                )
+                            )
+                        }
+                    }
+
+                    override fun onFailure(e: Exception) {
+                        actionListener.onFailure(e)
                     }
                 }
-
-                override fun onFailure(e: Exception) {
-                    actionListener.onFailure(e)
-                }
-            })
+            )
         }
     }
 }

@@ -26,12 +26,12 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.transport.action.changepolicy
 
-import org.opensearch.indexmanagement.indexstatemanagement.model.ChangePolicy
 import org.opensearch.action.ActionRequest
 import org.opensearch.action.ActionRequestValidationException
 import org.opensearch.action.ValidateActions
 import org.opensearch.common.io.stream.StreamInput
 import org.opensearch.common.io.stream.StreamOutput
+import org.opensearch.indexmanagement.indexstatemanagement.model.ChangePolicy
 import java.io.IOException
 
 class ChangePolicyRequest : ActionRequest {

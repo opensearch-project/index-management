@@ -11,6 +11,7 @@
 
 package org.opensearch.indexmanagement.transform.resthandler
 
+import org.opensearch.client.ResponseException
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.TRANSFORM_BASE_URI
 import org.opensearch.indexmanagement.makeRequest
 import org.opensearch.indexmanagement.transform.TransformRestTestCase
@@ -18,7 +19,6 @@ import org.opensearch.indexmanagement.transform.model.TransformMetadata
 import org.opensearch.indexmanagement.transform.randomTransform
 import org.opensearch.indexmanagement.waitFor
 import org.opensearch.jobscheduler.spi.schedule.IntervalSchedule
-import org.opensearch.client.ResponseException
 import org.opensearch.rest.RestStatus
 import org.opensearch.test.junit.annotations.TestLogging
 import java.time.Instant

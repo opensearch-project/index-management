@@ -26,14 +26,14 @@
 
 package org.opensearch.indexmanagement.refreshanalyzer
 
-import org.opensearch.indexmanagement.IndexManagementRestTestCase
-import org.opensearch.indexmanagement.refreshanalyzer.RestRefreshSearchAnalyzerAction.Companion.REFRESH_SEARCH_ANALYZER_BASE_URI
+import org.junit.Assume
+import org.junit.Before
 import org.opensearch.client.Request
 import org.opensearch.common.io.Streams
 import org.opensearch.common.settings.Settings
 import org.opensearch.common.xcontent.XContentType
-import org.junit.Assume
-import org.junit.Before
+import org.opensearch.indexmanagement.IndexManagementRestTestCase
+import org.opensearch.indexmanagement.refreshanalyzer.RestRefreshSearchAnalyzerAction.Companion.REFRESH_SEARCH_ANALYZER_BASE_URI
 import java.io.InputStreamReader
 import java.nio.charset.Charset
 import java.nio.charset.StandardCharsets
@@ -56,8 +56,8 @@ class RefreshSearchAnalyzerActionIT : IndexManagementRestTestCase() {
         }
 
         val settings: Settings = Settings.builder()
-                .loadFromSource(getIndexAnalyzerSettings(), XContentType.JSON)
-                .build()
+            .loadFromSource(getIndexAnalyzerSettings(), XContentType.JSON)
+            .build()
         createIndex(indexName, settings, getAnalyzerMapping())
         ingestData(indexName)
 
@@ -102,8 +102,8 @@ class RefreshSearchAnalyzerActionIT : IndexManagementRestTestCase() {
         }
 
         val settings: Settings = Settings.builder()
-                .loadFromSource(getSearchAnalyzerSettings(), XContentType.JSON)
-                .build()
+            .loadFromSource(getSearchAnalyzerSettings(), XContentType.JSON)
+            .build()
         createIndex(indexName, settings, getAnalyzerMapping())
         ingestData(indexName)
 
@@ -150,8 +150,8 @@ class RefreshSearchAnalyzerActionIT : IndexManagementRestTestCase() {
         }
 
         val settings: Settings = Settings.builder()
-                .loadFromSource(getSearchAnalyzerSettings(), XContentType.JSON)
-                .build()
+            .loadFromSource(getSearchAnalyzerSettings(), XContentType.JSON)
+            .build()
         createIndex(indexName, settings, getAnalyzerMapping(), aliasSettings)
         ingestData(indexName)
 
@@ -214,8 +214,10 @@ class RefreshSearchAnalyzerActionIT : IndexManagementRestTestCase() {
         }
 
         fun refreshAnalyzer(indexName: String) {
-            val request = Request("POST",
-                    "$REFRESH_SEARCH_ANALYZER_BASE_URI/$indexName")
+            val request = Request(
+                "POST",
+                "$REFRESH_SEARCH_ANALYZER_BASE_URI/$indexName"
+            )
             client().performRequest(request)
         }
 

@@ -28,20 +28,6 @@
 
 package org.opensearch.indexmanagement.rollup.util
 
-import org.opensearch.indexmanagement.rollup.RollupMapperService
-import org.opensearch.indexmanagement.rollup.model.Rollup
-import org.opensearch.indexmanagement.rollup.model.RollupFieldMapping
-import org.opensearch.indexmanagement.rollup.model.RollupMetadata
-import org.opensearch.indexmanagement.common.model.dimension.DateHistogram
-import org.opensearch.indexmanagement.common.model.dimension.Dimension
-import org.opensearch.indexmanagement.common.model.dimension.Histogram
-import org.opensearch.indexmanagement.common.model.dimension.Terms
-import org.opensearch.indexmanagement.rollup.model.metric.Average
-import org.opensearch.indexmanagement.rollup.model.metric.Max
-import org.opensearch.indexmanagement.rollup.model.metric.Min
-import org.opensearch.indexmanagement.rollup.model.metric.Sum
-import org.opensearch.indexmanagement.rollup.model.metric.ValueCount
-import org.opensearch.indexmanagement.util.IndexUtils
 import org.opensearch.action.search.SearchRequest
 import org.opensearch.cluster.ClusterState
 import org.opensearch.cluster.metadata.IndexMetadata
@@ -61,8 +47,22 @@ import org.opensearch.index.query.QueryBuilder
 import org.opensearch.index.query.RangeQueryBuilder
 import org.opensearch.index.query.TermQueryBuilder
 import org.opensearch.index.query.TermsQueryBuilder
+import org.opensearch.indexmanagement.common.model.dimension.DateHistogram
+import org.opensearch.indexmanagement.common.model.dimension.Dimension
+import org.opensearch.indexmanagement.common.model.dimension.Histogram
+import org.opensearch.indexmanagement.common.model.dimension.Terms
+import org.opensearch.indexmanagement.rollup.RollupMapperService
+import org.opensearch.indexmanagement.rollup.model.Rollup
+import org.opensearch.indexmanagement.rollup.model.RollupFieldMapping
+import org.opensearch.indexmanagement.rollup.model.RollupMetadata
+import org.opensearch.indexmanagement.rollup.model.metric.Average
+import org.opensearch.indexmanagement.rollup.model.metric.Max
+import org.opensearch.indexmanagement.rollup.model.metric.Min
+import org.opensearch.indexmanagement.rollup.model.metric.Sum
+import org.opensearch.indexmanagement.rollup.model.metric.ValueCount
 import org.opensearch.indexmanagement.rollup.settings.LegacyOpenDistroRollupSettings
 import org.opensearch.indexmanagement.rollup.settings.RollupSettings
+import org.opensearch.indexmanagement.util.IndexUtils
 import org.opensearch.script.Script
 import org.opensearch.script.ScriptType
 import org.opensearch.search.aggregations.AggregationBuilder
@@ -82,6 +82,7 @@ import org.opensearch.search.builder.SearchSourceBuilder
 
 const val DATE_FIELD_EPOCH_MILLIS_FORMAT = "epoch_millis"
 
+@Suppress("ReturnCount")
 fun isRollupIndex(index: String, clusterState: ClusterState): Boolean {
     if (RollupSettings.ROLLUP_INDEX.get(clusterState.metadata.index(index).settings)) {
         return true
@@ -147,7 +148,7 @@ fun Rollup.getDateHistogram(): DateHistogram {
 }
 
 fun Rollup.findMatchingDimension(field: String, type: Dimension.Type): Dimension? =
-        this.dimensions.find { dimension -> dimension.sourceField == field && dimension.type == type }
+    this.dimensions.find { dimension -> dimension.sourceField == field && dimension.type == type }
 
 // This method is only to be used after its confirmed the search/aggs is valid and these exist
 @Suppress("NestedBlockDepth")
@@ -169,7 +170,7 @@ fun IndexMetadata.getRollupJobs(): List<Rollup>? {
     val rollupJobs = mutableListOf<Rollup>()
     val source = this.mapping()?.source() ?: return null
     val xcp = XContentHelper
-            .createParser(NamedXContentRegistry.EMPTY, LoggingDeprecationHandler.INSTANCE, source.compressedReference(), XContentType.JSON)
+        .createParser(NamedXContentRegistry.EMPTY, LoggingDeprecationHandler.INSTANCE, source.compressedReference(), XContentType.JSON)
     ensureExpectedToken(Token.START_OBJECT, xcp.nextToken(), xcp) // start of block
     ensureExpectedToken(Token.FIELD_NAME, xcp.nextToken(), xcp) // _doc
     ensureExpectedToken(Token.START_OBJECT, xcp.nextToken(), xcp) // start of _doc block
@@ -205,7 +206,7 @@ fun IndexMetadata.getRollupJobs(): List<Rollup>? {
 }
 
 // TODO: If we have to set this manually for each aggregation builder then it means we could miss new ones settings in the future
-@Suppress("ComplexMethod")
+@Suppress("ComplexMethod", "LongMethod")
 fun Rollup.rewriteAggregationBuilder(aggregationBuilder: AggregationBuilder): AggregationBuilder {
     val aggFactory = AggregatorFactories.builder().also { factories ->
         aggregationBuilder.subAggregations.forEach {
@@ -228,27 +229,40 @@ fun Rollup.rewriteAggregationBuilder(aggregationBuilder: AggregationBuilder): Ag
         }
         is SumAggregationBuilder -> {
             SumAggregationBuilder(aggregationBuilder.name)
-                    .field(this.findMatchingMetricField<Sum>(aggregationBuilder.field()))
+                .field(this.findMatchingMetricField<Sum>(aggregationBuilder.field()))
         }
         is AvgAggregationBuilder -> {
             ScriptedMetricAggregationBuilder(aggregationBuilder.name)
-                    .initScript(Script(ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, "state.sums = 0; state.counts = 0;", emptyMap()))
-                    .mapScript(Script(ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG,
-                            "state.sums += doc[\"${this.findMatchingMetricField<Average>(aggregationBuilder.field()) + ".sum"}\"].value; " +
-                                    "state.counts += doc[\"${this.findMatchingMetricField<Average>(aggregationBuilder.field()) + ".value_count"}\"" +
-                                    "].value", emptyMap()))
-                    .combineScript(Script(ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG,
-                            "def d = new long[2]; d[0] = state.sums; d[1] = state.counts; return d", emptyMap()))
-                    .reduceScript(Script(ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG,
-                            "double sum = 0; double count = 0; for (a in states) { sum += a[0]; count += a[1]; } return sum/count", emptyMap()))
+                .initScript(Script(ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, "state.sums = 0; state.counts = 0;", emptyMap()))
+                .mapScript(
+                    Script(
+                        ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG,
+                        "state.sums += doc[\"${this.findMatchingMetricField<Average>(aggregationBuilder.field()) + ".sum"}\"].value; " +
+                            "state.counts += doc[\"${this.findMatchingMetricField<Average>(aggregationBuilder.field()) + ".value_count"}\"" +
+                            "].value",
+                        emptyMap()
+                    )
+                )
+                .combineScript(
+                    Script(
+                        ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG,
+                        "def d = new long[2]; d[0] = state.sums; d[1] = state.counts; return d", emptyMap()
+                    )
+                )
+                .reduceScript(
+                    Script(
+                        ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG,
+                        "double sum = 0; double count = 0; for (a in states) { sum += a[0]; count += a[1]; } return sum/count", emptyMap()
+                    )
+                )
         }
         is MaxAggregationBuilder -> {
             MaxAggregationBuilder(aggregationBuilder.name)
-                    .field(this.findMatchingMetricField<Max>(aggregationBuilder.field()))
+                .field(this.findMatchingMetricField<Max>(aggregationBuilder.field()))
         }
         is MinAggregationBuilder -> {
             MinAggregationBuilder(aggregationBuilder.name)
-                    .field(this.findMatchingMetricField<Min>(aggregationBuilder.field()))
+                .field(this.findMatchingMetricField<Min>(aggregationBuilder.field()))
         }
         is ValueCountAggregationBuilder -> {
             /*
@@ -259,14 +273,26 @@ fun Rollup.rewriteAggregationBuilder(aggregationBuilder: AggregationBuilder): Ag
             * way and we can use that in the future.
             * */
             ScriptedMetricAggregationBuilder(aggregationBuilder.name)
-                    .initScript(Script(ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, "state.valueCounts = []", emptyMap()))
-                    .mapScript(Script(ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG,
-                            "state.valueCounts.add(doc[\"${this.findMatchingMetricField<ValueCount>(aggregationBuilder.field())}\"].value)",
-                            emptyMap()))
-                    .combineScript(Script(ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG,
-                            "long valueCount = 0; for (vc in state.valueCounts) { valueCount += vc } return valueCount", emptyMap()))
-                    .reduceScript(Script(ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG,
-                            "long valueCount = 0; for (vc in states) { valueCount += vc } return valueCount", emptyMap()))
+                .initScript(Script(ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, "state.valueCounts = []", emptyMap()))
+                .mapScript(
+                    Script(
+                        ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG,
+                        "state.valueCounts.add(doc[\"${this.findMatchingMetricField<ValueCount>(aggregationBuilder.field())}\"].value)",
+                        emptyMap()
+                    )
+                )
+                .combineScript(
+                    Script(
+                        ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG,
+                        "long valueCount = 0; for (vc in state.valueCounts) { valueCount += vc } return valueCount", emptyMap()
+                    )
+                )
+                .reduceScript(
+                    Script(
+                        ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG,
+                        "long valueCount = 0; for (vc in states) { valueCount += vc } return valueCount", emptyMap()
+                    )
+                )
         }
         // We do nothing otherwise, the validation logic should have already verified so not throwing an exception
         else -> aggregationBuilder

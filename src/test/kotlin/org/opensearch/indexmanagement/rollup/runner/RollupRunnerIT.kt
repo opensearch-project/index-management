@@ -26,14 +26,16 @@
 
 package org.opensearch.indexmanagement.rollup.runner
 
+import org.apache.http.entity.ContentType
+import org.apache.http.entity.StringEntity
 import org.opensearch.indexmanagement.IndexManagementPlugin
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.ROLLUP_JOBS_BASE_URI
+import org.opensearch.indexmanagement.common.model.dimension.DateHistogram
 import org.opensearch.indexmanagement.makeRequest
 import org.opensearch.indexmanagement.rollup.RollupRestTestCase
 import org.opensearch.indexmanagement.rollup.model.Rollup
 import org.opensearch.indexmanagement.rollup.model.RollupMetadata
 import org.opensearch.indexmanagement.rollup.model.RollupMetrics
-import org.opensearch.indexmanagement.common.model.dimension.DateHistogram
 import org.opensearch.indexmanagement.rollup.model.metric.Average
 import org.opensearch.indexmanagement.rollup.model.metric.Max
 import org.opensearch.indexmanagement.rollup.model.metric.Min
@@ -41,11 +43,9 @@ import org.opensearch.indexmanagement.rollup.model.metric.Sum
 import org.opensearch.indexmanagement.rollup.model.metric.ValueCount
 import org.opensearch.indexmanagement.rollup.randomCalendarDateHistogram
 import org.opensearch.indexmanagement.rollup.randomRollup
+import org.opensearch.indexmanagement.rollup.settings.RollupSettings.Companion.ROLLUP_SEARCH_BACKOFF_COUNT
 import org.opensearch.indexmanagement.waitFor
 import org.opensearch.jobscheduler.spi.schedule.IntervalSchedule
-import org.apache.http.entity.ContentType
-import org.apache.http.entity.StringEntity
-import org.opensearch.indexmanagement.rollup.settings.RollupSettings.Companion.ROLLUP_SEARCH_BACKOFF_COUNT
 import org.opensearch.rest.RestStatus
 import java.time.Instant
 import java.time.temporal.ChronoUnit
@@ -106,10 +106,13 @@ class RollupRunnerIT : RollupRestTestCase() {
         client().makeRequest(
             "PUT",
             "/_index_template/test-data-stream-template",
-            StringEntity("{ " +
+            StringEntity(
+                "{ " +
                     "\"index_patterns\": [ \"$dataStreamName\" ], " +
                     "\"data_stream\": { }, " +
-                    "\"template\": { \"mappings\": { ${createRollupMappingString(rollup)} } } }", ContentType.APPLICATION_JSON)
+                    "\"template\": { \"mappings\": { ${createRollupMappingString(rollup)} } } }",
+                ContentType.APPLICATION_JSON
+            )
         )
         client().makeRequest("PUT", "/_data_stream/$dataStreamName")
 
@@ -474,9 +477,11 @@ class RollupRunnerIT : RollupRestTestCase() {
             rollupJob
         }
 
-        client().makeRequest("PUT",
+        client().makeRequest(
+            "PUT",
             "$ROLLUP_JOBS_BASE_URI/${startedRollup.id}?if_seq_no=${startedRollup.seqNo}&if_primary_term=${startedRollup.primaryTerm}",
-            emptyMap(), rollup.copy(pageSize = 1000).toHttpEntity())
+            emptyMap(), rollup.copy(pageSize = 1000).toHttpEntity()
+        )
 
         val finishedRollup = waitFor {
             val rollupJob = getRollup(rollupId = rollup.id)

@@ -11,6 +11,10 @@
 
 package org.opensearch.indexmanagement.transform.action
 
+import org.opensearch.action.DocWriteRequest
+import org.opensearch.action.support.WriteRequest
+import org.opensearch.common.io.stream.BytesStreamOutput
+import org.opensearch.index.seqno.SequenceNumbers
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
 import org.opensearch.indexmanagement.transform.action.delete.DeleteTransformsRequest
 import org.opensearch.indexmanagement.transform.action.explain.ExplainTransformRequest
@@ -23,10 +27,6 @@ import org.opensearch.indexmanagement.transform.action.stop.StopTransformRequest
 import org.opensearch.indexmanagement.transform.buildStreamInputForTransforms
 import org.opensearch.indexmanagement.transform.model.Transform
 import org.opensearch.indexmanagement.transform.randomTransform
-import org.opensearch.action.DocWriteRequest
-import org.opensearch.action.support.WriteRequest
-import org.opensearch.common.io.stream.BytesStreamOutput
-import org.opensearch.index.seqno.SequenceNumbers
 import org.opensearch.search.fetch.subphase.FetchSourceContext
 import org.opensearch.test.OpenSearchTestCase
 
@@ -62,8 +62,8 @@ class RequestTests : OpenSearchTestCase() {
     fun `test index transform create request`() {
         val transform = randomTransform().copy(seqNo = SequenceNumbers.UNASSIGNED_SEQ_NO, primaryTerm = SequenceNumbers.UNASSIGNED_PRIMARY_TERM)
         val req = IndexTransformRequest(
-                transform = transform,
-                refreshPolicy = WriteRequest.RefreshPolicy.IMMEDIATE
+            transform = transform,
+            refreshPolicy = WriteRequest.RefreshPolicy.IMMEDIATE
         ).index(INDEX_MANAGEMENT_INDEX)
 
         val out = BytesStreamOutput().apply { req.writeTo(this) }
@@ -78,8 +78,8 @@ class RequestTests : OpenSearchTestCase() {
     fun `test index transform update request`() {
         val transform = randomTransform().copy(seqNo = 1L, primaryTerm = 2L)
         val req = IndexTransformRequest(
-                transform = transform,
-                refreshPolicy = WriteRequest.RefreshPolicy.IMMEDIATE
+            transform = transform,
+            refreshPolicy = WriteRequest.RefreshPolicy.IMMEDIATE
         ).index(INDEX_MANAGEMENT_INDEX)
 
         val out = BytesStreamOutput().apply { req.writeTo(this) }

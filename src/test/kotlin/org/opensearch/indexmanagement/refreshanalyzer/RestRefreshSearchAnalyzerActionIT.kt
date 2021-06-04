@@ -26,11 +26,11 @@
 
 package org.opensearch.indexmanagement.refreshanalyzer
 
+import org.opensearch.client.ResponseException
+import org.opensearch.common.settings.Settings
 import org.opensearch.indexmanagement.IndexManagementRestTestCase
 import org.opensearch.indexmanagement.makeRequest
 import org.opensearch.indexmanagement.refreshanalyzer.RestRefreshSearchAnalyzerAction.Companion.REFRESH_SEARCH_ANALYZER_BASE_URI
-import org.opensearch.client.ResponseException
-import org.opensearch.common.settings.Settings
 import org.opensearch.rest.RestRequest.Method.POST
 import org.opensearch.rest.RestStatus
 
@@ -44,14 +44,14 @@ class RestRefreshSearchAnalyzerActionIT : IndexManagementRestTestCase() {
             assertEquals("Unexpected RestStatus", RestStatus.BAD_REQUEST, e.response.restStatus())
             val actualMessage = e.response.asMap()
             val expectedErrorMessage = mapOf(
-                    "error" to mapOf(
-                            "root_cause" to listOf<Map<String, Any>>(
-                                    mapOf("type" to "illegal_argument_exception", "reason" to "Missing indices")
-                            ),
-                            "type" to "illegal_argument_exception",
-                            "reason" to "Missing indices"
+                "error" to mapOf(
+                    "root_cause" to listOf<Map<String, Any>>(
+                        mapOf("type" to "illegal_argument_exception", "reason" to "Missing indices")
                     ),
-                    "status" to 400
+                    "type" to "illegal_argument_exception",
+                    "reason" to "Missing indices"
+                ),
+                "status" to 400
             )
             assertEquals(expectedErrorMessage, actualMessage)
         }

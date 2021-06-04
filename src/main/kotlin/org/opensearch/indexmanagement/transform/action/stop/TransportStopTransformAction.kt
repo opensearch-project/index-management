@@ -11,16 +11,9 @@
 
 package org.opensearch.indexmanagement.transform.action.stop
 
-import org.opensearch.indexmanagement.IndexManagementPlugin
-import org.opensearch.indexmanagement.opensearchapi.parseWithType
-import org.opensearch.indexmanagement.transform.action.get.GetTransformAction
-import org.opensearch.indexmanagement.transform.action.get.GetTransformRequest
-import org.opensearch.indexmanagement.transform.action.get.GetTransformResponse
-import org.opensearch.indexmanagement.transform.model.Transform
-import org.opensearch.indexmanagement.transform.model.TransformMetadata
 import org.apache.logging.log4j.LogManager
-import org.opensearch.OpenSearchStatusException
 import org.opensearch.ExceptionsHelper
+import org.opensearch.OpenSearchStatusException
 import org.opensearch.action.ActionListener
 import org.opensearch.action.DocWriteResponse
 import org.opensearch.action.get.GetRequest
@@ -36,6 +29,13 @@ import org.opensearch.common.xcontent.LoggingDeprecationHandler
 import org.opensearch.common.xcontent.NamedXContentRegistry
 import org.opensearch.common.xcontent.XContentHelper
 import org.opensearch.common.xcontent.XContentType
+import org.opensearch.indexmanagement.IndexManagementPlugin
+import org.opensearch.indexmanagement.opensearchapi.parseWithType
+import org.opensearch.indexmanagement.transform.action.get.GetTransformAction
+import org.opensearch.indexmanagement.transform.action.get.GetTransformRequest
+import org.opensearch.indexmanagement.transform.action.get.GetTransformResponse
+import org.opensearch.indexmanagement.transform.model.Transform
+import org.opensearch.indexmanagement.transform.model.TransformMetadata
 import org.opensearch.rest.RestStatus
 import org.opensearch.tasks.Task
 import org.opensearch.transport.TransportService
@@ -67,53 +67,66 @@ class TransportStopTransformAction @Inject constructor(
     override fun doExecute(task: Task, request: StopTransformRequest, actionListener: ActionListener<AcknowledgedResponse>) {
         log.debug("Executing StopTransformAction on ${request.id()}")
         val getReq = GetTransformRequest(request.id(), null)
-        client.execute(GetTransformAction.INSTANCE, getReq, object : ActionListener<GetTransformResponse> {
-            override fun onResponse(response: GetTransformResponse) {
-                val transform = response.transform
-                if (transform == null) {
-                    return actionListener.onFailure(
-                        OpenSearchStatusException("Could not find transform [${request.id()}]", RestStatus.NOT_FOUND)
-                    )
+        client.execute(
+            GetTransformAction.INSTANCE, getReq,
+            object : ActionListener<GetTransformResponse> {
+                override fun onResponse(response: GetTransformResponse) {
+                    val transform = response.transform
+                    if (transform == null) {
+                        return actionListener.onFailure(
+                            OpenSearchStatusException("Could not find transform [${request.id()}]", RestStatus.NOT_FOUND)
+                        )
+                    }
+
+                    if (transform.metadataId != null) {
+                        retrieveAndUpdateTransformMetadata(transform, request, actionListener)
+                    } else {
+                        updateTransformJob(transform, request, actionListener)
+                    }
                 }
 
-                if (transform.metadataId != null) {
-                    retrieveAndUpdateTransformMetadata(transform, request, actionListener)
-                } else {
-                    updateTransformJob(transform, request, actionListener)
+                override fun onFailure(e: Exception) {
+                    actionListener.onFailure(ExceptionsHelper.unwrapCause(e) as Exception)
                 }
             }
-
-            override fun onFailure(e: Exception) {
-                actionListener.onFailure(ExceptionsHelper.unwrapCause(e) as Exception)
-            }
-        })
+        )
     }
 
-    private fun retrieveAndUpdateTransformMetadata(transform: Transform, request: StopTransformRequest, actionListener: ActionListener<AcknowledgedResponse>) {
+    private fun retrieveAndUpdateTransformMetadata(
+        transform: Transform,
+        request: StopTransformRequest,
+        actionListener: ActionListener<AcknowledgedResponse>
+    ) {
         val req = GetRequest(IndexManagementPlugin.INDEX_MANAGEMENT_INDEX, transform.metadataId).routing(transform.id)
-        client.get(req, object : ActionListener<GetResponse> {
-            override fun onResponse(response: GetResponse) {
-                if (!response.isExists || response.isSourceEmpty) {
-                    // If there is no metadata there is nothing to stop, proceed to disable job
-                    updateTransformJob(transform, request, actionListener)
-                } else {
-                    val metadata = response.sourceAsBytesRef?.let {
-                        val xcp = XContentHelper.createParser(NamedXContentRegistry.EMPTY, LoggingDeprecationHandler.INSTANCE, it, XContentType.JSON)
-                        xcp.parseWithType(response.id, response.seqNo, response.primaryTerm, TransformMetadata.Companion::parse)
-                    }
-                    if (metadata == null) {
+        client.get(
+            req,
+            object : ActionListener<GetResponse> {
+                override fun onResponse(response: GetResponse) {
+                    if (!response.isExists || response.isSourceEmpty) {
                         // If there is no metadata there is nothing to stop, proceed to disable job
                         updateTransformJob(transform, request, actionListener)
                     } else {
-                        updateTransformMetadata(transform, metadata, request, actionListener)
+                        val metadata = response.sourceAsBytesRef?.let {
+                            val xcp = XContentHelper.createParser(
+                                NamedXContentRegistry.EMPTY,
+                                LoggingDeprecationHandler.INSTANCE, it, XContentType.JSON
+                            )
+                            xcp.parseWithType(response.id, response.seqNo, response.primaryTerm, TransformMetadata.Companion::parse)
+                        }
+                        if (metadata == null) {
+                            // If there is no metadata there is nothing to stop, proceed to disable job
+                            updateTransformJob(transform, request, actionListener)
+                        } else {
+                            updateTransformMetadata(transform, metadata, request, actionListener)
+                        }
                     }
                 }
-            }
 
-            override fun onFailure(e: Exception) {
-                actionListener.onFailure(ExceptionsHelper.unwrapCause(e) as Exception)
+                override fun onFailure(e: Exception) {
+                    actionListener.onFailure(ExceptionsHelper.unwrapCause(e) as Exception)
+                }
             }
-        })
+        )
     }
 
     /**
@@ -136,36 +149,54 @@ class TransportStopTransformAction @Inject constructor(
         }
 
         val updateRequest = UpdateRequest(IndexManagementPlugin.INDEX_MANAGEMENT_INDEX, transform.metadataId)
-            .doc(mapOf(TransformMetadata.TRANSFORM_METADATA_TYPE to mapOf(TransformMetadata.STATUS_FIELD to updatedStatus.type,
-                TransformMetadata.LAST_UPDATED_AT_FIELD to now)))
+            .doc(
+                mapOf(
+                    TransformMetadata.TRANSFORM_METADATA_TYPE to mapOf(
+                        TransformMetadata.STATUS_FIELD to updatedStatus.type,
+                        TransformMetadata.LAST_UPDATED_AT_FIELD to now
+                    )
+                )
+            )
             .routing(transform.id)
-        client.update(updateRequest, object : ActionListener<UpdateResponse> {
-            override fun onResponse(response: UpdateResponse) {
-                if (response.result == DocWriteResponse.Result.UPDATED) {
-                    updateTransformJob(transform, request, actionListener)
-                } else {
-                    actionListener.onResponse(AcknowledgedResponse(false))
+        client.update(
+            updateRequest,
+            object : ActionListener<UpdateResponse> {
+                override fun onResponse(response: UpdateResponse) {
+                    if (response.result == DocWriteResponse.Result.UPDATED) {
+                        updateTransformJob(transform, request, actionListener)
+                    } else {
+                        actionListener.onResponse(AcknowledgedResponse(false))
+                    }
+                }
+
+                override fun onFailure(e: Exception) {
+                    actionListener.onFailure(ExceptionsHelper.unwrapCause(e) as Exception)
                 }
             }
-
-            override fun onFailure(e: Exception) {
-                actionListener.onFailure(ExceptionsHelper.unwrapCause(e) as Exception)
-            }
-        })
+        )
     }
 
     private fun updateTransformJob(transform: Transform, request: StopTransformRequest, actionListener: ActionListener<AcknowledgedResponse>) {
         val now = Instant.now().toEpochMilli()
         request.index(IndexManagementPlugin.INDEX_MANAGEMENT_INDEX).setIfSeqNo(transform.seqNo).setIfPrimaryTerm(transform.primaryTerm)
-            .doc(mapOf(Transform.TRANSFORM_TYPE to mapOf(Transform.ENABLED_FIELD to false,
-                Transform.ENABLED_AT_FIELD to null, Transform.UPDATED_AT_FIELD to now)))
-        client.update(request, object : ActionListener<UpdateResponse> {
-            override fun onResponse(response: UpdateResponse) {
-                actionListener.onResponse(AcknowledgedResponse(response.result == DocWriteResponse.Result.UPDATED))
+            .doc(
+                mapOf(
+                    Transform.TRANSFORM_TYPE to mapOf(
+                        Transform.ENABLED_FIELD to false,
+                        Transform.ENABLED_AT_FIELD to null, Transform.UPDATED_AT_FIELD to now
+                    )
+                )
+            )
+        client.update(
+            request,
+            object : ActionListener<UpdateResponse> {
+                override fun onResponse(response: UpdateResponse) {
+                    actionListener.onResponse(AcknowledgedResponse(response.result == DocWriteResponse.Result.UPDATED))
+                }
+                override fun onFailure(e: Exception) {
+                    actionListener.onFailure(ExceptionsHelper.unwrapCause(e) as Exception)
+                }
             }
-            override fun onFailure(e: Exception) {
-                actionListener.onFailure(ExceptionsHelper.unwrapCause(e) as Exception)
-            }
-        })
+        )
     }
 }

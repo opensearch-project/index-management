@@ -28,15 +28,6 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.opensearchapi
 
-import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
-import org.opensearch.indexmanagement.opensearchapi.contentParser
-import org.opensearch.indexmanagement.opensearchapi.parseWithType
-import org.opensearch.indexmanagement.opensearchapi.suspendUntil
-import org.opensearch.indexmanagement.indexstatemanagement.model.ISMTemplate
-import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
-import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
-import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings
-import org.opensearch.indexmanagement.indexstatemanagement.util.managedIndexMetadataID
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.apache.logging.log4j.LogManager
@@ -46,9 +37,9 @@ import org.opensearch.action.get.GetRequest
 import org.opensearch.action.get.GetResponse
 import org.opensearch.action.get.MultiGetRequest
 import org.opensearch.action.get.MultiGetResponse
-import org.opensearch.cluster.ClusterState
 import org.opensearch.action.search.SearchResponse
 import org.opensearch.client.Client
+import org.opensearch.cluster.ClusterState
 import org.opensearch.cluster.metadata.IndexMetadata
 import org.opensearch.common.xcontent.LoggingDeprecationHandler
 import org.opensearch.common.xcontent.NamedXContentRegistry
@@ -60,7 +51,16 @@ import org.opensearch.common.xcontent.XContentHelper
 import org.opensearch.common.xcontent.XContentType
 import org.opensearch.index.Index
 import org.opensearch.index.IndexNotFoundException
+import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
+import org.opensearch.indexmanagement.indexstatemanagement.model.ISMTemplate
+import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
+import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
 import org.opensearch.indexmanagement.indexstatemanagement.settings.LegacyOpenDistroManagedIndexSettings
+import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings
+import org.opensearch.indexmanagement.indexstatemanagement.util.managedIndexMetadataID
+import org.opensearch.indexmanagement.opensearchapi.contentParser
+import org.opensearch.indexmanagement.opensearchapi.parseWithType
+import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 
 private val log = LogManager.getLogger("Index Management Helper")
 
@@ -140,7 +140,8 @@ suspend fun IndexMetadata.getManagedIndexMetadata(client: Client): ManagedIndexM
             val xcp = XContentHelper.createParser(
                 NamedXContentRegistry.EMPTY,
                 LoggingDeprecationHandler.INSTANCE,
-                getResponse.sourceAsBytesRef, XContentType.JSON)
+                getResponse.sourceAsBytesRef, XContentType.JSON
+            )
             ManagedIndexMetaData.parseWithType(xcp, getResponse.id, getResponse.seqNo, getResponse.primaryTerm)
         }
     } catch (e: Exception) {
@@ -167,8 +168,11 @@ suspend fun Client.mgetManagedIndexMetadata(indices: List<Index>): List<Pair<Man
 
     val mgetRequest = MultiGetRequest()
     indices.forEach {
-        mgetRequest.add(MultiGetRequest.Item(
-            INDEX_MANAGEMENT_INDEX, managedIndexMetadataID(it.uuid)).routing(it.uuid))
+        mgetRequest.add(
+            MultiGetRequest.Item(
+                INDEX_MANAGEMENT_INDEX, managedIndexMetadataID(it.uuid)
+            ).routing(it.uuid)
+        )
     }
     var mgetMetadataList = listOf<Pair<ManagedIndexMetaData?, Exception?>?>()
     try {
@@ -198,8 +202,14 @@ fun mgetResponseToList(mgetResponse: MultiGetResponse):
             mgetList.add(Pair(null, it.failure.failure))
         } else if (it.response != null && !it.response.isSourceEmpty) {
             val xcp = contentParser(it.response.sourceAsBytesRef)
-            mgetList.add(Pair(ManagedIndexMetaData.parseWithType(
-                xcp, it.response.id, it.response.seqNo, it.response.primaryTerm), null))
+            mgetList.add(
+                Pair(
+                    ManagedIndexMetaData.parseWithType(
+                        xcp, it.response.id, it.response.seqNo, it.response.primaryTerm
+                    ),
+                    null
+                )
+            )
         } else {
             mgetList.add(null)
         }
@@ -211,8 +221,11 @@ fun mgetResponseToList(mgetResponse: MultiGetResponse):
 fun buildMgetMetadataRequest(clusterState: ClusterState): MultiGetRequest {
     val mgetMetadataRequest = MultiGetRequest()
     clusterState.metadata.indices.map { it.value.index }.forEach {
-        mgetMetadataRequest.add(MultiGetRequest.Item(
-            INDEX_MANAGEMENT_INDEX, managedIndexMetadataID(it.uuid)).routing(it.uuid))
+        mgetMetadataRequest.add(
+            MultiGetRequest.Item(
+                INDEX_MANAGEMENT_INDEX, managedIndexMetadataID(it.uuid)
+            ).routing(it.uuid)
+        )
     }
     return mgetMetadataRequest
 }

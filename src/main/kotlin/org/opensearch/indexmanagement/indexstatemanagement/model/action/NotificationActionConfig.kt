@@ -26,10 +26,6 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.model.action
 
-import org.opensearch.indexmanagement.indexstatemanagement.action.Action
-import org.opensearch.indexmanagement.indexstatemanagement.action.NotificationAction
-import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
-import org.opensearch.indexmanagement.indexstatemanagement.model.destination.Destination
 import org.opensearch.client.Client
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.io.stream.StreamInput
@@ -41,6 +37,10 @@ import org.opensearch.common.xcontent.XContentBuilder
 import org.opensearch.common.xcontent.XContentParser
 import org.opensearch.common.xcontent.XContentParser.Token
 import org.opensearch.common.xcontent.XContentParserUtils.ensureExpectedToken
+import org.opensearch.indexmanagement.indexstatemanagement.action.Action
+import org.opensearch.indexmanagement.indexstatemanagement.action.NotificationAction
+import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
+import org.opensearch.indexmanagement.indexstatemanagement.model.destination.Destination
 import org.opensearch.script.Script
 import org.opensearch.script.ScriptService
 import java.io.IOException
@@ -59,9 +59,9 @@ data class NotificationActionConfig(
         builder.startObject()
         super.toXContent(builder, params).startObject(ActionType.NOTIFICATION.type)
         builder.field(DESTINATION_FIELD, destination)
-                .field(MESSAGE_TEMPLATE_FIELD, messageTemplate)
-                .endObject()
-                .endObject()
+            .field(MESSAGE_TEMPLATE_FIELD, messageTemplate)
+            .endObject()
+            .endObject()
         return builder
     }
 

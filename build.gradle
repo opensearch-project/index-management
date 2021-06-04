@@ -112,6 +112,22 @@ configurations {
     ktlint
 }
 
+task ktlint(type: JavaExec, group: "verification") {
+    description = "Check Kotlin code style."
+    main = "com.pinterest.ktlint.Main"
+    classpath = configurations.ktlint
+    args "src/**/*.kt"
+}
+
+check.dependsOn ktlint
+
+task ktlintFormat(type: JavaExec, group: "formatting") {
+    description = "Fix Kotlin code style deviations."
+    main = "com.pinterest.ktlint.Main"
+    classpath = configurations.ktlint
+    args "-F", "src/**/*.kt"
+}
+
 detekt {
     config = files("detekt.yml")
     buildUponDefaultConfig = true
@@ -148,7 +164,11 @@ dependencies {
     testImplementation "com.nhaarman.mockitokotlin2:mockito-kotlin:2.2.0"
     testCompile "org.mockito:mockito-core:2.23.0"
 
-    ktlint "com.pinterest:ktlint:0.33.0"
+    add("ktlint", "com.pinterest:ktlint:0.41.0") {
+        attributes {
+            attribute(Bundling.BUNDLING_ATTRIBUTE, objects.named(Bundling, Bundling.EXTERNAL))
+        }
+    }
 }
 
 repositories {
@@ -165,6 +185,8 @@ plugins.withId('java') {
 
 plugins.withId('org.jetbrains.kotlin.jvm') {
     compileKotlin.kotlinOptions.jvmTarget = compileTestKotlin.kotlinOptions.jvmTarget = "1.8"
+    compileKotlin.dependsOn ktlint
+    
 }
 
 javadoc.enabled = false // turn off javadoc as it barfs on Kotlin code
@@ -299,25 +321,6 @@ run {
             }
         }
     }
-}
-
-task ktlint(type: JavaExec, group: "verification") {
-    description = "Check Kotlin code style."
-    main = "com.pinterest.ktlint.Main"
-    classpath = configurations.ktlint
-    args "src/**/*.kt"
-    // to generate report in checkstyle format prepend following args:
-    // "--reporter=plain", "--reporter=checkstyle,output=${buildDir}/ktlint.xml"
-    // see https://github.com/pinterest/ktlint#usage for more
-}
-
-check.dependsOn ktlint
-
-task ktlintFormat(type: JavaExec, group: "formatting") {
-    description = "Fix Kotlin code style deviations."
-    main = "com.pinterest.ktlint.Main"
-    classpath = configurations.ktlint
-    args "-F", "src/**/*.kt"
 }
 
 compileKotlin { kotlinOptions.freeCompilerArgs = ['-Xjsr305=strict'] }

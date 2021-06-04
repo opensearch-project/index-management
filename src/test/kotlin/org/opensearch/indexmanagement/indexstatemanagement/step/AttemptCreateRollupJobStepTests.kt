@@ -11,14 +11,14 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.step
 
+import com.nhaarman.mockitokotlin2.mock
+import org.opensearch.client.Client
+import org.opensearch.cluster.service.ClusterService
 import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.ActionMetaData
 import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.ActionProperties
 import org.opensearch.indexmanagement.indexstatemanagement.randomRollupActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.step.rollup.AttemptCreateRollupJobStep
-import com.nhaarman.mockitokotlin2.mock
-import org.opensearch.client.Client
-import org.opensearch.cluster.service.ClusterService
 import org.opensearch.test.OpenSearchTestCase
 import java.lang.Exception
 
@@ -29,8 +29,10 @@ class AttemptCreateRollupJobStepTests : OpenSearchTestCase() {
     private val rollupId: String = rollupActionConfig.ismRollup.toRollup(indexName).id
     private val client: Client = mock()
     private val clusterService: ClusterService = mock()
-    private val metadata = ManagedIndexMetaData(indexName, "indexUuid", "policy_id", null, null, null, null, null, null,
-        ActionMetaData(AttemptCreateRollupJobStep.name, 1, 0, false, 0, null, ActionProperties(rollupId = rollupId)), null, null, null)
+    private val metadata = ManagedIndexMetaData(
+        indexName, "indexUuid", "policy_id", null, null, null, null, null, null,
+        ActionMetaData(AttemptCreateRollupJobStep.name, 1, 0, false, 0, null, ActionProperties(rollupId = rollupId)), null, null, null
+    )
     private val step = AttemptCreateRollupJobStep(clusterService, client, rollupActionConfig.ismRollup, metadata)
 
     fun `test process failure`() {

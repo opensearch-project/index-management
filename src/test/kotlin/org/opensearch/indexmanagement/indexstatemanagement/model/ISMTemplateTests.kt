@@ -11,9 +11,9 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.model
 
-import org.opensearch.indexmanagement.indexstatemanagement.randomISMTemplate
 import org.opensearch.common.io.stream.InputStreamStreamInput
 import org.opensearch.common.io.stream.OutputStreamStreamOutput
+import org.opensearch.indexmanagement.indexstatemanagement.randomISMTemplate
 import org.opensearch.test.OpenSearchTestCase
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream

@@ -26,54 +26,6 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement
 
-import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
-import org.opensearch.indexmanagement.indexstatemanagement.action.Action
-import org.opensearch.indexmanagement.opensearchapi.convertToMap
-import org.opensearch.indexmanagement.opensearchapi.parseWithType
-import org.opensearch.indexmanagement.indexstatemanagement.transport.action.updateindexmetadata.UpdateManagedIndexMetaDataAction
-import org.opensearch.indexmanagement.indexstatemanagement.transport.action.updateindexmetadata.UpdateManagedIndexMetaDataRequest
-import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.getManagedIndexMetadata
-import org.opensearch.indexmanagement.opensearchapi.retry
-import org.opensearch.indexmanagement.opensearchapi.string
-import org.opensearch.indexmanagement.opensearchapi.suspendUntil
-import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexConfig
-import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
-import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
-import org.opensearch.indexmanagement.indexstatemanagement.model.action.ActionConfig
-import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.ActionMetaData
-import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.PolicyRetryInfoMetaData
-import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.StateMetaData
-import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings
-import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.ALLOW_LIST
-import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.ALLOW_LIST_NONE
-import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.DEFAULT_ISM_ENABLED
-import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.DEFAULT_JOB_INTERVAL
-import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.INDEX_STATE_MANAGEMENT_ENABLED
-import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.JOB_INTERVAL
-import org.opensearch.indexmanagement.indexstatemanagement.step.Step
-import org.opensearch.indexmanagement.indexstatemanagement.util.managedIndexConfigIndexRequest
-import org.opensearch.indexmanagement.indexstatemanagement.util.getActionToExecute
-import org.opensearch.indexmanagement.indexstatemanagement.util.getStartingManagedIndexMetaData
-import org.opensearch.indexmanagement.indexstatemanagement.util.getStateToExecute
-import org.opensearch.indexmanagement.indexstatemanagement.util.getCompletedManagedIndexMetaData
-import org.opensearch.indexmanagement.indexstatemanagement.util.getUpdatedActionMetaData
-import org.opensearch.indexmanagement.indexstatemanagement.util.hasDifferentJobInterval
-import org.opensearch.indexmanagement.indexstatemanagement.util.hasTimedOut
-import org.opensearch.indexmanagement.indexstatemanagement.util.hasVersionConflict
-import org.opensearch.indexmanagement.indexstatemanagement.util.isAllowed
-import org.opensearch.indexmanagement.indexstatemanagement.util.isFailed
-import org.opensearch.indexmanagement.indexstatemanagement.util.isMetadataMoved
-import org.opensearch.indexmanagement.indexstatemanagement.util.isSafeToChange
-import org.opensearch.indexmanagement.indexstatemanagement.util.isSuccessfulDelete
-import org.opensearch.indexmanagement.indexstatemanagement.util.managedIndexMetadataIndexRequest
-import org.opensearch.indexmanagement.indexstatemanagement.util.shouldBackoff
-import org.opensearch.indexmanagement.indexstatemanagement.util.shouldChangePolicy
-import org.opensearch.indexmanagement.indexstatemanagement.util.updateDisableManagedIndexRequest
-import org.opensearch.jobscheduler.spi.JobExecutionContext
-import org.opensearch.jobscheduler.spi.LockModel
-import org.opensearch.jobscheduler.spi.ScheduledJobParameter
-import org.opensearch.jobscheduler.spi.ScheduledJobRunner
-import org.opensearch.jobscheduler.spi.schedule.IntervalSchedule
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -111,6 +63,54 @@ import org.opensearch.common.xcontent.XContentType
 import org.opensearch.index.Index
 import org.opensearch.index.engine.VersionConflictEngineException
 import org.opensearch.index.seqno.SequenceNumbers
+import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
+import org.opensearch.indexmanagement.indexstatemanagement.action.Action
+import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexConfig
+import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
+import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
+import org.opensearch.indexmanagement.indexstatemanagement.model.action.ActionConfig
+import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.ActionMetaData
+import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.PolicyRetryInfoMetaData
+import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.StateMetaData
+import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.getManagedIndexMetadata
+import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings
+import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.ALLOW_LIST
+import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.ALLOW_LIST_NONE
+import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.DEFAULT_ISM_ENABLED
+import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.DEFAULT_JOB_INTERVAL
+import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.INDEX_STATE_MANAGEMENT_ENABLED
+import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.JOB_INTERVAL
+import org.opensearch.indexmanagement.indexstatemanagement.step.Step
+import org.opensearch.indexmanagement.indexstatemanagement.transport.action.updateindexmetadata.UpdateManagedIndexMetaDataAction
+import org.opensearch.indexmanagement.indexstatemanagement.transport.action.updateindexmetadata.UpdateManagedIndexMetaDataRequest
+import org.opensearch.indexmanagement.indexstatemanagement.util.getActionToExecute
+import org.opensearch.indexmanagement.indexstatemanagement.util.getCompletedManagedIndexMetaData
+import org.opensearch.indexmanagement.indexstatemanagement.util.getStartingManagedIndexMetaData
+import org.opensearch.indexmanagement.indexstatemanagement.util.getStateToExecute
+import org.opensearch.indexmanagement.indexstatemanagement.util.getUpdatedActionMetaData
+import org.opensearch.indexmanagement.indexstatemanagement.util.hasDifferentJobInterval
+import org.opensearch.indexmanagement.indexstatemanagement.util.hasTimedOut
+import org.opensearch.indexmanagement.indexstatemanagement.util.hasVersionConflict
+import org.opensearch.indexmanagement.indexstatemanagement.util.isAllowed
+import org.opensearch.indexmanagement.indexstatemanagement.util.isFailed
+import org.opensearch.indexmanagement.indexstatemanagement.util.isMetadataMoved
+import org.opensearch.indexmanagement.indexstatemanagement.util.isSafeToChange
+import org.opensearch.indexmanagement.indexstatemanagement.util.isSuccessfulDelete
+import org.opensearch.indexmanagement.indexstatemanagement.util.managedIndexConfigIndexRequest
+import org.opensearch.indexmanagement.indexstatemanagement.util.managedIndexMetadataIndexRequest
+import org.opensearch.indexmanagement.indexstatemanagement.util.shouldBackoff
+import org.opensearch.indexmanagement.indexstatemanagement.util.shouldChangePolicy
+import org.opensearch.indexmanagement.indexstatemanagement.util.updateDisableManagedIndexRequest
+import org.opensearch.indexmanagement.opensearchapi.convertToMap
+import org.opensearch.indexmanagement.opensearchapi.parseWithType
+import org.opensearch.indexmanagement.opensearchapi.retry
+import org.opensearch.indexmanagement.opensearchapi.string
+import org.opensearch.indexmanagement.opensearchapi.suspendUntil
+import org.opensearch.jobscheduler.spi.JobExecutionContext
+import org.opensearch.jobscheduler.spi.LockModel
+import org.opensearch.jobscheduler.spi.ScheduledJobParameter
+import org.opensearch.jobscheduler.spi.ScheduledJobRunner
+import org.opensearch.jobscheduler.spi.schedule.IntervalSchedule
 import org.opensearch.rest.RestStatus
 import org.opensearch.script.Script
 import org.opensearch.script.ScriptService
@@ -119,8 +119,9 @@ import java.time.Instant
 import java.time.temporal.ChronoUnit
 
 @Suppress("TooManyFunctions")
-object ManagedIndexRunner : ScheduledJobRunner,
-        CoroutineScope by CoroutineScope(SupervisorJob() + Dispatchers.Default + CoroutineName("ManagedIndexRunner")) {
+object ManagedIndexRunner :
+    ScheduledJobRunner,
+    CoroutineScope by CoroutineScope(SupervisorJob() + Dispatchers.Default + CoroutineName("ManagedIndexRunner")) {
 
     private val logger = LogManager.getLogger(javaClass)
 
@@ -267,7 +268,8 @@ object ManagedIndexRunner : ScheduledJobRunner,
                 managedIndexMetaData.copy(
                     policyRetryInfo = PolicyRetryInfoMetaData(true, 0),
                     info = info
-                ))
+                )
+            )
             if (result.metadataSaved) {
                 disableManagedIndexConfig(managedIndexConfig)
             }
@@ -289,8 +291,10 @@ object ManagedIndexRunner : ScheduledJobRunner,
         if (action?.hasTimedOut(currentActionMetaData) == true) {
             val info = mapOf("message" to "Action timed out")
             logger.error("Action=${action.type.type} has timed out")
-            val updated = updateManagedIndexMetaData(managedIndexMetaData
-                .copy(actionMetaData = currentActionMetaData?.copy(failed = true), info = info))
+            val updated = updateManagedIndexMetaData(
+                managedIndexMetaData
+                    .copy(actionMetaData = currentActionMetaData?.copy(failed = true), info = info)
+            )
             if (updated.metadataSaved) disableManagedIndexConfig(managedIndexConfig)
             return
         }
@@ -312,8 +316,11 @@ object ManagedIndexRunner : ScheduledJobRunner,
             logger.info("Previous execution failed to update step status, isIdempotent=$isIdempotent")
             if (isIdempotent != true) {
                 val info = mapOf("message" to "Previous action was not able to update IndexMetaData.")
-                val updated = updateManagedIndexMetaData(managedIndexMetaData.copy(
-                        policyRetryInfo = PolicyRetryInfoMetaData(true, 0), info = info))
+                val updated = updateManagedIndexMetaData(
+                    managedIndexMetaData.copy(
+                        policyRetryInfo = PolicyRetryInfoMetaData(true, 0), info = info
+                    )
+                )
                 if (updated.metadataSaved) disableManagedIndexConfig(managedIndexConfig)
                 return
             }
@@ -323,8 +330,11 @@ object ManagedIndexRunner : ScheduledJobRunner,
         // as this action has been removed from the AllowList, but if its not the first step we will let it finish as it's already inflight
         if (action?.isAllowed(allowList) == false && action.isFirstStep(step?.name)) {
             val info = mapOf("message" to "Attempted to execute action=${action.type.type} which is not allowed.")
-            val updated = updateManagedIndexMetaData(managedIndexMetaData.copy(
-                    policyRetryInfo = PolicyRetryInfoMetaData(true, 0), info = info))
+            val updated = updateManagedIndexMetaData(
+                managedIndexMetaData.copy(
+                    policyRetryInfo = PolicyRetryInfoMetaData(true, 0), info = info
+                )
+            )
             if (updated.metadataSaved) disableManagedIndexConfig(managedIndexConfig)
             return
         }
@@ -406,8 +416,10 @@ object ManagedIndexRunner : ScheduledJobRunner,
             val policySource = getResponse.sourceAsBytesRef
             // Intellij complains about createParser/parseWithType blocking because it sees they throw IOExceptions
             return withContext(Dispatchers.IO) {
-                val xcp = XContentHelper.createParser(xContentRegistry, LoggingDeprecationHandler.INSTANCE,
-                        policySource, XContentType.JSON)
+                val xcp = XContentHelper.createParser(
+                    xContentRegistry, LoggingDeprecationHandler.INSTANCE,
+                    policySource, XContentType.JSON
+                )
                 xcp.parseWithType(getResponse.id, getResponse.seqNo, getResponse.primaryTerm, Policy.Companion::parse)
             }
         } catch (e: Exception) {
@@ -432,8 +444,10 @@ object ManagedIndexRunner : ScheduledJobRunner,
 
     @Suppress("TooGenericExceptionCaught")
     private suspend fun savePolicyToManagedIndexConfig(managedIndexConfig: ManagedIndexConfig, policy: Policy): Boolean {
-        val updatedManagedIndexConfig = managedIndexConfig.copy(policyID = policy.id, policy = policy,
-                policySeqNo = policy.seqNo, policyPrimaryTerm = policy.primaryTerm, changePolicy = null)
+        val updatedManagedIndexConfig = managedIndexConfig.copy(
+            policyID = policy.id, policy = policy,
+            policySeqNo = policy.seqNo, policyPrimaryTerm = policy.primaryTerm, changePolicy = null
+        )
         val indexRequest = managedIndexConfigIndexRequest(updatedManagedIndexConfig)
         var savedPolicy = false
         try {
@@ -542,10 +556,12 @@ object ManagedIndexRunner : ScheduledJobRunner,
                 // in the metadata and we cannot guarantee it will work with the current state in managedIndexMetaData
                 managedIndexMetaData.copy(
                     policyRetryInfo = PolicyRetryInfoMetaData(failed = true, consumedRetries = 0),
-                    info = mapOf("message" to "Fail to load policy: ${policy.id} with " +
-                        "seqNo ${policy.seqNo} and primaryTerm ${policy.primaryTerm} as it" +
-                        " does not match what's in the metadata [policyID=${managedIndexMetaData.policyID}," +
-                        " policySeqNo=${managedIndexMetaData.policySeqNo}, policyPrimaryTerm=${managedIndexMetaData.policyPrimaryTerm}]")
+                    info = mapOf(
+                        "message" to "Fail to load policy: ${policy.id} with " +
+                            "seqNo ${policy.seqNo} and primaryTerm ${policy.primaryTerm} as it" +
+                            " does not match what's in the metadata [policyID=${managedIndexMetaData.policyID}," +
+                            " policySeqNo=${managedIndexMetaData.policySeqNo}, policyPrimaryTerm=${managedIndexMetaData.policyPrimaryTerm}]"
+                    )
                 )
         }
     }
@@ -601,8 +617,11 @@ object ManagedIndexRunner : ScheduledJobRunner,
                 ismHistory.addManagedIndexMetaDataHistory(listOf(metadata))
             }
         } catch (e: VersionConflictEngineException) {
-            logger.error("There was VersionConflictEngineException trying to update the metadata for " +
-                    "${managedIndexMetaData.index}. Message: ${e.message}", e)
+            logger.error(
+                "There was VersionConflictEngineException trying to update the metadata for " +
+                    "${managedIndexMetaData.index}. Message: ${e.message}",
+                e
+            )
         } catch (e: Exception) {
             logger.error("Failed to save ManagedIndexMetaData for [index=${managedIndexMetaData.index}]", e)
         }
@@ -646,8 +665,10 @@ object ManagedIndexRunner : ScheduledJobRunner,
         } else {
             // if the action to execute is transition then set the actionMetaData to a new transition metadata to reflect we are
             // in transition (in case we triggered change policy from entering transition) or to reflect this is a new policy transition phase
-            val newTransitionMetaData = ActionMetaData(ActionConfig.ActionType.TRANSITION.type, Instant.now().toEpochMilli(), -1,
-                false, 0, 0, null)
+            val newTransitionMetaData = ActionMetaData(
+                ActionConfig.ActionType.TRANSITION.type, Instant.now().toEpochMilli(), -1,
+                false, 0, 0, null
+            )
             val actionMetaData = if (actionToExecute?.type == ActionConfig.ActionType.TRANSITION) {
                 newTransitionMetaData
             } else {
@@ -754,8 +775,8 @@ object ManagedIndexRunner : ScheduledJobRunner,
     private fun compileTemplate(template: Script, managedIndexMetaData: ManagedIndexMetaData): String {
         return try {
             scriptService.compile(template, TemplateScript.CONTEXT)
-                    .newInstance(template.params + mapOf("ctx" to managedIndexMetaData.convertToMap()))
-                    .execute()
+                .newInstance(template.params + mapOf("ctx" to managedIndexMetaData.convertToMap()))
+                .execute()
         } catch (e: Exception) {
             val message = "There was an error compiling mustache template"
             logger.error(message, e)

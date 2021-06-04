@@ -11,6 +11,12 @@
 
 package org.opensearch.indexmanagement.transform.action.index
 
+import org.opensearch.action.ActionResponse
+import org.opensearch.common.io.stream.StreamInput
+import org.opensearch.common.io.stream.StreamOutput
+import org.opensearch.common.xcontent.ToXContent
+import org.opensearch.common.xcontent.ToXContentObject
+import org.opensearch.common.xcontent.XContentBuilder
 import org.opensearch.indexmanagement.indexstatemanagement.util.XCONTENT_WITHOUT_TYPE
 import org.opensearch.indexmanagement.transform.model.Transform
 import org.opensearch.indexmanagement.transform.model.Transform.Companion.TRANSFORM_TYPE
@@ -18,12 +24,6 @@ import org.opensearch.indexmanagement.util._ID
 import org.opensearch.indexmanagement.util._PRIMARY_TERM
 import org.opensearch.indexmanagement.util._SEQ_NO
 import org.opensearch.indexmanagement.util._VERSION
-import org.opensearch.action.ActionResponse
-import org.opensearch.common.io.stream.StreamInput
-import org.opensearch.common.io.stream.StreamOutput
-import org.opensearch.common.xcontent.ToXContent
-import org.opensearch.common.xcontent.ToXContentObject
-import org.opensearch.common.xcontent.XContentBuilder
 import org.opensearch.rest.RestStatus
 import java.io.IOException
 
@@ -38,12 +38,12 @@ class IndexTransformResponse(
 
     @Throws(IOException::class)
     constructor(sin: StreamInput) : this(
-            id = sin.readString(),
-            version = sin.readLong(),
-            seqNo = sin.readLong(),
-            primaryTerm = sin.readLong(),
-            status = sin.readEnum(RestStatus::class.java),
-            transform = Transform(sin)
+        id = sin.readString(),
+        version = sin.readLong(),
+        seqNo = sin.readLong(),
+        primaryTerm = sin.readLong(),
+        status = sin.readEnum(RestStatus::class.java),
+        transform = Transform(sin)
     )
 
     @Throws(IOException::class)

@@ -26,7 +26,6 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.model
 
-import org.opensearch.indexmanagement.indexstatemanagement.model.action.ActionConfig
 import org.opensearch.common.io.stream.StreamInput
 import org.opensearch.common.io.stream.StreamOutput
 import org.opensearch.common.io.stream.Writeable
@@ -36,6 +35,7 @@ import org.opensearch.common.xcontent.XContentBuilder
 import org.opensearch.common.xcontent.XContentParser
 import org.opensearch.common.xcontent.XContentParser.Token
 import org.opensearch.common.xcontent.XContentParserUtils.ensureExpectedToken
+import org.opensearch.indexmanagement.indexstatemanagement.model.action.ActionConfig
 import java.io.IOException
 
 data class State(
@@ -60,9 +60,9 @@ data class State(
     override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
         builder
             .startObject()
-                .field(NAME_FIELD, name)
-                .field(ACTIONS_FIELD, actions.toTypedArray())
-                .field(TRANSITIONS_FIELD, transitions.toTypedArray())
+            .field(NAME_FIELD, name)
+            .field(ACTIONS_FIELD, actions.toTypedArray())
+            .field(TRANSITIONS_FIELD, transitions.toTypedArray())
             .endObject()
         return builder
     }

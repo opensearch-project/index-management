@@ -11,6 +11,18 @@
 
 package org.opensearch.indexmanagement.transform
 
+import org.apache.logging.log4j.LogManager
+import org.opensearch.ExceptionsHelper
+import org.opensearch.action.ActionListener
+import org.opensearch.action.bulk.BackoffPolicy
+import org.opensearch.action.index.IndexRequest
+import org.opensearch.action.search.SearchRequest
+import org.opensearch.action.search.SearchResponse
+import org.opensearch.client.Client
+import org.opensearch.cluster.service.ClusterService
+import org.opensearch.common.settings.Settings
+import org.opensearch.common.xcontent.XContentType
+import org.opensearch.index.query.QueryBuilder
 import org.opensearch.indexmanagement.opensearchapi.retry
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.transform.exceptions.TransformSearchServiceException
@@ -21,16 +33,6 @@ import org.opensearch.indexmanagement.transform.settings.TransformSettings.Compa
 import org.opensearch.indexmanagement.transform.settings.TransformSettings.Companion.TRANSFORM_JOB_SEARCH_BACKOFF_MILLIS
 import org.opensearch.indexmanagement.util.IndexUtils.Companion.ODFE_MAGIC_NULL
 import org.opensearch.indexmanagement.util.IndexUtils.Companion.hashToFixedSize
-import org.apache.logging.log4j.LogManager
-import org.opensearch.action.ActionListener
-import org.opensearch.action.bulk.BackoffPolicy
-import org.opensearch.action.index.IndexRequest
-import org.opensearch.action.search.SearchRequest
-import org.opensearch.action.search.SearchResponse
-import org.opensearch.client.Client
-import org.opensearch.cluster.service.ClusterService
-import org.opensearch.common.settings.Settings
-import org.opensearch.common.xcontent.XContentType
 import org.opensearch.search.aggregations.Aggregation
 import org.opensearch.search.aggregations.bucket.composite.CompositeAggregation
 import org.opensearch.search.aggregations.bucket.composite.CompositeAggregationBuilder
@@ -44,11 +46,9 @@ import org.opensearch.search.aggregations.metrics.NumericMetricsAggregation
 import org.opensearch.search.aggregations.metrics.Percentiles
 import org.opensearch.search.aggregations.metrics.ScriptedMetric
 import org.opensearch.search.builder.SearchSourceBuilder
+import org.opensearch.transport.RemoteTransportException
 import kotlin.math.max
 import kotlin.math.pow
-import org.opensearch.ExceptionsHelper
-import org.opensearch.index.query.QueryBuilder
-import org.opensearch.transport.RemoteTransportException
 
 @Suppress("ThrowsCount")
 class TransformSearchService(
@@ -64,7 +64,8 @@ class TransformSearchService(
 
     init {
         clusterService.clusterSettings.addSettingsUpdateConsumer(TRANSFORM_JOB_SEARCH_BACKOFF_MILLIS, TRANSFORM_JOB_SEARCH_BACKOFF_COUNT) {
-            millis, count -> backoffPolicy = BackoffPolicy.constantBackoff(millis, count)
+            millis, count ->
+            backoffPolicy = BackoffPolicy.constantBackoff(millis, count)
         }
     }
 

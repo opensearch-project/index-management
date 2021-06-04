@@ -11,6 +11,8 @@
 
 package org.opensearch.indexmanagement.transform
 
+import org.opensearch.common.settings.Settings
+import org.opensearch.index.query.TermQueryBuilder
 import org.opensearch.indexmanagement.common.model.dimension.DateHistogram
 import org.opensearch.indexmanagement.common.model.dimension.Histogram
 import org.opensearch.indexmanagement.common.model.dimension.Terms
@@ -18,15 +20,13 @@ import org.opensearch.indexmanagement.transform.model.Transform
 import org.opensearch.indexmanagement.transform.model.TransformMetadata
 import org.opensearch.indexmanagement.waitFor
 import org.opensearch.jobscheduler.spi.schedule.IntervalSchedule
-import java.time.Instant
-import java.time.temporal.ChronoUnit
-import org.opensearch.common.settings.Settings
-import org.opensearch.index.query.TermQueryBuilder
 import org.opensearch.script.Script
 import org.opensearch.script.ScriptType
 import org.opensearch.search.aggregations.AggregationBuilders
 import org.opensearch.search.aggregations.AggregatorFactories
 import org.opensearch.search.aggregations.metrics.ScriptedMetricAggregationBuilder
+import java.time.Instant
+import java.time.temporal.ChronoUnit
 
 class TransformRunnerIT : TransformRestTestCase() {
 
@@ -283,22 +283,30 @@ class TransformRunnerIT : TransformRestTestCase() {
         aggregatorFactories.addAggregator(
             ScriptedMetricAggregationBuilder("average_revenue_per_passenger_per_trip")
                 .initScript(Script(ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, "state.count = 0; state.sum = 0;", emptyMap()))
-                .mapScript(Script(
-                    ScriptType.INLINE,
-                    Script.DEFAULT_SCRIPT_LANG,
-                    "state.sum += doc[\"random_field\"].value; state.count += doc[\"passenger_count\"].value",
-                    emptyMap()))
-                .combineScript(Script(
-                    ScriptType.INLINE,
-                    Script.DEFAULT_SCRIPT_LANG,
-                    "def d = new long[2]; d[0] = state.sum; d[1] = state.count; return d",
-                    emptyMap()))
-                .reduceScript(Script(
-                    ScriptType.INLINE,
-                    Script.DEFAULT_SCRIPT_LANG,
-                    "double sum = 0; double count = 0; for (a in states) { sum += a[0]; count += a[1]; } return sum/count",
-                    emptyMap()
-                ))
+                .mapScript(
+                    Script(
+                        ScriptType.INLINE,
+                        Script.DEFAULT_SCRIPT_LANG,
+                        "state.sum += doc[\"random_field\"].value; state.count += doc[\"passenger_count\"].value",
+                        emptyMap()
+                    )
+                )
+                .combineScript(
+                    Script(
+                        ScriptType.INLINE,
+                        Script.DEFAULT_SCRIPT_LANG,
+                        "def d = new long[2]; d[0] = state.sum; d[1] = state.count; return d",
+                        emptyMap()
+                    )
+                )
+                .reduceScript(
+                    Script(
+                        ScriptType.INLINE,
+                        Script.DEFAULT_SCRIPT_LANG,
+                        "double sum = 0; double count = 0; for (a in states) { sum += a[0]; count += a[1]; } return sum/count",
+                        emptyMap()
+                    )
+                )
         )
 
         val transform = Transform(

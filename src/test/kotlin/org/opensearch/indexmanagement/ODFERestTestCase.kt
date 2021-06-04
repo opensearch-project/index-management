@@ -26,13 +26,8 @@
 
 package org.opensearch.indexmanagement
 
-import org.opensearch.commons.ConfigConstants.OPENSEARCH_SECURITY_SSL_HTTP_ENABLED
-import org.opensearch.commons.ConfigConstants.OPENSEARCH_SECURITY_SSL_HTTP_KEYSTORE_FILEPATH
-import org.opensearch.commons.ConfigConstants.OPENSEARCH_SECURITY_SSL_HTTP_KEYSTORE_KEYPASSWORD
-import org.opensearch.commons.ConfigConstants.OPENSEARCH_SECURITY_SSL_HTTP_KEYSTORE_PASSWORD
-import org.opensearch.commons.ConfigConstants.OPENSEARCH_SECURITY_SSL_HTTP_PEMCERT_FILEPATH
-import org.opensearch.commons.rest.SecureRestClientBuilder
 import org.apache.http.HttpHost
+import org.junit.After
 import org.opensearch.action.admin.cluster.node.tasks.list.ListTasksAction
 import org.opensearch.client.Request
 import org.opensearch.client.RequestOptions
@@ -44,8 +39,13 @@ import org.opensearch.common.settings.Settings
 import org.opensearch.common.xcontent.DeprecationHandler
 import org.opensearch.common.xcontent.NamedXContentRegistry
 import org.opensearch.common.xcontent.XContentType
+import org.opensearch.commons.ConfigConstants.OPENSEARCH_SECURITY_SSL_HTTP_ENABLED
+import org.opensearch.commons.ConfigConstants.OPENSEARCH_SECURITY_SSL_HTTP_KEYSTORE_FILEPATH
+import org.opensearch.commons.ConfigConstants.OPENSEARCH_SECURITY_SSL_HTTP_KEYSTORE_KEYPASSWORD
+import org.opensearch.commons.ConfigConstants.OPENSEARCH_SECURITY_SSL_HTTP_KEYSTORE_PASSWORD
+import org.opensearch.commons.ConfigConstants.OPENSEARCH_SECURITY_SSL_HTTP_PEMCERT_FILEPATH
+import org.opensearch.commons.rest.SecureRestClientBuilder
 import org.opensearch.test.rest.OpenSearchRestTestCase
-import org.junit.After
 import java.io.IOException
 
 abstract class ODFERestTestCase : OpenSearchRestTestCase() {

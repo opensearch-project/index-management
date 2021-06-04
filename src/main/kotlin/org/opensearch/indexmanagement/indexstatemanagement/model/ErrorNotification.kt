@@ -26,7 +26,6 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.model
 
-import org.opensearch.indexmanagement.indexstatemanagement.model.destination.Destination
 import org.opensearch.common.io.stream.StreamInput
 import org.opensearch.common.io.stream.StreamOutput
 import org.opensearch.common.io.stream.Writeable
@@ -36,6 +35,7 @@ import org.opensearch.common.xcontent.XContentBuilder
 import org.opensearch.common.xcontent.XContentParser
 import org.opensearch.common.xcontent.XContentParser.Token
 import org.opensearch.common.xcontent.XContentParserUtils.ensureExpectedToken
+import org.opensearch.indexmanagement.indexstatemanagement.model.destination.Destination
 import org.opensearch.script.Script
 import java.io.IOException
 
@@ -50,9 +50,9 @@ data class ErrorNotification(
 
     override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
         return builder.startObject()
-                .field(DESTINATION_FIELD, destination)
-                .field(MESSAGE_TEMPLATE_FIELD, messageTemplate)
-                .endObject()
+            .field(DESTINATION_FIELD, destination)
+            .field(MESSAGE_TEMPLATE_FIELD, messageTemplate)
+            .endObject()
     }
 
     @Throws(IOException::class)

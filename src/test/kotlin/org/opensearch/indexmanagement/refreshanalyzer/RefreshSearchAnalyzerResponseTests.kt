@@ -26,10 +26,10 @@
 
 package org.opensearch.indexmanagement.refreshanalyzer
 
+import org.junit.Assert
 import org.opensearch.action.support.DefaultShardOperationFailedException
 import org.opensearch.index.shard.ShardId
 import org.opensearch.test.OpenSearchTestCase
-import org.junit.Assert
 
 class RefreshSearchAnalyzerResponseTests : OpenSearchTestCase() {
 

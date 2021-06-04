@@ -26,7 +26,6 @@
 
 package org.opensearch.indexmanagement.rollup.action.index
 
-import org.opensearch.indexmanagement.rollup.model.Rollup
 import org.opensearch.action.ActionRequestValidationException
 import org.opensearch.action.DocWriteRequest
 import org.opensearch.action.ValidateActions.addValidationError
@@ -35,6 +34,7 @@ import org.opensearch.action.support.WriteRequest
 import org.opensearch.common.io.stream.StreamInput
 import org.opensearch.common.io.stream.StreamOutput
 import org.opensearch.index.seqno.SequenceNumbers
+import org.opensearch.indexmanagement.rollup.model.Rollup
 import java.io.IOException
 
 class IndexRollupRequest : IndexRequest {
@@ -55,7 +55,7 @@ class IndexRollupRequest : IndexRequest {
             this.opType(DocWriteRequest.OpType.CREATE)
         } else {
             this.setIfSeqNo(rollup.seqNo)
-            .setIfPrimaryTerm(rollup.primaryTerm)
+                .setIfPrimaryTerm(rollup.primaryTerm)
         }
         super.setRefreshPolicy(refreshPolicy)
     }

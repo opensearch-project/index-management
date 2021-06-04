@@ -11,6 +11,10 @@
 
 package org.opensearch.indexmanagement.transform.resthandler
 
+import org.opensearch.action.support.WriteRequest
+import org.opensearch.client.node.NodeClient
+import org.opensearch.common.xcontent.ToXContent
+import org.opensearch.index.seqno.SequenceNumbers
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.TRANSFORM_BASE_URI
 import org.opensearch.indexmanagement.opensearchapi.parseWithType
 import org.opensearch.indexmanagement.transform.action.index.IndexTransformAction
@@ -20,10 +24,6 @@ import org.opensearch.indexmanagement.transform.model.Transform
 import org.opensearch.indexmanagement.util.IF_PRIMARY_TERM
 import org.opensearch.indexmanagement.util.IF_SEQ_NO
 import org.opensearch.indexmanagement.util.REFRESH
-import org.opensearch.action.support.WriteRequest
-import org.opensearch.client.node.NodeClient
-import org.opensearch.common.xcontent.ToXContent
-import org.opensearch.index.seqno.SequenceNumbers
 import org.opensearch.rest.BaseRestHandler
 import org.opensearch.rest.BaseRestHandler.RestChannelConsumer
 import org.opensearch.rest.BytesRestResponse
@@ -41,8 +41,8 @@ class RestIndexTransformAction : BaseRestHandler() {
 
     override fun routes(): List<RestHandler.Route> {
         return listOf(
-                RestHandler.Route(PUT, TRANSFORM_BASE_URI),
-                RestHandler.Route(PUT, "$TRANSFORM_BASE_URI/{transformID}")
+            RestHandler.Route(PUT, TRANSFORM_BASE_URI),
+            RestHandler.Route(PUT, "$TRANSFORM_BASE_URI/{transformID}")
         )
     }
 
@@ -61,7 +61,7 @@ class RestIndexTransformAction : BaseRestHandler() {
         val primaryTerm = request.paramAsLong(IF_PRIMARY_TERM, SequenceNumbers.UNASSIGNED_PRIMARY_TERM)
         val xcp = request.contentParser()
         val transform = xcp.parseWithType(id = id, seqNo = seqNo, primaryTerm = primaryTerm, parse = Transform.Companion::parse)
-                .copy(updatedAt = Instant.now())
+            .copy(updatedAt = Instant.now())
         val refreshPolicy = if (request.hasParam(REFRESH)) {
             WriteRequest.RefreshPolicy.parse(request.param(REFRESH))
         } else {
@@ -79,7 +79,7 @@ class RestIndexTransformAction : BaseRestHandler() {
             @Throws(Exception::class)
             override fun buildResponse(response: IndexTransformResponse): RestResponse {
                 val restResponse =
-                        BytesRestResponse(response.status, response.toXContent(channel.newBuilder(), ToXContent.EMPTY_PARAMS))
+                    BytesRestResponse(response.status, response.toXContent(channel.newBuilder(), ToXContent.EMPTY_PARAMS))
                 if (response.status == RestStatus.CREATED) {
                     val location = "$TRANSFORM_BASE_URI/${response.id}"
                     restResponse.addHeader("Location", location)

@@ -26,8 +26,8 @@
 
 package org.opensearch.indexmanagement.rollup.actionfilter
 
-import org.opensearch.indexmanagement.rollup.randomISMFieldCaps
 import org.opensearch.action.fieldcaps.FieldCapabilitiesResponse
+import org.opensearch.indexmanagement.rollup.randomISMFieldCaps
 import org.opensearch.test.OpenSearchTestCase
 
 class SerDeTests : OpenSearchTestCase() {

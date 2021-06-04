@@ -26,14 +26,10 @@
 
 package org.opensearch.indexmanagement.rollup.actionfilter
 
-import org.opensearch.indexmanagement.rollup.model.Rollup
-import org.opensearch.indexmanagement.rollup.randomISMFieldCapabilitiesIndexResponse
-import org.opensearch.indexmanagement.rollup.randomISMFieldCaps
-import org.opensearch.indexmanagement.rollup.randomRollup
-import org.opensearch.indexmanagement.rollup.settings.RollupSettings
 import com.nhaarman.mockitokotlin2.doReturn
 import com.nhaarman.mockitokotlin2.mock
 import com.nhaarman.mockitokotlin2.whenever
+import org.junit.Before
 import org.opensearch.action.fieldcaps.FieldCapabilitiesResponse
 import org.opensearch.cluster.ClusterState
 import org.opensearch.cluster.metadata.IndexMetadata
@@ -42,8 +38,12 @@ import org.opensearch.cluster.metadata.Metadata
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.settings.ClusterSettings
 import org.opensearch.common.settings.Settings
+import org.opensearch.indexmanagement.rollup.model.Rollup
+import org.opensearch.indexmanagement.rollup.randomISMFieldCapabilitiesIndexResponse
+import org.opensearch.indexmanagement.rollup.randomISMFieldCaps
+import org.opensearch.indexmanagement.rollup.randomRollup
+import org.opensearch.indexmanagement.rollup.settings.RollupSettings
 import org.opensearch.test.OpenSearchTestCase
-import org.junit.Before
 
 class FieldCapsFilterTests : OpenSearchTestCase() {
     private val indexNameExpressionResolver: IndexNameExpressionResolver = mock()

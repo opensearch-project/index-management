@@ -26,17 +26,17 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.step.open
 
-import org.opensearch.indexmanagement.opensearchapi.suspendUntil
-import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
-import org.opensearch.indexmanagement.indexstatemanagement.model.action.OpenActionConfig
-import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.StepMetaData
-import org.opensearch.indexmanagement.indexstatemanagement.step.Step
 import org.apache.logging.log4j.LogManager
 import org.opensearch.ExceptionsHelper
 import org.opensearch.action.admin.indices.open.OpenIndexRequest
 import org.opensearch.action.admin.indices.open.OpenIndexResponse
 import org.opensearch.client.Client
 import org.opensearch.cluster.service.ClusterService
+import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
+import org.opensearch.indexmanagement.indexstatemanagement.model.action.OpenActionConfig
+import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.StepMetaData
+import org.opensearch.indexmanagement.indexstatemanagement.step.Step
+import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.transport.RemoteTransportException
 
 class AttemptOpenStep(

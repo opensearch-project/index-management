@@ -28,14 +28,10 @@
 
 package org.opensearch.indexmanagement.opensearchapi
 
-import org.opensearch.indexmanagement.indexstatemanagement.model.ISMTemplate
-import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
-import org.opensearch.indexmanagement.util.NO_ID
-import org.opensearch.jobscheduler.spi.utils.LockService
 import kotlinx.coroutines.delay
 import org.apache.logging.log4j.Logger
-import org.opensearch.OpenSearchException
 import org.opensearch.ExceptionsHelper
+import org.opensearch.OpenSearchException
 import org.opensearch.action.ActionListener
 import org.opensearch.action.bulk.BackoffPolicy
 import org.opensearch.action.support.DefaultShardOperationFailedException
@@ -53,6 +49,10 @@ import org.opensearch.common.xcontent.XContentParserUtils
 import org.opensearch.common.xcontent.XContentParserUtils.ensureExpectedToken
 import org.opensearch.common.xcontent.XContentType
 import org.opensearch.index.seqno.SequenceNumbers
+import org.opensearch.indexmanagement.indexstatemanagement.model.ISMTemplate
+import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
+import org.opensearch.indexmanagement.util.NO_ID
+import org.opensearch.jobscheduler.spi.utils.LockService
 import org.opensearch.rest.RestStatus
 import org.opensearch.transport.RemoteTransportException
 import java.io.IOException
@@ -64,7 +64,8 @@ import kotlin.coroutines.suspendCoroutine
 fun contentParser(bytesReference: BytesReference): XContentParser {
     return XContentHelper.createParser(
         NamedXContentRegistry.EMPTY,
-        LoggingDeprecationHandler.INSTANCE, bytesReference, XContentType.JSON)
+        LoggingDeprecationHandler.INSTANCE, bytesReference, XContentType.JSON
+    )
 }
 
 /** Convert an object to maps and lists representation */

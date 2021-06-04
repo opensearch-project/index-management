@@ -26,13 +26,6 @@
 
 package org.opensearch.indexmanagement.rollup.actionfilter
 
-import org.opensearch.indexmanagement.GuiceHolder
-import org.opensearch.indexmanagement.rollup.model.Rollup
-import org.opensearch.indexmanagement.rollup.model.RollupFieldMapping
-import org.opensearch.indexmanagement.rollup.settings.RollupSettings
-import org.opensearch.indexmanagement.rollup.util.getRollupJobs
-import org.opensearch.indexmanagement.rollup.util.populateFieldMappings
-import org.opensearch.indexmanagement.util.IndexUtils.Companion.getFieldFromMappings
 import org.apache.logging.log4j.LogManager
 import org.opensearch.action.ActionListener
 import org.opensearch.action.ActionRequest
@@ -46,7 +39,14 @@ import org.opensearch.action.support.IndicesOptions
 import org.opensearch.cluster.metadata.IndexNameExpressionResolver
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.settings.Settings
+import org.opensearch.indexmanagement.GuiceHolder
+import org.opensearch.indexmanagement.rollup.model.Rollup
+import org.opensearch.indexmanagement.rollup.model.RollupFieldMapping
+import org.opensearch.indexmanagement.rollup.settings.RollupSettings
+import org.opensearch.indexmanagement.rollup.util.getRollupJobs
 import org.opensearch.indexmanagement.rollup.util.isRollupIndex
+import org.opensearch.indexmanagement.rollup.util.populateFieldMappings
+import org.opensearch.indexmanagement.util.IndexUtils.Companion.getFieldFromMappings
 import org.opensearch.tasks.Task
 import org.opensearch.transport.RemoteClusterAware
 
@@ -63,7 +63,8 @@ class FieldCapsFilter(
 
     init {
         clusterService.clusterSettings.addSettingsUpdateConsumer(RollupSettings.ROLLUP_DASHBOARDS) {
-            flag -> shouldIntercept = flag
+            flag ->
+            shouldIntercept = flag
         }
     }
 
@@ -79,7 +80,8 @@ class FieldCapsFilter(
             val rollupIndices = mutableSetOf<String>()
             val nonRollupIndices = mutableSetOf<String>()
             val remoteClusterIndices = GuiceHolder.remoteClusterService.groupIndices(request.indicesOptions(), indices) {
-                idx: String? -> indexNameExpressionResolver.hasIndexAbstraction(idx, clusterService.state())
+                idx: String? ->
+                indexNameExpressionResolver.hasIndexAbstraction(idx, clusterService.state())
             }
             val localIndices = remoteClusterIndices.remove(RemoteClusterAware.LOCAL_CLUSTER_GROUP_KEY)
 
@@ -115,23 +117,26 @@ class FieldCapsFilter(
              * If 1 we forward the request to chain and discard the whole response from chain when rewriting.
              * If 2 we forward the request to chain with only non rollup indices and append rollup data to response when rewriting.
              * We are calling with rollup indices in 1 instead of an empty request since empty is defaulted to returning all indices in cluster.
-            **/
+             **/
             if (nonRollupIndices.isNotEmpty()) {
                 request.indices(*nonRollupIndices.toTypedArray())
             }
 
-            chain.proceed(task, action, request, object : ActionListener<Response> {
-                override fun onResponse(response: Response) {
-                    logger.info("Has rollup indices will rewrite field caps response")
-                    response as FieldCapabilitiesResponse
-                    val rewrittenResponse = rewriteResponse(response, rollupIndices, nonRollupIndices.isEmpty())
-                    listener.onResponse(rewrittenResponse as Response)
-                }
+            chain.proceed(
+                task, action, request,
+                object : ActionListener<Response> {
+                    override fun onResponse(response: Response) {
+                        logger.info("Has rollup indices will rewrite field caps response")
+                        response as FieldCapabilitiesResponse
+                        val rewrittenResponse = rewriteResponse(response, rollupIndices, nonRollupIndices.isEmpty())
+                        listener.onResponse(rewrittenResponse as Response)
+                    }
 
-                override fun onFailure(e: Exception) {
-                    listener.onFailure(e)
+                    override fun onFailure(e: Exception) {
+                        listener.onFailure(e)
+                    }
                 }
-            })
+            )
         } else {
             chain.proceed(task, action, request, listener)
         }
@@ -207,8 +212,12 @@ class FieldCapsFilter(
                 response[fieldName] = mutableMapOf()
             }
             val isSearchable = fieldMapping.fieldType == RollupFieldMapping.Companion.FieldType.DIMENSION
-            response[fieldName]!![type] = FieldCapabilities(fieldName, type, isSearchable, true, fieldMappingIndexMap.getValue(fieldMapping)
-                .toTypedArray(), null, null, mapOf<String, Set<String>>())
+            response[fieldName]!![type] = FieldCapabilities(
+                fieldName, type, isSearchable, true,
+                fieldMappingIndexMap.getValue(fieldMapping)
+                    .toTypedArray(),
+                null, null, mapOf<String, Set<String>>()
+            )
         }
 
         return response
@@ -278,8 +287,12 @@ class FieldCapsFilter(
                 }
                 val fieldCaps = fields.getValue(field).getValue(type)
                 val rewrittenIndices = if (fieldCaps.indices() != null && fieldCaps.indices().isNotEmpty()) fieldCaps.indices() else indices
-                expandedResponse[field]!![type] = FieldCapabilities(fieldCaps.name, fieldCaps.type, fieldCaps.isSearchable, fieldCaps
-                    .isAggregatable, rewrittenIndices, fieldCaps.nonSearchableIndices(), fieldCaps.nonAggregatableIndices(), fieldCaps.meta())
+                expandedResponse[field]!![type] = FieldCapabilities(
+                    fieldCaps.name, fieldCaps.type, fieldCaps.isSearchable,
+                    fieldCaps
+                        .isAggregatable,
+                    rewrittenIndices, fieldCaps.nonSearchableIndices(), fieldCaps.nonAggregatableIndices(), fieldCaps.meta()
+                )
             }
         }
 

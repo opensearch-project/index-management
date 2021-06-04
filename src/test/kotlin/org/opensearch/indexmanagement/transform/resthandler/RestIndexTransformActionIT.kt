@@ -11,14 +11,14 @@
 
 package org.opensearch.indexmanagement.transform.resthandler
 
+import org.opensearch.client.ResponseException
+import org.opensearch.common.xcontent.XContentType
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.TRANSFORM_BASE_URI
 import org.opensearch.indexmanagement.makeRequest
 import org.opensearch.indexmanagement.transform.TransformRestTestCase
 import org.opensearch.indexmanagement.transform.model.Transform
 import org.opensearch.indexmanagement.transform.randomTransform
-import org.opensearch.client.ResponseException
-import org.opensearch.common.xcontent.XContentType
 import org.opensearch.rest.RestStatus
 import org.opensearch.test.junit.annotations.TestLogging
 
@@ -35,7 +35,7 @@ class RestIndexTransformActionIT : TransformRestTestCase() {
             "$TRANSFORM_BASE_URI/${transform.id}",
             emptyMap(),
             transform.toHttpEntity()
-            )
+        )
         assertEquals("Create transform failed", RestStatus.CREATED, response.restStatus())
         val responseBody = response.asMap()
         val createdId = responseBody["_id"] as String
@@ -83,8 +83,11 @@ class RestIndexTransformActionIT : TransformRestTestCase() {
         val response = client().makeRequest("GET", "/$INDEX_MANAGEMENT_INDEX/_mapping")
         val parserMap = createParser(XContentType.JSON.xContent(), response.entity.content).map() as Map<String, Map<String, Any>>
         val mappingsMap = parserMap[INDEX_MANAGEMENT_INDEX]!!["mappings"] as Map<String, Any>
-        val expected = createParser(XContentType.JSON.xContent(), javaClass.classLoader.getResource("mappings/opendistro-ism-config.json")
-            .readText())
+        val expected = createParser(
+            XContentType.JSON.xContent(),
+            javaClass.classLoader.getResource("mappings/opendistro-ism-config.json")
+                .readText()
+        )
         val expectedMap = expected.map()
 
         assertEquals("Mappings are different", expectedMap, mappingsMap)

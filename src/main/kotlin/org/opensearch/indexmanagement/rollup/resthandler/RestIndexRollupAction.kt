@@ -26,26 +26,26 @@
 
 package org.opensearch.indexmanagement.rollup.resthandler
 
-import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.ROLLUP_JOBS_BASE_URI
-import org.opensearch.indexmanagement.opensearchapi.parseWithType
-import org.opensearch.indexmanagement.util.IF_PRIMARY_TERM
-import org.opensearch.indexmanagement.util.IF_SEQ_NO
-import org.opensearch.indexmanagement.util.REFRESH
-import org.opensearch.indexmanagement.rollup.action.index.IndexRollupAction
-import org.opensearch.indexmanagement.rollup.action.index.IndexRollupRequest
-import org.opensearch.indexmanagement.rollup.action.index.IndexRollupResponse
-import org.opensearch.indexmanagement.rollup.model.Rollup
 import org.opensearch.action.support.WriteRequest
 import org.opensearch.client.node.NodeClient
 import org.opensearch.common.xcontent.ToXContent
 import org.opensearch.index.seqno.SequenceNumbers
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.LEGACY_ROLLUP_JOBS_BASE_URI
+import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.ROLLUP_JOBS_BASE_URI
+import org.opensearch.indexmanagement.opensearchapi.parseWithType
+import org.opensearch.indexmanagement.rollup.action.index.IndexRollupAction
+import org.opensearch.indexmanagement.rollup.action.index.IndexRollupRequest
+import org.opensearch.indexmanagement.rollup.action.index.IndexRollupResponse
+import org.opensearch.indexmanagement.rollup.model.Rollup
+import org.opensearch.indexmanagement.util.IF_PRIMARY_TERM
+import org.opensearch.indexmanagement.util.IF_SEQ_NO
+import org.opensearch.indexmanagement.util.REFRESH
 import org.opensearch.rest.BaseRestHandler
-import org.opensearch.rest.RestHandler.Route
-import org.opensearch.rest.RestHandler.ReplacedRoute
 import org.opensearch.rest.BaseRestHandler.RestChannelConsumer
 import org.opensearch.rest.BytesRestResponse
 import org.opensearch.rest.RestChannel
+import org.opensearch.rest.RestHandler.ReplacedRoute
+import org.opensearch.rest.RestHandler.Route
 import org.opensearch.rest.RestRequest
 import org.opensearch.rest.RestRequest.Method.PUT
 import org.opensearch.rest.RestResponse

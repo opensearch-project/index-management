@@ -26,17 +26,13 @@
 
 package org.opensearch.indexmanagement.rollup
 
-import org.opensearch.indexmanagement.indexstatemanagement.util.WITH_TYPE
-import org.opensearch.indexmanagement.rollup.model.Rollup
-import org.opensearch.indexmanagement.rollup.model.RollupMetadata
-import org.opensearch.indexmanagement.rollup.model.RollupStats
-import org.opensearch.indexmanagement.common.model.dimension.DateHistogram
 import com.nhaarman.mockitokotlin2.any
 import com.nhaarman.mockitokotlin2.doAnswer
 import com.nhaarman.mockitokotlin2.doReturn
 import com.nhaarman.mockitokotlin2.mock
 import com.nhaarman.mockitokotlin2.whenever
 import kotlinx.coroutines.runBlocking
+import org.junit.Before
 import org.opensearch.action.ActionListener
 import org.opensearch.action.DocWriteResponse
 import org.opensearch.action.get.GetResponse
@@ -48,10 +44,14 @@ import org.opensearch.common.bytes.BytesReference
 import org.opensearch.common.document.DocumentField
 import org.opensearch.common.xcontent.NamedXContentRegistry
 import org.opensearch.common.xcontent.ToXContent
+import org.opensearch.indexmanagement.common.model.dimension.DateHistogram
+import org.opensearch.indexmanagement.indexstatemanagement.util.WITH_TYPE
+import org.opensearch.indexmanagement.rollup.model.Rollup
+import org.opensearch.indexmanagement.rollup.model.RollupMetadata
+import org.opensearch.indexmanagement.rollup.model.RollupStats
 import org.opensearch.search.SearchHit
 import org.opensearch.search.SearchHits
 import org.opensearch.test.OpenSearchTestCase
-import org.junit.Before
 import java.time.Instant
 import java.time.LocalDateTime
 import java.time.ZoneId
@@ -71,10 +71,12 @@ class RollupMetadataServiceTests : OpenSearchTestCase() {
     }
 
     fun `test metadata for continuous rollup with minute calendar interval`() {
-        val dimensions = listOf(randomCalendarDateHistogram().copy(
-            calendarInterval = "1m",
-            timezone = ZoneId.of(DateHistogram.UTC)
-        ))
+        val dimensions = listOf(
+            randomCalendarDateHistogram().copy(
+                calendarInterval = "1m",
+                timezone = ZoneId.of(DateHistogram.UTC)
+            )
+        )
         val rollup = randomRollup().copy(
             enabled = true,
             jobEnabledTime = Instant.now(),
@@ -107,10 +109,12 @@ class RollupMetadataServiceTests : OpenSearchTestCase() {
     }
 
     fun `test metadata for continuous rollup with hour calendar interval`() {
-        val dimensions = listOf(randomCalendarDateHistogram().copy(
-            calendarInterval = "1h",
-            timezone = ZoneId.of(DateHistogram.UTC)
-        ))
+        val dimensions = listOf(
+            randomCalendarDateHistogram().copy(
+                calendarInterval = "1h",
+                timezone = ZoneId.of(DateHistogram.UTC)
+            )
+        )
         val rollup = randomRollup().copy(
             enabled = true,
             jobEnabledTime = Instant.now(),
@@ -143,10 +147,12 @@ class RollupMetadataServiceTests : OpenSearchTestCase() {
     }
 
     fun `test metadata for continuous rollup with hour calendar interval and daylight savings time`() {
-        val dimensions = listOf(randomCalendarDateHistogram().copy(
-            calendarInterval = "1h",
-            timezone = ZoneId.of("America/Los_Angeles")
-        ))
+        val dimensions = listOf(
+            randomCalendarDateHistogram().copy(
+                calendarInterval = "1h",
+                timezone = ZoneId.of("America/Los_Angeles")
+            )
+        )
         val rollup = randomRollup().copy(
             enabled = true,
             jobEnabledTime = Instant.now(),
@@ -180,10 +186,12 @@ class RollupMetadataServiceTests : OpenSearchTestCase() {
     }
 
     fun `test metadata for continuous rollup with day calendar interval`() {
-        val dimensions = listOf(randomCalendarDateHistogram().copy(
-            calendarInterval = "day",
-            timezone = ZoneId.of(DateHistogram.UTC)
-        ))
+        val dimensions = listOf(
+            randomCalendarDateHistogram().copy(
+                calendarInterval = "day",
+                timezone = ZoneId.of(DateHistogram.UTC)
+            )
+        )
         val rollup = randomRollup().copy(
             enabled = true,
             jobEnabledTime = Instant.now(),
@@ -216,10 +224,12 @@ class RollupMetadataServiceTests : OpenSearchTestCase() {
     }
 
     fun `test metadata for continuous rollup with day calendar interval for leap year`() {
-        val dimensions = listOf(randomCalendarDateHistogram().copy(
-            calendarInterval = "1d",
-            timezone = ZoneId.of(DateHistogram.UTC)
-        ))
+        val dimensions = listOf(
+            randomCalendarDateHistogram().copy(
+                calendarInterval = "1d",
+                timezone = ZoneId.of(DateHistogram.UTC)
+            )
+        )
         val rollup = randomRollup().copy(
             enabled = true,
             jobEnabledTime = Instant.now(),
@@ -252,10 +262,12 @@ class RollupMetadataServiceTests : OpenSearchTestCase() {
     }
 
     fun `test metadata for continuous rollup with week calendar interval`() {
-        val dimensions = listOf(randomCalendarDateHistogram().copy(
-            calendarInterval = "1w",
-            timezone = ZoneId.of(DateHistogram.UTC)
-        ))
+        val dimensions = listOf(
+            randomCalendarDateHistogram().copy(
+                calendarInterval = "1w",
+                timezone = ZoneId.of(DateHistogram.UTC)
+            )
+        )
         val rollup = randomRollup().copy(
             enabled = true,
             jobEnabledTime = Instant.now(),
@@ -290,10 +302,12 @@ class RollupMetadataServiceTests : OpenSearchTestCase() {
     }
 
     fun `test metadata for continuous rollup with month calendar interval`() {
-        val dimensions = listOf(randomCalendarDateHistogram().copy(
-            calendarInterval = "1M",
-            timezone = ZoneId.of(DateHistogram.UTC)
-        ))
+        val dimensions = listOf(
+            randomCalendarDateHistogram().copy(
+                calendarInterval = "1M",
+                timezone = ZoneId.of(DateHistogram.UTC)
+            )
+        )
         val rollup = randomRollup().copy(
             enabled = true,
             jobEnabledTime = Instant.now(),
@@ -326,10 +340,12 @@ class RollupMetadataServiceTests : OpenSearchTestCase() {
     }
 
     fun `test metadata for continuous rollup with quarter calendar interval`() {
-        val dimensions = listOf(randomCalendarDateHistogram().copy(
-            calendarInterval = "1q",
-            timezone = ZoneId.of(DateHistogram.UTC)
-        ))
+        val dimensions = listOf(
+            randomCalendarDateHistogram().copy(
+                calendarInterval = "1q",
+                timezone = ZoneId.of(DateHistogram.UTC)
+            )
+        )
         val rollup = randomRollup().copy(
             enabled = true,
             jobEnabledTime = Instant.now(),
@@ -362,10 +378,12 @@ class RollupMetadataServiceTests : OpenSearchTestCase() {
     }
 
     fun `test metadata for continuous rollup with year calendar interval`() {
-        val dimensions = listOf(randomCalendarDateHistogram().copy(
-            calendarInterval = "1y",
-            timezone = ZoneId.of(DateHistogram.UTC)
-        ))
+        val dimensions = listOf(
+            randomCalendarDateHistogram().copy(
+                calendarInterval = "1y",
+                timezone = ZoneId.of(DateHistogram.UTC)
+            )
+        )
         val rollup = randomRollup().copy(
             enabled = true,
             jobEnabledTime = Instant.now(),
@@ -398,10 +416,12 @@ class RollupMetadataServiceTests : OpenSearchTestCase() {
     }
 
     fun `test metadata for continuous rollup with time offset for document`() {
-        val dimensions = listOf(randomCalendarDateHistogram().copy(
-            calendarInterval = "1h",
-            timezone = ZoneId.of(DateHistogram.UTC)
-        ))
+        val dimensions = listOf(
+            randomCalendarDateHistogram().copy(
+                calendarInterval = "1h",
+                timezone = ZoneId.of(DateHistogram.UTC)
+            )
+        )
         val rollup = randomRollup().copy(
             enabled = true,
             jobEnabledTime = Instant.now(),
@@ -434,10 +454,12 @@ class RollupMetadataServiceTests : OpenSearchTestCase() {
     }
 
     fun `test metadata for continuous rollup with timezone for date histogram`() {
-        val dimensions = listOf(randomCalendarDateHistogram().copy(
-            calendarInterval = "1h",
-            timezone = ZoneId.of("America/Los_Angeles")
-        ))
+        val dimensions = listOf(
+            randomCalendarDateHistogram().copy(
+                calendarInterval = "1h",
+                timezone = ZoneId.of("America/Los_Angeles")
+            )
+        )
         val rollup = randomRollup().copy(
             enabled = true,
             jobEnabledTime = Instant.now(),
@@ -470,10 +492,12 @@ class RollupMetadataServiceTests : OpenSearchTestCase() {
     }
 
     fun `test metadata for continuous rollup with hour fixed interval`() {
-        val dimensions = listOf(randomFixedDateHistogram().copy(
-            fixedInterval = "3h",
-            timezone = ZoneId.of(DateHistogram.UTC)
-        ))
+        val dimensions = listOf(
+            randomFixedDateHistogram().copy(
+                fixedInterval = "3h",
+                timezone = ZoneId.of(DateHistogram.UTC)
+            )
+        )
         val rollup = randomRollup().copy(
             enabled = true,
             jobEnabledTime = Instant.now(),
@@ -506,10 +530,12 @@ class RollupMetadataServiceTests : OpenSearchTestCase() {
     }
 
     fun `test metadata for continuous rollup with hour fixed interval and daylight savings time`() {
-        val dimensions = listOf(randomFixedDateHistogram().copy(
-            fixedInterval = "3h",
-            timezone = ZoneId.of("America/Los_Angeles")
-        ))
+        val dimensions = listOf(
+            randomFixedDateHistogram().copy(
+                fixedInterval = "3h",
+                timezone = ZoneId.of("America/Los_Angeles")
+            )
+        )
         val rollup = randomRollup().copy(
             enabled = true,
             jobEnabledTime = Instant.now(),
@@ -544,10 +570,12 @@ class RollupMetadataServiceTests : OpenSearchTestCase() {
     }
 
     fun `test metadata for continuous rollup with day fixed interval and leap year`() {
-        val dimensions = listOf(randomFixedDateHistogram().copy(
-            fixedInterval = "30d",
-            timezone = ZoneId.of(DateHistogram.UTC)
-        ))
+        val dimensions = listOf(
+            randomFixedDateHistogram().copy(
+                fixedInterval = "30d",
+                timezone = ZoneId.of(DateHistogram.UTC)
+            )
+        )
         val rollup = randomRollup().copy(
             enabled = true,
             jobEnabledTime = Instant.now(),
@@ -682,8 +710,10 @@ class RollupMetadataServiceTests : OpenSearchTestCase() {
         val metadataService = RollupMetadataService(client, xContentRegistry)
 
         runBlocking {
-            val getExistingMetadataResult = metadataService.getExistingMetadata(randomRollup()
-                .copy(id = randomAlphaOfLength(10), metadataID = randomAlphaOfLength(10)))
+            val getExistingMetadataResult = metadataService.getExistingMetadata(
+                randomRollup()
+                    .copy(id = randomAlphaOfLength(10), metadataID = randomAlphaOfLength(10))
+            )
             require(getExistingMetadataResult is MetadataResult.NoMetadata) {
                 "Getting existing metadata returned unexpected results"
             }
@@ -704,8 +734,10 @@ class RollupMetadataServiceTests : OpenSearchTestCase() {
         val metadataService = RollupMetadataService(client, xContentRegistry)
 
         runBlocking {
-            val getExistingMetadataResult = metadataService.getExistingMetadata(randomRollup()
-                .copy(id = randomAlphaOfLength(10), metadataID = randomAlphaOfLength(10)))
+            val getExistingMetadataResult = metadataService.getExistingMetadata(
+                randomRollup()
+                    .copy(id = randomAlphaOfLength(10), metadataID = randomAlphaOfLength(10))
+            )
             require(getExistingMetadataResult is MetadataResult.Failure) {
                 "Getting existing metadata returned unexpected results"
             }

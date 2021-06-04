@@ -11,13 +11,13 @@
 
 package org.opensearch.indexmanagement.util
 
+import org.apache.logging.log4j.LogManager
+import org.opensearch.action.bulk.BackoffPolicy
 import org.opensearch.indexmanagement.opensearchapi.retry
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.jobscheduler.spi.JobExecutionContext
 import org.opensearch.jobscheduler.spi.LockModel
 import org.opensearch.jobscheduler.spi.ScheduledJobParameter
-import org.apache.logging.log4j.LogManager
-import org.opensearch.action.bulk.BackoffPolicy
 
 private val logger = LogManager.getLogger("JobSchedulerUtils")
 

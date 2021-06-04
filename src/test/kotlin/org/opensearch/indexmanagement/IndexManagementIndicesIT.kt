@@ -11,29 +11,29 @@
 
 package org.opensearch.indexmanagement
 
-import org.opensearch.indexmanagement.IndexManagementIndices.Companion.HISTORY_INDEX_BASE
-import org.opensearch.indexmanagement.IndexManagementIndices.Companion.HISTORY_WRITE_INDEX_ALIAS
-import org.opensearch.indexmanagement.IndexManagementIndices.Companion.indexStateManagementHistoryMappings
-import org.opensearch.indexmanagement.IndexManagementIndices.Companion.indexManagementMappings
-import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
-import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.POLICY_BASE_URI
-import org.opensearch.indexmanagement.indexstatemanagement.IndexStateManagementRestTestCase
-import org.opensearch.indexmanagement.indexstatemanagement.model.ChangePolicy
-import org.opensearch.indexmanagement.indexstatemanagement.randomPolicy
-import org.opensearch.indexmanagement.indexstatemanagement.resthandler.RestChangePolicyAction
-import org.opensearch.indexmanagement.indexstatemanagement.util.FAILED_INDICES
-import org.opensearch.indexmanagement.indexstatemanagement.util.FAILURES
-import org.opensearch.indexmanagement.indexstatemanagement.util.INDEX_HIDDEN
-import org.opensearch.indexmanagement.indexstatemanagement.util.UPDATED_INDICES
 import org.apache.http.entity.ContentType
 import org.apache.http.entity.StringEntity
 import org.opensearch.common.settings.Settings
 import org.opensearch.common.xcontent.ToXContent
 import org.opensearch.common.xcontent.XContentFactory
+import org.opensearch.indexmanagement.IndexManagementIndices.Companion.HISTORY_INDEX_BASE
+import org.opensearch.indexmanagement.IndexManagementIndices.Companion.HISTORY_WRITE_INDEX_ALIAS
+import org.opensearch.indexmanagement.IndexManagementIndices.Companion.indexManagementMappings
+import org.opensearch.indexmanagement.IndexManagementIndices.Companion.indexStateManagementHistoryMappings
+import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
+import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.POLICY_BASE_URI
+import org.opensearch.indexmanagement.indexstatemanagement.IndexStateManagementRestTestCase
+import org.opensearch.indexmanagement.indexstatemanagement.model.ChangePolicy
+import org.opensearch.indexmanagement.indexstatemanagement.randomPolicy
 import org.opensearch.indexmanagement.indexstatemanagement.resthandler.RestAddPolicyAction
+import org.opensearch.indexmanagement.indexstatemanagement.resthandler.RestChangePolicyAction
 import org.opensearch.indexmanagement.indexstatemanagement.resthandler.RestExplainAction
 import org.opensearch.indexmanagement.indexstatemanagement.resthandler.RestRemovePolicyAction
 import org.opensearch.indexmanagement.indexstatemanagement.resthandler.RestRetryFailedManagedIndexAction
+import org.opensearch.indexmanagement.indexstatemanagement.util.FAILED_INDICES
+import org.opensearch.indexmanagement.indexstatemanagement.util.FAILURES
+import org.opensearch.indexmanagement.indexstatemanagement.util.INDEX_HIDDEN
+import org.opensearch.indexmanagement.indexstatemanagement.util.UPDATED_INDICES
 import org.opensearch.indexmanagement.opensearchapi.string
 import org.opensearch.indexmanagement.refreshanalyzer.RestRefreshSearchAnalyzerAction
 import org.opensearch.indexmanagement.rollup.randomRollup
@@ -100,7 +100,7 @@ class IndexManagementIndicesIT : IndexStateManagementRestTestCase() {
         assertIndexDoesNotExist("$HISTORY_WRITE_INDEX_ALIAS?allow_no_indices=false")
 
         val mapping = indexStateManagementHistoryMappings.trim().trimStart('{').trimEnd('}')
-                .replace("\"schema_version\": $historySchemaVersion", "\"schema_version\": 0")
+            .replace("\"schema_version\": $historySchemaVersion", "\"schema_version\": 0")
 
         val aliases = "\"$HISTORY_WRITE_INDEX_ALIAS\": { \"is_write_index\": true }"
         createIndex("$HISTORY_INDEX_BASE-1", Settings.builder().put(INDEX_HIDDEN, true).build(), mapping, aliases)
@@ -140,8 +140,10 @@ class IndexManagementIndicesIT : IndexStateManagementRestTestCase() {
             .replace("\"schema_version\": $configSchemaVersion", "\"schema_version\": 0")
 
         val entity = StringEntity(mapping, ContentType.APPLICATION_JSON)
-        client().makeRequest(RestRequest.Method.PUT.toString(),
-            "/$INDEX_MANAGEMENT_INDEX/_mapping", emptyMap(), entity)
+        client().makeRequest(
+            RestRequest.Method.PUT.toString(),
+            "/$INDEX_MANAGEMENT_INDEX/_mapping", emptyMap(), entity
+        )
 
         verifyIndexSchemaVersion(INDEX_MANAGEMENT_INDEX, 0)
 
@@ -149,7 +151,8 @@ class IndexManagementIndicesIT : IndexStateManagementRestTestCase() {
         val changePolicy = ChangePolicy(newPolicy.id, null, emptyList(), false)
         val response = client().makeRequest(
             RestRequest.Method.POST.toString(),
-            "${RestChangePolicyAction.CHANGE_POLICY_BASE_URI}/$index", emptyMap(), changePolicy.toHttpEntity())
+            "${RestChangePolicyAction.CHANGE_POLICY_BASE_URI}/$index", emptyMap(), changePolicy.toHttpEntity()
+        )
 
         verifyIndexSchemaVersion(INDEX_MANAGEMENT_INDEX, configSchemaVersion)
 
@@ -183,22 +186,26 @@ class IndexManagementIndicesIT : IndexStateManagementRestTestCase() {
 
         val retryFailedResponse = client().makeRequest(
             RestRequest.Method.POST.toString(),
-            "${RestRetryFailedManagedIndexAction.LEGACY_RETRY_BASE_URI}/$indexName")
+            "${RestRetryFailedManagedIndexAction.LEGACY_RETRY_BASE_URI}/$indexName"
+        )
         assertEquals("Unexpected RestStatus", RestStatus.OK, retryFailedResponse.restStatus())
 
         val explainResponse = client().makeRequest(
             RestRequest.Method.GET.toString(),
-            "${RestExplainAction.LEGACY_EXPLAIN_BASE_URI}/$indexName")
+            "${RestExplainAction.LEGACY_EXPLAIN_BASE_URI}/$indexName"
+        )
         assertEquals("Unexpected RestStatus", RestStatus.OK, explainResponse.restStatus())
 
         val removePolicyResponse = client().makeRequest(
             RestRequest.Method.POST.toString(),
-            "${RestRemovePolicyAction.LEGACY_REMOVE_POLICY_BASE_URI}/$indexName")
+            "${RestRemovePolicyAction.LEGACY_REMOVE_POLICY_BASE_URI}/$indexName"
+        )
         assertEquals("Unexpected RestStatus", RestStatus.OK, removePolicyResponse.restStatus())
 
         val deletePolicyResponse = client().makeRequest(
             RestRequest.Method.DELETE.toString(),
-            "${IndexManagementPlugin.LEGACY_POLICY_BASE_URI}/$policyId")
+            "${IndexManagementPlugin.LEGACY_POLICY_BASE_URI}/$policyId"
+        )
         assertEquals("Unexpected RestStatus", RestStatus.OK, deletePolicyResponse.restStatus())
 
         val getPolicies = client().makeRequest(RestRequest.Method.GET.toString(), "${IndexManagementPlugin.LEGACY_POLICY_BASE_URI}")
@@ -216,9 +223,13 @@ class IndexManagementIndicesIT : IndexStateManagementRestTestCase() {
     fun `test rollup backward compatibility with opendistro`() {
         val rollup = randomRollup()
         val rollupJsonString = rollup.toXContent(XContentFactory.jsonBuilder(), ToXContent.EMPTY_PARAMS).string()
-        val createRollupResponse = client().makeRequest("PUT", "${IndexManagementPlugin.LEGACY_ROLLUP_JOBS_BASE_URI}/${rollup.id}", emptyMap(), StringEntity(rollupJsonString,
-            ContentType.APPLICATION_JSON
-        ))
+        val createRollupResponse = client().makeRequest(
+            "PUT", "${IndexManagementPlugin.LEGACY_ROLLUP_JOBS_BASE_URI}/${rollup.id}", emptyMap(),
+            StringEntity(
+                rollupJsonString,
+                ContentType.APPLICATION_JSON
+            )
+        )
         assertEquals("Create rollup failed", RestStatus.CREATED, createRollupResponse.restStatus())
 
         val getRollupResponse = client().makeRequest("GET", "${IndexManagementPlugin.LEGACY_ROLLUP_JOBS_BASE_URI}/${rollup.id}")

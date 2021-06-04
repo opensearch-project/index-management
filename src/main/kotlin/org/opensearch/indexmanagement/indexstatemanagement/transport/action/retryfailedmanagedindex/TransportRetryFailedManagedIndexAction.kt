@@ -26,17 +26,6 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.transport.action.retryfailedmanagedindex
 
-import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
-import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.buildMgetMetadataRequest
-import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.getManagedIndexMetadata
-import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.mgetResponseToList
-import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
-import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.PolicyRetryInfoMetaData
-import org.opensearch.indexmanagement.indexstatemanagement.transport.action.ISMStatusResponse
-import org.opensearch.indexmanagement.indexstatemanagement.util.FailedIndex
-import org.opensearch.indexmanagement.indexstatemanagement.util.isFailed
-import org.opensearch.indexmanagement.indexstatemanagement.util.managedIndexMetadataID
-import org.opensearch.indexmanagement.indexstatemanagement.util.updateEnableManagedIndexRequest
 import org.apache.logging.log4j.LogManager
 import org.opensearch.ExceptionsHelper
 import org.opensearch.action.ActionListener
@@ -58,6 +47,17 @@ import org.opensearch.common.xcontent.ToXContent
 import org.opensearch.common.xcontent.XContentFactory
 import org.opensearch.index.Index
 import org.opensearch.index.IndexNotFoundException
+import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
+import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
+import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.PolicyRetryInfoMetaData
+import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.buildMgetMetadataRequest
+import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.getManagedIndexMetadata
+import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.mgetResponseToList
+import org.opensearch.indexmanagement.indexstatemanagement.transport.action.ISMStatusResponse
+import org.opensearch.indexmanagement.indexstatemanagement.util.FailedIndex
+import org.opensearch.indexmanagement.indexstatemanagement.util.isFailed
+import org.opensearch.indexmanagement.indexstatemanagement.util.managedIndexMetadataID
+import org.opensearch.indexmanagement.indexstatemanagement.util.updateEnableManagedIndexRequest
 import org.opensearch.tasks.Task
 import org.opensearch.transport.TransportService
 
@@ -68,7 +68,7 @@ class TransportRetryFailedManagedIndexAction @Inject constructor(
     transportService: TransportService,
     actionFilters: ActionFilters
 ) : HandledTransportAction<RetryFailedManagedIndexRequest, ISMStatusResponse>(
-        RetryFailedManagedIndexAction.NAME, transportService, actionFilters, ::RetryFailedManagedIndexRequest
+    RetryFailedManagedIndexAction.NAME, transportService, actionFilters, ::RetryFailedManagedIndexRequest
 ) {
     override fun doExecute(task: Task, request: RetryFailedManagedIndexRequest, listener: ActionListener<ISMStatusResponse>) {
         RetryFailedManagedIndexHandler(client, listener, request).start()
@@ -101,20 +101,23 @@ class TransportRetryFailedManagedIndexAction @Inject constructor(
 
             client.admin()
                 .cluster()
-                .state(clusterStateRequest, object : ActionListener<ClusterStateResponse> {
-                    override fun onResponse(response: ClusterStateResponse) {
-                        clusterState = response.state
-                        val indexMetadatas = response.state.metadata.indices
-                        indexMetadatas.forEach {
-                            indicesToRetry.putIfAbsent(it.value.indexUUID, it.key)
+                .state(
+                    clusterStateRequest,
+                    object : ActionListener<ClusterStateResponse> {
+                        override fun onResponse(response: ClusterStateResponse) {
+                            clusterState = response.state
+                            val indexMetadatas = response.state.metadata.indices
+                            indexMetadatas.forEach {
+                                indicesToRetry.putIfAbsent(it.value.indexUUID, it.key)
+                            }
+                            processResponse(response)
                         }
-                        processResponse(response)
-                    }
 
-                    override fun onFailure(t: Exception) {
-                        actionListener.onFailure(ExceptionsHelper.unwrapCause(t) as Exception)
+                        override fun onFailure(t: Exception) {
+                            actionListener.onFailure(ExceptionsHelper.unwrapCause(t) as Exception)
+                        }
                     }
-                })
+                )
         }
 
         fun processResponse(clusterStateResponse: ClusterStateResponse) {
@@ -122,30 +125,33 @@ class TransportRetryFailedManagedIndexAction @Inject constructor(
             clusterStateResponse.state.metadata.indices.map { it.value.indexUUID }
                 .forEach { mReq.add(INDEX_MANAGEMENT_INDEX, it) }
 
-            client.multiGet(mReq, object : ActionListener<MultiGetResponse> {
-                override fun onResponse(response: MultiGetResponse) {
-                    // config index may not be initialized
-                    val f = response.responses.first()
-                    if (f.isFailed && f.failure.failure is IndexNotFoundException) {
-                        indicesToRetry.forEach { (uuid, name) ->
-                            failedIndices.add(FailedIndex(name, uuid, "This index is not being managed."))
+            client.multiGet(
+                mReq,
+                object : ActionListener<MultiGetResponse> {
+                    override fun onResponse(response: MultiGetResponse) {
+                        // config index may not be initialized
+                        val f = response.responses.first()
+                        if (f.isFailed && f.failure.failure is IndexNotFoundException) {
+                            indicesToRetry.forEach { (uuid, name) ->
+                                failedIndices.add(FailedIndex(name, uuid, "This index is not being managed."))
+                            }
+                            actionListener.onResponse(ISMStatusResponse(0, failedIndices))
+                            return
                         }
-                        actionListener.onResponse(ISMStatusResponse(0, failedIndices))
-                        return
+
+                        response.forEach {
+                            indicesManagedState[it.id] = it.response.isExists
+                        }
+
+                        // get back metadata from config index
+                        client.multiGet(buildMgetMetadataRequest(clusterState), ActionListener.wrap(::onMgetMetadataResponse, ::onFailure))
                     }
 
-                    response.forEach {
-                        indicesManagedState[it.id] = it.response.isExists
+                    override fun onFailure(t: Exception) {
+                        actionListener.onFailure(ExceptionsHelper.unwrapCause(t) as Exception)
                     }
-
-                    // get back metadata from config index
-                    client.multiGet(buildMgetMetadataRequest(clusterState), ActionListener.wrap(::onMgetMetadataResponse, ::onFailure))
                 }
-
-                override fun onFailure(t: Exception) {
-                    actionListener.onFailure(ExceptionsHelper.unwrapCause(t) as Exception)
-                }
-            })
+            )
         }
 
         @Suppress("ComplexMethod")
@@ -160,20 +166,36 @@ class TransportRetryFailedManagedIndexAction @Inject constructor(
                     indicesManagedState[indexMetaData.indexUUID] == false ->
                         failedIndices.add(FailedIndex(indexMetaData.index.name, indexMetaData.index.uuid, "This index is not being managed."))
                     mgetFailure != null ->
-                        failedIndices.add(FailedIndex(indexMetaData.index.name, indexMetaData.index.uuid,
-                            "Failed to get managed index metadata, $mgetFailure"))
+                        failedIndices.add(
+                            FailedIndex(
+                                indexMetaData.index.name, indexMetaData.index.uuid,
+                                "Failed to get managed index metadata, $mgetFailure"
+                            )
+                        )
                     managedIndexMetadata == null -> {
                         if (clusterStateMetadata != null) {
-                            failedIndices.add(FailedIndex(indexMetaData.index.name, indexMetaData.index.uuid,
-                                "Cannot retry until metadata has finished migrating"))
+                            failedIndices.add(
+                                FailedIndex(
+                                    indexMetaData.index.name, indexMetaData.index.uuid,
+                                    "Cannot retry until metadata has finished migrating"
+                                )
+                            )
                         } else {
-                            failedIndices.add(FailedIndex(indexMetaData.index.name, indexMetaData.index.uuid,
-                            "This index has no metadata information"))
+                            failedIndices.add(
+                                FailedIndex(
+                                    indexMetaData.index.name, indexMetaData.index.uuid,
+                                    "This index has no metadata information"
+                                )
+                            )
                         }
                     }
                     !managedIndexMetadata.isFailed ->
-                        failedIndices.add(FailedIndex(indexMetaData.index.name, indexMetaData.index.uuid,
-                            "This index is not in failed state."))
+                        failedIndices.add(
+                            FailedIndex(
+                                indexMetaData.index.name, indexMetaData.index.uuid,
+                                "This index is not in failed state."
+                            )
+                        )
                     else ->
                         listOfMetadata.add(managedIndexMetadata)
                 }
@@ -200,18 +222,21 @@ class TransportRetryFailedManagedIndexAction @Inject constructor(
                     failedIndices.add(FailedIndex(managedIndexMetaData.index, managedIndexMetaData.indexUuid, bulkItemResponse.failureMessage))
                 } else {
                     listOfIndexToMetadata.add(
-                        Pair(Index(managedIndexMetaData.index, managedIndexMetaData.indexUuid), managedIndexMetaData.copy(
-                            stepMetaData = null,
-                            policyRetryInfo = PolicyRetryInfoMetaData(false, 0),
-                            actionMetaData = managedIndexMetaData.actionMetaData?.copy(
-                                failed = false,
-                                consumedRetries = 0,
-                                lastRetryTime = null,
-                                startTime = null
-                            ),
-                            transitionTo = request.startState,
-                            info = mapOf("message" to "Pending retry of failed managed index")
-                        ))
+                        Pair(
+                            Index(managedIndexMetaData.index, managedIndexMetaData.indexUuid),
+                            managedIndexMetaData.copy(
+                                stepMetaData = null,
+                                policyRetryInfo = PolicyRetryInfoMetaData(false, 0),
+                                actionMetaData = managedIndexMetaData.actionMetaData?.copy(
+                                    failed = false,
+                                    consumedRetries = 0,
+                                    lastRetryTime = null,
+                                    startTime = null
+                                ),
+                                transitionTo = request.startState,
+                                info = mapOf("message" to "Pending retry of failed managed index")
+                            )
+                        )
                     )
                 }
             }
@@ -249,9 +274,11 @@ class TransportRetryFailedManagedIndexAction @Inject constructor(
         fun onFailure(e: Exception) {
             try {
                 if (e is ClusterBlockException) {
-                    failedIndices.addAll(listOfIndexToMetadata.map {
-                        FailedIndex(it.first.name, it.first.uuid, "Failed to update due to ClusterBlockException. ${e.message}")
-                    })
+                    failedIndices.addAll(
+                        listOfIndexToMetadata.map {
+                            FailedIndex(it.first.name, it.first.uuid, "Failed to update due to ClusterBlockException. ${e.message}")
+                        }
+                    )
                 }
 
                 actionListener.onResponse(ISMStatusResponse(0, failedIndices))

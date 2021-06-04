@@ -11,18 +11,6 @@
 
 package org.opensearch.indexmanagement.transform
 
-import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
-import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.TRANSFORM_BASE_URI
-import org.opensearch.indexmanagement.IndexManagementRestTestCase
-import org.opensearch.indexmanagement.makeRequest
-import org.opensearch.indexmanagement.common.model.dimension.Dimension
-import org.opensearch.indexmanagement.transform.model.Transform
-import org.opensearch.indexmanagement.transform.model.TransformMetadata
-import org.opensearch.indexmanagement.util._ID
-import org.opensearch.indexmanagement.util._PRIMARY_TERM
-import org.opensearch.indexmanagement.util._SEQ_NO
-import org.opensearch.indexmanagement.waitFor
-import org.opensearch.jobscheduler.spi.schedule.IntervalSchedule
 import org.apache.http.HttpEntity
 import org.apache.http.HttpHeaders
 import org.apache.http.entity.ContentType.APPLICATION_JSON
@@ -36,6 +24,18 @@ import org.opensearch.common.xcontent.XContentParser
 import org.opensearch.common.xcontent.XContentParserUtils.ensureExpectedToken
 import org.opensearch.common.xcontent.XContentType
 import org.opensearch.index.seqno.SequenceNumbers
+import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
+import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.TRANSFORM_BASE_URI
+import org.opensearch.indexmanagement.IndexManagementRestTestCase
+import org.opensearch.indexmanagement.common.model.dimension.Dimension
+import org.opensearch.indexmanagement.makeRequest
+import org.opensearch.indexmanagement.transform.model.Transform
+import org.opensearch.indexmanagement.transform.model.TransformMetadata
+import org.opensearch.indexmanagement.util._ID
+import org.opensearch.indexmanagement.util._PRIMARY_TERM
+import org.opensearch.indexmanagement.util._SEQ_NO
+import org.opensearch.indexmanagement.waitFor
+import org.opensearch.jobscheduler.spi.schedule.IntervalSchedule
 import org.opensearch.rest.RestStatus
 import org.opensearch.search.SearchModule
 import org.opensearch.test.rest.OpenSearchRestTestCase
@@ -205,12 +205,14 @@ abstract class TransformRestTestCase : IndexManagementRestTestCase() {
         val millis = Duration.of(intervalSchedule.interval.toLong(), intervalSchedule.unit).minusSeconds(2).toMillis()
         val startTimeMillis = desiredStartTimeMillis ?: Instant.now().toEpochMilli() - millis
         val waitForActiveShards = if (isMultiNode) "all" else "1"
-        val response = client().makeRequest("POST", "$INDEX_MANAGEMENT_INDEX/_update/${update.id}?wait_for_active_shards=$waitForActiveShards",
+        val response = client().makeRequest(
+            "POST", "$INDEX_MANAGEMENT_INDEX/_update/${update.id}?wait_for_active_shards=$waitForActiveShards",
             StringEntity(
                 "{\"doc\":{\"transform\":{\"schedule\":{\"interval\":{\"start_time\":" +
                     "\"$startTimeMillis\"}}}}}",
                 APPLICATION_JSON
-            ))
+            )
+        )
 
         assertEquals("Request failed", RestStatus.OK, response.restStatus())
     }

@@ -26,6 +26,11 @@
 
 package org.opensearch.indexmanagement.rollup.action
 
+import org.opensearch.action.DocWriteRequest
+import org.opensearch.action.support.WriteRequest
+import org.opensearch.common.io.stream.BytesStreamOutput
+import org.opensearch.common.io.stream.StreamInput
+import org.opensearch.index.seqno.SequenceNumbers
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
 import org.opensearch.indexmanagement.rollup.action.delete.DeleteRollupRequest
 import org.opensearch.indexmanagement.rollup.action.explain.ExplainRollupRequest
@@ -36,11 +41,6 @@ import org.opensearch.indexmanagement.rollup.action.start.StartRollupRequest
 import org.opensearch.indexmanagement.rollup.action.stop.StopRollupRequest
 import org.opensearch.indexmanagement.rollup.model.Rollup
 import org.opensearch.indexmanagement.rollup.randomRollup
-import org.opensearch.action.DocWriteRequest
-import org.opensearch.action.support.WriteRequest
-import org.opensearch.common.io.stream.BytesStreamOutput
-import org.opensearch.common.io.stream.StreamInput
-import org.opensearch.index.seqno.SequenceNumbers
 import org.opensearch.search.fetch.subphase.FetchSourceContext
 import org.opensearch.test.OpenSearchTestCase
 

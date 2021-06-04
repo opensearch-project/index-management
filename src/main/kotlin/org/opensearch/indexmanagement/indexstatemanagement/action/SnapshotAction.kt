@@ -26,14 +26,14 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.action
 
+import org.opensearch.client.Client
+import org.opensearch.cluster.service.ClusterService
 import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.indexstatemanagement.model.action.ActionConfig.ActionType
 import org.opensearch.indexmanagement.indexstatemanagement.model.action.SnapshotActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.step.Step
 import org.opensearch.indexmanagement.indexstatemanagement.step.snapshot.AttemptSnapshotStep
 import org.opensearch.indexmanagement.indexstatemanagement.step.snapshot.WaitForSnapshotStep
-import org.opensearch.client.Client
-import org.opensearch.cluster.service.ClusterService
 
 class SnapshotAction(
     clusterService: ClusterService,

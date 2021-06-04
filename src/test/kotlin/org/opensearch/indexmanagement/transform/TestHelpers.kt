@@ -11,28 +11,28 @@
 
 package org.opensearch.indexmanagement.transform
 
-import org.opensearch.indexmanagement.opensearchapi.string
-import org.opensearch.indexmanagement.randomInstant
-import org.opensearch.indexmanagement.randomSchedule
-import org.opensearch.indexmanagement.common.model.dimension.Dimension
-import org.opensearch.indexmanagement.rollup.randomAfterKey
-import org.opensearch.indexmanagement.rollup.randomDimension
-import org.opensearch.indexmanagement.transform.model.Transform
-import org.opensearch.indexmanagement.transform.model.TransformMetadata
-import org.opensearch.indexmanagement.transform.model.TransformStats
-import java.util.Locale
 import org.opensearch.common.io.stream.BytesStreamOutput
 import org.opensearch.common.io.stream.NamedWriteableAwareStreamInput
 import org.opensearch.common.io.stream.NamedWriteableRegistry
 import org.opensearch.common.settings.Settings
 import org.opensearch.common.xcontent.ToXContent
 import org.opensearch.common.xcontent.XContentFactory
+import org.opensearch.indexmanagement.common.model.dimension.Dimension
+import org.opensearch.indexmanagement.opensearchapi.string
+import org.opensearch.indexmanagement.randomInstant
+import org.opensearch.indexmanagement.randomSchedule
+import org.opensearch.indexmanagement.rollup.randomAfterKey
+import org.opensearch.indexmanagement.rollup.randomDimension
 import org.opensearch.indexmanagement.transform.model.ExplainTransform
+import org.opensearch.indexmanagement.transform.model.Transform
+import org.opensearch.indexmanagement.transform.model.TransformMetadata
+import org.opensearch.indexmanagement.transform.model.TransformStats
 import org.opensearch.search.SearchModule
 import org.opensearch.search.aggregations.AggregationBuilder
 import org.opensearch.search.aggregations.AggregationBuilders
 import org.opensearch.search.aggregations.AggregatorFactories
 import org.opensearch.test.rest.OpenSearchRestTestCase
+import java.util.Locale
 
 fun randomGroups(): List<Dimension> {
     val dimensions = mutableListOf<Dimension>()
@@ -43,15 +43,20 @@ fun randomGroups(): List<Dimension> {
 }
 
 fun sumAggregation(): AggregationBuilder = AggregationBuilders.sum(
-    OpenSearchRestTestCase.randomAlphaOfLength(10)).field(OpenSearchRestTestCase.randomAlphaOfLength(10))
+    OpenSearchRestTestCase.randomAlphaOfLength(10)
+).field(OpenSearchRestTestCase.randomAlphaOfLength(10))
 fun maxAggregation(): AggregationBuilder = AggregationBuilders.max(
-    OpenSearchRestTestCase.randomAlphaOfLength(10)).field(OpenSearchRestTestCase.randomAlphaOfLength(10))
+    OpenSearchRestTestCase.randomAlphaOfLength(10)
+).field(OpenSearchRestTestCase.randomAlphaOfLength(10))
 fun minAggregation(): AggregationBuilder = AggregationBuilders.min(
-    OpenSearchRestTestCase.randomAlphaOfLength(10)).field(OpenSearchRestTestCase.randomAlphaOfLength(10))
+    OpenSearchRestTestCase.randomAlphaOfLength(10)
+).field(OpenSearchRestTestCase.randomAlphaOfLength(10))
 fun valueCountAggregation(): AggregationBuilder = AggregationBuilders.count(
-    OpenSearchRestTestCase.randomAlphaOfLength(10)).field(OpenSearchRestTestCase.randomAlphaOfLength(10))
+    OpenSearchRestTestCase.randomAlphaOfLength(10)
+).field(OpenSearchRestTestCase.randomAlphaOfLength(10))
 fun avgAggregation(): AggregationBuilder = AggregationBuilders.avg(
-    OpenSearchRestTestCase.randomAlphaOfLength(10)).field(OpenSearchRestTestCase.randomAlphaOfLength(10))
+    OpenSearchRestTestCase.randomAlphaOfLength(10)
+).field(OpenSearchRestTestCase.randomAlphaOfLength(10))
 
 fun randomAggregationBuilder(): AggregationBuilder {
     val aggregations = listOf(sumAggregation(), maxAggregation(), minAggregation(), valueCountAggregation(), avgAggregation())

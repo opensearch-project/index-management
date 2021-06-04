@@ -11,18 +11,18 @@
 
 package org.opensearch.indexmanagement.transform.resthandler
 
-import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.TRANSFORM_BASE_URI
-import org.opensearch.indexmanagement.makeRequest
-import org.opensearch.indexmanagement.common.model.dimension.Terms
-import org.opensearch.indexmanagement.transform.TransformRestTestCase
-import org.opensearch.indexmanagement.transform.randomTransform
+import org.junit.AfterClass
+import org.junit.Before
 import org.opensearch.client.ResponseException
 import org.opensearch.index.IndexNotFoundException
+import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.TRANSFORM_BASE_URI
+import org.opensearch.indexmanagement.common.model.dimension.Terms
+import org.opensearch.indexmanagement.makeRequest
+import org.opensearch.indexmanagement.transform.TransformRestTestCase
+import org.opensearch.indexmanagement.transform.randomTransform
 import org.opensearch.rest.RestStatus
 import org.opensearch.search.aggregations.AggregationBuilders
 import org.opensearch.search.aggregations.AggregatorFactories
-import org.junit.AfterClass
-import org.junit.Before
 
 @Suppress("UNCHECKED_CAST")
 class RestPreviewTransformActionIT : TransformRestTestCase() {

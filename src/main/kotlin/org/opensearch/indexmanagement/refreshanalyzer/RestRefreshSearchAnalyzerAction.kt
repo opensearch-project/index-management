@@ -26,13 +26,13 @@
 
 package org.opensearch.indexmanagement.refreshanalyzer
 
-import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.OPEN_DISTRO_BASE_URI
 import org.opensearch.client.node.NodeClient
 import org.opensearch.common.Strings
+import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.OPEN_DISTRO_BASE_URI
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.PLUGINS_BASE_URI
 import org.opensearch.rest.BaseRestHandler
-import org.opensearch.rest.RestHandler.Route
 import org.opensearch.rest.RestHandler.ReplacedRoute
+import org.opensearch.rest.RestHandler.Route
 import org.opensearch.rest.RestRequest
 import org.opensearch.rest.RestRequest.Method.POST
 import org.opensearch.rest.action.RestToXContentListener
@@ -71,7 +71,7 @@ class RestRefreshSearchAnalyzerAction : BaseRestHandler() {
         }
 
         val refreshSearchAnalyzerRequest: RefreshSearchAnalyzerRequest = RefreshSearchAnalyzerRequest()
-                .indices(*indices)
+            .indices(*indices)
 
         return RestChannelConsumer { channel ->
             client.execute(RefreshSearchAnalyzerAction.INSTANCE, refreshSearchAnalyzerRequest, RestToXContentListener(channel))

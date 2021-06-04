@@ -31,8 +31,8 @@ import org.opensearch.common.xcontent.ToXContentObject
 import org.opensearch.common.xcontent.XContentParser
 import org.opensearch.common.xcontent.XContentParser.Token
 import org.opensearch.common.xcontent.XContentParserUtils.ensureExpectedToken
-import java.io.IOException
 import org.opensearch.search.aggregations.bucket.composite.CompositeValuesSourceBuilder
+import java.io.IOException
 
 abstract class Dimension(
     val type: Type,

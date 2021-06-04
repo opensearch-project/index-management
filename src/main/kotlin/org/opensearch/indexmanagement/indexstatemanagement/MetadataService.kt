@@ -26,15 +26,6 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement
 
-import org.opensearch.indexmanagement.IndexManagementIndices
-import org.opensearch.indexmanagement.opensearchapi.retry
-import org.opensearch.indexmanagement.opensearchapi.suspendUntil
-import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.getManagedIndexMetadata
-import org.opensearch.indexmanagement.indexstatemanagement.transport.action.updateindexmetadata.UpdateManagedIndexMetaDataAction
-import org.opensearch.indexmanagement.indexstatemanagement.transport.action.updateindexmetadata.UpdateManagedIndexMetaDataRequest
-import org.opensearch.indexmanagement.indexstatemanagement.util.managedIndexMetadataIndexRequest
-import org.opensearch.indexmanagement.indexstatemanagement.util.revertManagedIndexMetadataID
-import org.opensearch.indexmanagement.util.OpenForTesting
 import org.apache.logging.log4j.LogManager
 import org.opensearch.ExceptionsHelper
 import org.opensearch.action.DocWriteRequest
@@ -47,6 +38,15 @@ import org.opensearch.client.Client
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.unit.TimeValue
 import org.opensearch.index.Index
+import org.opensearch.indexmanagement.IndexManagementIndices
+import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.getManagedIndexMetadata
+import org.opensearch.indexmanagement.indexstatemanagement.transport.action.updateindexmetadata.UpdateManagedIndexMetaDataAction
+import org.opensearch.indexmanagement.indexstatemanagement.transport.action.updateindexmetadata.UpdateManagedIndexMetaDataRequest
+import org.opensearch.indexmanagement.indexstatemanagement.util.managedIndexMetadataIndexRequest
+import org.opensearch.indexmanagement.indexstatemanagement.util.revertManagedIndexMetadataID
+import org.opensearch.indexmanagement.opensearchapi.retry
+import org.opensearch.indexmanagement.opensearchapi.suspendUntil
+import org.opensearch.indexmanagement.util.OpenForTesting
 import org.opensearch.rest.RestStatus
 import java.lang.Exception
 
@@ -137,7 +137,7 @@ class MetadataService(
                 logger.debug("success indexed: ${successfullyIndexedIndices.map { indexUuidMap[it] }}")
                 logger.debug(
                     "failed indexed: ${failedToIndexIndices.map { indexUuidMap[it.key] }};" +
-                            "failed reason: ${failedToIndexIndices.values.distinct()}"
+                        "failed reason: ${failedToIndexIndices.values.distinct()}"
                 )
             }
 

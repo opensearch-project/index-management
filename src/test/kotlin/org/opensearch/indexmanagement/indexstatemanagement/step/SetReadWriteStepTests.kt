@@ -26,9 +26,6 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.step
 
-import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
-import org.opensearch.indexmanagement.indexstatemanagement.model.action.ReadWriteActionConfig
-import org.opensearch.indexmanagement.indexstatemanagement.step.readwrite.SetReadWriteStep
 import com.nhaarman.mockitokotlin2.any
 import com.nhaarman.mockitokotlin2.doAnswer
 import com.nhaarman.mockitokotlin2.doReturn
@@ -41,6 +38,9 @@ import org.opensearch.client.AdminClient
 import org.opensearch.client.Client
 import org.opensearch.client.IndicesAdminClient
 import org.opensearch.cluster.service.ClusterService
+import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
+import org.opensearch.indexmanagement.indexstatemanagement.model.action.ReadWriteActionConfig
+import org.opensearch.indexmanagement.indexstatemanagement.step.readwrite.SetReadWriteStep
 import org.opensearch.test.OpenSearchTestCase
 import org.opensearch.transport.RemoteTransportException
 

@@ -26,12 +26,6 @@
 
 package org.opensearch.indexmanagement.rollup.model
 
-import org.opensearch.indexmanagement.rollup.model.metric.Average
-import org.opensearch.indexmanagement.rollup.model.metric.Max
-import org.opensearch.indexmanagement.rollup.model.metric.Metric
-import org.opensearch.indexmanagement.rollup.model.metric.Min
-import org.opensearch.indexmanagement.rollup.model.metric.Sum
-import org.opensearch.indexmanagement.rollup.model.metric.ValueCount
 import org.apache.logging.log4j.LogManager
 import org.opensearch.common.io.stream.StreamInput
 import org.opensearch.common.io.stream.StreamOutput
@@ -42,6 +36,12 @@ import org.opensearch.common.xcontent.XContentBuilder
 import org.opensearch.common.xcontent.XContentParser
 import org.opensearch.common.xcontent.XContentParser.Token
 import org.opensearch.common.xcontent.XContentParserUtils.ensureExpectedToken
+import org.opensearch.indexmanagement.rollup.model.metric.Average
+import org.opensearch.indexmanagement.rollup.model.metric.Max
+import org.opensearch.indexmanagement.rollup.model.metric.Metric
+import org.opensearch.indexmanagement.rollup.model.metric.Min
+import org.opensearch.indexmanagement.rollup.model.metric.Sum
+import org.opensearch.indexmanagement.rollup.model.metric.ValueCount
 import java.io.IOException
 
 data class RollupMetrics(

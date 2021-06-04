@@ -26,8 +26,8 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.transport.action.addpolicy
 
-import org.opensearch.indexmanagement.indexstatemanagement.transport.action.ISMStatusResponse
 import org.opensearch.action.ActionType
+import org.opensearch.indexmanagement.indexstatemanagement.transport.action.ISMStatusResponse
 
 class AddPolicyAction private constructor() : ActionType<ISMStatusResponse>(NAME, ::ISMStatusResponse) {
     companion object {

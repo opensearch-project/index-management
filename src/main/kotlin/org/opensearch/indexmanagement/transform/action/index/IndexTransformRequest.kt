@@ -11,7 +11,6 @@
 
 package org.opensearch.indexmanagement.transform.action.index
 
-import org.opensearch.indexmanagement.transform.model.Transform
 import org.opensearch.action.ActionRequestValidationException
 import org.opensearch.action.DocWriteRequest
 import org.opensearch.action.ValidateActions.addValidationError
@@ -20,6 +19,7 @@ import org.opensearch.action.support.WriteRequest
 import org.opensearch.common.io.stream.StreamInput
 import org.opensearch.common.io.stream.StreamOutput
 import org.opensearch.index.seqno.SequenceNumbers
+import org.opensearch.indexmanagement.transform.model.Transform
 import java.io.IOException
 
 class IndexTransformRequest : IndexRequest {
@@ -40,7 +40,7 @@ class IndexTransformRequest : IndexRequest {
             this.opType(DocWriteRequest.OpType.CREATE)
         } else {
             this.setIfSeqNo(transform.seqNo)
-                    .setIfPrimaryTerm(transform.primaryTerm)
+                .setIfPrimaryTerm(transform.primaryTerm)
         }
         super.setRefreshPolicy(refreshPolicy)
     }

@@ -26,14 +26,14 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.transport.action.explain
 
-import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
-import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings
 import org.opensearch.action.ActionResponse
 import org.opensearch.common.io.stream.StreamInput
 import org.opensearch.common.io.stream.StreamOutput
 import org.opensearch.common.xcontent.ToXContent
 import org.opensearch.common.xcontent.ToXContentObject
 import org.opensearch.common.xcontent.XContentBuilder
+import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
+import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings
 import java.io.IOException
 
 open class ExplainResponse : ActionResponse, ToXContentObject {

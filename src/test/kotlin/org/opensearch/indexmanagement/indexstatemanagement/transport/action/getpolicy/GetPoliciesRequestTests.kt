@@ -26,9 +26,9 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.transport.action.getpolicy
 
-import org.opensearch.indexmanagement.indexstatemanagement.model.SearchParams
 import org.opensearch.common.io.stream.BytesStreamOutput
 import org.opensearch.common.io.stream.StreamInput
+import org.opensearch.indexmanagement.indexstatemanagement.model.SearchParams
 import org.opensearch.test.OpenSearchTestCase
 
 class GetPoliciesRequestTests : OpenSearchTestCase() {

@@ -26,9 +26,9 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.transport.action
 
-import org.opensearch.indexmanagement.indexstatemanagement.util.FailedIndex
 import org.opensearch.common.io.stream.BytesStreamOutput
 import org.opensearch.common.io.stream.StreamInput
+import org.opensearch.indexmanagement.indexstatemanagement.util.FailedIndex
 import org.opensearch.test.OpenSearchTestCase
 
 class ISMStatusResponseTests : OpenSearchTestCase() {
