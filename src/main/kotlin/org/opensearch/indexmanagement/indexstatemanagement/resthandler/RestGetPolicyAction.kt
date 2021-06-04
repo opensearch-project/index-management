@@ -29,7 +29,6 @@ package org.opensearch.indexmanagement.indexstatemanagement.resthandler
 import org.apache.logging.log4j.LogManager
 import org.opensearch.client.node.NodeClient
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.LEGACY_POLICY_BASE_URI
-import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.LEGACY_ROLLUP_BASE_URI
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.POLICY_BASE_URI
 import org.opensearch.indexmanagement.indexstatemanagement.model.SearchParams
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.getpolicy.GetPoliciesAction
