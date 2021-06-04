@@ -64,7 +64,7 @@ class RestGetPolicyAction : BaseRestHandler() {
         return listOf(
             ReplacedRoute(
                 GET, POLICY_BASE_URI,
-                GET, LEGACY_ROLLUP_BASE_URI
+                GET, LEGACY_POLICY_BASE_URI
             ),
             ReplacedRoute(
                 GET, "$POLICY_BASE_URI/{policyID}",

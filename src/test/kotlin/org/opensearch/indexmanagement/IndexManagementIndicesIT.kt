@@ -207,6 +207,9 @@ class IndexManagementIndicesIT : IndexStateManagementRestTestCase() {
             "${IndexManagementPlugin.LEGACY_POLICY_BASE_URI}/$policyId"
         )
         assertEquals("Unexpected RestStatus", RestStatus.OK, deletePolicyResponse.restStatus())
+
+        val getPolicies = client().makeRequest(RestRequest.Method.GET.toString(), "${IndexManagementPlugin.LEGACY_POLICY_BASE_URI}")
+        assertEquals("Unexpected RestStatus", RestStatus.OK, getPolicies.restStatus())
     }
 
     fun `test refresh search analyzer backward compatibility with opendistro`() {
