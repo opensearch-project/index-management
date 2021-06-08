@@ -304,6 +304,10 @@ integTest {
             excludeTestsMatching "org.opensearch.indexmanagement.indexstatemanagement.action.NotificationActionIT"
         }
     }
+
+    filter {
+        excludeTestsMatching "org.opensearch.indexmanagement.indexstatemanagement.MetadataRegressionIT"
+    }
 }
 
 run {

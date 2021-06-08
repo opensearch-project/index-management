@@ -27,10 +27,12 @@
 package org.opensearch.indexmanagement.indexstatemanagement
 
 import org.apache.logging.log4j.LogManager
+import org.opensearch.action.ActionListener
 import org.opensearch.action.DocWriteRequest
 import org.opensearch.action.admin.cluster.state.ClusterStateRequest
 import org.opensearch.action.admin.indices.delete.DeleteIndexRequest
 import org.opensearch.action.admin.indices.rollover.RolloverRequest
+import org.opensearch.action.admin.indices.rollover.RolloverResponse
 import org.opensearch.action.bulk.BulkRequest
 import org.opensearch.action.bulk.BulkResponse
 import org.opensearch.action.index.IndexRequest
@@ -134,9 +136,9 @@ class IndexStateManagementHistory(
         deleteOldHistoryIndex()
     }
 
-    private fun rolloverHistoryIndex(): Boolean {
+    private fun rolloverHistoryIndex() {
         if (!indexManagementIndices.indexStateManagementIndexHistoryExists()) {
-            return false
+            return
         }
 
         // We have to pass null for newIndexName in order to get Elastic to increment the index count.
@@ -151,11 +153,25 @@ class IndexStateManagementHistory(
             )
         request.addMaxIndexDocsCondition(historyMaxDocs)
         request.addMaxIndexAgeCondition(historyMaxAge)
-        val response = client.admin().indices().rolloverIndex(request).actionGet()
-        if (!response.isRolledOver) {
-            logger.info("${IndexManagementIndices.HISTORY_WRITE_INDEX_ALIAS} not rolled over. Conditions were: ${response.conditionStatus}")
-        }
-        return response.isRolledOver
+        client.admin().indices().rolloverIndex(
+            request,
+            object : ActionListener<RolloverResponse> {
+                override fun onResponse(response: RolloverResponse) {
+                    if (response.isRolledOver) {
+                        logger.info("${IndexManagementIndices.HISTORY_WRITE_INDEX_ALIAS} rolled over.")
+                    } else {
+                        logger.info(
+                            "${IndexManagementIndices.HISTORY_WRITE_INDEX_ALIAS} not rolled over. " +
+                                "Conditions were: ${response.conditionStatus}"
+                        )
+                    }
+                }
+
+                override fun onFailure(e: Exception) {
+                    logger.error("${IndexManagementIndices.HISTORY_WRITE_INDEX_ALIAS} roll over failed.", e)
+                }
+            }
+        )
     }
 
     @Suppress("SpreadOperator", "NestedBlockDepth", "ComplexMethod")

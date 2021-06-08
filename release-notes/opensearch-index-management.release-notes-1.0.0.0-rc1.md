@@ -20,3 +20,7 @@ Compatible with OpenSearch 1.0.0-rc1
 ### Enhancements
 
 * Improve integration with data streams ([#13](https://github.com/opensearch-project/index-management/pull/13))
+
+### Bug Fixes
+
+* Fix 7.10 rollover blocking thread issue ([#70](https://github.com/opensearch-project/index-management/pull/70))
