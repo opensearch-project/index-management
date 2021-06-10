@@ -1,6 +1,6 @@
 [![Test and Build Workflow](https://github.com/opensearch-project/index-management/workflows/Test%20and%20Build%20Workflow/badge.svg)](https://github.com/opensearch-project/index-management/actions)
 [![codecov](https://codecov.io/gh/opendistro-for-elasticsearch/index-management/branch/main/graph/badge.svg)](https://codecov.io/gh/opendistro-for-elasticsearch/index-management)
-[![Documentation](https://img.shields.io/badge/api-reference-blue.svg)](https://opendistro.github.io/for-elasticsearch-docs/docs/ism/api/)
+[![Documentation](https://img.shields.io/badge/api-reference-blue.svg)](https://docs-beta.opensearch.org/docs/im/)
 [![Chat](https://img.shields.io/badge/chat-on%20forums-blue)](https://discuss.opendistrocommunity.dev/c/index-management/)
 ![PRs welcome!](https://img.shields.io/badge/PRs-welcome!-success)
 
@@ -42,7 +42,7 @@ The current supported transition conditions are:
 
 ## Documentation
 
-Please see our [documentation](https://opendistro.github.io/for-elasticsearch-docs/).
+Please see our [documentation](https://docs-beta.opensearch.org/).
 
 ## Setup
 
@@ -114,7 +114,7 @@ Additionally, it is possible to attach one debugger to the cluster JVM and anoth
 
 ## Code of Conduct
 
-This project has adopted an [Open Source Code of Conduct](https://opendistro.github.io/for-elasticsearch/codeofconduct.html).
+This project has adopted an [Open Source Code of Conduct](https://opensearch.org/codeofconduct.html).
 
 
 ## Security issue notifications
