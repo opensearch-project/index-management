@@ -93,12 +93,16 @@ class RollupMapperServiceTests : OpenSearchTestCase() {
     fun `test source index validation with custom type`() {
         val sourceIndex = "test-index"
 
-        val dimensions = listOf(randomDateHistogram().copy(
-            sourceField = "order_date"
-        ))
-        val metrics = listOf(randomRollupMetrics().copy(
-            sourceField = "total_quantity"
-        ))
+        val dimensions = listOf(
+            randomDateHistogram().copy(
+                sourceField = "order_date"
+            )
+        )
+        val metrics = listOf(
+            randomRollupMetrics().copy(
+                sourceField = "total_quantity"
+            )
+        )
         val rollup = randomRollup().copy(
             enabled = true,
             jobEnabledTime = Instant.now(),
@@ -106,10 +110,14 @@ class RollupMapperServiceTests : OpenSearchTestCase() {
             metrics = metrics
         )
 
-        val client = getClient(getAdminClient(getIndicesAdminClient(
-            getMappingsResponse = getMappingResponse(sourceIndex, "custom_type"),
-            getMappingsException = null
-        )))
+        val client = getClient(
+            getAdminClient(
+                getIndicesAdminClient(
+                    getMappingsResponse = getMappingResponse(sourceIndex, "custom_type"),
+                    getMappingsException = null
+                )
+            )
+        )
         val clusterService = getClusterService()
         val indexNameExpressionResolver = getIndexNameExpressionResolver(listOf(sourceIndex))
         val mapperService = RollupMapperService(client, clusterService, indexNameExpressionResolver)
@@ -123,12 +131,16 @@ class RollupMapperServiceTests : OpenSearchTestCase() {
     fun `test source index validation with empty mappings`() {
         val sourceIndex = "test-index"
 
-        val dimensions = listOf(randomDateHistogram().copy(
-            sourceField = "order_date"
-        ))
-        val metrics = listOf(randomRollupMetrics().copy(
-            sourceField = "total_quantity"
-        ))
+        val dimensions = listOf(
+            randomDateHistogram().copy(
+                sourceField = "order_date"
+            )
+        )
+        val metrics = listOf(
+            randomRollupMetrics().copy(
+                sourceField = "total_quantity"
+            )
+        )
         val rollup = randomRollup().copy(
             enabled = true,
             jobEnabledTime = Instant.now(),
@@ -136,10 +148,14 @@ class RollupMapperServiceTests : OpenSearchTestCase() {
             metrics = metrics
         )
 
-        val client = getClient(getAdminClient(getIndicesAdminClient(
-            getMappingsResponse = getMappingResponse(sourceIndex, "custom_type", true),
-            getMappingsException = null
-        )))
+        val client = getClient(
+            getAdminClient(
+                getIndicesAdminClient(
+                    getMappingsResponse = getMappingResponse(sourceIndex, "custom_type", true),
+                    getMappingsException = null
+                )
+            )
+        )
         val clusterService = getClusterService()
         val indexNameExpressionResolver = getIndexNameExpressionResolver(listOf(sourceIndex))
         val mapperService = RollupMapperService(client, clusterService, indexNameExpressionResolver)
