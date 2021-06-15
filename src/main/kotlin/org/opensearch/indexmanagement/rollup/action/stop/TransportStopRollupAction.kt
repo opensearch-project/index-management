@@ -200,6 +200,7 @@ class TransportStopRollupAction @Inject constructor(
                     )
                 )
             )
+            .routing(rollup.id)
         client.update(
             request,
             object : ActionListener<UpdateResponse> {
