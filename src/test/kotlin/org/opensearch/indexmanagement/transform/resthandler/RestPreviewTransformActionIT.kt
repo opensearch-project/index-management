@@ -73,7 +73,6 @@ class RestPreviewTransformActionIT : TransformRestTestCase() {
         assertEquals("Transformed docs have unexpected schema", expectedKeys, transformedDocs.first().keys)
     }
 
-    // TODO: Not sure if we should validate on source indices instead of returning empty result.
     fun `test mismatched columns`() {
         val factories = AggregatorFactories.builder()
             .addAggregator(AggregationBuilders.sum("revenue").field("total_amountdzdfd"))
@@ -87,7 +86,7 @@ class RestPreviewTransformActionIT : TransformRestTestCase() {
             emptyMap(),
             transform.toHttpEntity()
         )
-        assertEquals("Unexpected status", RestStatus.OK, response.restStatus())
+        assertEquals("Unexpected status", RestStatus.BAD_REQUEST, response.restStatus())
     }
 
     fun `test nonexistent source index`() {

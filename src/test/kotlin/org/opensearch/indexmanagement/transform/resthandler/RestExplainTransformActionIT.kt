@@ -39,7 +39,6 @@ class RestExplainTransformActionIT : TransformRestTestCase() {
             sourceIndex = "test_source",
             targetIndex = "test_target"
         ).let { createTransform(it, it.id) }
-        createTransformSourceIndex(transform)
         updateTransformStartTime(transform)
 
         waitFor {

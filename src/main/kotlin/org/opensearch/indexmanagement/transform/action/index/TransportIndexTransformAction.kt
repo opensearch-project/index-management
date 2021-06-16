@@ -15,18 +15,24 @@ import org.apache.logging.log4j.LogManager
 import org.opensearch.OpenSearchStatusException
 import org.opensearch.action.ActionListener
 import org.opensearch.action.DocWriteRequest
+import org.opensearch.action.admin.indices.mapping.get.GetMappingsAction
+import org.opensearch.action.admin.indices.mapping.get.GetMappingsRequest
+import org.opensearch.action.admin.indices.mapping.get.GetMappingsResponse
 import org.opensearch.action.index.IndexRequest
 import org.opensearch.action.index.IndexResponse
 import org.opensearch.action.support.ActionFilters
 import org.opensearch.action.support.HandledTransportAction
+import org.opensearch.action.support.IndicesOptions
 import org.opensearch.action.support.master.AcknowledgedResponse
 import org.opensearch.client.Client
+import org.opensearch.cluster.metadata.IndexNameExpressionResolver
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.inject.Inject
 import org.opensearch.common.xcontent.ToXContent
 import org.opensearch.common.xcontent.XContentFactory.jsonBuilder
 import org.opensearch.indexmanagement.IndexManagementIndices
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
+import org.opensearch.indexmanagement.transform.TransformValidator
 import org.opensearch.indexmanagement.transform.action.get.GetTransformAction
 import org.opensearch.indexmanagement.transform.action.get.GetTransformRequest
 import org.opensearch.indexmanagement.transform.action.get.GetTransformResponse
@@ -41,6 +47,7 @@ class TransportIndexTransformAction @Inject constructor(
     val client: Client,
     actionFilters: ActionFilters,
     val indexManagementIndices: IndexManagementIndices,
+    val indexNameExpressionResolver: IndexNameExpressionResolver,
     val clusterService: ClusterService
 ) : HandledTransportAction<IndexTransformRequest, IndexTransformResponse>(
     IndexTransformAction.NAME, transportService, actionFilters, ::IndexTransformRequest
@@ -66,7 +73,7 @@ class TransportIndexTransformAction @Inject constructor(
             if (response.isAcknowledged) {
                 log.info("Successfully created or updated $INDEX_MANAGEMENT_INDEX with newest mappings.")
                 if (request.opType() == DocWriteRequest.OpType.CREATE) {
-                    putTransform()
+                    validateAndPutTransform()
                 } else {
                     updateTransform()
                 }
@@ -136,6 +143,49 @@ class TransportIndexTransformAction @Inject constructor(
                     }
                 }
             )
+        }
+
+        private fun validateAndPutTransform() {
+            val concreteIndices =
+                indexNameExpressionResolver.concreteIndexNames(
+                    clusterService.state(), IndicesOptions.lenientExpand(), true,
+                    request.transform
+                        .sourceIndex
+                )
+            if (concreteIndices.isEmpty()) {
+                actionListener.onFailure(OpenSearchStatusException("No specified source index exist in the cluster", RestStatus.NOT_FOUND))
+                return
+            }
+
+            val mappingRequest = GetMappingsRequest().indices(*concreteIndices)
+            client.execute(
+                GetMappingsAction.INSTANCE, mappingRequest,
+                object : ActionListener<GetMappingsResponse> {
+                    override fun onResponse(response: GetMappingsResponse) {
+                        val issues = validateMappings(concreteIndices.toList(), response, request.transform)
+                        if (issues.isNotEmpty()) {
+                            val errorMessage = "${issues.joinToString(" ")}"
+                            actionListener.onFailure(OpenSearchStatusException(errorMessage, RestStatus.BAD_REQUEST))
+                            return
+                        }
+
+                        putTransform()
+                    }
+
+                    override fun onFailure(e: Exception) {
+                        actionListener.onFailure(e)
+                    }
+                }
+            )
+        }
+
+        private fun validateMappings(indices: List<String>, response: GetMappingsResponse, transform: Transform): List<String> {
+            val issues = mutableListOf<String>()
+            indices.forEach { index ->
+                issues.addAll(TransformValidator.validateMappingsResponse(index, response, transform))
+            }
+
+            return issues
         }
     }
 }

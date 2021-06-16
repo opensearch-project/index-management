@@ -198,5 +198,7 @@ class IndexManagementIndices(
             .getResource("mappings/opendistro-ism-history.json").readText()
         val rollupTargetMappings = IndexManagementIndices::class.java.classLoader
             .getResource("mappings/opendistro-rollup-target.json").readText()
+        val transformTargetMappings = IndexManagementIndices::class.java.classLoader
+            .getResource("mappings/opendistro-transform-target.json").readText()
     }
 }

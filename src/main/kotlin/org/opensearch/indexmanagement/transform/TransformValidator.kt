@@ -36,7 +36,7 @@ import java.lang.IllegalStateException
 class TransformValidator(
     private val indexNameExpressionResolver: IndexNameExpressionResolver,
     private val clusterService: ClusterService,
-    private val esClient: Client,
+    private val client: Client,
     val settings: Settings,
     private val jvmService: JvmService
 ) {
@@ -64,6 +64,10 @@ class TransformValidator(
         val errorMessage = "Failed to validate the transform job"
         try {
             val issues = mutableListOf<String>()
+            if (circuitBreakerEnabled && jvmService.stats().mem.heapUsedPercent > circuitBreakerJvmThreshold) {
+                issues.add("The cluster is breaching the jvm usage threshold [$circuitBreakerJvmThreshold], cannot execute the transform")
+                return TransformValidationResult(issues.isEmpty(), issues)
+            }
             val concreteIndices =
                 indexNameExpressionResolver.concreteIndexNames(clusterService.state(), IndicesOptions.lenientExpand(), transform.sourceIndex)
             if (concreteIndices.isEmpty()) return TransformValidationResult(false, listOf("No specified source index exist in the cluster"))
@@ -71,14 +75,9 @@ class TransformValidator(
             val request = ClusterHealthRequest()
                 .indices(*concreteIndices)
                 .waitForYellowStatus()
-            val response: ClusterHealthResponse = esClient.suspendUntil { execute(ClusterHealthAction.INSTANCE, request, it) }
+            val response: ClusterHealthResponse = client.suspendUntil { execute(ClusterHealthAction.INSTANCE, request, it) }
             if (response.isTimedOut) {
                 issues.add("Cannot determine that the requested source indices are healthy")
-                return TransformValidationResult(issues.isEmpty(), issues)
-            }
-
-            if (circuitBreakerEnabled && jvmService.stats().mem.heapUsedPercent > circuitBreakerJvmThreshold) {
-                issues.add("The cluster is breaching the jvm usage threshold [$circuitBreakerJvmThreshold], cannot execute the transform")
                 return TransformValidationResult(issues.isEmpty(), issues)
             }
             concreteIndices.forEach { index -> issues.addAll(validateIndex(index, transform)) }
@@ -100,27 +99,32 @@ class TransformValidator(
      */
     private suspend fun validateIndex(index: String, transform: Transform): List<String> {
         val request = GetMappingsRequest().indices(index)
-        val issues = mutableListOf<String>()
         val result: GetMappingsResponse =
-            esClient.admin().indices().suspendUntil { getMappings(request, it) } ?: throw IllegalStateException(
-                "GetMappingResponse for [$index] " +
-                    "was null"
+            client.admin().indices().suspendUntil { getMappings(request, it) } ?: throw IllegalStateException(
+                "GetMappingResponse for [$index] was null"
             )
-        val indexTypeMappings = result.mappings[index]
-        if (indexTypeMappings.isEmpty) {
-            issues.add("Source index [$index] mappings are empty, cannot validate the job.")
+        return validateMappingsResponse(index, result, transform)
+    }
+
+    companion object {
+        fun validateMappingsResponse(index: String, response: GetMappingsResponse, transform: Transform): List<String> {
+            val issues = mutableListOf<String>()
+            val indexTypeMappings = response.mappings[index]
+            if (indexTypeMappings.isEmpty) {
+                issues.add("Source index [$index] mappings are empty, cannot validate the job.")
+                return issues
+            }
+
+            // Starting from 6.0.0 an index can only have one mapping type, but mapping type is still part of the APIs in 7.x, allowing users to
+            // set a custom mapping type. As a result using first mapping type found instead of _DOC mapping type to validate
+            val indexMappingSource = indexTypeMappings.first().value.sourceAsMap
+
+            transform.groups.forEach { group ->
+                if (!group.canBeRealizedInMappings(indexMappingSource)) {
+                    issues.add("Cannot find field [${group.sourceField}] that can be grouped as [${group.type.type}] in [$index].")
+                }
+            }
             return issues
         }
-
-        // Starting from 6.0.0 an index can only have one mapping type, but mapping type is still part of the APIs in 7.x, allowing users to
-        // set a custom mapping type. As a result using first mapping type found instead of _DOC mapping type to validate
-        val indexMappingSource = indexTypeMappings.first().value.sourceAsMap
-
-        transform.groups.forEach { group ->
-            if (!group.canBeRealizedInMappings(indexMappingSource)) {
-                issues.add("Cannot find a field [${group.sourceField}] that can be grouped as [${group.type.type}] in [$index]")
-            }
-        }
-        return issues
     }
 }

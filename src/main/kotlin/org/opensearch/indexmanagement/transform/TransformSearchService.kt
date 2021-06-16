@@ -54,7 +54,7 @@ import kotlin.math.pow
 class TransformSearchService(
     val settings: Settings,
     val clusterService: ClusterService,
-    private val esClient: Client
+    private val client: Client
 ) {
 
     private var logger = LogManager.getLogger(javaClass)
@@ -76,7 +76,7 @@ class TransformSearchService(
             val searchResponse = backoffPolicy.retry(logger) {
                 // TODO: Should we store the value of the past successful page size (?)
                 val pageSizeDecay = 2f.pow(retryAttempt++)
-                esClient.suspendUntil { listener: ActionListener<SearchResponse> ->
+                client.suspendUntil { listener: ActionListener<SearchResponse> ->
                     val pageSize = max(1, transform.pageSize.div(pageSizeDecay.toInt()))
                     if (retryAttempt > 1) {
                         logger.debug(

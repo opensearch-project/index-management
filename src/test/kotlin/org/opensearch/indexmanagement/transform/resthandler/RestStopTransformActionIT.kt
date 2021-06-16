@@ -146,7 +146,7 @@ class RestStopTransformActionIT : TransformRestTestCase() {
             roles = emptyList(),
             pageSize = 1,
             groups = listOf(
-                DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "1h"),
+                DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "1m"),
                 Terms(sourceField = "store_and_fwd_flag", targetField = "flag")
             ),
             aggregations = AggregatorFactories.builder()
