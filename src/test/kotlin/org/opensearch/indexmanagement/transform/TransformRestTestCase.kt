@@ -50,7 +50,9 @@ abstract class TransformRestTestCase : IndexManagementRestTestCase() {
         transformId: String = randomAlphaOfLength(10),
         refresh: Boolean = true
     ): Transform {
-        createTransformSourceIndex(transform)
+        if (!indexExists(transform.sourceIndex)) {
+            createTransformSourceIndex(transform)
+        }
         val response = createTransformJson(transform.toJsonString(), transformId, refresh)
 
         val transformJson = createParser(XContentType.JSON.xContent(), response.entity.content)

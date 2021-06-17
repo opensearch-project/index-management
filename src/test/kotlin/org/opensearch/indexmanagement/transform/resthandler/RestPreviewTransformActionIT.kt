@@ -33,7 +33,7 @@ class RestPreviewTransformActionIT : TransformRestTestCase() {
     private val transform = randomTransform().copy(
         sourceIndex = sourceIndex,
         groups = listOf(
-            Terms(sourceField = "PULocationID", targetField = "location")
+            Terms(sourceField = "store_and_fwd_flag", targetField = "flag")
         ),
         aggregations = factories
     )

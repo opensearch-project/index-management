@@ -66,7 +66,6 @@ class RestStopTransformActionIT : TransformRestTestCase() {
                     metadataId = null
                 )
         )
-        createTransformSourceIndex(transform)
         updateTransformStartTime(transform)
 
         // Assert it finished
@@ -102,6 +101,7 @@ class RestStopTransformActionIT : TransformRestTestCase() {
             enabledAt = Instant.now(),
             metadataId = null
         ).let { createTransform(it, it.id) }
+        deleteIndex(transform.sourceIndex)
         updateTransformStartTime(transform)
 
         // Assert it's in failed
