@@ -79,7 +79,9 @@ data class Terms(
     override fun canBeRealizedInMappings(mappings: Map<String, Any>): Boolean {
         val fieldType = getFieldFromMappings(sourceField, mappings)?.get("type") ?: return false
 
-        return "keyword" == fieldType
+        // TODO: This is incomplete as more than keywords can be grouped as terms, need to figure out the correct way to do this check for now just
+        //  checking the types that are not
+        return "text" != fieldType
     }
 
     // TODO missing terms field
