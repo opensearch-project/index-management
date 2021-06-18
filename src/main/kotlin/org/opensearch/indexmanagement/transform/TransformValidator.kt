@@ -69,7 +69,7 @@ class TransformValidator(
                 return TransformValidationResult(issues.isEmpty(), issues)
             }
             val concreteIndices =
-                indexNameExpressionResolver.concreteIndexNames(clusterService.state(), IndicesOptions.lenientExpand(), transform.sourceIndex)
+                indexNameExpressionResolver.concreteIndexNames(clusterService.state(), IndicesOptions.lenientExpand(), true, transform.sourceIndex)
             if (concreteIndices.isEmpty()) return TransformValidationResult(false, listOf("No specified source index exist in the cluster"))
 
             val request = ClusterHealthRequest()
