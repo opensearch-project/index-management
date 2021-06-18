@@ -33,7 +33,7 @@ class RestPreviewTransformActionIT : TransformRestTestCase() {
     private val transform = randomTransform().copy(
         sourceIndex = sourceIndex,
         groups = listOf(
-            Terms(sourceField = "PULocationID", targetField = "location")
+            Terms(sourceField = "store_and_fwd_flag", targetField = "flag")
         ),
         aggregations = factories
     )
@@ -67,13 +67,12 @@ class RestPreviewTransformActionIT : TransformRestTestCase() {
             emptyMap(),
             transform.toHttpEntity()
         )
-        val expectedKeys = setOf("revenue", "passengerCount", "location", "transform._doc_count")
+        val expectedKeys = setOf("revenue", "passengerCount", "flag", "transform._doc_count")
         assertEquals("Preview transform failed", RestStatus.OK, response.restStatus())
         val transformedDocs = response.asMap()["documents"] as List<Map<String, Any>>
         assertEquals("Transformed docs have unexpected schema", expectedKeys, transformedDocs.first().keys)
     }
 
-    // TODO: Not sure if we should validate on source indices instead of returning empty result.
     fun `test mismatched columns`() {
         val factories = AggregatorFactories.builder()
             .addAggregator(AggregationBuilders.sum("revenue").field("total_amountdzdfd"))
@@ -81,13 +80,17 @@ class RestPreviewTransformActionIT : TransformRestTestCase() {
             groups = listOf(Terms(sourceField = "non-existent", targetField = "non-existent")),
             aggregations = factories
         )
-        val response = client().makeRequest(
-            "POST",
-            "$TRANSFORM_BASE_URI/_preview",
-            emptyMap(),
-            transform.toHttpEntity()
-        )
-        assertEquals("Unexpected status", RestStatus.OK, response.restStatus())
+        try {
+            client().makeRequest(
+                "POST",
+                "$TRANSFORM_BASE_URI/_preview",
+                emptyMap(),
+                transform.toHttpEntity()
+            )
+            fail("expected exception")
+        } catch (e: ResponseException) {
+            assertEquals("Unexpected status", RestStatus.BAD_REQUEST, e.response.restStatus())
+        }
     }
 
     fun `test nonexistent source index`() {

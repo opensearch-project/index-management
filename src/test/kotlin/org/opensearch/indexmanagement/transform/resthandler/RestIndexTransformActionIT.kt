@@ -30,6 +30,7 @@ class RestIndexTransformActionIT : TransformRestTestCase() {
     @Throws(Exception::class)
     fun `test creating a transform`() {
         val transform = randomTransform()
+        createTransformSourceIndex(transform)
         val response = client().makeRequest(
             "PUT",
             "$TRANSFORM_BASE_URI/${transform.id}",

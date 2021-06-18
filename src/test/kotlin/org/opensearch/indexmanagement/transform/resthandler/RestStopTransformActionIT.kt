@@ -66,7 +66,6 @@ class RestStopTransformActionIT : TransformRestTestCase() {
                     metadataId = null
                 )
         )
-        createTransformSourceIndex(transform)
         updateTransformStartTime(transform)
 
         // Assert it finished
@@ -102,6 +101,7 @@ class RestStopTransformActionIT : TransformRestTestCase() {
             enabledAt = Instant.now(),
             metadataId = null
         ).let { createTransform(it, it.id) }
+        deleteIndex(transform.sourceIndex)
         updateTransformStartTime(transform)
 
         // Assert it's in failed
@@ -146,7 +146,7 @@ class RestStopTransformActionIT : TransformRestTestCase() {
             roles = emptyList(),
             pageSize = 1,
             groups = listOf(
-                DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "1h"),
+                DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "1m"),
                 Terms(sourceField = "store_and_fwd_flag", targetField = "flag")
             ),
             aggregations = AggregatorFactories.builder()

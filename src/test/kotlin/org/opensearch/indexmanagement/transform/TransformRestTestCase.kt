@@ -38,7 +38,6 @@ import org.opensearch.indexmanagement.waitFor
 import org.opensearch.jobscheduler.spi.schedule.IntervalSchedule
 import org.opensearch.rest.RestStatus
 import org.opensearch.search.SearchModule
-import org.opensearch.test.rest.OpenSearchRestTestCase
 import java.time.Duration
 import java.time.Instant
 
@@ -48,9 +47,12 @@ abstract class TransformRestTestCase : IndexManagementRestTestCase() {
 
     protected fun createTransform(
         transform: Transform,
-        transformId: String = OpenSearchRestTestCase.randomAlphaOfLength(10),
+        transformId: String = randomAlphaOfLength(10),
         refresh: Boolean = true
     ): Transform {
+        if (!indexExists(transform.sourceIndex)) {
+            createTransformSourceIndex(transform)
+        }
         val response = createTransformJson(transform.toJsonString(), transformId, refresh)
 
         val transformJson = createParser(XContentType.JSON.xContent(), response.entity.content)

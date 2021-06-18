@@ -103,7 +103,8 @@ class RestStartTransformActionIT : TransformRestTestCase() {
             aggregations = AggregatorFactories.builder()
         ).let { createTransform(it, it.id) }
 
-        // This should fail because we did not create a source index
+        // This should fail because source index is deleted
+        deleteIndex(transform.sourceIndex)
         updateTransformStartTime(transform)
 
         waitFor {

@@ -48,7 +48,7 @@ object TransformRunner :
 
     private val logger = LogManager.getLogger(javaClass)
 
-    private lateinit var esClient: Client
+    private lateinit var client: Client
     private lateinit var xContentRegistry: NamedXContentRegistry
     private lateinit var clusterService: ClusterService
     private lateinit var settings: Settings
@@ -66,7 +66,7 @@ object TransformRunner :
         jvmService: JvmService
     ): TransformRunner {
         this.clusterService = clusterService
-        this.esClient = client
+        this.client = client
         this.xContentRegistry = xContentRegistry
         this.settings = settings
         this.transformSearchService = TransformSearchService(settings, clusterService, client)
@@ -175,7 +175,7 @@ object TransformRunner :
             transform = transform.copy(updatedAt = Instant.now()),
             refreshPolicy = WriteRequest.RefreshPolicy.IMMEDIATE
         )
-        val response: IndexTransformResponse = esClient.suspendUntil { execute(IndexTransformAction.INSTANCE, request, it) }
+        val response: IndexTransformResponse = client.suspendUntil { execute(IndexTransformAction.INSTANCE, request, it) }
         return transform.copy(
             seqNo = response.seqNo,
             primaryTerm = response.primaryTerm

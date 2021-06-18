@@ -40,7 +40,7 @@ import org.opensearch.transport.RemoteTransportException
 import java.time.Instant
 
 @SuppressWarnings("ReturnCount")
-class TransformMetadataService(private val esClient: Client, val xContentRegistry: NamedXContentRegistry) {
+class TransformMetadataService(private val client: Client, val xContentRegistry: NamedXContentRegistry) {
 
     private val logger = LogManager.getLogger(javaClass)
 
@@ -49,7 +49,7 @@ class TransformMetadataService(private val esClient: Client, val xContentRegistr
         return if (transform.metadataId != null) {
             // update metadata
             val getRequest = GetRequest(IndexManagementPlugin.INDEX_MANAGEMENT_INDEX, transform.metadataId).routing(transform.id)
-            val response: GetResponse = esClient.suspendUntil { get(getRequest, it) }
+            val response: GetResponse = client.suspendUntil { get(getRequest, it) }
             val metadataSource = response.sourceAsBytesRef
             val transformMetadata = metadataSource?.let {
                 withContext(Dispatchers.IO) {
@@ -95,7 +95,7 @@ class TransformMetadataService(private val esClient: Client, val xContentRegistr
                 indexRequest.opType(DocWriteRequest.OpType.CREATE)
             }
 
-            val response: IndexResponse = esClient.suspendUntil { index(indexRequest, it) }
+            val response: IndexResponse = client.suspendUntil { index(indexRequest, it) }
             return when (response.result) {
                 DocWriteResponse.Result.CREATED, DocWriteResponse.Result.UPDATED -> {
                     metadata.copy(seqNo = response.seqNo, primaryTerm = response.primaryTerm)

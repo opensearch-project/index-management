@@ -116,29 +116,10 @@ class TransformRunnerIT : TransformRestTestCase() {
     }
 
     fun `test invalid transform`() {
-        if (!indexExists("transform-source-index")) {
-            generateNYCTaxiData("transform-source-index")
-            assertIndexExists("transform-source-index")
-        }
-
         // With invalid mapping
-        val transform = Transform(
-            id = "id_3",
-            schemaVersion = 1L,
-            enabled = true,
-            enabledAt = Instant.now(),
-            updatedAt = Instant.now(),
-            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
-            description = "test transform",
-            metadataId = null,
-            sourceIndex = "transform-source-index",
-            targetIndex = "transform-target-index",
-            roles = emptyList(),
-            pageSize = 100,
-            groups = listOf(
-                Terms(sourceField = "non-existent", targetField = "flag")
-            )
-        ).let { createTransform(it, it.id) }
+        val transform = randomTransform().copy(enabled = true, jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES))
+        createTransform(transform, transform.id)
+        deleteIndex(transform.sourceIndex)
 
         updateTransformStartTime(transform)
 
