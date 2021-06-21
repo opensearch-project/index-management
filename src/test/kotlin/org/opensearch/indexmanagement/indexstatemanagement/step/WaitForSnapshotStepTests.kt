@@ -45,8 +45,6 @@ import org.opensearch.indexmanagement.indexstatemanagement.model.action.Snapshot
 import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.ActionMetaData
 import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.ActionProperties
 import org.opensearch.indexmanagement.indexstatemanagement.step.snapshot.WaitForSnapshotStep
-import org.opensearch.script.Script
-import org.opensearch.script.ScriptType
 import org.opensearch.snapshots.Snapshot
 import org.opensearch.snapshots.SnapshotId
 import org.opensearch.test.OpenSearchTestCase
@@ -55,7 +53,7 @@ import org.opensearch.transport.RemoteTransportException
 class WaitForSnapshotStepTests : OpenSearchTestCase() {
 
     private val clusterService: ClusterService = mock()
-    val snapshot = Script(ScriptType.INLINE, Script.DEFAULT_TEMPLATE_LANG, "snapshot-name", emptyMap())
+    val snapshot = "snapshot-name"
 
     fun `test snapshot missing snapshot name in action properties`() {
         val exception = IllegalArgumentException("not used")

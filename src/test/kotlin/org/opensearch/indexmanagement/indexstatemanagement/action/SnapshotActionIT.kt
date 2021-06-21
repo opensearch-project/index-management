@@ -35,8 +35,6 @@ import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndex
 import org.opensearch.indexmanagement.indexstatemanagement.step.snapshot.AttemptSnapshotStep
 import org.opensearch.indexmanagement.indexstatemanagement.step.snapshot.WaitForSnapshotStep
 import org.opensearch.indexmanagement.waitFor
-import org.opensearch.script.Script
-import org.opensearch.script.ScriptType
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 import java.util.Locale
@@ -49,8 +47,7 @@ class SnapshotActionIT : IndexStateManagementRestTestCase() {
         val indexName = "${testIndexName}_index_basic"
         val policyID = "${testIndexName}_policy_basic"
         val repository = "repository"
-        val snapshotText = "snapshot"
-        val snapshot = Script(ScriptType.INLINE, Script.DEFAULT_TEMPLATE_LANG, snapshotText, emptyMap())
+        val snapshot = "snapshot"
         val actionConfig = SnapshotActionConfig(repository, snapshot, 0)
         val states = listOf(
             State("Snapshot", listOf(actionConfig), listOf())
@@ -80,16 +77,15 @@ class SnapshotActionIT : IndexStateManagementRestTestCase() {
         // Need to wait two cycles for wait for snapshot step
         updateManagedIndexConfigStartTime(managedIndexConfig)
 
-        waitFor { assertSnapshotExists(repository, snapshotText) }
-        waitFor { assertSnapshotFinishedWithSuccess(repository, snapshotText) }
+        waitFor { assertSnapshotExists(repository, "snapshot") }
+        waitFor { assertSnapshotFinishedWithSuccess(repository, "snapshot") }
     }
 
     fun `test basic with templated snapshot name`() {
         val indexName = "${testIndexName}_index_basic"
         val policyID = "${testIndexName}_policy_basic"
         val repository = "repository"
-        val snapshot = Script(ScriptType.INLINE, Script.DEFAULT_TEMPLATE_LANG, "{{ctx.index}}", emptyMap())
-        val actionConfig = SnapshotActionConfig(repository, snapshot, 0)
+        val actionConfig = SnapshotActionConfig(repository, "{{ctx.index}}", 0)
         val states = listOf(
             State("Snapshot", listOf(actionConfig), listOf())
         )
@@ -126,8 +122,7 @@ class SnapshotActionIT : IndexStateManagementRestTestCase() {
         val indexName = "${testIndexName}_index_basic"
         val policyID = "${testIndexName}_policy_basic"
         val repository = "repository"
-        val snapshot = Script(ScriptType.INLINE, Script.DEFAULT_TEMPLATE_LANG, "{{ctx.someField}}", emptyMap())
-        val actionConfig = SnapshotActionConfig(repository, snapshot, 0)
+        val actionConfig = SnapshotActionConfig(repository, "{{ctx.someField}}", 0)
         val states = listOf(
             State("Snapshot", listOf(actionConfig), listOf())
         )
@@ -164,8 +159,7 @@ class SnapshotActionIT : IndexStateManagementRestTestCase() {
         val indexName = "${testIndexName}_index_success"
         val policyID = "${testIndexName}_policy_success"
         val repository = "repository"
-        val snapshotText = "snapshot_success_test"
-        val snapshot = Script(ScriptType.INLINE, Script.DEFAULT_TEMPLATE_LANG, snapshotText, emptyMap())
+        val snapshot = "snapshot_success_test"
         val actionConfig = SnapshotActionConfig(repository, snapshot, 0)
         val states = listOf(
             State("Snapshot", listOf(actionConfig), listOf())
@@ -202,20 +196,19 @@ class SnapshotActionIT : IndexStateManagementRestTestCase() {
         // verify we set snapshotName in action properties
         waitFor {
             assert(
-                getExplainManagedIndexMetaData(indexName).actionMetaData?.actionProperties?.snapshotName?.contains(snapshotText) == true
+                getExplainManagedIndexMetaData(indexName).actionMetaData?.actionProperties?.snapshotName?.contains(snapshot) == true
             )
         }
 
-        waitFor { assertSnapshotExists(repository, snapshotText) }
-        waitFor { assertSnapshotFinishedWithSuccess(repository, snapshotText) }
+        waitFor { assertSnapshotExists(repository, snapshot) }
+        waitFor { assertSnapshotFinishedWithSuccess(repository, snapshot) }
     }
 
     fun `test failed wait for snapshot step`() {
         val indexName = "${testIndexName}_index_failed"
         val policyID = "${testIndexName}_policy_failed"
         val repository = "repository"
-        val snapshotText = "snapshot_failed_test"
-        val snapshot = Script(ScriptType.INLINE, Script.DEFAULT_TEMPLATE_LANG, snapshotText, emptyMap())
+        val snapshot = "snapshot_failed_test"
         val actionConfig = SnapshotActionConfig(repository, snapshot, 0)
         val states = listOf(
             State("Snapshot", listOf(actionConfig), listOf())
@@ -246,8 +239,8 @@ class SnapshotActionIT : IndexStateManagementRestTestCase() {
         waitFor { assertEquals(AttemptSnapshotStep.getSuccessMessage(indexName), getExplainManagedIndexMetaData(indexName).info?.get("message")) }
 
         // Confirm successful snapshot creation
-        waitFor { assertSnapshotExists(repository, snapshotText) }
-        waitFor { assertSnapshotFinishedWithSuccess(repository, snapshotText) }
+        waitFor { assertSnapshotExists(repository, snapshot) }
+        waitFor { assertSnapshotFinishedWithSuccess(repository, snapshot) }
 
         // Delete the snapshot so wait for step will fail with missing snapshot exception
         val snapshotName = getExplainManagedIndexMetaData(indexName).actionMetaData?.actionProperties?.snapshotName
@@ -269,8 +262,7 @@ class SnapshotActionIT : IndexStateManagementRestTestCase() {
         val indexName = "${testIndexName}_index_blocked"
         val policyID = "${testIndexName}_policy_basic"
         val repository = "hello-world"
-        val snapshot = Script(ScriptType.INLINE, Script.DEFAULT_TEMPLATE_LANG, "snapshot", emptyMap())
-        val actionConfig = SnapshotActionConfig(repository, snapshot, 0)
+        val actionConfig = SnapshotActionConfig(repository, "snapshot", 0)
         val states = listOf(
             State("Snapshot", listOf(actionConfig), listOf())
         )

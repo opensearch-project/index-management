@@ -14,6 +14,7 @@ package org.opensearch.indexmanagement.indexstatemanagement.step
 import com.nhaarman.mockitokotlin2.any
 import com.nhaarman.mockitokotlin2.doAnswer
 import com.nhaarman.mockitokotlin2.doReturn
+import com.nhaarman.mockitokotlin2.eq
 import com.nhaarman.mockitokotlin2.mock
 import com.nhaarman.mockitokotlin2.whenever
 import kotlinx.coroutines.runBlocking
@@ -50,7 +51,7 @@ class AttemptSnapshotStepTests : OpenSearchTestCase() {
     @Before
     fun settings() {
         whenever(clusterService.clusterSettings).doReturn(ClusterSettings(Settings.EMPTY, setOf(SNAPSHOT_DENY_LIST)))
-        whenever(scriptService.compile(config.snapshot, TemplateScript.CONTEXT)).doReturn(MockTemplateScript.Factory("snapshot-name"))
+        whenever(scriptService.compile(any(), eq(TemplateScript.CONTEXT))).doReturn(MockTemplateScript.Factory("snapshot-name"))
     }
 
     fun `test snapshot response when block`() {

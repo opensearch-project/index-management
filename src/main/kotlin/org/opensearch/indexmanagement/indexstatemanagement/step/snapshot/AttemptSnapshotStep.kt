@@ -84,7 +84,8 @@ class AttemptSnapshotStep(
                     .format(DateTimeFormatter.ofPattern("uuuu.MM.dd-HH:mm:ss.SSS", Locale.ROOT))
             )
 
-            snapshotName = compileTemplate(config.snapshot, managedIndexMetaData, indexName).plus(snapshotNamePrefix)
+            val snapshotScript = Script(config.snapshot)
+            snapshotName = compileTemplate(snapshotScript, managedIndexMetaData, indexName).plus(snapshotNamePrefix)
 
             val createSnapshotRequest = CreateSnapshotRequest()
                 .userMetadata(mapOf("snapshot_created" to "Open Distro for Elasticsearch Index Management"))

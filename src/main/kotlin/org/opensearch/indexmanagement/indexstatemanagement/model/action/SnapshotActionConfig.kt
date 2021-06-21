@@ -40,13 +40,12 @@ import org.opensearch.common.xcontent.XContentParserUtils.ensureExpectedToken
 import org.opensearch.indexmanagement.indexstatemanagement.action.Action
 import org.opensearch.indexmanagement.indexstatemanagement.action.SnapshotAction
 import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
-import org.opensearch.script.Script
 import org.opensearch.script.ScriptService
 import java.io.IOException
 
 data class SnapshotActionConfig(
     val repository: String,
-    val snapshot: Script,
+    val snapshot: String,
     val index: Int
 ) : ToXContentObject, ActionConfig(ActionType.SNAPSHOT, index) {
 
@@ -72,7 +71,7 @@ data class SnapshotActionConfig(
     @Throws(IOException::class)
     constructor(sin: StreamInput) : this(
         repository = sin.readString(),
-        snapshot = Script(sin),
+        snapshot = sin.readString(),
         index = sin.readInt()
     )
 
@@ -80,7 +79,7 @@ data class SnapshotActionConfig(
     override fun writeTo(out: StreamOutput) {
         super.writeTo(out)
         out.writeString(repository)
-        snapshot.writeTo(out)
+        out.writeString(snapshot)
         out.writeInt(index)
     }
 
@@ -93,7 +92,7 @@ data class SnapshotActionConfig(
         @Throws(IOException::class)
         fun parse(xcp: XContentParser, index: Int): SnapshotActionConfig {
             var repository: String? = null
-            var snapshot: Script? = null
+            var snapshot: String? = null
 
             ensureExpectedToken(Token.START_OBJECT, xcp.currentToken(), xcp)
             while (xcp.nextToken() != Token.END_OBJECT) {
@@ -102,7 +101,7 @@ data class SnapshotActionConfig(
 
                 when (fieldName) {
                     REPOSITORY_FIELD -> repository = xcp.text()
-                    SNAPSHOT_FIELD -> snapshot = Script.parse(xcp, Script.DEFAULT_TEMPLATE_LANG)
+                    SNAPSHOT_FIELD -> snapshot = xcp.text()
                     else -> throw IllegalArgumentException("Invalid field: [$fieldName] found in SnapshotActionConfig.")
                 }
             }
