@@ -3,14 +3,10 @@ name: Test and Build Workflow
 on:
   pull_request:
     branches:
-      - main
-      - opensearch-*
-      - development-*
+      - "*"
   push:
     branches:
-      - main
-      - opensearch-*
-      - development-*
+      - "*"
 
 jobs:
   build:
