@@ -50,10 +50,12 @@ class TransportGetTransformAction @Inject constructor(
                 override fun onResponse(response: GetResponse) {
                     if (!response.isExists) {
                         listener.onFailure(OpenSearchStatusException("Transform not found", RestStatus.NOT_FOUND))
+                        return
                     }
 
                     if (response.isSourceEmpty && getRequest.fetchSourceContext() != FetchSourceContext.DO_NOT_FETCH_SOURCE) {
                         listener.onFailure(OpenSearchStatusException("Missing transform data", RestStatus.INTERNAL_SERVER_ERROR))
+                        return
                     } else if (response.isSourceEmpty) {
                         // For HEAD requests only
                         listener.onResponse(
@@ -66,6 +68,7 @@ class TransportGetTransformAction @Inject constructor(
                                 null
                             )
                         )
+                        return
                     }
 
                     try {
