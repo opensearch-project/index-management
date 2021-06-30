@@ -288,7 +288,7 @@ fun randomManagedIndexConfig(
         policyID = policy?.id ?: policyID,
         policySeqNo = policy?.seqNo,
         policyPrimaryTerm = policy?.primaryTerm,
-        policy = policy?.copy(id = ManagedIndexConfig.NO_ID, seqNo = SequenceNumbers.UNASSIGNED_SEQ_NO, primaryTerm = SequenceNumbers.UNASSIGNED_PRIMARY_TERM),
+        policy = policy?.copy(seqNo = SequenceNumbers.UNASSIGNED_SEQ_NO, primaryTerm = SequenceNumbers.UNASSIGNED_PRIMARY_TERM),
         changePolicy = changePolicy
     )
 }

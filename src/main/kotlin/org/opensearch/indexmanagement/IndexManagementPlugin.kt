@@ -335,6 +335,7 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
             .registerScriptService(scriptService)
             .registerSettings(settings)
             .registerConsumers() // registerConsumers must happen after registerSettings/clusterService
+            .registerIMIndex(indexManagementIndices)
             .registerHistoryIndex(indexStateManagementHistory)
             .registerSkipFlag(skipFlag)
 

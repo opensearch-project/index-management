@@ -271,6 +271,12 @@ testClusters.integTest {
         }))
     }
     setting 'path.repo', repo.absolutePath
+
+    if (System.getProperty("tests.clustername") != null) {
+        filter {
+            excludeTestsMatching "org.opensearch.indexmanagement.indexstatemanagement.MetadataRegressionIT"
+        }
+    }
 }
 integTest {
     systemProperty 'tests.security.manager', 'false'
