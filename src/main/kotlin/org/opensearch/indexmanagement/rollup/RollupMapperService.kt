@@ -26,7 +26,6 @@
 
 package org.opensearch.indexmanagement.rollup
 
-import java.lang.IllegalArgumentException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.apache.logging.log4j.LogManager

@@ -68,6 +68,7 @@ class SkipExecution(
             object : ActionListener<NodesInfoResponse> {
                 override fun onResponse(response: NodesInfoResponse) {
                     val versionSet = mutableSetOf<String>()
+                    val legacyVersionSet = mutableSetOf<String>()
 
                     response.nodes.map { it.getInfo(PluginsAndModules::class.java).pluginInfos }
                         .forEach {
@@ -77,10 +78,16 @@ class SkipExecution(
                                 ) {
                                     versionSet.add(nodePlugin.version)
                                 }
+
+                                if (nodePlugin.name == "opendistro-index-management" ||
+                                    nodePlugin.name == "opendistro_index_management"
+                                ) {
+                                    legacyVersionSet.add(nodePlugin.version)
+                                }
                             }
                         }
 
-                    if (versionSet.size > 1) {
+                    if (versionSet.isNotEmpty() && legacyVersionSet.isNotEmpty()) {
                         flag = true
                         logger.info("There are multiple versions of Index Management plugins in the cluster: $versionSet")
                     } else flag = false
