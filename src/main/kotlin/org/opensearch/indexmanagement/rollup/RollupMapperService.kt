@@ -26,6 +26,7 @@
 
 package org.opensearch.indexmanagement.rollup
 
+import java.lang.IllegalArgumentException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.apache.logging.log4j.LogManager
@@ -51,6 +52,7 @@ import org.opensearch.indexmanagement.rollup.action.mapping.UpdateRollupMappingA
 import org.opensearch.indexmanagement.rollup.action.mapping.UpdateRollupMappingRequest
 import org.opensearch.indexmanagement.rollup.model.Rollup
 import org.opensearch.indexmanagement.rollup.model.RollupJobValidationResult
+import org.opensearch.indexmanagement.rollup.settings.LegacyOpenDistroRollupSettings
 import org.opensearch.indexmanagement.rollup.settings.RollupSettings
 import org.opensearch.indexmanagement.rollup.util.isRollupIndex
 import org.opensearch.indexmanagement.util.IndexUtils.Companion._META
@@ -112,16 +114,25 @@ class RollupMapperService(
         }
     }
 
+    // Falling back to old settings in case the target index creation fails because of new settings, as in mixed cluster the new settings are not
+    // registered yet in some cases and can lead to intermittent rollup job failures.
     private suspend fun createTargetIndex(job: Rollup): CreateIndexResponse {
-        val request = CreateIndexRequest(job.targetIndex)
-            .settings(Settings.builder().put(RollupSettings.ROLLUP_INDEX.key, true).build())
-            .mapping(_DOC, IndexManagementIndices.rollupTargetMappings, XContentType.JSON)
-        // TODO: Perhaps we can do better than this for mappings... as it'll be dynamic for rest
-        //  Can we read in the actual mappings from the source index and use that?
-        //  Can it have issues with metrics? i.e. an int mapping with 3, 5, 6 added up and divided by 3 for avg is 14/3 = 4.6666
-        //  What happens if the first indexing is an integer, i.e. 3 + 3 + 3 = 9/3 = 3 and it saves it as int
-        //  and then the next is float and it fails or rounds it up? Does elasticsearch dynamically resolve to int?
-        return client.admin().indices().suspendUntil { create(request, it) }
+        try {
+            val request = CreateIndexRequest(job.targetIndex)
+                .settings(Settings.builder().put(RollupSettings.ROLLUP_INDEX.key, true).build())
+                .mapping(_DOC, IndexManagementIndices.rollupTargetMappings, XContentType.JSON)
+            // TODO: Perhaps we can do better than this for mappings... as it'll be dynamic for rest
+            //  Can we read in the actual mappings from the source index and use that?
+            //  Can it have issues with metrics? i.e. an int mapping with 3, 5, 6 added up and divided by 3 for avg is 14/3 = 4.6666
+            //  What happens if the first indexing is an integer, i.e. 3 + 3 + 3 = 9/3 = 3 and it saves it as int
+            //  and then the next is float and it fails or rounds it up? Does elasticsearch dynamically resolve to int?
+            return client.admin().indices().suspendUntil { create(request, it) }
+        } catch (e: IllegalArgumentException) {
+            val request = CreateIndexRequest(job.targetIndex)
+                .settings(Settings.builder().put(LegacyOpenDistroRollupSettings.ROLLUP_INDEX.key, true).build())
+                .mapping(_DOC, IndexManagementIndices.rollupTargetMappings, XContentType.JSON)
+            return client.admin().indices().suspendUntil { create(request, it) }
+        }
     }
 
     // Source index can be a pattern so will need to resolve the index to concrete indices and check:
