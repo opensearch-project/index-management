@@ -49,6 +49,9 @@ class SkipExecution(
 
     @Volatile final var flag: Boolean = false
         private set
+    // To track if there are any legacy IM plugin nodes part of the cluster
+    @Volatile final var hasLegacyPlugin: Boolean = false
+        private set
 
     init {
         clusterService.addListener(this)
@@ -68,6 +71,7 @@ class SkipExecution(
             object : ActionListener<NodesInfoResponse> {
                 override fun onResponse(response: NodesInfoResponse) {
                     val versionSet = mutableSetOf<String>()
+                    val legacyVersionSet = mutableSetOf<String>()
 
                     response.nodes.map { it.getInfo(PluginsAndModules::class.java).pluginInfos }
                         .forEach {
@@ -77,13 +81,24 @@ class SkipExecution(
                                 ) {
                                     versionSet.add(nodePlugin.version)
                                 }
+
+                                if (nodePlugin.name == "opendistro-index-management" ||
+                                    nodePlugin.name == "opendistro_index_management"
+                                ) {
+                                    legacyVersionSet.add(nodePlugin.version)
+                                }
                             }
                         }
 
-                    if (versionSet.size > 1) {
+                    if ((versionSet.size + legacyVersionSet.size) > 1) {
                         flag = true
-                        logger.info("There are multiple versions of Index Management plugins in the cluster: $versionSet")
+                        logger.info("There are multiple versions of Index Management plugins in the cluster: [$versionSet, $legacyVersionSet]")
                     } else flag = false
+
+                    if (versionSet.isNotEmpty() && legacyVersionSet.isNotEmpty()) {
+                        hasLegacyPlugin = true
+                        logger.info("Found legacy plugin versions [$legacyVersionSet] and opensearch plugins versions [$versionSet] in the cluster")
+                    } else hasLegacyPlugin = false
                 }
 
                 override fun onFailure(e: Exception) {
