@@ -63,6 +63,7 @@ import org.opensearch.common.xcontent.XContentType
 import org.opensearch.index.Index
 import org.opensearch.index.engine.VersionConflictEngineException
 import org.opensearch.index.seqno.SequenceNumbers
+import org.opensearch.indexmanagement.IndexManagementIndices
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
 import org.opensearch.indexmanagement.indexstatemanagement.action.Action
 import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexConfig
@@ -130,6 +131,7 @@ object ManagedIndexRunner :
     private lateinit var xContentRegistry: NamedXContentRegistry
     private lateinit var scriptService: ScriptService
     private lateinit var settings: Settings
+    private lateinit var imIndices: IndexManagementIndices
     private lateinit var ismHistory: IndexStateManagementHistory
     private lateinit var skipExecFlag: SkipExecution
     private var indexStateManagementEnabled: Boolean = DEFAULT_ISM_ENABLED
@@ -186,6 +188,11 @@ object ManagedIndexRunner :
         }
 
         hostDenyList = settings.getAsList(ManagedIndexSettings.HOST_DENY_LIST)
+        return this
+    }
+
+    fun registerIMIndex(imIndices: IndexManagementIndices): ManagedIndexRunner {
+        this.imIndices = imIndices
         return this
     }
 
@@ -598,6 +605,10 @@ object ManagedIndexRunner :
         lastUpdateResult: UpdateMetadataResult? = null
     ): UpdateMetadataResult {
         var result = UpdateMetadataResult()
+        if (!imIndices.attemptUpdateConfigIndexMapping()) {
+            logger.error("Failed to update config index mapping.")
+            return result
+        }
 
         var metadata: ManagedIndexMetaData = managedIndexMetaData
         if (lastUpdateResult != null) {
