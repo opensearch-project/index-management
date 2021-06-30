@@ -90,13 +90,13 @@ class RollupMapperService(
     // If the target index mappings doesn't contain rollup job attempts to update the mappings.
     // TODO: error handling
     @Suppress("ReturnCount")
-    suspend fun attemptCreateRollupTargetIndex(job: Rollup, mixedCluster: Boolean): RollupJobValidationResult {
+    suspend fun attemptCreateRollupTargetIndex(job: Rollup, hasLegacyPlugin: Boolean): RollupJobValidationResult {
         if (indexExists(job.targetIndex)) {
             return validateAndAttemptToUpdateTargetIndex(job)
         } else {
             val errorMessage = "Failed to create target index [${job.targetIndex}]"
             return try {
-                val response = createTargetIndex(job, mixedCluster)
+                val response = createTargetIndex(job, hasLegacyPlugin)
                 if (response.isAcknowledged) {
                     updateRollupIndexMappings(job)
                 } else {
@@ -113,8 +113,8 @@ class RollupMapperService(
         }
     }
 
-    private suspend fun createTargetIndex(job: Rollup, useLegacySettings: Boolean): CreateIndexResponse {
-        val settings = if (useLegacySettings) {
+    private suspend fun createTargetIndex(job: Rollup, hasLegacyPlugin: Boolean): CreateIndexResponse {
+        val settings = if (hasLegacyPlugin) {
             Settings.builder().put(LegacyOpenDistroRollupSettings.ROLLUP_INDEX.key, true).build()
         } else {
             Settings.builder().put(RollupSettings.ROLLUP_INDEX.key, true).build()

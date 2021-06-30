@@ -87,7 +87,7 @@ object RollupRunner :
     private lateinit var rollupIndexer: RollupIndexer
     private lateinit var rollupSearchService: RollupSearchService
     private lateinit var rollupMetadataService: RollupMetadataService
-    private lateinit var mixedClusterProvider: SkipExecution
+    private lateinit var clusterConfigurationProvider: SkipExecution
 
     fun registerClusterService(clusterService: ClusterService): RollupRunner {
         this.clusterService = clusterService
@@ -141,8 +141,8 @@ object RollupRunner :
         return this
     }
 
-    fun registerMixedClusterProvider(mixedClusterProvider: SkipExecution): RollupRunner {
-        this.mixedClusterProvider = mixedClusterProvider
+    fun registerClusterConfigurationProvider(clusterConfigurationProvider: SkipExecution): RollupRunner {
+        this.clusterConfigurationProvider = clusterConfigurationProvider
         return this
     }
 
@@ -257,7 +257,7 @@ object RollupRunner :
                 }
             }
 
-            when (val result = rollupMapperService.attemptCreateRollupTargetIndex(updatableJob, mixedClusterProvider.mixedCluster)) {
+            when (val result = rollupMapperService.attemptCreateRollupTargetIndex(updatableJob, clusterConfigurationProvider.hasLegacyPlugin)) {
                 is RollupJobValidationResult.Failure -> {
                     setFailedMetadataAndDisableJob(updatableJob, result.message, metadata)
                     return
@@ -397,7 +397,7 @@ object RollupRunner :
         // we validate target index only if there is metadata document in the rollup
         if (metadata != null) {
             logger.debug("Attempting to create/validate target index [${job.targetIndex}] for rollup job [${job.id}]")
-            return rollupMapperService.attemptCreateRollupTargetIndex(job, mixedClusterProvider.mixedCluster)
+            return rollupMapperService.attemptCreateRollupTargetIndex(job, clusterConfigurationProvider.hasLegacyPlugin)
         }
 
         return RollupJobValidationResult.Valid

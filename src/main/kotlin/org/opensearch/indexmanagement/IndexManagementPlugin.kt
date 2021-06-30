@@ -318,7 +318,7 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
             .registerSearcher(RollupSearchService(settings, clusterService, client))
             .registerMetadataServices(RollupMetadataService(client, xContentRegistry))
             .registerConsumers()
-            .registerMixedClusterProvider(skipFlag)
+            .registerClusterConfigurationProvider(skipFlag)
         indexManagementIndices = IndexManagementIndices(settings, client.admin().indices(), clusterService)
         val indexStateManagementHistory =
             IndexStateManagementHistory(

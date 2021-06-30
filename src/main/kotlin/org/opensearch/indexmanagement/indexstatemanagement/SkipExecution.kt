@@ -49,7 +49,8 @@ class SkipExecution(
 
     @Volatile final var flag: Boolean = false
         private set
-    @Volatile final var mixedCluster: Boolean = false
+    // To track if there are any legacy IM plugin nodes part of the cluster
+    @Volatile final var hasLegacyPlugin: Boolean = false
         private set
 
     init {
@@ -95,9 +96,9 @@ class SkipExecution(
                     } else flag = false
 
                     if (versionSet.isNotEmpty() && legacyVersionSet.isNotEmpty()) {
-                        mixedCluster = true
+                        hasLegacyPlugin = true
                         logger.info("Found legacy plugin versions [$legacyVersionSet] and opensearch plugins versions [$versionSet] in the cluster")
-                    } else mixedCluster = false
+                    } else hasLegacyPlugin = false
                 }
 
                 override fun onFailure(e: Exception) {
