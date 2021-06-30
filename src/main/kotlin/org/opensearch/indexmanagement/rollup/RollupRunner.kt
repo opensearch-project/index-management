@@ -40,6 +40,7 @@ import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.settings.Settings
 import org.opensearch.common.unit.TimeValue
 import org.opensearch.common.xcontent.NamedXContentRegistry
+import org.opensearch.indexmanagement.indexstatemanagement.SkipExecution
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.rollup.action.get.GetRollupAction
 import org.opensearch.indexmanagement.rollup.action.get.GetRollupRequest
@@ -86,6 +87,7 @@ object RollupRunner :
     private lateinit var rollupIndexer: RollupIndexer
     private lateinit var rollupSearchService: RollupSearchService
     private lateinit var rollupMetadataService: RollupMetadataService
+    private lateinit var mixedClusterProvider: SkipExecution
 
     fun registerClusterService(clusterService: ClusterService): RollupRunner {
         this.clusterService = clusterService
@@ -136,6 +138,11 @@ object RollupRunner :
         rollupMetadataService: RollupMetadataService
     ): RollupRunner {
         this.rollupMetadataService = rollupMetadataService
+        return this
+    }
+
+    fun registerMixedClusterProvider(mixedClusterProvider: SkipExecution): RollupRunner {
+        this.mixedClusterProvider = mixedClusterProvider
         return this
     }
 
@@ -250,7 +257,7 @@ object RollupRunner :
                 }
             }
 
-            when (val result = rollupMapperService.attemptCreateRollupTargetIndex(updatableJob)) {
+            when (val result = rollupMapperService.attemptCreateRollupTargetIndex(updatableJob, mixedClusterProvider.flag)) {
                 is RollupJobValidationResult.Failure -> {
                     setFailedMetadataAndDisableJob(updatableJob, result.message, metadata)
                     return
@@ -390,7 +397,7 @@ object RollupRunner :
         // we validate target index only if there is metadata document in the rollup
         if (metadata != null) {
             logger.debug("Attempting to create/validate target index [${job.targetIndex}] for rollup job [${job.id}]")
-            return rollupMapperService.attemptCreateRollupTargetIndex(job)
+            return rollupMapperService.attemptCreateRollupTargetIndex(job, mixedClusterProvider.flag)
         }
 
         return RollupJobValidationResult.Valid

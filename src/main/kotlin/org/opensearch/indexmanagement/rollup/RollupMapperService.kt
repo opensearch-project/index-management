@@ -91,13 +91,13 @@ class RollupMapperService(
     // If the target index mappings doesn't contain rollup job attempts to update the mappings.
     // TODO: error handling
     @Suppress("ReturnCount")
-    suspend fun attemptCreateRollupTargetIndex(job: Rollup): RollupJobValidationResult {
+    suspend fun attemptCreateRollupTargetIndex(job: Rollup, mixedCluster: Boolean): RollupJobValidationResult {
         if (indexExists(job.targetIndex)) {
             return validateAndAttemptToUpdateTargetIndex(job)
         } else {
             val errorMessage = "Failed to create target index [${job.targetIndex}]"
             return try {
-                val response = createTargetIndex(job)
+                val response = createTargetIndex(job, mixedCluster)
                 if (response.isAcknowledged) {
                     updateRollupIndexMappings(job)
                 } else {
@@ -114,25 +114,21 @@ class RollupMapperService(
         }
     }
 
-    // Falling back to old settings in case the target index creation fails because of new settings, as in mixed cluster the new settings are not
-    // registered yet in some cases and can lead to intermittent rollup job failures.
-    private suspend fun createTargetIndex(job: Rollup): CreateIndexResponse {
-        try {
-            val request = CreateIndexRequest(job.targetIndex)
-                .settings(Settings.builder().put(RollupSettings.ROLLUP_INDEX.key, true).build())
-                .mapping(_DOC, IndexManagementIndices.rollupTargetMappings, XContentType.JSON)
-            // TODO: Perhaps we can do better than this for mappings... as it'll be dynamic for rest
-            //  Can we read in the actual mappings from the source index and use that?
-            //  Can it have issues with metrics? i.e. an int mapping with 3, 5, 6 added up and divided by 3 for avg is 14/3 = 4.6666
-            //  What happens if the first indexing is an integer, i.e. 3 + 3 + 3 = 9/3 = 3 and it saves it as int
-            //  and then the next is float and it fails or rounds it up? Does elasticsearch dynamically resolve to int?
-            return client.admin().indices().suspendUntil { create(request, it) }
-        } catch (e: IllegalArgumentException) {
-            val request = CreateIndexRequest(job.targetIndex)
-                .settings(Settings.builder().put(LegacyOpenDistroRollupSettings.ROLLUP_INDEX.key, true).build())
-                .mapping(_DOC, IndexManagementIndices.rollupTargetMappings, XContentType.JSON)
-            return client.admin().indices().suspendUntil { create(request, it) }
+    private suspend fun createTargetIndex(job: Rollup, useLegacySettings: Boolean): CreateIndexResponse {
+        val settings = if (useLegacySettings) {
+            Settings.builder().put(LegacyOpenDistroRollupSettings.ROLLUP_INDEX.key, true).build()
+        } else {
+            Settings.builder().put(RollupSettings.ROLLUP_INDEX.key, true).build()
         }
+        val request = CreateIndexRequest(job.targetIndex)
+            .settings(settings)
+            .mapping(_DOC, IndexManagementIndices.rollupTargetMappings, XContentType.JSON)
+        // TODO: Perhaps we can do better than this for mappings... as it'll be dynamic for rest
+        //  Can we read in the actual mappings from the source index and use that?
+        //  Can it have issues with metrics? i.e. an int mapping with 3, 5, 6 added up and divided by 3 for avg is 14/3 = 4.6666
+        //  What happens if the first indexing is an integer, i.e. 3 + 3 + 3 = 9/3 = 3 and it saves it as int
+        //  and then the next is float and it fails or rounds it up? Does elasticsearch dynamically resolve to int?
+        return client.admin().indices().suspendUntil { create(request, it) }
     }
 
     // Source index can be a pattern so will need to resolve the index to concrete indices and check:

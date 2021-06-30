@@ -299,6 +299,13 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
     ): Collection<Any> {
         val settings = environment.settings()
         this.clusterService = clusterService
+        rollupInterceptor = RollupInterceptor(clusterService, settings, indexNameExpressionResolver)
+        val jvmService = JvmService(environment.settings())
+        val transformRunner = TransformRunner.initialize(client, clusterService, xContentRegistry, settings, indexNameExpressionResolver, jvmService)
+        fieldCapsFilter = FieldCapsFilter(clusterService, settings, indexNameExpressionResolver)
+        this.indexNameExpressionResolver = indexNameExpressionResolver
+
+        val skipFlag = SkipExecution(client, clusterService)
         val rollupRunner = RollupRunner
             .registerClient(client)
             .registerClusterService(clusterService)
@@ -311,13 +318,7 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
             .registerSearcher(RollupSearchService(settings, clusterService, client))
             .registerMetadataServices(RollupMetadataService(client, xContentRegistry))
             .registerConsumers()
-        rollupInterceptor = RollupInterceptor(clusterService, settings, indexNameExpressionResolver)
-        val jvmService = JvmService(environment.settings())
-        val transformRunner = TransformRunner.initialize(client, clusterService, xContentRegistry, settings, indexNameExpressionResolver, jvmService)
-        fieldCapsFilter = FieldCapsFilter(clusterService, settings, indexNameExpressionResolver)
-        this.indexNameExpressionResolver = indexNameExpressionResolver
-
-        val skipFlag = SkipExecution(client, clusterService)
+            .registerMixedClusterProvider(skipFlag)
         indexManagementIndices = IndexManagementIndices(settings, client.admin().indices(), clusterService)
         val indexStateManagementHistory =
             IndexStateManagementHistory(
