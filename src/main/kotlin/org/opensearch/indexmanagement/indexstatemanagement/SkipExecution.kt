@@ -49,6 +49,8 @@ class SkipExecution(
 
     @Volatile final var flag: Boolean = false
         private set
+    @Volatile final var mixedCluster: Boolean = false
+        private set
 
     init {
         clusterService.addListener(this)
@@ -87,10 +89,15 @@ class SkipExecution(
                             }
                         }
 
-                    if (versionSet.isNotEmpty() && legacyVersionSet.isNotEmpty()) {
+                    if ((versionSet.size + legacyVersionSet.size) > 1) {
                         flag = true
-                        logger.info("There are multiple versions of Index Management plugins in the cluster: $versionSet")
+                        logger.info("There are multiple versions of Index Management plugins in the cluster: [$versionSet, $legacyVersionSet]")
                     } else flag = false
+
+                    if (versionSet.isNotEmpty() && legacyVersionSet.isNotEmpty()) {
+                        mixedCluster = true
+                        logger.info("Found legacy plugin versions [$legacyVersionSet] and opensearch plugins versions [$versionSet] in the cluster")
+                    } else mixedCluster = false
                 }
 
                 override fun onFailure(e: Exception) {

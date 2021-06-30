@@ -257,7 +257,7 @@ object RollupRunner :
                 }
             }
 
-            when (val result = rollupMapperService.attemptCreateRollupTargetIndex(updatableJob, mixedClusterProvider.flag)) {
+            when (val result = rollupMapperService.attemptCreateRollupTargetIndex(updatableJob, mixedClusterProvider.mixedCluster)) {
                 is RollupJobValidationResult.Failure -> {
                     setFailedMetadataAndDisableJob(updatableJob, result.message, metadata)
                     return
@@ -397,7 +397,7 @@ object RollupRunner :
         // we validate target index only if there is metadata document in the rollup
         if (metadata != null) {
             logger.debug("Attempting to create/validate target index [${job.targetIndex}] for rollup job [${job.id}]")
-            return rollupMapperService.attemptCreateRollupTargetIndex(job, mixedClusterProvider.flag)
+            return rollupMapperService.attemptCreateRollupTargetIndex(job, mixedClusterProvider.mixedCluster)
         }
 
         return RollupJobValidationResult.Valid
