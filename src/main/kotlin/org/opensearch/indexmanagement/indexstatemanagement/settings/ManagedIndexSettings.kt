@@ -69,6 +69,13 @@ class ManagedIndexSettings {
             Setting.Property.Dynamic
         )
 
+        val ROLLOVER_SKIP: Setting<Boolean> = Setting.boolSetting(
+            "index.plugins.index_state_management.rollover_skip",
+            false,
+            Setting.Property.IndexScope,
+            Setting.Property.Dynamic
+        )
+
         val JOB_INTERVAL: Setting<Int> = Setting.intSetting(
             "plugins.index_state_management.job_interval",
             LegacyOpenDistroManagedIndexSettings.JOB_INTERVAL,

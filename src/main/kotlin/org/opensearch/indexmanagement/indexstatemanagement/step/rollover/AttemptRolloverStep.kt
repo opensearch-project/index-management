@@ -40,6 +40,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMet
 import org.opensearch.indexmanagement.indexstatemanagement.model.action.RolloverActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.StepMetaData
 import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.getRolloverAlias
+import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.getRolloverSkip
 import org.opensearch.indexmanagement.indexstatemanagement.step.Step
 import org.opensearch.indexmanagement.indexstatemanagement.util.evaluateConditions
 import org.opensearch.indexmanagement.opensearchapi.getUsefulCauseString
@@ -64,6 +65,13 @@ class AttemptRolloverStep(
 
     @Suppress("TooGenericExceptionCaught")
     override suspend fun execute(): AttemptRolloverStep {
+        val skipRollover = clusterService.state().metadata.index(indexName).getRolloverSkip()
+        if (skipRollover) {
+            stepStatus = StepStatus.COMPLETED
+            info = mapOf("message" to getSkipRolloverMessage(indexName))
+            return this
+        }
+
         // If we have already rolled over this index then fail as we only allow an index to be rolled over once
         if (managedIndexMetaData.rolledOver == true) {
             logger.warn("$indexName was already rolled over, cannot execute rollover step")
@@ -75,6 +83,12 @@ class AttemptRolloverStep(
         val (rolloverTarget, isDataStream) = getRolloverTargetOrUpdateInfo()
         // If the rolloverTarget is null, we would've already updated the failed info from getRolloverTargetOrUpdateInfo and can return early
         rolloverTarget ?: return this
+
+        if (!isDataStream && !preCheckIndexAlias(rolloverTarget)) {
+            stepStatus = StepStatus.FAILED
+            info = mapOf("message" to getFailedPreCheckMessage(indexName))
+            return this
+        }
 
         val statsResponse = getIndexStatsOrUpdateInfo()
         // If statsResponse is null we already updated failed info from getIndexStatsOrUpdateInfo and can return early
@@ -170,6 +184,36 @@ class AttemptRolloverStep(
         }
     }
 
+    /**
+     * pre-condition check on managed-index's alias before rollover
+     *
+     * This will block
+     *  when managed index dont have alias
+     *  when managed index has alias but not the write index,
+     *      and this alias contains more than one index
+     * User can use skip rollover setting to bypass this
+     *
+     * @param alias user defined ISM rollover alias
+     */
+    private fun preCheckIndexAlias(alias: String?): Boolean {
+        val metadata = clusterService.state().metadata
+        val indexAlias = metadata.index(indexName).aliases[alias]
+        logger.debug("index $indexName has aliases $indexAlias")
+        if (indexAlias == null) {
+            return false
+        }
+        val isWriteIndex = indexAlias.writeIndex() // this could be null
+        if (isWriteIndex == null || !isWriteIndex) {
+            val aliasIndices = metadata.indicesLookup[alias]?.indices?.map { it.index }
+            logger.debug("alias $alias contains indices $aliasIndices")
+            if (aliasIndices != null && aliasIndices.size > 1) {
+                return false
+            }
+        }
+
+        return true
+    }
+
     private fun getRolloverTargetOrUpdateInfo(): Pair<String?, Boolean> {
         val metadata = clusterService.state().metadata()
         val indexAbstraction = metadata.indicesLookup[indexName]
@@ -246,5 +290,7 @@ class AttemptRolloverStep(
         fun getSuccessMessage(index: String) = "Successfully rolled over index [index=$index]"
         fun getSuccessDataStreamRolloverMessage(dataStream: String, index: String) =
             "Successfully rolled over data stream [data_stream=$dataStream index=$index]"
+        fun getFailedPreCheckMessage(index: String) = "Missing alias or not the write index when rollover [index=$index]"
+        fun getSkipRolloverMessage(index: String) = "Skip rollover action for [index=$index]"
     }
 }
