@@ -56,7 +56,7 @@ jobs:
         with:
           repository: 'opensearch-project/alerting'
           path: alerting
-          ref: 'main'
+          ref: '1.0'
       - name: Build alerting
         working-directory: ./alerting
         run: ./gradlew :alerting-notification:publishToMavenLocal -Dopensearch.version=1.0.0 -Dbuild.snapshot=false

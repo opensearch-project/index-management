@@ -364,6 +364,7 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
             ManagedIndexSettings.HISTORY_NUMBER_OF_REPLICAS,
             ManagedIndexSettings.POLICY_ID,
             ManagedIndexSettings.ROLLOVER_ALIAS,
+            ManagedIndexSettings.ROLLOVER_SKIP,
             ManagedIndexSettings.INDEX_STATE_MANAGEMENT_ENABLED,
             ManagedIndexSettings.METADATA_SERVICE_ENABLED,
             ManagedIndexSettings.JOB_INTERVAL,

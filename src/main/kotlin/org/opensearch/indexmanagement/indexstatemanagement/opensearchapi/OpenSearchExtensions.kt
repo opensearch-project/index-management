@@ -79,6 +79,10 @@ fun IndexMetadata.getRolloverAlias(): String? {
     return this.settings.get(ManagedIndexSettings.ROLLOVER_ALIAS.key)
 }
 
+fun IndexMetadata.getRolloverSkip(): Boolean {
+    return this.settings.getAsBoolean(ManagedIndexSettings.ROLLOVER_SKIP.key, false)
+}
+
 fun IndexMetadata.getManagedIndexMetadata(): ManagedIndexMetaData? {
     val existingMetaDataMap = this.getCustomData(ManagedIndexMetaData.MANAGED_INDEX_METADATA_TYPE)
 
