@@ -30,5 +30,5 @@ Compatible with OpenSearch 1.0.0
 ### Bug Fixes
 
 * Fix 7.10 rollover blocking thread issue ([#70](https://github.com/opensearch-project/index-management/pull/70))
-* Fix issue with Rollup start/stop API issue ([#79](https://github.com/opensearch-project/index-management/pull/79))
+* Fix issue with Rollup start/stop API ([#79](https://github.com/opensearch-project/index-management/pull/79))
 * Fix to support custom source index type in Rollup jobs ([#4](https://github.com/opensearch-project/index-management/pull/4)) 
