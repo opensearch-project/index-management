@@ -195,17 +195,17 @@ class AttemptRolloverStep(
      *
      * @param alias user defined ISM rollover alias
      */
-    private fun preCheckIndexAlias(alias: String?): Boolean {
+    private fun preCheckIndexAlias(alias: String): Boolean {
         val metadata = clusterService.state().metadata
-        val indexAlias = metadata.index(indexName).aliases[alias]
-        logger.debug("index $indexName has aliases $indexAlias")
+        val indexAlias = metadata.index(indexName)?.aliases?.get(alias)
+        logger.debug("Index $indexName has aliases $indexAlias")
         if (indexAlias == null) {
             return false
         }
         val isWriteIndex = indexAlias.writeIndex() // this could be null
-        if (isWriteIndex == null || !isWriteIndex) {
+        if (isWriteIndex != true) {
             val aliasIndices = metadata.indicesLookup[alias]?.indices?.map { it.index }
-            logger.debug("alias $alias contains indices $aliasIndices")
+            logger.debug("Alias $alias contains indices $aliasIndices")
             if (aliasIndices != null && aliasIndices.size > 1) {
                 return false
             }
@@ -291,6 +291,6 @@ class AttemptRolloverStep(
         fun getSuccessDataStreamRolloverMessage(dataStream: String, index: String) =
             "Successfully rolled over data stream [data_stream=$dataStream index=$index]"
         fun getFailedPreCheckMessage(index: String) = "Missing alias or not the write index when rollover [index=$index]"
-        fun getSkipRolloverMessage(index: String) = "Skip rollover action for [index=$index]"
+        fun getSkipRolloverMessage(index: String) = "Skipped rollover action for [index=$index]"
     }
 }
