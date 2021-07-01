@@ -569,6 +569,8 @@ class ManagedIndexCoordinator(
     @OpenForTesting
     @Suppress("TooGenericExceptionCaught")
     suspend fun clearManagedIndexMetaData(deleteRequests: List<DocWriteRequest<*>>) {
+        if (!ismIndices.indexManagementIndexExists()) return
+
         try {
             if (deleteRequests.isEmpty()) return
 

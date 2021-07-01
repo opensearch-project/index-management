@@ -51,6 +51,7 @@ import org.opensearch.indexmanagement.rollup.action.mapping.UpdateRollupMappingA
 import org.opensearch.indexmanagement.rollup.action.mapping.UpdateRollupMappingRequest
 import org.opensearch.indexmanagement.rollup.model.Rollup
 import org.opensearch.indexmanagement.rollup.model.RollupJobValidationResult
+import org.opensearch.indexmanagement.rollup.settings.LegacyOpenDistroRollupSettings
 import org.opensearch.indexmanagement.rollup.settings.RollupSettings
 import org.opensearch.indexmanagement.rollup.util.isRollupIndex
 import org.opensearch.indexmanagement.util.IndexUtils.Companion._META
@@ -89,13 +90,13 @@ class RollupMapperService(
     // If the target index mappings doesn't contain rollup job attempts to update the mappings.
     // TODO: error handling
     @Suppress("ReturnCount")
-    suspend fun attemptCreateRollupTargetIndex(job: Rollup): RollupJobValidationResult {
+    suspend fun attemptCreateRollupTargetIndex(job: Rollup, hasLegacyPlugin: Boolean): RollupJobValidationResult {
         if (indexExists(job.targetIndex)) {
             return validateAndAttemptToUpdateTargetIndex(job)
         } else {
             val errorMessage = "Failed to create target index [${job.targetIndex}]"
             return try {
-                val response = createTargetIndex(job)
+                val response = createTargetIndex(job, hasLegacyPlugin)
                 if (response.isAcknowledged) {
                     updateRollupIndexMappings(job)
                 } else {
@@ -112,9 +113,14 @@ class RollupMapperService(
         }
     }
 
-    private suspend fun createTargetIndex(job: Rollup): CreateIndexResponse {
+    private suspend fun createTargetIndex(job: Rollup, hasLegacyPlugin: Boolean): CreateIndexResponse {
+        val settings = if (hasLegacyPlugin) {
+            Settings.builder().put(LegacyOpenDistroRollupSettings.ROLLUP_INDEX.key, true).build()
+        } else {
+            Settings.builder().put(RollupSettings.ROLLUP_INDEX.key, true).build()
+        }
         val request = CreateIndexRequest(job.targetIndex)
-            .settings(Settings.builder().put(RollupSettings.ROLLUP_INDEX.key, true).build())
+            .settings(settings)
             .mapping(_DOC, IndexManagementIndices.rollupTargetMappings, XContentType.JSON)
         // TODO: Perhaps we can do better than this for mappings... as it'll be dynamic for rest
         //  Can we read in the actual mappings from the source index and use that?

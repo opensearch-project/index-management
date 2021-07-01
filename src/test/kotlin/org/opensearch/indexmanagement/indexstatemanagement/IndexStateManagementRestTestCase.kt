@@ -198,6 +198,29 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
         return index to policyID
     }
 
+    protected fun changeAlias(
+        index: String,
+        alias: String,
+        action: String = "remove",
+        isWriteIndex: Boolean = false
+    ) {
+        val isWriteIndexField = if (isWriteIndex) "\",\"is_write_index\": \"$isWriteIndex" else ""
+        val body = """
+            {
+              "actions": [
+                {
+                  "$action": {
+                    "index": "$index",
+                    "alias": "$alias$isWriteIndexField"
+                  }
+                }
+              ]
+            }
+        """.trimIndent()
+        val response = client().makeRequest("POST", "_aliases", StringEntity(body, APPLICATION_JSON))
+        assertEquals("Unexpected RestStatus", RestStatus.OK, response.restStatus())
+    }
+
     /** Refresh all indices in the cluster */
     protected fun refresh() {
         val request = Request("POST", "/_refresh")
@@ -246,6 +269,30 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
             StringEntity(request, APPLICATION_JSON)
         )
         assertEquals("Request failed", RestStatus.OK, res.restStatus())
+    }
+
+    protected fun updateIndexSetting(
+        index: String,
+        key: String,
+        value: String
+    ) {
+        val body = """
+            {
+              "$key" : "$value"
+            }
+        """.trimIndent()
+        val res = client().makeRequest(
+            "PUT", "$index/_settings", emptyMap(),
+            StringEntity(body, APPLICATION_JSON)
+        )
+        assertEquals("Update index setting failed", RestStatus.OK, res.restStatus())
+    }
+
+    protected fun getIndexSetting(index: String) {
+        val res = client().makeRequest(
+            "GET", "$index/_settings", emptyMap()
+        )
+        assertEquals("Update index setting failed", RestStatus.OK, res.restStatus())
     }
 
     protected fun getManagedIndexConfig(index: String): ManagedIndexConfig? {

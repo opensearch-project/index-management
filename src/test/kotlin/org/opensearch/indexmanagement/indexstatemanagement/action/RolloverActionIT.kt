@@ -40,9 +40,13 @@ import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
 import org.opensearch.indexmanagement.indexstatemanagement.model.State
 import org.opensearch.indexmanagement.indexstatemanagement.model.action.RolloverActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomErrorNotification
+import org.opensearch.indexmanagement.indexstatemanagement.resthandler.RestRetryFailedManagedIndexAction
+import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings
 import org.opensearch.indexmanagement.indexstatemanagement.step.rollover.AttemptRolloverStep
 import org.opensearch.indexmanagement.makeRequest
 import org.opensearch.indexmanagement.waitFor
+import org.opensearch.rest.RestRequest
+import org.opensearch.rest.RestStatus
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 import java.util.Locale
@@ -282,6 +286,67 @@ class RolloverActionIT : IndexStateManagementRestTestCase() {
             assertEquals("Did not have min doc count current", 5, minDocCount["current"])
         }
         Assert.assertTrue("New rollover index does not exist.", indexExists("$indexNameBase-000002"))
+    }
+
+    fun `test rollover pre check`() {
+        // index-1 alias x
+        // index-2 alias x is_write_index
+        // manage index-1, expect it fail to rollover
+        val index1 = "index-1"
+        val index2 = "index-2"
+        val alias1 = "x"
+        val policyID = "${testIndexName}_precheck"
+        val actionConfig = RolloverActionConfig(null, 3, TimeValue.timeValueDays(2), 0)
+        val states = listOf(State(name = "RolloverAction", actions = listOf(actionConfig), transitions = listOf()))
+        val policy = Policy(
+            id = policyID,
+            description = "$testIndexName description",
+            schemaVersion = 1L,
+            lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
+            errorNotification = randomErrorNotification(),
+            defaultState = states[0].name,
+            states = states
+        )
+        createPolicy(policy, policyID)
+        createIndex(index1, policyID)
+        changeAlias(index1, alias1, "add")
+        updateIndexSetting(index1, ManagedIndexSettings.ROLLOVER_ALIAS.key, alias1)
+        createIndex(index2, policyID)
+        changeAlias(index2, alias1, "add", true)
+        updateIndexSetting(index2, ManagedIndexSettings.ROLLOVER_ALIAS.key, alias1)
+
+        val managedIndexConfig = getExistingManagedIndexConfig(index1)
+
+        // Change the start time so the job will trigger in 2 seconds, this will trigger the first initialization of the policy
+        updateManagedIndexConfigStartTime(managedIndexConfig)
+        waitFor { assertEquals(policyID, getExplainManagedIndexMetaData(index1).policyID) }
+
+        // Need to speed up to second execution where it will trigger the first execution of the action
+        updateManagedIndexConfigStartTime(managedIndexConfig)
+        waitFor {
+            val info = getExplainManagedIndexMetaData(index1).info as Map<String, Any?>
+            assertEquals(
+                "Index rollover not stopped by pre-check.",
+                AttemptRolloverStep.getFailedPreCheckMessage(index1), info["message"]
+            )
+        }
+
+        updateIndexSetting(index1, ManagedIndexSettings.ROLLOVER_SKIP.key, "true")
+
+        val response = client().makeRequest(
+            RestRequest.Method.POST.toString(),
+            "${RestRetryFailedManagedIndexAction.RETRY_BASE_URI}/$index1"
+        )
+        assertEquals("Unexpected RestStatus", RestStatus.OK, response.restStatus())
+
+        updateManagedIndexConfigStartTime(managedIndexConfig)
+        waitFor {
+            val info = getExplainManagedIndexMetaData(index1).info as Map<String, Any?>
+            assertEquals(
+                "Index rollover not skip.",
+                AttemptRolloverStep.getSkipRolloverMessage(index1), info["message"]
+            )
+        }
     }
 
     fun `test data stream rollover no condition`() {
