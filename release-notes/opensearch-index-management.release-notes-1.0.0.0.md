@@ -25,7 +25,6 @@ Compatible with OpenSearch 1.0.0
 
 ### Documentation 
 
-* Update issue template with multiple labels ([#10](https://github.com/opensearch-project/index-management/pull/10))
 * Update and add documentation files ([#84](https://github.com/opensearch-project/index-management/pull/84))
 
 ### Bug Fixes
