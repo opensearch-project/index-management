@@ -213,23 +213,23 @@ afterEvaluate {
             node.extraConfigFile("esnode.pem", file("src/test/resources/security/esnode.pem"))
             node.extraConfigFile("esnode-key.pem", file("src/test/resources/security/esnode-key.pem"))
             node.extraConfigFile("root-ca.pem", file("src/test/resources/security/root-ca.pem"))
-            node.setting("opendistro_security.ssl.transport.pemcert_filepath", "esnode.pem")
-            node.setting("opendistro_security.ssl.transport.pemkey_filepath", "esnode-key.pem")
-            node.setting("opendistro_security.ssl.transport.pemtrustedcas_filepath", "root-ca.pem")
-            node.setting("opendistro_security.ssl.transport.enforce_hostname_verification", "false")
-            node.setting("opendistro_security.ssl.http.enabled", "true")
-            node.setting("opendistro_security.ssl.http.pemcert_filepath", "esnode.pem")
-            node.setting("opendistro_security.ssl.http.pemkey_filepath", "esnode-key.pem")
-            node.setting("opendistro_security.ssl.http.pemtrustedcas_filepath", "root-ca.pem")
-            node.setting("opendistro_security.allow_unsafe_democertificates", "true")
-            node.setting("opendistro_security.allow_default_init_securityindex", "true")
-            node.setting("opendistro_security.authcz.admin_dn", "CN=kirk,OU=client,O=client,L=test,C=de")
-            node.setting("opendistro_security.audit.type", "internal_elasticsearch")
-            node.setting("opendistro_security.enable_snapshot_restore_privilege", "true")
-            node.setting("opendistro_security.check_snapshot_restore_write_privileges", "true")
-            node.setting("opendistro_security.restapi.roles_enabled", "[\"all_access\", \"security_rest_api_access\"]")
-            node.setting("opendistro_security.system_indices.enabled", "true")
-            node.setting("opendistro_security.system_indices.indices", "[\".opendistro-ism-config\"]")
+            node.setting("plugins.security.ssl.transport.pemcert_filepath", "esnode.pem")
+            node.setting("plugins.security.ssl.transport.pemkey_filepath", "esnode-key.pem")
+            node.setting("plugins.security.ssl.transport.pemtrustedcas_filepath", "root-ca.pem")
+            node.setting("plugins.security.ssl.transport.enforce_hostname_verification", "false")
+            node.setting("plugins.security.ssl.http.enabled", "true")
+            node.setting("plugins.security.ssl.http.pemcert_filepath", "esnode.pem")
+            node.setting("plugins.security.ssl.http.pemkey_filepath", "esnode-key.pem")
+            node.setting("plugins.security.ssl.http.pemtrustedcas_filepath", "root-ca.pem")
+            node.setting("plugins.security.allow_unsafe_democertificates", "true")
+            node.setting("plugins.security.allow_default_init_securityindex", "true")
+            node.setting("plugins.security.authcz.admin_dn", "CN=kirk,OU=client,O=client,L=test,C=de")
+            node.setting("plugins.security.audit.type", "internal_elasticsearch")
+            node.setting("plugins.security.enable_snapshot_restore_privilege", "true")
+            node.setting("plugins.security.check_snapshot_restore_write_privileges", "true")
+            node.setting("plugins.security.restapi.roles_enabled", "[\"all_access\", \"security_rest_api_access\"]")
+            node.setting("plugins.security.system_indices.enabled", "true")
+            // node.setting("plugins.security.system_indices.indices", "[\".opendistro-ism-config\"]")
         }
     }
 }
@@ -262,22 +262,16 @@ testClusters.integTest {
         }
     }))
     if (securityEnabled) {
-        // TODO: Update the actual zip to 1.12
         plugin(provider({
             new RegularFile() {
                 @Override
-                File getAsFile() { fileTree("src/test/resources/security") { include "opendistro-security*" }.getSingleFile() }
+                File getAsFile() { fileTree("src/test/resources/security") { include "opensearch-security*" }.getSingleFile() }
             }
         }))
     }
     setting 'path.repo', repo.absolutePath
-
-    if (System.getProperty("tests.clustername") != null) {
-        filter {
-            excludeTestsMatching "org.opensearch.indexmanagement.indexstatemanagement.MetadataRegressionIT"
-        }
-    }
 }
+
 integTest {
     systemProperty 'tests.security.manager', 'false'
     systemProperty 'java.io.tmpdir', opensearch_tmp_dir.absolutePath
@@ -309,6 +303,11 @@ integTest {
         filter {
             excludeTestsMatching "org.opensearch.indexmanagement.indexstatemanagement.action.NotificationActionIT"
         }
+    }
+
+    // TODO: raise issue in Core, this is because of the test framework
+    if (System.getProperty("tests.clustername") != null) {
+        exclude 'org/opensearch/indexmanagement/indexstatemanagement/MetadataRegressionIT.class'
     }
 }
 
