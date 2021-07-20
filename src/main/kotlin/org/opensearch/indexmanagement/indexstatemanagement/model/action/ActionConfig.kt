@@ -68,6 +68,7 @@ abstract class ActionConfig(
     ): Action
 
     enum class ActionType(val type: String) {
+        SHRINK("shrink"),
         DELETE("delete"),
         TRANSITION("transition"),
         ROLLOVER("rollover"),
