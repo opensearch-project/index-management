@@ -122,6 +122,7 @@ abstract class ActionConfig(
                 ActionType.INDEX_PRIORITY.type -> IndexPriorityActionConfig(sin)
                 ActionType.ALLOCATION.type -> AllocationActionConfig(sin)
                 ActionType.ROLLUP.type -> RollupActionConfig(sin)
+                ActionType.SHRINK.type -> ShrinkActionConfig(sin)
                 else -> throw IllegalArgumentException("Invalid field: [${type.type}] found in Action.")
             }
 
@@ -160,6 +161,7 @@ abstract class ActionConfig(
                     ActionType.INDEX_PRIORITY.type -> actionConfig = IndexPriorityActionConfig.parse(xcp, index)
                     ActionType.ALLOCATION.type -> actionConfig = AllocationActionConfig.parse(xcp, index)
                     ActionType.ROLLUP.type -> actionConfig = RollupActionConfig.parse(xcp, index)
+                    ActionType.SHRINK.type -> actionConfig = ShrinkActionConfig.parse(xcp, index)
                     else -> throw IllegalArgumentException("Invalid field: [$fieldName] found in Action.")
                 }
             }
