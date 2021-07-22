@@ -4,9 +4,7 @@ import org.apache.logging.log4j.LogManager
 import org.opensearch.client.Client
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
-import org.opensearch.indexmanagement.indexstatemanagement.model.action.ForceMergeActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.model.action.ShrinkActionConfig
-import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.ActionProperties
 import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.StepMetaData
 import org.opensearch.indexmanagement.indexstatemanagement.step.Step
 
@@ -26,7 +24,6 @@ class AttemptShrinkStep(
     override suspend fun execute(): AttemptShrinkStep {
         return this
     }
-
 
     override fun getUpdatedManagedIndexMetaData(currentMetaData: ManagedIndexMetaData): ManagedIndexMetaData {
         // Saving maxNumSegments in ActionProperties after the force merge operation has begun so that if a ChangePolicy occurred

@@ -32,7 +32,11 @@ import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMet
 import org.opensearch.indexmanagement.indexstatemanagement.model.action.ActionConfig.ActionType
 import org.opensearch.indexmanagement.indexstatemanagement.model.action.ShrinkActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.step.Step
-import org.opensearch.indexmanagement.indexstatemanagement.step.shrink.*
+import org.opensearch.indexmanagement.indexstatemanagement.step.shrink.AttemptCheckConfigStep
+import org.opensearch.indexmanagement.indexstatemanagement.step.shrink.AttemptMoveShardsStep
+import org.opensearch.indexmanagement.indexstatemanagement.step.shrink.AttemptShrinkStep
+import org.opensearch.indexmanagement.indexstatemanagement.step.shrink.WaitForMoveShardsStep
+import org.opensearch.indexmanagement.indexstatemanagement.step.shrink.WaitForShrinkStep
 
 class ShrinkAction(
     clusterService: ClusterService,

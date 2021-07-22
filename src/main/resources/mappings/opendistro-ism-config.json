@@ -426,6 +426,28 @@
                       }
                     }
                   }
+                },
+                "shrink": {
+                  "properties": {
+                    "num_new_shards": {
+                      "type": "integer"
+                    },
+                    "max_shard_size": {
+                      "type": "text"
+                    },
+                    "percentage_decrease": {
+                      "type": "text"
+                    },
+                    "target_index_suffix": {
+                      "type": "text"
+                    },
+                    "aliases": {
+                      "type": "object"
+                    },
+                    "force_unsafe": {
+                      "type": "boolean"
+                    }
+                  }
                 }
               }
             },

@@ -37,6 +37,7 @@ import org.opensearch.common.xcontent.XContentBuilder
 import org.opensearch.common.xcontent.XContentParser
 import org.opensearch.common.xcontent.XContentParser.Token
 import org.opensearch.common.xcontent.XContentParserUtils.ensureExpectedToken
+import org.opensearch.commons.utils.stringList
 import org.opensearch.indexmanagement.indexstatemanagement.action.Action
 import org.opensearch.indexmanagement.indexstatemanagement.action.ShrinkAction
 import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
@@ -47,31 +48,31 @@ data class ShrinkActionConfig(
     val numNewShards: Int?,
     val maxShardSize: String?,
     val percentageDecrease: Int?,
-    val targetIndexName: String?,
-    val aliases: String?,
+    val targetIndexSuffix: String?,
+    val aliases: List<String>?,
     val forceUnsafe: Boolean?,
     val index: Int
-) : ToXContentObject, ActionConfig(ActionType.FORCE_MERGE, index) {
+) : ToXContentObject, ActionConfig(ActionType.SHRINK, index) {
 
     init {
         val maxShardNotNull = if (maxShardSize != null) 1 else 0
         val percentageDecreaseNotNull = if (percentageDecrease != null) 1 else 0
         val numNewShardsNotNull = if (numNewShards != null) 1 else 0
-        require(maxShardNotNull + percentageDecreaseNotNull + numNewShardsNotNull == 1) {"Exactly one of percentage_decrease, max_shard_size, or num_new must be specified"}
+        require(maxShardNotNull + percentageDecreaseNotNull + numNewShardsNotNull == 1) { "Exactly one of percentage_decrease, max_shard_size, or num_new must be specified" }
     }
 
     override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
         builder.startObject()
         super.toXContent(builder, params)
             .startObject(ActionType.SHRINK.type)
-            .field(NUM_NEW_SHARDS_FIELD, numNewShards)
-            .field(MAX_SHARD_SIZE_FIELD, maxShardSize)
-            .field(PERCENTAGE_DECREASE_FIELD, percentageDecrease)
-            .field(TARGET_INDEX_NAME_FIELD, targetIndexName)
-            .field(ALIASES_FIELD, aliases)
-            .field(FORCE_UNSAFE_FIELD, forceUnsafe)
-            .endObject()
-        return builder.endObject()
+        // Check null because builder can't add null values
+        if (numNewShards != null) builder.field(NUM_NEW_SHARDS_FIELD, numNewShards)
+        if (maxShardSize != null) builder.field(MAX_SHARD_SIZE_FIELD, maxShardSize)
+        if (percentageDecrease != null) builder.field(PERCENTAGE_DECREASE_FIELD, percentageDecrease)
+        if (targetIndexSuffix != null) builder.field(TARGET_INDEX_SUFFIX_FIELD, targetIndexSuffix)
+        if (aliases != null) builder.field(ALIASES_FIELD, aliases)
+        if (forceUnsafe != null) builder.field(FORCE_UNSAFE_FIELD, forceUnsafe)
+        return builder.endObject().endObject()
     }
 
     override fun isFragment(): Boolean = super<ToXContentObject>.isFragment()
@@ -89,8 +90,8 @@ data class ShrinkActionConfig(
         numNewShards = sin.readOptionalInt(),
         maxShardSize = sin.readOptionalString(),
         percentageDecrease = sin.readOptionalInt(),
-        targetIndexName = sin.readOptionalString(),
-        aliases = sin.readOptionalString(),
+        targetIndexSuffix = sin.readOptionalString(),
+        aliases = sin.readOptionalStringList(),
         forceUnsafe = sin.readOptionalBoolean(),
         index = sin.readInt()
     )
@@ -101,8 +102,8 @@ data class ShrinkActionConfig(
         out.writeOptionalInt(numNewShards)
         out.writeOptionalString(maxShardSize)
         out.writeOptionalInt(percentageDecrease)
-        out.writeOptionalString(targetIndexName)
-        out.writeOptionalString(aliases)
+        out.writeOptionalString(targetIndexSuffix)
+        out.writeOptionalStringCollection(aliases)
         out.writeOptionalBoolean(forceUnsafe)
         out.writeInt(index)
     }
@@ -111,7 +112,7 @@ data class ShrinkActionConfig(
         const val NUM_NEW_SHARDS_FIELD = "num_new_shards"
         const val PERCENTAGE_DECREASE_FIELD = "percentage_decrease"
         const val MAX_SHARD_SIZE_FIELD = "max_shards_size"
-        const val TARGET_INDEX_NAME_FIELD = "target_index_name"
+        const val TARGET_INDEX_SUFFIX_FIELD = "target_index_suffix"
         const val ALIASES_FIELD = "aliases"
         const val FORCE_UNSAFE_FIELD = "force_unsafe"
 
@@ -121,8 +122,8 @@ data class ShrinkActionConfig(
             var numNewShards: Int? = null
             var maxShardSize: String? = null
             var percentageDecrease: Int? = null
-            var targetIndexName: String? = null
-            var aliases: String? = null
+            var targetIndexSuffix: String? = null
+            var aliases: List<String>? = null
             var forceUnsafe: Boolean? = null
             ensureExpectedToken(Token.START_OBJECT, xcp.currentToken(), xcp)
             while (xcp.nextToken() != Token.END_OBJECT) {
@@ -130,15 +131,15 @@ data class ShrinkActionConfig(
                 xcp.nextToken()
                 when (fieldName) {
                     NUM_NEW_SHARDS_FIELD -> numNewShards = xcp.intValue()
-                    MAX_SHARD_SIZE_FIELD -> maxShardSize = xcp.text()
+                    MAX_SHARD_SIZE_FIELD -> maxShardSize = xcp.textOrNull()
                     PERCENTAGE_DECREASE_FIELD -> percentageDecrease = xcp.intValue()
-                    TARGET_INDEX_NAME_FIELD -> targetIndexName = xcp.text()
-                    ALIASES_FIELD -> aliases = xcp.text()
+                    TARGET_INDEX_SUFFIX_FIELD -> targetIndexSuffix = xcp.textOrNull()
+                    ALIASES_FIELD -> aliases = xcp.stringList()
                     FORCE_UNSAFE_FIELD -> forceUnsafe = xcp.booleanValue()
-                    else -> throw IllegalArgumentException("Invalid field: [$fieldName] found in ForceShrinkActionConfig.")
+                    else -> throw IllegalArgumentException("Invalid field: [$fieldName] found in ShrinkActionConfig.")
                 }
             }
-            return ShrinkActionConfig(numNewShards, maxShardSize, percentageDecrease, targetIndexName, aliases, forceUnsafe, index)
+            return ShrinkActionConfig(numNewShards, maxShardSize, percentageDecrease, targetIndexSuffix, aliases, forceUnsafe, index)
         }
     }
 }
