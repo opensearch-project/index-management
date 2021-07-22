@@ -43,6 +43,7 @@ class TransportPreviewTransformAction @Inject constructor(
     PreviewTransformAction.NAME, transportService, actionFilters, ::PreviewTransformRequest
 ) {
 
+    @Suppress("SpreadOperator")
     override fun doExecute(task: Task, request: PreviewTransformRequest, listener: ActionListener<PreviewTransformResponse>) {
         val transform = request.transform
 

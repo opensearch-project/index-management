@@ -63,7 +63,7 @@ class AttemptRolloverStep(
 
     override fun isIdempotent() = false
 
-    @Suppress("TooGenericExceptionCaught")
+    @Suppress("ComplexMethod", "LongMethod", "TooGenericExceptionCaught")
     override suspend fun execute(): AttemptRolloverStep {
         val skipRollover = clusterService.state().metadata.index(indexName).getRolloverSkip()
         if (skipRollover) {
@@ -278,6 +278,7 @@ class AttemptRolloverStep(
         )
     }
 
+    @Suppress("TooManyFunctions")
     companion object {
         fun getFailedMessage(index: String) = "Failed to rollover index [index=$index]"
         fun getFailedAliasUpdateMessage(index: String, newIndex: String) =
