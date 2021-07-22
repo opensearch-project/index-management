@@ -41,6 +41,7 @@ class TransportGetTransformAction @Inject constructor(
     GetTransformAction.NAME, transportService, actionFilters, ::GetTransformRequest
 ) {
 
+    @Suppress("ReturnCount")
     override fun doExecute(task: Task, request: GetTransformRequest, listener: ActionListener<GetTransformResponse>) {
         val getRequest = GetRequest(INDEX_MANAGEMENT_INDEX, request.id)
             .fetchSourceContext(request.srcContext).preference(request.preference)

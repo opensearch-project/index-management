@@ -232,7 +232,7 @@ data class Transform(
         const val TRANSFORM_DOC_ID_FIELD = "$TRANSFORM_TYPE._id"
         const val TRANSFORM_DOC_COUNT_FIELD = "$TRANSFORM_TYPE._doc_count"
 
-        @Suppress("LongMethod")
+        @Suppress("ComplexMethod", "LongMethod")
         @JvmStatic
         @JvmOverloads
         fun parse(

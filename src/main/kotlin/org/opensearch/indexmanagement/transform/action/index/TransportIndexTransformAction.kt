@@ -114,6 +114,7 @@ class TransportIndexTransformAction @Inject constructor(
             return modified.toList()
         }
 
+        @Suppress("SpreadOperator")
         private fun putTransform() {
             val transform = request.transform.copy(schemaVersion = IndexUtils.indexManagementConfigSchemaVersion)
             request.index(INDEX_MANAGEMENT_INDEX)
