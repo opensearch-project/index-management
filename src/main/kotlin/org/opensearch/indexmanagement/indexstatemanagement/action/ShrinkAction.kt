@@ -55,11 +55,11 @@ class ShrinkAction(
         val currentStepStatus = stepMetaData.stepStatus
 
         if (currentStepStatus == Step.StepStatus.COMPLETED) {
-            when (currentStep) {
-                AttemptCheckConfigStep.name -> return attemptMoveShardsStep
-                AttemptMoveShardsStep.name -> return waitForMoveShardsStep
-                WaitForMoveShardsStep.name -> return attemptShrinkStep
-                AttemptShrinkStep.name -> return waitForShrinkStep
+            return when (currentStep) {
+                AttemptCheckConfigStep.name -> attemptMoveShardsStep
+                AttemptMoveShardsStep.name -> waitForMoveShardsStep
+                WaitForMoveShardsStep.name -> attemptShrinkStep
+                AttemptShrinkStep.name -> waitForShrinkStep
                 else -> stepNameToStep[currentStep]!!
             }
         }

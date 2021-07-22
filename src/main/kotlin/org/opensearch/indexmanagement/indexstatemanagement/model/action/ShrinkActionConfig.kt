@@ -43,7 +43,8 @@ data class ShrinkActionConfig(
         val maxShardNotNull = if (maxShardSize != null) 1 else 0
         val percentageDecreaseNotNull = if (percentageDecrease != null) 1 else 0
         val numNewShardsNotNull = if (numNewShards != null) 1 else 0
-        require(maxShardNotNull + percentageDecreaseNotNull + numNewShardsNotNull == 1) { "Exactly one of percentage_decrease, max_shard_size, or num_new must be specified" }
+        val numSet = maxShardNotNull + percentageDecreaseNotNull + numNewShardsNotNull
+        require(numSet == 1) { "Exactly one of percentage_decrease, max_shard_size, or num_new must be specified" }
     }
 
     override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
