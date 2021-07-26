@@ -16,6 +16,7 @@ import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.io.stream.StreamInput
 import org.opensearch.common.io.stream.StreamOutput
 import org.opensearch.common.settings.Settings
+import org.opensearch.common.unit.ByteSizeValue
 import org.opensearch.common.xcontent.ToXContent
 import org.opensearch.common.xcontent.ToXContentObject
 import org.opensearch.common.xcontent.XContentBuilder
@@ -31,7 +32,7 @@ import java.io.IOException
 
 data class ShrinkActionConfig(
     val numNewShards: Int?,
-    val maxShardSize: String?,
+    val maxShardSize: ByteSizeValue?,
     val percentageDecrease: Double?,
     val targetIndexSuffix: String?,
     val aliases: List<String>?,
@@ -77,7 +78,7 @@ data class ShrinkActionConfig(
             .startObject(ActionType.SHRINK.type)
         // Check null because builder can't add null values
         if (numNewShards != null) builder.field(NUM_NEW_SHARDS_FIELD, numNewShards)
-        if (maxShardSize != null) builder.field(MAX_SHARD_SIZE_FIELD, maxShardSize)
+        if (maxShardSize != null) builder.field(MAX_SHARD_SIZE_FIELD, maxShardSize.stringRep)
         if (percentageDecrease != null) builder.field(PERCENTAGE_DECREASE_FIELD, percentageDecrease)
         if (targetIndexSuffix != null) builder.field(TARGET_INDEX_SUFFIX_FIELD, targetIndexSuffix)
         if (aliases != null) builder.field(ALIASES_FIELD, aliases)
@@ -98,7 +99,7 @@ data class ShrinkActionConfig(
     @Throws(IOException::class)
     constructor(sin: StreamInput) : this(
         numNewShards = sin.readOptionalInt(),
-        maxShardSize = sin.readOptionalString(),
+        maxShardSize = sin.readOptionalWriteable(::ByteSizeValue),
         percentageDecrease = sin.readOptionalDouble(),
         targetIndexSuffix = sin.readOptionalString(),
         aliases = sin.readOptionalStringList(),
@@ -110,7 +111,7 @@ data class ShrinkActionConfig(
     override fun writeTo(out: StreamOutput) {
         super.writeTo(out)
         out.writeOptionalInt(numNewShards)
-        out.writeOptionalString(maxShardSize)
+        out.writeOptionalWriteable(maxShardSize)
         out.writeOptionalDouble(percentageDecrease)
         out.writeOptionalString(targetIndexSuffix)
         out.writeOptionalStringCollection(aliases)
@@ -134,7 +135,7 @@ data class ShrinkActionConfig(
         @Throws(IOException::class)
         fun parse(xcp: XContentParser, index: Int): ShrinkActionConfig {
             var numNewShards: Int? = null
-            var maxShardSize: String? = null
+            var maxShardSize: ByteSizeValue? = null
             var percentageDecrease: Double? = null
             var targetIndexSuffix: String? = null
             var aliases: List<String>? = null
@@ -145,7 +146,7 @@ data class ShrinkActionConfig(
                 xcp.nextToken()
                 when (fieldName) {
                     NUM_NEW_SHARDS_FIELD -> numNewShards = xcp.intValue()
-                    MAX_SHARD_SIZE_FIELD -> maxShardSize = xcp.textOrNull()
+                    MAX_SHARD_SIZE_FIELD -> maxShardSize = ByteSizeValue.parseBytesSizeValue(xcp.textOrNull(), MAX_SHARD_SIZE_FIELD)
                     PERCENTAGE_DECREASE_FIELD -> percentageDecrease = xcp.doubleValue()
                     TARGET_INDEX_SUFFIX_FIELD -> targetIndexSuffix = xcp.textOrNull()
                     ALIASES_FIELD -> aliases = xcp.stringList()

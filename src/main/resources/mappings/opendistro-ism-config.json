@@ -433,7 +433,7 @@
                       "type": "integer"
                     },
                     "max_shard_size": {
-                      "type": "text"
+                      "type": "keyword"
                     },
                     "percentage_decrease": {
                       "type": "double"
