@@ -37,8 +37,6 @@ class AttemptShrinkStep(
     }
 
     override fun getUpdatedManagedIndexMetaData(currentMetaData: ManagedIndexMetaData): ManagedIndexMetaData {
-        // Saving maxNumSegments in ActionProperties after the force merge operation has begun so that if a ChangePolicy occurred
-        // in between this step and WaitForForceMergeStep, a cached segment count expected from the operation is available
         val currentActionMetaData = currentMetaData.actionMetaData
         return currentMetaData.copy(
             actionMetaData = currentActionMetaData?.copy(),

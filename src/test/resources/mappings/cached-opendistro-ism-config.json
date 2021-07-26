@@ -436,7 +436,7 @@
                       "type": "text"
                     },
                     "percentage_decrease": {
-                      "type": "text"
+                      "type": "double"
                     },
                     "target_index_suffix": {
                       "type": "text"

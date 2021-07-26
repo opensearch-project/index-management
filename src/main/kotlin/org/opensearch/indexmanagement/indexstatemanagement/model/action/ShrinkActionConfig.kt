@@ -32,7 +32,7 @@ import java.io.IOException
 data class ShrinkActionConfig(
     val numNewShards: Int?,
     val maxShardSize: String?,
-    val percentageDecrease: Int?,
+    val percentageDecrease: Double?,
     val targetIndexSuffix: String?,
     val aliases: List<String>?,
     val forceUnsafe: Boolean?,
@@ -40,11 +40,35 @@ data class ShrinkActionConfig(
 ) : ToXContentObject, ActionConfig(ActionType.SHRINK, index) {
 
     init {
-        val maxShardNotNull = if (maxShardSize != null) 1 else 0
-        val percentageDecreaseNotNull = if (percentageDecrease != null) 1 else 0
-        val numNewShardsNotNull = if (numNewShards != null) 1 else 0
+        /*
+        The numbers associated with each shard config are all k % mod 3 == 1.
+        Because of the % 3 == 1 property, we can check if more than one shard configs are specified by
+        modding the sum by 3. Any sum % 3 != 1 is a sum of more than one of the configs and thus invalid.
+        We can then check the error message by checking the sum against each unique sum combination.
+         */
+        val maxShardNotNull = if (maxShardSize != null) MAX_SHARD_NOT_NULL else 0
+        val percentageDecreaseNotNull = if (percentageDecrease != null) PERCENTAGE_DECREASE_NOT_NULL else 0
+        val numNewShardsNotNull = if (numNewShards != null) NUM_SHARDS_NOT_NULL else 0
         val numSet = maxShardNotNull + percentageDecreaseNotNull + numNewShardsNotNull
-        require(numSet == 1) { "Exactly one of percentage_decrease, max_shard_size, or num_new must be specified" }
+        require(numSet % NUM_SHARD_CONFIGS == 1) {
+            when (numSet) {
+                MAX_SHARD_NOT_NULL + PERCENTAGE_DECREASE_NOT_NULL ->
+                    "Cannot specify both maximum shard size and percentage decrease. Please pick one."
+                MAX_SHARD_NOT_NULL + NUM_SHARDS_NOT_NULL ->
+                    "Cannot specify both maximum shard size and number of new shards. Please pick one."
+                PERCENTAGE_DECREASE_NOT_NULL + NUM_SHARDS_NOT_NULL ->
+                    "Cannot specify both percentage decrease and number of new shards. Please pick one."
+                MAX_SHARD_NOT_NULL + PERCENTAGE_DECREASE_NOT_NULL + NUM_SHARDS_NOT_NULL ->
+                    "Cannot specify maximum shard size, percentage decrease, and number of new shards. Please pick one."
+                // Never executes this code block.
+                else -> ""
+            }
+        }
+        if (percentageDecreaseNotNull != 0) {
+            require(percentageDecrease!!.compareTo(0.0) == 1 && percentageDecrease.compareTo(1.0) == -1) {
+                "Percentage decrease must be between 0.0 and 1.0 exclusively"
+            }
+        }
     }
 
     override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
@@ -75,7 +99,7 @@ data class ShrinkActionConfig(
     constructor(sin: StreamInput) : this(
         numNewShards = sin.readOptionalInt(),
         maxShardSize = sin.readOptionalString(),
-        percentageDecrease = sin.readOptionalInt(),
+        percentageDecrease = sin.readOptionalDouble(),
         targetIndexSuffix = sin.readOptionalString(),
         aliases = sin.readOptionalStringList(),
         forceUnsafe = sin.readOptionalBoolean(),
@@ -87,7 +111,7 @@ data class ShrinkActionConfig(
         super.writeTo(out)
         out.writeOptionalInt(numNewShards)
         out.writeOptionalString(maxShardSize)
-        out.writeOptionalInt(percentageDecrease)
+        out.writeOptionalDouble(percentageDecrease)
         out.writeOptionalString(targetIndexSuffix)
         out.writeOptionalStringCollection(aliases)
         out.writeOptionalBoolean(forceUnsafe)
@@ -97,17 +121,21 @@ data class ShrinkActionConfig(
     companion object {
         const val NUM_NEW_SHARDS_FIELD = "num_new_shards"
         const val PERCENTAGE_DECREASE_FIELD = "percentage_decrease"
-        const val MAX_SHARD_SIZE_FIELD = "max_shards_size"
+        const val MAX_SHARD_SIZE_FIELD = "max_shard_size"
         const val TARGET_INDEX_SUFFIX_FIELD = "target_index_suffix"
         const val ALIASES_FIELD = "aliases"
         const val FORCE_UNSAFE_FIELD = "force_unsafe"
+        const val MAX_SHARD_NOT_NULL = 1
+        const val PERCENTAGE_DECREASE_NOT_NULL = 4
+        const val NUM_SHARDS_NOT_NULL = 7
+        const val NUM_SHARD_CONFIGS = 3
 
         @JvmStatic
         @Throws(IOException::class)
         fun parse(xcp: XContentParser, index: Int): ShrinkActionConfig {
             var numNewShards: Int? = null
             var maxShardSize: String? = null
-            var percentageDecrease: Int? = null
+            var percentageDecrease: Double? = null
             var targetIndexSuffix: String? = null
             var aliases: List<String>? = null
             var forceUnsafe: Boolean? = null
@@ -118,7 +146,7 @@ data class ShrinkActionConfig(
                 when (fieldName) {
                     NUM_NEW_SHARDS_FIELD -> numNewShards = xcp.intValue()
                     MAX_SHARD_SIZE_FIELD -> maxShardSize = xcp.textOrNull()
-                    PERCENTAGE_DECREASE_FIELD -> percentageDecrease = xcp.intValue()
+                    PERCENTAGE_DECREASE_FIELD -> percentageDecrease = xcp.doubleValue()
                     TARGET_INDEX_SUFFIX_FIELD -> targetIndexSuffix = xcp.textOrNull()
                     ALIASES_FIELD -> aliases = xcp.stringList()
                     FORCE_UNSAFE_FIELD -> forceUnsafe = xcp.booleanValue()

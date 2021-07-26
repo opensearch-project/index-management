@@ -43,7 +43,7 @@ data class ActionProperties(
     val snapshotName: String? = null,
     val rollupId: String? = null,
     val hasRollupFailed: Boolean? = null,
-    val shrinkNodeId: Int? = null,
+    val shrinkNodeId: String? = null,
     val shrinkTargetIndexName: String? = null,
     val shrinkNumShards: Int? = null
 ) : Writeable, ToXContentFragment {
@@ -53,7 +53,7 @@ data class ActionProperties(
         out.writeOptionalString(snapshotName)
         out.writeOptionalString(rollupId)
         out.writeOptionalBoolean(hasRollupFailed)
-        out.writeOptionalInt(shrinkNodeId)
+        out.writeOptionalString(shrinkNodeId)
         out.writeOptionalString(shrinkTargetIndexName)
         out.writeOptionalInt(shrinkNumShards)
     }
@@ -77,7 +77,7 @@ data class ActionProperties(
             val snapshotName: String? = si.readOptionalString()
             val rollupId: String? = si.readOptionalString()
             val hasRollupFailed: Boolean? = si.readOptionalBoolean()
-            val shrinkNodeId: Int? = si.readOptionalInt()
+            val shrinkNodeId: String? = si.readOptionalString()
             val shrinkTargetIndexName: String? = si.readOptionalString()
             val shrinkNumShards: Int? = si.readOptionalInt()
 
@@ -89,7 +89,7 @@ data class ActionProperties(
             var snapshotName: String? = null
             var rollupId: String? = null
             var hasRollupFailed: Boolean? = null
-            var shrinkNodeId: Int? = null
+            var shrinkNodeId: String? = null
             var shrinkTargetIndexName: String? = null
             var shrinkNumShards: Int? = null
 
@@ -103,7 +103,7 @@ data class ActionProperties(
                     Properties.SNAPSHOT_NAME.key -> snapshotName = xcp.text()
                     Properties.ROLLUP_ID.key -> rollupId = xcp.text()
                     Properties.HAS_ROLLUP_FAILED.key -> hasRollupFailed = xcp.booleanValue()
-                    Properties.SHRINK_NODE_ID.key -> shrinkNodeId = xcp.intValue()
+                    Properties.SHRINK_NODE_ID.key -> shrinkNodeId = xcp.text()
                     Properties.SHRINK_TARGET_INDEX_NAME.key -> shrinkTargetIndexName = xcp.text()
                     Properties.SHRINK_NUM_SHARDS.key -> shrinkNumShards = xcp.intValue()
                 }

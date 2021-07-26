@@ -106,13 +106,14 @@
                   "type": "boolean"
                 },
                 "shrink_node_id": {
-                  "type": "integer"
+                  "type": "text"
                 },
                 "shrink_target_index_name": {
                   "type": "text",
                   "fields": {
                     "keyword": {
-                      "type": "keyword"
+                      "type": "keyword",
+                      "ignore_above": 256
                     }
                   }
                 },
