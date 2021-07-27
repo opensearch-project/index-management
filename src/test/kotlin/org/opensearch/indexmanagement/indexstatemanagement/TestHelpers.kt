@@ -55,6 +55,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.model.action.RollupAc
 import org.opensearch.indexmanagement.indexstatemanagement.model.action.SnapshotActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.model.coordinator.ClusterStateManagedIndexConfig
 import org.opensearch.indexmanagement.indexstatemanagement.model.coordinator.SweptManagedIndexConfig
+import org.opensearch.indexmanagement.indexstatemanagement.model.destination.Channel
 import org.opensearch.indexmanagement.indexstatemanagement.model.destination.Chime
 import org.opensearch.indexmanagement.indexstatemanagement.model.destination.CustomWebhook
 import org.opensearch.indexmanagement.indexstatemanagement.model.destination.Destination
@@ -174,7 +175,7 @@ fun randomNotificationActionConfig(
     messageTemplate: Script = randomTemplateScript("random message"),
     index: Int = 0
 ): NotificationActionConfig {
-    return NotificationActionConfig(destination, messageTemplate, index)
+    return NotificationActionConfig(destination, null, messageTemplate, index)
 }
 
 fun randomAllocationActionConfig(require: Map<String, String> = emptyMap(), exclude: Map<String, String> = emptyMap(), include: Map<String, String> = emptyMap()): AllocationActionConfig {
@@ -222,9 +223,11 @@ fun randomCustomWebhook(): CustomWebhook {
 }
 
 fun randomTemplateScript(
-    source: String,
-    params: Map<String, String> = emptyMap()
-): Script = Script(ScriptType.INLINE, Script.DEFAULT_TEMPLATE_LANG, source, params)
+    source: String = OpenSearchRestTestCase.randomAlphaOfLength(10),
+    params: Map<String, String> = emptyMap(),
+    scriptType: ScriptType = ScriptType.INLINE,
+    lang: String = Script.DEFAULT_TEMPLATE_LANG
+): Script = Script(scriptType, lang, source, params)
 
 fun randomSnapshotActionConfig(repository: String = "repo", snapshot: String = "sp"): SnapshotActionConfig {
     return SnapshotActionConfig(repository, snapshot, index = 0)
@@ -341,6 +344,10 @@ fun randomISMTemplate(
     )
 }
 
+fun randomChannel(id: String = OpenSearchRestTestCase.randomAlphaOfLength(10)): Channel {
+    return Channel(id = id)
+}
+
 fun Policy.toJsonString(): String {
     val builder = XContentFactory.jsonBuilder()
     return this.toXContent(builder).string()
@@ -432,6 +439,11 @@ fun RollupActionConfig.toJsonString(): String {
 }
 
 fun ISMTemplate.toJsonString(): String {
+    val builder = XContentFactory.jsonBuilder()
+    return this.toXContent(builder, ToXContent.EMPTY_PARAMS).string()
+}
+
+fun Channel.toJsonString(): String {
     val builder = XContentFactory.jsonBuilder()
     return this.toXContent(builder, ToXContent.EMPTY_PARAMS).string()
 }

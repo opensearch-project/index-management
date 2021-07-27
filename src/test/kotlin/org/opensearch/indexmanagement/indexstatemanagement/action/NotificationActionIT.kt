@@ -71,7 +71,7 @@ class NotificationActionIT : IndexStateManagementRestTestCase() {
             )
         )
         val messageTemplate = Script(ScriptType.INLINE, Script.DEFAULT_TEMPLATE_LANG, "{ \"testing\": 5 }", emptyMap())
-        val actionConfig = NotificationActionConfig(destination = destination, messageTemplate = messageTemplate, index = 0)
+        val actionConfig = NotificationActionConfig(destination = destination, channel = null, messageTemplate = messageTemplate, index = 0)
         val states = listOf(State(name = "NotificationState", actions = listOf(actionConfig), transitions = emptyList()))
         val policy = Policy(
             id = policyID,
