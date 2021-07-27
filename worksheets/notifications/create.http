@@ -1,0 +1,21 @@
+POST localhost:9200/_plugins/_notifications/configs
+Content-Type: application/json
+
+{
+  "config":{
+    "name":"this is a sample config name",
+    "description":"this is a sample config description",
+    "config_type":"chime",
+    "feature_list":[
+      "index_management"
+    ],
+    "is_enabled":true,
+    "chime":{
+      "url":"https://hooks.chime.aws/incomingwebhooks/5685915d-985f-4e1e-9087-f20da57dff13?token=RjRpb0pUZU98MXxFSVl2MUdRVUlNZEE5UnU1M0ZTMERBVHdhSVhZMmpsSlM3aThHbXhFMEFV"
+    }
+  }
+}
+
+###
+
+GET localhost:9200/_opensearch/_notifications/feature/test/Lk6qg_noBMj6vY9S6g3Jz?feature=index_management
