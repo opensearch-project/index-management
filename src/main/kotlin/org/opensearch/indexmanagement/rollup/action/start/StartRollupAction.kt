@@ -32,6 +32,6 @@ import org.opensearch.action.support.master.AcknowledgedResponse
 class StartRollupAction private constructor() : ActionType<AcknowledgedResponse>(NAME, ::AcknowledgedResponse) {
     companion object {
         val INSTANCE = StartRollupAction()
-        val NAME = "cluster:admin/opendistro/rollup/start"
+        const val NAME = "cluster:admin/opendistro/rollup/start"
     }
 }

@@ -17,6 +17,6 @@ import org.opensearch.action.support.master.AcknowledgedResponse
 class StartTransformAction private constructor() : ActionType<AcknowledgedResponse>(NAME, ::AcknowledgedResponse) {
     companion object {
         val INSTANCE = StartTransformAction()
-        val NAME = "cluster:admin/opendistro/transform/start"
+        const val NAME = "cluster:admin/opendistro/transform/start"
     }
 }

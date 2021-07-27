@@ -32,6 +32,6 @@ import org.opensearch.indexmanagement.indexstatemanagement.transport.action.ISMS
 class ChangePolicyAction private constructor() : ActionType<ISMStatusResponse>(NAME, ::ISMStatusResponse) {
     companion object {
         val INSTANCE = ChangePolicyAction()
-        val NAME = "cluster:admin/opendistro/ism/managedindex/change"
+        const val NAME = "cluster:admin/opendistro/ism/managedindex/change"
     }
 }

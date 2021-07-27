@@ -32,6 +32,6 @@ import org.opensearch.indexmanagement.indexstatemanagement.transport.action.ISMS
 class RemovePolicyAction private constructor() : ActionType<ISMStatusResponse>(NAME, ::ISMStatusResponse) {
     companion object {
         val INSTANCE = RemovePolicyAction()
-        val NAME = "cluster:admin/opendistro/ism/managedindex/remove"
+        const val NAME = "cluster:admin/opendistro/ism/managedindex/remove"
     }
 }

@@ -16,6 +16,6 @@ import org.opensearch.action.ActionType
 class PreviewTransformAction private constructor() : ActionType<PreviewTransformResponse>(NAME, ::PreviewTransformResponse) {
     companion object {
         val INSTANCE = PreviewTransformAction()
-        val NAME = "cluster:admin/opendistro/transform/preview"
+        const val NAME = "cluster:admin/opendistro/transform/preview"
     }
 }
