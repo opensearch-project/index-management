@@ -76,6 +76,13 @@ class ManagedIndexSettings {
             Setting.Property.Dynamic
         )
 
+        val AUTO_MANAGE: Setting<Boolean> = Setting.boolSetting(
+            "index.plugins.index_state_management.auto_manage",
+            true,
+            Setting.Property.IndexScope,
+            Setting.Property.Dynamic
+        )
+
         val JOB_INTERVAL: Setting<Int> = Setting.intSetting(
             "plugins.index_state_management.job_interval",
             LegacyOpenDistroManagedIndexSettings.JOB_INTERVAL,

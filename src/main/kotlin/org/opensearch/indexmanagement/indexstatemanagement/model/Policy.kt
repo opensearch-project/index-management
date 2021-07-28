@@ -54,7 +54,7 @@ data class Policy(
     val errorNotification: ErrorNotification?,
     val defaultState: String,
     val states: List<State>,
-    val ismTemplate: ISMTemplate? = null
+    val ismTemplate: List<ISMTemplate>? = null
 ) : ToXContentObject, Writeable {
 
     init {
@@ -101,7 +101,9 @@ data class Policy(
         errorNotification = sin.readOptionalWriteable(::ErrorNotification),
         defaultState = sin.readString(),
         states = sin.readList(::State),
-        ismTemplate = sin.readOptionalWriteable(::ISMTemplate)
+        ismTemplate = if (sin.readBoolean()) {
+            sin.readList(::ISMTemplate)
+        } else null
     )
 
     @Throws(IOException::class)
@@ -115,7 +117,12 @@ data class Policy(
         out.writeOptionalWriteable(errorNotification)
         out.writeString(defaultState)
         out.writeList(states)
-        out.writeOptionalWriteable(ismTemplate)
+        if (ismTemplate != null) {
+            out.writeBoolean(true)
+            out.writeList(ismTemplate)
+        } else {
+            out.writeBoolean(false)
+        }
     }
 
     companion object {
@@ -130,7 +137,7 @@ data class Policy(
         const val STATES_FIELD = "states"
         const val ISM_TEMPLATE = "ism_template"
 
-        @Suppress("ComplexMethod")
+        @Suppress("ComplexMethod", "LongMethod", "NestedBlockDepth")
         @JvmStatic
         @JvmOverloads
         @Throws(IOException::class)
@@ -146,7 +153,7 @@ data class Policy(
             var lastUpdatedTime: Instant? = null
             var schemaVersion: Long = IndexUtils.DEFAULT_SCHEMA_VERSION
             val states: MutableList<State> = mutableListOf()
-            var ismTemplate: ISMTemplate? = null
+            var ismTemplates: List<ISMTemplate>? = null
 
             ensureExpectedToken(Token.START_OBJECT, xcp.currentToken(), xcp)
             while (xcp.nextToken() != Token.END_OBJECT) {
@@ -166,7 +173,22 @@ data class Policy(
                             states.add(State.parse(xcp))
                         }
                     }
-                    ISM_TEMPLATE -> ismTemplate = if (xcp.currentToken() == Token.VALUE_NULL) null else ISMTemplate.parse(xcp)
+                    ISM_TEMPLATE -> {
+                        if (xcp.currentToken() != Token.VALUE_NULL) {
+                            ismTemplates = mutableListOf()
+                            when (xcp.currentToken()) {
+                                Token.START_ARRAY -> {
+                                    while (xcp.nextToken() != Token.END_ARRAY) {
+                                        ismTemplates.add(ISMTemplate.parse(xcp))
+                                    }
+                                }
+                                Token.START_OBJECT -> {
+                                    ismTemplates.add(ISMTemplate.parse(xcp))
+                                }
+                                else -> ensureExpectedToken(Token.START_ARRAY, xcp.currentToken(), xcp)
+                            }
+                        }
+                    }
                     else -> throw IllegalArgumentException("Invalid field: [$fieldName] found in Policy.")
                 }
             }
@@ -181,7 +203,7 @@ data class Policy(
                 errorNotification = errorNotification,
                 defaultState = requireNotNull(defaultState) { "$DEFAULT_STATE_FIELD is null" },
                 states = states.toList(),
-                ismTemplate = ismTemplate
+                ismTemplate = ismTemplates
             )
         }
     }

@@ -40,6 +40,7 @@ import org.opensearch.action.bulk.BulkRequest
 import org.opensearch.action.bulk.BulkResponse
 import org.opensearch.action.get.MultiGetRequest
 import org.opensearch.action.get.MultiGetResponse
+import org.opensearch.action.index.IndexRequest
 import org.opensearch.action.search.SearchPhaseExecutionException
 import org.opensearch.action.search.SearchRequest
 import org.opensearch.action.search.SearchResponse
@@ -49,6 +50,7 @@ import org.opensearch.cluster.ClusterChangedEvent
 import org.opensearch.cluster.ClusterState
 import org.opensearch.cluster.ClusterStateListener
 import org.opensearch.cluster.block.ClusterBlockException
+import org.opensearch.cluster.metadata.IndexMetadata
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.component.LifecycleListener
 import org.opensearch.common.settings.Settings
@@ -67,6 +69,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.model.coordinator.Swe
 import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.filterNotNullValues
 import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.getPolicyToTemplateMap
 import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.mgetManagedIndexMetadata
+import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.AUTO_MANAGE
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.COORDINATOR_BACKOFF_COUNT
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.COORDINATOR_BACKOFF_MILLIS
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.INDEX_STATE_MANAGEMENT_ENABLED
@@ -292,46 +295,51 @@ class ManagedIndexCoordinator(
     /**
      * build requests to create jobs for indices matching ISM templates
      */
+    @Suppress("NestedBlockDepth")
     suspend fun getMatchingIndicesUpdateReq(
         clusterState: ClusterState,
         indexNames: List<String>
     ): List<DocWriteRequest<*>> {
-        val updateManagedIndexReqs = mutableListOf<DocWriteRequest<*>>()
-        if (indexNames.isEmpty()) return updateManagedIndexReqs
+        val updateManagedIndexReqs = mutableListOf<DocWriteRequest<IndexRequest>>()
+        if (indexNames.isEmpty()) return updateManagedIndexReqs.toList()
 
-        val indexMetadatas = clusterState.metadata.indices
         val templates = getISMTemplates()
 
-        val indexToMatchedPolicy = indexNames.map { indexName ->
-            indexName to templates.findMatchingPolicy(clusterState, indexName)
-        }.toMap()
-
-        indexToMatchedPolicy.filterNotNullValues()
-            .forEach { (index, policyID) ->
-                val indexUuid = indexMetadatas[index].indexUUID
-                val ismTemplate = templates[policyID]
-                if (indexUuid != null && ismTemplate != null) {
-                    logger.info("Index [$index] will be managed by policy [$policyID]")
-                    updateManagedIndexReqs.add(
-                        managedIndexConfigIndexRequest(index, indexUuid, policyID, jobInterval)
-                    )
-                } else {
-                    logger.warn(
-                        "Index [$index] has index uuid [$indexUuid] and/or " +
-                            "a matching template [$ismTemplate] that is null."
-                    )
+        // Iterate over each unmanaged hot/warm index and if it matches an ISM template add a managed index config index request
+        indexNames.forEach { indexName ->
+            if (clusterState.metadata.hasIndex(indexName)) {
+                val indexMetadata = clusterState.metadata.index(indexName)
+                val autoManage = indexMetadata.settings.getAsBoolean(AUTO_MANAGE.key, true)
+                if (autoManage) {
+                    val indexUuid = indexMetadata.indexUUID
+                    val isHiddenIndex =
+                        IndexMetadata.INDEX_HIDDEN_SETTING.get(indexMetadata.settings) || indexName.startsWith(".")
+                    val indexAbstraction = clusterState.metadata.indicesLookup[indexName]
+                    templates.findMatchingPolicy(indexName, indexMetadata.creationDate, isHiddenIndex, indexAbstraction)
+                        ?.let { policyID ->
+                            logger.info("Index [$indexName] matched ISM policy template and will be managed by $policyID")
+                            updateManagedIndexReqs.add(
+                                managedIndexConfigIndexRequest(
+                                    indexName,
+                                    indexUuid,
+                                    policyID,
+                                    jobInterval
+                                )
+                            )
+                        }
                 }
             }
+        }
 
-        return updateManagedIndexReqs
+        return updateManagedIndexReqs.toList()
     }
 
-    suspend fun getISMTemplates(): Map<String, ISMTemplate> {
+    suspend fun getISMTemplates(): Map<String, List<ISMTemplate>> {
         val searchRequest = SearchRequest()
             .source(
                 SearchSourceBuilder().query(
                     QueryBuilders.existsQuery(ISM_TEMPLATE_FIELD)
-                )
+                ).size(MAX_HITS)
             )
             .indices(INDEX_MANAGEMENT_INDEX)
 

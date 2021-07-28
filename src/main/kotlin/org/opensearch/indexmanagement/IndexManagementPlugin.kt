@@ -367,6 +367,7 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
             ManagedIndexSettings.ROLLOVER_SKIP,
             ManagedIndexSettings.INDEX_STATE_MANAGEMENT_ENABLED,
             ManagedIndexSettings.METADATA_SERVICE_ENABLED,
+            ManagedIndexSettings.AUTO_MANAGE,
             ManagedIndexSettings.JOB_INTERVAL,
             ManagedIndexSettings.SWEEP_PERIOD,
             ManagedIndexSettings.COORDINATOR_BACKOFF_COUNT,

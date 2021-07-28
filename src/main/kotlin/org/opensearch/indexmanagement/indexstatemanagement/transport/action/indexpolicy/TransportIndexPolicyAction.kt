@@ -46,7 +46,10 @@ import org.opensearch.index.query.QueryBuilders
 import org.opensearch.index.seqno.SequenceNumbers
 import org.opensearch.indexmanagement.IndexManagementIndices
 import org.opensearch.indexmanagement.IndexManagementPlugin
+import org.opensearch.indexmanagement.indexstatemanagement.ManagedIndexCoordinator.Companion.MAX_HITS
 import org.opensearch.indexmanagement.indexstatemanagement.findConflictingPolicyTemplates
+import org.opensearch.indexmanagement.indexstatemanagement.findSelfConflictingTemplates
+import org.opensearch.indexmanagement.indexstatemanagement.model.ISMTemplate
 import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.filterNotNullValues
 import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.getPolicyToTemplateMap
 import org.opensearch.indexmanagement.indexstatemanagement.util.ISM_TEMPLATE_FIELD
@@ -96,8 +99,9 @@ class TransportIndexPolicyAction @Inject constructor(
 
                 // if there is template field, we will check
                 val reqTemplate = request.policy.ismTemplate
-                if (reqTemplate != null) {
-                    checkTemplate(reqTemplate.indexPatterns, reqTemplate.priority)
+                val reqTemplates = request.policy.ismTemplate
+                if (reqTemplates != null) {
+                    validateISMTemplates(reqTemplates)
                 } else putPolicy()
             } else {
                 log.error("Unable to create or update ${IndexManagementPlugin.INDEX_MANAGEMENT_INDEX} with newest mapping.")
@@ -111,10 +115,20 @@ class TransportIndexPolicyAction @Inject constructor(
             }
         }
 
-        private fun checkTemplate(indexPatterns: List<String>, priority: Int) {
-            val possibleEx = validateFormat(indexPatterns)
+        private fun validateISMTemplates(ismTemplateList: List<ISMTemplate>) {
+            val possibleEx = validateFormat(ismTemplateList.map { it.indexPatterns }.flatten())
             if (possibleEx != null) {
                 actionListener.onFailure(possibleEx)
+                return
+            }
+
+            // check self overlapping
+            val selfOverlap = ismTemplateList.findSelfConflictingTemplates()
+            if (selfOverlap != null) {
+                val errorMessage = "New policy ${request.policyID} has an ISM template with index pattern ${selfOverlap.first} " +
+                    "matching this policy's other ISM templates with index patterns ${selfOverlap.second}," +
+                    " please use different priority"
+                actionListener.onFailure(IndexManagementException.wrap(IllegalArgumentException(errorMessage)))
                 return
             }
 
@@ -122,7 +136,7 @@ class TransportIndexPolicyAction @Inject constructor(
                 .source(
                     SearchSourceBuilder().query(
                         QueryBuilders.existsQuery(ISM_TEMPLATE_FIELD)
-                    )
+                    ).size(MAX_HITS)
                 )
                 .indices(IndexManagementPlugin.INDEX_MANAGEMENT_INDEX)
 
@@ -131,13 +145,23 @@ class TransportIndexPolicyAction @Inject constructor(
                 object : ActionListener<SearchResponse> {
                     override fun onResponse(response: SearchResponse) {
                         val policyToTemplateMap = getPolicyToTemplateMap(response, xContentRegistry).filterNotNullValues()
-                        val conflictingPolicyTemplates = policyToTemplateMap.findConflictingPolicyTemplates(request.policyID, indexPatterns, priority)
-                        if (conflictingPolicyTemplates.isNotEmpty()) {
-                            val errorMessage = "New policy ${request.policyID} has an ISM template with index pattern $indexPatterns " +
-                                "matching existing policy templates," +
-                                " please use a different priority than $priority"
-                            actionListener.onFailure(IndexManagementException.wrap(IllegalArgumentException(errorMessage)))
-                            return
+                        ismTemplateList.forEach {
+                            val conflictingPolicyTemplates = policyToTemplateMap
+                                .findConflictingPolicyTemplates(request.policyID, it.indexPatterns, it.priority)
+                            if (conflictingPolicyTemplates.isNotEmpty()) {
+                                val errorMessage =
+                                    "New policy ${request.policyID} has an ISM template with index pattern ${it.indexPatterns} " +
+                                        "matching existing policy templates," +
+                                        " please use a different priority than ${it.priority}"
+                                actionListener.onFailure(
+                                    IndexManagementException.wrap(
+                                        IllegalArgumentException(
+                                            errorMessage
+                                        )
+                                    )
+                                )
+                                return
+                            }
                         }
 
                         putPolicy()

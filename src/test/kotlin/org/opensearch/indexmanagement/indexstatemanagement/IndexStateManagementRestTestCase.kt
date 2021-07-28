@@ -508,6 +508,14 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
     }
 
     @Suppress("UNCHECKED_CAST")
+    protected fun getIndexAutoManageSetting(indexName: String): Boolean? {
+        val indexSettings = getIndexSettings(indexName) as Map<String, Map<String, Map<String, Any?>>>
+        val autoManageSetting = indexSettings[indexName]!!["settings"]!!["index.plugins.index_state_management.auto_manage"]
+        if (autoManageSetting != null) return (autoManageSetting as String).toBoolean()
+        return null
+    }
+
+    @Suppress("UNCHECKED_CAST")
     protected fun getUuid(indexName: String): String {
         val indexSettings = getIndexSettings(indexName) as Map<String, Map<String, Map<String, Any?>>>
         return indexSettings[indexName]!!["settings"]!!["index.uuid"] as String
