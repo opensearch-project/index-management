@@ -31,6 +31,7 @@ import org.opensearch.ExceptionsHelper
 import org.opensearch.action.ActionListener
 import org.opensearch.action.admin.cluster.state.ClusterStateRequest
 import org.opensearch.action.admin.cluster.state.ClusterStateResponse
+import org.opensearch.action.admin.indices.settings.put.UpdateSettingsRequest
 import org.opensearch.action.bulk.BulkRequest
 import org.opensearch.action.bulk.BulkResponse
 import org.opensearch.action.get.MultiGetRequest
@@ -38,14 +39,17 @@ import org.opensearch.action.get.MultiGetResponse
 import org.opensearch.action.support.ActionFilters
 import org.opensearch.action.support.HandledTransportAction
 import org.opensearch.action.support.IndicesOptions
+import org.opensearch.action.support.master.AcknowledgedResponse
 import org.opensearch.client.node.NodeClient
 import org.opensearch.cluster.ClusterState
 import org.opensearch.cluster.block.ClusterBlockException
 import org.opensearch.common.inject.Inject
+import org.opensearch.common.settings.Settings
 import org.opensearch.index.Index
 import org.opensearch.index.IndexNotFoundException
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
 import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.getUuidsForClosedIndices
+import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.ISMStatusResponse
 import org.opensearch.indexmanagement.indexstatemanagement.util.FailedIndex
 import org.opensearch.indexmanagement.indexstatemanagement.util.deleteManagedIndexMetadataRequest
@@ -128,7 +132,13 @@ class TransportRemovePolicyAction @Inject constructor(
                         val f = response.responses.first()
                         if (f.isFailed && f.failure.failure is IndexNotFoundException) {
                             indicesToRemove.forEach { (uuid, name) ->
-                                failedIndices.add(FailedIndex(name, uuid, "This index does not have a policy to remove"))
+                                failedIndices.add(
+                                    FailedIndex(
+                                        name,
+                                        uuid,
+                                        "This index does not have a policy to remove"
+                                    )
+                                )
                             }
                             actionListener.onResponse(ISMStatusResponse(0, failedIndices))
                             return
@@ -147,11 +157,53 @@ class TransportRemovePolicyAction @Inject constructor(
                             }
                         }
 
-                        removeManagedIndices()
+                        updateSettings(indicesToRemove)
                     }
 
                     override fun onFailure(t: Exception) {
                         actionListener.onFailure(ExceptionsHelper.unwrapCause(t) as Exception)
+                    }
+                }
+            )
+        }
+
+        /**
+         * try to update auto_manage setting to false before delete managed-index
+         * so that index will not be picked up by Coordinator background sweep process
+         * this wont happen for cold indices
+         * if update setting failed, remove managed-index and metadata will not happen
+         */
+        @Suppress("SpreadOperator")
+        fun updateSettings(indices: Map<String, String>) {
+            val request = UpdateSettingsRequest()
+                .indices(*indices.map { it.value }.toTypedArray())
+                .settings(Settings.builder().put(ManagedIndexSettings.AUTO_MANAGE.key, false))
+            client.admin().indices().updateSettings(
+                request,
+                object : ActionListener<AcknowledgedResponse> {
+                    override fun onResponse(response: AcknowledgedResponse) {
+                        if (response.isAcknowledged) {
+                            removeManagedIndices()
+                        } else {
+                            indices.forEach {
+                                failedIndices.add(
+                                    FailedIndex(
+                                        it.value, it.key,
+                                        "Update auto_manage setting to false is not acknowledged, remove policy failed."
+                                    )
+                                )
+                            }
+                            actionListener.onResponse(ISMStatusResponse(0, failedIndices))
+                        }
+                    }
+
+                    override fun onFailure(t: Exception) {
+                        val ex = ExceptionsHelper.unwrapCause(t) as Exception
+                        actionListener.onFailure(
+                            IndexManagementException.wrap(
+                                Exception("Failed to update auto_manage setting to false.", ex)
+                            )
+                        )
                     }
                 }
             )
@@ -169,7 +221,13 @@ class TransportRemovePolicyAction @Inject constructor(
                             response.forEach {
                                 val docId = it.id // docId is indexUuid of the managed index
                                 if (it.isFailed) {
-                                    failedIndices.add(FailedIndex(indicesToRemove[docId] as String, docId, "Failed to remove policy"))
+                                    failedIndices.add(
+                                        FailedIndex(
+                                            indicesToRemove[docId] as String,
+                                            docId,
+                                            "Failed to remove policy"
+                                        )
+                                    )
                                     indicesToRemove.remove(docId)
                                 }
                             }

@@ -79,7 +79,7 @@ fun randomPolicy(
     lastUpdatedTime: Instant = Instant.now().truncatedTo(ChronoUnit.MILLIS),
     errorNotification: ErrorNotification? = randomErrorNotification(),
     states: List<State> = List(OpenSearchRestTestCase.randomIntBetween(1, 10)) { randomState() },
-    ismTemplate: ISMTemplate? = null
+    ismTemplate: List<ISMTemplate>? = null
 ): Policy {
     return Policy(
         id = id, schemaVersion = schemaVersion, lastUpdatedTime = lastUpdatedTime,
