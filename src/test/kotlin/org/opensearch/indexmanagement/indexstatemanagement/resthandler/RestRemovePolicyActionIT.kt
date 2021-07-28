@@ -188,4 +188,21 @@ class RestRemovePolicyActionIT : IndexStateManagementRestTestCase() {
             assertEquals(null, getPolicyIDOfManagedIndex(indexThree))
         }
     }
+
+    fun `test remove policy update auto_manage setting`() {
+        val index = "movies"
+        val policy = createRandomPolicy()
+        createIndex(index, policy.id)
+        assertEquals("auto manage setting not null at index creation time", null, getIndexAutoManageSetting(index))
+
+        val response = client().makeRequest(
+            POST.toString(),
+            "${RestRemovePolicyAction.REMOVE_POLICY_BASE_URI}/$index"
+        )
+        assertEquals("Unexpected RestStatus", RestStatus.OK, response.restStatus())
+
+        waitFor {
+            assertEquals("auto manage setting not false after removing policy", false, getIndexAutoManageSetting(index))
+        }
+    }
 }

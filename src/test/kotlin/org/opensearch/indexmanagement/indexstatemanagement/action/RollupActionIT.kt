@@ -126,7 +126,7 @@ class RollupActionIT : IndexStateManagementRestTestCase() {
             errorNotification = randomErrorNotification(),
             defaultState = states[0].name,
             states = states,
-            ismTemplate = ISMTemplate(listOf(dataStreamName), 100, Instant.now().truncatedTo(ChronoUnit.MILLIS))
+            ismTemplate = listOf(ISMTemplate(listOf(dataStreamName), 100, Instant.now().truncatedTo(ChronoUnit.MILLIS)))
         )
         createPolicy(policy, policyID)
 
