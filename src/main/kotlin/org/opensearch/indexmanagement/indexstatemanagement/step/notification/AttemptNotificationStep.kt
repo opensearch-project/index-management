@@ -29,22 +29,15 @@ package org.opensearch.indexmanagement.indexstatemanagement.step.notification
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.apache.logging.log4j.LogManager
-import org.opensearch.action.ActionListener
 import org.opensearch.client.Client
-import org.opensearch.client.node.NodeClient
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.settings.Settings
-import org.opensearch.commons.notifications.NotificationsPluginInterface
-import org.opensearch.commons.notifications.action.SendNotificationResponse
-import org.opensearch.commons.notifications.model.ChannelMessage
-import org.opensearch.commons.notifications.model.EventSource
-import org.opensearch.commons.notifications.model.Feature
-import org.opensearch.commons.notifications.model.SeverityType
 import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.indexstatemanagement.model.action.NotificationActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.StepMetaData
-import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings
 import org.opensearch.indexmanagement.indexstatemanagement.step.Step
+import org.opensearch.indexmanagement.indexstatemanagement.util.publishLegacyNotification
+import org.opensearch.indexmanagement.indexstatemanagement.util.sendNotification
 import org.opensearch.indexmanagement.opensearchapi.convertToMap
 import org.opensearch.script.Script
 import org.opensearch.script.ScriptService
@@ -62,7 +55,6 @@ class AttemptNotificationStep(
     private val logger = LogManager.getLogger(javaClass)
     private var stepStatus = StepStatus.STARTING
     private var info: Map<String, Any>? = null
-    private val hostDenyList = settings.getAsList(ManagedIndexSettings.HOST_DENY_LIST)
 
     override fun isIdempotent() = false
 
@@ -70,25 +62,9 @@ class AttemptNotificationStep(
     override suspend fun execute(): AttemptNotificationStep {
         try {
             withContext(Dispatchers.IO) {
-                config.destination?.publish(null, compileTemplate(config.messageTemplate, managedIndexMetaData), hostDenyList)
-                config.channel?.let {
-                    NotificationsPluginInterface.sendNotification(
-                        (client as NodeClient),
-                        EventSource("Index Management-ISM-Notification Action", managedIndexMetaData.indexUuid, Feature.INDEX_MANAGEMENT, SeverityType.INFO),
-                        ChannelMessage(compileTemplate(config.messageTemplate, managedIndexMetaData), null, null),
-                        listOf(it.id),
-                        object : ActionListener<SendNotificationResponse> {
-                            override fun onResponse(response: SendNotificationResponse) {
-                                logger.info("Notification successfully published to channel ${it.id}, notificationId: ${response.notificationId}")
-                            }
-
-                            override fun onFailure(e: Exception) {
-                                logger.error("Notification failed to publish to channel ${it.id}", e)
-                                throw e
-                            }
-                        }
-                    )
-                }
+                val compiledMessage = compileTemplate(config.messageTemplate, managedIndexMetaData)
+                config.destination?.buildLegacyBaseMessage(null, compiledMessage)?.publishLegacyNotification(client, logger)
+                config.channel?.sendNotification(client, logger, "Index Management-ISM-Notification Action", managedIndexMetaData, compiledMessage)
             }
 
             // publish internally throws an error for any invalid responses so its safe to assume if we reach this point it was successful

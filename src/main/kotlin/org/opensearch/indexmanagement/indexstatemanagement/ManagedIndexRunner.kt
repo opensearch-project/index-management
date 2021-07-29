@@ -34,7 +34,6 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.apache.logging.log4j.LogManager
-import org.opensearch.action.ActionListener
 import org.opensearch.action.admin.cluster.state.ClusterStateRequest
 import org.opensearch.action.admin.cluster.state.ClusterStateResponse
 import org.opensearch.action.bulk.BackoffPolicy
@@ -45,6 +44,7 @@ import org.opensearch.action.support.IndicesOptions
 import org.opensearch.action.update.UpdateResponse
 import org.opensearch.client.Client
 import org.opensearch.client.node.NodeClient
+import org.opensearch.cluster.block.ClusterBlockException
 import org.opensearch.cluster.health.ClusterHealthStatus
 import org.opensearch.cluster.health.ClusterStateHealth
 import org.opensearch.cluster.metadata.IndexMetadata
@@ -65,6 +65,7 @@ import org.opensearch.commons.notifications.model.ChannelMessage
 import org.opensearch.commons.notifications.model.EventSource
 import org.opensearch.commons.notifications.model.Feature
 import org.opensearch.commons.notifications.model.SeverityType
+import org.opensearch.index.Index
 import org.opensearch.index.engine.VersionConflictEngineException
 import org.opensearch.index.seqno.SequenceNumbers
 import org.opensearch.indexmanagement.IndexManagementIndices
@@ -101,6 +102,8 @@ import org.opensearch.indexmanagement.indexstatemanagement.util.isSafeToChange
 import org.opensearch.indexmanagement.indexstatemanagement.util.isSuccessfulDelete
 import org.opensearch.indexmanagement.indexstatemanagement.util.managedIndexConfigIndexRequest
 import org.opensearch.indexmanagement.indexstatemanagement.util.managedIndexMetadataIndexRequest
+import org.opensearch.indexmanagement.indexstatemanagement.util.publishLegacyNotification
+import org.opensearch.indexmanagement.indexstatemanagement.util.sendNotification
 import org.opensearch.indexmanagement.indexstatemanagement.util.shouldBackoff
 import org.opensearch.indexmanagement.indexstatemanagement.util.shouldChangePolicy
 import org.opensearch.indexmanagement.indexstatemanagement.util.updateDisableManagedIndexRequest
@@ -743,24 +746,9 @@ object ManagedIndexRunner :
         policy.errorNotification?.run {
             errorNotificationRetryPolicy.retry(logger) {
                 withContext(Dispatchers.IO) {
-                    destination?.publish(null, compileTemplate(messageTemplate, managedIndexMetaData), hostDenyList)
-                    channel?.let {
-                        NotificationsPluginInterface.sendNotification(
-                            (client as NodeClient),
-                            EventSource("Index Management-ISM-Error Notification", managedIndexMetaData.indexUuid, Feature.INDEX_MANAGEMENT, SeverityType.INFO),
-                            ChannelMessage(compileTemplate(messageTemplate, managedIndexMetaData), null, null),
-                            listOf(it.id),
-                            object : ActionListener<SendNotificationResponse> {
-                                override fun onResponse(response: SendNotificationResponse) {
-                                    logger.info("Error notification successfully published to channel ${it.id}, notificationId: ${response.notificationId}")
-                                }
-
-                                override fun onFailure(e: Exception) {
-                                    logger.error("Error notification failed to publish to channel ${it.id}", e)
-                                }
-                            }
-                        )
-                    }
+                    val compiledMessage = compileTemplate(messageTemplate, managedIndexMetaData)
+                    destination?.buildLegacyBaseMessage(null, compiledMessage)?.publishLegacyNotification(client, logger)
+                    channel?.sendNotification(client, logger, "Index Management-ISM-Error Notification", managedIndexMetaData, compiledMessage)
                 }
             }
         }
