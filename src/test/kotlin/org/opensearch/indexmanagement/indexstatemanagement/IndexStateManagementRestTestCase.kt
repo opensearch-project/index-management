@@ -67,7 +67,6 @@ import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmet
 import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.StateMetaData
 import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.StepMetaData
 import org.opensearch.indexmanagement.indexstatemanagement.resthandler.RestExplainAction
-import org.opensearch.indexmanagement.indexstatemanagement.settings.LegacyOpenDistroManagedIndexSettings
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings
 import org.opensearch.indexmanagement.indexstatemanagement.util.FAILED_INDICES
 import org.opensearch.indexmanagement.indexstatemanagement.util.FAILURES
@@ -92,6 +91,9 @@ import java.time.Instant
 import java.util.Locale
 
 abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() {
+
+    val explainResponseOpendistroPolicyIdSetting = "index.opendistro.index_state_management.policy_id"
+    val explainResponseOpenSearchPolicyIdSetting = "index.plugins.index_state_management.policy_id"
 
     protected fun createPolicy(
         policy: Policy,
@@ -243,12 +245,6 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
 
     protected fun removePolicyFromIndex(index: String) {
         client().makeRequest("POST", "/_opendistro/_ism/remove/$index")
-    }
-
-    @Suppress("UNCHECKED_CAST")
-    protected fun getPolicyFromIndex(index: String): String? {
-        val indexSettings = getIndexSettings(index) as Map<String, Map<String, Map<String, Any?>>>
-        return indexSettings[index]!!["settings"]!![LegacyOpenDistroManagedIndexSettings.POLICY_ID.key] as? String
     }
 
     protected fun getPolicyIDOfManagedIndex(index: String): String? {
