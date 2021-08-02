@@ -470,11 +470,15 @@ class RestChangePolicyActionIT : IndexStateManagementRestTestCase() {
         // speed up to third execution where we transition to second state
         updateManagedIndexConfigStartTime(firstManagedIndexConfig)
 
+        logger.info("time before check")
         waitFor {
-            getExplainManagedIndexMetaData(firstIndex).let {
-                assertEquals(it.copy(stateMetaData = it.stateMetaData?.copy(name = secondState.name)), it)
-            }
+//            getExplainManagedIndexMetaData(firstIndex).let {
+//                assertEquals(it.copy(stateMetaData = it.stateMetaData?.copy(name = secondState.name)), it)
+//            }
+            assertEquals(secondState.name, getExplainManagedIndexMetaData(firstIndex).stateMetaData?.name)
+            logger.info("Explain firstIndex before change policy: ${getExplainManagedIndexMetaData(firstIndex)}")
         }
+        logger.info("time after check")
 
         // create second index
         val (secondIndex) = createIndex("second_index", policy.id)
