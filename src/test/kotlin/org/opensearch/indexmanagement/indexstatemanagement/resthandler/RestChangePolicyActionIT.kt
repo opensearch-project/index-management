@@ -29,6 +29,7 @@ package org.opensearch.indexmanagement.indexstatemanagement.resthandler
 import org.junit.Before
 import org.opensearch.client.ResponseException
 import org.opensearch.common.settings.Settings
+import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
 import org.opensearch.indexmanagement.indexstatemanagement.IndexStateManagementRestTestCase
 import org.opensearch.indexmanagement.indexstatemanagement.model.ChangePolicy
 import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexConfig
@@ -108,6 +109,7 @@ class RestChangePolicyActionIT : IndexStateManagementRestTestCase() {
     }
 
     fun `test nonexistent ism config index`() {
+        deleteIndex(INDEX_MANAGEMENT_INDEX)
         try {
             val changePolicy = ChangePolicy("some_id", null, emptyList(), false)
             client().makeRequest(
@@ -493,7 +495,10 @@ class RestChangePolicyActionIT : IndexStateManagementRestTestCase() {
             FAILED_INDICES to emptyList<Any>(),
             UPDATED_INDICES to 1
         )
-        assertAffectedIndicesResponseIsEqual(expectedResponse, response.asMap())
+        // TODO flaky part, log for more info
+        val responseMap = response.asMap()
+        logger.info("Change policy response: $responseMap")
+        assertAffectedIndicesResponseIsEqual(expectedResponse, responseMap)
 
         waitFor {
             // The first managed index should not have a change policy added to it as it should of been filtered out from the states filter
