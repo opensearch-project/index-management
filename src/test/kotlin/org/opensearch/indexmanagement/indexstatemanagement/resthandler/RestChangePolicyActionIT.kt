@@ -47,7 +47,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.randomPolicy
 import org.opensearch.indexmanagement.indexstatemanagement.randomReplicaCountActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomState
 import org.opensearch.indexmanagement.indexstatemanagement.resthandler.RestChangePolicyAction.Companion.INDEX_NOT_MANAGED
-import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings
+import org.opensearch.indexmanagement.indexstatemanagement.settings.LegacyOpenDistroManagedIndexSettings
 import org.opensearch.indexmanagement.indexstatemanagement.step.rollover.AttemptRolloverStep
 import org.opensearch.indexmanagement.indexstatemanagement.util.FAILED_INDICES
 import org.opensearch.indexmanagement.indexstatemanagement.util.FAILURES
@@ -342,7 +342,7 @@ class RestChangePolicyActionIT : IndexStateManagementRestTestCase() {
             assertPredicatesOnMetaData(
                 listOf(
                     index to listOf(
-                        ManagedIndexSettings.POLICY_ID.key to policy.id::equals,
+                        LegacyOpenDistroManagedIndexSettings.POLICY_ID.key to policy.id::equals,
                         ManagedIndexMetaData.INDEX to executedManagedIndexConfig.index::equals,
                         ManagedIndexMetaData.INDEX_UUID to executedManagedIndexConfig.indexUuid::equals,
                         ManagedIndexMetaData.POLICY_ID to executedManagedIndexConfig.policyID::equals,
@@ -386,7 +386,7 @@ class RestChangePolicyActionIT : IndexStateManagementRestTestCase() {
             assertPredicatesOnMetaData(
                 listOf(
                     index to listOf(
-                        ManagedIndexSettings.POLICY_ID.key to policy.id::equals,
+                        LegacyOpenDistroManagedIndexSettings.POLICY_ID.key to policy.id::equals,
                         ManagedIndexMetaData.INDEX to executedManagedIndexConfig.index::equals,
                         ManagedIndexMetaData.INDEX_UUID to executedManagedIndexConfig.indexUuid::equals,
                         ManagedIndexMetaData.POLICY_ID to executedManagedIndexConfig.policyID::equals,
@@ -424,7 +424,7 @@ class RestChangePolicyActionIT : IndexStateManagementRestTestCase() {
             assertPredicatesOnMetaData(
                 listOf(
                     index to listOf(
-                        ManagedIndexSettings.POLICY_ID.key to newPolicy.id::equals,
+                        LegacyOpenDistroManagedIndexSettings.POLICY_ID.key to newPolicy.id::equals,
                         ManagedIndexMetaData.INDEX to changedManagedIndexConfig.index::equals,
                         ManagedIndexMetaData.INDEX_UUID to changedManagedIndexConfig.indexUuid::equals,
                         ManagedIndexMetaData.POLICY_ID to changedManagedIndexConfig.policyID::equals,

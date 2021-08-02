@@ -35,7 +35,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.model.State
 import org.opensearch.indexmanagement.indexstatemanagement.model.action.ReadOnlyActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomErrorNotification
 import org.opensearch.indexmanagement.indexstatemanagement.randomPolicy
-import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings
+import org.opensearch.indexmanagement.indexstatemanagement.settings.LegacyOpenDistroManagedIndexSettings
 import org.opensearch.indexmanagement.indexstatemanagement.util.INDEX_HIDDEN
 import org.opensearch.indexmanagement.randomInstant
 import org.opensearch.indexmanagement.waitFor
@@ -135,7 +135,7 @@ class ISMTemplateRestAPIIT : IndexStateManagementRestTestCase() {
 
         // only index create after template can be managed
         assertPredicatesOnMetaData(
-            listOf(indexName1 to listOf(ManagedIndexSettings.POLICY_ID.key to fun(policyID: Any?): Boolean = policyID == null)),
+            listOf(indexName1 to listOf(LegacyOpenDistroManagedIndexSettings.POLICY_ID.key to fun(policyID: Any?): Boolean = policyID == null)),
             getExplainMap(indexName1),
             true
         )
@@ -143,7 +143,7 @@ class ISMTemplateRestAPIIT : IndexStateManagementRestTestCase() {
 
         // hidden index will not be manage
         assertPredicatesOnMetaData(
-            listOf(indexName1 to listOf(ManagedIndexSettings.POLICY_ID.key to fun(policyID: Any?): Boolean = policyID == null)),
+            listOf(indexName1 to listOf(LegacyOpenDistroManagedIndexSettings.POLICY_ID.key to fun(policyID: Any?): Boolean = policyID == null)),
             getExplainMap(indexName1),
             true
         )

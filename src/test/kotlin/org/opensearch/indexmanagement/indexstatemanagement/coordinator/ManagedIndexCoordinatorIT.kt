@@ -40,6 +40,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.model.action.ForceMer
 import org.opensearch.indexmanagement.indexstatemanagement.model.action.RolloverActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomErrorNotification
 import org.opensearch.indexmanagement.indexstatemanagement.resthandler.RestExplainAction
+import org.opensearch.indexmanagement.indexstatemanagement.settings.LegacyOpenDistroManagedIndexSettings
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings
 import org.opensearch.indexmanagement.indexstatemanagement.step.forcemerge.WaitForForceMergeStep
 import org.opensearch.indexmanagement.indexstatemanagement.step.rollover.AttemptRolloverStep
@@ -127,7 +128,7 @@ class ManagedIndexCoordinatorIT : IndexStateManagementRestTestCase() {
             assertPredicatesOnMetaData(
                 listOf(
                     index to listOf(
-                        ManagedIndexSettings.POLICY_ID.key to fun(policyID: Any?): Boolean =
+                        LegacyOpenDistroManagedIndexSettings.POLICY_ID.key to fun(policyID: Any?): Boolean =
                             policyID == null
                     )
                 ),

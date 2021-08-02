@@ -42,6 +42,7 @@ import org.opensearch.common.xcontent.NamedXContentRegistry
 import org.opensearch.indexmanagement.IndexManagementIndices
 import org.opensearch.indexmanagement.indexstatemanagement.ManagedIndexCoordinator
 import org.opensearch.indexmanagement.indexstatemanagement.MetadataService
+import org.opensearch.indexmanagement.indexstatemanagement.settings.LegacyOpenDistroManagedIndexSettings
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings
 import org.opensearch.test.ClusterServiceUtils
 import org.opensearch.test.OpenSearchTestCase
@@ -142,7 +143,7 @@ class ManagedIndexCoordinatorTests : OpenSearchAllocationTestCase() {
     private fun createIndexMetaData(indexName: String, replicaNumber: Int, shardNumber: Int, policyID: String?): IndexMetadata.Builder {
         val defaultSettings = Settings.builder()
             .put(IndexMetadata.SETTING_VERSION_CREATED, Version.CURRENT)
-            .put(ManagedIndexSettings.POLICY_ID.key, policyID)
+            .put(LegacyOpenDistroManagedIndexSettings.POLICY_ID.key, policyID)
             .put(SETTING_INDEX_UUID, randomAlphaOfLength(20))
             .build()
         return IndexMetadata.Builder(indexName)
