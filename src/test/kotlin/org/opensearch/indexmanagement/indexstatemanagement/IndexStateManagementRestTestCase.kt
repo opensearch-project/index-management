@@ -92,6 +92,9 @@ import java.util.Locale
 
 abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() {
 
+    val explainResponseOpendistroPolicyIdSetting = "index.opendistro.index_state_management.policy_id"
+    val explainResponseOpenSearchPolicyIdSetting = "index.plugins.index_state_management.policy_id"
+
     protected fun createPolicy(
         policy: Policy,
         policyId: String = OpenSearchTestCase.randomAlphaOfLength(10),
@@ -242,12 +245,6 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
 
     protected fun removePolicyFromIndex(index: String) {
         client().makeRequest("POST", "/_opendistro/_ism/remove/$index")
-    }
-
-    @Suppress("UNCHECKED_CAST")
-    protected fun getPolicyFromIndex(index: String): String? {
-        val indexSettings = getIndexSettings(index) as Map<String, Map<String, Map<String, Any?>>>
-        return indexSettings[index]!!["settings"]!![ManagedIndexSettings.POLICY_ID.key] as? String
     }
 
     protected fun getPolicyIDOfManagedIndex(index: String): String? {

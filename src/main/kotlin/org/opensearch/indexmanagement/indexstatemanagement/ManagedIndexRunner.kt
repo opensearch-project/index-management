@@ -36,7 +36,6 @@ import kotlinx.coroutines.withContext
 import org.apache.logging.log4j.LogManager
 import org.opensearch.action.admin.cluster.state.ClusterStateRequest
 import org.opensearch.action.admin.cluster.state.ClusterStateResponse
-import org.opensearch.action.admin.indices.settings.put.UpdateSettingsRequest
 import org.opensearch.action.bulk.BackoffPolicy
 import org.opensearch.action.get.GetRequest
 import org.opensearch.action.get.GetResponse
@@ -722,17 +721,7 @@ object ManagedIndexRunner :
         if (!updated.metadataSaved || policy == null) return
 
         // this will save the new policy on the job and reset the change policy back to null
-        val saved = savePolicyToManagedIndexConfig(managedIndexConfig, policy)
-
-        if (saved) {
-            /*
-            * If we successfully saved the the new policy then the last thing we need to do is update the
-            * opendistro.indexstatemanagement.policy_id setting to the new policy id we don't care that much if this fails, because we'll
-            * have a check in the beginning of the runner to read in the setting and compare it with the policy_id on the job and update
-            * the setting if they ever differ, as we do not allow someone to change an existing policy using _settings API
-            * */
-            updateIndexPolicyIDSetting(managedIndexConfig.index, changePolicy.policyID)
-        }
+        savePolicyToManagedIndexConfig(managedIndexConfig, policy)
     }
 
     @Suppress("TooGenericExceptionCaught")
@@ -747,29 +736,6 @@ object ManagedIndexRunner :
             logger.error("Failed to update ManagedIndexConfig(${updatedManagedIndexConfig.index}). ${e.message}")
         } catch (e: Exception) {
             logger.error("Failed to update ManagedIndexConfig(${updatedManagedIndexConfig.index})", e)
-        }
-    }
-
-    /**
-     * Once we successfully swap over a ChangePolicy then we need to update the [ManagedIndexSettings.POLICY_ID] setting.
-     *
-     * We will constantly check the [ManagedIndexSettings.POLICY_ID] against the [ManagedIndexConfig] policyID and if
-     * there is ever a mismatch we will overwrite the [ManagedIndexSettings.POLICY_ID] with the [ManagedIndexConfig] policyID.
-     *
-     * We do this because if this fails we want to ensure we try again on the next execution of the job. At the same time, this
-     * will disallow the user from directly using the _settings API to change the policy_id. We do not want to allow this,
-     * they must use the ChangePolicy API as the [ManagedIndexSettings.POLICY_ID] is referring to the currently running policy.
-     */
-    private suspend fun updateIndexPolicyIDSetting(index: String, policyID: String) {
-        try {
-            val settings = Settings.builder().put(ManagedIndexSettings.POLICY_ID.key, policyID).build()
-            val updateSettingsRequest = UpdateSettingsRequest(index).settings(settings)
-            val response: AcknowledgedResponse = client.admin().indices().suspendUntil { updateSettings(updateSettingsRequest, it) }
-            if (!response.isAcknowledged) {
-                logger.warn("Updating policy_id ($policyID) for $index was not acknowledged")
-            }
-        } catch (e: Exception) {
-            logger.error("There was an error while trying to update the policy_id ($policyID) setting for $index", e)
         }
     }
 
