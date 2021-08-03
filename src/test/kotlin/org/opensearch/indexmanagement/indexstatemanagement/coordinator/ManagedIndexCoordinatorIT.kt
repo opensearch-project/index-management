@@ -127,7 +127,9 @@ class ManagedIndexCoordinatorIT : IndexStateManagementRestTestCase() {
             assertPredicatesOnMetaData(
                 listOf(
                     index to listOf(
-                        ManagedIndexSettings.POLICY_ID.key to fun(policyID: Any?): Boolean =
+                        explainResponseOpendistroPolicyIdSetting to fun(policyID: Any?): Boolean =
+                            policyID == null,
+                        explainResponseOpenSearchPolicyIdSetting to fun(policyID: Any?): Boolean =
                             policyID == null
                     )
                 ),
@@ -269,7 +271,9 @@ class ManagedIndexCoordinatorIT : IndexStateManagementRestTestCase() {
         }
 
         // TODO seen version conflict flaky failure here
-        // could be same reason as the test failure in ChangePolicyActionIT
+        logger.info("Config we use on update: $enabledManagedIndexConfig")
+        logger.info("Latest config: ${getExistingManagedIndexConfig(indexName)}")
+        // seems the config from above waitFor, after that, config got updated again?
         updateManagedIndexConfigStartTime(enabledManagedIndexConfig)
 
         waitFor {

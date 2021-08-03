@@ -29,6 +29,7 @@ package org.opensearch.indexmanagement.indexstatemanagement.resthandler
 import org.junit.Before
 import org.opensearch.client.ResponseException
 import org.opensearch.common.settings.Settings
+import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
 import org.opensearch.indexmanagement.indexstatemanagement.IndexStateManagementRestTestCase
 import org.opensearch.indexmanagement.indexstatemanagement.model.ChangePolicy
 import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexConfig
@@ -46,7 +47,6 @@ import org.opensearch.indexmanagement.indexstatemanagement.randomPolicy
 import org.opensearch.indexmanagement.indexstatemanagement.randomReplicaCountActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomState
 import org.opensearch.indexmanagement.indexstatemanagement.resthandler.RestChangePolicyAction.Companion.INDEX_NOT_MANAGED
-import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings
 import org.opensearch.indexmanagement.indexstatemanagement.step.rollover.AttemptRolloverStep
 import org.opensearch.indexmanagement.indexstatemanagement.util.FAILED_INDICES
 import org.opensearch.indexmanagement.indexstatemanagement.util.FAILURES
@@ -108,6 +108,7 @@ class RestChangePolicyActionIT : IndexStateManagementRestTestCase() {
     }
 
     fun `test nonexistent ism config index`() {
+        if (indexExists(INDEX_MANAGEMENT_INDEX)) deleteIndex(INDEX_MANAGEMENT_INDEX)
         try {
             val changePolicy = ChangePolicy("some_id", null, emptyList(), false)
             client().makeRequest(
@@ -340,7 +341,8 @@ class RestChangePolicyActionIT : IndexStateManagementRestTestCase() {
             assertPredicatesOnMetaData(
                 listOf(
                     index to listOf(
-                        ManagedIndexSettings.POLICY_ID.key to policy.id::equals,
+                        explainResponseOpendistroPolicyIdSetting to policy.id::equals,
+                        explainResponseOpenSearchPolicyIdSetting to policy.id::equals,
                         ManagedIndexMetaData.INDEX to executedManagedIndexConfig.index::equals,
                         ManagedIndexMetaData.INDEX_UUID to executedManagedIndexConfig.indexUuid::equals,
                         ManagedIndexMetaData.POLICY_ID to executedManagedIndexConfig.policyID::equals,
@@ -384,7 +386,8 @@ class RestChangePolicyActionIT : IndexStateManagementRestTestCase() {
             assertPredicatesOnMetaData(
                 listOf(
                     index to listOf(
-                        ManagedIndexSettings.POLICY_ID.key to policy.id::equals,
+                        explainResponseOpendistroPolicyIdSetting to policy.id::equals,
+                        explainResponseOpenSearchPolicyIdSetting to policy.id::equals,
                         ManagedIndexMetaData.INDEX to executedManagedIndexConfig.index::equals,
                         ManagedIndexMetaData.INDEX_UUID to executedManagedIndexConfig.indexUuid::equals,
                         ManagedIndexMetaData.POLICY_ID to executedManagedIndexConfig.policyID::equals,
@@ -422,7 +425,8 @@ class RestChangePolicyActionIT : IndexStateManagementRestTestCase() {
             assertPredicatesOnMetaData(
                 listOf(
                     index to listOf(
-                        ManagedIndexSettings.POLICY_ID.key to newPolicy.id::equals,
+                        explainResponseOpendistroPolicyIdSetting to newPolicy.id::equals,
+                        explainResponseOpenSearchPolicyIdSetting to newPolicy.id::equals,
                         ManagedIndexMetaData.INDEX to changedManagedIndexConfig.index::equals,
                         ManagedIndexMetaData.INDEX_UUID to changedManagedIndexConfig.indexUuid::equals,
                         ManagedIndexMetaData.POLICY_ID to changedManagedIndexConfig.policyID::equals,
@@ -466,11 +470,15 @@ class RestChangePolicyActionIT : IndexStateManagementRestTestCase() {
         // speed up to third execution where we transition to second state
         updateManagedIndexConfigStartTime(firstManagedIndexConfig)
 
+        logger.info("time before check")
         waitFor {
-            getExplainManagedIndexMetaData(firstIndex).let {
-                assertEquals(it.copy(stateMetaData = it.stateMetaData?.copy(name = secondState.name)), it)
-            }
+//            getExplainManagedIndexMetaData(firstIndex).let {
+//                assertEquals(it.copy(stateMetaData = it.stateMetaData?.copy(name = secondState.name)), it)
+//            }
+            assertEquals(secondState.name, getExplainManagedIndexMetaData(firstIndex).stateMetaData?.name)
+            logger.info("Explain firstIndex before change policy: ${getExplainManagedIndexMetaData(firstIndex)}")
         }
+        logger.info("time after check")
 
         // create second index
         val (secondIndex) = createIndex("second_index", policy.id)
@@ -493,7 +501,10 @@ class RestChangePolicyActionIT : IndexStateManagementRestTestCase() {
             FAILED_INDICES to emptyList<Any>(),
             UPDATED_INDICES to 1
         )
-        assertAffectedIndicesResponseIsEqual(expectedResponse, response.asMap())
+        // TODO flaky part, log for more info
+        val responseMap = response.asMap()
+        logger.info("Change policy response: $responseMap")
+        assertAffectedIndicesResponseIsEqual(expectedResponse, responseMap)
 
         waitFor {
             // The first managed index should not have a change policy added to it as it should of been filtered out from the states filter
