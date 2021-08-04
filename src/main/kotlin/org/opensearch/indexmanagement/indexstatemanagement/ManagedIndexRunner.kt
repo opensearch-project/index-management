@@ -101,6 +101,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.util.managedIndexMeta
 import org.opensearch.indexmanagement.indexstatemanagement.util.shouldBackoff
 import org.opensearch.indexmanagement.indexstatemanagement.util.shouldChangePolicy
 import org.opensearch.indexmanagement.indexstatemanagement.util.updateDisableManagedIndexRequest
+import org.opensearch.indexmanagement.opensearchapi.IndexManagementSecurityContext
 import org.opensearch.indexmanagement.opensearchapi.convertToMap
 import org.opensearch.indexmanagement.opensearchapi.parseWithType
 import org.opensearch.indexmanagement.opensearchapi.retry
@@ -115,6 +116,7 @@ import org.opensearch.rest.RestStatus
 import org.opensearch.script.Script
 import org.opensearch.script.ScriptService
 import org.opensearch.script.TemplateScript
+import org.opensearch.threadpool.ThreadPool
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 
@@ -133,6 +135,7 @@ object ManagedIndexRunner :
     private lateinit var imIndices: IndexManagementIndices
     private lateinit var ismHistory: IndexStateManagementHistory
     private lateinit var skipExecFlag: SkipExecution
+    private lateinit var threadPool: ThreadPool
     private var indexStateManagementEnabled: Boolean = DEFAULT_ISM_ENABLED
     @Suppress("MagicNumber")
     private val savePolicyRetryPolicy = BackoffPolicy.exponentialBackoff(TimeValue.timeValueMillis(250), 3)
@@ -202,6 +205,11 @@ object ManagedIndexRunner :
 
     fun registerSkipFlag(flag: SkipExecution): ManagedIndexRunner {
         this.skipExecFlag = flag
+        return this
+    }
+
+    fun registerThreadPool(threadPool: ThreadPool): ManagedIndexRunner {
+        this.threadPool = threadPool
         return this
     }
 
@@ -283,7 +291,7 @@ object ManagedIndexRunner :
         }
 
         val state = policy.getStateToExecute(managedIndexMetaData)
-        val action: Action? = state?.getActionToExecute(clusterService, scriptService, client, settings, managedIndexMetaData)
+        val action: Action? = state?.getActionToExecute(clusterService, scriptService, client, settings, managedIndexMetaData.copy(user = managedIndexConfig.user))
         val step: Step? = action?.getStepToExecute()
         val currentActionMetaData = action?.getUpdatedActionMetaData(managedIndexMetaData, state)
 
@@ -352,13 +360,25 @@ object ManagedIndexRunner :
         @Suppress("ComplexCondition")
         if (updateResult.metadataSaved && state != null && action != null && step != null && currentActionMetaData != null) {
             // Step null check is done in getStartingManagedIndexMetaData
-            step.preExecute(logger).execute().postExecute(logger)
+            withContext(
+                IndexManagementSecurityContext(
+                    managedIndexConfig.id, settings, threadPool.threadContext, managedIndexConfig.user
+                )
+            ) {
+                step.preExecute(logger).execute().postExecute(logger)
+            }
             var executedManagedIndexMetaData = startingManagedIndexMetaData.getCompletedManagedIndexMetaData(action, step)
 
             if (executedManagedIndexMetaData.isFailed) {
                 try {
-                    // if the policy has no error_notification this will do nothing otherwise it will try to send the configured error message
-                    publishErrorNotification(policy, executedManagedIndexMetaData)
+                    withContext(
+                        IndexManagementSecurityContext(
+                            managedIndexConfig.id, settings, threadPool.threadContext, managedIndexConfig.user
+                        )
+                    ) {
+                        // if the policy has no error_notification this will do nothing otherwise it will try to send the configured error message
+                        publishErrorNotification(policy, executedManagedIndexMetaData)
+                    }
                 } catch (e: Exception) {
                     logger.error("Failed to publish error notification", e)
                     val errorMessage = e.message ?: "Failed to publish error notification"

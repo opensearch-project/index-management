@@ -31,10 +31,13 @@ import org.opensearch.common.xcontent.XContentBuilder
 import org.opensearch.common.xcontent.XContentParser
 import org.opensearch.common.xcontent.XContentParser.Token
 import org.opensearch.common.xcontent.XContentParserUtils.ensureExpectedToken
+import org.opensearch.commons.authuser.User
 import org.opensearch.index.seqno.SequenceNumbers
+import org.opensearch.indexmanagement.indexstatemanagement.util.WITH_USER
 import org.opensearch.indexmanagement.indexstatemanagement.util.XCONTENT_WITHOUT_TYPE
 import org.opensearch.indexmanagement.opensearchapi.instant
 import org.opensearch.indexmanagement.opensearchapi.optionalTimeField
+import org.opensearch.indexmanagement.opensearchapi.optionalUserField
 import org.opensearch.jobscheduler.spi.ScheduledJobParameter
 import org.opensearch.jobscheduler.spi.schedule.Schedule
 import org.opensearch.jobscheduler.spi.schedule.ScheduleParser
@@ -56,7 +59,8 @@ data class ManagedIndexConfig(
     val policySeqNo: Long?,
     val policyPrimaryTerm: Long?,
     val policy: Policy?,
-    val changePolicy: ChangePolicy?
+    val changePolicy: ChangePolicy?,
+    val user: User? = null
 ) : ScheduledJobParameter {
 
     init {
@@ -95,9 +99,9 @@ data class ManagedIndexConfig(
             .field(POLICY_PRIMARY_TERM_FIELD, policyPrimaryTerm)
             .field(POLICY_FIELD, policy, XCONTENT_WITHOUT_TYPE)
             .field(CHANGE_POLICY_FIELD, changePolicy)
-            .endObject()
-            .endObject()
-        return builder
+        if (params.paramAsBoolean(WITH_USER, true)) builder.optionalUserField(USER_FIELD, user)
+        builder.endObject()
+        return builder.endObject()
     }
 
     companion object {
@@ -115,6 +119,7 @@ data class ManagedIndexConfig(
         const val POLICY_SEQ_NO_FIELD = "policy_seq_no"
         const val POLICY_PRIMARY_TERM_FIELD = "policy_primary_term"
         const val CHANGE_POLICY_FIELD = "change_policy"
+        const val USER_FIELD = "user"
 
         @Suppress("ComplexMethod", "LongMethod")
         @JvmStatic
@@ -138,6 +143,7 @@ data class ManagedIndexConfig(
             var enabled = true
             var policyPrimaryTerm: Long? = SequenceNumbers.UNASSIGNED_PRIMARY_TERM
             var policySeqNo: Long? = SequenceNumbers.UNASSIGNED_SEQ_NO
+            var user: User? = null
 
             ensureExpectedToken(Token.START_OBJECT, xcp.currentToken(), xcp)
             while (xcp.nextToken() != Token.END_OBJECT) {
@@ -164,6 +170,9 @@ data class ManagedIndexConfig(
                     }
                     CHANGE_POLICY_FIELD -> {
                         changePolicy = if (xcp.currentToken() == Token.VALUE_NULL) null else ChangePolicy.parse(xcp)
+                    }
+                    USER_FIELD -> {
+                        user = if (xcp.currentToken() == Token.VALUE_NULL) null else User.parse(xcp)
                     }
                     else -> throw IllegalArgumentException("Invalid field: [$fieldName] found in ManagedIndexConfig.")
                 }
@@ -193,7 +202,8 @@ data class ManagedIndexConfig(
                     seqNo = policySeqNo ?: SequenceNumbers.UNASSIGNED_SEQ_NO,
                     primaryTerm = policyPrimaryTerm ?: SequenceNumbers.UNASSIGNED_PRIMARY_TERM
                 ),
-                changePolicy = changePolicy
+                changePolicy = changePolicy,
+                user = user
             )
         }
     }

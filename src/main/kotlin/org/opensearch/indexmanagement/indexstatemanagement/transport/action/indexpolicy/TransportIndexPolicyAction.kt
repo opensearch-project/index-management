@@ -56,6 +56,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.util.ISM_TEMPLATE_FIE
 import org.opensearch.indexmanagement.indexstatemanagement.validateFormat
 import org.opensearch.indexmanagement.util.IndexManagementException
 import org.opensearch.indexmanagement.util.IndexUtils
+import org.opensearch.indexmanagement.util.SecurityUtils.Companion.buildUser
 import org.opensearch.rest.RestStatus
 import org.opensearch.search.builder.SearchSourceBuilder
 import org.opensearch.tasks.Task
@@ -98,7 +99,6 @@ class TransportIndexPolicyAction @Inject constructor(
                 log.info("Successfully created or updated ${IndexManagementPlugin.INDEX_MANAGEMENT_INDEX} with newest mappings.")
 
                 // if there is template field, we will check
-                val reqTemplate = request.policy.ismTemplate
                 val reqTemplates = request.policy.ismTemplate
                 if (reqTemplates != null) {
                     validateISMTemplates(reqTemplates)
@@ -175,11 +175,13 @@ class TransportIndexPolicyAction @Inject constructor(
         }
 
         private fun putPolicy() {
-            request.policy.copy(schemaVersion = IndexUtils.indexManagementConfigSchemaVersion)
+            val policy = request.policy.copy(
+                schemaVersion = IndexUtils.indexManagementConfigSchemaVersion, user = buildUser(client.threadPool().threadContext)
+            )
 
             val indexRequest = IndexRequest(IndexManagementPlugin.INDEX_MANAGEMENT_INDEX)
                 .setRefreshPolicy(request.refreshPolicy)
-                .source(request.policy.toXContent(XContentFactory.jsonBuilder()))
+                .source(policy.toXContent(XContentFactory.jsonBuilder()))
                 .id(request.policyID)
                 .timeout(IndexRequest.DEFAULT_TIMEOUT)
 

@@ -55,6 +55,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndex
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.ISMStatusResponse
 import org.opensearch.indexmanagement.indexstatemanagement.util.FailedIndex
 import org.opensearch.indexmanagement.indexstatemanagement.util.managedIndexConfigIndexRequest
+import org.opensearch.indexmanagement.util.SecurityUtils.Companion.buildUser
 import org.opensearch.rest.RestStatus
 import org.opensearch.tasks.Task
 import org.opensearch.transport.TransportService
@@ -213,7 +214,9 @@ class TransportAddPolicyAction @Inject constructor(
 
                 val bulkReq = BulkRequest().timeout(TimeValue.timeValueMillis(bulkReqTimeout))
                 indicesToAdd.forEach { (uuid, name) ->
-                    bulkReq.add(managedIndexConfigIndexRequest(name, uuid, request.policyID, jobInterval))
+                    bulkReq.add(
+                        managedIndexConfigIndexRequest(name, uuid, request.policyID, jobInterval, user = buildUser(client.threadPool().threadContext))
+                    )
                 }
 
                 client.bulk(

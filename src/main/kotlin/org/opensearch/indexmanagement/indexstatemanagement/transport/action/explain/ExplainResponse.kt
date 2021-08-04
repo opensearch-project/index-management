@@ -35,6 +35,7 @@ import org.opensearch.common.xcontent.XContentBuilder
 import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.indexstatemanagement.settings.LegacyOpenDistroManagedIndexSettings
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings
+import org.opensearch.indexmanagement.indexstatemanagement.util.XCONTENT_WITHOUT_USER
 import java.io.IOException
 
 open class ExplainResponse : ActionResponse, ToXContentObject {
@@ -74,7 +75,7 @@ open class ExplainResponse : ActionResponse, ToXContentObject {
             builder.startObject(name)
             builder.field(LegacyOpenDistroManagedIndexSettings.POLICY_ID.key, indexPolicyIDs[ind])
             builder.field(ManagedIndexSettings.POLICY_ID.key, indexPolicyIDs[ind])
-            indexMetadatas[ind]?.toXContent(builder, ToXContent.EMPTY_PARAMS)
+            indexMetadatas[ind]?.toXContent(builder, XCONTENT_WITHOUT_USER)
             builder.endObject()
         }
         return builder.endObject()

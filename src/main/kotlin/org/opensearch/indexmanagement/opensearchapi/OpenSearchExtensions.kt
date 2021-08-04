@@ -28,7 +28,9 @@
 
 package org.opensearch.indexmanagement.opensearchapi
 
+import kotlinx.coroutines.ThreadContextElement
 import kotlinx.coroutines.delay
+import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.opensearch.ExceptionsHelper
 import org.opensearch.OpenSearchException
@@ -37,7 +39,9 @@ import org.opensearch.action.bulk.BackoffPolicy
 import org.opensearch.action.support.DefaultShardOperationFailedException
 import org.opensearch.client.OpenSearchClient
 import org.opensearch.common.bytes.BytesReference
+import org.opensearch.common.settings.Settings
 import org.opensearch.common.unit.TimeValue
+import org.opensearch.common.util.concurrent.ThreadContext
 import org.opensearch.common.xcontent.LoggingDeprecationHandler
 import org.opensearch.common.xcontent.NamedXContentRegistry
 import org.opensearch.common.xcontent.ToXContent
@@ -48,15 +52,20 @@ import org.opensearch.common.xcontent.XContentParser.Token
 import org.opensearch.common.xcontent.XContentParserUtils
 import org.opensearch.common.xcontent.XContentParserUtils.ensureExpectedToken
 import org.opensearch.common.xcontent.XContentType
+import org.opensearch.commons.InjectSecurity
+import org.opensearch.commons.authuser.User
 import org.opensearch.index.seqno.SequenceNumbers
 import org.opensearch.indexmanagement.indexstatemanagement.model.ISMTemplate
 import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
 import org.opensearch.indexmanagement.util.NO_ID
+import org.opensearch.indexmanagement.util.SecurityUtils.Companion.DEFAULT_INJECT_ROLES
+import org.opensearch.indexmanagement.util.SecurityUtils.Companion.INTERNAL_REQUEST
 import org.opensearch.jobscheduler.spi.utils.LockService
 import org.opensearch.rest.RestStatus
 import org.opensearch.transport.RemoteTransportException
 import java.io.IOException
 import java.time.Instant
+import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import kotlin.coroutines.suspendCoroutine
@@ -97,6 +106,10 @@ fun XContentBuilder.optionalISMTemplateField(name: String, ismTemplates: List<IS
         return nullField(name)
     }
     return this.field(Policy.ISM_TEMPLATE, ismTemplates.toTypedArray())
+}
+
+fun XContentBuilder.optionalUserField(name: String, user: User?): XContentBuilder {
+    return if (user == null) nullField(name) else this.field(name, user)
 }
 
 /**
@@ -198,4 +211,43 @@ fun <T> XContentParser.parseWithType(
     val parsed = parse(this, id, seqNo, primaryTerm)
     ensureExpectedToken(Token.END_OBJECT, this.nextToken(), this)
     return parsed
+}
+
+class IndexManagementSecurityContext(
+    private val id: String,
+    settings: Settings,
+    private val threadContext: ThreadContext,
+    private val user: User?
+) : ThreadContextElement<Unit> {
+
+    companion object Key : CoroutineContext.Key<IndexManagementSecurityContext>
+
+    private val logger: Logger = LogManager.getLogger(javaClass)
+    override val key: CoroutineContext.Key<*>
+        get() = Key
+    val injector = InjectSecurity(id, settings, threadContext)
+
+    /**
+     * Before the thread executes the coroutine we want the thread context to contain user roles so they are used when executing the code inside
+     * the coroutine
+     */
+    override fun updateThreadContext(context: CoroutineContext) {
+        logger.info("Setting security context in thread ${Thread.currentThread().name} for job $id")
+        injector.injectRoles(if (user == null) DEFAULT_INJECT_ROLES else user.roles)
+        // TODO: implement this in InjectSecurity to be able to set specific transient properties in ThreadContext
+        if (threadContext.getTransient<Boolean>(INTERNAL_REQUEST) == null) {
+            threadContext.putTransient(INTERNAL_REQUEST, true)
+        } else {
+            // TODO: Should fail?
+            logger.error("Failed to set the context correctly for job $id")
+        }
+    }
+
+    /**
+     * Clean up the thread context before the coroutine executed by thread is suspended
+     */
+    override fun restoreThreadContext(context: CoroutineContext, oldState: Unit) {
+        logger.info("Cleaning up secuirty context in thread ${Thread.currentThread().name} for job $id")
+        injector.close()
+    }
 }
