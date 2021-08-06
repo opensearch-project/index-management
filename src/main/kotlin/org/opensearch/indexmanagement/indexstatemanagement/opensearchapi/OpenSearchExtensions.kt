@@ -52,7 +52,6 @@ import org.opensearch.common.xcontent.XContentType
 import org.opensearch.index.Index
 import org.opensearch.index.IndexNotFoundException
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
-import org.opensearch.indexmanagement.indexstatemanagement.model.ISMTemplate
 import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
 import org.opensearch.indexmanagement.indexstatemanagement.settings.LegacyOpenDistroManagedIndexSettings
@@ -105,15 +104,13 @@ fun getUuidsForClosedIndices(state: ClusterState): MutableList<String> {
 }
 
 /**
- * Do a exists search query to retrieve all policy with ism_template field
- * parse search response with this function
+ * Parse policies from SearchResponse
  *
- * @return map of policyID to ISMTemplate in this policy
+ * @return list of policies
  * @throws [IllegalArgumentException]
  */
 @Throws(Exception::class)
-fun getPolicyToTemplateMap(response: SearchResponse, xContentRegistry: NamedXContentRegistry = NamedXContentRegistry.EMPTY):
-    Map<String, List<ISMTemplate>?> {
+fun parsePolicies(response: SearchResponse, xContentRegistry: NamedXContentRegistry = NamedXContentRegistry.EMPTY): List<Policy> {
     return response.hits.hits.map {
         val id = it.id
         val seqNo = it.seqNo
@@ -122,7 +119,7 @@ fun getPolicyToTemplateMap(response: SearchResponse, xContentRegistry: NamedXCon
             .createParser(xContentRegistry, LoggingDeprecationHandler.INSTANCE, it.sourceAsString)
         xcp.parseWithType(id, seqNo, primaryTerm, Policy.Companion::parse)
             .copy(id = id, seqNo = seqNo, primaryTerm = primaryTerm)
-    }.map { it.id to it.ismTemplate }.toMap()
+    }
 }
 
 @Suppress("UNCHECKED_CAST")

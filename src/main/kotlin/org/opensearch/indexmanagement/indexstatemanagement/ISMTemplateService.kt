@@ -26,66 +26,13 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement
 
-import org.apache.logging.log4j.LogManager
 import org.apache.lucene.util.automaton.Operations
 import org.opensearch.OpenSearchException
-import org.opensearch.cluster.metadata.IndexAbstraction
 import org.opensearch.common.Strings
 import org.opensearch.common.ValidationException
 import org.opensearch.common.regex.Regex
 import org.opensearch.indexmanagement.indexstatemanagement.model.ISMTemplate
 import org.opensearch.indexmanagement.util.IndexManagementException
-
-private val log = LogManager.getLogger("ISMTemplateService")
-
-/**
- * find the matching policy for the given index
- *
- * return early if it's hidden index
- * filter out templates that were last updated after the index creation time
- *
- * @return policyID
- */
-@Suppress("ReturnCount", "NestedBlockDepth")
-fun Map<String, List<ISMTemplate>>.findMatchingPolicy(
-    indexName: String,
-    indexCreationDate: Long,
-    isHiddenIndex: Boolean,
-    indexAbstraction: IndexAbstraction?
-): String? {
-    val isDataStreamIndex = indexAbstraction?.parentDataStream != null
-    if (this.isEmpty()) return null
-    // don't include hidden index
-    if (!isDataStreamIndex && isHiddenIndex) return null
-
-    // If the index belongs to a data stream, then find the matching policy using the data stream name.
-    val lookupName = when {
-        isDataStreamIndex -> indexAbstraction?.parentDataStream?.name
-        else -> indexName
-    }
-
-    // only process indices created after template
-    // traverse all ism templates for matching ones
-    val patternMatchPredicate = { pattern: String -> Regex.simpleMatch(pattern, lookupName) }
-    var matchedPolicy: String? = null
-    var highestPriority: Int = -1
-
-    this.forEach { (policyID, templateList) ->
-        templateList.filter { it.lastUpdatedTime.toEpochMilli() < indexCreationDate }
-            .forEach {
-                if (it.indexPatterns.stream().anyMatch(patternMatchPredicate)) {
-                    if (highestPriority < it.priority) {
-                        highestPriority = it.priority
-                        matchedPolicy = policyID
-                    } else if (highestPriority == it.priority) {
-                        log.warn("Warning: index $lookupName matches [$matchedPolicy, $policyID]")
-                    }
-                }
-            }
-    }
-
-    return matchedPolicy
-}
 
 /**
  * validate the template Name and indexPattern provided in the template

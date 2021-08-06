@@ -247,7 +247,7 @@ class IndexManagementSecurityContext(
      * Clean up the thread context before the coroutine executed by thread is suspended
      */
     override fun restoreThreadContext(context: CoroutineContext, oldState: Unit) {
-        logger.info("Cleaning up secuirty context in thread ${Thread.currentThread().name} for job $id")
+        logger.info("Cleaning up security context in thread ${Thread.currentThread().name} for job $id")
         injector.close()
     }
 }
