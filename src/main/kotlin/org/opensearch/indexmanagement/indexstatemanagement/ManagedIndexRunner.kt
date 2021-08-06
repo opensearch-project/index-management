@@ -41,10 +41,8 @@ import org.opensearch.action.get.GetRequest
 import org.opensearch.action.get.GetResponse
 import org.opensearch.action.index.IndexResponse
 import org.opensearch.action.support.IndicesOptions
-import org.opensearch.action.support.master.AcknowledgedResponse
 import org.opensearch.action.update.UpdateResponse
 import org.opensearch.client.Client
-import org.opensearch.cluster.block.ClusterBlockException
 import org.opensearch.cluster.health.ClusterHealthStatus
 import org.opensearch.cluster.health.ClusterStateHealth
 import org.opensearch.cluster.metadata.IndexMetadata
@@ -59,7 +57,6 @@ import org.opensearch.common.xcontent.XContentHelper
 import org.opensearch.common.xcontent.XContentParser.Token
 import org.opensearch.common.xcontent.XContentParserUtils.ensureExpectedToken
 import org.opensearch.common.xcontent.XContentType
-import org.opensearch.index.Index
 import org.opensearch.index.engine.VersionConflictEngineException
 import org.opensearch.index.seqno.SequenceNumbers
 import org.opensearch.indexmanagement.IndexManagementIndices
@@ -81,8 +78,6 @@ import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndex
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.INDEX_STATE_MANAGEMENT_ENABLED
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.JOB_INTERVAL
 import org.opensearch.indexmanagement.indexstatemanagement.step.Step
-import org.opensearch.indexmanagement.indexstatemanagement.transport.action.updateindexmetadata.UpdateManagedIndexMetaDataAction
-import org.opensearch.indexmanagement.indexstatemanagement.transport.action.updateindexmetadata.UpdateManagedIndexMetaDataRequest
 import org.opensearch.indexmanagement.indexstatemanagement.util.getActionToExecute
 import org.opensearch.indexmanagement.indexstatemanagement.util.getCompletedManagedIndexMetaData
 import org.opensearch.indexmanagement.indexstatemanagement.util.getStartingManagedIndexMetaData
@@ -291,7 +286,7 @@ object ManagedIndexRunner :
         }
 
         val state = policy.getStateToExecute(managedIndexMetaData)
-        val action: Action? = state?.getActionToExecute(clusterService, scriptService, client, settings, managedIndexMetaData.copy(user = managedIndexConfig.user))
+        val action: Action? = state?.getActionToExecute(clusterService, scriptService, client, settings, managedIndexMetaData)
         val step: Step? = action?.getStepToExecute()
         val currentActionMetaData = action?.getUpdatedActionMetaData(managedIndexMetaData, state)
 
@@ -592,29 +587,6 @@ object ManagedIndexRunner :
         }
     }
 
-    // delete metadata in cluster state
-    private suspend fun deleteManagedIndexMetaData(managedIndexMetaData: ManagedIndexMetaData): Boolean {
-        var result = false
-        try {
-            val request = UpdateManagedIndexMetaDataRequest(
-                indicesToRemoveManagedIndexMetaDataFrom = listOf(Index(managedIndexMetaData.index, managedIndexMetaData.indexUuid))
-            )
-            updateMetaDataRetryPolicy.retry(logger) {
-                val response: AcknowledgedResponse = client.suspendUntil { execute(UpdateManagedIndexMetaDataAction.INSTANCE, request, it) }
-                if (response.isAcknowledged) {
-                    result = true
-                } else {
-                    logger.error("Failed to delete ManagedIndexMetaData for [index=${managedIndexMetaData.index}]")
-                }
-            }
-        } catch (e: ClusterBlockException) {
-            logger.error("There was ClusterBlockException trying to delete the metadata for ${managedIndexMetaData.index}. Message: ${e.message}", e)
-        } catch (e: Exception) {
-            logger.error("Failed to delete ManagedIndexMetaData for [index=${managedIndexMetaData.index}]", e)
-        }
-        return result
-    }
-
     /**
      * update metadata in config index, and save metadata in history after update
      * this can be called 2 times in one job run, so need to save seqNo & primeTerm
@@ -740,8 +712,8 @@ object ManagedIndexRunner :
 
         if (!updated.metadataSaved || policy == null) return
 
-        // this will save the new policy on the job and reset the change policy back to null
-        savePolicyToManagedIndexConfig(managedIndexConfig, policy)
+        // Change the policy and user stored on the job from changePolicy, this will also set the changePolicy to null on the job
+        savePolicyToManagedIndexConfig(managedIndexConfig.copy(user = changePolicy.user), policy)
     }
 
     @Suppress("TooGenericExceptionCaught")

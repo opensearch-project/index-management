@@ -35,7 +35,10 @@ import org.opensearch.common.xcontent.XContentBuilder
 import org.opensearch.common.xcontent.XContentParser
 import org.opensearch.common.xcontent.XContentParser.Token
 import org.opensearch.common.xcontent.XContentParserUtils.ensureExpectedToken
+import org.opensearch.commons.authuser.User
 import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.StateMetaData
+import org.opensearch.indexmanagement.indexstatemanagement.util.WITH_USER
+import org.opensearch.indexmanagement.opensearchapi.optionalUserField
 import java.io.IOException
 
 /**
@@ -52,7 +55,8 @@ data class ChangePolicy(
     val policyID: String,
     val state: String?,
     val include: List<StateFilter>,
-    val isSafe: Boolean
+    val isSafe: Boolean,
+    val user: User? = null
 ) : Writeable, ToXContentObject {
 
     @Throws(IOException::class)
@@ -60,7 +64,10 @@ data class ChangePolicy(
         policyID = sin.readString(),
         state = sin.readOptionalString(),
         include = sin.readList(::StateFilter),
-        isSafe = sin.readBoolean()
+        isSafe = sin.readBoolean(),
+        user = if (sin.readBoolean()) {
+            User(sin)
+        } else null
     )
 
     override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
@@ -69,8 +76,8 @@ data class ChangePolicy(
             .field(ManagedIndexConfig.POLICY_ID_FIELD, policyID)
             .field(StateMetaData.STATE, state)
             .field(IS_SAFE_FIELD, isSafe)
-            .endObject()
-        return builder
+        if (params.paramAsBoolean(WITH_USER, true)) builder.optionalUserField(ManagedIndexConfig.USER_FIELD, user)
+        return builder.endObject()
     }
 
     @Throws(IOException::class)
@@ -79,6 +86,8 @@ data class ChangePolicy(
         out.writeOptionalString(state)
         out.writeList(include)
         out.writeBoolean(isSafe)
+        out.writeBoolean(user != null)
+        user?.writeTo(out)
     }
 
     companion object {
@@ -86,6 +95,7 @@ data class ChangePolicy(
         const val STATE_FIELD = "state"
         const val INCLUDE_FIELD = "include"
         const val IS_SAFE_FIELD = "is_safe"
+        const val USER_FIELD = "user"
 
         @JvmStatic
         @Throws(IOException::class)
@@ -93,6 +103,7 @@ data class ChangePolicy(
             var policyID: String? = null
             var state: String? = null
             var isSafe: Boolean = false
+            var user: User? = null
             val include = mutableListOf<StateFilter>()
 
             ensureExpectedToken(Token.START_OBJECT, xcp.currentToken(), xcp)
@@ -110,6 +121,9 @@ data class ChangePolicy(
                         }
                     }
                     IS_SAFE_FIELD -> isSafe = xcp.booleanValue()
+                    USER_FIELD -> {
+                        user = if (xcp.currentToken() == Token.VALUE_NULL) null else User.parse(xcp)
+                    }
                     else -> throw IllegalArgumentException("Invalid field: [$fieldName] found in ChangePolicy.")
                 }
             }
@@ -118,7 +132,8 @@ data class ChangePolicy(
                 requireNotNull(policyID) { "ChangePolicy policy id is null" },
                 state,
                 include.toList(),
-                isSafe
+                isSafe,
+                user
             )
         }
     }

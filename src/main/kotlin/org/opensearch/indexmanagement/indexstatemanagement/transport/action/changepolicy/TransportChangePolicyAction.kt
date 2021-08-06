@@ -272,8 +272,8 @@ class TransportChangePolicyAction @Inject constructor(
                 // compare the sweptConfig policy to the get policy here and update changePolicy
                 val currentStateName = indexUuidToCurrentState[sweptConfig.uuid]
                 val updatedChangePolicy = changePolicy
-                    .copy(isSafe = sweptConfig.policy?.isSafeToChange(currentStateName, policy, changePolicy) == true)
-                bulkUpdateManagedIndexRequest.add(updateManagedIndexRequest(sweptConfig.copy(changePolicy = updatedChangePolicy), user = buildUser(client.threadPool().threadContext)))
+                    .copy(isSafe = sweptConfig.policy?.isSafeToChange(currentStateName, policy, changePolicy) == true, user = buildUser(client.threadPool().threadContext))
+                bulkUpdateManagedIndexRequest.add(updateManagedIndexRequest(sweptConfig.copy(changePolicy = updatedChangePolicy)))
                 mapOfItemIdToIndex[id] = Index(sweptConfig.index, sweptConfig.uuid)
             }
             client.bulk(

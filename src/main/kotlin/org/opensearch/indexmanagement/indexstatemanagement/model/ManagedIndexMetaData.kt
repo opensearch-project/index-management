@@ -39,7 +39,6 @@ import org.opensearch.common.xcontent.XContentParser
 import org.opensearch.common.xcontent.XContentParser.Token
 import org.opensearch.common.xcontent.XContentParserUtils.ensureExpectedToken
 import org.opensearch.common.xcontent.json.JsonXContent
-import org.opensearch.commons.authuser.User
 import org.opensearch.index.seqno.SequenceNumbers
 import org.opensearch.indexmanagement.indexstatemanagement.model.action.ActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.ActionMetaData
@@ -65,8 +64,7 @@ data class ManagedIndexMetaData(
     val info: Map<String, Any>?,
     val id: String = NO_ID,
     val seqNo: Long = SequenceNumbers.UNASSIGNED_SEQ_NO,
-    val primaryTerm: Long = SequenceNumbers.UNASSIGNED_PRIMARY_TERM,
-    val user: User? = null
+    val primaryTerm: Long = SequenceNumbers.UNASSIGNED_PRIMARY_TERM
 ) : Writeable, ToXContentFragment {
 
     @Suppress("ComplexMethod")
