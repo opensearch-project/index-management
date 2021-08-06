@@ -225,14 +225,14 @@ class IndexManagementSecurityContext(
     private val logger: Logger = LogManager.getLogger(javaClass)
     override val key: CoroutineContext.Key<*>
         get() = Key
-    val injector = InjectSecurity(id, settings, threadContext)
+    private val injector = InjectSecurity(id, settings, threadContext)
 
     /**
      * Before the thread executes the coroutine we want the thread context to contain user roles so they are used when executing the code inside
      * the coroutine
      */
     override fun updateThreadContext(context: CoroutineContext) {
-        logger.info("Setting security context in thread ${Thread.currentThread().name} for job $id")
+        logger.debug("Setting security context in thread ${Thread.currentThread().name} for job $id")
         injector.injectRoles(if (user == null) DEFAULT_INJECT_ROLES else user.roles)
         // TODO: implement this in InjectSecurity to be able to set specific transient properties in ThreadContext
         if (threadContext.getTransient<Boolean>(INTERNAL_REQUEST) == null) {
@@ -247,7 +247,7 @@ class IndexManagementSecurityContext(
      * Clean up the thread context before the coroutine executed by thread is suspended
      */
     override fun restoreThreadContext(context: CoroutineContext, oldState: Unit) {
-        logger.info("Cleaning up security context in thread ${Thread.currentThread().name} for job $id")
+        logger.debug("Cleaning up security context in thread ${Thread.currentThread().name} for job $id")
         injector.close()
     }
 }

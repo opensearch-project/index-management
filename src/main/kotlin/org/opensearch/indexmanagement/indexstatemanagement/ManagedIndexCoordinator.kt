@@ -273,7 +273,6 @@ class ManagedIndexCoordinator(
      */
     @OpenForTesting
     suspend fun sweepClusterChangedEvent(event: ClusterChangedEvent) {
-        logger.info("test:      processing cluster change event")
         // indices delete event
         var removeManagedIndexReq = emptyList<DocWriteRequest<*>>()
         var indicesToClean = emptyList<Index>()

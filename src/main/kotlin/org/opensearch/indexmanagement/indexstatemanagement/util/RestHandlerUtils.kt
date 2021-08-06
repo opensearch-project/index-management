@@ -113,22 +113,11 @@ fun getPartialChangePolicyBuilder(
     changePolicy: ChangePolicy?,
     user: User? = null
 ): XContentBuilder {
-    if (user == null) {
-        return XContentFactory.jsonBuilder()
-            .startObject()
-            .startObject(ManagedIndexConfig.MANAGED_INDEX_TYPE)
-            .optionalTimeField(ManagedIndexConfig.LAST_UPDATED_TIME_FIELD, Instant.now())
-            .field(ManagedIndexConfig.CHANGE_POLICY_FIELD, changePolicy)
-            .endObject()
-            .endObject()
-    } else {
-        return XContentFactory.jsonBuilder()
-            .startObject()
-            .startObject(ManagedIndexConfig.MANAGED_INDEX_TYPE)
-            .optionalTimeField(ManagedIndexConfig.LAST_UPDATED_TIME_FIELD, Instant.now())
-            .field(ManagedIndexConfig.CHANGE_POLICY_FIELD, changePolicy)
-            .field(ManagedIndexConfig.USER_FIELD, user)
-            .endObject()
-            .endObject()
-    }
+    val builder = XContentFactory.jsonBuilder()
+        .startObject()
+        .startObject(ManagedIndexConfig.MANAGED_INDEX_TYPE)
+        .optionalTimeField(ManagedIndexConfig.LAST_UPDATED_TIME_FIELD, Instant.now())
+        .field(ManagedIndexConfig.CHANGE_POLICY_FIELD, changePolicy)
+    if (user != null) builder.field(ManagedIndexConfig.USER_FIELD, user)
+    return builder.endObject().endObject()
 }
