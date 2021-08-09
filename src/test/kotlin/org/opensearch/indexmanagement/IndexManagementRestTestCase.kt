@@ -46,7 +46,7 @@ import javax.management.remote.JMXServiceURL
 
 abstract class IndexManagementRestTestCase : ODFERestTestCase() {
 
-    val configSchemaVersion = 10
+    val configSchemaVersion = 11
     val historySchemaVersion = 3
 
     // Having issues with tests leaking into other tests and mappings being incorrect and they are not caught by any pending task wait check as

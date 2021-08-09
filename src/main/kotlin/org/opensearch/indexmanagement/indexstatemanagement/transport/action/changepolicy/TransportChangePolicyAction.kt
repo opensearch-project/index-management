@@ -68,6 +68,7 @@ import org.opensearch.indexmanagement.opensearchapi.contentParser
 import org.opensearch.indexmanagement.opensearchapi.parseWithType
 import org.opensearch.indexmanagement.util.IndexUtils
 import org.opensearch.indexmanagement.util.NO_ID
+import org.opensearch.indexmanagement.util.SecurityUtils.Companion.buildUser
 import org.opensearch.rest.RestStatus
 import org.opensearch.search.fetch.subphase.FetchSourceContext
 import org.opensearch.tasks.Task
@@ -271,7 +272,7 @@ class TransportChangePolicyAction @Inject constructor(
                 // compare the sweptConfig policy to the get policy here and update changePolicy
                 val currentStateName = indexUuidToCurrentState[sweptConfig.uuid]
                 val updatedChangePolicy = changePolicy
-                    .copy(isSafe = sweptConfig.policy?.isSafeToChange(currentStateName, policy, changePolicy) == true)
+                    .copy(isSafe = sweptConfig.policy?.isSafeToChange(currentStateName, policy, changePolicy) == true, user = buildUser(client.threadPool().threadContext))
                 bulkUpdateManagedIndexRequest.add(updateManagedIndexRequest(sweptConfig.copy(changePolicy = updatedChangePolicy)))
                 mapOfItemIdToIndex[id] = Index(sweptConfig.index, sweptConfig.uuid)
             }

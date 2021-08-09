@@ -33,18 +33,10 @@ import org.opensearch.common.io.stream.StreamInput
 import org.opensearch.common.io.stream.StreamOutput
 import java.io.IOException
 
-class AddPolicyRequest : ActionRequest {
-
-    val indices: List<String>
+class AddPolicyRequest(
+    val indices: List<String>,
     val policyID: String
-
-    constructor(
-        indices: List<String>,
-        policyID: String
-    ) : super() {
-        this.indices = indices
-        this.policyID = policyID
-    }
+) : ActionRequest() {
 
     @Throws(IOException::class)
     constructor(sin: StreamInput) : this(

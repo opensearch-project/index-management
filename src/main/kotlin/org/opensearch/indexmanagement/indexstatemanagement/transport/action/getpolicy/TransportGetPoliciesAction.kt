@@ -35,16 +35,12 @@ import org.opensearch.action.support.ActionFilters
 import org.opensearch.action.support.HandledTransportAction
 import org.opensearch.client.Client
 import org.opensearch.common.inject.Inject
-import org.opensearch.common.xcontent.LoggingDeprecationHandler
 import org.opensearch.common.xcontent.NamedXContentRegistry
-import org.opensearch.common.xcontent.XContentFactory
-import org.opensearch.common.xcontent.XContentType
 import org.opensearch.index.IndexNotFoundException
 import org.opensearch.index.query.Operator
 import org.opensearch.index.query.QueryBuilders
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
-import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
-import org.opensearch.indexmanagement.opensearchapi.parseWithType
+import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.parsePolicies
 import org.opensearch.search.builder.SearchSourceBuilder
 import org.opensearch.search.sort.SortBuilders
 import org.opensearch.search.sort.SortOrder
@@ -99,15 +95,7 @@ class TransportGetPoliciesAction @Inject constructor(
             object : ActionListener<SearchResponse> {
                 override fun onResponse(response: SearchResponse) {
                     val totalPolicies = response.hits.totalHits?.value ?: 0
-                    val policies = response.hits.hits.map {
-                        val id = it.id
-                        val seqNo = it.seqNo
-                        val primaryTerm = it.primaryTerm
-                        val xcp = XContentFactory.xContent(XContentType.JSON)
-                            .createParser(xContentRegistry, LoggingDeprecationHandler.INSTANCE, it.sourceAsString)
-                        xcp.parseWithType(id, seqNo, primaryTerm, Policy.Companion::parse)
-                            .copy(id = id, seqNo = seqNo, primaryTerm = primaryTerm)
-                    }
+                    val policies = parsePolicies(response)
 
                     actionListener.onResponse(GetPoliciesResponse(policies, totalPolicies.toInt()))
                 }

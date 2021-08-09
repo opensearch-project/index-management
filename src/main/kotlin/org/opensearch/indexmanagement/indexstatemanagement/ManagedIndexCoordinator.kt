@@ -53,6 +53,7 @@ import org.opensearch.cluster.block.ClusterBlockException
 import org.opensearch.cluster.metadata.IndexMetadata
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.component.LifecycleListener
+import org.opensearch.common.regex.Regex
 import org.opensearch.common.settings.Settings
 import org.opensearch.common.unit.TimeValue
 import org.opensearch.index.Index
@@ -61,14 +62,13 @@ import org.opensearch.index.query.QueryBuilders
 import org.opensearch.indexmanagement.IndexManagementIndices
 import org.opensearch.indexmanagement.IndexManagementPlugin
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
-import org.opensearch.indexmanagement.indexstatemanagement.model.ISMTemplate
 import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexConfig
 import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
+import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
 import org.opensearch.indexmanagement.indexstatemanagement.model.coordinator.ClusterStateManagedIndexConfig
 import org.opensearch.indexmanagement.indexstatemanagement.model.coordinator.SweptManagedIndexConfig
-import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.filterNotNullValues
-import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.getPolicyToTemplateMap
 import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.mgetManagedIndexMetadata
+import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.parsePolicies
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.AUTO_MANAGE
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.COORDINATOR_BACKOFF_COUNT
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.COORDINATOR_BACKOFF_MILLIS
@@ -303,38 +303,86 @@ class ManagedIndexCoordinator(
         val updateManagedIndexReqs = mutableListOf<DocWriteRequest<IndexRequest>>()
         if (indexNames.isEmpty()) return updateManagedIndexReqs.toList()
 
-        val templates = getISMTemplates()
+        val policiesWithTemplates = getPoliciesWithISMTemplates()
 
         // Iterate over each unmanaged hot/warm index and if it matches an ISM template add a managed index config index request
         indexNames.forEach { indexName ->
-            if (clusterState.metadata.hasIndex(indexName)) {
+            val lookupName = findIndexLookupName(indexName, clusterState)
+            if (lookupName != null) {
                 val indexMetadata = clusterState.metadata.index(indexName)
-                val autoManage = indexMetadata.settings.getAsBoolean(AUTO_MANAGE.key, true)
-                if (autoManage) {
-                    val indexUuid = indexMetadata.indexUUID
-                    val isHiddenIndex =
-                        IndexMetadata.INDEX_HIDDEN_SETTING.get(indexMetadata.settings) || indexName.startsWith(".")
-                    val indexAbstraction = clusterState.metadata.indicesLookup[indexName]
-                    templates.findMatchingPolicy(indexName, indexMetadata.creationDate, isHiddenIndex, indexAbstraction)
-                        ?.let { policyID ->
-                            logger.info("Index [$indexName] matched ISM policy template and will be managed by $policyID")
-                            updateManagedIndexReqs.add(
-                                managedIndexConfigIndexRequest(
-                                    indexName,
-                                    indexUuid,
-                                    policyID,
-                                    jobInterval
-                                )
+                val creationDate = indexMetadata.creationDate
+                val indexUuid = indexMetadata.indexUUID
+                findMatchingPolicy(lookupName, creationDate, policiesWithTemplates)
+                    ?.let { policy ->
+                        logger.info("Index [$indexName] matched ISM policy template and will be managed by ${policy.id}")
+                        updateManagedIndexReqs.add(
+                            managedIndexConfigIndexRequest(
+                                indexName,
+                                indexUuid,
+                                policy.id,
+                                jobInterval,
+                                policy.user
                             )
-                        }
-                }
+                        )
+                    }
             }
         }
 
         return updateManagedIndexReqs.toList()
     }
 
-    suspend fun getISMTemplates(): Map<String, List<ISMTemplate>> {
+    private fun findIndexLookupName(indexName: String, clusterState: ClusterState): String? {
+        if (clusterState.metadata.hasIndex(indexName)) {
+            val indexMetadata = clusterState.metadata.index(indexName)
+            val autoManage = indexMetadata.settings.getAsBoolean(AUTO_MANAGE.key, true)
+            if (autoManage) {
+                val isHiddenIndex =
+                    IndexMetadata.INDEX_HIDDEN_SETTING.get(indexMetadata.settings) || indexName.startsWith(".")
+                val indexAbstraction = clusterState.metadata.indicesLookup[indexName]
+                val isDataStreamIndex = indexAbstraction?.parentDataStream != null
+                if (!isDataStreamIndex && isHiddenIndex) {
+                    return null
+                }
+
+                return when {
+                    isDataStreamIndex -> indexAbstraction?.parentDataStream?.name
+                    else -> indexName
+                }
+            }
+        }
+
+        return null
+    }
+
+    private fun findMatchingPolicy(indexName: String, creationDate: Long, policies: List<Policy>): Policy? {
+        // only process indices created after template
+        // traverse all ism templates for matching ones
+        val patternMatchPredicate = { pattern: String -> Regex.simpleMatch(pattern, indexName) }
+        var matchedPolicyId: String? = null
+        var matchedPolicy: Policy? = null
+        var highestPriority: Int = -1
+
+        policies.forEach { policy ->
+            policy.ismTemplate?.filter { template ->
+                template.lastUpdatedTime.toEpochMilli() < creationDate
+            }?.forEach { template ->
+                if (template.indexPatterns.stream().anyMatch(patternMatchPredicate)) {
+                    if (highestPriority < template.priority) {
+                        highestPriority = template.priority
+                        matchedPolicyId = policy.id
+                        matchedPolicy = policy
+                    } else if (highestPriority == template.priority) {
+                        logger.warn("Warning: index $indexName matches [$matchedPolicyId, ${policy.id}]")
+                    }
+                }
+            }
+        }
+
+        return matchedPolicy
+    }
+
+    suspend fun getPoliciesWithISMTemplates(): List<Policy> {
+        val errorMessage = "Failed to get ISM policies with templates"
         val searchRequest = SearchRequest()
             .source(
                 SearchSourceBuilder().query(
@@ -345,17 +393,18 @@ class ManagedIndexCoordinator(
 
         return try {
             val response: SearchResponse = client.suspendUntil { search(searchRequest, it) }
-            getPolicyToTemplateMap(response).filterNotNullValues()
+            parsePolicies(response)
         } catch (ex: IndexNotFoundException) {
-            emptyMap()
+            emptyList()
         } catch (ex: ClusterBlockException) {
-            emptyMap()
+            logger.error(errorMessage)
+            emptyList()
         } catch (e: SearchPhaseExecutionException) {
-            logger.error("Failed to get ISM templates: $e")
-            emptyMap()
+            logger.error("$errorMessage: $e")
+            emptyList()
         } catch (e: Exception) {
-            logger.error("Failed to get ISM templates", e)
-            emptyMap()
+            logger.error(errorMessage, e)
+            emptyList()
         }
     }
 
