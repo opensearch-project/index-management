@@ -42,7 +42,10 @@ data class ActionProperties(
     val maxNumSegments: Int? = null,
     val snapshotName: String? = null,
     val rollupId: String? = null,
-    val hasRollupFailed: Boolean? = null
+    val hasRollupFailed: Boolean? = null,
+    val shrinkNodeId: String? = null,
+    val shrinkTargetIndexName: String? = null,
+    val shrinkNumShards: Int? = null
 ) : Writeable, ToXContentFragment {
 
     override fun writeTo(out: StreamOutput) {
@@ -50,6 +53,9 @@ data class ActionProperties(
         out.writeOptionalString(snapshotName)
         out.writeOptionalString(rollupId)
         out.writeOptionalBoolean(hasRollupFailed)
+        out.writeOptionalString(shrinkNodeId)
+        out.writeOptionalString(shrinkTargetIndexName)
+        out.writeOptionalInt(shrinkNumShards)
     }
 
     override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
@@ -57,6 +63,9 @@ data class ActionProperties(
         if (snapshotName != null) builder.field(Properties.SNAPSHOT_NAME.key, snapshotName)
         if (rollupId != null) builder.field(Properties.ROLLUP_ID.key, rollupId)
         if (hasRollupFailed != null) builder.field(Properties.HAS_ROLLUP_FAILED.key, hasRollupFailed)
+        if (shrinkNodeId != null) builder.field(Properties.SHRINK_NODE_ID.key, shrinkNodeId)
+        if (shrinkTargetIndexName != null) builder.field(Properties.SHRINK_TARGET_INDEX_NAME.key, shrinkTargetIndexName)
+        if (shrinkNumShards != null) builder.field(Properties.SHRINK_NUM_SHARDS.key, shrinkNumShards)
         return builder
     }
 
@@ -68,8 +77,11 @@ data class ActionProperties(
             val snapshotName: String? = si.readOptionalString()
             val rollupId: String? = si.readOptionalString()
             val hasRollupFailed: Boolean? = si.readOptionalBoolean()
+            val shrinkNodeId: String? = si.readOptionalString()
+            val shrinkTargetIndexName: String? = si.readOptionalString()
+            val shrinkNumShards: Int? = si.readOptionalInt()
 
-            return ActionProperties(maxNumSegments, snapshotName, rollupId, hasRollupFailed)
+            return ActionProperties(maxNumSegments, snapshotName, rollupId, hasRollupFailed, shrinkNodeId, shrinkTargetIndexName, shrinkNumShards)
         }
 
         fun parse(xcp: XContentParser): ActionProperties {
@@ -77,6 +89,9 @@ data class ActionProperties(
             var snapshotName: String? = null
             var rollupId: String? = null
             var hasRollupFailed: Boolean? = null
+            var shrinkNodeId: String? = null
+            var shrinkTargetIndexName: String? = null
+            var shrinkNumShards: Int? = null
 
             ensureExpectedToken(Token.START_OBJECT, xcp.currentToken(), xcp)
             while (xcp.nextToken() != Token.END_OBJECT) {
@@ -88,10 +103,13 @@ data class ActionProperties(
                     Properties.SNAPSHOT_NAME.key -> snapshotName = xcp.text()
                     Properties.ROLLUP_ID.key -> rollupId = xcp.text()
                     Properties.HAS_ROLLUP_FAILED.key -> hasRollupFailed = xcp.booleanValue()
+                    Properties.SHRINK_NODE_ID.key -> shrinkNodeId = xcp.text()
+                    Properties.SHRINK_TARGET_INDEX_NAME.key -> shrinkTargetIndexName = xcp.text()
+                    Properties.SHRINK_NUM_SHARDS.key -> shrinkNumShards = xcp.intValue()
                 }
             }
 
-            return ActionProperties(maxNumSegments, snapshotName, rollupId, hasRollupFailed)
+            return ActionProperties(maxNumSegments, snapshotName, rollupId, hasRollupFailed, shrinkNodeId, shrinkTargetIndexName, shrinkNumShards)
         }
     }
 
@@ -99,6 +117,9 @@ data class ActionProperties(
         MAX_NUM_SEGMENTS("max_num_segments"),
         SNAPSHOT_NAME("snapshot_name"),
         ROLLUP_ID("rollup_id"),
-        HAS_ROLLUP_FAILED("has_rollup_failed")
+        HAS_ROLLUP_FAILED("has_rollup_failed"),
+        SHRINK_NODE_ID("shrink_node_id"),
+        SHRINK_TARGET_INDEX_NAME("shrink_target_index_name"),
+        SHRINK_NUM_SHARDS("shrink_num_shards")
     }
 }
