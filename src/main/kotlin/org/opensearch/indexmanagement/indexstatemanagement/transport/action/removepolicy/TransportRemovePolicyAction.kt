@@ -43,8 +43,10 @@ import org.opensearch.action.support.master.AcknowledgedResponse
 import org.opensearch.client.node.NodeClient
 import org.opensearch.cluster.ClusterState
 import org.opensearch.cluster.block.ClusterBlockException
+import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.inject.Inject
 import org.opensearch.common.settings.Settings
+import org.opensearch.commons.authuser.User
 import org.opensearch.index.Index
 import org.opensearch.index.IndexNotFoundException
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
@@ -54,7 +56,9 @@ import org.opensearch.indexmanagement.indexstatemanagement.transport.action.ISMS
 import org.opensearch.indexmanagement.indexstatemanagement.util.FailedIndex
 import org.opensearch.indexmanagement.indexstatemanagement.util.deleteManagedIndexMetadataRequest
 import org.opensearch.indexmanagement.indexstatemanagement.util.deleteManagedIndexRequest
+import org.opensearch.indexmanagement.settings.IndexManagementSettings
 import org.opensearch.indexmanagement.util.IndexManagementException
+import org.opensearch.indexmanagement.util.SecurityUtils.Companion.buildUser
 import org.opensearch.tasks.Task
 import org.opensearch.transport.TransportService
 
@@ -63,10 +67,21 @@ private val log = LogManager.getLogger(TransportRemovePolicyAction::class.java)
 class TransportRemovePolicyAction @Inject constructor(
     val client: NodeClient,
     transportService: TransportService,
-    actionFilters: ActionFilters
+    actionFilters: ActionFilters,
+    val clusterService: ClusterService,
+    val settings: Settings
 ) : HandledTransportAction<RemovePolicyRequest, ISMStatusResponse>(
     RemovePolicyAction.NAME, transportService, actionFilters, ::RemovePolicyRequest
 ) {
+
+    @Volatile private var filterByEnabled = IndexManagementSettings.FILTER_BY_BACKEND_ROLES.get(settings)
+
+    init {
+        clusterService.clusterSettings.addSettingsUpdateConsumer(IndexManagementSettings.FILTER_BY_BACKEND_ROLES) {
+            filterByEnabled = it
+        }
+    }
+
     override fun doExecute(task: Task, request: RemovePolicyRequest, listener: ActionListener<ISMStatusResponse>) {
         RemovePolicyHandler(client, listener, request).start()
     }
@@ -74,7 +89,8 @@ class TransportRemovePolicyAction @Inject constructor(
     inner class RemovePolicyHandler(
         private val client: NodeClient,
         private val actionListener: ActionListener<ISMStatusResponse>,
-        private val request: RemovePolicyRequest
+        private val request: RemovePolicyRequest,
+        private val user: User? = buildUser(client.threadPool().threadContext)
     ) {
 
         private val failedIndices: MutableList<FailedIndex> = mutableListOf()
@@ -91,24 +107,26 @@ class TransportRemovePolicyAction @Inject constructor(
                 .local(false)
                 .indicesOptions(strictExpandOptions)
 
-            client.admin()
-                .cluster()
-                .state(
-                    clusterStateRequest,
-                    object : ActionListener<ClusterStateResponse> {
-                        override fun onResponse(response: ClusterStateResponse) {
-                            val indexMetadatas = response.state.metadata.indices
-                            indexMetadatas.forEach {
-                                indicesToRemove.putIfAbsent(it.value.indexUUID, it.key)
+            client.threadPool().threadContext.stashContext().use {
+                client.admin()
+                    .cluster()
+                    .state(
+                        clusterStateRequest,
+                        object : ActionListener<ClusterStateResponse> {
+                            override fun onResponse(response: ClusterStateResponse) {
+                                val indexMetadatas = response.state.metadata.indices
+                                indexMetadatas.forEach {
+                                    indicesToRemove.putIfAbsent(it.value.indexUUID, it.key)
+                                }
+                                populateLists(response.state)
                             }
-                            populateLists(response.state)
-                        }
 
-                        override fun onFailure(t: Exception) {
-                            actionListener.onFailure(ExceptionsHelper.unwrapCause(t) as Exception)
+                            override fun onFailure(t: Exception) {
+                                actionListener.onFailure(ExceptionsHelper.unwrapCause(t) as Exception)
+                            }
                         }
-                    }
-                )
+                    )
+            }
         }
 
         private fun populateLists(state: ClusterState) {

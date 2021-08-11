@@ -68,7 +68,6 @@ import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
 import org.opensearch.indexmanagement.indexstatemanagement.model.coordinator.ClusterStateManagedIndexConfig
 import org.opensearch.indexmanagement.indexstatemanagement.model.coordinator.SweptManagedIndexConfig
 import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.mgetManagedIndexMetadata
-import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.parsePolicies
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.AUTO_MANAGE
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.COORDINATOR_BACKOFF_COUNT
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.COORDINATOR_BACKOFF_MILLIS
@@ -87,6 +86,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.util.isPolicyComplete
 import org.opensearch.indexmanagement.indexstatemanagement.util.managedIndexConfigIndexRequest
 import org.opensearch.indexmanagement.indexstatemanagement.util.updateEnableManagedIndexRequest
 import org.opensearch.indexmanagement.opensearchapi.contentParser
+import org.opensearch.indexmanagement.opensearchapi.parseFromSearchResponse
 import org.opensearch.indexmanagement.opensearchapi.parseWithType
 import org.opensearch.indexmanagement.opensearchapi.retry
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
@@ -321,7 +321,7 @@ class ManagedIndexCoordinator(
                                 indexUuid,
                                 policy.id,
                                 jobInterval,
-                                policy.user
+                                policy
                             )
                         )
                     }
@@ -393,7 +393,7 @@ class ManagedIndexCoordinator(
 
         return try {
             val response: SearchResponse = client.suspendUntil { search(searchRequest, it) }
-            parsePolicies(response)
+            parseFromSearchResponse(response = response, parse = Policy.Companion::parse)
         } catch (ex: IndexNotFoundException) {
             emptyList()
         } catch (ex: ClusterBlockException) {

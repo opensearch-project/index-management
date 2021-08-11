@@ -130,14 +130,16 @@ class XContentTests : OpenSearchTestCase() {
         val rollupString = rollup.toJsonString()
         val parser = parserWithType(rollupString)
         val parsedRollup = parser.parseWithType(rollup.id, rollup.seqNo, rollup.primaryTerm, Rollup.Companion::parse)
-        assertEquals("Round tripping Rollup with type doesn't work", rollup, parsedRollup)
+        // roles are deprecated and not populated in toXContent and parsed as part of parse
+        assertEquals("Round tripping Rollup with type doesn't work", rollup.copy(roles = listOf()), parsedRollup)
     }
 
     fun `test rollup parsing without type`() {
         val rollup = randomRollup()
         val rollupString = rollup.toJsonString(XCONTENT_WITHOUT_TYPE)
         val parsedRollup = Rollup.parse(parser(rollupString), rollup.id, rollup.seqNo, rollup.primaryTerm)
-        assertEquals("Round tripping Rollup without type doesn't work", rollup, parsedRollup)
+        // roles are deprecated and not populated in toXContent and parsed as part of parse
+        assertEquals("Round tripping Rollup without type doesn't work", rollup.copy(roles = listOf()), parsedRollup)
     }
 
     fun `test ism rollup parsing`() {

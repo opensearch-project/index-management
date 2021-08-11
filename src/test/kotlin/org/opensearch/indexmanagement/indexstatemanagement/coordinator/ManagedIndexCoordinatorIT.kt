@@ -27,8 +27,6 @@
 package org.opensearch.indexmanagement.indexstatemanagement.coordinator
 
 import org.opensearch.client.ResponseException
-import org.opensearch.common.xcontent.XContentType
-import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
 import org.opensearch.indexmanagement.indexstatemanagement.IndexStateManagementRestTestCase
 import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexConfig
 import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
@@ -49,11 +47,13 @@ import org.opensearch.rest.RestRequest
 import org.opensearch.rest.RestStatus
 import java.time.Instant
 import java.time.temporal.ChronoUnit
+import kotlin.test.assertFailsWith
 
 class ManagedIndexCoordinatorIT : IndexStateManagementRestTestCase() {
 
     fun `test creating index with valid policy_id`() {
-        val (index, policyID) = createIndex(policyID = "some_policy")
+        val policy = createRandomPolicy()
+        val (index, policyID) = createIndex(policyID = policy.id)
         waitFor {
             val managedIndexConfig = getManagedIndexConfig(index)
             assertNotNull("Did not create ManagedIndexConfig", managedIndexConfig)
@@ -64,29 +64,15 @@ class ManagedIndexCoordinatorIT : IndexStateManagementRestTestCase() {
         }
     }
 
-    @Suppress("UNCHECKED_CAST")
-    fun `test first time add policy to index will create config index with correct mappings`() {
-        createIndex()
-        waitFor {
-            val response = client().makeRequest("GET", "/$INDEX_MANAGEMENT_INDEX/_mapping")
-            val parserMap = createParser(
-                XContentType.JSON.xContent(),
-                response.entity.content
-            ).map() as Map<String, Map<String, Map<String, Any>>>
-            val mappingsMap = parserMap[INDEX_MANAGEMENT_INDEX]?.getValue("mappings")!!
-
-            val expected = createParser(
-                XContentType.JSON.xContent(),
-                javaClass.classLoader.getResource("mappings/opendistro-ism-config.json").readText()
-            )
-
-            val expectedMap = expected.map()
-            assertEquals("Mappings are different", expectedMap, mappingsMap)
+    fun `test first time add policy to index will fail without an existing policy`() {
+        assertFailsWith(Exception::class, "add policy is expected to fail when called with non existent policy") {
+            createIndex()
         }
     }
 
     fun `test deleting index will remove managed-index`() {
-        val (index) = createIndex(policyID = "some_policy")
+        val policy = createRandomPolicy()
+        val (index) = createIndex(policyID = policy.id)
         waitFor {
             val afterCreateConfig = getManagedIndexConfig(index)
             assertNotNull("Did not create ManagedIndexConfig", afterCreateConfig)
@@ -100,8 +86,8 @@ class ManagedIndexCoordinatorIT : IndexStateManagementRestTestCase() {
     }
 
     fun `test managed index metadata is cleaned up after removing policy`() {
-        val policyID = "some_policy"
-        val (index) = createIndex(policyID = policyID)
+        val policy = createRandomPolicy()
+        val (index) = createIndex(policyID = policy.id)
 
         val managedIndexConfig = getExistingManagedIndexConfig(index)
 
@@ -112,7 +98,7 @@ class ManagedIndexCoordinatorIT : IndexStateManagementRestTestCase() {
         // Verify ManagedIndexMetaData contains information
         waitFor {
             assertPredicatesOnMetaData(
-                listOf(index to listOf(ManagedIndexMetaData.POLICY_ID to policyID::equals)),
+                listOf(index to listOf(ManagedIndexMetaData.POLICY_ID to policy.id::equals)),
                 getExplainMap(index),
                 false
             )
@@ -140,8 +126,8 @@ class ManagedIndexCoordinatorIT : IndexStateManagementRestTestCase() {
     }
 
     fun `test managed-index metadata is cleaned up after index deleted`() {
-        val policyID = "some_policy"
-        val (index) = createIndex(policyID = policyID)
+        val policy = createRandomPolicy()
+        val (index) = createIndex(policyID = policy.id)
 
         val managedIndexConfig = getExistingManagedIndexConfig(index)
 
@@ -152,7 +138,7 @@ class ManagedIndexCoordinatorIT : IndexStateManagementRestTestCase() {
         // Verify ManagedIndexMetaData contains information
         waitFor {
             assertPredicatesOnMetaData(
-                listOf(index to listOf(ManagedIndexMetaData.POLICY_ID to policyID::equals)),
+                listOf(index to listOf(ManagedIndexMetaData.POLICY_ID to policy.id::equals)),
                 getExplainMap(index),
                 false
             )

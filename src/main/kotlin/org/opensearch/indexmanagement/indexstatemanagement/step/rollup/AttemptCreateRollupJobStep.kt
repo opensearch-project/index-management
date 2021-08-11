@@ -72,7 +72,7 @@ class AttemptCreateRollupJobStep(
         rollupId = rollup.id
         logger.info("Attempting to create a rollup job $rollupId for index $indexName")
 
-        val indexRollupRequest = IndexRollupRequest(rollup, WriteRequest.RefreshPolicy.IMMEDIATE)
+        val indexRollupRequest = IndexRollupRequest(rollup.copy(user = managedIndexMetaData.user), WriteRequest.RefreshPolicy.IMMEDIATE)
 
         try {
             val response: IndexRollupResponse = client.suspendUntil { execute(IndexRollupAction.INSTANCE, indexRollupRequest, it) }

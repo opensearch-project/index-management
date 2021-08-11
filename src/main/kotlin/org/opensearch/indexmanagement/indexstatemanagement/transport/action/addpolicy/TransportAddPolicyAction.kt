@@ -35,6 +35,8 @@ import org.opensearch.action.admin.cluster.state.ClusterStateRequest
 import org.opensearch.action.admin.cluster.state.ClusterStateResponse
 import org.opensearch.action.bulk.BulkRequest
 import org.opensearch.action.bulk.BulkResponse
+import org.opensearch.action.get.GetRequest
+import org.opensearch.action.get.GetResponse
 import org.opensearch.action.get.MultiGetRequest
 import org.opensearch.action.get.MultiGetResponse
 import org.opensearch.action.support.ActionFilters
@@ -48,14 +50,21 @@ import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.inject.Inject
 import org.opensearch.common.settings.Settings
 import org.opensearch.common.unit.TimeValue
-import org.opensearch.indexmanagement.IndexManagementIndices
+import org.opensearch.common.xcontent.NamedXContentRegistry
+import org.opensearch.commons.authuser.User
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
+import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
 import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.getUuidsForClosedIndices
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.ISMStatusResponse
 import org.opensearch.indexmanagement.indexstatemanagement.util.FailedIndex
 import org.opensearch.indexmanagement.indexstatemanagement.util.managedIndexConfigIndexRequest
+import org.opensearch.indexmanagement.opensearchapi.parseFromGetResponse
+import org.opensearch.indexmanagement.settings.IndexManagementSettings
+import org.opensearch.indexmanagement.util.IndexUtils
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.buildUser
+import org.opensearch.indexmanagement.util.SecurityUtils.Companion.userHasPermissionForResource
+import org.opensearch.indexmanagement.util.SecurityUtils.Companion.validateUserConfiguration
 import org.opensearch.rest.RestStatus
 import org.opensearch.tasks.Task
 import org.opensearch.transport.TransportService
@@ -71,16 +80,20 @@ class TransportAddPolicyAction @Inject constructor(
     actionFilters: ActionFilters,
     val settings: Settings,
     val clusterService: ClusterService,
-    val ismIndices: IndexManagementIndices
+    val xContentRegistry: NamedXContentRegistry
 ) : HandledTransportAction<AddPolicyRequest, ISMStatusResponse>(
     AddPolicyAction.NAME, transportService, actionFilters, ::AddPolicyRequest
 ) {
 
     @Volatile private var jobInterval = ManagedIndexSettings.JOB_INTERVAL.get(settings)
+    @Volatile private var filterByEnabled = IndexManagementSettings.FILTER_BY_BACKEND_ROLES.get(settings)
 
     init {
         clusterService.clusterSettings.addSettingsUpdateConsumer(ManagedIndexSettings.JOB_INTERVAL) {
             jobInterval = it
+        }
+        clusterService.clusterSettings.addSettingsUpdateConsumer(IndexManagementSettings.FILTER_BY_BACKEND_ROLES) {
+            filterByEnabled = it
         }
     }
 
@@ -91,25 +104,44 @@ class TransportAddPolicyAction @Inject constructor(
     inner class AddPolicyHandler(
         private val client: NodeClient,
         private val actionListener: ActionListener<ISMStatusResponse>,
-        private val request: AddPolicyRequest
+        private val request: AddPolicyRequest,
+        private val user: User? = buildUser(client.threadPool().threadContext)
     ) {
         private lateinit var startTime: Instant
+        private lateinit var policy: Policy
         private val indicesToAdd = mutableMapOf<String, String>() // uuid: name
         private val failedIndices: MutableList<FailedIndex> = mutableListOf()
 
         fun start() {
-            ismIndices.checkAndUpdateIMConfigIndex(object : ActionListener<AcknowledgedResponse> {
-                override fun onResponse(response: AcknowledgedResponse) {
-                    onCreateMappingsResponse(response)
-                }
+            val getRequest = GetRequest(INDEX_MANAGEMENT_INDEX, request.policyID)
 
-                override fun onFailure(t: Exception) {
-                    actionListener.onFailure(ExceptionsHelper.unwrapCause(t) as Exception)
+            client.threadPool().threadContext.stashContext().use {
+                if (!validateUserConfiguration(user, filterByEnabled, actionListener)) {
+                    return
                 }
-            })
+                // TODO: Need to check if the user can see the index - call resolve index
+                client.get(getRequest, ActionListener.wrap(::onGetPolicyResponse, ::onFailure))
+            }
         }
 
-        private fun onCreateMappingsResponse(response: AcknowledgedResponse) {
+        private fun onGetPolicyResponse(response: GetResponse) {
+            if (!response.isExists || response.isSourceEmpty) {
+                actionListener.onFailure(OpenSearchStatusException("Could not find policy=${request.policyID}", RestStatus.NOT_FOUND))
+                return
+            }
+            this.policy = parseFromGetResponse(response, xContentRegistry, Policy.Companion::parse)
+            if (!userHasPermissionForResource(user, policy.user, filterByEnabled, "policy", request.policyID, actionListener)) {
+                return
+            }
+
+            IndexUtils.checkAndUpdateConfigIndexMapping(
+                clusterService.state(),
+                client.admin().indices(),
+                ActionListener.wrap(::onUpdateMapping, ::onFailure)
+            )
+        }
+
+        private fun onUpdateMapping(response: AcknowledgedResponse) {
             if (response.isAcknowledged) {
                 log.info("Successfully created or updated $INDEX_MANAGEMENT_INDEX with newest mappings.")
                 getClusterState()
@@ -215,7 +247,7 @@ class TransportAddPolicyAction @Inject constructor(
                 val bulkReq = BulkRequest().timeout(TimeValue.timeValueMillis(bulkReqTimeout))
                 indicesToAdd.forEach { (uuid, name) ->
                     bulkReq.add(
-                        managedIndexConfigIndexRequest(name, uuid, request.policyID, jobInterval, user = buildUser(client.threadPool().threadContext))
+                        managedIndexConfigIndexRequest(name, uuid, request.policyID, jobInterval, policy = policy.copy(user = this.user))
                     )
                 }
 
@@ -253,6 +285,10 @@ class TransportAddPolicyAction @Inject constructor(
             } else {
                 actionListener.onResponse(ISMStatusResponse(0, failedIndices))
             }
+        }
+
+        private fun onFailure(t: Exception) {
+            actionListener.onFailure(ExceptionsHelper.unwrapCause(t) as Exception)
         }
     }
 

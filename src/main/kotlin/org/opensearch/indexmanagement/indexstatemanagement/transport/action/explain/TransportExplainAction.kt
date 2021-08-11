@@ -41,11 +41,14 @@ import org.opensearch.action.support.HandledTransportAction
 import org.opensearch.action.support.IndicesOptions
 import org.opensearch.client.node.NodeClient
 import org.opensearch.cluster.metadata.IndexMetadata
+import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.inject.Inject
+import org.opensearch.common.settings.Settings
 import org.opensearch.common.xcontent.LoggingDeprecationHandler
 import org.opensearch.common.xcontent.NamedXContentRegistry
 import org.opensearch.common.xcontent.XContentHelper
 import org.opensearch.common.xcontent.XContentType
+import org.opensearch.commons.authuser.User
 import org.opensearch.index.IndexNotFoundException
 import org.opensearch.index.query.Operator
 import org.opensearch.index.query.QueryBuilders
@@ -55,6 +58,8 @@ import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMet
 import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.getManagedIndexMetadata
 import org.opensearch.indexmanagement.indexstatemanagement.util.isMetadataMoved
 import org.opensearch.indexmanagement.indexstatemanagement.util.managedIndexMetadataID
+import org.opensearch.indexmanagement.settings.IndexManagementSettings
+import org.opensearch.indexmanagement.util.SecurityUtils.Companion.buildUser
 import org.opensearch.search.builder.SearchSourceBuilder
 import org.opensearch.search.fetch.subphase.FetchSourceContext.FETCH_SOURCE
 import org.opensearch.search.sort.SortBuilders
@@ -68,10 +73,21 @@ class TransportExplainAction @Inject constructor(
     val client: NodeClient,
     transportService: TransportService,
     actionFilters: ActionFilters,
+    val clusterService: ClusterService,
+    val settings: Settings,
     val xContentRegistry: NamedXContentRegistry
 ) : HandledTransportAction<ExplainRequest, ExplainResponse>(
     ExplainAction.NAME, transportService, actionFilters, ::ExplainRequest
 ) {
+
+    @Volatile private var filterByEnabled = IndexManagementSettings.FILTER_BY_BACKEND_ROLES.get(settings)
+
+    init {
+        clusterService.clusterSettings.addSettingsUpdateConsumer(IndexManagementSettings.FILTER_BY_BACKEND_ROLES) {
+            filterByEnabled = it
+        }
+    }
+
     override fun doExecute(task: Task, request: ExplainRequest, listener: ActionListener<ExplainResponse>) {
         ExplainHandler(client, listener, request).start()
     }
@@ -85,7 +101,8 @@ class TransportExplainAction @Inject constructor(
     inner class ExplainHandler(
         private val client: NodeClient,
         private val actionListener: ActionListener<ExplainResponse>,
-        private val request: ExplainRequest
+        private val request: ExplainRequest,
+        private val user: User? = buildUser(client.threadPool().threadContext)
     ) {
         private val indices: List<String> = request.indices
         private val explainAll: Boolean = indices.isEmpty()
@@ -97,7 +114,6 @@ class TransportExplainAction @Inject constructor(
 
         private val indexNames: MutableList<String> = mutableListOf()
         private val enabledState: MutableMap<String, Boolean> = mutableMapOf()
-        private val rolesMap: MutableMap<String, List<String>?> = mutableMapOf()
         private var totalManagedIndices = 0
 
         @Suppress("SpreadOperator", "NestedBlockDepth")
@@ -147,65 +163,67 @@ class TransportExplainAction @Inject constructor(
                 .indices(INDEX_MANAGEMENT_INDEX)
                 .source(searchSourceBuilder)
 
-            client.search(
-                searchRequest,
-                object : ActionListener<SearchResponse> {
-                    override fun onResponse(response: SearchResponse) {
-                        val totalHits = response.hits.totalHits
-                        if (totalHits != null) {
-                            totalManagedIndices = totalHits.value.toInt()
+            client.threadPool().threadContext.stashContext().use {
+                client.search(
+                    searchRequest,
+                    object : ActionListener<SearchResponse> {
+                        override fun onResponse(response: SearchResponse) {
+                            val totalHits = response.hits.totalHits
+                            if (totalHits != null) {
+                                totalManagedIndices = totalHits.value.toInt()
+                            }
+
+                            response.hits.hits.map {
+                                val hitMap = it.sourceAsMap["managed_index"] as Map<String, Any>
+                                val managedIndex = hitMap["index"] as String
+                                managedIndices.add(managedIndex)
+                                enabledState[managedIndex] = hitMap["enabled"] as Boolean
+                                managedIndicesMetaDataMap[managedIndex] = mapOf(
+                                    "index" to hitMap["index"] as String?,
+                                    "index_uuid" to hitMap["index_uuid"] as String?,
+                                    "policy_id" to hitMap["policy_id"] as String?,
+                                    "enabled" to hitMap["enabled"]?.toString()
+                                )
+                            }
+
+                            // explain all only return managed indices
+                            if (explainAll) {
+                                if (managedIndices.size == 0) {
+                                    // edge case: if specify query param pagination size to be 0
+                                    // we still show total managed indices
+                                    emptyResponse(totalManagedIndices)
+                                    return
+                                } else {
+                                    indexNames.addAll(managedIndices)
+                                    getMetadata(managedIndices)
+                                    return
+                                }
+                            }
+
+                            // explain/{index} return results for all indices
+                            indexNames.addAll(indices)
+                            // TODO: Need to check if the user has permission to do see the index - call resolve API on top of all the returned
+                            //  indices to either block showing or show
+                            getMetadata(indices)
                         }
 
-                        response.hits.hits.map {
-                            val hitMap = it.sourceAsMap["managed_index"] as Map<String, Any>
-                            val managedIndex = hitMap["index"] as String
-                            managedIndices.add(managedIndex)
-                            enabledState[managedIndex] = hitMap["enabled"] as Boolean
-                            val user = hitMap["user"] as Map<String, Any>?
-                            rolesMap[managedIndex] = user?.get("roles") as List<String>?
-                            managedIndicesMetaDataMap[managedIndex] = mapOf(
-                                "index" to hitMap["index"] as String?,
-                                "index_uuid" to hitMap["index_uuid"] as String?,
-                                "policy_id" to hitMap["policy_id"] as String?,
-                                "enabled" to hitMap["enabled"]?.toString()
-                            )
-                        }
-
-                        // explain all only return managed indices
-                        if (explainAll) {
-                            if (managedIndices.size == 0) {
-                                // edge case: if specify query param pagination size to be 0
-                                // we still show total managed indices
-                                emptyResponse(totalManagedIndices)
-                                return
-                            } else {
-                                indexNames.addAll(managedIndices)
-                                getMetadata(managedIndices)
+                        override fun onFailure(t: Exception) {
+                            if (t is IndexNotFoundException) {
+                                // config index hasn't been initialized
+                                // show all requested indices not managed
+                                if (indices.isNotEmpty()) {
+                                    indexNames.addAll(indices)
+                                    getMetadata(indices)
+                                    return
+                                }
+                                emptyResponse()
                                 return
                             }
+                            actionListener.onFailure(ExceptionsHelper.unwrapCause(t) as Exception)
                         }
-
-                        // explain/{index} return results for all indices
-                        indexNames.addAll(indices)
-                        getMetadata(indices)
                     }
-
-                    override fun onFailure(t: Exception) {
-                        if (t is IndexNotFoundException) {
-                            // config index hasn't been initialized
-                            // show all requested indices not managed
-                            if (indices.isNotEmpty()) {
-                                indexNames.addAll(indices)
-                                getMetadata(indices)
-                                return
-                            }
-                            emptyResponse()
-                            return
-                        }
-                        actionListener.onFailure(ExceptionsHelper.unwrapCause(t) as Exception)
-                    }
-                }
-            )
+                )
+            }
         }
 
         @Suppress("SpreadOperator")

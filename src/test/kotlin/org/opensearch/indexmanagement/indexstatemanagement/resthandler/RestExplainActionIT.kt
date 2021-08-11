@@ -26,11 +26,16 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.resthandler
 
+import org.opensearch.indexmanagement.IndexManagementPlugin
 import org.opensearch.indexmanagement.indexstatemanagement.IndexStateManagementRestTestCase
+import org.opensearch.indexmanagement.indexstatemanagement.model.ChangePolicy
 import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.PolicyRetryInfoMetaData
 import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.StateMetaData
+import org.opensearch.indexmanagement.makeRequest
 import org.opensearch.indexmanagement.waitFor
+import org.opensearch.rest.RestRequest
+import org.opensearch.rest.RestStatus
 import java.time.Instant
 import java.util.Locale
 
@@ -181,23 +186,34 @@ class RestExplainActionIT : IndexStateManagementRestTestCase() {
 
     fun `test failed policy`() {
         val indexName = "${testIndexName}_melon"
-        val policyID = "${testIndexName}_does_not_exist"
-        createIndex(indexName, policyID)
+        val policy = createRandomPolicy()
+        createIndex(indexName, policy.id)
+        val newPolicy = createRandomPolicy()
+        val changePolicy = ChangePolicy(newPolicy.id, null, emptyList(), false)
+        client().makeRequest(
+            RestRequest.Method.POST.toString(),
+            "${RestChangePolicyAction.CHANGE_POLICY_BASE_URI}/$indexName", emptyMap(), changePolicy.toHttpEntity()
+        )
+        val deletePolicyResponse = client().makeRequest(
+            RestRequest.Method.DELETE.toString(),
+            "${IndexManagementPlugin.LEGACY_POLICY_BASE_URI}/${changePolicy.policyID}"
+        )
+        assertEquals("Unexpected RestStatus", RestStatus.OK, deletePolicyResponse.restStatus())
 
         val managedIndexConfig = getExistingManagedIndexConfig(indexName)
         // change the start time so the job will trigger in 2 seconds.
         updateManagedIndexConfigStartTime(managedIndexConfig)
 
         waitFor {
-            val expectedInfoString = mapOf("message" to "Fail to load policy: $policyID").toString()
+            val expectedInfoString = mapOf("message" to "Fail to load policy: ${changePolicy.policyID}").toString()
             assertPredicatesOnMetaData(
                 listOf(
                     indexName to listOf(
-                        explainResponseOpendistroPolicyIdSetting to policyID::equals,
-                        explainResponseOpenSearchPolicyIdSetting to policyID::equals,
+                        explainResponseOpendistroPolicyIdSetting to policy.id::equals,
+                        explainResponseOpenSearchPolicyIdSetting to policy.id::equals,
                         ManagedIndexMetaData.INDEX to managedIndexConfig.index::equals,
                         ManagedIndexMetaData.INDEX_UUID to managedIndexConfig.indexUuid::equals,
-                        ManagedIndexMetaData.POLICY_ID to managedIndexConfig.policyID::equals,
+                        ManagedIndexMetaData.POLICY_ID to newPolicy.id::equals,
                         PolicyRetryInfoMetaData.RETRY_INFO to fun(retryInfoMetaDataMap: Any?): Boolean =
                             assertRetryInfoEquals(PolicyRetryInfoMetaData(true, 0), retryInfoMetaDataMap),
                         ManagedIndexMetaData.INFO to fun(info: Any?): Boolean = expectedInfoString == info.toString()

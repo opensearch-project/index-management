@@ -28,14 +28,18 @@
 
 package org.opensearch.indexmanagement.opensearchapi
 
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ThreadContextElement
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.opensearch.ExceptionsHelper
 import org.opensearch.OpenSearchException
 import org.opensearch.action.ActionListener
 import org.opensearch.action.bulk.BackoffPolicy
+import org.opensearch.action.get.GetResponse
+import org.opensearch.action.search.SearchResponse
 import org.opensearch.action.support.DefaultShardOperationFailedException
 import org.opensearch.client.OpenSearchClient
 import org.opensearch.common.bytes.BytesReference
@@ -46,6 +50,7 @@ import org.opensearch.common.xcontent.LoggingDeprecationHandler
 import org.opensearch.common.xcontent.NamedXContentRegistry
 import org.opensearch.common.xcontent.ToXContent
 import org.opensearch.common.xcontent.XContentBuilder
+import org.opensearch.common.xcontent.XContentFactory
 import org.opensearch.common.xcontent.XContentHelper
 import org.opensearch.common.xcontent.XContentParser
 import org.opensearch.common.xcontent.XContentParser.Token
@@ -110,6 +115,41 @@ fun XContentBuilder.optionalISMTemplateField(name: String, ismTemplates: List<IS
 
 fun XContentBuilder.optionalUserField(name: String, user: User?): XContentBuilder {
     return if (user == null) nullField(name) else this.field(name, user)
+}
+
+/**
+ * Parse data from SearchResponse using the defined parser and xContentRegistry
+ */
+fun <T> parseFromSearchResponse(
+    response: SearchResponse,
+    xContentRegistry: NamedXContentRegistry = NamedXContentRegistry.EMPTY,
+    parse: (xcp: XContentParser, id: String, seqNo: Long, primaryTerm: Long) -> T
+): List<T> {
+    return response.hits.hits.map {
+        val id = it.id
+        val seqNo = it.seqNo
+        val primaryTerm = it.primaryTerm
+        val xcp = XContentFactory.xContent(XContentType.JSON)
+            .createParser(xContentRegistry, LoggingDeprecationHandler.INSTANCE, it.sourceAsString)
+        xcp.parseWithType(id, seqNo, primaryTerm, parse)
+    }
+}
+
+/**
+ * Parse data from GetResponse using the defined parser and xContentRegistry
+ */
+fun <T> parseFromGetResponse(
+    response: GetResponse,
+    xContentRegistry: NamedXContentRegistry = NamedXContentRegistry.EMPTY,
+    parse: (xcp: XContentParser, id: String, seqNo: Long, primaryTerm: Long) -> T
+): T {
+    val xcp = XContentHelper.createParser(
+        xContentRegistry,
+        LoggingDeprecationHandler.INSTANCE,
+        response.sourceAsBytesRef,
+        XContentType.JSON
+    )
+    return xcp.parseWithType(response.id, response.seqNo, response.primaryTerm, parse)
 }
 
 /**
@@ -225,7 +265,7 @@ class IndexManagementSecurityContext(
     private val logger: Logger = LogManager.getLogger(javaClass)
     override val key: CoroutineContext.Key<*>
         get() = Key
-    private val injector = InjectSecurity(id, settings, threadContext)
+    val injector = InjectSecurity(id, settings, threadContext)
 
     /**
      * Before the thread executes the coroutine we want the thread context to contain user roles so they are used when executing the code inside
@@ -249,5 +289,16 @@ class IndexManagementSecurityContext(
     override fun restoreThreadContext(context: CoroutineContext, oldState: Unit) {
         logger.debug("Cleaning up security context in thread ${Thread.currentThread().name} for job $id")
         injector.close()
+    }
+}
+
+suspend fun <T> withClosableContext(
+    context: IndexManagementSecurityContext,
+    block: suspend CoroutineScope.() -> T
+): T {
+    try {
+        return withContext(context) { block() }
+    } finally {
+        context.injector.close()
     }
 }

@@ -48,7 +48,11 @@ class RestGetRollupActionIT : RollupRestTestCase() {
         rollup = rollup.copy(
             schemaVersion = indexedRollup.schemaVersion,
             jobLastUpdatedTime = indexedRollup.jobLastUpdatedTime,
-            jobSchedule = indexedRollup.jobSchedule
+            jobSchedule = indexedRollup.jobSchedule,
+            // roles are deprecated and will not be stored or returned
+            roles = listOf(),
+            // user information is hidden and not returned
+            user = null
         )
         assertEquals("Indexed and retrieved rollup differ", rollup, indexedRollup)
     }
@@ -94,7 +98,8 @@ class RestGetRollupActionIT : RollupRestTestCase() {
             assertEquals(testRollup.targetIndex, innerRollup["target_index"] as String)
             assertEquals(testRollup.sourceIndex, innerRollup["source_index"] as String)
             assertEquals(testRollup.metadataID, innerRollup["metadata_id"] as String?)
-            assertEquals(testRollup.roles, innerRollup["roles"] as List<String>)
+            assertNull(innerRollup["roles"])
+            assertNull(innerRollup["user"])
             assertEquals(testRollup.pageSize, innerRollup["page_size"] as Int)
             assertEquals(testRollup.description, innerRollup["description"] as String)
             assertEquals(testRollup.delay, (innerRollup["delay"] as Number?)?.toLong())

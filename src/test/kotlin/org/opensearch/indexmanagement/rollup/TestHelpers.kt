@@ -36,6 +36,7 @@ import org.opensearch.indexmanagement.common.model.dimension.Terms
 import org.opensearch.indexmanagement.opensearchapi.string
 import org.opensearch.indexmanagement.randomInstant
 import org.opensearch.indexmanagement.randomSchedule
+import org.opensearch.indexmanagement.randomUser
 import org.opensearch.indexmanagement.rollup.actionfilter.ISMFieldCapabilities
 import org.opensearch.indexmanagement.rollup.actionfilter.ISMFieldCapabilitiesIndexResponse
 import org.opensearch.indexmanagement.rollup.actionfilter.ISMFieldCapabilitiesResponse
@@ -131,7 +132,8 @@ fun randomRollup(): Rollup {
         delay = OpenSearchRestTestCase.randomNonNegativeLong(),
         continuous = OpenSearchRestTestCase.randomBoolean(),
         dimensions = randomRollupDimensions(),
-        metrics = OpenSearchRestTestCase.randomList(20, ::randomRollupMetrics).distinctBy { it.targetField }
+        metrics = OpenSearchRestTestCase.randomList(20, ::randomRollupMetrics).distinctBy { it.targetField },
+        user = randomUser()
     )
 }
 

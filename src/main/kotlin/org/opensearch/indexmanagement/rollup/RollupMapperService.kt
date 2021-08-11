@@ -30,6 +30,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.apache.logging.log4j.LogManager
 import org.opensearch.ExceptionsHelper
+import org.opensearch.OpenSearchSecurityException
 import org.opensearch.action.admin.indices.create.CreateIndexRequest
 import org.opensearch.action.admin.indices.create.CreateIndexResponse
 import org.opensearch.action.admin.indices.mapping.get.GetMappingsRequest
@@ -106,6 +107,9 @@ class RollupMapperService(
                 val unwrappedException = ExceptionsHelper.unwrapCause(e) as Exception
                 logger.error(errorMessage, unwrappedException)
                 RollupJobValidationResult.Failure(errorMessage, unwrappedException)
+            } catch (e: OpenSearchSecurityException) {
+                logger.error("$errorMessage because ", e)
+                RollupJobValidationResult.Failure("$errorMessage - missing required cluster permissions: ${e.localizedMessage}", e)
             } catch (e: Exception) {
                 logger.error("$errorMessage because ", e)
                 RollupJobValidationResult.Failure(errorMessage, e)
@@ -256,13 +260,16 @@ class RollupMapperService(
             val unwrappedException = ExceptionsHelper.unwrapCause(e) as Exception
             logger.error(errorMessage, unwrappedException)
             return GetMappingsResult.Failure(errorMessage, unwrappedException)
+        } catch (e: OpenSearchSecurityException) {
+            logger.error(errorMessage, e)
+            return GetMappingsResult.Failure("$errorMessage - missing required index permissions: ${e.localizedMessage}", e)
         } catch (e: Exception) {
             logger.error(errorMessage, e)
             return GetMappingsResult.Failure(errorMessage, e)
         }
     }
 
-    fun indexExists(index: String): Boolean = clusterService.state().routingTable.hasIndex(index)
+    private fun indexExists(index: String): Boolean = clusterService.state().routingTable.hasIndex(index)
 
     // TODO: error handling - can RemoteTransportException happen here?
     // TODO: The use of the master transport action UpdateRollupMappingAction will prevent
@@ -288,6 +295,9 @@ class RollupMapperService(
                 return RollupJobValidationResult.Failure(errorMessage)
             }
             return RollupJobValidationResult.Valid
+        } catch (e: OpenSearchSecurityException) {
+            logger.error("$errorMessage because ", e)
+            return RollupJobValidationResult.Failure("$errorMessage - missing required index permissions: ${e.localizedMessage}", e)
         } catch (e: Exception) {
             logger.error("$errorMessage because ", e)
             return RollupJobValidationResult.Failure(errorMessage, e)

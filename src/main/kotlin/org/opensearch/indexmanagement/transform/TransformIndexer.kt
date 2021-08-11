@@ -13,6 +13,7 @@ package org.opensearch.indexmanagement.transform
 
 import org.apache.logging.log4j.LogManager
 import org.opensearch.ExceptionsHelper
+import org.opensearch.OpenSearchSecurityException
 import org.opensearch.action.DocWriteRequest
 import org.opensearch.action.admin.indices.create.CreateIndexRequest
 import org.opensearch.action.admin.indices.create.CreateIndexResponse
@@ -65,7 +66,7 @@ class TransformIndexer(
             val response: CreateIndexResponse = client.admin().indices().suspendUntil { create(request, it) }
             if (!response.isAcknowledged) {
                 logger.error("Failed to create the target index $index")
-                throw Exception()
+                throw TransformIndexException("Failed to create the target index")
             }
         }
     }
@@ -96,9 +97,13 @@ class TransformIndexer(
                 }
             }
             return indexTimeInMillis
+        } catch (e: TransformIndexException) {
+            throw e
         } catch (e: RemoteTransportException) {
             val unwrappedException = ExceptionsHelper.unwrapCause(e) as Exception
             throw TransformIndexException("Failed to index the documents", unwrappedException)
+        } catch (e: OpenSearchSecurityException) {
+            throw TransformIndexException("Failed to index the documents - missing required index permissions: ${e.localizedMessage}", e)
         } catch (e: Exception) {
             throw TransformIndexException("Failed to index the documents", e)
         }

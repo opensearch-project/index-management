@@ -34,18 +34,7 @@ import org.opensearch.common.io.stream.StreamInput
 import org.opensearch.common.io.stream.StreamOutput
 import java.io.IOException
 
-class DeletePolicyRequest : ActionRequest {
-
-    val policyID: String
-    val refreshPolicy: WriteRequest.RefreshPolicy
-
-    constructor(
-        policyID: String,
-        refreshPolicy: WriteRequest.RefreshPolicy
-    ) : super() {
-        this.policyID = policyID
-        this.refreshPolicy = refreshPolicy
-    }
+class DeletePolicyRequest(val policyID: String, val refreshPolicy: WriteRequest.RefreshPolicy) : ActionRequest() {
 
     @Throws(IOException::class)
     constructor(sin: StreamInput) : this(

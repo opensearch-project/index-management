@@ -39,9 +39,12 @@ import org.opensearch.action.support.ActionFilters
 import org.opensearch.action.support.HandledTransportAction
 import org.opensearch.action.support.master.AcknowledgedResponse
 import org.opensearch.client.node.NodeClient
+import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.inject.Inject
+import org.opensearch.common.settings.Settings
 import org.opensearch.common.xcontent.NamedXContentRegistry
 import org.opensearch.common.xcontent.XContentFactory
+import org.opensearch.commons.authuser.User
 import org.opensearch.index.query.QueryBuilders
 import org.opensearch.index.seqno.SequenceNumbers
 import org.opensearch.indexmanagement.IndexManagementIndices
@@ -50,13 +53,16 @@ import org.opensearch.indexmanagement.indexstatemanagement.ManagedIndexCoordinat
 import org.opensearch.indexmanagement.indexstatemanagement.findConflictingPolicyTemplates
 import org.opensearch.indexmanagement.indexstatemanagement.findSelfConflictingTemplates
 import org.opensearch.indexmanagement.indexstatemanagement.model.ISMTemplate
+import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
 import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.filterNotNullValues
-import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.parsePolicies
 import org.opensearch.indexmanagement.indexstatemanagement.util.ISM_TEMPLATE_FIELD
 import org.opensearch.indexmanagement.indexstatemanagement.validateFormat
+import org.opensearch.indexmanagement.opensearchapi.parseFromSearchResponse
+import org.opensearch.indexmanagement.settings.IndexManagementSettings
 import org.opensearch.indexmanagement.util.IndexManagementException
 import org.opensearch.indexmanagement.util.IndexUtils
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.buildUser
+import org.opensearch.indexmanagement.util.SecurityUtils.Companion.validateUserConfiguration
 import org.opensearch.rest.RestStatus
 import org.opensearch.search.builder.SearchSourceBuilder
 import org.opensearch.tasks.Task
@@ -69,10 +75,21 @@ class TransportIndexPolicyAction @Inject constructor(
     transportService: TransportService,
     actionFilters: ActionFilters,
     val ismIndices: IndexManagementIndices,
+    val clusterService: ClusterService,
+    val settings: Settings,
     val xContentRegistry: NamedXContentRegistry
 ) : HandledTransportAction<IndexPolicyRequest, IndexPolicyResponse>(
     IndexPolicyAction.NAME, transportService, actionFilters, ::IndexPolicyRequest
 ) {
+
+    @Volatile private var filterByEnabled = IndexManagementSettings.FILTER_BY_BACKEND_ROLES.get(settings)
+
+    init {
+        clusterService.clusterSettings.addSettingsUpdateConsumer(IndexManagementSettings.FILTER_BY_BACKEND_ROLES) {
+            filterByEnabled = it
+        }
+    }
+
     override fun doExecute(task: Task, request: IndexPolicyRequest, listener: ActionListener<IndexPolicyResponse>) {
         IndexPolicyHandler(client, listener, request).start()
     }
@@ -80,18 +97,24 @@ class TransportIndexPolicyAction @Inject constructor(
     inner class IndexPolicyHandler(
         private val client: NodeClient,
         private val actionListener: ActionListener<IndexPolicyResponse>,
-        private val request: IndexPolicyRequest
+        private val request: IndexPolicyRequest,
+        private val user: User? = buildUser(client.threadPool().threadContext)
     ) {
         fun start() {
-            ismIndices.checkAndUpdateIMConfigIndex(object : ActionListener<AcknowledgedResponse> {
-                override fun onResponse(response: AcknowledgedResponse) {
-                    onCreateMappingsResponse(response)
+            client.threadPool().threadContext.stashContext().use {
+                if (!validateUserConfiguration(user, filterByEnabled, actionListener)) {
+                    return
                 }
+                ismIndices.checkAndUpdateIMConfigIndex(object : ActionListener<AcknowledgedResponse> {
+                    override fun onResponse(response: AcknowledgedResponse) {
+                        onCreateMappingsResponse(response)
+                    }
 
-                override fun onFailure(t: Exception) {
-                    actionListener.onFailure(ExceptionsHelper.unwrapCause(t) as Exception)
-                }
-            })
+                    override fun onFailure(t: Exception) {
+                        actionListener.onFailure(ExceptionsHelper.unwrapCause(t) as Exception)
+                    }
+                })
+            }
         }
 
         private fun onCreateMappingsResponse(response: AcknowledgedResponse) {
@@ -144,8 +167,9 @@ class TransportIndexPolicyAction @Inject constructor(
                 searchRequest,
                 object : ActionListener<SearchResponse> {
                     override fun onResponse(response: SearchResponse) {
-                        val policies = parsePolicies(response, xContentRegistry)
-                        val policyToTemplateMap: Map<String, List<ISMTemplate>> = policies.map { it.id to it.ismTemplate }.toMap().filterNotNullValues()
+                        val policies = parseFromSearchResponse(response, xContentRegistry, Policy.Companion::parse)
+                        val policyToTemplateMap: Map<String, List<ISMTemplate>> =
+                            policies.map { it.id to it.ismTemplate }.toMap().filterNotNullValues()
                         ismTemplateList.forEach {
                             val conflictingPolicyTemplates = policyToTemplateMap
                                 .findConflictingPolicyTemplates(request.policyID, it.indexPatterns, it.priority)
@@ -177,7 +201,7 @@ class TransportIndexPolicyAction @Inject constructor(
 
         private fun putPolicy() {
             val policy = request.policy.copy(
-                schemaVersion = IndexUtils.indexManagementConfigSchemaVersion, user = buildUser(client.threadPool().threadContext)
+                schemaVersion = IndexUtils.indexManagementConfigSchemaVersion, user = this.user
             )
 
             val indexRequest = IndexRequest(IndexManagementPlugin.INDEX_MANAGEMENT_INDEX)

@@ -28,16 +28,21 @@ import org.opensearch.client.Client
 import org.opensearch.cluster.metadata.IndexNameExpressionResolver
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.inject.Inject
+import org.opensearch.common.settings.Settings
 import org.opensearch.common.xcontent.ToXContent
 import org.opensearch.common.xcontent.XContentFactory.jsonBuilder
+import org.opensearch.commons.authuser.User
 import org.opensearch.indexmanagement.IndexManagementIndices
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
+import org.opensearch.indexmanagement.settings.IndexManagementSettings
 import org.opensearch.indexmanagement.transform.TransformValidator
 import org.opensearch.indexmanagement.transform.action.get.GetTransformAction
 import org.opensearch.indexmanagement.transform.action.get.GetTransformRequest
 import org.opensearch.indexmanagement.transform.action.get.GetTransformResponse
 import org.opensearch.indexmanagement.transform.model.Transform
 import org.opensearch.indexmanagement.util.IndexUtils
+import org.opensearch.indexmanagement.util.SecurityUtils.Companion.buildUser
+import org.opensearch.indexmanagement.util.SecurityUtils.Companion.validateUserConfiguration
 import org.opensearch.rest.RestStatus
 import org.opensearch.tasks.Task
 import org.opensearch.transport.TransportService
@@ -48,10 +53,19 @@ class TransportIndexTransformAction @Inject constructor(
     actionFilters: ActionFilters,
     val indexManagementIndices: IndexManagementIndices,
     val indexNameExpressionResolver: IndexNameExpressionResolver,
-    val clusterService: ClusterService
+    val clusterService: ClusterService,
+    val settings: Settings
 ) : HandledTransportAction<IndexTransformRequest, IndexTransformResponse>(
     IndexTransformAction.NAME, transportService, actionFilters, ::IndexTransformRequest
 ) {
+
+    @Volatile private var filterByEnabled = IndexManagementSettings.FILTER_BY_BACKEND_ROLES.get(settings)
+
+    init {
+        clusterService.clusterSettings.addSettingsUpdateConsumer(IndexManagementSettings.FILTER_BY_BACKEND_ROLES) {
+            filterByEnabled = it
+        }
+    }
 
     private val log = LogManager.getLogger(javaClass)
 
@@ -62,11 +76,19 @@ class TransportIndexTransformAction @Inject constructor(
     inner class IndexTransformHandler(
         private val client: Client,
         private val actionListener: ActionListener<IndexTransformResponse>,
-        private val request: IndexTransformRequest
+        private val request: IndexTransformRequest,
+        private val user: User? = buildUser(client.threadPool().threadContext, request.transform.user)
     ) {
 
         fun start() {
-            indexManagementIndices.checkAndUpdateIMConfigIndex(ActionListener.wrap(::onConfigIndexAcknowledgedResponse, actionListener::onFailure))
+            client.threadPool().threadContext.stashContext().use {
+                if (!validateUserConfiguration(user, filterByEnabled, actionListener)) {
+                    return
+                }
+                indexManagementIndices.checkAndUpdateIMConfigIndex(
+                    ActionListener.wrap(::onConfigIndexAcknowledgedResponse, actionListener::onFailure)
+                )
+            }
         }
 
         private fun onConfigIndexAcknowledgedResponse(response: AcknowledgedResponse) {
@@ -116,7 +138,7 @@ class TransportIndexTransformAction @Inject constructor(
 
         @Suppress("SpreadOperator")
         private fun putTransform() {
-            val transform = request.transform.copy(schemaVersion = IndexUtils.indexManagementConfigSchemaVersion)
+            val transform = request.transform.copy(schemaVersion = IndexUtils.indexManagementConfigSchemaVersion, user = this.user)
             request.index(INDEX_MANAGEMENT_INDEX)
                 .id(request.transform.id)
                 .source(transform.toXContent(jsonBuilder(), ToXContent.EMPTY_PARAMS))

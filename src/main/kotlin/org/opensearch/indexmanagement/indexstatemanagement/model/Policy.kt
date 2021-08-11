@@ -90,7 +90,7 @@ data class Policy(
             .field(DEFAULT_STATE_FIELD, defaultState)
             .field(STATES_FIELD, states.toTypedArray())
             .optionalISMTemplateField(ISM_TEMPLATE, ismTemplate)
-        if (params.paramAsBoolean(WITH_USER, true)) builder.optionalUserField(ManagedIndexConfig.USER_FIELD, user)
+        if (params.paramAsBoolean(WITH_USER, true)) builder.optionalUserField(USER_FIELD, user)
         if (params.paramAsBoolean(WITH_TYPE, true)) builder.endObject()
         return builder.endObject()
     }

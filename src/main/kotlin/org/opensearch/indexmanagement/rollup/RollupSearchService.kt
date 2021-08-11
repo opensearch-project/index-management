@@ -28,6 +28,7 @@ package org.opensearch.indexmanagement.rollup
 
 import org.apache.logging.log4j.LogManager
 import org.opensearch.ExceptionsHelper
+import org.opensearch.OpenSearchSecurityException
 import org.opensearch.action.ActionListener
 import org.opensearch.action.bulk.BackoffPolicy
 import org.opensearch.action.search.SearchPhaseExecutionException
@@ -145,6 +146,9 @@ class RollupSearchService(
         } catch (e: MultiBucketConsumerService.TooManyBucketsException) {
             logger.error(e.message, e.cause)
             RollupSearchResult.Failure(cause = e)
+        } catch (e: OpenSearchSecurityException) {
+            logger.error(e.message, e.cause)
+            RollupSearchResult.Failure("Cannot search data in source index/s - missing required index permissions: ${e.localizedMessage}", e)
         } catch (e: Exception) {
             logger.error(e.message, e.cause)
             RollupSearchResult.Failure(cause = e)

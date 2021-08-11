@@ -126,18 +126,10 @@ class MetadataRegressionIT : IndexStateManagementIntegTestCase() {
         logger.info("metadata has moved")
 
         val managedIndexConfig = getExistingManagedIndexConfig(indexName)
-        // Change the start time so the job will trigger in 2 seconds, this will trigger the first initialization of the policy
+        // Change the start time so the job will trigger in 2 seconds, since there is metadata and policy with the index there is no initialization
         updateManagedIndexConfigStartTime(managedIndexConfig)
 
         waitFor { assertEquals(policyID, getExplainManagedIndexMetaData(indexName).policyID) }
-        waitFor {
-            assertEquals(
-                "Successfully initialized policy: ${policy.id}",
-                getExplainManagedIndexMetaData(indexName).info?.get("message")
-            )
-        }
-
-        updateManagedIndexConfigStartTime(managedIndexConfig)
         waitFor {
             assertEquals(
                 "Index did not set number_of_replicas to ${actionConfig.numOfReplicas}",

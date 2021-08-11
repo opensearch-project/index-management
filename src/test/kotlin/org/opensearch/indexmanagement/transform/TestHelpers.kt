@@ -21,6 +21,7 @@ import org.opensearch.indexmanagement.common.model.dimension.Dimension
 import org.opensearch.indexmanagement.opensearchapi.string
 import org.opensearch.indexmanagement.randomInstant
 import org.opensearch.indexmanagement.randomSchedule
+import org.opensearch.indexmanagement.randomUser
 import org.opensearch.indexmanagement.rollup.randomAfterKey
 import org.opensearch.indexmanagement.rollup.randomDimension
 import org.opensearch.indexmanagement.transform.model.ExplainTransform
@@ -89,7 +90,8 @@ fun randomTransform(): Transform {
         roles = OpenSearchRestTestCase.randomList(10) { OpenSearchRestTestCase.randomAlphaOfLength(10) },
         pageSize = OpenSearchRestTestCase.randomIntBetween(1, 10000),
         groups = randomGroups(),
-        aggregations = randomAggregationFactories()
+        aggregations = randomAggregationFactories(),
+        user = randomUser()
     )
 }
 

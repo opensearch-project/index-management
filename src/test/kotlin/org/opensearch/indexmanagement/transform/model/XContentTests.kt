@@ -49,7 +49,8 @@ class XContentTests : OpenSearchTestCase() {
         val transform = randomTransform()
         val transformString = transform.toJsonString(XCONTENT_WITHOUT_TYPE)
         val parsedTransform = Transform.parse(parser(transformString), transform.id, transform.seqNo, transform.primaryTerm)
-        assertEquals("Round tripping Transform without type doesn't work", transform, parsedTransform)
+        // roles are deprecated and not populated in toXContent and parsed as part of parse
+        assertEquals("Round tripping Transform without type doesn't work", transform.copy(roles = listOf()), parsedTransform)
     }
 
     fun `test transform parsing with type`() {
@@ -57,7 +58,8 @@ class XContentTests : OpenSearchTestCase() {
         val transformString = transform.toJsonString()
         val parser = parserWithType(transformString)
         val parsedTransform = parser.parseWithType(transform.id, transform.seqNo, transform.primaryTerm, Transform.Companion::parse)
-        assertEquals("Round tripping Transform with type doesn't work", transform, parsedTransform)
+        // roles are deprecated and not populated in toXContent and parsed as part of parse
+        assertEquals("Round tripping Transform with type doesn't work", transform.copy(roles = listOf()), parsedTransform)
     }
 
     fun `test transform parsing should ignore metadata id and startTime if its newly created transform`() {

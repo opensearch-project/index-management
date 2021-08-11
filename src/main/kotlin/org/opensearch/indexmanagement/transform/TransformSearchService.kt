@@ -13,6 +13,7 @@ package org.opensearch.indexmanagement.transform
 
 import org.apache.logging.log4j.LogManager
 import org.opensearch.ExceptionsHelper
+import org.opensearch.OpenSearchSecurityException
 import org.opensearch.action.ActionListener
 import org.opensearch.action.bulk.BackoffPolicy
 import org.opensearch.action.index.IndexRequest
@@ -70,7 +71,7 @@ class TransformSearchService(
     }
 
     suspend fun executeCompositeSearch(transform: Transform, afterKey: Map<String, Any>? = null): TransformSearchResult {
-        val errorMessage = "Failed to search data in source indices in transform job ${transform.id}"
+        val errorMessage = "Failed to search data in source indices"
         try {
             var retryAttempt = 0
             val searchResponse = backoffPolicy.retry(logger) {
@@ -90,14 +91,13 @@ class TransformSearchService(
             }
             return convertResponse(transform, searchResponse)
         } catch (e: TransformSearchServiceException) {
-            logger.error(errorMessage)
             throw e
         } catch (e: RemoteTransportException) {
             val unwrappedException = ExceptionsHelper.unwrapCause(e) as Exception
-            logger.error(errorMessage, unwrappedException)
             throw TransformSearchServiceException(errorMessage, unwrappedException)
+        } catch (e: OpenSearchSecurityException) {
+            throw TransformSearchServiceException("$errorMessage - missing required index permissions: ${e.localizedMessage}", e)
         } catch (e: Exception) {
-            logger.error(errorMessage, e)
             throw TransformSearchServiceException(errorMessage, e)
         }
     }

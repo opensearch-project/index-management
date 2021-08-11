@@ -41,7 +41,9 @@ import org.opensearch.common.settings.Settings
 import org.opensearch.common.unit.TimeValue
 import org.opensearch.common.xcontent.NamedXContentRegistry
 import org.opensearch.indexmanagement.indexstatemanagement.SkipExecution
+import org.opensearch.indexmanagement.opensearchapi.IndexManagementSecurityContext
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
+import org.opensearch.indexmanagement.opensearchapi.withClosableContext
 import org.opensearch.indexmanagement.rollup.action.get.GetRollupAction
 import org.opensearch.indexmanagement.rollup.action.get.GetRollupRequest
 import org.opensearch.indexmanagement.rollup.action.get.GetRollupResponse
@@ -257,7 +259,12 @@ object RollupRunner :
                 }
             }
 
-            when (val result = rollupMapperService.attemptCreateRollupTargetIndex(updatableJob, clusterConfigurationProvider.hasLegacyPlugin)) {
+            val result = withClosableContext(
+                IndexManagementSecurityContext(job.id, settings, threadPool.threadContext, job.user)
+            ) {
+                rollupMapperService.attemptCreateRollupTargetIndex(updatableJob, clusterConfigurationProvider.hasLegacyPlugin)
+            }
+            when (result) {
                 is RollupJobValidationResult.Failure -> {
                     setFailedMetadataAndDisableJob(updatableJob, result.message, metadata)
                     return
@@ -272,11 +279,21 @@ object RollupRunner :
             while (rollupSearchService.shouldProcessRollup(updatableJob, metadata)) {
                 do {
                     try {
-                        val rollupResult = when (val rollupSearchResult = rollupSearchService.executeCompositeSearch(updatableJob, metadata)) {
+                        val rollupSearchResult = withClosableContext(
+                            IndexManagementSecurityContext(job.id, settings, threadPool.threadContext, job.user)
+                        ) {
+                            rollupSearchService.executeCompositeSearch(updatableJob, metadata)
+                        }
+                        val rollupResult = when (rollupSearchResult) {
                             is RollupSearchResult.Success -> {
                                 val compositeRes: InternalComposite = rollupSearchResult.searchResponse.aggregations.get(updatableJob.id)
                                 metadata = metadata.incrementStats(rollupSearchResult.searchResponse, compositeRes)
-                                when (val rollupIndexResult = rollupIndexer.indexRollups(updatableJob, compositeRes)) {
+                                val rollupIndexResult = withClosableContext(
+                                    IndexManagementSecurityContext(job.id, settings, threadPool.threadContext, job.user)
+                                ) {
+                                    rollupIndexer.indexRollups(updatableJob, compositeRes)
+                                }
+                                when (rollupIndexResult) {
                                     is RollupIndexResult.Success -> RollupResult.Success(compositeRes, rollupIndexResult.stats)
                                     is RollupIndexResult.Failure -> RollupResult.Failure(rollupIndexResult.message, rollupIndexResult.cause)
                                 }
@@ -353,10 +370,14 @@ object RollupRunner :
      */
     private suspend fun updateRollupJob(job: Rollup, metadata: RollupMetadata): RollupJobResult {
         try {
-            val req = IndexRollupRequest(rollup = job, refreshPolicy = WriteRequest.RefreshPolicy.IMMEDIATE)
-            val res: IndexRollupResponse = client.suspendUntil { execute(IndexRollupAction.INSTANCE, req, it) }
-            // TODO: Verify the seqNo/primterm got updated
-            return RollupJobResult.Success(res.rollup)
+            return withClosableContext(
+                IndexManagementSecurityContext(job.id, settings, threadPool.threadContext, job.user)
+            ) {
+                val req = IndexRollupRequest(rollup = job, refreshPolicy = WriteRequest.RefreshPolicy.IMMEDIATE)
+                val res: IndexRollupResponse = client.suspendUntil { execute(IndexRollupAction.INSTANCE, req, it) }
+                // TODO: Verify the seqNo/primterm got updated
+                return@withClosableContext RollupJobResult.Success(res.rollup)
+            }
         } catch (e: Exception) {
             // TODO: Catching general exceptions for now, can make more granular
             // Set metadata to failed since update to rollup job failed
@@ -377,30 +398,35 @@ object RollupRunner :
     //  which means we always need to validate the source index on every execution?
     @Suppress("ReturnCount", "ComplexMethod")
     private suspend fun isJobValid(job: Rollup): RollupJobValidationResult {
-        var metadata: RollupMetadata? = null
-        if (job.metadataID != null) {
-            logger.debug("Fetching associated metadata for rollup job [${job.id}]")
-            metadata = when (val getMetadataResult = rollupMetadataService.getExistingMetadata(job)) {
-                is MetadataResult.Success -> getMetadataResult.metadata
-                is MetadataResult.NoMetadata -> null
-                is MetadataResult.Failure ->
-                    throw RollupMetadataException("Failed to get existing rollup metadata [${job.metadataID}]", getMetadataResult.cause)
+        return withClosableContext(
+            IndexManagementSecurityContext(job.id, settings, threadPool.threadContext, job.user)
+        ) {
+            var metadata: RollupMetadata? = null
+            if (job.metadataID != null) {
+                logger.debug("Fetching associated metadata for rollup job [${job.id}]")
+                metadata = when (val getMetadataResult = rollupMetadataService.getExistingMetadata(job)) {
+                    is MetadataResult.Success -> getMetadataResult.metadata
+                    is MetadataResult.NoMetadata -> null
+                    is MetadataResult.Failure ->
+                        throw RollupMetadataException("Failed to get existing rollup metadata [${job.metadataID}]", getMetadataResult.cause)
+                }
             }
-        }
 
-        logger.debug("Validating source index [${job.sourceIndex}] for rollup job [${job.id}]")
-        when (val sourceIndexValidationResult = rollupMapperService.isSourceIndexValid(job)) {
-            is RollupJobValidationResult.Valid -> {} // No action taken when valid
-            else -> return sourceIndexValidationResult
-        }
+            logger.debug("Validating source index [${job.sourceIndex}] for rollup job [${job.id}]")
+            when (val sourceIndexValidationResult = rollupMapperService.isSourceIndexValid(job)) {
+                is RollupJobValidationResult.Valid -> {
+                } // No action taken when valid
+                else -> return@withClosableContext sourceIndexValidationResult
+            }
 
-        // we validate target index only if there is metadata document in the rollup
-        if (metadata != null) {
-            logger.debug("Attempting to create/validate target index [${job.targetIndex}] for rollup job [${job.id}]")
-            return rollupMapperService.attemptCreateRollupTargetIndex(job, clusterConfigurationProvider.hasLegacyPlugin)
-        }
+            // we validate target index only if there is metadata document in the rollup
+            if (metadata != null) {
+                logger.debug("Attempting to create/validate target index [${job.targetIndex}] for rollup job [${job.id}]")
+                return@withClosableContext rollupMapperService.attemptCreateRollupTargetIndex(job, clusterConfigurationProvider.hasLegacyPlugin)
+            }
 
-        return RollupJobValidationResult.Valid
+            return@withClosableContext RollupJobValidationResult.Valid
+        }
     }
 
     /**

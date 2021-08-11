@@ -29,10 +29,12 @@ package org.opensearch.indexmanagement.indexstatemanagement.resthandler
 import org.opensearch.client.ResponseException
 import org.opensearch.indexmanagement.indexstatemanagement.IndexStateManagementRestTestCase
 import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
+import org.opensearch.indexmanagement.indexstatemanagement.model.action.AllocationActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.ActionMetaData
 import org.opensearch.indexmanagement.indexstatemanagement.randomForceMergeActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomPolicy
 import org.opensearch.indexmanagement.indexstatemanagement.randomState
+import org.opensearch.indexmanagement.indexstatemanagement.step.Step
 import org.opensearch.indexmanagement.indexstatemanagement.util.FAILED_INDICES
 import org.opensearch.indexmanagement.indexstatemanagement.util.FAILURES
 import org.opensearch.indexmanagement.indexstatemanagement.util.UPDATED_INDICES
@@ -73,8 +75,9 @@ class RestRetryFailedManagedIndexActionIT : IndexStateManagementRestTestCase() {
         val indexName1 = "${indexName}_1"
         val indexName2 = "${indexName}_2"
         val indexName3 = "${testIndexName}_some_other_test"
+        val policy = createRandomPolicy()
         createIndex(indexName, null)
-        createIndex(indexName1, "somePolicy")
+        createIndex(indexName1, policy.id)
         createIndex(indexName2, null)
         createIndex(indexName3, null)
 
@@ -108,9 +111,10 @@ class RestRetryFailedManagedIndexActionIT : IndexStateManagementRestTestCase() {
         val indexName1 = "${indexName}_1"
         val indexName2 = "${indexName}_2"
         val indexName3 = "${testIndexName}_some_other_test_2"
+        val policy = createRandomPolicy()
         createIndex(indexName, null)
         createIndex(indexName1, null)
-        createIndex(indexName2, "somePolicy")
+        createIndex(indexName2, policy.id)
         createIndex(indexName3, null)
 
         val response = client().makeRequest(
@@ -169,7 +173,8 @@ class RestRetryFailedManagedIndexActionIT : IndexStateManagementRestTestCase() {
 
     fun `test index has no metadata`() {
         val indexName = "${testIndexName}_players"
-        createIndex(indexName, "somePolicy")
+        val policy = createRandomPolicy()
+        createIndex(indexName, policy.id)
 
         val response = client().makeRequest(
             RestRequest.Method.POST.toString(),
@@ -224,11 +229,29 @@ class RestRetryFailedManagedIndexActionIT : IndexStateManagementRestTestCase() {
 
     fun `test index failed`() {
         val indexName = "${testIndexName}_blueberry"
-        createIndex(indexName, "invalid_policy")
+        val states = listOf(
+            randomState().copy(
+                transitions = listOf(),
+                actions = listOf(AllocationActionConfig(require = mapOf("..//" to "value"), exclude = emptyMap(), include = emptyMap(), index = 0))
+            )
+        )
+        val invalidPolicy = randomPolicy().copy(
+            states = states,
+            defaultState = states[0].name
+        )
+        createPolicy(invalidPolicy, invalidPolicy.id)
+        createIndex(indexName, invalidPolicy.id)
 
         val managedIndexConfig = getExistingManagedIndexConfig(indexName)
         // change the start time so the job will trigger in 2 seconds.
         updateManagedIndexConfigStartTime(managedIndexConfig)
+        waitFor { assertEquals(invalidPolicy.id, getExplainManagedIndexMetaData(indexName).policyID) }
+
+        // Change the start time so we attempt allocation that is intended to fail
+        updateManagedIndexConfigStartTime(managedIndexConfig)
+        waitFor {
+            assertEquals(Step.StepStatus.FAILED, getExplainManagedIndexMetaData(indexName).stepMetaData?.stepStatus)
+        }
 
         waitFor {
             val response = client().makeRequest(
