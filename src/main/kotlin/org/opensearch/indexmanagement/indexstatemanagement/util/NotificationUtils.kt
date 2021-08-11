@@ -12,8 +12,7 @@
 @file:JvmName("NotificationUtils")
 package org.opensearch.indexmanagement.indexstatemanagement.util
 
-import org.apache.logging.log4j.Logger
-import org.opensearch.action.ActionListener
+import org.opensearch.OpenSearchStatusException
 import org.opensearch.client.Client
 import org.opensearch.client.node.NodeClient
 import org.opensearch.commons.destination.message.LegacyBaseMessage
@@ -27,6 +26,8 @@ import org.opensearch.commons.notifications.model.Feature
 import org.opensearch.commons.notifications.model.SeverityType
 import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.indexstatemanagement.model.destination.Channel
+import org.opensearch.indexmanagement.opensearchapi.suspendUntil
+import org.opensearch.rest.RestStatus
 
 /**
  * Extension function for publishing a notification to a legacy destination.
@@ -36,44 +37,52 @@ import org.opensearch.indexmanagement.indexstatemanagement.model.destination.Cha
  * or notification actions. So we have a separate API in the NotificationsPluginInterface that allows
  * us to publish these old legacy ones directly.
  */
-fun LegacyBaseMessage.publishLegacyNotification(client: Client, logger: Logger) {
-    val channelType = this.channelType
-    NotificationsPluginInterface.publishLegacyNotification(
-        (client as NodeClient),
-        // TODO: Have Notification plugin handle the host deny list which they have access to in the cluster settings
-        LegacyPublishNotificationRequest(channelType, this, emptyList(), Feature.INDEX_MANAGEMENT),
-        object : ActionListener<LegacyPublishNotificationResponse> {
-            override fun onResponse(response: LegacyPublishNotificationResponse) {
-                logger.info("Message published for action type: ${channelType}, messageid: ${response.destinationResponse.responseContent}, statuscode: ${response.destinationResponse.statusCode}")
-            }
-
-            override fun onFailure(e: Exception) {
-                logger.error("Notification failed to publish to destination", e)
-                throw e
-            }
-        }
-    )
+suspend fun LegacyBaseMessage.publishLegacyNotification(client: Client) {
+    val baseMessage = this
+    val res: LegacyPublishNotificationResponse = NotificationsPluginInterface.suspendUntil {
+        this.publishLegacyNotification(
+            (client as NodeClient),
+            LegacyPublishNotificationRequest(baseMessage, Feature.INDEX_MANAGEMENT),
+            it
+        )
+    }
+    validateResponseStatus(RestStatus.fromCode(res.destinationResponse.statusCode), res.destinationResponse.responseContent)
 }
 
 /**
  * Extension function for publishing a notification to a channel in the Notification plugin.
  */
-fun Channel.sendNotification(client: Client, logger: Logger, title: String, managedIndexMetaData: ManagedIndexMetaData, compiledMessage: String) {
-    val channelId = this.id
-    NotificationsPluginInterface.sendNotification(
-        (client as NodeClient),
-        EventSource(title, managedIndexMetaData.indexUuid, Feature.INDEX_MANAGEMENT, SeverityType.INFO),
-        ChannelMessage(compiledMessage, null, null),
-        listOf(channelId),
-        object : ActionListener<SendNotificationResponse> {
-            override fun onResponse(response: SendNotificationResponse) {
-                logger.info("Error notification successfully published to channel $channelId, notificationId: ${response.notificationId}")
-            }
+suspend fun Channel.sendNotification(client: Client, title: String, managedIndexMetaData: ManagedIndexMetaData, compiledMessage: String) {
+    val channel = this
+    val res: SendNotificationResponse = NotificationsPluginInterface.suspendUntil {
+        this.sendNotification(
+            (client as NodeClient),
+            managedIndexMetaData.getEventSource(title),
+            ChannelMessage(compiledMessage, null, null),
+            listOf(channel.id),
+            it
+        )
+    }
+    validateResponseStatus(res.getStatus(), res.notificationId)
+}
 
-            override fun onFailure(e: Exception) {
-                logger.error("Error notification failed to publish to channel $channelId", e)
-                throw e
-            }
-        }
-    )
+fun ManagedIndexMetaData.getEventSource(title: String): EventSource {
+    return EventSource(title, indexUuid, Feature.INDEX_MANAGEMENT, SeverityType.INFO)
+}
+
+/**
+ * all valid response status
+ */
+private val VALID_RESPONSE_STATUS = setOf(
+    RestStatus.OK.status, RestStatus.CREATED.status, RestStatus.ACCEPTED.status,
+    RestStatus.NON_AUTHORITATIVE_INFORMATION.status, RestStatus.NO_CONTENT.status,
+    RestStatus.RESET_CONTENT.status, RestStatus.PARTIAL_CONTENT.status,
+    RestStatus.MULTI_STATUS.status
+)
+
+@Throws(OpenSearchStatusException::class)
+fun validateResponseStatus(restStatus: RestStatus, responseContent: String) {
+    if (!VALID_RESPONSE_STATUS.contains(restStatus.status)) {
+        throw OpenSearchStatusException("Failed: $responseContent", restStatus)
+    }
 }

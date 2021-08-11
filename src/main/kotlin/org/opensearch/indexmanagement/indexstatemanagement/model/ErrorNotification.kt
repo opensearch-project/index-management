@@ -53,9 +53,10 @@ data class ErrorNotification(
     }
 
     override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
-        return builder.startObject()
-            .field(DESTINATION_FIELD, destination)
-            .field(CHANNEL_FIELD, channel)
+        builder.startObject()
+        if (destination != null) builder.field(DESTINATION_FIELD, destination)
+        if (channel != null) builder.field(CHANNEL_FIELD, channel)
+        return builder
             .field(MESSAGE_TEMPLATE_FIELD, messageTemplate)
             .endObject()
     }
@@ -79,6 +80,7 @@ data class ErrorNotification(
         const val CHANNEL_FIELD = "channel"
         const val MESSAGE_TEMPLATE_FIELD = "message_template"
         const val MUSTACHE = "mustache"
+        const val CHANNEL_TITLE = "Index Management-ISM-Error Notification"
 
         @JvmStatic
         @Throws(IOException::class)
@@ -93,8 +95,8 @@ data class ErrorNotification(
                 xcp.nextToken()
 
                 when (fieldName) {
-                    DESTINATION_FIELD -> destination = Destination.parse(xcp)
-                    CHANNEL_FIELD -> channel = Channel.parse(xcp)
+                    DESTINATION_FIELD -> destination = if (xcp.currentToken() == Token.VALUE_NULL) null else Destination.parse(xcp)
+                    CHANNEL_FIELD -> channel = if (xcp.currentToken() == Token.VALUE_NULL) null else Channel.parse(xcp)
                     MESSAGE_TEMPLATE_FIELD -> messageTemplate = Script.parse(xcp, Script.DEFAULT_TEMPLATE_LANG)
                     else -> throw IllegalArgumentException("Invalid field: [$fieldName] found in ErrorNotification.")
                 }

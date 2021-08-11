@@ -26,8 +26,6 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.step.notification
 
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import org.apache.logging.log4j.LogManager
 import org.opensearch.client.Client
 import org.opensearch.cluster.service.ClusterService
@@ -61,13 +59,12 @@ class AttemptNotificationStep(
     @Suppress("TooGenericExceptionCaught")
     override suspend fun execute(): AttemptNotificationStep {
         try {
-            withContext(Dispatchers.IO) {
-                val compiledMessage = compileTemplate(config.messageTemplate, managedIndexMetaData)
-                config.destination?.buildLegacyBaseMessage(null, compiledMessage)?.publishLegacyNotification(client, logger)
-                config.channel?.sendNotification(client, logger, "Index Management-ISM-Notification Action", managedIndexMetaData, compiledMessage)
-            }
+            val compiledMessage = compileTemplate(config.messageTemplate, managedIndexMetaData)
+            config.destination?.buildLegacyBaseMessage(null, compiledMessage)?.publishLegacyNotification(client)
+            // TODO we need to wrap the channel send Notification call w/ user context once it's implemented in ISM
+            config.channel?.sendNotification(client, CHANNEL_TITLE, managedIndexMetaData, compiledMessage)
 
-            // publish internally throws an error for any invalid responses so its safe to assume if we reach this point it was successful
+            // publish and send throws an error for any invalid responses so its safe to assume if we reach this point it was successful
             stepStatus = StepStatus.COMPLETED
             info = mapOf("message" to getSuccessMessage(indexName))
         } catch (e: Exception) {
@@ -104,5 +101,6 @@ class AttemptNotificationStep(
     companion object {
         fun getFailedMessage(index: String) = "Failed to send notification [index=$index]"
         fun getSuccessMessage(index: String) = "Successfully sent notification [index=$index]"
+        const val CHANNEL_TITLE = "Index Management-ISM-Notification Action"
     }
 }

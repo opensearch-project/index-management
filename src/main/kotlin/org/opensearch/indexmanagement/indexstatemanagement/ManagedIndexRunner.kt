@@ -71,6 +71,7 @@ import org.opensearch.index.seqno.SequenceNumbers
 import org.opensearch.indexmanagement.IndexManagementIndices
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
 import org.opensearch.indexmanagement.indexstatemanagement.action.Action
+import org.opensearch.indexmanagement.indexstatemanagement.model.ErrorNotification
 import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexConfig
 import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
@@ -745,11 +746,10 @@ object ManagedIndexRunner :
     private suspend fun publishErrorNotification(policy: Policy, managedIndexMetaData: ManagedIndexMetaData) {
         policy.errorNotification?.run {
             errorNotificationRetryPolicy.retry(logger) {
-                withContext(Dispatchers.IO) {
-                    val compiledMessage = compileTemplate(messageTemplate, managedIndexMetaData)
-                    destination?.buildLegacyBaseMessage(null, compiledMessage)?.publishLegacyNotification(client, logger)
-                    channel?.sendNotification(client, logger, "Index Management-ISM-Error Notification", managedIndexMetaData, compiledMessage)
-                }
+                val compiledMessage = compileTemplate(messageTemplate, managedIndexMetaData)
+                destination?.buildLegacyBaseMessage(null, compiledMessage)?.publishLegacyNotification(client)
+                // TODO we need to wrap the channel send Notification call w/ user context once it's implemented in ISM
+                channel?.sendNotification(client, ErrorNotification.CHANNEL_TITLE, managedIndexMetaData, compiledMessage)
             }
         }
     }
