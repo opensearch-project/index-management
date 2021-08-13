@@ -16,13 +16,13 @@ import org.opensearch.OpenSearchStatusException
 import org.opensearch.client.Client
 import org.opensearch.client.node.NodeClient
 import org.opensearch.commons.destination.message.LegacyBaseMessage
+import org.opensearch.commons.notifications.NotificationConstants.FEATURE_INDEX_MANAGEMENT
 import org.opensearch.commons.notifications.NotificationsPluginInterface
 import org.opensearch.commons.notifications.action.LegacyPublishNotificationRequest
 import org.opensearch.commons.notifications.action.LegacyPublishNotificationResponse
 import org.opensearch.commons.notifications.action.SendNotificationResponse
 import org.opensearch.commons.notifications.model.ChannelMessage
 import org.opensearch.commons.notifications.model.EventSource
-import org.opensearch.commons.notifications.model.Feature
 import org.opensearch.commons.notifications.model.SeverityType
 import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.indexstatemanagement.model.destination.Channel
@@ -42,7 +42,7 @@ suspend fun LegacyBaseMessage.publishLegacyNotification(client: Client) {
     val res: LegacyPublishNotificationResponse = NotificationsPluginInterface.suspendUntil {
         this.publishLegacyNotification(
             (client as NodeClient),
-            LegacyPublishNotificationRequest(baseMessage, Feature.INDEX_MANAGEMENT),
+            LegacyPublishNotificationRequest(baseMessage, FEATURE_INDEX_MANAGEMENT),
             it
         )
     }
@@ -67,7 +67,7 @@ suspend fun Channel.sendNotification(client: Client, title: String, managedIndex
 }
 
 fun ManagedIndexMetaData.getEventSource(title: String): EventSource {
-    return EventSource(title, indexUuid, Feature.INDEX_MANAGEMENT, SeverityType.INFO)
+    return EventSource(title, indexUuid, FEATURE_INDEX_MANAGEMENT, SeverityType.INFO)
 }
 
 /**
