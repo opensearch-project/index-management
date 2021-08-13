@@ -297,7 +297,11 @@ data class Transform(
                     TARGET_INDEX_FIELD -> targetIndex = xcp.text()
                     METADATA_ID_FIELD -> metadataId = xcp.textOrNull()
                     ROLES_FIELD -> {
-                        // Ignoring the field, its deprecated
+                        // Parsing but not storing the field, deprecated
+                        ensureExpectedToken(Token.START_ARRAY, xcp.currentToken(), xcp)
+                        while (xcp.nextToken() != Token.END_ARRAY) {
+                            xcp.text()
+                        }
                     }
                     PAGE_SIZE_FIELD -> pageSize = xcp.intValue()
                     GROUPS_FIELD -> {

@@ -34,6 +34,7 @@ import org.opensearch.common.xcontent.ToXContentObject
 import org.opensearch.common.xcontent.XContentBuilder
 import org.opensearch.common.xcontent.XContentParser
 import org.opensearch.common.xcontent.XContentParserUtils
+import org.opensearch.commons.authuser.User
 import org.opensearch.index.seqno.SequenceNumbers
 import org.opensearch.indexmanagement.common.model.dimension.DateHistogram
 import org.opensearch.indexmanagement.common.model.dimension.Dimension
@@ -79,7 +80,7 @@ data class ISMRollup(
         return builder
     }
 
-    fun toRollup(sourceIndex: String, roles: List<String> = listOf()): Rollup {
+    fun toRollup(sourceIndex: String, user: User? = null): Rollup {
         val id = sourceIndex + toString()
         val currentTime = Instant.now()
         return Rollup(
@@ -95,12 +96,12 @@ data class ISMRollup(
             sourceIndex = sourceIndex,
             targetIndex = this.targetIndex,
             metadataID = null,
-            roles = roles,
             pageSize = pageSize,
             delay = null,
             continuous = false,
             dimensions = dimensions,
-            metrics = metrics
+            metrics = metrics,
+            user = user
         )
     }
 
