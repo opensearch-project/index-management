@@ -142,12 +142,7 @@ data class Destination(
             }
             DestinationType.CUSTOM_WEBHOOK -> {
                 destinationMessage = LegacyCustomWebhookMessage.Builder("custom_webhook")
-                    .withUrl(customWebhook?.url)
-                    .withScheme(customWebhook?.scheme)
-                    .withHost(customWebhook?.host)
-                    .withPort(customWebhook?.port)
-                    .withPath(customWebhook?.path)
-                    .withQueryParams(customWebhook?.queryParams)
+                    .withUrl(getLegacyCustomWebhookMessageURL(customWebhook))
                     .withHeaderParams(customWebhook?.headerParams)
                     .withMessage(compiledMessage).build()
             }
@@ -166,5 +161,16 @@ data class Destination(
             throw IllegalArgumentException("Content is NULL for destination type ${type.value}")
         }
         return content
+    }
+
+    private fun getLegacyCustomWebhookMessageURL(customWebhook: CustomWebhook?): String {
+        return LegacyCustomWebhookMessage.Builder("custom_webhook")
+            .withUrl(customWebhook?.url)
+            .withScheme(customWebhook?.scheme)
+            .withHost(customWebhook?.host)
+            .withPort(customWebhook?.port)
+            .withPath(customWebhook?.path)
+            .withQueryParams(customWebhook?.queryParams)
+            .build().uri.toString()
     }
 }
