@@ -61,9 +61,7 @@ class AttemptNotificationStep(
         try {
             val compiledMessage = compileTemplate(config.messageTemplate, managedIndexMetaData)
             config.destination?.buildLegacyBaseMessage(null, compiledMessage)?.publishLegacyNotification(client)
-            // TODO we need to wrap the channel send Notification call w/ user context once it's implemented in ISM
             config.channel?.sendNotification(client, CHANNEL_TITLE, managedIndexMetaData, compiledMessage)
-
             // publish and send throws an error for any invalid responses so its safe to assume if we reach this point it was successful
             stepStatus = StepStatus.COMPLETED
             info = mapOf("message" to getSuccessMessage(indexName))

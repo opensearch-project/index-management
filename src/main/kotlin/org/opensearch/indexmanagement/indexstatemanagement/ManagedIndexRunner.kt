@@ -739,7 +739,6 @@ object ManagedIndexRunner :
             errorNotificationRetryPolicy.retry(logger) {
                 val compiledMessage = compileTemplate(messageTemplate, managedIndexMetaData)
                 destination?.buildLegacyBaseMessage(null, compiledMessage)?.publishLegacyNotification(client)
-                // TODO we need to wrap the channel send Notification call w/ user context once it's implemented in ISM
                 channel?.sendNotification(client, ErrorNotification.CHANNEL_TITLE, managedIndexMetaData, compiledMessage)
             }
         }

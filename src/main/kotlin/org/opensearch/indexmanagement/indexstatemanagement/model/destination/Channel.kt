@@ -22,6 +22,10 @@ import java.io.IOException
 
 data class Channel(val id: String) : ToXContent, Writeable {
 
+    init {
+        require(id.isNotEmpty()) { "Channel ID cannot be empty" }
+    }
+
     override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
         return builder.startObject()
             .field(ID, id)
@@ -58,7 +62,7 @@ data class Channel(val id: String) : ToXContent, Writeable {
                 }
             }
 
-            return Channel(requireNotNull(id) { "ID is null or empty" })
+            return Channel(requireNotNull(id) { "Channel ID is null" })
         }
     }
 }
