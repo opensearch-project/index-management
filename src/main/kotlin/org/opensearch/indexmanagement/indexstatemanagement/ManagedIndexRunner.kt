@@ -43,8 +43,6 @@ import org.opensearch.action.index.IndexResponse
 import org.opensearch.action.support.IndicesOptions
 import org.opensearch.action.update.UpdateResponse
 import org.opensearch.client.Client
-import org.opensearch.client.node.NodeClient
-import org.opensearch.cluster.block.ClusterBlockException
 import org.opensearch.cluster.health.ClusterHealthStatus
 import org.opensearch.cluster.health.ClusterStateHealth
 import org.opensearch.cluster.metadata.IndexMetadata
@@ -59,13 +57,6 @@ import org.opensearch.common.xcontent.XContentHelper
 import org.opensearch.common.xcontent.XContentParser.Token
 import org.opensearch.common.xcontent.XContentParserUtils.ensureExpectedToken
 import org.opensearch.common.xcontent.XContentType
-import org.opensearch.commons.notifications.NotificationsPluginInterface
-import org.opensearch.commons.notifications.action.SendNotificationResponse
-import org.opensearch.commons.notifications.model.ChannelMessage
-import org.opensearch.commons.notifications.model.EventSource
-import org.opensearch.commons.notifications.model.Feature
-import org.opensearch.commons.notifications.model.SeverityType
-import org.opensearch.index.Index
 import org.opensearch.index.engine.VersionConflictEngineException
 import org.opensearch.index.seqno.SequenceNumbers
 import org.opensearch.indexmanagement.IndexManagementIndices
