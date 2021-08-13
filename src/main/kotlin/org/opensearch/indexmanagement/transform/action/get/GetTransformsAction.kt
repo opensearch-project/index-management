@@ -16,6 +16,6 @@ import org.opensearch.action.ActionType
 class GetTransformsAction private constructor() : ActionType<GetTransformsResponse>(NAME, ::GetTransformsResponse) {
     companion object {
         val INSTANCE = GetTransformsAction()
-        val NAME = "cluster:admin/opendistro/transform/get_transforms"
+        const val NAME = "cluster:admin/opendistro/transform/get_transforms"
     }
 }

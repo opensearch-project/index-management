@@ -31,6 +31,6 @@ import org.opensearch.action.ActionType
 class GetPoliciesAction private constructor() : ActionType<GetPoliciesResponse>(NAME, ::GetPoliciesResponse) {
     companion object {
         val INSTANCE = GetPoliciesAction()
-        val NAME = "cluster:admin/opendistro/ism/policy/search"
+        const val NAME = "cluster:admin/opendistro/ism/policy/search"
     }
 }

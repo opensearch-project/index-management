@@ -17,6 +17,6 @@ import org.opensearch.action.bulk.BulkResponse
 class DeleteTransformsAction private constructor() : ActionType<BulkResponse>(NAME, ::BulkResponse) {
     companion object {
         val INSTANCE = DeleteTransformsAction()
-        val NAME = "cluster:admin/opendistro/transform/delete"
+        const val NAME = "cluster:admin/opendistro/transform/delete"
     }
 }

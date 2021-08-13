@@ -32,6 +32,6 @@ import org.opensearch.action.delete.DeleteResponse
 class DeletePolicyAction private constructor() : ActionType<DeleteResponse>(NAME, ::DeleteResponse) {
     companion object {
         val INSTANCE = DeletePolicyAction()
-        val NAME = "cluster:admin/opendistro/ism/policy/delete"
+        const val NAME = "cluster:admin/opendistro/ism/policy/delete"
     }
 }
