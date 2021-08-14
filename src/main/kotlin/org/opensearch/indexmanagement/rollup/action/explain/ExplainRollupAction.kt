@@ -31,6 +31,6 @@ import org.opensearch.action.ActionType
 class ExplainRollupAction private constructor() : ActionType<ExplainRollupResponse>(NAME, ::ExplainRollupResponse) {
     companion object {
         val INSTANCE = ExplainRollupAction()
-        val NAME = "cluster:admin/opendistro/rollup/explain"
+        const val NAME = "cluster:admin/opendistro/rollup/explain"
     }
 }

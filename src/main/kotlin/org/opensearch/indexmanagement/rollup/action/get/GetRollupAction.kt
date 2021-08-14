@@ -31,6 +31,6 @@ import org.opensearch.action.ActionType
 class GetRollupAction private constructor() : ActionType<GetRollupResponse>(NAME, ::GetRollupResponse) {
     companion object {
         val INSTANCE = GetRollupAction()
-        val NAME = "cluster:admin/opendistro/rollup/get"
+        const val NAME = "cluster:admin/opendistro/rollup/get"
     }
 }

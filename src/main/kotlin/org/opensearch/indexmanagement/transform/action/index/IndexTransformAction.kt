@@ -16,6 +16,6 @@ import org.opensearch.action.ActionType
 class IndexTransformAction private constructor() : ActionType<IndexTransformResponse>(NAME, ::IndexTransformResponse) {
     companion object {
         val INSTANCE = IndexTransformAction()
-        val NAME = "cluster:admin/opendistro/transform/index"
+        const val NAME = "cluster:admin/opendistro/transform/index"
     }
 }

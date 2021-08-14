@@ -31,6 +31,6 @@ import org.opensearch.action.ActionType
 class ExplainAction private constructor() : ActionType<ExplainResponse>(NAME, ::ExplainResponse) {
     companion object {
         val INSTANCE = ExplainAction()
-        val NAME = "cluster:admin/opendistro/ism/managedindex/explain"
+        const val NAME = "cluster:admin/opendistro/ism/managedindex/explain"
     }
 }
