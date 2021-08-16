@@ -163,6 +163,7 @@ dependencies {
     testCompile "org.jetbrains.kotlin:kotlin-test:${kotlin_version}"
     testImplementation "com.nhaarman.mockitokotlin2:mockito-kotlin:2.2.0"
     testCompile "org.mockito:mockito-core:2.23.0"
+    // testCompile group: 'org.mockito', name: 'mockito-inline', version:'2.23.0'
 
     add("ktlint", "com.pinterest:ktlint:0.41.0") {
         attributes {
@@ -242,7 +243,7 @@ File repo = file("$buildDir/testclusters/repo")
 def _numNodes = findProperty('numNodes') as Integer ?: 1
 testClusters.integTest {
     plugin(project.tasks.bundlePlugin.archiveFile)
-    testDistribution = "ARCHIVE"
+    testDistribution = "INTEG_TEST"
     // Cluster shrink exception thrown if we try to set numberOfNodes to 1, so only apply if > 1
     if (_numNodes > 1) numberOfNodes = _numNodes
     // When running integration tests it doesn't forward the --debug-jvm to the cluster anymore
@@ -343,7 +344,7 @@ println("mixed cluster flag: $mixedClusterFlag")
 mixedClusterTest.dependsOn(bundlePlugin)
 
 testClusters.mixedCluster {
-    testDistribution = "ARCHIVE"
+    testDistribution = "INTEG_TEST"
     if (_numNodes > 1) numberOfNodes = _numNodes
     getNodes().each { node ->
         node.plugin(provider({
