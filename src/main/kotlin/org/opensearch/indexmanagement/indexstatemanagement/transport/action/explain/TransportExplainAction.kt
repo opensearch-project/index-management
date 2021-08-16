@@ -28,6 +28,8 @@ package org.opensearch.indexmanagement.indexstatemanagement.transport.action.exp
 
 import org.apache.logging.log4j.LogManager
 import org.opensearch.ExceptionsHelper
+import org.opensearch.OpenSearchSecurityException
+import org.opensearch.OpenSearchStatusException
 import org.opensearch.action.ActionListener
 import org.opensearch.action.admin.cluster.state.ClusterStateRequest
 import org.opensearch.action.admin.cluster.state.ClusterStateResponse
@@ -44,6 +46,7 @@ import org.opensearch.cluster.metadata.IndexMetadata
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.inject.Inject
 import org.opensearch.common.settings.Settings
+import org.opensearch.common.util.concurrent.ThreadContext
 import org.opensearch.common.xcontent.LoggingDeprecationHandler
 import org.opensearch.common.xcontent.NamedXContentRegistry
 import org.opensearch.common.xcontent.XContentHelper
@@ -59,7 +62,9 @@ import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.getMana
 import org.opensearch.indexmanagement.indexstatemanagement.util.isMetadataMoved
 import org.opensearch.indexmanagement.indexstatemanagement.util.managedIndexMetadataID
 import org.opensearch.indexmanagement.settings.IndexManagementSettings
+import org.opensearch.indexmanagement.util.IndexManagementException
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.buildUser
+import org.opensearch.rest.RestStatus
 import org.opensearch.search.builder.SearchSourceBuilder
 import org.opensearch.search.fetch.subphase.FetchSourceContext.FETCH_SOURCE
 import org.opensearch.search.sort.SortBuilders
@@ -114,6 +119,8 @@ class TransportExplainAction @Inject constructor(
 
         private val indexNames: MutableList<String> = mutableListOf()
         private val enabledState: MutableMap<String, Boolean> = mutableMapOf()
+        private val indexPolicyIDs = mutableListOf<String?>()
+        private val indexMetadatas = mutableListOf<ManagedIndexMetaData?>()
         private var totalManagedIndices = 0
 
         @Suppress("SpreadOperator", "NestedBlockDepth")
@@ -163,7 +170,7 @@ class TransportExplainAction @Inject constructor(
                 .indices(INDEX_MANAGEMENT_INDEX)
                 .source(searchSourceBuilder)
 
-            client.threadPool().threadContext.stashContext().use {
+            client.threadPool().threadContext.stashContext().use { threadContext ->
                 client.search(
                     searchRequest,
                     object : ActionListener<SearchResponse> {
@@ -191,20 +198,18 @@ class TransportExplainAction @Inject constructor(
                                 if (managedIndices.size == 0) {
                                     // edge case: if specify query param pagination size to be 0
                                     // we still show total managed indices
-                                    emptyResponse(totalManagedIndices)
+                                    sendResponse()
                                     return
                                 } else {
                                     indexNames.addAll(managedIndices)
-                                    getMetadata(managedIndices)
+                                    getMetadata(managedIndices, threadContext)
                                     return
                                 }
                             }
 
                             // explain/{index} return results for all indices
                             indexNames.addAll(indices)
-                            // TODO: Need to check if the user has permission to do see the index - call resolve API on top of all the returned
-                            //  indices to either block showing or show
-                            getMetadata(indices)
+                            getMetadata(indices, threadContext)
                         }
 
                         override fun onFailure(t: Exception) {
@@ -213,10 +218,10 @@ class TransportExplainAction @Inject constructor(
                                 // show all requested indices not managed
                                 if (indices.isNotEmpty()) {
                                     indexNames.addAll(indices)
-                                    getMetadata(indices)
+                                    getMetadata(indices, threadContext)
                                     return
                                 }
-                                emptyResponse()
+                                sendResponse()
                                 return
                             }
                             actionListener.onFailure(ExceptionsHelper.unwrapCause(t) as Exception)
@@ -227,7 +232,7 @@ class TransportExplainAction @Inject constructor(
         }
 
         @Suppress("SpreadOperator")
-        fun getMetadata(indices: List<String>) {
+        fun getMetadata(indices: List<String>, threadContext: ThreadContext.StoredContext) {
             val clusterStateRequest = ClusterStateRequest()
             val strictExpandIndicesOptions = IndicesOptions.strictExpand()
 
@@ -242,7 +247,7 @@ class TransportExplainAction @Inject constructor(
                 clusterStateRequest,
                 object : ActionListener<ClusterStateResponse> {
                     override fun onResponse(response: ClusterStateResponse) {
-                        onClusterStateResponse(response)
+                        onClusterStateResponse(response, threadContext)
                     }
 
                     override fun onFailure(t: Exception) {
@@ -252,7 +257,7 @@ class TransportExplainAction @Inject constructor(
             )
         }
 
-        fun onClusterStateResponse(clusterStateResponse: ClusterStateResponse) {
+        fun onClusterStateResponse(clusterStateResponse: ClusterStateResponse, threadContext: ThreadContext.StoredContext) {
             val clusterStateIndexMetadatas = clusterStateResponse.state.metadata.indices.map { it.key to it.value }.toMap()
 
             if (wildcard) {
@@ -270,7 +275,7 @@ class TransportExplainAction @Inject constructor(
                 object : ActionListener<MultiGetResponse> {
                     override fun onResponse(response: MultiGetResponse) {
                         val metadataMap = response.responses.map { it.id to getMetadata(it.response)?.toMap() }.toMap()
-                        buildResponse(indices, metadataMap, clusterStateIndexMetadatas)
+                        buildResponse(indices, metadataMap, clusterStateIndexMetadatas, threadContext)
                     }
 
                     override fun onFailure(t: Exception) {
@@ -284,10 +289,9 @@ class TransportExplainAction @Inject constructor(
         fun buildResponse(
             indices: Map<String, String>,
             metadataMap: Map<String, Map<String, String>?>,
-            clusterStateIndexMetadatas: Map<String, IndexMetadata>
+            clusterStateIndexMetadatas: Map<String, IndexMetadata>,
+            threadContext: ThreadContext.StoredContext
         ) {
-            val indexPolicyIDs = mutableListOf<String?>()
-            val indexMetadatas = mutableListOf<ManagedIndexMetaData?>()
 
             // cluster state response will not resisting the sort order
             // so use the order from previous search result saved in indexNames
@@ -315,6 +319,41 @@ class TransportExplainAction @Inject constructor(
             }
             managedIndicesMetaDataMap.clear()
 
+            if (user == null) {
+                sendResponse()
+            } else {
+                validateAndSendResponse(threadContext)
+            }
+        }
+
+        private fun validateAndSendResponse(threadContext: ThreadContext.StoredContext) {
+            threadContext.restore()
+            val request = SearchRequest().indices(*indexNames.toTypedArray()).source(SearchSourceBuilder.searchSource().size(1))
+            client.search(
+                request,
+                object : ActionListener<SearchResponse> {
+                    override fun onResponse(searchResponse: SearchResponse) {
+                        sendResponse()
+                    }
+
+                    override fun onFailure(e: Exception) {
+                        actionListener.onFailure(
+                            IndexManagementException.wrap(
+                                when (e is OpenSearchSecurityException) {
+                                    true -> OpenSearchStatusException(
+                                        "User doesn't have required index permissions on one or more indices: ${e.localizedMessage}",
+                                        RestStatus.FORBIDDEN
+                                    )
+                                    false -> e
+                                }
+                            )
+                        )
+                    }
+                }
+            )
+        }
+
+        private fun sendResponse() {
             if (explainAll) {
                 actionListener.onResponse(ExplainAllResponse(indexNames, indexPolicyIDs, indexMetadatas, totalManagedIndices, enabledState))
                 return
@@ -336,14 +375,6 @@ class TransportExplainAction @Inject constructor(
                 xcp,
                 response.id, response.seqNo, response.primaryTerm
             )
-        }
-
-        private fun emptyResponse(size: Int = 0) {
-            if (explainAll) {
-                actionListener.onResponse(ExplainAllResponse(emptyList(), emptyList(), emptyList(), size, emptyMap()))
-                return
-            }
-            actionListener.onResponse(ExplainResponse(emptyList(), emptyList(), emptyList()))
         }
     }
 }

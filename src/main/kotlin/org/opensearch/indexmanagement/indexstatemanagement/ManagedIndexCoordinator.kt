@@ -34,6 +34,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import org.apache.logging.log4j.LogManager
 import org.opensearch.ExceptionsHelper
+import org.opensearch.OpenSearchSecurityException
 import org.opensearch.action.DocWriteRequest
 import org.opensearch.action.bulk.BackoffPolicy
 import org.opensearch.action.bulk.BulkRequest
@@ -56,6 +57,7 @@ import org.opensearch.common.component.LifecycleListener
 import org.opensearch.common.regex.Regex
 import org.opensearch.common.settings.Settings
 import org.opensearch.common.unit.TimeValue
+import org.opensearch.commons.authuser.User
 import org.opensearch.index.Index
 import org.opensearch.index.IndexNotFoundException
 import org.opensearch.index.query.QueryBuilders
@@ -85,11 +87,13 @@ import org.opensearch.indexmanagement.indexstatemanagement.util.isFailed
 import org.opensearch.indexmanagement.indexstatemanagement.util.isPolicyCompleted
 import org.opensearch.indexmanagement.indexstatemanagement.util.managedIndexConfigIndexRequest
 import org.opensearch.indexmanagement.indexstatemanagement.util.updateEnableManagedIndexRequest
+import org.opensearch.indexmanagement.opensearchapi.IndexManagementSecurityContext
 import org.opensearch.indexmanagement.opensearchapi.contentParser
 import org.opensearch.indexmanagement.opensearchapi.parseFromSearchResponse
 import org.opensearch.indexmanagement.opensearchapi.parseWithType
 import org.opensearch.indexmanagement.opensearchapi.retry
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
+import org.opensearch.indexmanagement.opensearchapi.withClosableContext
 import org.opensearch.indexmanagement.util.NO_ID
 import org.opensearch.indexmanagement.util.OpenForTesting
 import org.opensearch.rest.RestStatus
@@ -115,7 +119,7 @@ import org.opensearch.threadpool.ThreadPool
 @Suppress("TooManyFunctions")
 @OpenForTesting
 class ManagedIndexCoordinator(
-    settings: Settings,
+    private val settings: Settings,
     private val client: Client,
     private val clusterService: ClusterService,
     private val threadPool: ThreadPool,
@@ -354,31 +358,61 @@ class ManagedIndexCoordinator(
         return null
     }
 
-    private fun findMatchingPolicy(indexName: String, creationDate: Long, policies: List<Policy>): Policy? {
-        // only process indices created after template
-        // traverse all ism templates for matching ones
+    /**
+     * Find a policy that has highest priority ism template with matching index pattern to the index and is created before index creation date. If
+     * the policy has user, ensure that the user can manage the index if not find the one that can.
+     * */
+    private suspend fun findMatchingPolicy(indexName: String, creationDate: Long, policies: List<Policy>): Policy? {
         val patternMatchPredicate = { pattern: String -> Regex.simpleMatch(pattern, indexName) }
-        var matchedPolicyId: String? = null
-        var matchedPolicy: Policy? = null
-        var highestPriority: Int = -1
-
+        val priorityPolicyMap = mutableMapOf<Int, Policy>()
         policies.forEach { policy ->
+            var highestPriorityForPolicy = -1
             policy.ismTemplate?.filter { template ->
                 template.lastUpdatedTime.toEpochMilli() < creationDate
             }?.forEach { template ->
                 if (template.indexPatterns.stream().anyMatch(patternMatchPredicate)) {
-                    if (highestPriority < template.priority) {
-                        highestPriority = template.priority
-                        matchedPolicyId = policy.id
-                        matchedPolicy = policy
-                    } else if (highestPriority == template.priority) {
-                        logger.warn("Warning: index $indexName matches [$matchedPolicyId, ${policy.id}]")
+                    if (highestPriorityForPolicy < template.priority) {
+                        highestPriorityForPolicy = template.priority
                     }
                 }
             }
+            if (highestPriorityForPolicy > -1) {
+                priorityPolicyMap[highestPriorityForPolicy] = policy
+            }
         }
 
-        return matchedPolicy
+        val previouslyCheckedUsers = mutableSetOf<User>()
+        // sorting the applicable policies based on the priority highest to lowest
+        val sortedPriorityPolicyMap = priorityPolicyMap.toSortedMap(reverseOrder())
+        sortedPriorityPolicyMap.forEach { (_, policy) ->
+            if (!previouslyCheckedUsers.contains(policy.user) && canPolicyManagedIndex(policy, indexName)) {
+                return policy
+            }
+
+            policy.user?.let { previouslyCheckedUsers.add(it) }
+        }
+
+        logger.debug("Couldn't find any matching policy with appropriate permissions that can manage index $indexName")
+        return null
+    }
+
+    suspend fun canPolicyManagedIndex(policy: Policy, indexName: String): Boolean {
+        if (policy.user != null) {
+            try {
+                val searchRequest = SearchRequest().indices(indexName)
+                    .source(SearchSourceBuilder.searchSource().size(1))
+                withClosableContext(IndexManagementSecurityContext("ApplyPolicyOnIndexCreation", settings, threadPool.threadContext, policy.user)) {
+                    val response: SearchResponse = client.suspendUntil { search(searchRequest, it) }
+                }
+            } catch (e: OpenSearchSecurityException) {
+                logger.debug("Skipping applying policy ${policy.id} on $indexName as the policy user is missing perimissions", e)
+                return false
+            } catch (e: Exception) {
+                // Ignore other exceptions
+            }
+        }
+
+        return true
     }
 
     suspend fun getPoliciesWithISMTemplates(): List<Policy> {

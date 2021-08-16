@@ -289,13 +289,7 @@ class IndexManagementSecurityContext(
     override fun updateThreadContext(context: CoroutineContext) {
         logger.debug("Setting security context in thread ${Thread.currentThread().name} for job $id")
         injector.injectRoles(if (user == null) DEFAULT_INJECT_ROLES else user.roles)
-        // TODO: implement this in InjectSecurity to be able to set specific transient properties in ThreadContext
-        if (threadContext.getTransient<Boolean>(INTERNAL_REQUEST) == null) {
-            threadContext.putTransient(INTERNAL_REQUEST, true)
-        } else {
-            // TODO: Should fail?
-            logger.error("Failed to set the context correctly for job $id")
-        }
+        injector.injectProperty(INTERNAL_REQUEST, true)
     }
 
     /**

@@ -28,6 +28,7 @@ package org.opensearch.indexmanagement.indexstatemanagement.transport.action.add
 
 import org.apache.logging.log4j.LogManager
 import org.opensearch.ExceptionsHelper
+import org.opensearch.OpenSearchSecurityException
 import org.opensearch.OpenSearchStatusException
 import org.opensearch.OpenSearchTimeoutException
 import org.opensearch.action.ActionListener
@@ -39,6 +40,8 @@ import org.opensearch.action.get.GetRequest
 import org.opensearch.action.get.GetResponse
 import org.opensearch.action.get.MultiGetRequest
 import org.opensearch.action.get.MultiGetResponse
+import org.opensearch.action.search.SearchRequest
+import org.opensearch.action.search.SearchResponse
 import org.opensearch.action.support.ActionFilters
 import org.opensearch.action.support.HandledTransportAction
 import org.opensearch.action.support.IndicesOptions
@@ -61,11 +64,13 @@ import org.opensearch.indexmanagement.indexstatemanagement.util.FailedIndex
 import org.opensearch.indexmanagement.indexstatemanagement.util.managedIndexConfigIndexRequest
 import org.opensearch.indexmanagement.opensearchapi.parseFromGetResponse
 import org.opensearch.indexmanagement.settings.IndexManagementSettings
+import org.opensearch.indexmanagement.util.IndexManagementException
 import org.opensearch.indexmanagement.util.IndexUtils
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.buildUser
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.userHasPermissionForResource
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.validateUserConfiguration
 import org.opensearch.rest.RestStatus
+import org.opensearch.search.builder.SearchSourceBuilder
 import org.opensearch.tasks.Task
 import org.opensearch.transport.TransportService
 import java.lang.Exception
@@ -74,6 +79,7 @@ import java.time.Instant
 
 private val log = LogManager.getLogger(TransportAddPolicyAction::class.java)
 
+@Suppress("SpreadOperator")
 class TransportAddPolicyAction @Inject constructor(
     val client: NodeClient,
     transportService: TransportService,
@@ -113,6 +119,44 @@ class TransportAddPolicyAction @Inject constructor(
         private val failedIndices: MutableList<FailedIndex> = mutableListOf()
 
         fun start() {
+            if (!validateUserConfiguration(user, filterByEnabled, actionListener)) {
+                return
+            }
+            if (user == null) {
+                getPolicy()
+            } else {
+                validateAndGetPolicy()
+            }
+        }
+
+        private fun validateAndGetPolicy() {
+            val searchRequest = SearchRequest().indices(*request.indices.toTypedArray())
+                .source(SearchSourceBuilder.searchSource().size(1))
+            client.search(
+                searchRequest,
+                object : ActionListener<SearchResponse> {
+                    override fun onResponse(searchResponse: SearchResponse) {
+                        getPolicy()
+                    }
+
+                    override fun onFailure(e: Exception) {
+                        actionListener.onFailure(
+                            IndexManagementException.wrap(
+                                when (e is OpenSearchSecurityException) {
+                                    true -> OpenSearchStatusException(
+                                        "User doesn't have required index permissions on one or more requested indices: ${e.localizedMessage}",
+                                        RestStatus.FORBIDDEN
+                                    )
+                                    false -> e
+                                }
+                            )
+                        )
+                    }
+                }
+            )
+        }
+
+        private fun getPolicy() {
             val getRequest = GetRequest(INDEX_MANAGEMENT_INDEX, request.policyID)
 
             client.threadPool().threadContext.stashContext().use {
