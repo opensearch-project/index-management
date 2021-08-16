@@ -163,7 +163,6 @@ class TransportAddPolicyAction @Inject constructor(
                 if (!validateUserConfiguration(user, filterByEnabled, actionListener)) {
                     return
                 }
-                // TODO: Need to check if the user can see the index - call resolve index
                 client.get(getRequest, ActionListener.wrap(::onGetPolicyResponse, ::onFailure))
             }
         }

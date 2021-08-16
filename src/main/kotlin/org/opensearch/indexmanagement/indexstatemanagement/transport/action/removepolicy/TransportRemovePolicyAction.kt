@@ -26,8 +26,9 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.transport.action.removepolicy
 
-import org.apache.logging.log4j.LogManager
 import org.opensearch.ExceptionsHelper
+import org.opensearch.OpenSearchSecurityException
+import org.opensearch.OpenSearchStatusException
 import org.opensearch.action.ActionListener
 import org.opensearch.action.admin.cluster.state.ClusterStateRequest
 import org.opensearch.action.admin.cluster.state.ClusterStateResponse
@@ -36,6 +37,8 @@ import org.opensearch.action.bulk.BulkRequest
 import org.opensearch.action.bulk.BulkResponse
 import org.opensearch.action.get.MultiGetRequest
 import org.opensearch.action.get.MultiGetResponse
+import org.opensearch.action.search.SearchRequest
+import org.opensearch.action.search.SearchResponse
 import org.opensearch.action.support.ActionFilters
 import org.opensearch.action.support.HandledTransportAction
 import org.opensearch.action.support.IndicesOptions
@@ -56,31 +59,22 @@ import org.opensearch.indexmanagement.indexstatemanagement.transport.action.ISMS
 import org.opensearch.indexmanagement.indexstatemanagement.util.FailedIndex
 import org.opensearch.indexmanagement.indexstatemanagement.util.deleteManagedIndexMetadataRequest
 import org.opensearch.indexmanagement.indexstatemanagement.util.deleteManagedIndexRequest
-import org.opensearch.indexmanagement.settings.IndexManagementSettings
 import org.opensearch.indexmanagement.util.IndexManagementException
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.buildUser
+import org.opensearch.rest.RestStatus
+import org.opensearch.search.builder.SearchSourceBuilder
 import org.opensearch.tasks.Task
 import org.opensearch.transport.TransportService
 
-private val log = LogManager.getLogger(TransportRemovePolicyAction::class.java)
-
+@Suppress("SpreadOperator")
 class TransportRemovePolicyAction @Inject constructor(
     val client: NodeClient,
     transportService: TransportService,
     actionFilters: ActionFilters,
-    val clusterService: ClusterService,
-    val settings: Settings
+    val clusterService: ClusterService
 ) : HandledTransportAction<RemovePolicyRequest, ISMStatusResponse>(
     RemovePolicyAction.NAME, transportService, actionFilters, ::RemovePolicyRequest
 ) {
-
-    @Volatile private var filterByEnabled = IndexManagementSettings.FILTER_BY_BACKEND_ROLES.get(settings)
-
-    init {
-        clusterService.clusterSettings.addSettingsUpdateConsumer(IndexManagementSettings.FILTER_BY_BACKEND_ROLES) {
-            filterByEnabled = it
-        }
-    }
 
     override fun doExecute(task: Task, request: RemovePolicyRequest, listener: ActionListener<ISMStatusResponse>) {
         RemovePolicyHandler(client, listener, request).start()
@@ -96,8 +90,42 @@ class TransportRemovePolicyAction @Inject constructor(
         private val failedIndices: MutableList<FailedIndex> = mutableListOf()
         private val indicesToRemove = mutableMapOf<String, String>() // uuid: name
 
-        @Suppress("SpreadOperator")
         fun start() {
+            if (user == null) {
+                getClusterState()
+            } else {
+                validateAndGetClusterState()
+            }
+        }
+
+        private fun validateAndGetClusterState() {
+            val searchRequest = SearchRequest().indices(*request.indices.toTypedArray())
+                .source(SearchSourceBuilder.searchSource().size(1))
+            client.search(
+                searchRequest,
+                object : ActionListener<SearchResponse> {
+                    override fun onResponse(searchResponse: SearchResponse) {
+                        getClusterState()
+                    }
+
+                    override fun onFailure(e: java.lang.Exception) {
+                        actionListener.onFailure(
+                            IndexManagementException.wrap(
+                                when (e is OpenSearchSecurityException) {
+                                    true -> OpenSearchStatusException(
+                                        "User doesn't have required index permissions on one or more requested indices: ${e.localizedMessage}",
+                                        RestStatus.FORBIDDEN
+                                    )
+                                    false -> e
+                                }
+                            )
+                        )
+                    }
+                }
+            )
+        }
+
+        private fun getClusterState() {
             val strictExpandOptions = IndicesOptions.strictExpand()
 
             val clusterStateRequest = ClusterStateRequest()

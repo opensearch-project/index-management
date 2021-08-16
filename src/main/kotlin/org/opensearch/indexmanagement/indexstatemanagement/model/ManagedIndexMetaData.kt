@@ -66,6 +66,8 @@ data class ManagedIndexMetaData(
     val id: String = NO_ID,
     val seqNo: Long = SequenceNumbers.UNASSIGNED_SEQ_NO,
     val primaryTerm: Long = SequenceNumbers.UNASSIGNED_PRIMARY_TERM,
+    // TODO: Remove this once the step interface is updated to pass in user information.
+    //  The user information is not being stored/written anywhere, this is only intended to be used during the step execution.
     val user: User? = null
 ) : Writeable, ToXContentFragment {
 

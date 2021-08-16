@@ -45,7 +45,6 @@ import org.opensearch.client.node.NodeClient
 import org.opensearch.cluster.metadata.IndexMetadata
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.inject.Inject
-import org.opensearch.common.settings.Settings
 import org.opensearch.common.util.concurrent.ThreadContext
 import org.opensearch.common.xcontent.LoggingDeprecationHandler
 import org.opensearch.common.xcontent.NamedXContentRegistry
@@ -61,7 +60,6 @@ import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMet
 import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.getManagedIndexMetadata
 import org.opensearch.indexmanagement.indexstatemanagement.util.isMetadataMoved
 import org.opensearch.indexmanagement.indexstatemanagement.util.managedIndexMetadataID
-import org.opensearch.indexmanagement.settings.IndexManagementSettings
 import org.opensearch.indexmanagement.util.IndexManagementException
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.buildUser
 import org.opensearch.rest.RestStatus
@@ -79,19 +77,10 @@ class TransportExplainAction @Inject constructor(
     transportService: TransportService,
     actionFilters: ActionFilters,
     val clusterService: ClusterService,
-    val settings: Settings,
     val xContentRegistry: NamedXContentRegistry
 ) : HandledTransportAction<ExplainRequest, ExplainResponse>(
     ExplainAction.NAME, transportService, actionFilters, ::ExplainRequest
 ) {
-
-    @Volatile private var filterByEnabled = IndexManagementSettings.FILTER_BY_BACKEND_ROLES.get(settings)
-
-    init {
-        clusterService.clusterSettings.addSettingsUpdateConsumer(IndexManagementSettings.FILTER_BY_BACKEND_ROLES) {
-            filterByEnabled = it
-        }
-    }
 
     override fun doExecute(task: Task, request: ExplainRequest, listener: ActionListener<ExplainResponse>) {
         ExplainHandler(client, listener, request).start()

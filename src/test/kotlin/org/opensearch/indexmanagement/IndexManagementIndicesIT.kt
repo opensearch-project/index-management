@@ -133,8 +133,6 @@ class IndexManagementIndicesIT : IndexStateManagementRestTestCase() {
 
         val managedIndexConfig = getExistingManagedIndexConfig(index)
         assertNull("Change policy is not null", managedIndexConfig.changePolicy)
-        // We are storing the policy immediately as part of the add policy API
-        // assertNull("Policy has already initialized", managedIndexConfig.policy)
         assertEquals("Policy id does not match", policy.id, managedIndexConfig.policyID)
 
         val mapping = "{" + indexManagementMappings.trimStart('{').trimEnd('}')
