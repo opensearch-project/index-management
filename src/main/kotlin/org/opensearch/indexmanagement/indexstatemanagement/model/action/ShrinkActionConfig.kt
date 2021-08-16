@@ -27,6 +27,7 @@ import org.opensearch.commons.utils.stringList
 import org.opensearch.indexmanagement.indexstatemanagement.action.Action
 import org.opensearch.indexmanagement.indexstatemanagement.action.ShrinkAction
 import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
+import org.opensearch.jobscheduler.spi.JobExecutionContext
 import org.opensearch.script.ScriptService
 import java.io.IOException
 
@@ -93,8 +94,9 @@ data class ShrinkActionConfig(
         scriptService: ScriptService,
         client: Client,
         settings: Settings,
-        managedIndexMetaData: ManagedIndexMetaData
-    ): Action = ShrinkAction(clusterService, client, managedIndexMetaData, this)
+        managedIndexMetaData: ManagedIndexMetaData,
+        context: JobExecutionContext
+    ): Action = ShrinkAction(clusterService, client, managedIndexMetaData, this, context)
 
     @Throws(IOException::class)
     constructor(sin: StreamInput) : this(

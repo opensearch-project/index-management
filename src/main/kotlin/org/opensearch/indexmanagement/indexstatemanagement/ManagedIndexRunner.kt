@@ -222,7 +222,7 @@ object ManagedIndexRunner :
             if (lock == null) {
                 logger.debug("Could not acquire lock [${lock?.lockId}] for ${job.index}")
             } else {
-                runManagedIndexConfig(job)
+                runManagedIndexConfig(job, context)
                 // Release lock
                 val released: Boolean = context.lockService.suspendUntil { release(lock, it) }
                 if (!released) {
@@ -233,7 +233,7 @@ object ManagedIndexRunner :
     }
 
     @Suppress("ReturnCount", "ComplexMethod", "LongMethod", "ComplexCondition")
-    private suspend fun runManagedIndexConfig(managedIndexConfig: ManagedIndexConfig) {
+    private suspend fun runManagedIndexConfig(managedIndexConfig: ManagedIndexConfig, context: JobExecutionContext) {
         logger.debug("Run job for index ${managedIndexConfig.index}")
         // doing a check of local cluster health as we do not want to overload master node with potentially a lot of calls
         if (clusterIsRed()) {
@@ -284,7 +284,8 @@ object ManagedIndexRunner :
         }
 
         val state = policy.getStateToExecute(managedIndexMetaData)
-        val action: Action? = state?.getActionToExecute(clusterService, scriptService, client, settings, managedIndexMetaData)
+        //
+        val action: Action? = state?.getActionToExecute(clusterService, scriptService, client, settings, managedIndexMetaData, context)
         val step: Step? = action?.getStepToExecute()
         val currentActionMetaData = action?.getUpdatedActionMetaData(managedIndexMetaData, state)
 

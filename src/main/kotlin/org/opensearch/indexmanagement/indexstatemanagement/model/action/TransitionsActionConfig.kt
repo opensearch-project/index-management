@@ -33,6 +33,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.action.Action
 import org.opensearch.indexmanagement.indexstatemanagement.action.TransitionsAction
 import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.indexstatemanagement.model.Transition
+import org.opensearch.jobscheduler.spi.JobExecutionContext
 import org.opensearch.script.ScriptService
 
 data class TransitionsActionConfig(
@@ -44,6 +45,7 @@ data class TransitionsActionConfig(
         scriptService: ScriptService,
         client: Client,
         settings: Settings,
-        managedIndexMetaData: ManagedIndexMetaData
+        managedIndexMetaData: ManagedIndexMetaData,
+        context: JobExecutionContext
     ): Action = TransitionsAction(clusterService, client, managedIndexMetaData, this)
 }
