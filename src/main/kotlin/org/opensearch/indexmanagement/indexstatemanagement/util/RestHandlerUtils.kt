@@ -34,7 +34,6 @@ import org.opensearch.common.xcontent.ToXContent
 import org.opensearch.common.xcontent.ToXContentFragment
 import org.opensearch.common.xcontent.XContentBuilder
 import org.opensearch.common.xcontent.XContentFactory
-import org.opensearch.commons.authuser.User
 import org.opensearch.indexmanagement.indexstatemanagement.model.ChangePolicy
 import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexConfig
 import org.opensearch.indexmanagement.opensearchapi.optionalTimeField
@@ -110,14 +109,12 @@ data class FailedIndex(val name: String, val uuid: String, val reason: String) :
  * Gets the XContentBuilder for partially updating a [ManagedIndexConfig]'s ChangePolicy
  */
 fun getPartialChangePolicyBuilder(
-    changePolicy: ChangePolicy?,
-    user: User? = null
+    changePolicy: ChangePolicy?
 ): XContentBuilder {
     val builder = XContentFactory.jsonBuilder()
         .startObject()
         .startObject(ManagedIndexConfig.MANAGED_INDEX_TYPE)
         .optionalTimeField(ManagedIndexConfig.LAST_UPDATED_TIME_FIELD, Instant.now())
         .field(ManagedIndexConfig.CHANGE_POLICY_FIELD, changePolicy)
-    if (user != null) builder.field(ManagedIndexConfig.USER_FIELD, user)
     return builder.endObject().endObject()
 }

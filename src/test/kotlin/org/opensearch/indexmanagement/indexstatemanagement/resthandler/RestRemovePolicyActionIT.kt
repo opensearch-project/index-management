@@ -61,7 +61,8 @@ class RestRemovePolicyActionIT : IndexStateManagementRestTestCase() {
 
     fun `test closed index`() {
         val index = "movies"
-        createIndex(index, "somePolicy")
+        val policy = createRandomPolicy()
+        createIndex(index, policy.id)
         closeIndex(index)
 
         val response = client().makeRequest(
@@ -114,8 +115,8 @@ class RestRemovePolicyActionIT : IndexStateManagementRestTestCase() {
     fun `test index list`() {
         val indexOne = "movies_1"
         val indexTwo = "movies_2"
-
-        createIndex(indexOne, "somePolicy")
+        val policy = createRandomPolicy()
+        createIndex(indexOne, policy.id)
         createIndex(indexTwo, null)
 
         closeIndex(indexOne)
@@ -151,10 +152,10 @@ class RestRemovePolicyActionIT : IndexStateManagementRestTestCase() {
         val indexOne = "movies_1"
         val indexTwo = "movies_2"
         val indexThree = "movies_3"
-
-        createIndex(indexOne, "somePolicy")
+        val policy = createRandomPolicy()
+        createIndex(indexOne, policy.id)
         createIndex(indexTwo, null)
-        createIndex(indexThree, "somePolicy")
+        createIndex(indexThree, policy.id)
 
         closeIndex(indexOne)
 

@@ -82,6 +82,8 @@ import org.opensearch.indexmanagement.indexstatemanagement.transport.action.getp
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.getpolicy.TransportGetPolicyAction
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.indexpolicy.IndexPolicyAction
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.indexpolicy.TransportIndexPolicyAction
+import org.opensearch.indexmanagement.indexstatemanagement.transport.action.managedIndex.ManagedIndexAction
+import org.opensearch.indexmanagement.indexstatemanagement.transport.action.managedIndex.TransportManagedIndexAction
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.removepolicy.RemovePolicyAction
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.removepolicy.TransportRemovePolicyAction
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.retryfailedmanagedindex.RetryFailedManagedIndexAction
@@ -124,6 +126,7 @@ import org.opensearch.indexmanagement.rollup.resthandler.RestStartRollupAction
 import org.opensearch.indexmanagement.rollup.resthandler.RestStopRollupAction
 import org.opensearch.indexmanagement.rollup.settings.LegacyOpenDistroRollupSettings
 import org.opensearch.indexmanagement.rollup.settings.RollupSettings
+import org.opensearch.indexmanagement.settings.IndexManagementSettings
 import org.opensearch.indexmanagement.transform.TransformRunner
 import org.opensearch.indexmanagement.transform.action.delete.DeleteTransformsAction
 import org.opensearch.indexmanagement.transform.action.delete.TransportDeleteTransformsAction
@@ -301,7 +304,15 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
         this.clusterService = clusterService
         rollupInterceptor = RollupInterceptor(clusterService, settings, indexNameExpressionResolver)
         val jvmService = JvmService(environment.settings())
-        val transformRunner = TransformRunner.initialize(client, clusterService, xContentRegistry, settings, indexNameExpressionResolver, jvmService)
+        val transformRunner = TransformRunner.initialize(
+            client,
+            clusterService,
+            xContentRegistry,
+            settings,
+            indexNameExpressionResolver,
+            jvmService,
+            threadPool
+        )
         fieldCapsFilter = FieldCapsFilter(clusterService, settings, indexNameExpressionResolver)
         this.indexNameExpressionResolver = indexNameExpressionResolver
 
@@ -389,6 +400,7 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
             TransformSettings.TRANSFORM_JOB_SEARCH_BACKOFF_MILLIS,
             TransformSettings.TRANSFORM_CIRCUIT_BREAKER_ENABLED,
             TransformSettings.TRANSFORM_CIRCUIT_BREAKER_JVM_THRESHOLD,
+            IndexManagementSettings.FILTER_BY_BACKEND_ROLES,
             LegacyOpenDistroManagedIndexSettings.HISTORY_ENABLED,
             LegacyOpenDistroManagedIndexSettings.HISTORY_INDEX_MAX_AGE,
             LegacyOpenDistroManagedIndexSettings.HISTORY_MAX_DOCS,
@@ -445,7 +457,8 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
             ActionPlugin.ActionHandler(DeleteTransformsAction.INSTANCE, TransportDeleteTransformsAction::class.java),
             ActionPlugin.ActionHandler(ExplainTransformAction.INSTANCE, TransportExplainTransformAction::class.java),
             ActionPlugin.ActionHandler(StartTransformAction.INSTANCE, TransportStartTransformAction::class.java),
-            ActionPlugin.ActionHandler(StopTransformAction.INSTANCE, TransportStopTransformAction::class.java)
+            ActionPlugin.ActionHandler(StopTransformAction.INSTANCE, TransportStopTransformAction::class.java),
+            ActionPlugin.ActionHandler(ManagedIndexAction.INSTANCE, TransportManagedIndexAction::class.java)
         )
     }
 

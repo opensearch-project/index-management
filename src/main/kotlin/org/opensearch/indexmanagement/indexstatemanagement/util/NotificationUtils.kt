@@ -15,6 +15,7 @@ package org.opensearch.indexmanagement.indexstatemanagement.util
 import org.opensearch.OpenSearchStatusException
 import org.opensearch.client.Client
 import org.opensearch.client.node.NodeClient
+import org.opensearch.common.util.concurrent.ThreadContext
 import org.opensearch.commons.destination.message.LegacyBaseMessage
 import org.opensearch.commons.notifications.NotificationConstants.FEATURE_INDEX_MANAGEMENT
 import org.opensearch.commons.notifications.NotificationsPluginInterface
@@ -37,16 +38,18 @@ import org.opensearch.rest.RestStatus
  * or notification actions. So we have a separate API in the NotificationsPluginInterface that allows
  * us to publish these old legacy ones directly.
  */
-suspend fun LegacyBaseMessage.publishLegacyNotification(client: Client) {
+suspend fun LegacyBaseMessage.publishLegacyNotification(client: Client, threadContext: ThreadContext) {
     val baseMessage = this
-    val res: LegacyPublishNotificationResponse = NotificationsPluginInterface.suspendUntil {
-        this.publishLegacyNotification(
-            (client as NodeClient),
-            LegacyPublishNotificationRequest(baseMessage, FEATURE_INDEX_MANAGEMENT),
-            it
-        )
+    threadContext.stashContext().use {
+        val res: LegacyPublishNotificationResponse = NotificationsPluginInterface.suspendUntil {
+            this.publishLegacyNotification(
+                (client as NodeClient),
+                LegacyPublishNotificationRequest(baseMessage, FEATURE_INDEX_MANAGEMENT),
+                it
+            )
+        }
+        validateResponseStatus(RestStatus.fromCode(res.destinationResponse.statusCode), res.destinationResponse.responseContent)
     }
-    validateResponseStatus(RestStatus.fromCode(res.destinationResponse.statusCode), res.destinationResponse.responseContent)
 }
 
 /**

@@ -105,6 +105,7 @@ import org.opensearch.indexmanagement.opensearchapi.parseWithType
 import org.opensearch.indexmanagement.opensearchapi.retry
 import org.opensearch.indexmanagement.opensearchapi.string
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
+import org.opensearch.indexmanagement.opensearchapi.withClosableContext
 import org.opensearch.jobscheduler.spi.JobExecutionContext
 import org.opensearch.jobscheduler.spi.LockModel
 import org.opensearch.jobscheduler.spi.ScheduledJobParameter
@@ -289,7 +290,9 @@ object ManagedIndexRunner :
         }
 
         val state = policy.getStateToExecute(managedIndexMetaData)
-        val action: Action? = state?.getActionToExecute(clusterService, scriptService, client, settings, managedIndexMetaData)
+        val action: Action? = state?.getActionToExecute(
+            clusterService, scriptService, client, settings, managedIndexMetaData.copy(user = policy.user, threadContext = threadPool.threadContext)
+        )
         val step: Step? = action?.getStepToExecute()
         val currentActionMetaData = action?.getUpdatedActionMetaData(managedIndexMetaData, state)
 
@@ -358,9 +361,9 @@ object ManagedIndexRunner :
         @Suppress("ComplexCondition")
         if (updateResult.metadataSaved && state != null && action != null && step != null && currentActionMetaData != null) {
             // Step null check is done in getStartingManagedIndexMetaData
-            withContext(
+            withClosableContext(
                 IndexManagementSecurityContext(
-                    managedIndexConfig.id, settings, threadPool.threadContext, managedIndexConfig.user
+                    managedIndexConfig.id, settings, threadPool.threadContext, managedIndexConfig.policy.user
                 )
             ) {
                 step.preExecute(logger).execute().postExecute(logger)
@@ -369,9 +372,9 @@ object ManagedIndexRunner :
 
             if (executedManagedIndexMetaData.isFailed) {
                 try {
-                    withContext(
+                    withClosableContext(
                         IndexManagementSecurityContext(
-                            managedIndexConfig.id, settings, threadPool.threadContext, managedIndexConfig.user
+                            managedIndexConfig.id, settings, threadPool.threadContext, managedIndexConfig.policy.user
                         )
                     ) {
                         // if the policy has no error_notification this will do nothing otherwise it will try to send the configured error message
@@ -716,7 +719,7 @@ object ManagedIndexRunner :
         if (!updated.metadataSaved || policy == null) return
 
         // Change the policy and user stored on the job from changePolicy, this will also set the changePolicy to null on the job
-        savePolicyToManagedIndexConfig(managedIndexConfig.copy(user = changePolicy.user), policy)
+        savePolicyToManagedIndexConfig(managedIndexConfig, policy.copy(user = changePolicy.user))
     }
 
     @Suppress("TooGenericExceptionCaught")
@@ -738,7 +741,7 @@ object ManagedIndexRunner :
         policy.errorNotification?.run {
             errorNotificationRetryPolicy.retry(logger) {
                 val compiledMessage = compileTemplate(messageTemplate, managedIndexMetaData)
-                destination?.buildLegacyBaseMessage(null, compiledMessage)?.publishLegacyNotification(client)
+                destination?.buildLegacyBaseMessage(null, compiledMessage)?.publishLegacyNotification(client, threadPool.threadContext)
                 channel?.sendNotification(client, ErrorNotification.CHANNEL_TITLE, managedIndexMetaData, compiledMessage)
             }
         }

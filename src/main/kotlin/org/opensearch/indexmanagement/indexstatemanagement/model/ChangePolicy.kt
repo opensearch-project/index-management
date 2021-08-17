@@ -76,7 +76,7 @@ data class ChangePolicy(
             .field(ManagedIndexConfig.POLICY_ID_FIELD, policyID)
             .field(StateMetaData.STATE, state)
             .field(IS_SAFE_FIELD, isSafe)
-        if (params.paramAsBoolean(WITH_USER, true)) builder.optionalUserField(ManagedIndexConfig.USER_FIELD, user)
+        if (params.paramAsBoolean(WITH_USER, true)) builder.optionalUserField(USER_FIELD, user)
         return builder.endObject()
     }
 

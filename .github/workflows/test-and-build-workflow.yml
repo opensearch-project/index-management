@@ -39,7 +39,7 @@ jobs:
           ref: 'main'
       - name: Build common-utils
         working-directory: ./common-utils
-        run: ./gradlew publishToMavenLocal -Dopensearch.version=1.0.0
+        run: ./gradlew publishToMavenLocal -Dopensearch.version=1.0.0 -Dbuild.snapshot=false
       # dependencies: job-scheduler
       - name: Checkout job-scheduler
         uses: actions/checkout@v2

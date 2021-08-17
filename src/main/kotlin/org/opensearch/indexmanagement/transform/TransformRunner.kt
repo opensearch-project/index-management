@@ -25,7 +25,9 @@ import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.settings.Settings
 import org.opensearch.common.unit.TimeValue
 import org.opensearch.common.xcontent.NamedXContentRegistry
+import org.opensearch.indexmanagement.opensearchapi.IndexManagementSecurityContext
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
+import org.opensearch.indexmanagement.opensearchapi.withClosableContext
 import org.opensearch.indexmanagement.transform.action.index.IndexTransformAction
 import org.opensearch.indexmanagement.transform.action.index.IndexTransformRequest
 import org.opensearch.indexmanagement.transform.action.index.IndexTransformResponse
@@ -39,6 +41,7 @@ import org.opensearch.jobscheduler.spi.JobExecutionContext
 import org.opensearch.jobscheduler.spi.ScheduledJobParameter
 import org.opensearch.jobscheduler.spi.ScheduledJobRunner
 import org.opensearch.monitor.jvm.JvmService
+import org.opensearch.threadpool.ThreadPool
 import java.time.Instant
 
 @Suppress("LongParameterList")
@@ -56,6 +59,7 @@ object TransformRunner :
     private lateinit var transformSearchService: TransformSearchService
     private lateinit var transformIndexer: TransformIndexer
     private lateinit var transformValidator: TransformValidator
+    private lateinit var threadPool: ThreadPool
 
     fun initialize(
         client: Client,
@@ -63,7 +67,8 @@ object TransformRunner :
         xContentRegistry: NamedXContentRegistry,
         settings: Settings,
         indexNameExpressionResolver: IndexNameExpressionResolver,
-        jvmService: JvmService
+        jvmService: JvmService,
+        threadPool: ThreadPool
     ): TransformRunner {
         this.clusterService = clusterService
         this.client = client
@@ -73,6 +78,7 @@ object TransformRunner :
         this.transformMetadataService = TransformMetadataService(client, xContentRegistry)
         this.transformIndexer = TransformIndexer(settings, clusterService, client)
         this.transformValidator = TransformValidator(indexNameExpressionResolver, clusterService, client, settings, jvmService)
+        this.threadPool = threadPool
         return this
     }
 
@@ -131,7 +137,7 @@ object TransformRunner :
                 }
             } while (currentMetadata.afterKey != null)
         } catch (e: Exception) {
-            logger.error("Failed to execute the transform job because of exception [${e.localizedMessage}]", e)
+            logger.error("Failed to execute the transform job [${transform.id}] because of exception [${e.localizedMessage}]", e)
             currentMetadata = currentMetadata.copy(
                 lastUpdatedAt = Instant.now(),
                 status = TransformMetadata.Status.FAILED,
@@ -148,10 +154,22 @@ object TransformRunner :
     }
 
     private suspend fun executeJobIteration(transform: Transform, metadata: TransformMetadata): TransformMetadata {
-        val validationResult = transformValidator.validate(transform)
+        val validationResult = withClosableContext(
+            IndexManagementSecurityContext(transform.id, settings, threadPool.threadContext, transform.user)
+        ) {
+            transformValidator.validate(transform)
+        }
         if (validationResult.isValid) {
-            val transformSearchResult = transformSearchService.executeCompositeSearch(transform, metadata.afterKey)
-            val indexTimeInMillis = transformIndexer.index(transformSearchResult.docsToIndex)
+            val transformSearchResult = withClosableContext(
+                IndexManagementSecurityContext(transform.id, settings, threadPool.threadContext, transform.user)
+            ) {
+                transformSearchService.executeCompositeSearch(transform, metadata.afterKey)
+            }
+            val indexTimeInMillis = withClosableContext(
+                IndexManagementSecurityContext(transform.id, settings, threadPool.threadContext, transform.user)
+            ) {
+                transformIndexer.index(transformSearchResult.docsToIndex)
+            }
             val afterKey = transformSearchResult.afterKey
             val stats = transformSearchResult.stats
             val updatedStats = stats.copy(
@@ -175,10 +193,16 @@ object TransformRunner :
             transform = transform.copy(updatedAt = Instant.now()),
             refreshPolicy = WriteRequest.RefreshPolicy.IMMEDIATE
         )
-        val response: IndexTransformResponse = client.suspendUntil { execute(IndexTransformAction.INSTANCE, request, it) }
-        return transform.copy(
-            seqNo = response.seqNo,
-            primaryTerm = response.primaryTerm
-        )
+        return withClosableContext(
+            IndexManagementSecurityContext(transform.id, settings, threadPool.threadContext, transform.user)
+        ) {
+            val response: IndexTransformResponse = client.suspendUntil {
+                execute(IndexTransformAction.INSTANCE, request, it)
+            }
+            return@withClosableContext transform.copy(
+                seqNo = response.seqNo,
+                primaryTerm = response.primaryTerm
+            )
+        }
     }
 }

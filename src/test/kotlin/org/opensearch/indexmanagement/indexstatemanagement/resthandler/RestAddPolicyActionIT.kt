@@ -63,13 +63,14 @@ class RestAddPolicyActionIT : IndexStateManagementRestTestCase() {
 
     fun `test closed index`() {
         val index = "movies"
+        val policy = createRandomPolicy()
         createIndex(index, null)
         closeIndex(index)
 
         val response = client().makeRequest(
             POST.toString(),
             "${RestAddPolicyAction.ADD_POLICY_BASE_URI}/$index",
-            StringEntity("{ \"policy_id\": \"somePolicy\" }", APPLICATION_JSON)
+            StringEntity("{ \"policy_id\": \"${policy.id}\" }", APPLICATION_JSON)
         )
         assertEquals("Unexpected RestStatus", RestStatus.OK, response.restStatus())
         val actualMessage = response.asMap()
@@ -118,16 +119,17 @@ class RestAddPolicyActionIT : IndexStateManagementRestTestCase() {
     fun `test index list`() {
         val indexOne = "movies_1"
         val indexTwo = "movies_2"
-
+        val policy = createRandomPolicy()
+        val newPolicy = createRandomPolicy()
         createIndex(indexOne, null)
-        createIndex(indexTwo, "somePolicy")
+        createIndex(indexTwo, policy.id)
 
         closeIndex(indexOne)
 
         val response = client().makeRequest(
             POST.toString(),
             "${RestAddPolicyAction.ADD_POLICY_BASE_URI}/$indexOne,$indexTwo",
-            StringEntity("{ \"policy_id\": \"someOtherPolicy\" }", APPLICATION_JSON)
+            StringEntity("{ \"policy_id\": \"${newPolicy.id}\" }", APPLICATION_JSON)
         )
         assertEquals("Unexpected RestStatus", RestStatus.OK, response.restStatus())
         val actualMessage = response.asMap()
@@ -156,9 +158,10 @@ class RestAddPolicyActionIT : IndexStateManagementRestTestCase() {
         val indexOne = "movies_1"
         val indexTwo = "movies_2"
         val indexThree = "movies_3"
-
+        val policy = createRandomPolicy()
+        val newPolicy = createRandomPolicy()
         createIndex(indexOne, null)
-        createIndex(indexTwo, "somePolicy")
+        createIndex(indexTwo, policy.id)
         createIndex(indexThree, null)
 
         closeIndex(indexOne)
@@ -166,7 +169,7 @@ class RestAddPolicyActionIT : IndexStateManagementRestTestCase() {
         val response = client().makeRequest(
             POST.toString(),
             "${RestAddPolicyAction.ADD_POLICY_BASE_URI}/$indexPattern*",
-            StringEntity("{ \"policy_id\": \"someOtherPolicy\" }", APPLICATION_JSON)
+            StringEntity("{ \"policy_id\": \"${newPolicy.id}\" }", APPLICATION_JSON)
         )
         assertEquals("Unexpected RestStatus", RestStatus.OK, response.restStatus())
         val actualMessage = response.asMap()
@@ -191,7 +194,7 @@ class RestAddPolicyActionIT : IndexStateManagementRestTestCase() {
 
         // Check if indexThree had policy set
         waitFor {
-            assertEquals("someOtherPolicy", getPolicyIDOfManagedIndex(indexThree))
+            assertEquals(newPolicy.id, getPolicyIDOfManagedIndex(indexThree))
         }
     }
 }

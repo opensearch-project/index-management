@@ -28,6 +28,7 @@
 
 package org.opensearch.indexmanagement.rollup.util
 
+import org.opensearch.action.get.GetResponse
 import org.opensearch.action.search.SearchRequest
 import org.opensearch.cluster.ClusterState
 import org.opensearch.cluster.metadata.IndexMetadata
@@ -51,6 +52,7 @@ import org.opensearch.indexmanagement.common.model.dimension.DateHistogram
 import org.opensearch.indexmanagement.common.model.dimension.Dimension
 import org.opensearch.indexmanagement.common.model.dimension.Histogram
 import org.opensearch.indexmanagement.common.model.dimension.Terms
+import org.opensearch.indexmanagement.opensearchapi.parseWithType
 import org.opensearch.indexmanagement.rollup.RollupMapperService
 import org.opensearch.indexmanagement.rollup.model.Rollup
 import org.opensearch.indexmanagement.rollup.model.RollupFieldMapping
@@ -444,3 +446,12 @@ fun Rollup.getInitialDocValues(docCount: Long): MutableMap<String, Any?> =
         Rollup.ROLLUP_DOC_COUNT_FIELD to docCount,
         Rollup.ROLLUP_DOC_SCHEMA_VERSION_FIELD to this.schemaVersion
     )
+
+fun parseRollup(response: GetResponse, xContentRegistry: NamedXContentRegistry = NamedXContentRegistry.EMPTY): Rollup {
+    val xcp = XContentHelper.createParser(
+        xContentRegistry, LoggingDeprecationHandler.INSTANCE,
+        response.sourceAsBytesRef, XContentType.JSON
+    )
+
+    return xcp.parseWithType(response.id, response.seqNo, response.primaryTerm, Rollup.Companion::parse)
+}

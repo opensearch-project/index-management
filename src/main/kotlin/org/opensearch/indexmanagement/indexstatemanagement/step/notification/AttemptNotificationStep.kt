@@ -60,7 +60,11 @@ class AttemptNotificationStep(
     override suspend fun execute(): AttemptNotificationStep {
         try {
             val compiledMessage = compileTemplate(config.messageTemplate, managedIndexMetaData)
-            config.destination?.buildLegacyBaseMessage(null, compiledMessage)?.publishLegacyNotification(client)
+            managedIndexMetaData.threadContext?.let {
+                config.destination?.buildLegacyBaseMessage(null, compiledMessage)?.publishLegacyNotification(
+                    client, managedIndexMetaData.threadContext
+                )
+            }
             config.channel?.sendNotification(client, CHANNEL_TITLE, managedIndexMetaData, compiledMessage)
             // publish and send throws an error for any invalid responses so its safe to assume if we reach this point it was successful
             stepStatus = StepStatus.COMPLETED

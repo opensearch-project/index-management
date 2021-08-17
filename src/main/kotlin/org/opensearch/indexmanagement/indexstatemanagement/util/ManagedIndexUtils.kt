@@ -42,7 +42,6 @@ import org.opensearch.common.unit.ByteSizeValue
 import org.opensearch.common.unit.TimeValue
 import org.opensearch.common.xcontent.ToXContent
 import org.opensearch.common.xcontent.XContentFactory
-import org.opensearch.commons.authuser.User
 import org.opensearch.index.Index
 import org.opensearch.index.query.BoolQueryBuilder
 import org.opensearch.index.query.QueryBuilders
@@ -73,7 +72,13 @@ import org.opensearch.search.builder.SearchSourceBuilder
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 
-fun managedIndexConfigIndexRequest(index: String, uuid: String, policyID: String, jobInterval: Int, user: User? = null): IndexRequest {
+fun managedIndexConfigIndexRequest(
+    index: String,
+    uuid: String,
+    policyID: String,
+    jobInterval: Int,
+    policy: Policy? = null
+): IndexRequest {
     val managedIndexConfig = ManagedIndexConfig(
         jobName = index,
         index = index,
@@ -83,11 +88,10 @@ fun managedIndexConfigIndexRequest(index: String, uuid: String, policyID: String
         jobLastUpdatedTime = Instant.now(),
         jobEnabledTime = Instant.now(),
         policyID = policyID,
-        policy = null,
-        policySeqNo = null,
-        policyPrimaryTerm = null,
-        changePolicy = null,
-        user = user
+        policy = policy,
+        policySeqNo = policy?.seqNo,
+        policyPrimaryTerm = policy?.primaryTerm,
+        changePolicy = null
     )
 
     return IndexRequest(INDEX_MANAGEMENT_INDEX)
@@ -158,11 +162,11 @@ fun deleteManagedIndexMetadataRequest(uuid: String): DeleteRequest {
     return DeleteRequest(INDEX_MANAGEMENT_INDEX, managedIndexMetadataID(uuid))
 }
 
-fun updateManagedIndexRequest(sweptManagedIndexConfig: SweptManagedIndexConfig, user: User? = null): UpdateRequest {
+fun updateManagedIndexRequest(sweptManagedIndexConfig: SweptManagedIndexConfig): UpdateRequest {
     return UpdateRequest(INDEX_MANAGEMENT_INDEX, sweptManagedIndexConfig.uuid)
         .setIfPrimaryTerm(sweptManagedIndexConfig.primaryTerm)
         .setIfSeqNo(sweptManagedIndexConfig.seqNo)
-        .doc(getPartialChangePolicyBuilder(sweptManagedIndexConfig.changePolicy, user))
+        .doc(getPartialChangePolicyBuilder(sweptManagedIndexConfig.changePolicy))
 }
 
 /**

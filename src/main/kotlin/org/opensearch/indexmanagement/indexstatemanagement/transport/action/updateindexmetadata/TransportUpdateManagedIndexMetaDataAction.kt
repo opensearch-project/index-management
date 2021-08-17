@@ -31,7 +31,6 @@ import org.opensearch.action.ActionListener
 import org.opensearch.action.support.ActionFilters
 import org.opensearch.action.support.master.AcknowledgedResponse
 import org.opensearch.action.support.master.TransportMasterNodeAction
-import org.opensearch.client.Client
 import org.opensearch.cluster.ClusterState
 import org.opensearch.cluster.ClusterStateTaskConfig
 import org.opensearch.cluster.ClusterStateTaskExecutor
@@ -53,30 +52,23 @@ import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMet
 import org.opensearch.threadpool.ThreadPool
 import org.opensearch.transport.TransportService
 
-class TransportUpdateManagedIndexMetaDataAction : TransportMasterNodeAction<UpdateManagedIndexMetaDataRequest, AcknowledgedResponse> {
-
-    @Inject
-    constructor(
-        client: Client,
-        threadPool: ThreadPool,
-        clusterService: ClusterService,
-        transportService: TransportService,
-        actionFilters: ActionFilters,
-        indexNameExpressionResolver: IndexNameExpressionResolver
-    ) : super(
-        UpdateManagedIndexMetaDataAction.INSTANCE.name(),
-        transportService,
-        clusterService,
-        threadPool,
-        actionFilters,
-        Writeable.Reader { UpdateManagedIndexMetaDataRequest(it) },
-        indexNameExpressionResolver
-    ) {
-        this.client = client
-    }
+class TransportUpdateManagedIndexMetaDataAction @Inject constructor(
+    threadPool: ThreadPool,
+    clusterService: ClusterService,
+    transportService: TransportService,
+    actionFilters: ActionFilters,
+    indexNameExpressionResolver: IndexNameExpressionResolver
+) : TransportMasterNodeAction<UpdateManagedIndexMetaDataRequest, AcknowledgedResponse>(
+    UpdateManagedIndexMetaDataAction.INSTANCE.name(),
+    transportService,
+    clusterService,
+    threadPool,
+    actionFilters,
+    Writeable.Reader { UpdateManagedIndexMetaDataRequest(it) },
+    indexNameExpressionResolver
+) {
 
     private val log = LogManager.getLogger(javaClass)
-    private val client: Client
     private val executor = ManagedIndexMetaDataExecutor()
 
     override fun checkBlock(request: UpdateManagedIndexMetaDataRequest, state: ClusterState): ClusterBlockException? {
