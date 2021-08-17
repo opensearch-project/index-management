@@ -41,6 +41,7 @@ import org.opensearch.action.search.SearchResponse
 import org.opensearch.action.support.ActionFilters
 import org.opensearch.action.support.HandledTransportAction
 import org.opensearch.action.support.IndicesOptions
+import org.opensearch.action.support.master.AcknowledgedResponse
 import org.opensearch.client.node.NodeClient
 import org.opensearch.cluster.metadata.IndexMetadata
 import org.opensearch.cluster.service.ClusterService
@@ -58,6 +59,8 @@ import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANA
 import org.opensearch.indexmanagement.indexstatemanagement.ManagedIndexCoordinator.Companion.MAX_HITS
 import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.getManagedIndexMetadata
+import org.opensearch.indexmanagement.indexstatemanagement.transport.action.managedIndex.ManagedIndexAction
+import org.opensearch.indexmanagement.indexstatemanagement.transport.action.managedIndex.ManagedIndexRequest
 import org.opensearch.indexmanagement.indexstatemanagement.util.isMetadataMoved
 import org.opensearch.indexmanagement.indexstatemanagement.util.managedIndexMetadataID
 import org.opensearch.indexmanagement.util.IndexManagementException
@@ -318,20 +321,21 @@ class TransportExplainAction @Inject constructor(
 
         private fun validateAndSendResponse(threadContext: ThreadContext.StoredContext) {
             threadContext.restore()
-            val request = SearchRequest().indices(*indexNames.toTypedArray()).source(SearchSourceBuilder.searchSource().size(1))
-            client.search(
+            val request = ManagedIndexRequest().indices(*indexNames.toTypedArray())
+            client.execute(
+                ManagedIndexAction.INSTANCE,
                 request,
-                object : ActionListener<SearchResponse> {
-                    override fun onResponse(searchResponse: SearchResponse) {
+                object : ActionListener<AcknowledgedResponse> {
+                    override fun onResponse(response: AcknowledgedResponse) {
                         sendResponse()
                     }
 
-                    override fun onFailure(e: Exception) {
+                    override fun onFailure(e: java.lang.Exception) {
                         actionListener.onFailure(
                             IndexManagementException.wrap(
                                 when (e is OpenSearchSecurityException) {
                                     true -> OpenSearchStatusException(
-                                        "User doesn't have required index permissions on one or more indices: ${e.localizedMessage}",
+                                        "User doesn't have required index permissions on one or more requested indices: ${e.localizedMessage}",
                                         RestStatus.FORBIDDEN
                                     )
                                     false -> e

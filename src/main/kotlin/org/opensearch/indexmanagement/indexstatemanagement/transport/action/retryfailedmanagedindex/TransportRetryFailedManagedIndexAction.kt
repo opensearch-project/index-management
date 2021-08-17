@@ -28,6 +28,8 @@ package org.opensearch.indexmanagement.indexstatemanagement.transport.action.ret
 
 import org.apache.logging.log4j.LogManager
 import org.opensearch.ExceptionsHelper
+import org.opensearch.OpenSearchSecurityException
+import org.opensearch.OpenSearchStatusException
 import org.opensearch.action.ActionListener
 import org.opensearch.action.admin.cluster.state.ClusterStateRequest
 import org.opensearch.action.admin.cluster.state.ClusterStateResponse
@@ -38,6 +40,7 @@ import org.opensearch.action.get.MultiGetResponse
 import org.opensearch.action.support.ActionFilters
 import org.opensearch.action.support.HandledTransportAction
 import org.opensearch.action.support.IndicesOptions
+import org.opensearch.action.support.master.AcknowledgedResponse
 import org.opensearch.action.update.UpdateRequest
 import org.opensearch.client.node.NodeClient
 import org.opensearch.cluster.ClusterState
@@ -45,6 +48,7 @@ import org.opensearch.cluster.block.ClusterBlockException
 import org.opensearch.common.inject.Inject
 import org.opensearch.common.xcontent.ToXContent
 import org.opensearch.common.xcontent.XContentFactory
+import org.opensearch.commons.authuser.User
 import org.opensearch.index.Index
 import org.opensearch.index.IndexNotFoundException
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
@@ -54,15 +58,21 @@ import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.buildMg
 import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.getManagedIndexMetadata
 import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.mgetResponseToList
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.ISMStatusResponse
+import org.opensearch.indexmanagement.indexstatemanagement.transport.action.managedIndex.ManagedIndexAction
+import org.opensearch.indexmanagement.indexstatemanagement.transport.action.managedIndex.ManagedIndexRequest
 import org.opensearch.indexmanagement.indexstatemanagement.util.FailedIndex
 import org.opensearch.indexmanagement.indexstatemanagement.util.isFailed
 import org.opensearch.indexmanagement.indexstatemanagement.util.managedIndexMetadataID
 import org.opensearch.indexmanagement.indexstatemanagement.util.updateEnableManagedIndexRequest
+import org.opensearch.indexmanagement.util.IndexManagementException
+import org.opensearch.indexmanagement.util.SecurityUtils.Companion.buildUser
+import org.opensearch.rest.RestStatus
 import org.opensearch.tasks.Task
 import org.opensearch.transport.TransportService
 
 private val log = LogManager.getLogger(TransportRetryFailedManagedIndexAction::class.java)
 
+@Suppress("SpreadOperator")
 class TransportRetryFailedManagedIndexAction @Inject constructor(
     val client: NodeClient,
     transportService: TransportService,
@@ -77,7 +87,8 @@ class TransportRetryFailedManagedIndexAction @Inject constructor(
     inner class RetryFailedManagedIndexHandler(
         private val client: NodeClient,
         private val actionListener: ActionListener<ISMStatusResponse>,
-        private val request: RetryFailedManagedIndexRequest
+        private val request: RetryFailedManagedIndexRequest,
+        private val user: User? = buildUser(client.threadPool().threadContext)
     ) {
         private val failedIndices: MutableList<FailedIndex> = mutableListOf()
         private val listOfMetadata: MutableList<ManagedIndexMetaData> = mutableListOf()
@@ -89,6 +100,42 @@ class TransportRetryFailedManagedIndexAction @Inject constructor(
 
         @Suppress("SpreadOperator")
         fun start() {
+            if (user == null) {
+                // Security plugin is not enabled
+                getClusterState()
+            } else {
+                validateAndGetClusterState()
+            }
+        }
+
+        fun validateAndGetClusterState() {
+            val request = ManagedIndexRequest().indices(*request.indices.toTypedArray())
+            client.execute(
+                ManagedIndexAction.INSTANCE,
+                request,
+                object : ActionListener<AcknowledgedResponse> {
+                    override fun onResponse(response: AcknowledgedResponse) {
+                        getClusterState()
+                    }
+
+                    override fun onFailure(e: java.lang.Exception) {
+                        actionListener.onFailure(
+                            IndexManagementException.wrap(
+                                when (e is OpenSearchSecurityException) {
+                                    true -> OpenSearchStatusException(
+                                        "User doesn't have required index permissions on one or more requested indices: ${e.localizedMessage}",
+                                        RestStatus.FORBIDDEN
+                                    )
+                                    false -> e
+                                }
+                            )
+                        )
+                    }
+                }
+            )
+        }
+
+        fun getClusterState() {
             val strictExpandIndicesOptions = IndicesOptions.strictExpand()
 
             val clusterStateRequest = ClusterStateRequest()
@@ -99,25 +146,27 @@ class TransportRetryFailedManagedIndexAction @Inject constructor(
                 .masterNodeTimeout(request.masterTimeout)
                 .indicesOptions(strictExpandIndicesOptions)
 
-            client.admin()
-                .cluster()
-                .state(
-                    clusterStateRequest,
-                    object : ActionListener<ClusterStateResponse> {
-                        override fun onResponse(response: ClusterStateResponse) {
-                            clusterState = response.state
-                            val indexMetadatas = response.state.metadata.indices
-                            indexMetadatas.forEach {
-                                indicesToRetry.putIfAbsent(it.value.indexUUID, it.key)
+            client.threadPool().threadContext.stashContext().use {
+                client.admin()
+                    .cluster()
+                    .state(
+                        clusterStateRequest,
+                        object : ActionListener<ClusterStateResponse> {
+                            override fun onResponse(response: ClusterStateResponse) {
+                                clusterState = response.state
+                                val indexMetadatas = response.state.metadata.indices
+                                indexMetadatas.forEach {
+                                    indicesToRetry.putIfAbsent(it.value.indexUUID, it.key)
+                                }
+                                processResponse(response)
                             }
-                            processResponse(response)
-                        }
 
-                        override fun onFailure(t: Exception) {
-                            actionListener.onFailure(ExceptionsHelper.unwrapCause(t) as Exception)
+                            override fun onFailure(t: Exception) {
+                                actionListener.onFailure(ExceptionsHelper.unwrapCause(t) as Exception)
+                            }
                         }
-                    }
-                )
+                    )
+            }
         }
 
         fun processResponse(clusterStateResponse: ClusterStateResponse) {

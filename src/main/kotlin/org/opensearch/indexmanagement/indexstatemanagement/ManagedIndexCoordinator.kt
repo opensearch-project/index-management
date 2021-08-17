@@ -45,6 +45,7 @@ import org.opensearch.action.index.IndexRequest
 import org.opensearch.action.search.SearchPhaseExecutionException
 import org.opensearch.action.search.SearchRequest
 import org.opensearch.action.search.SearchResponse
+import org.opensearch.action.support.master.AcknowledgedResponse
 import org.opensearch.action.update.UpdateRequest
 import org.opensearch.client.Client
 import org.opensearch.cluster.ClusterChangedEvent
@@ -77,6 +78,8 @@ import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndex
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.JOB_INTERVAL
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.METADATA_SERVICE_ENABLED
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.SWEEP_PERIOD
+import org.opensearch.indexmanagement.indexstatemanagement.transport.action.managedIndex.ManagedIndexAction
+import org.opensearch.indexmanagement.indexstatemanagement.transport.action.managedIndex.ManagedIndexRequest
 import org.opensearch.indexmanagement.indexstatemanagement.util.ISM_TEMPLATE_FIELD
 import org.opensearch.indexmanagement.indexstatemanagement.util.deleteManagedIndexMetadataRequest
 import org.opensearch.indexmanagement.indexstatemanagement.util.deleteManagedIndexRequest
@@ -399,10 +402,9 @@ class ManagedIndexCoordinator(
     suspend fun canPolicyManagedIndex(policy: Policy, indexName: String): Boolean {
         if (policy.user != null) {
             try {
-                val searchRequest = SearchRequest().indices(indexName)
-                    .source(SearchSourceBuilder.searchSource().size(1))
+                val request = ManagedIndexRequest().indices(indexName)
                 withClosableContext(IndexManagementSecurityContext("ApplyPolicyOnIndexCreation", settings, threadPool.threadContext, policy.user)) {
-                    val response: SearchResponse = client.suspendUntil { search(searchRequest, it) }
+                    val response: AcknowledgedResponse = client.suspendUntil { execute(ManagedIndexAction.INSTANCE, request, it) }
                 }
             } catch (e: OpenSearchSecurityException) {
                 logger.debug("Skipping applying policy ${policy.id} on $indexName as the policy user is missing perimissions", e)
