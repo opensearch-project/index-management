@@ -291,7 +291,7 @@ object ManagedIndexRunner :
 
         val state = policy.getStateToExecute(managedIndexMetaData)
         val action: Action? = state?.getActionToExecute(
-            clusterService, scriptService, client, settings, managedIndexMetaData.copy(user = policy.user)
+            clusterService, scriptService, client, settings, managedIndexMetaData.copy(user = policy.user, threadContext = threadPool.threadContext)
         )
         val step: Step? = action?.getStepToExecute()
         val currentActionMetaData = action?.getUpdatedActionMetaData(managedIndexMetaData, state)
@@ -741,7 +741,7 @@ object ManagedIndexRunner :
         policy.errorNotification?.run {
             errorNotificationRetryPolicy.retry(logger) {
                 val compiledMessage = compileTemplate(messageTemplate, managedIndexMetaData)
-                destination?.buildLegacyBaseMessage(null, compiledMessage)?.publishLegacyNotification(client)
+                destination?.buildLegacyBaseMessage(null, compiledMessage)?.publishLegacyNotification(client, threadPool.threadContext)
                 channel?.sendNotification(client, ErrorNotification.CHANNEL_TITLE, managedIndexMetaData, compiledMessage)
             }
         }

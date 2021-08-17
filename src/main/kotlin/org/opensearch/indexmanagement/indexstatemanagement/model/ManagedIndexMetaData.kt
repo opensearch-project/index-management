@@ -30,6 +30,7 @@ import org.opensearch.common.Strings
 import org.opensearch.common.io.stream.StreamInput
 import org.opensearch.common.io.stream.StreamOutput
 import org.opensearch.common.io.stream.Writeable
+import org.opensearch.common.util.concurrent.ThreadContext
 import org.opensearch.common.xcontent.ToXContent
 import org.opensearch.common.xcontent.ToXContentFragment
 import org.opensearch.common.xcontent.XContentBuilder
@@ -68,7 +69,10 @@ data class ManagedIndexMetaData(
     val primaryTerm: Long = SequenceNumbers.UNASSIGNED_PRIMARY_TERM,
     // TODO: Remove this once the step interface is updated to pass in user information.
     //  The user information is not being stored/written anywhere, this is only intended to be used during the step execution.
-    val user: User? = null
+    val user: User? = null,
+    // TODO: Remove this once the step interface is updated to pass in thread context information.
+    //  This information is not being stored/written anywhere, this is only intended to be used during the step execution.
+    val threadContext: ThreadContext? = null
 ) : Writeable, ToXContentFragment {
 
     @Suppress("ComplexMethod")
