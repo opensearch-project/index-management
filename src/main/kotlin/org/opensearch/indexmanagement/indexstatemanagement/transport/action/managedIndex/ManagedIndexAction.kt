@@ -16,7 +16,7 @@ import org.opensearch.action.support.master.AcknowledgedResponse
 
 class ManagedIndexAction : ActionType<AcknowledgedResponse>(NAME, ::AcknowledgedResponse) {
     companion object {
-        const val NAME = "indices:admin/opendistro/ism/managedindex"
+        const val NAME = "indices:admin/opensearch/ism/managedindex"
         val INSTANCE = ManagedIndexAction()
     }
 }
