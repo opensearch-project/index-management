@@ -1,0 +1,3 @@
+# Build and copy opensearch-job-scheduler-1.x-SNAPSHOT.zip from https://github.com/opensearch-project/job-scheduler here.
+
+*.zip

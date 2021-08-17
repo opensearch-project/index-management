@@ -26,10 +26,10 @@ jobs:
         with:
           repository: 'opensearch-project/OpenSearch'
           path: OpenSearch
-          ref: '1.0'
+          ref: '1.x'
       - name: Build OpenSearch
         working-directory: ./OpenSearch
-        run: ./gradlew publishToMavenLocal -Dbuild.snapshot=false
+        run: ./gradlew publishToMavenLocal
       # dependencies: common-utils
       - name: Checkout common-utils
         uses: actions/checkout@v2
@@ -39,32 +39,46 @@ jobs:
           ref: 'main'
       - name: Build common-utils
         working-directory: ./common-utils
-        run: ./gradlew publishToMavenLocal -Dopensearch.version=1.0.0 -Dbuild.snapshot=false
+        run: ./gradlew publishToMavenLocal -Dopensearch.version=1.1.0-SNAPSHOT
+      # index-management
+      - name: Checkout Branch
+        uses: actions/checkout@v2
       # dependencies: job-scheduler
       - name: Checkout job-scheduler
         uses: actions/checkout@v2
         with:
           repository: 'opensearch-project/job-scheduler'
           path: job-scheduler
-          ref: '1.0'
+          ref: 'main'
       - name: Build job-scheduler
         working-directory: ./job-scheduler
-        run: ./gradlew publishToMavenLocal -Dopensearch.version=1.0.0 -Dbuild.snapshot=false
-      # dependencies: alerting-notification
-      - name: Checkout alerting
+        run: ./gradlew publishToMavenLocal -Dopensearch.version=1.1.0-SNAPSHOT
+      - name: Assemble job-scheduler
+        working-directory: ./job-scheduler
+        run: |
+          ./gradlew assemble -Dopensearch.version=1.1.0-SNAPSHOT
+          mkdir -p ../src/test/resources/job-scheduler
+          cp ./build/distributions/*.zip ../src/test/resources/job-scheduler
+          ls ../src/test/resources/job-scheduler        
+      # dependencies: notifications
+      - name: Checkout notifications
         uses: actions/checkout@v2
         with:
-          repository: 'opensearch-project/alerting'
-          path: alerting
-          ref: '1.0'
-      - name: Build alerting
-        working-directory: ./alerting
-        run: ./gradlew :alerting-notification:publishToMavenLocal -Dopensearch.version=1.0.0 -Dbuild.snapshot=false
-      # index-management
-      - name: Checkout Branch
-        uses: actions/checkout@v2
+          repository: 'dblock/notifications'
+          path: notifications
+          ref: 'fix-snapshot-build'
+      - name: Build notifications
+        working-directory: ./notifications/notifications
+        run: ./gradlew publishToMavenLocal -Dopensearch.version=1.1.0-SNAPSHOT
+      - name: Assemble notifications
+        working-directory: ./notifications/notifications
+        run: |
+          ./gradlew assemble -Dopensearch.version=1.1.0-SNAPSHOT
+          mkdir -p ../../src/test/resources/notifications
+          cp ./notifications/build/distributions/*.zip ../../src/test/resources/notifications
+          ls ../../src/test/resources/notifications
       - name: Run integration tests with multi node config
-        run: ./gradlew integTest -PnumNodes=3
+        run: ./gradlew integTest -PnumNodes=3 -Dopensearch.version=1.1.0-SNAPSHOT
       - name: Upload failed logs
         uses: actions/upload-artifact@v2
         if: failure()
