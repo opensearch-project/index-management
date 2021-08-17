@@ -72,6 +72,7 @@ import org.opensearch.transport.TransportService
 
 private val log = LogManager.getLogger(TransportExplainAction::class.java)
 
+@Suppress("SpreadOperator")
 class TransportExplainAction @Inject constructor(
     val client: NodeClient,
     transportService: TransportService,
