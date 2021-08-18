@@ -12,18 +12,26 @@
 package org.opensearch.indexmanagement.indexstatemanagement.step.shrink
 
 import org.apache.logging.log4j.LogManager
+import org.opensearch.action.admin.indices.stats.IndicesStatsRequest
+import org.opensearch.action.admin.indices.stats.IndicesStatsResponse
+import org.opensearch.action.admin.indices.stats.ShardStats
 import org.opensearch.client.Client
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.indexstatemanagement.model.action.ShrinkActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.StepMetaData
 import org.opensearch.indexmanagement.indexstatemanagement.step.Step
+import org.opensearch.indexmanagement.indexstatemanagement.util.releaseShrinkLock
+import org.opensearch.indexmanagement.opensearchapi.suspendUntil
+import org.opensearch.jobscheduler.spi.JobExecutionContext
+import org.opensearch.transport.RemoteTransportException
 
 class WaitForShrinkStep(
     val clusterService: ClusterService,
     val client: Client,
     val config: ShrinkActionConfig,
-    managedIndexMetaData: ManagedIndexMetaData
+    managedIndexMetaData: ManagedIndexMetaData,
+    val context: JobExecutionContext
 ) : Step(name, managedIndexMetaData) {
     private val logger = LogManager.getLogger(javaClass)
     private var stepStatus = StepStatus.STARTING
@@ -33,7 +41,26 @@ class WaitForShrinkStep(
 
     @Suppress("TooGenericExceptionCaught", "ComplexMethod")
     override suspend fun execute(): WaitForShrinkStep {
-        return this
+        try {
+            val indexStatsRequests: IndicesStatsRequest = IndicesStatsRequest().indices(managedIndexMetaData.index)
+            val response: IndicesStatsResponse = client.admin().indices().suspendUntil { stats(indexStatsRequests, it) }
+            for (shard: ShardStats in response.shards) {
+                if (!shard.shardRouting.started()) {
+                    info = mapOf("message" to "Still waiting for new shards to start.")
+                    stepStatus = StepStatus.CONDITION_NOT_MET
+                    return this
+                }
+            }
+            releaseShrinkLock(managedIndexMetaData, context, logger)
+            stepStatus = StepStatus.COMPLETED
+            info = mapOf("message" to "Shrink completed.")
+            return this
+        } catch (e: RemoteTransportException) {
+            releaseShrinkLock(managedIndexMetaData, context, logger)
+            info = mapOf("message" to "Shrink failed because of a transport exception.")
+            stepStatus = StepStatus.FAILED
+            return this
+        }
     }
 
     override fun getUpdatedManagedIndexMetaData(currentMetaData: ManagedIndexMetaData): ManagedIndexMetaData {
