@@ -67,6 +67,7 @@ class TransportGetRollupAction @Inject constructor(
         }
     }
 
+    @Suppress("ReturnCount")
     override fun doExecute(task: Task, request: GetRollupRequest, listener: ActionListener<GetRollupResponse>) {
         val getRequest = GetRequest(INDEX_MANAGEMENT_INDEX, request.id).preference(request.preference)
         val user = buildUser(client.threadPool().threadContext)
@@ -79,7 +80,13 @@ class TransportGetRollupAction @Inject constructor(
                             return listener.onFailure(OpenSearchStatusException("Rollup not found", RestStatus.NOT_FOUND))
                         }
 
-                        val rollup: Rollup = parseRollup(response, xContentRegistry)
+                        val rollup: Rollup?
+                        try {
+                            rollup = parseRollup(response, xContentRegistry)
+                        } catch (e: IllegalArgumentException) {
+                            listener.onFailure(OpenSearchStatusException("Rollup not found", RestStatus.NOT_FOUND))
+                            return
+                        }
                         if (!SecurityUtils.userHasPermissionForResource(user, rollup.user, filterByEnabled, "rollup", request.id, listener)) {
                             return
                         } else {

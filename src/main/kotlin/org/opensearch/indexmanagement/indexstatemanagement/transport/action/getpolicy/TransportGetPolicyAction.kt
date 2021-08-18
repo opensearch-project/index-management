@@ -48,7 +48,9 @@ import org.opensearch.indexmanagement.util.SecurityUtils.Companion.userHasPermis
 import org.opensearch.rest.RestStatus
 import org.opensearch.tasks.Task
 import org.opensearch.transport.TransportService
+import java.lang.IllegalArgumentException
 
+@Suppress("ReturnCount")
 class TransportGetPolicyAction @Inject constructor(
     val client: NodeClient,
     transportService: TransportService,
@@ -104,7 +106,13 @@ class TransportGetPolicyAction @Inject constructor(
                 return
             }
 
-            val policy: Policy = parseFromGetResponse(response, xContentRegistry, Policy.Companion::parse)
+            val policy: Policy?
+            try {
+                policy = parseFromGetResponse(response, xContentRegistry, Policy.Companion::parse)
+            } catch (e: IllegalArgumentException) {
+                actionListener.onFailure(OpenSearchStatusException("Policy not found", RestStatus.NOT_FOUND))
+                return
+            }
             if (!userHasPermissionForResource(user, policy.user, filterByEnabled, "policy", request.policyID, actionListener)) {
                 return
             } else {

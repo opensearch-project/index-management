@@ -52,6 +52,7 @@ import org.opensearch.tasks.Task
 import org.opensearch.transport.TransportService
 import java.lang.Exception
 
+@Suppress("ReturnCount")
 class TransportDeleteRollupAction @Inject constructor(
     transportService: TransportService,
     val client: Client,
@@ -100,12 +101,18 @@ class TransportDeleteRollupAction @Inject constructor(
                 object : ActionListener<GetResponse> {
                     override fun onResponse(response: GetResponse) {
                         if (!response.isExists) {
-                            actionListener.onFailure(OpenSearchStatusException("Rollup ${request.id()} is not found", RestStatus.NOT_FOUND))
+                            actionListener.onFailure(OpenSearchStatusException("Rollup not found", RestStatus.NOT_FOUND))
                             return
                         }
 
-                        val rollup: Rollup = parseRollup(response, xContentRegistry)
-                        if (!userHasPermissionForResource(user, rollup.user, filterByEnabled, "rollup", request.id(), actionListener)) {
+                        val rollup: Rollup?
+                        try {
+                            rollup = parseRollup(response, xContentRegistry)
+                        } catch (e: IllegalArgumentException) {
+                            actionListener.onFailure(OpenSearchStatusException("Rollup not found", RestStatus.NOT_FOUND))
+                            return
+                        }
+                        if (!userHasPermissionForResource(user, rollup.user, filterByEnabled, "rollup", rollup.id, actionListener)) {
                             return
                         } else {
                             delete()

@@ -32,11 +32,9 @@ import org.opensearch.common.xcontent.NamedXContentRegistry
 import org.opensearch.common.xcontent.XContentHelper
 import org.opensearch.common.xcontent.XContentType
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
+import org.opensearch.indexmanagement.opensearchapi.parseFromGetResponse
 import org.opensearch.indexmanagement.opensearchapi.parseWithType
 import org.opensearch.indexmanagement.settings.IndexManagementSettings
-import org.opensearch.indexmanagement.transform.action.get.GetTransformAction
-import org.opensearch.indexmanagement.transform.action.get.GetTransformRequest
-import org.opensearch.indexmanagement.transform.action.get.GetTransformResponse
 import org.opensearch.indexmanagement.transform.model.Transform
 import org.opensearch.indexmanagement.transform.model.TransformMetadata
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.buildUser
@@ -52,7 +50,8 @@ class TransportStartTransformAction @Inject constructor(
     val client: Client,
     val settings: Settings,
     val clusterService: ClusterService,
-    actionFilters: ActionFilters
+    actionFilters: ActionFilters,
+    val xContentRegistry: NamedXContentRegistry
 ) : HandledTransportAction<StartTransformRequest, AcknowledgedResponse>(
     StartTransformAction.NAME, transportService, actionFilters, ::StartTransformRequest
 ) {
@@ -68,19 +67,27 @@ class TransportStartTransformAction @Inject constructor(
     private val log = LogManager.getLogger(javaClass)
 
     override fun doExecute(task: Task, request: StartTransformRequest, actionListener: ActionListener<AcknowledgedResponse>) {
-        val getReq = GetTransformRequest(request.id())
+        val getRequest = GetRequest(INDEX_MANAGEMENT_INDEX, request.id())
         val user = buildUser(client.threadPool().threadContext)
         client.threadPool().threadContext.stashContext().use {
-            client.execute(
-                GetTransformAction.INSTANCE, getReq,
-                object : ActionListener<GetTransformResponse> {
-                    override fun onResponse(response: GetTransformResponse) {
-                        val transform = response.transform
-                            ?: return actionListener.onFailure(
-                                OpenSearchStatusException("Could not find transform [${request.id()}]", RestStatus.NOT_FOUND)
-                            )
+            client.get(
+                getRequest,
+                object : ActionListener<GetResponse> {
+                    override fun onResponse(response: GetResponse) {
+                        if (!response.isExists) {
+                            actionListener.onFailure(OpenSearchStatusException("Transform not found", RestStatus.NOT_FOUND))
+                            return
+                        }
 
-                        if (!userHasPermissionForResource(user, transform.user, filterByEnabled, "transform", request.id(), actionListener)) {
+                        val transform: Transform?
+                        try {
+                            transform = parseFromGetResponse(response, xContentRegistry, Transform.Companion::parse)
+                        } catch (e: IllegalArgumentException) {
+                            actionListener.onFailure(OpenSearchStatusException("Transform not found", RestStatus.NOT_FOUND))
+                            return
+                        }
+
+                        if (!userHasPermissionForResource(user, transform.user, filterByEnabled, "transform", transform.id, actionListener)) {
                             return
                         }
                         if (transform.enabled) {

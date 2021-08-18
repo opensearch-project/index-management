@@ -67,7 +67,13 @@ class TransportGetTransformAction @Inject constructor(
                         }
 
                         try {
-                            val transform = parseFromGetResponse(response, xContentRegistry, Transform.Companion::parse)
+                            val transform: Transform?
+                            try {
+                                transform = parseFromGetResponse(response, xContentRegistry, Transform.Companion::parse)
+                            } catch (e: IllegalArgumentException) {
+                                listener.onFailure(OpenSearchStatusException("Transform not found", RestStatus.NOT_FOUND))
+                                return
+                            }
                             if (!userHasPermissionForResource(user, transform.user, filterByEnabled, "transform", request.id, listener)) {
                                 return
                             }

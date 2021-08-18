@@ -49,17 +49,16 @@ import org.opensearch.common.xcontent.XContentType
 import org.opensearch.commons.authuser.User
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
 import org.opensearch.indexmanagement.opensearchapi.parseWithType
-import org.opensearch.indexmanagement.rollup.action.get.GetRollupAction
-import org.opensearch.indexmanagement.rollup.action.get.GetRollupRequest
-import org.opensearch.indexmanagement.rollup.action.get.GetRollupResponse
 import org.opensearch.indexmanagement.rollup.model.Rollup
 import org.opensearch.indexmanagement.rollup.model.RollupMetadata
+import org.opensearch.indexmanagement.rollup.util.parseRollup
 import org.opensearch.indexmanagement.settings.IndexManagementSettings
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.buildUser
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.userHasPermissionForResource
 import org.opensearch.rest.RestStatus
 import org.opensearch.tasks.Task
 import org.opensearch.transport.TransportService
+import java.lang.IllegalArgumentException
 import java.time.Instant
 
 @Suppress("ReturnCount")
@@ -68,7 +67,8 @@ class TransportStartRollupAction @Inject constructor(
     val client: Client,
     val clusterService: ClusterService,
     val settings: Settings,
-    actionFilters: ActionFilters
+    actionFilters: ActionFilters,
+    val xContentRegistry: NamedXContentRegistry
 ) : HandledTransportAction<StartRollupRequest, AcknowledgedResponse>(
     StartRollupAction.NAME, transportService, actionFilters, ::StartRollupRequest
 ) {
@@ -84,18 +84,26 @@ class TransportStartRollupAction @Inject constructor(
     private val log = LogManager.getLogger(javaClass)
 
     override fun doExecute(task: Task, request: StartRollupRequest, actionListener: ActionListener<AcknowledgedResponse>) {
-        val getReq = GetRollupRequest(request.id(), null)
+        val getReq = GetRequest(INDEX_MANAGEMENT_INDEX, request.id())
         val user: User? = buildUser(client.threadPool().threadContext)
         client.threadPool().threadContext.stashContext().use {
-            client.execute(
-                GetRollupAction.INSTANCE, getReq,
-                object : ActionListener<GetRollupResponse> {
-                    override fun onResponse(response: GetRollupResponse) {
-                        val rollup = response.rollup
-                            ?: return actionListener.onFailure(
-                                OpenSearchStatusException("Could not find rollup [${request.id()}]", RestStatus.NOT_FOUND)
-                            )
-                        if (!userHasPermissionForResource(user, rollup.user, filterByEnabled, "rollup", request.id(), actionListener)) {
+            client.get(
+                getReq,
+                object : ActionListener<GetResponse> {
+                    override fun onResponse(response: GetResponse) {
+                        if (!response.isExists) {
+                            actionListener.onFailure(OpenSearchStatusException("Rollup not found", RestStatus.NOT_FOUND))
+                            return
+                        }
+
+                        val rollup: Rollup?
+                        try {
+                            rollup = parseRollup(response, xContentRegistry)
+                        } catch (e: IllegalArgumentException) {
+                            actionListener.onFailure(OpenSearchStatusException("Rollup not found", RestStatus.NOT_FOUND))
+                            return
+                        }
+                        if (!userHasPermissionForResource(user, rollup.user, filterByEnabled, "rollup", rollup.id, actionListener)) {
                             return
                         }
                         if (rollup.enabled) {
