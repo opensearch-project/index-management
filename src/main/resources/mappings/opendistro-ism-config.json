@@ -442,7 +442,8 @@
                       "type": "text"
                     },
                     "aliases": {
-                      "type": "object"
+                      "type": "object",
+                      "enabled": false
                     },
                     "force_unsafe": {
                       "type": "boolean"

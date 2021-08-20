@@ -84,7 +84,8 @@ class AttemptMoveShardsStep(
             logger.info("Got past real cluster health")
 
             // check whether the target index name is available.
-            shrinkTargetIndexName = config.targetIndexSuffix ?: managedIndexMetaData.index + "_shrunken"
+            val indexNameSuffix = config.targetIndexSuffix ?: "_shrunken"
+            shrinkTargetIndexName = managedIndexMetaData.index + indexNameSuffix
             val indexExists = clusterService.state().metadata.indices.containsKey(shrinkTargetIndexName)
             if (indexExists) {
                 info = mapOf("message" to "Step failed because $shrinkTargetIndexName already exists")
@@ -286,6 +287,7 @@ class AttemptMoveShardsStep(
 
     override fun getUpdatedManagedIndexMetaData(currentMetaData: ManagedIndexMetaData): ManagedIndexMetaData {
         val currentActionMetaData = currentMetaData.actionMetaData
+        logger.info("updating managed index metadata")
         return currentMetaData.copy(
             actionMetaData = currentActionMetaData?.copy(
                 actionProperties = ActionProperties(

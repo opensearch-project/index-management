@@ -54,7 +54,10 @@ class AttemptShrinkStep(
                 return this
             }
             logger.info("resize request starting")
-            val req = ResizeRequest(managedIndexMetaData.actionMetaData!!.actionProperties!!.shrinkActionProperties!!.targetIndexName, managedIndexMetaData.index)
+            val targetIndexName = managedIndexMetaData.actionMetaData!!.actionProperties!!.shrinkActionProperties!!.targetIndexName
+            val aliases = config.aliases
+            val req = ResizeRequest(targetIndexName, managedIndexMetaData.index)
+            aliases?.forEach { req.targetIndexRequest.alias(it) }
             val resizeResponse: ResizeResponse = client.admin().indices().suspendUntil { resizeIndex(req, it) }
             logger.info("resize request finished")
             if (!resizeResponse.isAcknowledged) {
