@@ -29,7 +29,6 @@ package org.opensearch.indexmanagement.indexstatemanagement.transport.action.exp
 import org.apache.logging.log4j.LogManager
 import org.opensearch.ExceptionsHelper
 import org.opensearch.OpenSearchSecurityException
-import org.opensearch.OpenSearchStatusException
 import org.opensearch.action.ActionListener
 import org.opensearch.action.admin.cluster.state.ClusterStateRequest
 import org.opensearch.action.admin.cluster.state.ClusterStateResponse
@@ -63,9 +62,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.transport.action.mana
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.managedIndex.ManagedIndexRequest
 import org.opensearch.indexmanagement.indexstatemanagement.util.isMetadataMoved
 import org.opensearch.indexmanagement.indexstatemanagement.util.managedIndexMetadataID
-import org.opensearch.indexmanagement.util.IndexManagementException
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.buildUser
-import org.opensearch.rest.RestStatus
 import org.opensearch.search.builder.SearchSourceBuilder
 import org.opensearch.search.fetch.subphase.FetchSourceContext.FETCH_SOURCE
 import org.opensearch.search.sort.SortBuilders
@@ -312,47 +309,78 @@ class TransportExplainAction @Inject constructor(
             }
             managedIndicesMetaDataMap.clear()
 
-            if (user == null) {
+            if (user == null || indexNames.isEmpty()) {
                 sendResponse()
             } else {
-                validateAndSendResponse(threadContext)
+                filterAndSendResponse(threadContext)
             }
         }
 
-        private fun validateAndSendResponse(threadContext: ThreadContext.StoredContext) {
+        private fun filterAndSendResponse(threadContext: ThreadContext.StoredContext) {
             threadContext.restore()
-            val request = ManagedIndexRequest().indices(*indexNames.toTypedArray())
+            val filteredIndices = mutableListOf<String>()
+            val filteredMetadata = mutableListOf<ManagedIndexMetaData?>()
+            val filteredPolicies = mutableListOf<String?>()
+            val enabledStatus = mutableMapOf<String, Boolean>()
+            filter(0, filteredIndices, filteredMetadata, filteredPolicies, enabledStatus)
+        }
+
+        private fun filter(
+            current: Int,
+            filteredIndices: MutableList<String>,
+            filteredMetadata: MutableList<ManagedIndexMetaData?>,
+            filteredPolicies: MutableList<String?>,
+            enabledStatus: MutableMap<String, Boolean>
+        ) {
+            val request = ManagedIndexRequest().indices(indexNames[current])
             client.execute(
                 ManagedIndexAction.INSTANCE,
                 request,
                 object : ActionListener<AcknowledgedResponse> {
                     override fun onResponse(response: AcknowledgedResponse) {
-                        sendResponse()
+                        filteredIndices.add(indexNames[current])
+                        filteredMetadata.add(indexMetadatas[current])
+                        filteredPolicies.add(indexPolicyIDs[current])
+                        enabledStatus[indexNames[current]] = enabledState.getOrDefault(indexNames[current], false)
+                        if (current < indexNames.count() - 1) {
+                            // do nothing - skip the index and go to next one
+                            filter(current + 1, filteredIndices, filteredMetadata, filteredPolicies, enabledStatus)
+                        } else {
+                            sendResponse(filteredIndices, filteredMetadata, filteredPolicies, enabledStatus)
+                        }
                     }
 
-                    override fun onFailure(e: java.lang.Exception) {
-                        actionListener.onFailure(
-                            IndexManagementException.wrap(
-                                when (e is OpenSearchSecurityException) {
-                                    true -> OpenSearchStatusException(
-                                        "User doesn't have required index permissions on one or more requested indices: ${e.localizedMessage}",
-                                        RestStatus.FORBIDDEN
-                                    )
-                                    false -> e
+                    override fun onFailure(e: Exception) {
+                        when (e is OpenSearchSecurityException) {
+                            true -> {
+                                if (current < indexNames.count() - 1) {
+                                    // do nothing - skip the index and go to next one
+                                    filter(current + 1, filteredIndices, filteredMetadata, filteredPolicies, enabledStatus)
+                                } else {
+                                    sendResponse(filteredIndices, filteredMetadata, filteredPolicies, enabledStatus)
                                 }
-                            )
-                        )
+                            }
+                            false -> {
+                                actionListener.onFailure(e)
+                            }
+                        }
                     }
                 }
             )
         }
 
-        private fun sendResponse() {
+        private fun sendResponse(
+            indices: List<String> = indexNames,
+            metadata: List<ManagedIndexMetaData?> = indexMetadatas,
+            policies: List<String?> = indexPolicyIDs,
+            enabledStatus: Map<String, Boolean> = enabledState,
+            totalIndices: Int = totalManagedIndices
+        ) {
             if (explainAll) {
-                actionListener.onResponse(ExplainAllResponse(indexNames, indexPolicyIDs, indexMetadatas, totalManagedIndices, enabledState))
+                actionListener.onResponse(ExplainAllResponse(indices, policies, metadata, totalIndices, enabledStatus))
                 return
             }
-            actionListener.onResponse(ExplainResponse(indexNames, indexPolicyIDs, indexMetadatas))
+            actionListener.onResponse(ExplainResponse(indices, policies, metadata))
         }
 
         private fun getMetadata(response: GetResponse?): ManagedIndexMetaData? {
