@@ -85,12 +85,7 @@ class TransportDeleteRollupAction @Inject constructor(
 
         fun start() {
             client.threadPool().threadContext.stashContext().use {
-                if (user == null) {
-                    // security is disabled or filter by is disabled
-                    delete()
-                } else {
-                    getRollup()
-                }
+                getRollup()
             }
         }
 
