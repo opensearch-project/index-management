@@ -30,7 +30,6 @@ import org.opensearch.indexmanagement.indexstatemanagement.IndexStateManagementR
 import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.PolicyRetryInfoMetaData
 import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.StateMetaData
-import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings
 import org.opensearch.indexmanagement.waitFor
 import java.time.Instant
 import java.util.Locale
@@ -44,7 +43,8 @@ class RestExplainActionIT : IndexStateManagementRestTestCase() {
         createIndex(indexName, null)
         val expected = mapOf(
             indexName to mapOf<String, String?>(
-                ManagedIndexSettings.POLICY_ID.key to null
+                explainResponseOpendistroPolicyIdSetting to null,
+                explainResponseOpenSearchPolicyIdSetting to null
             )
         )
         assertResponseMap(expected, getExplainMap(indexName))
@@ -69,13 +69,15 @@ class RestExplainActionIT : IndexStateManagementRestTestCase() {
 
         val expected = mapOf(
             indexName1 to mapOf<String, Any>(
-                ManagedIndexSettings.POLICY_ID.key to policy.id,
+                explainResponseOpendistroPolicyIdSetting to policy.id,
+                explainResponseOpenSearchPolicyIdSetting to policy.id,
                 "index" to indexName1,
                 "index_uuid" to getUuid(indexName1),
                 "policy_id" to policy.id
             ),
             indexName2 to mapOf<String, Any?>(
-                ManagedIndexSettings.POLICY_ID.key to null
+                explainResponseOpendistroPolicyIdSetting to null,
+                explainResponseOpenSearchPolicyIdSetting to null
             )
         )
         waitFor {
@@ -93,7 +95,8 @@ class RestExplainActionIT : IndexStateManagementRestTestCase() {
 
         val expected = mapOf(
             indexName1 to mapOf<String, Any>(
-                ManagedIndexSettings.POLICY_ID.key to policy.id,
+                explainResponseOpendistroPolicyIdSetting to policy.id,
+                explainResponseOpenSearchPolicyIdSetting to policy.id,
                 "index" to indexName1,
                 "index_uuid" to getUuid(indexName1),
                 "policy_id" to policy.id,
@@ -116,19 +119,22 @@ class RestExplainActionIT : IndexStateManagementRestTestCase() {
         createIndex(indexName3, null)
         val expected = mapOf(
             indexName1 to mapOf<String, Any>(
-                ManagedIndexSettings.POLICY_ID.key to policy.id,
+                explainResponseOpendistroPolicyIdSetting to policy.id,
+                explainResponseOpenSearchPolicyIdSetting to policy.id,
                 "index" to indexName1,
                 "index_uuid" to getUuid(indexName1),
                 "policy_id" to policy.id
             ),
             indexName2 to mapOf<String, Any>(
-                ManagedIndexSettings.POLICY_ID.key to policy.id,
+                explainResponseOpendistroPolicyIdSetting to policy.id,
+                explainResponseOpenSearchPolicyIdSetting to policy.id,
                 "index" to indexName2,
                 "index_uuid" to getUuid(indexName2),
                 "policy_id" to policy.id
             ),
             indexName3 to mapOf<String, Any?>(
-                ManagedIndexSettings.POLICY_ID.key to null
+                explainResponseOpendistroPolicyIdSetting to null,
+                explainResponseOpenSearchPolicyIdSetting to null
             )
         )
         waitFor {
@@ -151,7 +157,8 @@ class RestExplainActionIT : IndexStateManagementRestTestCase() {
             assertPredicatesOnMetaData(
                 listOf(
                     indexName to listOf(
-                        ManagedIndexSettings.POLICY_ID.key to policy.id::equals,
+                        explainResponseOpendistroPolicyIdSetting to policy.id::equals,
+                        explainResponseOpenSearchPolicyIdSetting to policy.id::equals,
                         ManagedIndexMetaData.INDEX to managedIndexConfig.index::equals,
                         ManagedIndexMetaData.INDEX_UUID to managedIndexConfig.indexUuid::equals,
                         ManagedIndexMetaData.POLICY_ID to managedIndexConfig.policyID::equals,
@@ -186,7 +193,8 @@ class RestExplainActionIT : IndexStateManagementRestTestCase() {
             assertPredicatesOnMetaData(
                 listOf(
                     indexName to listOf(
-                        ManagedIndexSettings.POLICY_ID.key to policyID::equals,
+                        explainResponseOpendistroPolicyIdSetting to policyID::equals,
+                        explainResponseOpenSearchPolicyIdSetting to policyID::equals,
                         ManagedIndexMetaData.INDEX to managedIndexConfig.index::equals,
                         ManagedIndexMetaData.INDEX_UUID to managedIndexConfig.indexUuid::equals,
                         ManagedIndexMetaData.POLICY_ID to managedIndexConfig.policyID::equals,
