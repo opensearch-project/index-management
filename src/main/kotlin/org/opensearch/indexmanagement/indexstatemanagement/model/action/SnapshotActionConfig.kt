@@ -40,6 +40,7 @@ import org.opensearch.common.xcontent.XContentParserUtils.ensureExpectedToken
 import org.opensearch.indexmanagement.indexstatemanagement.action.Action
 import org.opensearch.indexmanagement.indexstatemanagement.action.SnapshotAction
 import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
+import org.opensearch.jobscheduler.spi.JobExecutionContext
 import org.opensearch.script.ScriptService
 import java.io.IOException
 
@@ -65,7 +66,8 @@ data class SnapshotActionConfig(
         scriptService: ScriptService,
         client: Client,
         settings: Settings,
-        managedIndexMetaData: ManagedIndexMetaData
+        managedIndexMetaData: ManagedIndexMetaData,
+        context: JobExecutionContext
     ): Action = SnapshotAction(clusterService, client, managedIndexMetaData, this)
 
     @Throws(IOException::class)

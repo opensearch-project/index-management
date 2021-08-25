@@ -28,7 +28,6 @@ package org.opensearch.indexmanagement.indexstatemanagement.step.readonly
 
 import org.apache.logging.log4j.LogManager
 import org.opensearch.ExceptionsHelper
-import org.opensearch.action.admin.indices.settings.put.UpdateSettingsRequest
 import org.opensearch.action.support.master.AcknowledgedResponse
 import org.opensearch.client.Client
 import org.opensearch.cluster.metadata.IndexMetadata.SETTING_BLOCKS_WRITE
@@ -38,7 +37,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMet
 import org.opensearch.indexmanagement.indexstatemanagement.model.action.ReadOnlyActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.StepMetaData
 import org.opensearch.indexmanagement.indexstatemanagement.step.Step
-import org.opensearch.indexmanagement.opensearchapi.suspendUntil
+import org.opensearch.indexmanagement.indexstatemanagement.util.issueUpdateSettingsRequest
 import org.opensearch.transport.RemoteTransportException
 
 class SetReadOnlyStep(
@@ -57,12 +56,8 @@ class SetReadOnlyStep(
     @Suppress("TooGenericExceptionCaught")
     override suspend fun execute(): SetReadOnlyStep {
         try {
-            val updateSettingsRequest = UpdateSettingsRequest()
-                .indices(indexName)
-                .settings(Settings.builder().put(SETTING_BLOCKS_WRITE, true))
-            val response: AcknowledgedResponse = client.admin().indices()
-                .suspendUntil { updateSettings(updateSettingsRequest, it) }
-
+            val updateSettings = Settings.builder().put(SETTING_BLOCKS_WRITE, true).build()
+            val response: AcknowledgedResponse = issueUpdateSettingsRequest(client, managedIndexMetaData, updateSettings)
             if (response.isAcknowledged) {
                 stepStatus = StepStatus.COMPLETED
                 info = mapOf("message" to getSuccessMessage(indexName))

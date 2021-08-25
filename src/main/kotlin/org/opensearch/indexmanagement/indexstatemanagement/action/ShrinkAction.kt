@@ -21,18 +21,19 @@ import org.opensearch.indexmanagement.indexstatemanagement.step.shrink.AttemptMo
 import org.opensearch.indexmanagement.indexstatemanagement.step.shrink.AttemptShrinkStep
 import org.opensearch.indexmanagement.indexstatemanagement.step.shrink.WaitForMoveShardsStep
 import org.opensearch.indexmanagement.indexstatemanagement.step.shrink.WaitForShrinkStep
+import org.opensearch.jobscheduler.spi.JobExecutionContext
 
 class ShrinkAction(
     clusterService: ClusterService,
     client: Client,
     managedIndexMetaData: ManagedIndexMetaData,
-    config: ShrinkActionConfig
+    config: ShrinkActionConfig,
+    context: JobExecutionContext
 ) : Action(ActionType.SHRINK, config, managedIndexMetaData) {
-
-    private val attemptMoveShardsStep = AttemptMoveShardsStep(clusterService, client, config, managedIndexMetaData)
-    private val waitForMoveShardsStep = WaitForMoveShardsStep(clusterService, client, config, managedIndexMetaData)
-    private val attemptShrinkStep = AttemptShrinkStep(clusterService, client, config, managedIndexMetaData)
-    private val waitForShrinkStep = WaitForShrinkStep(clusterService, client, config, managedIndexMetaData)
+    private val attemptMoveShardsStep = AttemptMoveShardsStep(clusterService, client, config, managedIndexMetaData, context)
+    private val waitForMoveShardsStep = WaitForMoveShardsStep(clusterService, client, config, managedIndexMetaData, context)
+    private val attemptShrinkStep = AttemptShrinkStep(clusterService, client, config, managedIndexMetaData, context)
+    private val waitForShrinkStep = WaitForShrinkStep(clusterService, client, config, managedIndexMetaData, context)
 
     private val stepNameToStep: LinkedHashMap<String, Step> = linkedMapOf(
         AttemptMoveShardsStep.name to attemptMoveShardsStep,
@@ -42,7 +43,9 @@ class ShrinkAction(
     )
     override fun getSteps(): List<Step> = stepNameToStep.values.toList()
 
+    @SuppressWarnings("ReturnCount")
     override fun getStepToExecute(): Step {
+
         val stepMetaData = managedIndexMetaData.stepMetaData ?: return attemptMoveShardsStep
         val currentStep = stepMetaData.name
 
@@ -50,7 +53,6 @@ class ShrinkAction(
         if (!stepNameToStep.containsKey(currentStep)) return attemptMoveShardsStep
 
         val currentStepStatus = stepMetaData.stepStatus
-
         if (currentStepStatus == Step.StepStatus.COMPLETED) {
             return when (currentStep) {
                 AttemptMoveShardsStep.name -> waitForMoveShardsStep

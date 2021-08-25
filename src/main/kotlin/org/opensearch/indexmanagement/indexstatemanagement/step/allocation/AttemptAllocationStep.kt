@@ -27,7 +27,6 @@
 package org.opensearch.indexmanagement.indexstatemanagement.step.allocation
 
 import org.apache.logging.log4j.LogManager
-import org.opensearch.action.admin.indices.settings.put.UpdateSettingsRequest
 import org.opensearch.action.support.master.AcknowledgedResponse
 import org.opensearch.client.Client
 import org.opensearch.cluster.service.ClusterService
@@ -36,7 +35,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMet
 import org.opensearch.indexmanagement.indexstatemanagement.model.action.AllocationActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.StepMetaData
 import org.opensearch.indexmanagement.indexstatemanagement.step.Step
-import org.opensearch.indexmanagement.opensearchapi.suspendUntil
+import org.opensearch.indexmanagement.indexstatemanagement.util.issueUpdateSettingsRequest
 
 class AttemptAllocationStep(
     val clusterService: ClusterService,
@@ -52,9 +51,7 @@ class AttemptAllocationStep(
 
     override suspend fun execute(): AttemptAllocationStep {
         try {
-            val response: AcknowledgedResponse = client.admin()
-                .indices()
-                .suspendUntil { updateSettings(UpdateSettingsRequest(buildSettings(), managedIndexMetaData.index), it) }
+            val response = issueUpdateSettingsRequest(client, managedIndexMetaData, buildSettings())
             handleResponse(response)
         } catch (e: Exception) {
             handleException(e)

@@ -41,6 +41,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.action.Action
 import org.opensearch.indexmanagement.indexstatemanagement.action.NotificationAction
 import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.indexstatemanagement.model.destination.Destination
+import org.opensearch.jobscheduler.spi.JobExecutionContext
 import org.opensearch.script.Script
 import org.opensearch.script.ScriptService
 import java.io.IOException
@@ -72,7 +73,8 @@ data class NotificationActionConfig(
         scriptService: ScriptService,
         client: Client,
         settings: Settings,
-        managedIndexMetaData: ManagedIndexMetaData
+        managedIndexMetaData: ManagedIndexMetaData,
+        context: JobExecutionContext
     ): Action = NotificationAction(clusterService, scriptService, client, settings, managedIndexMetaData, this)
 
     @Throws(IOException::class)
