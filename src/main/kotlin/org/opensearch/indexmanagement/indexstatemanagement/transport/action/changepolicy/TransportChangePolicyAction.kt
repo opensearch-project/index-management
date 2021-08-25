@@ -80,6 +80,7 @@ import org.opensearch.rest.RestStatus
 import org.opensearch.search.fetch.subphase.FetchSourceContext
 import org.opensearch.tasks.Task
 import org.opensearch.transport.TransportService
+import java.lang.IllegalArgumentException
 
 private val log = LogManager.getLogger(TransportChangePolicyAction::class.java)
 
@@ -173,7 +174,12 @@ class TransportChangePolicyAction @Inject constructor(
                 actionListener.onFailure(OpenSearchStatusException("Could not find policy=${request.changePolicy.policyID}", RestStatus.NOT_FOUND))
                 return
             }
-            policy = parseFromGetResponse(response, xContentRegistry, Policy.Companion::parse)
+            try {
+                policy = parseFromGetResponse(response, xContentRegistry, Policy.Companion::parse)
+            } catch (e: IllegalArgumentException) {
+                actionListener.onFailure(OpenSearchStatusException("Could not find policy=${request.changePolicy.policyID}", RestStatus.NOT_FOUND))
+                return
+            }
             if (!userHasPermissionForResource(user, policy.user, filterByEnabled, "policy", request.changePolicy.policyID, actionListener)) {
                 return
             }

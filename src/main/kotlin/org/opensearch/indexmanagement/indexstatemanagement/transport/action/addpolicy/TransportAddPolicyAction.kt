@@ -73,12 +73,13 @@ import org.opensearch.rest.RestStatus
 import org.opensearch.tasks.Task
 import org.opensearch.transport.TransportService
 import java.lang.Exception
+import java.lang.IllegalArgumentException
 import java.time.Duration
 import java.time.Instant
 
 private val log = LogManager.getLogger(TransportAddPolicyAction::class.java)
 
-@Suppress("SpreadOperator")
+@Suppress("SpreadOperator", "ReturnCount")
 class TransportAddPolicyAction @Inject constructor(
     val client: NodeClient,
     transportService: TransportService,
@@ -205,7 +206,12 @@ class TransportAddPolicyAction @Inject constructor(
                 actionListener.onFailure(OpenSearchStatusException("Could not find policy=${request.policyID}", RestStatus.NOT_FOUND))
                 return
             }
-            this.policy = parseFromGetResponse(response, xContentRegistry, Policy.Companion::parse)
+            try {
+                this.policy = parseFromGetResponse(response, xContentRegistry, Policy.Companion::parse)
+            } catch (e: IllegalArgumentException) {
+                actionListener.onFailure(OpenSearchStatusException("Could not find policy=${request.policyID}", RestStatus.NOT_FOUND))
+                return
+            }
             if (!userHasPermissionForResource(user, policy.user, filterByEnabled, "policy", request.policyID, actionListener)) {
                 return
             }

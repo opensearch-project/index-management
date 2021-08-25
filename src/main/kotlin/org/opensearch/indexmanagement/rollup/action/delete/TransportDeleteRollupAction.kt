@@ -85,7 +85,7 @@ class TransportDeleteRollupAction @Inject constructor(
 
         fun start() {
             client.threadPool().threadContext.stashContext().use {
-                if (!filterByEnabled || user == null) {
+                if (user == null) {
                     // security is disabled or filter by is disabled
                     delete()
                 } else {
@@ -101,7 +101,7 @@ class TransportDeleteRollupAction @Inject constructor(
                 object : ActionListener<GetResponse> {
                     override fun onResponse(response: GetResponse) {
                         if (!response.isExists) {
-                            actionListener.onFailure(OpenSearchStatusException("Rollup not found", RestStatus.NOT_FOUND))
+                            actionListener.onFailure(OpenSearchStatusException("Rollup ${request.id()} is not found", RestStatus.NOT_FOUND))
                             return
                         }
 
@@ -109,7 +109,7 @@ class TransportDeleteRollupAction @Inject constructor(
                         try {
                             rollup = parseRollup(response, xContentRegistry)
                         } catch (e: IllegalArgumentException) {
-                            actionListener.onFailure(OpenSearchStatusException("Rollup not found", RestStatus.NOT_FOUND))
+                            actionListener.onFailure(OpenSearchStatusException("Rollup ${request.id()} is not found", RestStatus.NOT_FOUND))
                             return
                         }
                         if (!userHasPermissionForResource(user, rollup.user, filterByEnabled, "rollup", rollup.id, actionListener)) {

@@ -51,7 +51,9 @@ import org.opensearch.indexmanagement.util.SecurityUtils.Companion.userHasPermis
 import org.opensearch.rest.RestStatus
 import org.opensearch.tasks.Task
 import org.opensearch.transport.TransportService
+import java.lang.IllegalArgumentException
 
+@Suppress("ReturnCount")
 class TransportDeletePolicyAction @Inject constructor(
     val client: NodeClient,
     transportService: TransportService,
@@ -84,12 +86,7 @@ class TransportDeletePolicyAction @Inject constructor(
 
         fun start() {
             client.threadPool().threadContext.stashContext().use {
-                if (user == null || !filterByEnabled) {
-                    // Security is disabled or filter by is disabled
-                    delete()
-                } else {
-                    getPolicy()
-                }
+                getPolicy()
             }
         }
 
@@ -104,7 +101,13 @@ class TransportDeletePolicyAction @Inject constructor(
                             return
                         }
 
-                        val policy: Policy = parseFromGetResponse(response, xContentRegistry, Policy.Companion::parse)
+                        val policy: Policy?
+                        try {
+                            policy = parseFromGetResponse(response, xContentRegistry, Policy.Companion::parse)
+                        } catch (e: IllegalArgumentException) {
+                            actionListener.onFailure(OpenSearchStatusException("Policy ${request.policyID} is not found", RestStatus.NOT_FOUND))
+                            return
+                        }
                         if (!userHasPermissionForResource(user, policy.user, filterByEnabled, "policy", request.policyID, actionListener)) {
                             return
                         } else {
