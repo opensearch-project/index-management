@@ -36,7 +36,7 @@ jobs:
         with:
           repository: 'opensearch-project/common-utils'
           path: common-utils
-          ref: 'main'
+          ref: '1.0.0'
       - name: Build common-utils
         working-directory: ./common-utils
         run: ./gradlew publishToMavenLocal -Dopensearch.version=1.0.0 -Dbuild.snapshot=false
@@ -46,7 +46,7 @@ jobs:
         with:
           repository: 'opensearch-project/job-scheduler'
           path: job-scheduler
-          ref: '1.0'
+          ref: 'development-shrink'
       - name: Build job-scheduler
         working-directory: ./job-scheduler
         run: ./gradlew publishToMavenLocal -Dopensearch.version=1.0.0 -Dbuild.snapshot=false
