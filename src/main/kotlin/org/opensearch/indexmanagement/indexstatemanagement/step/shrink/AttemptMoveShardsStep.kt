@@ -24,6 +24,7 @@ import org.opensearch.action.support.master.AcknowledgedResponse
 import org.opensearch.client.Client
 import org.opensearch.cluster.metadata.IndexMetadata
 import org.opensearch.cluster.routing.allocation.command.MoveAllocationCommand
+import org.opensearch.cluster.routing.allocation.decider.Decision
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.collect.Tuple
 import org.opensearch.common.settings.Settings
@@ -39,7 +40,6 @@ import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.jobscheduler.repackage.com.cronutils.utils.VisibleForTesting
 import org.opensearch.jobscheduler.spi.JobExecutionContext
 import org.opensearch.jobscheduler.spi.LockModel
-import org.opensearch.transport.RemoteTransportException
 import java.lang.Exception
 import java.util.PriorityQueue
 import kotlin.collections.HashMap
@@ -64,31 +64,27 @@ class AttemptMoveShardsStep(
     private var nodeName: String? = null
     private var shrinkTargetIndexName: String? = null
     private var lock: LockModel? = null
-    override fun isIdempotent() = false
+    override fun isIdempotent() = true
 
     @Suppress("TooGenericExceptionCaught", "ComplexMethod", "ReturnCount")
     override suspend fun execute(): AttemptMoveShardsStep {
         try {
             // get cluster health
-            logger.info("starting move shards step")
-            logger.info("index name is ${managedIndexMetaData.index}")
             val healthReq = ClusterHealthRequest().indices(managedIndexMetaData.index).waitForGreenStatus()
             val response: ClusterHealthResponse = client.admin().cluster().suspendUntil { health(healthReq, it) }
-            logger.info("Got past cluster health step.")
             // check status of cluster health
             if (response.isTimedOut) {
-                info = mapOf("message" to "Step failed because of a request timeout.")
+                info = mapOf("message" to getFailureMessage(managedIndexMetaData.index))
                 stepStatus = StepStatus.CONDITION_NOT_MET
                 return this
             }
-            logger.info("Got past real cluster health")
 
             // check whether the target index name is available.
-            val indexNameSuffix = config.targetIndexSuffix ?: "_shrunken"
+            val indexNameSuffix = config.targetIndexSuffix ?: DEFAULT_TARGET_SUFFIX
             shrinkTargetIndexName = managedIndexMetaData.index + indexNameSuffix
             val indexExists = clusterService.state().metadata.indices.containsKey(shrinkTargetIndexName)
             if (indexExists) {
-                info = mapOf("message" to "Step failed because $shrinkTargetIndexName already exists")
+                info = mapOf("message" to getIndexExistsMessage(managedIndexMetaData.index, shrinkTargetIndexName!!))
                 stepStatus = StepStatus.FAILED
                 return this
             }
@@ -96,14 +92,14 @@ class AttemptMoveShardsStep(
             // force_unsafe check
             val numReplicas = clusterService.state().metadata.indices[managedIndexMetaData.index].numberOfReplicas
             if (config.forceUnsafe != null && !config.forceUnsafe && numReplicas == 0) {
-                info = mapOf("message" to "Step failed because force_unsafe is false and the number of replicas of $indexName is 0.")
+                info = mapOf("message" to getUnsafeFailure(managedIndexMetaData.index))
                 stepStatus = StepStatus.FAILED
                 return this
             }
             // Get the number of primary shards in the index -- all will be active because index health is green
             numOriginalShards = clusterService.state().metadata.indices[managedIndexMetaData.index].numberOfShards
             if (numOriginalShards == 1) {
-                info = mapOf("message" to "Action failed because the number of primary shards of the index is 1.")
+                info = mapOf("message" to getOnePrimaryShardFailure(managedIndexMetaData.index))
                 stepStatus = StepStatus.FAILED
                 return this
             }
@@ -120,10 +116,9 @@ class AttemptMoveShardsStep(
             // get the nodes with enough memory
             val suitableNodes = findSuitableNodes(statsResponse, indexSize, bufferPercentage)
             // iterate through the nodes and try to acquire a lock on those nodes
-            logger.info("attempting to acquire lock on node")
             lock = acquireLockOnNode(suitableNodes)
             if (lock == null) {
-                info = mapOf("message" to "Step delayed because there are no suitable nodes on which to execute the shrink.")
+                info = mapOf("message" to getNoAvailableNodesMessage(managedIndexMetaData.index))
                 stepStatus = StepStatus.CONDITION_NOT_MET
                 return this
             }
@@ -132,11 +127,11 @@ class AttemptMoveShardsStep(
             // move the shards
             nodeName = lock!!.resource["node_name"] as String
             moveIndexToNode(nodeName!!)
-            info = mapOf("message" to "Attempt move shard step completed.")
+            info = mapOf("message" to getSuccessMessage(managedIndexMetaData.index, nodeName!!))
             stepStatus = StepStatus.COMPLETED
             return this
-        } catch (e: RemoteTransportException) {
-            info = mapOf("message" to "Step failed because of remote transport exception.")
+        } catch (e: Exception) {
+            info = mapOf("message" to getFailureMessage(managedIndexMetaData.index), "cause" to "{${e.message}}")
             stepStatus = StepStatus.FAILED
             return this
         }
@@ -144,12 +139,12 @@ class AttemptMoveShardsStep(
 
     private suspend fun setToReadOnly() {
         val updateSettings = Settings.builder().put(IndexMetadata.SETTING_BLOCKS_WRITE, true).build()
-        issueUpdateAndUnlockIfFail(updateSettings, READ_ONLY_FAILED)
+        issueUpdateAndUnlockIfFail(updateSettings, getReadOnlyFailedMessage(managedIndexMetaData.index))
     }
 
     private suspend fun moveIndexToNode(node: String) {
         val allocationSettings = Settings.builder().put(ROUTING_SETTING, node).build()
-        issueUpdateAndUnlockIfFail(allocationSettings, ALLOCATION_SETTING_FAILED)
+        issueUpdateAndUnlockIfFail(allocationSettings, getAllocationFailedMessage(managedIndexMetaData.index, node))
     }
 
     private suspend fun issueUpdateAndUnlockIfFail(settings: Settings, failureMessage: String) {
@@ -166,19 +161,15 @@ class AttemptMoveShardsStep(
     }
 
     suspend fun acquireLockOnNode(suitableNodes: PriorityQueue<Tuple<Long, String>>): LockModel? {
-        logger.info("in acquireLockOnNode")
         var lock: LockModel? = null
         for (tuple in suitableNodes) {
             val node = tuple.v2()
-            logger.info("Attempting to acquire $node")
             val nodeResourceObject: HashMap<String, String> = HashMap()
             nodeResourceObject[RESOURCE_NAME] = node
             val lockTime = config.configTimeout?.timeout?.seconds ?: MOVE_SHARDS_TIMEOUT_IN_SECONDS
-            logger.info("Acquisition request about to send")
             lock = context.lockService.suspendUntil<LockModel> {
                 acquireLockOnResource(context, lockTime, RESOURCE_TYPE, nodeResourceObject as Map<String, Any>?, it)
             }
-            logger.info("acquire request is sent")
             if (lock != null) {
                 return lock
             }
@@ -188,8 +179,7 @@ class AttemptMoveShardsStep(
 
     @VisibleForTesting
     private suspend fun findSuitableNodes(indicesStatsResponse: IndicesStatsResponse, indexSize: Long, buffer: Long): PriorityQueue<Tuple<Long, String>> {
-        logger.info("finding suitable nodes")
-        val nodesStatsReq = NodesStatsRequest().addMetric("os")
+        val nodesStatsReq = NodesStatsRequest().addMetric(OS_METRIC)
         val nodeStatsResponse: NodesStatsResponse = client.admin().cluster().suspendUntil { nodesStats(nodesStatsReq, it) }
         val nodesList = nodeStatsResponse.nodes
         val comparator = kotlin.Comparator { o1: Tuple<Long, String>, o2: Tuple<Long, String> -> o1.v1().compareTo(o2.v1()) }
@@ -206,28 +196,31 @@ class AttemptMoveShardsStep(
         }
         val suitableNodes = PriorityQueue<Tuple<Long, String>>(comparator)
         for (sizeNodeTuple in nodesWithSpace) {
+            val nodeName = sizeNodeTuple.v2()
             val movableShardIds = HashSet<Int>()
             for (shard in indicesStatsResponse.shards) {
                 val shardId = shard.shardRouting.shardId()
                 val currentShardNode = clusterService.state().nodes[shard.shardRouting.currentNodeId()]
-                if (currentShardNode.name.equals(sizeNodeTuple.v2())) {
+                if (currentShardNode.name.equals(nodeName)) {
                     movableShardIds.add(shardId.id)
                 } else {
-                    val allocationCommand = MoveAllocationCommand(indexName, shardId.id, currentShardNode.name, sizeNodeTuple.v2())
-                    val rerouteRequest = ClusterRerouteRequest().dryRun(true).add(allocationCommand)
+                    val allocationCommand = MoveAllocationCommand(indexName, shardId.id, currentShardNode.name, nodeName)
+                    val rerouteRequest = ClusterRerouteRequest().explain(true).dryRun(true).add(allocationCommand)
+
                     val clusterRerouteResponse: ClusterRerouteResponse = client.admin().cluster().suspendUntil { reroute(rerouteRequest, it) }
-                    if (clusterRerouteResponse.explanations.yesDecisionMessages.size != 0) {
+                    val filteredExplanations = clusterRerouteResponse.explanations.explanations().filter {
+                        it.decisions().type().equals(Decision.Type.YES)
+                    }
+                    if (filteredExplanations.isNotEmpty()) {
                         movableShardIds.add(shardId.id)
                     }
                 }
             }
-            if (movableShardIds.size == numOriginalShards) {
+            if (movableShardIds.size >= numOriginalShards!!) {
                 suitableNodes.add(sizeNodeTuple)
             }
         }
-
-        logger.info("found ${nodesWithSpace.size} suitable nodes")
-        return nodesWithSpace
+        return suitableNodes
     }
 
     @SuppressWarnings("ReturnCount")
@@ -287,7 +280,6 @@ class AttemptMoveShardsStep(
 
     override fun getUpdatedManagedIndexMetaData(currentMetaData: ManagedIndexMetaData): ManagedIndexMetaData {
         val currentActionMetaData = currentMetaData.actionMetaData
-        logger.info("updating managed index metadata")
         return currentMetaData.copy(
             actionMetaData = currentActionMetaData?.copy(
                 actionProperties = ActionProperties(
@@ -308,13 +300,21 @@ class AttemptMoveShardsStep(
     }
 
     companion object {
-        private const val ROUTING_SETTING = "index.routing.allocation.require._name"
+        const val OS_METRIC = "os"
+        const val ROUTING_SETTING = "index.routing.allocation.require._name"
         const val RESOURCE_NAME = "node_name"
+        const val DEFAULT_TARGET_SUFFIX = "_shrunken"
         const val bufferPercentage = 0.05.toLong()
         const val MOVE_SHARDS_TIMEOUT_IN_SECONDS = 43200L // 12hrs in seconds
         const val name = "attempt_move_shards_step"
         const val RESOURCE_TYPE = "shrink"
-        const val READ_ONLY_FAILED = "Failed to set index to read only."
-        const val ALLOCATION_SETTING_FAILED = "Failed to start moving shards to the selected node."
+        fun getSuccessMessage(index: String, node: String) = "Successfully started moving the shards of $index to $node."
+        fun getReadOnlyFailedMessage(index: String) = "Shrink failed because $index could not be set to read only."
+        fun getAllocationFailedMessage(index: String, node: String) = "Shrink failed because the shards of $index could not be moved $node."
+        fun getNoAvailableNodesMessage(index: String) = "There are no available nodes for $index to move to to execute a shrink. Delaying until node becomes available."
+        fun getFailureMessage(index: String) = "Shrink failed to start moving shards of $index."
+        fun getIndexExistsMessage(index: String, newIndex: String) = "Shrink failed on $index because $newIndex already exists."
+        fun getUnsafeFailure(index: String) = "Shrink failed because $index has no replicas and force_unsafe is not set to true."
+        fun getOnePrimaryShardFailure(index: String) = "Shrink failed because $index only has one primary shard."
     }
 }

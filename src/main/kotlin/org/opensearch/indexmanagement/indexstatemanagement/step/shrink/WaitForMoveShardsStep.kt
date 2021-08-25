@@ -23,6 +23,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMet
 import org.opensearch.indexmanagement.indexstatemanagement.model.action.ShrinkActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.StepMetaData
 import org.opensearch.indexmanagement.indexstatemanagement.step.Step
+import org.opensearch.indexmanagement.indexstatemanagement.util.getActionStartTime
 import org.opensearch.indexmanagement.indexstatemanagement.util.releaseShrinkLock
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.jobscheduler.spi.JobExecutionContext
@@ -46,21 +47,20 @@ class WaitForMoveShardsStep(
     @Suppress("TooGenericExceptionCaught", "ComplexMethod")
     override suspend fun execute(): WaitForMoveShardsStep {
         try {
-            logger.info("starting wait for move shards")
             val indexStatsRequests: IndicesStatsRequest = IndicesStatsRequest().indices(managedIndexMetaData.index)
             val response: IndicesStatsResponse = client.admin().indices().suspendUntil { stats(indexStatsRequests, it) }
-            logger.info("indices stats request finished")
             val numPrimaryShards = clusterService.state().metadata.indices[managedIndexMetaData.index].numberOfShards
+            val nodeToMoveOnto = managedIndexMetaData.actionMetaData!!.actionProperties!!.shrinkActionProperties!!.nodeName
             var numShardsOnNode = 0
             val shardToCheckpointSetMap: HashMap<ShardId, HashSet<Long>> = HashMap()
             for (shard: ShardStats in response.shards) {
                 val checkpoint = shard.seqNoStats!!.localCheckpoint
                 val routingInfo: ShardRouting = shard.shardRouting
                 val shardId = shard.shardRouting.shardId()
-                logger.info("shardID = ${shardId.id}")
                 if (shardId in shardToCheckpointSetMap.keys && !shardToCheckpointSetMap[shardId]!!.equals(checkpoint)) {
+                    shardToCheckpointSetMap[shardId]!!.add(checkpoint)
                     val checkPointSet = shardToCheckpointSetMap[shardId]
-                    logger.warn("There are shards with varying local checkpoints for $shardId. The checkpoints are $checkPointSet.")
+                    logger.warn("There are shards with varying local checkpoints for $shardId. The checkpoints are $checkPointSet. Checkpoint set size is ${checkPointSet!!.size}")
                 } else {
                     shardToCheckpointSetMap[shardId] = HashSet()
                     shardToCheckpointSetMap[shardId]!!.add(checkpoint)
@@ -68,44 +68,21 @@ class WaitForMoveShardsStep(
 
                 val nodeIdShardIsOn = routingInfo.currentNodeId()
                 val nodeShardIsOn = clusterService.state().nodes()[nodeIdShardIsOn].name
-                logger.info("nodeShard is on is $nodeShardIsOn")
-                logger.info("node that needs to be on ${managedIndexMetaData.actionMetaData!!.actionProperties!!.shrinkActionProperties!!.nodeName}")
-                if (nodeShardIsOn.equals(managedIndexMetaData.actionMetaData.actionProperties!!.shrinkActionProperties!!.nodeName) &&
-                    routingInfo.started()
-                ) {
+                if (nodeShardIsOn.equals(nodeToMoveOnto) && routingInfo.started()) {
                     numShardsOnNode++
-                    logger.info("INCREASE: numShardsOnNode now = $numShardsOnNode")
                 }
             }
-            logger.info("out of loop. numShardsOnNode = $numShardsOnNode. Need $numPrimaryShards")
             if (numShardsOnNode >= numPrimaryShards) {
+                info = mapOf("message" to getSuccessMessage(managedIndexMetaData.index, nodeToMoveOnto!!))
                 stepStatus = StepStatus.COMPLETED
                 return this
             }
             val numShardsLeft = numPrimaryShards - numShardsOnNode
-            val timeWaitingForMoveShards: Duration = Duration.between(getActionStartTime(), Instant.now())
-            val timeOutInSeconds = config.configTimeout?.timeout?.seconds ?: MOVE_SHARDS_TIMEOUT_IN_SECONDS
-            // Get ActionTimeout if given, otherwise use default timeout of 12 hours
-            stepStatus = if (timeWaitingForMoveShards.toSeconds() > timeOutInSeconds) {
-                logger.error(
-                    "Move shards still running on [$indexName] timed out with" +
-                        " [$numShardsLeft] shards still needing to be moved"
-                )
-                releaseShrinkLock(managedIndexMetaData, context, logger)
-                info = mapOf("message" to "Shrink failed because because the index's shards too too long to move.")
-                StepStatus.FAILED
-            } else {
-                logger.debug(
-                    "Move shards still running on [$indexName] with" +
-                        " [$numShardsLeft] shards still needing to be moved"
-                )
-                info = mapOf("message" to "Shrink delayed because the index's shards too too long to move.")
-                StepStatus.CONDITION_NOT_MET
-            }
+            checkTimeOut(numShardsLeft, nodeToMoveOnto!!)
             return this
         } catch (e: RemoteTransportException) {
             releaseShrinkLock(managedIndexMetaData, context, logger)
-            info = mapOf("message" to "Shrink failed because of a remote transport exception.")
+            info = mapOf("message" to getFailureMessage(indexName))
             stepStatus = StepStatus.FAILED
             return this
         }
@@ -123,16 +100,33 @@ class WaitForMoveShardsStep(
         )
     }
 
-    private fun getActionStartTime(): Instant {
-        if (managedIndexMetaData.actionMetaData?.startTime == null) {
-            return Instant.now()
+    private suspend fun checkTimeOut(numShardsLeft: Int, nodeToMoveOnto: String) {
+        val timeFromActionStarted: Duration = Duration.between(getActionStartTime(managedIndexMetaData), Instant.now())
+        val timeOutInSeconds = config.configTimeout?.timeout?.seconds ?: MOVE_SHARDS_TIMEOUT_IN_SECONDS
+        // Get ActionTimeout if given, otherwise use default timeout of 12 hours
+        stepStatus = if (timeFromActionStarted.toSeconds() > timeOutInSeconds) {
+            logger.error(
+                "The shards of "
+            )
+            releaseShrinkLock(managedIndexMetaData, context, logger)
+            info = mapOf("message" to getTimeoutFailure(managedIndexMetaData.index, nodeToMoveOnto))
+            StepStatus.FAILED
+        } else {
+            logger.debug(
+                "Move shards still running on [$indexName] with" +
+                    " [$numShardsLeft] shards still needing to be moved"
+            )
+            info = mapOf("message" to getTimeoutDelay(managedIndexMetaData.index, nodeToMoveOnto))
+            StepStatus.CONDITION_NOT_MET
         }
-
-        return Instant.ofEpochMilli(managedIndexMetaData.actionMetaData.startTime)
     }
 
     companion object {
         const val name = "wait_for_move_shards_step"
+        fun getSuccessMessage(index: String, node: String) = "The shards of $index successfully moved to $node."
+        fun getTimeoutFailure(index: String, node: String) = "Shrink failed because it took to long to move $index shards to $node"
+        fun getTimeoutDelay(index: String, node: String) = "Shrink delayed because it took to long to move $index shards to $node"
+        fun getFailureMessage(index: String) = "Shrink failed on $index when waiting for shards to move."
         const val MOVE_SHARDS_TIMEOUT_IN_SECONDS = 43200L // 12hrs in seconds
         const val RESOURCE_NAME = "node_name"
         const val RESOURCE_TYPE = "shrink"

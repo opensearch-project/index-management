@@ -59,3 +59,11 @@ private fun getShrinkLockModel(
         shrinkActionProperties.lockPrimaryTerm!!
     )
 }
+
+public fun getActionStartTime(managedIndexMetaData: ManagedIndexMetaData): Instant {
+    if (managedIndexMetaData.actionMetaData?.startTime == null) {
+        return Instant.now()
+    }
+
+    return Instant.ofEpochMilli(managedIndexMetaData.actionMetaData.startTime)
+}

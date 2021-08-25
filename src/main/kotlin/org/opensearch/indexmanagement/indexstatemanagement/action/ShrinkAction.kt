@@ -30,7 +30,6 @@ class ShrinkAction(
     config: ShrinkActionConfig,
     context: JobExecutionContext
 ) : Action(ActionType.SHRINK, config, managedIndexMetaData) {
-    private val logger = org.apache.logging.log4j.LogManager.getLogger(javaClass)
     private val attemptMoveShardsStep = AttemptMoveShardsStep(clusterService, client, config, managedIndexMetaData, context)
     private val waitForMoveShardsStep = WaitForMoveShardsStep(clusterService, client, config, managedIndexMetaData, context)
     private val attemptShrinkStep = AttemptShrinkStep(clusterService, client, config, managedIndexMetaData, context)
@@ -54,9 +53,7 @@ class ShrinkAction(
         if (!stepNameToStep.containsKey(currentStep)) return attemptMoveShardsStep
 
         val currentStepStatus = stepMetaData.stepStatus
-        logger.info("Current step status $currentStepStatus")
         if (currentStepStatus == Step.StepStatus.COMPLETED) {
-            logger.info("")
             return when (currentStep) {
                 AttemptMoveShardsStep.name -> waitForMoveShardsStep
                 WaitForMoveShardsStep.name -> attemptShrinkStep
