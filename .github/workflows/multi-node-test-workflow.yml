@@ -36,7 +36,7 @@ jobs:
         with:
           repository: 'opensearch-project/common-utils'
           path: common-utils
-          ref: '1.0.0'
+          ref: 'refs/tags/1.0.0'
       - name: Build common-utils
         working-directory: ./common-utils
         run: ./gradlew publishToMavenLocal -Dopensearch.version=1.0.0 -Dbuild.snapshot=false
