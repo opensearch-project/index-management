@@ -177,7 +177,7 @@ class AttemptMoveShardsStep(
         return lock
     }
 
-    @VisibleForTesting
+    @SuppressWarnings("NestedBlockDepth")
     private suspend fun findSuitableNodes(indicesStatsResponse: IndicesStatsResponse, indexSize: Long, buffer: Long): PriorityQueue<Tuple<Long, String>> {
         val nodesStatsReq = NodesStatsRequest().addMetric(OS_METRIC)
         val nodeStatsResponse: NodesStatsResponse = client.admin().cluster().suspendUntil { nodesStats(nodesStatsReq, it) }

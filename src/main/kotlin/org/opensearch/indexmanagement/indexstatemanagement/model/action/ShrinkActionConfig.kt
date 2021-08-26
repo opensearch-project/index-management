@@ -149,6 +149,7 @@ data class ShrinkActionConfig(
 
         @JvmStatic
         @Throws(IOException::class)
+        @SuppressWarnings("ComplexMethod", "NestedBlockDepth")
         fun parse(xcp: XContentParser, index: Int): ShrinkActionConfig {
             var numNewShards: Int? = null
             var maxShardSize: ByteSizeValue? = null

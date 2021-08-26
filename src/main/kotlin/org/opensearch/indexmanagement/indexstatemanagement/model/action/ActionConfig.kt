@@ -60,6 +60,7 @@ abstract class ActionConfig(
         return builder
     }
 
+    @SuppressWarnings("LongParameterList")
     abstract fun toAction(
         clusterService: ClusterService,
         scriptService: ScriptService,
