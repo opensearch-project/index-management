@@ -47,6 +47,7 @@ import org.opensearch.action.support.master.AcknowledgedResponse
 import org.opensearch.client.node.NodeClient
 import org.opensearch.cluster.ClusterState
 import org.opensearch.cluster.block.ClusterBlockException
+import org.opensearch.cluster.metadata.IndexNameExpressionResolver
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.inject.Inject
 import org.opensearch.common.settings.Settings
@@ -64,7 +65,6 @@ import org.opensearch.indexmanagement.indexstatemanagement.util.FailedIndex
 import org.opensearch.indexmanagement.indexstatemanagement.util.managedIndexConfigIndexRequest
 import org.opensearch.indexmanagement.opensearchapi.parseFromGetResponse
 import org.opensearch.indexmanagement.settings.IndexManagementSettings
-import org.opensearch.indexmanagement.util.IndexManagementException
 import org.opensearch.indexmanagement.util.IndexUtils
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.buildUser
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.userHasPermissionForResource
@@ -73,19 +73,21 @@ import org.opensearch.rest.RestStatus
 import org.opensearch.tasks.Task
 import org.opensearch.transport.TransportService
 import java.lang.Exception
+import java.lang.IllegalArgumentException
 import java.time.Duration
 import java.time.Instant
 
 private val log = LogManager.getLogger(TransportAddPolicyAction::class.java)
 
-@Suppress("SpreadOperator")
+@Suppress("SpreadOperator", "ReturnCount")
 class TransportAddPolicyAction @Inject constructor(
     val client: NodeClient,
     transportService: TransportService,
     actionFilters: ActionFilters,
     val settings: Settings,
     val clusterService: ClusterService,
-    val xContentRegistry: NamedXContentRegistry
+    val xContentRegistry: NamedXContentRegistry,
+    val indexNameExpressionResolver: IndexNameExpressionResolver
 ) : HandledTransportAction<AddPolicyRequest, ISMStatusResponse>(
     AddPolicyAction.NAME, transportService, actionFilters, ::AddPolicyRequest
 ) {
@@ -114,6 +116,7 @@ class TransportAddPolicyAction @Inject constructor(
     ) {
         private lateinit var startTime: Instant
         private lateinit var policy: Policy
+        private val resolvedIndices = mutableListOf<String>()
         private val indicesToAdd = mutableMapOf<String, String>() // uuid: name
         private val failedIndices: MutableList<FailedIndex> = mutableListOf()
 
@@ -121,38 +124,70 @@ class TransportAddPolicyAction @Inject constructor(
             if (!validateUserConfiguration(user, filterByEnabled, actionListener)) {
                 return
             }
+            val requestedIndices = mutableListOf<String>()
+            request.indices.forEach { index ->
+                requestedIndices.addAll(
+                    indexNameExpressionResolver.concreteIndexNames(
+                        clusterService.state(),
+                        IndicesOptions.lenientExpand(),
+                        true,
+                        index
+                    )
+                )
+            }
+            if (requestedIndices.isEmpty()) {
+                // Nothing to do will ignore since found no matching indices
+                actionListener.onResponse(ISMStatusResponse(0, failedIndices))
+                return
+            }
             if (user == null) {
+                resolvedIndices.addAll(requestedIndices)
                 getPolicy()
             } else {
-                validateAndGetPolicy()
+                validateAndGetPolicy(0, requestedIndices)
             }
         }
 
-        private fun validateAndGetPolicy() {
-            val request = ManagedIndexRequest().indices(*request.indices.toTypedArray())
+        /**
+         * We filter the requested indices to the indices user has permission to manage and apply policies only on top of those
+         */
+        private fun validateAndGetPolicy(current: Int, indices: List<String>) {
+            val request = ManagedIndexRequest().indices(indices[current])
             client.execute(
                 ManagedIndexAction.INSTANCE,
                 request,
                 object : ActionListener<AcknowledgedResponse> {
                     override fun onResponse(response: AcknowledgedResponse) {
-                        getPolicy()
+                        resolvedIndices.add(indices[current])
+                        proceed(current, indices)
                     }
 
                     override fun onFailure(e: Exception) {
-                        actionListener.onFailure(
-                            IndexManagementException.wrap(
-                                when (e is OpenSearchSecurityException) {
-                                    true -> OpenSearchStatusException(
-                                        "User doesn't have required index permissions on one or more requested indices: ${e.localizedMessage}",
-                                        RestStatus.FORBIDDEN
-                                    )
-                                    false -> e
-                                }
-                            )
-                        )
+                        when (e is OpenSearchSecurityException) {
+                            true -> {
+                                proceed(current, indices)
+                            }
+                            false -> {
+                                // failing the request for any other exception
+                                actionListener.onFailure(e)
+                            }
+                        }
                     }
                 }
             )
+        }
+
+        private fun proceed(current: Int, indices: List<String>) {
+            if (current < indices.count() - 1) {
+                validateAndGetPolicy(current + 1, indices)
+            } else {
+                // sanity check that there are indices - if none then return
+                if (resolvedIndices.isEmpty()) {
+                    actionListener.onResponse(ISMStatusResponse(0, failedIndices))
+                    return
+                }
+                getPolicy()
+            }
         }
 
         private fun getPolicy() {
@@ -171,7 +206,12 @@ class TransportAddPolicyAction @Inject constructor(
                 actionListener.onFailure(OpenSearchStatusException("Could not find policy=${request.policyID}", RestStatus.NOT_FOUND))
                 return
             }
-            this.policy = parseFromGetResponse(response, xContentRegistry, Policy.Companion::parse)
+            try {
+                this.policy = parseFromGetResponse(response, xContentRegistry, Policy.Companion::parse)
+            } catch (e: IllegalArgumentException) {
+                actionListener.onFailure(OpenSearchStatusException("Could not find policy=${request.policyID}", RestStatus.NOT_FOUND))
+                return
+            }
             if (!userHasPermissionForResource(user, policy.user, filterByEnabled, "policy", request.policyID, actionListener)) {
                 return
             }
@@ -205,7 +245,7 @@ class TransportAddPolicyAction @Inject constructor(
 
             val clusterStateRequest = ClusterStateRequest()
                 .clear()
-                .indices(*request.indices.toTypedArray())
+                .indices(*resolvedIndices.toTypedArray())
                 .metadata(true)
                 .local(false)
                 .waitForTimeout(TimeValue.timeValueMillis(ADD_POLICY_TIMEOUT_IN_MILLIS))

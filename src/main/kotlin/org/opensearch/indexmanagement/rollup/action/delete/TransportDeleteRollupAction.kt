@@ -52,6 +52,7 @@ import org.opensearch.tasks.Task
 import org.opensearch.transport.TransportService
 import java.lang.Exception
 
+@Suppress("ReturnCount")
 class TransportDeleteRollupAction @Inject constructor(
     transportService: TransportService,
     val client: Client,
@@ -84,12 +85,7 @@ class TransportDeleteRollupAction @Inject constructor(
 
         fun start() {
             client.threadPool().threadContext.stashContext().use {
-                if (!filterByEnabled || user == null) {
-                    // security is disabled or filter by is disabled
-                    delete()
-                } else {
-                    getRollup()
-                }
+                getRollup()
             }
         }
 
@@ -104,8 +100,14 @@ class TransportDeleteRollupAction @Inject constructor(
                             return
                         }
 
-                        val rollup: Rollup = parseRollup(response, xContentRegistry)
-                        if (!userHasPermissionForResource(user, rollup.user, filterByEnabled, "rollup", request.id(), actionListener)) {
+                        val rollup: Rollup?
+                        try {
+                            rollup = parseRollup(response, xContentRegistry)
+                        } catch (e: IllegalArgumentException) {
+                            actionListener.onFailure(OpenSearchStatusException("Rollup ${request.id()} is not found", RestStatus.NOT_FOUND))
+                            return
+                        }
+                        if (!userHasPermissionForResource(user, rollup.user, filterByEnabled, "rollup", rollup.id, actionListener)) {
                             return
                         } else {
                             delete()
