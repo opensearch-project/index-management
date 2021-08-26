@@ -60,7 +60,7 @@ class WaitForMoveShardsStep(
                 if (shardId in shardToCheckpointSetMap.keys && !shardToCheckpointSetMap[shardId]!!.equals(checkpoint)) {
                     shardToCheckpointSetMap[shardId]!!.add(checkpoint)
                     val checkPointSet = shardToCheckpointSetMap[shardId]
-                    logger.warn("There are shards with varying local checkpoints for $shardId. The checkpoints are $checkPointSet. Checkpoint set size is ${checkPointSet!!.size}")
+                    logger.warn("There are shards with varying local checkpoints for $shardId. The checkpoints are $checkPointSet.")
                 } else {
                     shardToCheckpointSetMap[shardId] = HashSet()
                     shardToCheckpointSetMap[shardId]!!.add(checkpoint)

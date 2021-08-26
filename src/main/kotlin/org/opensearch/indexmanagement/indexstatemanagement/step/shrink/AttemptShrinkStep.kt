@@ -42,7 +42,7 @@ class AttemptShrinkStep(
 
     override fun isIdempotent() = false
 
-    @Suppress("TooGenericExceptionCaught", "ComplexMethod")
+    @Suppress("TooGenericExceptionCaught", "ComplexMethod", "ReturnCount")
     override suspend fun execute(): AttemptShrinkStep {
         try {
             val healthReq = ClusterHealthRequest().indices(managedIndexMetaData.index).waitForGreenStatus()

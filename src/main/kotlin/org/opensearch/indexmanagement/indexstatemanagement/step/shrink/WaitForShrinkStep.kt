@@ -46,7 +46,7 @@ class WaitForShrinkStep(
 
     override fun isIdempotent() = true
 
-    @Suppress("TooGenericExceptionCaught", "ComplexMethod")
+    @Suppress("TooGenericExceptionCaught", "ComplexMethod", "ReturnCount")
     override suspend fun execute(): WaitForShrinkStep {
         try {
             val targetIndex = managedIndexMetaData.actionMetaData!!.actionProperties!!.shrinkActionProperties!!.targetIndexName!!
@@ -63,7 +63,15 @@ class WaitForShrinkStep(
                 return this
             }
             val allocationSettings = Settings.builder().putNull(AttemptMoveShardsStep.ROUTING_SETTING).build()
-            val response: AcknowledgedResponse = client.admin().indices().suspendUntil { updateSettings(UpdateSettingsRequest(allocationSettings, targetIndex), it) }
+            val response: AcknowledgedResponse = client.admin().indices().suspendUntil {
+                updateSettings(UpdateSettingsRequest(allocationSettings, targetIndex), it)
+            }
+            if (!response.isAcknowledged) {
+                releaseShrinkLock(managedIndexMetaData, context, logger)
+                stepStatus = StepStatus.FAILED
+                info = mapOf("message" to getFailureMessage(managedIndexMetaData.index, targetIndex))
+                return this
+            }
             issueUpdateSettingsRequest(client, managedIndexMetaData, allocationSettings)
             releaseShrinkLock(managedIndexMetaData, context, logger)
             stepStatus = StepStatus.COMPLETED

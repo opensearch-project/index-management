@@ -177,7 +177,11 @@ class AttemptMoveShardsStep(
     }
 
     @SuppressWarnings("NestedBlockDepth")
-    private suspend fun findSuitableNodes(indicesStatsResponse: IndicesStatsResponse, indexSize: Long, buffer: Long): PriorityQueue<Tuple<Long, String>> {
+    private suspend fun findSuitableNodes(
+        indicesStatsResponse: IndicesStatsResponse,
+        indexSize: Long,
+        buffer: Long
+    ): PriorityQueue<Tuple<Long, String>> {
         val nodesStatsReq = NodesStatsRequest().addMetric(OS_METRIC)
         val nodeStatsResponse: NodesStatsResponse = client.admin().cluster().suspendUntil { nodesStats(nodesStatsReq, it) }
         val nodesList = nodeStatsResponse.nodes
@@ -310,7 +314,8 @@ class AttemptMoveShardsStep(
         fun getSuccessMessage(index: String, node: String) = "Successfully started moving the shards of $index to $node."
         fun getReadOnlyFailedMessage(index: String) = "Shrink failed because $index could not be set to read only."
         fun getAllocationFailedMessage(index: String, node: String) = "Shrink failed because the shards of $index could not be moved $node."
-        fun getNoAvailableNodesMessage(index: String) = "There are no available nodes for $index to move to to execute a shrink. Delaying until node becomes available."
+        fun getNoAvailableNodesMessage(index: String) =
+            "There are no available nodes for $index to move to to execute a shrink. Delaying until node becomes available."
         fun getFailureMessage(index: String) = "Shrink failed to start moving shards of $index."
         fun getIndexExistsMessage(index: String, newIndex: String) = "Shrink failed on $index because $newIndex already exists."
         fun getUnsafeFailure(index: String) = "Shrink failed because $index has no replicas and force_unsafe is not set to true."
