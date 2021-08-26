@@ -49,11 +49,9 @@ class WaitForShrinkStep(
     @Suppress("TooGenericExceptionCaught", "ComplexMethod")
     override suspend fun execute(): WaitForShrinkStep {
         try {
-            println("starting wait for shrink")
             val targetIndex = managedIndexMetaData.actionMetaData!!.actionProperties!!.shrinkActionProperties!!.targetIndexName!!
             val targetIndexStatsRequests: IndicesStatsRequest = IndicesStatsRequest().indices(targetIndex)
             val targetStatsResponse: IndicesStatsResponse = client.admin().indices().suspendUntil { stats(targetIndexStatsRequests, it) }
-            println("past wait for shrink stats call")
             var numShardsStarted = 0
             for (shard: ShardStats in targetStatsResponse.shards) {
                 if (shard.shardRouting.started()) {
