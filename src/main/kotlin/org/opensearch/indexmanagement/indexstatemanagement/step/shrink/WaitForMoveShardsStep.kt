@@ -50,7 +50,15 @@ class WaitForMoveShardsStep(
             val indexStatsRequests: IndicesStatsRequest = IndicesStatsRequest().indices(managedIndexMetaData.index)
             val response: IndicesStatsResponse = client.admin().indices().suspendUntil { stats(indexStatsRequests, it) }
             val numPrimaryShards = clusterService.state().metadata.indices[managedIndexMetaData.index].numberOfShards
-            val nodeToMoveOnto = managedIndexMetaData.actionMetaData!!.actionProperties!!.shrinkActionProperties!!.nodeName
+            if ((managedIndexMetaData.actionMetaData?.actionProperties?.shrinkActionProperties == null) ||
+                (managedIndexMetaData.actionMetaData.actionProperties.shrinkActionProperties.nodeName == null)
+            ) {
+                info = mapOf("message" to "Metadata not properly populated")
+                releaseShrinkLock(managedIndexMetaData, context, logger)
+                stepStatus = StepStatus.FAILED
+                return this
+            }
+            val nodeToMoveOnto = managedIndexMetaData.actionMetaData.actionProperties.shrinkActionProperties.nodeName
             var numShardsOnNode = 0
             val shardToCheckpointSetMap: HashMap<ShardId, HashSet<Long>> = HashMap()
             for (shard: ShardStats in response.shards) {
@@ -73,12 +81,12 @@ class WaitForMoveShardsStep(
                 }
             }
             if (numShardsOnNode >= numPrimaryShards) {
-                info = mapOf("message" to getSuccessMessage(managedIndexMetaData.index, nodeToMoveOnto!!))
+                info = mapOf("message" to getSuccessMessage(managedIndexMetaData.index, nodeToMoveOnto))
                 stepStatus = StepStatus.COMPLETED
                 return this
             }
             val numShardsLeft = numPrimaryShards - numShardsOnNode
-            checkTimeOut(numShardsLeft, nodeToMoveOnto!!)
+            checkTimeOut(numShardsLeft, nodeToMoveOnto)
             return this
         } catch (e: RemoteTransportException) {
             releaseShrinkLock(managedIndexMetaData, context, logger)

@@ -28,7 +28,7 @@ data class ShrinkActionProperties(
     }
 
     override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
-        if (nodeName != null) builder.field(ShrinkProperties.SHRINK_NODE_ID.key, nodeName)
+        if (nodeName != null) builder.field(ShrinkProperties.SHRINK_NODE_NAME.key, nodeName)
         if (targetIndexName != null) builder.field(ShrinkProperties.SHRINK_TARGET_INDEX_NAME.key, targetIndexName)
         if (targetNumShards != null) builder.field(ShrinkProperties.SHRINK_TARGET_NUM_SHARDS.key, targetNumShards)
         if (lockSeqNo != null) builder.field(ShrinkProperties.SHRINK_LOCK_SEQ_NO.key, lockSeqNo)
@@ -65,7 +65,7 @@ data class ShrinkActionProperties(
                 xcp.nextToken()
 
                 when (fieldName) {
-                    ShrinkProperties.SHRINK_NODE_ID.key -> nodeName = xcp.text()
+                    ShrinkProperties.SHRINK_NODE_NAME.key -> nodeName = xcp.text()
                     ShrinkProperties.SHRINK_TARGET_INDEX_NAME.key -> targetIndexName = xcp.text()
                     ShrinkProperties.SHRINK_TARGET_NUM_SHARDS.key -> targetNumShards = xcp.intValue()
                     ShrinkProperties.SHRINK_LOCK_PRIMARY_TERM.key -> lockPrimaryTerm = xcp.longValue()
@@ -79,7 +79,7 @@ data class ShrinkActionProperties(
     }
 
     enum class ShrinkProperties(val key: String) {
-        SHRINK_NODE_ID("shrink_node_id"),
+        SHRINK_NODE_NAME("shrink_node_name"),
         SHRINK_TARGET_INDEX_NAME("shrink_target_index_name"),
         SHRINK_TARGET_NUM_SHARDS("shrink_target_num_shards"),
         SHRINK_LOCK_SEQ_NO("shrink_lock_seq_no"),

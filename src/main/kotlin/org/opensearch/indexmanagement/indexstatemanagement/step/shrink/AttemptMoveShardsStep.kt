@@ -68,16 +68,6 @@ class AttemptMoveShardsStep(
     @Suppress("TooGenericExceptionCaught", "ComplexMethod", "ReturnCount")
     override suspend fun execute(): AttemptMoveShardsStep {
         try {
-            // get cluster health
-            val healthReq = ClusterHealthRequest().indices(managedIndexMetaData.index).waitForGreenStatus()
-            val response: ClusterHealthResponse = client.admin().cluster().suspendUntil { health(healthReq, it) }
-            // check status of cluster health
-            if (response.isTimedOut) {
-                info = mapOf("message" to getFailureMessage(managedIndexMetaData.index))
-                stepStatus = StepStatus.CONDITION_NOT_MET
-                return this
-            }
-
             // check whether the target index name is available.
             val indexNameSuffix = config.targetIndexSuffix ?: DEFAULT_TARGET_SUFFIX
             shrinkTargetIndexName = managedIndexMetaData.index + indexNameSuffix
@@ -85,6 +75,16 @@ class AttemptMoveShardsStep(
             if (indexExists) {
                 info = mapOf("message" to getIndexExistsMessage(managedIndexMetaData.index, shrinkTargetIndexName!!))
                 stepStatus = StepStatus.FAILED
+                return this
+            }
+
+            // get cluster health
+            val healthReq = ClusterHealthRequest().indices(managedIndexMetaData.index).waitForGreenStatus()
+            val response: ClusterHealthResponse = client.admin().cluster().suspendUntil { health(healthReq, it) }
+            // check status of cluster health
+            if (response.isTimedOut) {
+                info = mapOf("message" to getFailureMessage(managedIndexMetaData.index))
+                stepStatus = StepStatus.CONDITION_NOT_MET
                 return this
             }
 

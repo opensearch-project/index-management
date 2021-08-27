@@ -49,7 +49,16 @@ class WaitForShrinkStep(
     @Suppress("TooGenericExceptionCaught", "ComplexMethod", "ReturnCount")
     override suspend fun execute(): WaitForShrinkStep {
         try {
-            val targetIndex = managedIndexMetaData.actionMetaData!!.actionProperties!!.shrinkActionProperties!!.targetIndexName!!
+            if ((managedIndexMetaData.actionMetaData?.actionProperties?.shrinkActionProperties == null) ||
+                (managedIndexMetaData.actionMetaData.actionProperties.shrinkActionProperties.targetIndexName == null) ||
+                (managedIndexMetaData.actionMetaData.actionProperties.shrinkActionProperties.targetNumShards == null)
+            ) {
+                info = mapOf("message" to "Metadata not properly populated")
+                releaseShrinkLock(managedIndexMetaData, context, logger)
+                stepStatus = StepStatus.FAILED
+                return this
+            }
+            val targetIndex = managedIndexMetaData.actionMetaData.actionProperties.shrinkActionProperties.targetIndexName
             val targetIndexStatsRequests: IndicesStatsRequest = IndicesStatsRequest().indices(targetIndex)
             val targetStatsResponse: IndicesStatsResponse = client.admin().indices().suspendUntil { stats(targetIndexStatsRequests, it) }
             var numShardsStarted = 0
@@ -58,7 +67,7 @@ class WaitForShrinkStep(
                     numShardsStarted++
                 }
             }
-            if (numShardsStarted < managedIndexMetaData.actionMetaData.actionProperties!!.shrinkActionProperties!!.targetNumShards!!) {
+            if (numShardsStarted < managedIndexMetaData.actionMetaData.actionProperties.shrinkActionProperties.targetNumShards) {
                 checkTimeOut(targetIndex)
                 return this
             }

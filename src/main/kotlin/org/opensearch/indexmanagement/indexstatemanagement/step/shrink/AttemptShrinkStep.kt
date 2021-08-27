@@ -45,6 +45,15 @@ class AttemptShrinkStep(
     @Suppress("TooGenericExceptionCaught", "ComplexMethod", "ReturnCount")
     override suspend fun execute(): AttemptShrinkStep {
         try {
+            if ((managedIndexMetaData.actionMetaData?.actionProperties?.shrinkActionProperties == null) ||
+                (managedIndexMetaData.actionMetaData.actionProperties.shrinkActionProperties.targetIndexName == null) ||
+                (managedIndexMetaData.actionMetaData.actionProperties.shrinkActionProperties.targetNumShards == null)
+            ) {
+                info = mapOf("message" to "Metadata not properly populated")
+                releaseShrinkLock(managedIndexMetaData, context, logger)
+                stepStatus = StepStatus.FAILED
+                return this
+            }
             val healthReq = ClusterHealthRequest().indices(managedIndexMetaData.index).waitForGreenStatus()
             val response: ClusterHealthResponse = client.admin().cluster().suspendUntil { health(healthReq, it) }
             // check status of cluster health
@@ -53,12 +62,12 @@ class AttemptShrinkStep(
                 info = mapOf("message" to getIndexHealthNotGreenMessage(managedIndexMetaData.index))
                 return this
             }
-            val targetIndexName = managedIndexMetaData.actionMetaData!!.actionProperties!!.shrinkActionProperties!!.targetIndexName
+            val targetIndexName = managedIndexMetaData.actionMetaData.actionProperties.shrinkActionProperties.targetIndexName
             val aliases = config.aliases
             val req = ResizeRequest(targetIndexName, managedIndexMetaData.index)
             req.targetIndexRequest.settings(
                 Settings.builder()
-                    .put(INDEX_NUMBER_OF_SHARDS, managedIndexMetaData.actionMetaData.actionProperties!!.shrinkActionProperties!!.targetNumShards!!)
+                    .put(INDEX_NUMBER_OF_SHARDS, managedIndexMetaData.actionMetaData.actionProperties.shrinkActionProperties.targetNumShards)
                     .build()
             )
             aliases?.forEach { req.targetIndexRequest.alias(it) }
@@ -69,7 +78,7 @@ class AttemptShrinkStep(
                 stepStatus = StepStatus.FAILED
                 return this
             }
-            info = mapOf("message" to getSuccessMessage(managedIndexMetaData.index, targetIndexName!!))
+            info = mapOf("message" to getSuccessMessage(managedIndexMetaData.index, targetIndexName))
             stepStatus = StepStatus.COMPLETED
             return this
         } catch (e: RemoteTransportException) {
