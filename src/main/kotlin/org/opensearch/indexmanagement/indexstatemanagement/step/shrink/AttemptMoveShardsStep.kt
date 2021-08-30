@@ -35,8 +35,10 @@ import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmet
 import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.ShrinkActionProperties
 import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.StepMetaData
 import org.opensearch.indexmanagement.indexstatemanagement.step.Step
+import org.opensearch.indexmanagement.indexstatemanagement.util.getShrinkLockModel
 import org.opensearch.indexmanagement.indexstatemanagement.util.issueUpdateSettingsRequest
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
+import org.opensearch.jobscheduler.repackage.com.cronutils.utils.VisibleForTesting
 import org.opensearch.jobscheduler.spi.JobExecutionContext
 import org.opensearch.jobscheduler.spi.LockModel
 import java.lang.Exception
@@ -58,11 +60,7 @@ class AttemptMoveShardsStep(
     private val logger = LogManager.getLogger(javaClass)
     private var stepStatus = StepStatus.STARTING
     private var info: Map<String, Any>? = null
-    private var numTargetShards: Int? = null
-    private var numOriginalShards: Int? = null
-    private var nodeName: String? = null
-    private var shrinkTargetIndexName: String? = null
-    private var lock: LockModel? = null
+    private var shrinkActionProperties: ShrinkActionProperties? = null
     override fun isIdempotent() = true
 
     @Suppress("TooGenericExceptionCaught", "ComplexMethod", "ReturnCount")
@@ -70,7 +68,7 @@ class AttemptMoveShardsStep(
         try {
             // check whether the target index name is available.
             val indexNameSuffix = config.targetIndexSuffix ?: DEFAULT_TARGET_SUFFIX
-            shrinkTargetIndexName = managedIndexMetaData.index + indexNameSuffix
+            val shrinkTargetIndexName = managedIndexMetaData.index + indexNameSuffix
             val indexExists = clusterService.state().metadata.indices.containsKey(shrinkTargetIndexName)
             if (indexExists) {
                 info = mapOf("message" to getIndexExistsMessage(managedIndexMetaData.index, shrinkTargetIndexName!!))
@@ -96,7 +94,7 @@ class AttemptMoveShardsStep(
                 return this
             }
             // Get the number of primary shards in the index -- all will be active because index health is green
-            numOriginalShards = clusterService.state().metadata.indices[managedIndexMetaData.index].numberOfShards
+            val numOriginalShards = clusterService.state().metadata.indices[managedIndexMetaData.index].numberOfShards
             if (numOriginalShards == 1) {
                 info = mapOf("message" to getOnePrimaryShardFailure(managedIndexMetaData.index))
                 stepStatus = StepStatus.FAILED
@@ -110,13 +108,27 @@ class AttemptMoveShardsStep(
             val indexSize = statsResponse.total.getStore()!!.sizeInBytes
 
             // get the number of shards that the target index will have
-            numTargetShards = getNumTargetShards(numOriginalShards!!, indexSize)
+            val numTargetShards = getNumTargetShards(numOriginalShards, indexSize)
+            shrinkActionProperties = ShrinkActionProperties(
+                null,
+                shrinkTargetIndexName,
+                numTargetShards,
+                null,
+                null,
+                null
+            )
 
             // get the nodes with enough memory
-            val suitableNodes = findSuitableNodes(statsResponse, indexSize, bufferPercentage)
+            val suitableNodes = findSuitableNodes(statsResponse, indexSize, bufferPercentage, numOriginalShards)
+            var nodesString = ""
+            for (node in suitableNodes) {
+                nodesString += "\t${node.v2()}\n"
+            }
+            logger.info("The nodes that ${managedIndexMetaData.index} can shrink onto are as follows:\n$nodesString")
             // iterate through the nodes and try to acquire a lock on those nodes
-            lock = acquireLockOnNode(suitableNodes)
+            val lock = acquireLockOnNode(suitableNodes)
             if (lock == null) {
+                logger.info("${managedIndexMetaData.index} could not find available node to shrink onto.")
                 info = mapOf("message" to getNoAvailableNodesMessage(managedIndexMetaData.index))
                 stepStatus = StepStatus.CONDITION_NOT_MET
                 return this
@@ -124,8 +136,16 @@ class AttemptMoveShardsStep(
             // set index to read only
             setToReadOnly()
             // move the shards
-            nodeName = lock!!.resource["node_name"] as String
-            moveIndexToNode(nodeName!!)
+            val nodeName = lock.resource["node_name"] as String
+            shrinkActionProperties = ShrinkActionProperties(
+                nodeName,
+                shrinkActionProperties!!.targetIndexName,
+                shrinkActionProperties!!.targetNumShards,
+                lock.primaryTerm,
+                lock.seqNo,
+                lock.lockTime.epochSecond
+            )
+            moveIndexToNode(nodeName)
             info = mapOf("message" to getSuccessMessage(managedIndexMetaData.index, nodeName!!))
             stepStatus = StepStatus.COMPLETED
             return this
@@ -155,6 +175,14 @@ class AttemptMoveShardsStep(
             }
         } catch (e: Exception) {
             handleException(e, failureMessage)
+            val lock = getShrinkLockModel(
+                shrinkActionProperties?.nodeName!!,
+                context.jobIndexName,
+                context.jobId,
+                shrinkActionProperties?.lockEpochSecond!!,
+                shrinkActionProperties?.lockPrimaryTerm!!,
+                shrinkActionProperties?.lockSeqNo!!
+            )
             context.lockService.suspendUntil<Boolean> { release(lock, it) }
         }
     }
@@ -176,11 +204,12 @@ class AttemptMoveShardsStep(
         return lock
     }
 
-    @SuppressWarnings("NestedBlockDepth")
+    @VisibleForTesting
     private suspend fun findSuitableNodes(
         indicesStatsResponse: IndicesStatsResponse,
         indexSize: Long,
-        buffer: Long
+        buffer: Long,
+        numOriginalShards: Int
     ): PriorityQueue<Tuple<Long, String>> {
         val nodesStatsReq = NodesStatsRequest().addMetric(OS_METRIC)
         val nodeStatsResponse: NodesStatsResponse = client.admin().cluster().suspendUntil { nodesStats(nodesStatsReq, it) }
@@ -219,7 +248,7 @@ class AttemptMoveShardsStep(
                     }
                 }
             }
-            if (movableShardIds.size >= numOriginalShards!!) {
+            if (movableShardIds.size >= numOriginalShards) {
                 suitableNodes.add(sizeNodeTuple)
             }
         }
@@ -286,14 +315,7 @@ class AttemptMoveShardsStep(
         return currentMetaData.copy(
             actionMetaData = currentActionMetaData?.copy(
                 actionProperties = ActionProperties(
-                    shrinkActionProperties = ShrinkActionProperties(
-                        nodeName = nodeName,
-                        targetIndexName = shrinkTargetIndexName,
-                        targetNumShards = numTargetShards,
-                        lockPrimaryTerm = lock?.primaryTerm,
-                        lockSeqNo = lock?.seqNo,
-                        lockEpochSecond = lock?.lockTime?.epochSecond
-                    )
+                    shrinkActionProperties = shrinkActionProperties
                 )
             ),
             stepMetaData = StepMetaData(name, getStepStartTime().toEpochMilli(), stepStatus),

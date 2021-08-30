@@ -49,10 +49,7 @@ class WaitForShrinkStep(
     @Suppress("TooGenericExceptionCaught", "ComplexMethod", "ReturnCount")
     override suspend fun execute(): WaitForShrinkStep {
         try {
-            if ((managedIndexMetaData.actionMetaData?.actionProperties?.shrinkActionProperties == null) ||
-                (managedIndexMetaData.actionMetaData.actionProperties.shrinkActionProperties.targetIndexName == null) ||
-                (managedIndexMetaData.actionMetaData.actionProperties.shrinkActionProperties.targetNumShards == null)
-            ) {
+            if ((managedIndexMetaData.actionMetaData?.actionProperties?.shrinkActionProperties == null)) {
                 info = mapOf("message" to "Metadata not properly populated")
                 releaseShrinkLock(managedIndexMetaData, context, logger)
                 stepStatus = StepStatus.FAILED
@@ -91,7 +88,7 @@ class WaitForShrinkStep(
             info = mapOf(
                 "message" to getFailureMessage(
                     managedIndexMetaData.index,
-                    managedIndexMetaData.actionMetaData!!.actionProperties!!.shrinkActionProperties!!.targetIndexName!!
+                    managedIndexMetaData.actionMetaData!!.actionProperties!!.shrinkActionProperties!!.targetIndexName
                 )
             )
             stepStatus = StepStatus.FAILED

@@ -39,7 +39,7 @@ suspend fun releaseShrinkLock(
     }
 }
 
-private fun getShrinkLockModel(
+public fun getShrinkLockModel(
     managedIndexMetaData: ManagedIndexMetaData,
     context: JobExecutionContext
 ): LockModel {
@@ -57,6 +57,30 @@ private fun getShrinkLockModel(
         false,
         shrinkActionProperties.lockSeqNo!!,
         shrinkActionProperties.lockPrimaryTerm!!
+    )
+}
+
+public fun getShrinkLockModel(
+    nodeName: String,
+    jobIndexName: String,
+    jobId: String,
+    lockEpochSecond: Long,
+    lockPrimaryTerm: Long,
+    lockSeqNo: Long
+): LockModel {
+    val resource: HashMap<String, String> = HashMap()
+    resource[WaitForMoveShardsStep.RESOURCE_NAME] = nodeName
+    val lockCreationInstant: Instant = Instant.ofEpochSecond(lockEpochSecond)
+    return LockModel(
+        jobIndexName,
+        jobId,
+        WaitForMoveShardsStep.RESOURCE_TYPE,
+        resource as Map<String, Any>?,
+        lockCreationInstant,
+        WaitForMoveShardsStep.MOVE_SHARDS_TIMEOUT_IN_SECONDS,
+        false,
+        lockSeqNo,
+        lockPrimaryTerm
     )
 }
 

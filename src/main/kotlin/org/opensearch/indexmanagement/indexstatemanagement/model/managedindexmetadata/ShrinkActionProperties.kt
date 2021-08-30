@@ -10,18 +10,18 @@ import org.opensearch.common.xcontent.XContentParser
 import org.opensearch.common.xcontent.XContentParserUtils
 
 data class ShrinkActionProperties(
-    val nodeName: String? = null,
-    val targetIndexName: String? = null,
-    val targetNumShards: Int? = null,
-    val lockPrimaryTerm: Long? = null,
-    val lockSeqNo: Long? = null,
-    val lockEpochSecond: Long? = null
+    val nodeName: String?,
+    val targetIndexName: String,
+    val targetNumShards: Int,
+    val lockPrimaryTerm: Long?,
+    val lockSeqNo: Long?,
+    val lockEpochSecond: Long?
 ) : Writeable, ToXContentFragment {
 
     override fun writeTo(out: StreamOutput) {
         out.writeOptionalString(nodeName)
-        out.writeOptionalString(targetIndexName)
-        out.writeOptionalInt(targetNumShards)
+        out.writeString(targetIndexName)
+        out.writeInt(targetNumShards)
         out.writeOptionalLong(lockPrimaryTerm)
         out.writeOptionalLong(lockSeqNo)
         out.writeOptionalLong(lockEpochSecond)
@@ -29,8 +29,8 @@ data class ShrinkActionProperties(
 
     override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
         if (nodeName != null) builder.field(ShrinkProperties.SHRINK_NODE_NAME.key, nodeName)
-        if (targetIndexName != null) builder.field(ShrinkProperties.SHRINK_TARGET_INDEX_NAME.key, targetIndexName)
-        if (targetNumShards != null) builder.field(ShrinkProperties.SHRINK_TARGET_NUM_SHARDS.key, targetNumShards)
+        builder.field(ShrinkProperties.SHRINK_TARGET_INDEX_NAME.key, targetIndexName)
+        builder.field(ShrinkProperties.SHRINK_TARGET_NUM_SHARDS.key, targetNumShards)
         if (lockSeqNo != null) builder.field(ShrinkProperties.SHRINK_LOCK_SEQ_NO.key, lockSeqNo)
         if (lockPrimaryTerm != null) builder.field(ShrinkProperties.SHRINK_LOCK_PRIMARY_TERM.key, lockPrimaryTerm)
         if (lockEpochSecond != null) builder.field(ShrinkProperties.SHRINK_LOCK_EPOCH_SECOND.key, lockEpochSecond)
@@ -42,8 +42,8 @@ data class ShrinkActionProperties(
 
         fun fromStreamInput(si: StreamInput): ShrinkActionProperties {
             val nodeName: String? = si.readOptionalString()
-            val targetIndexName: String? = si.readOptionalString()
-            val targetNumShards: Int? = si.readOptionalInt()
+            val targetIndexName: String = si.readString()
+            val targetNumShards: Int = si.readInt()
             val lockPrimaryTerm: Long? = si.readOptionalLong()
             val lockSeqNo: Long? = si.readOptionalLong()
             val lockEpochSecond: Long? = si.readOptionalLong()
@@ -74,7 +74,14 @@ data class ShrinkActionProperties(
                 }
             }
 
-            return ShrinkActionProperties(nodeName, targetIndexName, targetNumShards, lockPrimaryTerm, lockSeqNo, lockEpochSecond)
+            return ShrinkActionProperties(
+                nodeName,
+                requireNotNull(targetIndexName),
+                requireNotNull(targetNumShards),
+                lockPrimaryTerm,
+                lockSeqNo,
+                lockEpochSecond
+            )
         }
     }
 
