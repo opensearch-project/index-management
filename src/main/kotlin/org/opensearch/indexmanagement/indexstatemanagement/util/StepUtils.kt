@@ -39,7 +39,7 @@ suspend fun releaseShrinkLock(
     }
 }
 
-public fun getShrinkLockModel(
+fun getShrinkLockModel(
     managedIndexMetaData: ManagedIndexMetaData,
     context: JobExecutionContext
 ): LockModel {
@@ -60,7 +60,8 @@ public fun getShrinkLockModel(
     )
 }
 
-public fun getShrinkLockModel(
+@SuppressWarnings("LongParameterList")
+fun getShrinkLockModel(
     nodeName: String,
     jobIndexName: String,
     jobId: String,

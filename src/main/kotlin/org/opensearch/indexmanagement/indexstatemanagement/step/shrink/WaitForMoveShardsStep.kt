@@ -44,7 +44,7 @@ class WaitForMoveShardsStep(
 
     override fun isIdempotent() = true
 
-    @Suppress("TooGenericExceptionCaught", "ComplexMethod")
+    @Suppress("TooGenericExceptionCaught", "ComplexMethod", "ReturnCount")
     override suspend fun execute(): WaitForMoveShardsStep {
         try {
             val indexStatsRequests: IndicesStatsRequest = IndicesStatsRequest().indices(managedIndexMetaData.index)

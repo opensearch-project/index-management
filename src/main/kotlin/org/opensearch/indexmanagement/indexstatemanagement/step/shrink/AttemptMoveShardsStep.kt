@@ -63,7 +63,7 @@ class AttemptMoveShardsStep(
     private var shrinkActionProperties: ShrinkActionProperties? = null
     override fun isIdempotent() = true
 
-    @Suppress("TooGenericExceptionCaught", "ComplexMethod", "ReturnCount")
+    @Suppress("TooGenericExceptionCaught", "ComplexMethod", "ReturnCount", "LongMethod")
     override suspend fun execute(): AttemptMoveShardsStep {
         try {
             // check whether the target index name is available.
@@ -205,6 +205,7 @@ class AttemptMoveShardsStep(
     }
 
     @VisibleForTesting
+    @SuppressWarnings("NestedBlockDepth")
     private suspend fun findSuitableNodes(
         indicesStatsResponse: IndicesStatsResponse,
         indexSize: Long,
