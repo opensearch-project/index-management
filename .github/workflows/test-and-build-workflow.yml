@@ -50,6 +50,16 @@ jobs:
       - name: Build job-scheduler
         working-directory: ./job-scheduler
         run: ./gradlew publishToMavenLocal -Dopensearch.version=1.1.0-SNAPSHOT
+      # dependencies: alerting-notification
+      - name: Checkout alerting
+        uses: actions/checkout@v2
+        with:
+          repository: 'opensearch-project/alerting'
+          path: alerting
+          ref: 'main'
+      - name: Build alerting
+        working-directory: ./alerting
+        run: ./gradlew :alerting-notification:publishToMavenLocal -Dopensearch.version=1.1.0-SNAPSHOT
       # build index management
       - name: Checkout Branch
         uses: actions/checkout@v2

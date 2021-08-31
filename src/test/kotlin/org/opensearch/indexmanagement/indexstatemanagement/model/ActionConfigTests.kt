@@ -37,17 +37,13 @@ import org.opensearch.indexmanagement.indexstatemanagement.model.action.ActionCo
 import org.opensearch.indexmanagement.indexstatemanagement.model.action.ActionRetry
 import org.opensearch.indexmanagement.indexstatemanagement.model.action.ActionTimeout
 import org.opensearch.indexmanagement.indexstatemanagement.model.action.IndexPriorityActionConfig
-import org.opensearch.indexmanagement.indexstatemanagement.model.action.NotificationActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomAllocationActionConfig
-import org.opensearch.indexmanagement.indexstatemanagement.randomChannel
-import org.opensearch.indexmanagement.indexstatemanagement.randomDestination
 import org.opensearch.indexmanagement.indexstatemanagement.randomForceMergeActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomIndexPriorityActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomNotificationActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomReplicaCountActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomRolloverActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomSnapshotActionConfig
-import org.opensearch.indexmanagement.indexstatemanagement.randomTemplateScript
 import org.opensearch.indexmanagement.indexstatemanagement.randomTimeValueObject
 import org.opensearch.indexmanagement.opensearchapi.string
 import org.opensearch.test.OpenSearchTestCase
@@ -90,12 +86,6 @@ class ActionConfigTests : OpenSearchTestCase() {
     fun `test allocation action empty parameters fails`() {
         assertFailsWith(IllegalArgumentException::class, "Expected IllegalArgumentException for empty parameters") {
             randomAllocationActionConfig()
-        }
-    }
-
-    fun `test notification having both channel and destination fails`() {
-        assertFailsWith(IllegalArgumentException::class, "Expected IllegalArgumentException for notification using both destination and channel") {
-            NotificationActionConfig(destination = randomDestination(), channel = randomChannel(), messageTemplate = randomTemplateScript(), index = 0)
         }
     }
 

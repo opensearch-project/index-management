@@ -40,31 +40,26 @@ import org.opensearch.common.xcontent.XContentParserUtils.ensureExpectedToken
 import org.opensearch.indexmanagement.indexstatemanagement.action.Action
 import org.opensearch.indexmanagement.indexstatemanagement.action.NotificationAction
 import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
-import org.opensearch.indexmanagement.indexstatemanagement.model.destination.Channel
 import org.opensearch.indexmanagement.indexstatemanagement.model.destination.Destination
 import org.opensearch.script.Script
 import org.opensearch.script.ScriptService
 import java.io.IOException
 
 data class NotificationActionConfig(
-    val destination: Destination?,
-    val channel: Channel?,
+    val destination: Destination,
     val messageTemplate: Script,
     val index: Int
 ) : ToXContentObject, ActionConfig(ActionType.NOTIFICATION, index) {
 
     init {
-        require(destination != null || channel != null) { "Notification must contain a destination or channel" }
-        require(destination == null || channel == null) { "Notification can only contain a single destination or channel" }
         require(messageTemplate.lang == MUSTACHE) { "Notification message template must be a mustache script" }
     }
 
     override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
         builder.startObject()
         super.toXContent(builder, params).startObject(ActionType.NOTIFICATION.type)
-        if (destination != null) builder.field(DESTINATION_FIELD, destination)
-        if (channel != null) builder.field(CHANNEL_FIELD, channel)
-        builder.field(MESSAGE_TEMPLATE_FIELD, messageTemplate)
+        builder.field(DESTINATION_FIELD, destination)
+            .field(MESSAGE_TEMPLATE_FIELD, messageTemplate)
             .endObject()
             .endObject()
         return builder
@@ -82,8 +77,7 @@ data class NotificationActionConfig(
 
     @Throws(IOException::class)
     constructor(sin: StreamInput) : this(
-        destination = sin.readOptionalWriteable(::Destination),
-        channel = sin.readOptionalWriteable(::Channel),
+        destination = Destination(sin),
         messageTemplate = Script(sin),
         index = sin.readInt()
     )
@@ -91,15 +85,13 @@ data class NotificationActionConfig(
     @Throws(IOException::class)
     override fun writeTo(out: StreamOutput) {
         super.writeTo(out)
-        out.writeOptionalWriteable(destination)
-        out.writeOptionalWriteable(channel)
+        destination.writeTo(out)
         messageTemplate.writeTo(out)
         out.writeInt(index)
     }
 
     companion object {
         const val DESTINATION_FIELD = "destination"
-        const val CHANNEL_FIELD = "channel"
         const val MESSAGE_TEMPLATE_FIELD = "message_template"
         const val MUSTACHE = "mustache"
 
@@ -107,7 +99,6 @@ data class NotificationActionConfig(
         @Throws(IOException::class)
         fun parse(xcp: XContentParser, index: Int): NotificationActionConfig {
             var destination: Destination? = null
-            var channel: Channel? = null
             var messageTemplate: Script? = null
 
             ensureExpectedToken(Token.START_OBJECT, xcp.currentToken(), xcp)
@@ -117,15 +108,13 @@ data class NotificationActionConfig(
 
                 when (fieldName) {
                     DESTINATION_FIELD -> destination = Destination.parse(xcp)
-                    CHANNEL_FIELD -> channel = Channel.parse(xcp)
                     MESSAGE_TEMPLATE_FIELD -> messageTemplate = Script.parse(xcp, Script.DEFAULT_TEMPLATE_LANG)
                     else -> throw IllegalArgumentException("Invalid field: [$fieldName] found in NotificationActionConfig.")
                 }
             }
 
             return NotificationActionConfig(
-                destination = destination,
-                channel = channel,
+                destination = requireNotNull(destination) { "NotificationActionConfig destination is null" },
                 messageTemplate = requireNotNull(messageTemplate) { "NotificationActionConfig message template is null" },
                 index = index
             )

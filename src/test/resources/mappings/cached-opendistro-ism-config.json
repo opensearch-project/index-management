@@ -118,13 +118,6 @@
                 }
               }
             },
-            "channel": {
-              "properties": {
-                "id": {
-                  "type": "keyword"
-                }
-              }
-            },
             "message_template": {
               "type": "object",
               "enabled": false
@@ -305,13 +298,6 @@
                               "type": "text"
                             }
                           }
-                        }
-                      }
-                    },
-                    "channel": {
-                      "properties": {
-                        "id": {
-                          "type": "keyword"
                         }
                       }
                     },

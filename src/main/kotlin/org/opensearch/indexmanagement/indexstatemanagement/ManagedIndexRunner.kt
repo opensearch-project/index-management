@@ -62,7 +62,6 @@ import org.opensearch.index.seqno.SequenceNumbers
 import org.opensearch.indexmanagement.IndexManagementIndices
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
 import org.opensearch.indexmanagement.indexstatemanagement.action.Action
-import org.opensearch.indexmanagement.indexstatemanagement.model.ErrorNotification
 import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexConfig
 import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
@@ -94,8 +93,6 @@ import org.opensearch.indexmanagement.indexstatemanagement.util.isSafeToChange
 import org.opensearch.indexmanagement.indexstatemanagement.util.isSuccessfulDelete
 import org.opensearch.indexmanagement.indexstatemanagement.util.managedIndexConfigIndexRequest
 import org.opensearch.indexmanagement.indexstatemanagement.util.managedIndexMetadataIndexRequest
-import org.opensearch.indexmanagement.indexstatemanagement.util.publishLegacyNotification
-import org.opensearch.indexmanagement.indexstatemanagement.util.sendNotification
 import org.opensearch.indexmanagement.indexstatemanagement.util.shouldBackoff
 import org.opensearch.indexmanagement.indexstatemanagement.util.shouldChangePolicy
 import org.opensearch.indexmanagement.indexstatemanagement.util.updateDisableManagedIndexRequest
@@ -372,14 +369,8 @@ object ManagedIndexRunner :
 
             if (executedManagedIndexMetaData.isFailed) {
                 try {
-                    withClosableContext(
-                        IndexManagementSecurityContext(
-                            managedIndexConfig.id, settings, threadPool.threadContext, managedIndexConfig.policy.user
-                        )
-                    ) {
-                        // if the policy has no error_notification this will do nothing otherwise it will try to send the configured error message
-                        publishErrorNotification(policy, executedManagedIndexMetaData)
-                    }
+                    // if the policy has no error_notification this will do nothing otherwise it will try to send the configured error message
+                    publishErrorNotification(policy, executedManagedIndexMetaData)
                 } catch (e: Exception) {
                     logger.error("Failed to publish error notification", e)
                     val errorMessage = e.message ?: "Failed to publish error notification"
@@ -740,9 +731,9 @@ object ManagedIndexRunner :
     private suspend fun publishErrorNotification(policy: Policy, managedIndexMetaData: ManagedIndexMetaData) {
         policy.errorNotification?.run {
             errorNotificationRetryPolicy.retry(logger) {
-                val compiledMessage = compileTemplate(messageTemplate, managedIndexMetaData)
-                destination?.buildLegacyBaseMessage(null, compiledMessage)?.publishLegacyNotification(client, threadPool.threadContext)
-                channel?.sendNotification(client, ErrorNotification.CHANNEL_TITLE, managedIndexMetaData, compiledMessage)
+                withContext(Dispatchers.IO) {
+                    destination.publish(null, compileTemplate(messageTemplate, managedIndexMetaData), hostDenyList)
+                }
             }
         }
     }

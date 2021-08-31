@@ -27,6 +27,8 @@
 @file:JvmName("ManagedIndexUtils")
 package org.opensearch.indexmanagement.indexstatemanagement.util
 
+import inet.ipaddr.IPAddressString
+import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.opensearch.action.DocWriteRequest
 import org.opensearch.action.delete.DeleteRequest
@@ -34,6 +36,7 @@ import org.opensearch.action.index.IndexRequest
 import org.opensearch.action.search.SearchRequest
 import org.opensearch.action.support.WriteRequest
 import org.opensearch.action.update.UpdateRequest
+import org.opensearch.alerting.destination.message.BaseMessage
 import org.opensearch.client.Client
 import org.opensearch.cluster.metadata.IndexMetadata
 import org.opensearch.cluster.service.ClusterService
@@ -69,6 +72,7 @@ import org.opensearch.indexmanagement.opensearchapi.optionalTimeField
 import org.opensearch.jobscheduler.spi.schedule.IntervalSchedule
 import org.opensearch.script.ScriptService
 import org.opensearch.search.builder.SearchSourceBuilder
+import java.net.InetAddress
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 
@@ -590,4 +594,18 @@ fun isMetadataMoved(
         }
     }
     return true
+}
+
+private val baseMessageLogger = LogManager.getLogger(BaseMessage::class.java)
+
+fun BaseMessage.isHostInDenylist(networks: List<String>): Boolean {
+    val ipStr = IPAddressString(this.uri.host)
+    for (network in networks) {
+        val netStr = IPAddressString(network)
+        if (netStr.contains(ipStr)) {
+            baseMessageLogger.error("Host: {} resolves to: {} which is in denylist: {}.", uri.host, InetAddress.getByName(uri.host), netStr)
+            return true
+        }
+    }
+    return false
 }
