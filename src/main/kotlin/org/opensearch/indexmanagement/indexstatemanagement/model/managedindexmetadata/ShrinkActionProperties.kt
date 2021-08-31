@@ -19,7 +19,7 @@ data class ShrinkActionProperties(
 ) : Writeable, ToXContentFragment {
 
     override fun writeTo(out: StreamOutput) {
-        out.writeOptionalString(nodeName)
+        out.writeString(nodeName)
         out.writeString(targetIndexName)
         out.writeInt(targetNumShards)
         out.writeLong(lockPrimaryTerm)
