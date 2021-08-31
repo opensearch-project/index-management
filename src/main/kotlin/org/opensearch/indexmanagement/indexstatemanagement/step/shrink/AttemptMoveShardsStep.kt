@@ -35,6 +35,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmet
 import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.ShrinkActionProperties
 import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.StepMetaData
 import org.opensearch.indexmanagement.indexstatemanagement.step.Step
+import org.opensearch.indexmanagement.indexstatemanagement.util.getActionStartTime
 import org.opensearch.indexmanagement.indexstatemanagement.util.getShrinkLockModel
 import org.opensearch.indexmanagement.indexstatemanagement.util.issueUpdateSettingsRequest
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
@@ -42,6 +43,8 @@ import org.opensearch.jobscheduler.repackage.com.cronutils.utils.VisibleForTesti
 import org.opensearch.jobscheduler.spi.JobExecutionContext
 import org.opensearch.jobscheduler.spi.LockModel
 import java.lang.Exception
+import java.time.Duration
+import java.time.Instant
 import java.util.PriorityQueue
 import kotlin.collections.HashMap
 import kotlin.math.ceil
@@ -66,12 +69,13 @@ class AttemptMoveShardsStep(
     @Suppress("TooGenericExceptionCaught", "ComplexMethod", "ReturnCount", "LongMethod")
     override suspend fun execute(): AttemptMoveShardsStep {
         try {
+            checkTimeOut()
             // check whether the target index name is available.
             val indexNameSuffix = config.targetIndexSuffix ?: DEFAULT_TARGET_SUFFIX
             val shrinkTargetIndexName = managedIndexMetaData.index + indexNameSuffix
             val indexExists = clusterService.state().metadata.indices.containsKey(shrinkTargetIndexName)
             if (indexExists) {
-                info = mapOf("message" to getIndexExistsMessage(managedIndexMetaData.index, shrinkTargetIndexName!!))
+                info = mapOf("message" to getIndexExistsMessage(managedIndexMetaData.index, shrinkTargetIndexName))
                 stepStatus = StepStatus.FAILED
                 return this
             }
@@ -146,7 +150,7 @@ class AttemptMoveShardsStep(
                 lock.lockTime.epochSecond
             )
             moveIndexToNode(nodeName)
-            info = mapOf("message" to getSuccessMessage(managedIndexMetaData.index, nodeName!!))
+            info = mapOf("message" to getSuccessMessage(managedIndexMetaData.index, nodeName))
             stepStatus = StepStatus.COMPLETED
             return this
         } catch (e: Exception) {
@@ -325,6 +329,16 @@ class AttemptMoveShardsStep(
         )
     }
 
+    private fun checkTimeOut() {
+        val timeFromActionStarted: Duration = Duration.between(getActionStartTime(managedIndexMetaData), Instant.now())
+        val timeOutInSeconds = config.configTimeout?.timeout?.seconds ?: WaitForMoveShardsStep.MOVE_SHARDS_TIMEOUT_IN_SECONDS
+        // Get ActionTimeout if given, otherwise use default timeout of 12 hours
+        if (timeFromActionStarted.toSeconds() > timeOutInSeconds) {
+            info = mapOf("message" to getTimeoutMessage())
+            stepStatus = StepStatus.FAILED
+        }
+    }
+
     companion object {
         const val OS_METRIC = "os"
         const val ROUTING_SETTING = "index.routing.allocation.require._name"
@@ -334,6 +348,7 @@ class AttemptMoveShardsStep(
         const val MOVE_SHARDS_TIMEOUT_IN_SECONDS = 43200L // 12hrs in seconds
         const val name = "attempt_move_shards_step"
         const val RESOURCE_TYPE = "shrink"
+        fun getTimeoutMessage() = "Timed out waiting for finding node."
         fun getSuccessMessage(index: String, node: String) = "Successfully started moving the shards of $index to $node."
         fun getReadOnlyFailedMessage(index: String) = "Shrink failed because $index could not be set to read only."
         fun getAllocationFailedMessage(index: String, node: String) = "Shrink failed because the shards of $index could not be moved $node."
