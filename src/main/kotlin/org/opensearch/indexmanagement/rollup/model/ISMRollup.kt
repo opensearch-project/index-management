@@ -26,7 +26,6 @@
 
 package org.opensearch.indexmanagement.rollup.model
 
-import org.apache.commons.codec.digest.DigestUtils
 import org.opensearch.common.io.stream.StreamInput
 import org.opensearch.common.io.stream.StreamOutput
 import org.opensearch.common.io.stream.Writeable
@@ -43,6 +42,7 @@ import org.opensearch.indexmanagement.common.model.dimension.Histogram
 import org.opensearch.indexmanagement.common.model.dimension.Terms
 import org.opensearch.indexmanagement.util.IndexUtils
 import org.opensearch.jobscheduler.spi.schedule.IntervalSchedule
+import org.opensearch.notification.repackage.org.apache.commons.codec.digest.DigestUtils
 import java.io.IOException
 import java.time.Instant
 import java.time.temporal.ChronoUnit
