@@ -38,7 +38,6 @@ import org.opensearch.indexmanagement.indexstatemanagement.step.Step
 import org.opensearch.indexmanagement.indexstatemanagement.util.getActionStartTime
 import org.opensearch.indexmanagement.indexstatemanagement.util.getShrinkLockModel
 import org.opensearch.indexmanagement.indexstatemanagement.util.issueUpdateSettingsRequest
-import org.opensearch.indexmanagement.indexstatemanagement.util.releaseShrinkLock
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.jobscheduler.repackage.com.cronutils.utils.VisibleForTesting
 import org.opensearch.jobscheduler.spi.JobExecutionContext
@@ -46,7 +45,7 @@ import org.opensearch.jobscheduler.spi.LockModel
 import java.lang.Exception
 import java.time.Duration
 import java.time.Instant
-import java.util.*
+import java.util.PriorityQueue
 import kotlin.collections.ArrayList
 import kotlin.collections.HashMap
 import kotlin.collections.HashSet
@@ -194,7 +193,7 @@ class AttemptMoveShardsStep(
     }
 
     @VisibleForTesting
-    @SuppressWarnings("NestedBlockDepth")
+    @SuppressWarnings("NestedBlockDepth", "ComplexMethod")
     private suspend fun findSuitableNodes(
         indicesStatsResponse: IndicesStatsResponse,
         indexSize: Long,
@@ -339,7 +338,7 @@ class AttemptMoveShardsStep(
         fun getTimeoutMessage() = "Timed out waiting for finding node."
         fun getSuccessMessage(node: String) = "Successfully started moving the shards to $node."
         fun getUpdateFailedMessage() = "Shrink failed because settings could not be updated.."
-       fun getNoAvailableNodesMessage() =
+        fun getNoAvailableNodesMessage() =
             "There are no available nodes for to move to to execute a shrink. Delaying until node becomes available."
         fun getFailureMessage() = "Shrink failed to start moving shards."
         fun getIndexExistsMessage(newIndex: String) = "Shrink failed because $newIndex already exists."

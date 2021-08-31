@@ -119,7 +119,7 @@ class WaitForMoveShardsStep(
         stepStatus = if (timeFromActionStarted.toSeconds() > timeOutInSeconds) {
             logger.debug(
                 "Move shards failing on [$indexName] because" +
-                        " [$numShardsLeft] shards still needing to be moved"
+                    " [$numShardsLeft] shards still needing to be moved"
             )
             if (managedIndexMetaData.actionMetaData?.actionProperties?.shrinkActionProperties != null) {
                 releaseShrinkLock(managedIndexMetaData.actionMetaData.actionProperties.shrinkActionProperties, context, logger)

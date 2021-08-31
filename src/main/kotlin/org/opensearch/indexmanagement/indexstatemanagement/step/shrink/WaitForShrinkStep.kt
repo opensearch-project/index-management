@@ -46,7 +46,7 @@ class WaitForShrinkStep(
 
     override fun isIdempotent() = true
 
-    @Suppress("TooGenericExceptionCaught", "ComplexMethod", "ReturnCount")
+    @Suppress("TooGenericExceptionCaught", "ComplexMethod", "ReturnCount", "LongMethod")
     override suspend fun execute(): WaitForShrinkStep {
         try {
             if ((managedIndexMetaData.actionMetaData?.actionProperties?.shrinkActionProperties == null)) {
@@ -93,7 +93,7 @@ class WaitForShrinkStep(
             }
             stepStatus = StepStatus.FAILED
             return this
-        }  catch (e: Exception) {
+        } catch (e: Exception) {
             if (managedIndexMetaData.actionMetaData?.actionProperties?.shrinkActionProperties != null) {
                 releaseShrinkLock(
                     managedIndexMetaData.actionMetaData.actionProperties.shrinkActionProperties,
