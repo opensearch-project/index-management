@@ -64,6 +64,7 @@ class AttemptShrinkStep(
             val req = ResizeRequest(targetIndexName, managedIndexMetaData.index)
             req.targetIndexRequest.settings(
                 Settings.builder()
+                    .put(AttemptMoveShardsStep.ROUTING_SETTING, managedIndexMetaData.actionMetaData.actionProperties.shrinkActionProperties.nodeName)
                     .put(INDEX_NUMBER_OF_SHARDS, managedIndexMetaData.actionMetaData.actionProperties.shrinkActionProperties.targetNumShards)
                     .build()
             )

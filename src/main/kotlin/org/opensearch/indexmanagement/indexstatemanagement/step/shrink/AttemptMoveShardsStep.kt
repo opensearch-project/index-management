@@ -94,7 +94,8 @@ class AttemptMoveShardsStep(
 
             // force_unsafe check
             val numReplicas = clusterService.state().metadata.indices[managedIndexMetaData.index].numberOfReplicas
-            if (config.forceUnsafe != null && !config.forceUnsafe && numReplicas == 0) {
+            val shouldFailForceUnsafeCheck = numReplicas == 0 && ((config.forceUnsafe != null && !config.forceUnsafe) || (config.forceUnsafe == null))
+            if (shouldFailForceUnsafeCheck) {
                 info = mapOf("message" to getUnsafeFailure())
                 stepStatus = StepStatus.FAILED
                 return this
