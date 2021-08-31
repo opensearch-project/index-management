@@ -51,7 +51,6 @@ class WaitForShrinkStep(
         try {
             if ((managedIndexMetaData.actionMetaData?.actionProperties?.shrinkActionProperties == null)) {
                 info = mapOf("message" to "Metadata not properly populated")
-                releaseShrinkLock(managedIndexMetaData, context, logger)
                 stepStatus = StepStatus.FAILED
                 return this
             }
@@ -73,24 +72,38 @@ class WaitForShrinkStep(
                 updateSettings(UpdateSettingsRequest(allocationSettings, targetIndex), it)
             }
             if (!response.isAcknowledged) {
-                releaseShrinkLock(managedIndexMetaData, context, logger)
+                releaseShrinkLock(managedIndexMetaData.actionMetaData.actionProperties.shrinkActionProperties, context, logger)
                 stepStatus = StepStatus.FAILED
-                info = mapOf("message" to getFailureMessage(managedIndexMetaData.index, targetIndex))
+                info = mapOf("message" to getFailureMessage(targetIndex))
                 return this
             }
             issueUpdateSettingsRequest(client, managedIndexMetaData, allocationSettings)
-            releaseShrinkLock(managedIndexMetaData, context, logger)
+            releaseShrinkLock(managedIndexMetaData.actionMetaData.actionProperties.shrinkActionProperties, context, logger)
             stepStatus = StepStatus.COMPLETED
-            info = mapOf("message" to getSuccessMessage(managedIndexMetaData.index))
+            info = mapOf("message" to getSuccessMessage())
             return this
         } catch (e: RemoteTransportException) {
-            releaseShrinkLock(managedIndexMetaData, context, logger)
-            info = mapOf(
-                "message" to getFailureMessage(
-                    managedIndexMetaData.index,
-                    managedIndexMetaData.actionMetaData!!.actionProperties!!.shrinkActionProperties!!.targetIndexName
+            if (managedIndexMetaData.actionMetaData?.actionProperties?.shrinkActionProperties != null) {
+                releaseShrinkLock(managedIndexMetaData.actionMetaData.actionProperties.shrinkActionProperties, context, logger)
+                info = mapOf(
+                    "message" to getFailureMessage(
+                        managedIndexMetaData.actionMetaData.actionProperties.shrinkActionProperties.targetIndexName
+                    )
                 )
-            )
+            }
+            stepStatus = StepStatus.FAILED
+            return this
+        }  catch (e: Exception) {
+            if (managedIndexMetaData.actionMetaData?.actionProperties?.shrinkActionProperties != null) {
+                releaseShrinkLock(
+                    managedIndexMetaData.actionMetaData.actionProperties.shrinkActionProperties,
+                    context,
+                    logger
+                )
+                info = mapOf("message" to getGenericFailureMessage(), "cause" to "{${e.message}}")
+            } else {
+                info = mapOf("message" to getGenericFailureMessage(), "cause" to "{${e.message}}")
+            }
             stepStatus = StepStatus.FAILED
             return this
         }
@@ -104,14 +117,16 @@ class WaitForShrinkStep(
             logger.error(
                 "Shards of ${managedIndexMetaData.index} have still not started."
             )
-            releaseShrinkLock(managedIndexMetaData, context, logger)
-            info = mapOf("message" to getFailureMessage(managedIndexMetaData.index, targetIndex))
+            if (managedIndexMetaData.actionMetaData?.actionProperties?.shrinkActionProperties != null) {
+                releaseShrinkLock(managedIndexMetaData.actionMetaData.actionProperties.shrinkActionProperties, context, logger)
+            }
+            info = mapOf("message" to getFailureMessage(targetIndex))
             StepStatus.FAILED
         } else {
             logger.debug(
                 "Shards of ${managedIndexMetaData.index} have still not started."
             )
-            info = mapOf("message" to getDelayedMessage(managedIndexMetaData.index, targetIndex))
+            info = mapOf("message" to getDelayedMessage(targetIndex))
             StepStatus.CONDITION_NOT_MET
         }
     }
@@ -130,8 +145,9 @@ class WaitForShrinkStep(
 
     companion object {
         const val name = "wait_for_shrink_step"
-        fun getSuccessMessage(index: String) = "Shrink finished successfully on $index."
-        fun getDelayedMessage(index: String, newIndex: String) = "Shrink delayed for $index because $newIndex shards not in started state."
-        fun getFailureMessage(index: String, newIndex: String) = "Shrink failed for $index while waiting for $newIndex shards to start."
+        fun getSuccessMessage() = "Shrink finished successfully."
+        fun getDelayedMessage(newIndex: String) = "Shrink delayed because $newIndex shards not in started state."
+        fun getFailureMessage(newIndex: String) = "Shrink failed while waiting for $newIndex shards to start."
+        fun getGenericFailureMessage() = "Shrink failed while waiting for shards to start."
     }
 }

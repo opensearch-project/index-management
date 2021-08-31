@@ -28,6 +28,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.util.releaseShrinkLoc
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.jobscheduler.spi.JobExecutionContext
 import org.opensearch.transport.RemoteTransportException
+import java.lang.Exception
 
 class AttemptShrinkStep(
     val clusterService: ClusterService,
@@ -47,7 +48,6 @@ class AttemptShrinkStep(
         try {
             if ((managedIndexMetaData.actionMetaData?.actionProperties?.shrinkActionProperties == null)) {
                 info = mapOf("message" to "Metadata not properly populated")
-                releaseShrinkLock(managedIndexMetaData, context, logger)
                 stepStatus = StepStatus.FAILED
                 return this
             }
@@ -56,7 +56,7 @@ class AttemptShrinkStep(
             // check status of cluster health
             if (response.isTimedOut) {
                 stepStatus = StepStatus.CONDITION_NOT_MET
-                info = mapOf("message" to getIndexHealthNotGreenMessage(managedIndexMetaData.index))
+                info = mapOf("message" to getIndexHealthNotGreenMessage())
                 return this
             }
             val targetIndexName = managedIndexMetaData.actionMetaData.actionProperties.shrinkActionProperties.targetIndexName
@@ -70,17 +70,30 @@ class AttemptShrinkStep(
             aliases?.forEach { req.targetIndexRequest.alias(it) }
             val resizeResponse: ResizeResponse = client.admin().indices().suspendUntil { resizeIndex(req, it) }
             if (!resizeResponse.isAcknowledged) {
-                info = mapOf("message" to getFailureMessage(managedIndexMetaData.index))
-                releaseShrinkLock(managedIndexMetaData, context, logger)
+                info = mapOf("message" to getFailureMessage())
+                releaseShrinkLock(managedIndexMetaData.actionMetaData.actionProperties.shrinkActionProperties, context, logger)
                 stepStatus = StepStatus.FAILED
                 return this
             }
-            info = mapOf("message" to getSuccessMessage(managedIndexMetaData.index, targetIndexName))
+            info = mapOf("message" to getSuccessMessage(targetIndexName))
             stepStatus = StepStatus.COMPLETED
             return this
         } catch (e: RemoteTransportException) {
-            info = mapOf("message" to getFailureMessage(managedIndexMetaData.index))
-            releaseShrinkLock(managedIndexMetaData, context, logger)
+            info = mapOf("message" to getFailureMessage())
+            if (managedIndexMetaData.actionMetaData?.actionProperties?.shrinkActionProperties != null) {
+                releaseShrinkLock(managedIndexMetaData.actionMetaData.actionProperties.shrinkActionProperties, context, logger)
+            }
+            stepStatus = StepStatus.FAILED
+            return this
+        } catch (e: Exception) {
+            if (managedIndexMetaData.actionMetaData?.actionProperties?.shrinkActionProperties != null) {
+                releaseShrinkLock(
+                    managedIndexMetaData.actionMetaData.actionProperties.shrinkActionProperties,
+                    context,
+                    logger
+                )
+            }
+            info = mapOf("message" to getFailureMessage(), "cause" to "{${e.message}}")
             stepStatus = StepStatus.FAILED
             return this
         }
@@ -98,8 +111,8 @@ class AttemptShrinkStep(
 
     companion object {
         const val name = "attempt_shrink_step"
-        fun getSuccessMessage(index: String, newIndex: String) = "Shrink started on $index. $newIndex currently being populated."
-        fun getIndexHealthNotGreenMessage(index: String) = "Shrink delayed because $index health is not green."
-        fun getFailureMessage(index: String) = "Shrink failed on $index when sending shrink request."
+        fun getSuccessMessage(newIndex: String) = "Shrink started. $newIndex currently being populated."
+        fun getIndexHealthNotGreenMessage() = "Shrink delayed because index health is not green."
+        fun getFailureMessage() = "Shrink failed when sending shrink request."
     }
 }

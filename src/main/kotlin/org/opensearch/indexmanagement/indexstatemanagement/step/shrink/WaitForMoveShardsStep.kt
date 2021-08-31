@@ -28,6 +28,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.util.releaseShrinkLoc
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.jobscheduler.spi.JobExecutionContext
 import org.opensearch.transport.RemoteTransportException
+import java.lang.Exception
 import java.time.Duration
 import java.time.Instant
 
@@ -50,11 +51,8 @@ class WaitForMoveShardsStep(
             val indexStatsRequests: IndicesStatsRequest = IndicesStatsRequest().indices(managedIndexMetaData.index)
             val response: IndicesStatsResponse = client.admin().indices().suspendUntil { stats(indexStatsRequests, it) }
             val numPrimaryShards = clusterService.state().metadata.indices[managedIndexMetaData.index].numberOfShards
-            if ((managedIndexMetaData.actionMetaData?.actionProperties?.shrinkActionProperties == null) ||
-                (managedIndexMetaData.actionMetaData.actionProperties.shrinkActionProperties.nodeName == null)
-            ) {
+            if (managedIndexMetaData.actionMetaData?.actionProperties?.shrinkActionProperties == null) {
                 info = mapOf("message" to "Metadata not properly populated")
-                releaseShrinkLock(managedIndexMetaData, context, logger)
                 stepStatus = StepStatus.FAILED
                 return this
             }
@@ -81,7 +79,7 @@ class WaitForMoveShardsStep(
                 }
             }
             if (numShardsOnNode >= numPrimaryShards) {
-                info = mapOf("message" to getSuccessMessage(managedIndexMetaData.index, nodeToMoveOnto))
+                info = mapOf("message" to getSuccessMessage(nodeToMoveOnto))
                 stepStatus = StepStatus.COMPLETED
                 return this
             }
@@ -89,8 +87,14 @@ class WaitForMoveShardsStep(
             checkTimeOut(numShardsLeft, nodeToMoveOnto)
             return this
         } catch (e: RemoteTransportException) {
-            releaseShrinkLock(managedIndexMetaData, context, logger)
-            info = mapOf("message" to getFailureMessage(indexName))
+            if (managedIndexMetaData.actionMetaData?.actionProperties?.shrinkActionProperties != null) {
+                releaseShrinkLock(managedIndexMetaData.actionMetaData.actionProperties.shrinkActionProperties, context, logger)
+            }
+            info = mapOf("message" to getFailureMessage())
+            stepStatus = StepStatus.FAILED
+            return this
+        } catch (e: Exception) {
+            info = mapOf("message" to getFailureMessage(), "cause" to "{${e.message}}")
             stepStatus = StepStatus.FAILED
             return this
         }
@@ -113,28 +117,31 @@ class WaitForMoveShardsStep(
         val timeOutInSeconds = config.configTimeout?.timeout?.seconds ?: MOVE_SHARDS_TIMEOUT_IN_SECONDS
         // Get ActionTimeout if given, otherwise use default timeout of 12 hours
         stepStatus = if (timeFromActionStarted.toSeconds() > timeOutInSeconds) {
-            logger.error(
-                "The shards of "
+            logger.debug(
+                "Move shards failing on [$indexName] because" +
+                        " [$numShardsLeft] shards still needing to be moved"
             )
-            releaseShrinkLock(managedIndexMetaData, context, logger)
-            info = mapOf("message" to getTimeoutFailure(managedIndexMetaData.index, nodeToMoveOnto))
+            if (managedIndexMetaData.actionMetaData?.actionProperties?.shrinkActionProperties != null) {
+                releaseShrinkLock(managedIndexMetaData.actionMetaData.actionProperties.shrinkActionProperties, context, logger)
+            }
+            info = mapOf("message" to getTimeoutFailure(nodeToMoveOnto))
             StepStatus.FAILED
         } else {
             logger.debug(
                 "Move shards still running on [$indexName] with" +
                     " [$numShardsLeft] shards still needing to be moved"
             )
-            info = mapOf("message" to getTimeoutDelay(managedIndexMetaData.index, nodeToMoveOnto))
+            info = mapOf("message" to getTimeoutDelay(nodeToMoveOnto))
             StepStatus.CONDITION_NOT_MET
         }
     }
 
     companion object {
         const val name = "wait_for_move_shards_step"
-        fun getSuccessMessage(index: String, node: String) = "The shards of $index successfully moved to $node."
-        fun getTimeoutFailure(index: String, node: String) = "Shrink failed because it took to long to move $index shards to $node"
-        fun getTimeoutDelay(index: String, node: String) = "Shrink delayed because it took to long to move $index shards to $node"
-        fun getFailureMessage(index: String) = "Shrink failed on $index when waiting for shards to move."
+        fun getSuccessMessage(node: String) = "The shards successfully moved to $node."
+        fun getTimeoutFailure(node: String) = "Shrink failed because it took to long to move shards to $node"
+        fun getTimeoutDelay(node: String) = "Shrink delayed because it took to long to move shards to $node"
+        fun getFailureMessage() = "Shrink failed when waiting for shards to move."
         const val MOVE_SHARDS_TIMEOUT_IN_SECONDS = 43200L // 12hrs in seconds
         const val RESOURCE_NAME = "node_name"
         const val RESOURCE_TYPE = "shrink"
