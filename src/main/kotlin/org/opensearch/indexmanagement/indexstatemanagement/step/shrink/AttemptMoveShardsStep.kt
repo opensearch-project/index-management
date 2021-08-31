@@ -112,7 +112,13 @@ class AttemptMoveShardsStep(
             val statsResponse: IndicesStatsResponse = client.admin().indices().suspendUntil {
                 stats(statsRequest, it)
             }
-            val indexSize = statsResponse.total.getStore()!!.sizeInBytes
+            val statsStore = statsResponse.total.store
+            if (statsStore == null) {
+                info = mapOf("message" to getFailureMessage())
+                stepStatus = StepStatus.FAILED
+                return this
+            }
+            val indexSize = statsStore.sizeInBytes
 
             // get the number of shards that the target index will have
             val numTargetShards = getNumTargetShards(numOriginalShards, indexSize)
@@ -126,9 +132,8 @@ class AttemptMoveShardsStep(
                 stepStatus = StepStatus.CONDITION_NOT_MET
                 return this
             }
-            // set index to read only
             // move the shards
-            val nodeName = lock.resource["node_name"] as String
+            val nodeName = lock.resource[RESOURCE_NAME] as String
             shrinkActionProperties = ShrinkActionProperties(
                 nodeName,
                 shrinkTargetIndexName,
@@ -165,15 +170,18 @@ class AttemptMoveShardsStep(
             }
         } catch (e: Exception) {
             handleException(e, failureMessage)
-            val lock = getShrinkLockModel(
-                shrinkActionProperties?.nodeName!!,
-                context.jobIndexName,
-                context.jobId,
-                shrinkActionProperties?.lockEpochSecond!!,
-                shrinkActionProperties?.lockPrimaryTerm!!,
-                shrinkActionProperties?.lockSeqNo!!
-            )
-            context.lockService.suspendUntil<Boolean> { release(lock, it) }
+            val copyProperties = shrinkActionProperties
+            if (copyProperties != null) {
+                val lock = getShrinkLockModel(
+                    copyProperties.nodeName,
+                    context.jobIndexName,
+                    context.jobId,
+                    copyProperties.lockEpochSecond!!,
+                    copyProperties.lockPrimaryTerm!!,
+                    copyProperties.lockSeqNo!!
+                )
+                context.lockService.suspendUntil<Boolean> { release(lock, it) }
+            }
         }
     }
 

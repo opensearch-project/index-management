@@ -47,15 +47,15 @@ class WaitForMoveShardsStep(
 
     @Suppress("TooGenericExceptionCaught", "ComplexMethod", "ReturnCount")
     override suspend fun execute(): WaitForMoveShardsStep {
+        if (managedIndexMetaData.actionMetaData?.actionProperties?.shrinkActionProperties == null) {
+            info = mapOf("message" to "Metadata not properly populated")
+            stepStatus = StepStatus.FAILED
+            return this
+        }
         try {
             val indexStatsRequests: IndicesStatsRequest = IndicesStatsRequest().indices(managedIndexMetaData.index)
             val response: IndicesStatsResponse = client.admin().indices().suspendUntil { stats(indexStatsRequests, it) }
             val numPrimaryShards = clusterService.state().metadata.indices[managedIndexMetaData.index].numberOfShards
-            if (managedIndexMetaData.actionMetaData?.actionProperties?.shrinkActionProperties == null) {
-                info = mapOf("message" to "Metadata not properly populated")
-                stepStatus = StepStatus.FAILED
-                return this
-            }
             val nodeToMoveOnto = managedIndexMetaData.actionMetaData.actionProperties.shrinkActionProperties.nodeName
             var numShardsOnNode = 0
             val shardToCheckpointSetMap: HashMap<ShardId, HashSet<Long>> = HashMap()
@@ -87,13 +87,12 @@ class WaitForMoveShardsStep(
             checkTimeOut(numShardsLeft, nodeToMoveOnto)
             return this
         } catch (e: RemoteTransportException) {
-            if (managedIndexMetaData.actionMetaData?.actionProperties?.shrinkActionProperties != null) {
-                releaseShrinkLock(managedIndexMetaData.actionMetaData.actionProperties.shrinkActionProperties, context, logger)
-            }
+            releaseShrinkLock(managedIndexMetaData.actionMetaData.actionProperties.shrinkActionProperties, context, logger)
             info = mapOf("message" to getFailureMessage())
             stepStatus = StepStatus.FAILED
             return this
         } catch (e: Exception) {
+            releaseShrinkLock(managedIndexMetaData.actionMetaData.actionProperties.shrinkActionProperties, context, logger)
             info = mapOf("message" to getFailureMessage(), "cause" to "{${e.message}}")
             stepStatus = StepStatus.FAILED
             return this

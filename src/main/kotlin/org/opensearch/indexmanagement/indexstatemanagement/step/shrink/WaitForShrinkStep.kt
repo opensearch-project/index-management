@@ -48,12 +48,12 @@ class WaitForShrinkStep(
 
     @Suppress("TooGenericExceptionCaught", "ComplexMethod", "ReturnCount", "LongMethod")
     override suspend fun execute(): WaitForShrinkStep {
+        if ((managedIndexMetaData.actionMetaData?.actionProperties?.shrinkActionProperties == null)) {
+            info = mapOf("message" to "Metadata not properly populated")
+            stepStatus = StepStatus.FAILED
+            return this
+        }
         try {
-            if ((managedIndexMetaData.actionMetaData?.actionProperties?.shrinkActionProperties == null)) {
-                info = mapOf("message" to "Metadata not properly populated")
-                stepStatus = StepStatus.FAILED
-                return this
-            }
             val targetIndex = managedIndexMetaData.actionMetaData.actionProperties.shrinkActionProperties.targetIndexName
             val targetIndexStatsRequests: IndicesStatsRequest = IndicesStatsRequest().indices(targetIndex)
             val targetStatsResponse: IndicesStatsResponse = client.admin().indices().suspendUntil { stats(targetIndexStatsRequests, it) }
@@ -83,27 +83,21 @@ class WaitForShrinkStep(
             info = mapOf("message" to getSuccessMessage())
             return this
         } catch (e: RemoteTransportException) {
-            if (managedIndexMetaData.actionMetaData?.actionProperties?.shrinkActionProperties != null) {
-                releaseShrinkLock(managedIndexMetaData.actionMetaData.actionProperties.shrinkActionProperties, context, logger)
-                info = mapOf(
-                    "message" to getFailureMessage(
-                        managedIndexMetaData.actionMetaData.actionProperties.shrinkActionProperties.targetIndexName
-                    )
+            releaseShrinkLock(managedIndexMetaData.actionMetaData.actionProperties.shrinkActionProperties, context, logger)
+            info = mapOf(
+                "message" to getFailureMessage(
+                    managedIndexMetaData.actionMetaData.actionProperties.shrinkActionProperties.targetIndexName
                 )
-            }
+            )
             stepStatus = StepStatus.FAILED
             return this
         } catch (e: Exception) {
-            if (managedIndexMetaData.actionMetaData?.actionProperties?.shrinkActionProperties != null) {
-                releaseShrinkLock(
-                    managedIndexMetaData.actionMetaData.actionProperties.shrinkActionProperties,
-                    context,
-                    logger
-                )
-                info = mapOf("message" to getGenericFailureMessage(), "cause" to "{${e.message}}")
-            } else {
-                info = mapOf("message" to getGenericFailureMessage(), "cause" to "{${e.message}}")
-            }
+            releaseShrinkLock(
+                managedIndexMetaData.actionMetaData.actionProperties.shrinkActionProperties,
+                context,
+                logger
+            )
+            info = mapOf("message" to getGenericFailureMessage(), "cause" to "{${e.message}}")
             stepStatus = StepStatus.FAILED
             return this
         }

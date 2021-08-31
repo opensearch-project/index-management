@@ -45,12 +45,12 @@ class AttemptShrinkStep(
 
     @Suppress("TooGenericExceptionCaught", "ComplexMethod", "ReturnCount")
     override suspend fun execute(): AttemptShrinkStep {
+        if ((managedIndexMetaData.actionMetaData?.actionProperties?.shrinkActionProperties == null)) {
+            info = mapOf("message" to "Metadata not properly populated")
+            stepStatus = StepStatus.FAILED
+            return this
+        }
         try {
-            if ((managedIndexMetaData.actionMetaData?.actionProperties?.shrinkActionProperties == null)) {
-                info = mapOf("message" to "Metadata not properly populated")
-                stepStatus = StepStatus.FAILED
-                return this
-            }
             val healthReq = ClusterHealthRequest().indices(managedIndexMetaData.index).waitForGreenStatus()
             val response: ClusterHealthResponse = client.admin().cluster().suspendUntil { health(healthReq, it) }
             // check status of cluster health
@@ -81,19 +81,15 @@ class AttemptShrinkStep(
             return this
         } catch (e: RemoteTransportException) {
             info = mapOf("message" to getFailureMessage())
-            if (managedIndexMetaData.actionMetaData?.actionProperties?.shrinkActionProperties != null) {
-                releaseShrinkLock(managedIndexMetaData.actionMetaData.actionProperties.shrinkActionProperties, context, logger)
-            }
+            releaseShrinkLock(managedIndexMetaData.actionMetaData.actionProperties.shrinkActionProperties, context, logger)
             stepStatus = StepStatus.FAILED
             return this
         } catch (e: Exception) {
-            if (managedIndexMetaData.actionMetaData?.actionProperties?.shrinkActionProperties != null) {
-                releaseShrinkLock(
-                    managedIndexMetaData.actionMetaData.actionProperties.shrinkActionProperties,
-                    context,
-                    logger
-                )
-            }
+            releaseShrinkLock(
+                managedIndexMetaData.actionMetaData.actionProperties.shrinkActionProperties,
+                context,
+                logger
+            )
             info = mapOf("message" to getFailureMessage(), "cause" to "{${e.message}}")
             stepStatus = StepStatus.FAILED
             return this
