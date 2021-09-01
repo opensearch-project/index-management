@@ -26,7 +26,7 @@ jobs:
         with:
           repository: 'opensearch-project/OpenSearch'
           path: OpenSearch
-          ref: '1.0'
+          ref: 'refs/tags/1.0.0'
       - name: Build OpenSearch
         working-directory: ./OpenSearch
         run: ./gradlew publishToMavenLocal -Dbuild.snapshot=false
@@ -36,17 +36,17 @@ jobs:
         with:
           repository: 'opensearch-project/common-utils'
           path: common-utils
-          ref: '1.0'
+          ref: 'main'
       - name: Build common-utils
         working-directory: ./common-utils
-        run: ./gradlew publishToMavenLocal -Dopensearch.version=1.0.0
+        run: ./gradlew publishToMavenLocal -Dopensearch.version=1.0.0 -Dbuild.snapshot=false
       # dependencies: job-scheduler
       - name: Checkout job-scheduler
         uses: actions/checkout@v2
         with:
           repository: 'opensearch-project/job-scheduler'
           path: job-scheduler
-          ref: '1.0'
+          ref: 'development-shrink'
       - name: Build job-scheduler
         working-directory: ./job-scheduler
         run: ./gradlew publishToMavenLocal -Dopensearch.version=1.0.0 -Dbuild.snapshot=false
@@ -74,7 +74,7 @@ jobs:
       - name: Create Artifact Path
         run: |
           mkdir -p index-management-artifacts
-          cp ./build/distributions/*.zip index-management-artifacts        
+          cp ./build/distributions/*.zip index-management-artifacts
       - name: Uploads coverage
         uses: codecov/codecov-action@v1
         with:

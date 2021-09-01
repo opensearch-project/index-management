@@ -1,6 +1,6 @@
 {
   "_meta" : {
-    "schema_version": 4
+    "schema_version": 5
   },
   "dynamic": "strict",
   "properties": {
@@ -105,20 +105,9 @@
                 "has_rollup_failed": {
                   "type": "boolean"
                 },
-                "shrink_node_id": {
-                  "type": "text"
-                },
-                "shrink_target_index_name": {
-                  "type": "text",
-                  "fields": {
-                    "keyword": {
-                      "type": "keyword",
-                      "ignore_above": 256
-                    }
-                  }
-                },
-                "shrink_num_shards": {
-                  "type": "integer"
+                "shrink_action_properties": {
+                  "type": "object",
+                  "enabled": false
                 }
               }
             }

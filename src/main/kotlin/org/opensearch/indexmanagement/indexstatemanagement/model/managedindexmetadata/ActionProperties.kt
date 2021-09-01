@@ -35,6 +35,7 @@ import org.opensearch.common.xcontent.XContentBuilder
 import org.opensearch.common.xcontent.XContentParser
 import org.opensearch.common.xcontent.XContentParser.Token
 import org.opensearch.common.xcontent.XContentParserUtils.ensureExpectedToken
+import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.addObject
 
 /** Properties that will persist across steps of a single Action. Will be stored in the [ActionMetaData]. */
 // TODO: Create namespaces to group properties together
@@ -43,9 +44,7 @@ data class ActionProperties(
     val snapshotName: String? = null,
     val rollupId: String? = null,
     val hasRollupFailed: Boolean? = null,
-    val shrinkNodeId: String? = null,
-    val shrinkTargetIndexName: String? = null,
-    val shrinkNumShards: Int? = null
+    val shrinkActionProperties: ShrinkActionProperties? = null
 ) : Writeable, ToXContentFragment {
 
     override fun writeTo(out: StreamOutput) {
@@ -53,9 +52,7 @@ data class ActionProperties(
         out.writeOptionalString(snapshotName)
         out.writeOptionalString(rollupId)
         out.writeOptionalBoolean(hasRollupFailed)
-        out.writeOptionalString(shrinkNodeId)
-        out.writeOptionalString(shrinkTargetIndexName)
-        out.writeOptionalInt(shrinkNumShards)
+        out.writeOptionalWriteable(shrinkActionProperties)
     }
 
     override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
@@ -63,9 +60,7 @@ data class ActionProperties(
         if (snapshotName != null) builder.field(Properties.SNAPSHOT_NAME.key, snapshotName)
         if (rollupId != null) builder.field(Properties.ROLLUP_ID.key, rollupId)
         if (hasRollupFailed != null) builder.field(Properties.HAS_ROLLUP_FAILED.key, hasRollupFailed)
-        if (shrinkNodeId != null) builder.field(Properties.SHRINK_NODE_ID.key, shrinkNodeId)
-        if (shrinkTargetIndexName != null) builder.field(Properties.SHRINK_TARGET_INDEX_NAME.key, shrinkTargetIndexName)
-        if (shrinkNumShards != null) builder.field(Properties.SHRINK_NUM_SHARDS.key, shrinkNumShards)
+        if (shrinkActionProperties != null) builder.addObject(ShrinkActionProperties.SHRINK_ACTION_PROPERTIES, shrinkActionProperties, params)
         return builder
     }
 
@@ -77,11 +72,8 @@ data class ActionProperties(
             val snapshotName: String? = si.readOptionalString()
             val rollupId: String? = si.readOptionalString()
             val hasRollupFailed: Boolean? = si.readOptionalBoolean()
-            val shrinkNodeId: String? = si.readOptionalString()
-            val shrinkTargetIndexName: String? = si.readOptionalString()
-            val shrinkNumShards: Int? = si.readOptionalInt()
-
-            return ActionProperties(maxNumSegments, snapshotName, rollupId, hasRollupFailed, shrinkNodeId, shrinkTargetIndexName, shrinkNumShards)
+            val shrinkActionProperties: ShrinkActionProperties? = si.readOptionalWriteable { ShrinkActionProperties.fromStreamInput(it) }
+            return ActionProperties(maxNumSegments, snapshotName, rollupId, hasRollupFailed, shrinkActionProperties)
         }
 
         fun parse(xcp: XContentParser): ActionProperties {
@@ -89,27 +81,24 @@ data class ActionProperties(
             var snapshotName: String? = null
             var rollupId: String? = null
             var hasRollupFailed: Boolean? = null
-            var shrinkNodeId: String? = null
-            var shrinkTargetIndexName: String? = null
-            var shrinkNumShards: Int? = null
+            var shrinkActionProperties: ShrinkActionProperties? = null
 
             ensureExpectedToken(Token.START_OBJECT, xcp.currentToken(), xcp)
             while (xcp.nextToken() != Token.END_OBJECT) {
                 val fieldName = xcp.currentName()
                 xcp.nextToken()
-
                 when (fieldName) {
                     Properties.MAX_NUM_SEGMENTS.key -> maxNumSegments = xcp.intValue()
                     Properties.SNAPSHOT_NAME.key -> snapshotName = xcp.text()
                     Properties.ROLLUP_ID.key -> rollupId = xcp.text()
                     Properties.HAS_ROLLUP_FAILED.key -> hasRollupFailed = xcp.booleanValue()
-                    Properties.SHRINK_NODE_ID.key -> shrinkNodeId = xcp.text()
-                    Properties.SHRINK_TARGET_INDEX_NAME.key -> shrinkTargetIndexName = xcp.text()
-                    Properties.SHRINK_NUM_SHARDS.key -> shrinkNumShards = xcp.intValue()
+                    ShrinkActionProperties.SHRINK_ACTION_PROPERTIES -> {
+                        shrinkActionProperties = if (xcp.currentToken() == Token.VALUE_NULL) null else ShrinkActionProperties.parse(xcp)
+                    }
                 }
             }
 
-            return ActionProperties(maxNumSegments, snapshotName, rollupId, hasRollupFailed, shrinkNodeId, shrinkTargetIndexName, shrinkNumShards)
+            return ActionProperties(maxNumSegments, snapshotName, rollupId, hasRollupFailed, shrinkActionProperties)
         }
     }
 
@@ -117,9 +106,6 @@ data class ActionProperties(
         MAX_NUM_SEGMENTS("max_num_segments"),
         SNAPSHOT_NAME("snapshot_name"),
         ROLLUP_ID("rollup_id"),
-        HAS_ROLLUP_FAILED("has_rollup_failed"),
-        SHRINK_NODE_ID("shrink_node_id"),
-        SHRINK_TARGET_INDEX_NAME("shrink_target_index_name"),
-        SHRINK_NUM_SHARDS("shrink_num_shards")
+        HAS_ROLLUP_FAILED("has_rollup_failed")
     }
 }

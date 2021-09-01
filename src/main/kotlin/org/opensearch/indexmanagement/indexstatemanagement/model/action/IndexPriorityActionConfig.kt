@@ -40,6 +40,7 @@ import org.opensearch.common.xcontent.XContentParserUtils.ensureExpectedToken
 import org.opensearch.indexmanagement.indexstatemanagement.action.Action
 import org.opensearch.indexmanagement.indexstatemanagement.action.IndexPriorityAction
 import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
+import org.opensearch.jobscheduler.spi.JobExecutionContext
 import org.opensearch.script.ScriptService
 import java.io.IOException
 
@@ -66,7 +67,8 @@ data class IndexPriorityActionConfig(
         scriptService: ScriptService,
         client: Client,
         settings: Settings,
-        managedIndexMetaData: ManagedIndexMetaData
+        managedIndexMetaData: ManagedIndexMetaData,
+        context: JobExecutionContext
     ): Action = IndexPriorityAction(clusterService, client, managedIndexMetaData, this)
 
     @Throws(IOException::class)

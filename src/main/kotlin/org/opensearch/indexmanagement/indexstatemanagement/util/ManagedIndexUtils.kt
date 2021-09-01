@@ -69,6 +69,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndex
 import org.opensearch.indexmanagement.indexstatemanagement.step.Step
 import org.opensearch.indexmanagement.indexstatemanagement.step.delete.AttemptDeleteStep
 import org.opensearch.indexmanagement.opensearchapi.optionalTimeField
+import org.opensearch.jobscheduler.spi.JobExecutionContext
 import org.opensearch.jobscheduler.spi.schedule.IntervalSchedule
 import org.opensearch.script.ScriptService
 import org.opensearch.search.builder.SearchSourceBuilder
@@ -292,12 +293,14 @@ fun Policy.getStateToExecute(managedIndexMetaData: ManagedIndexMetaData): State?
     return this.states.find { managedIndexMetaData.stateMetaData != null && it.name == managedIndexMetaData.stateMetaData.name }
 }
 
+@SuppressWarnings("LongParameterList")
 fun State.getActionToExecute(
     clusterService: ClusterService,
     scriptService: ScriptService,
     client: Client,
     settings: Settings,
-    managedIndexMetaData: ManagedIndexMetaData
+    managedIndexMetaData: ManagedIndexMetaData,
+    context: JobExecutionContext
 ): Action? {
     var actionConfig: ActionConfig?
 
@@ -318,14 +321,14 @@ fun State.getActionToExecute(
         // TODO: Refactor so we can get isLastStep from somewhere besides an instantiated Action class so we can simplify this to a when block
         // If stepCompleted is true and this is the last step of the action then we should get the next action
         if (managedIndexMetaData.stepMetaData != null && managedIndexMetaData.stepMetaData.stepStatus == Step.StepStatus.COMPLETED) {
-            val action = actionConfig.toAction(clusterService, scriptService, client, settings, managedIndexMetaData)
+            val action = actionConfig.toAction(clusterService, scriptService, client, settings, managedIndexMetaData, context)
             if (action.isLastStep(managedIndexMetaData.stepMetaData.name)) {
                 actionConfig = this.actions.getOrNull(managedIndexMetaData.actionMetaData.index + 1) ?: TransitionsActionConfig(this.transitions)
             }
         }
     }
 
-    return actionConfig.toAction(clusterService, scriptService, client, settings, managedIndexMetaData)
+    return actionConfig.toAction(clusterService, scriptService, client, settings, managedIndexMetaData, context)
 }
 
 fun State.getUpdatedStateMetaData(managedIndexMetaData: ManagedIndexMetaData): StateMetaData {

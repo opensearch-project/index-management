@@ -40,6 +40,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.action.Action
 import org.opensearch.indexmanagement.indexstatemanagement.action.RollupAction
 import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.rollup.model.ISMRollup
+import org.opensearch.jobscheduler.spi.JobExecutionContext
 import org.opensearch.script.ScriptService
 import java.io.IOException
 
@@ -63,7 +64,8 @@ class RollupActionConfig(
         scriptService: ScriptService,
         client: Client,
         settings: Settings,
-        managedIndexMetaData: ManagedIndexMetaData
+        managedIndexMetaData: ManagedIndexMetaData,
+        context: JobExecutionContext
     ): Action = RollupAction(clusterService, client, managedIndexMetaData, this)
 
     override fun isFragment(): Boolean = super<ToXContentObject>.isFragment()
