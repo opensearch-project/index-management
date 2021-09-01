@@ -176,9 +176,9 @@ class AttemptMoveShardsStep(
                     copyProperties.nodeName,
                     context.jobIndexName,
                     context.jobId,
-                    copyProperties.lockEpochSecond!!,
-                    copyProperties.lockPrimaryTerm!!,
-                    copyProperties.lockSeqNo!!
+                    copyProperties.lockEpochSecond,
+                    copyProperties.lockPrimaryTerm,
+                    copyProperties.lockSeqNo
                 )
                 context.lockService.suspendUntil<Boolean> { release(lock, it) }
             }
