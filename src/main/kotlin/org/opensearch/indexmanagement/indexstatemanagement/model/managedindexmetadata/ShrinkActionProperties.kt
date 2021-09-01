@@ -28,12 +28,12 @@ data class ShrinkActionProperties(
     }
 
     override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
-        builder.field(ShrinkProperties.SHRINK_NODE_NAME.key, nodeName)
-        builder.field(ShrinkProperties.SHRINK_TARGET_INDEX_NAME.key, targetIndexName)
-        builder.field(ShrinkProperties.SHRINK_TARGET_NUM_SHARDS.key, targetNumShards)
-        builder.field(ShrinkProperties.SHRINK_LOCK_SEQ_NO.key, lockSeqNo)
-        builder.field(ShrinkProperties.SHRINK_LOCK_PRIMARY_TERM.key, lockPrimaryTerm)
-        builder.field(ShrinkProperties.SHRINK_LOCK_EPOCH_SECOND.key, lockEpochSecond)
+        builder.field(ShrinkProperties.NODE_NAME.key, nodeName)
+        builder.field(ShrinkProperties.TARGET_INDEX_NAME.key, targetIndexName)
+        builder.field(ShrinkProperties.TARGET_NUM_SHARDS.key, targetNumShards)
+        builder.field(ShrinkProperties.LOCK_SEQ_NO.key, lockSeqNo)
+        builder.field(ShrinkProperties.LOCK_PRIMARY_TERM.key, lockPrimaryTerm)
+        builder.field(ShrinkProperties.LOCK_EPOCH_SECOND.key, lockEpochSecond)
         return builder
     }
 
@@ -65,12 +65,12 @@ data class ShrinkActionProperties(
                 xcp.nextToken()
 
                 when (fieldName) {
-                    ShrinkProperties.SHRINK_NODE_NAME.key -> nodeName = xcp.text()
-                    ShrinkProperties.SHRINK_TARGET_INDEX_NAME.key -> targetIndexName = xcp.text()
-                    ShrinkProperties.SHRINK_TARGET_NUM_SHARDS.key -> targetNumShards = xcp.intValue()
-                    ShrinkProperties.SHRINK_LOCK_PRIMARY_TERM.key -> lockPrimaryTerm = xcp.longValue()
-                    ShrinkProperties.SHRINK_LOCK_SEQ_NO.key -> lockSeqNo = xcp.longValue()
-                    ShrinkProperties.SHRINK_LOCK_EPOCH_SECOND.key -> lockEpochSecond = xcp.longValue()
+                    ShrinkProperties.NODE_NAME.key -> nodeName = xcp.text()
+                    ShrinkProperties.TARGET_INDEX_NAME.key -> targetIndexName = xcp.text()
+                    ShrinkProperties.TARGET_NUM_SHARDS.key -> targetNumShards = xcp.intValue()
+                    ShrinkProperties.LOCK_PRIMARY_TERM.key -> lockPrimaryTerm = xcp.longValue()
+                    ShrinkProperties.LOCK_SEQ_NO.key -> lockSeqNo = xcp.longValue()
+                    ShrinkProperties.LOCK_EPOCH_SECOND.key -> lockEpochSecond = xcp.longValue()
                 }
             }
 
@@ -86,11 +86,11 @@ data class ShrinkActionProperties(
     }
 
     enum class ShrinkProperties(val key: String) {
-        SHRINK_NODE_NAME("shrink_node_name"),
-        SHRINK_TARGET_INDEX_NAME("shrink_target_index_name"),
-        SHRINK_TARGET_NUM_SHARDS("shrink_target_num_shards"),
-        SHRINK_LOCK_SEQ_NO("shrink_lock_seq_no"),
-        SHRINK_LOCK_PRIMARY_TERM("shrink_lock_primary_term"),
-        SHRINK_LOCK_EPOCH_SECOND("shrink_lock_epoch_second")
+        NODE_NAME("node_name"),
+        TARGET_INDEX_NAME("target_index_name"),
+        TARGET_NUM_SHARDS("target_num_shards"),
+        LOCK_SEQ_NO("lock_seq_no"),
+        LOCK_PRIMARY_TERM("lock_primary_term"),
+        LOCK_EPOCH_SECOND("lock_epoch_second")
     }
 }

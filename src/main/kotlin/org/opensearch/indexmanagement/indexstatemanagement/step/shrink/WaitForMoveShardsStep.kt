@@ -58,20 +58,23 @@ class WaitForMoveShardsStep(
             val numPrimaryShards = clusterService.state().metadata.indices[managedIndexMetaData.index].numberOfShards
             val nodeToMoveOnto = managedIndexMetaData.actionMetaData.actionProperties.shrinkActionProperties.nodeName
             var numShardsOnNode = 0
-            val shardToCheckpointSetMap: HashMap<ShardId, HashSet<Long>> = HashMap()
+            val shardToCheckpointSetMap: MutableMap<ShardId, MutableSet<Long>> = mutableMapOf()
             for (shard: ShardStats in response.shards) {
-                val checkpoint = shard.seqNoStats!!.localCheckpoint
-                val routingInfo: ShardRouting = shard.shardRouting
-                val shardId = shard.shardRouting.shardId()
-                if (shardId in shardToCheckpointSetMap.keys && !shardToCheckpointSetMap[shardId]!!.equals(checkpoint)) {
-                    shardToCheckpointSetMap[shardId]!!.add(checkpoint)
-                    val checkPointSet = shardToCheckpointSetMap[shardId]
-                    logger.warn("There are shards with varying local checkpoints for $shardId. The checkpoints are $checkPointSet.")
-                } else {
-                    shardToCheckpointSetMap[shardId] = HashSet()
-                    shardToCheckpointSetMap[shardId]!!.add(checkpoint)
+                val seqNoStats = shard.seqNoStats
+                val routingInfo = shard.shardRouting
+                if (seqNoStats != null) {
+                    val checkpoint = seqNoStats.localCheckpoint
+                    val shardId = shard.shardRouting.shardId()
+                    val checkpointsOfShard = shardToCheckpointSetMap.getOrDefault(shardId, mutableSetOf())
+                    checkpointsOfShard.add(checkpoint)
+                    shardToCheckpointSetMap[shardId] = checkpointsOfShard
                 }
-
+                // TODO: Test if we can make this appear / if we can, fail the action.
+                shardToCheckpointSetMap.entries.forEach {
+                    (_, checkpointSet) -> if (checkpointSet.size > 1) {
+                        logger.warn("There are shards with varying local checkpoints")
+                    }
+                }
                 val nodeIdShardIsOn = routingInfo.currentNodeId()
                 val nodeShardIsOn = clusterService.state().nodes()[nodeIdShardIsOn].name
                 if (nodeShardIsOn.equals(nodeToMoveOnto) && routingInfo.started()) {
