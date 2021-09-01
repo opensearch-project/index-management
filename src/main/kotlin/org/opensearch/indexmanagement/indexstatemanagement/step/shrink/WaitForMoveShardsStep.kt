@@ -16,7 +16,6 @@ import org.opensearch.action.admin.indices.stats.IndicesStatsRequest
 import org.opensearch.action.admin.indices.stats.IndicesStatsResponse
 import org.opensearch.action.admin.indices.stats.ShardStats
 import org.opensearch.client.Client
-import org.opensearch.cluster.routing.ShardRouting
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.index.shard.ShardId
 import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
@@ -71,7 +70,8 @@ class WaitForMoveShardsStep(
                 }
                 // TODO: Test if we can make this appear / if we can, fail the action.
                 shardToCheckpointSetMap.entries.forEach {
-                    (_, checkpointSet) -> if (checkpointSet.size > 1) {
+                    (_, checkpointSet) ->
+                    if (checkpointSet.size > 1) {
                         logger.warn("There are shards with varying local checkpoints")
                     }
                 }
