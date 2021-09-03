@@ -17,6 +17,7 @@ import org.opensearch.common.util.concurrent.ThreadContext
 import org.opensearch.commons.ConfigConstants
 import org.opensearch.commons.authuser.User
 import org.opensearch.index.query.BoolQueryBuilder
+import org.opensearch.index.query.ExistsQueryBuilder
 import org.opensearch.index.query.TermsQueryBuilder
 import org.opensearch.rest.RestStatus
 
@@ -24,6 +25,7 @@ import org.opensearch.rest.RestStatus
 class SecurityUtils {
     companion object {
         const val INTERNAL_REQUEST = "index_management_plugin_internal_user"
+        const val ADMIN_ROLE = "all_access"
         val DEFAULT_INJECT_ROLES: List<String> = listOf("all_access", "AmazonES_all_access")
 
         /**
@@ -101,9 +103,11 @@ class SecurityUtils {
             resourceUser: User?,
             filterEnabled: Boolean = false
         ): Boolean {
-            if (!filterEnabled) return true
+            if (!filterEnabled || resourceUser == null || (requestedUser != null && requestedUser.roles.contains(ADMIN_ROLE))) {
+                return true
+            }
 
-            val resourceBackendRoles = resourceUser?.backendRoles
+            val resourceBackendRoles = resourceUser.backendRoles
             val requestedBackendRoles = requestedUser?.backendRoles
 
             return !(resourceBackendRoles == null || requestedBackendRoles == null || resourceBackendRoles.intersect(requestedBackendRoles).isEmpty())
@@ -113,13 +117,18 @@ class SecurityUtils {
          * Add user filter to search requests
          */
         fun addUserFilter(user: User?, queryBuilder: BoolQueryBuilder, filterEnabled: Boolean = false, filterPathPrefix: String) {
-            if (!filterEnabled || user == null) {
+            if (!filterEnabled || user == null || user.roles.contains(ADMIN_ROLE)) {
                 return
             }
 
-            queryBuilder.filter(
+            val filterQuery = BoolQueryBuilder().should(
                 TermsQueryBuilder("$filterPathPrefix.backend_roles.keyword", user.backendRoles)
+            ).should(
+                BoolQueryBuilder().mustNot(
+                    ExistsQueryBuilder(filterPathPrefix)
+                )
             )
+            queryBuilder.filter(filterQuery)
         }
     }
 }
