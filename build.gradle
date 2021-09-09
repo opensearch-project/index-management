@@ -41,9 +41,9 @@ buildscript {
     }
 
     repositories {
-        mavenLocal()
         mavenCentral()
         maven { url "https://plugins.gradle.org/m2/" }
+        maven { url "https://aws.oss.sonatype.org/content/repositories/snapshots" }
     }
 
     dependencies {
@@ -182,7 +182,7 @@ dependencies {
 }
 
 repositories {
-    mavenLocal()
+    maven { url "https://aws.oss.sonatype.org/content/repositories/snapshots" }
 }
 
 plugins.withId('java') {
@@ -192,7 +192,6 @@ plugins.withId('java') {
 plugins.withId('org.jetbrains.kotlin.jvm') {
     compileKotlin.kotlinOptions.jvmTarget = compileTestKotlin.kotlinOptions.jvmTarget = "1.8"
     compileKotlin.dependsOn ktlint
-    
 }
 
 javadoc.enabled = false // turn off javadoc as it barfs on Kotlin code
