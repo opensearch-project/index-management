@@ -107,7 +107,7 @@ class IndexStateManagementHistory(
     override fun onMaster() {
         try {
             // try to rollover immediately as we might be restarting the cluster
-            rolloverHistoryIndex()
+            if (historyEnabled) rolloverHistoryIndex()
             // schedule the next rollover for approx MAX_AGE later
             scheduledRollover = threadPool.scheduleWithFixedDelay(
                 { rolloverAndDeleteHistoryIndex() },
