@@ -21,3 +21,7 @@ Compatible with OpenSearch 1.1.0
 
 * Removing Usages of Action Get Call and using listeners ([#100](https://github.com/opensearch-project/index-management/pull/100))
 * Explain response still use old opendistro policy id ([#109](https://github.com/opensearch-project/index-management/pull/109))
+* Only rollover history index onMaster if enabled ([#142](https://github.com/opensearch-project/index-management/pull/142))
+
+### Maintenance
+* License header check ([#142](https://github.com/opensearch-project/index-management/pull/142))
