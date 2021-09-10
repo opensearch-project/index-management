@@ -1,7 +1,8 @@
 .gradle/
 build/
 out/
-.idea/
+.idea/*
+!.idea/copyright
 *.ipr
 *.iws
 .DS_Store
