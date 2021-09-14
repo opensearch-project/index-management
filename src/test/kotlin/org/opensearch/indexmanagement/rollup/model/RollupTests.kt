@@ -95,9 +95,13 @@ class RollupTests : OpenSearchTestCase() {
         assertFailsWith(IllegalArgumentException::class, "Delay was negative") {
             randomRollup().copy(delay = -1)
         }
+        assertFailsWith(IllegalArgumentException::class, "Delay was too high") {
+            randomRollup().copy(delay = Long.MAX_VALUE)
+        }
 
         // These should successfully parse without exceptions
         randomRollup().copy(delay = 0)
         randomRollup().copy(delay = 930490)
+        randomRollup().copy(delay = null)
     }
 }

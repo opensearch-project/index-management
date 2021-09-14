@@ -26,6 +26,7 @@
 
 package org.opensearch.indexmanagement.rollup
 
+import kotlinx.coroutines.delay
 import org.apache.logging.log4j.LogManager
 import org.opensearch.ExceptionsHelper
 import org.opensearch.OpenSearchSecurityException
@@ -104,12 +105,12 @@ class RollupSearchService(
             logger.debug("Non-continuous job [${rollup.id}] is not processing next window [$metadata]")
             return false
         } else {
-            return hasNextFullWindow(metadata) // TODO: Behavior when next full window but 0 docs/afterkey is null
+            return hasNextFullWindow(rollup, metadata) // TODO: Behavior when next full window but 0 docs/afterkey is null
         }
     }
 
-    private fun hasNextFullWindow(metadata: RollupMetadata): Boolean {
-        return Instant.now().isAfter(metadata.continuous!!.nextWindowEndTime) // TODO: !!
+    private fun hasNextFullWindow(rollup: Rollup, metadata: RollupMetadata): Boolean {
+        return Instant.now().isAfter(metadata.continuous!!.nextWindowEndTime.plusMillis(rollup.delay ?: 0)) // TODO: !!
     }
 
     @Suppress("ComplexMethod")
@@ -125,7 +126,7 @@ class RollupSearchService(
                             "Composite search failed for rollup, retrying [#${retryCount - 1}] -" +
                                 " reducing page size of composite aggregation from ${job.pageSize} to $pageSize"
                         )
-                        search(job.copy(pageSize = pageSize).getRollupSearchRequest(metadata), listener)
+                        search(job.copy(pageSize = pageSize).getRollupSearchRequest(metadata, job), listener)
                     }
                 }
             )

@@ -83,6 +83,7 @@ data class Rollup(
         } else {
             require(jobEnabledTime == null) { "Job enabled time must not be present if the job is disabled" }
         }
+        if (jobSchedule.delay != delay) jobSchedule.delay = (delay ?: 0)
         when (jobSchedule) {
             is CronSchedule -> {
                 // Job scheduler already correctly throws errors for this
@@ -97,7 +98,10 @@ data class Rollup(
         }
         require(dimensions.first().type == Dimension.Type.DATE_HISTOGRAM) { "The first dimension must be a date histogram" }
         require(pageSize in MINIMUM_PAGE_SIZE..MAXIMUM_PAGE_SIZE) { "Page size must be between 1 and 10,000" }
-        if (delay != null) require(delay >= MINIMUM_DELAY) { "Delay must be non-negative if set" }
+        if (delay != null) {
+            require(delay >= MINIMUM_DELAY) { "Delay must be non-negative if set" }
+            require(delay <= Instant.now().toEpochMilli()) { "Delay must be less than the current unix time" }
+        }
     }
 
     override fun isEnabled() = enabled
@@ -170,7 +174,7 @@ data class Rollup(
             .field(TARGET_INDEX_FIELD, targetIndex)
             .field(METADATA_ID_FIELD, metadataID)
             .field(PAGE_SIZE_FIELD, pageSize)
-            .field(DELAY_FIELD, delay)
+            .field(DELAY_FIELD, delay) // ?: 0
             .field(CONTINUOUS_FIELD, continuous)
             .field(DIMENSIONS_FIELD, dimensions.toTypedArray())
             .field(RollupMetrics.METRICS_FIELD, metrics.toTypedArray())
@@ -200,7 +204,7 @@ data class Rollup(
         out.writeOptionalString(metadataID)
         out.writeStringArray(roles.toTypedArray())
         out.writeInt(pageSize)
-        out.writeOptionalLong(delay)
+        out.writeOptionalLong(delay) // ?: 0
         out.writeBoolean(continuous)
         out.writeVInt(dimensions.size)
         for (dimension in dimensions) {
@@ -331,7 +335,7 @@ data class Rollup(
             // TODO: Make startTime public in Job Scheduler so we can just directly check the value
             if (seqNo == SequenceNumbers.UNASSIGNED_SEQ_NO || primaryTerm == SequenceNumbers.UNASSIGNED_PRIMARY_TERM) {
                 if (schedule is IntervalSchedule) {
-                    schedule = IntervalSchedule(Instant.now(), schedule.interval, schedule.unit)
+                    schedule = IntervalSchedule(Instant.now(), schedule.interval, schedule.unit, schedule.delay)
                 }
             }
             return Rollup(

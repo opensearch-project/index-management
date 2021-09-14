@@ -61,9 +61,9 @@ fun randomEpochMillis(): Long = OpenSearchRestTestCase.randomLongBetween(0, Inst
 
 fun randomInstant(): Instant = Instant.ofEpochMilli(randomEpochMillis())
 
-fun randomCronSchedule(): CronSchedule = CronSchedule(randomCronExpression(), OpenSearchRestTestCase.randomZone())
+fun randomCronSchedule(): CronSchedule = CronSchedule(randomCronExpression(), OpenSearchRestTestCase.randomZone(), 0)
 
-fun randomIntervalSchedule(): IntervalSchedule = IntervalSchedule(randomInstant(), OpenSearchRestTestCase.randomIntBetween(1, 100), randomChronoUnit())
+fun randomIntervalSchedule(): IntervalSchedule = IntervalSchedule(randomInstant(), OpenSearchRestTestCase.randomIntBetween(1, 100), randomChronoUnit(), 0)
 
 fun randomSchedule(): Schedule = if (OpenSearchRestTestCase.randomBoolean()) randomIntervalSchedule() else randomCronSchedule()
 
