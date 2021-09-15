@@ -89,7 +89,7 @@ data class ISMRollup(
             primaryTerm = SequenceNumbers.UNASSIGNED_PRIMARY_TERM,
             enabled = true,
             schemaVersion = IndexUtils.DEFAULT_SCHEMA_VERSION,
-            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES, 0),
             jobLastUpdatedTime = currentTime,
             jobEnabledTime = currentTime,
             description = this.description,

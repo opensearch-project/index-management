@@ -90,7 +90,7 @@ class RestStopRollupActionIT : RollupRestTestCase() {
             randomRollup()
                 .copy(
                     continuous = false,
-                    jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+                    jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES, 0),
                     enabled = true,
                     jobEnabledTime = Instant.now(),
                     metadataID = null
@@ -128,7 +128,7 @@ class RestStopRollupActionIT : RollupRestTestCase() {
         val rollup = randomRollup().copy(
             id = "test_stopping_a_failed_rollup",
             continuous = false,
-            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES, 0),
             enabled = true,
             jobEnabledTime = Instant.now(),
             metadataID = null
@@ -163,7 +163,7 @@ class RestStopRollupActionIT : RollupRestTestCase() {
             randomRollup()
                 .copy(
                     continuous = false,
-                    jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+                    jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES, 0),
                     enabled = true,
                     jobEnabledTime = Instant.now(),
                     metadataID = null
@@ -214,7 +214,7 @@ class RestStopRollupActionIT : RollupRestTestCase() {
             id = "basic_term_query",
             schemaVersion = 1L,
             enabled = true,
-            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES, 0),
             jobLastUpdatedTime = Instant.now(),
             jobEnabledTime = Instant.now(),
             description = "basic search test",

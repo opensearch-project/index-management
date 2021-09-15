@@ -32,7 +32,7 @@ class RestExplainTransformActionIT : TransformRestTestCase() {
     fun `test explain transform`() {
         val transform = randomTransform().copy(
             id = "test_explain_transform",
-            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES, 0),
             enabled = true,
             enabledAt = Instant.now(),
             metadataId = null,

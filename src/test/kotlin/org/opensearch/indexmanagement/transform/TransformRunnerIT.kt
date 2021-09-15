@@ -45,7 +45,7 @@ class TransformRunnerIT : TransformRestTestCase() {
             enabled = true,
             enabledAt = Instant.now(),
             updatedAt = Instant.now(),
-            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES, 0),
             description = "test transform",
             metadataId = null,
             sourceIndex = "transform-source-index",
@@ -88,7 +88,7 @@ class TransformRunnerIT : TransformRestTestCase() {
             enabled = true,
             enabledAt = Instant.now(),
             updatedAt = Instant.now(),
-            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES, 0),
             description = "test transform",
             metadataId = null,
             sourceIndex = "transform-source-index",
@@ -120,7 +120,7 @@ class TransformRunnerIT : TransformRestTestCase() {
 
     fun `test invalid transform`() {
         // With invalid mapping
-        val transform = randomTransform().copy(enabled = true, jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES))
+        val transform = randomTransform().copy(enabled = true, jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES, 0))
         createTransform(transform, transform.id)
         deleteIndex(transform.sourceIndex)
 
@@ -185,7 +185,7 @@ class TransformRunnerIT : TransformRestTestCase() {
             enabled = true,
             enabledAt = Instant.now(),
             updatedAt = Instant.now(),
-            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES, 0),
             description = "test transform",
             metadataId = null,
             sourceIndex = "transform-source-index",
@@ -232,7 +232,7 @@ class TransformRunnerIT : TransformRestTestCase() {
             enabled = true,
             enabledAt = Instant.now(),
             updatedAt = Instant.now(),
-            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES, 0),
             description = "test transform",
             metadataId = null,
             sourceIndex = "transform-source-index",
@@ -299,7 +299,7 @@ class TransformRunnerIT : TransformRestTestCase() {
             enabled = true,
             enabledAt = Instant.now(),
             updatedAt = Instant.now(),
-            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES, 0),
             description = "test transform",
             metadataId = null,
             sourceIndex = "transform-source-index",
@@ -363,7 +363,7 @@ class TransformRunnerIT : TransformRestTestCase() {
             enabled = true,
             enabledAt = Instant.now(),
             updatedAt = Instant.now(),
-            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES, 0),
             description = "test transform",
             metadataId = null,
             sourceIndex = dataStreamName,

@@ -485,7 +485,7 @@ object ManagedIndexRunner :
     private suspend fun updateJobInterval(managedIndexConfig: ManagedIndexConfig, jobInterval: Int) {
         try {
             val updatedManagedIndexConfig = managedIndexConfig
-                .copy(jobSchedule = IntervalSchedule(getIntervalStartTime(managedIndexConfig), jobInterval, ChronoUnit.MINUTES))
+                .copy(jobSchedule = IntervalSchedule(getIntervalStartTime(managedIndexConfig), jobInterval, ChronoUnit.MINUTES, 0))
             val indexRequest = managedIndexConfigIndexRequest(updatedManagedIndexConfig)
             val indexResponse: IndexResponse = client.suspendUntil { index(indexRequest, it) }
             if (indexResponse.status() != RestStatus.OK) {

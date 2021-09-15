@@ -174,7 +174,7 @@ data class Rollup(
             .field(TARGET_INDEX_FIELD, targetIndex)
             .field(METADATA_ID_FIELD, metadataID)
             .field(PAGE_SIZE_FIELD, pageSize)
-            .field(DELAY_FIELD, delay) // ?: 0
+            .field(DELAY_FIELD, delay)
             .field(CONTINUOUS_FIELD, continuous)
             .field(DIMENSIONS_FIELD, dimensions.toTypedArray())
             .field(RollupMetrics.METRICS_FIELD, metrics.toTypedArray())
@@ -204,7 +204,7 @@ data class Rollup(
         out.writeOptionalString(metadataID)
         out.writeStringArray(roles.toTypedArray())
         out.writeInt(pageSize)
-        out.writeOptionalLong(delay) // ?: 0
+        out.writeOptionalLong(delay)
         out.writeBoolean(continuous)
         out.writeVInt(dimensions.size)
         for (dimension in dimensions) {

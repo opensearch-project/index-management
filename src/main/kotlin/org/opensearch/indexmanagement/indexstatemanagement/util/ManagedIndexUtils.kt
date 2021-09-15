@@ -88,7 +88,7 @@ fun managedIndexConfigIndexRequest(
         index = index,
         indexUuid = uuid,
         enabled = true,
-        jobSchedule = IntervalSchedule(Instant.now(), jobInterval, ChronoUnit.MINUTES),
+        jobSchedule = IntervalSchedule(Instant.now(), jobInterval, ChronoUnit.MINUTES, 0),
         jobLastUpdatedTime = Instant.now(),
         jobEnabledTime = Instant.now(),
         policyID = policyID,

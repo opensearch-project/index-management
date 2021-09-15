@@ -58,7 +58,7 @@ class RollupRunnerIT : RollupRestTestCase() {
         // Define rollup
         var rollup = randomRollup().copy(
             enabled = true,
-            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES, 0),
             jobEnabledTime = Instant.now(),
             sourceIndex = indexName,
             metadataID = null,
@@ -94,7 +94,7 @@ class RollupRunnerIT : RollupRestTestCase() {
         // Define the rollup job
         var rollup = randomRollup().copy(
             enabled = true,
-            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES, 0),
             jobEnabledTime = Instant.now(),
             sourceIndex = dataStreamName,
             targetIndex = "$dataStreamName-rollup",
@@ -143,7 +143,7 @@ class RollupRunnerIT : RollupRestTestCase() {
         var rollup = randomRollup().copy(
             id = "metadata_set_failed_id_doc_not_exist",
             enabled = true,
-            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES, 0),
             jobEnabledTime = Instant.now(),
             sourceIndex = indexName,
             targetIndex = "${indexName}_target",
@@ -207,7 +207,7 @@ class RollupRunnerIT : RollupRestTestCase() {
         // Define rollup
         var rollup = randomRollup().copy(
             enabled = true,
-            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES, 0),
             jobEnabledTime = Instant.now(),
             sourceIndex = indexName,
             metadataID = null,
@@ -265,7 +265,7 @@ class RollupRunnerIT : RollupRestTestCase() {
         // Define rollup
         var rollup = randomRollup().copy(
             enabled = true,
-            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES, 0),
             jobEnabledTime = Instant.now(),
             sourceIndex = indexName,
             metadataID = null,
@@ -305,7 +305,7 @@ class RollupRunnerIT : RollupRestTestCase() {
             id = "basic_stats_check_runner_fifth",
             schemaVersion = 1L,
             enabled = true,
-            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES, 0),
             jobLastUpdatedTime = Instant.now(),
             jobEnabledTime = Instant.now(),
             description = "basic stats test",
@@ -326,7 +326,7 @@ class RollupRunnerIT : RollupRestTestCase() {
             id = "all_inclusive_intervals_runner_fifth",
             schemaVersion = 1L,
             enabled = true,
-            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES, 0),
             jobLastUpdatedTime = Instant.now(),
             jobEnabledTime = Instant.now(),
             description = "basic stats test",
@@ -347,7 +347,7 @@ class RollupRunnerIT : RollupRestTestCase() {
             id = "second_interval_runner_fifth",
             schemaVersion = 1L,
             enabled = true,
-            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES, 0),
             jobLastUpdatedTime = Instant.now(),
             jobEnabledTime = Instant.now(),
             description = "basic 1s test",
@@ -448,7 +448,7 @@ class RollupRunnerIT : RollupRestTestCase() {
             id = "page_size_runner_sixth",
             schemaVersion = 1L,
             enabled = true,
-            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES, 0),
             jobLastUpdatedTime = Instant.now(),
             jobEnabledTime = Instant.now(),
             description = "basic change of page size",
@@ -507,7 +507,7 @@ class RollupRunnerIT : RollupRestTestCase() {
             id = "page_size_no_retry_first_runner_seventh",
             schemaVersion = 1L,
             enabled = true,
-            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES, 0),
             jobLastUpdatedTime = Instant.now(),
             jobEnabledTime = Instant.now(),
             description = "basic page size",
@@ -542,7 +542,7 @@ class RollupRunnerIT : RollupRestTestCase() {
             id = "page_size_with_retry_second_runner_seventh",
             schemaVersion = 1L,
             enabled = true,
-            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES, 0),
             jobLastUpdatedTime = Instant.now(),
             jobEnabledTime = Instant.now(),
             description = "basic page size",
@@ -577,7 +577,7 @@ class RollupRunnerIT : RollupRestTestCase() {
         // Define rollup
         var rollup = randomRollup().copy(
             enabled = true,
-            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES, 0),
             jobEnabledTime = Instant.now(),
             sourceIndex = indexName,
             metadataID = null,
@@ -633,7 +633,7 @@ class RollupRunnerIT : RollupRestTestCase() {
             id = "basic_stats_check_runner_ninth",
             schemaVersion = 1L,
             enabled = true,
-            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES, 0),
             jobLastUpdatedTime = Instant.now(),
             jobEnabledTime = Instant.now(),
             description = "basic stats test",
@@ -657,7 +657,7 @@ class RollupRunnerIT : RollupRestTestCase() {
             id = "basic_stats_check_runner_tenth",
             schemaVersion = 1L,
             enabled = true,
-            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES, 0),
             jobLastUpdatedTime = Instant.now(),
             jobEnabledTime = Instant.now(),
             description = "basic stats test",
@@ -681,7 +681,7 @@ class RollupRunnerIT : RollupRestTestCase() {
             id = "non_continuous_delay_stats_check",
             schemaVersion = 1L,
             enabled = true,
-            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES, 0),
             jobLastUpdatedTime = Instant.now(),
             jobEnabledTime = Instant.now(),
             description = "basic delay test",
@@ -731,51 +731,44 @@ class RollupRunnerIT : RollupRestTestCase() {
 
         refreshAllIndices()
 
-        waitFor {
-            val rollupMetadataID = finishedRollup.metadataID!!
-            val rollupMetadata = getRollupMetadata(rollupMetadataID)
-            assertEquals("Did not store delay correctly", delayToEpoch, finishedRollup.delay)
-            // These might seem like magic numbers but they are static/fixed based off the dataset in the resources
-            // We have two pages processed because afterKey is always returned if there is data in the response
-            // So the first pagination returns an afterKey and the second doesn't
-            assertEquals("Did not have 1 page processed", 1L, rollupMetadata.stats.pagesProcessed)
-            // This is a non-continuous job that rolls up every document of which there are 5k
-            assertEquals("Did not have 0 documents processed", 0L, rollupMetadata.stats.documentsProcessed)
-            // Based on the very first document using the tpep_pickup_datetime date field and an hourly rollup there
-            // should be 0 buckets with data in them which means 0 rollup documents
-            assertEquals("Did not have 0 rollups indexed", 0L, rollupMetadata.stats.rollupsIndexed)
-            // Shouldn't be any documents, so no time indexing
-            assertEquals("Spent time indexing when there shouldn't be any documents", 0L, rollupMetadata.stats.indexTimeInMillis)
-            assertTrue("Did not spend time searching", rollupMetadata.stats.searchTimeInMillis > 0L)
-        }
+        val rollupMetadataID = finishedRollup.metadataID!!
+        val rollupMetadata = getRollupMetadata(rollupMetadataID)
+        assertEquals("Did not store delay correctly", delayToEpoch, finishedRollup.delay)
+        // These might seem like magic numbers but they are static/fixed based off the dataset in the resources
+        // We have two pages processed because afterKey is always returned if there is data in the response
+        // So the first pagination returns an afterKey and the second doesn't
+        assertEquals("Did not have 1 page processed", 1L, rollupMetadata.stats.pagesProcessed)
+        // This is a non-continuous job that rolls up every document of which there are 5k
+        assertEquals("Did not have 0 documents processed", 0L, rollupMetadata.stats.documentsProcessed)
+        // Based on the very first document using the tpep_pickup_datetime date field and an hourly rollup there
+        // should be 0 buckets with data in them which means 0 rollup documents
+        assertEquals("Did not have 0 rollups indexed", 0L, rollupMetadata.stats.rollupsIndexed)
+        // Shouldn't be any documents, so no time indexing
+        assertEquals("Spent time indexing when there shouldn't be any documents", 0L, rollupMetadata.stats.indexTimeInMillis)
 
-        waitFor {
-            val secondRollupMetadataID = secondFinishedRollup.metadataID!!
-            val secondRollupMetadata = getRollupMetadata(secondRollupMetadataID)
-            assertEquals("Did not have 2 pages processed", 2L, secondRollupMetadata.stats.pagesProcessed)
-            // This is a non-continuous job that rolls up every document of which there are 5k
-            assertEquals("Did not have 5000 documents processed", 5000L, secondRollupMetadata.stats.documentsProcessed)
-            // Based on the very first document using the tpep_pickup_datetime date field and an hourly rollup there
-            // should be 10 buckets with data in them which means 10 rollup documents
-            assertEquals("Did not have 10 rollups indexed", 10L, secondRollupMetadata.stats.rollupsIndexed)
-            // These are hard to test.. just assert they are more than 0
-            assertTrue("Did not spend time indexing", secondRollupMetadata.stats.indexTimeInMillis > 0L)
-            assertTrue("Did not spend time searching", secondRollupMetadata.stats.searchTimeInMillis > 0L)
-        }
+        val secondRollupMetadataID = secondFinishedRollup.metadataID!!
+        val secondRollupMetadata = getRollupMetadata(secondRollupMetadataID)
+        assertEquals("Did not have 2 pages processed", 2L, secondRollupMetadata.stats.pagesProcessed)
+        // This is a non-continuous job that rolls up every document of which there are 5k
+        assertEquals("Did not have 5000 documents processed", 5000L, secondRollupMetadata.stats.documentsProcessed)
+        // Based on the very first document using the tpep_pickup_datetime date field and an hourly rollup there
+        // should be 10 buckets with data in them which means 10 rollup documents
+        assertEquals("Did not have 10 rollups indexed", 10L, secondRollupMetadata.stats.rollupsIndexed)
+        // These are hard to test.. just assert they are more than 0
+        assertTrue("Did not spend time indexing", secondRollupMetadata.stats.indexTimeInMillis > 0L)
+        assertTrue("Did not spend time searching", secondRollupMetadata.stats.searchTimeInMillis > 0L)
 
-        waitFor {
-            val thirdRollupMetadataID = thirdFinishedRollup.metadataID!!
-            val thirdRollupMetadata = getRollupMetadata(thirdRollupMetadataID)
-            assertEquals("Did not have 2 pages processed", 2L, thirdRollupMetadata.stats.pagesProcessed)
-            // This is a non-continuous job that rolls up documents before 2018-11-30, of which there are 4
-            assertEquals("Did not have 4 documents processed", 4, thirdRollupMetadata.stats.documentsProcessed)
-            // Based on the very first document using the tpep_pickup_datetime date field and a 1 second rollup there
-            // should be 2 buckets with data in them which means 2 rollup documents
-            assertEquals("Did not have 2 rollups indexed", 2, thirdRollupMetadata.stats.rollupsIndexed)
-            // These are hard to test.. just assert they are more than 0
-            assertTrue("Did not spend time indexing", thirdRollupMetadata.stats.indexTimeInMillis > 0L)
-            assertTrue("Did not spend time searching", thirdRollupMetadata.stats.searchTimeInMillis > 0L)
-        }
+        val thirdRollupMetadataID = thirdFinishedRollup.metadataID!!
+        val thirdRollupMetadata = getRollupMetadata(thirdRollupMetadataID)
+        assertEquals("Did not have 2 pages processed", 2L, thirdRollupMetadata.stats.pagesProcessed)
+        // This is a non-continuous job that rolls up documents before 2018-11-30, of which there are 4
+        assertEquals("Did not have 4 documents processed", 4, thirdRollupMetadata.stats.documentsProcessed)
+        // Based on the very first document using the tpep_pickup_datetime date field and a 1 second rollup there
+        // should be 2 buckets with data in them which means 2 rollup documents
+        assertEquals("Did not have 2 rollups indexed", 2, thirdRollupMetadata.stats.rollupsIndexed)
+        // These are hard to test.. just assert they are more than 0
+        assertTrue("Did not spend time indexing", thirdRollupMetadata.stats.indexTimeInMillis > 0L)
+        assertTrue("Did not spend time searching", thirdRollupMetadata.stats.searchTimeInMillis > 0L)
     }
 
     // Tests that a non continuous rollup will not be processed until the end of the interval plus delay passes
@@ -785,7 +778,7 @@ class RollupRunnerIT : RollupRestTestCase() {
         // Define rollup
         var rollup = randomRollup().copy(
             enabled = true,
-            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES, 0),
             jobEnabledTime = Instant.now(),
             sourceIndex = indexName,
             metadataID = null,
