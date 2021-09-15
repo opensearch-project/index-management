@@ -5,6 +5,7 @@ Compatible with OpenSearch 1.1.0
 ### Infrastructure
 
 * Upgrade dependencies to 1.1 and build snapshot by default. ([#121](https://github.com/opensearch-project/index-management/pull/121))
+* Update workflow to point to 1.1 ([#146](https://github.com/opensearch-project/index-management/pull/146))
 
 ### Features
 
