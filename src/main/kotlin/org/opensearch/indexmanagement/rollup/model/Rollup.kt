@@ -61,7 +61,7 @@ data class Rollup(
     val primaryTerm: Long = SequenceNumbers.UNASSIGNED_PRIMARY_TERM,
     val enabled: Boolean,
     val schemaVersion: Long,
-    val jobSchedule: Schedule,
+    var jobSchedule: Schedule,
     val jobLastUpdatedTime: Instant,
     val jobEnabledTime: Instant?,
     val description: String,
@@ -83,13 +83,26 @@ data class Rollup(
         } else {
             require(jobEnabledTime == null) { "Job enabled time must not be present if the job is disabled" }
         }
-        if (jobSchedule.delay != delay) jobSchedule.delay = (delay ?: 0)
+        // Copy the delay parameter into the job scheduler to make sure they match
+        if (jobSchedule.delay != delay) {
+            jobSchedule = when (jobSchedule) {
+                is CronSchedule -> {
+                    val cronSchedule = jobSchedule as CronSchedule
+                    CronSchedule(cronSchedule.cronExpression, cronSchedule.timeZone, delay ?: 0)
+                }
+                is IntervalSchedule -> {
+                    val intervalSchedule = jobSchedule as IntervalSchedule
+                    IntervalSchedule(intervalSchedule.startTime, intervalSchedule.interval, intervalSchedule.unit, delay ?: 0)
+                }
+                else -> jobSchedule
+            }
+        }
         when (jobSchedule) {
             is CronSchedule -> {
                 // Job scheduler already correctly throws errors for this
             }
             is IntervalSchedule -> {
-                require(jobSchedule.interval >= MINIMUM_JOB_INTERVAL) { "Rollup job schedule interval must be greater than 0" }
+                require((jobSchedule as IntervalSchedule).interval >= MINIMUM_JOB_INTERVAL) { "Rollup job schedule interval must be greater than 0" }
             }
         }
         require(sourceIndex != targetIndex) { "Your source and target index cannot be the same" }
