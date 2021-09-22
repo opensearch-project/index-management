@@ -26,7 +26,6 @@
 
 package org.opensearch.indexmanagement.rollup
 
-import kotlinx.coroutines.delay
 import org.apache.logging.log4j.LogManager
 import org.opensearch.ExceptionsHelper
 import org.opensearch.OpenSearchSecurityException
@@ -126,7 +125,7 @@ class RollupSearchService(
                             "Composite search failed for rollup, retrying [#${retryCount - 1}] -" +
                                 " reducing page size of composite aggregation from ${job.pageSize} to $pageSize"
                         )
-                        search(job.copy(pageSize = pageSize).getRollupSearchRequest(metadata, job), listener)
+                        search(job.copy(pageSize = pageSize).getRollupSearchRequest(metadata), listener)
                     }
                 }
             )

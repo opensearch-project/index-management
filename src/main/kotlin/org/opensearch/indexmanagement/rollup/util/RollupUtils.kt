@@ -95,7 +95,7 @@ fun isRollupIndex(index: String, clusterState: ClusterState): Boolean {
     return false
 }
 
-fun Rollup.getRollupSearchRequest(metadata: RollupMetadata, job: Rollup): SearchRequest {
+fun Rollup.getRollupSearchRequest(metadata: RollupMetadata): SearchRequest {
     val query = if (metadata.continuous != null) {
         RangeQueryBuilder(this.getDateHistogram().sourceField)
             .from(metadata.continuous.nextWindowStartTime.toEpochMilli(), true)
@@ -103,7 +103,7 @@ fun Rollup.getRollupSearchRequest(metadata: RollupMetadata, job: Rollup): Search
             .format(DATE_FIELD_EPOCH_MILLIS_FORMAT)
     } else {
         RangeQueryBuilder(this.getDateHistogram().sourceField)
-            .to(max(0L, Instant.now().toEpochMilli() - (job.delay ?: 0)), false)
+            .to(max(0L, Instant.now().toEpochMilli() - (this.delay ?: 0)), false)
             .format(DATE_FIELD_EPOCH_MILLIS_FORMAT)
     }
     val searchSourceBuilder = SearchSourceBuilder()

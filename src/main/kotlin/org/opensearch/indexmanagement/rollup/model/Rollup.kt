@@ -83,7 +83,7 @@ data class Rollup(
         } else {
             require(jobEnabledTime == null) { "Job enabled time must not be present if the job is disabled" }
         }
-        // Copy the delay parameter into the job scheduler to make sure they match
+        // Copy the delay parameter of the job into the job scheduler
         if (jobSchedule.delay != delay) {
             jobSchedule = when (jobSchedule) {
                 is CronSchedule -> {
