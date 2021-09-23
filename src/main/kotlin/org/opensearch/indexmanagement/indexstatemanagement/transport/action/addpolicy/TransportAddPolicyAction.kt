@@ -93,11 +93,15 @@ class TransportAddPolicyAction @Inject constructor(
 ) {
 
     @Volatile private var jobInterval = ManagedIndexSettings.JOB_INTERVAL.get(settings)
+    @Volatile private var jobJitter = ManagedIndexSettings.JITTER.get(settings)
     @Volatile private var filterByEnabled = IndexManagementSettings.FILTER_BY_BACKEND_ROLES.get(settings)
 
     init {
         clusterService.clusterSettings.addSettingsUpdateConsumer(ManagedIndexSettings.JOB_INTERVAL) {
             jobInterval = it
+        }
+        clusterService.clusterSettings.addSettingsUpdateConsumer(ManagedIndexSettings.JITTER) {
+            jobJitter = it
         }
         clusterService.clusterSettings.addSettingsUpdateConsumer(IndexManagementSettings.FILTER_BY_BACKEND_ROLES) {
             filterByEnabled = it
@@ -329,7 +333,7 @@ class TransportAddPolicyAction @Inject constructor(
                 val bulkReq = BulkRequest().timeout(TimeValue.timeValueMillis(bulkReqTimeout))
                 indicesToAdd.forEach { (uuid, name) ->
                     bulkReq.add(
-                        managedIndexConfigIndexRequest(name, uuid, request.policyID, jobInterval, policy = policy.copy(user = this.user))
+                        managedIndexConfigIndexRequest(name, uuid, request.policyID, jobInterval, policy = policy.copy(user = this.user), jobJitter)
                     )
                 }
 

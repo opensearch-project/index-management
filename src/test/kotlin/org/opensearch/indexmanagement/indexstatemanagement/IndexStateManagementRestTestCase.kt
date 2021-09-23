@@ -31,6 +31,7 @@ import org.apache.http.HttpHeaders
 import org.apache.http.entity.ContentType.APPLICATION_JSON
 import org.apache.http.entity.StringEntity
 import org.apache.http.message.BasicHeader
+import org.junit.Before
 import org.opensearch.OpenSearchParseException
 import org.opensearch.action.get.GetResponse
 import org.opensearch.action.search.SearchResponse
@@ -94,6 +95,12 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
 
     val explainResponseOpendistroPolicyIdSetting = "index.opendistro.index_state_management.policy_id"
     val explainResponseOpenSearchPolicyIdSetting = "index.plugins.index_state_management.policy_id"
+
+    @Before
+    protected fun disableIndexStateManagementJitter() {
+        // jitter would add a test-breaking delay to the integration tests
+        updateIndexStateManagementJitterSetting(0.0)
+    }
 
     protected fun createPolicy(
         policy: Policy,
@@ -266,6 +273,10 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
             StringEntity(request, APPLICATION_JSON)
         )
         assertEquals("Request failed", RestStatus.OK, res.restStatus())
+    }
+
+    protected fun updateIndexStateManagementJitterSetting(value: Double) {
+        updateClusterSetting(ManagedIndexSettings.JITTER.key, value.toString(), false)
     }
 
     protected fun updateIndexSetting(

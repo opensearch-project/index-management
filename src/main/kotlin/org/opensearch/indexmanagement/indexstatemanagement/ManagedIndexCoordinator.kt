@@ -75,6 +75,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndex
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.COORDINATOR_BACKOFF_COUNT
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.COORDINATOR_BACKOFF_MILLIS
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.INDEX_STATE_MANAGEMENT_ENABLED
+import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.JITTER
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.JOB_INTERVAL
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.METADATA_SERVICE_ENABLED
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.SWEEP_PERIOD
@@ -145,6 +146,7 @@ class ManagedIndexCoordinator(
     @Volatile private var retryPolicy =
         BackoffPolicy.constantBackoff(COORDINATOR_BACKOFF_MILLIS.get(settings), COORDINATOR_BACKOFF_COUNT.get(settings))
     @Volatile private var jobInterval = JOB_INTERVAL.get(settings)
+    @Volatile private var jobJitter = JITTER.get(settings)
 
     @Volatile private var isMaster = false
 
@@ -157,6 +159,9 @@ class ManagedIndexCoordinator(
         }
         clusterService.clusterSettings.addSettingsUpdateConsumer(JOB_INTERVAL) {
             jobInterval = it
+        }
+        clusterService.clusterSettings.addSettingsUpdateConsumer(JITTER) {
+            jobJitter = it
         }
         clusterService.clusterSettings.addSettingsUpdateConsumer(INDEX_STATE_MANAGEMENT_ENABLED) {
             indexStateManagementEnabled = it
@@ -328,7 +333,8 @@ class ManagedIndexCoordinator(
                                 indexUuid,
                                 policy.id,
                                 jobInterval,
-                                policy
+                                policy,
+                                jobJitter
                             )
                         )
                     }

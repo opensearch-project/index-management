@@ -76,12 +76,14 @@ import java.net.InetAddress
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 
+@Suppress("LongParameterList")
 fun managedIndexConfigIndexRequest(
     index: String,
     uuid: String,
     policyID: String,
     jobInterval: Int,
-    policy: Policy? = null
+    policy: Policy? = null,
+    jobJitter: Double?
 ): IndexRequest {
     val managedIndexConfig = ManagedIndexConfig(
         jobName = index,
@@ -95,7 +97,8 @@ fun managedIndexConfigIndexRequest(
         policy = policy,
         policySeqNo = policy?.seqNo,
         policyPrimaryTerm = policy?.primaryTerm,
-        changePolicy = null
+        changePolicy = null,
+        jobJitter = jobJitter
     )
 
     return IndexRequest(INDEX_MANAGEMENT_INDEX)

@@ -60,7 +60,7 @@ class ManagedIndexUtilsTests : OpenSearchTestCase() {
         val index = randomAlphaOfLength(10)
         val uuid = randomAlphaOfLength(10)
         val policyID = randomAlphaOfLength(10)
-        val createRequest = managedIndexConfigIndexRequest(index, uuid, policyID, 5)
+        val createRequest = managedIndexConfigIndexRequest(index, uuid, policyID, 5, jobJitter = 0.0)
 
         assertNotNull("IndexRequest not created", createRequest)
         assertEquals("Incorrect ism index used in request", INDEX_MANAGEMENT_INDEX, createRequest.index())

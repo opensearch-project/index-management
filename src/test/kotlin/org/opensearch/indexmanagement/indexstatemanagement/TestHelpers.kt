@@ -275,7 +275,8 @@ fun randomManagedIndexConfig(
     enabledTime: Instant? = if (enabled) Instant.now().truncatedTo(ChronoUnit.MILLIS) else null,
     policyID: String = OpenSearchRestTestCase.randomAlphaOfLength(10),
     policy: Policy? = randomPolicy(),
-    changePolicy: ChangePolicy? = randomChangePolicy()
+    changePolicy: ChangePolicy? = randomChangePolicy(),
+    jitter: Double? = 0.0
 ): ManagedIndexConfig {
     return ManagedIndexConfig(
         jobName = name,
@@ -289,7 +290,8 @@ fun randomManagedIndexConfig(
         policySeqNo = policy?.seqNo,
         policyPrimaryTerm = policy?.primaryTerm,
         policy = policy?.copy(seqNo = SequenceNumbers.UNASSIGNED_SEQ_NO, primaryTerm = SequenceNumbers.UNASSIGNED_PRIMARY_TERM),
-        changePolicy = changePolicy
+        changePolicy = changePolicy,
+        jobJitter = jitter
     )
 }
 

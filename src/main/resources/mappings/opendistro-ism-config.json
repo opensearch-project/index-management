@@ -1,6 +1,6 @@
 {
   "_meta" : {
-    "schema_version": 11
+    "schema_version": 12
   },
   "dynamic": "strict",
   "properties": {
@@ -614,6 +614,9 @@
               }
             }
           }
+        },
+        "jitter": {
+          "type": "double"
         }
       }
     },
