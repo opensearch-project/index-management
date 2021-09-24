@@ -60,7 +60,7 @@ class RestStopTransformActionIT : TransformRestTestCase() {
         val transform = createTransform(
             randomTransform()
                 .copy(
-                    jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES, 0),
+                    jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
                     enabled = true,
                     enabledAt = Instant.now(),
                     metadataId = null
@@ -96,7 +96,7 @@ class RestStopTransformActionIT : TransformRestTestCase() {
         // Create a transform that will fail because no source index
         val transform = randomTransform().copy(
             id = "test_stopping_a_failed_transform",
-            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES, 0),
+            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
             enabled = true,
             enabledAt = Instant.now(),
             metadataId = null
@@ -136,7 +136,7 @@ class RestStopTransformActionIT : TransformRestTestCase() {
             id = "test_stop_running_transform",
             schemaVersion = 1L,
             enabled = true,
-            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES, 0),
+            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
             updatedAt = Instant.now(),
             enabledAt = Instant.now(),
             description = "basic search test",

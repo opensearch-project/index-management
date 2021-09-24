@@ -27,6 +27,7 @@
 package org.opensearch.indexmanagement.rollup.model
 
 import org.opensearch.indexmanagement.randomInstant
+import org.opensearch.indexmanagement.randomSchedule
 import org.opensearch.indexmanagement.rollup.randomDateHistogram
 import org.opensearch.indexmanagement.rollup.randomRollup
 import org.opensearch.indexmanagement.rollup.randomTerms
@@ -103,5 +104,22 @@ class RollupTests : OpenSearchTestCase() {
         randomRollup().copy(delay = 0)
         randomRollup().copy(delay = 930490)
         randomRollup().copy(delay = null)
+    }
+
+    fun `test rollup applies to continuous rollups only`() {
+        // Continuous rollup schedule matches delay
+        val newDelay: Long = 500
+        val continuousRollup = randomRollup().copy(
+            delay = newDelay,
+            continuous = true
+        )
+        assertEquals(newDelay, continuousRollup.jobSchedule.delay)
+        // Non continuous rollup schedule should have null delay
+        val nonContinuousRollup = randomRollup().copy(
+            jobSchedule = randomSchedule(),
+            delay = newDelay,
+            continuous = false
+        )
+        assertNull(nonContinuousRollup.jobSchedule.delay)
     }
 }

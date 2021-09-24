@@ -47,11 +47,11 @@ class TransformTests : OpenSearchTestCase() {
     }
 
     fun `test transform requires interval schedule period to be greater than 0`() {
-        val schedule = IntervalSchedule(Instant.now(), 0, ChronoUnit.HOURS, 0)
+        val schedule = IntervalSchedule(Instant.now(), 0, ChronoUnit.HOURS)
         assertFailsWith(IllegalArgumentException::class, "Period was not greater than 0") {
             randomTransform().copy(jobSchedule = schedule)
         }
 
-        randomTransform().copy(jobSchedule = IntervalSchedule(Instant.now(), 2, ChronoUnit.HOURS, 0))
+        randomTransform().copy(jobSchedule = IntervalSchedule(Instant.now(), 2, ChronoUnit.HOURS))
     }
 }

@@ -239,7 +239,7 @@ fun randomDocCount(docCount: Long = OpenSearchRestTestCase.randomLongBetween(1, 
 
 fun randomSize(size: ByteSizeValue = randomByteSizeValue()) = Conditions.MIN_SIZE_FIELD to size
 
-fun randomCronSchedule(cron: CronSchedule = CronSchedule("0 * * * *", ZoneId.of("UTC"), 0)) =
+fun randomCronSchedule(cron: CronSchedule = CronSchedule("0 * * * *", ZoneId.of("UTC"))) =
     Conditions.CRON_FIELD to cron
 
 fun randomTimeValueObject(): TimeValue = TimeValue.parseTimeValue(OpenSearchRestTestCase.randomPositiveTimeValue(), "")
@@ -270,7 +270,7 @@ fun randomManagedIndexConfig(
     index: String = OpenSearchRestTestCase.randomAlphaOfLength(10),
     uuid: String = OpenSearchRestTestCase.randomAlphaOfLength(20),
     enabled: Boolean = OpenSearchRestTestCase.randomBoolean(),
-    schedule: Schedule = IntervalSchedule(Instant.ofEpochMilli(Instant.now().toEpochMilli()), 5, ChronoUnit.MINUTES, 0),
+    schedule: Schedule = IntervalSchedule(Instant.ofEpochMilli(Instant.now().toEpochMilli()), 5, ChronoUnit.MINUTES),
     lastUpdatedTime: Instant = Instant.now().truncatedTo(ChronoUnit.MILLIS),
     enabledTime: Instant? = if (enabled) Instant.now().truncatedTo(ChronoUnit.MILLIS) else null,
     policyID: String = OpenSearchRestTestCase.randomAlphaOfLength(10),

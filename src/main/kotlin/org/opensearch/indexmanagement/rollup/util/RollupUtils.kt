@@ -42,6 +42,7 @@ import org.opensearch.index.query.BoolQueryBuilder
 import org.opensearch.index.query.BoostingQueryBuilder
 import org.opensearch.index.query.ConstantScoreQueryBuilder
 import org.opensearch.index.query.DisMaxQueryBuilder
+import org.opensearch.index.query.MatchAllQueryBuilder
 import org.opensearch.index.query.MatchPhraseQueryBuilder
 import org.opensearch.index.query.QueryBuilder
 import org.opensearch.index.query.RangeQueryBuilder
@@ -80,8 +81,6 @@ import org.opensearch.search.aggregations.metrics.ScriptedMetricAggregationBuild
 import org.opensearch.search.aggregations.metrics.SumAggregationBuilder
 import org.opensearch.search.aggregations.metrics.ValueCountAggregationBuilder
 import org.opensearch.search.builder.SearchSourceBuilder
-import java.time.Instant
-import kotlin.math.max
 
 const val DATE_FIELD_EPOCH_MILLIS_FORMAT = "epoch_millis"
 
@@ -102,9 +101,7 @@ fun Rollup.getRollupSearchRequest(metadata: RollupMetadata): SearchRequest {
             .to(metadata.continuous.nextWindowEndTime.toEpochMilli(), false)
             .format(DATE_FIELD_EPOCH_MILLIS_FORMAT)
     } else {
-        RangeQueryBuilder(this.getDateHistogram().sourceField)
-            .to(max(0L, Instant.now().toEpochMilli() - (this.delay ?: 0)), false)
-            .format(DATE_FIELD_EPOCH_MILLIS_FORMAT)
+        MatchAllQueryBuilder()
     }
     val searchSourceBuilder = SearchSourceBuilder()
         .trackTotalHits(false)

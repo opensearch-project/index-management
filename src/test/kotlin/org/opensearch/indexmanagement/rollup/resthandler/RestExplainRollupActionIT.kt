@@ -48,7 +48,7 @@ class RestExplainRollupActionIT : RollupRestTestCase() {
         val rollup = randomRollup().copy(
             id = "test_explain_rollup",
             continuous = false,
-            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES, 0),
+            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
             enabled = true,
             jobEnabledTime = Instant.now(),
             metadataID = null

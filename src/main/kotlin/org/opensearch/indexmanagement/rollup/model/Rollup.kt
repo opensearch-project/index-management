@@ -83,8 +83,8 @@ data class Rollup(
         } else {
             require(jobEnabledTime == null) { "Job enabled time must not be present if the job is disabled" }
         }
-        // Copy the delay parameter of the job into the job scheduler
-        if (jobSchedule.delay != delay) {
+        // Copy the delay parameter of the job into the job scheduler for continuous jobs only
+        if (jobSchedule.delay != delay && continuous) {
             jobSchedule = when (jobSchedule) {
                 is CronSchedule -> {
                     val cronSchedule = jobSchedule as CronSchedule
@@ -348,7 +348,11 @@ data class Rollup(
             // TODO: Make startTime public in Job Scheduler so we can just directly check the value
             if (seqNo == SequenceNumbers.UNASSIGNED_SEQ_NO || primaryTerm == SequenceNumbers.UNASSIGNED_PRIMARY_TERM) {
                 if (schedule is IntervalSchedule) {
-                    schedule = IntervalSchedule(Instant.now(), schedule.interval, schedule.unit, schedule.delay)
+                    schedule = if (schedule.delay == null) {
+                        IntervalSchedule(Instant.now(), schedule.interval, schedule.unit)
+                    } else {
+                        IntervalSchedule(Instant.now(), schedule.interval, schedule.unit, schedule.delay)
+                    }
                 }
             }
             return Rollup(
