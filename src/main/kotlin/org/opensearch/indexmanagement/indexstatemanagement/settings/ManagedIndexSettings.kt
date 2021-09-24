@@ -185,7 +185,7 @@ class ManagedIndexSettings {
             "plugins.index_state_management.jitter",
             DEFAULT_JITTER,
             0.0,
-            Double.MAX_VALUE,
+            1.0,
             Setting.Property.NodeScope,
             Setting.Property.Dynamic
         )
