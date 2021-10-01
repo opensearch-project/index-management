@@ -381,6 +381,9 @@ object ManagedIndexRunner :
             }
 
             if (executedManagedIndexMetaData.isSuccessfulDelete) {
+                GlobalScope.launch(Dispatchers.IO + CoroutineName("ManagedIndexMetaData-AddHistory")) {
+                    ismHistory.addManagedIndexMetaDataHistory(listOf(executedManagedIndexMetaData))
+                }
                 return
             }
 
