@@ -44,6 +44,7 @@ import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.rest.RestStatus
 import org.opensearch.script.Script
 import org.opensearch.script.ScriptService
+import org.opensearch.script.ScriptType
 import org.opensearch.script.TemplateScript
 import org.opensearch.snapshots.ConcurrentSnapshotExecutionException
 import org.opensearch.transport.RemoteTransportException
@@ -84,7 +85,7 @@ class AttemptSnapshotStep(
                     .format(DateTimeFormatter.ofPattern("uuuu.MM.dd-HH:mm:ss.SSS", Locale.ROOT))
             )
 
-            val snapshotScript = Script(config.snapshot)
+            val snapshotScript = Script(ScriptType.INLINE, Script.DEFAULT_TEMPLATE_LANG, config.snapshot, mapOf())
             snapshotName = compileTemplate(snapshotScript, managedIndexMetaData, indexName).plus(snapshotNamePrefix)
 
             val createSnapshotRequest = CreateSnapshotRequest()
