@@ -34,14 +34,16 @@ import org.opensearch.indexmanagement.indexstatemanagement.model.action.Snapshot
 import org.opensearch.indexmanagement.indexstatemanagement.step.Step
 import org.opensearch.indexmanagement.indexstatemanagement.step.snapshot.AttemptSnapshotStep
 import org.opensearch.indexmanagement.indexstatemanagement.step.snapshot.WaitForSnapshotStep
+import org.opensearch.script.ScriptService
 
 class SnapshotAction(
     clusterService: ClusterService,
+    scriptService: ScriptService,
     client: Client,
     managedIndexMetaData: ManagedIndexMetaData,
     config: SnapshotActionConfig
 ) : Action(ActionType.SNAPSHOT, config, managedIndexMetaData) {
-    private val attemptSnapshotStep = AttemptSnapshotStep(clusterService, client, config, managedIndexMetaData)
+    private val attemptSnapshotStep = AttemptSnapshotStep(clusterService, scriptService, client, config, managedIndexMetaData)
     private val waitForSnapshotStep = WaitForSnapshotStep(clusterService, client, config, managedIndexMetaData)
 
     override fun getSteps(): List<Step> = listOf(attemptSnapshotStep, waitForSnapshotStep)

@@ -697,13 +697,13 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
     protected fun assertSnapshotExists(
         repository: String,
         snapshot: String
-    ) = require(getSnapshotsList(repository).any { element -> (element as Map<String, String>)["id"]!!.contains(snapshot) }) { "No snapshot found with id: $snapshot" }
+    ) = require(getSnapshotsList(repository).any { element -> (element as Map<String, String>)["id"]!!.startsWith(snapshot) }) { "No snapshot found with id: $snapshot" }
 
     @Suppress("UNCHECKED_CAST")
     protected fun assertSnapshotFinishedWithSuccess(
         repository: String,
         snapshot: String
-    ) = require(getSnapshotsList(repository).any { element -> (element as Map<String, String>)["id"]!!.contains(snapshot) && "SUCCESS" == element["status"] }) { "Snapshot didn't finish with success." }
+    ) = require(getSnapshotsList(repository).any { element -> (element as Map<String, String>)["id"]!!.startsWith(snapshot) && "SUCCESS" == element["status"] }) { "Snapshot didn't finish with success." }
 
     /**
      * Compares responses returned by APIs such as those defined in [RetryFailedManagedIndexAction] and [RestAddPolicyAction]
