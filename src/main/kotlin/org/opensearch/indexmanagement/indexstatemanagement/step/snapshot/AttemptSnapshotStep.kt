@@ -86,7 +86,9 @@ class AttemptSnapshotStep(
             )
 
             val snapshotScript = Script(ScriptType.INLINE, Script.DEFAULT_TEMPLATE_LANG, config.snapshot, mapOf())
-            snapshotName = compileTemplate(snapshotScript, managedIndexMetaData, indexName).plus(snapshotNameSuffix)
+            // If user intentionally set the snapshot name empty then we are going to honor it
+            val defaultSnapshotName = if (config.snapshot.isBlank()) config.snapshot else indexName
+            snapshotName = compileTemplate(snapshotScript, managedIndexMetaData, defaultSnapshotName).plus(snapshotNameSuffix)
 
             val createSnapshotRequest = CreateSnapshotRequest()
                 .userMetadata(mapOf("snapshot_created" to "Open Distro for Elasticsearch Index Management"))
