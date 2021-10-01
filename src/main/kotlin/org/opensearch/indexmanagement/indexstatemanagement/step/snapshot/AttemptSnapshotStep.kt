@@ -80,13 +80,13 @@ class AttemptSnapshotStep(
                 info = mutableInfo.toMap()
                 return this
             }
-            val snapshotNamePrefix = "-".plus(
+            val snapshotNameSuffix = "-".plus(
                 LocalDateTime.now(ZoneId.of("UTC"))
                     .format(DateTimeFormatter.ofPattern("uuuu.MM.dd-HH:mm:ss.SSS", Locale.ROOT))
             )
 
             val snapshotScript = Script(ScriptType.INLINE, Script.DEFAULT_TEMPLATE_LANG, config.snapshot, mapOf())
-            snapshotName = compileTemplate(snapshotScript, managedIndexMetaData, indexName).plus(snapshotNamePrefix)
+            snapshotName = compileTemplate(snapshotScript, managedIndexMetaData, indexName).plus(snapshotNameSuffix)
 
             val createSnapshotRequest = CreateSnapshotRequest()
                 .userMetadata(mapOf("snapshot_created" to "Open Distro for Elasticsearch Index Management"))
