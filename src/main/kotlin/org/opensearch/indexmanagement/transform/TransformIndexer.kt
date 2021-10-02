@@ -18,6 +18,7 @@ import org.opensearch.action.DocWriteRequest
 import org.opensearch.action.admin.indices.create.CreateIndexRequest
 import org.opensearch.action.admin.indices.create.CreateIndexResponse
 import org.opensearch.action.bulk.BackoffPolicy
+import org.opensearch.action.bulk.BulkItemResponse
 import org.opensearch.action.bulk.BulkRequest
 import org.opensearch.action.bulk.BulkResponse
 import org.opensearch.action.index.IndexRequest
@@ -34,6 +35,7 @@ import org.opensearch.indexmanagement.util._DOC
 import org.opensearch.rest.RestStatus
 import org.opensearch.transport.RemoteTransportException
 
+@Suppress("ComplexMethod")
 class TransformIndexer(
     settings: Settings,
     private val clusterService: ClusterService,
@@ -75,6 +77,7 @@ class TransformIndexer(
     suspend fun index(docsToIndex: List<DocWriteRequest<*>>): Long {
         var updatableDocsToIndex = docsToIndex
         var indexTimeInMillis = 0L
+        var nonRetryableFailures = mutableListOf<BulkItemResponse>()
         try {
             if (updatableDocsToIndex.isNotEmpty()) {
                 val targetIndex = updatableDocsToIndex.first().index()
@@ -84,17 +87,25 @@ class TransformIndexer(
                     val bulkRequest = BulkRequest().add(updatableDocsToIndex)
                     val bulkResponse: BulkResponse = client.suspendUntil { bulk(bulkRequest, it) }
                     indexTimeInMillis += bulkResponse.took.millis
-
-                    val failed = (bulkResponse.items ?: arrayOf()).filter { item -> item.isFailed }
-
-                    updatableDocsToIndex = failed.map { itemResponse ->
-                        updatableDocsToIndex[itemResponse.itemId] as IndexRequest
+                    val retryableFailures = mutableListOf<BulkItemResponse>()
+                    (bulkResponse.items ?: arrayOf()).filter { it.isFailed }.forEach { failedResponse ->
+                        if (failedResponse.status() == RestStatus.TOO_MANY_REQUESTS) {
+                            retryableFailures.add(failedResponse)
+                        } else {
+                            nonRetryableFailures.add(failedResponse)
+                        }
+                    }
+                    updatableDocsToIndex = retryableFailures.map { failure ->
+                        updatableDocsToIndex[failure.itemId] as IndexRequest
                     }
                     if (updatableDocsToIndex.isNotEmpty()) {
-                        val retryCause = failed.first().failure.cause
-                        throw ExceptionsHelper.convertToOpenSearchException(retryCause)
+                        throw ExceptionsHelper.convertToOpenSearchException(retryableFailures.first().failure.cause)
                     }
                 }
+            }
+            if (nonRetryableFailures.isNotEmpty()) {
+                logger.error("Failed to index ${nonRetryableFailures.size} documents")
+                throw ExceptionsHelper.convertToOpenSearchException(nonRetryableFailures.first().failure.cause)
             }
             return indexTimeInMillis
         } catch (e: TransformIndexException) {
