@@ -30,6 +30,7 @@ import org.apache.logging.log4j.LogManager
 import org.opensearch.ExceptionsHelper
 import org.opensearch.action.DocWriteRequest
 import org.opensearch.action.bulk.BackoffPolicy
+import org.opensearch.action.bulk.BulkItemResponse
 import org.opensearch.action.bulk.BulkRequest
 import org.opensearch.action.bulk.BulkResponse
 import org.opensearch.action.index.IndexRequest
@@ -55,6 +56,7 @@ import org.opensearch.search.aggregations.metrics.InternalSum
 import org.opensearch.search.aggregations.metrics.InternalValueCount
 import org.opensearch.transport.RemoteTransportException
 
+@Suppress("ThrowsCount", "ComplexMethod")
 class RollupIndexer(
     settings: Settings,
     clusterService: ClusterService,
@@ -77,6 +79,7 @@ class RollupIndexer(
         try {
             var requestsToRetry = convertResponseToRequests(rollup, internalComposite)
             var stats = RollupStats(0, 0, requestsToRetry.size.toLong(), 0, 0)
+            var nonRetryableFailures = mutableListOf<BulkItemResponse>()
             if (requestsToRetry.isNotEmpty()) {
                 retryIngestPolicy.retry(logger, listOf(RestStatus.TOO_MANY_REQUESTS)) {
                     if (it.seconds >= (Rollup.ROLLUP_LOCK_DURATION_SECONDS / 2)) {
@@ -87,15 +90,25 @@ class RollupIndexer(
                     val bulkRequest = BulkRequest().add(requestsToRetry)
                     val bulkResponse: BulkResponse = client.suspendUntil { bulk(bulkRequest, it) }
                     stats = stats.copy(indexTimeInMillis = stats.indexTimeInMillis + bulkResponse.took.millis)
-                    val failedResponses = (bulkResponse.items ?: arrayOf()).filter { it.isFailed }
-                    requestsToRetry = failedResponses.filter { it.status() == RestStatus.TOO_MANY_REQUESTS }
-                        .map { bulkRequest.requests()[it.itemId] as IndexRequest }
+                    val retryableFailures = mutableListOf<BulkItemResponse>()
+                    (bulkResponse.items ?: arrayOf()).filter { it.isFailed }.forEach { failedResponse ->
+                        if (failedResponse.status() == RestStatus.TOO_MANY_REQUESTS) {
+                            retryableFailures.add(failedResponse)
+                        } else {
+                            nonRetryableFailures.add(failedResponse)
+                        }
+                    }
+                    requestsToRetry = retryableFailures.map { retryableFailure -> bulkRequest.requests()[retryableFailure.itemId] as IndexRequest }
 
                     if (requestsToRetry.isNotEmpty()) {
-                        val retryCause = failedResponses.first { it.status() == RestStatus.TOO_MANY_REQUESTS }.failure.cause
+                        val retryCause = retryableFailures.first().failure.cause
                         throw ExceptionsHelper.convertToOpenSearchException(retryCause)
                     }
                 }
+            }
+            if (nonRetryableFailures.isNotEmpty()) {
+                logger.error("Failed to index ${nonRetryableFailures.size} documents")
+                throw ExceptionsHelper.convertToOpenSearchException(nonRetryableFailures.first().failure.cause)
             }
             return RollupIndexResult.Success(stats)
         } catch (e: RemoteTransportException) {
