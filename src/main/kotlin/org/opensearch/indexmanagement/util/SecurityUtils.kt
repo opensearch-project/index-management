@@ -103,12 +103,13 @@ class SecurityUtils {
             resourceUser: User?,
             filterEnabled: Boolean = false
         ): Boolean {
-            if (!filterEnabled || resourceUser == null || (requestedUser != null && requestedUser.roles.contains(ADMIN_ROLE))) {
+            // Will not filter if filter is not enabled or stored user is null or requested user is null or if the user is admin
+            if (!filterEnabled || resourceUser == null || requestedUser == null || requestedUser.roles.contains(ADMIN_ROLE)) {
                 return true
             }
 
             val resourceBackendRoles = resourceUser.backendRoles
-            val requestedBackendRoles = requestedUser?.backendRoles
+            val requestedBackendRoles = requestedUser.backendRoles
 
             return !(resourceBackendRoles == null || requestedBackendRoles == null || resourceBackendRoles.intersect(requestedBackendRoles).isEmpty())
         }
