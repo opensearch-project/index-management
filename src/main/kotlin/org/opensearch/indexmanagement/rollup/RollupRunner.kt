@@ -308,9 +308,13 @@ object RollupRunner :
                                     updatableJob,
                                     metadata.mergeStats(rollupResult.stats), rollupResult.internalComposite
                                 )
-                                updatableJob = client.suspendUntil { listener: ActionListener<GetRollupResponse> ->
-                                    execute(GetRollupAction.INSTANCE, GetRollupRequest(updatableJob.id, null, "_local"), listener)
-                                }.rollup ?: throw IllegalStateException("Unable to get rollup job")
+                                updatableJob = withClosableContext(
+                                    IndexManagementSecurityContext(job.id, settings, threadPool.threadContext, null)
+                                ) {
+                                    client.suspendUntil { listener: ActionListener<GetRollupResponse> ->
+                                        execute(GetRollupAction.INSTANCE, GetRollupRequest(updatableJob.id, null, "_local"), listener)
+                                    }.rollup ?: throw IllegalStateException("Unable to get rollup job")
+                                }
                             }
                             is RollupResult.Failure -> {
                                 rollupMetadataService.updateMetadata(
@@ -371,7 +375,7 @@ object RollupRunner :
     private suspend fun updateRollupJob(job: Rollup, metadata: RollupMetadata): RollupJobResult {
         try {
             return withClosableContext(
-                IndexManagementSecurityContext(job.id, settings, threadPool.threadContext, job.user)
+                IndexManagementSecurityContext(job.id, settings, threadPool.threadContext, null)
             ) {
                 val req = IndexRollupRequest(rollup = job, refreshPolicy = WriteRequest.RefreshPolicy.IMMEDIATE)
                 val res: IndexRollupResponse = client.suspendUntil { execute(IndexRollupAction.INSTANCE, req, it) }

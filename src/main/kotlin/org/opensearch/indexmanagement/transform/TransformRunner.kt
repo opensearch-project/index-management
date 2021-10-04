@@ -194,7 +194,7 @@ object TransformRunner :
             refreshPolicy = WriteRequest.RefreshPolicy.IMMEDIATE
         )
         return withClosableContext(
-            IndexManagementSecurityContext(transform.id, settings, threadPool.threadContext, transform.user)
+            IndexManagementSecurityContext(transform.id, settings, threadPool.threadContext, null)
         ) {
             val response: IndexTransformResponse = client.suspendUntil {
                 execute(IndexTransformAction.INSTANCE, request, it)
