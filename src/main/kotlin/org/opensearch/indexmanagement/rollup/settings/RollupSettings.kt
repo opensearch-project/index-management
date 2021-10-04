@@ -33,6 +33,7 @@ class RollupSettings {
 
     companion object {
         const val DEFAULT_ROLLUP_ENABLED = true
+        const val DEFAULT_SEARCH_ALL_JOBS = false
         const val DEFAULT_ACQUIRE_LOCK_RETRY_COUNT = 3
         const val DEFAULT_ACQUIRE_LOCK_RETRY_DELAY = 1000L
         const val DEFAULT_RENEW_LOCK_RETRY_COUNT = 3
@@ -85,6 +86,13 @@ class RollupSettings {
         val ROLLUP_SEARCH_BACKOFF_COUNT: Setting<Int> = Setting.intSetting(
             "plugins.rollup.search.backoff_count",
             LegacyOpenDistroRollupSettings.ROLLUP_SEARCH_BACKOFF_COUNT,
+            Setting.Property.NodeScope,
+            Setting.Property.Dynamic
+        )
+
+        val ROLLUP_SEARCH_ALL_JOBS: Setting<Boolean> = Setting.boolSetting(
+            "plugins.rollup.search.search_all_jobs",
+            DEFAULT_SEARCH_ALL_JOBS,
             Setting.Property.NodeScope,
             Setting.Property.Dynamic
         )
