@@ -27,6 +27,7 @@ import org.opensearch.cluster.block.ClusterBlockException
 import org.opensearch.common.inject.Inject
 import org.opensearch.common.xcontent.ToXContent
 import org.opensearch.common.xcontent.XContentFactory
+import org.opensearch.commons.ConfigConstants
 import org.opensearch.commons.authuser.User
 import org.opensearch.index.Index
 import org.opensearch.index.IndexNotFoundException
@@ -79,6 +80,11 @@ class TransportRetryFailedManagedIndexAction @Inject constructor(
 
         @Suppress("SpreadOperator")
         fun start() {
+            log.debug(
+                "User and roles string from thread context: ${client.threadPool().threadContext.getTransient<String>(
+                    ConfigConstants.OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT
+                )}"
+            )
             if (user == null) {
                 // Security plugin is not enabled
                 getClusterState()
