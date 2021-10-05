@@ -774,23 +774,22 @@ class RollupInterceptorIT : RollupRestTestCase() {
         val rawAgg2Res = rawRes2.asMap()["aggregations"] as Map<String, Map<String, Any>>
         val rollupAggResSingle = rollupResSingle.asMap()["aggregations"] as Map<String, Map<String, Any>>
 
-        // When the cluster setting to search all jobs is off, the max will be the same for searching a single job as for searching both
+        // When the cluster setting to search all jobs is off, the aggregations will be the same for searching a single job as for searching both
         assertEquals(
-            "Source and rollup index did not return same max results",
+            "Searching single rollup job and rollup target index did not return the same max results",
             rawAgg1Res.getValue("max_passenger_count")["value"], rollupAggResSingle.getValue("max_passenger_count")["value"]
         )
-        // The sum and value count will differ
-        val trueAggSum = rawAgg1Res.getValue("sum_passenger_count")["value"] as Double + rawAgg2Res.getValue("sum_passenger_count")["value"] as Double
-        assertNotEquals(
-            "Source and rollup index did not return different sum results",
-            trueAggSum, rollupAggResSingle.getValue("sum_passenger_count")["value"]
+        assertEquals(
+            "Searching single rollup job and rollup target index did not return the same sum results",
+            rawAgg1Res.getValue("sum_passenger_count")["value"], rollupAggResSingle.getValue("sum_passenger_count")["value"]
         )
         val trueAggCount = rawAgg1Res.getValue("value_count_passenger_count")["value"] as Int + rawAgg2Res.getValue("value_count_passenger_count")["value"] as Int
-        assertNotEquals(
-            "Source and rollup index did not return different value_count results",
-            trueAggCount, rollupAggResSingle.getValue("value_count_passenger_count")["value"]
+        assertEquals(
+            "Searching single rollup job and rollup target index did not return the same value count results",
+            rawAgg1Res.getValue("value_count_passenger_count")["value"], rollupAggResSingle.getValue("value_count_passenger_count")["value"]
         )
 
+        val trueAggSum = rawAgg1Res.getValue("sum_passenger_count")["value"] as Double + rawAgg2Res.getValue("sum_passenger_count")["value"] as Double
         updateSearchAllJobsClusterSetting(true)
 
         val rollupResAll = client().makeRequest("POST", "/$targetIndex/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
@@ -799,15 +798,15 @@ class RollupInterceptorIT : RollupRestTestCase() {
 
         // With search all jobs setting on, the sum, and value_count will now be equal to the sum of the single job search results
         assertEquals(
-            "Source and rollup index did not return same max results",
+            "Searching single rollup job and rollup target index did not return the same sum results",
             rawAgg1Res.getValue("max_passenger_count")["value"], rollupAggResAll.getValue("max_passenger_count")["value"]
         )
         assertEquals(
-            "Source and rollup index returned different sum results",
+            "Searching rollup target index did not return the sum for all of the rollup jobs on the index",
             trueAggSum, rollupAggResAll.getValue("sum_passenger_count")["value"]
         )
         assertEquals(
-            "Source and rollup index returned different value_count results",
+            "Searching rollup target index did not return the value count for all of the rollup jobs on the index",
             trueAggCount, rollupAggResAll.getValue("value_count_passenger_count")["value"]
         )
     }
