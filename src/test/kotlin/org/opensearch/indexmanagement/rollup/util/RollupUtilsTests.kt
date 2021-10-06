@@ -35,10 +35,25 @@ import org.opensearch.index.query.RangeQueryBuilder
 import org.opensearch.index.query.TermQueryBuilder
 import org.opensearch.index.query.TermsQueryBuilder
 import org.opensearch.index.search.MatchQuery
+import org.opensearch.indexmanagement.common.model.dimension.DateHistogram
+import org.opensearch.indexmanagement.common.model.dimension.Dimension
+import org.opensearch.indexmanagement.common.model.dimension.Histogram
+import org.opensearch.indexmanagement.common.model.dimension.Terms
+import org.opensearch.indexmanagement.opensearchapi.convertToMap
 import org.opensearch.indexmanagement.rollup.model.RollupFieldMapping
+import org.opensearch.indexmanagement.rollup.model.RollupMetrics
+import org.opensearch.indexmanagement.rollup.randomAverage
+import org.opensearch.indexmanagement.rollup.randomMax
+import org.opensearch.indexmanagement.rollup.randomMin
 import org.opensearch.indexmanagement.rollup.randomRollup
+import org.opensearch.indexmanagement.rollup.randomSum
 import org.opensearch.indexmanagement.rollup.randomTermQuery
+import org.opensearch.indexmanagement.rollup.randomValueCount
+import org.opensearch.indexmanagement.transform.randomAggregationBuilder
+import org.opensearch.search.aggregations.metrics.AvgAggregationBuilder
+import org.opensearch.search.aggregations.metrics.ValueCountAggregationBuilder
 import org.opensearch.test.OpenSearchTestCase
+import org.opensearch.test.rest.OpenSearchRestTestCase
 
 class RollupUtilsTests : OpenSearchTestCase() {
 
@@ -168,16 +183,32 @@ class RollupUtilsTests : OpenSearchTestCase() {
     fun `test buildRollupQuery`() {
         val rollup = randomRollup()
         val queryBuilder = MatchAllQueryBuilder()
-        val actual = rollup.buildRollupQuery(mapOf(), queryBuilder) as BoolQueryBuilder
-        val expectedFilter = TermQueryBuilder("rollup._id", rollup.id)
-        assertTrue(actual.should().isEmpty())
+        val actual = setOf(rollup).buildRollupQuery(mapOf(), queryBuilder) as BoolQueryBuilder
+        val expectedShould = TermsQueryBuilder("rollup._id", rollup.id)
         assertTrue(actual.mustNot().isEmpty())
-        assertFalse(actual.filter().isEmpty())
-        assertFalse(actual.must().isEmpty())
+        assertTrue(actual.filter().isEmpty())
+        assertEquals("1", actual.minimumShouldMatch())
         assertEquals(1, actual.must().size)
         assertEquals(rollup.rewriteQueryBuilder(queryBuilder, mapOf()), actual.must().first())
-        assertEquals(1, actual.filter().size)
-        assertEquals(expectedFilter, actual.filter().first())
+        assertEquals(1, actual.should().size)
+        assertEquals(1, (actual.should()[0] as TermsQueryBuilder).values().size)
+        assertEquals(expectedShould, actual.should().first())
+    }
+
+    fun `test buildRollupQuery multiple`() {
+        var rollups = setOf(randomRollup(), randomRollup(), randomRollup(), randomRollup(), randomRollup())
+        rollups = OpenSearchRestTestCase.randomSubsetOf(randomIntBetween(2, 5), rollups).toSet()
+        val queryBuilder = MatchAllQueryBuilder()
+        val actual = rollups.buildRollupQuery(mapOf(), queryBuilder) as BoolQueryBuilder
+        val expectedShould = TermsQueryBuilder("rollup._id", rollups.map { it.id })
+        assertTrue(actual.mustNot().isEmpty())
+        assertTrue(actual.filter().isEmpty())
+        assertEquals("1", actual.minimumShouldMatch())
+        assertEquals(1, actual.must().size)
+        assertEquals(rollups.first().rewriteQueryBuilder(queryBuilder, mapOf()), actual.must().first())
+        assertEquals(1, actual.should().size)
+        assertEquals(rollups.size, (actual.should()[0] as TermsQueryBuilder).values().size)
+        assertEquals(expectedShould, actual.should().first())
     }
 
     fun `test rewriteQueryBuilder match phrase query`() {
@@ -193,5 +224,31 @@ class RollupUtilsTests : OpenSearchTestCase() {
         assertEquals(matchPhraseQuery.fieldName() + ".terms", actual.fieldName())
         assertEquals(matchPhraseQuery.value(), actual.value())
         assertNull(actual.analyzer())
+    }
+
+    fun `test rewriteAggregationBuilder`() {
+        var rollup = randomRollup()
+        val aggBuilder = randomAggregationBuilder()
+        val aggField = ((aggBuilder.convertToMap()[aggBuilder.name] as Map<*, *>).values.first() as Map<*, *>).values.first() as String
+        val newDims = mutableListOf<Dimension>()
+        // Make rollup dimensions and metrics contain the aggregation field name and aggregation metrics
+        rollup.dimensions.forEach {
+            val dimToAdd = when (it) {
+                is DateHistogram -> it.copy(sourceField = aggField, targetField = aggField)
+                is Terms -> it.copy(sourceField = aggField, targetField = aggField)
+                is Histogram -> it.copy(sourceField = aggField, targetField = aggField)
+                else -> it
+            }
+            newDims.add(dimToAdd)
+        }
+        val newMetrics = mutableListOf(RollupMetrics(aggField, aggField, listOf(randomAverage(), randomMax(), randomMin(), randomSum(), randomValueCount())))
+        rollup = rollup.copy(dimensions = newDims, metrics = newMetrics)
+        val rewrittenAgg = rollup.rewriteAggregationBuilder(aggBuilder)
+        assertEquals("Rewritten aggregation builder does not have the same name", aggBuilder.name, rewrittenAgg.name)
+        if (aggBuilder is AvgAggregationBuilder || aggBuilder is ValueCountAggregationBuilder) {
+            assertEquals("Rewritten aggregation builder is not the correct type", "scripted_metric", rewrittenAgg.type)
+        } else {
+            assertEquals("Rewritten aggregation builder is not the correct type", aggBuilder.type, rewrittenAgg.type)
+        }
     }
 }

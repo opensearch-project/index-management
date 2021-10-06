@@ -48,6 +48,7 @@ import org.opensearch.indexmanagement.common.model.dimension.Dimension
 import org.opensearch.indexmanagement.makeRequest
 import org.opensearch.indexmanagement.rollup.model.Rollup
 import org.opensearch.indexmanagement.rollup.model.RollupMetadata
+import org.opensearch.indexmanagement.rollup.settings.RollupSettings
 import org.opensearch.indexmanagement.util._ID
 import org.opensearch.indexmanagement.util._PRIMARY_TERM
 import org.opensearch.indexmanagement.util._SEQ_NO
@@ -232,5 +233,21 @@ abstract class RollupRestTestCase : IndexManagementRestTestCase() {
         )
 
         assertEquals("Request failed", RestStatus.OK, response.restStatus())
+    }
+
+    protected fun updateSearchAllJobsClusterSetting(value: Boolean) {
+        val formattedValue = "\"${value}\""
+        val request = """
+            {
+                "persistent": {
+                    "${RollupSettings.ROLLUP_SEARCH_ALL_JOBS.key}": $formattedValue
+                }
+            }
+        """.trimIndent()
+        val res = client().makeRequest(
+            "PUT", "_cluster/settings", emptyMap(),
+            StringEntity(request, APPLICATION_JSON)
+        )
+        assertEquals("Request failed", RestStatus.OK, res.restStatus())
     }
 }

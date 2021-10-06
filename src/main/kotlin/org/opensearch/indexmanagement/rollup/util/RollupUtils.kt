@@ -384,10 +384,11 @@ fun Rollup.rewriteQueryBuilder(queryBuilder: QueryBuilder, fieldNameMappingTypeM
     }
 }
 
-fun Rollup.buildRollupQuery(fieldNameMappingTypeMap: Map<String, String>, oldQuery: QueryBuilder): QueryBuilder {
+fun Set<Rollup>.buildRollupQuery(fieldNameMappingTypeMap: Map<String, String>, oldQuery: QueryBuilder): QueryBuilder {
     val wrappedQueryBuilder = BoolQueryBuilder()
-    wrappedQueryBuilder.must(this.rewriteQueryBuilder(oldQuery, fieldNameMappingTypeMap))
-    wrappedQueryBuilder.filter(TermQueryBuilder("rollup._id", this.id))
+    wrappedQueryBuilder.must(this.first().rewriteQueryBuilder(oldQuery, fieldNameMappingTypeMap))
+    wrappedQueryBuilder.should(TermsQueryBuilder("rollup._id", this.map { it.id }))
+    wrappedQueryBuilder.minimumShouldMatch(1)
     return wrappedQueryBuilder
 }
 
@@ -407,9 +408,10 @@ fun Rollup.populateFieldMappings(): Set<RollupFieldMapping> {
 // TODO: Not a fan of this.. but I can't find a way to overwrite the aggregations on the shallow copy or original
 //  so we need to instantiate a new one so we can add the rewritten aggregation builders
 @Suppress("ComplexMethod")
-fun SearchSourceBuilder.rewriteSearchSourceBuilder(job: Rollup, fieldNameMappingTypeMap: Map<String, String>): SearchSourceBuilder {
+fun SearchSourceBuilder.rewriteSearchSourceBuilder(jobs: Set<Rollup>, fieldNameMappingTypeMap: Map<String, String>): SearchSourceBuilder {
     val ssb = SearchSourceBuilder()
-    this.aggregations()?.aggregatorFactories?.forEach { ssb.aggregation(job.rewriteAggregationBuilder(it)) }
+    // can use first() here as all jobs in the set will have a superset of the query's terms
+    this.aggregations()?.aggregatorFactories?.forEach { ssb.aggregation(jobs.first().rewriteAggregationBuilder(it)) }
     if (this.explain() != null) ssb.explain(this.explain())
     if (this.ext() != null) ssb.ext(this.ext())
     ssb.fetchSource(this.fetchSource())
@@ -421,7 +423,7 @@ fun SearchSourceBuilder.rewriteSearchSourceBuilder(job: Rollup, fieldNameMapping
     if (this.minScore() != null) ssb.minScore(this.minScore())
     if (this.postFilter() != null) ssb.postFilter(this.postFilter())
     ssb.profile(this.profile())
-    if (this.query() != null) ssb.query(job.buildRollupQuery(fieldNameMappingTypeMap, this.query()))
+    if (this.query() != null) ssb.query(jobs.buildRollupQuery(fieldNameMappingTypeMap, this.query()))
     this.rescores()?.forEach { ssb.addRescorer(it) }
     this.scriptFields()?.forEach { ssb.scriptField(it.fieldName(), it.script(), it.ignoreFailure()) }
     if (this.searchAfter() != null) ssb.searchAfter(this.searchAfter())
@@ -438,6 +440,10 @@ fun SearchSourceBuilder.rewriteSearchSourceBuilder(job: Rollup, fieldNameMapping
     if (this.seqNoAndPrimaryTerm() != null) ssb.seqNoAndPrimaryTerm(this.seqNoAndPrimaryTerm())
     if (this.collapse() != null) ssb.collapse(this.collapse())
     return ssb
+}
+
+fun SearchSourceBuilder.rewriteSearchSourceBuilder(job: Rollup, fieldNameMappingTypeMap: Map<String, String>): SearchSourceBuilder {
+    return this.rewriteSearchSourceBuilder(setOf(job), fieldNameMappingTypeMap)
 }
 
 fun Rollup.getInitialDocValues(docCount: Long): MutableMap<String, Any?> =

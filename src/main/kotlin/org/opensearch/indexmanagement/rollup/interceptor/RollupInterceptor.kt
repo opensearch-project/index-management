@@ -77,10 +77,14 @@ class RollupInterceptor(
     private val logger = LogManager.getLogger(javaClass)
 
     @Volatile private var searchEnabled = RollupSettings.ROLLUP_SEARCH_ENABLED.get(settings)
+    @Volatile private var searchAllJobs = RollupSettings.ROLLUP_SEARCH_ALL_JOBS.get(settings)
 
     init {
         clusterService.clusterSettings.addSettingsUpdateConsumer(RollupSettings.ROLLUP_SEARCH_ENABLED) {
             searchEnabled = it
+        }
+        clusterService.clusterSettings.addSettingsUpdateConsumer(RollupSettings.ROLLUP_SEARCH_ALL_JOBS) {
+            searchAllJobs = it
         }
     }
 
@@ -126,12 +130,9 @@ class RollupInterceptor(
                             throw IllegalArgumentException("Could not find a rollup job that can answer this query because $issues")
                         }
 
-                        val matchedRollup = pickRollupJob(matchingRollupJobs.keys)
-                        val fieldNameMappingTypeMap = matchingRollupJobs.getValue(matchedRollup).associateBy({ it.fieldName }, { it.mappingType })
-
                         // only rebuild if there is necessity to rebuild
                         if (fieldMappings.isNotEmpty()) {
-                            request.source(request.source().rewriteSearchSourceBuilder(matchedRollup, fieldNameMappingTypeMap))
+                            rewriteShardSearchForRollupJobs(request, matchingRollupJobs)
                         }
                     }
                 }
@@ -296,6 +297,16 @@ class RollupInterceptor(
             DateHistogramInterval(rollup.getDateHistogram().calendarInterval).estimateMillis()
         } else {
             DateHistogramInterval(rollup.getDateHistogram().fixedInterval).estimateMillis()
+        }
+    }
+
+    private fun rewriteShardSearchForRollupJobs(request: ShardSearchRequest, matchingRollupJobs: Map<Rollup, Set<RollupFieldMapping>>) {
+        val matchedRollup = pickRollupJob(matchingRollupJobs.keys)
+        val fieldNameMappingTypeMap = matchingRollupJobs.getValue(matchedRollup).associateBy({ it.fieldName }, { it.mappingType })
+        if (searchAllJobs) {
+            request.source(request.source().rewriteSearchSourceBuilder(matchingRollupJobs.keys, fieldNameMappingTypeMap))
+        } else {
+            request.source(request.source().rewriteSearchSourceBuilder(matchedRollup, fieldNameMappingTypeMap))
         }
     }
 }

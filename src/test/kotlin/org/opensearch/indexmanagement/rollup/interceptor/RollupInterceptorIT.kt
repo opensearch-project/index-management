@@ -663,4 +663,151 @@ class RollupInterceptorIT : RollupRestTestCase() {
             rollupAggRes.getValue("min_passenger_count")["value"]
         )
     }
+
+    fun `test rollup search all jobs`() {
+        generateNYCTaxiData("source_rollup_search_all_jobs_1")
+        generateNYCTaxiData("source_rollup_search_all_jobs_2")
+        val targetIndex = "target_rollup_search_all_jobs"
+        val rollupHourly = Rollup(
+            id = "hourly_basic_term_query_rollup_search_all",
+            enabled = true,
+            schemaVersion = 1L,
+            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+            jobLastUpdatedTime = Instant.now(),
+            jobEnabledTime = Instant.now(),
+            description = "basic search test",
+            sourceIndex = "source_rollup_search_all_jobs_1",
+            targetIndex = targetIndex,
+            metadataID = null,
+            roles = emptyList(),
+            pageSize = 10,
+            delay = 0,
+            continuous = false,
+            dimensions = listOf(
+                DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "1h"),
+                Terms("RatecodeID", "RatecodeID"),
+                Terms("PULocationID", "PULocationID")
+            ),
+            metrics = listOf(
+                RollupMetrics(
+                    sourceField = "passenger_count", targetField = "passenger_count",
+                    metrics = listOf(
+                        Sum(), Min(), Max(),
+                        ValueCount(), Average()
+                    )
+                ),
+                RollupMetrics(sourceField = "total_amount", targetField = "total_amount", metrics = listOf(Max(), Min()))
+            )
+        ).let { createRollup(it, it.id) }
+
+        updateRollupStartTime(rollupHourly)
+
+        waitFor {
+            val rollupJob = getRollup(rollupId = rollupHourly.id)
+            assertNotNull("Rollup job doesn't have metadata set", rollupJob.metadataID)
+            val rollupMetadata = getRollupMetadata(rollupJob.metadataID!!)
+            assertEquals("Rollup is not finished", RollupMetadata.Status.FINISHED, rollupMetadata.status)
+        }
+
+        val rollupMinutely = Rollup(
+            id = "minutely_basic_term_query_rollup_search_all",
+            enabled = true,
+            schemaVersion = 1L,
+            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+            jobLastUpdatedTime = Instant.now(),
+            jobEnabledTime = Instant.now(),
+            description = "basic search test",
+            sourceIndex = "source_rollup_search_all_jobs_2",
+            targetIndex = targetIndex,
+            metadataID = null,
+            roles = emptyList(),
+            pageSize = 10,
+            delay = 0,
+            continuous = false,
+            dimensions = listOf(
+                DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "1m"),
+                Terms("RatecodeID", "RatecodeID")
+            ),
+            metrics = listOf(
+                RollupMetrics(
+                    sourceField = "passenger_count", targetField = "passenger_count",
+                    metrics = listOf(
+                        Sum(), Min(), Max(),
+                        ValueCount(), Average()
+                    )
+                ),
+                RollupMetrics(sourceField = "total_amount", targetField = "total_amount", metrics = listOf(Max(), Min()))
+            )
+        ).let { createRollup(it, it.id) }
+
+        updateRollupStartTime(rollupMinutely)
+
+        waitFor {
+            val rollupJob = getRollup(rollupId = rollupMinutely.id)
+            assertNotNull("Rollup job doesn't have metadata set", rollupJob.metadataID)
+            val rollupMetadata = getRollupMetadata(rollupJob.metadataID!!)
+            assertEquals("Rollup is not finished", RollupMetadata.Status.FINISHED, rollupMetadata.status)
+        }
+
+        refreshAllIndices()
+
+        val req = """
+            {
+                "size": 0,
+                "query": {
+                    "term": { "RatecodeID": 1 }
+                },
+                "aggs": {
+                    "sum_passenger_count": { "sum": { "field": "passenger_count" } },
+                    "max_passenger_count": { "max": { "field": "passenger_count" } },
+                    "value_count_passenger_count": { "value_count": { "field": "passenger_count" } }
+                }
+            }
+        """.trimIndent()
+        val rawRes1 = client().makeRequest("POST", "/source_rollup_search_all_jobs_1/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
+        assertTrue(rawRes1.restStatus() == RestStatus.OK)
+        val rawRes2 = client().makeRequest("POST", "/source_rollup_search_all_jobs_2/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
+        assertTrue(rawRes2.restStatus() == RestStatus.OK)
+        val rollupResSingle = client().makeRequest("POST", "/$targetIndex/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
+        assertTrue(rollupResSingle.restStatus() == RestStatus.OK)
+        val rawAgg1Res = rawRes1.asMap()["aggregations"] as Map<String, Map<String, Any>>
+        val rawAgg2Res = rawRes2.asMap()["aggregations"] as Map<String, Map<String, Any>>
+        val rollupAggResSingle = rollupResSingle.asMap()["aggregations"] as Map<String, Map<String, Any>>
+
+        // When the cluster setting to search all jobs is off, the aggregations will be the same for searching a single job as for searching both
+        assertEquals(
+            "Searching single rollup job and rollup target index did not return the same max results",
+            rawAgg1Res.getValue("max_passenger_count")["value"], rollupAggResSingle.getValue("max_passenger_count")["value"]
+        )
+        assertEquals(
+            "Searching single rollup job and rollup target index did not return the same sum results",
+            rawAgg1Res.getValue("sum_passenger_count")["value"], rollupAggResSingle.getValue("sum_passenger_count")["value"]
+        )
+        val trueAggCount = rawAgg1Res.getValue("value_count_passenger_count")["value"] as Int + rawAgg2Res.getValue("value_count_passenger_count")["value"] as Int
+        assertEquals(
+            "Searching single rollup job and rollup target index did not return the same value count results",
+            rawAgg1Res.getValue("value_count_passenger_count")["value"], rollupAggResSingle.getValue("value_count_passenger_count")["value"]
+        )
+
+        val trueAggSum = rawAgg1Res.getValue("sum_passenger_count")["value"] as Double + rawAgg2Res.getValue("sum_passenger_count")["value"] as Double
+        updateSearchAllJobsClusterSetting(true)
+
+        val rollupResAll = client().makeRequest("POST", "/$targetIndex/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
+        assertTrue(rollupResAll.restStatus() == RestStatus.OK)
+        val rollupAggResAll = rollupResAll.asMap()["aggregations"] as Map<String, Map<String, Any>>
+
+        // With search all jobs setting on, the sum, and value_count will now be equal to the sum of the single job search results
+        assertEquals(
+            "Searching single rollup job and rollup target index did not return the same sum results",
+            rawAgg1Res.getValue("max_passenger_count")["value"], rollupAggResAll.getValue("max_passenger_count")["value"]
+        )
+        assertEquals(
+            "Searching rollup target index did not return the sum for all of the rollup jobs on the index",
+            trueAggSum, rollupAggResAll.getValue("sum_passenger_count")["value"]
+        )
+        assertEquals(
+            "Searching rollup target index did not return the value count for all of the rollup jobs on the index",
+            trueAggCount, rollupAggResAll.getValue("value_count_passenger_count")["value"]
+        )
+    }
 }
