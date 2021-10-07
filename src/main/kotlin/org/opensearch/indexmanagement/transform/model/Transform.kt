@@ -11,6 +11,7 @@ import org.opensearch.common.io.stream.StreamOutput
 import org.opensearch.common.io.stream.Writeable
 import org.opensearch.common.xcontent.LoggingDeprecationHandler
 import org.opensearch.common.xcontent.ToXContent
+import org.opensearch.common.xcontent.ToXContentObject
 import org.opensearch.common.xcontent.XContentBuilder
 import org.opensearch.common.xcontent.XContentFactory
 import org.opensearch.common.xcontent.XContentParser
@@ -18,6 +19,7 @@ import org.opensearch.common.xcontent.XContentParser.Token
 import org.opensearch.common.xcontent.XContentParserUtils.ensureExpectedToken
 import org.opensearch.common.xcontent.XContentType
 import org.opensearch.commons.authuser.User
+import org.opensearch.commons.utils.fieldIfNotNull
 import org.opensearch.index.query.AbstractQueryBuilder
 import org.opensearch.index.query.MatchAllQueryBuilder
 import org.opensearch.index.query.QueryBuilder
@@ -40,6 +42,64 @@ import org.opensearch.jobscheduler.spi.schedule.ScheduleParser
 import org.opensearch.search.aggregations.AggregatorFactories
 import java.io.IOException
 import java.time.Instant
+data class ContinuousInfo(
+    val approach: ContinuousApproach,
+    val timeField: String?
+) : ToXContentObject, Writeable {
+    enum class ContinuousApproach {
+        SIMPLE, INCREMENTAL;
+    }
+
+    @Throws(IOException::class)
+    constructor(sin: StreamInput) : this(
+        approach = sin.readEnum(ContinuousApproach::class.java),
+        timeField = sin.readOptionalString()
+    )
+
+    override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
+        return builder.startObject()
+            .field(CONTINUOUS_APPROACH_FIELD, approach.name)
+            .fieldIfNotNull(CONTINUOUS_TIME_FIELD, timeField)
+            .endObject()
+    }
+
+    override fun writeTo(out: StreamOutput) {
+        out.writeEnum(approach)
+        out.writeOptionalString(timeField)
+    }
+
+    companion object {
+        private const val CONTINUOUS_APPROACH_FIELD = "approach"
+        private const val CONTINUOUS_TIME_FIELD = "time_field"
+
+        @Suppress("ComplexMethod", "LongMethod")
+        @JvmStatic
+        @Throws(IOException::class)
+        fun parse(xcp: XContentParser): ContinuousInfo? {
+            var approach: ContinuousApproach? = null
+            var timeField: String? = null
+
+            if (xcp.currentToken().equals(Token.VALUE_NULL)) return null
+            ensureExpectedToken(Token.START_OBJECT, xcp.currentToken(), xcp)
+            while (xcp.nextToken() != Token.END_OBJECT) {
+                val fieldName = xcp.currentName()
+                xcp.nextToken()
+
+                when (fieldName) {
+                    CONTINUOUS_APPROACH_FIELD -> approach = ContinuousApproach.valueOf(xcp.text())
+                    CONTINUOUS_TIME_FIELD -> timeField = xcp.text()
+                }
+            }
+
+            requireNotNull(approach) { "Approach type must not be null for a continuous job" }
+            if (approach == ContinuousApproach.INCREMENTAL) {
+                requireNotNull(timeField) { "Time field must not be null for an incremental approach" }
+            }
+
+            return ContinuousInfo(approach, timeField)
+        }
+    }
+}
 
 data class Transform(
     val id: String = NO_ID,
@@ -59,6 +119,7 @@ data class Transform(
     val pageSize: Int,
     val groups: List<Dimension>,
     val aggregations: AggregatorFactories.Builder = AggregatorFactories.builder(),
+    val continuous: ContinuousInfo? = null,
     val user: User? = null
 ) : ScheduledJobParameter, Writeable {
 
@@ -72,6 +133,13 @@ data class Transform(
             }
             is IntervalSchedule -> {
                 require(jobSchedule.interval >= MINIMUM_JOB_INTERVAL) { "Transform job schedule interval must be greater than 0" }
+            }
+        }
+        // if we are doing an incremental approach, make sure the time field is valid and matches a date histogram
+        if (continuous != null && continuous.approach == ContinuousInfo.ContinuousApproach.INCREMENTAL) {
+            require(groups.map { it.sourceField }.contains(continuous.timeField)) { "Continuous time field must match a dimension field" }
+            require(groups.find { it.sourceField == continuous.timeField }!!.type == Dimension.Type.DATE_HISTOGRAM) {
+                "Dimension noted by the time field must be a date histogram"
             }
         }
         require(groups.isNotEmpty()) { "Groupings are Empty" }
@@ -108,6 +176,7 @@ data class Transform(
             .field(PAGE_SIZE_FIELD, pageSize)
             .field(GROUPS_FIELD, groups.toTypedArray())
             .field(AGGREGATIONS_FIELD, aggregations)
+            .field(CONTINUOUS_INFO_FIELD, continuous)
         if (params.paramAsBoolean(WITH_USER, true)) builder.optionalUserField(USER_FIELD, user)
         if (params.paramAsBoolean(WITH_TYPE, true)) builder.endObject()
         builder.endObject()
@@ -145,6 +214,8 @@ data class Transform(
             }
         }
         out.writeOptionalWriteable(aggregations)
+        out.writeBoolean(continuous != null)
+        continuous?.writeTo(out)
         out.writeBoolean(user != null)
         user?.writeTo(out)
     }
@@ -200,6 +271,9 @@ data class Transform(
             dimensionList.toList()
         },
         aggregations = requireNotNull(sin.readOptionalWriteable { AggregatorFactories.Builder(it) }) { "Aggregations cannot be null" },
+        continuous = if (sin.readBoolean()) {
+            ContinuousInfo(sin)
+        } else null,
         user = if (sin.readBoolean()) {
             User(sin)
         } else null
@@ -234,6 +308,7 @@ data class Transform(
         const val MINIMUM_JOB_INTERVAL = 1
         const val TRANSFORM_DOC_ID_FIELD = "$TRANSFORM_TYPE._id"
         const val TRANSFORM_DOC_COUNT_FIELD = "$TRANSFORM_TYPE._doc_count"
+        const val CONTINUOUS_INFO_FIELD = "continuous"
         const val USER_FIELD = "user"
 
         @Suppress("ComplexMethod", "LongMethod")
@@ -258,6 +333,7 @@ data class Transform(
             var pageSize: Int? = null
             val groups = mutableListOf<Dimension>()
             var aggregations: AggregatorFactories.Builder = AggregatorFactories.builder()
+            var continuous: ContinuousInfo? = null
             var user: User? = null
 
             ensureExpectedToken(Token.START_OBJECT, xcp.currentToken(), xcp)
@@ -305,6 +381,7 @@ data class Transform(
                         }
                     }
                     AGGREGATIONS_FIELD -> aggregations = AggregatorFactories.parseAggregators(xcp)
+                    CONTINUOUS_INFO_FIELD -> continuous = ContinuousInfo.parse(xcp)
                     USER_FIELD -> {
                         user = if (xcp.currentToken() == Token.VALUE_NULL) null else User.parse(xcp)
                     }
@@ -346,6 +423,7 @@ data class Transform(
                 pageSize = requireNotNull(pageSize) { "Transform page size is null" },
                 groups = groups,
                 aggregations = aggregations,
+                continuous = continuous,
                 user = user
             )
         }

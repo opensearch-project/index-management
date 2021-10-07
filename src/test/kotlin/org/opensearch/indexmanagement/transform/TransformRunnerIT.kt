@@ -28,10 +28,7 @@ import java.time.temporal.ChronoUnit
 class TransformRunnerIT : TransformRestTestCase() {
 
     fun `test transform`() {
-        if (!indexExists("transform-source-index")) {
-            generateNYCTaxiData("transform-source-index")
-            assertIndexExists("transform-source-index")
-        }
+        validateSourceIndex("transform-source-index")
 
         val transform = Transform(
             id = "id_1",
@@ -71,10 +68,7 @@ class TransformRunnerIT : TransformRestTestCase() {
     }
 
     fun `test transform with data filter`() {
-        if (!indexExists("transform-source-index")) {
-            generateNYCTaxiData("transform-source-index")
-            assertIndexExists("transform-source-index")
-        }
+        validateSourceIndex("transform-source-index")
 
         val transform = Transform(
             id = "id_2",
@@ -132,10 +126,7 @@ class TransformRunnerIT : TransformRestTestCase() {
     }
 
     fun `test transform with aggregations`() {
-        if (!indexExists("transform-source-index")) {
-            generateNYCTaxiData("transform-source-index")
-            assertIndexExists("transform-source-index")
-        }
+        validateSourceIndex("transform-source-index")
 
         val aggregatorFactories = AggregatorFactories.builder()
         aggregatorFactories.addAggregator(AggregationBuilders.sum("revenue").field("total_amount"))
@@ -210,10 +201,7 @@ class TransformRunnerIT : TransformRestTestCase() {
     }
 
     fun `test transform with failure during indexing`() {
-        if (!indexExists("transform-source-index")) {
-            generateNYCTaxiData("transform-source-index")
-            assertIndexExists("transform-source-index")
-        }
+        validateSourceIndex("transform-source-index")
 
         // Indexing failure because target index is strictly mapped
         createIndex("transform-target-strict-index", Settings.EMPTY, getStrictMappings())
@@ -252,10 +240,7 @@ class TransformRunnerIT : TransformRestTestCase() {
     }
 
     fun `test transform with invalid aggregation triggering search failure`() {
-        if (!indexExists("transform-source-index")) {
-            generateNYCTaxiData("transform-source-index")
-            assertIndexExists("transform-source-index")
-        }
+        validateSourceIndex("transform-source-index")
 
         val aggregatorFactories = AggregatorFactories.builder()
         aggregatorFactories.addAggregator(
@@ -388,6 +373,89 @@ class TransformRunnerIT : TransformRestTestCase() {
         assertTrue("Didn't capture search time", metadata.stats.searchTimeInMillis > 0)
     }
 
+    // NOTE: The test document being added for creating the start/end windows has the timestamp of Instant.now().
+    // It's possible that this timestamp can fall on the very edge of the endtime and therefore execute the second time around
+    // which could result in this test failing.
+    // Setting the interval to something large to minimize this scenario.
+    fun `test no-op execution when a full window of time to transform is not available`() {
+        val transform = Transform(
+            id = "id_8",
+            schemaVersion = 1L,
+            enabled = true,
+            enabledAt = Instant.now(),
+            updatedAt = Instant.now(),
+            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+            description = "test transform",
+            metadataId = null,
+            sourceIndex = "transform-source-index",
+            targetIndex = "transform-target-index",
+            roles = emptyList(),
+            pageSize = 100,
+            groups = listOf(
+                Terms(sourceField = "store_and_fwd_flag", targetField = "flag")
+            )
+        ).let { createTransform(it, it.id) }
+
+        updateTransformStartTime(transform)
+
+        waitFor { assertTrue("Target transform index was not created", indexExists(transform.targetIndex)) }
+//        val indexName = "test_index_runner_third"
+//
+//        // Define rollup
+//        var rollup = randomRollup().copy(
+//            enabled = true,
+//            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+//            jobEnabledTime = Instant.now(),
+//            sourceIndex = indexName,
+//            metadataID = null,
+//            continuous = true,
+//            dimensions = listOf(
+//                randomCalendarDateHistogram().copy(
+//                    calendarInterval = "1y"
+//                )
+//            )
+//        )
+//
+//        // Create source index
+//        createRollupSourceIndex(rollup)
+//
+//        // Add a document using the rollup's DateHistogram source field to ensure a metadata document is created
+//        putDateDocumentInSourceIndex(rollup)
+//
+//        // Create rollup job
+//        rollup = createRollup(rollup = rollup, rollupId = rollup.id)
+//        assertEquals(indexName, rollup.sourceIndex)
+//        assertEquals(null, rollup.metadataID)
+//
+//        // Update rollup start time to run first execution
+//        updateRollupStartTime(rollup)
+//
+//        var previousRollupMetadata: RollupMetadata? = null
+//        // Assert on first execution
+//        waitFor {
+//            val rollupJob = getRollup(rollupId = rollup.id)
+//            assertNotNull("Rollup job not found", rollupJob)
+//            assertNotNull("Rollup job doesn't have metadata set", rollupJob.metadataID)
+//
+//            previousRollupMetadata = getRollupMetadata(rollupJob.metadataID!!)
+//            assertNotNull("Rollup metadata not found", previousRollupMetadata)
+//            assertEquals("Unexpected metadata status", RollupMetadata.Status.INIT, previousRollupMetadata!!.status)
+//        }
+//
+//        assertNotNull("Previous rollup metadata was not saved", previousRollupMetadata)
+//
+//        // Update rollup start time to run second execution
+//        updateRollupStartTime(rollup)
+//
+//        // Wait some arbitrary amount of time so the execution happens
+//        // Not using waitFor since this is testing a lack of state change
+//        Thread.sleep(10000)
+//
+//        // Assert that no changes were made
+//        val currentMetadata = getRollupMetadata(previousRollupMetadata!!.id)
+//        assertEquals("Rollup metadata was updated", previousRollupMetadata!!.lastUpdatedTime, currentMetadata.lastUpdatedTime)
+    }
+
     private fun getStrictMappings(): String {
         return """
             "dynamic": "strict",
@@ -397,5 +465,12 @@ class TransformRunnerIT : TransformRestTestCase() {
                 }
             }
         """.trimIndent()
+    }
+
+    private fun validateSourceIndex(indexName: String) {
+        if (!indexExists(indexName)) {
+            generateNYCTaxiData(indexName)
+            assertIndexExists(indexName)
+        }
     }
 }

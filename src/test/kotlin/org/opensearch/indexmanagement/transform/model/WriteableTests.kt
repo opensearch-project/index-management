@@ -8,6 +8,7 @@ package org.opensearch.indexmanagement.transform.model
 import org.opensearch.common.io.stream.BytesStreamOutput
 import org.opensearch.common.io.stream.StreamInput
 import org.opensearch.indexmanagement.transform.buildStreamInputForTransforms
+import org.opensearch.indexmanagement.transform.randomContinuousTransform
 import org.opensearch.indexmanagement.transform.randomTransform
 import org.opensearch.indexmanagement.transform.randomTransformMetadata
 import org.opensearch.test.OpenSearchTestCase
@@ -27,5 +28,12 @@ class WriteableTests : OpenSearchTestCase() {
         val out = BytesStreamOutput().also { transform.writeTo(it) }
         val streamedTransform = Transform(buildStreamInputForTransforms(out))
         assertEquals("Round tripping Transform stream doesn't work", transform, streamedTransform)
+    }
+
+    fun `test continuous transform as stream`() {
+        val transform = randomContinuousTransform()
+        val out = BytesStreamOutput().also { transform.writeTo(it) }
+        val streamedTransform = Transform(buildStreamInputForTransforms(out))
+        assertEquals("Round tripping continuous Transform stream doesn't work", transform, streamedTransform)
     }
 }
