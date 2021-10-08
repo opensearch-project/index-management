@@ -106,7 +106,7 @@ class RollupTests : OpenSearchTestCase() {
         randomRollup().copy(delay = null)
     }
 
-    fun `test rollup applies to continuous rollups only`() {
+    fun `test delay applies to continuous rollups only`() {
         // Continuous rollup schedule matches delay
         val newDelay: Long = 500
         val continuousRollup = randomRollup().copy(

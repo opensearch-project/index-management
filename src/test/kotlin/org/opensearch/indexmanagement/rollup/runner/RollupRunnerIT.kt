@@ -577,7 +577,7 @@ class RollupRunnerIT : RollupRestTestCase() {
         // Define rollup
         var rollup = randomRollup().copy(
             enabled = true,
-            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES, 0),
+            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
             jobEnabledTime = Instant.now(),
             sourceIndex = indexName,
             metadataID = null,
@@ -585,7 +585,7 @@ class RollupRunnerIT : RollupRestTestCase() {
             delay = delay,
             dimensions = listOf(
                 randomCalendarDateHistogram().copy(
-                    calendarInterval = "1s"
+                    calendarInterval = "5s"
                 )
             )
         )
@@ -598,7 +598,7 @@ class RollupRunnerIT : RollupRestTestCase() {
         // Create rollup job
         rollup = createRollup(rollup = rollup, rollupId = rollup.id)
 
-        val nextExecutionTime = rollup.schedule.getNextExecutionTime(null).toEpochMilli()
+        var nextExecutionTime = rollup.schedule.getNextExecutionTime(null).toEpochMilli()
         val expectedExecutionTime = rollup.jobEnabledTime!!.plusMillis(delay).toEpochMilli()
         val delayIsCorrect = ((expectedExecutionTime - nextExecutionTime) > -500) && ((expectedExecutionTime - nextExecutionTime) < 500)
         assertTrue("Delay was not correctly applied", delayIsCorrect)
@@ -609,20 +609,29 @@ class RollupRunnerIT : RollupRestTestCase() {
             // Still should not have run at this point
             assertFalse("Target rollup index was created before the delay should allow", indexExists(rollup.targetIndex))
         }
-
-        waitFor {
+        val rollupMetadata = waitFor {
             assertTrue("Target rollup index was not created", indexExists(rollup.targetIndex))
             val rollupJob = getRollup(rollupId = rollup.id)
             assertNotNull("Rollup job doesn't have metadata set", rollupJob.metadataID)
             val rollupMetadata = getRollupMetadata(rollupJob.metadataID!!)
             assertNotNull("Rollup metadata not found", rollupMetadata)
-            val nextWindowStartTime: Instant = rollupMetadata.continuous!!.nextWindowStartTime
-            assertTrue("Rollup window not excluding the delay", nextWindowStartTime < Instant.now().minusMillis(delay))
-            assertTrue("Rollup window not updating", nextWindowStartTime > Instant.now().minusMillis(delay + 2000))
+            rollupMetadata
         }
+        nextExecutionTime = rollup.schedule.getNextExecutionTime(null).toEpochMilli()
+        val nextExecutionOffset = (nextExecutionTime - Instant.now().toEpochMilli()) - 60000
+        val nextExecutionIsCorrect = nextExecutionOffset < 5000 && nextExecutionOffset > -5000
+        assertTrue("Next execution time not updated correctly", nextExecutionIsCorrect)
+        val nextWindowStartTime: Instant = rollupMetadata.continuous!!.nextWindowStartTime
+        val nextWindowEndTime: Instant = rollupMetadata.continuous!!.nextWindowEndTime
+        // Assert that after the window was updated, it falls approximately around 'now'
+        assertTrue("Rollup window start time is incorrect", nextWindowStartTime.plusMillis(delay).minusMillis(1000) < Instant.now())
+        assertTrue("Rollup window end time is incorrect", nextWindowEndTime.plusMillis(delay).plusMillis(1000) > Instant.now())
+
+        // window length should be 5 seconds
+        val expectedWindowEnd = nextWindowStartTime.plusMillis(5000)
+        assertEquals("Rollup window length applied incorrectly", expectedWindowEnd, nextWindowEndTime)
     }
 
-    // Tests that the non continuous delay does nothing
     fun `test non continuous delay does nothing`() {
         generateNYCTaxiData("source_runner_ninth")
 
