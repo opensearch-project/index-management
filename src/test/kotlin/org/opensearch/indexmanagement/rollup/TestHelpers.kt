@@ -129,7 +129,7 @@ fun randomRollup(): Rollup {
         metadataID = if (OpenSearchRestTestCase.randomBoolean()) null else OpenSearchRestTestCase.randomAlphaOfLength(10),
         roles = OpenSearchRestTestCase.randomList(10) { OpenSearchRestTestCase.randomAlphaOfLength(10) },
         pageSize = OpenSearchRestTestCase.randomIntBetween(1, 10000),
-        delay = OpenSearchRestTestCase.randomNonNegativeLong(),
+        delay = 0,
         continuous = OpenSearchRestTestCase.randomBoolean(),
         dimensions = randomRollupDimensions(),
         metrics = OpenSearchRestTestCase.randomList(20, ::randomRollupMetrics).distinctBy { it.targetField },

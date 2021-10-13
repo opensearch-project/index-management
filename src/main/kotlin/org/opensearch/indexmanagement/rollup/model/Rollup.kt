@@ -61,7 +61,7 @@ data class Rollup(
     val primaryTerm: Long = SequenceNumbers.UNASSIGNED_PRIMARY_TERM,
     val enabled: Boolean,
     val schemaVersion: Long,
-    val jobSchedule: Schedule,
+    var jobSchedule: Schedule,
     val jobLastUpdatedTime: Instant,
     val jobEnabledTime: Instant?,
     val description: String,
@@ -83,12 +83,26 @@ data class Rollup(
         } else {
             require(jobEnabledTime == null) { "Job enabled time must not be present if the job is disabled" }
         }
+        // Copy the delay parameter of the job into the job scheduler for continuous jobs only
+        if (jobSchedule.delay != delay && continuous) {
+            jobSchedule = when (jobSchedule) {
+                is CronSchedule -> {
+                    val cronSchedule = jobSchedule as CronSchedule
+                    CronSchedule(cronSchedule.cronExpression, cronSchedule.timeZone, delay ?: 0)
+                }
+                is IntervalSchedule -> {
+                    val intervalSchedule = jobSchedule as IntervalSchedule
+                    IntervalSchedule(intervalSchedule.startTime, intervalSchedule.interval, intervalSchedule.unit, delay ?: 0)
+                }
+                else -> jobSchedule
+            }
+        }
         when (jobSchedule) {
             is CronSchedule -> {
                 // Job scheduler already correctly throws errors for this
             }
             is IntervalSchedule -> {
-                require(jobSchedule.interval >= MINIMUM_JOB_INTERVAL) { "Rollup job schedule interval must be greater than 0" }
+                require((jobSchedule as IntervalSchedule).interval >= MINIMUM_JOB_INTERVAL) { "Rollup job schedule interval must be greater than 0" }
             }
         }
         require(sourceIndex != targetIndex) { "Your source and target index cannot be the same" }
@@ -97,7 +111,10 @@ data class Rollup(
         }
         require(dimensions.first().type == Dimension.Type.DATE_HISTOGRAM) { "The first dimension must be a date histogram" }
         require(pageSize in MINIMUM_PAGE_SIZE..MAXIMUM_PAGE_SIZE) { "Page size must be between 1 and 10,000" }
-        if (delay != null) require(delay >= MINIMUM_DELAY) { "Delay must be non-negative if set" }
+        if (delay != null) {
+            require(delay >= MINIMUM_DELAY) { "Delay must be non-negative if set" }
+            require(delay <= Instant.now().toEpochMilli()) { "Delay must be less than the current unix time" }
+        }
     }
 
     override fun isEnabled() = enabled
@@ -331,7 +348,7 @@ data class Rollup(
             // TODO: Make startTime public in Job Scheduler so we can just directly check the value
             if (seqNo == SequenceNumbers.UNASSIGNED_SEQ_NO || primaryTerm == SequenceNumbers.UNASSIGNED_PRIMARY_TERM) {
                 if (schedule is IntervalSchedule) {
-                    schedule = IntervalSchedule(Instant.now(), schedule.interval, schedule.unit)
+                    schedule = IntervalSchedule(Instant.now(), schedule.interval, schedule.unit, schedule.delay ?: 0)
                 }
             }
             return Rollup(

@@ -1,6 +1,6 @@
 {
   "_meta" : {
-    "schema_version": 11
+    "schema_version": 12
   },
   "dynamic": "strict",
   "properties": {
@@ -600,6 +600,9 @@
                 "start_time": {
                   "type": "date",
                   "format": "strict_date_time||epoch_millis"
+                },
+                "schedule_delay": {
+                  "type": "long"
                 }
               }
             },
@@ -610,6 +613,9 @@
                 },
                 "timezone": {
                   "type": "keyword"
+                },
+                "schedule_delay": {
+                  "type": "long"
                 }
               }
             }
@@ -792,6 +798,9 @@
                 "start_time": {
                   "type": "date",
                   "format": "strict_date_time||epoch_millis"
+                },
+                "schedule_delay": {
+                  "type": "long"
                 }
               }
             },
@@ -802,6 +811,9 @@
                 },
                 "timezone": {
                   "type": "keyword"
+                },
+                "schedule_delay": {
+                  "type": "long"
                 }
               }
             }
@@ -1046,6 +1058,9 @@
                 "start_time": {
                   "type": "date",
                   "format": "strict_date_time||epoch_millis"
+                },
+                "schedule_delay": {
+                  "type": "long"
                 }
               }
             },
@@ -1056,6 +1071,9 @@
                 },
                 "timezone": {
                   "type": "keyword"
+                },
+                "schedule_delay": {
+                  "type": "long"
                 }
               }
             }
