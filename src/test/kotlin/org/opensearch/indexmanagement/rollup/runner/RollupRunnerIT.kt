@@ -570,6 +570,185 @@ class RollupRunnerIT : RollupRestTestCase() {
         }
     }
 
+    // Tests that a continuous rollup will not be processed until the end of the interval plus delay passes
+    fun `test delaying continuous execution`() {
+        val indexName = "test_index_runner_eighth"
+        val delay: Long = 15000
+        // Define rollup
+        var rollup = randomRollup().copy(
+            enabled = true,
+            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+            jobEnabledTime = Instant.now(),
+            sourceIndex = indexName,
+            metadataID = null,
+            continuous = true,
+            delay = delay,
+            dimensions = listOf(
+                randomCalendarDateHistogram().copy(
+                    calendarInterval = "5s"
+                )
+            )
+        )
+
+        // Create source index
+        createRollupSourceIndex(rollup)
+        // Add a document using the rollup's DateHistogram source field to ensure a metadata document is created
+        putDateDocumentInSourceIndex(rollup)
+
+        // Create rollup job
+        rollup = createRollup(rollup = rollup, rollupId = rollup.id)
+
+        var nextExecutionTime = rollup.schedule.getNextExecutionTime(null).toEpochMilli()
+        val expectedExecutionTime = rollup.jobEnabledTime!!.plusMillis(delay).toEpochMilli()
+        val delayIsCorrect = ((expectedExecutionTime - nextExecutionTime) > -500) && ((expectedExecutionTime - nextExecutionTime) < 500)
+        assertTrue("Delay was not correctly applied", delayIsCorrect)
+
+        waitFor {
+            // Wait until half a second before the intended execution time
+            assertTrue(Instant.now().toEpochMilli() >= nextExecutionTime - 500)
+            // Still should not have run at this point
+            assertFalse("Target rollup index was created before the delay should allow", indexExists(rollup.targetIndex))
+        }
+        val rollupMetadata = waitFor {
+            assertTrue("Target rollup index was not created", indexExists(rollup.targetIndex))
+            val rollupJob = getRollup(rollupId = rollup.id)
+            assertNotNull("Rollup job doesn't have metadata set", rollupJob.metadataID)
+            val rollupMetadata = getRollupMetadata(rollupJob.metadataID!!)
+            assertNotNull("Rollup metadata not found", rollupMetadata)
+            rollupMetadata
+        }
+        nextExecutionTime = rollup.schedule.getNextExecutionTime(null).toEpochMilli()
+        val nextExecutionOffset = (nextExecutionTime - Instant.now().toEpochMilli()) - 60000
+        val nextExecutionIsCorrect = nextExecutionOffset < 5000 && nextExecutionOffset > -5000
+        assertTrue("Next execution time not updated correctly", nextExecutionIsCorrect)
+        val nextWindowStartTime: Instant = rollupMetadata.continuous!!.nextWindowStartTime
+        val nextWindowEndTime: Instant = rollupMetadata.continuous!!.nextWindowEndTime
+        // Assert that after the window was updated, it falls approximately around 'now'
+        assertTrue("Rollup window start time is incorrect", nextWindowStartTime.plusMillis(delay).minusMillis(1000) < Instant.now())
+        assertTrue("Rollup window end time is incorrect", nextWindowEndTime.plusMillis(delay).plusMillis(1000) > Instant.now())
+
+        // window length should be 5 seconds
+        val expectedWindowEnd = nextWindowStartTime.plusMillis(5000)
+        assertEquals("Rollup window length applied incorrectly", expectedWindowEnd, nextWindowEndTime)
+    }
+
+    fun `test non continuous delay does nothing`() {
+        generateNYCTaxiData("source_runner_ninth")
+
+        // Setting the delay to this time so most of the data records would be excluded if delay were applied
+        val goalDateMS: Long = Instant.parse("2018-11-30T00:00:00Z").toEpochMilli()
+        val testDelay: Long = Instant.now().toEpochMilli() - goalDateMS
+        val rollup = Rollup(
+            id = "non_continuous_delay_stats_check",
+            schemaVersion = 1L,
+            enabled = true,
+            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+            jobLastUpdatedTime = Instant.now(),
+            jobEnabledTime = Instant.now(),
+            description = "basic delay test",
+            sourceIndex = "source_runner_ninth",
+            targetIndex = "target_runner_ninth",
+            metadataID = null,
+            roles = emptyList(),
+            pageSize = 100,
+            delay = testDelay,
+            continuous = false,
+            dimensions = listOf(DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "1h")),
+            metrics = listOf(
+                RollupMetrics(sourceField = "passenger_count", targetField = "passenger_count", metrics = listOf(Sum(), Min(), Max(), ValueCount(), Average()))
+            )
+        ).let { createRollup(it, it.id) }
+
+        val now = Instant.now()
+        val intervalMillis = (rollup.schedule as IntervalSchedule).interval * 60 * 1000
+        val nextExecutionTime = rollup.schedule.getNextExecutionTime(now).toEpochMilli()
+        val remainder = intervalMillis - ((now.toEpochMilli() - rollup.jobEnabledTime!!.toEpochMilli()) % intervalMillis)
+        val expectedExecutionTime = now.toEpochMilli() + remainder
+        val delayIsCorrect = ((expectedExecutionTime - nextExecutionTime) > -500) && ((expectedExecutionTime - nextExecutionTime) < 500)
+        assertTrue("Non continuous execution time was not correct", delayIsCorrect)
+
+        updateRollupStartTime(rollup)
+
+        val finishedRollup = waitFor {
+            val rollupJob = getRollup(rollupId = rollup.id)
+            assertNotNull("Rollup job doesn't have metadata set", rollupJob.metadataID)
+            val rollupMetadata = getRollupMetadata(rollupJob.metadataID!!)
+            assertEquals("Rollup is not finished $rollupMetadata", RollupMetadata.Status.FINISHED, rollupMetadata.status)
+            rollupJob
+        }
+
+        refreshAllIndices()
+
+        // No data should be excluded as the delay should not have been included
+        val rollupMetadataID = finishedRollup.metadataID!!
+        val rollupMetadata = getRollupMetadata(rollupMetadataID)
+        // These values would not match up with a delay
+        assertEquals("Did not have 2 pages processed", 2L, rollupMetadata.stats.pagesProcessed)
+        // This is a non-continuous job that rolls up every document of which there are 5k
+        assertEquals("Did not have 5000 documents processed", 5000L, rollupMetadata.stats.documentsProcessed)
+        // Based on the very first document using the tpep_pickup_datetime date field and an hourly rollup there
+        // should be 10 buckets with data in them which means 10 rollup documents
+        assertEquals("Did not have 10 rollups indexed", 10L, rollupMetadata.stats.rollupsIndexed)
+        // These are hard to test.. just assert they are more than 0
+        assertTrue("Did not spend time indexing", rollupMetadata.stats.indexTimeInMillis > 0L)
+        assertTrue("Did not spend time searching", rollupMetadata.stats.searchTimeInMillis > 0L)
+    }
+
+    // Tests that the continuous delay excludes recent data correctly
+    fun `test continuous delay exclusion period`() {
+        generateNYCTaxiData("source_runner_tenth")
+
+        // Setting the delay to this time so most of the data records are excluded
+        val goalDateMS: Long = Instant.parse("2018-11-30T00:00:00Z").toEpochMilli()
+        val testDelay: Long = Instant.now().toEpochMilli() - goalDateMS
+        val rollup = Rollup(
+            id = "continuous_delay_stats_check",
+            schemaVersion = 1L,
+            enabled = true,
+            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+            jobLastUpdatedTime = Instant.now(),
+            jobEnabledTime = Instant.now(),
+            description = "basic delay test",
+            sourceIndex = "source_runner_tenth",
+            targetIndex = "target_runner_tenth",
+            metadataID = null,
+            roles = emptyList(),
+            pageSize = 100,
+            delay = testDelay,
+            continuous = true,
+            dimensions = listOf(DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "1h")),
+            metrics = listOf(
+                RollupMetrics(sourceField = "passenger_count", targetField = "passenger_count", metrics = listOf(Sum(), Min(), Max(), ValueCount(), Average()))
+            )
+        ).let { createRollup(it, it.id) }
+
+        updateRollupStartTime(rollup, Instant.now().minusMillis(testDelay).minusMillis(55000).toEpochMilli())
+
+        val finishedRollup = waitFor {
+            val rollupJob = getRollup(rollupId = rollup.id)
+            assertNotNull("Rollup job doesn't have metadata set", rollupJob.metadataID)
+            val rollupMetadata = getRollupMetadata(rollupJob.metadataID!!)
+            assertEquals("Rollup is not started $rollupMetadata", RollupMetadata.Status.STARTED, rollupMetadata.status)
+            assertTrue("Continuous rollup did not process history", rollupMetadata.continuous!!.nextWindowEndTime.toEpochMilli() > goalDateMS)
+            rollupJob
+        }
+
+        refreshAllIndices()
+
+        val rollupMetadataID = finishedRollup.metadataID!!
+        val rollupMetadata = getRollupMetadata(rollupMetadataID)
+        // These numbers seem arbitrary, but match the case when the continuous rollup stops processing at 2018-11-30
+        assertEquals("Did not have 35 pages processed", 35, rollupMetadata.stats.pagesProcessed)
+        // This is a continuous job that rolls up documents before 2018-11-30, of which there are 4
+        assertEquals("Did not have 4 documents processed", 4, rollupMetadata.stats.documentsProcessed)
+        // Based on the very first document using the tpep_pickup_datetime date field and a 1 hour rollup there
+        // should be 2 buckets with data in them which means 2 rollup documents
+        assertEquals("Did not have 2 rollups indexed", 2, rollupMetadata.stats.rollupsIndexed)
+        // These are hard to test.. just assert they are more than 0
+        assertTrue("Did not spend time indexing", rollupMetadata.stats.indexTimeInMillis > 0L)
+        assertTrue("Did not spend time searching", rollupMetadata.stats.searchTimeInMillis > 0L)
+    }
+
     // TODO: Test scenarios:
     // - Source index deleted after first execution
     //      * If this is with a source index pattern and the underlying indices are recreated but with different data
