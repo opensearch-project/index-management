@@ -126,7 +126,7 @@ class XContentTests : OpenSearchTestCase() {
     }
 
     fun `test rollup parsing with type`() {
-        val rollup = randomRollup()
+        val rollup = randomRollup().copy(delay = randomLongBetween(0, 60000000))
         val rollupString = rollup.toJsonString()
         val parser = parserWithType(rollupString)
         val parsedRollup = parser.parseWithType(rollup.id, rollup.seqNo, rollup.primaryTerm, Rollup.Companion::parse)
@@ -135,7 +135,7 @@ class XContentTests : OpenSearchTestCase() {
     }
 
     fun `test rollup parsing without type`() {
-        val rollup = randomRollup()
+        val rollup = randomRollup().copy(delay = randomLongBetween(0, 60000000))
         val rollupString = rollup.toJsonString(XCONTENT_WITHOUT_TYPE)
         val parsedRollup = Rollup.parse(parser(rollupString), rollup.id, rollup.seqNo, rollup.primaryTerm)
         // roles are deprecated and not populated in toXContent and parsed as part of parse

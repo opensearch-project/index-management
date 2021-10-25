@@ -128,7 +128,7 @@ class WriteableTests : OpenSearchTestCase() {
     }
 
     fun `test rollup as stream`() {
-        val rollup = randomRollup()
+        val rollup = randomRollup().copy(delay = randomLongBetween(0, 60000000))
         val out = BytesStreamOutput().also { rollup.writeTo(it) }
         val sin = StreamInput.wrap(out.bytes().toBytesRef().bytes)
         val streamedRollup = Rollup(sin)
