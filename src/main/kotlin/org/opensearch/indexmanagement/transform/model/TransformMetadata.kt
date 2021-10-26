@@ -30,7 +30,8 @@ data class TransformMetadata(
     val lastUpdatedAt: Instant,
     val status: Status,
     val failureReason: String? = null,
-    val stats: TransformStats
+    val stats: TransformStats,
+    val continuousStats: ContinuousTransformStats? = null
 ) : ToXContentObject, Writeable {
 
     enum class Status(val type: String) {
@@ -55,7 +56,8 @@ data class TransformMetadata(
         lastUpdatedAt = sin.readInstant(),
         status = sin.readEnum(Status::class.java),
         failureReason = sin.readOptionalString(),
-        stats = TransformStats(sin)
+        stats = TransformStats(sin),
+        continuousStats = if (sin.readBoolean()) ContinuousTransformStats(sin) else null
     )
 
     override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
@@ -68,6 +70,7 @@ data class TransformMetadata(
         builder.field(STATUS_FIELD, status.type)
         builder.field(FAILURE_REASON, failureReason)
         builder.field(STATS_FIELD, stats)
+        if (continuousStats != null) builder.field(CONTINUOUS_STATS_FIELD, continuousStats)
 
         if (params.paramAsBoolean(WITH_TYPE, true)) builder.endObject()
         return builder.endObject()
@@ -84,6 +87,8 @@ data class TransformMetadata(
         out.writeEnum(status)
         out.writeOptionalString(failureReason)
         stats.writeTo(out)
+        out.writeBoolean(continuousStats != null)
+        continuousStats?.writeTo(out)
     }
 
     fun mergeStats(stats: TransformStats): TransformMetadata {
@@ -105,6 +110,7 @@ data class TransformMetadata(
         const val LAST_UPDATED_AT_FIELD = "last_updated_at"
         const val STATUS_FIELD = "status"
         const val STATS_FIELD = "stats"
+        const val CONTINUOUS_STATS_FIELD = "continuous_stats"
         const val FAILURE_REASON = "failure_reason"
 
         @Suppress("ComplexMethod", "LongMethod")
@@ -122,6 +128,7 @@ data class TransformMetadata(
             var status: Status? = null
             var failureReason: String? = null
             var stats: TransformStats? = null
+            var continuousStats: ContinuousTransformStats? = null
 
             ensureExpectedToken(XContentParser.Token.START_OBJECT, xcp.currentToken(), xcp)
             while (xcp.nextToken() != XContentParser.Token.END_OBJECT) {
@@ -135,6 +142,7 @@ data class TransformMetadata(
                     STATUS_FIELD -> status = Status.valueOf(xcp.text().toUpperCase(Locale.ROOT))
                     FAILURE_REASON -> failureReason = xcp.textOrNull()
                     STATS_FIELD -> stats = TransformStats.parse(xcp)
+                    CONTINUOUS_STATS_FIELD -> continuousStats = ContinuousTransformStats.parse(xcp)
                 }
             }
 
@@ -147,7 +155,8 @@ data class TransformMetadata(
                 lastUpdatedAt = requireNotNull(lastUpdatedAt) { "Last updated time must not be null" },
                 status = requireNotNull(status) { "Status must not be null" },
                 failureReason = failureReason,
-                stats = requireNotNull(stats) { "Stats must not be null" }
+                stats = requireNotNull(stats) { "Stats must not be null" },
+                continuousStats = continuousStats
             )
         }
     }

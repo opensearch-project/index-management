@@ -17,6 +17,7 @@ import org.opensearch.indexmanagement.transform.model.Transform
 import org.opensearch.indexmanagement.transform.model.TransformMetadata
 import org.opensearch.indexmanagement.waitFor
 import org.opensearch.jobscheduler.spi.schedule.IntervalSchedule
+import org.opensearch.rest.RestStatus
 import org.opensearch.script.Script
 import org.opensearch.script.ScriptType
 import org.opensearch.search.aggregations.AggregationBuilders
@@ -454,6 +455,56 @@ class TransformRunnerIT : TransformRestTestCase() {
 //        // Assert that no changes were made
 //        val currentMetadata = getRollupMetadata(previousRollupMetadata!!.id)
 //        assertEquals("Rollup metadata was updated", previousRollupMetadata!!.lastUpdatedTime, currentMetadata.lastUpdatedTime)
+    }
+
+    fun `test transform searching`() {
+        validateSourceIndex("transform-source-index")
+
+        val aggregatorFactories = AggregatorFactories.builder()
+        aggregatorFactories.addAggregator(AggregationBuilders.max("sequence_number").field("seq_no"))
+
+        val transform = Transform(
+            id = "test",
+            schemaVersion = 1L,
+            enabled = true,
+            enabledAt = Instant.now(),
+            updatedAt = Instant.now(),
+            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+            description = "test transform",
+            metadataId = null,
+            sourceIndex = "transform-source-index",
+            targetIndex = "transform-target-index",
+            roles = emptyList(),
+            pageSize = 1,
+            groups = listOf(
+                Terms(sourceField = "store_and_fwd_flag", targetField = "flag"),
+                DateHistogram(sourceField = "tpep_pickup_datetime", targetField = "date", fixedInterval = "1d")
+            ),
+            aggregations = aggregatorFactories
+        ).let { createTransform(it, it.id) }
+
+        updateTransformStartTime(transform)
+
+        val metadata = waitFor {
+            val job = getTransform(transformId = transform.id)
+            assertNotNull("Transform job doesn't have metadata set", job.metadataId)
+            val transformMetadata = getTransformMetadata(job.metadataId!!)
+            assertEquals("Transform has not finished", TransformMetadata.Status.FINISHED, transformMetadata.status)
+        }
+
+        val request = """
+            {
+            }
+        """.trimIndent()
+        val res = client().makeRequest(
+            "GET", "transform-target-index/_search", emptyMap(),
+            StringEntity(request, ContentType.APPLICATION_JSON)
+        )
+        assertEquals("Request failed", RestStatus.OK, res.restStatus())
+        println(res.asMap()["hits"])
+        for (i in 0..(res.asMap()["hits"] as Array<*>).size) {
+            println((res.asMap()["hits"] as Array<*>)[i])
+        }
     }
 
     private fun getStrictMappings(): String {

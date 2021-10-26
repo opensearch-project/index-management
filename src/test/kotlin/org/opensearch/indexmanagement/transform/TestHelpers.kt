@@ -17,9 +17,8 @@ import org.opensearch.indexmanagement.randomInstant
 import org.opensearch.indexmanagement.randomSchedule
 import org.opensearch.indexmanagement.randomUser
 import org.opensearch.indexmanagement.rollup.randomAfterKey
-import org.opensearch.indexmanagement.rollup.randomDateHistogram
 import org.opensearch.indexmanagement.rollup.randomDimension
-import org.opensearch.indexmanagement.transform.model.ContinuousInfo
+import org.opensearch.indexmanagement.transform.model.ContinuousTransformStats
 import org.opensearch.indexmanagement.transform.model.ExplainTransform
 import org.opensearch.indexmanagement.transform.model.Transform
 import org.opensearch.indexmanagement.transform.model.TransformMetadata
@@ -68,18 +67,8 @@ fun randomAggregationFactories(): AggregatorFactories.Builder {
     return factories
 }
 
-fun randomContinuous(groups: List<Dimension>): ContinuousInfo {
-    val containsDateHistogram: Boolean = groups.map { it.type }.contains(Dimension.Type.DATE_HISTOGRAM)
-    val approach = if (OpenSearchRestTestCase.randomBoolean() && containsDateHistogram) ContinuousInfo.ContinuousApproach.INCREMENTAL else ContinuousInfo.ContinuousApproach.SIMPLE
-    val timeField = if (approach == ContinuousInfo.ContinuousApproach.INCREMENTAL) {
-        groups.find { it.type == Dimension.Type.DATE_HISTOGRAM }!!.sourceField
-    } else null
-    return ContinuousInfo(approach, timeField)
-}
-
 fun randomTransform(): Transform {
     val enabled = OpenSearchRestTestCase.randomBoolean()
-    val groups = randomGroups()
     return Transform(
         id = OpenSearchRestTestCase.randomAlphaOfLength(10),
         seqNo = OpenSearchRestTestCase.randomNonNegativeLong(),
@@ -95,21 +84,11 @@ fun randomTransform(): Transform {
         targetIndex = OpenSearchRestTestCase.randomAlphaOfLength(10).toLowerCase(Locale.ROOT),
         roles = OpenSearchRestTestCase.randomList(10) { OpenSearchRestTestCase.randomAlphaOfLength(10) },
         pageSize = OpenSearchRestTestCase.randomIntBetween(1, 10000),
-        groups = groups,
+        groups = randomGroups(),
         aggregations = randomAggregationFactories(),
-        continuous = if (OpenSearchRestTestCase.randomBoolean()) null else randomContinuous(groups),
+        continuous = OpenSearchRestTestCase.randomBoolean(),
         user = randomUser()
     )
-}
-
-fun randomContinuousTransform(): Transform {
-    val dateDimension = randomDateHistogram()
-    val groups = randomGroups().plus(dateDimension)
-    var continuous = if (OpenSearchRestTestCase.randomBoolean()) {
-        ContinuousInfo(ContinuousInfo.ContinuousApproach.INCREMENTAL, dateDimension.sourceField)
-    } else ContinuousInfo(ContinuousInfo.ContinuousApproach.SIMPLE, null)
-
-    return randomTransform().copy(groups = groups, continuous = continuous)
 }
 
 fun randomTransformMetadata(): TransformMetadata {
@@ -123,7 +102,8 @@ fun randomTransformMetadata(): TransformMetadata {
         lastUpdatedAt = randomInstant(),
         status = status,
         failureReason = if (status == TransformMetadata.Status.FAILED) OpenSearchRestTestCase.randomAlphaOfLength(10) else null,
-        stats = randomTransformStats()
+        stats = randomTransformStats(),
+        continuousStats = if (OpenSearchRestTestCase.randomBoolean()) randomContinuousStats() else null
     )
 }
 
@@ -134,6 +114,14 @@ fun randomTransformStats(): TransformStats {
         documentsIndexed = OpenSearchRestTestCase.randomNonNegativeLong(),
         indexTimeInMillis = OpenSearchRestTestCase.randomNonNegativeLong(),
         searchTimeInMillis = OpenSearchRestTestCase.randomNonNegativeLong()
+    )
+}
+
+fun randomContinuousStats(): ContinuousTransformStats {
+    return ContinuousTransformStats(
+        lastTimestamp = randomInstant(),
+        lastSeqNo = OpenSearchRestTestCase.randomNonNegativeLong(),
+        lastPrimaryTerm = OpenSearchRestTestCase.randomNonNegativeLong()
     )
 }
 

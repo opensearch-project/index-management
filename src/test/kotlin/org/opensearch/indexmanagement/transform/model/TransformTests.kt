@@ -5,9 +5,6 @@
 
 package org.opensearch.indexmanagement.transform.model
 
-import org.opensearch.indexmanagement.rollup.randomDateHistogram
-import org.opensearch.indexmanagement.rollup.randomTerms
-import org.opensearch.indexmanagement.transform.randomGroups
 import org.opensearch.indexmanagement.transform.randomTransform
 import org.opensearch.jobscheduler.spi.schedule.IntervalSchedule
 import org.opensearch.test.OpenSearchTestCase
@@ -50,24 +47,5 @@ class TransformTests : OpenSearchTestCase() {
         }
 
         randomTransform().copy(jobSchedule = IntervalSchedule(Instant.now(), 2, ChronoUnit.HOURS))
-    }
-
-    fun `test transform requirements when continuous approach is incremental`() {
-        val dateDimension = randomDateHistogram()
-        val otherDimension = randomTerms()
-        val groups = randomGroups().plus(dateDimension).plus(otherDimension)
-        var continuous = ContinuousInfo(ContinuousInfo.ContinuousApproach.INCREMENTAL, "will_fail")
-        assertFailsWith(IllegalArgumentException::class, "Continuous time field must match a dimension field") {
-            randomTransform().copy(groups = groups, continuous = continuous)
-        }
-        continuous = ContinuousInfo(ContinuousInfo.ContinuousApproach.INCREMENTAL, otherDimension.sourceField)
-        assertFailsWith(IllegalArgumentException::class, "Dimension noted by the time field must be a date histogram") {
-            randomTransform().copy(groups = groups, continuous = continuous)
-        }
-
-        continuous = ContinuousInfo(ContinuousInfo.ContinuousApproach.INCREMENTAL, dateDimension.sourceField)
-        randomTransform().copy(groups = groups, continuous = continuous)
-        randomTransform().copy(continuous = ContinuousInfo(ContinuousInfo.ContinuousApproach.SIMPLE, null))
-        randomTransform().copy(continuous = null)
     }
 }

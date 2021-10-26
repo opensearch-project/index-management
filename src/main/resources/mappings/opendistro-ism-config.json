@@ -1211,6 +1211,9 @@
               }
             }
           }
+        },
+        "continuous": {
+          "type": "boolean"
         }
       }
     },
@@ -1240,6 +1243,10 @@
           "type": "text"
         },
         "stats": {
+          "type": "object",
+          "enabled": false
+        },
+        "continuous_stats": {
           "type": "object",
           "enabled": false
         }

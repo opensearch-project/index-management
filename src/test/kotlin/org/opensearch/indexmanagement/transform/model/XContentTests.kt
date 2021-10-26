@@ -12,7 +12,6 @@ import org.opensearch.common.xcontent.XContentParser
 import org.opensearch.common.xcontent.XContentType
 import org.opensearch.indexmanagement.indexstatemanagement.util.XCONTENT_WITHOUT_TYPE
 import org.opensearch.indexmanagement.opensearchapi.parseWithType
-import org.opensearch.indexmanagement.transform.randomContinuousTransform
 import org.opensearch.indexmanagement.transform.randomTransform
 import org.opensearch.indexmanagement.transform.randomTransformMetadata
 import org.opensearch.indexmanagement.transform.toJsonString
@@ -62,23 +61,6 @@ class XContentTests : OpenSearchTestCase() {
         val transformString = transform.toJsonString(XCONTENT_WITHOUT_TYPE)
         val parsedTransform = Transform.parse(parser(transformString), transform.id)
         assertNull("MetadataId is not removed when parsing the transform during creation", parsedTransform.metadataId)
-    }
-
-    fun `test continuous transform parsing with type`() {
-        val transform = randomContinuousTransform()
-        val transformString = transform.toJsonString()
-        val parser = parserWithType(transformString)
-        val parsedTransform = parser.parseWithType(transform.id, transform.seqNo, transform.primaryTerm, Transform.Companion::parse)
-        // roles are deprecated and not populated in toXContent and parsed as part of parse
-        assertEquals("Round tripping continuous Transform with type doesn't work", transform.copy(roles = listOf()), parsedTransform)
-    }
-
-    fun `test continuous transform parsing without type`() {
-        val transform = randomContinuousTransform()
-        val transformString = transform.toJsonString(XCONTENT_WITHOUT_TYPE)
-        val parsedTransform = Transform.parse(parser(transformString), transform.id, transform.seqNo, transform.primaryTerm)
-        // roles are deprecated and not populated in toXContent and parsed as part of parse
-        assertEquals("Round tripping continuous Transform without type doesn't work", transform.copy(roles = listOf()), parsedTransform)
     }
 
     private fun parser(xc: String): XContentParser {
