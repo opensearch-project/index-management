@@ -30,7 +30,6 @@ import com.carrotsearch.randomizedtesting.RandomizedTest.sleep
 import org.junit.After
 import org.junit.Assume
 import org.junit.Before
-import org.junit.Ignore
 import org.opensearch.action.support.master.AcknowledgedResponse
 import org.opensearch.cluster.metadata.IndexMetadata
 import org.opensearch.common.settings.Settings
@@ -66,7 +65,7 @@ class MetadataRegressionIT : IndexStateManagementIntegTestCase() {
         updateClusterSetting(ManagedIndexSettings.METADATA_SERVICE_ENABLED.key, null, false)
     }
 
-    @Ignore
+    @AwaitsFix(bugUrl = "https://github.com/opensearch-project/index-management/issues/176")
     fun `test move metadata service`() {
         updateClusterSetting(ManagedIndexSettings.METADATA_SERVICE_ENABLED.key, "false")
         updateClusterSetting(ManagedIndexSettings.METADATA_SERVICE_ENABLED.key, "true")
@@ -141,7 +140,7 @@ class MetadataRegressionIT : IndexStateManagementIntegTestCase() {
         }
     }
 
-    @Ignore
+    @AwaitsFix(bugUrl = "https://github.com/opensearch-project/index-management/issues/176")
     fun `test job can continue run from cluster state metadata`() {
         /**
          *  new version of ISM plugin can handle metadata in cluster state
@@ -224,7 +223,7 @@ class MetadataRegressionIT : IndexStateManagementIntegTestCase() {
         }
     }
 
-    @Ignore
+    @AwaitsFix(bugUrl = "https://github.com/opensearch-project/index-management/issues/176")
     fun `test new node skip execution when old node exist in cluster`() {
         Assume.assumeTrue(isMixedNodeRegressionTest)
 
