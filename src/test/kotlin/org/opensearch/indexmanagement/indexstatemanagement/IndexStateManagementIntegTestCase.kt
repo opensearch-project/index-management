@@ -28,6 +28,7 @@ package org.opensearch.indexmanagement.indexstatemanagement
 
 import org.apache.http.entity.ContentType
 import org.apache.http.entity.StringEntity
+import org.junit.Before
 import org.opensearch.OpenSearchParseException
 import org.opensearch.action.ActionRequest
 import org.opensearch.action.ActionResponse
@@ -54,6 +55,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
 import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.PolicyRetryInfoMetaData
 import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.StateMetaData
 import org.opensearch.indexmanagement.indexstatemanagement.resthandler.RestExplainAction
+import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.explain.ExplainAction
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.explain.TransportExplainAction
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.updateindexmetadata.TransportUpdateManagedIndexMetaDataAction
@@ -73,6 +75,11 @@ import java.time.Duration
 import java.time.Instant
 
 abstract class IndexStateManagementIntegTestCase : OpenSearchIntegTestCase() {
+    @Before
+    fun disableIndexStateManagementJitter() {
+        // jitter would add a test-breaking delay to the integration tests
+        updateIndexStateManagementJitterSetting(0.0)
+    }
 
     protected val isMixedNodeRegressionTest = System.getProperty("cluster.mixed", "false")!!.toBoolean()
 
@@ -356,5 +363,9 @@ abstract class IndexStateManagementIntegTestCase : OpenSearchIntegTestCase() {
             StringEntity(request, ContentType.APPLICATION_JSON)
         )
         assertEquals("Request failed", RestStatus.OK, res.restStatus())
+    }
+
+    protected fun updateIndexStateManagementJitterSetting(value: Double?) {
+        updateClusterSetting(ManagedIndexSettings.JITTER.key, value.toString(), false)
     }
 }

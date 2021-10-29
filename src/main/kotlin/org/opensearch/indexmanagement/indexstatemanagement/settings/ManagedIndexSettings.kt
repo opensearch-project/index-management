@@ -36,6 +36,7 @@ class ManagedIndexSettings {
         const val DEFAULT_ISM_ENABLED = true
         const val DEFAULT_METADATA_SERVICE_ENABLED = true
         const val DEFAULT_JOB_INTERVAL = 5
+        const val DEFAULT_JITTER = 0.6
         private val ALLOW_LIST_ALL = ActionConfig.ActionType.values().toList().map { it.type }
         val ALLOW_LIST_NONE = emptyList<String>()
         val SNAPSHOT_DENY_LIST_NONE = emptyList<String>()
@@ -176,6 +177,15 @@ class ManagedIndexSettings {
             "plugins.index_state_management.snapshot.deny_list",
             LegacyOpenDistroManagedIndexSettings.SNAPSHOT_DENY_LIST,
             Function.identity(),
+            Setting.Property.NodeScope,
+            Setting.Property.Dynamic
+        )
+
+        val JITTER: Setting<Double> = Setting.doubleSetting(
+            "plugins.index_state_management.jitter",
+            DEFAULT_JITTER,
+            0.0,
+            1.0,
             Setting.Property.NodeScope,
             Setting.Property.Dynamic
         )

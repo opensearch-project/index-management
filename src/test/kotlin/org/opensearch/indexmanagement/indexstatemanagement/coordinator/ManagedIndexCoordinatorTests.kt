@@ -78,6 +78,7 @@ class ManagedIndexCoordinatorTests : OpenSearchAllocationTestCase() {
         val settingSet = hashSetOf<Setting<*>>()
         settingSet.addAll(ClusterSettings.BUILT_IN_CLUSTER_SETTINGS)
         settingSet.add(ManagedIndexSettings.SWEEP_PERIOD)
+        settingSet.add(ManagedIndexSettings.JITTER)
         settingSet.add(ManagedIndexSettings.JOB_INTERVAL)
         settingSet.add(ManagedIndexSettings.INDEX_STATE_MANAGEMENT_ENABLED)
         settingSet.add(ManagedIndexSettings.METADATA_SERVICE_ENABLED)
