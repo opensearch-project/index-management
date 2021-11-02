@@ -595,6 +595,16 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
         return metadata
     }
 
+    protected fun rolloverIndex(index: String) {
+        val response = client().performRequest(
+            Request(
+                "POST",
+                "/$index/_rollover"
+            )
+        )
+        assertEquals(response.statusLine.statusCode, RestStatus.OK.status)
+    }
+
     protected fun createRepository(
         repository: String
     ) {

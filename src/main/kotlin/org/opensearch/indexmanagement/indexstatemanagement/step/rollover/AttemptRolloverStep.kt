@@ -72,17 +72,15 @@ class AttemptRolloverStep(
             return this
         }
 
-        // If we have already rolled over this index then fail as we only allow an index to be rolled over once
-        if (managedIndexMetaData.rolledOver == true) {
-            logger.warn("$indexName was already rolled over, cannot execute rollover step")
-            stepStatus = StepStatus.FAILED
-            info = mapOf("message" to getFailedDuplicateRolloverMessage(indexName))
-            return this
-        }
-
         val (rolloverTarget, isDataStream) = getRolloverTargetOrUpdateInfo()
         // If the rolloverTarget is null, we would've already updated the failed info from getRolloverTargetOrUpdateInfo and can return early
         rolloverTarget ?: return this
+
+        if (clusterService.state().metadata.index(indexName).rolloverInfos.containsKey(rolloverTarget)) {
+            stepStatus = StepStatus.COMPLETED
+            info = mapOf("message" to getAlreadyRolledOverMessage(indexName, rolloverTarget))
+            return this
+        }
 
         if (!isDataStream && !preCheckIndexAlias(rolloverTarget)) {
             stepStatus = StepStatus.FAILED
@@ -285,7 +283,6 @@ class AttemptRolloverStep(
             "New index created, but failed to update alias [index=$index, newIndex=$newIndex]"
         fun getFailedDataStreamRolloverMessage(dataStream: String) = "Failed to rollover data stream [data_stream=$dataStream]"
         fun getFailedNoValidAliasMessage(index: String) = "Missing rollover_alias index setting [index=$index]"
-        fun getFailedDuplicateRolloverMessage(index: String) = "Index has already been rolled over [index=$index]"
         fun getFailedEvaluateMessage(index: String) = "Failed to evaluate conditions for rollover [index=$index]"
         fun getPendingMessage(index: String) = "Pending rollover of index [index=$index]"
         fun getSuccessMessage(index: String) = "Successfully rolled over index [index=$index]"
@@ -293,5 +290,7 @@ class AttemptRolloverStep(
             "Successfully rolled over data stream [data_stream=$dataStream index=$index]"
         fun getFailedPreCheckMessage(index: String) = "Missing alias or not the write index when rollover [index=$index]"
         fun getSkipRolloverMessage(index: String) = "Skipped rollover action for [index=$index]"
+        fun getAlreadyRolledOverMessage(index: String, alias: String) =
+            "This index has already been rolled over using this alias, treating as a success [index=$index, alias=$alias]"
     }
 }
