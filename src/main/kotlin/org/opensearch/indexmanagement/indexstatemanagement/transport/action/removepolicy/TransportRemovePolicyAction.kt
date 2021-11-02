@@ -44,6 +44,10 @@ import org.opensearch.action.support.master.AcknowledgedResponse
 import org.opensearch.client.node.NodeClient
 import org.opensearch.cluster.ClusterState
 import org.opensearch.cluster.block.ClusterBlockException
+import org.opensearch.cluster.metadata.IndexMetadata.INDEX_BLOCKS_READ_ONLY_ALLOW_DELETE_SETTING
+import org.opensearch.cluster.metadata.IndexMetadata.INDEX_READ_ONLY_SETTING
+import org.opensearch.cluster.metadata.IndexMetadata.SETTING_READ_ONLY
+import org.opensearch.cluster.metadata.IndexMetadata.SETTING_READ_ONLY_ALLOW_DELETE
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.inject.Inject
 import org.opensearch.common.settings.Settings
@@ -88,6 +92,9 @@ class TransportRemovePolicyAction @Inject constructor(
 
         private val failedIndices: MutableList<FailedIndex> = mutableListOf()
         private val indicesToRemove = mutableMapOf<String, String>() // uuid: name
+        private val indicesWithAutoManageBlock = mutableSetOf<String>()
+        private val indicesWithReadOnlyBlock = mutableSetOf<String>()
+        private val indicesWithReadOnlyAllowDeleteBlock = mutableSetOf<String>()
 
         fun start() {
             if (user == null) {
@@ -144,6 +151,15 @@ class TransportRemovePolicyAction @Inject constructor(
                                 val indexMetadatas = response.state.metadata.indices
                                 indexMetadatas.forEach {
                                     indicesToRemove.putIfAbsent(it.value.indexUUID, it.key)
+                                    if (it.value.settings.get(ManagedIndexSettings.AUTO_MANAGE.key) == "false") {
+                                        indicesWithAutoManageBlock.add(it.value.indexUUID)
+                                    }
+                                    if (it.value.settings.get(SETTING_READ_ONLY) == "true") {
+                                        indicesWithReadOnlyBlock.add(it.value.indexUUID)
+                                    }
+                                    if (it.value.settings.get(SETTING_READ_ONLY_ALLOW_DELETE) == "true") {
+                                        indicesWithReadOnlyAllowDeleteBlock.add(it.value.indexUUID)
+                                    }
                                 }
                                 populateLists(response.state)
                             }
@@ -220,25 +236,62 @@ class TransportRemovePolicyAction @Inject constructor(
          */
         @Suppress("SpreadOperator")
         fun updateSettings(indices: Map<String, String>) {
-            val request = UpdateSettingsRequest()
-                .indices(*indices.map { it.value }.toTypedArray())
-                .settings(Settings.builder().put(ManagedIndexSettings.AUTO_MANAGE.key, false))
+            // indices divide to read_only, read_only_allow_delete, normal
+            val indicesUuidsSet = indices.keys.toSet() - indicesWithAutoManageBlock
+            val readOnlyIndices = indicesUuidsSet.filter { it in indicesWithReadOnlyBlock }
+            val readOnlyAllowDeleteIndices = (indicesUuidsSet - readOnlyIndices).filter { it in indicesWithReadOnlyAllowDeleteBlock }
+            val normalIndices = indicesUuidsSet - readOnlyIndices - readOnlyAllowDeleteIndices
+
+            val updateSettingReqsList = mutableListOf<UpdateSettingsRequest>()
+            if (readOnlyIndices.isNotEmpty()) {
+                updateSettingReqsList.add(
+                    UpdateSettingsRequest().indices(*readOnlyIndices.map { indices[it] }.toTypedArray())
+                        .settings(
+                            Settings.builder().put(ManagedIndexSettings.AUTO_MANAGE.key, false)
+                                .put(INDEX_READ_ONLY_SETTING.key, true)
+                        )
+                )
+            }
+            if (readOnlyAllowDeleteIndices.isNotEmpty()) {
+                updateSettingReqsList.add(
+                    UpdateSettingsRequest().indices(*readOnlyAllowDeleteIndices.map { indices[it] }.toTypedArray())
+                        .settings(
+                            Settings.builder().put(ManagedIndexSettings.AUTO_MANAGE.key, false)
+                                .put(INDEX_BLOCKS_READ_ONLY_ALLOW_DELETE_SETTING.key, true)
+                        )
+                )
+            }
+            if (normalIndices.isNotEmpty()) {
+                updateSettingReqsList.add(
+                    UpdateSettingsRequest().indices(*normalIndices.map { indices[it] }.toTypedArray())
+                        .settings(Settings.builder().put(ManagedIndexSettings.AUTO_MANAGE.key, false))
+                )
+            }
+
+            updateSettingCallChain(0, updateSettingReqsList)
+        }
+
+        fun updateSettingCallChain(current: Int, updateSettingReqsList: List<UpdateSettingsRequest>) {
+            if (updateSettingReqsList.isEmpty()) {
+                removeManagedIndices()
+                return
+            }
             client.admin().indices().updateSettings(
-                request,
+                updateSettingReqsList[current],
                 object : ActionListener<AcknowledgedResponse> {
                     override fun onResponse(response: AcknowledgedResponse) {
-                        if (response.isAcknowledged) {
-                            removeManagedIndices()
-                        } else {
-                            indices.forEach {
-                                failedIndices.add(
-                                    FailedIndex(
-                                        it.value, it.key,
-                                        "Update auto_manage setting to false is not acknowledged, remove policy failed."
-                                    )
+                        if (!response.isAcknowledged) {
+                            actionListener.onFailure(
+                                IndexManagementException.wrap(
+                                    Exception("Failed to remove policy because ISM auto_manage setting update requests are not fully acknowledged.")
                                 )
-                            }
-                            actionListener.onResponse(ISMStatusResponse(0, failedIndices))
+                            )
+                            return
+                        }
+                        if (current < updateSettingReqsList.size - 1) {
+                            updateSettingCallChain(current + 1, updateSettingReqsList)
+                        } else {
+                            removeManagedIndices()
                         }
                     }
 
@@ -246,7 +299,7 @@ class TransportRemovePolicyAction @Inject constructor(
                         val ex = ExceptionsHelper.unwrapCause(t) as Exception
                         actionListener.onFailure(
                             IndexManagementException.wrap(
-                                Exception("Failed to update auto_manage setting to false.", ex)
+                                Exception("Failed to remove policy because ISM auto_manage setting update requests failed with exception:", ex)
                             )
                         )
                     }
