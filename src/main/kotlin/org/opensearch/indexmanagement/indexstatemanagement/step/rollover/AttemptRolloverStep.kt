@@ -290,6 +290,7 @@ class AttemptRolloverStep(
             "Successfully rolled over data stream [data_stream=$dataStream index=$index]"
         fun getFailedPreCheckMessage(index: String) = "Missing alias or not the write index when rollover [index=$index]"
         fun getSkipRolloverMessage(index: String) = "Skipped rollover action for [index=$index]"
-        fun getAlreadyRolledOverMessage(index: String, alias: String) = "This index has already been rolled over using this alias, treating as a success [index=$index, alias=$alias]"
+        fun getAlreadyRolledOverMessage(index: String, alias: String) =
+            "This index has already been rolled over using this alias, treating as a success [index=$index, alias=$alias]"
     }
 }
