@@ -31,3 +31,7 @@ jobs:
         with:
           name: logs
           path: build/testclusters/integTest-*/logs/*
+      - name: Run IM Backwards Compatibility Tests
+        run: |
+          echo "Running backwards compatibility tests..."
+          ./gradlew bwcTestSuite -Dtests.security.manager=false
