@@ -513,6 +513,22 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
     }
 
     @Suppress("UNCHECKED_CAST")
+    protected fun getIndexReadOnlySetting(indexName: String): Boolean? {
+        val indexSettings = getIndexSettings(indexName) as Map<String, Map<String, Map<String, Any?>>>
+        val readOnlySetting = indexSettings[indexName]!!["settings"]!![IndexMetadata.SETTING_READ_ONLY]
+        if (readOnlySetting != null) return (readOnlySetting as String).toBoolean()
+        return null
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    protected fun getIndexReadOnlyAllowDeleteSetting(indexName: String): Boolean? {
+        val indexSettings = getIndexSettings(indexName) as Map<String, Map<String, Map<String, Any?>>>
+        val readOnlyAllowDeleteSetting = indexSettings[indexName]!!["settings"]!![IndexMetadata.SETTING_READ_ONLY_ALLOW_DELETE]
+        if (readOnlyAllowDeleteSetting != null) return (readOnlyAllowDeleteSetting as String).toBoolean()
+        return null
+    }
+
+    @Suppress("UNCHECKED_CAST")
     protected fun getUuid(indexName: String): String {
         val indexSettings = getIndexSettings(indexName) as Map<String, Map<String, Map<String, Any?>>>
         return indexSettings[indexName]!!["settings"]!!["index.uuid"] as String
