@@ -313,6 +313,13 @@ integTest {
         }
     }
 
+    // run the test only if security is enabled
+    if (!securityEnabled) {
+        filter {
+            excludeTestsMatching "org.opensearch.indexmanagement.SecurityBehaviorIT"
+        }
+    }
+
     // TODO: raise issue in Core, this is because of the test framework
     if (System.getProperty("tests.clustername") != null) {
         exclude 'org/opensearch/indexmanagement/indexstatemanagement/MetadataRegressionIT.class'
