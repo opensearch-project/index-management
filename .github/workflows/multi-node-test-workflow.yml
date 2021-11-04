@@ -54,7 +54,7 @@ jobs:
           cd ..
           docker run -p 9200:9200 -d -p 9600:9600 -e "discovery.type=single-node" opensearch-alerting:test
           sleep 120
-      - name: Run IndexManagement Test for security enabled test cases
+      - name: Run security enabled tests
           if: env.imagePresent == 'true'
           run: |
             cluster_running=`curl -XGET https://localhost:9200/_cat/plugins -u admin:admin --insecure`
