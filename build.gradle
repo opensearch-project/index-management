@@ -311,7 +311,7 @@ integTest {
 
     if (System.getProperty("tests.rest.bwcsuite") == null) {
         filter {
-            excludeTestsMatching "org.opensearch.alerting.bwc.*IT"
+            excludeTestsMatching "org.opensearch.indexmanagement.bwc.*IT"
         }
     }
 
