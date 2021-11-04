@@ -24,7 +24,7 @@ jobs:
       - name: Checkout Branch
         uses: actions/checkout@v2
       - name: Run integration tests with multi node config
-        run: ./gradlew integTest -PnumNodes=3 -Dopensearch.version=1.2.0-SNAPSHOT
+        run: ./gradlew bundlePlugin -Dopensearch.version=1.2.0-SNAPSHOT
       - name: Pull and Run Docker
         run: |
           plugin=`ls index-management/build/distributions/*.zip`
