@@ -11,7 +11,6 @@ Compatible with OpenSearch 1.2.0
 
 ### Bug Fixes
 
-* Fix issues with security changes in rollup runner ([#161](https://github.com/opensearch-project/index-management/pull/161))
 * Adds implementation for the delay feature in rollup jobs ([#147](https://github.com/opensearch-project/index-management/pull/147))
 * Remove policy API on read only indices ([#182](https://github.com/opensearch-project/index-management/pull/182))
 * In explain API not showing the total count to all users ([#185](https://github.com/opensearch-project/index-management/pull/185))
