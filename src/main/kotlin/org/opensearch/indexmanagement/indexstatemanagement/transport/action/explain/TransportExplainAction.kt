@@ -353,6 +353,7 @@ class TransportExplainAction @Inject constructor(
                     override fun onFailure(e: Exception) {
                         when (e is OpenSearchSecurityException) {
                             true -> {
+                                totalManagedIndices -= 1
                                 if (current < indexNames.count() - 1) {
                                     // do nothing - skip the index and go to next one
                                     filter(current + 1, filteredIndices, filteredMetadata, filteredPolicies, enabledStatus)
