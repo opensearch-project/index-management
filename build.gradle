@@ -215,7 +215,7 @@ afterEvaluate {
         plugins.add(firstPlugin)
 
         if (securityEnabled) {
-            node.extraConfigFile("kirk.pem", file("src/test/resources/security/kirk.pem"))
+            /*node.extraConfigFile("kirk.pem", file("src/test/resources/security/kirk.pem"))
             node.extraConfigFile("kirk-key.pem", file("src/test/resources/security/kirk-key.pem"))
             node.extraConfigFile("esnode.pem", file("src/test/resources/security/esnode.pem"))
             node.extraConfigFile("esnode-key.pem", file("src/test/resources/security/esnode-key.pem"))
@@ -236,7 +236,7 @@ afterEvaluate {
             node.setting("plugins.security.check_snapshot_restore_write_privileges", "true")
             node.setting("plugins.security.restapi.roles_enabled", "[\"all_access\", \"security_rest_api_access\"]")
             node.setting("plugins.security.system_indices.enabled", "true")
-            // node.setting("plugins.security.system_indices.indices", "[\".opendistro-ism-config\"]")
+            node.setting("plugins.security.system_indices.indices", "[\".opendistro-ism-config\"]")*/
         }
     }
 }
