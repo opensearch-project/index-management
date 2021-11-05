@@ -26,11 +26,13 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.transport.action.removepolicy
 
-import org.apache.logging.log4j.LogManager
 import org.opensearch.ExceptionsHelper
+import org.opensearch.OpenSearchSecurityException
+import org.opensearch.OpenSearchStatusException
 import org.opensearch.action.ActionListener
 import org.opensearch.action.admin.cluster.state.ClusterStateRequest
 import org.opensearch.action.admin.cluster.state.ClusterStateResponse
+import org.opensearch.action.admin.indices.settings.put.UpdateSettingsRequest
 import org.opensearch.action.bulk.BulkRequest
 import org.opensearch.action.bulk.BulkResponse
 import org.opensearch.action.get.MultiGetRequest
@@ -38,31 +40,45 @@ import org.opensearch.action.get.MultiGetResponse
 import org.opensearch.action.support.ActionFilters
 import org.opensearch.action.support.HandledTransportAction
 import org.opensearch.action.support.IndicesOptions
+import org.opensearch.action.support.master.AcknowledgedResponse
 import org.opensearch.client.node.NodeClient
 import org.opensearch.cluster.ClusterState
 import org.opensearch.cluster.block.ClusterBlockException
+import org.opensearch.cluster.metadata.IndexMetadata.INDEX_BLOCKS_READ_ONLY_ALLOW_DELETE_SETTING
+import org.opensearch.cluster.metadata.IndexMetadata.INDEX_READ_ONLY_SETTING
+import org.opensearch.cluster.metadata.IndexMetadata.SETTING_READ_ONLY
+import org.opensearch.cluster.metadata.IndexMetadata.SETTING_READ_ONLY_ALLOW_DELETE
+import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.inject.Inject
+import org.opensearch.common.settings.Settings
+import org.opensearch.commons.authuser.User
 import org.opensearch.index.Index
 import org.opensearch.index.IndexNotFoundException
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
 import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.getUuidsForClosedIndices
+import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.ISMStatusResponse
+import org.opensearch.indexmanagement.indexstatemanagement.transport.action.managedIndex.ManagedIndexAction
+import org.opensearch.indexmanagement.indexstatemanagement.transport.action.managedIndex.ManagedIndexRequest
 import org.opensearch.indexmanagement.indexstatemanagement.util.FailedIndex
 import org.opensearch.indexmanagement.indexstatemanagement.util.deleteManagedIndexMetadataRequest
 import org.opensearch.indexmanagement.indexstatemanagement.util.deleteManagedIndexRequest
 import org.opensearch.indexmanagement.util.IndexManagementException
+import org.opensearch.indexmanagement.util.SecurityUtils.Companion.buildUser
+import org.opensearch.rest.RestStatus
 import org.opensearch.tasks.Task
 import org.opensearch.transport.TransportService
 
-private val log = LogManager.getLogger(TransportRemovePolicyAction::class.java)
-
+@Suppress("SpreadOperator")
 class TransportRemovePolicyAction @Inject constructor(
     val client: NodeClient,
     transportService: TransportService,
-    actionFilters: ActionFilters
+    actionFilters: ActionFilters,
+    val clusterService: ClusterService
 ) : HandledTransportAction<RemovePolicyRequest, ISMStatusResponse>(
     RemovePolicyAction.NAME, transportService, actionFilters, ::RemovePolicyRequest
 ) {
+
     override fun doExecute(task: Task, request: RemovePolicyRequest, listener: ActionListener<ISMStatusResponse>) {
         RemovePolicyHandler(client, listener, request).start()
     }
@@ -70,14 +86,52 @@ class TransportRemovePolicyAction @Inject constructor(
     inner class RemovePolicyHandler(
         private val client: NodeClient,
         private val actionListener: ActionListener<ISMStatusResponse>,
-        private val request: RemovePolicyRequest
+        private val request: RemovePolicyRequest,
+        private val user: User? = buildUser(client.threadPool().threadContext)
     ) {
 
         private val failedIndices: MutableList<FailedIndex> = mutableListOf()
         private val indicesToRemove = mutableMapOf<String, String>() // uuid: name
+        private val indicesWithAutoManageBlock = mutableSetOf<String>()
+        private val indicesWithReadOnlyBlock = mutableSetOf<String>()
+        private val indicesWithReadOnlyAllowDeleteBlock = mutableSetOf<String>()
 
-        @Suppress("SpreadOperator")
         fun start() {
+            if (user == null) {
+                getClusterState()
+            } else {
+                validateAndGetClusterState()
+            }
+        }
+
+        private fun validateAndGetClusterState() {
+            val request = ManagedIndexRequest().indices(*request.indices.toTypedArray())
+            client.execute(
+                ManagedIndexAction.INSTANCE,
+                request,
+                object : ActionListener<AcknowledgedResponse> {
+                    override fun onResponse(response: AcknowledgedResponse) {
+                        getClusterState()
+                    }
+
+                    override fun onFailure(e: java.lang.Exception) {
+                        actionListener.onFailure(
+                            IndexManagementException.wrap(
+                                when (e is OpenSearchSecurityException) {
+                                    true -> OpenSearchStatusException(
+                                        "User doesn't have required index permissions on one or more requested indices: ${e.localizedMessage}",
+                                        RestStatus.FORBIDDEN
+                                    )
+                                    false -> e
+                                }
+                            )
+                        )
+                    }
+                }
+            )
+        }
+
+        private fun getClusterState() {
             val strictExpandOptions = IndicesOptions.strictExpand()
 
             val clusterStateRequest = ClusterStateRequest()
@@ -87,24 +141,35 @@ class TransportRemovePolicyAction @Inject constructor(
                 .local(false)
                 .indicesOptions(strictExpandOptions)
 
-            client.admin()
-                .cluster()
-                .state(
-                    clusterStateRequest,
-                    object : ActionListener<ClusterStateResponse> {
-                        override fun onResponse(response: ClusterStateResponse) {
-                            val indexMetadatas = response.state.metadata.indices
-                            indexMetadatas.forEach {
-                                indicesToRemove.putIfAbsent(it.value.indexUUID, it.key)
+            client.threadPool().threadContext.stashContext().use {
+                client.admin()
+                    .cluster()
+                    .state(
+                        clusterStateRequest,
+                        object : ActionListener<ClusterStateResponse> {
+                            override fun onResponse(response: ClusterStateResponse) {
+                                val indexMetadatas = response.state.metadata.indices
+                                indexMetadatas.forEach {
+                                    indicesToRemove.putIfAbsent(it.value.indexUUID, it.key)
+                                    if (it.value.settings.get(ManagedIndexSettings.AUTO_MANAGE.key) == "false") {
+                                        indicesWithAutoManageBlock.add(it.value.indexUUID)
+                                    }
+                                    if (it.value.settings.get(SETTING_READ_ONLY) == "true") {
+                                        indicesWithReadOnlyBlock.add(it.value.indexUUID)
+                                    }
+                                    if (it.value.settings.get(SETTING_READ_ONLY_ALLOW_DELETE) == "true") {
+                                        indicesWithReadOnlyAllowDeleteBlock.add(it.value.indexUUID)
+                                    }
+                                }
+                                populateLists(response.state)
                             }
-                            populateLists(response.state)
-                        }
 
-                        override fun onFailure(t: Exception) {
-                            actionListener.onFailure(ExceptionsHelper.unwrapCause(t) as Exception)
+                            override fun onFailure(t: Exception) {
+                                actionListener.onFailure(ExceptionsHelper.unwrapCause(t) as Exception)
+                            }
                         }
-                    }
-                )
+                    )
+            }
         }
 
         private fun populateLists(state: ClusterState) {
@@ -128,7 +193,13 @@ class TransportRemovePolicyAction @Inject constructor(
                         val f = response.responses.first()
                         if (f.isFailed && f.failure.failure is IndexNotFoundException) {
                             indicesToRemove.forEach { (uuid, name) ->
-                                failedIndices.add(FailedIndex(name, uuid, "This index does not have a policy to remove"))
+                                failedIndices.add(
+                                    FailedIndex(
+                                        name,
+                                        uuid,
+                                        "This index does not have a policy to remove"
+                                    )
+                                )
                             }
                             actionListener.onResponse(ISMStatusResponse(0, failedIndices))
                             return
@@ -147,11 +218,90 @@ class TransportRemovePolicyAction @Inject constructor(
                             }
                         }
 
-                        removeManagedIndices()
+                        updateSettings(indicesToRemove)
                     }
 
                     override fun onFailure(t: Exception) {
                         actionListener.onFailure(ExceptionsHelper.unwrapCause(t) as Exception)
+                    }
+                }
+            )
+        }
+
+        /**
+         * try to update auto_manage setting to false before delete managed-index
+         * so that index will not be picked up by Coordinator background sweep process
+         * this wont happen for cold indices
+         * if update setting failed, remove managed-index and metadata will not happen
+         */
+        @Suppress("SpreadOperator")
+        fun updateSettings(indices: Map<String, String>) {
+            // indices divide to read_only, read_only_allow_delete, normal
+            val indicesUuidsSet = indices.keys.toSet() - indicesWithAutoManageBlock
+            val readOnlyIndices = indicesUuidsSet.filter { it in indicesWithReadOnlyBlock }
+            val readOnlyAllowDeleteIndices = (indicesUuidsSet - readOnlyIndices).filter { it in indicesWithReadOnlyAllowDeleteBlock }
+            val normalIndices = indicesUuidsSet - readOnlyIndices - readOnlyAllowDeleteIndices
+
+            val updateSettingReqsList = mutableListOf<UpdateSettingsRequest>()
+            if (readOnlyIndices.isNotEmpty()) {
+                updateSettingReqsList.add(
+                    UpdateSettingsRequest().indices(*readOnlyIndices.map { indices[it] }.toTypedArray())
+                        .settings(
+                            Settings.builder().put(ManagedIndexSettings.AUTO_MANAGE.key, false)
+                                .put(INDEX_READ_ONLY_SETTING.key, true)
+                        )
+                )
+            }
+            if (readOnlyAllowDeleteIndices.isNotEmpty()) {
+                updateSettingReqsList.add(
+                    UpdateSettingsRequest().indices(*readOnlyAllowDeleteIndices.map { indices[it] }.toTypedArray())
+                        .settings(
+                            Settings.builder().put(ManagedIndexSettings.AUTO_MANAGE.key, false)
+                                .put(INDEX_BLOCKS_READ_ONLY_ALLOW_DELETE_SETTING.key, true)
+                        )
+                )
+            }
+            if (normalIndices.isNotEmpty()) {
+                updateSettingReqsList.add(
+                    UpdateSettingsRequest().indices(*normalIndices.map { indices[it] }.toTypedArray())
+                        .settings(Settings.builder().put(ManagedIndexSettings.AUTO_MANAGE.key, false))
+                )
+            }
+
+            updateSettingCallChain(0, updateSettingReqsList)
+        }
+
+        fun updateSettingCallChain(current: Int, updateSettingReqsList: List<UpdateSettingsRequest>) {
+            if (updateSettingReqsList.isEmpty()) {
+                removeManagedIndices()
+                return
+            }
+            client.admin().indices().updateSettings(
+                updateSettingReqsList[current],
+                object : ActionListener<AcknowledgedResponse> {
+                    override fun onResponse(response: AcknowledgedResponse) {
+                        if (!response.isAcknowledged) {
+                            actionListener.onFailure(
+                                IndexManagementException.wrap(
+                                    Exception("Failed to remove policy because ISM auto_manage setting update requests are not fully acknowledged.")
+                                )
+                            )
+                            return
+                        }
+                        if (current < updateSettingReqsList.size - 1) {
+                            updateSettingCallChain(current + 1, updateSettingReqsList)
+                        } else {
+                            removeManagedIndices()
+                        }
+                    }
+
+                    override fun onFailure(t: Exception) {
+                        val ex = ExceptionsHelper.unwrapCause(t) as Exception
+                        actionListener.onFailure(
+                            IndexManagementException.wrap(
+                                Exception("Failed to remove policy because ISM auto_manage setting update requests failed with exception:", ex)
+                            )
+                        )
                     }
                 }
             )
@@ -169,7 +319,13 @@ class TransportRemovePolicyAction @Inject constructor(
                             response.forEach {
                                 val docId = it.id // docId is indexUuid of the managed index
                                 if (it.isFailed) {
-                                    failedIndices.add(FailedIndex(indicesToRemove[docId] as String, docId, "Failed to remove policy"))
+                                    failedIndices.add(
+                                        FailedIndex(
+                                            indicesToRemove[docId] as String,
+                                            docId,
+                                            "Failed to remove policy"
+                                        )
+                                    )
                                     indicesToRemove.remove(docId)
                                 }
                             }

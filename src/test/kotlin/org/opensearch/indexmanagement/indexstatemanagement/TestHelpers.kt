@@ -79,7 +79,7 @@ fun randomPolicy(
     lastUpdatedTime: Instant = Instant.now().truncatedTo(ChronoUnit.MILLIS),
     errorNotification: ErrorNotification? = randomErrorNotification(),
     states: List<State> = List(OpenSearchRestTestCase.randomIntBetween(1, 10)) { randomState() },
-    ismTemplate: ISMTemplate? = null
+    ismTemplate: List<ISMTemplate>? = null
 ): Policy {
     return Policy(
         id = id, schemaVersion = schemaVersion, lastUpdatedTime = lastUpdatedTime,
@@ -275,7 +275,8 @@ fun randomManagedIndexConfig(
     enabledTime: Instant? = if (enabled) Instant.now().truncatedTo(ChronoUnit.MILLIS) else null,
     policyID: String = OpenSearchRestTestCase.randomAlphaOfLength(10),
     policy: Policy? = randomPolicy(),
-    changePolicy: ChangePolicy? = randomChangePolicy()
+    changePolicy: ChangePolicy? = randomChangePolicy(),
+    jitter: Double? = 0.0
 ): ManagedIndexConfig {
     return ManagedIndexConfig(
         jobName = name,
@@ -289,7 +290,8 @@ fun randomManagedIndexConfig(
         policySeqNo = policy?.seqNo,
         policyPrimaryTerm = policy?.primaryTerm,
         policy = policy?.copy(seqNo = SequenceNumbers.UNASSIGNED_SEQ_NO, primaryTerm = SequenceNumbers.UNASSIGNED_PRIMARY_TERM),
-        changePolicy = changePolicy
+        changePolicy = changePolicy,
+        jobJitter = jitter
     )
 }
 

@@ -32,7 +32,7 @@ import org.opensearch.common.io.stream.StreamOutput
 import org.opensearch.common.xcontent.ToXContent
 import org.opensearch.common.xcontent.ToXContentObject
 import org.opensearch.common.xcontent.XContentBuilder
-import org.opensearch.indexmanagement.indexstatemanagement.util.XCONTENT_WITHOUT_TYPE
+import org.opensearch.indexmanagement.indexstatemanagement.util.XCONTENT_WITHOUT_TYPE_AND_USER
 import org.opensearch.indexmanagement.rollup.model.Rollup
 import org.opensearch.indexmanagement.rollup.model.Rollup.Companion.ROLLUP_TYPE
 import org.opensearch.indexmanagement.util._ID
@@ -81,7 +81,7 @@ class GetRollupsResponse : ActionResponse, ToXContentObject {
                         .field(_ID, rollup.id)
                         .field(_SEQ_NO, rollup.seqNo)
                         .field(_PRIMARY_TERM, rollup.primaryTerm)
-                        .field(ROLLUP_TYPE, rollup, XCONTENT_WITHOUT_TYPE)
+                        .field(ROLLUP_TYPE, rollup, XCONTENT_WITHOUT_TYPE_AND_USER)
                         .endObject()
                 }
             }

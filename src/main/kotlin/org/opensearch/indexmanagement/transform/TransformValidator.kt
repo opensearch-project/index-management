@@ -11,8 +11,8 @@
 
 package org.opensearch.indexmanagement.transform
 
-import org.apache.logging.log4j.LogManager
 import org.opensearch.ExceptionsHelper
+import org.opensearch.OpenSearchSecurityException
 import org.opensearch.action.admin.cluster.health.ClusterHealthAction
 import org.opensearch.action.admin.cluster.health.ClusterHealthRequest
 import org.opensearch.action.admin.cluster.health.ClusterHealthResponse
@@ -40,8 +40,6 @@ class TransformValidator(
     val settings: Settings,
     private val jvmService: JvmService
 ) {
-
-    private val logger = LogManager.getLogger(javaClass)
 
     @Volatile private var circuitBreakerEnabled = TransformSettings.TRANSFORM_CIRCUIT_BREAKER_ENABLED.get(settings)
     @Volatile private var circuitBreakerJvmThreshold = TransformSettings.TRANSFORM_CIRCUIT_BREAKER_JVM_THRESHOLD.get(settings)
@@ -86,8 +84,9 @@ class TransformValidator(
         } catch (e: RemoteTransportException) {
             val unwrappedException = ExceptionsHelper.unwrapCause(e) as Exception
             throw TransformValidationException(errorMessage, unwrappedException)
+        } catch (e: OpenSearchSecurityException) {
+            throw TransformValidationException("$errorMessage - missing required index permissions: ${e.localizedMessage}")
         } catch (e: Exception) {
-            logger.error("Failed to validate transform [${transform.id}]", e)
             throw TransformValidationException(errorMessage, e)
         }
     }

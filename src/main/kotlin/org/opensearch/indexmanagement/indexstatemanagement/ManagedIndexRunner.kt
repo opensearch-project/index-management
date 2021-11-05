@@ -36,16 +36,13 @@ import kotlinx.coroutines.withContext
 import org.apache.logging.log4j.LogManager
 import org.opensearch.action.admin.cluster.state.ClusterStateRequest
 import org.opensearch.action.admin.cluster.state.ClusterStateResponse
-import org.opensearch.action.admin.indices.settings.put.UpdateSettingsRequest
 import org.opensearch.action.bulk.BackoffPolicy
 import org.opensearch.action.get.GetRequest
 import org.opensearch.action.get.GetResponse
 import org.opensearch.action.index.IndexResponse
 import org.opensearch.action.support.IndicesOptions
-import org.opensearch.action.support.master.AcknowledgedResponse
 import org.opensearch.action.update.UpdateResponse
 import org.opensearch.client.Client
-import org.opensearch.cluster.block.ClusterBlockException
 import org.opensearch.cluster.health.ClusterHealthStatus
 import org.opensearch.cluster.health.ClusterStateHealth
 import org.opensearch.cluster.metadata.IndexMetadata
@@ -60,7 +57,6 @@ import org.opensearch.common.xcontent.XContentHelper
 import org.opensearch.common.xcontent.XContentParser.Token
 import org.opensearch.common.xcontent.XContentParserUtils.ensureExpectedToken
 import org.opensearch.common.xcontent.XContentType
-import org.opensearch.index.Index
 import org.opensearch.index.engine.VersionConflictEngineException
 import org.opensearch.index.seqno.SequenceNumbers
 import org.opensearch.indexmanagement.IndexManagementIndices
@@ -82,8 +78,6 @@ import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndex
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.INDEX_STATE_MANAGEMENT_ENABLED
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.JOB_INTERVAL
 import org.opensearch.indexmanagement.indexstatemanagement.step.Step
-import org.opensearch.indexmanagement.indexstatemanagement.transport.action.updateindexmetadata.UpdateManagedIndexMetaDataAction
-import org.opensearch.indexmanagement.indexstatemanagement.transport.action.updateindexmetadata.UpdateManagedIndexMetaDataRequest
 import org.opensearch.indexmanagement.indexstatemanagement.util.getActionToExecute
 import org.opensearch.indexmanagement.indexstatemanagement.util.getCompletedManagedIndexMetaData
 import org.opensearch.indexmanagement.indexstatemanagement.util.getStartingManagedIndexMetaData
@@ -102,11 +96,13 @@ import org.opensearch.indexmanagement.indexstatemanagement.util.managedIndexMeta
 import org.opensearch.indexmanagement.indexstatemanagement.util.shouldBackoff
 import org.opensearch.indexmanagement.indexstatemanagement.util.shouldChangePolicy
 import org.opensearch.indexmanagement.indexstatemanagement.util.updateDisableManagedIndexRequest
+import org.opensearch.indexmanagement.opensearchapi.IndexManagementSecurityContext
 import org.opensearch.indexmanagement.opensearchapi.convertToMap
 import org.opensearch.indexmanagement.opensearchapi.parseWithType
 import org.opensearch.indexmanagement.opensearchapi.retry
 import org.opensearch.indexmanagement.opensearchapi.string
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
+import org.opensearch.indexmanagement.opensearchapi.withClosableContext
 import org.opensearch.jobscheduler.spi.JobExecutionContext
 import org.opensearch.jobscheduler.spi.LockModel
 import org.opensearch.jobscheduler.spi.ScheduledJobParameter
@@ -116,6 +112,7 @@ import org.opensearch.rest.RestStatus
 import org.opensearch.script.Script
 import org.opensearch.script.ScriptService
 import org.opensearch.script.TemplateScript
+import org.opensearch.threadpool.ThreadPool
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 
@@ -134,6 +131,7 @@ object ManagedIndexRunner :
     private lateinit var imIndices: IndexManagementIndices
     private lateinit var ismHistory: IndexStateManagementHistory
     private lateinit var skipExecFlag: SkipExecution
+    private lateinit var threadPool: ThreadPool
     private var indexStateManagementEnabled: Boolean = DEFAULT_ISM_ENABLED
     @Suppress("MagicNumber")
     private val savePolicyRetryPolicy = BackoffPolicy.exponentialBackoff(TimeValue.timeValueMillis(250), 3)
@@ -203,6 +201,11 @@ object ManagedIndexRunner :
 
     fun registerSkipFlag(flag: SkipExecution): ManagedIndexRunner {
         this.skipExecFlag = flag
+        return this
+    }
+
+    fun registerThreadPool(threadPool: ThreadPool): ManagedIndexRunner {
+        this.threadPool = threadPool
         return this
     }
 
@@ -284,7 +287,9 @@ object ManagedIndexRunner :
         }
 
         val state = policy.getStateToExecute(managedIndexMetaData)
-        val action: Action? = state?.getActionToExecute(clusterService, scriptService, client, settings, managedIndexMetaData)
+        val action: Action? = state?.getActionToExecute(
+            clusterService, scriptService, client, settings, managedIndexMetaData.copy(user = policy.user, threadContext = threadPool.threadContext)
+        )
         val step: Step? = action?.getStepToExecute()
         val currentActionMetaData = action?.getUpdatedActionMetaData(managedIndexMetaData, state)
 
@@ -353,7 +358,13 @@ object ManagedIndexRunner :
         @Suppress("ComplexCondition")
         if (updateResult.metadataSaved && state != null && action != null && step != null && currentActionMetaData != null) {
             // Step null check is done in getStartingManagedIndexMetaData
-            step.preExecute(logger).execute().postExecute(logger)
+            withClosableContext(
+                IndexManagementSecurityContext(
+                    managedIndexConfig.id, settings, threadPool.threadContext, managedIndexConfig.policy.user
+                )
+            ) {
+                step.preExecute(logger).execute().postExecute(logger)
+            }
             var executedManagedIndexMetaData = startingManagedIndexMetaData.getCompletedManagedIndexMetaData(action, step)
 
             if (executedManagedIndexMetaData.isFailed) {
@@ -573,29 +584,6 @@ object ManagedIndexRunner :
         }
     }
 
-    // delete metadata in cluster state
-    private suspend fun deleteManagedIndexMetaData(managedIndexMetaData: ManagedIndexMetaData): Boolean {
-        var result = false
-        try {
-            val request = UpdateManagedIndexMetaDataRequest(
-                indicesToRemoveManagedIndexMetaDataFrom = listOf(Index(managedIndexMetaData.index, managedIndexMetaData.indexUuid))
-            )
-            updateMetaDataRetryPolicy.retry(logger) {
-                val response: AcknowledgedResponse = client.suspendUntil { execute(UpdateManagedIndexMetaDataAction.INSTANCE, request, it) }
-                if (response.isAcknowledged) {
-                    result = true
-                } else {
-                    logger.error("Failed to delete ManagedIndexMetaData for [index=${managedIndexMetaData.index}]")
-                }
-            }
-        } catch (e: ClusterBlockException) {
-            logger.error("There was ClusterBlockException trying to delete the metadata for ${managedIndexMetaData.index}. Message: ${e.message}", e)
-        } catch (e: Exception) {
-            logger.error("Failed to delete ManagedIndexMetaData for [index=${managedIndexMetaData.index}]", e)
-        }
-        return result
-    }
-
     /**
      * update metadata in config index, and save metadata in history after update
      * this can be called 2 times in one job run, so need to save seqNo & primeTerm
@@ -721,18 +709,8 @@ object ManagedIndexRunner :
 
         if (!updated.metadataSaved || policy == null) return
 
-        // this will save the new policy on the job and reset the change policy back to null
-        val saved = savePolicyToManagedIndexConfig(managedIndexConfig, policy)
-
-        if (saved) {
-            /*
-            * If we successfully saved the the new policy then the last thing we need to do is update the
-            * opendistro.indexstatemanagement.policy_id setting to the new policy id we don't care that much if this fails, because we'll
-            * have a check in the beginning of the runner to read in the setting and compare it with the policy_id on the job and update
-            * the setting if they ever differ, as we do not allow someone to change an existing policy using _settings API
-            * */
-            updateIndexPolicyIDSetting(managedIndexConfig.index, changePolicy.policyID)
-        }
+        // Change the policy and user stored on the job from changePolicy, this will also set the changePolicy to null on the job
+        savePolicyToManagedIndexConfig(managedIndexConfig, policy.copy(user = changePolicy.user))
     }
 
     @Suppress("TooGenericExceptionCaught")
@@ -747,29 +725,6 @@ object ManagedIndexRunner :
             logger.error("Failed to update ManagedIndexConfig(${updatedManagedIndexConfig.index}). ${e.message}")
         } catch (e: Exception) {
             logger.error("Failed to update ManagedIndexConfig(${updatedManagedIndexConfig.index})", e)
-        }
-    }
-
-    /**
-     * Once we successfully swap over a ChangePolicy then we need to update the [ManagedIndexSettings.POLICY_ID] setting.
-     *
-     * We will constantly check the [ManagedIndexSettings.POLICY_ID] against the [ManagedIndexConfig] policyID and if
-     * there is ever a mismatch we will overwrite the [ManagedIndexSettings.POLICY_ID] with the [ManagedIndexConfig] policyID.
-     *
-     * We do this because if this fails we want to ensure we try again on the next execution of the job. At the same time, this
-     * will disallow the user from directly using the _settings API to change the policy_id. We do not want to allow this,
-     * they must use the ChangePolicy API as the [ManagedIndexSettings.POLICY_ID] is referring to the currently running policy.
-     */
-    private suspend fun updateIndexPolicyIDSetting(index: String, policyID: String) {
-        try {
-            val settings = Settings.builder().put(ManagedIndexSettings.POLICY_ID.key, policyID).build()
-            val updateSettingsRequest = UpdateSettingsRequest(index).settings(settings)
-            val response: AcknowledgedResponse = client.admin().indices().suspendUntil { updateSettings(updateSettingsRequest, it) }
-            if (!response.isAcknowledged) {
-                logger.warn("Updating policy_id ($policyID) for $index was not acknowledged")
-            }
-        } catch (e: Exception) {
-            logger.error("There was an error while trying to update the policy_id ($policyID) setting for $index", e)
         }
     }
 

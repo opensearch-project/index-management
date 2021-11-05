@@ -31,6 +31,7 @@ import org.apache.http.HttpHeaders
 import org.apache.http.entity.ContentType.APPLICATION_JSON
 import org.apache.http.entity.StringEntity
 import org.apache.http.message.BasicHeader
+import org.junit.Before
 import org.opensearch.OpenSearchParseException
 import org.opensearch.action.get.GetResponse
 import org.opensearch.action.search.SearchResponse
@@ -91,6 +92,15 @@ import java.time.Instant
 import java.util.Locale
 
 abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() {
+
+    val explainResponseOpendistroPolicyIdSetting = "index.opendistro.index_state_management.policy_id"
+    val explainResponseOpenSearchPolicyIdSetting = "index.plugins.index_state_management.policy_id"
+
+    @Before
+    protected fun disableIndexStateManagementJitter() {
+        // jitter would add a test-breaking delay to the integration tests
+        updateIndexStateManagementJitterSetting(0.0)
+    }
 
     protected fun createPolicy(
         policy: Policy,
@@ -244,12 +254,6 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
         client().makeRequest("POST", "/_opendistro/_ism/remove/$index")
     }
 
-    @Suppress("UNCHECKED_CAST")
-    protected fun getPolicyFromIndex(index: String): String? {
-        val indexSettings = getIndexSettings(index) as Map<String, Map<String, Map<String, Any?>>>
-        return indexSettings[index]!!["settings"]!![ManagedIndexSettings.POLICY_ID.key] as? String
-    }
-
     protected fun getPolicyIDOfManagedIndex(index: String): String? {
         val managedIndex = getManagedIndexConfig(index)
         return managedIndex?.policyID
@@ -269,6 +273,10 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
             StringEntity(request, APPLICATION_JSON)
         )
         assertEquals("Request failed", RestStatus.OK, res.restStatus())
+    }
+
+    protected fun updateIndexStateManagementJitterSetting(value: Double) {
+        updateClusterSetting(ManagedIndexSettings.JITTER.key, value.toString(), false)
     }
 
     protected fun updateIndexSetting(
@@ -508,6 +516,30 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
     }
 
     @Suppress("UNCHECKED_CAST")
+    protected fun getIndexAutoManageSetting(indexName: String): Boolean? {
+        val indexSettings = getIndexSettings(indexName) as Map<String, Map<String, Map<String, Any?>>>
+        val autoManageSetting = indexSettings[indexName]!!["settings"]!!["index.plugins.index_state_management.auto_manage"]
+        if (autoManageSetting != null) return (autoManageSetting as String).toBoolean()
+        return null
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    protected fun getIndexReadOnlySetting(indexName: String): Boolean? {
+        val indexSettings = getIndexSettings(indexName) as Map<String, Map<String, Map<String, Any?>>>
+        val readOnlySetting = indexSettings[indexName]!!["settings"]!![IndexMetadata.SETTING_READ_ONLY]
+        if (readOnlySetting != null) return (readOnlySetting as String).toBoolean()
+        return null
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    protected fun getIndexReadOnlyAllowDeleteSetting(indexName: String): Boolean? {
+        val indexSettings = getIndexSettings(indexName) as Map<String, Map<String, Map<String, Any?>>>
+        val readOnlyAllowDeleteSetting = indexSettings[indexName]!!["settings"]!![IndexMetadata.SETTING_READ_ONLY_ALLOW_DELETE]
+        if (readOnlyAllowDeleteSetting != null) return (readOnlyAllowDeleteSetting as String).toBoolean()
+        return null
+    }
+
+    @Suppress("UNCHECKED_CAST")
     protected fun getUuid(indexName: String): String {
         val indexSettings = getIndexSettings(indexName) as Map<String, Map<String, Map<String, Any?>>>
         return indexSettings[indexName]!!["settings"]!!["index.uuid"] as String
@@ -577,6 +609,16 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
         // make sure metadata is initialised
         assertTrue(metadata.transitionTo != null || metadata.stateMetaData != null || metadata.info != null || metadata.policyCompleted != null)
         return metadata
+    }
+
+    protected fun rolloverIndex(index: String) {
+        val response = client().performRequest(
+            Request(
+                "POST",
+                "/$index/_rollover"
+            )
+        )
+        assertEquals(response.statusLine.statusCode, RestStatus.OK.status)
     }
 
     protected fun createRepository(
@@ -692,13 +734,13 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
     protected fun assertSnapshotExists(
         repository: String,
         snapshot: String
-    ) = require(getSnapshotsList(repository).any { element -> (element as Map<String, String>)["id"]!!.contains(snapshot) }) { "No snapshot found with id: $snapshot" }
+    ) = require(getSnapshotsList(repository).any { element -> (element as Map<String, String>)["id"]!!.startsWith(snapshot) }) { "No snapshot found with id: $snapshot" }
 
     @Suppress("UNCHECKED_CAST")
     protected fun assertSnapshotFinishedWithSuccess(
         repository: String,
         snapshot: String
-    ) = require(getSnapshotsList(repository).any { element -> (element as Map<String, String>)["id"]!!.contains(snapshot) && "SUCCESS" == element["status"] }) { "Snapshot didn't finish with success." }
+    ) = require(getSnapshotsList(repository).any { element -> (element as Map<String, String>)["id"]!!.startsWith(snapshot) && "SUCCESS" == element["status"] }) { "Snapshot didn't finish with success." }
 
     /**
      * Compares responses returned by APIs such as those defined in [RetryFailedManagedIndexAction] and [RestAddPolicyAction]

@@ -1,9 +1,12 @@
 .gradle/
 build/
 out/
-.idea/
+.idea/*
+!.idea/copyright
 *.ipr
 *.iws
 .DS_Store
 *.log
 http
+.project
+.settings

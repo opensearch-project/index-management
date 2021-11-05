@@ -30,6 +30,8 @@ import org.apache.logging.log4j.LogManager
 import org.opensearch.OpenSearchStatusException
 import org.opensearch.action.ActionListener
 import org.opensearch.action.DocWriteRequest
+import org.opensearch.action.get.GetRequest
+import org.opensearch.action.get.GetResponse
 import org.opensearch.action.index.IndexRequest
 import org.opensearch.action.index.IndexResponse
 import org.opensearch.action.support.ActionFilters
@@ -38,15 +40,20 @@ import org.opensearch.action.support.master.AcknowledgedResponse
 import org.opensearch.client.Client
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.inject.Inject
+import org.opensearch.common.settings.Settings
+import org.opensearch.common.xcontent.NamedXContentRegistry
 import org.opensearch.common.xcontent.ToXContent
 import org.opensearch.common.xcontent.XContentFactory.jsonBuilder
+import org.opensearch.commons.authuser.User
 import org.opensearch.indexmanagement.IndexManagementIndices
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
-import org.opensearch.indexmanagement.rollup.action.get.GetRollupAction
-import org.opensearch.indexmanagement.rollup.action.get.GetRollupRequest
-import org.opensearch.indexmanagement.rollup.action.get.GetRollupResponse
 import org.opensearch.indexmanagement.rollup.model.Rollup
+import org.opensearch.indexmanagement.rollup.util.parseRollup
+import org.opensearch.indexmanagement.settings.IndexManagementSettings
 import org.opensearch.indexmanagement.util.IndexUtils
+import org.opensearch.indexmanagement.util.SecurityUtils
+import org.opensearch.indexmanagement.util.SecurityUtils.Companion.buildUser
+import org.opensearch.indexmanagement.util.SecurityUtils.Companion.validateUserConfiguration
 import org.opensearch.rest.RestStatus
 import org.opensearch.tasks.Task
 import org.opensearch.transport.TransportService
@@ -57,10 +64,20 @@ class TransportIndexRollupAction @Inject constructor(
     val client: Client,
     actionFilters: ActionFilters,
     val indexManagementIndices: IndexManagementIndices,
-    val clusterService: ClusterService
+    val clusterService: ClusterService,
+    val settings: Settings,
+    val xContentRegistry: NamedXContentRegistry
 ) : HandledTransportAction<IndexRollupRequest, IndexRollupResponse>(
     IndexRollupAction.NAME, transportService, actionFilters, ::IndexRollupRequest
 ) {
+
+    @Volatile private var filterByEnabled = IndexManagementSettings.FILTER_BY_BACKEND_ROLES.get(settings)
+
+    init {
+        clusterService.clusterSettings.addSettingsUpdateConsumer(IndexManagementSettings.FILTER_BY_BACKEND_ROLES) {
+            filterByEnabled = it
+        }
+    }
 
     private val log = LogManager.getLogger(javaClass)
 
@@ -71,11 +88,17 @@ class TransportIndexRollupAction @Inject constructor(
     inner class IndexRollupHandler(
         private val client: Client,
         private val actionListener: ActionListener<IndexRollupResponse>,
-        private val request: IndexRollupRequest
+        private val request: IndexRollupRequest,
+        private val user: User? = buildUser(client.threadPool().threadContext, request.rollup.user)
     ) {
 
         fun start() {
-            indexManagementIndices.checkAndUpdateIMConfigIndex(ActionListener.wrap(::onCreateMappingsResponse, actionListener::onFailure))
+            client.threadPool().threadContext.stashContext().use {
+                if (!validateUserConfiguration(user, filterByEnabled, actionListener)) {
+                    return
+                }
+                indexManagementIndices.checkAndUpdateIMConfigIndex(ActionListener.wrap(::onCreateMappingsResponse, actionListener::onFailure))
+            }
         }
 
         private fun onCreateMappingsResponse(response: AcknowledgedResponse) {
@@ -94,17 +117,27 @@ class TransportIndexRollupAction @Inject constructor(
         }
 
         private fun getRollup() {
-            val getReq = GetRollupRequest(request.rollup.id, null)
-            client.execute(GetRollupAction.INSTANCE, getReq, ActionListener.wrap(::onGetRollup, actionListener::onFailure))
+            val getRequest = GetRequest(INDEX_MANAGEMENT_INDEX, request.rollup.id)
+            client.get(getRequest, ActionListener.wrap(::onGetRollup, actionListener::onFailure))
         }
 
         @Suppress("ReturnCount")
-        private fun onGetRollup(response: GetRollupResponse) {
-            if (response.status != RestStatus.OK) {
-                return actionListener.onFailure(OpenSearchStatusException("Unable to get existing rollup", response.status))
+        private fun onGetRollup(response: GetResponse) {
+            if (!response.isExists) {
+                actionListener.onFailure(OpenSearchStatusException("Rollup not found", RestStatus.NOT_FOUND))
+                return
             }
-            val rollup = response.rollup
-                ?: return actionListener.onFailure(OpenSearchStatusException("The current rollup is null", RestStatus.INTERNAL_SERVER_ERROR))
+
+            val rollup: Rollup?
+            try {
+                rollup = parseRollup(response, xContentRegistry)
+            } catch (e: IllegalArgumentException) {
+                actionListener.onFailure(OpenSearchStatusException("Rollup not found", RestStatus.NOT_FOUND))
+                return
+            }
+            if (!SecurityUtils.userHasPermissionForResource(user, rollup.user, filterByEnabled, "rollup", rollup.id, actionListener)) {
+                return
+            }
             val modified = modifiedImmutableProperties(rollup, request.rollup)
             if (modified.isNotEmpty()) {
                 return actionListener.onFailure(OpenSearchStatusException("Not allowed to modify $modified", RestStatus.BAD_REQUEST))
@@ -124,7 +157,7 @@ class TransportIndexRollupAction @Inject constructor(
         }
 
         private fun putRollup() {
-            val rollup = request.rollup.copy(schemaVersion = IndexUtils.indexManagementConfigSchemaVersion)
+            val rollup = request.rollup.copy(schemaVersion = IndexUtils.indexManagementConfigSchemaVersion, user = this.user)
             request.index(INDEX_MANAGEMENT_INDEX)
                 .id(request.rollup.id)
                 .source(rollup.toXContent(jsonBuilder(), ToXContent.EMPTY_PARAMS))

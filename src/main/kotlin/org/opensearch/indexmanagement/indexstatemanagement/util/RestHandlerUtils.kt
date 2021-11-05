@@ -40,7 +40,10 @@ import org.opensearch.indexmanagement.opensearchapi.optionalTimeField
 import java.time.Instant
 
 const val WITH_TYPE = "with_type"
+const val WITH_USER = "with_user"
 val XCONTENT_WITHOUT_TYPE = ToXContent.MapParams(mapOf(WITH_TYPE to "false"))
+val XCONTENT_WITHOUT_USER = ToXContent.MapParams(mapOf(WITH_USER to "false"))
+val XCONTENT_WITHOUT_TYPE_AND_USER = ToXContent.MapParams(mapOf(WITH_TYPE to "false", WITH_USER to "false"))
 
 const val FAILURES = "failures"
 const val FAILED_INDICES = "failed_indices"
@@ -108,11 +111,10 @@ data class FailedIndex(val name: String, val uuid: String, val reason: String) :
 fun getPartialChangePolicyBuilder(
     changePolicy: ChangePolicy?
 ): XContentBuilder {
-    return XContentFactory.jsonBuilder()
+    val builder = XContentFactory.jsonBuilder()
         .startObject()
         .startObject(ManagedIndexConfig.MANAGED_INDEX_TYPE)
         .optionalTimeField(ManagedIndexConfig.LAST_UPDATED_TIME_FIELD, Instant.now())
         .field(ManagedIndexConfig.CHANGE_POLICY_FIELD, changePolicy)
-        .endObject()
-        .endObject()
+    return builder.endObject().endObject()
 }

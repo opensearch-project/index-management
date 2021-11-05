@@ -31,8 +31,6 @@ import org.mockito.Mockito
 import org.opensearch.Version
 import org.opensearch.client.Client
 import org.opensearch.cluster.OpenSearchAllocationTestCase
-import org.opensearch.cluster.metadata.IndexMetadata
-import org.opensearch.cluster.metadata.IndexMetadata.SETTING_INDEX_UUID
 import org.opensearch.cluster.node.DiscoveryNode
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.settings.ClusterSettings
@@ -80,6 +78,7 @@ class ManagedIndexCoordinatorTests : OpenSearchAllocationTestCase() {
         val settingSet = hashSetOf<Setting<*>>()
         settingSet.addAll(ClusterSettings.BUILT_IN_CLUSTER_SETTINGS)
         settingSet.add(ManagedIndexSettings.SWEEP_PERIOD)
+        settingSet.add(ManagedIndexSettings.JITTER)
         settingSet.add(ManagedIndexSettings.JOB_INTERVAL)
         settingSet.add(ManagedIndexSettings.INDEX_STATE_MANAGEMENT_ENABLED)
         settingSet.add(ManagedIndexSettings.METADATA_SERVICE_ENABLED)
@@ -137,18 +136,6 @@ class ManagedIndexCoordinatorTests : OpenSearchAllocationTestCase() {
         coordinator.initBackgroundSweep()
         Mockito.verify(cancellable).cancel()
         Mockito.verify(threadPool, Mockito.times(2)).scheduleWithFixedDelay(Mockito.any(), Mockito.any(), Mockito.anyString())
-    }
-
-    private fun createIndexMetaData(indexName: String, replicaNumber: Int, shardNumber: Int, policyID: String?): IndexMetadata.Builder {
-        val defaultSettings = Settings.builder()
-            .put(IndexMetadata.SETTING_VERSION_CREATED, Version.CURRENT)
-            .put(ManagedIndexSettings.POLICY_ID.key, policyID)
-            .put(SETTING_INDEX_UUID, randomAlphaOfLength(20))
-            .build()
-        return IndexMetadata.Builder(indexName)
-            .settings(defaultSettings)
-            .numberOfReplicas(replicaNumber)
-            .numberOfShards(shardNumber)
     }
 
     private fun <T> any(): T {

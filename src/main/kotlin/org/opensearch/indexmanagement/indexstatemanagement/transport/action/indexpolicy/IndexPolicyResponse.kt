@@ -33,6 +33,7 @@ import org.opensearch.common.xcontent.ToXContent
 import org.opensearch.common.xcontent.ToXContentObject
 import org.opensearch.common.xcontent.XContentBuilder
 import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
+import org.opensearch.indexmanagement.indexstatemanagement.util.XCONTENT_WITHOUT_USER
 import org.opensearch.indexmanagement.util._ID
 import org.opensearch.indexmanagement.util._PRIMARY_TERM
 import org.opensearch.indexmanagement.util._SEQ_NO
@@ -91,7 +92,7 @@ class IndexPolicyResponse : ActionResponse, ToXContentObject {
             .field(_VERSION, version)
             .field(_PRIMARY_TERM, primaryTerm)
             .field(_SEQ_NO, seqNo)
-            .field(Policy.POLICY_TYPE, policy)
+            .field(Policy.POLICY_TYPE, policy, XCONTENT_WITHOUT_USER)
             .endObject()
     }
 }

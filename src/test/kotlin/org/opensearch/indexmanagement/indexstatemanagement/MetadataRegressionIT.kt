@@ -63,8 +63,10 @@ class MetadataRegressionIT : IndexStateManagementIntegTestCase() {
     fun cleanClusterSetting() {
         // need to clean up otherwise will throw error
         updateClusterSetting(ManagedIndexSettings.METADATA_SERVICE_ENABLED.key, null, false)
+        updateIndexStateManagementJitterSetting(null)
     }
 
+    @AwaitsFix(bugUrl = "https://github.com/opensearch-project/index-management/issues/176")
     fun `test move metadata service`() {
         updateClusterSetting(ManagedIndexSettings.METADATA_SERVICE_ENABLED.key, "false")
         updateClusterSetting(ManagedIndexSettings.METADATA_SERVICE_ENABLED.key, "true")
@@ -126,18 +128,10 @@ class MetadataRegressionIT : IndexStateManagementIntegTestCase() {
         logger.info("metadata has moved")
 
         val managedIndexConfig = getExistingManagedIndexConfig(indexName)
-        // Change the start time so the job will trigger in 2 seconds, this will trigger the first initialization of the policy
+        // Change the start time so the job will trigger in 2 seconds, since there is metadata and policy with the index there is no initialization
         updateManagedIndexConfigStartTime(managedIndexConfig)
 
         waitFor { assertEquals(policyID, getExplainManagedIndexMetaData(indexName).policyID) }
-        waitFor {
-            assertEquals(
-                "Successfully initialized policy: ${policy.id}",
-                getExplainManagedIndexMetaData(indexName).info?.get("message")
-            )
-        }
-
-        updateManagedIndexConfigStartTime(managedIndexConfig)
         waitFor {
             assertEquals(
                 "Index did not set number_of_replicas to ${actionConfig.numOfReplicas}",
@@ -147,6 +141,7 @@ class MetadataRegressionIT : IndexStateManagementIntegTestCase() {
         }
     }
 
+    @AwaitsFix(bugUrl = "https://github.com/opensearch-project/index-management/issues/176")
     fun `test job can continue run from cluster state metadata`() {
         /**
          *  new version of ISM plugin can handle metadata in cluster state
@@ -229,6 +224,7 @@ class MetadataRegressionIT : IndexStateManagementIntegTestCase() {
         }
     }
 
+    @AwaitsFix(bugUrl = "https://github.com/opensearch-project/index-management/issues/176")
     fun `test new node skip execution when old node exist in cluster`() {
         Assume.assumeTrue(isMixedNodeRegressionTest)
 

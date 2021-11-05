@@ -34,18 +34,10 @@ import org.opensearch.common.io.stream.StreamOutput
 import org.opensearch.indexmanagement.indexstatemanagement.model.ChangePolicy
 import java.io.IOException
 
-class ChangePolicyRequest : ActionRequest {
-
-    val indices: List<String>
+class ChangePolicyRequest(
+    val indices: List<String>,
     val changePolicy: ChangePolicy
-
-    constructor(
-        indices: List<String>,
-        changePolicy: ChangePolicy
-    ) : super() {
-        this.indices = indices
-        this.changePolicy = changePolicy
-    }
+) : ActionRequest() {
 
     @Throws(IOException::class)
     constructor(sin: StreamInput) : this(

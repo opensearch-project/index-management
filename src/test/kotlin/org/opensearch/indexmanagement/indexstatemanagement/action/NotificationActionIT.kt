@@ -85,7 +85,7 @@ class NotificationActionIT : IndexStateManagementRestTestCase() {
 
         createPolicy(policy, policyID)
         createIndex(indexName, policyID)
-        createIndex(notificationIndex)
+        createIndex(notificationIndex, null)
 
         val managedIndexConfig = getExistingManagedIndexConfig(indexName)
 

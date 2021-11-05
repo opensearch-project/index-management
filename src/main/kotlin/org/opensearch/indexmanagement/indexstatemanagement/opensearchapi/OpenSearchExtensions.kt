@@ -37,7 +37,6 @@ import org.opensearch.action.get.GetRequest
 import org.opensearch.action.get.GetResponse
 import org.opensearch.action.get.MultiGetRequest
 import org.opensearch.action.get.MultiGetResponse
-import org.opensearch.action.search.SearchResponse
 import org.opensearch.client.Client
 import org.opensearch.cluster.ClusterState
 import org.opensearch.cluster.metadata.IndexMetadata
@@ -46,20 +45,16 @@ import org.opensearch.common.xcontent.NamedXContentRegistry
 import org.opensearch.common.xcontent.ToXContent
 import org.opensearch.common.xcontent.ToXContentFragment
 import org.opensearch.common.xcontent.XContentBuilder
-import org.opensearch.common.xcontent.XContentFactory
 import org.opensearch.common.xcontent.XContentHelper
 import org.opensearch.common.xcontent.XContentType
 import org.opensearch.index.Index
 import org.opensearch.index.IndexNotFoundException
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
-import org.opensearch.indexmanagement.indexstatemanagement.model.ISMTemplate
 import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
-import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
 import org.opensearch.indexmanagement.indexstatemanagement.settings.LegacyOpenDistroManagedIndexSettings
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings
 import org.opensearch.indexmanagement.indexstatemanagement.util.managedIndexMetadataID
 import org.opensearch.indexmanagement.opensearchapi.contentParser
-import org.opensearch.indexmanagement.opensearchapi.parseWithType
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 
 private val log = LogManager.getLogger("Index Management Helper")
@@ -102,27 +97,6 @@ fun getUuidsForClosedIndices(state: ClusterState): MutableList<String> {
         }
     }
     return closeList
-}
-
-/**
- * Do a exists search query to retrieve all policy with ism_template field
- * parse search response with this function
- *
- * @return map of policyID to ISMTemplate in this policy
- * @throws [IllegalArgumentException]
- */
-@Throws(Exception::class)
-fun getPolicyToTemplateMap(response: SearchResponse, xContentRegistry: NamedXContentRegistry = NamedXContentRegistry.EMPTY):
-    Map<String, ISMTemplate?> {
-    return response.hits.hits.map {
-        val id = it.id
-        val seqNo = it.seqNo
-        val primaryTerm = it.primaryTerm
-        val xcp = XContentFactory.xContent(XContentType.JSON)
-            .createParser(xContentRegistry, LoggingDeprecationHandler.INSTANCE, it.sourceAsString)
-        xcp.parseWithType(id, seqNo, primaryTerm, Policy.Companion::parse)
-            .copy(id = id, seqNo = seqNo, primaryTerm = primaryTerm)
-    }.map { it.id to it.ismTemplate }.toMap()
 }
 
 @Suppress("UNCHECKED_CAST")

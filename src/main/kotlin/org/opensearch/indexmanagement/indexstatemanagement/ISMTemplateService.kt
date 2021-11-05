@@ -26,64 +26,13 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement
 
-import org.apache.logging.log4j.LogManager
 import org.apache.lucene.util.automaton.Operations
 import org.opensearch.OpenSearchException
-import org.opensearch.cluster.ClusterState
-import org.opensearch.cluster.metadata.IndexMetadata
 import org.opensearch.common.Strings
 import org.opensearch.common.ValidationException
 import org.opensearch.common.regex.Regex
 import org.opensearch.indexmanagement.indexstatemanagement.model.ISMTemplate
 import org.opensearch.indexmanagement.util.IndexManagementException
-
-private val log = LogManager.getLogger("ISMTemplateService")
-
-/**
- * find the matching policy based on ISM template field for the given index
- *
- * filter out hidden index
- * filter out older index than template lastUpdateTime
- *
- * @param ismTemplates current ISM templates saved in metadata
- * @param indexMetadata cluster state index metadata
- * @return policyID
- */
-@Suppress("ReturnCount")
-fun Map<String, ISMTemplate>.findMatchingPolicy(clusterState: ClusterState, indexName: String): String? {
-    if (this.isEmpty()) return null
-
-    val indexMetadata = clusterState.metadata.index(indexName)
-    val indexAbstraction = clusterState.metadata.indicesLookup[indexName]
-    val isDataStreamIndex = indexAbstraction?.parentDataStream != null
-
-    // Don't include hidden index unless it belongs to a data stream.
-    val isHidden = IndexMetadata.INDEX_HIDDEN_SETTING.get(indexMetadata.settings)
-    if (!isDataStreamIndex && isHidden) return null
-
-    // If the index belongs to a data stream, then find the matching policy using the data stream name.
-    val lookupName = when {
-        isDataStreamIndex -> indexAbstraction?.parentDataStream?.name
-        else -> indexName
-    }
-
-    // only process indices created after template
-    // traverse all ism templates for matching ones
-    val patternMatchPredicate = { pattern: String -> Regex.simpleMatch(pattern, lookupName) }
-    var matchedPolicy: String? = null
-    var highestPriority: Int = -1
-    this.filter { (_, template) ->
-        template.lastUpdatedTime.toEpochMilli() < indexMetadata.creationDate
-    }.forEach { (policyID, template) ->
-        val matched = template.indexPatterns.stream().anyMatch(patternMatchPredicate)
-        if (matched && highestPriority < template.priority) {
-            highestPriority = template.priority
-            matchedPolicy = policyID
-        }
-    }
-
-    return matchedPolicy
-}
 
 /**
  * validate the template Name and indexPattern provided in the template
@@ -120,30 +69,61 @@ fun validateFormat(indexPatterns: List<String>): OpenSearchException? {
     return null
 }
 
+fun List<ISMTemplate>.findSelfConflictingTemplates(): Pair<List<String>, List<String>>? {
+    val priorityToTemplates = mutableMapOf<Int, List<ISMTemplate>>()
+    this.forEach {
+        val templateList = priorityToTemplates[it.priority]
+        if (templateList != null) {
+            priorityToTemplates[it.priority] = templateList.plus(it)
+        } else {
+            priorityToTemplates[it.priority] = mutableListOf(it)
+        }
+    }
+    priorityToTemplates.forEach { (_, templateList) ->
+        // same priority
+        val indexPatternsList = templateList.map { it.indexPatterns }
+        if (indexPatternsList.size > 1) {
+            indexPatternsList.forEachIndexed { ind, indexPatterns ->
+                val comparePatterns = indexPatternsList.subList(ind + 1, indexPatternsList.size).flatten()
+                if (overlapping(indexPatterns, comparePatterns)) {
+                    return indexPatterns to comparePatterns
+                }
+            }
+        }
+    }
+
+    return null
+}
+
+@Suppress("SpreadOperator")
+fun overlapping(p1: List<String>, p2: List<String>): Boolean {
+    if (p1.isEmpty() || p2.isEmpty()) return false
+    val a1 = Regex.simpleMatchToAutomaton(*p1.toTypedArray())
+    val a2 = Regex.simpleMatchToAutomaton(*p2.toTypedArray())
+    return !Operations.isEmpty(Operations.intersection(a1, a2))
+}
+
 /**
  * find policy templates whose index patterns overlap with given template
  *
  * @return map of overlapping template name to its index patterns
  */
-@Suppress("SpreadOperator")
-fun Map<String, ISMTemplate>.findConflictingPolicyTemplates(
+fun Map<String, List<ISMTemplate>>.findConflictingPolicyTemplates(
     candidate: String,
     indexPatterns: List<String>,
     priority: Int
 ): Map<String, List<String>> {
-    val automaton1 = Regex.simpleMatchToAutomaton(*indexPatterns.toTypedArray())
     val overlappingTemplates = mutableMapOf<String, List<String>>()
 
-    // focus on template with same priority
-    this.filter { it.value.priority == priority }
-        .forEach { (policyID, template) ->
-            val automaton2 = Regex.simpleMatchToAutomaton(*template.indexPatterns.toTypedArray())
-            if (!Operations.isEmpty(Operations.intersection(automaton1, automaton2))) {
-                log.info("Existing ism_template for $policyID overlaps candidate $candidate")
-                overlappingTemplates[policyID] = template.indexPatterns
+    this.forEach { (policyID, templateList) ->
+        templateList.filter { it.priority == priority }
+            .map { it.indexPatterns }
+            .forEach {
+                if (overlapping(indexPatterns, it)) {
+                    overlappingTemplates[policyID] = it
+                }
             }
-        }
+    }
     overlappingTemplates.remove(candidate)
-
     return overlappingTemplates
 }

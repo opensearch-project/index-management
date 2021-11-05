@@ -56,7 +56,8 @@ data class ManagedIndexConfig(
     val policySeqNo: Long?,
     val policyPrimaryTerm: Long?,
     val policy: Policy?,
-    val changePolicy: ChangePolicy?
+    val changePolicy: ChangePolicy?,
+    val jobJitter: Double?
 ) : ScheduledJobParameter {
 
     init {
@@ -79,6 +80,10 @@ data class ManagedIndexConfig(
 
     override fun getLockDurationSeconds(): Long = 3600L // 1 hour
 
+    override fun getJitter(): Double? {
+        return jobJitter
+    }
+
     override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
         builder
             .startObject()
@@ -95,9 +100,9 @@ data class ManagedIndexConfig(
             .field(POLICY_PRIMARY_TERM_FIELD, policyPrimaryTerm)
             .field(POLICY_FIELD, policy, XCONTENT_WITHOUT_TYPE)
             .field(CHANGE_POLICY_FIELD, changePolicy)
-            .endObject()
-            .endObject()
-        return builder
+            .field(JITTER, jobJitter)
+        builder.endObject()
+        return builder.endObject()
     }
 
     companion object {
@@ -115,6 +120,7 @@ data class ManagedIndexConfig(
         const val POLICY_SEQ_NO_FIELD = "policy_seq_no"
         const val POLICY_PRIMARY_TERM_FIELD = "policy_primary_term"
         const val CHANGE_POLICY_FIELD = "change_policy"
+        const val JITTER = "jitter"
 
         @Suppress("ComplexMethod", "LongMethod")
         @JvmStatic
@@ -138,6 +144,7 @@ data class ManagedIndexConfig(
             var enabled = true
             var policyPrimaryTerm: Long? = SequenceNumbers.UNASSIGNED_PRIMARY_TERM
             var policySeqNo: Long? = SequenceNumbers.UNASSIGNED_SEQ_NO
+            var jitter: Double? = null
 
             ensureExpectedToken(Token.START_OBJECT, xcp.currentToken(), xcp)
             while (xcp.nextToken() != Token.END_OBJECT) {
@@ -164,6 +171,9 @@ data class ManagedIndexConfig(
                     }
                     CHANGE_POLICY_FIELD -> {
                         changePolicy = if (xcp.currentToken() == Token.VALUE_NULL) null else ChangePolicy.parse(xcp)
+                    }
+                    JITTER -> {
+                        jitter = if (xcp.currentToken() == Token.VALUE_NULL) null else xcp.doubleValue()
                     }
                     else -> throw IllegalArgumentException("Invalid field: [$fieldName] found in ManagedIndexConfig.")
                 }
@@ -193,7 +203,8 @@ data class ManagedIndexConfig(
                     seqNo = policySeqNo ?: SequenceNumbers.UNASSIGNED_SEQ_NO,
                     primaryTerm = policyPrimaryTerm ?: SequenceNumbers.UNASSIGNED_PRIMARY_TERM
                 ),
-                changePolicy = changePolicy
+                changePolicy = changePolicy,
+                jobJitter = jitter
             )
         }
     }

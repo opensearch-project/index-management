@@ -1,6 +1,6 @@
 {
   "_meta" : {
-    "schema_version": 10
+    "schema_version": 12
   },
   "dynamic": "strict",
   "properties": {
@@ -456,6 +456,43 @@
               "format": "strict_date_time||epoch_millis"
             }
           }
+        },
+        "user": {
+          "properties": {
+            "name": {
+              "type": "text",
+              "fields": {
+                "keyword": {
+                  "type": "keyword",
+                  "ignore_above": 256
+                }
+              }
+            },
+            "backend_roles": {
+              "type" : "text",
+              "fields" : {
+                "keyword" : {
+                  "type" : "keyword"
+                }
+              }
+            },
+            "roles": {
+              "type" : "text",
+              "fields" : {
+                "keyword" : {
+                  "type" : "keyword"
+                }
+              }
+            },
+            "custom_attribute_names": {
+              "type" : "text",
+              "fields" : {
+                "keyword" : {
+                  "type" : "keyword"
+                }
+              }
+            }
+          }
         }
       }
     },
@@ -510,6 +547,43 @@
             },
             "is_safe": {
               "type": "boolean"
+            },
+            "user": {
+              "properties": {
+                "name": {
+                  "type": "text",
+                  "fields": {
+                    "keyword": {
+                      "type": "keyword",
+                      "ignore_above": 256
+                    }
+                  }
+                },
+                "backend_roles": {
+                  "type" : "text",
+                  "fields" : {
+                    "keyword" : {
+                      "type" : "keyword"
+                    }
+                  }
+                },
+                "roles": {
+                  "type" : "text",
+                  "fields" : {
+                    "keyword" : {
+                      "type" : "keyword"
+                    }
+                  }
+                },
+                "custom_attribute_names": {
+                  "type" : "text",
+                  "fields" : {
+                    "keyword" : {
+                      "type" : "keyword"
+                    }
+                  }
+                }
+              }
             }
           }
         },
@@ -526,6 +600,9 @@
                 "start_time": {
                   "type": "date",
                   "format": "strict_date_time||epoch_millis"
+                },
+                "schedule_delay": {
+                  "type": "long"
                 }
               }
             },
@@ -536,10 +613,16 @@
                 },
                 "timezone": {
                   "type": "keyword"
+                },
+                "schedule_delay": {
+                  "type": "long"
                 }
               }
             }
           }
+        },
+        "jitter": {
+          "type": "double"
         }
       }
     },
@@ -718,6 +801,9 @@
                 "start_time": {
                   "type": "date",
                   "format": "strict_date_time||epoch_millis"
+                },
+                "schedule_delay": {
+                  "type": "long"
                 }
               }
             },
@@ -728,6 +814,9 @@
                 },
                 "timezone": {
                   "type": "keyword"
+                },
+                "schedule_delay": {
+                  "type": "long"
                 }
               }
             }
@@ -851,6 +940,43 @@
               }
             }
           }
+        },
+        "user": {
+          "properties": {
+            "name": {
+              "type": "text",
+              "fields": {
+                "keyword": {
+                  "type": "keyword",
+                  "ignore_above": 256
+                }
+              }
+            },
+            "backend_roles": {
+              "type" : "text",
+              "fields" : {
+                "keyword" : {
+                  "type" : "keyword"
+                }
+              }
+            },
+            "roles": {
+              "type" : "text",
+              "fields" : {
+                "keyword" : {
+                  "type" : "keyword"
+                }
+              }
+            },
+            "custom_attribute_names": {
+              "type" : "text",
+              "fields" : {
+                "keyword" : {
+                  "type" : "keyword"
+                }
+              }
+            }
+          }
         }
       }
     },
@@ -935,6 +1061,9 @@
                 "start_time": {
                   "type": "date",
                   "format": "strict_date_time||epoch_millis"
+                },
+                "schedule_delay": {
+                  "type": "long"
                 }
               }
             },
@@ -945,6 +1074,9 @@
                 },
                 "timezone": {
                   "type": "keyword"
+                },
+                "schedule_delay": {
+                  "type": "long"
                 }
               }
             }
@@ -1039,6 +1171,43 @@
         "data_selection_query": {
           "type": "object",
           "enabled": false
+        },
+        "user": {
+          "properties": {
+            "name": {
+              "type": "text",
+              "fields": {
+                "keyword": {
+                  "type": "keyword",
+                  "ignore_above": 256
+                }
+              }
+            },
+            "backend_roles": {
+              "type" : "text",
+              "fields" : {
+                "keyword" : {
+                  "type" : "keyword"
+                }
+              }
+            },
+            "roles": {
+              "type" : "text",
+              "fields" : {
+                "keyword" : {
+                  "type" : "keyword"
+                }
+              }
+            },
+            "custom_attribute_names": {
+              "type" : "text",
+              "fields" : {
+                "keyword" : {
+                  "type" : "keyword"
+                }
+              }
+            }
+          }
         }
       }
     },

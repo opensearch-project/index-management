@@ -28,6 +28,7 @@ package org.opensearch.indexmanagement.rollup
 
 import org.apache.logging.log4j.LogManager
 import org.opensearch.ExceptionsHelper
+import org.opensearch.OpenSearchSecurityException
 import org.opensearch.action.ActionListener
 import org.opensearch.action.bulk.BackoffPolicy
 import org.opensearch.action.search.SearchPhaseExecutionException
@@ -103,12 +104,12 @@ class RollupSearchService(
             logger.debug("Non-continuous job [${rollup.id}] is not processing next window [$metadata]")
             return false
         } else {
-            return hasNextFullWindow(metadata) // TODO: Behavior when next full window but 0 docs/afterkey is null
+            return hasNextFullWindow(rollup, metadata) // TODO: Behavior when next full window but 0 docs/afterkey is null
         }
     }
 
-    private fun hasNextFullWindow(metadata: RollupMetadata): Boolean {
-        return Instant.now().isAfter(metadata.continuous!!.nextWindowEndTime) // TODO: !!
+    private fun hasNextFullWindow(rollup: Rollup, metadata: RollupMetadata): Boolean {
+        return Instant.now().isAfter(metadata.continuous!!.nextWindowEndTime.plusMillis(rollup.delay ?: 0)) // TODO: !!
     }
 
     @Suppress("ComplexMethod")
@@ -145,6 +146,9 @@ class RollupSearchService(
         } catch (e: MultiBucketConsumerService.TooManyBucketsException) {
             logger.error(e.message, e.cause)
             RollupSearchResult.Failure(cause = e)
+        } catch (e: OpenSearchSecurityException) {
+            logger.error(e.message, e.cause)
+            RollupSearchResult.Failure("Cannot search data in source index/s - missing required index permissions: ${e.localizedMessage}", e)
         } catch (e: Exception) {
             logger.error(e.message, e.cause)
             RollupSearchResult.Failure(cause = e)

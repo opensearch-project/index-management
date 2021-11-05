@@ -28,35 +28,49 @@
 
 package org.opensearch.indexmanagement.opensearchapi
 
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.ThreadContextElement
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
+import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.opensearch.ExceptionsHelper
 import org.opensearch.OpenSearchException
 import org.opensearch.action.ActionListener
 import org.opensearch.action.bulk.BackoffPolicy
+import org.opensearch.action.get.GetResponse
+import org.opensearch.action.search.SearchResponse
 import org.opensearch.action.support.DefaultShardOperationFailedException
 import org.opensearch.client.OpenSearchClient
 import org.opensearch.common.bytes.BytesReference
+import org.opensearch.common.settings.Settings
 import org.opensearch.common.unit.TimeValue
+import org.opensearch.common.util.concurrent.ThreadContext
 import org.opensearch.common.xcontent.LoggingDeprecationHandler
 import org.opensearch.common.xcontent.NamedXContentRegistry
 import org.opensearch.common.xcontent.ToXContent
 import org.opensearch.common.xcontent.XContentBuilder
+import org.opensearch.common.xcontent.XContentFactory
 import org.opensearch.common.xcontent.XContentHelper
 import org.opensearch.common.xcontent.XContentParser
 import org.opensearch.common.xcontent.XContentParser.Token
 import org.opensearch.common.xcontent.XContentParserUtils
 import org.opensearch.common.xcontent.XContentParserUtils.ensureExpectedToken
 import org.opensearch.common.xcontent.XContentType
+import org.opensearch.commons.InjectSecurity
+import org.opensearch.commons.authuser.User
 import org.opensearch.index.seqno.SequenceNumbers
 import org.opensearch.indexmanagement.indexstatemanagement.model.ISMTemplate
 import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
 import org.opensearch.indexmanagement.util.NO_ID
+import org.opensearch.indexmanagement.util.SecurityUtils.Companion.DEFAULT_INJECT_ROLES
+import org.opensearch.indexmanagement.util.SecurityUtils.Companion.INTERNAL_REQUEST
 import org.opensearch.jobscheduler.spi.utils.LockService
 import org.opensearch.rest.RestStatus
 import org.opensearch.transport.RemoteTransportException
 import java.io.IOException
 import java.time.Instant
+import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import kotlin.coroutines.suspendCoroutine
@@ -92,11 +106,50 @@ fun XContentBuilder.optionalTimeField(name: String, instant: Instant?): XContent
     return this.timeField(name, "${name}_in_millis", instant.toEpochMilli())
 }
 
-fun XContentBuilder.optionalISMTemplateField(name: String, ismTemplate: ISMTemplate?): XContentBuilder {
-    if (ismTemplate == null) {
+fun XContentBuilder.optionalISMTemplateField(name: String, ismTemplates: List<ISMTemplate>?): XContentBuilder {
+    if (ismTemplates == null) {
         return nullField(name)
     }
-    return this.field(Policy.ISM_TEMPLATE, ismTemplate)
+    return this.field(Policy.ISM_TEMPLATE, ismTemplates.toTypedArray())
+}
+
+fun XContentBuilder.optionalUserField(name: String, user: User?): XContentBuilder {
+    return if (user == null) nullField(name) else this.field(name, user)
+}
+
+/**
+ * Parse data from SearchResponse using the defined parser and xContentRegistry
+ */
+fun <T> parseFromSearchResponse(
+    response: SearchResponse,
+    xContentRegistry: NamedXContentRegistry = NamedXContentRegistry.EMPTY,
+    parse: (xcp: XContentParser, id: String, seqNo: Long, primaryTerm: Long) -> T
+): List<T> {
+    return response.hits.hits.map {
+        val id = it.id
+        val seqNo = it.seqNo
+        val primaryTerm = it.primaryTerm
+        val xcp = XContentFactory.xContent(XContentType.JSON)
+            .createParser(xContentRegistry, LoggingDeprecationHandler.INSTANCE, it.sourceAsString)
+        xcp.parseWithType(id, seqNo, primaryTerm, parse)
+    }
+}
+
+/**
+ * Parse data from GetResponse using the defined parser and xContentRegistry
+ */
+fun <T> parseFromGetResponse(
+    response: GetResponse,
+    xContentRegistry: NamedXContentRegistry = NamedXContentRegistry.EMPTY,
+    parse: (xcp: XContentParser, id: String, seqNo: Long, primaryTerm: Long) -> T
+): T {
+    val xcp = XContentHelper.createParser(
+        xContentRegistry,
+        LoggingDeprecationHandler.INSTANCE,
+        response.sourceAsBytesRef,
+        XContentType.JSON
+    )
+    return xcp.parseWithType(response.id, response.seqNo, response.primaryTerm, parse)
 }
 
 /**
@@ -198,4 +251,48 @@ fun <T> XContentParser.parseWithType(
     val parsed = parse(this, id, seqNo, primaryTerm)
     ensureExpectedToken(Token.END_OBJECT, this.nextToken(), this)
     return parsed
+}
+
+class IndexManagementSecurityContext(
+    private val id: String,
+    settings: Settings,
+    private val threadContext: ThreadContext,
+    private val user: User?
+) : ThreadContextElement<Unit> {
+
+    companion object Key : CoroutineContext.Key<IndexManagementSecurityContext>
+
+    private val logger: Logger = LogManager.getLogger(javaClass)
+    override val key: CoroutineContext.Key<*>
+        get() = Key
+    val injector = InjectSecurity(id, settings, threadContext)
+
+    /**
+     * Before the thread executes the coroutine we want the thread context to contain user roles so they are used when executing the code inside
+     * the coroutine
+     */
+    override fun updateThreadContext(context: CoroutineContext) {
+        logger.debug("Setting security context in thread ${Thread.currentThread().name} for job $id")
+        injector.injectRoles(if (user == null) DEFAULT_INJECT_ROLES else user.roles)
+        injector.injectProperty(INTERNAL_REQUEST, true)
+    }
+
+    /**
+     * Clean up the thread context before the coroutine executed by thread is suspended
+     */
+    override fun restoreThreadContext(context: CoroutineContext, oldState: Unit) {
+        logger.debug("Cleaning up security context in thread ${Thread.currentThread().name} for job $id")
+        injector.close()
+    }
+}
+
+suspend fun <T> withClosableContext(
+    context: IndexManagementSecurityContext,
+    block: suspend CoroutineScope.() -> T
+): T {
+    try {
+        return withContext(context) { block() }
+    } finally {
+        context.injector.close()
+    }
 }

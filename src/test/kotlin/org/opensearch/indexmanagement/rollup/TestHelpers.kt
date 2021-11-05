@@ -36,6 +36,7 @@ import org.opensearch.indexmanagement.common.model.dimension.Terms
 import org.opensearch.indexmanagement.opensearchapi.string
 import org.opensearch.indexmanagement.randomInstant
 import org.opensearch.indexmanagement.randomSchedule
+import org.opensearch.indexmanagement.randomUser
 import org.opensearch.indexmanagement.rollup.actionfilter.ISMFieldCapabilities
 import org.opensearch.indexmanagement.rollup.actionfilter.ISMFieldCapabilitiesIndexResponse
 import org.opensearch.indexmanagement.rollup.actionfilter.ISMFieldCapabilitiesResponse
@@ -128,10 +129,11 @@ fun randomRollup(): Rollup {
         metadataID = if (OpenSearchRestTestCase.randomBoolean()) null else OpenSearchRestTestCase.randomAlphaOfLength(10),
         roles = OpenSearchRestTestCase.randomList(10) { OpenSearchRestTestCase.randomAlphaOfLength(10) },
         pageSize = OpenSearchRestTestCase.randomIntBetween(1, 10000),
-        delay = OpenSearchRestTestCase.randomNonNegativeLong(),
+        delay = 0,
         continuous = OpenSearchRestTestCase.randomBoolean(),
         dimensions = randomRollupDimensions(),
-        metrics = OpenSearchRestTestCase.randomList(20, ::randomRollupMetrics).distinctBy { it.targetField }
+        metrics = OpenSearchRestTestCase.randomList(20, ::randomRollupMetrics).distinctBy { it.targetField },
+        user = randomUser()
     )
 }
 

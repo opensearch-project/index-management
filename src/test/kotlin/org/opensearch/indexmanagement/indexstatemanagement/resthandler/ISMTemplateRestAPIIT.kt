@@ -35,7 +35,6 @@ import org.opensearch.indexmanagement.indexstatemanagement.model.State
 import org.opensearch.indexmanagement.indexstatemanagement.model.action.ReadOnlyActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomErrorNotification
 import org.opensearch.indexmanagement.indexstatemanagement.randomPolicy
-import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings
 import org.opensearch.indexmanagement.indexstatemanagement.util.INDEX_HIDDEN
 import org.opensearch.indexmanagement.randomInstant
 import org.opensearch.indexmanagement.waitFor
@@ -55,7 +54,7 @@ class ISMTemplateRestAPIIT : IndexStateManagementRestTestCase() {
     fun `test add template with invalid index pattern`() {
         try {
             val ismTemp = ISMTemplate(listOf(" "), 100, randomInstant())
-            createPolicy(randomPolicy(ismTemplate = ismTemp), policyID1)
+            createPolicy(randomPolicy(ismTemplate = listOf(ismTemp)), policyID1)
             fail("Expect a failure")
         } catch (e: ResponseException) {
             assertEquals("Unexpected RestStatus", RestStatus.BAD_REQUEST, e.response.restStatus())
@@ -65,14 +64,28 @@ class ISMTemplateRestAPIIT : IndexStateManagementRestTestCase() {
         }
     }
 
+    fun `test add template with self-overlapping index pattern`() {
+        try {
+            val ismTemp = ISMTemplate(listOf("ab*"), 100, randomInstant())
+            val ismTemp2 = ISMTemplate(listOf("abc*"), 100, randomInstant())
+            createPolicy(randomPolicy(ismTemplate = listOf(ismTemp, ismTemp2)), policyID1)
+            fail("Expect a failure")
+        } catch (e: ResponseException) {
+            assertEquals("Unexpected RestStatus", RestStatus.BAD_REQUEST, e.response.restStatus())
+            val actualMessage = e.response.asMap()["error"] as Map<String, Any>
+            val expectedReason = "New policy $policyID1 has an ISM template with index pattern [ab*] matching this policy's other ISM templates with index patterns [abc*], please use different priority"
+            assertEquals(expectedReason, actualMessage["reason"])
+        }
+    }
+
     fun `test add template with overlapping index pattern`() {
         try {
             val ismTemp = ISMTemplate(listOf("log*"), 100, randomInstant())
             val ismTemp2 = ISMTemplate(listOf("abc*"), 100, randomInstant())
             val ismTemp3 = ISMTemplate(listOf("*"), 100, randomInstant())
-            createPolicy(randomPolicy(ismTemplate = ismTemp), policyID1)
-            createPolicy(randomPolicy(ismTemplate = ismTemp2), policyID2)
-            createPolicy(randomPolicy(ismTemplate = ismTemp3), policyID3)
+            createPolicy(randomPolicy(ismTemplate = listOf(ismTemp)), policyID1)
+            createPolicy(randomPolicy(ismTemplate = listOf(ismTemp2)), policyID2)
+            createPolicy(randomPolicy(ismTemplate = listOf(ismTemp3)), policyID3)
             fail("Expect a failure")
         } catch (e: ResponseException) {
             assertEquals("Unexpected RestStatus", RestStatus.BAD_REQUEST, e.response.restStatus())
@@ -105,7 +118,7 @@ class ISMTemplateRestAPIIT : IndexStateManagementRestTestCase() {
             errorNotification = randomErrorNotification(),
             defaultState = states[0].name,
             states = states,
-            ismTemplate = ismTemp
+            ismTemplate = listOf(ismTemp)
         )
         createPolicy(policy, policyID)
 
@@ -121,7 +134,12 @@ class ISMTemplateRestAPIIT : IndexStateManagementRestTestCase() {
 
         // only index create after template can be managed
         assertPredicatesOnMetaData(
-            listOf(indexName1 to listOf(ManagedIndexSettings.POLICY_ID.key to fun(policyID: Any?): Boolean = policyID == null)),
+            listOf(
+                indexName1 to listOf(
+                    explainResponseOpendistroPolicyIdSetting to fun(policyID: Any?): Boolean = policyID == null,
+                    explainResponseOpenSearchPolicyIdSetting to fun(policyID: Any?): Boolean = policyID == null
+                )
+            ),
             getExplainMap(indexName1),
             true
         )
@@ -129,7 +147,12 @@ class ISMTemplateRestAPIIT : IndexStateManagementRestTestCase() {
 
         // hidden index will not be manage
         assertPredicatesOnMetaData(
-            listOf(indexName1 to listOf(ManagedIndexSettings.POLICY_ID.key to fun(policyID: Any?): Boolean = policyID == null)),
+            listOf(
+                indexName1 to listOf(
+                    explainResponseOpendistroPolicyIdSetting to fun(policyID: Any?): Boolean = policyID == null,
+                    explainResponseOpenSearchPolicyIdSetting to fun(policyID: Any?): Boolean = policyID == null
+                )
+            ),
             getExplainMap(indexName1),
             true
         )

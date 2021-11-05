@@ -39,21 +39,25 @@ import org.opensearch.action.support.master.AcknowledgedResponse
 import org.opensearch.action.update.UpdateRequest
 import org.opensearch.action.update.UpdateResponse
 import org.opensearch.client.Client
+import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.inject.Inject
+import org.opensearch.common.settings.Settings
 import org.opensearch.common.xcontent.LoggingDeprecationHandler
 import org.opensearch.common.xcontent.NamedXContentRegistry
 import org.opensearch.common.xcontent.XContentHelper
 import org.opensearch.common.xcontent.XContentType
 import org.opensearch.indexmanagement.IndexManagementPlugin
 import org.opensearch.indexmanagement.opensearchapi.parseWithType
-import org.opensearch.indexmanagement.rollup.action.get.GetRollupAction
-import org.opensearch.indexmanagement.rollup.action.get.GetRollupRequest
-import org.opensearch.indexmanagement.rollup.action.get.GetRollupResponse
 import org.opensearch.indexmanagement.rollup.model.Rollup
 import org.opensearch.indexmanagement.rollup.model.RollupMetadata
+import org.opensearch.indexmanagement.rollup.util.parseRollup
+import org.opensearch.indexmanagement.settings.IndexManagementSettings
+import org.opensearch.indexmanagement.util.SecurityUtils.Companion.buildUser
+import org.opensearch.indexmanagement.util.SecurityUtils.Companion.userHasPermissionForResource
 import org.opensearch.rest.RestStatus
 import org.opensearch.tasks.Task
 import org.opensearch.transport.TransportService
+import java.lang.IllegalArgumentException
 import java.time.Instant
 
 /**
@@ -72,39 +76,62 @@ import java.time.Instant
 class TransportStopRollupAction @Inject constructor(
     transportService: TransportService,
     val client: Client,
-    actionFilters: ActionFilters
+    val clusterService: ClusterService,
+    val settings: Settings,
+    actionFilters: ActionFilters,
+    val xContentRegistry: NamedXContentRegistry
 ) : HandledTransportAction<StopRollupRequest, AcknowledgedResponse>(
     StopRollupAction.NAME, transportService, actionFilters, ::StopRollupRequest
 ) {
 
+    @Volatile private var filterByEnabled = IndexManagementSettings.FILTER_BY_BACKEND_ROLES.get(settings)
+
+    init {
+        clusterService.clusterSettings.addSettingsUpdateConsumer(IndexManagementSettings.FILTER_BY_BACKEND_ROLES) {
+            filterByEnabled = it
+        }
+    }
+
     private val log = LogManager.getLogger(javaClass)
 
+    @Suppress("ReturnCount")
     override fun doExecute(task: Task, request: StopRollupRequest, actionListener: ActionListener<AcknowledgedResponse>) {
         log.debug("Executing StopRollupAction on ${request.id()}")
-        val getReq = GetRollupRequest(request.id(), null)
-        client.execute(
-            GetRollupAction.INSTANCE, getReq,
-            object : ActionListener<GetRollupResponse> {
-                override fun onResponse(response: GetRollupResponse) {
-                    val rollup = response.rollup
-                    if (rollup == null) {
-                        return actionListener.onFailure(
-                            OpenSearchStatusException("Could not find rollup [${request.id()}]", RestStatus.NOT_FOUND)
-                        )
+        val getRequest = GetRequest(IndexManagementPlugin.INDEX_MANAGEMENT_INDEX, request.id())
+        val user = buildUser(client.threadPool().threadContext)
+        client.threadPool().threadContext.stashContext().use {
+            client.get(
+                getRequest,
+                object : ActionListener<GetResponse> {
+                    override fun onResponse(response: GetResponse) {
+                        if (!response.isExists) {
+                            actionListener.onFailure(OpenSearchStatusException("Rollup not found", RestStatus.NOT_FOUND))
+                            return
+                        }
+
+                        val rollup: Rollup?
+                        try {
+                            rollup = parseRollup(response, xContentRegistry)
+                        } catch (e: IllegalArgumentException) {
+                            actionListener.onFailure(OpenSearchStatusException("Rollup not found", RestStatus.NOT_FOUND))
+                            return
+                        }
+                        if (!userHasPermissionForResource(user, rollup.user, filterByEnabled, "rollup", rollup.id, actionListener)) {
+                            return
+                        }
+                        if (rollup.metadataID != null) {
+                            getRollupMetadata(rollup, request, actionListener)
+                        } else {
+                            updateRollupJob(rollup, request, actionListener)
+                        }
                     }
 
-                    if (rollup.metadataID != null) {
-                        getRollupMetadata(rollup, request, actionListener)
-                    } else {
-                        updateRollupJob(rollup, request, actionListener)
+                    override fun onFailure(e: Exception) {
+                        actionListener.onFailure(ExceptionsHelper.unwrapCause(e) as Exception)
                     }
                 }
-
-                override fun onFailure(e: Exception) {
-                    actionListener.onFailure(ExceptionsHelper.unwrapCause(e) as Exception)
-                }
-            }
-        )
+            )
+        }
     }
 
     private fun getRollupMetadata(rollup: Rollup, request: StopRollupRequest, actionListener: ActionListener<AcknowledgedResponse>) {

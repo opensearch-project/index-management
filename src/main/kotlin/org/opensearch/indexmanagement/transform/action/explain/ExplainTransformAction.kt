@@ -16,6 +16,6 @@ import org.opensearch.action.ActionType
 class ExplainTransformAction private constructor() : ActionType<ExplainTransformResponse>(NAME, ::ExplainTransformResponse) {
     companion object {
         val INSTANCE = ExplainTransformAction()
-        val NAME = "cluster:admin/opendistro/transform/explain"
+        const val NAME = "cluster:admin/opendistro/transform/explain"
     }
 }

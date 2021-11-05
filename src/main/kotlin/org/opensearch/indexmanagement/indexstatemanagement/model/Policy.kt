@@ -35,11 +35,14 @@ import org.opensearch.common.xcontent.XContentBuilder
 import org.opensearch.common.xcontent.XContentParser
 import org.opensearch.common.xcontent.XContentParser.Token
 import org.opensearch.common.xcontent.XContentParserUtils.ensureExpectedToken
+import org.opensearch.commons.authuser.User
 import org.opensearch.index.seqno.SequenceNumbers
 import org.opensearch.indexmanagement.indexstatemanagement.util.WITH_TYPE
+import org.opensearch.indexmanagement.indexstatemanagement.util.WITH_USER
 import org.opensearch.indexmanagement.opensearchapi.instant
 import org.opensearch.indexmanagement.opensearchapi.optionalISMTemplateField
 import org.opensearch.indexmanagement.opensearchapi.optionalTimeField
+import org.opensearch.indexmanagement.opensearchapi.optionalUserField
 import org.opensearch.indexmanagement.util.IndexUtils
 import java.io.IOException
 import java.time.Instant
@@ -54,7 +57,8 @@ data class Policy(
     val errorNotification: ErrorNotification?,
     val defaultState: String,
     val states: List<State>,
-    val ismTemplate: ISMTemplate? = null
+    val ismTemplate: List<ISMTemplate>? = null,
+    val user: User? = null
 ) : ToXContentObject, Writeable {
 
     init {
@@ -86,6 +90,7 @@ data class Policy(
             .field(DEFAULT_STATE_FIELD, defaultState)
             .field(STATES_FIELD, states.toTypedArray())
             .optionalISMTemplateField(ISM_TEMPLATE, ismTemplate)
+        if (params.paramAsBoolean(WITH_USER, true)) builder.optionalUserField(USER_FIELD, user)
         if (params.paramAsBoolean(WITH_TYPE, true)) builder.endObject()
         return builder.endObject()
     }
@@ -101,7 +106,12 @@ data class Policy(
         errorNotification = sin.readOptionalWriteable(::ErrorNotification),
         defaultState = sin.readString(),
         states = sin.readList(::State),
-        ismTemplate = sin.readOptionalWriteable(::ISMTemplate)
+        ismTemplate = if (sin.readBoolean()) {
+            sin.readList(::ISMTemplate)
+        } else null,
+        user = if (sin.readBoolean()) {
+            User(sin)
+        } else null
     )
 
     @Throws(IOException::class)
@@ -115,7 +125,14 @@ data class Policy(
         out.writeOptionalWriteable(errorNotification)
         out.writeString(defaultState)
         out.writeList(states)
-        out.writeOptionalWriteable(ismTemplate)
+        if (ismTemplate != null) {
+            out.writeBoolean(true)
+            out.writeList(ismTemplate)
+        } else {
+            out.writeBoolean(false)
+        }
+        out.writeBoolean(user != null)
+        user?.writeTo(out)
     }
 
     companion object {
@@ -129,8 +146,9 @@ data class Policy(
         const val DEFAULT_STATE_FIELD = "default_state"
         const val STATES_FIELD = "states"
         const val ISM_TEMPLATE = "ism_template"
+        const val USER_FIELD = "user"
 
-        @Suppress("ComplexMethod")
+        @Suppress("ComplexMethod", "LongMethod", "NestedBlockDepth")
         @JvmStatic
         @JvmOverloads
         @Throws(IOException::class)
@@ -146,7 +164,8 @@ data class Policy(
             var lastUpdatedTime: Instant? = null
             var schemaVersion: Long = IndexUtils.DEFAULT_SCHEMA_VERSION
             val states: MutableList<State> = mutableListOf()
-            var ismTemplate: ISMTemplate? = null
+            var ismTemplates: List<ISMTemplate>? = null
+            var user: User? = null
 
             ensureExpectedToken(Token.START_OBJECT, xcp.currentToken(), xcp)
             while (xcp.nextToken() != Token.END_OBJECT) {
@@ -166,7 +185,23 @@ data class Policy(
                             states.add(State.parse(xcp))
                         }
                     }
-                    ISM_TEMPLATE -> ismTemplate = if (xcp.currentToken() == Token.VALUE_NULL) null else ISMTemplate.parse(xcp)
+                    ISM_TEMPLATE -> {
+                        if (xcp.currentToken() != Token.VALUE_NULL) {
+                            ismTemplates = mutableListOf()
+                            when (xcp.currentToken()) {
+                                Token.START_ARRAY -> {
+                                    while (xcp.nextToken() != Token.END_ARRAY) {
+                                        ismTemplates.add(ISMTemplate.parse(xcp))
+                                    }
+                                }
+                                Token.START_OBJECT -> {
+                                    ismTemplates.add(ISMTemplate.parse(xcp))
+                                }
+                                else -> ensureExpectedToken(Token.START_ARRAY, xcp.currentToken(), xcp)
+                            }
+                        }
+                    }
+                    USER_FIELD -> user = if (xcp.currentToken() == Token.VALUE_NULL) null else User.parse(xcp)
                     else -> throw IllegalArgumentException("Invalid field: [$fieldName] found in Policy.")
                 }
             }
@@ -181,7 +216,8 @@ data class Policy(
                 errorNotification = errorNotification,
                 defaultState = requireNotNull(defaultState) { "$DEFAULT_STATE_FIELD is null" },
                 states = states.toList(),
-                ismTemplate = ismTemplate
+                ismTemplate = ismTemplates,
+                user = user
             )
         }
     }

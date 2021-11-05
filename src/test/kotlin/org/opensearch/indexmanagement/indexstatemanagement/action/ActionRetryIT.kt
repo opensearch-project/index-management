@@ -32,7 +32,6 @@ import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmet
 import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.PolicyRetryInfoMetaData
 import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.StateMetaData
 import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.StepMetaData
-import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings
 import org.opensearch.indexmanagement.indexstatemanagement.step.Step
 import org.opensearch.indexmanagement.indexstatemanagement.step.rollover.AttemptRolloverStep
 import org.opensearch.indexmanagement.waitFor
@@ -159,7 +158,8 @@ class ActionRetryIT : IndexStateManagementRestTestCase() {
             assertPredicatesOnMetaData(
                 listOf(
                     indexName to listOf(
-                        ManagedIndexSettings.POLICY_ID.key to policyID::equals,
+                        explainResponseOpendistroPolicyIdSetting to policyID::equals,
+                        explainResponseOpenSearchPolicyIdSetting to policyID::equals,
                         ManagedIndexMetaData.INDEX to managedIndexConfig.index::equals,
                         ManagedIndexMetaData.INDEX_UUID to managedIndexConfig.indexUuid::equals,
                         ManagedIndexMetaData.POLICY_ID to managedIndexConfig.policyID::equals,

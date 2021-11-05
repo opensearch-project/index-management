@@ -66,6 +66,7 @@ class AttemptNotificationStep(
             }
 
             // publish internally throws an error for any invalid responses so its safe to assume if we reach this point it was successful
+            // publish and send throws an error for any invalid responses so its safe to assume if we reach this point it was successful
             stepStatus = StepStatus.COMPLETED
             info = mapOf("message" to getSuccessMessage(indexName))
         } catch (e: Exception) {

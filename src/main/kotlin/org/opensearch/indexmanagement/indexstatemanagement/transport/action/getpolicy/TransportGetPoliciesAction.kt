@@ -34,17 +34,19 @@ import org.opensearch.action.search.SearchResponse
 import org.opensearch.action.support.ActionFilters
 import org.opensearch.action.support.HandledTransportAction
 import org.opensearch.client.Client
+import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.inject.Inject
-import org.opensearch.common.xcontent.LoggingDeprecationHandler
+import org.opensearch.common.settings.Settings
 import org.opensearch.common.xcontent.NamedXContentRegistry
-import org.opensearch.common.xcontent.XContentFactory
-import org.opensearch.common.xcontent.XContentType
 import org.opensearch.index.IndexNotFoundException
 import org.opensearch.index.query.Operator
 import org.opensearch.index.query.QueryBuilders
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
 import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
-import org.opensearch.indexmanagement.opensearchapi.parseWithType
+import org.opensearch.indexmanagement.opensearchapi.parseFromSearchResponse
+import org.opensearch.indexmanagement.settings.IndexManagementSettings
+import org.opensearch.indexmanagement.util.SecurityUtils.Companion.addUserFilter
+import org.opensearch.indexmanagement.util.SecurityUtils.Companion.buildUser
 import org.opensearch.search.builder.SearchSourceBuilder
 import org.opensearch.search.sort.SortBuilders
 import org.opensearch.search.sort.SortOrder
@@ -57,10 +59,20 @@ class TransportGetPoliciesAction @Inject constructor(
     transportService: TransportService,
     val client: Client,
     actionFilters: ActionFilters,
+    val clusterService: ClusterService,
+    val settings: Settings,
     val xContentRegistry: NamedXContentRegistry
 ) : HandledTransportAction<GetPoliciesRequest, GetPoliciesResponse>(
     GetPoliciesAction.NAME, transportService, actionFilters, ::GetPoliciesRequest
 ) {
+
+    @Volatile private var filterByEnabled = IndexManagementSettings.FILTER_BY_BACKEND_ROLES.get(settings)
+
+    init {
+        clusterService.clusterSettings.addSettingsUpdateConsumer(IndexManagementSettings.FILTER_BY_BACKEND_ROLES) {
+            filterByEnabled = it
+        }
+    }
 
     override fun doExecute(
         task: Task,
@@ -68,6 +80,7 @@ class TransportGetPoliciesAction @Inject constructor(
         actionListener: ActionListener<GetPoliciesResponse>
     ) {
         val params = getPoliciesRequest.searchParams
+        val user = buildUser(client.threadPool().threadContext)
 
         val sortBuilder = SortBuilders
             .fieldSort(params.sortField)
@@ -75,6 +88,9 @@ class TransportGetPoliciesAction @Inject constructor(
 
         val queryBuilder = QueryBuilders.boolQuery()
             .must(QueryBuilders.existsQuery("policy"))
+
+        // Add user filter if enabled
+        addUserFilter(user, queryBuilder, filterByEnabled, "policy.user")
 
         queryBuilder.must(
             QueryBuilders
@@ -94,33 +110,26 @@ class TransportGetPoliciesAction @Inject constructor(
             .source(searchSourceBuilder)
             .indices(INDEX_MANAGEMENT_INDEX)
 
-        client.search(
-            searchRequest,
-            object : ActionListener<SearchResponse> {
-                override fun onResponse(response: SearchResponse) {
-                    val totalPolicies = response.hits.totalHits?.value ?: 0
-                    val policies = response.hits.hits.map {
-                        val id = it.id
-                        val seqNo = it.seqNo
-                        val primaryTerm = it.primaryTerm
-                        val xcp = XContentFactory.xContent(XContentType.JSON)
-                            .createParser(xContentRegistry, LoggingDeprecationHandler.INSTANCE, it.sourceAsString)
-                        xcp.parseWithType(id, seqNo, primaryTerm, Policy.Companion::parse)
-                            .copy(id = id, seqNo = seqNo, primaryTerm = primaryTerm)
+        client.threadPool().threadContext.stashContext().use {
+            client.search(
+                searchRequest,
+                object : ActionListener<SearchResponse> {
+                    override fun onResponse(response: SearchResponse) {
+                        val totalPolicies = response.hits.totalHits?.value ?: 0
+                        val policies = parseFromSearchResponse(response, xContentRegistry, Policy.Companion::parse)
+                        actionListener.onResponse(GetPoliciesResponse(policies, totalPolicies.toInt()))
                     }
 
-                    actionListener.onResponse(GetPoliciesResponse(policies, totalPolicies.toInt()))
-                }
-
-                override fun onFailure(t: Exception) {
-                    if (t is IndexNotFoundException) {
-                        // config index hasn't been initialized, catch this here and show empty result on Kibana
-                        actionListener.onResponse(GetPoliciesResponse(emptyList(), 0))
-                        return
+                    override fun onFailure(t: Exception) {
+                        if (t is IndexNotFoundException) {
+                            // config index hasn't been initialized, catch this here and show empty result on Kibana
+                            actionListener.onResponse(GetPoliciesResponse(emptyList(), 0))
+                            return
+                        }
+                        actionListener.onFailure(ExceptionsHelper.unwrapCause(t) as Exception)
                     }
-                    actionListener.onFailure(ExceptionsHelper.unwrapCause(t) as Exception)
                 }
-            }
-        )
+            )
+        }
     }
 }

@@ -23,6 +23,7 @@ import org.opensearch.common.xcontent.XContentParser
 import org.opensearch.common.xcontent.XContentParser.Token
 import org.opensearch.common.xcontent.XContentParserUtils.ensureExpectedToken
 import org.opensearch.common.xcontent.XContentType
+import org.opensearch.commons.authuser.User
 import org.opensearch.index.query.AbstractQueryBuilder
 import org.opensearch.index.query.MatchAllQueryBuilder
 import org.opensearch.index.query.QueryBuilder
@@ -32,8 +33,10 @@ import org.opensearch.indexmanagement.common.model.dimension.Dimension
 import org.opensearch.indexmanagement.common.model.dimension.Histogram
 import org.opensearch.indexmanagement.common.model.dimension.Terms
 import org.opensearch.indexmanagement.indexstatemanagement.util.WITH_TYPE
+import org.opensearch.indexmanagement.indexstatemanagement.util.WITH_USER
 import org.opensearch.indexmanagement.opensearchapi.instant
 import org.opensearch.indexmanagement.opensearchapi.optionalTimeField
+import org.opensearch.indexmanagement.opensearchapi.optionalUserField
 import org.opensearch.indexmanagement.util.IndexUtils
 import org.opensearch.jobscheduler.spi.ScheduledJobParameter
 import org.opensearch.jobscheduler.spi.schedule.CronSchedule
@@ -58,10 +61,11 @@ data class Transform(
     val sourceIndex: String,
     val dataSelectionQuery: QueryBuilder = MatchAllQueryBuilder(),
     val targetIndex: String,
-    val roles: List<String>,
+    @Deprecated("Will be ignored, to check the roles use user field") val roles: List<String> = emptyList(),
     val pageSize: Int,
     val groups: List<Dimension>,
-    val aggregations: AggregatorFactories.Builder = AggregatorFactories.builder()
+    val aggregations: AggregatorFactories.Builder = AggregatorFactories.builder(),
+    val user: User? = null
 ) : ScheduledJobParameter, Writeable {
 
     init {
@@ -107,10 +111,10 @@ data class Transform(
             .field(SOURCE_INDEX_FIELD, sourceIndex)
             .field(DATA_SELECTION_QUERY_FIELD, dataSelectionQuery)
             .field(TARGET_INDEX_FIELD, targetIndex)
-            .field(ROLES_FIELD, roles.toTypedArray())
             .field(PAGE_SIZE_FIELD, pageSize)
             .field(GROUPS_FIELD, groups.toTypedArray())
             .field(AGGREGATIONS_FIELD, aggregations)
+        if (params.paramAsBoolean(WITH_USER, true)) builder.optionalUserField(USER_FIELD, user)
         if (params.paramAsBoolean(WITH_TYPE, true)) builder.endObject()
         builder.endObject()
         return builder
@@ -147,6 +151,8 @@ data class Transform(
             }
         }
         out.writeOptionalWriteable(aggregations)
+        out.writeBoolean(user != null)
+        user?.writeTo(out)
     }
 
     fun convertToDoc(docCount: Long, includeId: Boolean = true): MutableMap<String, Any?> {
@@ -199,7 +205,10 @@ data class Transform(
             }
             dimensionList.toList()
         },
-        aggregations = requireNotNull(sin.readOptionalWriteable { AggregatorFactories.Builder(it) }) { "Aggregations cannot be null" }
+        aggregations = requireNotNull(sin.readOptionalWriteable { AggregatorFactories.Builder(it) }) { "Aggregations cannot be null" },
+        user = if (sin.readBoolean()) {
+            User(sin)
+        } else null
     )
 
     companion object {
@@ -231,8 +240,9 @@ data class Transform(
         const val MINIMUM_JOB_INTERVAL = 1
         const val TRANSFORM_DOC_ID_FIELD = "$TRANSFORM_TYPE._id"
         const val TRANSFORM_DOC_COUNT_FIELD = "$TRANSFORM_TYPE._doc_count"
+        const val USER_FIELD = "user"
 
-        @Suppress("LongMethod")
+        @Suppress("ComplexMethod", "LongMethod")
         @JvmStatic
         @JvmOverloads
         fun parse(
@@ -251,10 +261,10 @@ data class Transform(
             var dataSelectionQuery: QueryBuilder = MatchAllQueryBuilder()
             var targetIndex: String? = null
             var metadataId: String? = null
-            val roles = mutableListOf<String>()
             var pageSize: Int? = null
             val groups = mutableListOf<Dimension>()
             var aggregations: AggregatorFactories.Builder = AggregatorFactories.builder()
+            var user: User? = null
 
             ensureExpectedToken(Token.START_OBJECT, xcp.currentToken(), xcp)
 
@@ -287,9 +297,10 @@ data class Transform(
                     TARGET_INDEX_FIELD -> targetIndex = xcp.text()
                     METADATA_ID_FIELD -> metadataId = xcp.textOrNull()
                     ROLES_FIELD -> {
+                        // Parsing but not storing the field, deprecated
                         ensureExpectedToken(Token.START_ARRAY, xcp.currentToken(), xcp)
                         while (xcp.nextToken() != Token.END_ARRAY) {
-                            roles.add(xcp.text())
+                            xcp.text()
                         }
                     }
                     PAGE_SIZE_FIELD -> pageSize = xcp.intValue()
@@ -300,6 +311,9 @@ data class Transform(
                         }
                     }
                     AGGREGATIONS_FIELD -> aggregations = AggregatorFactories.parseAggregators(xcp)
+                    USER_FIELD -> {
+                        user = if (xcp.currentToken() == Token.VALUE_NULL) null else User.parse(xcp)
+                    }
                     else -> throw IllegalArgumentException("Invalid field [$fieldName] found in Transforms.")
                 }
             }
@@ -335,10 +349,10 @@ data class Transform(
                 sourceIndex = requireNotNull(sourceIndex) { "Transform source index is null" },
                 dataSelectionQuery = dataSelectionQuery,
                 targetIndex = requireNotNull(targetIndex) { "Transform target index is null" },
-                roles = roles,
                 pageSize = requireNotNull(pageSize) { "Transform page size is null" },
                 groups = groups,
-                aggregations = aggregations
+                aggregations = aggregations,
+                user = user
             )
         }
     }

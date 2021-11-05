@@ -34,14 +34,17 @@ import org.opensearch.common.xcontent.XContentBuilder
 import org.opensearch.common.xcontent.XContentParser
 import org.opensearch.common.xcontent.XContentParser.Token
 import org.opensearch.common.xcontent.XContentParserUtils.ensureExpectedToken
+import org.opensearch.commons.authuser.User
 import org.opensearch.index.seqno.SequenceNumbers
 import org.opensearch.indexmanagement.common.model.dimension.DateHistogram
 import org.opensearch.indexmanagement.common.model.dimension.Dimension
 import org.opensearch.indexmanagement.common.model.dimension.Histogram
 import org.opensearch.indexmanagement.common.model.dimension.Terms
 import org.opensearch.indexmanagement.indexstatemanagement.util.WITH_TYPE
+import org.opensearch.indexmanagement.indexstatemanagement.util.WITH_USER
 import org.opensearch.indexmanagement.opensearchapi.instant
 import org.opensearch.indexmanagement.opensearchapi.optionalTimeField
+import org.opensearch.indexmanagement.opensearchapi.optionalUserField
 import org.opensearch.indexmanagement.util.IndexUtils
 import org.opensearch.indexmanagement.util._ID
 import org.opensearch.jobscheduler.spi.ScheduledJobParameter
@@ -58,19 +61,20 @@ data class Rollup(
     val primaryTerm: Long = SequenceNumbers.UNASSIGNED_PRIMARY_TERM,
     val enabled: Boolean,
     val schemaVersion: Long,
-    val jobSchedule: Schedule,
+    var jobSchedule: Schedule,
     val jobLastUpdatedTime: Instant,
     val jobEnabledTime: Instant?,
     val description: String,
     val sourceIndex: String,
     val targetIndex: String,
     val metadataID: String?,
-    val roles: List<String>,
+    @Deprecated("Will be ignored, to check the roles use user field") val roles: List<String> = listOf(),
     val pageSize: Int,
     val delay: Long?,
     val continuous: Boolean,
     val dimensions: List<Dimension>,
-    val metrics: List<RollupMetrics>
+    val metrics: List<RollupMetrics>,
+    val user: User? = null
 ) : ScheduledJobParameter, Writeable {
 
     init {
@@ -79,12 +83,26 @@ data class Rollup(
         } else {
             require(jobEnabledTime == null) { "Job enabled time must not be present if the job is disabled" }
         }
+        // Copy the delay parameter of the job into the job scheduler for continuous jobs only
+        if (jobSchedule.delay != delay && continuous) {
+            jobSchedule = when (jobSchedule) {
+                is CronSchedule -> {
+                    val cronSchedule = jobSchedule as CronSchedule
+                    CronSchedule(cronSchedule.cronExpression, cronSchedule.timeZone, delay ?: 0)
+                }
+                is IntervalSchedule -> {
+                    val intervalSchedule = jobSchedule as IntervalSchedule
+                    IntervalSchedule(intervalSchedule.startTime, intervalSchedule.interval, intervalSchedule.unit, delay ?: 0)
+                }
+                else -> jobSchedule
+            }
+        }
         when (jobSchedule) {
             is CronSchedule -> {
                 // Job scheduler already correctly throws errors for this
             }
             is IntervalSchedule -> {
-                require(jobSchedule.interval >= MINIMUM_JOB_INTERVAL) { "Rollup job schedule interval must be greater than 0" }
+                require((jobSchedule as IntervalSchedule).interval >= MINIMUM_JOB_INTERVAL) { "Rollup job schedule interval must be greater than 0" }
             }
         }
         require(sourceIndex != targetIndex) { "Your source and target index cannot be the same" }
@@ -93,7 +111,10 @@ data class Rollup(
         }
         require(dimensions.first().type == Dimension.Type.DATE_HISTOGRAM) { "The first dimension must be a date histogram" }
         require(pageSize in MINIMUM_PAGE_SIZE..MAXIMUM_PAGE_SIZE) { "Page size must be between 1 and 10,000" }
-        if (delay != null) require(delay >= MINIMUM_DELAY) { "Delay must be non-negative if set" }
+        if (delay != null) {
+            require(delay >= MINIMUM_DELAY) { "Delay must be non-negative if set" }
+            require(delay <= Instant.now().toEpochMilli()) { "Delay must be less than the current unix time" }
+        }
     }
 
     override fun isEnabled() = enabled
@@ -146,7 +167,10 @@ data class Rollup(
             }
             dimensionsList.toList()
         },
-        metrics = sin.readList(::RollupMetrics)
+        metrics = sin.readList(::RollupMetrics),
+        user = if (sin.readBoolean()) {
+            User(sin)
+        } else null
     )
 
     override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
@@ -162,12 +186,12 @@ data class Rollup(
             .field(SOURCE_INDEX_FIELD, sourceIndex)
             .field(TARGET_INDEX_FIELD, targetIndex)
             .field(METADATA_ID_FIELD, metadataID)
-            .field(ROLES_FIELD, roles.toTypedArray())
             .field(PAGE_SIZE_FIELD, pageSize)
             .field(DELAY_FIELD, delay)
             .field(CONTINUOUS_FIELD, continuous)
             .field(DIMENSIONS_FIELD, dimensions.toTypedArray())
             .field(RollupMetrics.METRICS_FIELD, metrics.toTypedArray())
+        if (params.paramAsBoolean(WITH_USER, true)) builder.optionalUserField(USER_FIELD, user)
         if (params.paramAsBoolean(WITH_TYPE, true)) builder.endObject()
         builder.endObject()
         return builder
@@ -205,6 +229,8 @@ data class Rollup(
             }
         }
         out.writeCollection(metrics)
+        out.writeBoolean(user != null)
+        user?.writeTo(out)
     }
 
     companion object {
@@ -238,6 +264,7 @@ data class Rollup(
         const val ROLLUP_DOC_ID_FIELD = "$ROLLUP_TYPE.$_ID"
         const val ROLLUP_DOC_COUNT_FIELD = "$ROLLUP_TYPE._doc_count"
         const val ROLLUP_DOC_SCHEMA_VERSION_FIELD = "$ROLLUP_TYPE._$SCHEMA_VERSION_FIELD"
+        const val USER_FIELD = "user"
 
         @Suppress("ComplexMethod", "LongMethod", "NestedBlockDepth")
         @JvmStatic
@@ -258,12 +285,12 @@ data class Rollup(
             var sourceIndex: String? = null
             var targetIndex: String? = null
             var metadataID: String? = null
-            val roles = mutableListOf<String>()
             var pageSize: Int? = null
             var delay: Long? = null
             var continuous = false
             val dimensions = mutableListOf<Dimension>()
             val metrics = mutableListOf<RollupMetrics>()
+            var user: User? = null
 
             ensureExpectedToken(Token.START_OBJECT, xcp.currentToken(), xcp)
 
@@ -283,9 +310,10 @@ data class Rollup(
                     TARGET_INDEX_FIELD -> targetIndex = xcp.text()
                     METADATA_ID_FIELD -> metadataID = xcp.textOrNull()
                     ROLES_FIELD -> {
+                        // Parsing but not storing the field, deprecated
                         ensureExpectedToken(Token.START_ARRAY, xcp.currentToken(), xcp)
                         while (xcp.nextToken() != Token.END_ARRAY) {
-                            roles.add(xcp.text())
+                            xcp.text()
                         }
                     }
                     PAGE_SIZE_FIELD -> pageSize = xcp.intValue()
@@ -303,6 +331,9 @@ data class Rollup(
                             metrics.add(RollupMetrics.parse(xcp))
                         }
                     }
+                    USER_FIELD -> {
+                        user = if (xcp.currentToken() == Token.VALUE_NULL) null else User.parse(xcp)
+                    }
                     else -> throw IllegalArgumentException("Invalid field [$fieldName] found in Rollup.")
                 }
             }
@@ -317,7 +348,7 @@ data class Rollup(
             // TODO: Make startTime public in Job Scheduler so we can just directly check the value
             if (seqNo == SequenceNumbers.UNASSIGNED_SEQ_NO || primaryTerm == SequenceNumbers.UNASSIGNED_PRIMARY_TERM) {
                 if (schedule is IntervalSchedule) {
-                    schedule = IntervalSchedule(Instant.now(), schedule.interval, schedule.unit)
+                    schedule = IntervalSchedule(Instant.now(), schedule.interval, schedule.unit, schedule.delay ?: 0)
                 }
             }
             return Rollup(
@@ -333,12 +364,12 @@ data class Rollup(
                 sourceIndex = requireNotNull(sourceIndex) { "Rollup source index is null" },
                 targetIndex = requireNotNull(targetIndex) { "Rollup target index is null" },
                 metadataID = metadataID,
-                roles = roles.toList(),
                 pageSize = requireNotNull(pageSize) { "Rollup page size is null" },
                 delay = delay,
                 continuous = continuous,
                 dimensions = dimensions,
-                metrics = metrics
+                metrics = metrics,
+                user = user
             )
         }
     }

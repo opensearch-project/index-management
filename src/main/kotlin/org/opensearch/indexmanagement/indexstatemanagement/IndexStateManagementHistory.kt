@@ -30,6 +30,7 @@ import org.apache.logging.log4j.LogManager
 import org.opensearch.action.ActionListener
 import org.opensearch.action.DocWriteRequest
 import org.opensearch.action.admin.cluster.state.ClusterStateRequest
+import org.opensearch.action.admin.cluster.state.ClusterStateResponse
 import org.opensearch.action.admin.indices.delete.DeleteIndexRequest
 import org.opensearch.action.admin.indices.rollover.RolloverRequest
 import org.opensearch.action.admin.indices.rollover.RolloverResponse
@@ -37,6 +38,7 @@ import org.opensearch.action.bulk.BulkRequest
 import org.opensearch.action.bulk.BulkResponse
 import org.opensearch.action.index.IndexRequest
 import org.opensearch.action.support.IndicesOptions
+import org.opensearch.action.support.master.AcknowledgedResponse
 import org.opensearch.client.Client
 import org.opensearch.cluster.LocalNodeMasterListener
 import org.opensearch.cluster.service.ClusterService
@@ -44,7 +46,6 @@ import org.opensearch.common.settings.Settings
 import org.opensearch.common.xcontent.ToXContent
 import org.opensearch.common.xcontent.XContentFactory
 import org.opensearch.common.xcontent.XContentType
-import org.opensearch.index.IndexNotFoundException
 import org.opensearch.indexmanagement.IndexManagementIndices
 import org.opensearch.indexmanagement.IndexManagementPlugin
 import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
@@ -61,6 +62,7 @@ import org.opensearch.threadpool.ThreadPool
 import java.time.Instant
 
 @OpenForTesting
+@Suppress("TooManyFunctions")
 class IndexStateManagementHistory(
     settings: Settings,
     private val client: Client,
@@ -105,7 +107,7 @@ class IndexStateManagementHistory(
     override fun onMaster() {
         try {
             // try to rollover immediately as we might be restarting the cluster
-            rolloverHistoryIndex()
+            if (historyEnabled) rolloverHistoryIndex()
             // schedule the next rollover for approx MAX_AGE later
             scheduledRollover = threadPool.scheduleWithFixedDelay(
                 { rolloverAndDeleteHistoryIndex() },
@@ -176,7 +178,6 @@ class IndexStateManagementHistory(
 
     @Suppress("SpreadOperator", "NestedBlockDepth", "ComplexMethod")
     private fun deleteOldHistoryIndex() {
-        val indexToDelete = mutableListOf<String>()
 
         val clusterStateRequest = ClusterStateRequest()
             .clear()
@@ -185,8 +186,28 @@ class IndexStateManagementHistory(
             .local(true)
             .indicesOptions(IndicesOptions.strictExpand())
 
-        val clusterStateResponse = client.admin().cluster().state(clusterStateRequest).actionGet()
+        client.admin().cluster().state(
+            clusterStateRequest,
+            object : ActionListener<ClusterStateResponse> {
+                override fun onResponse(clusterStateResponse: ClusterStateResponse) {
+                    if (!clusterStateResponse.state.metadata.indices.isEmpty) {
+                        val indicesToDelete = getIndicesToDelete(clusterStateResponse)
+                        logger.info("Deleting old history indices viz $indicesToDelete")
+                        deleteAllOldHistoryIndices(indicesToDelete)
+                    } else {
+                        logger.info("No Old History Indices to delete")
+                    }
+                }
 
+                override fun onFailure(exception: Exception) {
+                    logger.error("Error fetching cluster state ${exception.message}")
+                }
+            }
+        )
+    }
+
+    private fun getIndicesToDelete(clusterStateResponse: ClusterStateResponse): List<String> {
+        var indicesToDelete = mutableListOf<String>()
         for (entry in clusterStateResponse.state.metadata.indices()) {
             val indexMetaData = entry.value
             val creationTime = indexMetaData.creationDate
@@ -198,27 +219,51 @@ class IndexStateManagementHistory(
                     continue
                 }
 
-                indexToDelete.add(indexMetaData.index.name)
+                indicesToDelete.add(indexMetaData.index.name)
             }
         }
+        return indicesToDelete
+    }
 
-        if (indexToDelete.isNotEmpty()) {
-            val deleteRequest = DeleteIndexRequest(*indexToDelete.toTypedArray())
-            val deleteResponse = client.admin().indices().delete(deleteRequest).actionGet()
-            if (!deleteResponse.isAcknowledged) {
-                logger.error("could not delete one or more ISM history index. $indexToDelete. Retrying one by one.")
-                for (index in indexToDelete) {
-                    try {
-                        val singleDeleteRequest = DeleteIndexRequest(*indexToDelete.toTypedArray())
-                        val singleDeleteResponse = client.admin().indices().delete(singleDeleteRequest).actionGet()
+    @Suppress("SpreadOperator")
+    private fun deleteAllOldHistoryIndices(indicesToDelete: List<String>) {
+        if (indicesToDelete.isNotEmpty()) {
+            val deleteRequest = DeleteIndexRequest(*indicesToDelete.toTypedArray())
+            client.admin().indices().delete(
+                deleteRequest,
+                object : ActionListener<AcknowledgedResponse> {
+                    override fun onResponse(deleteIndicesResponse: AcknowledgedResponse) {
+                        if (!deleteIndicesResponse.isAcknowledged) {
+                            logger.error("could not delete one or more ISM history index. $indicesToDelete. Retrying one by one.")
+                            deleteOldHistoryIndex(indicesToDelete)
+                        }
+                    }
+                    override fun onFailure(exception: Exception) {
+                        logger.error("Error deleting old history indices ${exception.message}")
+                        deleteOldHistoryIndex(indicesToDelete)
+                    }
+                }
+            )
+        }
+    }
+
+    @Suppress("SpreadOperator")
+    private fun deleteOldHistoryIndex(indicesToDelete: List<String>) {
+        for (index in indicesToDelete) {
+            val singleDeleteRequest = DeleteIndexRequest(*indicesToDelete.toTypedArray())
+            client.admin().indices().delete(
+                singleDeleteRequest,
+                object : ActionListener<AcknowledgedResponse> {
+                    override fun onResponse(singleDeleteResponse: AcknowledgedResponse) {
                         if (!singleDeleteResponse.isAcknowledged) {
                             logger.error("could not delete one or more ISM history index. $index.")
                         }
-                    } catch (e: IndexNotFoundException) {
-                        logger.debug("$index was already deleted. ${e.message}")
+                    }
+                    override fun onFailure(exception: Exception) {
+                        logger.debug("Exception ${exception.message} while deleting the index $index")
                     }
                 }
-            }
+            )
         }
     }
 

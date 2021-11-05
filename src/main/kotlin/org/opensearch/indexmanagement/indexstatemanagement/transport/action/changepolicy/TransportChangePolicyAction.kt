@@ -28,6 +28,7 @@ package org.opensearch.indexmanagement.indexstatemanagement.transport.action.cha
 
 import org.apache.logging.log4j.LogManager
 import org.opensearch.ExceptionsHelper
+import org.opensearch.OpenSearchSecurityException
 import org.opensearch.OpenSearchStatusException
 import org.opensearch.action.ActionListener
 import org.opensearch.action.admin.cluster.state.ClusterStateRequest
@@ -46,10 +47,9 @@ import org.opensearch.client.node.NodeClient
 import org.opensearch.cluster.ClusterState
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.inject.Inject
-import org.opensearch.common.xcontent.LoggingDeprecationHandler
+import org.opensearch.common.settings.Settings
 import org.opensearch.common.xcontent.NamedXContentRegistry
-import org.opensearch.common.xcontent.XContentHelper
-import org.opensearch.common.xcontent.XContentType
+import org.opensearch.commons.authuser.User
 import org.opensearch.index.Index
 import org.opensearch.indexmanagement.IndexManagementPlugin
 import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexConfig
@@ -61,38 +61,58 @@ import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.getMana
 import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.mgetResponseToList
 import org.opensearch.indexmanagement.indexstatemanagement.resthandler.RestChangePolicyAction
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.ISMStatusResponse
+import org.opensearch.indexmanagement.indexstatemanagement.transport.action.managedIndex.ManagedIndexAction
+import org.opensearch.indexmanagement.indexstatemanagement.transport.action.managedIndex.ManagedIndexRequest
 import org.opensearch.indexmanagement.indexstatemanagement.util.FailedIndex
 import org.opensearch.indexmanagement.indexstatemanagement.util.isSafeToChange
 import org.opensearch.indexmanagement.indexstatemanagement.util.updateManagedIndexRequest
 import org.opensearch.indexmanagement.opensearchapi.contentParser
+import org.opensearch.indexmanagement.opensearchapi.parseFromGetResponse
 import org.opensearch.indexmanagement.opensearchapi.parseWithType
+import org.opensearch.indexmanagement.settings.IndexManagementSettings
+import org.opensearch.indexmanagement.util.IndexManagementException
 import org.opensearch.indexmanagement.util.IndexUtils
 import org.opensearch.indexmanagement.util.NO_ID
+import org.opensearch.indexmanagement.util.SecurityUtils.Companion.buildUser
+import org.opensearch.indexmanagement.util.SecurityUtils.Companion.userHasPermissionForResource
+import org.opensearch.indexmanagement.util.SecurityUtils.Companion.validateUserConfiguration
 import org.opensearch.rest.RestStatus
 import org.opensearch.search.fetch.subphase.FetchSourceContext
 import org.opensearch.tasks.Task
 import org.opensearch.transport.TransportService
+import java.lang.IllegalArgumentException
 
 private val log = LogManager.getLogger(TransportChangePolicyAction::class.java)
 
+@Suppress("SpreadOperator", "TooManyFunctions")
 class TransportChangePolicyAction @Inject constructor(
     val client: NodeClient,
     transportService: TransportService,
     actionFilters: ActionFilters,
     val clusterService: ClusterService,
+    val settings: Settings,
     val xContentRegistry: NamedXContentRegistry
 ) : HandledTransportAction<ChangePolicyRequest, ISMStatusResponse>(
     ChangePolicyAction.NAME, transportService, actionFilters, ::ChangePolicyRequest
 ) {
+
+    @Volatile private var filterByEnabled = IndexManagementSettings.FILTER_BY_BACKEND_ROLES.get(settings)
+
+    init {
+        clusterService.clusterSettings.addSettingsUpdateConsumer(IndexManagementSettings.FILTER_BY_BACKEND_ROLES) {
+            filterByEnabled = it
+        }
+    }
+
     override fun doExecute(task: Task, request: ChangePolicyRequest, listener: ActionListener<ISMStatusResponse>) {
         ChangePolicyHandler(client, listener, request).start()
     }
 
-    @Suppress("TooManyFunctions")
     inner class ChangePolicyHandler(
         private val client: NodeClient,
         private val actionListener: ActionListener<ISMStatusResponse>,
-        private val request: ChangePolicyRequest
+        private val request: ChangePolicyRequest,
+        private val user: User? = buildUser(client.threadPool().threadContext)
     ) {
 
         private val failedIndices = mutableListOf<FailedIndex>()
@@ -100,14 +120,53 @@ class TransportChangePolicyAction @Inject constructor(
         private val indexUuidToCurrentState = mutableMapOf<String, String>()
         private val changePolicy = request.changePolicy
         private lateinit var policy: Policy
-        private lateinit var getPolicyResponse: GetResponse
         private lateinit var clusterState: ClusterState
         private var updated: Int = 0
 
         fun start() {
+            if (user == null) {
+                getPolicy()
+            } else {
+                validateAndGetPolicy()
+            }
+        }
+
+        private fun validateAndGetPolicy() {
+            val request = ManagedIndexRequest().indices(*request.indices.toTypedArray())
+            client.execute(
+                ManagedIndexAction.INSTANCE,
+                request,
+                object : ActionListener<AcknowledgedResponse> {
+                    override fun onResponse(response: AcknowledgedResponse) {
+                        getPolicy()
+                    }
+
+                    override fun onFailure(e: java.lang.Exception) {
+                        actionListener.onFailure(
+                            IndexManagementException.wrap(
+                                when (e is OpenSearchSecurityException) {
+                                    true -> OpenSearchStatusException(
+                                        "User doesn't have required index permissions on one or more requested indices: ${e.localizedMessage}",
+                                        RestStatus.FORBIDDEN
+                                    )
+                                    false -> e
+                                }
+                            )
+                        )
+                    }
+                }
+            )
+        }
+
+        private fun getPolicy() {
             val getRequest = GetRequest(IndexManagementPlugin.INDEX_MANAGEMENT_INDEX, changePolicy.policyID)
 
-            client.get(getRequest, ActionListener.wrap(::onGetPolicyResponse, ::onFailure))
+            client.threadPool().threadContext.stashContext().use {
+                if (!validateUserConfiguration(user, filterByEnabled, actionListener)) {
+                    return
+                }
+                client.get(getRequest, ActionListener.wrap(::onGetPolicyResponse, ::onFailure))
+            }
         }
 
         private fun onGetPolicyResponse(response: GetResponse) {
@@ -115,7 +174,15 @@ class TransportChangePolicyAction @Inject constructor(
                 actionListener.onFailure(OpenSearchStatusException("Could not find policy=${request.changePolicy.policyID}", RestStatus.NOT_FOUND))
                 return
             }
-            this.getPolicyResponse = response
+            try {
+                policy = parseFromGetResponse(response, xContentRegistry, Policy.Companion::parse)
+            } catch (e: IllegalArgumentException) {
+                actionListener.onFailure(OpenSearchStatusException("Could not find policy=${request.changePolicy.policyID}", RestStatus.NOT_FOUND))
+                return
+            }
+            if (!userHasPermissionForResource(user, policy.user, filterByEnabled, "policy", request.changePolicy.policyID, actionListener)) {
+                return
+            }
 
             IndexUtils.checkAndUpdateConfigIndexMapping(
                 clusterService.state(),
@@ -134,13 +201,6 @@ class TransportChangePolicyAction @Inject constructor(
                 )
                 return
             }
-
-            policy = XContentHelper.createParser(
-                xContentRegistry,
-                LoggingDeprecationHandler.INSTANCE,
-                getPolicyResponse.sourceAsBytesRef,
-                XContentType.JSON
-            ).use { it.parseWithType(getPolicyResponse.id, getPolicyResponse.seqNo, getPolicyResponse.primaryTerm, Policy.Companion::parse) }
 
             getClusterState()
         }
@@ -271,7 +331,7 @@ class TransportChangePolicyAction @Inject constructor(
                 // compare the sweptConfig policy to the get policy here and update changePolicy
                 val currentStateName = indexUuidToCurrentState[sweptConfig.uuid]
                 val updatedChangePolicy = changePolicy
-                    .copy(isSafe = sweptConfig.policy?.isSafeToChange(currentStateName, policy, changePolicy) == true)
+                    .copy(isSafe = sweptConfig.policy?.isSafeToChange(currentStateName, policy, changePolicy) == true, user = this.user)
                 bulkUpdateManagedIndexRequest.add(updateManagedIndexRequest(sweptConfig.copy(changePolicy = updatedChangePolicy)))
                 mapOfItemIdToIndex[id] = Index(sweptConfig.index, sweptConfig.uuid)
             }

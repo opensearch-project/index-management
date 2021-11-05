@@ -36,7 +36,11 @@ class RestGetTransformActionIT : TransformRestTestCase() {
             schemaVersion = indexedTransform.schemaVersion,
             updatedAt = indexedTransform.updatedAt,
             jobSchedule = indexedTransform.jobSchedule,
-            metadataId = null
+            metadataId = null,
+            // Roles are deprecated and will not be returned
+            roles = listOf(),
+            // User information is not returned as part of REST output
+            user = null
         )
         assertEquals("Indexed and retrieved transform differ", transform, indexedTransform)
     }
@@ -80,7 +84,8 @@ class RestGetTransformActionIT : TransformRestTestCase() {
             assertEquals(testTransform.description, innerTransform["description"] as String)
             assertEquals(testTransform.sourceIndex, innerTransform["source_index"] as String)
             assertEquals(testTransform.targetIndex, innerTransform["target_index"] as String)
-            assertEquals(testTransform.roles, innerTransform["roles"] as List<String>)
+            assertNull(innerTransform["roles"])
+            assertNull(innerTransform["user"])
             assertEquals(testTransform.pageSize, innerTransform["page_size"] as Int)
             assertEquals(testTransform.groups.size, (innerTransform["groups"] as List<Dimension>).size)
         }

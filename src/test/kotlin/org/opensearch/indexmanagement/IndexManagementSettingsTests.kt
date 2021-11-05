@@ -103,6 +103,7 @@ class IndexManagementSettingsTests : OpenSearchTestCase() {
                     ManagedIndexSettings.COORDINATOR_BACKOFF_MILLIS,
                     ManagedIndexSettings.ALLOW_LIST,
                     ManagedIndexSettings.SNAPSHOT_DENY_LIST,
+                    ManagedIndexSettings.JITTER,
                     RollupSettings.ROLLUP_INGEST_BACKOFF_COUNT,
                     RollupSettings.ROLLUP_INGEST_BACKOFF_MILLIS,
                     RollupSettings.ROLLUP_SEARCH_BACKOFF_COUNT,
@@ -110,6 +111,7 @@ class IndexManagementSettingsTests : OpenSearchTestCase() {
                     RollupSettings.ROLLUP_INDEX,
                     RollupSettings.ROLLUP_ENABLED,
                     RollupSettings.ROLLUP_SEARCH_ENABLED,
+                    RollupSettings.ROLLUP_SEARCH_ALL_JOBS,
                     RollupSettings.ROLLUP_DASHBOARDS
                 )
             )
@@ -172,6 +174,7 @@ class IndexManagementSettingsTests : OpenSearchTestCase() {
         assertEquals(ManagedIndexSettings.SNAPSHOT_DENY_LIST.get(settings), listOf("1"))
         assertEquals(RollupSettings.ROLLUP_ENABLED.get(settings), false)
         assertEquals(RollupSettings.ROLLUP_SEARCH_ENABLED.get(settings), false)
+        assertEquals(RollupSettings.ROLLUP_SEARCH_ALL_JOBS.get(settings), false)
         assertEquals(RollupSettings.ROLLUP_INGEST_BACKOFF_MILLIS.get(settings), TimeValue.timeValueMillis(1))
         assertEquals(RollupSettings.ROLLUP_INGEST_BACKOFF_COUNT.get(settings), 1)
         assertEquals(RollupSettings.ROLLUP_SEARCH_BACKOFF_MILLIS.get(settings), TimeValue.timeValueMillis(1))

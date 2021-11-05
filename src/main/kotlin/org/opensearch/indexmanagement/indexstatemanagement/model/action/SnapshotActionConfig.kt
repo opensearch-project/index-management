@@ -66,7 +66,7 @@ data class SnapshotActionConfig(
         client: Client,
         settings: Settings,
         managedIndexMetaData: ManagedIndexMetaData
-    ): Action = SnapshotAction(clusterService, client, managedIndexMetaData, this)
+    ): Action = SnapshotAction(clusterService, scriptService, client, managedIndexMetaData, this)
 
     @Throws(IOException::class)
     constructor(sin: StreamInput) : this(

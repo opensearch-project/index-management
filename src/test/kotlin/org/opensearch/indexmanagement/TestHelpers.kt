@@ -33,6 +33,7 @@ import org.opensearch.client.RequestOptions
 import org.opensearch.client.Response
 import org.opensearch.client.RestClient
 import org.opensearch.client.WarningsHandler
+import org.opensearch.commons.authuser.User
 import org.opensearch.jobscheduler.spi.schedule.CronSchedule
 import org.opensearch.jobscheduler.spi.schedule.IntervalSchedule
 import org.opensearch.jobscheduler.spi.schedule.Schedule
@@ -65,6 +66,19 @@ fun randomCronSchedule(): CronSchedule = CronSchedule(randomCronExpression(), Op
 fun randomIntervalSchedule(): IntervalSchedule = IntervalSchedule(randomInstant(), OpenSearchRestTestCase.randomIntBetween(1, 100), randomChronoUnit())
 
 fun randomSchedule(): Schedule = if (OpenSearchRestTestCase.randomBoolean()) randomIntervalSchedule() else randomCronSchedule()
+
+private fun randomStringList(): List<String> {
+    val data = mutableListOf<String>()
+    for (i in 1..OpenSearchRestTestCase.randomIntBetween(10, 10)) {
+        data.add(OpenSearchRestTestCase.randomAlphaOfLength(10))
+    }
+
+    return data
+}
+
+fun randomUser(): User {
+    return User(OpenSearchRestTestCase.randomAlphaOfLength(10), randomStringList(), randomStringList(), randomStringList())
+}
 
 /**
 * Wrapper for [RestClient.performRequest] which was deprecated in ES 6.5 and is used in tests. This provides

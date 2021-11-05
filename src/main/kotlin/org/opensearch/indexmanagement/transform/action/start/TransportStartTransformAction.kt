@@ -24,62 +24,90 @@ import org.opensearch.action.support.master.AcknowledgedResponse
 import org.opensearch.action.update.UpdateRequest
 import org.opensearch.action.update.UpdateResponse
 import org.opensearch.client.Client
+import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.inject.Inject
+import org.opensearch.common.settings.Settings
 import org.opensearch.common.xcontent.LoggingDeprecationHandler
 import org.opensearch.common.xcontent.NamedXContentRegistry
 import org.opensearch.common.xcontent.XContentHelper
 import org.opensearch.common.xcontent.XContentType
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
+import org.opensearch.indexmanagement.opensearchapi.parseFromGetResponse
 import org.opensearch.indexmanagement.opensearchapi.parseWithType
-import org.opensearch.indexmanagement.transform.action.get.GetTransformAction
-import org.opensearch.indexmanagement.transform.action.get.GetTransformRequest
-import org.opensearch.indexmanagement.transform.action.get.GetTransformResponse
+import org.opensearch.indexmanagement.settings.IndexManagementSettings
 import org.opensearch.indexmanagement.transform.model.Transform
 import org.opensearch.indexmanagement.transform.model.TransformMetadata
+import org.opensearch.indexmanagement.util.SecurityUtils.Companion.buildUser
+import org.opensearch.indexmanagement.util.SecurityUtils.Companion.userHasPermissionForResource
 import org.opensearch.rest.RestStatus
 import org.opensearch.tasks.Task
 import org.opensearch.transport.TransportService
 import java.time.Instant
 
+@Suppress("ReturnCount")
 class TransportStartTransformAction @Inject constructor(
     transportService: TransportService,
     val client: Client,
-    actionFilters: ActionFilters
+    val settings: Settings,
+    val clusterService: ClusterService,
+    actionFilters: ActionFilters,
+    val xContentRegistry: NamedXContentRegistry
 ) : HandledTransportAction<StartTransformRequest, AcknowledgedResponse>(
     StartTransformAction.NAME, transportService, actionFilters, ::StartTransformRequest
 ) {
+
+    @Volatile private var filterByEnabled = IndexManagementSettings.FILTER_BY_BACKEND_ROLES.get(settings)
+
+    init {
+        clusterService.clusterSettings.addSettingsUpdateConsumer(IndexManagementSettings.FILTER_BY_BACKEND_ROLES) {
+            filterByEnabled = it
+        }
+    }
+
     private val log = LogManager.getLogger(javaClass)
 
     override fun doExecute(task: Task, request: StartTransformRequest, actionListener: ActionListener<AcknowledgedResponse>) {
-        val getReq = GetTransformRequest(request.id())
-        client.execute(
-            GetTransformAction.INSTANCE, getReq,
-            object : ActionListener<GetTransformResponse> {
-                override fun onResponse(response: GetTransformResponse) {
-                    val transform = response.transform
-                    if (transform == null) {
-                        return actionListener.onFailure(
-                            OpenSearchStatusException("Could not find transform [${request.id()}]", RestStatus.NOT_FOUND)
-                        )
-                    }
-
-                    if (transform.enabled) {
-                        log.debug("Transform job is already enabled, checking if metadata needs to be updated")
-                        return if (transform.metadataId == null) {
-                            actionListener.onResponse(AcknowledgedResponse(true))
-                        } else {
-                            retrieveAndUpdateTransformMetadata(transform, actionListener)
+        val getRequest = GetRequest(INDEX_MANAGEMENT_INDEX, request.id())
+        val user = buildUser(client.threadPool().threadContext)
+        client.threadPool().threadContext.stashContext().use {
+            client.get(
+                getRequest,
+                object : ActionListener<GetResponse> {
+                    override fun onResponse(response: GetResponse) {
+                        if (!response.isExists) {
+                            actionListener.onFailure(OpenSearchStatusException("Transform not found", RestStatus.NOT_FOUND))
+                            return
                         }
+
+                        val transform: Transform?
+                        try {
+                            transform = parseFromGetResponse(response, xContentRegistry, Transform.Companion::parse)
+                        } catch (e: IllegalArgumentException) {
+                            actionListener.onFailure(OpenSearchStatusException("Transform not found", RestStatus.NOT_FOUND))
+                            return
+                        }
+
+                        if (!userHasPermissionForResource(user, transform.user, filterByEnabled, "transform", transform.id, actionListener)) {
+                            return
+                        }
+                        if (transform.enabled) {
+                            log.debug("Transform job is already enabled, checking if metadata needs to be updated")
+                            return if (transform.metadataId == null) {
+                                actionListener.onResponse(AcknowledgedResponse(true))
+                            } else {
+                                retrieveAndUpdateTransformMetadata(transform, actionListener)
+                            }
+                        }
+
+                        updateTransformJob(transform, request, actionListener)
                     }
 
-                    updateTransformJob(transform, request, actionListener)
+                    override fun onFailure(e: Exception) {
+                        actionListener.onFailure(ExceptionsHelper.unwrapCause(e) as Exception)
+                    }
                 }
-
-                override fun onFailure(e: Exception) {
-                    actionListener.onFailure(ExceptionsHelper.unwrapCause(e) as Exception)
-                }
-            }
-        )
+            )
+        }
     }
 
     private fun updateTransformJob(

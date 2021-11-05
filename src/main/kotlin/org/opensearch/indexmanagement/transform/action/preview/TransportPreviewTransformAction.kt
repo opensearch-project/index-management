@@ -43,6 +43,7 @@ class TransportPreviewTransformAction @Inject constructor(
     PreviewTransformAction.NAME, transportService, actionFilters, ::PreviewTransformRequest
 ) {
 
+    @Suppress("SpreadOperator")
     override fun doExecute(task: Task, request: PreviewTransformRequest, listener: ActionListener<PreviewTransformResponse>) {
         val transform = request.transform
 
@@ -60,7 +61,7 @@ class TransportPreviewTransformAction @Inject constructor(
                 override fun onResponse(response: GetMappingsResponse) {
                     val issues = validateMappings(concreteIndices.toList(), response, transform)
                     if (issues.isNotEmpty()) {
-                        val errorMessage = "${issues.joinToString(" ")}"
+                        val errorMessage = issues.joinToString(" ")
                         listener.onFailure(OpenSearchStatusException(errorMessage, RestStatus.BAD_REQUEST))
                         return
                     }
