@@ -2,8 +2,6 @@
 
 Compatible with OpenSearch 1.2.0
 
-### Features
-
 ### Enhancements
 
 * Making snapshot name to scripted input in template ([#77](https://github.com/opensearch-project/index-management/pull/77))
@@ -32,5 +30,3 @@ Compatible with OpenSearch 1.2.0
 
 * Updates index management version to 1.2 ([#157](https://github.com/opensearch-project/index-management/pull/157))
 * Updates testCompile mockito version, adds AwaitsFix annotation to MetadataRegressionIT tests ([#168](https://github.com/opensearch-project/index-management/pull/168))
-
-### Refactoring
