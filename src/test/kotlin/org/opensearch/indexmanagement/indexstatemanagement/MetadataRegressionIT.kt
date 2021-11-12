@@ -221,7 +221,7 @@ class MetadataRegressionIT : IndexStateManagementIntegTestCase() {
             )
         }
     }
-    
+
     fun `test new node skip execution when old node exist in cluster`() {
         Assume.assumeTrue(isMixedNodeRegressionTest)
 
