@@ -3,10 +3,6 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-
-
-
-
 /**
  * OpenSearch Plugin build tools don't work with the Gradle Jacoco Plugin to report coverage out of the box.
  * https://github.com/elastic/elasticsearch/issues/28867.
