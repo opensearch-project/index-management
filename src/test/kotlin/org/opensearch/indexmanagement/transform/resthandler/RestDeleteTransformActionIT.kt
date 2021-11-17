@@ -81,7 +81,7 @@ class RestDeleteTransformActionIT : TransformRestTestCase() {
     @Throws(Exception::class)
     fun `test deleting a transform that doesn't exist and config index doesn't exist`() {
         try {
-            deleteIndex(INDEX_MANAGEMENT_INDEX)
+            if (indexExists(INDEX_MANAGEMENT_INDEX)) deleteIndex(INDEX_MANAGEMENT_INDEX)
             val res = client().makeRequest("DELETE", "$TRANSFORM_BASE_URI/foobarbaz")
             fail("expected 404 ResponseException: ${res.asMap()}")
         } catch (e: ResponseException) {
