@@ -14,11 +14,15 @@ package org.opensearch.indexmanagement.bwc
 import org.apache.http.entity.ContentType.APPLICATION_JSON
 import org.apache.http.entity.StringEntity
 import org.opensearch.common.settings.Settings
+import org.opensearch.common.xcontent.XContentFactory
 import org.opensearch.index.query.QueryBuilders
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.LEGACY_POLICY_BASE_URI
 import org.opensearch.indexmanagement.IndexManagementRestTestCase
 import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
+import org.opensearch.indexmanagement.indexstatemanagement.randomPolicy
+import org.opensearch.indexmanagement.indexstatemanagement.util.XCONTENT_WITHOUT_USER
 import org.opensearch.indexmanagement.makeRequest
+import org.opensearch.indexmanagement.opensearchapi.string
 import org.opensearch.rest.RestStatus
 import org.opensearch.search.builder.SearchSourceBuilder
 
@@ -106,60 +110,14 @@ class IndexManagementBackwardsCompatibilityIT : IndexManagementRestTestCase() {
 
     @Throws(Exception::class)
     private fun createBasicPolicy() {
-        val indexName = "test_bwc_index"
-        val legacyPolicyString = """
-            {
-              "policy": {
-                "description": "bwc_test_policy",
-                "default_state": "ingest",
-                "states": [
-                  {
-                    "name": "ingest",
-                    "actions": [
-                      {
-                        "rollover": {
-                          "min_doc_count": 5
-                        }
-                      }
-                    ],
-                    "transitions": [
-                      {
-                        "state_name": "search"
-                      }
-                    ]
-                  },
-                  {
-                    "name": "search",
-                    "actions": [],
-                    "transitions": [
-                      {
-                        "state_name": "delete",
-                        "conditions": {
-                          "min_index_age": "5m"
-                        }
-                      }
-                    ]
-                  },
-                  {
-                    "name": "delete",
-                    "actions": [
-                      {
-                        "delete": {}
-                      }
-                    ],
-                    "transitions": []
-                  }
-                ]
-              }
-            }
-        """.trimIndent()
-        createIndex(indexName, Settings.EMPTY)
+        val builder = XContentFactory.jsonBuilder()
+        val policyString = randomPolicy().toXContent(builder, XCONTENT_WITHOUT_USER).string()
 
         val createResponse = client().makeRequest(
             method = "PUT",
             endpoint = "$LEGACY_POLICY_BASE_URI/bwc_test_policy?refresh=true",
             params = emptyMap(),
-            entity = StringEntity(legacyPolicyString, APPLICATION_JSON)
+            entity = StringEntity(policyString, APPLICATION_JSON)
         )
 
         assertEquals("Create policy failed", RestStatus.CREATED, createResponse.restStatus())
