@@ -94,7 +94,8 @@ class RestStartTransformActionIT : TransformRestTestCase() {
                 Terms(sourceField = "store_and_fwd_flag", targetField = "flag"),
                 DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "1h")
             ),
-            aggregations = AggregatorFactories.builder()
+            aggregations = AggregatorFactories.builder(),
+            continuous = false
         ).let { createTransform(it, it.id) }
 
         // This should fail because source index is deleted
@@ -159,7 +160,8 @@ class RestStartTransformActionIT : TransformRestTestCase() {
             groups = listOf(
                 Terms(sourceField = "store_and_fwd_flag", targetField = "flag")
             ),
-            aggregations = AggregatorFactories.builder()
+            aggregations = AggregatorFactories.builder(),
+            continuous = false
         ).let { createTransform(it, it.id) }
 
         updateTransformStartTime(transform)

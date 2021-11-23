@@ -5,6 +5,7 @@
 
 package org.opensearch.indexmanagement.transform.action.explain
 
+import kotlinx.coroutines.runBlocking
 import org.apache.logging.log4j.LogManager
 import org.opensearch.ExceptionsHelper
 import org.opensearch.ResourceNotFoundException
@@ -28,8 +29,12 @@ import org.opensearch.index.query.BoolQueryBuilder
 import org.opensearch.index.query.IdsQueryBuilder
 import org.opensearch.index.query.WildcardQueryBuilder
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
+import org.opensearch.indexmanagement.opensearchapi.IndexManagementSecurityContext
 import org.opensearch.indexmanagement.opensearchapi.parseWithType
+import org.opensearch.indexmanagement.opensearchapi.withClosableContext
 import org.opensearch.indexmanagement.settings.IndexManagementSettings
+import org.opensearch.indexmanagement.transform.TransformSearchService
+import org.opensearch.indexmanagement.transform.model.ContinuousTransformStats
 import org.opensearch.indexmanagement.transform.model.ExplainTransform
 import org.opensearch.indexmanagement.transform.model.Transform
 import org.opensearch.indexmanagement.transform.model.TransformMetadata
@@ -39,6 +44,7 @@ import org.opensearch.search.builder.SearchSourceBuilder
 import org.opensearch.tasks.Task
 import org.opensearch.transport.RemoteTransportException
 import org.opensearch.transport.TransportService
+import java.lang.Long.max
 
 class TransportExplainTransformAction @Inject constructor(
     transportService: TransportService,
@@ -52,6 +58,7 @@ class TransportExplainTransformAction @Inject constructor(
 ) {
 
     @Volatile private var filterByEnabled = IndexManagementSettings.FILTER_BY_BACKEND_ROLES.get(settings)
+    val transformSearchService = TransformSearchService(settings, clusterService, client)
 
     init {
         clusterService.clusterSettings.addSettingsUpdateConsumer(IndexManagementSettings.FILTER_BY_BACKEND_ROLES) {
@@ -87,10 +94,12 @@ class TransportExplainTransformAction @Inject constructor(
                 searchRequest,
                 object : ActionListener<SearchResponse> {
                     override fun onResponse(response: SearchResponse) {
+                        val metadataIdToTransform: MutableMap<String, Transform> = HashMap()
                         try {
                             response.hits.hits.forEach {
                                 val transform = contentParser(it.sourceRef).parseWithType(it.id, it.seqNo, it.primaryTerm, Transform.Companion::parse)
                                 idsToExplain[transform.id] = ExplainTransform(metadataID = transform.metadataId)
+                                if (transform.metadataId != null) metadataIdToTransform[transform.metadataId] = transform
                             }
                         } catch (e: Exception) {
                             log.error("Failed to parse explain response", e)
@@ -107,8 +116,10 @@ class TransportExplainTransformAction @Inject constructor(
                                 override fun onResponse(response: SearchResponse) {
                                     try {
                                         response.hits.hits.forEach {
-                                            val metadata = contentParser(it.sourceRef)
+                                            var metadata = contentParser(it.sourceRef)
                                                 .parseWithType(it.id, it.seqNo, it.primaryTerm, TransformMetadata.Companion::parse)
+                                            val transform = metadataIdToTransform[it.id]
+                                            if (transform != null && transform.continuous) metadata = metadata.copy(shardIDToGlobalCheckpoint = null, continuousStats = getContinuousStats(transform, metadata))
                                             idsToExplain.computeIfPresent(metadata.transformId) { _, explainTransform ->
                                                 explainTransform.copy(metadata = metadata)
                                             }
@@ -128,6 +139,25 @@ class TransportExplainTransformAction @Inject constructor(
                                             actionListener.onFailure(ExceptionsHelper.unwrapCause(e) as java.lang.Exception)
                                         else -> actionListener.onFailure(e)
                                     }
+                                }
+
+                                fun getContinuousStats(transform: Transform, metadata: TransformMetadata): ContinuousTransformStats? {
+                                    val shardIDsToGlobalCheckpoint = runBlocking {
+                                        withClosableContext(IndexManagementSecurityContext(transform.id, settings, client.threadPool().threadContext, transform.user)) {
+                                            transformSearchService.getShardsGlobalCheckpoint(transform.sourceIndex)
+                                        }
+                                    }
+                                    val documentsBehind: MutableMap<String, Long> = HashMap()
+                                    shardIDsToGlobalCheckpoint.forEach { (shardID, globalCheckpoint) ->
+                                        val indexName = shardID.indexName
+                                        val newGlobalCheckpoint = if (globalCheckpoint < 0) 0 else globalCheckpoint
+                                        // If the global checkpoint hasn't been initialized yet, it may be -1 or -2, just set to 0 in those cases
+                                        val oldGlobalCheckpoint = if (metadata.shardIDToGlobalCheckpoint?.get(shardID) == null) 0 else max(0, metadata.shardIDToGlobalCheckpoint[shardID]!!)
+                                        val localDocsBehind = newGlobalCheckpoint - oldGlobalCheckpoint
+                                        documentsBehind[indexName] = (documentsBehind[indexName] ?: 0) + localDocsBehind
+                                    }
+
+                                    return ContinuousTransformStats(metadata.continuousStats?.lastTimestamp, documentsBehind)
                                 }
                             }
                         )

@@ -14,6 +14,7 @@ import org.opensearch.common.xcontent.XContentBuilder
 import org.opensearch.common.xcontent.XContentParser
 import org.opensearch.common.xcontent.XContentParserUtils.ensureExpectedToken
 import org.opensearch.index.seqno.SequenceNumbers
+import org.opensearch.index.shard.ShardId
 import org.opensearch.indexmanagement.indexstatemanagement.util.WITH_TYPE
 import org.opensearch.indexmanagement.opensearchapi.instant
 import org.opensearch.indexmanagement.opensearchapi.optionalTimeField
@@ -31,6 +32,7 @@ data class TransformMetadata(
     val status: Status,
     val failureReason: String? = null,
     val stats: TransformStats,
+    val shardIDToGlobalCheckpoint: Map<ShardId, Long>? = null,
     val continuousStats: ContinuousTransformStats? = null
 ) : ToXContentObject, Writeable {
 
@@ -57,6 +59,7 @@ data class TransformMetadata(
         status = sin.readEnum(Status::class.java),
         failureReason = sin.readOptionalString(),
         stats = TransformStats(sin),
+        shardIDToGlobalCheckpoint = if (sin.readBoolean()) sin.readMap({ ShardId(it) }, { it.readLong() }) else null,
         continuousStats = if (sin.readBoolean()) ContinuousTransformStats(sin) else null
     )
 
@@ -70,8 +73,11 @@ data class TransformMetadata(
         builder.field(STATUS_FIELD, status.type)
         builder.field(FAILURE_REASON, failureReason)
         builder.field(STATS_FIELD, stats)
+        if (shardIDToGlobalCheckpoint != null) {
+            val stringsToGlobalCheckpoint: Map<String, Long> = shardIDKeysToStrings(shardIDToGlobalCheckpoint)
+            builder.field(SHARD_ID_TO_GLOBAL_CHECKPOINT_FIELD, stringsToGlobalCheckpoint)
+        }
         if (continuousStats != null) builder.field(CONTINUOUS_STATS_FIELD, continuousStats)
-
         if (params.paramAsBoolean(WITH_TYPE, true)) builder.endObject()
         return builder.endObject()
     }
@@ -87,6 +93,8 @@ data class TransformMetadata(
         out.writeEnum(status)
         out.writeOptionalString(failureReason)
         stats.writeTo(out)
+        out.writeBoolean(shardIDToGlobalCheckpoint != null)
+        if (shardIDToGlobalCheckpoint != null) out.writeMap(shardIDToGlobalCheckpoint, { writer, k -> k.writeTo(writer) }, { writer, v -> writer.writeLong(v) })
         out.writeBoolean(continuousStats != null)
         continuousStats?.writeTo(out)
     }
@@ -110,6 +118,7 @@ data class TransformMetadata(
         const val LAST_UPDATED_AT_FIELD = "last_updated_at"
         const val STATUS_FIELD = "status"
         const val STATS_FIELD = "stats"
+        const val SHARD_ID_TO_GLOBAL_CHECKPOINT_FIELD = "shard_id_to_global_checkpoint"
         const val CONTINUOUS_STATS_FIELD = "continuous_stats"
         const val FAILURE_REASON = "failure_reason"
 
@@ -128,6 +137,7 @@ data class TransformMetadata(
             var status: Status? = null
             var failureReason: String? = null
             var stats: TransformStats? = null
+            var shardIDToGlobalCheckpoint: Map<ShardId, Long>? = null
             var continuousStats: ContinuousTransformStats? = null
 
             ensureExpectedToken(XContentParser.Token.START_OBJECT, xcp.currentToken(), xcp)
@@ -142,6 +152,7 @@ data class TransformMetadata(
                     STATUS_FIELD -> status = Status.valueOf(xcp.text().toUpperCase(Locale.ROOT))
                     FAILURE_REASON -> failureReason = xcp.textOrNull()
                     STATS_FIELD -> stats = TransformStats.parse(xcp)
+                    SHARD_ID_TO_GLOBAL_CHECKPOINT_FIELD -> shardIDToGlobalCheckpoint = stringKeysToShardIDs(xcp.map({ HashMap<String, Long>() }, { parser -> parser.longValue() }))
                     CONTINUOUS_STATS_FIELD -> continuousStats = ContinuousTransformStats.parse(xcp)
                 }
             }
@@ -156,8 +167,21 @@ data class TransformMetadata(
                 status = requireNotNull(status) { "Status must not be null" },
                 failureReason = failureReason,
                 stats = requireNotNull(stats) { "Stats must not be null" },
+                shardIDToGlobalCheckpoint = shardIDToGlobalCheckpoint,
                 continuousStats = continuousStats
             )
+        }
+
+        private fun stringKeysToShardIDs(stringMap: Map<String, Long>): HashMap<ShardId, Long> {
+            val shardIDMap: HashMap<ShardId, Long> = HashMap()
+            stringMap.forEach { (k, v) -> shardIDMap[ShardId.fromString(k)] = v }
+            return shardIDMap
+        }
+
+        private fun shardIDKeysToStrings(shardIDMap: Map<ShardId, Long>): HashMap<String, Long> {
+            val stringMap: HashMap<String, Long> = HashMap()
+            shardIDMap.forEach { (k, v) -> stringMap[k.toString()] = v }
+            return stringMap
         }
     }
 }

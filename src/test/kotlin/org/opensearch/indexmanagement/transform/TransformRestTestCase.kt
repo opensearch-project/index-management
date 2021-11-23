@@ -76,6 +76,16 @@ abstract class TransformRestTestCase : IndexManagementRestTestCase() {
         return response
     }
 
+    protected fun disableTransform(transformId: String) {
+        val response = client()
+            .makeRequest(
+                "POST",
+                "$TRANSFORM_BASE_URI/$transformId/_stop",
+                emptyMap()
+            )
+        assertEquals("Unable to disable transform $transformId", RestStatus.OK, response.restStatus())
+    }
+
     protected fun createRandomTransform(refresh: Boolean = true): Transform {
         val transform = randomTransform()
         val transformId = createTransform(transform, refresh = refresh).id

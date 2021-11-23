@@ -19,51 +19,46 @@ import org.opensearch.common.xcontent.ToXContentObject
 import org.opensearch.common.xcontent.XContentBuilder
 import org.opensearch.common.xcontent.XContentParser
 import org.opensearch.common.xcontent.XContentParserUtils
-import org.opensearch.index.seqno.SequenceNumbers
 import org.opensearch.indexmanagement.opensearchapi.instant
 import java.io.IOException
 import java.time.Instant
 
 data class ContinuousTransformStats(
-    val lastTimestamp: Instant,
-    val lastSeqNo: Long = SequenceNumbers.UNASSIGNED_SEQ_NO,
-    val lastPrimaryTerm: Long = SequenceNumbers.UNASSIGNED_PRIMARY_TERM
+    val lastTimestamp: Instant?,
+    val documentsBehind: Map<String, Long>?
 ) : ToXContentObject, Writeable {
 
     @Throws(IOException::class)
     constructor(sin: StreamInput) : this(
-        lastTimestamp = sin.readInstant(),
-        lastSeqNo = sin.readLong(),
-        lastPrimaryTerm = sin.readLong()
+        lastTimestamp = if (sin.readBoolean()) sin.readInstant() else null,
+        documentsBehind = if (sin.readBoolean()) sin.readMap({ it.readString() }, { it.readLong() }) else null
     )
 
     override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
-        return builder.startObject()
-            .timeField(LAST_TIMESTAMP_FIELD, LAST_TIMESTAMP_FIELD_IN_MILLIS, lastTimestamp.toEpochMilli())
-            .field(LAST_SEQ_NO_FIELD, lastSeqNo)
-            .field(LAST_PRIMARY_TERM_FIELD, lastPrimaryTerm)
-            .endObject()
+        builder.startObject()
+        if (lastTimestamp != null) builder.timeField(LAST_TIMESTAMP_FIELD, LAST_TIMESTAMP_FIELD_IN_MILLIS, lastTimestamp.toEpochMilli())
+        if (documentsBehind != null) builder.field(DOCUMENTS_BEHIND_FIELD, documentsBehind)
+        return builder.endObject()
     }
 
     override fun writeTo(out: StreamOutput) {
-        out.writeInstant(lastTimestamp)
-        out.writeLong(lastSeqNo)
-        out.writeLong(lastPrimaryTerm)
+        out.writeBoolean(lastTimestamp != null)
+        if (lastTimestamp != null) out.writeInstant(lastTimestamp)
+        out.writeBoolean(documentsBehind != null)
+        if (documentsBehind != null) out.writeMap(documentsBehind, { writer, k -> writer.writeString(k) }, { writer, v -> writer.writeLong(v) })
     }
 
     companion object {
         private const val LAST_TIMESTAMP_FIELD = "last_timestamp"
         private const val LAST_TIMESTAMP_FIELD_IN_MILLIS = "last_timestamp_in_millis"
-        private const val LAST_SEQ_NO_FIELD = "last_seq_no"
-        private const val LAST_PRIMARY_TERM_FIELD = "last_primary_term"
+        private const val DOCUMENTS_BEHIND_FIELD = "documents_behind"
 
         @Suppress("ComplexMethod, LongMethod")
         @JvmStatic
         @Throws(IOException::class)
         fun parse(xcp: XContentParser): ContinuousTransformStats {
             var lastTimestamp: Instant? = null
-            var lastSeqNo: Long? = null
-            var lastPrimaryTerm: Long? = null
+            var documentsBehind: Map<String, Long>? = null
 
             XContentParserUtils.ensureExpectedToken(XContentParser.Token.START_OBJECT, xcp.currentToken(), xcp)
             while (xcp.nextToken() != XContentParser.Token.END_OBJECT) {
@@ -72,15 +67,13 @@ data class ContinuousTransformStats(
 
                 when (fieldName) {
                     LAST_TIMESTAMP_FIELD -> lastTimestamp = xcp.instant()
-                    LAST_SEQ_NO_FIELD -> lastSeqNo = xcp.longValue()
-                    LAST_PRIMARY_TERM_FIELD -> lastPrimaryTerm = xcp.longValue()
+                    DOCUMENTS_BEHIND_FIELD -> documentsBehind = xcp.map({ HashMap<String, Long>() }, { parser -> parser.longValue() })
                 }
             }
 
             return ContinuousTransformStats(
-                lastTimestamp = requireNotNull(lastTimestamp) { "Last timestamp must not be null" },
-                lastSeqNo = requireNotNull(lastSeqNo) { "Last sequence number must not be null" },
-                lastPrimaryTerm = requireNotNull(lastPrimaryTerm) { "Last primary term must not be null" }
+                lastTimestamp = lastTimestamp,
+                documentsBehind = documentsBehind,
             )
         }
     }

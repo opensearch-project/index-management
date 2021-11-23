@@ -76,7 +76,11 @@ data class Transform(
         }
         require(groups.isNotEmpty()) { "Groupings are Empty" }
         require(sourceIndex != targetIndex) { "Source and target indices cannot be the same" }
-        require(pageSize in MINIMUM_PAGE_SIZE..MAXIMUM_PAGE_SIZE) { "Page size must be between 1 and 10,000" }
+        if (continuous) {
+            require(pageSize in MINIMUM_PAGE_SIZE..MAXIMUM_PAGE_SIZE_CONTINUOUS) { "Page size must be between 1 and 1,000" }
+        } else {
+            require(pageSize in MINIMUM_PAGE_SIZE..MAXIMUM_PAGE_SIZE) { "Page size must be between 1 and 10,000" }
+        }
     }
 
     override fun getName() = id
@@ -234,6 +238,7 @@ data class Transform(
         const val SCHEMA_VERSION_FIELD = "schema_version"
         const val MINIMUM_PAGE_SIZE = 1
         const val MAXIMUM_PAGE_SIZE = 10_000
+        const val MAXIMUM_PAGE_SIZE_CONTINUOUS = 1_000
         const val MINIMUM_JOB_INTERVAL = 1
         const val TRANSFORM_DOC_ID_FIELD = "$TRANSFORM_TYPE._id"
         const val TRANSFORM_DOC_COUNT_FIELD = "$TRANSFORM_TYPE._doc_count"

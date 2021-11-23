@@ -17,7 +17,6 @@ import org.opensearch.indexmanagement.transform.model.Transform
 import org.opensearch.indexmanagement.transform.model.TransformMetadata
 import org.opensearch.indexmanagement.waitFor
 import org.opensearch.jobscheduler.spi.schedule.IntervalSchedule
-import org.opensearch.rest.RestStatus
 import org.opensearch.script.Script
 import org.opensearch.script.ScriptType
 import org.opensearch.search.aggregations.AggregationBuilders
@@ -373,12 +372,10 @@ class TransformRunnerIT : TransformRestTestCase() {
         assertTrue("Doesn't capture indexed time", metadata.stats.indexTimeInMillis > 0)
         assertTrue("Didn't capture search time", metadata.stats.searchTimeInMillis > 0)
     }
+    // TODO CLAY
+    fun `test no-op execution when no buckets have been modified`() {
+        validateSourceIndex("transform-source-index")
 
-    // NOTE: The test document being added for creating the start/end windows has the timestamp of Instant.now().
-    // It's possible that this timestamp can fall on the very edge of the endtime and therefore execute the second time around
-    // which could result in this test failing.
-    // Setting the interval to something large to minimize this scenario.
-    fun `test no-op execution when a full window of time to transform is not available`() {
         val transform = Transform(
             id = "id_8",
             schemaVersion = 1L,
@@ -393,119 +390,88 @@ class TransformRunnerIT : TransformRestTestCase() {
             roles = emptyList(),
             pageSize = 100,
             groups = listOf(
-                Terms(sourceField = "store_and_fwd_flag", targetField = "flag")
-            )
+                Terms(sourceField = "store_and_fwd_flag", targetField = "flag"),
+                Histogram(sourceField = "trip_distance", targetField = "distance", interval = 0.1)
+            ),
+            continuous = true
         ).let { createTransform(it, it.id) }
 
         updateTransformStartTime(transform)
 
         waitFor { assertTrue("Target transform index was not created", indexExists(transform.targetIndex)) }
-//        val indexName = "test_index_runner_third"
-//
-//        // Define rollup
-//        var rollup = randomRollup().copy(
-//            enabled = true,
-//            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
-//            jobEnabledTime = Instant.now(),
-//            sourceIndex = indexName,
-//            metadataID = null,
-//            continuous = true,
-//            dimensions = listOf(
-//                randomCalendarDateHistogram().copy(
-//                    calendarInterval = "1y"
-//                )
-//            )
-//        )
-//
-//        // Create source index
-//        createRollupSourceIndex(rollup)
-//
-//        // Add a document using the rollup's DateHistogram source field to ensure a metadata document is created
-//        putDateDocumentInSourceIndex(rollup)
-//
-//        // Create rollup job
-//        rollup = createRollup(rollup = rollup, rollupId = rollup.id)
-//        assertEquals(indexName, rollup.sourceIndex)
-//        assertEquals(null, rollup.metadataID)
-//
-//        // Update rollup start time to run first execution
-//        updateRollupStartTime(rollup)
-//
-//        var previousRollupMetadata: RollupMetadata? = null
-//        // Assert on first execution
-//        waitFor {
-//            val rollupJob = getRollup(rollupId = rollup.id)
-//            assertNotNull("Rollup job not found", rollupJob)
-//            assertNotNull("Rollup job doesn't have metadata set", rollupJob.metadataID)
-//
-//            previousRollupMetadata = getRollupMetadata(rollupJob.metadataID!!)
-//            assertNotNull("Rollup metadata not found", previousRollupMetadata)
-//            assertEquals("Unexpected metadata status", RollupMetadata.Status.INIT, previousRollupMetadata!!.status)
-//        }
-//
-//        assertNotNull("Previous rollup metadata was not saved", previousRollupMetadata)
-//
-//        // Update rollup start time to run second execution
-//        updateRollupStartTime(rollup)
-//
-//        // Wait some arbitrary amount of time so the execution happens
-//        // Not using waitFor since this is testing a lack of state change
-//        Thread.sleep(10000)
-//
-//        // Assert that no changes were made
-//        val currentMetadata = getRollupMetadata(previousRollupMetadata!!.id)
-//        assertEquals("Rollup metadata was updated", previousRollupMetadata!!.lastUpdatedTime, currentMetadata.lastUpdatedTime)
-    }
-
-    fun `test transform searching`() {
-        validateSourceIndex("transform-source-index")
-
-        val aggregatorFactories = AggregatorFactories.builder()
-        aggregatorFactories.addAggregator(AggregationBuilders.max("sequence_number").field("seq_no"))
-
-        val transform = Transform(
-            id = "test",
-            schemaVersion = 1L,
-            enabled = true,
-            enabledAt = Instant.now(),
-            updatedAt = Instant.now(),
-            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
-            description = "test transform",
-            metadataId = null,
-            sourceIndex = "transform-source-index",
-            targetIndex = "transform-target-index",
-            roles = emptyList(),
-            pageSize = 1,
-            groups = listOf(
-                Terms(sourceField = "store_and_fwd_flag", targetField = "flag"),
-                DateHistogram(sourceField = "tpep_pickup_datetime", targetField = "date", fixedInterval = "1d")
-            ),
-            aggregations = aggregatorFactories
-        ).let { createTransform(it, it.id) }
-
-        updateTransformStartTime(transform)
 
         val metadata = waitFor {
             val job = getTransform(transformId = transform.id)
             assertNotNull("Transform job doesn't have metadata set", job.metadataId)
             val transformMetadata = getTransformMetadata(job.metadataId!!)
-            assertEquals("Transform has not finished", TransformMetadata.Status.FINISHED, transformMetadata.status)
+            assertEquals("Transform did not complete iteration or had incorrect number of documents processed", 5000, transformMetadata.stats.documentsProcessed)
+            assertEquals("Transform did not complete iteration", null, transformMetadata.afterKey)
+            transformMetadata
         }
 
-        val request = """
-            {
-            }
-        """.trimIndent()
-        val res = client().makeRequest(
-            "GET", "transform-target-index/_search", emptyMap(),
-            StringEntity(request, ContentType.APPLICATION_JSON)
-        )
-        assertEquals("Request failed", RestStatus.OK, res.restStatus())
-        println(res.asMap()["hits"])
-        for (i in 0..(res.asMap()["hits"] as Array<*>).size) {
-            println((res.asMap()["hits"] as Array<*>)[i])
-        }
+        assertEquals("More than expected pages processed", 3L, metadata.stats.pagesProcessed)
+        assertEquals("More than expected documents indexed", 198L, metadata.stats.documentsIndexed)
+        println("expected: TransformStats(pagesProcessed=3, documentsProcessed=5000, documentsIndexed=198, indexTimeInMillis=106, searchTimeInMillis=295)")
+        println("actual: ${metadata.stats}")
+        assertEquals("Not the expected documents processed", 5000L, metadata.stats.documentsProcessed)
+        assertTrue("Doesn't capture indexed time", metadata.stats.indexTimeInMillis > 0)
+        assertTrue("Didn't capture search time", metadata.stats.searchTimeInMillis > 0)
+
+        disableTransform(transform.id)
     }
+
+//    fun `test transform searching`() {
+//        validateSourceIndex("transform-source-index")
+//
+//        val aggregatorFactories = AggregatorFactories.builder()
+//        aggregatorFactories.addAggregator(AggregationBuilders.max("sequence_number").field("seq_no"))
+//
+//        val transform = Transform(
+//            id = "test",
+//            schemaVersion = 1L,
+//            enabled = true,
+//            enabledAt = Instant.now(),
+//            updatedAt = Instant.now(),
+//            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+//            description = "test transform",
+//            metadataId = null,
+//            sourceIndex = "transform-source-index",
+//            targetIndex = "transform-target-index",
+//            roles = emptyList(),
+//            pageSize = 1,
+//            groups = listOf(
+//                Terms(sourceField = "store_and_fwd_flag", targetField = "flag"),
+//                DateHistogram(sourceField = "tpep_pickup_datetime", targetField = "date", fixedInterval = "1d")
+//            ),
+//            aggregations = aggregatorFactories
+//        ).let { createTransform(it, it.id) }
+//
+//        updateTransformStartTime(transform)
+//
+//        val metadata = waitFor {
+//            val job = getTransform(transformId = transform.id)
+//            assertNotNull("Transform job doesn't have metadata set", job.metadataId)
+//            val transformMetadata = getTransformMetadata(job.metadataId!!)
+//            assertEquals("Transform has not finished", TransformMetadata.Status.FINISHED, transformMetadata.status)
+//        }
+//
+//        val request = """
+//            {
+//            }
+//        """.trimIndent()
+//        val res = client().makeRequest(
+//            "GET", "transform-target-index/_search", emptyMap(),
+//            StringEntity(request, ContentType.APPLICATION_JSON)
+//        )
+//        assertEquals("Request failed", RestStatus.OK, res.restStatus())
+//        println(res.asMap()["hits"])
+//        for (i in 0..(res.asMap()["hits"] as Array<*>).size) {
+//            println((res.asMap()["hits"] as Array<*>)[i])
+//        }
+//    }
+
+    // TODO CLAY make sure the metadata changes are checked as well
+    // TODO CLAY test case where a second taxi database is added
 
     private fun getStrictMappings(): String {
         return """

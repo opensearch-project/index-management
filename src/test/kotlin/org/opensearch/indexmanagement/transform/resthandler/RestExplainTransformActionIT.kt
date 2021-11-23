@@ -5,6 +5,7 @@
 
 package org.opensearch.indexmanagement.transform.resthandler
 
+import org.junit.Assert
 import org.opensearch.client.ResponseException
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.TRANSFORM_BASE_URI
 import org.opensearch.indexmanagement.makeRequest
@@ -24,13 +25,14 @@ class RestExplainTransformActionIT : TransformRestTestCase() {
 
     @Throws(Exception::class)
     fun `test explain transform`() {
+        val sourceIndex = "test_source"
         val transform = randomTransform().copy(
             id = "test_explain_transform",
             jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
             enabled = true,
             enabledAt = Instant.now(),
             metadataId = null,
-            sourceIndex = "test_source",
+            sourceIndex = sourceIndex,
             targetIndex = "test_target"
         ).let { createTransform(it, it.id) }
         updateTransformStartTime(transform)
@@ -49,7 +51,19 @@ class RestExplainTransformActionIT : TransformRestTestCase() {
             val metadata = explainMetadata["transform_metadata"] as Map<String, Any>
             assertNotNull("Did not have metadata in explain response", metadata)
             // Not sure if this is true for transforms
-            assertEquals("Status should be finished", TransformMetadata.Status.FINISHED.type, metadata["status"])
+            if (!transform.continuous) {
+                assertEquals("Status should be finished", TransformMetadata.Status.FINISHED.type, metadata["status"])
+            } else {
+                assertNull("Should not have key for shard id to global checkpoint number map", metadata["shard_id_to_global_checkpoint"])
+                assertEquals("Status should be started", TransformMetadata.Status.STARTED.type, metadata["status"])
+                assertNotNull("Did not have key for continuous transform stats", metadata["continuous_stats"])
+                val continuousStats = metadata["continuous_stats"] as Map<String, Any>
+                assertNotNull("Did not have last_timestamp in continuous transform stats", continuousStats["last_timestamp"])
+                assertNotNull("Did not have documents_behind in continuous transform stats", continuousStats["documents_behind"])
+                val documentsBehind = continuousStats["documents_behind"] as Map<String, Any>
+                Assert.assertTrue("Continuous transform stats documents_behind did not contain the source index", documentsBehind.containsKey(sourceIndex))
+                Assert.assertEquals("Continuous transform stats should have 0 documents_behind", 0, documentsBehind[sourceIndex])
+            }
         }
     }
 

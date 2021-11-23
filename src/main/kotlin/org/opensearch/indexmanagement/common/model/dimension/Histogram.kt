@@ -13,6 +13,8 @@ import org.opensearch.common.xcontent.XContentParser
 import org.opensearch.common.xcontent.XContentParser.Token
 import org.opensearch.common.xcontent.XContentParserUtils.ensureExpectedToken
 import org.opensearch.index.mapper.NumberFieldMapper
+import org.opensearch.index.query.AbstractQueryBuilder
+import org.opensearch.index.query.RangeQueryBuilder
 import org.opensearch.indexmanagement.util.IndexUtils.Companion.getFieldFromMappings
 import org.opensearch.search.aggregations.AggregatorFactories
 import org.opensearch.search.aggregations.bucket.composite.CompositeValuesSourceBuilder
@@ -61,6 +63,19 @@ data class Histogram(
             .missingBucket(true)
             .field(this.sourceField)
             .interval(this.interval)
+    }
+
+    override fun toBucketQuery(bucketKey: Any): AbstractQueryBuilder<*> {
+        if (bucketKey !is Double) {
+            throw IllegalArgumentException("Received invalid histogram bucket key type [${bucketKey::class}] when Double is expected.")
+        }
+        val key: Double = if (bucketKey is Float) bucketKey.toDouble() else bucketKey as Double
+        // There can be rounding issues with small intervals as the range query will select documents differently than the Histogram
+        // so we do a larger range query and then limit the buckets indexed later.
+        val bucketError = 0.00005
+        return RangeQueryBuilder(sourceField)
+            .from(key - bucketError, true)
+            .to(key + interval + bucketError, true)
     }
 
     override fun canBeRealizedInMappings(mappings: Map<String, Any>): Boolean {

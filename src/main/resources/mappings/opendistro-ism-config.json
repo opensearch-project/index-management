@@ -1249,6 +1249,10 @@
         "continuous_stats": {
           "type": "object",
           "enabled": false
+        },
+        "shard_id_to_global_checkpoint": {
+          "type": "object",
+          "enabled": false
         }
       }
     }
