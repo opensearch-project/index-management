@@ -105,10 +105,6 @@ object TransformRunner :
     // TODO: Add circuit breaker checks - [cluster healthy, utilization within limit]
     @Suppress("NestedBlockDepth", "ComplexMethod")
     private suspend fun executeJob(transform: Transform, metadata: TransformMetadata, context: JobExecutionContext) {
-        println("aggregations: ${transform.aggregations}")
-        println("groups: ${transform.groups}")
-        println("shardIDToMaxSeqNo: ${metadata.shardIDToGlobalCheckpoint}")
-
         var currentMetadata = metadata
         val backoffPolicy = BackoffPolicy.exponentialBackoff(
             TimeValue.timeValueMillis(TransformSettings.DEFAULT_RENEW_LOCK_RETRY_DELAY),
@@ -147,7 +143,6 @@ object TransformRunner :
                             currentShard = if (shardsToSearch!!.hasNext()) {
                                 shardsToSearch.next()
                             } else break
-                            println("new currentShard: $currentShard")
                         }
                         // we attempt to renew lock for every loop of transform
                         val renewedLock = renewLockForScheduledJob(context, lock, backoffPolicy)
@@ -168,7 +163,7 @@ object TransformRunner :
         } finally {
             lock?.let {
                 transformMetadataService.writeMetadata(currentMetadata, true)
-                if (!transform.continuous) {
+                if (!transform.continuous || currentMetadata.status == TransformMetadata.Status.FAILED) {
                     logger.info("Disabling the transform job ${transform.id}")
                     updateTransform(transform.copy(enabled = false, enabledAt = null))
                 }
@@ -204,7 +199,7 @@ object TransformRunner :
         if (validatedMetadata.status == TransformMetadata.Status.FAILED) {
             return validatedMetadata
         }
-        // If currentShard is null here, then there were no shards to transform
+        // If currentShard is null here, then there were no shards or new data to transform
         return if (transform.continuous && currentShard != null) {
             executeContinuousJobIteration(transform, validatedMetadata, currentShard)
         } else if (!transform.continuous) {
@@ -213,7 +208,6 @@ object TransformRunner :
     }
 
     private suspend fun executeContinuousJobIteration(transform: Transform, metadata: TransformMetadata, currentShard: ShardNewDocuments): TransformMetadata {
-        println("Starting continuous job iteration")
         val bucketSearchResult = withTransformSecurityContext(transform) {
             transformSearchService.getModifiedBuckets(transform, metadata.afterKey, currentShard)
         }
@@ -260,7 +254,6 @@ object TransformRunner :
     }
 
     private suspend fun executeNonContinuousJobIteration(transform: Transform, metadata: TransformMetadata): TransformMetadata {
-        println("Starting non continuous job iteration")
         val transformSearchResult = withTransformSecurityContext(transform) {
             transformSearchService.executeCompositeSearch(transform, metadata.afterKey)
         }

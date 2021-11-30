@@ -62,6 +62,7 @@ data class Transform(
     val continuous: Boolean = false,
     val user: User? = null
 ) : ScheduledJobParameter, Writeable {
+
     init {
         aggregations.aggregatorFactories.forEach {
             require(supportedAggregations.contains(it.type)) { "Unsupported aggregation [${it.type}]" }

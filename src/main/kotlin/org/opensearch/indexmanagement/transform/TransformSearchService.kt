@@ -78,7 +78,6 @@ class TransformSearchService(
         }
     }
 
-    // TODO CLAY test
     @Suppress("RethrowCaughtException")
     suspend fun getShardsGlobalCheckpoint(index: String): Map<ShardId, Long> {
         val errorMessage = "Failed to get the shards in the source indices"
@@ -92,11 +91,10 @@ class TransformSearchService(
                         val shardId = shard.shardRouting.shardId()
                         // Remove uuid as it isn't streamed, so it would break our hashing. We aren't using it anyways
                         val shardIDNoUUID = ShardId(Index(shardId.index.name, IndexMetadata.INDEX_UUID_NA_VALUE), shardId.id)
-                        // If one of these are null, we will still run the transform, but without bounding the sequence number
+                        // If it is null, we will still run the transform, but without bounding the sequence number
                         shardStats[shardIDNoUUID] = shard.seqNoStats?.globalCheckpoint ?: SequenceNumbers.UNASSIGNED_SEQ_NO
                     }
                 }
-                println("newShardIDToMaxSeqNo: $shardStats")
                 return shardStats
             }
             throw TransformSearchServiceException("$errorMessage - ${response.status}")
@@ -188,7 +186,6 @@ class TransformSearchService(
         }
 
         private fun getQueryWithModifiedBuckets(originalQuery: QueryBuilder, modifiedBuckets: MutableSet<Map<String, Any>>, groups: List<Dimension>): QueryBuilder {
-            // TODO may be able to filter more to make it more efficient
             // This query doesn't limit the maximum sequence number of the documents, so there may be more documents processed than the global checkpoint number
             val query: BoolQueryBuilder = QueryBuilders.boolQuery().must(originalQuery).minimumShouldMatch(1)
             modifiedBuckets.forEach { bucket ->
@@ -215,7 +212,6 @@ class TransformSearchService(
         }
 
         fun getBucketSearchRequest(transform: Transform, afterKey: Map<String, Any>? = null, pageSize: Int, currentShard: ShardNewDocuments): SearchRequest {
-            println("Querying seq nos (${currentShard.from}, ${currentShard.to})")
             val rangeQuery = getSeqNoRangeQuery(currentShard.from, currentShard.to)
             val query = QueryBuilders.boolQuery().filter(rangeQuery).must(transform.dataSelectionQuery)
             val sources = transform.groups.map { it.toSourceBuilder().missingBucket(false) }
@@ -228,15 +224,15 @@ class TransformSearchService(
 
         private fun getSeqNoRangeQuery(from: Long?, to: Long): RangeQueryBuilder {
             val rangeQuery = RangeQueryBuilder("_seq_no")
-            if (to != SequenceNumbers.UNASSIGNED_SEQ_NO) rangeQuery.to(to, true)
-            if (from != null && from != SequenceNumbers.UNASSIGNED_SEQ_NO) rangeQuery.from(from, false)
+            // If to or from is < 0 then the step to get the global checkpoint number failed, and we proceed without bounding the sequence number
+            if (to >= 0) rangeQuery.to(to, true)
+            if (from != null && from >= 0) rangeQuery.from(from, false)
             return rangeQuery
         }
 
         fun convertResponse(transform: Transform, searchResponse: SearchResponse, waterMarkDocuments: Boolean = true, modifiedBuckets: MutableSet<Map<String, Any>>? = null): TransformSearchResult {
             val aggs = searchResponse.aggregations.get(transform.id) as CompositeAggregation
             val buckets: List<CompositeAggregation.Bucket> = if (modifiedBuckets != null) aggs.buckets.filter { modifiedBuckets.contains(it.key) } else aggs.buckets
-            println("bucket count: ${buckets.count()}")
             val documentsProcessed = buckets.fold(0L) { sum, it -> sum + it.docCount }
             val pagesProcessed = 1L
             val searchTime = searchResponse.took.millis
@@ -264,10 +260,7 @@ class TransformSearchService(
         private fun convertBucketSearchResponse(transform: Transform, searchResponse: SearchResponse): BucketSearchResult {
             val aggs = searchResponse.aggregations.get(transform.id) as CompositeAggregation
             val bucketSearchResult = BucketSearchResult(HashSet(), aggs.afterKey(), searchResponse.took.millis)
-            aggs.buckets.forEach { aggregatedBucket ->
-                bucketSearchResult.modifiedBuckets.add(aggregatedBucket.key.entries.associate { it.key to it.value })
-//                println("bucket ${aggregatedBucket.key.entries} had ${aggregatedBucket.docCount} docs")
-            }
+            bucketSearchResult.modifiedBuckets.addAll(aggs.buckets.map { it.key })
             return bucketSearchResult
         }
 

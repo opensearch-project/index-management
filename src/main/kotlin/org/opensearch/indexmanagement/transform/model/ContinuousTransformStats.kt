@@ -43,9 +43,9 @@ data class ContinuousTransformStats(
 
     override fun writeTo(out: StreamOutput) {
         out.writeBoolean(lastTimestamp != null)
-        if (lastTimestamp != null) out.writeInstant(lastTimestamp)
+        lastTimestamp?.let { out.writeInstant(it) }
         out.writeBoolean(documentsBehind != null)
-        if (documentsBehind != null) out.writeMap(documentsBehind, { writer, k -> writer.writeString(k) }, { writer, v -> writer.writeLong(v) })
+        documentsBehind?.let { out.writeMap(it, { writer, k -> writer.writeString(k) }, { writer, v -> writer.writeLong(v) }) }
     }
 
     companion object {

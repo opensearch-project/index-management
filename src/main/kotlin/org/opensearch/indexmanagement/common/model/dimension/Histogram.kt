@@ -69,13 +69,12 @@ data class Histogram(
         if (bucketKey !is Double) {
             throw IllegalArgumentException("Received invalid histogram bucket key type [${bucketKey::class}] when Double is expected.")
         }
-        val key: Double = if (bucketKey is Float) bucketKey.toDouble() else bucketKey as Double
-        // There can be rounding issues with small intervals as the range query will select documents differently than the Histogram
-        // so we do a larger range query and then limit the buckets indexed later.
+        // There can be rounding issues with small intervals where the range query will select documents differently than the Histogram
+        // so add an error to the range query and then limit the buckets indexed later.
         val bucketError = 0.00005
         return RangeQueryBuilder(sourceField)
-            .from(key - bucketError, true)
-            .to(key + interval + bucketError, true)
+            .from(bucketKey - bucketError, true)
+            .to(bucketKey + interval + bucketError, true)
     }
 
     override fun canBeRealizedInMappings(mappings: Map<String, Any>): Boolean {

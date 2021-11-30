@@ -17,7 +17,7 @@ class HistogramTests : OpenSearchTestCase() {
         val randomKey = randomDouble()
         val bucketQuery = histogram.toBucketQuery(randomKey) as RangeQueryBuilder
 
-        assertEquals("Histogram bucket query did not contain the correct interval", histogram.interval, bucketQuery.to() as Double - bucketQuery.from() as Double, 0.01)
+        assertEquals("Histogram bucket query did not contain the correct interval", histogram.interval, bucketQuery.to() as Double - bucketQuery.from() as Double, 0.001)
         assertEquals("Histogram bucket query did not contain the correct bucket start", randomKey, bucketQuery.from() as Double, 0.0001)
         assertEquals("Histogram bucket query did not contain the correct field name", bucketQuery.fieldName(), histogram.sourceField)
         Assert.assertTrue("Histogram bucket query should include the lower bounds", bucketQuery.includeLower())
@@ -29,7 +29,7 @@ class HistogramTests : OpenSearchTestCase() {
             randomHistogram().toBucketQuery(randomInt())
         }
         assertFailsWith(IllegalArgumentException::class, "Expected IllegalArgumentException with type Long when Double is expected") {
-            println(randomHistogram().toBucketQuery(randomLong()))
+            randomHistogram().toBucketQuery(randomLong())
         }
         assertFailsWith(IllegalArgumentException::class, "Expected IllegalArgumentException with type Float when Double is expected") {
             randomHistogram().toBucketQuery(randomFloat())

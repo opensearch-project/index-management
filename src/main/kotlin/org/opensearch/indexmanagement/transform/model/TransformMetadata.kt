@@ -74,8 +74,7 @@ data class TransformMetadata(
         builder.field(FAILURE_REASON, failureReason)
         builder.field(STATS_FIELD, stats)
         if (shardIDToGlobalCheckpoint != null) {
-            val stringsToGlobalCheckpoint: Map<String, Long> = shardIDKeysToStrings(shardIDToGlobalCheckpoint)
-            builder.field(SHARD_ID_TO_GLOBAL_CHECKPOINT_FIELD, stringsToGlobalCheckpoint)
+            builder.field(SHARD_ID_TO_GLOBAL_CHECKPOINT_FIELD, shardIDToGlobalCheckpoint.mapKeys { it.key.toString() })
         }
         if (continuousStats != null) builder.field(CONTINUOUS_STATS_FIELD, continuousStats)
         if (params.paramAsBoolean(WITH_TYPE, true)) builder.endObject()
@@ -94,9 +93,9 @@ data class TransformMetadata(
         out.writeOptionalString(failureReason)
         stats.writeTo(out)
         out.writeBoolean(shardIDToGlobalCheckpoint != null)
-        if (shardIDToGlobalCheckpoint != null) out.writeMap(shardIDToGlobalCheckpoint, { writer, k -> k.writeTo(writer) }, { writer, v -> writer.writeLong(v) })
+        shardIDToGlobalCheckpoint?.let { out.writeMap(it, { writer, k -> k.writeTo(writer) }, { writer, v -> writer.writeLong(v) }) }
         out.writeBoolean(continuousStats != null)
-        continuousStats?.writeTo(out)
+        continuousStats?.let { it.writeTo(out) }
     }
 
     fun mergeStats(stats: TransformStats): TransformMetadata {
@@ -152,7 +151,8 @@ data class TransformMetadata(
                     STATUS_FIELD -> status = Status.valueOf(xcp.text().toUpperCase(Locale.ROOT))
                     FAILURE_REASON -> failureReason = xcp.textOrNull()
                     STATS_FIELD -> stats = TransformStats.parse(xcp)
-                    SHARD_ID_TO_GLOBAL_CHECKPOINT_FIELD -> shardIDToGlobalCheckpoint = stringKeysToShardIDs(xcp.map({ HashMap<String, Long>() }, { parser -> parser.longValue() }))
+                    SHARD_ID_TO_GLOBAL_CHECKPOINT_FIELD -> shardIDToGlobalCheckpoint = xcp.map({ HashMap<String, Long>() }, { parser -> parser.longValue() })
+                        .mapKeys { ShardId.fromString(it.key) }
                     CONTINUOUS_STATS_FIELD -> continuousStats = ContinuousTransformStats.parse(xcp)
                 }
             }
@@ -170,18 +170,6 @@ data class TransformMetadata(
                 shardIDToGlobalCheckpoint = shardIDToGlobalCheckpoint,
                 continuousStats = continuousStats
             )
-        }
-
-        private fun stringKeysToShardIDs(stringMap: Map<String, Long>): HashMap<ShardId, Long> {
-            val shardIDMap: HashMap<ShardId, Long> = HashMap()
-            stringMap.forEach { (k, v) -> shardIDMap[ShardId.fromString(k)] = v }
-            return shardIDMap
-        }
-
-        private fun shardIDKeysToStrings(shardIDMap: Map<ShardId, Long>): HashMap<String, Long> {
-            val stringMap: HashMap<String, Long> = HashMap()
-            shardIDMap.forEach { (k, v) -> stringMap[k.toString()] = v }
-            return stringMap
         }
     }
 }

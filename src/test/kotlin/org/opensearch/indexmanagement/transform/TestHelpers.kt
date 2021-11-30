@@ -72,8 +72,7 @@ fun randomAggregationFactories(): AggregatorFactories.Builder {
 
 fun randomTransform(): Transform {
     val enabled = OpenSearchRestTestCase.randomBoolean()
-    // TODO CLAY
-    val isContinuous = true // OpenSearchRestTestCase.randomBoolean()
+    val isContinuous = OpenSearchRestTestCase.randomBoolean()
     return Transform(
         id = OpenSearchRestTestCase.randomAlphaOfLength(10),
         seqNo = OpenSearchRestTestCase.randomNonNegativeLong(),
@@ -124,13 +123,6 @@ fun randomTransformStats(): TransformStats {
     )
 }
 
-fun randomContinuousStats(): ContinuousTransformStats {
-    return ContinuousTransformStats(
-        lastTimestamp = randomInstant(),
-        documentsBehind = randomDocumentsBehind()
-    )
-}
-
 fun randomShardIDToGlobalCheckpoint(): Map<ShardId, Long> {
     val numIndices = OpenSearchRestTestCase.randomIntBetween(1, 10)
     val randomIndices = (1..numIndices).map { randomShardID() }
@@ -143,6 +135,13 @@ fun randomShardID(): ShardId {
     val testIndex = Index(indexName, IndexMetadata.INDEX_UUID_NA_VALUE)
     val shardNumber: Int = OpenSearchRestTestCase.randomIntBetween(0, 100)
     return ShardId(testIndex, shardNumber)
+}
+
+fun randomContinuousStats(): ContinuousTransformStats {
+    return ContinuousTransformStats(
+        lastTimestamp = randomInstant(),
+        documentsBehind = randomDocumentsBehind()
+    )
 }
 
 fun randomDocumentsBehind(): Map<String, Long> {

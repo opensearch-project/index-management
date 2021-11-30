@@ -150,7 +150,7 @@ class TransportExplainTransformAction @Inject constructor(
                                     val documentsBehind: MutableMap<String, Long> = HashMap()
                                     shardIDsToGlobalCheckpoint.forEach { (shardID, globalCheckpoint) ->
                                         val indexName = shardID.indexName
-                                        val newGlobalCheckpoint = if (globalCheckpoint < 0) 0 else globalCheckpoint
+                                        val newGlobalCheckpoint = max(0, globalCheckpoint)
                                         // If the global checkpoint hasn't been initialized yet, it may be -1 or -2, just set to 0 in those cases
                                         val oldGlobalCheckpoint = if (metadata.shardIDToGlobalCheckpoint?.get(shardID) == null) 0 else max(0, metadata.shardIDToGlobalCheckpoint[shardID]!!)
                                         val localDocsBehind = newGlobalCheckpoint - oldGlobalCheckpoint

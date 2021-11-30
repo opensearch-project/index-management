@@ -194,6 +194,21 @@ abstract class TransformRestTestCase : IndexManagementRestTestCase() {
         return metadata
     }
 
+    @Suppress("UNCHECKED_CAST")
+    protected fun getTransformDocumentsBehind(
+        transformId: String,
+        header: BasicHeader = BasicHeader(HttpHeaders.CONTENT_TYPE, "application/json")
+    ): Map<String, Any> {
+        val explainResponse = client().makeRequest("GET", "$TRANSFORM_BASE_URI/$transformId/_explain", null, header)
+        assertEquals(RestStatus.OK, explainResponse.restStatus())
+
+        val explainResponseMap = explainResponse.asMap()
+        val explainMetadata = explainResponseMap[transformId] as Map<String, Any>
+        val metadata = explainMetadata["transform_metadata"] as Map<String, Any>
+        val continuousStats = metadata["continuous_stats"] as Map<String, Any>
+        return continuousStats["documents_behind"] as Map<String, Any>
+    }
+
     protected fun updateTransformStartTime(update: Transform, desiredStartTimeMillis: Long? = null) {
         // Before updating start time of a job always make sure there are no unassigned shards that could cause the config
         // index to move to a new node and negate this forced start
