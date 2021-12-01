@@ -86,14 +86,13 @@ class TransformSearchService(
             val request = IndicesStatsRequest().indices(index).clear()
             val response: IndicesStatsResponse = client.suspendUntil { execute(IndicesStatsAction.INSTANCE, request, it) }
             if (response.status == RestStatus.OK) {
-                for (shard in response.shards) {
-                    if (shard.shardRouting.primary() && shard.shardRouting.active()) {
-                        val shardId = shard.shardRouting.shardId()
-                        // Remove uuid as it isn't streamed, so it would break our hashing. We aren't using it anyways
-                        val shardIDNoUUID = ShardId(Index(shardId.index.name, IndexMetadata.INDEX_UUID_NA_VALUE), shardId.id)
-                        // If it is null, we will still run the transform, but without bounding the sequence number
-                        shardStats[shardIDNoUUID] = shard.seqNoStats?.globalCheckpoint ?: SequenceNumbers.UNASSIGNED_SEQ_NO
-                    }
+                val shardsToSearch = response.shards.filter { it.shardRouting.primary() && it.shardRouting.active() }
+                for (shard in shardsToSearch) {
+                    val shardId = shard.shardRouting.shardId()
+                    // Remove uuid as it isn't streamed, so it would break our hashing. We aren't using it anyways
+                    val shardIDNoUUID = ShardId(Index(shardId.index.name, IndexMetadata.INDEX_UUID_NA_VALUE), shardId.id)
+                    // If it is null, we will still run the transform, but without bounding the sequence number
+                    shardStats[shardIDNoUUID] = shard.seqNoStats?.globalCheckpoint ?: SequenceNumbers.UNASSIGNED_SEQ_NO
                 }
                 return shardStats
             }
@@ -141,7 +140,11 @@ class TransformSearchService(
         }
     }
 
-    suspend fun executeCompositeSearch(transform: Transform, afterKey: Map<String, Any>? = null, modifiedBuckets: MutableSet<Map<String, Any>>? = null): TransformSearchResult {
+    suspend fun executeCompositeSearch(
+        transform: Transform,
+        afterKey: Map<String, Any>? = null,
+        modifiedBuckets: MutableSet<Map<String, Any>>? = null
+    ): TransformSearchResult {
         val errorMessage = "Failed to search data in source indices"
         try {
             var retryAttempt = 0
@@ -174,19 +177,31 @@ class TransformSearchService(
     }
 
     companion object {
-        fun getSearchServiceRequest(transform: Transform, afterKey: Map<String, Any>? = null, pageSize: Int, modifiedBuckets: MutableSet<Map<String, Any>>? = null): SearchRequest {
+        fun getSearchServiceRequest(
+            transform: Transform,
+            afterKey: Map<String, Any>? = null,
+            pageSize: Int,
+            modifiedBuckets: MutableSet<Map<String, Any>>? = null
+        ): SearchRequest {
             val sources = mutableListOf<CompositeValuesSourceBuilder<*>>()
             transform.groups.forEach { group -> sources.add(group.toSourceBuilder().missingBucket(!transform.continuous)) }
             val aggregationBuilder = CompositeAggregationBuilder(transform.id, sources)
                 .size(pageSize)
                 .subAggregations(transform.aggregations)
                 .apply { afterKey?.let { this.aggregateAfter(it) } }
-            val query = if (modifiedBuckets == null) transform.dataSelectionQuery else getQueryWithModifiedBuckets(transform.dataSelectionQuery, modifiedBuckets, transform.groups)
+            val query = if (modifiedBuckets == null) {
+                transform.dataSelectionQuery
+            } else {
+                getQueryWithModifiedBuckets(transform.dataSelectionQuery, modifiedBuckets, transform.groups)
+            }
             return getSearchServiceRequest(transform.sourceIndex, query, aggregationBuilder)
         }
 
-        private fun getQueryWithModifiedBuckets(originalQuery: QueryBuilder, modifiedBuckets: MutableSet<Map<String, Any>>, groups: List<Dimension>): QueryBuilder {
-            // This query doesn't limit the maximum sequence number of the documents, so there may be more documents processed than the global checkpoint number
+        private fun getQueryWithModifiedBuckets(
+            originalQuery: QueryBuilder,
+            modifiedBuckets: MutableSet<Map<String, Any>>,
+            groups: List<Dimension>
+        ): QueryBuilder {
             val query: BoolQueryBuilder = QueryBuilders.boolQuery().must(originalQuery).minimumShouldMatch(1)
             modifiedBuckets.forEach { bucket ->
                 val bucketQuery: BoolQueryBuilder = QueryBuilders.boolQuery()
@@ -211,7 +226,12 @@ class TransformSearchService(
                 .allowPartialSearchResults(false)
         }
 
-        fun getBucketSearchRequest(transform: Transform, afterKey: Map<String, Any>? = null, pageSize: Int, currentShard: ShardNewDocuments): SearchRequest {
+        fun getBucketSearchRequest(
+            transform: Transform,
+            afterKey: Map<String, Any>? = null,
+            pageSize: Int,
+            currentShard: ShardNewDocuments
+        ): SearchRequest {
             val rangeQuery = getSeqNoRangeQuery(currentShard.from, currentShard.to)
             val query = QueryBuilders.boolQuery().filter(rangeQuery).must(transform.dataSelectionQuery)
             val sources = transform.groups.map { it.toSourceBuilder().missingBucket(false) }
@@ -230,9 +250,14 @@ class TransformSearchService(
             return rangeQuery
         }
 
-        fun convertResponse(transform: Transform, searchResponse: SearchResponse, waterMarkDocuments: Boolean = true, modifiedBuckets: MutableSet<Map<String, Any>>? = null): TransformSearchResult {
+        fun convertResponse(
+            transform: Transform,
+            searchResponse: SearchResponse,
+            waterMarkDocuments: Boolean = true,
+            modifiedBuckets: MutableSet<Map<String, Any>>? = null
+        ): TransformSearchResult {
             val aggs = searchResponse.aggregations.get(transform.id) as CompositeAggregation
-            val buckets: List<CompositeAggregation.Bucket> = if (modifiedBuckets != null) aggs.buckets.filter { modifiedBuckets.contains(it.key) } else aggs.buckets
+            val buckets = if (modifiedBuckets != null) aggs.buckets.filter { modifiedBuckets.contains(it.key) } else aggs.buckets
             val documentsProcessed = buckets.fold(0L) { sum, it -> sum + it.docCount }
             val pagesProcessed = 1L
             val searchTime = searchResponse.took.millis

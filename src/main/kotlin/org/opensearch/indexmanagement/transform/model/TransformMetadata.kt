@@ -151,8 +151,9 @@ data class TransformMetadata(
                     STATUS_FIELD -> status = Status.valueOf(xcp.text().toUpperCase(Locale.ROOT))
                     FAILURE_REASON -> failureReason = xcp.textOrNull()
                     STATS_FIELD -> stats = TransformStats.parse(xcp)
-                    SHARD_ID_TO_GLOBAL_CHECKPOINT_FIELD -> shardIDToGlobalCheckpoint = xcp.map({ HashMap<String, Long>() }, { parser -> parser.longValue() })
-                        .mapKeys { ShardId.fromString(it.key) }
+                    SHARD_ID_TO_GLOBAL_CHECKPOINT_FIELD ->
+                        shardIDToGlobalCheckpoint = xcp.map({ HashMap<String, Long>() }, { parser -> parser.longValue() })
+                            .mapKeys { ShardId.fromString(it.key) }
                     CONTINUOUS_STATS_FIELD -> continuousStats = ContinuousTransformStats.parse(xcp)
                 }
             }

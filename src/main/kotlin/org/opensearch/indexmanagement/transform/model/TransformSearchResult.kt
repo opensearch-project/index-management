@@ -10,6 +10,10 @@ import org.opensearch.index.shard.ShardId
 
 data class TransformSearchResult(val stats: TransformStats, val docsToIndex: List<IndexRequest>, val afterKey: Map<String, Any>? = null)
 
-data class BucketSearchResult(val modifiedBuckets: MutableSet<Map<String, Any>>, val afterKey: Map<String, Any>? = null, val searchTimeInMillis: Long = 0)
+data class BucketSearchResult(
+    val modifiedBuckets: MutableSet<Map<String, Any>>,
+    val afterKey: Map<String, Any>? = null,
+    val searchTimeInMillis: Long = 0
+)
 
 data class ShardNewDocuments(val shardId: ShardId, val from: Long?, val to: Long)

@@ -42,7 +42,7 @@ import org.opensearch.monitor.jvm.JvmService
 import org.opensearch.threadpool.ThreadPool
 import java.time.Instant
 
-@Suppress("LongParameterList")
+@Suppress("LongParameterList", "TooManyFunctions")
 object TransformRunner :
     ScheduledJobRunner,
     CoroutineScope by CoroutineScope(SupervisorJob() + Dispatchers.Default + CoroutineName("TransformRunner")) {
@@ -103,7 +103,7 @@ object TransformRunner :
     }
 
     // TODO: Add circuit breaker checks - [cluster healthy, utilization within limit]
-    @Suppress("NestedBlockDepth", "ComplexMethod")
+    @Suppress("NestedBlockDepth", "ComplexMethod", "LongMethod")
     private suspend fun executeJob(transform: Transform, metadata: TransformMetadata, context: JobExecutionContext) {
         var currentMetadata = metadata
         val backoffPolicy = BackoffPolicy.exponentialBackoff(
@@ -172,7 +172,7 @@ object TransformRunner :
         }
     }
 
-    // Processes through the old and new maps of sequence numbers to generate a list of objects with the shardId and range of sequence numbers to search
+    // Processes through the old and new maps of sequence numbers to generate a list of objects with the shardId and the seq numbers to search
     private fun getShardsToSearch(oldShardIDToMaxSeqNo: Map<ShardId, Long>?, newShardIDToMaxSeqNo: Map<ShardId, Long>): List<ShardNewDocuments> {
         val shardsToSearch: MutableList<ShardNewDocuments> = ArrayList()
         newShardIDToMaxSeqNo.forEach { (shardId, currentMaxSeqNo) ->
@@ -207,7 +207,11 @@ object TransformRunner :
         } else metadata.copy(afterKey = null) // afterKey should already be null, but this would prevent an infinite loop if it isn't null
     }
 
-    private suspend fun executeContinuousJobIteration(transform: Transform, metadata: TransformMetadata, currentShard: ShardNewDocuments): TransformMetadata {
+    private suspend fun executeContinuousJobIteration(
+        transform: Transform,
+        metadata: TransformMetadata,
+        currentShard: ShardNewDocuments
+    ): TransformMetadata {
         val bucketSearchResult = withTransformSecurityContext(transform) {
             transformSearchService.getModifiedBuckets(transform, metadata.afterKey, currentShard)
         }
@@ -248,7 +252,11 @@ object TransformRunner :
                 searchTimeInMillis = searchResult.stats.searchTimeInMillis + transformSearchResult.stats.searchTimeInMillis
             )
             val updatedDocsToIndex = searchResult.docsToIndex + transformSearchResult.docsToIndex
-            transformSearchResult = transformSearchResult.copy(stats = updatedStats, docsToIndex = updatedDocsToIndex, afterKey = searchResult.afterKey)
+            transformSearchResult = transformSearchResult.copy(
+                stats = updatedStats,
+                docsToIndex = updatedDocsToIndex,
+                afterKey = searchResult.afterKey
+            )
         } while (transformSearchResult.afterKey != null)
         return transformSearchResult
     }

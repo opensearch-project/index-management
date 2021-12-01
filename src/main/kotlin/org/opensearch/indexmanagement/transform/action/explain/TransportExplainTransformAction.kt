@@ -119,7 +119,12 @@ class TransportExplainTransformAction @Inject constructor(
                                             var metadata = contentParser(it.sourceRef)
                                                 .parseWithType(it.id, it.seqNo, it.primaryTerm, TransformMetadata.Companion::parse)
                                             val transform = metadataIdToTransform[it.id]
-                                            if (transform != null && transform.continuous) metadata = metadata.copy(shardIDToGlobalCheckpoint = null, continuousStats = getContinuousStats(transform, metadata))
+                                            if (transform != null && transform.continuous) {
+                                                metadata = metadata.copy(
+                                                    shardIDToGlobalCheckpoint = null,
+                                                    continuousStats = getContinuousStats(transform, metadata)
+                                                )
+                                            }
                                             idsToExplain.computeIfPresent(metadata.transformId) { _, explainTransform ->
                                                 explainTransform.copy(metadata = metadata)
                                             }
@@ -143,7 +148,14 @@ class TransportExplainTransformAction @Inject constructor(
 
                                 fun getContinuousStats(transform: Transform, metadata: TransformMetadata): ContinuousTransformStats? {
                                     val shardIDsToGlobalCheckpoint = runBlocking {
-                                        withClosableContext(IndexManagementSecurityContext(transform.id, settings, client.threadPool().threadContext, transform.user)) {
+                                        withClosableContext(
+                                            IndexManagementSecurityContext(
+                                                transform.id,
+                                                settings,
+                                                client.threadPool().threadContext,
+                                                transform.user
+                                            )
+                                        ) {
                                             transformSearchService.getShardsGlobalCheckpoint(transform.sourceIndex)
                                         }
                                     }
@@ -152,7 +164,7 @@ class TransportExplainTransformAction @Inject constructor(
                                         val indexName = shardID.indexName
                                         val newGlobalCheckpoint = max(0, globalCheckpoint)
                                         // If the global checkpoint hasn't been initialized yet, it may be -1 or -2, just set to 0 in those cases
-                                        val oldGlobalCheckpoint = if (metadata.shardIDToGlobalCheckpoint?.get(shardID) == null) 0 else max(0, metadata.shardIDToGlobalCheckpoint[shardID]!!)
+                                        val oldGlobalCheckpoint = max(0, metadata.shardIDToGlobalCheckpoint?.get(shardID) ?: 0)
                                         val localDocsBehind = newGlobalCheckpoint - oldGlobalCheckpoint
                                         documentsBehind[indexName] = (documentsBehind[indexName] ?: 0) + localDocsBehind
                                     }
