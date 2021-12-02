@@ -56,11 +56,18 @@ jobs:
         uses: actions/setup-java@v1
         with:
           java-version: 14
+      # This step creates a link to the X: mounted drive, which makes the path short enough to work on windows
+      - name: Shorten Path
+        run: subst 'X:' .
+      - name: Go to Shorter Path
+        run: cd 'X:'
       # build index management
       - name: Checkout Branch
         uses: actions/checkout@v2
       - name: Build with Gradle
         run: ./gradlew.bat build -D"opensearch.version=1.2.0-SNAPSHOT"
+        env:
+          _JAVA_OPTIONS: -Xmx4096M
       - name: Upload failed logs
         uses: actions/upload-artifact@v2
         if: failure()
