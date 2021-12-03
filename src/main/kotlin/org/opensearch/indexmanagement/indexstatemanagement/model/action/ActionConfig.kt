@@ -28,9 +28,7 @@ abstract class ActionConfig(
 ) : ToXContentFragment, Writeable {
 
     var configTimeout: ActionTimeout? = null
-        private set
     var configRetry: ActionRetry? = null
-        private set
 
     override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
         configTimeout?.toXContent(builder, params)
@@ -76,6 +74,8 @@ abstract class ActionConfig(
     }
 
     companion object {
+        private const val DEFAULT_RETRIES = 3L
+
         // TODO clean up for actionIndex
         @JvmStatic
         @Throws(IOException::class)
@@ -115,7 +115,7 @@ abstract class ActionConfig(
         fun parse(xcp: XContentParser, index: Int): ActionConfig {
             var actionConfig: ActionConfig? = null
             var timeout: ActionTimeout? = null
-            var retry: ActionRetry? = null
+            var retry: ActionRetry? = ActionRetry(DEFAULT_RETRIES)
 
             ensureExpectedToken(Token.START_OBJECT, xcp.currentToken(), xcp)
             while (xcp.nextToken() != Token.END_OBJECT) {

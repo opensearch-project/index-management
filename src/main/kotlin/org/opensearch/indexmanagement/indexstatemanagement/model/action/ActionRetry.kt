@@ -28,7 +28,7 @@ data class ActionRetry(
     val delay: TimeValue = TimeValue.timeValueMinutes(1)
 ) : ToXContentFragment, Writeable {
 
-    init { require(count > 0) { "Count for ActionRetry must be greater than 0" } }
+    init { require(count >= 0) { "Count for ActionRetry must be a non-negative number" } }
 
     override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
         builder
