@@ -98,6 +98,10 @@ abstract class ODFERestTestCase : OpenSearchRestTestCase() {
 
     @Throws(IOException::class)
     open fun wipeAllODFEIndices() {
+        // Delete all data stream indices
+        client().performRequest(Request("DELETE", "/_data_stream/*"))
+
+        // Delete all indices
         val response = client().performRequest(Request("GET", "/_cat/indices?format=json&expand_wildcards=all"))
 
         val xContentType = XContentType.fromMediaTypeOrFormat(response.entity.contentType.value)
