@@ -97,7 +97,7 @@ jobs:
       - name: Checkout Branch
         uses: actions/checkout@v2
       - name: Build with Gradle
-        run: ./gradlew.bat build -Dopensearch.version=1.2.0-SNAPSHOT -x integTest -x jacocoTestReport
+        run: ./gradlew build -Dopensearch.version=1.2.0-SNAPSHOT -x integTest -x jacocoTestReport
       - name: Create Artifact Path
         run: |
           mkdir -p index-management-artifacts
