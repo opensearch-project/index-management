@@ -8,6 +8,7 @@ package org.opensearch.indexmanagement.indexstatemanagement.resthandler
 import org.opensearch.client.ResponseException
 import org.opensearch.indexmanagement.indexstatemanagement.IndexStateManagementRestTestCase
 import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
+import org.opensearch.indexmanagement.indexstatemanagement.model.action.ActionRetry
 import org.opensearch.indexmanagement.indexstatemanagement.model.action.AllocationActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.ActionMetaData
 import org.opensearch.indexmanagement.indexstatemanagement.randomForceMergeActionConfig
@@ -208,10 +209,12 @@ class RestRetryFailedManagedIndexActionIT : IndexStateManagementRestTestCase() {
 
     fun `test index failed`() {
         val indexName = "${testIndexName}_blueberry"
+        val config = AllocationActionConfig(require = mapOf("..//" to "value"), exclude = emptyMap(), include = emptyMap(), index = 0)
+        config.configRetry = ActionRetry(0)
         val states = listOf(
             randomState().copy(
                 transitions = listOf(),
-                actions = listOf(AllocationActionConfig(require = mapOf("..//" to "value"), exclude = emptyMap(), include = emptyMap(), index = 0))
+                actions = listOf(config)
             )
         )
         val invalidPolicy = randomPolicy().copy(
@@ -251,7 +254,9 @@ class RestRetryFailedManagedIndexActionIT : IndexStateManagementRestTestCase() {
     fun `test reset action start time`() {
         val indexName = "${testIndexName}_drewberry"
         val policyID = "${testIndexName}_policy_1"
-        val policy = randomPolicy(states = listOf(randomState(actions = listOf(randomForceMergeActionConfig(maxNumSegments = 1)))))
+        val config = randomForceMergeActionConfig(maxNumSegments = 1)
+        config.configRetry = ActionRetry(0)
+        val policy = randomPolicy(states = listOf(randomState(actions = listOf(config))))
         createPolicy(policy, policyId = policyID)
         createIndex(indexName, policyID)
 

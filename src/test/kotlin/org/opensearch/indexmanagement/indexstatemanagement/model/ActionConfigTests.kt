@@ -38,9 +38,9 @@ class ActionConfigTests : OpenSearchTestCase() {
         }
     }
 
-    fun `test action retry count of zero fails`() {
+    fun `test action retry count of -1 fails`() {
         assertFailsWith(IllegalArgumentException::class, "Expected IllegalArgumentException for retry count less than 1") {
-            ActionRetry(count = 0)
+            ActionRetry(count = -1)
         }
     }
 
