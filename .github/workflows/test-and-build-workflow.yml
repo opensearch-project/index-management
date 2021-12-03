@@ -85,8 +85,8 @@ jobs:
   mac-build:
     # Job name
     name: Build Index Management
-    # This job runs on Windows
-    runs-on: windows-latest
+    # This job runs on Mac OS
+    runs-on: macos-latest
     steps:
       # This step uses the setup-java Github action: https://github.com/actions/setup-java
       - name: Set Up JDK 14
