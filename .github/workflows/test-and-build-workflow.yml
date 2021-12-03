@@ -43,7 +43,7 @@ jobs:
       - name: Upload Artifacts
         uses: actions/upload-artifact@v1
         with:
-          name: index-management-plugin
+          name: index-management-plugin-ubuntu
           path: index-management-artifacts
   windows-build:
     # Job name
@@ -68,19 +68,21 @@ jobs:
         run: ./gradlew.bat build -D"opensearch.version=1.2.0-SNAPSHOT" -x integTest -x jacocoTestReport
         env:
           _JAVA_OPTIONS: -Xmx4096M
+#      - name: Upload failed logs
+#        uses: actions/upload-artifact@v2
+#        if: failure()
+#        with:
+#          name: logs
+#          path: build/testclusters/integTest-*/logs/*
       - name: Create Artifact Path
         run: |
           mkdir -p index-management-artifacts
           cp ./build/distributions/*.zip index-management-artifacts
-      - name: Uploads coverage
-        uses: codecov/codecov-action@v1
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
       # This step uses the upload-artifact Github action: https://github.com/actions/upload-artifact
       - name: Upload Artifacts
         uses: actions/upload-artifact@v1
         with:
-          name: index-management-plugin
+          name: index-management-plugin-windows
           path: index-management-artifacts
   mac-build:
     # Job name
@@ -98,17 +100,19 @@ jobs:
         uses: actions/checkout@v2
       - name: Build with Gradle
         run: ./gradlew build -Dopensearch.version=1.2.0-SNAPSHOT -x integTest -x jacocoTestReport
+#      - name: Upload failed logs
+#        uses: actions/upload-artifact@v2
+#        if: failure()
+#        with:
+#          name: logs
+#          path: build/testclusters/integTest-*/logs/*
       - name: Create Artifact Path
         run: |
           mkdir -p index-management-artifacts
           cp ./build/distributions/*.zip index-management-artifacts
-      - name: Uploads coverage
-        uses: codecov/codecov-action@v1
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
       # This step uses the upload-artifact Github action: https://github.com/actions/upload-artifact
       - name: Upload Artifacts
         uses: actions/upload-artifact@v1
         with:
-          name: index-management-plugin
+          name: index-management-plugin-mac
           path: index-management-artifacts
