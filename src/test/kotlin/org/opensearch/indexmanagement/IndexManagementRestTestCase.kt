@@ -14,7 +14,9 @@ import org.opensearch.client.Request
 import org.opensearch.client.RequestOptions
 import org.opensearch.client.Response
 import org.opensearch.client.RestClient
+import org.opensearch.common.Strings
 import org.opensearch.common.settings.Settings
+import org.opensearch.indexmanagement.indexstatemanagement.util.INDEX_HIDDEN
 import org.opensearch.rest.RestStatus
 import java.nio.file.Files
 import java.nio.file.Path
@@ -37,6 +39,20 @@ abstract class IndexManagementRestTestCase : ODFERestTestCase() {
             "PUT", "_cluster/settings",
             StringEntity("""{"persistent":{"action.auto_create_index":"-.opendistro-*,*"}}""", ContentType.APPLICATION_JSON)
         )
+    }
+
+    // Tests on lower resource machines are experiencing flaky failures due to attempting to force a job to
+    // start before the job scheduler has registered the index operations listener. Initializing the index
+    // preemptively seems to give the job scheduler time to listen to operations.
+    @Before
+    fun initializeManagedIndex() {
+        if (!indexExists(IndexManagementPlugin.INDEX_MANAGEMENT_INDEX)) {
+            val request = Request("PUT", "/${IndexManagementPlugin.INDEX_MANAGEMENT_INDEX}")
+            var entity = "{\"settings\": " + Strings.toString(Settings.builder().put(INDEX_HIDDEN, true).build())
+            entity += ",\"mappings\" : ${IndexManagementIndices.indexManagementMappings}}"
+            request.setJsonEntity(entity)
+            client().performRequest(request)
+        }
     }
 
     protected val isDebuggingTest = DisableOnDebug(null).isDebugging
