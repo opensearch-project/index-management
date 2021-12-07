@@ -35,6 +35,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndex
 import org.opensearch.indexmanagement.indexstatemanagement.util.managedIndexMetadataID
 import org.opensearch.indexmanagement.opensearchapi.contentParser
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
+import java.time.Instant
 
 private val log = LogManager.getLogger("Index Management Helper")
 
@@ -200,4 +201,12 @@ fun XContentBuilder.buildMetadata(name: String, metadata: ToXContentFragment, pa
     metadata.toXContent(this, params)
     this.endObject()
     return this
+}
+
+// Get the oldest rollover time or null if index was never rolled over
+fun IndexMetadata.getOldestRolloverTime(): Instant? {
+    return this.rolloverInfos.values()
+        .map { it.value.time }
+        .minOrNull() // oldest should be min as its epoch time
+        ?.let { Instant.ofEpochMilli(it) }
 }

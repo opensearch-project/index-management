@@ -213,7 +213,8 @@ fun Transition.evaluateConditions(
     indexCreationDate: Instant,
     numDocs: Long?,
     indexSize: ByteSizeValue?,
-    transitionStartTime: Instant
+    transitionStartTime: Instant,
+    rolloverDate: Instant?,
 ): Boolean {
     // If there are no conditions, treat as always true
     if (this.conditions == null) return true
@@ -236,6 +237,12 @@ fun Transition.evaluateConditions(
     if (this.conditions.cron != null) {
         // If a cron pattern matches the time between the start of "attempt_transition" to now then we consider it meeting the condition
         return this.conditions.cron.getNextExecutionTime(transitionStartTime) <= Instant.now()
+    }
+
+    if (this.conditions.rolloverAge != null) {
+        val rolloverDateMilli = rolloverDate?.toEpochMilli() ?: return false
+        val elapsedTime = Instant.now().toEpochMilli() - rolloverDateMilli
+        return this.conditions.rolloverAge.millis <= elapsedTime
     }
 
     // We should never reach this

@@ -12,6 +12,7 @@ import com.nhaarman.mockitokotlin2.mock
 import com.nhaarman.mockitokotlin2.whenever
 import kotlinx.coroutines.runBlocking
 import org.opensearch.action.ActionListener
+import org.opensearch.action.admin.indices.rollover.RolloverInfo
 import org.opensearch.action.admin.indices.stats.CommonStats
 import org.opensearch.action.admin.indices.stats.IndicesStatsResponse
 import org.opensearch.client.AdminClient
@@ -21,6 +22,7 @@ import org.opensearch.cluster.ClusterState
 import org.opensearch.cluster.metadata.IndexMetadata
 import org.opensearch.cluster.metadata.Metadata
 import org.opensearch.cluster.service.ClusterService
+import org.opensearch.common.collect.ImmutableOpenMap
 import org.opensearch.index.shard.DocsStats
 import org.opensearch.indexmanagement.indexstatemanagement.model.Conditions
 import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
@@ -35,7 +37,10 @@ import java.time.Instant
 
 class AttemptTransitionStepTests : OpenSearchTestCase() {
 
-    private val indexMetadata: IndexMetadata = mock()
+    @Suppress("UNCHECKED_CAST")
+    private val indexMetadata: IndexMetadata = mock {
+        on { rolloverInfos } doReturn ImmutableOpenMap.builder<String, RolloverInfo>().build()
+    }
     private val metadata: Metadata = mock { on { index(any<String>()) } doReturn indexMetadata }
     private val clusterState: ClusterState = mock { on { metadata() } doReturn metadata }
     private val clusterService: ClusterService = mock { on { state() } doReturn clusterState }
