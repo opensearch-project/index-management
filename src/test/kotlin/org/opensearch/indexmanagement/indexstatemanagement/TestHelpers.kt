@@ -110,7 +110,7 @@ fun randomTransition(
  */
 fun randomConditions(
     condition: Pair<String, Any>? =
-        OpenSearchRestTestCase.randomFrom(listOf(randomIndexAge(), randomDocCount(), randomSize(), null))
+        OpenSearchRestTestCase.randomFrom(listOf(randomIndexAge(), randomDocCount(), randomSize(), randomRolloverAge(), null))
 ): Conditions? {
 
     if (condition == null) return null
@@ -123,6 +123,7 @@ fun randomConditions(
         Conditions.MIN_DOC_COUNT_FIELD -> Conditions(docCount = value as Long)
         Conditions.MIN_SIZE_FIELD -> Conditions(size = value as ByteSizeValue)
 //        Conditions.CRON_FIELD -> Conditions(cron = value as CronSchedule) // TODO: Uncomment after issues are fixed
+        Conditions.MIN_ROLLOVER_AGE_FIELD -> Conditions(rolloverAge = value as TimeValue)
         else -> throw IllegalArgumentException("Invalid field: [$type] given for random Conditions.")
     }
 }
@@ -241,6 +242,8 @@ fun randomSize(size: ByteSizeValue = randomByteSizeValue()) = Conditions.MIN_SIZ
 
 fun randomCronSchedule(cron: CronSchedule = CronSchedule("0 * * * *", ZoneId.of("UTC"))) =
     Conditions.CRON_FIELD to cron
+
+fun randomRolloverAge(rolloverAge: TimeValue = randomTimeValueObject()) = Conditions.MIN_ROLLOVER_AGE_FIELD to rolloverAge
 
 fun randomTimeValueObject(): TimeValue = TimeValue.parseTimeValue(OpenSearchRestTestCase.randomPositiveTimeValue(), "")
 
