@@ -7,6 +7,7 @@ on:
   push:
     branches:
       - "*"
+
 jobs:
   build:
     # Job name
@@ -17,7 +18,7 @@ jobs:
     strategy:
       # This setting says that all jobs should finish, even if one fails
       fail-fast: false
-      # This starts three jobs, with
+      # This starts three jobs, setting these environment variables uniquely for the different jobs
       matrix:
         include:
           - os: ubuntu-latest
