@@ -8,39 +8,33 @@ package org.opensearch.indexmanagement.indexstatemanagement.step.forcemerge
 import org.apache.logging.log4j.LogManager
 import org.opensearch.action.admin.indices.stats.IndicesStatsRequest
 import org.opensearch.action.admin.indices.stats.IndicesStatsResponse
-import org.opensearch.client.Client
-import org.opensearch.cluster.service.ClusterService
-import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
-import org.opensearch.indexmanagement.indexstatemanagement.model.action.ForceMergeActionConfig
-import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.ActionProperties
-import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.StepMetaData
-import org.opensearch.indexmanagement.indexstatemanagement.step.Step
+import org.opensearch.indexmanagement.indexstatemanagement.action.ForceMergeAction
 import org.opensearch.indexmanagement.opensearchapi.getUsefulCauseString
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
+import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ActionProperties
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepContext
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepMetaData
 import org.opensearch.rest.RestStatus
 import java.time.Duration
 import java.time.Instant
 
-class WaitForForceMergeStep(
-    val clusterService: ClusterService,
-    val client: Client,
-    val config: ForceMergeActionConfig,
-    managedIndexMetaData: ManagedIndexMetaData
-) : Step(name, managedIndexMetaData, false) {
+class WaitForForceMergeStep(private val action: ForceMergeAction) : Step(name, false) {
 
     private val logger = LogManager.getLogger(javaClass)
     private var stepStatus = StepStatus.STARTING
     private var info: Map<String, Any>? = null
 
-    override fun isIdempotent() = true
-
     @Suppress("TooGenericExceptionCaught", "ReturnCount")
     override suspend fun execute(): WaitForForceMergeStep {
+        val context = this.context ?: return this
+        val indexName = context.metadata.index
         // Retrieve maxNumSegments value from ActionProperties. If ActionProperties is null, update failed info and return early.
-        val maxNumSegments = getMaxNumSegments() ?: return this
+        val maxNumSegments = getMaxNumSegments(context) ?: return this
 
         // Get the number of shards with a segment count greater than maxNumSegments, meaning they are still merging
-        val shardsStillMergingSegments = getShardsStillMergingSegments(indexName, maxNumSegments)
+        val shardsStillMergingSegments = getShardsStillMergingSegments(indexName, maxNumSegments, context)
         // If shardsStillMergingSegments is null, failed info has already been updated and can return early
         shardsStillMergingSegments ?: return this
 
@@ -61,9 +55,9 @@ class WaitForForceMergeStep(
              * is optional, if no timeout is given, the segment count would stop going down as merging would no longer
              * occur and the managed index would become stuck in this action.
              */
-            val timeWaitingForForceMerge: Duration = Duration.between(getActionStartTime(), Instant.now())
+            val timeWaitingForForceMerge: Duration = Duration.between(getActionStartTime(context), Instant.now())
             // Get ActionTimeout if given, otherwise use default timeout of 12 hours
-            val timeoutInSeconds: Long = config.configTimeout?.timeout?.seconds ?: FORCE_MERGE_TIMEOUT_IN_SECONDS
+            val timeoutInSeconds: Long = action.configTimeout?.timeout?.seconds ?: FORCE_MERGE_TIMEOUT_IN_SECONDS
 
             if (timeWaitingForForceMerge.toSeconds() > timeoutInSeconds) {
                 logger.error(
@@ -87,7 +81,8 @@ class WaitForForceMergeStep(
         return this
     }
 
-    private fun getMaxNumSegments(): Int? {
+    private fun getMaxNumSegments(context: StepContext): Int? {
+        val managedIndexMetaData = context.metadata
         val actionProperties = managedIndexMetaData.actionMetaData?.actionProperties
 
         if (actionProperties?.maxNumSegments == null) {
@@ -102,10 +97,10 @@ class WaitForForceMergeStep(
         return actionProperties.maxNumSegments
     }
 
-    private suspend fun getShardsStillMergingSegments(indexName: String, maxNumSegments: Int): Int? {
+    private suspend fun getShardsStillMergingSegments(indexName: String, maxNumSegments: Int, context: StepContext): Int? {
         try {
             val statsRequest = IndicesStatsRequest().indices(indexName)
-            val statsResponse: IndicesStatsResponse = client.admin().indices().suspendUntil { stats(statsRequest, it) }
+            val statsResponse: IndicesStatsResponse = context.client.admin().indices().suspendUntil { stats(statsRequest, it) }
 
             if (statsResponse.status == RestStatus.OK) {
                 return statsResponse.shards.count {
@@ -139,28 +134,29 @@ class WaitForForceMergeStep(
         return null
     }
 
-    private fun getActionStartTime(): Instant {
-        if (managedIndexMetaData.actionMetaData?.startTime == null) {
-            return Instant.now()
-        }
+    private fun getActionStartTime(context: StepContext): Instant {
+        val managedIndexMetaData = context.metadata
+        val startTime = managedIndexMetaData.actionMetaData?.startTime ?: return Instant.now()
 
-        return Instant.ofEpochMilli(managedIndexMetaData.actionMetaData.startTime)
+        return Instant.ofEpochMilli(startTime)
     }
 
-    override fun getUpdatedManagedIndexMetaData(currentMetaData: ManagedIndexMetaData): ManagedIndexMetaData {
+    override fun getUpdatedManagedIndexMetadata(currentMetadata: ManagedIndexMetaData): ManagedIndexMetaData {
         // if the step is completed set actionProperties back to null
-        val currentActionMetaData = currentMetaData.actionMetaData
+        val currentActionMetaData = currentMetadata.actionMetaData
         val updatedActionMetaData = currentActionMetaData?.let {
             if (stepStatus != StepStatus.COMPLETED) it
             else currentActionMetaData.copy(actionProperties = null)
         }
-        return currentMetaData.copy(
+        return currentMetadata.copy(
             actionMetaData = updatedActionMetaData,
-            stepMetaData = StepMetaData(name, getStepStartTime().toEpochMilli(), stepStatus),
+            stepMetaData = StepMetaData(name, getStepStartTime(currentMetadata).toEpochMilli(), stepStatus),
             transitionTo = null,
             info = info
         )
     }
+
+    override fun isIdempotent() = true
 
     companion object {
         const val name = "wait_for_force_merge"

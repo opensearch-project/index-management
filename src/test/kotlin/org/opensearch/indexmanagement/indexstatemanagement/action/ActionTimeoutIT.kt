@@ -7,11 +7,10 @@ package org.opensearch.indexmanagement.indexstatemanagement.action
 
 import org.hamcrest.collection.IsMapContaining
 import org.opensearch.indexmanagement.indexstatemanagement.IndexStateManagementRestTestCase
-import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
-import org.opensearch.indexmanagement.indexstatemanagement.model.action.ActionConfig
-import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.ActionMetaData
 import org.opensearch.indexmanagement.indexstatemanagement.step.open.AttemptOpenStep
 import org.opensearch.indexmanagement.indexstatemanagement.step.rollover.AttemptRolloverStep
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ActionMetaData
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.waitFor
 import java.time.Instant
 import java.util.Locale
@@ -58,7 +57,7 @@ class ActionTimeoutIT : IndexStateManagementRestTestCase() {
                         ActionMetaData.ACTION to fun(actionMetaDataMap: Any?): Boolean =
                             assertActionEquals(
                                 ActionMetaData(
-                                    name = ActionConfig.ActionType.ROLLOVER.type, startTime = Instant.now().toEpochMilli(), index = 0,
+                                    name = RolloverAction.name, startTime = Instant.now().toEpochMilli(), index = 0,
                                     failed = true, consumedRetries = 0, lastRetryTime = null, actionProperties = null
                                 ),
                                 actionMetaDataMap

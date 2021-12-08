@@ -14,6 +14,8 @@ import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.LEGACY_ISM
 import org.opensearch.indexmanagement.indexstatemanagement.model.ChangePolicy
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.changepolicy.ChangePolicyAction
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.changepolicy.ChangePolicyRequest
+import org.opensearch.indexmanagement.indexstatemanagement.util.DEFAULT_INDEX_TYPE
+import org.opensearch.indexmanagement.indexstatemanagement.util.TYPE_PARAM_KEY
 import org.opensearch.rest.BaseRestHandler
 import org.opensearch.rest.BaseRestHandler.RestChannelConsumer
 import org.opensearch.rest.RestHandler.ReplacedRoute
@@ -51,11 +53,13 @@ class RestChangePolicyAction : BaseRestHandler() {
             throw IllegalArgumentException("Missing index")
         }
 
+        val indexType = request.param(TYPE_PARAM_KEY, DEFAULT_INDEX_TYPE)
+
         val xcp = request.contentParser()
         ensureExpectedToken(Token.START_OBJECT, xcp.nextToken(), xcp)
         val changePolicy = ChangePolicy.parse(xcp)
 
-        val changePolicyRequest = ChangePolicyRequest(indices.toList(), changePolicy)
+        val changePolicyRequest = ChangePolicyRequest(indices.toList(), changePolicy, indexType)
 
         return RestChannelConsumer { channel ->
             client.execute(ChangePolicyAction.INSTANCE, changePolicyRequest, RestToXContentListener(channel))

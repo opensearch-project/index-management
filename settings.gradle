@@ -4,3 +4,6 @@
  */
 
 rootProject.name = 'opensearch-index-management'
+
+include "spi"
+project(":spi").name = rootProject.name + "-spi"

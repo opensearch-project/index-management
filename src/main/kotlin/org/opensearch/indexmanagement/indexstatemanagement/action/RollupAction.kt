@@ -5,31 +5,34 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.action
 
-import org.opensearch.client.Client
-import org.opensearch.cluster.service.ClusterService
-import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
-import org.opensearch.indexmanagement.indexstatemanagement.model.action.ActionConfig
-import org.opensearch.indexmanagement.indexstatemanagement.model.action.RollupActionConfig
-import org.opensearch.indexmanagement.indexstatemanagement.step.Step
+import org.opensearch.common.io.stream.StreamOutput
+import org.opensearch.common.xcontent.ToXContent
+import org.opensearch.common.xcontent.XContentBuilder
 import org.opensearch.indexmanagement.indexstatemanagement.step.rollup.AttemptCreateRollupJobStep
 import org.opensearch.indexmanagement.indexstatemanagement.step.rollup.WaitForRollupCompletionStep
+import org.opensearch.indexmanagement.rollup.model.ISMRollup
+import org.opensearch.indexmanagement.spi.indexstatemanagement.Action
+import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepContext
 
 class RollupAction(
-    clusterService: ClusterService,
-    client: Client,
-    managedIndexMetaData: ManagedIndexMetaData,
-    config: RollupActionConfig
-) : Action(ActionConfig.ActionType.ROLLUP, config, managedIndexMetaData) {
+    val ismRollup: ISMRollup,
+    index: Int
+) : Action(name, index) {
 
-    private val attemptCreateRollupJobStep = AttemptCreateRollupJobStep(clusterService, client, config.ismRollup, managedIndexMetaData)
-    private val waitForRollupCompletionStep = WaitForRollupCompletionStep(clusterService, client, managedIndexMetaData)
+    companion object {
+        const val name = "rollup"
+        const val ISM_ROLLUP_FIELD = "ism_rollup"
+    }
 
-    override fun getSteps(): List<Step> = listOf(attemptCreateRollupJobStep, waitForRollupCompletionStep)
+    private val attemptCreateRollupJobStep = AttemptCreateRollupJobStep(this)
+    private val waitForRollupCompletionStep = WaitForRollupCompletionStep()
+    private val steps = listOf(attemptCreateRollupJobStep, waitForRollupCompletionStep)
 
     @Suppress("ReturnCount")
-    override fun getStepToExecute(): Step {
+    override fun getStepToExecute(context: StepContext): Step {
         // If stepMetaData is null, return the first step
-        val stepMetaData = managedIndexMetaData.stepMetaData ?: return attemptCreateRollupJobStep
+        val stepMetaData = context.metadata.stepMetaData ?: return attemptCreateRollupJobStep
 
         // If the current step has completed, return the next step
         if (stepMetaData.stepStatus == Step.StepStatus.COMPLETED) {
@@ -43,5 +46,18 @@ class RollupAction(
             AttemptCreateRollupJobStep.name -> attemptCreateRollupJobStep
             else -> waitForRollupCompletionStep
         }
+    }
+
+    override fun getSteps(): List<Step> = steps
+
+    override fun populateAction(builder: XContentBuilder, params: ToXContent.Params) {
+        builder.startObject(type)
+        builder.field(ISM_ROLLUP_FIELD, ismRollup)
+        builder.endObject()
+    }
+
+    override fun populateAction(out: StreamOutput) {
+        ismRollup.writeTo(out)
+        out.writeInt(actionIndex)
     }
 }

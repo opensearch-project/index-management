@@ -8,15 +8,16 @@ package org.opensearch.indexmanagement.indexstatemanagement.resthandler
 import org.opensearch.client.ResponseException
 import org.opensearch.common.settings.Settings
 import org.opensearch.indexmanagement.indexstatemanagement.IndexStateManagementRestTestCase
+import org.opensearch.indexmanagement.indexstatemanagement.action.ReadOnlyAction
 import org.opensearch.indexmanagement.indexstatemanagement.model.ISMTemplate
 import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
 import org.opensearch.indexmanagement.indexstatemanagement.model.State
-import org.opensearch.indexmanagement.indexstatemanagement.model.action.ReadOnlyActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomErrorNotification
 import org.opensearch.indexmanagement.indexstatemanagement.randomPolicy
 import org.opensearch.indexmanagement.indexstatemanagement.util.INDEX_HIDDEN
 import org.opensearch.indexmanagement.randomInstant
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.waitFor
 import org.opensearch.rest.RestStatus
 import java.time.Instant
@@ -31,6 +32,7 @@ class ISMTemplateRestAPIIT : IndexStateManagementRestTestCase() {
     private val policyID2 = "t2"
     private val policyID3 = "t3"
 
+    @Suppress("UNCHECKED_CAST")
     fun `test add template with invalid index pattern`() {
         try {
             val ismTemp = ISMTemplate(listOf(" "), 100, randomInstant())
@@ -44,6 +46,7 @@ class ISMTemplateRestAPIIT : IndexStateManagementRestTestCase() {
         }
     }
 
+    @Suppress("UNCHECKED_CAST")
     fun `test add template with self-overlapping index pattern`() {
         try {
             val ismTemp = ISMTemplate(listOf("ab*"), 100, randomInstant())
@@ -58,6 +61,7 @@ class ISMTemplateRestAPIIT : IndexStateManagementRestTestCase() {
         }
     }
 
+    @Suppress("UNCHECKED_CAST")
     fun `test add template with overlapping index pattern`() {
         try {
             val ismTemp = ISMTemplate(listOf("log*"), 100, randomInstant())
@@ -86,9 +90,9 @@ class ISMTemplateRestAPIIT : IndexStateManagementRestTestCase() {
 
         val ismTemp = ISMTemplate(listOf("log*"), 100, randomInstant())
 
-        val actionConfig = ReadOnlyActionConfig(0)
+        val action = ReadOnlyAction(0)
         val states = listOf(
-            State("ReadOnlyState", listOf(actionConfig), listOf())
+            State("ReadOnlyState", listOf(action), listOf())
         )
         val policy = Policy(
             id = policyID,

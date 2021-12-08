@@ -12,7 +12,8 @@ import org.opensearch.common.xcontent.ToXContent
 import org.opensearch.common.xcontent.ToXContentObject
 import org.opensearch.common.xcontent.XContentBuilder
 import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
-import org.opensearch.indexmanagement.indexstatemanagement.util.XCONTENT_WITHOUT_USER
+import org.opensearch.indexmanagement.indexstatemanagement.util.WITH_USER
+import org.opensearch.indexmanagement.spi.indexstatemanagement.Action.Companion.EXCLUDE_CUSTOM_FIELD_PARAM
 import org.opensearch.indexmanagement.util._ID
 import org.opensearch.indexmanagement.util._PRIMARY_TERM
 import org.opensearch.indexmanagement.util._SEQ_NO
@@ -66,12 +67,13 @@ class IndexPolicyResponse : ActionResponse, ToXContentObject {
     }
 
     override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
+        val policyParams = ToXContent.MapParams(mapOf(WITH_USER to "false", EXCLUDE_CUSTOM_FIELD_PARAM to "true"))
         return builder.startObject()
             .field(_ID, id)
             .field(_VERSION, version)
             .field(_PRIMARY_TERM, primaryTerm)
             .field(_SEQ_NO, seqNo)
-            .field(Policy.POLICY_TYPE, policy, XCONTENT_WITHOUT_USER)
+            .field(Policy.POLICY_TYPE, policy, policyParams)
             .endObject()
     }
 }

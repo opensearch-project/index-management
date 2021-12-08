@@ -8,7 +8,6 @@ package org.opensearch.indexmanagement.indexstatemanagement.action
 import org.opensearch.indexmanagement.indexstatemanagement.IndexStateManagementRestTestCase
 import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
 import org.opensearch.indexmanagement.indexstatemanagement.model.State
-import org.opensearch.indexmanagement.indexstatemanagement.model.action.DeleteActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomErrorNotification
 import org.opensearch.indexmanagement.waitFor
 import java.time.Instant
@@ -16,13 +15,12 @@ import java.time.temporal.ChronoUnit
 import java.util.Locale
 
 class DeleteActionIT : IndexStateManagementRestTestCase() {
-
     private val testIndexName = javaClass.simpleName.toLowerCase(Locale.ROOT)
 
     fun `test basic`() {
         val indexName = "${testIndexName}_index_1"
         val policyID = "${testIndexName}_testPolicyName_1"
-        val actionConfig = DeleteActionConfig(0)
+        val actionConfig = DeleteAction(0)
         val states = listOf(
             State("DeleteState", listOf(actionConfig), listOf())
         )
@@ -63,12 +61,16 @@ class DeleteActionIT : IndexStateManagementRestTestCase() {
                     .any {
                         val metadata = it["managed_index_meta_data"] as Map<*, *>
                         val index = metadata["index"] as String
-                        val action = metadata["action"] as Map<*, *>
-                        val actionName = action["name"] as String
-                        val step = metadata["step"] as Map<*, *>
-                        val stepName = step["name"] as String
-                        val stepStatus = step["step_status"] as String
-                        index == indexName && actionName == "delete" && stepName == "attempt_delete" && stepStatus == "completed"
+                        if (metadata.containsKey("action")) {
+                            val action = metadata["action"] as Map<*, *>
+                            val actionName = action["name"] as String
+                            val step = metadata["step"] as Map<*, *>
+                            val stepName = step["name"] as String
+                            val stepStatus = step["step_status"] as String
+                            index == indexName && actionName == "delete" && stepName == "attempt_delete" && stepStatus == "completed"
+                        } else {
+                            false
+                        }
                     }
             )
         }
