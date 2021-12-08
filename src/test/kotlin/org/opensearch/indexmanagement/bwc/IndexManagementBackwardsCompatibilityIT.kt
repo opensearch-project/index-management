@@ -1,12 +1,6 @@
 /*
+ * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
- *
- * The OpenSearch Contributors require contributions made to
- * this file be licensed under the Apache-2.0 license or a
- * compatible open source license.
- *
- * Modifications Copyright OpenSearch Contributors. See
- * GitHub history for details.
  */
 
 package org.opensearch.indexmanagement.bwc
@@ -16,6 +10,7 @@ import org.apache.http.entity.StringEntity
 import org.opensearch.common.settings.Settings
 import org.opensearch.common.xcontent.XContentFactory
 import org.opensearch.index.query.QueryBuilders
+import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.LEGACY_ISM_BASE_URI
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.LEGACY_POLICY_BASE_URI
 import org.opensearch.indexmanagement.IndexManagementRestTestCase
 import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
@@ -31,6 +26,8 @@ class IndexManagementBackwardsCompatibilityIT : IndexManagementRestTestCase() {
     companion object {
         private val CLUSTER_TYPE = ClusterType.parse(System.getProperty("tests.rest.bwcsuite"))
         private val CLUSTER_NAME = System.getProperty("tests.clustername")
+        private val INDEX_NAME = "test_bwc_index"
+        private val POLICY_NAME = "bwc_test_policy"
     }
 
     override fun preserveIndicesUponCompletion(): Boolean = true
@@ -63,14 +60,19 @@ class IndexManagementBackwardsCompatibilityIT : IndexManagementRestTestCase() {
                 ClusterType.OLD -> {
                     assertTrue(pluginNames.contains("opendistro-index-management"))
                     createBasicPolicy()
+
+                    verifyPolicyExists(LEGACY_POLICY_BASE_URI)
+                    verifyPolicyOnIndex(LEGACY_POLICY_BASE_URI)
                 }
                 ClusterType.MIXED -> {
                     assertTrue(pluginNames.contains("opensearch-index-management"))
                     verifyPolicyExists(LEGACY_POLICY_BASE_URI)
+                    verifyPolicyOnIndex(LEGACY_POLICY_BASE_URI)
                 }
                 ClusterType.UPGRADED -> {
                     assertTrue(pluginNames.contains("opensearch-index-management"))
                     verifyPolicyExists(LEGACY_POLICY_BASE_URI)
+                    verifyPolicyOnIndex(LEGACY_POLICY_BASE_URI)
                 }
             }
             break
@@ -112,15 +114,26 @@ class IndexManagementBackwardsCompatibilityIT : IndexManagementRestTestCase() {
     private fun createBasicPolicy() {
         val builder = XContentFactory.jsonBuilder()
         val policyString = randomPolicy().toXContent(builder, XCONTENT_WITHOUT_USER).string()
+        val policyNameString = """{"policy_id": "$POLICY_NAME"} """
+
+        createIndex(INDEX_NAME, Settings.EMPTY)
 
         val createResponse = client().makeRequest(
             method = "PUT",
-            endpoint = "$LEGACY_POLICY_BASE_URI/bwc_test_policy?refresh=true",
+            endpoint = "$LEGACY_POLICY_BASE_URI/$POLICY_NAME?refresh=true",
             params = emptyMap(),
             entity = StringEntity(policyString, APPLICATION_JSON)
         )
 
+        val addResponse = client().makeRequest(
+            method = "POST",
+            endpoint = "$LEGACY_ISM_BASE_URI/add/$INDEX_NAME",
+            params = emptyMap(),
+            entity = StringEntity(policyNameString, APPLICATION_JSON)
+        )
+
         assertEquals("Create policy failed", RestStatus.CREATED, createResponse.restStatus())
+        assertEquals("Add policy failed", RestStatus.OK, addResponse.restStatus())
         val responseBody = createResponse.asMap()
         val createdId = responseBody["_id"] as String
         val createdVersion = responseBody["_version"] as Int
@@ -134,10 +147,27 @@ class IndexManagementBackwardsCompatibilityIT : IndexManagementRestTestCase() {
         val search = SearchSourceBuilder().query(QueryBuilders.matchAllQuery()).toString()
         val getResponse = client().makeRequest(
             "GET",
-            "$uri/bwc_test_policy",
+            "$uri/$POLICY_NAME",
             emptyMap(),
             StringEntity(search, APPLICATION_JSON)
         )
         assertEquals("Get policy failed", RestStatus.OK, getResponse.restStatus())
+    }
+
+    @Throws(Exception::class)
+    @Suppress("UNCHECKED_CAST")
+    private fun verifyPolicyOnIndex(uri: String) {
+        val getResponse = client().makeRequest(
+            "GET",
+            "$uri/explain/$INDEX_NAME",
+            emptyMap(),
+            ""
+        )
+
+        assertEquals("Explain Index failed", RestStatus.OK, getResponse.restStatus())
+        val responseBody = getResponse.asMap()
+        assertTrue("Test index does not exist", responseBody.containsKey(INDEX_NAME))
+        val responsePolicy = responseBody[INDEX_NAME]["index.plugins.index_state_management.policy_id"]
+        assertEquals("Test policy not added on test index", responsePolicy, POLICY_NAME)
     }
 }
