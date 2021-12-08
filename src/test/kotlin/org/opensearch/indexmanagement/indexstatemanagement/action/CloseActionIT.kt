@@ -9,7 +9,6 @@ import org.opensearch.indexmanagement.indexstatemanagement.IndexStateManagementR
 import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
 import org.opensearch.indexmanagement.indexstatemanagement.model.State
 import org.opensearch.indexmanagement.indexstatemanagement.model.Transition
-import org.opensearch.indexmanagement.indexstatemanagement.model.action.CloseActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomErrorNotification
 import org.opensearch.indexmanagement.waitFor
 import java.time.Instant
@@ -17,13 +16,12 @@ import java.time.temporal.ChronoUnit
 import java.util.Locale
 
 class CloseActionIT : IndexStateManagementRestTestCase() {
-
     private val testIndexName = javaClass.simpleName.toLowerCase(Locale.ROOT)
 
     fun `test basic`() {
         val indexName = "${testIndexName}_index_1"
         val policyID = "${testIndexName}_testPolicyName_1"
-        val actionConfig = CloseActionConfig(0)
+        val actionConfig = CloseAction(0)
         val states = listOf(
             State("CloseState", listOf(actionConfig), listOf())
         )
@@ -58,7 +56,7 @@ class CloseActionIT : IndexStateManagementRestTestCase() {
     fun `test already closed index`() {
         val indexName = "${testIndexName}_index_2"
         val policyID = "${testIndexName}_testPolicyName_2"
-        val actionConfig = CloseActionConfig(0)
+        val actionConfig = CloseAction(0)
         val states = listOf(
             State("CloseState", listOf(actionConfig), listOf())
         )
@@ -94,7 +92,7 @@ class CloseActionIT : IndexStateManagementRestTestCase() {
     fun `test transitioning a closed index`() {
         val indexName = "${testIndexName}_index_3"
         val policyID = "${testIndexName}_testPolicyName_3"
-        val actionConfig = CloseActionConfig(0)
+        val actionConfig = CloseAction(0)
         val secondState = State("LastState", emptyList(), emptyList())
         val firstState = State("CloseState", listOf(actionConfig), listOf(Transition(stateName = secondState.name, conditions = null)))
         val states = listOf(firstState, secondState)

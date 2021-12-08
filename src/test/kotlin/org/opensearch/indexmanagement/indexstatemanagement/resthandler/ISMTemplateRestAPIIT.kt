@@ -8,10 +8,10 @@ package org.opensearch.indexmanagement.indexstatemanagement.resthandler
 import org.opensearch.client.ResponseException
 import org.opensearch.common.settings.Settings
 import org.opensearch.indexmanagement.indexstatemanagement.IndexStateManagementRestTestCase
+import org.opensearch.indexmanagement.indexstatemanagement.action.ReadOnlyAction
 import org.opensearch.indexmanagement.indexstatemanagement.model.ISMTemplate
 import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
 import org.opensearch.indexmanagement.indexstatemanagement.model.State
-import org.opensearch.indexmanagement.indexstatemanagement.model.action.ReadOnlyActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomErrorNotification
 import org.opensearch.indexmanagement.indexstatemanagement.randomPolicy
 import org.opensearch.indexmanagement.indexstatemanagement.util.INDEX_HIDDEN
@@ -85,7 +85,7 @@ class ISMTemplateRestAPIIT : IndexStateManagementRestTestCase() {
 
         val ismTemp = ISMTemplate(listOf("log*"), 100, randomInstant())
 
-        val actionConfig = ReadOnlyActionConfig(0)
+        val actionConfig = ReadOnlyAction(0)
         val states = listOf(
             State("ReadOnlyState", listOf(actionConfig), listOf())
         )

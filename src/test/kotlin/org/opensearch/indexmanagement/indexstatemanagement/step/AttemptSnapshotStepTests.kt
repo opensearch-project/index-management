@@ -5,39 +5,11 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.step
 
-import com.nhaarman.mockitokotlin2.any
-import com.nhaarman.mockitokotlin2.doAnswer
-import com.nhaarman.mockitokotlin2.doReturn
-import com.nhaarman.mockitokotlin2.eq
-import com.nhaarman.mockitokotlin2.mock
-import com.nhaarman.mockitokotlin2.whenever
-import kotlinx.coroutines.runBlocking
-import org.junit.Before
-import org.opensearch.action.ActionListener
-import org.opensearch.action.admin.cluster.snapshots.create.CreateSnapshotResponse
-import org.opensearch.client.AdminClient
-import org.opensearch.client.Client
-import org.opensearch.client.ClusterAdminClient
-import org.opensearch.cluster.service.ClusterService
-import org.opensearch.common.settings.ClusterSettings
-import org.opensearch.common.settings.Settings
-import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
-import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.ActionMetaData
-import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.ActionProperties
-import org.opensearch.indexmanagement.indexstatemanagement.randomSnapshotActionConfig
-import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.SNAPSHOT_DENY_LIST
-import org.opensearch.indexmanagement.indexstatemanagement.step.snapshot.AttemptSnapshotStep
-import org.opensearch.ingest.TestTemplateService.MockTemplateScript
-import org.opensearch.rest.RestStatus
-import org.opensearch.script.ScriptService
-import org.opensearch.script.TemplateScript
-import org.opensearch.snapshots.ConcurrentSnapshotExecutionException
 import org.opensearch.test.OpenSearchTestCase
-import org.opensearch.transport.RemoteTransportException
 
 class AttemptSnapshotStepTests : OpenSearchTestCase() {
 
-    private val clusterService: ClusterService = mock()
+    /*private val clusterService: ClusterService = mock()
     private val scriptService: ScriptService = mock()
     private val config = randomSnapshotActionConfig("repo", "snapshot-name")
     private val metadata = ManagedIndexMetaData("test", "indexUuid", "policy_id", null, null, null, null, null, null, ActionMetaData(AttemptSnapshotStep.name, 1, 0, false, 0, null, ActionProperties(snapshotName = "snapshot-name")), null, null, null)
@@ -136,5 +108,5 @@ class AttemptSnapshotStepTests : OpenSearchTestCase() {
                 else listener.onFailure(exception)
             }.whenever(this.mock).createSnapshot(any(), any())
         }
-    }
+    }*/
 }

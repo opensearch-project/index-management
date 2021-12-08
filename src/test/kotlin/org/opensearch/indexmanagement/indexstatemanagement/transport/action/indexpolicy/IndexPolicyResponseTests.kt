@@ -7,9 +7,9 @@ package org.opensearch.indexmanagement.indexstatemanagement.transport.action.ind
 
 import org.opensearch.common.io.stream.BytesStreamOutput
 import org.opensearch.common.io.stream.StreamInput
+import org.opensearch.indexmanagement.indexstatemanagement.action.IndexPriorityAction
 import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
 import org.opensearch.indexmanagement.indexstatemanagement.model.State
-import org.opensearch.indexmanagement.indexstatemanagement.model.action.IndexPriorityActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomErrorNotification
 import org.opensearch.rest.RestStatus
 import org.opensearch.test.OpenSearchTestCase
@@ -24,7 +24,7 @@ class IndexPolicyResponseTests : OpenSearchTestCase() {
         val primaryTerm: Long = 123
         val seqNo: Long = 456
         val policyID = "policyID"
-        val actionConfig = IndexPriorityActionConfig(50, 0)
+        val actionConfig = IndexPriorityAction(50, 0)
         val states = listOf(State(name = "SetPriorityState", actions = listOf(actionConfig), transitions = listOf()))
         val policy = Policy(
             id = policyID,

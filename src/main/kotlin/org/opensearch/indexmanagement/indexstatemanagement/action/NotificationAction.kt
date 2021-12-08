@@ -5,29 +5,27 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.action
 
-import org.opensearch.client.Client
-import org.opensearch.cluster.service.ClusterService
-import org.opensearch.common.settings.Settings
-import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
-import org.opensearch.indexmanagement.indexstatemanagement.model.action.ActionConfig
-import org.opensearch.indexmanagement.indexstatemanagement.model.action.NotificationActionConfig
-import org.opensearch.indexmanagement.indexstatemanagement.step.Step
-import org.opensearch.indexmanagement.indexstatemanagement.step.notification.AttemptNotificationStep
-import org.opensearch.script.ScriptService
+import org.opensearch.indexmanagement.indexstatemanagement.model.destination.Destination
+import org.opensearch.indexmanagement.spi.indexstatemanagement.Action
+import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepContext
+import org.opensearch.script.Script
 
 class NotificationAction(
-    clusterService: ClusterService,
-    scriptService: ScriptService,
-    client: Client,
-    settings: Settings,
-    managedIndexMetaData: ManagedIndexMetaData,
-    config: NotificationActionConfig
-) : Action(ActionConfig.ActionType.NOTIFICATION, config, managedIndexMetaData) {
+    val destination: Destination,
+    val messageTemplate: Script,
+    index: Int
+) : Action(name, index) {
 
-    private val attemptNotificationStep = AttemptNotificationStep(clusterService, scriptService, client, settings, config, managedIndexMetaData)
-    private val steps = listOf(attemptNotificationStep)
+    companion object {
+        const val name = "notification"
+    }
 
-    override fun getSteps(): List<Step> = steps
+    override fun getStepToExecute(context: StepContext): Step {
+        TODO("Not yet implemented")
+    }
 
-    override fun getStepToExecute(): Step = attemptNotificationStep
+    override fun getSteps(): List<Step> {
+        TODO("Not yet implemented")
+    }
 }

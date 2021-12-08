@@ -5,20 +5,11 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.step
 
-import com.nhaarman.mockitokotlin2.mock
-import org.opensearch.client.Client
-import org.opensearch.cluster.service.ClusterService
-import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
-import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.ActionMetaData
-import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.ActionProperties
-import org.opensearch.indexmanagement.indexstatemanagement.randomRollupActionConfig
-import org.opensearch.indexmanagement.indexstatemanagement.step.rollup.AttemptCreateRollupJobStep
 import org.opensearch.test.OpenSearchTestCase
-import java.lang.Exception
 
 class AttemptCreateRollupJobStepTests : OpenSearchTestCase() {
 
-    private val rollupActionConfig = randomRollupActionConfig()
+    /*private val rollupActionConfig = randomRollupActionConfig()
     private val indexName = "test"
     private val rollupId: String = rollupActionConfig.ismRollup.toRollup(indexName).id
     private val client: Client = mock()
@@ -42,5 +33,5 @@ class AttemptCreateRollupJobStepTests : OpenSearchTestCase() {
 
     fun `test isIdempotent`() {
         assertTrue(step.isIdempotent())
-    }
+    }*/
 }

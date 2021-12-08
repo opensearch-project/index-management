@@ -8,8 +8,8 @@ package org.opensearch.indexmanagement.indexstatemanagement.model
 import org.opensearch.common.xcontent.LoggingDeprecationHandler
 import org.opensearch.common.xcontent.XContentParser
 import org.opensearch.common.xcontent.XContentType
-import org.opensearch.indexmanagement.indexstatemanagement.model.action.ActionConfig
-import org.opensearch.indexmanagement.indexstatemanagement.model.action.RollupActionConfig
+import org.opensearch.indexmanagement.indexstatemanagement.ISMActionsParser
+import org.opensearch.indexmanagement.indexstatemanagement.action.RollupAction
 import org.opensearch.indexmanagement.indexstatemanagement.model.destination.DestinationType
 import org.opensearch.indexmanagement.indexstatemanagement.nonNullRandomConditions
 import org.opensearch.indexmanagement.indexstatemanagement.randomAllocationActionConfig
@@ -31,6 +31,8 @@ import org.opensearch.indexmanagement.indexstatemanagement.randomState
 import org.opensearch.indexmanagement.indexstatemanagement.randomTransition
 import org.opensearch.indexmanagement.indexstatemanagement.toJsonString
 import org.opensearch.indexmanagement.opensearchapi.parseWithType
+import org.opensearch.indexmanagement.spi.indexstatemanagement.Action
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.test.OpenSearchTestCase
 
 class XContentTests : OpenSearchTestCase() {
@@ -71,15 +73,15 @@ class XContentTests : OpenSearchTestCase() {
         val deleteActionConfig = randomDeleteActionConfig()
 
         val deleteActionConfigString = deleteActionConfig.toJsonString()
-        val parsedActionConfig = ActionConfig.parse((parser(deleteActionConfigString)), 0)
-        assertEquals("Round tripping ActionConfig doesn't work", deleteActionConfig as ActionConfig, parsedActionConfig)
+        val parsedActionConfig = ISMActionsParser.instance.parse((parser(deleteActionConfigString)), 0)
+        assertEquals("Round tripping ActionConfig doesn't work", deleteActionConfig as Action, parsedActionConfig)
     }
 
     fun `test delete action config parsing`() {
         val deleteActionConfig = randomDeleteActionConfig()
 
         val deleteActionConfigString = deleteActionConfig.toJsonString()
-        val parsedDeleteActionConfig = ActionConfig.parse(parser(deleteActionConfigString), 0)
+        val parsedDeleteActionConfig = ISMActionsParser.instance.parse(parser(deleteActionConfigString), 0)
         assertEquals("Round tripping DeleteActionConfig doesn't work", deleteActionConfig, parsedDeleteActionConfig)
     }
 
@@ -87,7 +89,7 @@ class XContentTests : OpenSearchTestCase() {
         val rolloverActionConfig = randomRolloverActionConfig()
 
         val rolloverActionConfigString = rolloverActionConfig.toJsonString()
-        val parsedRolloverActionConfig = ActionConfig.parse(parser(rolloverActionConfigString), 0)
+        val parsedRolloverActionConfig = ISMActionsParser.instance.parse(parser(rolloverActionConfigString), 0)
         assertEquals("Round tripping RolloverActionConfig doesn't work", rolloverActionConfig, parsedRolloverActionConfig)
     }
 
@@ -95,7 +97,7 @@ class XContentTests : OpenSearchTestCase() {
         val readOnlyActionConfig = randomReadOnlyActionConfig()
 
         val readOnlyActionConfigString = readOnlyActionConfig.toJsonString()
-        val parsedReadOnlyActionConfig = ActionConfig.parse(parser(readOnlyActionConfigString), 0)
+        val parsedReadOnlyActionConfig = ISMActionsParser.instance.parse(parser(readOnlyActionConfigString), 0)
         assertEquals("Round tripping ReadOnlyActionConfig doesn't work", readOnlyActionConfig, parsedReadOnlyActionConfig)
     }
 
@@ -103,7 +105,7 @@ class XContentTests : OpenSearchTestCase() {
         val readWriteActionConfig = randomReadWriteActionConfig()
 
         val readWriteActionConfigString = readWriteActionConfig.toJsonString()
-        val parsedReadWriteActionConfig = ActionConfig.parse(parser(readWriteActionConfigString), 0)
+        val parsedReadWriteActionConfig = ISMActionsParser.instance.parse(parser(readWriteActionConfigString), 0)
         assertEquals("Round tripping ReadWriteActionConfig doesn't work", readWriteActionConfig, parsedReadWriteActionConfig)
     }
 
@@ -111,7 +113,7 @@ class XContentTests : OpenSearchTestCase() {
         val replicaCountActionConfig = randomReplicaCountActionConfig()
 
         val replicaCountActionConfigString = replicaCountActionConfig.toJsonString()
-        val parsedReplicaCountActionConfig = ActionConfig.parse(parser(replicaCountActionConfigString), 0)
+        val parsedReplicaCountActionConfig = ISMActionsParser.instance.parse(parser(replicaCountActionConfigString), 0)
         assertEquals("Round tripping ReplicaCountActionConfig doesn't work", replicaCountActionConfig, parsedReplicaCountActionConfig)
     }
 
@@ -119,7 +121,7 @@ class XContentTests : OpenSearchTestCase() {
         val indexPriorityActionConfig = randomIndexPriorityActionConfig()
 
         val indexPriorityActionConfigString = indexPriorityActionConfig.toJsonString()
-        val parsedIndexPriorityActionConfig = ActionConfig.parse(parser(indexPriorityActionConfigString), 0)
+        val parsedIndexPriorityActionConfig = ISMActionsParser.instance.parse(parser(indexPriorityActionConfigString), 0)
         assertEquals("Round tripping indexPriorityActionConfig doesn't work", indexPriorityActionConfig, parsedIndexPriorityActionConfig)
     }
 
@@ -127,7 +129,7 @@ class XContentTests : OpenSearchTestCase() {
         val forceMergeActionConfig = randomForceMergeActionConfig()
 
         val forceMergeActionConfigString = forceMergeActionConfig.toJsonString()
-        val parsedForceMergeActionConfig = ActionConfig.parse(parser(forceMergeActionConfigString), 0)
+        val parsedForceMergeActionConfig = ISMActionsParser.instance.parse(parser(forceMergeActionConfigString), 0)
         assertEquals("Round tripping ForceMergeActionConfig doesn't work", forceMergeActionConfig, parsedForceMergeActionConfig)
     }
 
@@ -137,21 +139,21 @@ class XContentTests : OpenSearchTestCase() {
         val customNotificationActionConfig = randomNotificationActionConfig(destination = randomDestination(type = DestinationType.CUSTOM_WEBHOOK))
 
         val chimeNotificationActionConfigString = chimeNotificationActionConfig.toJsonString()
-        val chimeParsedNotificationActionConfig = ActionConfig.parse(parser(chimeNotificationActionConfigString), 0)
+        val chimeParsedNotificationActionConfig = ISMActionsParser.instance.parse(parser(chimeNotificationActionConfigString), 0)
         assertEquals(
             "Round tripping chime NotificationActionConfig doesn't work",
             chimeNotificationActionConfig, chimeParsedNotificationActionConfig
         )
 
         val slackNotificationActionConfigString = slackNotificationActionConfig.toJsonString()
-        val slackParsedNotificationActionConfig = ActionConfig.parse(parser(slackNotificationActionConfigString), 0)
+        val slackParsedNotificationActionConfig = ISMActionsParser.instance.parse(parser(slackNotificationActionConfigString), 0)
         assertEquals(
             "Round tripping slack NotificationActionConfig doesn't work",
             slackNotificationActionConfig, slackParsedNotificationActionConfig
         )
 
         val customNotificationActionConfigString = customNotificationActionConfig.toJsonString()
-        val customParsedNotificationActionConfig = ActionConfig.parse(parser(customNotificationActionConfigString), 0)
+        val customParsedNotificationActionConfig = ISMActionsParser.instance.parse(parser(customNotificationActionConfigString), 0)
         assertEquals(
             "Round tripping custom webhook NotificationActionConfig doesn't work",
             customNotificationActionConfig, customParsedNotificationActionConfig
@@ -162,7 +164,7 @@ class XContentTests : OpenSearchTestCase() {
         val snapshotActionConfig = randomSnapshotActionConfig("repository", "snapshot")
 
         val snapshotActionConfigString = snapshotActionConfig.toJsonString()
-        val parsedNotificationActionConfig = ActionConfig.parse(parser(snapshotActionConfigString), 0)
+        val parsedNotificationActionConfig = ISMActionsParser.instance.parse(parser(snapshotActionConfigString), 0)
         assertEquals("Round tripping SnapshotActionConfig doesn't work", snapshotActionConfig, parsedNotificationActionConfig)
     }
 
@@ -170,7 +172,7 @@ class XContentTests : OpenSearchTestCase() {
         val allocationActionConfig = randomAllocationActionConfig(require = mapOf("box_type" to "hot"))
 
         val allocationActionConfigString = allocationActionConfig.toJsonString()
-        val parsedAllocationActionConfig = ActionConfig.parse(parser(allocationActionConfigString), 0)
+        val parsedAllocationActionConfig = ISMActionsParser.instance.parse(parser(allocationActionConfigString), 0)
         assertEquals("Round tripping AllocationActionConfig doesn't work", allocationActionConfig, parsedAllocationActionConfig)
     }
 
@@ -198,9 +200,9 @@ class XContentTests : OpenSearchTestCase() {
     fun `test rollup action parsing`() {
         val rollupActionConfig = randomRollupActionConfig()
         val rollupActionConfigString = rollupActionConfig.toJsonString()
-        val parsedRollupActionConfig = ActionConfig.parse(parser(rollupActionConfigString), 0) as RollupActionConfig
+        val parsedRollupActionConfig = ISMActionsParser.instance.parse(parser(rollupActionConfigString), 0) as RollupAction
 
-        assertEquals("Round tripping RollupActionConfig doesn't work", rollupActionConfig.index, parsedRollupActionConfig.index)
+        assertEquals("Round tripping RollupActionConfig doesn't work", rollupActionConfig.actionIndex, parsedRollupActionConfig.actionIndex)
         assertEquals("Round tripping RollupActionConfig doesn't work", rollupActionConfig.ismRollup, parsedRollupActionConfig.ismRollup)
     }
 

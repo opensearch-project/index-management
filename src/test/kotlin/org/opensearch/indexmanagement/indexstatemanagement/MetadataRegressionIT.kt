@@ -14,9 +14,9 @@ import org.opensearch.cluster.metadata.IndexMetadata
 import org.opensearch.common.settings.Settings
 import org.opensearch.index.Index
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
+import org.opensearch.indexmanagement.indexstatemanagement.action.ReplicaCountAction
 import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
 import org.opensearch.indexmanagement.indexstatemanagement.model.State
-import org.opensearch.indexmanagement.indexstatemanagement.model.action.ReplicaCountActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.updateindexmetadata.UpdateManagedIndexMetaDataAction
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.updateindexmetadata.UpdateManagedIndexMetaDataRequest
@@ -51,7 +51,7 @@ class MetadataRegressionIT : IndexStateManagementIntegTestCase() {
 
         val indexName = "${testIndexName}_index_1"
         val policyID = "${testIndexName}_testPolicyName_1"
-        val actionConfig = ReplicaCountActionConfig(10, 0)
+        val actionConfig = ReplicaCountAction(10, 0)
         val states = listOf(State(name = "ReplicaCountState", actions = listOf(actionConfig), transitions = listOf()))
         val policy = Policy(
             id = policyID,
@@ -132,7 +132,7 @@ class MetadataRegressionIT : IndexStateManagementIntegTestCase() {
 
         val indexName = "${testIndexName}_index_2"
         val policyID = "${testIndexName}_testPolicyName_2"
-        val actionConfig = ReplicaCountActionConfig(10, 0)
+        val actionConfig = ReplicaCountAction(10, 0)
         val states = listOf(State(name = "ReplicaCountState", actions = listOf(actionConfig), transitions = listOf()))
         val policy = Policy(
             id = policyID,
@@ -217,7 +217,7 @@ class MetadataRegressionIT : IndexStateManagementIntegTestCase() {
 
         val indexName = "${testIndexName}_index_1"
         val policyID = "${testIndexName}_testPolicyName_1"
-        val actionConfig = ReplicaCountActionConfig(10, 0)
+        val actionConfig = ReplicaCountAction(10, 0)
         val states = listOf(State(name = "ReplicaCountState", actions = listOf(actionConfig), transitions = listOf()))
         val policy = Policy(
             id = policyID,

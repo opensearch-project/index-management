@@ -5,33 +5,11 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.step
 
-import com.nhaarman.mockitokotlin2.any
-import com.nhaarman.mockitokotlin2.doAnswer
-import com.nhaarman.mockitokotlin2.doReturn
-import com.nhaarman.mockitokotlin2.mock
-import com.nhaarman.mockitokotlin2.whenever
-import kotlinx.coroutines.runBlocking
-import org.opensearch.action.ActionListener
-import org.opensearch.action.admin.cluster.snapshots.status.SnapshotStatus
-import org.opensearch.action.admin.cluster.snapshots.status.SnapshotsStatusResponse
-import org.opensearch.client.AdminClient
-import org.opensearch.client.Client
-import org.opensearch.client.ClusterAdminClient
-import org.opensearch.cluster.SnapshotsInProgress
-import org.opensearch.cluster.service.ClusterService
-import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
-import org.opensearch.indexmanagement.indexstatemanagement.model.action.SnapshotActionConfig
-import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.ActionMetaData
-import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.ActionProperties
-import org.opensearch.indexmanagement.indexstatemanagement.step.snapshot.WaitForSnapshotStep
-import org.opensearch.snapshots.Snapshot
-import org.opensearch.snapshots.SnapshotId
 import org.opensearch.test.OpenSearchTestCase
-import org.opensearch.transport.RemoteTransportException
 
 class WaitForSnapshotStepTests : OpenSearchTestCase() {
 
-    private val clusterService: ClusterService = mock()
+    /*private val clusterService: ClusterService = mock()
     val snapshot = "snapshot-name"
 
     fun `test snapshot missing snapshot name in action properties`() {
@@ -180,5 +158,5 @@ class WaitForSnapshotStepTests : OpenSearchTestCase() {
                 else listener.onFailure(exception)
             }.whenever(this.mock).snapshotsStatus(any(), any())
         }
-    }
+    }*/
 }

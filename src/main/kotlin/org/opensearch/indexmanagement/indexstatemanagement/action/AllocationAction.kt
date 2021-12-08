@@ -5,28 +5,26 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.action
 
-import org.opensearch.client.Client
-import org.opensearch.cluster.service.ClusterService
-import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
-import org.opensearch.indexmanagement.indexstatemanagement.model.action.ActionConfig
-import org.opensearch.indexmanagement.indexstatemanagement.model.action.AllocationActionConfig
-import org.opensearch.indexmanagement.indexstatemanagement.step.Step
-import org.opensearch.indexmanagement.indexstatemanagement.step.allocation.AttemptAllocationStep
+import org.opensearch.indexmanagement.spi.indexstatemanagement.Action
+import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepContext
 
 class AllocationAction(
-    clusterService: ClusterService,
-    client: Client,
-    managedIndexMetaData: ManagedIndexMetaData,
-    config: AllocationActionConfig
-) : Action(ActionConfig.ActionType.ALLOCATION, config, managedIndexMetaData) {
+    val require: Map<String, String>,
+    val exclude: Map<String, String>,
+    val include: Map<String, String>,
+    index: Int,
+) : Action(name, index) {
 
-    private val attemptAllocationStep = AttemptAllocationStep(clusterService, client, config, managedIndexMetaData)
+    companion object {
+        const val name = "allocation"
+    }
 
-    private val steps = listOf(attemptAllocationStep)
+    override fun getStepToExecute(context: StepContext): Step {
+        TODO("Not yet implemented")
+    }
 
-    override fun getSteps(): List<Step> = steps
-
-    override fun getStepToExecute(): Step {
-        return attemptAllocationStep
+    override fun getSteps(): List<Step> {
+        TODO("Not yet implemented")
     }
 }

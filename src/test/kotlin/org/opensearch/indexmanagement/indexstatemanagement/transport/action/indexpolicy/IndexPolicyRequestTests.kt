@@ -8,11 +8,11 @@ package org.opensearch.indexmanagement.indexstatemanagement.transport.action.ind
 import org.opensearch.action.support.WriteRequest
 import org.opensearch.common.io.stream.BytesStreamOutput
 import org.opensearch.common.io.stream.StreamInput
+import org.opensearch.indexmanagement.indexstatemanagement.action.AllocationAction
+import org.opensearch.indexmanagement.indexstatemanagement.action.DeleteAction
+import org.opensearch.indexmanagement.indexstatemanagement.action.IndexPriorityAction
 import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
 import org.opensearch.indexmanagement.indexstatemanagement.model.State
-import org.opensearch.indexmanagement.indexstatemanagement.model.action.AllocationActionConfig
-import org.opensearch.indexmanagement.indexstatemanagement.model.action.DeleteActionConfig
-import org.opensearch.indexmanagement.indexstatemanagement.model.action.IndexPriorityActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomErrorNotification
 import org.opensearch.test.OpenSearchTestCase
 import java.time.Instant
@@ -22,7 +22,7 @@ class IndexPolicyRequestTests : OpenSearchTestCase() {
 
     fun `test index policy request index priority action`() {
         val policyID = "policyID"
-        val actionConfig = IndexPriorityActionConfig(50, 0)
+        val actionConfig = IndexPriorityAction(50, 0)
         val states = listOf(State(name = "SetPriorityState", actions = listOf(actionConfig), transitions = listOf()))
         val policy = Policy(
             id = policyID,
@@ -51,7 +51,7 @@ class IndexPolicyRequestTests : OpenSearchTestCase() {
 
     fun `test index policy request allocation action`() {
         val policyID = "policyID"
-        val actionConfig = AllocationActionConfig(require = mapOf("box_type" to "hot"), exclude = emptyMap(), include = emptyMap(), index = 0)
+        val actionConfig = AllocationAction(require = mapOf("box_type" to "hot"), exclude = emptyMap(), include = emptyMap(), index = 0)
         val states = listOf(State("Allocate", listOf(actionConfig), listOf()))
 
         val policy = Policy(
@@ -81,7 +81,7 @@ class IndexPolicyRequestTests : OpenSearchTestCase() {
 
     fun `test index policy request delete action`() {
         val policyID = "policyID"
-        val actionConfig = DeleteActionConfig(index = 0)
+        val actionConfig = DeleteAction(index = 0)
         val states = listOf(State("Delete", listOf(actionConfig), listOf()))
 
         val policy = Policy(

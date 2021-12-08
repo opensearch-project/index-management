@@ -8,11 +8,11 @@ package org.opensearch.indexmanagement.indexstatemanagement
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.apache.logging.log4j.LogManager
+import org.locationtech.jts.algorithm.Orientation.index
 import org.opensearch.action.admin.cluster.state.ClusterStateRequest
 import org.opensearch.action.admin.cluster.state.ClusterStateResponse
 import org.opensearch.action.bulk.BackoffPolicy
@@ -40,14 +40,8 @@ import org.opensearch.index.engine.VersionConflictEngineException
 import org.opensearch.index.seqno.SequenceNumbers
 import org.opensearch.indexmanagement.IndexManagementIndices
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
-import org.opensearch.indexmanagement.indexstatemanagement.action.Action
 import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexConfig
-import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
-import org.opensearch.indexmanagement.indexstatemanagement.model.action.ActionConfig
-import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.ActionMetaData
-import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.PolicyRetryInfoMetaData
-import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.StateMetaData
 import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.getManagedIndexMetadata
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.ALLOW_LIST
@@ -56,18 +50,14 @@ import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndex
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.DEFAULT_JOB_INTERVAL
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.INDEX_STATE_MANAGEMENT_ENABLED
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.JOB_INTERVAL
-import org.opensearch.indexmanagement.indexstatemanagement.step.Step
-import org.opensearch.indexmanagement.indexstatemanagement.util.getActionToExecute
 import org.opensearch.indexmanagement.indexstatemanagement.util.getCompletedManagedIndexMetaData
 import org.opensearch.indexmanagement.indexstatemanagement.util.getStartingManagedIndexMetaData
-import org.opensearch.indexmanagement.indexstatemanagement.util.getStateToExecute
 import org.opensearch.indexmanagement.indexstatemanagement.util.getUpdatedActionMetaData
 import org.opensearch.indexmanagement.indexstatemanagement.util.hasDifferentJobInterval
 import org.opensearch.indexmanagement.indexstatemanagement.util.hasTimedOut
 import org.opensearch.indexmanagement.indexstatemanagement.util.hasVersionConflict
 import org.opensearch.indexmanagement.indexstatemanagement.util.isAllowed
 import org.opensearch.indexmanagement.indexstatemanagement.util.isFailed
-import org.opensearch.indexmanagement.indexstatemanagement.util.isMetadataMoved
 import org.opensearch.indexmanagement.indexstatemanagement.util.isSafeToChange
 import org.opensearch.indexmanagement.indexstatemanagement.util.isSuccessfulDelete
 import org.opensearch.indexmanagement.indexstatemanagement.util.managedIndexConfigIndexRequest
@@ -82,6 +72,13 @@ import org.opensearch.indexmanagement.opensearchapi.retry
 import org.opensearch.indexmanagement.opensearchapi.string
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.opensearchapi.withClosableContext
+import org.opensearch.indexmanagement.spi.indexstatemanagement.Action
+import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ActionMetaData
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.PolicyRetryInfoMetaData
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StateMetaData
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepContext
 import org.opensearch.jobscheduler.spi.JobExecutionContext
 import org.opensearch.jobscheduler.spi.LockModel
 import org.opensearch.jobscheduler.spi.ScheduledJobParameter
@@ -230,12 +227,13 @@ object ManagedIndexRunner :
             return
         }
         val managedIndexMetaData = indexMetaData.getManagedIndexMetadata(client)
-        val clusterStateMetadata = indexMetaData.getManagedIndexMetadata()
+        // TODO: fixme - not checking metadata migration
+        // val clusterStateMetadata = indexMetaData.getManagedIndexMetadata()
 
-        if (!isMetadataMoved(clusterStateMetadata, managedIndexMetaData, logger)) {
+        /*if (!isMetadataMoved(clusterStateMetadata, managedIndexMetaData, logger)) {
             logger.info("Skipping execution while pending migration of metadata for ${managedIndexConfig.jobName}")
             return
-        }
+        }*/
 
         // If policy or managedIndexMetaData is null then initialize
         val policy = managedIndexConfig.policy
@@ -266,11 +264,17 @@ object ManagedIndexRunner :
         }
 
         val state = policy.getStateToExecute(managedIndexMetaData)
-        val action: Action? = state?.getActionToExecute(
-            clusterService, scriptService, client, settings, managedIndexMetaData.copy(user = policy.user, threadContext = threadPool.threadContext)
-        )
-        val step: Step? = action?.getStepToExecute()
+        val action: Action? = state?.getActionToExecute(managedIndexMetaData.copy(user = policy.user, threadContext = threadPool.threadContext))
+        val stepContext = StepContext(managedIndexMetaData, clusterService, client, null, null)
+        val step: Step? = action?.getStepToExecute(stepContext)
         val currentActionMetaData = action?.getUpdatedActionMetaData(managedIndexMetaData, state)
+
+        // TODO: Unsure check later
+        if (action == null || step == null) {
+            // This should never happen but if it is returning
+            disableManagedIndexConfig(managedIndexConfig)
+            return
+        }
 
         // If Index State Management is disabled and the current step is not null and safe to disable on
         // then disable the job and return early
@@ -281,7 +285,7 @@ object ManagedIndexRunner :
 
         if (action?.hasTimedOut(currentActionMetaData) == true) {
             val info = mapOf("message" to "Action timed out")
-            logger.error("Action=${action.type.type} has timed out")
+            logger.error("Action=${action.type} has timed out")
             val updated = updateManagedIndexMetaData(
                 managedIndexMetaData
                     .copy(actionMetaData = currentActionMetaData?.copy(failed = true), info = info)
@@ -295,7 +299,7 @@ object ManagedIndexRunner :
             return
         }
 
-        val shouldBackOff = action?.shouldBackoff(currentActionMetaData, action.config.configRetry)
+        val shouldBackOff = action?.shouldBackoff(currentActionMetaData, action.configRetry)
         if (shouldBackOff?.first == true) {
             // If we should back off then exit early.
             logger.info("Backoff for retrying. Remaining time ${shouldBackOff.second}")
@@ -320,7 +324,7 @@ object ManagedIndexRunner :
         // If this action is not allowed and the step to be executed is the first step in the action then we will fail
         // as this action has been removed from the AllowList, but if its not the first step we will let it finish as it's already inflight
         if (action?.isAllowed(allowList) == false && action.isFirstStep(step?.name)) {
-            val info = mapOf("message" to "Attempted to execute action=${action.type.type} which is not allowed.")
+            val info = mapOf("message" to "Attempted to execute action=${action.type} which is not allowed.")
             val updated = updateManagedIndexMetaData(
                 managedIndexMetaData.copy(
                     policyRetryInfo = PolicyRetryInfoMetaData(true, 0), info = info
@@ -342,7 +346,7 @@ object ManagedIndexRunner :
                     managedIndexConfig.id, settings, threadPool.threadContext, managedIndexConfig.policy.user
                 )
             ) {
-                step.preExecute(logger).execute().postExecute(logger)
+                step.preExecute(logger, stepContext).execute().postExecute(logger)
             }
             var executedManagedIndexMetaData = startingManagedIndexMetaData.getCompletedManagedIndexMetaData(action, step)
 
@@ -360,9 +364,10 @@ object ManagedIndexRunner :
             }
 
             if (executedManagedIndexMetaData.isSuccessfulDelete) {
-                GlobalScope.launch(Dispatchers.IO + CoroutineName("ManagedIndexMetaData-AddHistory")) {
+                // TODO: fixme
+                /*GlobalScope.launch(Dispatchers.IO + CoroutineName("ManagedIndexMetaData-AddHistory")) {
                     ismHistory.addManagedIndexMetaDataHistory(listOf(executedManagedIndexMetaData))
-                }
+                }*/
                 return
             }
 
@@ -594,9 +599,10 @@ object ManagedIndexRunner :
                 result = UpdateMetadataResult(metadataSaved, indexResponse.seqNo, indexResponse.primaryTerm)
             }
 
-            GlobalScope.launch(Dispatchers.IO + CoroutineName("ManagedIndexMetaData-AddHistory")) {
+            // TODO: fixme - need to add to history index
+            /*GlobalScope.launch(Dispatchers.IO + CoroutineName("ManagedIndexMetaData-AddHistory")) {
                 ismHistory.addManagedIndexMetaDataHistory(listOf(metadata))
-            }
+            }*/
         } catch (e: VersionConflictEngineException) {
             logger.error(
                 "There was VersionConflictEngineException trying to update the metadata for " +
@@ -646,11 +652,13 @@ object ManagedIndexRunner :
         } else {
             // if the action to execute is transition then set the actionMetaData to a new transition metadata to reflect we are
             // in transition (in case we triggered change policy from entering transition) or to reflect this is a new policy transition phase
+            // TODO: replace with constant
             val newTransitionMetaData = ActionMetaData(
-                ActionConfig.ActionType.TRANSITION.type, Instant.now().toEpochMilli(), -1,
+                "transition", Instant.now().toEpochMilli(), -1,
                 false, 0, 0, null
             )
-            val actionMetaData = if (actionToExecute?.type == ActionConfig.ActionType.TRANSITION) {
+            // TODO: Replace with constant
+            val actionMetaData = if (actionToExecute?.type == "transition") {
                 newTransitionMetaData
             } else {
                 managedIndexMetaData.actionMetaData

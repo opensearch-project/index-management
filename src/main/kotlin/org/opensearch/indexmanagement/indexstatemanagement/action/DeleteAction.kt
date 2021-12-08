@@ -5,27 +5,23 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.action
 
-import org.opensearch.client.Client
-import org.opensearch.cluster.service.ClusterService
-import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
-import org.opensearch.indexmanagement.indexstatemanagement.model.action.ActionConfig.ActionType
-import org.opensearch.indexmanagement.indexstatemanagement.model.action.DeleteActionConfig
-import org.opensearch.indexmanagement.indexstatemanagement.step.Step
-import org.opensearch.indexmanagement.indexstatemanagement.step.delete.AttemptDeleteStep
+import org.opensearch.indexmanagement.spi.indexstatemanagement.Action
+import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepContext
 
 class DeleteAction(
-    clusterService: ClusterService,
-    client: Client,
-    managedIndexMetaData: ManagedIndexMetaData,
-    config: DeleteActionConfig
-) : Action(ActionType.DELETE, config, managedIndexMetaData) {
+    index: Int
+) : Action(name, index) {
 
-    private val attemptDeleteStep = AttemptDeleteStep(clusterService, client, config, managedIndexMetaData)
-    private val steps = listOf(attemptDeleteStep)
+    companion object {
+        const val name = "delete"
+    }
 
-    override fun getSteps(): List<Step> = steps
+    override fun getStepToExecute(context: StepContext): Step {
+        TODO("Not yet implemented")
+    }
 
-    override fun getStepToExecute(): Step {
-        return attemptDeleteStep
+    override fun getSteps(): List<Step> {
+        TODO("Not yet implemented")
     }
 }
