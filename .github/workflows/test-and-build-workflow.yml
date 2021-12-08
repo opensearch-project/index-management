@@ -1,5 +1,4 @@
 name: Test and Build Workflow
-# This workflow is triggered on pull requests to main or an opendistro release branch
 on:
   pull_request:
     branches:
