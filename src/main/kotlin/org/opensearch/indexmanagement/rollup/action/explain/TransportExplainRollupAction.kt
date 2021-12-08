@@ -17,6 +17,7 @@ import org.opensearch.client.Client
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.inject.Inject
 import org.opensearch.common.settings.Settings
+import org.opensearch.commons.ConfigConstants
 import org.opensearch.index.query.BoolQueryBuilder
 import org.opensearch.index.query.IdsQueryBuilder
 import org.opensearch.index.query.WildcardQueryBuilder
@@ -57,6 +58,11 @@ class TransportExplainRollupAction @Inject constructor(
 
     @Suppress("SpreadOperator")
     override fun doExecute(task: Task, request: ExplainRollupRequest, actionListener: ActionListener<ExplainRollupResponse>) {
+        log.debug(
+            "User and roles string from thread context: ${client.threadPool().threadContext.getTransient<String>(
+                ConfigConstants.OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT
+            )}"
+        )
         val ids = request.rollupIDs
         // Instantiate concrete ids to metadata map by removing wildcard matches
         val idsToExplain: MutableMap<String, ExplainRollup?> = ids.filter { !it.contains("*") }.map { it to null }.toMap(mutableMapOf())
