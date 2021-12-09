@@ -13,11 +13,13 @@ import org.junit.rules.DisableOnDebug
 import org.opensearch.client.Request
 import org.opensearch.client.RequestOptions
 import org.opensearch.client.Response
+import org.opensearch.client.ResponseListener
 import org.opensearch.client.RestClient
 import org.opensearch.common.Strings
 import org.opensearch.common.settings.Settings
 import org.opensearch.indexmanagement.indexstatemanagement.util.INDEX_HIDDEN
 import org.opensearch.rest.RestStatus
+import java.lang.Exception
 import java.nio.file.Files
 import java.nio.file.Path
 import javax.management.MBeanServerInvocationHandler
@@ -106,11 +108,20 @@ abstract class IndexManagementRestTestCase : ODFERestTestCase() {
      * Inserts [docCount] sample documents into [index], optionally waiting [delay] milliseconds
      * in between each insertion
      */
-    protected fun insertSampleData(index: String, docCount: Int, delay: Long = 0, jsonString: String = "{ \"test_field\": \"test_value\" }") {
+    protected fun insertSampleData(index: String, docCount: Int, delay: Long = 0, jsonString: String = "{ \"test_field\": \"test_value\" }", routing: String? = null) {
+        var endpoint = "/$index/_doc/?refresh=true"
+        if (routing != null) endpoint += "&routing=$routing"
         for (i in 1..docCount) {
-            val request = Request("POST", "/$index/_doc/?refresh=true")
+            val request = Request("POST", endpoint)
             request.setJsonEntity(jsonString)
-            client().performRequest(request)
+            client().performRequestAsync(
+                request,
+                object : ResponseListener {
+                    override fun onSuccess(r: Response) {}
+
+                    override fun onFailure(e: Exception) { throw e }
+                }
+            )
 
             Thread.sleep(delay)
         }
