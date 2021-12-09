@@ -300,11 +300,7 @@ integTest {
 
     // TODO: Remove me after refactoring all actions
     exclude 'org/opensearch/indexmanagement/indexstatemanagement/*'
-}
-
-test {
-    // TODO: Remove me after refactoring all actions
-    exclude 'org/opensearch/indexmanagement/indexstatemanagement/*'
+    exclude 'org/opensearch/indexmanagement/IndexManagementIndicesIT.class'
 }
 
 run {
