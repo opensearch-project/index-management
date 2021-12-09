@@ -62,17 +62,17 @@ class IndexManagementBackwardsCompatibilityIT : IndexManagementRestTestCase() {
                     createBasicPolicy()
 
                     verifyPolicyExists(LEGACY_POLICY_BASE_URI)
-                    verifyPolicyOnIndex(LEGACY_POLICY_BASE_URI)
+                    verifyPolicyOnIndex(LEGACY_ISM_BASE_URI)
                 }
                 ClusterType.MIXED -> {
                     assertTrue(pluginNames.contains("opensearch-index-management"))
                     verifyPolicyExists(LEGACY_POLICY_BASE_URI)
-                    verifyPolicyOnIndex(LEGACY_POLICY_BASE_URI)
+                    verifyPolicyOnIndex(LEGACY_ISM_BASE_URI)
                 }
                 ClusterType.UPGRADED -> {
                     assertTrue(pluginNames.contains("opensearch-index-management"))
                     verifyPolicyExists(LEGACY_POLICY_BASE_URI)
-                    verifyPolicyOnIndex(LEGACY_POLICY_BASE_URI)
+                    verifyPolicyOnIndex(LEGACY_ISM_BASE_URI)
                 }
             }
             break
@@ -139,6 +139,7 @@ class IndexManagementBackwardsCompatibilityIT : IndexManagementRestTestCase() {
         val createdVersion = responseBody["_version"] as Int
         assertNotEquals("Create policy response is missing id", Policy.NO_ID, createdId)
         assertTrue("Create policy response has incorrect version", createdVersion > 0)
+        Thread.sleep(10000)
     }
 
     @Throws(Exception::class)
@@ -158,16 +159,16 @@ class IndexManagementBackwardsCompatibilityIT : IndexManagementRestTestCase() {
     @Suppress("UNCHECKED_CAST")
     private fun verifyPolicyOnIndex(uri: String) {
         val getResponse = client().makeRequest(
-            "GET",
-            "$uri/explain/$INDEX_NAME",
-            emptyMap(),
-            ""
+            method = "GET",
+            endpoint = "$uri/explain/$INDEX_NAME",
+            params = emptyMap()
         )
 
         assertEquals("Explain Index failed", RestStatus.OK, getResponse.restStatus())
         val responseBody = getResponse.asMap()
         assertTrue("Test index does not exist", responseBody.containsKey(INDEX_NAME))
-        val responsePolicy = responseBody[INDEX_NAME]["index.plugins.index_state_management.policy_id"]
-        assertEquals("Test policy not added on test index", responsePolicy, POLICY_NAME)
+        val responsePolicy = responseBody[INDEX_NAME] as Map<String, String>
+        val responsePolicyId = responsePolicy["policy_id"]
+        assertEquals("Test policy not added on test index", POLICY_NAME, responsePolicyId)
     }
 }
