@@ -27,7 +27,7 @@ import javax.management.remote.JMXServiceURL
 
 abstract class IndexManagementRestTestCase : ODFERestTestCase() {
 
-    val configSchemaVersion = 12
+    val configSchemaVersion = 13
     val historySchemaVersion = 3
 
     // Having issues with tests leaking into other tests and mappings being incorrect and they are not caught by any pending task wait check as
@@ -106,9 +106,11 @@ abstract class IndexManagementRestTestCase : ODFERestTestCase() {
      * Inserts [docCount] sample documents into [index], optionally waiting [delay] milliseconds
      * in between each insertion
      */
-    protected fun insertSampleData(index: String, docCount: Int, delay: Long = 0, jsonString: String = "{ \"test_field\": \"test_value\" }") {
+    protected fun insertSampleData(index: String, docCount: Int, delay: Long = 0, jsonString: String = "{ \"test_field\": \"test_value\" }", routing: String? = null) {
+        var endpoint = "/$index/_doc/?refresh=true"
+        if (routing != null) endpoint += "&routing=$routing"
         for (i in 1..docCount) {
-            val request = Request("POST", "/$index/_doc/?refresh=true")
+            val request = Request("POST", endpoint)
             request.setJsonEntity(jsonString)
             client().performRequest(request)
 
