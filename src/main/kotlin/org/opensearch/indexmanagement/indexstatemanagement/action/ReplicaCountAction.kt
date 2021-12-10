@@ -5,25 +5,24 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.action
 
-import org.opensearch.client.Client
-import org.opensearch.cluster.service.ClusterService
-import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
-import org.opensearch.indexmanagement.indexstatemanagement.model.action.ActionConfig.ActionType
-import org.opensearch.indexmanagement.indexstatemanagement.model.action.ReplicaCountActionConfig
-import org.opensearch.indexmanagement.indexstatemanagement.step.Step
-import org.opensearch.indexmanagement.indexstatemanagement.step.replicacount.AttemptSetReplicaCountStep
+import org.opensearch.indexmanagement.spi.indexstatemanagement.Action
+import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepContext
 
 class ReplicaCountAction(
-    clusterService: ClusterService,
-    client: Client,
-    managedIndexMetaData: ManagedIndexMetaData,
-    config: ReplicaCountActionConfig
-) : Action(ActionType.REPLICA_COUNT, config, managedIndexMetaData) {
+    val numOfReplicas: Int,
+    index: Int
+) : Action(name, index) {
 
-    private val attemptSetReplicaCountStep = AttemptSetReplicaCountStep(clusterService, client, config, managedIndexMetaData)
-    private val steps = listOf(attemptSetReplicaCountStep)
+    companion object {
+        const val name = "replica_count"
+    }
 
-    override fun getSteps(): List<Step> = steps
+    override fun getStepToExecute(context: StepContext): Step {
+        TODO("Not yet implemented")
+    }
 
-    override fun getStepToExecute(): Step = attemptSetReplicaCountStep
+    override fun getSteps(): List<Step> {
+        TODO("Not yet implemented")
+    }
 }

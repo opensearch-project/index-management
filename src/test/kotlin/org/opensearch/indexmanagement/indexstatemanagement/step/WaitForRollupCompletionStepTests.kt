@@ -5,22 +5,11 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.step
 
-import com.nhaarman.mockitokotlin2.mock
-import kotlinx.coroutines.runBlocking
-import org.opensearch.client.Client
-import org.opensearch.cluster.service.ClusterService
-import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
-import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.ActionMetaData
-import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.ActionProperties
-import org.opensearch.indexmanagement.indexstatemanagement.step.rollup.WaitForRollupCompletionStep
-import org.opensearch.indexmanagement.rollup.model.RollupMetadata
-import org.opensearch.indexmanagement.rollup.model.RollupStats
 import org.opensearch.test.OpenSearchTestCase
-import java.time.Instant
 
 class WaitForRollupCompletionStepTests : OpenSearchTestCase() {
 
-    private val clusterService: ClusterService = mock()
+    /*private val clusterService: ClusterService = mock()
     private val rollupId: String = "dummy-id"
     private val indexName: String = "test"
     private val metadata = ManagedIndexMetaData(
@@ -154,5 +143,5 @@ class WaitForRollupCompletionStepTests : OpenSearchTestCase() {
 
     fun `test isIdempotent`() {
         assertTrue(step.isIdempotent())
-    }
+    }*/
 }

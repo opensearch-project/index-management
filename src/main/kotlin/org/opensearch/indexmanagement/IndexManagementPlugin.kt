@@ -35,7 +35,6 @@ import org.opensearch.indexmanagement.indexstatemanagement.ManagedIndexRunner
 import org.opensearch.indexmanagement.indexstatemanagement.MetadataService
 import org.opensearch.indexmanagement.indexstatemanagement.SkipExecution
 import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexConfig
-import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
 import org.opensearch.indexmanagement.indexstatemanagement.resthandler.RestAddPolicyAction
 import org.opensearch.indexmanagement.indexstatemanagement.resthandler.RestChangePolicyAction
@@ -106,6 +105,7 @@ import org.opensearch.indexmanagement.rollup.resthandler.RestStopRollupAction
 import org.opensearch.indexmanagement.rollup.settings.LegacyOpenDistroRollupSettings
 import org.opensearch.indexmanagement.rollup.settings.RollupSettings
 import org.opensearch.indexmanagement.settings.IndexManagementSettings
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.transform.TransformRunner
 import org.opensearch.indexmanagement.transform.action.delete.DeleteTransformsAction
 import org.opensearch.indexmanagement.transform.action.delete.TransportDeleteTransformsAction

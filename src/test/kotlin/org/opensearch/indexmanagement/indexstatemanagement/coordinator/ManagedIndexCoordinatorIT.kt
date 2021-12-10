@@ -7,20 +7,20 @@ package org.opensearch.indexmanagement.indexstatemanagement.coordinator
 
 import org.opensearch.client.ResponseException
 import org.opensearch.indexmanagement.indexstatemanagement.IndexStateManagementRestTestCase
+import org.opensearch.indexmanagement.indexstatemanagement.action.DeleteAction
+import org.opensearch.indexmanagement.indexstatemanagement.action.ForceMergeAction
+import org.opensearch.indexmanagement.indexstatemanagement.action.RolloverAction
 import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexConfig
-import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
 import org.opensearch.indexmanagement.indexstatemanagement.model.State
 import org.opensearch.indexmanagement.indexstatemanagement.model.Transition
-import org.opensearch.indexmanagement.indexstatemanagement.model.action.DeleteActionConfig
-import org.opensearch.indexmanagement.indexstatemanagement.model.action.ForceMergeActionConfig
-import org.opensearch.indexmanagement.indexstatemanagement.model.action.RolloverActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomErrorNotification
 import org.opensearch.indexmanagement.indexstatemanagement.resthandler.RestExplainAction
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings
 import org.opensearch.indexmanagement.indexstatemanagement.step.forcemerge.WaitForForceMergeStep
 import org.opensearch.indexmanagement.indexstatemanagement.step.rollover.AttemptRolloverStep
 import org.opensearch.indexmanagement.makeRequest
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.waitFor
 import org.opensearch.rest.RestRequest
 import org.opensearch.rest.RestStatus
@@ -165,7 +165,7 @@ class ManagedIndexCoordinatorIT : IndexStateManagementRestTestCase() {
         val policyID = "test_policy_1"
 
         // Create a policy with one State that performs rollover
-        val rolloverActionConfig = RolloverActionConfig(index = 0, minDocs = 5, minAge = null, minSize = null)
+        val rolloverActionConfig = RolloverAction(index = 0, minDocs = 5, minAge = null, minSize = null)
         val states =
             listOf(State(name = "RolloverState", actions = listOf(rolloverActionConfig), transitions = listOf()))
         val policy = Policy(
@@ -254,8 +254,8 @@ class ManagedIndexCoordinatorIT : IndexStateManagementRestTestCase() {
         val policyID = "test_policy_1"
 
         // Create a policy with one State that performs force_merge and another State that deletes the index
-        val forceMergeActionConfig = ForceMergeActionConfig(index = 0, maxNumSegments = 1)
-        val deleteActionConfig = DeleteActionConfig(index = 0)
+        val forceMergeActionConfig = ForceMergeAction(index = 0, maxNumSegments = 1)
+        val deleteActionConfig = DeleteAction(index = 0)
         val states = listOf(
             State(
                 name = "ForceMergeState",

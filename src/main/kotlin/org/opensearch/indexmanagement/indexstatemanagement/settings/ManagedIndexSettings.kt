@@ -7,7 +7,6 @@ package org.opensearch.indexmanagement.indexstatemanagement.settings
 
 import org.opensearch.common.settings.Setting
 import org.opensearch.common.unit.TimeValue
-import org.opensearch.indexmanagement.indexstatemanagement.model.action.ActionConfig
 import java.util.function.Function
 
 class ManagedIndexSettings {
@@ -16,7 +15,6 @@ class ManagedIndexSettings {
         const val DEFAULT_METADATA_SERVICE_ENABLED = true
         const val DEFAULT_JOB_INTERVAL = 5
         const val DEFAULT_JITTER = 0.6
-        private val ALLOW_LIST_ALL = ActionConfig.ActionType.values().toList().map { it.type }
         val ALLOW_LIST_NONE = emptyList<String>()
         val SNAPSHOT_DENY_LIST_NONE = emptyList<String>()
         const val HOST_DENY_LIST = "opendistro.destination.host.deny_list"

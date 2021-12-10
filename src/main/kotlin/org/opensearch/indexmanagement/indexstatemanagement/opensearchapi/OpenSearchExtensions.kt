@@ -29,12 +29,12 @@ import org.opensearch.common.xcontent.XContentType
 import org.opensearch.index.Index
 import org.opensearch.index.IndexNotFoundException
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
-import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.indexstatemanagement.settings.LegacyOpenDistroManagedIndexSettings
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings
 import org.opensearch.indexmanagement.indexstatemanagement.util.managedIndexMetadataID
 import org.opensearch.indexmanagement.opensearchapi.contentParser
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
 import java.time.Instant
 
 private val log = LogManager.getLogger("Index Management Helper")

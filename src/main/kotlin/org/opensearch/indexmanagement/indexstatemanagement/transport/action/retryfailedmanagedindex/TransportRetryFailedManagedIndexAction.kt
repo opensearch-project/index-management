@@ -31,8 +31,6 @@ import org.opensearch.commons.authuser.User
 import org.opensearch.index.Index
 import org.opensearch.index.IndexNotFoundException
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
-import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
-import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.PolicyRetryInfoMetaData
 import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.buildMgetMetadataRequest
 import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.getManagedIndexMetadata
 import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.mgetResponseToList
@@ -43,6 +41,8 @@ import org.opensearch.indexmanagement.indexstatemanagement.util.FailedIndex
 import org.opensearch.indexmanagement.indexstatemanagement.util.isFailed
 import org.opensearch.indexmanagement.indexstatemanagement.util.managedIndexMetadataID
 import org.opensearch.indexmanagement.indexstatemanagement.util.updateEnableManagedIndexRequest
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.PolicyRetryInfoMetaData
 import org.opensearch.indexmanagement.util.IndexManagementException
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.buildUser
 import org.opensearch.rest.RestStatus

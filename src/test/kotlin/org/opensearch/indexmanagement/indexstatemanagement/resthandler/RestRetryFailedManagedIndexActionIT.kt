@@ -7,18 +7,18 @@ package org.opensearch.indexmanagement.indexstatemanagement.resthandler
 
 import org.opensearch.client.ResponseException
 import org.opensearch.indexmanagement.indexstatemanagement.IndexStateManagementRestTestCase
-import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
-import org.opensearch.indexmanagement.indexstatemanagement.model.action.ActionRetry
-import org.opensearch.indexmanagement.indexstatemanagement.model.action.AllocationActionConfig
-import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.ActionMetaData
+import org.opensearch.indexmanagement.indexstatemanagement.action.AllocationAction
 import org.opensearch.indexmanagement.indexstatemanagement.randomForceMergeActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomPolicy
 import org.opensearch.indexmanagement.indexstatemanagement.randomState
-import org.opensearch.indexmanagement.indexstatemanagement.step.Step
 import org.opensearch.indexmanagement.indexstatemanagement.util.FAILED_INDICES
 import org.opensearch.indexmanagement.indexstatemanagement.util.FAILURES
 import org.opensearch.indexmanagement.indexstatemanagement.util.UPDATED_INDICES
 import org.opensearch.indexmanagement.makeRequest
+import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ActionMetaData
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ActionRetry
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.waitFor
 import org.opensearch.rest.RestRequest
 import org.opensearch.rest.RestStatus
@@ -209,7 +209,7 @@ class RestRetryFailedManagedIndexActionIT : IndexStateManagementRestTestCase() {
 
     fun `test index failed`() {
         val indexName = "${testIndexName}_blueberry"
-        val config = AllocationActionConfig(require = mapOf("..//" to "value"), exclude = emptyMap(), include = emptyMap(), index = 0)
+        val config = AllocationAction(require = mapOf("..//" to "value"), exclude = emptyMap(), include = emptyMap(), index = 0)
         config.configRetry = ActionRetry(0)
         val states = listOf(
             randomState().copy(

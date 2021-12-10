@@ -38,14 +38,9 @@ import org.opensearch.indexmanagement.IndexManagementRestTestCase
 import org.opensearch.indexmanagement.indexstatemanagement.model.ChangePolicy
 import org.opensearch.indexmanagement.indexstatemanagement.model.ISMTemplate
 import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexConfig
-import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
 import org.opensearch.indexmanagement.indexstatemanagement.model.Policy.Companion.POLICY_TYPE
 import org.opensearch.indexmanagement.indexstatemanagement.model.StateFilter
-import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.ActionMetaData
-import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.PolicyRetryInfoMetaData
-import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.StateMetaData
-import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.StepMetaData
 import org.opensearch.indexmanagement.indexstatemanagement.resthandler.RestExplainAction
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings
 import org.opensearch.indexmanagement.indexstatemanagement.util.FAILED_INDICES
@@ -57,6 +52,11 @@ import org.opensearch.indexmanagement.makeRequest
 import org.opensearch.indexmanagement.opensearchapi.parseWithType
 import org.opensearch.indexmanagement.rollup.model.Rollup
 import org.opensearch.indexmanagement.rollup.model.RollupMetadata
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ActionMetaData
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.PolicyRetryInfoMetaData
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StateMetaData
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepMetaData
 import org.opensearch.indexmanagement.util._ID
 import org.opensearch.indexmanagement.util._PRIMARY_TERM
 import org.opensearch.indexmanagement.util._SEQ_NO
