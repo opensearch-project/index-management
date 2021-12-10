@@ -8,6 +8,7 @@ package org.opensearch.indexmanagement.indexstatemanagement
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -364,10 +365,9 @@ object ManagedIndexRunner :
             }
 
             if (executedManagedIndexMetaData.isSuccessfulDelete) {
-                // TODO: fixme
-                /*GlobalScope.launch(Dispatchers.IO + CoroutineName("ManagedIndexMetaData-AddHistory")) {
+                GlobalScope.launch(Dispatchers.IO + CoroutineName("ManagedIndexMetaData-AddHistory")) {
                     ismHistory.addManagedIndexMetaDataHistory(listOf(executedManagedIndexMetaData))
-                }*/
+                }
                 return
             }
 
@@ -599,10 +599,9 @@ object ManagedIndexRunner :
                 result = UpdateMetadataResult(metadataSaved, indexResponse.seqNo, indexResponse.primaryTerm)
             }
 
-            // TODO: fixme - need to add to history index
-            /*GlobalScope.launch(Dispatchers.IO + CoroutineName("ManagedIndexMetaData-AddHistory")) {
+            GlobalScope.launch(Dispatchers.IO + CoroutineName("ManagedIndexMetaData-AddHistory")) {
                 ismHistory.addManagedIndexMetaDataHistory(listOf(metadata))
-            }*/
+            }
         } catch (e: VersionConflictEngineException) {
             logger.error(
                 "There was VersionConflictEngineException trying to update the metadata for " +

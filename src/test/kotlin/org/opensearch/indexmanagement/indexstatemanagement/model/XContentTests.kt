@@ -30,6 +30,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.randomSnapshotActionC
 import org.opensearch.indexmanagement.indexstatemanagement.randomState
 import org.opensearch.indexmanagement.indexstatemanagement.randomTransition
 import org.opensearch.indexmanagement.indexstatemanagement.toJsonString
+import org.opensearch.indexmanagement.opensearchapi.convertToMap
 import org.opensearch.indexmanagement.opensearchapi.parseWithType
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Action
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
@@ -78,12 +79,12 @@ class XContentTests : OpenSearchTestCase() {
         assertEquals("Round tripping ActionConfig doesn't work", deleteActionConfig as Action, parsedActionConfig)
     }
 
-    private fun `test delete action config parsing`() {
-        val deleteActionConfig = randomDeleteActionConfig()
+    fun `test delete action parsing`() {
+        val deleteAction = randomDeleteActionConfig()
 
-        val deleteActionConfigString = deleteActionConfig.toJsonString()
-        val parsedDeleteActionConfig = ISMActionsParser.instance.parse(parser(deleteActionConfigString), 0)
-        assertEquals("Round tripping DeleteActionConfig doesn't work", deleteActionConfig, parsedDeleteActionConfig)
+        val deleteActionString = deleteAction.toJsonString()
+        val parsedDeleteAction = ISMActionsParser.instance.parse(parser(deleteActionString), 0)
+        assertEquals("Round tripping DeleteAction doesn't work", deleteAction.convertToMap(), parsedDeleteAction.convertToMap())
     }
 
     private fun `test rollover action config parsing`() {
@@ -177,7 +178,7 @@ class XContentTests : OpenSearchTestCase() {
         assertEquals("Round tripping AllocationActionConfig doesn't work", allocationActionConfig, parsedAllocationActionConfig)
     }
 
-    private fun `test managed index config parsing`() {
+    fun `test managed index config parsing`() {
         val config = randomManagedIndexConfig()
         val configTwo = config.copy(changePolicy = null)
         var configThree = config.copy()
@@ -207,7 +208,7 @@ class XContentTests : OpenSearchTestCase() {
         assertEquals("Round tripping RollupActionConfig doesn't work", rollupActionConfig.ismRollup, parsedRollupActionConfig.ismRollup)
     }
 
-    private fun `test managed index metadata parsing`() {
+    fun `test managed index metadata parsing`() {
         val metadata = ManagedIndexMetaData(
             index = randomAlphaOfLength(10),
             indexUuid = randomAlphaOfLength(10),

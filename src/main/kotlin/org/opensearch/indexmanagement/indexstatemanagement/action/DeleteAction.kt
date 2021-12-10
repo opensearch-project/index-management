@@ -5,6 +5,7 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.action
 
+import org.opensearch.indexmanagement.indexstatemanagement.step.delete.AttemptDeleteStep
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Action
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepContext
@@ -17,11 +18,12 @@ class DeleteAction(
         const val name = "delete"
     }
 
+    private val attemptDeleteStep = AttemptDeleteStep()
+    private val steps = listOf(attemptDeleteStep)
+
     override fun getStepToExecute(context: StepContext): Step {
-        TODO("Not yet implemented")
+        return attemptDeleteStep
     }
 
-    override fun getSteps(): List<Step> {
-        TODO("Not yet implemented")
-    }
+    override fun getSteps(): List<Step> = steps
 }
