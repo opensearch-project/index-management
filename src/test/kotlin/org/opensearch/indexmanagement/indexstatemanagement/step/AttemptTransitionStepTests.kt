@@ -1,27 +1,6 @@
 /*
+ * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
- *
- * The OpenSearch Contributors require contributions made to
- * this file be licensed under the Apache-2.0 license or a
- * compatible open source license.
- *
- * Modifications Copyright OpenSearch Contributors. See
- * GitHub history for details.
- */
-
-/*
- * Copyright 2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
- *
- * Licensed under the Apache License, Version 2.0 (the "License").
- * You may not use this file except in compliance with the License.
- * A copy of the License is located at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * or in the "license" file accompanying this file. This file is distributed
- * on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
- * express or implied. See the License for the specific language governing
- * permissions and limitations under the License.
  */
 
 package org.opensearch.indexmanagement.indexstatemanagement.step
@@ -33,6 +12,7 @@ import com.nhaarman.mockitokotlin2.mock
 import com.nhaarman.mockitokotlin2.whenever
 import kotlinx.coroutines.runBlocking
 import org.opensearch.action.ActionListener
+import org.opensearch.action.admin.indices.rollover.RolloverInfo
 import org.opensearch.action.admin.indices.stats.CommonStats
 import org.opensearch.action.admin.indices.stats.IndicesStatsResponse
 import org.opensearch.client.AdminClient
@@ -42,6 +22,7 @@ import org.opensearch.cluster.ClusterState
 import org.opensearch.cluster.metadata.IndexMetadata
 import org.opensearch.cluster.metadata.Metadata
 import org.opensearch.cluster.service.ClusterService
+import org.opensearch.common.collect.ImmutableOpenMap
 import org.opensearch.index.shard.DocsStats
 import org.opensearch.indexmanagement.indexstatemanagement.model.Conditions
 import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
@@ -56,7 +37,10 @@ import java.time.Instant
 
 class AttemptTransitionStepTests : OpenSearchTestCase() {
 
-    private val indexMetadata: IndexMetadata = mock()
+    @Suppress("UNCHECKED_CAST")
+    private val indexMetadata: IndexMetadata = mock {
+        on { rolloverInfos } doReturn ImmutableOpenMap.builder<String, RolloverInfo>().build()
+    }
     private val metadata: Metadata = mock { on { index(any<String>()) } doReturn indexMetadata }
     private val clusterState: ClusterState = mock { on { metadata() } doReturn metadata }
     private val clusterService: ClusterService = mock { on { state() } doReturn clusterState }

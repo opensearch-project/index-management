@@ -1,16 +1,11 @@
 /*
+ * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
- *
- * The OpenSearch Contributors require contributions made to
- * this file be licensed under the Apache-2.0 license or a
- * compatible open source license.
- *
- * Modifications Copyright OpenSearch Contributors. See
- * GitHub history for details.
  */
 
 package org.opensearch.indexmanagement.transform.action.preview
 
+import org.apache.logging.log4j.LogManager
 import org.opensearch.ExceptionsHelper
 import org.opensearch.OpenSearchStatusException
 import org.opensearch.action.ActionListener
@@ -26,6 +21,7 @@ import org.opensearch.client.Client
 import org.opensearch.cluster.metadata.IndexNameExpressionResolver
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.inject.Inject
+import org.opensearch.commons.ConfigConstants
 import org.opensearch.indexmanagement.transform.TransformSearchService
 import org.opensearch.indexmanagement.transform.TransformValidator
 import org.opensearch.indexmanagement.transform.model.Transform
@@ -43,8 +39,15 @@ class TransportPreviewTransformAction @Inject constructor(
     PreviewTransformAction.NAME, transportService, actionFilters, ::PreviewTransformRequest
 ) {
 
+    private val log = LogManager.getLogger(javaClass)
+
     @Suppress("SpreadOperator")
     override fun doExecute(task: Task, request: PreviewTransformRequest, listener: ActionListener<PreviewTransformResponse>) {
+        log.debug(
+            "User and roles string from thread context: ${client.threadPool().threadContext.getTransient<String>(
+                ConfigConstants.OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT
+            )}"
+        )
         val transform = request.transform
 
         val concreteIndices =

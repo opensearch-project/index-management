@@ -1,27 +1,6 @@
 /*
+ * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
- *
- * The OpenSearch Contributors require contributions made to
- * this file be licensed under the Apache-2.0 license or a
- * compatible open source license.
- *
- * Modifications Copyright OpenSearch Contributors. See
- * GitHub history for details.
- */
-
-/*
- * Copyright 2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
- *
- * Licensed under the Apache License, Version 2.0 (the "License").
- * You may not use this file except in compliance with the License.
- * A copy of the License is located at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * or in the "license" file accompanying this file. This file is distributed
- * on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
- * express or implied. See the License for the specific language governing
- * permissions and limitations under the License.
  */
 
 package org.opensearch.indexmanagement.indexstatemanagement.step.transition
@@ -36,6 +15,7 @@ import org.opensearch.common.unit.ByteSizeValue
 import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.indexstatemanagement.model.action.TransitionsActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.StepMetaData
+import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.getOldestRolloverTime
 import org.opensearch.indexmanagement.indexstatemanagement.step.Step
 import org.opensearch.indexmanagement.indexstatemanagement.util.evaluateConditions
 import org.opensearch.indexmanagement.indexstatemanagement.util.hasStatsConditions
@@ -67,7 +47,7 @@ class AttemptTransitionStep(
 
     override fun isIdempotent() = true
 
-    @Suppress("TooGenericExceptionCaught", "ReturnCount", "ComplexMethod")
+    @Suppress("TooGenericExceptionCaught", "ReturnCount", "ComplexMethod", "LongMethod")
     override suspend fun execute(): AttemptTransitionStep {
         try {
             if (config.transitions.isEmpty()) {
@@ -77,7 +57,8 @@ class AttemptTransitionStep(
                 return this
             }
 
-            val indexCreationDate = clusterService.state().metadata().index(indexName).creationDate
+            val indexMetaData = clusterService.state().metadata().index(indexName)
+            val indexCreationDate = indexMetaData.creationDate
             val indexCreationDateInstant = Instant.ofEpochMilli(indexCreationDate)
             if (indexCreationDate == -1L) {
                 logger.warn("$indexName had an indexCreationDate=-1L, cannot use for comparison")
@@ -85,6 +66,19 @@ class AttemptTransitionStep(
             val stepStartTime = getStepStartTime()
             var numDocs: Long? = null
             var indexSize: ByteSizeValue? = null
+            val rolloverDate: Instant? = indexMetaData.getOldestRolloverTime()
+
+            if (config.transitions.any { it.conditions?.rolloverAge !== null }) {
+                // if we have a transition with rollover age condition, then we must have a rollover date
+                // otherwise fail this transition
+                if (rolloverDate == null) {
+                    val message = getFailedRolloverDateMessage(indexName)
+                    logger.warn(message)
+                    stepStatus = StepStatus.FAILED
+                    info = mapOf("message" to message)
+                    return this
+                }
+            }
 
             if (config.transitions.any { it.hasStatsConditions() }) {
                 val statsRequest = IndicesStatsRequest()
@@ -106,7 +100,9 @@ class AttemptTransitionStep(
             }
 
             // Find the first transition that evaluates to true and get the state to transition to, otherwise return null if none are true
-            stateName = config.transitions.find { it.evaluateConditions(indexCreationDateInstant, numDocs, indexSize, stepStartTime) }?.stateName
+            stateName = config.transitions.find {
+                it.evaluateConditions(indexCreationDateInstant, numDocs, indexSize, stepStartTime, rolloverDate)
+            }?.stateName
             val message: String
             val stateName = stateName // shadowed on purpose to prevent var from changing
             if (stateName != null) {
@@ -152,6 +148,8 @@ class AttemptTransitionStep(
     companion object {
         fun getFailedMessage(index: String) = "Failed to transition index [index=$index]"
         fun getFailedStatsMessage(index: String) = "Failed to get stats information for the index [index=$index]"
+        fun getFailedRolloverDateMessage(index: String) =
+            "Failed to transition index as min_rollover_age condition was used, but the index has never been rolled over [index=$index]"
         fun getEvaluatingMessage(index: String) = "Evaluating transition conditions [index=$index]"
         fun getSuccessMessage(index: String, state: String) = "Transitioning to $state [index=$index]"
     }

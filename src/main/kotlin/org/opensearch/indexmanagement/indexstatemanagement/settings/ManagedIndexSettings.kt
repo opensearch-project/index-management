@@ -1,27 +1,6 @@
 /*
+ * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
- *
- * The OpenSearch Contributors require contributions made to
- * this file be licensed under the Apache-2.0 license or a
- * compatible open source license.
- *
- * Modifications Copyright OpenSearch Contributors. See
- * GitHub history for details.
- */
-
-/*
- * Copyright 2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
- *
- * Licensed under the Apache License, Version 2.0 (the "License").
- * You may not use this file except in compliance with the License.
- * A copy of the License is located at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * or in the "license" file accompanying this file. This file is distributed
- * on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
- * express or implied. See the License for the specific language governing
- * permissions and limitations under the License.
  */
 
 package org.opensearch.indexmanagement.indexstatemanagement.settings
@@ -36,6 +15,7 @@ class ManagedIndexSettings {
         const val DEFAULT_ISM_ENABLED = true
         const val DEFAULT_METADATA_SERVICE_ENABLED = true
         const val DEFAULT_JOB_INTERVAL = 5
+        const val DEFAULT_JITTER = 0.6
         private val ALLOW_LIST_ALL = ActionConfig.ActionType.values().toList().map { it.type }
         val ALLOW_LIST_NONE = emptyList<String>()
         val SNAPSHOT_DENY_LIST_NONE = emptyList<String>()
@@ -176,6 +156,15 @@ class ManagedIndexSettings {
             "plugins.index_state_management.snapshot.deny_list",
             LegacyOpenDistroManagedIndexSettings.SNAPSHOT_DENY_LIST,
             Function.identity(),
+            Setting.Property.NodeScope,
+            Setting.Property.Dynamic
+        )
+
+        val JITTER: Setting<Double> = Setting.doubleSetting(
+            "plugins.index_state_management.jitter",
+            DEFAULT_JITTER,
+            0.0,
+            1.0,
             Setting.Property.NodeScope,
             Setting.Property.Dynamic
         )

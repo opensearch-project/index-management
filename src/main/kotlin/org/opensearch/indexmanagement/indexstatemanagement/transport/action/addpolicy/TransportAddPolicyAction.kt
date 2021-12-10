@@ -1,12 +1,6 @@
 /*
+ * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
- *
- * The OpenSearch Contributors require contributions made to
- * this file be licensed under the Apache-2.0 license or a
- * compatible open source license.
- *
- * Modifications Copyright OpenSearch Contributors. See
- * GitHub history for details.
  */
 
 package org.opensearch.indexmanagement.indexstatemanagement.transport.action.addpolicy
@@ -53,6 +47,7 @@ import org.opensearch.common.inject.Inject
 import org.opensearch.common.settings.Settings
 import org.opensearch.common.unit.TimeValue
 import org.opensearch.common.xcontent.NamedXContentRegistry
+import org.opensearch.commons.ConfigConstants
 import org.opensearch.commons.authuser.User
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
 import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
@@ -93,11 +88,15 @@ class TransportAddPolicyAction @Inject constructor(
 ) {
 
     @Volatile private var jobInterval = ManagedIndexSettings.JOB_INTERVAL.get(settings)
+    @Volatile private var jobJitter = ManagedIndexSettings.JITTER.get(settings)
     @Volatile private var filterByEnabled = IndexManagementSettings.FILTER_BY_BACKEND_ROLES.get(settings)
 
     init {
         clusterService.clusterSettings.addSettingsUpdateConsumer(ManagedIndexSettings.JOB_INTERVAL) {
             jobInterval = it
+        }
+        clusterService.clusterSettings.addSettingsUpdateConsumer(ManagedIndexSettings.JITTER) {
+            jobJitter = it
         }
         clusterService.clusterSettings.addSettingsUpdateConsumer(IndexManagementSettings.FILTER_BY_BACKEND_ROLES) {
             filterByEnabled = it
@@ -121,6 +120,11 @@ class TransportAddPolicyAction @Inject constructor(
         private val failedIndices: MutableList<FailedIndex> = mutableListOf()
 
         fun start() {
+            log.debug(
+                "User and roles string from thread context: ${client.threadPool().threadContext.getTransient<String>(
+                    ConfigConstants.OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT
+                )}"
+            )
             if (!validateUserConfiguration(user, filterByEnabled, actionListener)) {
                 return
             }
@@ -329,7 +333,7 @@ class TransportAddPolicyAction @Inject constructor(
                 val bulkReq = BulkRequest().timeout(TimeValue.timeValueMillis(bulkReqTimeout))
                 indicesToAdd.forEach { (uuid, name) ->
                     bulkReq.add(
-                        managedIndexConfigIndexRequest(name, uuid, request.policyID, jobInterval, policy = policy.copy(user = this.user))
+                        managedIndexConfigIndexRequest(name, uuid, request.policyID, jobInterval, policy = policy.copy(user = this.user), jobJitter)
                     )
                 }
 

@@ -1,27 +1,6 @@
 /*
+ * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
- *
- * The OpenSearch Contributors require contributions made to
- * this file be licensed under the Apache-2.0 license or a
- * compatible open source license.
- *
- * Modifications Copyright OpenSearch Contributors. See
- * GitHub history for details.
- */
-
-/*
- * Copyright 2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
- *
- * Licensed under the Apache License, Version 2.0 (the "License").
- * You may not use this file except in compliance with the License.
- * A copy of the License is located at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * or in the "license" file accompanying this file. This file is distributed
- * on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
- * express or implied. See the License for the specific language governing
- * permissions and limitations under the License.
  */
 
 package org.opensearch.indexmanagement.indexstatemanagement.util
@@ -60,7 +39,7 @@ class ManagedIndexUtilsTests : OpenSearchTestCase() {
         val index = randomAlphaOfLength(10)
         val uuid = randomAlphaOfLength(10)
         val policyID = randomAlphaOfLength(10)
-        val createRequest = managedIndexConfigIndexRequest(index, uuid, policyID, 5)
+        val createRequest = managedIndexConfigIndexRequest(index, uuid, policyID, 5, jobJitter = 0.0)
 
         assertNotNull("IndexRequest not created", createRequest)
         assertEquals("Incorrect ism index used in request", INDEX_MANAGEMENT_INDEX, createRequest.index())
@@ -255,27 +234,47 @@ class ManagedIndexUtilsTests : OpenSearchTestCase() {
         assertTrue(
             "No conditions should pass",
             emptyTransition
-                .evaluateConditions(indexCreationDate = Instant.now(), numDocs = null, indexSize = null, transitionStartTime = Instant.now())
+                .evaluateConditions(indexCreationDate = Instant.now(), numDocs = null, indexSize = null, transitionStartTime = Instant.now(), rolloverDate = null)
         )
 
         val timeTransition = Transition(
             stateName = "some_state",
-            conditions = Conditions(indexAge = TimeValue.timeValueSeconds(5), docCount = null, size = null, cron = null)
+            conditions = Conditions(indexAge = TimeValue.timeValueSeconds(5))
         )
         assertFalse(
             "Index age that is too young should not pass",
             timeTransition
-                .evaluateConditions(indexCreationDate = Instant.now(), numDocs = null, indexSize = null, transitionStartTime = Instant.now())
+                .evaluateConditions(indexCreationDate = Instant.now(), numDocs = null, indexSize = null, transitionStartTime = Instant.now(), rolloverDate = null)
         )
         assertTrue(
             "Index age that is older should pass",
             timeTransition
-                .evaluateConditions(indexCreationDate = Instant.now().minusSeconds(10), numDocs = null, indexSize = null, transitionStartTime = Instant.now())
+                .evaluateConditions(indexCreationDate = Instant.now().minusSeconds(10), numDocs = null, indexSize = null, transitionStartTime = Instant.now(), rolloverDate = null)
         )
         assertFalse(
             "Index age that is -1L should not pass",
             timeTransition
-                .evaluateConditions(indexCreationDate = Instant.ofEpochMilli(-1L), numDocs = null, indexSize = null, transitionStartTime = Instant.now())
+                .evaluateConditions(indexCreationDate = Instant.ofEpochMilli(-1L), numDocs = null, indexSize = null, transitionStartTime = Instant.now(), rolloverDate = null)
+        )
+
+        val rolloverTimeTransition = Transition(
+            stateName = "some_state",
+            conditions = Conditions(rolloverAge = TimeValue.timeValueSeconds(5))
+        )
+        assertFalse(
+            "Rollover age that is too young should not pass",
+            rolloverTimeTransition
+                .evaluateConditions(indexCreationDate = Instant.now(), numDocs = null, indexSize = null, transitionStartTime = Instant.now(), rolloverDate = Instant.now())
+        )
+        assertTrue(
+            "Rollover age that is older should pass",
+            rolloverTimeTransition
+                .evaluateConditions(indexCreationDate = Instant.now().minusSeconds(10), numDocs = null, indexSize = null, transitionStartTime = Instant.now(), rolloverDate = Instant.now().minusSeconds(10))
+        )
+        assertFalse(
+            "Rollover age that is null should not pass",
+            rolloverTimeTransition
+                .evaluateConditions(indexCreationDate = Instant.ofEpochMilli(-1L), numDocs = null, indexSize = null, transitionStartTime = Instant.now(), rolloverDate = null)
         )
     }
 

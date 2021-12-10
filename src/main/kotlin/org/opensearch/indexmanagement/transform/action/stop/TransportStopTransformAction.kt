@@ -1,12 +1,6 @@
 /*
+ * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
- *
- * The OpenSearch Contributors require contributions made to
- * this file be licensed under the Apache-2.0 license or a
- * compatible open source license.
- *
- * Modifications Copyright OpenSearch Contributors. See
- * GitHub history for details.
  */
 
 package org.opensearch.indexmanagement.transform.action.stop
@@ -31,6 +25,7 @@ import org.opensearch.common.xcontent.LoggingDeprecationHandler
 import org.opensearch.common.xcontent.NamedXContentRegistry
 import org.opensearch.common.xcontent.XContentHelper
 import org.opensearch.common.xcontent.XContentType
+import org.opensearch.commons.ConfigConstants
 import org.opensearch.indexmanagement.IndexManagementPlugin
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
 import org.opensearch.indexmanagement.opensearchapi.parseFromGetResponse
@@ -81,6 +76,11 @@ class TransportStopTransformAction @Inject constructor(
 
     override fun doExecute(task: Task, request: StopTransformRequest, actionListener: ActionListener<AcknowledgedResponse>) {
         log.debug("Executing StopTransformAction on ${request.id()}")
+        log.debug(
+            "User and roles string from thread context: ${client.threadPool().threadContext.getTransient<String>(
+                ConfigConstants.OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT
+            )}"
+        )
         val getRequest = GetRequest(INDEX_MANAGEMENT_INDEX, request.id())
         val user = buildUser(client.threadPool().threadContext)
         client.threadPool().threadContext.stashContext().use {

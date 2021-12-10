@@ -1,27 +1,6 @@
 /*
+ * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
- *
- * The OpenSearch Contributors require contributions made to
- * this file be licensed under the Apache-2.0 license or a
- * compatible open source license.
- *
- * Modifications Copyright OpenSearch Contributors. See
- * GitHub history for details.
- */
-
-/*
- * Copyright 2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
- *
- * Licensed under the Apache License, Version 2.0 (the "License").
- * You may not use this file except in compliance with the License.
- * A copy of the License is located at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * or in the "license" file accompanying this file. This file is distributed
- * on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
- * express or implied. See the License for the specific language governing
- * permissions and limitations under the License.
  */
 
 package org.opensearch.indexmanagement.rollup.action.explain
@@ -38,6 +17,7 @@ import org.opensearch.client.Client
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.inject.Inject
 import org.opensearch.common.settings.Settings
+import org.opensearch.commons.ConfigConstants
 import org.opensearch.index.query.BoolQueryBuilder
 import org.opensearch.index.query.IdsQueryBuilder
 import org.opensearch.index.query.WildcardQueryBuilder
@@ -78,6 +58,11 @@ class TransportExplainRollupAction @Inject constructor(
 
     @Suppress("SpreadOperator")
     override fun doExecute(task: Task, request: ExplainRollupRequest, actionListener: ActionListener<ExplainRollupResponse>) {
+        log.debug(
+            "User and roles string from thread context: ${client.threadPool().threadContext.getTransient<String>(
+                ConfigConstants.OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT
+            )}"
+        )
         val ids = request.rollupIDs
         // Instantiate concrete ids to metadata map by removing wildcard matches
         val idsToExplain: MutableMap<String, ExplainRollup?> = ids.filter { !it.contains("*") }.map { it to null }.toMap(mutableMapOf())

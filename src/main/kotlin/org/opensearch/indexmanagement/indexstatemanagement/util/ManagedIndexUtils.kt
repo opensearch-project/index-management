@@ -1,28 +1,8 @@
 /*
+ * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
- *
- * The OpenSearch Contributors require contributions made to
- * this file be licensed under the Apache-2.0 license or a
- * compatible open source license.
- *
- * Modifications Copyright OpenSearch Contributors. See
- * GitHub history for details.
  */
 
-/*
- * Copyright 2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
- *
- * Licensed under the Apache License, Version 2.0 (the "License").
- * You may not use this file except in compliance with the License.
- * A copy of the License is located at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * or in the "license" file accompanying this file. This file is distributed
- * on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
- * express or implied. See the License for the specific language governing
- * permissions and limitations under the License.
- */
 @file:Suppress("TooManyFunctions")
 @file:JvmName("ManagedIndexUtils")
 package org.opensearch.indexmanagement.indexstatemanagement.util
@@ -76,12 +56,14 @@ import java.net.InetAddress
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 
+@Suppress("LongParameterList")
 fun managedIndexConfigIndexRequest(
     index: String,
     uuid: String,
     policyID: String,
     jobInterval: Int,
-    policy: Policy? = null
+    policy: Policy? = null,
+    jobJitter: Double?
 ): IndexRequest {
     val managedIndexConfig = ManagedIndexConfig(
         jobName = index,
@@ -95,7 +77,8 @@ fun managedIndexConfigIndexRequest(
         policy = policy,
         policySeqNo = policy?.seqNo,
         policyPrimaryTerm = policy?.primaryTerm,
-        changePolicy = null
+        changePolicy = null,
+        jobJitter = jobJitter
     )
 
     return IndexRequest(INDEX_MANAGEMENT_INDEX)
@@ -230,7 +213,8 @@ fun Transition.evaluateConditions(
     indexCreationDate: Instant,
     numDocs: Long?,
     indexSize: ByteSizeValue?,
-    transitionStartTime: Instant
+    transitionStartTime: Instant,
+    rolloverDate: Instant?,
 ): Boolean {
     // If there are no conditions, treat as always true
     if (this.conditions == null) return true
@@ -253,6 +237,12 @@ fun Transition.evaluateConditions(
     if (this.conditions.cron != null) {
         // If a cron pattern matches the time between the start of "attempt_transition" to now then we consider it meeting the condition
         return this.conditions.cron.getNextExecutionTime(transitionStartTime) <= Instant.now()
+    }
+
+    if (this.conditions.rolloverAge != null) {
+        val rolloverDateMilli = rolloverDate?.toEpochMilli() ?: return false
+        val elapsedTime = Instant.now().toEpochMilli() - rolloverDateMilli
+        return this.conditions.rolloverAge.millis <= elapsedTime
     }
 
     // We should never reach this

@@ -1,27 +1,6 @@
 /*
+ * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
- *
- * The OpenSearch Contributors require contributions made to
- * this file be licensed under the Apache-2.0 license or a
- * compatible open source license.
- *
- * Modifications Copyright OpenSearch Contributors. See
- * GitHub history for details.
- */
-
-/*
- * Copyright 2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
- *
- * Licensed under the Apache License, Version 2.0 (the "License").
- * You may not use this file except in compliance with the License.
- * A copy of the License is located at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * or in the "license" file accompanying this file. This file is distributed
- * on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
- * express or implied. See the License for the specific language governing
- * permissions and limitations under the License.
  */
 
 package org.opensearch.indexmanagement.indexstatemanagement.step.rollover
@@ -72,17 +51,15 @@ class AttemptRolloverStep(
             return this
         }
 
-        // If we have already rolled over this index then fail as we only allow an index to be rolled over once
-        if (managedIndexMetaData.rolledOver == true) {
-            logger.warn("$indexName was already rolled over, cannot execute rollover step")
-            stepStatus = StepStatus.FAILED
-            info = mapOf("message" to getFailedDuplicateRolloverMessage(indexName))
-            return this
-        }
-
         val (rolloverTarget, isDataStream) = getRolloverTargetOrUpdateInfo()
         // If the rolloverTarget is null, we would've already updated the failed info from getRolloverTargetOrUpdateInfo and can return early
         rolloverTarget ?: return this
+
+        if (clusterService.state().metadata.index(indexName).rolloverInfos.containsKey(rolloverTarget)) {
+            stepStatus = StepStatus.COMPLETED
+            info = mapOf("message" to getAlreadyRolledOverMessage(indexName, rolloverTarget))
+            return this
+        }
 
         if (!isDataStream && !preCheckIndexAlias(rolloverTarget)) {
             stepStatus = StepStatus.FAILED
@@ -285,7 +262,6 @@ class AttemptRolloverStep(
             "New index created, but failed to update alias [index=$index, newIndex=$newIndex]"
         fun getFailedDataStreamRolloverMessage(dataStream: String) = "Failed to rollover data stream [data_stream=$dataStream]"
         fun getFailedNoValidAliasMessage(index: String) = "Missing rollover_alias index setting [index=$index]"
-        fun getFailedDuplicateRolloverMessage(index: String) = "Index has already been rolled over [index=$index]"
         fun getFailedEvaluateMessage(index: String) = "Failed to evaluate conditions for rollover [index=$index]"
         fun getPendingMessage(index: String) = "Pending rollover of index [index=$index]"
         fun getSuccessMessage(index: String) = "Successfully rolled over index [index=$index]"
@@ -293,5 +269,7 @@ class AttemptRolloverStep(
             "Successfully rolled over data stream [data_stream=$dataStream index=$index]"
         fun getFailedPreCheckMessage(index: String) = "Missing alias or not the write index when rollover [index=$index]"
         fun getSkipRolloverMessage(index: String) = "Skipped rollover action for [index=$index]"
+        fun getAlreadyRolledOverMessage(index: String, alias: String) =
+            "This index has already been rolled over using this alias, treating as a success [index=$index, alias=$alias]"
     }
 }

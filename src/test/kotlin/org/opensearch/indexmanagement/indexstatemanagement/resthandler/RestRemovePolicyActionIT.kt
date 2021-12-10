@@ -1,33 +1,14 @@
 /*
+ * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
- *
- * The OpenSearch Contributors require contributions made to
- * this file be licensed under the Apache-2.0 license or a
- * compatible open source license.
- *
- * Modifications Copyright OpenSearch Contributors. See
- * GitHub history for details.
- */
-
-/*
- * Copyright 2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
- *
- * Licensed under the Apache License, Version 2.0 (the "License").
- * You may not use this file except in compliance with the License.
- * A copy of the License is located at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * or in the "license" file accompanying this file. This file is distributed
- * on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
- * express or implied. See the License for the specific language governing
- * permissions and limitations under the License.
  */
 
 package org.opensearch.indexmanagement.indexstatemanagement.resthandler
 
 import org.opensearch.client.ResponseException
+import org.opensearch.cluster.metadata.IndexMetadata
 import org.opensearch.indexmanagement.indexstatemanagement.IndexStateManagementRestTestCase
+import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings
 import org.opensearch.indexmanagement.indexstatemanagement.util.FAILED_INDICES
 import org.opensearch.indexmanagement.indexstatemanagement.util.FAILURES
 import org.opensearch.indexmanagement.indexstatemanagement.util.UPDATED_INDICES
@@ -190,20 +171,48 @@ class RestRemovePolicyActionIT : IndexStateManagementRestTestCase() {
         }
     }
 
-    fun `test remove policy update auto_manage setting`() {
-        val index = "movies"
+    fun `test remove policy on read only index update auto_manage setting`() {
+        val index1 = "read_only_index"
+        val index2 = "read_only_allow_delete_index"
+        val index3 = "normal_index"
+        val index4 = "auto_manage_false_index"
+        val indexPattern = "*index"
         val policy = createRandomPolicy()
-        createIndex(index, policy.id)
-        assertEquals("auto manage setting not null at index creation time", null, getIndexAutoManageSetting(index))
+        createIndex(index1, policy.id)
+        createIndex(index2, policy.id)
+        createIndex(index3, policy.id)
+        createIndex(index4, policy.id)
+        updateIndexSetting(index1, IndexMetadata.SETTING_READ_ONLY, "true")
+        updateIndexSetting(index2, IndexMetadata.SETTING_READ_ONLY_ALLOW_DELETE, "true")
+        updateIndexSetting(index4, ManagedIndexSettings.AUTO_MANAGE.key, "false")
 
         val response = client().makeRequest(
             POST.toString(),
-            "${RestRemovePolicyAction.REMOVE_POLICY_BASE_URI}/$index"
+            "${RestRemovePolicyAction.REMOVE_POLICY_BASE_URI}/$indexPattern"
         )
         assertEquals("Unexpected RestStatus", RestStatus.OK, response.restStatus())
+        val actualMessage = response.asMap()
+        val expectedMessage = mapOf(
+            UPDATED_INDICES to 4,
+            FAILURES to false,
+            FAILED_INDICES to emptyList<Any>()
+        )
+        assertAffectedIndicesResponseIsEqual(expectedMessage, actualMessage)
 
         waitFor {
-            assertEquals("auto manage setting not false after removing policy", false, getIndexAutoManageSetting(index))
+            assertEquals("auto manage setting not false after removing policy for index $index1", false, getIndexAutoManageSetting(index1))
+            assertEquals("read only allow delete setting changed after removing policy for index $index1", null, getIndexReadOnlyAllowDeleteSetting(index1))
+            assertEquals("auto manage setting not false after removing policy for index $index2", false, getIndexAutoManageSetting(index2))
+            assertEquals("read only setting changed after removing policy for index $index2", null, getIndexReadOnlySetting(index2))
+            assertEquals("auto manage setting not false after removing policy for index $index3", false, getIndexAutoManageSetting(index3))
+            assertEquals("read only setting changed after removing policy for index $index3", null, getIndexReadOnlySetting(index3))
+            assertEquals("read only allow delete setting changed after removing policy for index $index3", null, getIndexReadOnlyAllowDeleteSetting(index3))
+            assertEquals("auto manage setting not false after removing policy for index $index4", false, getIndexAutoManageSetting(index3))
+            assertEquals("read only setting changed after removing policy for index $index4", null, getIndexReadOnlySetting(index3))
+            assertEquals("read only allow delete setting changed after removing policy for index $index4", null, getIndexReadOnlyAllowDeleteSetting(index3))
         }
+
+        // otherwise, test cleanup cannot delete this index
+        updateIndexSetting(index1, IndexMetadata.SETTING_READ_ONLY, "false")
     }
 }

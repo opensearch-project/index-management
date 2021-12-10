@@ -1,27 +1,6 @@
 /*
+ * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
- *
- * The OpenSearch Contributors require contributions made to
- * this file be licensed under the Apache-2.0 license or a
- * compatible open source license.
- *
- * Modifications Copyright OpenSearch Contributors. See
- * GitHub history for details.
- */
-
-/*
- * Copyright 2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
- *
- * Licensed under the Apache License, Version 2.0 (the "License").
- * You may not use this file except in compliance with the License.
- * A copy of the License is located at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * or in the "license" file accompanying this file. This file is distributed
- * on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
- * express or implied. See the License for the specific language governing
- * permissions and limitations under the License.
  */
 
 package org.opensearch.indexmanagement.indexstatemanagement.runner
@@ -107,20 +86,41 @@ class ManagedIndexRunnerIT : IndexStateManagementRestTestCase() {
         val managedIndexConfig = getExistingManagedIndexConfig(indexName)
 
         assertEquals(
-            "Created managed index did not default to ${ManagedIndexSettings.DEFAULT_JOB_INTERVAL}minutes",
+            "Created managed index did not default to ${ManagedIndexSettings.DEFAULT_JOB_INTERVAL} minutes",
             ManagedIndexSettings.DEFAULT_JOB_INTERVAL, (managedIndexConfig.jobSchedule as IntervalSchedule).interval
         )
 
         // init policy
         updateManagedIndexConfigStartTime(managedIndexConfig)
-        waitFor { assertEquals(createdPolicy.id, getManagedIndexConfigByDocId(managedIndexConfig.id)?.policyID) }
+        waitFor {
+            assertEquals(createdPolicy.id, getManagedIndexConfigByDocId(managedIndexConfig.id)?.policyID)
+            val currInterval = (getManagedIndexConfigByDocId(managedIndexConfig.id)?.jobSchedule as? IntervalSchedule)?.interval
+            assertEquals("Managed index was not created with default job interval", ManagedIndexSettings.DEFAULT_JOB_INTERVAL, currInterval)
+        }
 
         // change cluster job interval setting to 2 (minutes)
-        updateClusterSetting(ManagedIndexSettings.JOB_INTERVAL.key, "2")
+        val newJobInterval = 2
+        updateClusterSetting(ManagedIndexSettings.JOB_INTERVAL.key, newJobInterval.toString())
 
-        // fast forward to next execution where at the end we should change the job interval time
-        updateManagedIndexConfigStartTime(managedIndexConfig)
-        waitFor { (getManagedIndexConfigByDocId(managedIndexConfig.id)?.jobSchedule as? IntervalSchedule)?.interval == 2 }
+        // Create a new index and policy to check if they have the updated interval
+        val newIndexName = indexName + "new"
+        val newCreatedPolicy = createRandomPolicy()
+        createIndex(newIndexName, newCreatedPolicy.id)
+
+        val newManagedIndexConfig = getExistingManagedIndexConfig(newIndexName)
+
+        assertEquals(
+            "New managed index did not have updated job schedule interval",
+            newJobInterval, (newManagedIndexConfig.jobSchedule as IntervalSchedule).interval
+        )
+
+        // init new policy
+        updateManagedIndexConfigStartTime(newManagedIndexConfig)
+        waitFor {
+            assertEquals(newCreatedPolicy.id, getManagedIndexConfigByDocId(newManagedIndexConfig.id)?.policyID)
+            val currInterval = (getManagedIndexConfigByDocId(newManagedIndexConfig.id)?.jobSchedule as? IntervalSchedule)?.interval
+            assertEquals("Failed to update ManagedIndexConfig interval", newJobInterval, currInterval)
+        }
     }
 
     fun `test allow list fails execution`() {
@@ -170,5 +170,43 @@ class ManagedIndexRunnerIT : IndexStateManagementRestTestCase() {
         // speed up to fifth execution that should try to set index to read only and fail because the action is not allowed
         updateManagedIndexConfigStartTime(managedIndexConfig)
         waitFor { assertEquals("Attempted to execute action=read_only which is not allowed.", getExplainManagedIndexMetaData(indexName).info?.get("message")) }
+    }
+
+    fun `test jitter changing`() {
+        val indexName = "jitter_index_"
+
+        val createdPolicy = createRandomPolicy()
+        createIndex(indexName, createdPolicy.id)
+
+        val managedIndexConfig = getExistingManagedIndexConfig(indexName)
+        assertEquals(
+            "Created managed index did not default to 0.0", 0.0, managedIndexConfig.jitter
+        )
+
+        waitFor {
+            assertEquals(createdPolicy.id, getManagedIndexConfigByDocId(managedIndexConfig.id)?.policyID)
+            val currJitter = getManagedIndexConfigByDocId(managedIndexConfig.id)?.jitter
+            assertEquals("Managed index was not created with 0.0 jitter", 0.0, currJitter)
+        }
+
+        // change jitter to 0.5
+        val newJitter = 0.5
+        updateIndexStateManagementJitterSetting(newJitter)
+
+        // Create a new index and policy to check if they have the updated jitter
+        val newIndexName = indexName + "new"
+        val newCreatedPolicy = createRandomPolicy()
+        createIndex(newIndexName, newCreatedPolicy.id)
+
+        val newManagedIndexConfig = getExistingManagedIndexConfig(newIndexName)
+        assertEquals(
+            "New managed index did not have updated jitter", newJitter, newManagedIndexConfig.jitter
+        )
+
+        waitFor {
+            assertEquals(newCreatedPolicy.id, getManagedIndexConfigByDocId(newManagedIndexConfig.id)?.policyID)
+            val currJitter = getManagedIndexConfigByDocId(newManagedIndexConfig.id)?.jitter
+            assertEquals("Failed to update ManagedIndexConfig jitter", newJitter, currJitter)
+        }
     }
 }

@@ -1,27 +1,6 @@
 /*
+ * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
- *
- * The OpenSearch Contributors require contributions made to
- * this file be licensed under the Apache-2.0 license or a
- * compatible open source license.
- *
- * Modifications Copyright OpenSearch Contributors. See
- * GitHub history for details.
- */
-
-/*
- * Copyright 2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
- *
- * Licensed under the Apache License, Version 2.0 (the "License").
- * You may not use this file except in compliance with the License.
- * A copy of the License is located at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * or in the "license" file accompanying this file. This file is distributed
- * on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
- * express or implied. See the License for the specific language governing
- * permissions and limitations under the License.
  */
 
 package org.opensearch.indexmanagement.indexstatemanagement.model
@@ -56,7 +35,8 @@ data class ManagedIndexConfig(
     val policySeqNo: Long?,
     val policyPrimaryTerm: Long?,
     val policy: Policy?,
-    val changePolicy: ChangePolicy?
+    val changePolicy: ChangePolicy?,
+    val jobJitter: Double?
 ) : ScheduledJobParameter {
 
     init {
@@ -79,6 +59,10 @@ data class ManagedIndexConfig(
 
     override fun getLockDurationSeconds(): Long = 3600L // 1 hour
 
+    override fun getJitter(): Double? {
+        return jobJitter
+    }
+
     override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
         builder
             .startObject()
@@ -95,6 +79,7 @@ data class ManagedIndexConfig(
             .field(POLICY_PRIMARY_TERM_FIELD, policyPrimaryTerm)
             .field(POLICY_FIELD, policy, XCONTENT_WITHOUT_TYPE)
             .field(CHANGE_POLICY_FIELD, changePolicy)
+            .field(JITTER, jobJitter)
         builder.endObject()
         return builder.endObject()
     }
@@ -114,6 +99,7 @@ data class ManagedIndexConfig(
         const val POLICY_SEQ_NO_FIELD = "policy_seq_no"
         const val POLICY_PRIMARY_TERM_FIELD = "policy_primary_term"
         const val CHANGE_POLICY_FIELD = "change_policy"
+        const val JITTER = "jitter"
 
         @Suppress("ComplexMethod", "LongMethod")
         @JvmStatic
@@ -137,6 +123,7 @@ data class ManagedIndexConfig(
             var enabled = true
             var policyPrimaryTerm: Long? = SequenceNumbers.UNASSIGNED_PRIMARY_TERM
             var policySeqNo: Long? = SequenceNumbers.UNASSIGNED_SEQ_NO
+            var jitter: Double? = null
 
             ensureExpectedToken(Token.START_OBJECT, xcp.currentToken(), xcp)
             while (xcp.nextToken() != Token.END_OBJECT) {
@@ -163,6 +150,9 @@ data class ManagedIndexConfig(
                     }
                     CHANGE_POLICY_FIELD -> {
                         changePolicy = if (xcp.currentToken() == Token.VALUE_NULL) null else ChangePolicy.parse(xcp)
+                    }
+                    JITTER -> {
+                        jitter = if (xcp.currentToken() == Token.VALUE_NULL) null else xcp.doubleValue()
                     }
                     else -> throw IllegalArgumentException("Invalid field: [$fieldName] found in ManagedIndexConfig.")
                 }
@@ -192,7 +182,8 @@ data class ManagedIndexConfig(
                     seqNo = policySeqNo ?: SequenceNumbers.UNASSIGNED_SEQ_NO,
                     primaryTerm = policyPrimaryTerm ?: SequenceNumbers.UNASSIGNED_PRIMARY_TERM
                 ),
-                changePolicy = changePolicy
+                changePolicy = changePolicy,
+                jobJitter = jitter
             )
         }
     }

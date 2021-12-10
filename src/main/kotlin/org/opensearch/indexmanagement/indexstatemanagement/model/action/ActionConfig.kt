@@ -1,27 +1,6 @@
 /*
+ * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
- *
- * The OpenSearch Contributors require contributions made to
- * this file be licensed under the Apache-2.0 license or a
- * compatible open source license.
- *
- * Modifications Copyright OpenSearch Contributors. See
- * GitHub history for details.
- */
-
-/*
- * Copyright 2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
- *
- * Licensed under the Apache License, Version 2.0 (the "License").
- * You may not use this file except in compliance with the License.
- * A copy of the License is located at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * or in the "license" file accompanying this file. This file is distributed
- * on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
- * express or implied. See the License for the specific language governing
- * permissions and limitations under the License.
  */
 
 package org.opensearch.indexmanagement.indexstatemanagement.model.action
@@ -49,9 +28,7 @@ abstract class ActionConfig(
 ) : ToXContentFragment, Writeable {
 
     var configTimeout: ActionTimeout? = null
-        private set
     var configRetry: ActionRetry? = null
-        private set
 
     override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
         configTimeout?.toXContent(builder, params)
@@ -97,6 +74,8 @@ abstract class ActionConfig(
     }
 
     companion object {
+        private const val DEFAULT_RETRIES = 3L
+
         // TODO clean up for actionIndex
         @JvmStatic
         @Throws(IOException::class)
@@ -136,7 +115,7 @@ abstract class ActionConfig(
         fun parse(xcp: XContentParser, index: Int): ActionConfig {
             var actionConfig: ActionConfig? = null
             var timeout: ActionTimeout? = null
-            var retry: ActionRetry? = null
+            var retry: ActionRetry? = ActionRetry(DEFAULT_RETRIES)
 
             ensureExpectedToken(Token.START_OBJECT, xcp.currentToken(), xcp)
             while (xcp.nextToken() != Token.END_OBJECT) {

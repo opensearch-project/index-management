@@ -1,27 +1,6 @@
 /*
+ * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
- *
- * The OpenSearch Contributors require contributions made to
- * this file be licensed under the Apache-2.0 license or a
- * compatible open source license.
- *
- * Modifications Copyright OpenSearch Contributors. See
- * GitHub history for details.
- */
-
-/*
- * Copyright 2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
- *
- * Licensed under the Apache License, Version 2.0 (the "License").
- * You may not use this file except in compliance with the License.
- * A copy of the License is located at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * or in the "license" file accompanying this file. This file is distributed
- * on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
- * express or implied. See the License for the specific language governing
- * permissions and limitations under the License.
  */
 
 package org.opensearch.indexmanagement.indexstatemanagement.action
@@ -38,10 +17,12 @@ import org.opensearch.indexmanagement.indexstatemanagement.IndexStateManagementR
 import org.opensearch.indexmanagement.indexstatemanagement.model.ISMTemplate
 import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
 import org.opensearch.indexmanagement.indexstatemanagement.model.State
+import org.opensearch.indexmanagement.indexstatemanagement.model.action.ActionRetry
 import org.opensearch.indexmanagement.indexstatemanagement.model.action.RolloverActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomErrorNotification
 import org.opensearch.indexmanagement.indexstatemanagement.resthandler.RestRetryFailedManagedIndexAction
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings
+import org.opensearch.indexmanagement.indexstatemanagement.step.Step
 import org.opensearch.indexmanagement.indexstatemanagement.step.rollover.AttemptRolloverStep
 import org.opensearch.indexmanagement.makeRequest
 import org.opensearch.indexmanagement.waitFor
@@ -297,6 +278,7 @@ class RolloverActionIT : IndexStateManagementRestTestCase() {
         val alias1 = "x"
         val policyID = "${testIndexName}_precheck"
         val actionConfig = RolloverActionConfig(null, 3, TimeValue.timeValueDays(2), 0)
+        actionConfig.configRetry = ActionRetry(0)
         val states = listOf(State(name = "RolloverAction", actions = listOf(actionConfig), transitions = listOf()))
         val policy = Policy(
             id = policyID,
@@ -495,5 +477,47 @@ class RolloverActionIT : IndexStateManagementRestTestCase() {
 
         val secondIndexName = DataStream.getDefaultBackingIndexName(dataStreamName, 2L)
         Assert.assertTrue("New rollover index does not exist.", indexExists(secondIndexName))
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    fun `test rollover from outside ISM doesn't fail ISM job`() {
+        val aliasName = "${testIndexName}_alias"
+        val indexNameBase = "${testIndexName}_index"
+        val firstIndex = "$indexNameBase-1"
+        val policyID = "${testIndexName}_testPolicyName_1"
+        val actionConfig = RolloverActionConfig(null, null, null, 0)
+        val states = listOf(State(name = "RolloverAction", actions = listOf(actionConfig), transitions = listOf()))
+        val policy = Policy(
+            id = policyID,
+            description = "$testIndexName description",
+            schemaVersion = 1L,
+            lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
+            errorNotification = randomErrorNotification(),
+            defaultState = states[0].name,
+            states = states
+        )
+
+        createPolicy(policy, policyID)
+        // create index defaults
+        createIndex(firstIndex, policyID, aliasName)
+
+        val managedIndexConfig = getExistingManagedIndexConfig(firstIndex)
+
+        // Change the start time so the job will trigger in 2 seconds, this will trigger the first initialization of the policy
+        updateManagedIndexConfigStartTime(managedIndexConfig)
+        waitFor { assertEquals(policyID, getExplainManagedIndexMetaData(firstIndex).policyID) }
+
+        // Rollover the alias manually before ISM tries to roll it over
+        rolloverIndex(aliasName)
+
+        // Need to speed up to second execution where it will trigger the first execution of the action
+        updateManagedIndexConfigStartTime(managedIndexConfig)
+        waitFor {
+            val info = getExplainManagedIndexMetaData(firstIndex).info as Map<String, Any?>
+            val stepMetadata = getExplainManagedIndexMetaData(firstIndex).stepMetaData
+            assertEquals("Index should succeed if already rolled over.", AttemptRolloverStep.getAlreadyRolledOverMessage(firstIndex, aliasName), info["message"])
+            assertEquals("Index should succeed if already rolled over.", Step.StepStatus.COMPLETED, stepMetadata?.stepStatus)
+        }
+        assertTrue("New rollover index does not exist.", indexExists("$indexNameBase-000002"))
     }
 }

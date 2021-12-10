@@ -1,27 +1,6 @@
 /*
+ * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
- *
- * The OpenSearch Contributors require contributions made to
- * this file be licensed under the Apache-2.0 license or a
- * compatible open source license.
- *
- * Modifications Copyright OpenSearch Contributors. See
- * GitHub history for details.
- */
-
-/*
- * Copyright 2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
- *
- * Licensed under the Apache License, Version 2.0 (the "License").
- * You may not use this file except in compliance with the License.
- * A copy of the License is located at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * or in the "license" file accompanying this file. This file is distributed
- * on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
- * express or implied. See the License for the specific language governing
- * permissions and limitations under the License.
  */
 
 package org.opensearch.indexmanagement.indexstatemanagement
@@ -31,6 +10,7 @@ import org.apache.http.HttpHeaders
 import org.apache.http.entity.ContentType.APPLICATION_JSON
 import org.apache.http.entity.StringEntity
 import org.apache.http.message.BasicHeader
+import org.junit.Before
 import org.opensearch.OpenSearchParseException
 import org.opensearch.action.get.GetResponse
 import org.opensearch.action.search.SearchResponse
@@ -94,6 +74,12 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
 
     val explainResponseOpendistroPolicyIdSetting = "index.opendistro.index_state_management.policy_id"
     val explainResponseOpenSearchPolicyIdSetting = "index.plugins.index_state_management.policy_id"
+
+    @Before
+    protected fun disableIndexStateManagementJitter() {
+        // jitter would add a test-breaking delay to the integration tests
+        updateIndexStateManagementJitterSetting(0.0)
+    }
 
     protected fun createPolicy(
         policy: Policy,
@@ -268,6 +254,10 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
         assertEquals("Request failed", RestStatus.OK, res.restStatus())
     }
 
+    protected fun updateIndexStateManagementJitterSetting(value: Double) {
+        updateClusterSetting(ManagedIndexSettings.JITTER.key, value.toString(), false)
+    }
+
     protected fun updateIndexSetting(
         index: String,
         key: String,
@@ -368,7 +358,7 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
         }
     }
 
-    protected fun updateManagedIndexConfigStartTime(update: ManagedIndexConfig, desiredStartTimeMillis: Long? = null) {
+    protected fun updateManagedIndexConfigStartTime(update: ManagedIndexConfig, desiredStartTimeMillis: Long? = null, retryOnConflict: Int = 0) {
         // Before updating start time of a job always make sure there are no unassigned shards that could cause the config
         // index to move to a new node and negate this forced start
         if (isMultiNode) {
@@ -389,8 +379,9 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
         val millis = Duration.of(intervalSchedule.interval.toLong(), intervalSchedule.unit).minusSeconds(2).toMillis()
         val startTimeMillis = desiredStartTimeMillis ?: Instant.now().toEpochMilli() - millis
         val waitForActiveShards = if (isMultiNode) "all" else "1"
+        val endpoint = "$INDEX_MANAGEMENT_INDEX/_update/${update.id}?wait_for_active_shards=$waitForActiveShards;retry_on_conflict=$retryOnConflict"
         val response = client().makeRequest(
-            "POST", "$INDEX_MANAGEMENT_INDEX/_update/${update.id}?wait_for_active_shards=$waitForActiveShards",
+            "POST", endpoint,
             StringEntity(
                 "{\"doc\":{\"managed_index\":{\"schedule\":{\"interval\":{\"start_time\":" +
                     "\"$startTimeMillis\"}}}}}",
@@ -513,6 +504,22 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
     }
 
     @Suppress("UNCHECKED_CAST")
+    protected fun getIndexReadOnlySetting(indexName: String): Boolean? {
+        val indexSettings = getIndexSettings(indexName) as Map<String, Map<String, Map<String, Any?>>>
+        val readOnlySetting = indexSettings[indexName]!!["settings"]!![IndexMetadata.SETTING_READ_ONLY]
+        if (readOnlySetting != null) return (readOnlySetting as String).toBoolean()
+        return null
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    protected fun getIndexReadOnlyAllowDeleteSetting(indexName: String): Boolean? {
+        val indexSettings = getIndexSettings(indexName) as Map<String, Map<String, Map<String, Any?>>>
+        val readOnlyAllowDeleteSetting = indexSettings[indexName]!!["settings"]!![IndexMetadata.SETTING_READ_ONLY_ALLOW_DELETE]
+        if (readOnlyAllowDeleteSetting != null) return (readOnlyAllowDeleteSetting as String).toBoolean()
+        return null
+    }
+
+    @Suppress("UNCHECKED_CAST")
     protected fun getUuid(indexName: String): String {
         val indexSettings = getIndexSettings(indexName) as Map<String, Map<String, Map<String, Any?>>>
         return indexSettings[indexName]!!["settings"]!!["index.uuid"] as String
@@ -582,6 +589,16 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
         // make sure metadata is initialised
         assertTrue(metadata.transitionTo != null || metadata.stateMetaData != null || metadata.info != null || metadata.policyCompleted != null)
         return metadata
+    }
+
+    protected fun rolloverIndex(alias: String) {
+        val response = client().performRequest(
+            Request(
+                "POST",
+                "/$alias/_rollover"
+            )
+        )
+        assertEquals(response.statusLine.statusCode, RestStatus.OK.status)
     }
 
     protected fun createRepository(

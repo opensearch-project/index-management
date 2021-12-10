@@ -1,27 +1,6 @@
 /*
+ * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
- *
- * The OpenSearch Contributors require contributions made to
- * this file be licensed under the Apache-2.0 license or a
- * compatible open source license.
- *
- * Modifications Copyright OpenSearch Contributors. See
- * GitHub history for details.
- */
-
-/*
- * Copyright 2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
- *
- * Licensed under the Apache License, Version 2.0 (the "License").
- * You may not use this file except in compliance with the License.
- * A copy of the License is located at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * or in the "license" file accompanying this file. This file is distributed
- * on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
- * express or implied. See the License for the specific language governing
- * permissions and limitations under the License.
  */
 
 package org.opensearch.indexmanagement.indexstatemanagement.coordinator
@@ -223,7 +202,6 @@ class ManagedIndexCoordinatorIT : IndexStateManagementRestTestCase() {
         // Confirm job was disabled
         val disabledManagedIndexConfig: ManagedIndexConfig = waitFor {
             val config = getManagedIndexConfigByDocId(managedIndexConfig.id)
-            assertNotNull("Could not find ManagedIndexConfig", config)
             assertEquals("ManagedIndexConfig was not disabled", false, config!!.enabled)
             config
         }
@@ -251,16 +229,12 @@ class ManagedIndexCoordinatorIT : IndexStateManagementRestTestCase() {
 
         // Confirm job was re-enabled
         val enabledManagedIndexConfig: ManagedIndexConfig = waitFor {
-            val config = getExistingManagedIndexConfig(indexName)
-            assertEquals("ManagedIndexConfig was not re-enabled", true, config.enabled)
+            val config = getManagedIndexConfigByDocId(disabledManagedIndexConfig.id)
+            assertEquals("ManagedIndexConfig was not re-enabled", true, config!!.enabled)
             config
         }
 
-        // TODO seen version conflict flaky failure here
-        logger.info("Config we use on update: $enabledManagedIndexConfig")
-        logger.info("Latest config: ${getExistingManagedIndexConfig(indexName)}")
-        // seems the config from above waitFor, after that, config got updated again?
-        updateManagedIndexConfigStartTime(enabledManagedIndexConfig)
+        updateManagedIndexConfigStartTime(enabledManagedIndexConfig, retryOnConflict = 4)
 
         waitFor {
             assertEquals(

@@ -1,27 +1,6 @@
 /*
+ * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
- *
- * The OpenSearch Contributors require contributions made to
- * this file be licensed under the Apache-2.0 license or a
- * compatible open source license.
- *
- * Modifications Copyright OpenSearch Contributors. See
- * GitHub history for details.
- */
-
-/*
- * Copyright 2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
- *
- * Licensed under the Apache License, Version 2.0 (the "License").
- * You may not use this file except in compliance with the License.
- * A copy of the License is located at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * or in the "license" file accompanying this file. This file is distributed
- * on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
- * express or implied. See the License for the specific language governing
- * permissions and limitations under the License.
  */
 
 package org.opensearch.indexmanagement.indexstatemanagement
@@ -110,7 +89,7 @@ fun randomTransition(
  */
 fun randomConditions(
     condition: Pair<String, Any>? =
-        OpenSearchRestTestCase.randomFrom(listOf(randomIndexAge(), randomDocCount(), randomSize(), null))
+        OpenSearchRestTestCase.randomFrom(listOf(randomIndexAge(), randomDocCount(), randomSize(), randomRolloverAge(), null))
 ): Conditions? {
 
     if (condition == null) return null
@@ -123,6 +102,7 @@ fun randomConditions(
         Conditions.MIN_DOC_COUNT_FIELD -> Conditions(docCount = value as Long)
         Conditions.MIN_SIZE_FIELD -> Conditions(size = value as ByteSizeValue)
 //        Conditions.CRON_FIELD -> Conditions(cron = value as CronSchedule) // TODO: Uncomment after issues are fixed
+        Conditions.MIN_ROLLOVER_AGE_FIELD -> Conditions(rolloverAge = value as TimeValue)
         else -> throw IllegalArgumentException("Invalid field: [$type] given for random Conditions.")
     }
 }
@@ -242,6 +222,8 @@ fun randomSize(size: ByteSizeValue = randomByteSizeValue()) = Conditions.MIN_SIZ
 fun randomCronSchedule(cron: CronSchedule = CronSchedule("0 * * * *", ZoneId.of("UTC"))) =
     Conditions.CRON_FIELD to cron
 
+fun randomRolloverAge(rolloverAge: TimeValue = randomTimeValueObject()) = Conditions.MIN_ROLLOVER_AGE_FIELD to rolloverAge
+
 fun randomTimeValueObject(): TimeValue = TimeValue.parseTimeValue(OpenSearchRestTestCase.randomPositiveTimeValue(), "")
 
 fun randomByteSizeValue(): ByteSizeValue =
@@ -275,7 +257,8 @@ fun randomManagedIndexConfig(
     enabledTime: Instant? = if (enabled) Instant.now().truncatedTo(ChronoUnit.MILLIS) else null,
     policyID: String = OpenSearchRestTestCase.randomAlphaOfLength(10),
     policy: Policy? = randomPolicy(),
-    changePolicy: ChangePolicy? = randomChangePolicy()
+    changePolicy: ChangePolicy? = randomChangePolicy(),
+    jitter: Double? = 0.0
 ): ManagedIndexConfig {
     return ManagedIndexConfig(
         jobName = name,
@@ -289,7 +272,8 @@ fun randomManagedIndexConfig(
         policySeqNo = policy?.seqNo,
         policyPrimaryTerm = policy?.primaryTerm,
         policy = policy?.copy(seqNo = SequenceNumbers.UNASSIGNED_SEQ_NO, primaryTerm = SequenceNumbers.UNASSIGNED_PRIMARY_TERM),
-        changePolicy = changePolicy
+        changePolicy = changePolicy,
+        jobJitter = jitter
     )
 }
 

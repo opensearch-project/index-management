@@ -1,27 +1,6 @@
 /*
+ * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
- *
- * The OpenSearch Contributors require contributions made to
- * this file be licensed under the Apache-2.0 license or a
- * compatible open source license.
- *
- * Modifications Copyright OpenSearch Contributors. See
- * GitHub history for details.
- */
-
-/*
- * Copyright 2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
- *
- * Licensed under the Apache License, Version 2.0 (the "License").
- * You may not use this file except in compliance with the License.
- * A copy of the License is located at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * or in the "license" file accompanying this file. This file is distributed
- * on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
- * express or implied. See the License for the specific language governing
- * permissions and limitations under the License.
  */
 
 package org.opensearch.indexmanagement.indexstatemanagement.model
@@ -99,11 +78,12 @@ data class Conditions(
     val indexAge: TimeValue? = null,
     val docCount: Long? = null,
     val size: ByteSizeValue? = null,
-    val cron: CronSchedule? = null
+    val cron: CronSchedule? = null,
+    val rolloverAge: TimeValue? = null
 ) : ToXContentObject, Writeable {
 
     init {
-        val conditionsList = listOf(indexAge, docCount, size, cron)
+        val conditionsList = listOf(indexAge, docCount, size, cron, rolloverAge)
         require(conditionsList.filterNotNull().size == 1) { "Cannot provide more than one Transition condition" }
 
         // Validate doc count condition
@@ -119,6 +99,7 @@ data class Conditions(
         if (docCount != null) builder.field(MIN_DOC_COUNT_FIELD, docCount)
         if (size != null) builder.field(MIN_SIZE_FIELD, size.stringRep)
         if (cron != null) builder.field(CRON_FIELD, cron)
+        if (rolloverAge != null) builder.field(MIN_ROLLOVER_AGE_FIELD, rolloverAge.stringRep)
         return builder.endObject()
     }
 
@@ -127,7 +108,8 @@ data class Conditions(
         indexAge = sin.readOptionalTimeValue(),
         docCount = sin.readOptionalLong(),
         size = sin.readOptionalWriteable(::ByteSizeValue),
-        cron = sin.readOptionalWriteable(::CronSchedule)
+        cron = sin.readOptionalWriteable(::CronSchedule),
+        rolloverAge = sin.readOptionalTimeValue()
     )
 
     @Throws(IOException::class)
@@ -136,6 +118,7 @@ data class Conditions(
         out.writeOptionalLong(docCount)
         out.writeOptionalWriteable(size)
         out.writeOptionalWriteable(cron)
+        out.writeOptionalTimeValue(rolloverAge)
     }
 
     companion object {
@@ -143,6 +126,7 @@ data class Conditions(
         const val MIN_DOC_COUNT_FIELD = "min_doc_count"
         const val MIN_SIZE_FIELD = "min_size"
         const val CRON_FIELD = "cron"
+        const val MIN_ROLLOVER_AGE_FIELD = "min_rollover_age"
 
         @JvmStatic
         @Throws(IOException::class)
@@ -151,6 +135,7 @@ data class Conditions(
             var docCount: Long? = null
             var size: ByteSizeValue? = null
             var cron: CronSchedule? = null
+            var rolloverAge: TimeValue? = null
 
             ensureExpectedToken(Token.START_OBJECT, xcp.currentToken(), xcp)
             while (xcp.nextToken() != Token.END_OBJECT) {
@@ -162,11 +147,12 @@ data class Conditions(
                     MIN_DOC_COUNT_FIELD -> docCount = xcp.longValue()
                     MIN_SIZE_FIELD -> size = ByteSizeValue.parseBytesSizeValue(xcp.text(), MIN_SIZE_FIELD)
                     CRON_FIELD -> cron = ScheduleParser.parse(xcp) as? CronSchedule
+                    MIN_ROLLOVER_AGE_FIELD -> rolloverAge = TimeValue.parseTimeValue(xcp.text(), MIN_ROLLOVER_AGE_FIELD)
                     else -> throw IllegalArgumentException("Invalid field: [$fieldName] found in Conditions.")
                 }
             }
 
-            return Conditions(indexAge, docCount, size, cron)
+            return Conditions(indexAge, docCount, size, cron, rolloverAge)
         }
     }
 }

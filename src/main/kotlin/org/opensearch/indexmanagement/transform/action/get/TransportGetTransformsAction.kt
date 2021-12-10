@@ -1,16 +1,11 @@
 /*
+ * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
- *
- * The OpenSearch Contributors require contributions made to
- * this file be licensed under the Apache-2.0 license or a
- * compatible open source license.
- *
- * Modifications Copyright OpenSearch Contributors. See
- * GitHub history for details.
  */
 
 package org.opensearch.indexmanagement.transform.action.get
 
+import org.apache.logging.log4j.LogManager
 import org.opensearch.action.ActionListener
 import org.opensearch.action.ActionResponse
 import org.opensearch.action.support.ActionFilters
@@ -25,6 +20,7 @@ import org.opensearch.common.xcontent.NamedXContentRegistry
 import org.opensearch.common.xcontent.XContentHelper
 import org.opensearch.common.xcontent.XContentParser
 import org.opensearch.common.xcontent.XContentType
+import org.opensearch.commons.ConfigConstants
 import org.opensearch.index.query.BoolQueryBuilder
 import org.opensearch.index.query.ExistsQueryBuilder
 import org.opensearch.index.query.WildcardQueryBuilder
@@ -50,6 +46,7 @@ class TransportGetTransformsAction @Inject constructor(
 ) {
 
     @Volatile private var filterByEnabled = IndexManagementSettings.FILTER_BY_BACKEND_ROLES.get(settings)
+    private val log = LogManager.getLogger(javaClass)
 
     init {
         clusterService.clusterSettings.addSettingsUpdateConsumer(IndexManagementSettings.FILTER_BY_BACKEND_ROLES) {
@@ -58,6 +55,11 @@ class TransportGetTransformsAction @Inject constructor(
     }
 
     override fun doExecute(task: Task, request: GetTransformsRequest, listener: ActionListener<GetTransformsResponse>) {
+        log.debug(
+            "User and roles string from thread context: ${client.threadPool().threadContext.getTransient<String>(
+                ConfigConstants.OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT
+            )}"
+        )
         val searchString = request.searchString.trim()
         val from = request.from
         val size = request.size

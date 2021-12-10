@@ -1,27 +1,6 @@
 /*
+ * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
- *
- * The OpenSearch Contributors require contributions made to
- * this file be licensed under the Apache-2.0 license or a
- * compatible open source license.
- *
- * Modifications Copyright OpenSearch Contributors. See
- * GitHub history for details.
- */
-
-/*
- * Copyright 2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
- *
- * Licensed under the Apache License, Version 2.0 (the "License").
- * You may not use this file except in compliance with the License.
- * A copy of the License is located at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * or in the "license" file accompanying this file. This file is distributed
- * on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
- * express or implied. See the License for the specific language governing
- * permissions and limitations under the License.
  */
 
 package org.opensearch.indexmanagement.indexstatemanagement.resthandler
@@ -29,6 +8,7 @@ package org.opensearch.indexmanagement.indexstatemanagement.resthandler
 import org.opensearch.client.ResponseException
 import org.opensearch.indexmanagement.indexstatemanagement.IndexStateManagementRestTestCase
 import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
+import org.opensearch.indexmanagement.indexstatemanagement.model.action.ActionRetry
 import org.opensearch.indexmanagement.indexstatemanagement.model.action.AllocationActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.ActionMetaData
 import org.opensearch.indexmanagement.indexstatemanagement.randomForceMergeActionConfig
@@ -229,10 +209,12 @@ class RestRetryFailedManagedIndexActionIT : IndexStateManagementRestTestCase() {
 
     fun `test index failed`() {
         val indexName = "${testIndexName}_blueberry"
+        val config = AllocationActionConfig(require = mapOf("..//" to "value"), exclude = emptyMap(), include = emptyMap(), index = 0)
+        config.configRetry = ActionRetry(0)
         val states = listOf(
             randomState().copy(
                 transitions = listOf(),
-                actions = listOf(AllocationActionConfig(require = mapOf("..//" to "value"), exclude = emptyMap(), include = emptyMap(), index = 0))
+                actions = listOf(config)
             )
         )
         val invalidPolicy = randomPolicy().copy(
@@ -272,7 +254,9 @@ class RestRetryFailedManagedIndexActionIT : IndexStateManagementRestTestCase() {
     fun `test reset action start time`() {
         val indexName = "${testIndexName}_drewberry"
         val policyID = "${testIndexName}_policy_1"
-        val policy = randomPolicy(states = listOf(randomState(actions = listOf(randomForceMergeActionConfig(maxNumSegments = 1)))))
+        val config = randomForceMergeActionConfig(maxNumSegments = 1)
+        config.configRetry = ActionRetry(0)
+        val policy = randomPolicy(states = listOf(randomState(actions = listOf(config))))
         createPolicy(policy, policyId = policyID)
         createIndex(indexName, policyID)
 

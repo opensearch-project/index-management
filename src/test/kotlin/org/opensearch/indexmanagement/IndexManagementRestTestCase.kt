@@ -1,27 +1,6 @@
 /*
+ * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
- *
- * The OpenSearch Contributors require contributions made to
- * this file be licensed under the Apache-2.0 license or a
- * compatible open source license.
- *
- * Modifications Copyright OpenSearch Contributors. See
- * GitHub history for details.
- */
-
-/*
- * Copyright 2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
- *
- * Licensed under the Apache License, Version 2.0 (the "License").
- * You may not use this file except in compliance with the License.
- * A copy of the License is located at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * or in the "license" file accompanying this file. This file is distributed
- * on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
- * express or implied. See the License for the specific language governing
- * permissions and limitations under the License.
  */
 
 package org.opensearch.indexmanagement
@@ -35,7 +14,9 @@ import org.opensearch.client.Request
 import org.opensearch.client.RequestOptions
 import org.opensearch.client.Response
 import org.opensearch.client.RestClient
+import org.opensearch.common.Strings
 import org.opensearch.common.settings.Settings
+import org.opensearch.indexmanagement.indexstatemanagement.util.INDEX_HIDDEN
 import org.opensearch.rest.RestStatus
 import java.nio.file.Files
 import java.nio.file.Path
@@ -58,6 +39,20 @@ abstract class IndexManagementRestTestCase : ODFERestTestCase() {
             "PUT", "_cluster/settings",
             StringEntity("""{"persistent":{"action.auto_create_index":"-.opendistro-*,*"}}""", ContentType.APPLICATION_JSON)
         )
+    }
+
+    // Tests on lower resource machines are experiencing flaky failures due to attempting to force a job to
+    // start before the job scheduler has registered the index operations listener. Initializing the index
+    // preemptively seems to give the job scheduler time to listen to operations.
+    @Before
+    fun initializeManagedIndex() {
+        if (!indexExists(IndexManagementPlugin.INDEX_MANAGEMENT_INDEX)) {
+            val request = Request("PUT", "/${IndexManagementPlugin.INDEX_MANAGEMENT_INDEX}")
+            var entity = "{\"settings\": " + Strings.toString(Settings.builder().put(INDEX_HIDDEN, true).build())
+            entity += ",\"mappings\" : ${IndexManagementIndices.indexManagementMappings}}"
+            request.setJsonEntity(entity)
+            client().performRequest(request)
+        }
     }
 
     protected val isDebuggingTest = DisableOnDebug(null).isDebugging
