@@ -165,7 +165,7 @@ class ManagedIndexCoordinatorIT : IndexStateManagementRestTestCase() {
         val policyID = "test_policy_1"
 
         // Create a policy with one State that performs rollover
-        val rolloverActionConfig = RolloverActionConfig(index = 0, minDocs = 5, minAge = null, minSize = null)
+        val rolloverActionConfig = RolloverActionConfig(index = 0, minDocs = 5, minAge = null, minSize = null, minPrimaryShardSize = null)
         val states =
             listOf(State(name = "RolloverState", actions = listOf(rolloverActionConfig), transitions = listOf()))
         val policy = Policy(

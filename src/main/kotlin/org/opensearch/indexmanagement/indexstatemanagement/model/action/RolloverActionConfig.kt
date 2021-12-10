@@ -28,12 +28,15 @@ data class RolloverActionConfig(
     val minSize: ByteSizeValue?,
     val minDocs: Long?,
     val minAge: TimeValue?,
+    val minPrimaryShardSize: ByteSizeValue?,
     val index: Int
 ) : ToXContentObject, ActionConfig(ActionType.ROLLOVER, index) {
 
     init {
         if (minSize != null) require(minSize.bytes > 0) { "RolloverActionConfig minSize value must be greater than 0" }
-
+        if (minPrimaryShardSize != null) require(minPrimaryShardSize.bytes > 0) {
+            "RolloverActionConfig minPrimaryShardSize value must be greater than 0"
+        }
         if (minDocs != null) require(minDocs > 0) { "RolloverActionConfig minDocs value must be greater than 0" }
     }
 
@@ -44,6 +47,7 @@ data class RolloverActionConfig(
         if (minSize != null) builder.field(MIN_SIZE_FIELD, minSize.stringRep)
         if (minDocs != null) builder.field(MIN_DOC_COUNT_FIELD, minDocs)
         if (minAge != null) builder.field(MIN_INDEX_AGE_FIELD, minAge.stringRep)
+        if (minPrimaryShardSize != null) builder.field(MIN_PRIMARY_SHARD_SIZE_FIELD, minPrimaryShardSize.stringRep)
         return builder.endObject().endObject()
     }
 
@@ -62,6 +66,7 @@ data class RolloverActionConfig(
         minSize = sin.readOptionalWriteable(::ByteSizeValue),
         minDocs = sin.readOptionalLong(),
         minAge = sin.readOptionalTimeValue(),
+        minPrimaryShardSize = sin.readOptionalWriteable(::ByteSizeValue),
         index = sin.readInt()
     )
 
@@ -71,6 +76,7 @@ data class RolloverActionConfig(
         out.writeOptionalWriteable(minSize)
         out.writeOptionalLong(minDocs)
         out.writeOptionalTimeValue(minAge)
+        out.writeOptionalWriteable(minPrimaryShardSize)
         out.writeInt(index)
     }
 
@@ -78,6 +84,7 @@ data class RolloverActionConfig(
         const val MIN_SIZE_FIELD = "min_size"
         const val MIN_DOC_COUNT_FIELD = "min_doc_count"
         const val MIN_INDEX_AGE_FIELD = "min_index_age"
+        const val MIN_PRIMARY_SHARD_SIZE_FIELD = "min_primary_shard_size"
 
         @JvmStatic
         @Throws(IOException::class)
@@ -85,6 +92,7 @@ data class RolloverActionConfig(
             var minSize: ByteSizeValue? = null
             var minDocs: Long? = null
             var minAge: TimeValue? = null
+            var minPrimaryShardSize: ByteSizeValue? = null
 
             ensureExpectedToken(Token.START_OBJECT, xcp.currentToken(), xcp)
             while (xcp.nextToken() != Token.END_OBJECT) {
@@ -95,6 +103,7 @@ data class RolloverActionConfig(
                     MIN_SIZE_FIELD -> minSize = ByteSizeValue.parseBytesSizeValue(xcp.text(), MIN_SIZE_FIELD)
                     MIN_DOC_COUNT_FIELD -> minDocs = xcp.longValue()
                     MIN_INDEX_AGE_FIELD -> minAge = TimeValue.parseTimeValue(xcp.text(), MIN_INDEX_AGE_FIELD)
+                    MIN_PRIMARY_SHARD_SIZE_FIELD -> minPrimaryShardSize = ByteSizeValue.parseBytesSizeValue(xcp.text(), MIN_PRIMARY_SHARD_SIZE_FIELD)
                     else -> throw IllegalArgumentException("Invalid field: [$fieldName] found in RolloverActionConfig.")
                 }
             }
@@ -103,6 +112,7 @@ data class RolloverActionConfig(
                 minSize = minSize,
                 minDocs = minDocs,
                 minAge = minAge,
+                minPrimaryShardSize = minPrimaryShardSize,
                 index = index
             )
         }
