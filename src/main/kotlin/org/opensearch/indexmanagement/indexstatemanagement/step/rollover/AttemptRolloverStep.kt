@@ -81,6 +81,8 @@ class AttemptRolloverStep(
         }
         val numDocs = statsResponse.primaries.docs?.count ?: 0
         val indexSize = ByteSizeValue(statsResponse.primaries.docs?.totalSizeInBytes ?: 0)
+        val largestPrimaryShard = statsResponse.shards.maxByOrNull { it.stats.docs?.totalSizeInBytes ?: 0 }
+        val largestPrimaryShardSize = ByteSizeValue(largestPrimaryShard?.stats?.docs?.totalSizeInBytes ?: 0)
         val conditions = listOfNotNull(
             config.minAge?.let {
                 RolloverActionConfig.MIN_INDEX_AGE_FIELD to mapOf(
@@ -100,13 +102,20 @@ class AttemptRolloverStep(
                     "condition" to it.toString(),
                     "current" to indexSize.toString()
                 )
+            },
+            config.minPrimaryShardSize?.let {
+                RolloverActionConfig.MIN_PRIMARY_SHARD_SIZE_FIELD to mapOf(
+                    "condition" to it.toString(),
+                    "current" to largestPrimaryShardSize.toString(),
+                    "shard" to largestPrimaryShard?.shardRouting?.id()
+                )
             }
         ).toMap()
 
-        if (config.evaluateConditions(indexAgeTimeValue, numDocs, indexSize)) {
+        if (config.evaluateConditions(indexAgeTimeValue, numDocs, indexSize, largestPrimaryShardSize)) {
             logger.info(
                 "$indexName rollover conditions evaluated to true [indexCreationDate=$indexCreationDate," +
-                    " numDocs=$numDocs, indexSize=${indexSize.bytes}]"
+                    " numDocs=$numDocs, indexSize=${indexSize.bytes}, primaryShardSize=${largestPrimaryShardSize.bytes}]"
             )
             executeRollover(rolloverTarget, isDataStream, conditions)
         } else {

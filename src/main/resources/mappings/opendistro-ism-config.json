@@ -1,6 +1,6 @@
 {
   "_meta" : {
-    "schema_version": 12
+    "schema_version": 13
   },
   "dynamic": "strict",
   "properties": {
@@ -210,6 +210,9 @@
                       "type": "keyword"
                     },
                     "min_doc_count": {
+                      "type": "keyword"
+                    },
+                    "min_primary_shard_size": {
                       "type": "keyword"
                     }
                   }

@@ -251,15 +251,17 @@ fun Transition.evaluateConditions(
 
 fun Transition.hasStatsConditions(): Boolean = this.conditions?.docCount != null || this.conditions?.size != null
 
-@Suppress("ReturnCount")
+@Suppress("ReturnCount", "ComplexMethod", "ComplexCondition")
 fun RolloverActionConfig.evaluateConditions(
     indexAgeTimeValue: TimeValue,
     numDocs: Long,
-    indexSize: ByteSizeValue
+    indexSize: ByteSizeValue,
+    primaryShardSize: ByteSizeValue
 ): Boolean {
     if (this.minDocs == null &&
         this.minAge == null &&
-        this.minSize == null
+        this.minSize == null &&
+        this.minPrimaryShardSize == null
     ) {
         // If no conditions specified we default to true
         return true
@@ -277,7 +279,11 @@ fun RolloverActionConfig.evaluateConditions(
         if (this.minSize <= indexSize) return true
     }
 
-    // return false if non of the conditions were true.
+    if (this.minPrimaryShardSize != null) {
+        if (this.minPrimaryShardSize <= primaryShardSize) return true
+    }
+
+    // return false if none of the conditions were true.
     return false
 }
 
