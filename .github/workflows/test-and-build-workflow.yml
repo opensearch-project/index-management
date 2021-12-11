@@ -24,7 +24,7 @@ jobs:
       - name: Checkout Branch
         uses: actions/checkout@v2
       - name: Build with Gradle
-        run: ./gradlew build -Dopensearch.version=1.2.0-SNAPSHOT
+        run: ./gradlew build -Dopensearch.version=1.2.1-SNAPSHOT
       - name: Upload failed logs
         uses: actions/upload-artifact@v2
         if: failure()
