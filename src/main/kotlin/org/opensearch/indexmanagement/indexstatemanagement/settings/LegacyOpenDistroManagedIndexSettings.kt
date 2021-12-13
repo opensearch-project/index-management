@@ -7,6 +7,7 @@ package org.opensearch.indexmanagement.indexstatemanagement.settings
 
 import org.opensearch.common.settings.Setting
 import org.opensearch.common.unit.TimeValue
+import org.opensearch.indexmanagement.indexstatemanagement.ISMActionsParser
 import java.util.concurrent.TimeUnit
 import java.util.function.Function
 
@@ -15,8 +16,7 @@ class LegacyOpenDistroManagedIndexSettings {
         const val DEFAULT_ISM_ENABLED = true
         const val DEFAULT_METADATA_SERVICE_ENABLED = true
         const val DEFAULT_JOB_INTERVAL = 5
-        // TODO: Populate the actions as new interface is implemented
-        private val ALLOW_LIST_ALL = emptyList<String>()
+        private val ALLOW_LIST_ALL = ISMActionsParser.instance.parsers.map { it.getActionType() }.toList()
         val ALLOW_LIST_NONE = emptyList<String>()
         val SNAPSHOT_DENY_LIST_NONE = emptyList<String>()
         const val HOST_DENY_LIST = "opendistro.destination.host.deny_list"

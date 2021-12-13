@@ -299,7 +299,26 @@ integTest {
     }
 
     // TODO: Remove me after refactoring all actions
-    exclude 'org/opensearch/indexmanagement/indexstatemanagement/*'
+    exclude 'org/opensearch/indexmanagement/indexstatemanagement/action/ActionRetryIT.class'
+    exclude 'org/opensearch/indexmanagement/indexstatemanagement/action/ActionTimeoutIT.class'
+    exclude 'org/opensearch/indexmanagement/indexstatemanagement/action/AllocationActionIT.class'
+    exclude 'org/opensearch/indexmanagement/indexstatemanagement/action/CloseActionIT.class'
+    exclude 'org/opensearch/indexmanagement/indexstatemanagement/action/ForceMergeActionIT.class'
+    exclude 'org/opensearch/indexmanagement/indexstatemanagement/action/IndexPriorityActionIT.class'
+    exclude 'org/opensearch/indexmanagement/indexstatemanagement/action/IndexStateManagementHistoryIT.class'
+    exclude 'org/opensearch/indexmanagement/indexstatemanagement/action/NotificationActionIT.class'
+    exclude 'org/opensearch/indexmanagement/indexstatemanagement/action/OpenActionIT.class'
+    exclude 'org/opensearch/indexmanagement/indexstatemanagement/action/ReadOnlyActionIT.class'
+    exclude 'org/opensearch/indexmanagement/indexstatemanagement/action/ReadWriteActionIT.class'
+    exclude 'org/opensearch/indexmanagement/indexstatemanagement/action/ReplicaCountActionIT.class'
+    exclude 'org/opensearch/indexmanagement/indexstatemanagement/action/RolloverActionIT.class'
+    exclude 'org/opensearch/indexmanagement/indexstatemanagement/action/RollupActionIT.class'
+    exclude 'org/opensearch/indexmanagement/indexstatemanagement/action/SnapshotActionIT.class'
+    exclude 'org/opensearch/indexmanagement/indexstatemanagement/action/TransitionActionIT.class'
+    exclude 'org/opensearch/indexmanagement/indexstatemanagement/runner/*'
+    exclude 'org/opensearch/indexmanagement/indexstatemanagement/resthandler/*'
+    exclude 'org/opensearch/indexmanagement/indexstatemanagement/MetadataRegressionIT.class'
+    exclude 'org/opensearch/indexmanagement/indexstatemanagement/coordinator/*'
     exclude 'org/opensearch/indexmanagement/IndexManagementIndicesIT.class'
 }
 
