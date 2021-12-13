@@ -8,6 +8,7 @@ package org.opensearch.indexmanagement.indexstatemanagement
 import org.opensearch.common.io.stream.StreamInput
 import org.opensearch.common.xcontent.XContentParser
 import org.opensearch.common.xcontent.XContentParserUtils
+import org.opensearch.indexmanagement.indexstatemanagement.action.CloseActionParser
 import org.opensearch.indexmanagement.indexstatemanagement.action.DeleteActionParser
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Action
 import org.opensearch.indexmanagement.spi.indexstatemanagement.ActionParser
@@ -22,6 +23,7 @@ class ISMActionsParser private constructor() {
 
     // TODO: Add other action parsers as they are implemented
     val parsers = mutableListOf<ActionParser>(
+        CloseActionParser()
         DeleteActionParser()
     )
 
