@@ -82,6 +82,8 @@ class AttemptCloseStep : Step(name) {
         )
     }
 
+    override fun isIdempotent() = true
+
     companion object {
         const val name = "attempt_close"
         fun getFailedMessage(index: String) = "Failed to close index [index=$index]"

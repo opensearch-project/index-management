@@ -23,7 +23,7 @@ class ISMActionsParser private constructor() {
 
     // TODO: Add other action parsers as they are implemented
     val parsers = mutableListOf<ActionParser>(
-        CloseActionParser()
+        CloseActionParser(),
         DeleteActionParser()
     )
 
