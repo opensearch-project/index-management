@@ -6,6 +6,7 @@
 package org.opensearch.indexmanagement.indexstatemanagement.action
 
 import org.opensearch.indexmanagement.indexstatemanagement.model.Transition
+import org.opensearch.indexmanagement.indexstatemanagement.step.transition.AttemptTransitionStep
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Action
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepContext
@@ -14,15 +15,16 @@ class TransitionsAction(
     transitions: List<Transition>,
 ) : Action(name, -1) {
 
-    companion object {
-        const val name = "transition"
-    }
+    private val attemptTransitionStep = AttemptTransitionStep()
+    private val steps = listOf(attemptTransitionStep)
+
+    override fun getSteps(): List<Step> = steps
 
     override fun getStepToExecute(context: StepContext): Step {
-        TODO("Not yet implemented")
+        return attemptTransitionStep
     }
 
-    override fun getSteps(): List<Step> {
-        TODO("Not yet implemented")
+    companion object {
+        const val name = "transition"
     }
 }
