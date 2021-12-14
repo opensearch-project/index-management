@@ -89,7 +89,7 @@ class CloseActionIT : IndexStateManagementRestTestCase() {
         waitFor { assertEquals("close", getIndexState(indexName)) }
     }
 
-    //TODO: Remove "private" once transition action is implemented
+    // TODO: Remove "private" once transition action is implemented
     private fun `test transitioning a closed index`() {
         val indexName = "${testIndexName}_index_3"
         val policyID = "${testIndexName}_testPolicyName_3"
