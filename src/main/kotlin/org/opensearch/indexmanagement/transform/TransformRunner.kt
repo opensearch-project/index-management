@@ -35,7 +35,6 @@ import org.opensearch.indexmanagement.util.acquireLockForScheduledJob
 import org.opensearch.indexmanagement.util.releaseLockForScheduledJob
 import org.opensearch.indexmanagement.util.renewLockForScheduledJob
 import org.opensearch.jobscheduler.spi.JobExecutionContext
-import org.opensearch.jobscheduler.spi.LockModel
 import org.opensearch.jobscheduler.spi.ScheduledJobParameter
 import org.opensearch.jobscheduler.spi.ScheduledJobRunner
 import org.opensearch.monitor.jvm.JvmService
@@ -110,19 +109,11 @@ object TransformRunner :
             TimeValue.timeValueMillis(TransformSettings.DEFAULT_RENEW_LOCK_RETRY_DELAY),
             TransformSettings.DEFAULT_RENEW_LOCK_RETRY_COUNT
         )
+
+        var attemptedToIndex = false
+        var bucketsToTransform = BucketsToTransform(HashSet(), metadata)
         var lock = acquireLockForScheduledJob(transform, context, backoffPolicy)
         try {
-            val bucketSearchResult = if (transform.continuous) {
-                val result = getBucketsToTransform(transform, metadata, lock, context, backoffPolicy)
-                if (result == null) {
-                    logger.warn("Failed to get the modified buckets for transform job ${transform.id}, skipping execution")
-                    return
-                } else {
-                    currentMetadata = result.metadata
-                }
-                result
-            } else null
-
             do {
                 when {
                     lock == null -> {
@@ -135,7 +126,18 @@ object TransformRunner :
                         return
                     }
                     else -> {
-                        currentMetadata = executeJobIteration(transform, currentMetadata, bucketSearchResult?.modifiedBuckets)
+                        val validatedMetadata = validateTransform(transform, currentMetadata)
+                        if (validatedMetadata.status == TransformMetadata.Status.FAILED) {
+                            currentMetadata = validatedMetadata
+                            return
+                        }
+                        if (transform.continuous && (bucketsToTransform.shardsToSearch == null || bucketsToTransform.currentShard != null)) {
+                            bucketsToTransform = getBucketsToTransformIteration(transform, bucketsToTransform)
+                            currentMetadata = bucketsToTransform.metadata
+                        } else {
+                            currentMetadata = executeTransformIteration(transform, currentMetadata, bucketsToTransform.modifiedBuckets)
+                            attemptedToIndex = true
+                        }
                         // we attempt to renew lock for every loop of transform
                         val renewedLock = renewLockForScheduledJob(context, lock, backoffPolicy)
                         if (renewedLock == null) {
@@ -144,7 +146,7 @@ object TransformRunner :
                         lock = renewedLock
                     }
                 }
-            } while (currentMetadata.afterKey != null)
+            } while (bucketsToTransform.currentShard != null || currentMetadata.afterKey != null || !attemptedToIndex)
         } catch (e: Exception) {
             logger.error("Failed to execute the transform job [${transform.id}] because of exception [${e.localizedMessage}]", e)
             currentMetadata = currentMetadata.copy(
@@ -164,41 +166,7 @@ object TransformRunner :
         }
     }
 
-    private suspend fun getBucketsToTransform(
-        transform: Transform,
-        metadata: TransformMetadata,
-        initialLock: LockModel?,
-        context: JobExecutionContext,
-        backoffPolicy: BackoffPolicy
-    ): BucketsToTransform? {
-        var lock = initialLock
-        var bucketsToTransform = BucketsToTransform(modifiedBuckets = HashSet(), metadata = metadata)
-        do {
-            when (lock) {
-                null -> {
-                    logger.warn("Cannot acquire lock for transform job ${transform.id} while finding modified buckets")
-                    // If we fail to get the lock we won't fail the job, instead we return early
-                    return null
-                }
-                else -> {
-                    bucketsToTransform = getBucketsToTransformIteration(transform, bucketsToTransform)
-                    // we attempt to renew lock for every loop
-                    val renewedLock = renewLockForScheduledJob(context, lock, backoffPolicy)
-                    if (renewedLock == null) {
-                        releaseLockForScheduledJob(context, lock)
-                    }
-                    lock = renewedLock
-                }
-            }
-        } while (bucketsToTransform.currentShard != null)
-        return bucketsToTransform
-    }
-
     private suspend fun getBucketsToTransformIteration(transform: Transform, bucketsToTransform: BucketsToTransform): BucketsToTransform {
-        val validatedMetadata = validateTransform(transform, bucketsToTransform.metadata)
-        if (validatedMetadata.status == TransformMetadata.Status.FAILED) {
-            return bucketsToTransform.copy(metadata = validatedMetadata)
-        }
         var currentBucketsToTransform = bucketsToTransform
         var currentShard = bucketsToTransform.currentShard
         // If we have not populated the list of shards to search, do so now
@@ -268,22 +236,6 @@ object TransformRunner :
         } else transformMetadata
     }
 
-    private suspend fun executeJobIteration(
-        transform: Transform,
-        metadata: TransformMetadata,
-        modifiedBuckets: MutableSet<Map<String, Any>>?
-    ): TransformMetadata {
-        val validatedMetadata = validateTransform(transform, metadata)
-        if (validatedMetadata.status == TransformMetadata.Status.FAILED) {
-            return validatedMetadata
-        }
-        return if (transform.continuous && modifiedBuckets != null && modifiedBuckets.isEmpty()) {
-            metadata.copy(afterKey = null, status = TransformMetadata.Status.STARTED)
-        } else {
-            executeTransformIteration(transform, validatedMetadata, modifiedBuckets)
-        }
-    }
-
     /**
      * For a continuous transform, we paginate over the set of modified buckets, however, with a histogram grouping and a decimal interval,
      * the range query will not precisely specify the modified buckets. As a result, we increase the range for the query and then filter out
@@ -292,26 +244,28 @@ object TransformRunner :
     private suspend fun executeTransformIteration(
         transform: Transform,
         metadata: TransformMetadata,
-        modifiedBuckets: MutableSet<Map<String, Any>>?
+        modifiedBuckets: MutableSet<Map<String, Any>>
     ): TransformMetadata {
-        val transformSearchResult = withTransformSecurityContext(transform) {
-            transformSearchService.executeCompositeSearch(transform, metadata.afterKey, modifiedBuckets)
-        }
-        val indexTimeInMillis = withTransformSecurityContext(transform) {
-            transformIndexer.index(transformSearchResult.docsToIndex)
-        }
-        val afterKey = transformSearchResult.afterKey
-        val stats = transformSearchResult.stats
-        val updatedStats = stats.copy(
-            pagesProcessed = if (transform.continuous) 0 else stats.pagesProcessed,
-            indexTimeInMillis = stats.indexTimeInMillis + indexTimeInMillis,
-            documentsIndexed = transformSearchResult.docsToIndex.size.toLong()
-        )
-        val updatedMetadata = metadata.mergeStats(updatedStats).copy(
-            afterKey = afterKey,
-            lastUpdatedAt = Instant.now(),
-            status = if (afterKey == null && !transform.continuous) TransformMetadata.Status.FINISHED else TransformMetadata.Status.STARTED
-        )
+        val updatedMetadata = if (!transform.continuous || modifiedBuckets.isNotEmpty()) {
+            val transformSearchResult = withTransformSecurityContext(transform) {
+                transformSearchService.executeCompositeSearch(transform, metadata.afterKey, if (transform.continuous) modifiedBuckets else null)
+            }
+            val indexTimeInMillis = withTransformSecurityContext(transform) {
+                transformIndexer.index(transformSearchResult.docsToIndex)
+            }
+            val afterKey = transformSearchResult.afterKey
+            val stats = transformSearchResult.stats
+            val updatedStats = stats.copy(
+                pagesProcessed = if (transform.continuous) 0 else stats.pagesProcessed,
+                indexTimeInMillis = stats.indexTimeInMillis + indexTimeInMillis,
+                documentsIndexed = transformSearchResult.docsToIndex.size.toLong()
+            )
+            metadata.mergeStats(updatedStats).copy(
+                afterKey = afterKey,
+                lastUpdatedAt = Instant.now(),
+                status = if (afterKey == null && !transform.continuous) TransformMetadata.Status.FINISHED else TransformMetadata.Status.STARTED
+            )
+        } else metadata.copy(lastUpdatedAt = Instant.now(), status = TransformMetadata.Status.STARTED)
         return transformMetadataService.writeMetadata(updatedMetadata, true)
     }
 
