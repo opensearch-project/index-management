@@ -5,11 +5,13 @@
 
 package org.opensearch.indexmanagement.transform.action.explain
 
-import kotlinx.coroutines.runBlocking
 import org.apache.logging.log4j.LogManager
 import org.opensearch.ExceptionsHelper
 import org.opensearch.ResourceNotFoundException
 import org.opensearch.action.ActionListener
+import org.opensearch.action.admin.indices.stats.IndicesStatsAction
+import org.opensearch.action.admin.indices.stats.IndicesStatsRequest
+import org.opensearch.action.admin.indices.stats.IndicesStatsResponse
 import org.opensearch.action.search.SearchRequest
 import org.opensearch.action.search.SearchResponse
 import org.opensearch.action.support.ActionFilters
@@ -28,10 +30,9 @@ import org.opensearch.commons.ConfigConstants
 import org.opensearch.index.query.BoolQueryBuilder
 import org.opensearch.index.query.IdsQueryBuilder
 import org.opensearch.index.query.WildcardQueryBuilder
+import org.opensearch.index.shard.ShardId
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
-import org.opensearch.indexmanagement.opensearchapi.IndexManagementSecurityContext
 import org.opensearch.indexmanagement.opensearchapi.parseWithType
-import org.opensearch.indexmanagement.opensearchapi.withClosableContext
 import org.opensearch.indexmanagement.settings.IndexManagementSettings
 import org.opensearch.indexmanagement.transform.TransformSearchService
 import org.opensearch.indexmanagement.transform.model.ContinuousTransformStats
@@ -40,6 +41,7 @@ import org.opensearch.indexmanagement.transform.model.Transform
 import org.opensearch.indexmanagement.transform.model.TransformMetadata
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.addUserFilter
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.buildUser
+import org.opensearch.rest.RestStatus
 import org.opensearch.search.builder.SearchSourceBuilder
 import org.opensearch.tasks.Task
 import org.opensearch.transport.RemoteTransportException
@@ -58,7 +60,6 @@ class TransportExplainTransformAction @Inject constructor(
 ) {
 
     @Volatile private var filterByEnabled = IndexManagementSettings.FILTER_BY_BACKEND_ROLES.get(settings)
-    val transformSearchService = TransformSearchService(settings, clusterService, client)
 
     init {
         clusterService.clusterSettings.addSettingsUpdateConsumer(IndexManagementSettings.FILTER_BY_BACKEND_ROLES) {
@@ -116,20 +117,18 @@ class TransportExplainTransformAction @Inject constructor(
                                 override fun onResponse(response: SearchResponse) {
                                     try {
                                         response.hits.hits.forEach {
-                                            var metadata = contentParser(it.sourceRef)
+                                            val metadata = contentParser(it.sourceRef)
                                                 .parseWithType(it.id, it.seqNo, it.primaryTerm, TransformMetadata.Companion::parse)
-                                            val transform = metadataIdToTransform[it.id]
-                                            if (transform != null && transform.continuous) {
-                                                metadata = metadata.copy(
-                                                    shardIDToGlobalCheckpoint = null,
-                                                    continuousStats = getContinuousStats(transform, metadata)
-                                                )
-                                            }
                                             idsToExplain.computeIfPresent(metadata.transformId) { _, explainTransform ->
                                                 explainTransform.copy(metadata = metadata)
                                             }
                                         }
-                                        actionListener.onResponse(ExplainTransformResponse(idsToExplain.toMap()))
+                                        if (metadataIdToTransform.values.any { it.continuous }) {
+                                            val transformsToSearch = metadataIdToTransform.values.filter { it.continuous }.iterator()
+                                            addContinuousStats(transformsToSearch)
+                                        } else {
+                                            actionListener.onResponse(ExplainTransformResponse(idsToExplain.toMap()))
+                                        }
                                     } catch (e: Exception) {
                                         log.error("Failed to parse transform metadata", e)
                                         actionListener.onFailure(e)
@@ -146,30 +145,69 @@ class TransportExplainTransformAction @Inject constructor(
                                     }
                                 }
 
-                                fun getContinuousStats(transform: Transform, metadata: TransformMetadata): ContinuousTransformStats? {
-                                    val shardIDsToGlobalCheckpoint = runBlocking {
-                                        withClosableContext(
-                                            IndexManagementSecurityContext(
-                                                transform.id,
-                                                settings,
-                                                client.threadPool().threadContext,
-                                                transform.user
-                                            )
-                                        ) {
-                                            transformSearchService.getShardsGlobalCheckpoint(transform.sourceIndex)
-                                        }
-                                    }
-                                    val documentsBehind: MutableMap<String, Long> = HashMap()
-                                    shardIDsToGlobalCheckpoint.forEach { (shardID, globalCheckpoint) ->
-                                        val indexName = shardID.indexName
-                                        val newGlobalCheckpoint = max(0, globalCheckpoint)
-                                        // If the global checkpoint hasn't been initialized yet, it may be -1 or -2, just set to 0 in those cases
-                                        val oldGlobalCheckpoint = max(0, metadata.shardIDToGlobalCheckpoint?.get(shardID) ?: 0)
-                                        val localDocsBehind = newGlobalCheckpoint - oldGlobalCheckpoint
-                                        documentsBehind[indexName] = (documentsBehind[indexName] ?: 0) + localDocsBehind
-                                    }
+                                // Recursively adds continuous stats for the next transform in the iterator
+                                private fun addContinuousStats(transformsToSearch: Iterator<Transform>) {
+                                    if (!transformsToSearch.hasNext()) {
+                                        actionListener.onResponse(ExplainTransformResponse(idsToExplain.toMap()))
+                                    } else {
+                                        val currTransform = transformsToSearch.next()
+                                        val indicesStatsRequest =
+                                            IndicesStatsRequest().indices(currTransform.sourceIndex).clear()
+                                        // If this call fails then documentsBehind will just be null
+                                        client.execute(
+                                            IndicesStatsAction.INSTANCE,
+                                            indicesStatsRequest,
+                                            object : ActionListener<IndicesStatsResponse> {
+                                                override fun onResponse(response: IndicesStatsResponse) {
+                                                    val shardIDsToGlobalCheckpoint =
+                                                        if (response.status == RestStatus.OK) {
+                                                            TransformSearchService.convertIndicesStatsResponse(response)
+                                                        } else null
+                                                    val newMetadata = idsToExplain[currTransform.id]!!.metadata?.copy(
+                                                        shardIDToGlobalCheckpoint = null,
+                                                        continuousStats = ContinuousTransformStats(
+                                                            idsToExplain[currTransform.id]!!.metadata!!.continuousStats?.lastTimestamp,
+                                                            getDocumentsBehind(
+                                                                idsToExplain[currTransform.id]!!.metadata!!.shardIDToGlobalCheckpoint,
+                                                                shardIDsToGlobalCheckpoint
+                                                            )
+                                                        )
+                                                    )
+                                                    idsToExplain[currTransform.id] =
+                                                        idsToExplain[currTransform.id]!!.copy(metadata = newMetadata)
+                                                    addContinuousStats(transformsToSearch)
+                                                }
 
-                                    return ContinuousTransformStats(metadata.continuousStats?.lastTimestamp, documentsBehind)
+                                                override fun onFailure(e: Exception) {
+                                                    log.error("Failed to parse indices stats response", e)
+                                                    actionListener.onFailure(e)
+                                                    return
+                                                }
+
+                                                private fun getDocumentsBehind(
+                                                    oldShardIDsToGlobalCheckpoint: Map<ShardId, Long>?,
+                                                    newShardIDsToGlobalCheckpoint: Map<ShardId, Long>?
+                                                ): MutableMap<String, Long> {
+                                                    val documentsBehind: MutableMap<String, Long> = HashMap()
+                                                    if (newShardIDsToGlobalCheckpoint == null) {
+                                                        return documentsBehind
+                                                    }
+                                                    newShardIDsToGlobalCheckpoint.forEach { (shardID, globalCheckpoint) ->
+                                                        val indexName = shardID.indexName
+                                                        val newGlobalCheckpoint = max(0, globalCheckpoint)
+                                                        // global checkpoint may be -1 or -2 if not initialized, just set to 0 in those cases
+                                                        val oldGlobalCheckpoint =
+                                                            max(0, oldShardIDsToGlobalCheckpoint?.get(shardID) ?: 0)
+                                                        val localDocsBehind = newGlobalCheckpoint - oldGlobalCheckpoint
+                                                        documentsBehind[indexName] =
+                                                            (documentsBehind[indexName] ?: 0) + localDocsBehind
+                                                    }
+
+                                                    return documentsBehind
+                                                }
+                                            }
+                                        )
+                                    }
                                 }
                             }
                         )

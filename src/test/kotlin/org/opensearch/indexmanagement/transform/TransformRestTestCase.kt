@@ -206,7 +206,7 @@ abstract class TransformRestTestCase : IndexManagementRestTestCase() {
         val explainMetadata = explainResponseMap[transformId] as Map<String, Any>
         val metadata = explainMetadata["transform_metadata"] as Map<String, Any>
         val continuousStats = metadata["continuous_stats"] as Map<String, Any>
-        return continuousStats["documents_behind"] as Map<String, Any>
+        return continuousStats["documents_behind"] as Map<String, Long>
     }
 
     protected fun updateTransformStartTime(update: Transform, desiredStartTimeMillis: Long? = null) {

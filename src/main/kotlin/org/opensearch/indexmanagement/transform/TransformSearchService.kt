@@ -82,19 +82,10 @@ class TransformSearchService(
     suspend fun getShardsGlobalCheckpoint(index: String): Map<ShardId, Long> {
         val errorMessage = "Failed to get the shards in the source indices"
         try {
-            val shardStats = HashMap<ShardId, Long>()
             val request = IndicesStatsRequest().indices(index).clear()
             val response: IndicesStatsResponse = client.suspendUntil { execute(IndicesStatsAction.INSTANCE, request, it) }
             if (response.status == RestStatus.OK) {
-                val shardsToSearch = response.shards.filter { it.shardRouting.primary() && it.shardRouting.active() }
-                for (shard in shardsToSearch) {
-                    val shardId = shard.shardRouting.shardId()
-                    // Remove uuid as it isn't streamed, so it would break our hashing. We aren't using it anyways
-                    val shardIDNoUUID = ShardId(Index(shardId.index.name, IndexMetadata.INDEX_UUID_NA_VALUE), shardId.id)
-                    // If it is null, we will still run the transform, but without bounding the sequence number
-                    shardStats[shardIDNoUUID] = shard.seqNoStats?.globalCheckpoint ?: SequenceNumbers.UNASSIGNED_SEQ_NO
-                }
-                return shardStats
+                return convertIndicesStatsResponse(response)
             }
             throw TransformSearchServiceException("$errorMessage - ${response.status}")
         } catch (e: TransformSearchServiceException) {
@@ -309,6 +300,19 @@ class TransformSearchService(
                     "Found aggregation [${aggregation.name}] of type [${aggregation.type}] in composite result that is not currently supported"
                 )
             }
+        }
+
+        fun convertIndicesStatsResponse(response: IndicesStatsResponse): Map<ShardId, Long> {
+            val shardStats = HashMap<ShardId, Long>()
+            val shardsToSearch = response.shards.filter { it.shardRouting.primary() && it.shardRouting.active() }
+            for (shard in shardsToSearch) {
+                val shardId = shard.shardRouting.shardId()
+                // Remove uuid as it isn't streamed, so it would break our hashing. We aren't using it anyways
+                val shardIDNoUUID = ShardId(Index(shardId.index.name, IndexMetadata.INDEX_UUID_NA_VALUE), shardId.id)
+                // If it is null, we will still run the transform, but without bounding the sequence number
+                shardStats[shardIDNoUUID] = shard.seqNoStats?.globalCheckpoint ?: SequenceNumbers.UNASSIGNED_SEQ_NO
+            }
+            return shardStats
         }
     }
 }

@@ -49,7 +49,6 @@ class RestExplainTransformActionIT : TransformRestTestCase() {
             assertEquals("Did not have metadata_id in explain response", updatedTransform.metadataId, explainMetadata["metadata_id"])
             val metadata = explainMetadata["transform_metadata"] as Map<String, Any>
             assertNotNull("Did not have metadata in explain response", metadata)
-            // Not sure if this is true for transforms
             if (!transform.continuous) {
                 assertEquals("Status should be finished", TransformMetadata.Status.FINISHED.type, metadata["status"])
             } else {
@@ -96,6 +95,48 @@ class RestExplainTransformActionIT : TransformRestTestCase() {
         val map = response.asMap()
         assertNotNull("Non null wildcard_some_transform_id value wasn't in the response", map["wildcard_some_transform_id"])
         assertNotNull("Non null wildcard_some_other_transform_id value wasn't in the response", map["wildcard_some_other_transform_id"])
+    }
+
+    @Throws(Exception::class)
+    fun `test explain continuous transform with wildcard id`() {
+        val transform1 = randomTransform().copy(
+            id = "continuous_wildcard_1",
+            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+            enabled = true,
+            enabledAt = Instant.now(),
+            metadataId = null,
+            continuous = true,
+            pageSize = 50
+        ).let { createTransform(it, it.id) }
+        val transform2 = randomTransform().copy(
+            id = "continuous_wildcard_2",
+            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+            enabled = true,
+            enabledAt = Instant.now(),
+            metadataId = null,
+            continuous = true,
+            pageSize = 50
+        ).let { createTransform(it, it.id) }
+
+        updateTransformStartTime(transform1)
+        updateTransformStartTime(transform2)
+
+        waitFor {
+            val response = client().makeRequest("GET", "$TRANSFORM_BASE_URI/continuous_wildcard*/_explain")
+            assertEquals(RestStatus.OK, response.restStatus())
+            val responseMap = response.asMap()
+            listOf(transform1, transform2).forEach { transform ->
+                val transformMetadata = (responseMap[transform.id] as Map<String, Any>)["transform_metadata"] as Map<String, Any>
+                assertNotNull("Did not have metadata for transform ID", transformMetadata)
+                val continuousStats = transformMetadata["continuous_stats"] as Map<String, Any>
+                assertNotNull("Did not have last_timestamp in continuous transform stats", continuousStats["last_timestamp"])
+                assertNotNull("Did not have documents_behind in continuous transform stats", continuousStats["documents_behind"])
+                val documentsBehind = continuousStats["documents_behind"] as Map<String, Any>
+                assertTrue("Source index was not contained in the documents behind explain response", documentsBehind.containsKey(transform.sourceIndex))
+                assertEquals("Continuous transform stats should have 0 documents_behind", 0, documentsBehind[transform.sourceIndex])
+                assertEquals("Documents behind should only display the transform source indices", 1, documentsBehind.size)
+            }
+        }
     }
 
     @Throws(Exception::class)

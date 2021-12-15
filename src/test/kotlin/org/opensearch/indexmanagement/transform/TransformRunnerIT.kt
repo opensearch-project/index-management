@@ -7,7 +7,6 @@ package org.opensearch.indexmanagement.transform
 
 import org.apache.http.entity.ContentType
 import org.apache.http.entity.StringEntity
-import org.junit.Assert
 import org.opensearch.client.Request
 import org.opensearch.common.settings.Settings
 import org.opensearch.index.query.TermQueryBuilder
@@ -512,8 +511,11 @@ class TransformRunnerIT : TransformRestTestCase() {
 
         // Add the same 5000 documents again, and start another execution
         insertSampleBulkData(transform.sourceIndex, javaClass.classLoader.getResource("data/nyc_5000.ndjson").readText())
-        val sourceIndexDocsBehind = getTransformDocumentsBehind(transform.id)[transform.sourceIndex]
-        Assert.assertEquals("Documents behind not calculated correctly", 5000, sourceIndexDocsBehind)
+
+        waitFor {
+            val documentsBehind = getTransformDocumentsBehind(transform.id)[transform.sourceIndex]
+            assertEquals("Documents behind not calculated correctly", 5000, documentsBehind)
+        }
 
         updateTransformStartTime(transform)
 
@@ -639,7 +641,7 @@ class TransformRunnerIT : TransformRestTestCase() {
                 assertEquals("ID sum not calculated correctly", expectedSum, (bucket["twice_id_sum"] as Double).toInt())
             } else {
                 // The last bucket will only be partially filled
-                Assert.assertEquals("ID sum not calculated correctly", 276, (bucket["twice_id_sum"] as Double).toInt())
+                assertEquals("ID sum not calculated correctly", 276, (bucket["twice_id_sum"] as Double).toInt())
             }
         }
         // Add more data
@@ -650,8 +652,10 @@ class TransformRunnerIT : TransformRestTestCase() {
             client().performRequest(request)
         }
 
-        val sourceIndexDocsBehind = getTransformDocumentsBehind(transform.id)[transform.sourceIndex]
-        Assert.assertEquals("Documents behind not calculated correctly", 52, sourceIndexDocsBehind)
+        waitFor {
+            val documentsBehind = getTransformDocumentsBehind(transform.id)[transform.sourceIndex]
+            assertEquals("Documents behind not calculated correctly", 52, documentsBehind)
+        }
 
         updateTransformStartTime(transform)
 
@@ -696,6 +700,81 @@ class TransformRunnerIT : TransformRestTestCase() {
             val expectedSum = ((idGroup * 2)..((idGroup * 2) + 8) step 2).sum()
             assertEquals("ID sum not calculated correctly", expectedSum, (bucket["twice_id_sum"] as Double).toInt())
         }
+    }
+
+    fun `test continuous transform with wildcard indices`() {
+        validateSourceIndex("wildcard-source-1")
+        validateSourceIndex("wildcard-source-2")
+        validateSourceIndex("wildcard-source-3")
+
+        val transform = Transform(
+            id = "id_11",
+            schemaVersion = 1L,
+            enabled = true,
+            enabledAt = Instant.now(),
+            updatedAt = Instant.now(),
+            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+            description = "test transform",
+            metadataId = null,
+            sourceIndex = "wildcard-s*e-*",
+            targetIndex = "wildcard-target-index",
+            roles = emptyList(),
+            pageSize = 100,
+            groups = listOf(
+                Terms(sourceField = "store_and_fwd_flag", targetField = "flag")
+            ),
+            continuous = true
+        ).let { createTransform(it, it.id) }
+
+        updateTransformStartTime(transform)
+
+        waitFor { assertTrue("Target transform index was not created", indexExists(transform.targetIndex)) }
+
+        val firstIterationMetadata = waitFor {
+            val job = getTransform(transformId = transform.id)
+            assertNotNull("Transform job doesn't have metadata set", job.metadataId)
+            val transformMetadata = getTransformMetadata(job.metadataId!!)
+            assertEquals("Transform did not complete iteration or had incorrect number of documents processed", 15000, transformMetadata.stats.documentsProcessed)
+            assertEquals("Transform did not complete iteration", null, transformMetadata.afterKey)
+            transformMetadata
+        }
+
+        assertEquals("Not the expected transform status", TransformMetadata.Status.STARTED, firstIterationMetadata.status)
+        assertEquals("Not the expected pages processed", 6L, firstIterationMetadata.stats.pagesProcessed)
+        assertEquals("Not the expected documents indexed", 2L, firstIterationMetadata.stats.documentsIndexed)
+        assertEquals("Not the expected documents processed", 15000L, firstIterationMetadata.stats.documentsProcessed)
+        assertTrue("Doesn't capture indexed time", firstIterationMetadata.stats.indexTimeInMillis > 0)
+        assertTrue("Didn't capture search time", firstIterationMetadata.stats.searchTimeInMillis > 0)
+
+        waitFor {
+            val documentsBehind = getTransformDocumentsBehind(transform.id)
+            assertNotNull(documentsBehind)
+            assertEquals("Not the expected documents behind", 0, documentsBehind.values.sumOf { it as Int })
+        }
+
+        // Start the continuous transform again, and make sure it was a no-op
+        updateTransformStartTime(transform)
+
+        Thread.sleep(5000)
+
+        val secondIterationMetadata = waitFor {
+            val job = getTransform(transformId = transform.id)
+            assertNotNull("Transform job doesn't have metadata set", job.metadataId)
+            val transformMetadata = getTransformMetadata(job.metadataId!!)
+            assertEquals("Transform did not complete iteration or had incorrect number of documents processed", 15000, transformMetadata.stats.documentsProcessed)
+            assertEquals("Transform did not have null afterKey after iteration", null, transformMetadata.afterKey)
+            transformMetadata
+        }
+
+        assertEquals("Not the expected transform status", TransformMetadata.Status.STARTED, secondIterationMetadata.status)
+        assertEquals("More than expected pages processed", 6, secondIterationMetadata.stats.pagesProcessed)
+        assertEquals("More than expected documents indexed", 2L, secondIterationMetadata.stats.documentsIndexed)
+        assertEquals("Not the expected documents processed", 15000L, secondIterationMetadata.stats.documentsProcessed)
+        assertEquals("Not the expected indexed time", secondIterationMetadata.stats.indexTimeInMillis, firstIterationMetadata.stats.indexTimeInMillis)
+        assertEquals("Not the expected search time", secondIterationMetadata.stats.searchTimeInMillis, firstIterationMetadata.stats.searchTimeInMillis)
+        assertTrue("Timestamp was not updated", secondIterationMetadata.continuousStats!!.lastTimestamp!!.isAfter(firstIterationMetadata.continuousStats!!.lastTimestamp))
+
+        disableTransform(transform.id)
     }
 
     private fun getStrictMappings(): String {
