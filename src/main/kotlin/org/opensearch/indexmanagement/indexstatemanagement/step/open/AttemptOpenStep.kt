@@ -25,7 +25,7 @@ class AttemptOpenStep : Step(name) {
         val indexName = context.metadata.index
         try {
             val openIndexRequest = OpenIndexRequest()
-                    .indices(indexName)
+                .indices(indexName)
 
             val response: OpenIndexResponse = context.client.admin().indices().suspendUntil { open(openIndexRequest, it) }
             if (response.isAcknowledged) {
@@ -57,9 +57,9 @@ class AttemptOpenStep : Step(name) {
 
     override fun getUpdatedManagedIndexMetadata(currentMetadata: ManagedIndexMetaData): ManagedIndexMetaData {
         return currentMetadata.copy(
-                stepMetaData = StepMetaData(name, getStepStartTime(currentMetadata).toEpochMilli(), stepStatus),
-                transitionTo = null,
-                info = info
+            stepMetaData = StepMetaData(name, getStepStartTime(currentMetadata).toEpochMilli(), stepStatus),
+            transitionTo = null,
+            info = info
         )
     }
 
