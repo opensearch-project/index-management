@@ -31,7 +31,7 @@ import java.util.function.Predicate
 
 buildscript {
     ext {
-        opensearch_version = System.getProperty("opensearch.version", "1.2.2-SNAPSHOT")
+        opensearch_version = System.getProperty("opensearch.version", "1.2.3-SNAPSHOT")
         // 1.1.0 -> 1.1.0.0, and 1.1.0-SNAPSHOT -> 1.1.0.0-SNAPSHOT
         opensearch_build = opensearch_version.replaceAll(/(\.\d)([^\d]*)$/, '$1.0$2')
         notification_version = System.getProperty("notification.version", opensearch_build)
