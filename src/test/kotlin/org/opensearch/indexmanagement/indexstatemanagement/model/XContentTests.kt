@@ -14,6 +14,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.model.destination.Des
 import org.opensearch.indexmanagement.indexstatemanagement.nonNullRandomConditions
 import org.opensearch.indexmanagement.indexstatemanagement.randomAllocationActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomChangePolicy
+import org.opensearch.indexmanagement.indexstatemanagement.randomCloseActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomDeleteActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomDestination
 import org.opensearch.indexmanagement.indexstatemanagement.randomForceMergeActionConfig
@@ -206,6 +207,14 @@ class XContentTests : OpenSearchTestCase() {
 
         assertEquals("Round tripping RollupActionConfig doesn't work", rollupActionConfig.actionIndex, parsedRollupActionConfig.actionIndex)
         assertEquals("Round tripping RollupActionConfig doesn't work", rollupActionConfig.ismRollup, parsedRollupActionConfig.ismRollup)
+    }
+
+    fun `test close action parsing`() {
+        val closeAction = randomCloseActionConfig()
+        val closeActionString = closeAction.toJsonString()
+        val parsedCloseAction = ISMActionsParser.instance.parse(parser(closeActionString), 0)
+
+        assertEquals("Round tripping CloseActionConfig doesn't work", closeAction.actionIndex, parsedCloseAction.actionIndex)
     }
 
     fun `test managed index metadata parsing`() {
