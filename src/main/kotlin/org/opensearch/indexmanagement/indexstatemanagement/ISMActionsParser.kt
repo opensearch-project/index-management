@@ -47,7 +47,7 @@ class ISMActionsParser private constructor() {
     fun parse(xcp: XContentParser, totalActions: Int): Action {
         var action: Action? = null
         var timeout: ActionTimeout? = null
-        var retry: ActionRetry? = null
+        var retry: ActionRetry? = ActionRetry(DEFAULT_RETRIES)
         XContentParserUtils.ensureExpectedToken(XContentParser.Token.START_OBJECT, xcp.currentToken(), xcp)
         while (xcp.nextToken() != XContentParser.Token.END_OBJECT) {
             val type = xcp.currentName()
@@ -76,5 +76,6 @@ class ISMActionsParser private constructor() {
 
     companion object {
         val instance: ISMActionsParser by lazy { HOLDER.instance }
+        private const val DEFAULT_RETRIES = 3L
     }
 }
