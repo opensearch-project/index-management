@@ -92,10 +92,10 @@ class XContentTests : OpenSearchTestCase() {
 
         val rolloverActionString = rolloverAction.toJsonString()
         val parsedRolloverAction = ISMActionsParser.instance.parse(parser(rolloverActionString), 0)
-        assertEquals("Round tripping RolloverActionConfig doesn't work", rolloverAction.convertToMap(), parsedRolloverAction.convertToMap())
+        assertEquals("Round tripping RolloverAction doesn't work", rolloverAction.convertToMap(), parsedRolloverAction.convertToMap())
     }
 
-    fun `test read_only action config parsing`() {
+    fun `test read_only action parsing`() {
         val readOnlyAction = randomReadOnlyActionConfig()
 
         val readOnlyActionString = readOnlyAction.toJsonString()
@@ -103,7 +103,7 @@ class XContentTests : OpenSearchTestCase() {
         assertEquals("Round tripping ReadOnlyAction doesn't work", readOnlyAction.convertToMap(), parsedReadOnlyAction.convertToMap())
     }
 
-    fun `test read_write action config parsing`() {
+    fun `test read_write action parsing`() {
         val readWriteAction = randomReadWriteActionConfig()
 
         val readWriteActionString = readWriteAction.toJsonString()

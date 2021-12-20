@@ -23,9 +23,9 @@ class RolloverAction(
 ) : Action(name, index) {
 
     init {
-        if (minSize != null) require(minSize.bytes > 0) { "RolloverActionConfig minSize value must be greater than 0" }
+        if (minSize != null) require(minSize.bytes > 0) { "RolloverAction minSize value must be greater than 0" }
 
-        if (minDocs != null) require(minDocs > 0) { "RolloverActionConfig minDocs value must be greater than 0" }
+        if (minDocs != null) require(minDocs > 0) { "RolloverAction minDocs value must be greater than 0" }
     }
 
     private val attemptRolloverStep = AttemptRolloverStep(this)
