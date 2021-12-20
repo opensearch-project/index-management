@@ -10,6 +10,7 @@ import org.opensearch.common.xcontent.XContentParser
 import org.opensearch.common.xcontent.XContentParserUtils
 import org.opensearch.indexmanagement.indexstatemanagement.action.CloseActionParser
 import org.opensearch.indexmanagement.indexstatemanagement.action.DeleteActionParser
+import org.opensearch.indexmanagement.indexstatemanagement.action.RolloverActionParser
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Action
 import org.opensearch.indexmanagement.spi.indexstatemanagement.ActionParser
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ActionRetry
@@ -24,7 +25,8 @@ class ISMActionsParser private constructor() {
     // TODO: Add other action parsers as they are implemented
     val parsers = mutableListOf<ActionParser>(
         CloseActionParser(),
-        DeleteActionParser()
+        DeleteActionParser(),
+        RolloverActionParser()
     )
 
     fun addParser(parser: ActionParser) {
@@ -47,7 +49,7 @@ class ISMActionsParser private constructor() {
     fun parse(xcp: XContentParser, totalActions: Int): Action {
         var action: Action? = null
         var timeout: ActionTimeout? = null
-        var retry: ActionRetry? = ActionRetry(DEFAULT_RETRIES)
+        var retry: ActionRetry? = ActionRetry(Action.DEFAULT_RETRIES)
         XContentParserUtils.ensureExpectedToken(XContentParser.Token.START_OBJECT, xcp.currentToken(), xcp)
         while (xcp.nextToken() != XContentParser.Token.END_OBJECT) {
             val type = xcp.currentName()
@@ -76,6 +78,5 @@ class ISMActionsParser private constructor() {
 
     companion object {
         val instance: ISMActionsParser by lazy { HOLDER.instance }
-        private const val DEFAULT_RETRIES = 3L
     }
 }

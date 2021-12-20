@@ -87,12 +87,12 @@ class XContentTests : OpenSearchTestCase() {
         assertEquals("Round tripping DeleteAction doesn't work", deleteAction.convertToMap(), parsedDeleteAction.convertToMap())
     }
 
-    private fun `test rollover action config parsing`() {
-        val rolloverActionConfig = randomRolloverActionConfig()
+    fun `test rollover action parsing`() {
+        val rolloverAction = randomRolloverActionConfig()
 
-        val rolloverActionConfigString = rolloverActionConfig.toJsonString()
-        val parsedRolloverActionConfig = ISMActionsParser.instance.parse(parser(rolloverActionConfigString), 0)
-        assertEquals("Round tripping RolloverActionConfig doesn't work", rolloverActionConfig, parsedRolloverActionConfig)
+        val rolloverActionString = rolloverAction.toJsonString()
+        val parsedRolloverAction = ISMActionsParser.instance.parse(parser(rolloverActionString), 0)
+        assertEquals("Round tripping RolloverActionConfig doesn't work", rolloverAction.convertToMap(), parsedRolloverAction.convertToMap())
     }
 
     private fun `test read_only action config parsing`() {
