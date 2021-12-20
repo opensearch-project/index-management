@@ -223,7 +223,7 @@ class XContentTests : OpenSearchTestCase() {
         val openActionString = openAction.toJsonString()
         val parsedOpenAction = ISMActionsParser.instance.parse(parser(openActionString), 0)
 
-        assertEquals("Round tripping CloseActionConfig doesn't work", closeAction.actionIndex, parsedCloseAction.actionIndex)
+        assertEquals("Round tripping CloseActionConfig doesn't work", openAction.actionIndex, parsedOpenAction.actionIndex)
     }
 
     fun `test managed index metadata parsing`() {
