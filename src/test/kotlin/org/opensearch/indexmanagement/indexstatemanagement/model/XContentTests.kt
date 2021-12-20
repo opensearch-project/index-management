@@ -103,12 +103,12 @@ class XContentTests : OpenSearchTestCase() {
         assertEquals("Round tripping ReadOnlyAction doesn't work", readOnlyAction.convertToMap(), parsedReadOnlyAction.convertToMap())
     }
 
-    private fun `test read_write action config parsing`() {
-        val readWriteActionConfig = randomReadWriteActionConfig()
+    fun `test read_write action config parsing`() {
+        val readWriteAction = randomReadWriteActionConfig()
 
-        val readWriteActionConfigString = readWriteActionConfig.toJsonString()
-        val parsedReadWriteActionConfig = ISMActionsParser.instance.parse(parser(readWriteActionConfigString), 0)
-        assertEquals("Round tripping ReadWriteActionConfig doesn't work", readWriteActionConfig, parsedReadWriteActionConfig)
+        val readWriteActionString = readWriteAction.toJsonString()
+        val parsedReadWriteAction = ISMActionsParser.instance.parse(parser(readWriteActionString), 0)
+        assertEquals("Round tripping ReadWriteAction doesn't work", readWriteAction.convertToMap(), parsedReadWriteAction.convertToMap())
     }
 
     private fun `test replica_count action config parsing`() {
