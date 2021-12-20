@@ -15,6 +15,7 @@ import org.opensearch.common.xcontent.XContentType
 import org.opensearch.indexmanagement.indexstatemanagement.ISMActionsParser
 import org.opensearch.indexmanagement.indexstatemanagement.action.DeleteAction
 import org.opensearch.indexmanagement.indexstatemanagement.randomAllocationActionConfig
+import org.opensearch.indexmanagement.indexstatemanagement.randomCloseActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomForceMergeActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomIndexPriorityActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomNotificationActionConfig
@@ -107,6 +108,10 @@ class ActionTests : OpenSearchTestCase() {
     // TODO: fixme - enable the test
     private fun `test allocation action round trip`() {
         roundTripAction(randomAllocationActionConfig(require = mapOf("box_type" to "hot")))
+    }
+
+    fun `test close action round trip`() {
+        roundTripAction(randomCloseActionConfig())
     }
 
     fun `test action timeout and retry round trip`() {

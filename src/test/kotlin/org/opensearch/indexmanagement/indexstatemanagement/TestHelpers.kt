@@ -16,6 +16,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.action.DeleteAction
 import org.opensearch.indexmanagement.indexstatemanagement.action.ForceMergeAction
 import org.opensearch.indexmanagement.indexstatemanagement.action.IndexPriorityAction
 import org.opensearch.indexmanagement.indexstatemanagement.action.NotificationAction
+import org.opensearch.indexmanagement.indexstatemanagement.action.OpenAction
 import org.opensearch.indexmanagement.indexstatemanagement.action.ReadOnlyAction
 import org.opensearch.indexmanagement.indexstatemanagement.action.ReadWriteAction
 import org.opensearch.indexmanagement.indexstatemanagement.action.ReplicaCountAction
@@ -168,6 +169,10 @@ fun randomRollupActionConfig(): RollupAction {
 
 fun randomCloseActionConfig(): CloseAction {
     return CloseAction(index = 0)
+}
+
+fun randomOpenActionConfig(): OpenAction {
+    return OpenAction(index = 0)
 }
 
 fun randomDestination(type: DestinationType = randomDestinationType()): Destination {
@@ -421,6 +426,11 @@ fun RollupAction.toJsonString(): String {
 }
 
 fun CloseAction.toJsonString(): String {
+    val builder = XContentFactory.jsonBuilder()
+    return this.toXContent(builder, ToXContent.EMPTY_PARAMS).string()
+}
+
+fun OpenAction.toJsonString(): String {
     val builder = XContentFactory.jsonBuilder()
     return this.toXContent(builder, ToXContent.EMPTY_PARAMS).string()
 }

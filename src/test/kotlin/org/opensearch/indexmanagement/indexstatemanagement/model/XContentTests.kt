@@ -21,6 +21,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.randomForceMergeActio
 import org.opensearch.indexmanagement.indexstatemanagement.randomIndexPriorityActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomManagedIndexConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomNotificationActionConfig
+import org.opensearch.indexmanagement.indexstatemanagement.randomOpenActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomPolicy
 import org.opensearch.indexmanagement.indexstatemanagement.randomReadOnlyActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomReadWriteActionConfig
@@ -213,6 +214,14 @@ class XContentTests : OpenSearchTestCase() {
         val closeAction = randomCloseActionConfig()
         val closeActionString = closeAction.toJsonString()
         val parsedCloseAction = ISMActionsParser.instance.parse(parser(closeActionString), 0)
+
+        assertEquals("Round tripping CloseActionConfig doesn't work", closeAction.actionIndex, parsedCloseAction.actionIndex)
+    }
+
+    fun `test open action parsing`() {
+        val openAction = randomOpenActionConfig()
+        val openActionString = openAction.toJsonString()
+        val parsedOpenAction = ISMActionsParser.instance.parse(parser(openActionString), 0)
 
         assertEquals("Round tripping CloseActionConfig doesn't work", closeAction.actionIndex, parsedCloseAction.actionIndex)
     }
