@@ -12,6 +12,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.action.CloseActionPar
 import org.opensearch.indexmanagement.indexstatemanagement.action.DeleteActionParser
 import org.opensearch.indexmanagement.indexstatemanagement.action.ReadOnlyActionParser
 import org.opensearch.indexmanagement.indexstatemanagement.action.ReadWriteActionParser
+import org.opensearch.indexmanagement.indexstatemanagement.action.ReplicaCountActionParser
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Action
 import org.opensearch.indexmanagement.spi.indexstatemanagement.ActionParser
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ActionRetry
@@ -28,7 +29,8 @@ class ISMActionsParser private constructor() {
         CloseActionParser(),
         DeleteActionParser(),
         ReadOnlyActionParser(),
-        ReadWriteActionParser()
+        ReadWriteActionParser(),
+        ReplicaCountActionParser()
     )
 
     fun addParser(parser: ActionParser) {
