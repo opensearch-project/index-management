@@ -5,22 +5,39 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.step
 
+import com.nhaarman.mockitokotlin2.any
+import com.nhaarman.mockitokotlin2.doAnswer
+import com.nhaarman.mockitokotlin2.doReturn
+import com.nhaarman.mockitokotlin2.mock
+import com.nhaarman.mockitokotlin2.whenever
+import kotlinx.coroutines.runBlocking
+import org.opensearch.action.ActionListener
+import org.opensearch.action.support.master.AcknowledgedResponse
+import org.opensearch.client.AdminClient
+import org.opensearch.client.Client
+import org.opensearch.client.IndicesAdminClient
+import org.opensearch.cluster.service.ClusterService
+import org.opensearch.indexmanagement.indexstatemanagement.step.readonly.SetReadOnlyStep
+import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepContext
 import org.opensearch.test.OpenSearchTestCase
+import org.opensearch.transport.RemoteTransportException
 
 class SetReadOnlyStepTests : OpenSearchTestCase() {
 
-    /*private val clusterService: ClusterService = mock()
+    private val clusterService: ClusterService = mock()
 
     fun `test read only step sets step status to failed when not acknowledged`() {
         val setReadOnlyResponse = AcknowledgedResponse(false)
         val client = getClient(getAdminClient(getIndicesAdminClient(setReadOnlyResponse, null)))
 
         runBlocking {
-            val readOnlyActionConfig = ReadOnlyActionConfig(0)
             val managedIndexMetaData = ManagedIndexMetaData("test", "indexUuid", "policy_id", null, null, null, null, null, null, null, null, null, null)
-            val setReadOnlyStep = SetReadOnlyStep(clusterService, client, readOnlyActionConfig, managedIndexMetaData)
-            setReadOnlyStep.execute()
-            val updatedManagedIndexMetaData = setReadOnlyStep.getUpdatedManagedIndexMetaData(managedIndexMetaData)
+            val setReadOnlyStep = SetReadOnlyStep()
+            val context = StepContext(managedIndexMetaData, clusterService, client, null, null)
+            setReadOnlyStep.preExecute(logger, context).execute()
+            val updatedManagedIndexMetaData = setReadOnlyStep.getUpdatedManagedIndexMetadata(managedIndexMetaData)
             assertEquals("Step status is not FAILED", Step.StepStatus.FAILED, updatedManagedIndexMetaData.stepMetaData?.stepStatus)
         }
     }
@@ -30,11 +47,11 @@ class SetReadOnlyStepTests : OpenSearchTestCase() {
         val client = getClient(getAdminClient(getIndicesAdminClient(null, exception)))
 
         runBlocking {
-            val readOnlyActionConfig = ReadOnlyActionConfig(0)
             val managedIndexMetaData = ManagedIndexMetaData("test", "indexUuid", "policy_id", null, null, null, null, null, null, null, null, null, null)
-            val setReadOnlyStep = SetReadOnlyStep(clusterService, client, readOnlyActionConfig, managedIndexMetaData)
-            setReadOnlyStep.execute()
-            val updatedManagedIndexMetaData = setReadOnlyStep.getUpdatedManagedIndexMetaData(managedIndexMetaData)
+            val setReadOnlyStep = SetReadOnlyStep()
+            val context = StepContext(managedIndexMetaData, clusterService, client, null, null)
+            setReadOnlyStep.preExecute(logger, context).execute()
+            val updatedManagedIndexMetaData = setReadOnlyStep.getUpdatedManagedIndexMetadata(managedIndexMetaData)
             assertEquals("Step status is not FAILED", Step.StepStatus.FAILED, updatedManagedIndexMetaData.stepMetaData?.stepStatus)
         }
     }
@@ -44,11 +61,11 @@ class SetReadOnlyStepTests : OpenSearchTestCase() {
         val client = getClient(getAdminClient(getIndicesAdminClient(null, exception)))
 
         runBlocking {
-            val readOnlyActionConfig = ReadOnlyActionConfig(0)
             val managedIndexMetaData = ManagedIndexMetaData("test", "indexUuid", "policy_id", null, null, null, null, null, null, null, null, null, null)
-            val setReadOnlyStep = SetReadOnlyStep(clusterService, client, readOnlyActionConfig, managedIndexMetaData)
-            setReadOnlyStep.execute()
-            val updatedManagedIndexMetaData = setReadOnlyStep.getUpdatedManagedIndexMetaData(managedIndexMetaData)
+            val setReadOnlyStep = SetReadOnlyStep()
+            val context = StepContext(managedIndexMetaData, clusterService, client, null, null)
+            setReadOnlyStep.preExecute(logger, context).execute()
+            val updatedManagedIndexMetaData = setReadOnlyStep.getUpdatedManagedIndexMetadata(managedIndexMetaData)
             assertEquals("Step status is not FAILED", Step.StepStatus.FAILED, updatedManagedIndexMetaData.stepMetaData?.stepStatus)
             assertEquals("Did not get cause from nested exception", "nested", updatedManagedIndexMetaData.info!!["cause"])
         }
@@ -65,5 +82,5 @@ class SetReadOnlyStepTests : OpenSearchTestCase() {
                 else listener.onFailure(exception)
             }.whenever(this.mock).updateSettings(any(), any())
         }
-    }*/
+    }
 }

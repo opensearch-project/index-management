@@ -11,6 +11,7 @@ import org.opensearch.common.xcontent.XContentParserUtils
 import org.opensearch.indexmanagement.indexstatemanagement.action.CloseActionParser
 import org.opensearch.indexmanagement.indexstatemanagement.action.DeleteActionParser
 import org.opensearch.indexmanagement.indexstatemanagement.action.OpenActionParser
+import org.opensearch.indexmanagement.indexstatemanagement.action.ReadOnlyActionParser
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Action
 import org.opensearch.indexmanagement.spi.indexstatemanagement.ActionParser
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ActionRetry
@@ -26,7 +27,8 @@ class ISMActionsParser private constructor() {
     val parsers = mutableListOf<ActionParser>(
         CloseActionParser(),
         DeleteActionParser(),
-        OpenActionParser()
+        OpenActionParser(),
+        ReadOnlyActionParser()
     )
 
     fun addParser(parser: ActionParser) {
