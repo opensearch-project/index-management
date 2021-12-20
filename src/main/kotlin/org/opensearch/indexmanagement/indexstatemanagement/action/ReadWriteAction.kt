@@ -5,6 +5,7 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.action
 
+import org.opensearch.indexmanagement.indexstatemanagement.step.readwrite.SetReadWriteStep
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Action
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepContext
@@ -17,11 +18,12 @@ class ReadWriteAction(
         const val name = "read_write"
     }
 
+    private val setReadWriteStep = SetReadWriteStep()
+    private val steps = listOf(setReadWriteStep)
+
     override fun getStepToExecute(context: StepContext): Step {
-        TODO("Not yet implemented")
+        return setReadWriteStep
     }
 
-    override fun getSteps(): List<Step> {
-        TODO("Not yet implemented")
-    }
+    override fun getSteps(): List<Step> = steps
 }
