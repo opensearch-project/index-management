@@ -5,6 +5,7 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.action
 
+import org.opensearch.indexmanagement.indexstatemanagement.step.readonly.SetReadOnlyStep
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Action
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepContext
@@ -16,12 +17,12 @@ class ReadOnlyAction(
     companion object {
         const val name = "read_only"
     }
+    private val setReadOnlyStep = SetReadOnlyStep()
+    private val steps = listOf(setReadOnlyStep)
 
     override fun getStepToExecute(context: StepContext): Step {
-        TODO("Not yet implemented")
+        return setReadOnlyStep
     }
 
-    override fun getSteps(): List<Step> {
-        TODO("Not yet implemented")
-    }
+    override fun getSteps(): List<Step> = steps
 }

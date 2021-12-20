@@ -95,12 +95,12 @@ class XContentTests : OpenSearchTestCase() {
         assertEquals("Round tripping RolloverActionConfig doesn't work", rolloverActionConfig, parsedRolloverActionConfig)
     }
 
-    private fun `test read_only action config parsing`() {
-        val readOnlyActionConfig = randomReadOnlyActionConfig()
+    fun `test read_only action config parsing`() {
+        val readOnlyAction = randomReadOnlyActionConfig()
 
-        val readOnlyActionConfigString = readOnlyActionConfig.toJsonString()
-        val parsedReadOnlyActionConfig = ISMActionsParser.instance.parse(parser(readOnlyActionConfigString), 0)
-        assertEquals("Round tripping ReadOnlyActionConfig doesn't work", readOnlyActionConfig, parsedReadOnlyActionConfig)
+        val readOnlyActionString = readOnlyAction.toJsonString()
+        val parsedReadOnlyAction = ISMActionsParser.instance.parse(parser(readOnlyActionString), 0)
+        assertEquals("Round tripping ReadOnlyAction doesn't work", readOnlyAction.convertToMap(), parsedReadOnlyAction.convertToMap())
     }
 
     private fun `test read_write action config parsing`() {
