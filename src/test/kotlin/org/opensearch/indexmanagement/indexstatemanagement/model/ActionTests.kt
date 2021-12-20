@@ -72,7 +72,7 @@ class ActionTests : OpenSearchTestCase() {
             randomAllocationActionConfig()
         }
     }
-    
+
     fun `test set read only action round trip`() {
         roundTripAction(randomReadOnlyActionConfig())
     }
