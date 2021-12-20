@@ -18,6 +18,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.randomAllocationActio
 import org.opensearch.indexmanagement.indexstatemanagement.randomForceMergeActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomIndexPriorityActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomNotificationActionConfig
+import org.opensearch.indexmanagement.indexstatemanagement.randomReadOnlyActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomReplicaCountActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomRolloverActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomSnapshotActionConfig
@@ -70,6 +71,10 @@ class ActionTests : OpenSearchTestCase() {
         assertFailsWith(IllegalArgumentException::class, "Expected IllegalArgumentException for empty parameters") {
             randomAllocationActionConfig()
         }
+    }
+    
+    fun `test set read only action round trip`() {
+        roundTripAction(randomReadOnlyActionConfig())
     }
 
     fun `test rollover action round trip`() {

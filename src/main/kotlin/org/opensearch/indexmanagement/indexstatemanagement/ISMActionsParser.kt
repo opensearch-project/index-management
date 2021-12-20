@@ -10,6 +10,7 @@ import org.opensearch.common.xcontent.XContentParser
 import org.opensearch.common.xcontent.XContentParserUtils
 import org.opensearch.indexmanagement.indexstatemanagement.action.CloseActionParser
 import org.opensearch.indexmanagement.indexstatemanagement.action.DeleteActionParser
+import org.opensearch.indexmanagement.indexstatemanagement.action.ReadOnlyActionParser
 import org.opensearch.indexmanagement.indexstatemanagement.action.RolloverActionParser
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Action
 import org.opensearch.indexmanagement.spi.indexstatemanagement.ActionParser
@@ -26,6 +27,7 @@ class ISMActionsParser private constructor() {
     val parsers = mutableListOf<ActionParser>(
         CloseActionParser(),
         DeleteActionParser(),
+        ReadOnlyActionParser(),
         RolloverActionParser()
     )
 
