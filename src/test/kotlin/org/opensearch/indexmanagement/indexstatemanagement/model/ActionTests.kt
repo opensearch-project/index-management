@@ -19,6 +19,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.randomCloseActionConf
 import org.opensearch.indexmanagement.indexstatemanagement.randomForceMergeActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomIndexPriorityActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomNotificationActionConfig
+import org.opensearch.indexmanagement.indexstatemanagement.randomOpenActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomReadOnlyActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomReplicaCountActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomRolloverActionConfig
@@ -117,6 +118,10 @@ class ActionTests : OpenSearchTestCase() {
 
     fun `test close action round trip`() {
         roundTripAction(randomCloseActionConfig())
+    }
+
+    fun `test open action round trip`() {
+        roundTripAction(randomOpenActionConfig())
     }
 
     fun `test action timeout and retry round trip`() {
