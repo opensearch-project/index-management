@@ -30,10 +30,10 @@ class AttemptReplicaCountStep(private val action: ReplicaCountAction) : Step(nam
         val indexName = context.metadata.index
         try {
             val updateSettingsRequest = UpdateSettingsRequest()
-                    .indices(indexName)
-                    .settings(Settings.builder().put(SETTING_NUMBER_OF_REPLICAS, numOfReplicas))
+                .indices(indexName)
+                .settings(Settings.builder().put(SETTING_NUMBER_OF_REPLICAS, numOfReplicas))
             val response: AcknowledgedResponse = context.client.admin().indices()
-                    .suspendUntil { updateSettings(updateSettingsRequest, it) }
+                .suspendUntil { updateSettings(updateSettingsRequest, it) }
 
             if (response.isAcknowledged) {
                 stepStatus = StepStatus.COMPLETED
@@ -65,9 +65,9 @@ class AttemptReplicaCountStep(private val action: ReplicaCountAction) : Step(nam
 
     override fun getUpdatedManagedIndexMetadata(currentMetadata: ManagedIndexMetaData): ManagedIndexMetaData {
         return currentMetadata.copy(
-                stepMetaData = StepMetaData(name, getStepStartTime(currentMetadata).toEpochMilli(), stepStatus),
-                transitionTo = null,
-                info = info
+            stepMetaData = StepMetaData(name, getStepStartTime(currentMetadata).toEpochMilli(), stepStatus),
+            transitionTo = null,
+            info = info
         )
     }
 

@@ -33,8 +33,8 @@ class ReplicaCountActionParser : ActionParser() {
         }
 
         return ReplicaCountAction(
-                numOfReplicas = requireNotNull(numOfReplicas) { "$ReplicaCountAction.NUMBER_OF_REPLICAS_FIELD is null" },
-                index = index
+            numOfReplicas = requireNotNull(numOfReplicas) { "$ReplicaCountAction.NUMBER_OF_REPLICAS_FIELD is null" },
+            index = index
         )
     }
 
