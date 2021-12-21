@@ -50,15 +50,13 @@ class ActionTests : OpenSearchTestCase() {
         }
     }
 
-    // TODO: fixme - enable the test
-    private fun `test rollover action minimum size of zero fails`() {
+    fun `test rollover action minimum size of zero fails`() {
         assertFailsWith(IllegalArgumentException::class, "Expected IllegalArgumentException for minSize less than 1") {
             randomRolloverActionConfig(minSize = ByteSizeValue.parseBytesSizeValue("0", "min_size_test"))
         }
     }
 
-    // TODO: fixme - enable the test
-    private fun `test rollover action minimum doc count of zero fails`() {
+    fun `test rollover action minimum doc count of zero fails`() {
         assertFailsWith(IllegalArgumentException::class, "Expected IllegalArgumentException for minDoc less than 1") {
             randomRolloverActionConfig(minDocs = 0)
         }
@@ -86,8 +84,7 @@ class ActionTests : OpenSearchTestCase() {
         roundTripAction(randomReadOnlyActionConfig())
     }
 
-    // TODO: fixme - enable the test
-    private fun `test rollover action round trip`() {
+    fun `test rollover action round trip`() {
         roundTripAction(randomRolloverActionConfig())
     }
 
