@@ -21,6 +21,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.action.ReplicaCountAc
 import org.opensearch.indexmanagement.indexstatemanagement.step.replicacount.AttemptReplicaCountStep
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepContext
 import org.opensearch.test.OpenSearchTestCase
 import org.opensearch.transport.RemoteTransportException
 
@@ -36,7 +37,8 @@ class AttemptSetReplicaCountStepTests : OpenSearchTestCase() {
             val replicaCountAction = ReplicaCountAction(2, 0)
             val managedIndexMetaData = ManagedIndexMetaData("test", "indexUuid", "policy_id", null, null, null, null, null, null, null, null, null, null)
             val replicaCountStep = AttemptReplicaCountStep(replicaCountAction)
-            replicaCountStep.execute()
+            val context = StepContext(managedIndexMetaData, clusterService, client, null, null)
+            replicaCountStep.preExecute(logger, context).execute()
             val updatedManagedIndexMetaData = replicaCountStep.getUpdatedManagedIndexMetadata(managedIndexMetaData)
             assertEquals("Step status is not FAILED", Step.StepStatus.FAILED, updatedManagedIndexMetaData.stepMetaData?.stepStatus)
         }
@@ -50,7 +52,8 @@ class AttemptSetReplicaCountStepTests : OpenSearchTestCase() {
             val replicaCountAction = ReplicaCountAction(2, 0)
             val managedIndexMetaData = ManagedIndexMetaData("test", "indexUuid", "policy_id", null, null, null, null, null, null, null, null, null, null)
             val replicaCountStep = AttemptReplicaCountStep(replicaCountAction)
-            replicaCountStep.execute()
+            val context = StepContext(managedIndexMetaData, clusterService, client, null, null)
+            replicaCountStep.preExecute(logger, context).execute()
             val updatedManagedIndexMetaData = replicaCountStep.getUpdatedManagedIndexMetadata(managedIndexMetaData)
             assertEquals("Step status is not FAILED", Step.StepStatus.FAILED, updatedManagedIndexMetaData.stepMetaData?.stepStatus)
         }
@@ -64,7 +67,8 @@ class AttemptSetReplicaCountStepTests : OpenSearchTestCase() {
             val replicaCountAction = ReplicaCountAction(2, 0)
             val managedIndexMetaData = ManagedIndexMetaData("test", "indexUuid", "policy_id", null, null, null, null, null, null, null, null, null, null)
             val replicaCountStep = AttemptReplicaCountStep(replicaCountAction)
-            replicaCountStep.execute()
+            val context = StepContext(managedIndexMetaData, clusterService, client, null, null)
+            replicaCountStep.preExecute(logger, context).execute()
             val updatedManagedIndexMetaData = replicaCountStep.getUpdatedManagedIndexMetadata(managedIndexMetaData)
             assertEquals("Step status is not FAILED", Step.StepStatus.FAILED, updatedManagedIndexMetaData.stepMetaData?.stepStatus)
             assertEquals("Did not get cause from nested exception", "nested", updatedManagedIndexMetaData.info!!["cause"])
