@@ -19,6 +19,7 @@ import org.opensearch.action.update.UpdateRequest
 import org.opensearch.alerting.destination.message.BaseMessage
 import org.opensearch.cluster.metadata.IndexMetadata
 import org.opensearch.common.unit.ByteSizeValue
+import org.opensearch.common.unit.TimeValue
 import org.opensearch.common.xcontent.ToXContent
 import org.opensearch.common.xcontent.XContentFactory
 import org.opensearch.index.Index
@@ -26,6 +27,7 @@ import org.opensearch.index.query.BoolQueryBuilder
 import org.opensearch.index.query.QueryBuilders
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
 import org.opensearch.indexmanagement.indexstatemanagement.ManagedIndexCoordinator
+import org.opensearch.indexmanagement.indexstatemanagement.action.RolloverAction
 import org.opensearch.indexmanagement.indexstatemanagement.model.ChangePolicy
 import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexConfig
 import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
@@ -204,7 +206,8 @@ fun Transition.evaluateConditions(
     indexCreationDate: Instant,
     numDocs: Long?,
     indexSize: ByteSizeValue?,
-    transitionStartTime: Instant
+    transitionStartTime: Instant,
+    rolloverDate: Instant?,
 ): Boolean {
     // If there are no conditions, treat as always true
     if (this.conditions == null) return true
@@ -229,15 +232,20 @@ fun Transition.evaluateConditions(
         return this.conditions.cron.getNextExecutionTime(transitionStartTime) <= Instant.now()
     }
 
+    if (this.conditions.rolloverAge != null) {
+        val rolloverDateMilli = rolloverDate?.toEpochMilli() ?: return false
+        val elapsedTime = Instant.now().toEpochMilli() - rolloverDateMilli
+        return this.conditions.rolloverAge.millis <= elapsedTime
+    }
+
     // We should never reach this
     return false
 }
 
 fun Transition.hasStatsConditions(): Boolean = this.conditions?.docCount != null || this.conditions?.size != null
 
-// TODO: Uncomment after the rollover action config
-// @Suppress("ReturnCount")
-/*fun RolloverActionConfig.evaluateConditions(
+@Suppress("ReturnCount")
+fun RolloverAction.evaluateConditions(
     indexAgeTimeValue: TimeValue,
     numDocs: Long,
     indexSize: ByteSizeValue
@@ -264,7 +272,7 @@ fun Transition.hasStatsConditions(): Boolean = this.conditions?.docCount != null
 
     // return false if non of the conditions were true.
     return false
-}*/
+}
 
 fun State.getUpdatedStateMetaData(managedIndexMetaData: ManagedIndexMetaData): StateMetaData {
     // If the current ManagedIndexMetaData state does not match this state, it means we transitioned and need to update the startStartTime

@@ -14,12 +14,14 @@ import org.opensearch.indexmanagement.indexstatemanagement.model.destination.Des
 import org.opensearch.indexmanagement.indexstatemanagement.nonNullRandomConditions
 import org.opensearch.indexmanagement.indexstatemanagement.randomAllocationActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomChangePolicy
+import org.opensearch.indexmanagement.indexstatemanagement.randomCloseActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomDeleteActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomDestination
 import org.opensearch.indexmanagement.indexstatemanagement.randomForceMergeActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomIndexPriorityActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomManagedIndexConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomNotificationActionConfig
+import org.opensearch.indexmanagement.indexstatemanagement.randomOpenActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomPolicy
 import org.opensearch.indexmanagement.indexstatemanagement.randomReadOnlyActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomReadWriteActionConfig
@@ -87,15 +89,15 @@ class XContentTests : OpenSearchTestCase() {
         assertEquals("Round tripping DeleteAction doesn't work", deleteAction.convertToMap(), parsedDeleteAction.convertToMap())
     }
 
-    private fun `test rollover action config parsing`() {
-        val rolloverActionConfig = randomRolloverActionConfig()
+    fun `test rollover action parsing`() {
+        val rolloverAction = randomRolloverActionConfig()
 
-        val rolloverActionConfigString = rolloverActionConfig.toJsonString()
-        val parsedRolloverActionConfig = ISMActionsParser.instance.parse(parser(rolloverActionConfigString), 0)
-        assertEquals("Round tripping RolloverActionConfig doesn't work", rolloverActionConfig, parsedRolloverActionConfig)
+        val rolloverActionString = rolloverAction.toJsonString()
+        val parsedRolloverAction = ISMActionsParser.instance.parse(parser(rolloverActionString), 0)
+        assertEquals("Round tripping RolloverAction doesn't work", rolloverAction.convertToMap(), parsedRolloverAction.convertToMap())
     }
 
-    fun `test read_only action config parsing`() {
+    fun `test read_only action parsing`() {
         val readOnlyAction = randomReadOnlyActionConfig()
 
         val readOnlyActionString = readOnlyAction.toJsonString()
@@ -103,7 +105,7 @@ class XContentTests : OpenSearchTestCase() {
         assertEquals("Round tripping ReadOnlyAction doesn't work", readOnlyAction.convertToMap(), parsedReadOnlyAction.convertToMap())
     }
 
-    fun `test read_write action config parsing`() {
+    fun `test read_write action parsing`() {
         val readWriteAction = randomReadWriteActionConfig()
 
         val readWriteActionString = readWriteAction.toJsonString()
@@ -206,6 +208,22 @@ class XContentTests : OpenSearchTestCase() {
 
         assertEquals("Round tripping RollupActionConfig doesn't work", rollupActionConfig.actionIndex, parsedRollupActionConfig.actionIndex)
         assertEquals("Round tripping RollupActionConfig doesn't work", rollupActionConfig.ismRollup, parsedRollupActionConfig.ismRollup)
+    }
+
+    fun `test close action parsing`() {
+        val closeAction = randomCloseActionConfig()
+        val closeActionString = closeAction.toJsonString()
+        val parsedCloseAction = ISMActionsParser.instance.parse(parser(closeActionString), 0)
+
+        assertEquals("Round tripping CloseAction doesn't work", closeAction.convertToMap(), parsedCloseAction.convertToMap())
+    }
+
+    fun `test open action parsing`() {
+        val openAction = randomOpenActionConfig()
+        val openActionString = openAction.toJsonString()
+        val parsedOpenAction = ISMActionsParser.instance.parse(parser(openActionString), 0)
+
+        assertEquals("Round tripping OpenAction doesn't work", openAction.convertToMap(), parsedOpenAction.convertToMap())
     }
 
     fun `test managed index metadata parsing`() {

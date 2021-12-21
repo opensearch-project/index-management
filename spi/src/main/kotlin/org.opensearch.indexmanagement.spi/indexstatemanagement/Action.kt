@@ -20,7 +20,7 @@ abstract class Action(
 ) : ToXContentObject, Writeable {
 
     var configTimeout: ActionTimeout? = null
-    var configRetry: ActionRetry? = null
+    var configRetry: ActionRetry? = ActionRetry(DEFAULT_RETRIES)
 
     final override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
         builder.startObject()
@@ -67,4 +67,8 @@ abstract class Action(
     final fun isLastStep(stepName: String): Boolean = getSteps().last().name == stepName
 
     final fun isFirstStep(stepName: String): Boolean = getSteps().first().name == stepName
+
+    companion object {
+        const val DEFAULT_RETRIES = 3L
+    }
 }

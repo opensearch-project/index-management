@@ -6,20 +6,45 @@
 package org.opensearch.indexmanagement.indexstatemanagement.action
 
 import org.opensearch.common.io.stream.StreamInput
+import org.opensearch.common.unit.ByteSizeValue
+import org.opensearch.common.unit.TimeValue
 import org.opensearch.common.xcontent.XContentParser
+import org.opensearch.common.xcontent.XContentParserUtils.ensureExpectedToken
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Action
 import org.opensearch.indexmanagement.spi.indexstatemanagement.ActionParser
 
 class RolloverActionParser : ActionParser() {
     override fun fromStreamInput(sin: StreamInput): Action {
-        TODO("Not yet implemented")
+        val minSize = sin.readOptionalWriteable(::ByteSizeValue)
+        val minDocs = sin.readOptionalLong()
+        val minAge = sin.readOptionalTimeValue()
+        val index = sin.readInt()
+
+        return RolloverAction(minSize, minDocs, minAge, index)
     }
 
     override fun fromXContent(xcp: XContentParser, index: Int): Action {
-        TODO("Not yet implemented")
+        var minSize: ByteSizeValue? = null
+        var minDocs: Long? = null
+        var minAge: TimeValue? = null
+
+        ensureExpectedToken(XContentParser.Token.START_OBJECT, xcp.currentToken(), xcp)
+        while (xcp.nextToken() != XContentParser.Token.END_OBJECT) {
+            val fieldName = xcp.currentName()
+            xcp.nextToken()
+
+            when (fieldName) {
+                RolloverAction.MIN_SIZE_FIELD -> minSize = ByteSizeValue.parseBytesSizeValue(xcp.text(), RolloverAction.MIN_SIZE_FIELD)
+                RolloverAction.MIN_DOC_COUNT_FIELD -> minDocs = xcp.longValue()
+                RolloverAction.MIN_INDEX_AGE_FIELD -> minAge = TimeValue.parseTimeValue(xcp.text(), RolloverAction.MIN_INDEX_AGE_FIELD)
+                else -> throw IllegalArgumentException("Invalid field: [$fieldName] found in RolloverAction.")
+            }
+        }
+
+        return RolloverAction(minSize, minDocs, minAge, index)
     }
 
     override fun getActionType(): String {
-        TODO("Not yet implemented")
+        return RolloverAction.name
     }
 }

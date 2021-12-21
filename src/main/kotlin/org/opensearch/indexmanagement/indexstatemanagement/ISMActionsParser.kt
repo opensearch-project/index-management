@@ -10,9 +10,11 @@ import org.opensearch.common.xcontent.XContentParser
 import org.opensearch.common.xcontent.XContentParserUtils
 import org.opensearch.indexmanagement.indexstatemanagement.action.CloseActionParser
 import org.opensearch.indexmanagement.indexstatemanagement.action.DeleteActionParser
+import org.opensearch.indexmanagement.indexstatemanagement.action.OpenActionParser
 import org.opensearch.indexmanagement.indexstatemanagement.action.ReadOnlyActionParser
 import org.opensearch.indexmanagement.indexstatemanagement.action.ReadWriteActionParser
 import org.opensearch.indexmanagement.indexstatemanagement.action.ReplicaCountActionParser
+import org.opensearch.indexmanagement.indexstatemanagement.action.RolloverActionParser
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Action
 import org.opensearch.indexmanagement.spi.indexstatemanagement.ActionParser
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ActionRetry
@@ -28,9 +30,11 @@ class ISMActionsParser private constructor() {
     val parsers = mutableListOf<ActionParser>(
         CloseActionParser(),
         DeleteActionParser(),
+        OpenActionParser(),
         ReadOnlyActionParser(),
         ReadWriteActionParser(),
-        ReplicaCountActionParser()
+        ReplicaCountActionParser(),
+        RolloverActionParser()
     )
 
     fun addParser(parser: ActionParser) {
@@ -53,7 +57,7 @@ class ISMActionsParser private constructor() {
     fun parse(xcp: XContentParser, totalActions: Int): Action {
         var action: Action? = null
         var timeout: ActionTimeout? = null
-        var retry: ActionRetry? = null
+        var retry: ActionRetry? = ActionRetry(Action.DEFAULT_RETRIES)
         XContentParserUtils.ensureExpectedToken(XContentParser.Token.START_OBJECT, xcp.currentToken(), xcp)
         while (xcp.nextToken() != XContentParser.Token.END_OBJECT) {
             val type = xcp.currentName()
