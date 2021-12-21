@@ -89,8 +89,7 @@ class ActionTests : OpenSearchTestCase() {
         roundTripAction(randomRolloverActionConfig())
     }
 
-    // TODO: fixme - enable the test
-    private fun `test replica count action round trip`() {
+    fun `test replica count action round trip`() {
         roundTripAction(randomReplicaCountActionConfig())
     }
 

@@ -11,25 +11,24 @@ import org.opensearch.action.admin.indices.settings.put.UpdateSettingsRequest
 import org.opensearch.action.support.master.AcknowledgedResponse
 import org.opensearch.cluster.metadata.IndexMetadata.SETTING_NUMBER_OF_REPLICAS
 import org.opensearch.common.settings.Settings
+import org.opensearch.indexmanagement.indexstatemanagement.action.ReplicaCountAction
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepMetaData
 import org.opensearch.transport.RemoteTransportException
 
-class AttemptReplicaCountStep : Step(name) {
+class AttemptReplicaCountStep(private val action: ReplicaCountAction) : Step(name) {
 
     private val logger = LogManager.getLogger(javaClass)
     private var stepStatus = StepStatus.STARTING
     private var info: Map<String, Any>? = null
-//    private val context = this.context ?: return this
-//    private val numOfReplicas = context.metadata.numOfReplicas
+    private val numOfReplicas = action.numOfReplicas
 
     override suspend fun execute(): Step {
+        val context = this.context ?: return this
+        val indexName = context.metadata.index
         try {
-            val context = this.context ?: return this
-            val indexName = context.metadata.index
-            val numOfReplicas = context.metadata.
             val updateSettingsRequest = UpdateSettingsRequest()
                     .indices(indexName)
                     .settings(Settings.builder().put(SETTING_NUMBER_OF_REPLICAS, numOfReplicas))

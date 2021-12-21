@@ -8,7 +8,6 @@ package org.opensearch.indexmanagement.indexstatemanagement.action
 import org.opensearch.common.io.stream.StreamInput
 import org.opensearch.common.xcontent.XContentParser
 import org.opensearch.common.xcontent.XContentParserUtils.ensureExpectedToken
-import org.opensearch.indexmanagement.indexstatemanagement.action.ReplicaCountAction.Companion.NUMBER_OF_REPLICAS_FIELD
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Action
 import org.opensearch.indexmanagement.spi.indexstatemanagement.ActionParser
 
@@ -28,13 +27,13 @@ class ReplicaCountActionParser : ActionParser() {
             xcp.nextToken()
 
             when (fieldName) {
-                NUMBER_OF_REPLICAS_FIELD -> numOfReplicas = xcp.intValue()
+                ReplicaCountAction.NUMBER_OF_REPLICAS_FIELD -> numOfReplicas = xcp.intValue()
                 else -> throw IllegalArgumentException("Invalid field: [$fieldName] found in ReplicaCountActionConfig.")
             }
         }
 
         return ReplicaCountAction(
-                numOfReplicas = requireNotNull(numOfReplicas) { "$NUMBER_OF_REPLICAS_FIELD is null" },
+                numOfReplicas = requireNotNull(numOfReplicas) { "$ReplicaCountAction.NUMBER_OF_REPLICAS_FIELD is null" },
                 index = index
         )
     }
