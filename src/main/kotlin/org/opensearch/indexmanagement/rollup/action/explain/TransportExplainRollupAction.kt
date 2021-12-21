@@ -22,6 +22,7 @@ import org.opensearch.index.query.BoolQueryBuilder
 import org.opensearch.index.query.IdsQueryBuilder
 import org.opensearch.index.query.WildcardQueryBuilder
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
+import org.opensearch.indexmanagement.indexstatemanagement.ManagedIndexCoordinator.Companion.MAX_HITS
 import org.opensearch.indexmanagement.opensearchapi.contentParser
 import org.opensearch.indexmanagement.opensearchapi.parseWithType
 import org.opensearch.indexmanagement.rollup.model.ExplainRollup
@@ -75,8 +76,7 @@ class TransportExplainRollupAction @Inject constructor(
         val user = buildUser(client.threadPool().threadContext)
         addUserFilter(user, queryBuilder, filterByEnabled, "rollup.user")
 
-        val searchRequest = SearchRequest(INDEX_MANAGEMENT_INDEX).source(SearchSourceBuilder().query(queryBuilder))
-
+        val searchRequest = SearchRequest(INDEX_MANAGEMENT_INDEX).source(SearchSourceBuilder().size(MAX_HITS).query(queryBuilder))
         client.threadPool().threadContext.stashContext().use {
             client.search(
                 searchRequest,
@@ -95,7 +95,7 @@ class TransportExplainRollupAction @Inject constructor(
 
                         val metadataIds = idsToExplain.values.mapNotNull { it?.metadataID }
                         val metadataSearchRequest = SearchRequest(INDEX_MANAGEMENT_INDEX)
-                            .source(SearchSourceBuilder().query(IdsQueryBuilder().addIds(*metadataIds.toTypedArray())))
+                            .source(SearchSourceBuilder().size(MAX_HITS).query(IdsQueryBuilder().addIds(*metadataIds.toTypedArray())))
                         client.search(
                             metadataSearchRequest,
                             object : ActionListener<SearchResponse> {
