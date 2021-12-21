@@ -11,10 +11,12 @@ import org.opensearch.common.xcontent.ToXContent
 import org.opensearch.common.xcontent.XContentFactory
 import org.opensearch.index.seqno.SequenceNumbers
 import org.opensearch.indexmanagement.indexstatemanagement.action.AllocationAction
+import org.opensearch.indexmanagement.indexstatemanagement.action.CloseAction
 import org.opensearch.indexmanagement.indexstatemanagement.action.DeleteAction
 import org.opensearch.indexmanagement.indexstatemanagement.action.ForceMergeAction
 import org.opensearch.indexmanagement.indexstatemanagement.action.IndexPriorityAction
 import org.opensearch.indexmanagement.indexstatemanagement.action.NotificationAction
+import org.opensearch.indexmanagement.indexstatemanagement.action.OpenAction
 import org.opensearch.indexmanagement.indexstatemanagement.action.ReadOnlyAction
 import org.opensearch.indexmanagement.indexstatemanagement.action.ReadWriteAction
 import org.opensearch.indexmanagement.indexstatemanagement.action.ReplicaCountAction
@@ -163,6 +165,14 @@ fun randomAllocationActionConfig(require: Map<String, String> = emptyMap(), excl
 
 fun randomRollupActionConfig(): RollupAction {
     return RollupAction(ismRollup = randomISMRollup(), index = 0)
+}
+
+fun randomCloseActionConfig(): CloseAction {
+    return CloseAction(index = 0)
+}
+
+fun randomOpenActionConfig(): OpenAction {
+    return OpenAction(index = 0)
 }
 
 fun randomDestination(type: DestinationType = randomDestinationType()): Destination {
@@ -411,6 +421,16 @@ fun SnapshotAction.toJsonString(): String {
 }
 
 fun RollupAction.toJsonString(): String {
+    val builder = XContentFactory.jsonBuilder()
+    return this.toXContent(builder, ToXContent.EMPTY_PARAMS).string()
+}
+
+fun CloseAction.toJsonString(): String {
+    val builder = XContentFactory.jsonBuilder()
+    return this.toXContent(builder, ToXContent.EMPTY_PARAMS).string()
+}
+
+fun OpenAction.toJsonString(): String {
     val builder = XContentFactory.jsonBuilder()
     return this.toXContent(builder, ToXContent.EMPTY_PARAMS).string()
 }

@@ -306,7 +306,6 @@ integTest {
     exclude 'org/opensearch/indexmanagement/indexstatemanagement/action/IndexPriorityActionIT.class'
     exclude 'org/opensearch/indexmanagement/indexstatemanagement/action/IndexStateManagementHistoryIT.class'
     exclude 'org/opensearch/indexmanagement/indexstatemanagement/action/NotificationActionIT.class'
-    exclude 'org/opensearch/indexmanagement/indexstatemanagement/action/OpenActionIT.class'
     exclude 'org/opensearch/indexmanagement/indexstatemanagement/action/ReplicaCountActionIT.class'
     exclude 'org/opensearch/indexmanagement/indexstatemanagement/action/RolloverActionIT.class'
     exclude 'org/opensearch/indexmanagement/indexstatemanagement/action/RollupActionIT.class'
