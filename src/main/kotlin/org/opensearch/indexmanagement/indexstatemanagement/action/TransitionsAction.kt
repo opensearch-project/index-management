@@ -12,10 +12,10 @@ import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepContext
 
 class TransitionsAction(
-    transitions: List<Transition>,
+    val transitions: List<Transition>,
 ) : Action(name, -1) {
 
-    private val attemptTransitionStep = AttemptTransitionStep()
+    private val attemptTransitionStep = AttemptTransitionStep(this)
     private val steps = listOf(attemptTransitionStep)
 
     override fun getSteps(): List<Step> = steps

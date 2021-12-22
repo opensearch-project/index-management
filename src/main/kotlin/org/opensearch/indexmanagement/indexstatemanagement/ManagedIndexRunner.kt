@@ -652,13 +652,11 @@ object ManagedIndexRunner :
         } else {
             // if the action to execute is transition then set the actionMetaData to a new transition metadata to reflect we are
             // in transition (in case we triggered change policy from entering transition) or to reflect this is a new policy transition phase
-            // TODO: replace with constant
             val newTransitionMetaData = ActionMetaData(
-                "transition", Instant.now().toEpochMilli(), -1,
+                TransitionsAction.name, Instant.now().toEpochMilli(), -1,
                 false, 0, 0, null
             )
-            // TODO: Replace with constant
-            val actionMetaData = if (actionToExecute?.type == "transition") {
+            val actionMetaData = if (actionToExecute?.type == TransitionsAction.name) {
                 newTransitionMetaData
             } else {
                 managedIndexMetaData.actionMetaData
