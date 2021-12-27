@@ -32,6 +32,7 @@ import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANA
 import org.opensearch.indexmanagement.indexstatemanagement.ManagedIndexCoordinator
 import org.opensearch.indexmanagement.indexstatemanagement.action.Action
 import org.opensearch.indexmanagement.indexstatemanagement.model.ChangePolicy
+import org.opensearch.indexmanagement.indexstatemanagement.model.ISMTemplate
 import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexConfig
 import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
@@ -48,6 +49,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmet
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings
 import org.opensearch.indexmanagement.indexstatemanagement.step.Step
 import org.opensearch.indexmanagement.indexstatemanagement.step.delete.AttemptDeleteStep
+import org.opensearch.indexmanagement.opensearchapi.optionalISMTemplateField
 import org.opensearch.indexmanagement.opensearchapi.optionalTimeField
 import org.opensearch.jobscheduler.spi.schedule.IntervalSchedule
 import org.opensearch.script.ScriptService
@@ -131,6 +133,17 @@ private fun updateEnabledField(uuid: String, enabled: Boolean, enabledTime: Long
         .endObject()
         .endObject()
     return UpdateRequest(INDEX_MANAGEMENT_INDEX, uuid).doc(builder)
+}
+
+fun updateISMTemplateRequest(policyID: String, ismTemplates: List<ISMTemplate>, seqNo: Long, primaryTerm: Long): UpdateRequest {
+    val builder = XContentFactory.jsonBuilder()
+        .startObject()
+        .startObject(Policy.POLICY_TYPE)
+        .optionalISMTemplateField(Policy.ISM_TEMPLATE, ismTemplates)
+        .endObject()
+        .endObject()
+    return UpdateRequest(INDEX_MANAGEMENT_INDEX, policyID).doc(builder)
+        .setIfSeqNo(seqNo).setIfPrimaryTerm(primaryTerm)
 }
 
 fun updateDisableManagedIndexRequest(uuid: String): UpdateRequest {

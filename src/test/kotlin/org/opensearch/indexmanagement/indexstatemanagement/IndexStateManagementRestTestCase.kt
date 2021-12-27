@@ -894,4 +894,82 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
         }
         return true
     }
+
+    protected fun createV1Template(templateName: String, indexPatterns: String, policyID: String, order: Int = 0) {
+        val response = client().makeRequest(
+            "PUT", "_template/$templateName",
+            StringEntity(
+                "{\n" +
+                    "  \"index_patterns\": [\"$indexPatterns\"],\n" +
+                    "  \"settings\": {\n" +
+                    "    \"opendistro.index_state_management.policy_id\": \"$policyID\"\n" +
+                    "  }, \n" +
+                    "  \"order\": $order\n" +
+                    "}",
+                APPLICATION_JSON
+            )
+        )
+        assertEquals("Request failed", RestStatus.OK, response.restStatus())
+    }
+
+    protected fun createV1Template2(templateName: String, indexPatterns: String, order: Int = 0) {
+        val response = client().makeRequest(
+            "PUT", "_template/$templateName",
+            StringEntity(
+                "{\n" +
+                    "  \"index_patterns\": [\"$indexPatterns\"],\n" +
+                    "  \"order\": $order\n" +
+                    "}",
+                APPLICATION_JSON
+            )
+        )
+        assertEquals("Request failed", RestStatus.OK, response.restStatus())
+    }
+
+    protected fun deleteV1Template(templateName: String) {
+        val response = client().makeRequest("DELETE", "_template/$templateName")
+        assertEquals("Request failed", RestStatus.OK, response.restStatus())
+    }
+
+    protected fun createV2Template(templateName: String, indexPatterns: String, policyID: String) {
+        val response = client().makeRequest(
+            "PUT", "_index_template/$templateName",
+            StringEntity(
+                "{\n" +
+                    "  \"index_patterns\": [\"$indexPatterns\"],\n" +
+                    "  \"template\": {\n" +
+                    "    \"settings\": {\n" +
+                    "      \"opendistro.index_state_management.policy_id\": \"$policyID\"\n" +
+                    "    }\n" +
+                    "  }\n" +
+                    "}",
+                APPLICATION_JSON
+            )
+        )
+        assertEquals("Request failed", RestStatus.OK, response.restStatus())
+    }
+
+    protected fun deleteV2Template(templateName: String) {
+        val response = client().makeRequest("DELETE", "_index_template/$templateName")
+        assertEquals("Request failed", RestStatus.OK, response.restStatus())
+    }
+
+    fun catIndexTemplates(): List<Any> {
+        val response = client().makeRequest("GET", "_cat/templates?format=json")
+        logger.info("response: $response")
+
+        assertEquals("cat template request failed", RestStatus.OK, response.restStatus())
+
+        try {
+            return jsonXContent
+                .createParser(
+                    NamedXContentRegistry.EMPTY,
+                    DeprecationHandler.THROW_UNSUPPORTED_OPERATION,
+                    response.entity.content
+                )
+                .use { parser -> parser.list() }
+        } catch (e: IOException) {
+            throw OpenSearchParseException("Failed to parse content to list", e)
+        }
+    }
 }
