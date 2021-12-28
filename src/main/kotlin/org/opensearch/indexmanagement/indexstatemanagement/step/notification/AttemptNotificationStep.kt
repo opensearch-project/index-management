@@ -25,11 +25,10 @@ class AttemptNotificationStep(private val action: NotificationAction) : Step(nam
     private var info: Map<String, Any>? = null
 
     override suspend fun execute(): Step {
-        if (this.context == null || this.context?.settings == null || this.context?.scriptService == null) return this
-        val context = this.context!!
+        val context = this.context ?: return this
         val indexName = context.metadata.index
-        val hostDenyList = context.settings!!.getAsList(ManagedIndexSettings.HOST_DENY_LIST)
-        val scriptService = context.scriptService!!
+        val hostDenyList = context.settings.getAsList(ManagedIndexSettings.HOST_DENY_LIST)
+        val scriptService = context.scriptService
         try {
             withContext(Dispatchers.IO) {
                 action.destination.publish(null, compileTemplate(scriptService, action.messageTemplate, context.metadata), hostDenyList)

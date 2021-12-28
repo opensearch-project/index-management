@@ -19,6 +19,6 @@ class StepContext(
     val client: Client,
     val threadContext: ThreadContext?,
     val user: User?,
-    val scriptService: ScriptService? = null,
-    val settings: Settings? = null,
+    val scriptService: ScriptService,
+    val settings: Settings,
 )

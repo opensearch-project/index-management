@@ -17,16 +17,20 @@ import org.opensearch.client.AdminClient
 import org.opensearch.client.Client
 import org.opensearch.client.IndicesAdminClient
 import org.opensearch.cluster.service.ClusterService
+import org.opensearch.common.settings.Settings
 import org.opensearch.indexmanagement.indexstatemanagement.step.delete.AttemptDeleteStep
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepContext
+import org.opensearch.script.ScriptService
 import org.opensearch.snapshots.SnapshotInProgressException
 import org.opensearch.test.OpenSearchTestCase
 
 class AttemptDeleteStepTests : OpenSearchTestCase() {
 
     private val clusterService: ClusterService = mock()
+    private val scriptService: ScriptService = mock()
+    private val settings: Settings = Settings.EMPTY
 
     fun `test delete step sets step status to completed when successful`() {
         val acknowledgedResponse = AcknowledgedResponse(true)
@@ -35,7 +39,7 @@ class AttemptDeleteStepTests : OpenSearchTestCase() {
         runBlocking {
             val managedIndexMetaData = ManagedIndexMetaData("test", "indexUuid", "policy_id", null, null, null, null, null, null, null, null, null, null)
             val attemptDeleteStep = AttemptDeleteStep()
-            val context = StepContext(managedIndexMetaData, clusterService, client, null, null)
+            val context = StepContext(managedIndexMetaData, clusterService, client, null, null, scriptService, settings)
             attemptDeleteStep.preExecute(logger, context).execute()
             val updatedManagedIndexMetaData = attemptDeleteStep.getUpdatedManagedIndexMetadata(managedIndexMetaData)
             assertEquals("Step status is not COMPLETED", Step.StepStatus.COMPLETED, updatedManagedIndexMetaData.stepMetaData?.stepStatus)
@@ -49,7 +53,7 @@ class AttemptDeleteStepTests : OpenSearchTestCase() {
         runBlocking {
             val managedIndexMetaData = ManagedIndexMetaData("test", "indexUuid", "policy_id", null, null, null, null, null, null, null, null, null, null)
             val attemptDeleteStep = AttemptDeleteStep()
-            val context = StepContext(managedIndexMetaData, clusterService, client, null, null)
+            val context = StepContext(managedIndexMetaData, clusterService, client, null, null, scriptService, settings)
             attemptDeleteStep.preExecute(logger, context).execute()
             val updatedManagedIndexMetaData = attemptDeleteStep.getUpdatedManagedIndexMetadata(managedIndexMetaData)
             assertEquals("Step status is not FAILED", Step.StepStatus.FAILED, updatedManagedIndexMetaData.stepMetaData?.stepStatus)
@@ -63,7 +67,7 @@ class AttemptDeleteStepTests : OpenSearchTestCase() {
         runBlocking {
             val managedIndexMetaData = ManagedIndexMetaData("test", "indexUuid", "policy_id", null, null, null, null, null, null, null, null, null, null)
             val attemptDeleteStep = AttemptDeleteStep()
-            val context = StepContext(managedIndexMetaData, clusterService, client, null, null)
+            val context = StepContext(managedIndexMetaData, clusterService, client, null, null, scriptService, settings)
             attemptDeleteStep.preExecute(logger, context).execute()
             val updatedManagedIndexMetaData = attemptDeleteStep.getUpdatedManagedIndexMetadata(managedIndexMetaData)
             logger.info(updatedManagedIndexMetaData)
@@ -78,7 +82,7 @@ class AttemptDeleteStepTests : OpenSearchTestCase() {
         runBlocking {
             val managedIndexMetaData = ManagedIndexMetaData("test", "indexUuid", "policy_id", null, null, null, null, null, null, null, null, null, null)
             val attemptDeleteStep = AttemptDeleteStep()
-            val context = StepContext(managedIndexMetaData, clusterService, client, null, null)
+            val context = StepContext(managedIndexMetaData, clusterService, client, null, null, scriptService, settings)
             attemptDeleteStep.preExecute(logger, context).execute()
             val updatedManagedIndexMetaData = attemptDeleteStep.getUpdatedManagedIndexMetadata(managedIndexMetaData)
             assertEquals("Step status is not CONDITION_NOT_MET", Step.StepStatus.CONDITION_NOT_MET, updatedManagedIndexMetaData.stepMetaData?.stepStatus)
