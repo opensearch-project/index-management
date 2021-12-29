@@ -69,6 +69,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.transport.action.retr
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.retryfailedmanagedindex.TransportRetryFailedManagedIndexAction
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.updateindexmetadata.TransportUpdateManagedIndexMetaDataAction
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.updateindexmetadata.UpdateManagedIndexMetaDataAction
+import org.opensearch.indexmanagement.migration.ISMTemplateService
 import org.opensearch.indexmanagement.refreshanalyzer.RefreshSearchAnalyzerAction
 import org.opensearch.indexmanagement.refreshanalyzer.RestRefreshSearchAnalyzerAction
 import org.opensearch.indexmanagement.refreshanalyzer.TransportRefreshSearchAnalyzerAction
@@ -332,10 +333,11 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
             .registerThreadPool(threadPool)
 
         val metadataService = MetadataService(client, clusterService, skipFlag, indexManagementIndices)
+        val templateService = ISMTemplateService(client, clusterService, xContentRegistry, indexManagementIndices)
 
         val managedIndexCoordinator = ManagedIndexCoordinator(
             environment.settings(),
-            client, clusterService, threadPool, indexManagementIndices, metadataService
+            client, clusterService, threadPool, indexManagementIndices, metadataService, templateService
         )
 
         return listOf(
@@ -359,6 +361,8 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
             ManagedIndexSettings.INDEX_STATE_MANAGEMENT_ENABLED,
             ManagedIndexSettings.METADATA_SERVICE_ENABLED,
             ManagedIndexSettings.AUTO_MANAGE,
+            ManagedIndexSettings.METADATA_SERVICE_STATUS,
+            ManagedIndexSettings.TEMPLATE_MIGRATION_CONTROL,
             ManagedIndexSettings.JITTER,
             ManagedIndexSettings.JOB_INTERVAL,
             ManagedIndexSettings.SWEEP_PERIOD,
@@ -399,6 +403,9 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
             LegacyOpenDistroManagedIndexSettings.COORDINATOR_BACKOFF_MILLIS,
             LegacyOpenDistroManagedIndexSettings.ALLOW_LIST,
             LegacyOpenDistroManagedIndexSettings.SNAPSHOT_DENY_LIST,
+            LegacyOpenDistroManagedIndexSettings.AUTO_MANAGE,
+            LegacyOpenDistroManagedIndexSettings.METADATA_SERVICE_STATUS,
+            LegacyOpenDistroManagedIndexSettings.TEMPLATE_MIGRATION_CONTROL,
             LegacyOpenDistroRollupSettings.ROLLUP_INGEST_BACKOFF_COUNT,
             LegacyOpenDistroRollupSettings.ROLLUP_INGEST_BACKOFF_MILLIS,
             LegacyOpenDistroRollupSettings.ROLLUP_SEARCH_BACKOFF_COUNT,
