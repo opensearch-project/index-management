@@ -34,24 +34,23 @@ class MetadataRegressionIT : IndexStateManagementIntegTestCase() {
     fun startMetadataService() {
         // metadata service could be stopped before following tests start run
         // this will enable metadata service again
-        updateClusterSetting(ManagedIndexSettings.METADATA_SERVICE_ENABLED.key, "false")
-        updateClusterSetting(ManagedIndexSettings.METADATA_SERVICE_ENABLED.key, "true")
+        updateClusterSetting(ManagedIndexSettings.METADATA_SERVICE_STATUS.key, "-1")
+        updateClusterSetting(ManagedIndexSettings.METADATA_SERVICE_STATUS.key, "0")
     }
 
     @After
     fun cleanClusterSetting() {
         // need to clean up otherwise will throw error
-        updateClusterSetting(ManagedIndexSettings.METADATA_SERVICE_ENABLED.key, null, false)
+        updateClusterSetting(ManagedIndexSettings.METADATA_SERVICE_STATUS.key, null, false)
+        updateClusterSetting(ManagedIndexSettings.TEMPLATE_MIGRATION_CONTROL.key, null, false)
         updateIndexStateManagementJitterSetting(null)
     }
 
     fun `test move metadata service`() {
-        updateClusterSetting(ManagedIndexSettings.METADATA_SERVICE_ENABLED.key, "false")
-        updateClusterSetting(ManagedIndexSettings.METADATA_SERVICE_ENABLED.key, "true")
-
         val indexName = "${testIndexName}_index_1"
         val policyID = "${testIndexName}_testPolicyName_1"
         val actionConfig = ReplicaCountActionConfig(10, 0)
+
         val states = listOf(State(name = "ReplicaCountState", actions = listOf(actionConfig), transitions = listOf()))
         val policy = Policy(
             id = policyID,
@@ -65,6 +64,9 @@ class MetadataRegressionIT : IndexStateManagementIntegTestCase() {
 
         createPolicy(policy, policyID)
         createIndex(indexName)
+
+        // create a job
+        addPolicyToIndex(indexName, policyID)
 
         // put some metadata into cluster state
         var indexMetadata = getIndexMetadata(indexName)
@@ -84,9 +86,6 @@ class MetadataRegressionIT : IndexStateManagementIntegTestCase() {
         logger.info(response.isAcknowledged)
         indexMetadata = getIndexMetadata(indexName)
         logger.info("check if metadata is saved in cluster state: ${indexMetadata.getCustomData("managed_index_metadata")}")
-
-        // create a job
-        addPolicyToIndex(indexName, policyID)
 
         waitFor {
             assertEquals(

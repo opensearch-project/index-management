@@ -327,7 +327,8 @@ class TransportAddPolicyAction @Inject constructor(
                 // If after the ClusterStateResponse we go over the timeout for Add Policy (30 seconds), throw an
                 // exception since UpdateSettingsRequest cannot have a negative timeout
                 if (bulkReqTimeout < 0) {
-                    throw OpenSearchTimeoutException("Add policy API timed out after ClusterStateResponse")
+                    actionListener.onFailure(OpenSearchTimeoutException("Add policy API timed out after ClusterStateResponse"))
+                    return
                 }
 
                 val bulkReq = BulkRequest().timeout(TimeValue.timeValueMillis(bulkReqTimeout))
