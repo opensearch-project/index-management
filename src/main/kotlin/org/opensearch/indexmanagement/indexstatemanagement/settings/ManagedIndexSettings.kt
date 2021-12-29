@@ -7,16 +7,14 @@ package org.opensearch.indexmanagement.indexstatemanagement.settings
 
 import org.opensearch.common.settings.Setting
 import org.opensearch.common.unit.TimeValue
-import org.opensearch.indexmanagement.indexstatemanagement.model.action.ActionConfig
 import java.util.function.Function
 
 class ManagedIndexSettings {
     companion object {
         const val DEFAULT_ISM_ENABLED = true
-        const val DEFAULT_METADATA_SERVICE_ENABLED = true
+        const val DEFAULT_TEMPLATE_MIGRATION_TIMESTAMP = 0L
         const val DEFAULT_JOB_INTERVAL = 5
         const val DEFAULT_JITTER = 0.6
-        private val ALLOW_LIST_ALL = ActionConfig.ActionType.values().toList().map { it.type }
         val ALLOW_LIST_NONE = emptyList<String>()
         val SNAPSHOT_DENY_LIST_NONE = emptyList<String>()
         const val HOST_DENY_LIST = "opendistro.destination.host.deny_list"
@@ -24,6 +22,28 @@ class ManagedIndexSettings {
         val INDEX_STATE_MANAGEMENT_ENABLED: Setting<Boolean> = Setting.boolSetting(
             "plugins.index_state_management.enabled",
             LegacyOpenDistroManagedIndexSettings.INDEX_STATE_MANAGEMENT_ENABLED,
+            Setting.Property.NodeScope,
+            Setting.Property.Dynamic
+        )
+
+        // 0: migration is going on
+        // 1: migration succeed
+        // -1: migration failed
+        val METADATA_SERVICE_STATUS: Setting<Int> = Setting.intSetting(
+            "plugins.index_state_management.metadata_migration.status",
+            LegacyOpenDistroManagedIndexSettings.METADATA_SERVICE_STATUS,
+            Setting.Property.NodeScope,
+            Setting.Property.Dynamic
+        )
+
+        // 0: enabled, use onMaster time as ISM template last_updated_time
+        // -1: migration ended successfully
+        // -2: migration ended unsuccessfully
+        // >0: use this setting (epoch millis) as ISM template last_updated_time
+        val TEMPLATE_MIGRATION_CONTROL: Setting<Long> = Setting.longSetting(
+            "plugins.index_state_management.template_migration.control",
+            LegacyOpenDistroManagedIndexSettings.TEMPLATE_MIGRATION_CONTROL,
+            -2L,
             Setting.Property.NodeScope,
             Setting.Property.Dynamic
         )
@@ -58,7 +78,7 @@ class ManagedIndexSettings {
 
         val AUTO_MANAGE: Setting<Boolean> = Setting.boolSetting(
             "index.plugins.index_state_management.auto_manage",
-            true,
+            LegacyOpenDistroManagedIndexSettings.AUTO_MANAGE,
             Setting.Property.IndexScope,
             Setting.Property.Dynamic
         )

@@ -282,7 +282,7 @@ class TransportRetryFailedManagedIndexAction @Inject constructor(
 
                 val updateMetadataRequests = listOfIndexToMetadata.map { (index, metadata) ->
                     val builder = metadata.toXContent(XContentFactory.jsonBuilder(), ToXContent.EMPTY_PARAMS, true)
-                    UpdateRequest(INDEX_MANAGEMENT_INDEX, managedIndexMetadataID(index.uuid)).doc(builder)
+                    UpdateRequest(INDEX_MANAGEMENT_INDEX, managedIndexMetadataID(index.uuid)).routing(index.uuid).doc(builder)
                 }
                 val bulkUpdateMetadataRequest = BulkRequest().add(updateMetadataRequests)
 
