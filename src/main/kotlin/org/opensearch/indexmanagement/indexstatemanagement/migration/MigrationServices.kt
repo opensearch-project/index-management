@@ -1,8 +1,6 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
- *
- * com.maddyhome.idea.copyright.pattern.CommentInfo@7a1a92a5
  */
 
 package org.opensearch.indexmanagement.migration
