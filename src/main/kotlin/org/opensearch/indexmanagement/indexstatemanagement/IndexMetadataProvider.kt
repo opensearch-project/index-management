@@ -42,7 +42,13 @@ class IndexMetadataProvider(
 
     suspend fun getISMIndexMetadataByType(type: String = DEFAULT_INDEX_TYPE, indexNames: List<String>): Map<String, ISMIndexMetadata> {
         val service = services[type] ?: throw IllegalArgumentException(getTypeNotRecognizedMessage(type))
+        if (type != DEFAULT_INDEX_TYPE && indexNames.size > 1) throw IllegalArgumentException(MULTIPLE_INDICES_CUSTOM_INDEX_TYPE_ERROR)
         return service.getMetadata(indexNames, client, clusterService)
+    }
+
+    suspend fun getAllISMIndexMetadataByType(type: String = DEFAULT_INDEX_TYPE): Map<String, ISMIndexMetadata> {
+        val service = services[type] ?: throw IllegalArgumentException(getTypeNotRecognizedMessage(type))
+        return service.getMetadataForAllIndices(client, clusterService)
     }
 
     /*
@@ -53,6 +59,7 @@ class IndexMetadataProvider(
         types: List<String> = services.keys.toList(),
         indexNames: List<String>
     ): Map<String, Map<String, ISMIndexMetadata>> = coroutineScope {
+        if (types.any { it != DEFAULT_INDEX_TYPE } && indexNames.size > 1) throw IllegalArgumentException(MULTIPLE_INDICES_CUSTOM_INDEX_TYPE_ERROR)
         val requests = ArrayList<Deferred<Pair<String, Map<String, ISMIndexMetadata>>>>()
         // Start all index metadata requests at the same time
         types.forEach { type ->
@@ -82,8 +89,13 @@ class IndexMetadataProvider(
         metadata
     }
 
+    fun getIndexMetadataWriteOverrideSettings(): List<String> {
+        return services.values.mapNotNull { it.getIndexMetadataWriteOverrideSetting() }
+    }
+
     companion object {
         const val EVALUATION_FAILURE_MESSAGE = "Matches restricted index pattern defined in the cluster setting"
+        const val MULTIPLE_INDICES_CUSTOM_INDEX_TYPE_ERROR = "Cannot get metadata for more than one index name/pattern when using a custom index type"
         fun getTypeNotRecognizedMessage(indexType: String) = "Index type [type=$indexType] was not recognized when trying to get index metadata"
         fun getDuplicateServicesMessage(indexType: String) = "Multiple metadata services attempted to assign a service to the index type [$indexType]"
     }

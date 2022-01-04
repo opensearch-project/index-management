@@ -254,9 +254,9 @@ class RestRetryFailedManagedIndexActionIT : IndexStateManagementRestTestCase() {
     fun `test reset action start time`() {
         val indexName = "${testIndexName}_drewberry"
         val policyID = "${testIndexName}_policy_1"
-        val config = randomForceMergeActionConfig(maxNumSegments = 1)
-        config.configRetry = ActionRetry(0)
-        val policy = randomPolicy(states = listOf(randomState(actions = listOf(config))))
+        val action = randomForceMergeActionConfig(maxNumSegments = 1)
+        action.configRetry = ActionRetry(0)
+        val policy = randomPolicy(states = listOf(randomState(actions = listOf(action))))
         createPolicy(policy, policyId = policyID)
         createIndex(indexName, policyID)
 

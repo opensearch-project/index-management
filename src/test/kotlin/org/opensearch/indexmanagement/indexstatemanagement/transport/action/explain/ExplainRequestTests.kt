@@ -9,6 +9,7 @@ import org.opensearch.common.io.stream.BytesStreamOutput
 import org.opensearch.common.io.stream.StreamInput
 import org.opensearch.common.unit.TimeValue
 import org.opensearch.indexmanagement.indexstatemanagement.model.SearchParams
+import org.opensearch.indexmanagement.indexstatemanagement.util.DEFAULT_INDEX_TYPE
 import org.opensearch.test.OpenSearchTestCase
 
 class ExplainRequestTests : OpenSearchTestCase() {
@@ -18,7 +19,7 @@ class ExplainRequestTests : OpenSearchTestCase() {
         val local = true
         val masterTimeout = TimeValue.timeValueSeconds(30)
         val params = SearchParams(0, 20, "sort-field", "asc", "*")
-        val req = ExplainRequest(indices, local, masterTimeout, params)
+        val req = ExplainRequest(indices, local, masterTimeout, params, DEFAULT_INDEX_TYPE)
 
         val out = BytesStreamOutput()
         req.writeTo(out)
@@ -26,5 +27,17 @@ class ExplainRequestTests : OpenSearchTestCase() {
         val newReq = ExplainRequest(sin)
         assertEquals(indices, newReq.indices)
         assertEquals(local, newReq.local)
+    }
+
+    fun `test explain policy request with non default index type and multiple indices fails`() {
+        val indices = listOf("index1", "index2")
+        val local = true
+        val masterTimeout = TimeValue.timeValueSeconds(30)
+        val params = SearchParams(0, 20, "sort-field", "asc", "*")
+        val req = ExplainRequest(indices, local, masterTimeout, params, "non-existent-index-type")
+
+        val actualException: String? = req.validate()?.validationErrors()?.firstOrNull()
+        val expectedException: String = ExplainRequest.MULTIPLE_INDICES_CUSTOM_INDEX_TYPE_ERROR
+        assertEquals("Add policy request should have failed validation with specific exception", actualException, expectedException)
     }
 }

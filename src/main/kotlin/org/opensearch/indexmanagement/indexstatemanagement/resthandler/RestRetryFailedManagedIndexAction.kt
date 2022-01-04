@@ -13,6 +13,8 @@ import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.ISM_BASE_U
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.LEGACY_ISM_BASE_URI
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.retryfailedmanagedindex.RetryFailedManagedIndexAction
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.retryfailedmanagedindex.RetryFailedManagedIndexRequest
+import org.opensearch.indexmanagement.indexstatemanagement.util.DEFAULT_INDEX_TYPE
+import org.opensearch.indexmanagement.indexstatemanagement.util.TYPE_PARAM_KEY
 import org.opensearch.rest.BaseRestHandler
 import org.opensearch.rest.BaseRestHandler.RestChannelConsumer
 import org.opensearch.rest.RestHandler.ReplacedRoute
@@ -56,9 +58,12 @@ class RestRetryFailedManagedIndexAction : BaseRestHandler() {
             mapOf()
         }
 
+        val indexType = request.param(TYPE_PARAM_KEY, DEFAULT_INDEX_TYPE)
+
         val retryFailedRequest = RetryFailedManagedIndexRequest(
             indices.toList(), body["state"] as String?,
-            request.paramAsTime("master_timeout", DEFAULT_MASTER_NODE_TIMEOUT)
+            request.paramAsTime("master_timeout", DEFAULT_MASTER_NODE_TIMEOUT),
+            indexType
         )
 
         return RestChannelConsumer { channel ->
