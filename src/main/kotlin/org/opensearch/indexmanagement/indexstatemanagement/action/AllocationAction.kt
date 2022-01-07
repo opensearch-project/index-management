@@ -25,7 +25,7 @@ class AllocationAction(
         require(require.isNotEmpty() || include.isNotEmpty() || exclude.isNotEmpty()) { "At least one allocation parameter need to be specified." }
     }
 
-    private val attemptAllocationStep = AttemptAllocationStep()
+    private val attemptAllocationStep = AttemptAllocationStep(this)
 
     private val steps = listOf(attemptAllocationStep)
 
