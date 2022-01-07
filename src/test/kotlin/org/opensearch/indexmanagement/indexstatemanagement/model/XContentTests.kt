@@ -172,12 +172,12 @@ class XContentTests : OpenSearchTestCase() {
         assertEquals("Round tripping SnapshotActionConfig doesn't work", snapshotActionConfig, parsedNotificationActionConfig)
     }
 
-    private fun `test allocation action config parsing`() {
-        val allocationActionConfig = randomAllocationActionConfig(require = mapOf("box_type" to "hot"))
+    fun `test allocation action config parsing`() {
+        val allocationAction = randomAllocationActionConfig(require = mapOf("box_type" to "hot"))
 
-        val allocationActionConfigString = allocationActionConfig.toJsonString()
-        val parsedAllocationActionConfig = ISMActionsParser.instance.parse(parser(allocationActionConfigString), 0)
-        assertEquals("Round tripping AllocationActionConfig doesn't work", allocationActionConfig, parsedAllocationActionConfig)
+        val allocationActionString = allocationAction.toJsonString()
+        val parsedAllocationAction = ISMActionsParser.instance.parse(parser(allocationActionString), 0)
+        assertEquals("Round tripping AllocationAction doesn't work", allocationAction, parsedAllocationAction)
     }
 
     fun `test managed index config parsing`() {
