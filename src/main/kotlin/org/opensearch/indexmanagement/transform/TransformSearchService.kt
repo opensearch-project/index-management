@@ -80,28 +80,34 @@ class TransformSearchService(
 
     @Suppress("RethrowCaughtException")
     suspend fun getShardsGlobalCheckpoint(index: String): Map<ShardId, Long> {
-        val errorMessage = "Failed to get the shards in the source indices"
         try {
-            val request = IndicesStatsRequest().indices(index).clear()
-            val response: IndicesStatsResponse = client.suspendUntil { execute(IndicesStatsAction.INSTANCE, request, it) }
-            if (response.status == RestStatus.OK) {
-                return convertIndicesStatsResponse(response)
+            var retryAttempt = 1
+            // Retry on standard retry fail statuses plus NOT_FOUND in case a shard routing entry isn't ready yet
+            val searchResponse: IndicesStatsResponse = backoffPolicy.retry(logger, listOf(RestStatus.NOT_FOUND)) {
+                val request = IndicesStatsRequest().indices(index).clear()
+                if (retryAttempt > 1) {
+                    logger.debug(getShardsRetryMessage(retryAttempt))
+                }
+                retryAttempt++
+                client.suspendUntil { execute(IndicesStatsAction.INSTANCE, request, it) }
             }
-            throw TransformSearchServiceException("$errorMessage - ${response.status}")
+            if (searchResponse.status == RestStatus.OK) {
+                return convertIndicesStatsResponse(searchResponse)
+            }
+            throw TransformSearchServiceException("$getShardsErrorMessage - ${searchResponse.status}")
         } catch (e: TransformSearchServiceException) {
             throw e
         } catch (e: RemoteTransportException) {
             val unwrappedException = ExceptionsHelper.unwrapCause(e) as Exception
-            throw TransformSearchServiceException(errorMessage, unwrappedException)
+            throw TransformSearchServiceException(getShardsErrorMessage, unwrappedException)
         } catch (e: OpenSearchSecurityException) {
-            throw TransformSearchServiceException("$errorMessage - missing required index permissions: ${e.localizedMessage}", e)
+            throw TransformSearchServiceException("$getShardsErrorMessage - missing required index permissions: ${e.localizedMessage}", e)
         } catch (e: Exception) {
-            throw TransformSearchServiceException(errorMessage, e)
+            throw TransformSearchServiceException(getShardsErrorMessage, e)
         }
     }
 
     suspend fun getModifiedBuckets(transform: Transform, afterKey: Map<String, Any>?, currentShard: ShardNewDocuments): BucketSearchResult {
-        val errorMessage = "Failed to get the modified buckets in source indices"
         try {
             var retryAttempt = 0
             val searchResponse = backoffPolicy.retry(logger) {
@@ -123,11 +129,11 @@ class TransformSearchService(
             throw e
         } catch (e: RemoteTransportException) {
             val unwrappedException = ExceptionsHelper.unwrapCause(e) as Exception
-            throw TransformSearchServiceException(errorMessage, unwrappedException)
+            throw TransformSearchServiceException(modifiedBucketsErrorMessage, unwrappedException)
         } catch (e: OpenSearchSecurityException) {
-            throw TransformSearchServiceException("$errorMessage - missing required index permissions: ${e.localizedMessage}", e)
+            throw TransformSearchServiceException("$modifiedBucketsErrorMessage - missing required index permissions: ${e.localizedMessage}", e)
         } catch (e: Exception) {
-            throw TransformSearchServiceException(errorMessage, e)
+            throw TransformSearchServiceException(modifiedBucketsErrorMessage, e)
         }
     }
 
@@ -136,7 +142,6 @@ class TransformSearchService(
         afterKey: Map<String, Any>? = null,
         modifiedBuckets: MutableSet<Map<String, Any>>? = null
     ): TransformSearchResult {
-        val errorMessage = "Failed to search data in source indices"
         try {
             var retryAttempt = 0
             val searchResponse = backoffPolicy.retry(logger) {
@@ -159,15 +164,21 @@ class TransformSearchService(
             throw e
         } catch (e: RemoteTransportException) {
             val unwrappedException = ExceptionsHelper.unwrapCause(e) as Exception
-            throw TransformSearchServiceException(errorMessage, unwrappedException)
+            throw TransformSearchServiceException(failedSearchErrorMessage, unwrappedException)
         } catch (e: OpenSearchSecurityException) {
-            throw TransformSearchServiceException("$errorMessage - missing required index permissions: ${e.localizedMessage}", e)
+            throw TransformSearchServiceException("$failedSearchErrorMessage - missing required index permissions: ${e.localizedMessage}", e)
         } catch (e: Exception) {
-            throw TransformSearchServiceException(errorMessage, e)
+            throw TransformSearchServiceException(failedSearchErrorMessage, e)
         }
     }
 
     companion object {
+        const val failedSearchErrorMessage = "Failed to search data in source indices"
+        const val modifiedBucketsErrorMessage = "Failed to get the modified buckets in source indices"
+        const val getShardsErrorMessage = "Failed to get the shards in the source indices"
+        private fun getShardsRetryMessage(attemptNumber: Int) = "Attempt [$attemptNumber] to get shard global checkpoint numbers"
+        private fun noTransformGroupErrorMessage(bucketField: String) = "Failed to find a transform group matching the bucket field [$bucketField]"
+
         fun getSearchServiceRequest(
             transform: Transform,
             afterKey: Map<String, Any>? = null,
@@ -197,7 +208,9 @@ class TransformSearchService(
             modifiedBuckets.forEach { bucket ->
                 val bucketQuery: BoolQueryBuilder = QueryBuilders.boolQuery()
                 bucket.forEach { group ->
-                    val transformGroup = groups.find { it.targetField == group.key }!!
+                    // There should be a transform grouping for each bucket key, if not then throw an error
+                    val transformGroup = groups.find { it.targetField == group.key }
+                        ?: throw TransformSearchServiceException(noTransformGroupErrorMessage(group.key))
                     val subQuery = transformGroup.toBucketQuery(group.value)
                     bucketQuery.filter(subQuery)
                 }

@@ -175,14 +175,15 @@ object TransformRunner :
             val shardIdToGlobalCheckpoint = withTransformSecurityContext(transform) {
                 transformSearchService.getShardsGlobalCheckpoint(transform.sourceIndex)
             }
+            val shardsToSearch = getShardsToSearch(oldShardIDToMaxSeqNo, shardIdToGlobalCheckpoint).iterator()
             currentBucketsToTransform = bucketsToTransform.copy(
                 metadata = bucketsToTransform.metadata.copy(
                     shardIDToGlobalCheckpoint = shardIdToGlobalCheckpoint,
                     continuousStats = bucketsToTransform.metadata.continuousStats?.copy(lastTimestamp = Instant.now())
                 ),
-                shardsToSearch = getShardsToSearch(oldShardIDToMaxSeqNo, shardIdToGlobalCheckpoint).iterator()
+                shardsToSearch = shardsToSearch
             )
-            if (currentBucketsToTransform.shardsToSearch!!.hasNext()) currentShard = currentBucketsToTransform.shardsToSearch!!.next()
+            if (shardsToSearch.hasNext()) currentShard = shardsToSearch.next()
         }
 
         if (currentShard != null) {
@@ -205,8 +206,9 @@ object TransformRunner :
         }
         // If finished with this shard, go to the next
         if (currentBucketsToTransform.metadata.afterKey == null) {
-            currentBucketsToTransform = if (currentBucketsToTransform.shardsToSearch!!.hasNext()) {
-                currentBucketsToTransform.copy(currentShard = currentBucketsToTransform.shardsToSearch!!.next())
+            val shardsToSearch = currentBucketsToTransform.shardsToSearch
+            currentBucketsToTransform = if (shardsToSearch?.hasNext() == true) {
+                currentBucketsToTransform.copy(currentShard = shardsToSearch.next())
             } else {
                 currentBucketsToTransform.copy(currentShard = null)
             }
@@ -218,7 +220,8 @@ object TransformRunner :
     private fun getShardsToSearch(oldShardIDToMaxSeqNo: Map<ShardId, Long>?, newShardIDToMaxSeqNo: Map<ShardId, Long>): List<ShardNewDocuments> {
         val shardsToSearch: MutableList<ShardNewDocuments> = ArrayList()
         newShardIDToMaxSeqNo.forEach { (shardId, currentMaxSeqNo) ->
-            if ((oldShardIDToMaxSeqNo == null) || (shardId !in oldShardIDToMaxSeqNo.keys) || (currentMaxSeqNo > oldShardIDToMaxSeqNo[shardId]!!)) {
+            // if there are no seq number records, or no records for this shard, or the shard seq number is greater than the record, search it
+            if ((oldShardIDToMaxSeqNo == null) || oldShardIDToMaxSeqNo[shardId].let { it == null || currentMaxSeqNo > it }) {
                 shardsToSearch.add(ShardNewDocuments(shardId, oldShardIDToMaxSeqNo?.get(shardId), currentMaxSeqNo))
             }
         }

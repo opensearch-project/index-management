@@ -163,18 +163,20 @@ class TransportExplainTransformAction @Inject constructor(
                                                         if (response.status == RestStatus.OK) {
                                                             TransformSearchService.convertIndicesStatsResponse(response)
                                                         } else null
-                                                    val newMetadata = idsToExplain[currTransform.id]!!.metadata?.copy(
-                                                        shardIDToGlobalCheckpoint = null,
-                                                        continuousStats = ContinuousTransformStats(
-                                                            idsToExplain[currTransform.id]!!.metadata!!.continuousStats?.lastTimestamp,
-                                                            getDocumentsBehind(
-                                                                idsToExplain[currTransform.id]!!.metadata!!.shardIDToGlobalCheckpoint,
-                                                                shardIDsToGlobalCheckpoint
+                                                    // the current transform should always be present, if it isn't, just skip it
+                                                    idsToExplain[currTransform.id]?.let { currentExplain ->
+                                                        val newMetadata = currentExplain.metadata?.copy(
+                                                            shardIDToGlobalCheckpoint = null,
+                                                            continuousStats = ContinuousTransformStats(
+                                                                currentExplain.metadata.continuousStats?.lastTimestamp,
+                                                                getDocumentsBehind(
+                                                                    currentExplain.metadata.shardIDToGlobalCheckpoint,
+                                                                    shardIDsToGlobalCheckpoint
+                                                                )
                                                             )
                                                         )
-                                                    )
-                                                    idsToExplain[currTransform.id] =
-                                                        idsToExplain[currTransform.id]!!.copy(metadata = newMetadata)
+                                                        idsToExplain[currTransform.id] = currentExplain.copy(metadata = newMetadata)
+                                                    }
                                                     addContinuousStats(transformsToSearch)
                                                 }
 
