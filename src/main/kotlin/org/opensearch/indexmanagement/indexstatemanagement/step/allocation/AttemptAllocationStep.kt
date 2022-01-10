@@ -5,7 +5,6 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.step.allocation
 
-import jdk.jfr.internal.Type.SETTINGS_PREFIX
 import org.apache.logging.log4j.LogManager
 import org.opensearch.action.admin.indices.settings.put.UpdateSettingsRequest
 import org.opensearch.action.support.master.AcknowledgedResponse
@@ -77,6 +76,7 @@ class AttemptAllocationStep(private val action: AllocationAction) : Step(name) {
 
     companion object {
         const val name = "attempt_allocation"
+        private const val SETTINGS_PREFIX = "index.routing.allocation."
         fun getFailedMessage(index: String) = "Failed to send notification [index=$index]"
         fun getSuccessMessage(index: String) = "Successfully sent notification [index=$index]"
     }
