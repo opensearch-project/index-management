@@ -77,7 +77,7 @@ class AttemptAllocationStep(private val action: AllocationAction) : Step(name) {
     companion object {
         const val name = "attempt_allocation"
         private const val SETTINGS_PREFIX = "index.routing.allocation."
-        fun getFailedMessage(index: String) = "Failed to send notification [index=$index]"
-        fun getSuccessMessage(index: String) = "Successfully sent notification [index=$index]"
+        fun getFailedMessage(index: String) = "Failed to update allocation setting [index=$index]"
+        fun getSuccessMessage(index: String) = "Successfully updated allocation setting [index=$index]"
     }
 }
