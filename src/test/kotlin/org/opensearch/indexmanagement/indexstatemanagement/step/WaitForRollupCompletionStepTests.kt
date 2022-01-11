@@ -9,6 +9,7 @@ import com.nhaarman.mockitokotlin2.mock
 import kotlinx.coroutines.runBlocking
 import org.opensearch.client.Client
 import org.opensearch.cluster.service.ClusterService
+import org.opensearch.common.settings.Settings
 import org.opensearch.indexmanagement.indexstatemanagement.step.rollup.WaitForRollupCompletionStep
 import org.opensearch.indexmanagement.rollup.model.RollupMetadata
 import org.opensearch.indexmanagement.rollup.model.RollupStats
@@ -17,12 +18,15 @@ import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ActionMetaD
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ActionProperties
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepContext
+import org.opensearch.script.ScriptService
 import org.opensearch.test.OpenSearchTestCase
 import java.time.Instant
 
 class WaitForRollupCompletionStepTests : OpenSearchTestCase() {
 
     private val clusterService: ClusterService = mock()
+    private val scriptService: ScriptService = mock()
+    private val settings: Settings = Settings.EMPTY
     private val rollupId: String = "dummy-id"
     private val indexName: String = "test"
     private val metadata = ManagedIndexMetaData(
@@ -41,7 +45,7 @@ class WaitForRollupCompletionStepTests : OpenSearchTestCase() {
     fun `test wait for rollup when missing rollup id`() {
         val actionMetadata = metadata.actionMetaData!!.copy(actionProperties = ActionProperties())
         val metadata = metadata.copy(actionMetaData = actionMetadata)
-        val context = StepContext(metadata, clusterService, client, null, null)
+        val context = StepContext(metadata, clusterService, client, null, null, scriptService, settings)
         val step = WaitForRollupCompletionStep()
 
         runBlocking {
