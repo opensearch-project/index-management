@@ -57,7 +57,7 @@ class XContentTests : OpenSearchTestCase() {
         assertEquals("Round tripping State doesn't work", state, parsedState)
     }
 
-    private fun `test transition parsing`() {
+    fun `test transition parsing`() {
         val transition = randomTransition()
 
         val transitionString = transition.toJsonString()
@@ -65,7 +65,7 @@ class XContentTests : OpenSearchTestCase() {
         assertEquals("Round tripping Transition doesn't work", transition, parsedTransition)
     }
 
-    private fun `test conditions parsing`() {
+    fun `test conditions parsing`() {
         val conditions = nonNullRandomConditions()
 
         val conditionsString = conditions.toJsonString()
@@ -201,13 +201,13 @@ class XContentTests : OpenSearchTestCase() {
         assertEquals("Round tripping ManagedIndexConfig doesn't work with id and version", configThree, parsedConfigThree)
     }
 
-    private fun `test rollup action parsing`() {
-        val rollupActionConfig = randomRollupActionConfig()
-        val rollupActionConfigString = rollupActionConfig.toJsonString()
-        val parsedRollupActionConfig = ISMActionsParser.instance.parse(parser(rollupActionConfigString), 0) as RollupAction
+    fun `test rollup action parsing`() {
+        val rollupAction = randomRollupActionConfig()
+        val rollupActionString = rollupAction.toJsonString()
+        val parsedRollupAction = ISMActionsParser.instance.parse(parser(rollupActionString), 0) as RollupAction
 
-        assertEquals("Round tripping RollupActionConfig doesn't work", rollupActionConfig.actionIndex, parsedRollupActionConfig.actionIndex)
-        assertEquals("Round tripping RollupActionConfig doesn't work", rollupActionConfig.ismRollup, parsedRollupActionConfig.ismRollup)
+        assertEquals("Round tripping RollupAction doesn't work", rollupAction.actionIndex, parsedRollupAction.actionIndex)
+        assertEquals("Round tripping RollupAction doesn't work", rollupAction.ismRollup, parsedRollupAction.ismRollup)
     }
 
     fun `test close action parsing`() {

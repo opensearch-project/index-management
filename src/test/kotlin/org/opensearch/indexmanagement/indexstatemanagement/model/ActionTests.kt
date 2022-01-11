@@ -24,6 +24,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.randomReadOnlyActionC
 import org.opensearch.indexmanagement.indexstatemanagement.randomReadWriteActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomReplicaCountActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomRolloverActionConfig
+import org.opensearch.indexmanagement.indexstatemanagement.randomRollupActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomSnapshotActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomTimeValueObject
 import org.opensearch.indexmanagement.opensearchapi.convertToMap
@@ -86,6 +87,10 @@ class ActionTests : OpenSearchTestCase() {
 
     fun `test rollover action round trip`() {
         roundTripAction(randomRolloverActionConfig())
+    }
+
+    fun `test rollup action round trip`() {
+        roundTripAction(randomRollupActionConfig())
     }
 
     fun `test replica count action round trip`() {

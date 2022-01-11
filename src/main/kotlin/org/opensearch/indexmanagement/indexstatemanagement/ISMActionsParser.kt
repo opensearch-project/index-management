@@ -15,6 +15,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.action.ReadOnlyAction
 import org.opensearch.indexmanagement.indexstatemanagement.action.ReadWriteActionParser
 import org.opensearch.indexmanagement.indexstatemanagement.action.ReplicaCountActionParser
 import org.opensearch.indexmanagement.indexstatemanagement.action.RolloverActionParser
+import org.opensearch.indexmanagement.indexstatemanagement.action.RollupActionParser
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Action
 import org.opensearch.indexmanagement.spi.indexstatemanagement.ActionParser
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ActionRetry
@@ -34,6 +35,7 @@ class ISMActionsParser private constructor() {
         ReadOnlyActionParser(),
         ReadWriteActionParser(),
         ReplicaCountActionParser(),
+        RollupActionParser(),
         RolloverActionParser()
     )
 
