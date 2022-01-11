@@ -102,8 +102,7 @@ class ActionTests : OpenSearchTestCase() {
         roundTripAction(randomForceMergeActionConfig())
     }
 
-    // TODO: fixme - enable the test
-    private fun `test notification action round trip`() {
+    fun `test notification action round trip`() {
         roundTripAction(randomNotificationActionConfig())
     }
 

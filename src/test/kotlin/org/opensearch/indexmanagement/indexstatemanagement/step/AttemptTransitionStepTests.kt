@@ -23,6 +23,7 @@ import org.opensearch.cluster.metadata.IndexMetadata
 import org.opensearch.cluster.metadata.Metadata
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.collect.ImmutableOpenMap
+import org.opensearch.common.settings.Settings
 import org.opensearch.index.shard.DocsStats
 import org.opensearch.indexmanagement.indexstatemanagement.action.TransitionsAction
 import org.opensearch.indexmanagement.indexstatemanagement.model.Conditions
@@ -33,6 +34,7 @@ import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedInde
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepContext
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepMetaData
 import org.opensearch.rest.RestStatus
+import org.opensearch.script.ScriptService
 import org.opensearch.test.OpenSearchTestCase
 import org.opensearch.transport.RemoteTransportException
 import java.time.Instant
@@ -46,6 +48,8 @@ class AttemptTransitionStepTests : OpenSearchTestCase() {
     private val metadata: Metadata = mock { on { index(any<String>()) } doReturn indexMetadata }
     private val clusterState: ClusterState = mock { on { metadata() } doReturn metadata }
     private val clusterService: ClusterService = mock { on { state() } doReturn clusterState }
+    private val scriptService: ScriptService = mock()
+    private val settings: Settings = Settings.EMPTY
 
     private val docsStats: DocsStats = mock()
     private val primaries: CommonStats = mock { on { getDocs() } doReturn docsStats }
@@ -63,7 +67,7 @@ class AttemptTransitionStepTests : OpenSearchTestCase() {
             val managedIndexMetadata = ManagedIndexMetaData("test", "indexUuid", "policy_id", null, null, null, null, null, null, null, null, null, null)
             val transitionsAction = TransitionsAction(listOf(Transition("some_state", Conditions(docCount = 5L))))
             val attemptTransitionStep = AttemptTransitionStep(transitionsAction)
-            val context = StepContext(managedIndexMetadata, clusterService, client, null, null)
+            val context = StepContext(managedIndexMetadata, clusterService, client, null, null, scriptService, settings)
             attemptTransitionStep.preExecute(logger, context).execute()
             val updatedManagedIndexMetaData = attemptTransitionStep.getUpdatedManagedIndexMetadata(managedIndexMetadata)
             assertEquals("Step status is not FAILED", Step.StepStatus.FAILED, updatedManagedIndexMetaData.stepMetaData?.stepStatus)
@@ -80,7 +84,7 @@ class AttemptTransitionStepTests : OpenSearchTestCase() {
             val managedIndexMetadata = ManagedIndexMetaData("test", "indexUuid", "policy_id", null, null, null, null, null, null, null, null, null, null)
             val transitionsAction = TransitionsAction(listOf(Transition("some_state", Conditions(docCount = 5L))))
             val attemptTransitionStep = AttemptTransitionStep(transitionsAction)
-            val context = StepContext(managedIndexMetadata, clusterService, client, null, null)
+            val context = StepContext(managedIndexMetadata, clusterService, client, null, null, scriptService, settings)
             attemptTransitionStep.preExecute(logger, context).execute()
             val updatedManagedIndexMetaData = attemptTransitionStep.getUpdatedManagedIndexMetadata(managedIndexMetadata)
             assertEquals("Step status is not FAILED", Step.StepStatus.FAILED, updatedManagedIndexMetaData.stepMetaData?.stepStatus)
@@ -97,7 +101,7 @@ class AttemptTransitionStepTests : OpenSearchTestCase() {
             val managedIndexMetadata = ManagedIndexMetaData("test", "indexUuid", "policy_id", null, null, null, null, null, null, null, null, null, null)
             val transitionsAction = TransitionsAction(listOf(Transition("some_state", Conditions(docCount = 5L))))
             val attemptTransitionStep = AttemptTransitionStep(transitionsAction)
-            val context = StepContext(managedIndexMetadata, clusterService, client, null, null)
+            val context = StepContext(managedIndexMetadata, clusterService, client, null, null, scriptService, settings)
             attemptTransitionStep.preExecute(logger, context).execute()
             val updatedManagedIndexMetaData = attemptTransitionStep.getUpdatedManagedIndexMetadata(managedIndexMetadata)
             assertEquals("Step status is not FAILED", Step.StepStatus.FAILED, updatedManagedIndexMetaData.stepMetaData?.stepStatus)

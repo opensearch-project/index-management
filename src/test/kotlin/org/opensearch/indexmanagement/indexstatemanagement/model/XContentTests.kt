@@ -137,30 +137,30 @@ class XContentTests : OpenSearchTestCase() {
         assertEquals("Round tripping ForceMergeActionConfig doesn't work", forceMergeActionConfig, parsedForceMergeActionConfig)
     }
 
-    private fun `test notification action config parsing`() {
-        val chimeNotificationActionConfig = randomNotificationActionConfig(destination = randomDestination(type = DestinationType.CHIME))
-        val slackNotificationActionConfig = randomNotificationActionConfig(destination = randomDestination(type = DestinationType.SLACK))
-        val customNotificationActionConfig = randomNotificationActionConfig(destination = randomDestination(type = DestinationType.CUSTOM_WEBHOOK))
+    fun `test notification action parsing`() {
+        val chimeNotificationAction = randomNotificationActionConfig(destination = randomDestination(type = DestinationType.CHIME))
+        val slackNotificationAction = randomNotificationActionConfig(destination = randomDestination(type = DestinationType.SLACK))
+        val customNotificationAction = randomNotificationActionConfig(destination = randomDestination(type = DestinationType.CUSTOM_WEBHOOK))
 
-        val chimeNotificationActionConfigString = chimeNotificationActionConfig.toJsonString()
-        val chimeParsedNotificationActionConfig = ISMActionsParser.instance.parse(parser(chimeNotificationActionConfigString), 0)
+        val chimeNotificationActionString = chimeNotificationAction.toJsonString()
+        val chimeParsedNotificationAction = ISMActionsParser.instance.parse(parser(chimeNotificationActionString), 0)
         assertEquals(
-            "Round tripping chime NotificationActionConfig doesn't work",
-            chimeNotificationActionConfig, chimeParsedNotificationActionConfig
+            "Round tripping chime NotificationAction doesn't work",
+            chimeNotificationAction.convertToMap(), chimeParsedNotificationAction.convertToMap()
         )
 
-        val slackNotificationActionConfigString = slackNotificationActionConfig.toJsonString()
-        val slackParsedNotificationActionConfig = ISMActionsParser.instance.parse(parser(slackNotificationActionConfigString), 0)
+        val slackNotificationActionString = slackNotificationAction.toJsonString()
+        val slackParsedNotificationAction = ISMActionsParser.instance.parse(parser(slackNotificationActionString), 0)
         assertEquals(
-            "Round tripping slack NotificationActionConfig doesn't work",
-            slackNotificationActionConfig, slackParsedNotificationActionConfig
+            "Round tripping slack NotificationAction doesn't work",
+            slackNotificationAction.convertToMap(), slackParsedNotificationAction.convertToMap()
         )
 
-        val customNotificationActionConfigString = customNotificationActionConfig.toJsonString()
-        val customParsedNotificationActionConfig = ISMActionsParser.instance.parse(parser(customNotificationActionConfigString), 0)
+        val customNotificationActionString = customNotificationAction.toJsonString()
+        val customParsedNotificationAction = ISMActionsParser.instance.parse(parser(customNotificationActionString), 0)
         assertEquals(
-            "Round tripping custom webhook NotificationActionConfig doesn't work",
-            customNotificationActionConfig, customParsedNotificationActionConfig
+            "Round tripping custom webhook NotificationAction doesn't work",
+            customNotificationAction.convertToMap(), customParsedNotificationAction.convertToMap()
         )
     }
 
@@ -168,8 +168,8 @@ class XContentTests : OpenSearchTestCase() {
         val snapshotActionConfig = randomSnapshotActionConfig("repository", "snapshot")
 
         val snapshotActionConfigString = snapshotActionConfig.toJsonString()
-        val parsedNotificationActionConfig = ISMActionsParser.instance.parse(parser(snapshotActionConfigString), 0)
-        assertEquals("Round tripping SnapshotActionConfig doesn't work", snapshotActionConfig, parsedNotificationActionConfig)
+        val parsedSnapshotActionConfig = ISMActionsParser.instance.parse(parser(snapshotActionConfigString), 0)
+        assertEquals("Round tripping SnapshotActionConfig doesn't work", snapshotActionConfig, parsedSnapshotActionConfig)
     }
 
     private fun `test allocation action config parsing`() {

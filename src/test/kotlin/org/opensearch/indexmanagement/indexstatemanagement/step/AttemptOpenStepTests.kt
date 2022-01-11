@@ -17,16 +17,20 @@ import org.opensearch.client.AdminClient
 import org.opensearch.client.Client
 import org.opensearch.client.IndicesAdminClient
 import org.opensearch.cluster.service.ClusterService
+import org.opensearch.common.settings.Settings
 import org.opensearch.indexmanagement.indexstatemanagement.step.open.AttemptOpenStep
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepContext
+import org.opensearch.script.ScriptService
 import org.opensearch.test.OpenSearchTestCase
 import org.opensearch.transport.RemoteTransportException
 
 class AttemptOpenStepTests : OpenSearchTestCase() {
 
     private val clusterService: ClusterService = mock()
+    private val scriptService: ScriptService = mock()
+    private val settings: Settings = Settings.EMPTY
 
     fun `test open step sets step status to failed when not acknowledged`() {
         val openIndexResponse = OpenIndexResponse(false, false)
@@ -35,7 +39,7 @@ class AttemptOpenStepTests : OpenSearchTestCase() {
         runBlocking {
             val managedIndexMetaData = ManagedIndexMetaData("test", "indexUuid", "policy_id", null, null, null, null, null, null, null, null, null, null)
             val attemptOpenStep = AttemptOpenStep()
-            val context = StepContext(managedIndexMetaData, clusterService, client, null, null)
+            val context = StepContext(managedIndexMetaData, clusterService, client, null, null, scriptService, settings)
             attemptOpenStep.preExecute(logger, context).execute()
             val updatedManagedIndexMetaData = attemptOpenStep.getUpdatedManagedIndexMetadata(managedIndexMetaData)
             assertEquals("Step status is not FAILED", Step.StepStatus.FAILED, updatedManagedIndexMetaData.stepMetaData?.stepStatus)
@@ -49,7 +53,7 @@ class AttemptOpenStepTests : OpenSearchTestCase() {
         runBlocking {
             val managedIndexMetaData = ManagedIndexMetaData("test", "indexUuid", "policy_id", null, null, null, null, null, null, null, null, null, null)
             val attemptOpenStep = AttemptOpenStep()
-            val context = StepContext(managedIndexMetaData, clusterService, client, null, null)
+            val context = StepContext(managedIndexMetaData, clusterService, client, null, null, scriptService, settings)
             attemptOpenStep.preExecute(logger, context).execute()
             val updatedManagedIndexMetaData = attemptOpenStep.getUpdatedManagedIndexMetadata(managedIndexMetaData)
             assertEquals("Step status is not FAILED", Step.StepStatus.FAILED, updatedManagedIndexMetaData.stepMetaData?.stepStatus)
@@ -63,7 +67,7 @@ class AttemptOpenStepTests : OpenSearchTestCase() {
         runBlocking {
             val managedIndexMetaData = ManagedIndexMetaData("test", "indexUuid", "policy_id", null, null, null, null, null, null, null, null, null, null)
             val attemptOpenStep = AttemptOpenStep()
-            val context = StepContext(managedIndexMetaData, clusterService, client, null, null)
+            val context = StepContext(managedIndexMetaData, clusterService, client, null, null, scriptService, settings)
             attemptOpenStep.preExecute(logger, context).execute()
             val updatedManagedIndexMetaData = attemptOpenStep.getUpdatedManagedIndexMetadata(managedIndexMetaData)
             assertEquals("Step status is not FAILED", Step.StepStatus.FAILED, updatedManagedIndexMetaData.stepMetaData?.stepStatus)
