@@ -13,7 +13,6 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.apache.logging.log4j.LogManager
-import org.locationtech.jts.algorithm.Orientation.index
 import org.opensearch.action.admin.cluster.state.ClusterStateRequest
 import org.opensearch.action.admin.cluster.state.ClusterStateResponse
 import org.opensearch.action.bulk.BackoffPolicy
@@ -267,7 +266,7 @@ object ManagedIndexRunner :
 
         val state = policy.getStateToExecute(managedIndexMetaData)
         val action: Action? = state?.getActionToExecute(managedIndexMetaData.copy(user = policy.user, threadContext = threadPool.threadContext))
-        val stepContext = StepContext(managedIndexMetaData, clusterService, client, null, null)
+        val stepContext = StepContext(managedIndexMetaData, clusterService, client, null, null, scriptService, settings)
         val step: Step? = action?.getStepToExecute(stepContext)
         val currentActionMetaData = action?.getUpdatedActionMetaData(managedIndexMetaData, state)
 
@@ -652,13 +651,11 @@ object ManagedIndexRunner :
         } else {
             // if the action to execute is transition then set the actionMetaData to a new transition metadata to reflect we are
             // in transition (in case we triggered change policy from entering transition) or to reflect this is a new policy transition phase
-            // TODO: replace with constant
             val newTransitionMetaData = ActionMetaData(
-                "transition", Instant.now().toEpochMilli(), -1,
+                TransitionsAction.name, Instant.now().toEpochMilli(), -1,
                 false, 0, 0, null
             )
-            // TODO: Replace with constant
-            val actionMetaData = if (actionToExecute?.type == "transition") {
+            val actionMetaData = if (actionToExecute?.type == TransitionsAction.name) {
                 newTransitionMetaData
             } else {
                 managedIndexMetaData.actionMetaData
