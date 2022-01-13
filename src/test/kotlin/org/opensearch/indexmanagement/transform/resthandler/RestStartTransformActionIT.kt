@@ -84,7 +84,7 @@ class RestStartTransformActionIT : TransformRestTestCase() {
     @Throws(Exception::class)
     fun `test starting a failed transform`() {
         val transform = randomTransform().copy(
-            id = "restart_failed_rollup",
+            id = "restart_failed_transform",
             schemaVersion = 1L,
             enabled = true,
             jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
@@ -150,7 +150,7 @@ class RestStartTransformActionIT : TransformRestTestCase() {
         generateNYCTaxiData("source_restart_finished_transform")
         assertIndexExists("source_restart_finished_transform")
         val transform = randomTransform().copy(
-            id = "restart_finished_rollup",
+            id = "restart_finished_transform",
             schemaVersion = 1L,
             enabled = true,
             jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
