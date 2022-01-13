@@ -97,8 +97,7 @@ class ActionTests : OpenSearchTestCase() {
         roundTripAction(randomReplicaCountActionConfig())
     }
 
-    // TODO: fixme - enable the test
-    private fun `test force merge action round trip`() {
+    fun `test force merge action round trip`() {
         roundTripAction(randomForceMergeActionConfig())
     }
 

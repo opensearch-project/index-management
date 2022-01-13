@@ -129,12 +129,12 @@ class XContentTests : OpenSearchTestCase() {
         assertEquals("Round tripping indexPriorityActionConfig doesn't work", indexPriorityActionConfig, parsedIndexPriorityActionConfig)
     }
 
-    private fun `test force_merge action config parsing`() {
-        val forceMergeActionConfig = randomForceMergeActionConfig()
+    fun `test force_merge action config parsing`() {
+        val forceMergeAction = randomForceMergeActionConfig()
 
-        val forceMergeActionConfigString = forceMergeActionConfig.toJsonString()
-        val parsedForceMergeActionConfig = ISMActionsParser.instance.parse(parser(forceMergeActionConfigString), 0)
-        assertEquals("Round tripping ForceMergeActionConfig doesn't work", forceMergeActionConfig, parsedForceMergeActionConfig)
+        val forceMergeActionString = forceMergeAction.toJsonString()
+        val parsedForceMergeAction = ISMActionsParser.instance.parse(parser(forceMergeActionString), 0)
+        assertEquals("Round tripping ForceMergeAction doesn't work", forceMergeAction, parsedForceMergeAction)
     }
 
     fun `test notification action parsing`() {
