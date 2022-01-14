@@ -36,6 +36,7 @@ const val DEFAULT_JOB_SORT_FIELD = "managed_index.index"
 const val DEFAULT_POLICY_SORT_FIELD = "policy.policy_id.keyword"
 const val DEFAULT_SORT_ORDER = "asc"
 const val DEFAULT_QUERY_STRING = "*"
+const val DEFAULT_EXPLAIN_SHOW_POLICY = false
 
 const val INDEX_HIDDEN = "index.hidden"
 const val INDEX_NUMBER_OF_SHARDS = "index.number_of_shards"

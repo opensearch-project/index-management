@@ -82,6 +82,7 @@ class TransportExplainAction @Inject constructor(
         private val indices: List<String> = request.indices
         private val explainAll: Boolean = indices.isEmpty()
         private val wildcard: Boolean = indices.any { it.contains("*") }
+        private val showPolicy: Boolean = request.showPolicy
 
         // map of index to index metadata got from config index job
         private val managedIndicesMetaDataMap: MutableMap<String, Map<String, String?>> = mutableMapOf()
@@ -92,6 +93,7 @@ class TransportExplainAction @Inject constructor(
         private val indexPolicyIDs = mutableListOf<String?>()
         private val indexMetadatas = mutableListOf<ManagedIndexMetaData?>()
         private var totalManagedIndices = 0
+        private val appliedPolicies: MutableMap<String, String?> = mutableMapOf()
 
         @Suppress("SpreadOperator", "NestedBlockDepth")
         fun start() {
@@ -166,6 +168,12 @@ class TransportExplainAction @Inject constructor(
                                     "policy_id" to hitMap["policy_id"] as String?,
                                     "enabled" to hitMap["enabled"]?.toString()
                                 )
+                                if (showPolicy) {
+                                    val map = hitMap["policy"] as MutableMap<String, Any>
+                                    if (map.containsKey("user"))
+                                        map.remove("user")
+                                    appliedPolicies[managedIndex] = map.toString()
+                                }
                             }
 
                             // explain all only return managed indices
@@ -307,15 +315,18 @@ class TransportExplainAction @Inject constructor(
             val filteredMetadata = mutableListOf<ManagedIndexMetaData?>()
             val filteredPolicies = mutableListOf<String?>()
             val enabledStatus = mutableMapOf<String, Boolean>()
-            filter(0, filteredIndices, filteredMetadata, filteredPolicies, enabledStatus)
+            val filteredAppliedPolicies = mutableMapOf<String, String?>()
+            filter(0, filteredIndices, filteredMetadata, filteredPolicies, enabledStatus, filteredAppliedPolicies)
         }
 
+        @Suppress("LongParameterList")
         private fun filter(
             current: Int,
             filteredIndices: MutableList<String>,
             filteredMetadata: MutableList<ManagedIndexMetaData?>,
             filteredPolicies: MutableList<String?>,
-            enabledStatus: MutableMap<String, Boolean>
+            enabledStatus: MutableMap<String, Boolean>,
+            filteredAppliedPolicies: MutableMap<String, String?>
         ) {
             val request = ManagedIndexRequest().indices(indexNames[current])
             client.execute(
@@ -327,9 +338,10 @@ class TransportExplainAction @Inject constructor(
                         filteredMetadata.add(indexMetadatas[current])
                         filteredPolicies.add(indexPolicyIDs[current])
                         enabledStatus[indexNames[current]] = enabledState.getOrDefault(indexNames[current], false)
+                        filteredAppliedPolicies[indexNames[current]] = appliedPolicies.getOrDefault(indexNames[current], null)
                         if (current < indexNames.count() - 1) {
                             // do nothing - skip the index and go to next one
-                            filter(current + 1, filteredIndices, filteredMetadata, filteredPolicies, enabledStatus)
+                            filter(current + 1, filteredIndices, filteredMetadata, filteredPolicies, enabledStatus, filteredAppliedPolicies)
                         } else {
                             sendResponse(filteredIndices, filteredMetadata, filteredPolicies, enabledStatus)
                         }
@@ -341,7 +353,14 @@ class TransportExplainAction @Inject constructor(
                                 totalManagedIndices -= 1
                                 if (current < indexNames.count() - 1) {
                                     // do nothing - skip the index and go to next one
-                                    filter(current + 1, filteredIndices, filteredMetadata, filteredPolicies, enabledStatus)
+                                    filter(
+                                        current + 1,
+                                        filteredIndices,
+                                        filteredMetadata,
+                                        filteredPolicies,
+                                        enabledStatus,
+                                        filteredAppliedPolicies
+                                    )
                                 } else {
                                     sendResponse(filteredIndices, filteredMetadata, filteredPolicies, enabledStatus)
                                 }
@@ -355,18 +374,20 @@ class TransportExplainAction @Inject constructor(
             )
         }
 
+        @Suppress("LongParameterList")
         private fun sendResponse(
             indices: List<String> = indexNames,
             metadata: List<ManagedIndexMetaData?> = indexMetadatas,
-            policies: List<String?> = indexPolicyIDs,
+            policyIDs: List<String?> = indexPolicyIDs,
             enabledStatus: Map<String, Boolean> = enabledState,
-            totalIndices: Int = totalManagedIndices
+            totalIndices: Int = totalManagedIndices,
+            policies: Map<String, String?> = appliedPolicies
         ) {
             if (explainAll) {
-                actionListener.onResponse(ExplainAllResponse(indices, policies, metadata, totalIndices, enabledStatus))
+                actionListener.onResponse(ExplainAllResponse(indices, policyIDs, metadata, policies, totalIndices, enabledStatus))
                 return
             }
-            actionListener.onResponse(ExplainResponse(indices, policies, metadata))
+            actionListener.onResponse(ExplainResponse(indices, policyIDs, metadata, policies))
         }
 
         private fun getMetadata(response: GetResponse?): ManagedIndexMetaData? {

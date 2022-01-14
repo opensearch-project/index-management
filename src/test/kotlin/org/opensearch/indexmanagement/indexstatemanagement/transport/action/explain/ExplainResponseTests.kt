@@ -31,7 +31,8 @@ class ExplainResponseTests : OpenSearchTestCase() {
             info = null
         )
         val indexMetadatas = listOf(metadata)
-        val res = ExplainResponse(indexNames, indexPolicyIDs, indexMetadatas)
+        val appliedPolicies = emptyMap<String, String?>()
+        val res = ExplainResponse(indexNames, indexPolicyIDs, indexMetadatas, appliedPolicies)
 
         val out = BytesStreamOutput()
         res.writeTo(out)
@@ -63,7 +64,8 @@ class ExplainResponseTests : OpenSearchTestCase() {
         val indexMetadatas = listOf(metadata)
         val totalManagedIndices = 1
         val enabledState = mapOf("index1" to true)
-        val res = ExplainAllResponse(indexNames, indexPolicyIDs, indexMetadatas, totalManagedIndices, enabledState)
+        val appliedPolicies = emptyMap<String, String?>()
+        val res = ExplainAllResponse(indexNames, indexPolicyIDs, indexMetadatas, appliedPolicies, totalManagedIndices, enabledState)
 
         val out = BytesStreamOutput()
         res.writeTo(out)

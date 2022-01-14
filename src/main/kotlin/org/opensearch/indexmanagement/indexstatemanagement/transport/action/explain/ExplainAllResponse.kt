@@ -11,6 +11,7 @@ import org.opensearch.common.xcontent.ToXContent
 import org.opensearch.common.xcontent.ToXContentObject
 import org.opensearch.common.xcontent.XContentBuilder
 import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
+import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
 import org.opensearch.indexmanagement.indexstatemanagement.settings.LegacyOpenDistroManagedIndexSettings
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings
 import java.io.IOException
@@ -24,9 +25,10 @@ class ExplainAllResponse : ExplainResponse, ToXContentObject {
         indexNames: List<String>,
         indexPolicyIDs: List<String?>,
         indexMetadatas: List<ManagedIndexMetaData?>,
+        policies: Map<String, String?>,
         totalManagedIndices: Int,
         enabledState: Map<String, Boolean>
-    ) : super(indexNames, indexPolicyIDs, indexMetadatas) {
+    ) : super(indexNames, indexPolicyIDs, indexMetadatas, policies) {
         this.totalManagedIndices = totalManagedIndices
         this.enabledState = enabledState
     }
@@ -36,6 +38,7 @@ class ExplainAllResponse : ExplainResponse, ToXContentObject {
         indexNames = sin.readStringList(),
         indexPolicyIDs = sin.readStringList(),
         indexMetadatas = sin.readList { ManagedIndexMetaData.fromStreamInput(it) },
+        policies = sin.readMap() as Map<String, String?>,
         totalManagedIndices = sin.readInt(),
         enabledState = sin.readMap() as Map<String, Boolean>
     )
@@ -54,6 +57,9 @@ class ExplainAllResponse : ExplainResponse, ToXContentObject {
             builder.field(LegacyOpenDistroManagedIndexSettings.POLICY_ID.key, indexPolicyIDs[ind])
             builder.field(ManagedIndexSettings.POLICY_ID.key, indexPolicyIDs[ind])
             indexMetadatas[ind]?.toXContent(builder, ToXContent.EMPTY_PARAMS)
+            val policy = policies[name]
+            if (policy != null)
+                builder.field(Policy.POLICY_TYPE, policy)
             builder.field("enabled", enabledState[name])
             builder.endObject()
         }

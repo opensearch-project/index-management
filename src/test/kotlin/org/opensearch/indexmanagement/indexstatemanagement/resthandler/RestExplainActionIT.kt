@@ -12,6 +12,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMet
 import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.PolicyRetryInfoMetaData
 import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.StateMetaData
 import org.opensearch.indexmanagement.makeRequest
+import org.opensearch.indexmanagement.opensearchapi.convertToMap
 import org.opensearch.indexmanagement.waitFor
 import org.opensearch.rest.RestRequest
 import org.opensearch.rest.RestStatus
@@ -200,6 +201,29 @@ class RestExplainActionIT : IndexStateManagementRestTestCase() {
                 ),
                 getExplainMap(indexName)
             )
+        }
+    }
+
+    fun `test showPolicy query parameter`() {
+        val indexName = "${testIndexName}_showpolicy"
+        val policy = createRandomPolicy()
+        createIndex(indexName, policy.id)
+
+        val expectedPolicy = policy.convertToMap().getOrDefault("policy", emptyMap<String, Any>()) as MutableMap<String, Any>
+        expectedPolicy.remove("user")
+
+        val expected = mapOf(
+            indexName to mapOf<String, Any>(
+                explainResponseOpendistroPolicyIdSetting to policy.id,
+                explainResponseOpenSearchPolicyIdSetting to policy.id,
+                "index" to indexName,
+                "index_uuid" to getUuid(indexName),
+                "policy_id" to policy.id,
+                "policy" to expectedPolicy.toString()
+            )
+        )
+        waitFor {
+            assertResponseMap(expected, getExplainMap(indexName, true))
         }
     }
 

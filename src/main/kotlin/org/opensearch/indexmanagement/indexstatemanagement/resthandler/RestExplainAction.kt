@@ -14,6 +14,7 @@ import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.LEGACY_ISM
 import org.opensearch.indexmanagement.indexstatemanagement.model.SearchParams
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.explain.ExplainAction
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.explain.ExplainRequest
+import org.opensearch.indexmanagement.indexstatemanagement.util.DEFAULT_EXPLAIN_SHOW_POLICY
 import org.opensearch.indexmanagement.indexstatemanagement.util.DEFAULT_JOB_SORT_FIELD
 import org.opensearch.indexmanagement.indexstatemanagement.util.DEFAULT_PAGINATION_FROM
 import org.opensearch.indexmanagement.indexstatemanagement.util.DEFAULT_PAGINATION_SIZE
@@ -72,7 +73,8 @@ class RestExplainAction : BaseRestHandler() {
             indices.toList(),
             request.paramAsBoolean("local", false),
             request.paramAsTime("master_timeout", MasterNodeRequest.DEFAULT_MASTER_NODE_TIMEOUT),
-            SearchParams(size, from, sortField, sortOrder, queryString)
+            SearchParams(size, from, sortField, sortOrder, queryString),
+            request.paramAsBoolean("showPolicy", DEFAULT_EXPLAIN_SHOW_POLICY)
         )
 
         return RestChannelConsumer { channel ->

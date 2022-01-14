@@ -18,7 +18,8 @@ class ExplainRequestTests : OpenSearchTestCase() {
         val local = true
         val masterTimeout = TimeValue.timeValueSeconds(30)
         val params = SearchParams(0, 20, "sort-field", "asc", "*")
-        val req = ExplainRequest(indices, local, masterTimeout, params)
+        val showPolicy = false
+        val req = ExplainRequest(indices, local, masterTimeout, params, showPolicy)
 
         val out = BytesStreamOutput()
         req.writeTo(out)

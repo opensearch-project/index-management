@@ -12,6 +12,7 @@ import org.opensearch.common.xcontent.ToXContent
 import org.opensearch.common.xcontent.ToXContentObject
 import org.opensearch.common.xcontent.XContentBuilder
 import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
+import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
 import org.opensearch.indexmanagement.indexstatemanagement.settings.LegacyOpenDistroManagedIndexSettings
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings
 import java.io.IOException
@@ -22,22 +23,26 @@ open class ExplainResponse : ActionResponse, ToXContentObject {
     val indexNames: List<String>
     val indexPolicyIDs: List<String?>
     val indexMetadatas: List<ManagedIndexMetaData?>
+    val policies: Map<String, String?>
 
     constructor(
         indexNames: List<String>,
         indexPolicyIDs: List<String?>,
-        indexMetadatas: List<ManagedIndexMetaData?>
+        indexMetadatas: List<ManagedIndexMetaData?>,
+        policies: Map<String, String?>
     ) : super() {
         this.indexNames = indexNames
         this.indexPolicyIDs = indexPolicyIDs
         this.indexMetadatas = indexMetadatas
+        this.policies = policies
     }
 
     @Throws(IOException::class)
     constructor(sin: StreamInput) : this(
         indexNames = sin.readStringList(),
         indexPolicyIDs = sin.readStringList(),
-        indexMetadatas = sin.readList { ManagedIndexMetaData.fromStreamInput(it) }
+        indexMetadatas = sin.readList { ManagedIndexMetaData.fromStreamInput(it) },
+        policies = sin.readMap() as Map<String, String?>
     )
 
     @Throws(IOException::class)
@@ -45,6 +50,7 @@ open class ExplainResponse : ActionResponse, ToXContentObject {
         out.writeStringCollection(indexNames)
         out.writeStringCollection(indexPolicyIDs)
         out.writeCollection(indexMetadatas)
+        out.writeMap(policies)
     }
 
     override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
@@ -54,6 +60,9 @@ open class ExplainResponse : ActionResponse, ToXContentObject {
             builder.field(LegacyOpenDistroManagedIndexSettings.POLICY_ID.key, indexPolicyIDs[ind])
             builder.field(ManagedIndexSettings.POLICY_ID.key, indexPolicyIDs[ind])
             indexMetadatas[ind]?.toXContent(builder, ToXContent.EMPTY_PARAMS)
+            val policy = policies[name]
+            if (policy != null)
+                builder.field(Policy.POLICY_TYPE, policy)
             builder.endObject()
         }
         return builder.endObject()
