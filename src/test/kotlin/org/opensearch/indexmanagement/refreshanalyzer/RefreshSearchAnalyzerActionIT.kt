@@ -167,7 +167,7 @@ class RefreshSearchAnalyzerActionIT : IndexManagementRestTestCase() {
     companion object {
 
         fun writeToFile(filePath: String, contents: String) {
-            var path = org.opensearch.common.io.PathUtils.get(filePath)
+            val path = org.opensearch.common.io.PathUtils.get(filePath)
             Files.newBufferedWriter(path, Charset.forName("UTF-8")).use { writer -> writer.write(contents) }
         }
 

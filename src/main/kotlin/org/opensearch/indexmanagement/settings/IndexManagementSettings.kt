@@ -6,6 +6,7 @@ package org.opensearch.indexmanagement.settings
 
 import org.opensearch.common.settings.Setting
 
+@Suppress("UtilityClassWithPublicConstructor")
 class IndexManagementSettings {
 
     companion object {

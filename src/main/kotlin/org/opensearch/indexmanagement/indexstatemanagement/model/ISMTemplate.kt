@@ -5,7 +5,6 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.model
 
-import org.apache.logging.log4j.LogManager
 import org.opensearch.common.io.stream.StreamInput
 import org.opensearch.common.io.stream.StreamOutput
 import org.opensearch.common.io.stream.Writeable
@@ -20,8 +19,6 @@ import org.opensearch.indexmanagement.opensearchapi.optionalTimeField
 import java.io.IOException
 import java.lang.IllegalArgumentException
 import java.time.Instant
-
-private val log = LogManager.getLogger(ISMTemplate::class.java)
 
 data class ISMTemplate(
     val indexPatterns: List<String>,

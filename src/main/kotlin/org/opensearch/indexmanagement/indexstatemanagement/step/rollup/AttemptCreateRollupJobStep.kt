@@ -42,6 +42,7 @@ class AttemptCreateRollupJobStep(
 
     override fun isIdempotent() = true
 
+    @Suppress("SwallowedException")
     override suspend fun execute(): Step {
         previousRunRollupId = managedIndexMetaData.actionMetaData?.actionProperties?.rollupId
         hasPreviousRollupAttemptFailed = managedIndexMetaData.actionMetaData?.actionProperties?.hasRollupFailed

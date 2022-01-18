@@ -613,7 +613,7 @@ class RollupInterceptorIT : RollupRestTestCase() {
         refreshAllIndices()
 
         // Term query
-        var req = """
+        val req = """
             {
                 "size": 0,
                 "query": {
@@ -630,12 +630,12 @@ class RollupInterceptorIT : RollupRestTestCase() {
                 }
             }
         """.trimIndent()
-        var rawRes = client().makeRequest("POST", "/source_continuous_rollup_search/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
+        val rawRes = client().makeRequest("POST", "/source_continuous_rollup_search/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
         assertTrue(rawRes.restStatus() == RestStatus.OK)
-        var rollupRes = client().makeRequest("POST", "/target_continuous_rollup_search/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
+        val rollupRes = client().makeRequest("POST", "/target_continuous_rollup_search/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
         assertTrue(rollupRes.restStatus() == RestStatus.OK)
-        var rawAggRes = rawRes.asMap()["aggregations"] as Map<String, Map<String, Any>>
-        var rollupAggRes = rollupRes.asMap()["aggregations"] as Map<String, Map<String, Any>>
+        val rawAggRes = rawRes.asMap()["aggregations"] as Map<String, Map<String, Any>>
+        val rollupAggRes = rollupRes.asMap()["aggregations"] as Map<String, Map<String, Any>>
         assertEquals(
             "Source and rollup index did not return same min results",
             rawAggRes.getValue("min_passenger_count")["value"],

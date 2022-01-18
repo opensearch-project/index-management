@@ -78,6 +78,7 @@ class IndexManagementIndices(
     /**
      * Attempt to create [INDEX_MANAGEMENT_INDEX] and return whether it exists
      */
+    @Suppress("SwallowedException")
     suspend fun attemptInitStateManagementIndex(client: Client): Boolean {
         if (indexManagementIndexExists()) return true
 

@@ -48,7 +48,7 @@ fun randomSchedule(): Schedule = if (OpenSearchRestTestCase.randomBoolean()) ran
 
 private fun randomStringList(): List<String> {
     val data = mutableListOf<String>()
-    for (i in 1..OpenSearchRestTestCase.randomIntBetween(10, 10)) {
+    repeat(OpenSearchRestTestCase.randomIntBetween(1, 10)) {
         data.add(OpenSearchRestTestCase.randomAlphaOfLength(10))
     }
 
