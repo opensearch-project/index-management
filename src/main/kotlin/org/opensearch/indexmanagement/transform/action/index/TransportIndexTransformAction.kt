@@ -44,7 +44,7 @@ import org.opensearch.rest.RestStatus
 import org.opensearch.tasks.Task
 import org.opensearch.transport.TransportService
 
-@Suppress("SpreadOperator")
+@Suppress("SpreadOperator", "LongParameterList")
 class TransportIndexTransformAction @Inject constructor(
     transportService: TransportService,
     val client: Client,

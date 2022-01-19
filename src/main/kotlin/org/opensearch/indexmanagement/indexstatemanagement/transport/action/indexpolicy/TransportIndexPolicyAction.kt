@@ -50,6 +50,7 @@ import org.opensearch.transport.TransportService
 
 private val log = LogManager.getLogger(TransportIndexPolicyAction::class.java)
 
+@Suppress("LongParameterList")
 class TransportIndexPolicyAction @Inject constructor(
     val client: NodeClient,
     transportService: TransportService,

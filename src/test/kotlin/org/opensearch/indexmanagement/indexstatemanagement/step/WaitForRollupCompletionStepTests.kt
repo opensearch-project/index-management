@@ -80,7 +80,7 @@ class WaitForRollupCompletionStepTests : OpenSearchTestCase() {
             updateManagedIndexMetaData.info?.get("message")
         )
         assertEquals("Missing rollup failed action property", true, updateManagedIndexMetaData.actionMetaData?.actionProperties?.hasRollupFailed)
-        assertEquals("Mismatch in cause", WaitForRollupCompletionStep.getJobStoppedMessage(), updateManagedIndexMetaData.info?.get("cause"))
+        assertEquals("Mismatch in cause", WaitForRollupCompletionStep.JOB_STOPPED_MESSAGE, updateManagedIndexMetaData.info?.get("cause"))
     }
 
     fun `test process rollup metadata INIT status`() {

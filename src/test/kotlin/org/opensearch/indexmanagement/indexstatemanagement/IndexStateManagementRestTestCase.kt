@@ -432,7 +432,7 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
     }
 
     // Validate segment count per shard by specifying the min and max it should be
-    @Suppress("UNCHECKED_CAST")
+    @Suppress("UNCHECKED_CAST", "ReturnCount")
     protected fun validateSegmentCount(index: String, min: Int? = null, max: Int? = null): Boolean {
         if (min == null && max == null) throw IllegalArgumentException("Must provide at least a min or max")
         val statsResponse: Map<String, Any> = getShardSegmentStats(index)
@@ -570,6 +570,7 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
 
     // Calls explain API for a single concrete index and converts the response into a ManagedIndexMetaData
     // This only works for indices with a ManagedIndexMetaData that has been initialized
+    @Suppress("LoopWithTooManyJumpStatements")
     protected fun getExplainManagedIndexMetaData(indexName: String): ManagedIndexMetaData {
         if (indexName.contains("*") || indexName.contains(",")) {
             throw IllegalArgumentException("This method is only for a single concrete index")

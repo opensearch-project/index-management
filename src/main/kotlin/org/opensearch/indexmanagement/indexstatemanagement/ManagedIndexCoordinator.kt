@@ -103,7 +103,7 @@ import java.time.Instant
  * a user wants to update an existing [ManagedIndexConfig] to a new policy (or updated version of policy)
  * then they must use the ChangePolicy API.
  */
-@Suppress("TooManyFunctions", "ReturnCount", "NestedBlockDepth")
+@Suppress("TooManyFunctions", "ReturnCount", "NestedBlockDepth", "LongParameterList")
 @OpenForTesting
 class ManagedIndexCoordinator(
     private val settings: Settings,
@@ -127,7 +127,6 @@ class ManagedIndexCoordinator(
     @Volatile private var lastFullSweepTimeNano = System.nanoTime()
     @Volatile private var indexStateManagementEnabled = INDEX_STATE_MANAGEMENT_ENABLED.get(settings)
     @Volatile private var metadataServiceEnabled = METADATA_SERVICE_ENABLED.get(settings)
-    @Volatile private var metadataServiceStatusSetting = METADATA_SERVICE_STATUS.get(settings)
     @Volatile private var sweepPeriod = SWEEP_PERIOD.get(settings)
     @Volatile private var retryPolicy =
         BackoffPolicy.constantBackoff(COORDINATOR_BACKOFF_MILLIS.get(settings), COORDINATOR_BACKOFF_COUNT.get(settings))

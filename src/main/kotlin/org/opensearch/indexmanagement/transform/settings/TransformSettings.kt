@@ -8,6 +8,7 @@ package org.opensearch.indexmanagement.transform.settings
 import org.opensearch.common.settings.Setting
 import org.opensearch.common.unit.TimeValue
 
+@Suppress("UtilityClassWithPublicConstructor")
 class TransformSettings {
 
     companion object {
