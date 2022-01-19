@@ -284,6 +284,9 @@ class RestStopRollupActionIT : RollupRestTestCase() {
             metrics = emptyList()
         ).let { createRollup(it, it.id) }
 
+        // The updateRollupStartTime call can be missed if the job scheduler hasn't started listening to the new index yet,
+        // sleep a bit to let it initialize
+        Thread.sleep(2000L)
         updateRollupStartTime(rollup)
 
         waitFor {
