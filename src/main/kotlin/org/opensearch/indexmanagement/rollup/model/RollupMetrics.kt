@@ -5,7 +5,6 @@
 
 package org.opensearch.indexmanagement.rollup.model
 
-import org.apache.logging.log4j.LogManager
 import org.opensearch.common.io.stream.StreamInput
 import org.opensearch.common.io.stream.StreamOutput
 import org.opensearch.common.io.stream.Writeable
@@ -29,8 +28,6 @@ data class RollupMetrics(
     val metrics: List<Metric>
 ) : ToXContentObject, Writeable {
 
-    private val logger = LogManager.getLogger(javaClass)
-
     init {
         require(metrics.size == metrics.distinctBy { it.type }.size) {
             "Cannot have multiple metrics of the same type in a single rollup metric [$metrics]"
@@ -46,7 +43,7 @@ data class RollupMetrics(
         metrics = sin.let {
             val metricsList = mutableListOf<Metric>()
             val size = it.readVInt()
-            for (i in 0 until size) {
+            repeat(size) { _ ->
                 val type = it.readEnum(Metric.Type::class.java)
                 metricsList.add(
                     when (requireNotNull(type) { "Metric type cannot be null" }) {

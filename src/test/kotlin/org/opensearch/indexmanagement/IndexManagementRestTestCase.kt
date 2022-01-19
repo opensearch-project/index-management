@@ -109,7 +109,7 @@ abstract class IndexManagementRestTestCase : ODFERestTestCase() {
     protected fun insertSampleData(index: String, docCount: Int, delay: Long = 0, jsonString: String = "{ \"test_field\": \"test_value\" }", routing: String? = null) {
         var endpoint = "/$index/_doc/?refresh=true"
         if (routing != null) endpoint += "&routing=$routing"
-        for (i in 1..docCount) {
+        repeat(docCount) {
             val request = Request("POST", endpoint)
             request.setJsonEntity(jsonString)
             client().performRequest(request)

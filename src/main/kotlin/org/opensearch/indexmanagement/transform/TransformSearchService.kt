@@ -64,6 +64,7 @@ class TransformSearchService(
         }
     }
 
+    @Suppress("RethrowCaughtException")
     suspend fun executeCompositeSearch(transform: Transform, afterKey: Map<String, Any>? = null): TransformSearchResult {
         val errorMessage = "Failed to search data in source indices"
         try {

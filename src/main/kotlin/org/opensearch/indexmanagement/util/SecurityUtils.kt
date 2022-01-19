@@ -15,7 +15,7 @@ import org.opensearch.index.query.ExistsQueryBuilder
 import org.opensearch.index.query.TermsQueryBuilder
 import org.opensearch.rest.RestStatus
 
-@Suppress("ReturnCount")
+@Suppress("ReturnCount", "UtilityClassWithPublicConstructor")
 class SecurityUtils {
     companion object {
         const val INTERNAL_REQUEST = "index_management_plugin_internal_user"
@@ -69,6 +69,7 @@ class SecurityUtils {
         /**
          * Check if the requested user has permission on the resource
          */
+        @Suppress("LongParameterList")
         fun <T> userHasPermissionForResource(
             requestedUser: User?,
             resourceUser: User?,

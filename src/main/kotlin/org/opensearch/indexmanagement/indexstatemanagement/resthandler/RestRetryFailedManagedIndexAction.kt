@@ -5,7 +5,6 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.resthandler
 
-import org.apache.logging.log4j.LogManager
 import org.opensearch.action.support.master.MasterNodeRequest.DEFAULT_MASTER_NODE_TIMEOUT
 import org.opensearch.client.node.NodeClient
 import org.opensearch.common.Strings
@@ -23,8 +22,6 @@ import org.opensearch.rest.RestRequest.Method.POST
 import org.opensearch.rest.action.RestToXContentListener
 
 class RestRetryFailedManagedIndexAction : BaseRestHandler() {
-
-    private val log = LogManager.getLogger(javaClass)
 
     override fun routes(): List<Route> {
         return emptyList()

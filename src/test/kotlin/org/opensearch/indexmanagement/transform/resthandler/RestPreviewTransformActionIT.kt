@@ -38,6 +38,7 @@ class RestPreviewTransformActionIT : TransformRestTestCase() {
         try {
             indexExists = indexExists(sourceIndex)
         } catch (e: IndexNotFoundException) {
+            // If this exception is thrown, indexExists will be false anyways
         }
         if (!indexExists) {
             generateNYCTaxiData(sourceIndex)

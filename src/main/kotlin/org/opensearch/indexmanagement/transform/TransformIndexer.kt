@@ -67,11 +67,11 @@ class TransformIndexer(
         }
     }
 
-    @Suppress("ThrowsCount")
+    @Suppress("ThrowsCount", "RethrowCaughtException")
     suspend fun index(docsToIndex: List<DocWriteRequest<*>>): Long {
         var updatableDocsToIndex = docsToIndex
         var indexTimeInMillis = 0L
-        var nonRetryableFailures = mutableListOf<BulkItemResponse>()
+        val nonRetryableFailures = mutableListOf<BulkItemResponse>()
         try {
             if (updatableDocsToIndex.isNotEmpty()) {
                 val targetIndex = updatableDocsToIndex.first().index()

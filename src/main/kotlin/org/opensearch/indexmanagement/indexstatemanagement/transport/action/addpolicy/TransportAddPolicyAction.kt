@@ -74,7 +74,7 @@ import java.time.Instant
 
 private val log = LogManager.getLogger(TransportAddPolicyAction::class.java)
 
-@Suppress("SpreadOperator", "ReturnCount")
+@Suppress("SpreadOperator", "ReturnCount", "LongParameterList")
 class TransportAddPolicyAction @Inject constructor(
     val client: NodeClient,
     transportService: TransportService,
