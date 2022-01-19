@@ -166,12 +166,15 @@ class XContentTests : OpenSearchTestCase() {
         )
     }
 
-    private fun `test snapshot action config parsing`() {
-        val snapshotActionConfig = randomSnapshotActionConfig("repository", "snapshot")
+    fun `test snapshot action config parsing`() {
+        val snapshotAction = randomSnapshotActionConfig("repository", "snapshot")
 
-        val snapshotActionConfigString = snapshotActionConfig.toJsonString()
-        val parsedSnapshotActionConfig = ISMActionsParser.instance.parse(parser(snapshotActionConfigString), 0)
-        assertEquals("Round tripping SnapshotActionConfig doesn't work", snapshotActionConfig, parsedSnapshotActionConfig)
+        val snapshotActionString = snapshotAction.toJsonString()
+        val parsedSnapshotAction = ISMActionsParser.instance.parse(parser(snapshotActionString), 0)
+        assertEquals(
+            "Round tripping SnapshotAction doesn't work",
+            snapshotAction.convertToMap(), parsedSnapshotAction.convertToMap()
+        )
     }
 
     private fun `test allocation action config parsing`() {

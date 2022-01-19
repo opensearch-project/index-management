@@ -108,8 +108,7 @@ class ActionTests : OpenSearchTestCase() {
         roundTripAction(randomNotificationActionConfig())
     }
 
-    // TODO: fixme - enable the test
-    private fun `test snapshot action round trip`() {
+    fun `test snapshot action round trip`() {
         roundTripAction(randomSnapshotActionConfig(snapshot = "snapshot", repository = "repository"))
     }
 
