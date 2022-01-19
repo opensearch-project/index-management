@@ -11,6 +11,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.ISMActionsParser
 import java.util.concurrent.TimeUnit
 import java.util.function.Function
 
+@Suppress("UtilityClassWithPublicConstructor")
 class LegacyOpenDistroManagedIndexSettings {
     companion object {
         const val DEFAULT_ISM_ENABLED = true

@@ -186,7 +186,7 @@ class IndexStateManagementHistory(
     }
 
     private fun getIndicesToDelete(clusterStateResponse: ClusterStateResponse): List<String> {
-        var indicesToDelete = mutableListOf<String>()
+        val indicesToDelete = mutableListOf<String>()
         for (entry in clusterStateResponse.state.metadata.indices()) {
             val indexMetaData = entry.value
             val creationTime = indexMetaData.creationDate

@@ -22,7 +22,7 @@ class PreviewTransformResponse(
         documents = sin.let {
             val documentList = mutableListOf<Map<String, Any>>()
             val size = it.readVInt()
-            for (i in 0 until size) {
+            repeat(size) { _ ->
                 documentList.add(sin.readMap()!!)
             }
             documentList.toList()

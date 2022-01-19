@@ -187,7 +187,7 @@ data class Transform(
         groups = sin.let {
             val dimensionList = mutableListOf<Dimension>()
             val size = it.readVInt()
-            for (i in 0 until size) {
+            repeat(size) { _ ->
                 val type = it.readEnum(Dimension.Type::class.java)
                 dimensionList.add(
                     when (requireNotNull(type) { "Dimension type cannot be null" }) {
