@@ -8,9 +8,11 @@ package org.opensearch.indexmanagement.indexstatemanagement.resthandler
 import org.apache.http.entity.ContentType.APPLICATION_JSON
 import org.apache.http.entity.StringEntity
 import org.opensearch.client.ResponseException
+import org.opensearch.common.settings.Settings
 import org.opensearch.indexmanagement.indexstatemanagement.IndexStateManagementRestTestCase
 import org.opensearch.indexmanagement.indexstatemanagement.util.FAILED_INDICES
 import org.opensearch.indexmanagement.indexstatemanagement.util.FAILURES
+import org.opensearch.indexmanagement.indexstatemanagement.util.INDEX_HIDDEN
 import org.opensearch.indexmanagement.indexstatemanagement.util.UPDATED_INDICES
 import org.opensearch.indexmanagement.makeRequest
 import org.opensearch.indexmanagement.waitFor
@@ -132,7 +134,7 @@ class RestAddPolicyActionIT : IndexStateManagementRestTestCase() {
         assertAffectedIndicesResponseIsEqual(expectedMessage, actualMessage)
     }
 
-    fun `test index pattern`() {
+    fun `test index pattern not matching blocked indices`() {
         val indexPattern = "movies"
         val indexOne = "movies_1"
         val indexTwo = "movies_2"
@@ -174,6 +176,41 @@ class RestAddPolicyActionIT : IndexStateManagementRestTestCase() {
         // Check if indexThree had policy set
         waitFor {
             assertEquals(newPolicy.id, getPolicyIDOfManagedIndex(indexThree))
+        }
+    }
+
+    fun `test index pattern matching blocked indices`() {
+        val indexOne = ".opendistro_security"
+        val indexTwo = ".kibana"
+        val indexThree = ".kibana_2"
+        val indexFour = ".some_other_hidden_index"
+        val policy = createRandomPolicy()
+        val indexPolicyIdMap = mapOf(indexOne to null, indexTwo to null, indexThree to null, indexFour to null)
+        indexPolicyIdMap.forEach { (indexName, policyId) ->
+            if (!indexExists(indexName)) {
+                createIndex(indexName, policyId, settings = Settings.builder().put(INDEX_HIDDEN, true).build())
+            }
+        }
+
+        val response = client().makeRequest(
+            POST.toString(),
+            "${RestAddPolicyAction.ADD_POLICY_BASE_URI}/.*",
+            StringEntity("{ \"policy_id\": \"${policy.id}\" }", APPLICATION_JSON)
+        )
+        assertEquals("Unexpected RestStatus", RestStatus.OK, response.restStatus())
+        val actualMessage = response.asMap()
+        // Not going to attach policy to ism config index or other restricted index patterns
+        val expectedMessage = mapOf(
+            UPDATED_INDICES to 1,
+            FAILURES to false,
+            FAILED_INDICES to listOf<Any>()
+        )
+
+        assertAffectedIndicesResponseIsEqual(expectedMessage, actualMessage)
+
+        // Check if indexThree had policy set
+        waitFor {
+            assertEquals(policy.id, getPolicyIDOfManagedIndex(indexFour))
         }
     }
 }

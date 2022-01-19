@@ -282,6 +282,10 @@ class TransportAddPolicyAction @Inject constructor(
                 failedIndices.add(FailedIndex(indicesToAdd[it] as String, it, "This index is closed"))
                 indicesToAdd.remove(it)
             }
+
+            // Removing all the unmanageable Indices
+            indicesToAdd.entries.removeIf { (_, indexName) -> IndexUtils.isUnManageableIndexPattern(indexName) }
+
             if (indicesToAdd.isEmpty()) {
                 actionListener.onResponse(ISMStatusResponse(0, failedIndices))
                 return
