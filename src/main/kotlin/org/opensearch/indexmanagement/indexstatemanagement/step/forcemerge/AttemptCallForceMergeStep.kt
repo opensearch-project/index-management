@@ -8,6 +8,8 @@ package org.opensearch.indexmanagement.indexstatemanagement.step.forcemerge
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
 
+// TODO remove this suppression when refactoring is done
+@Suppress("UnusedPrivateMember", "FunctionOnlyReturningConstant")
 class AttemptCallForceMergeStep : Step(name) {
 
     override suspend fun execute(): Step {
