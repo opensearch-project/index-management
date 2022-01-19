@@ -26,8 +26,8 @@ class IndexManagementBackwardsCompatibilityIT : IndexManagementRestTestCase() {
     companion object {
         private val CLUSTER_TYPE = ClusterType.parse(System.getProperty("tests.rest.bwcsuite"))
         private val CLUSTER_NAME = System.getProperty("tests.clustername")
-        private val INDEX_NAME = "test_bwc_index"
-        private val POLICY_NAME = "bwc_test_policy"
+        private const val INDEX_NAME = "test_bwc_index"
+        private const val POLICY_NAME = "bwc_test_policy"
     }
 
     override fun preserveIndicesUponCompletion(): Boolean = true

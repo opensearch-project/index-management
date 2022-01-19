@@ -58,7 +58,7 @@ class RollupIndexer(
         try {
             var requestsToRetry = convertResponseToRequests(rollup, internalComposite)
             var stats = RollupStats(0, 0, requestsToRetry.size.toLong(), 0, 0)
-            var nonRetryableFailures = mutableListOf<BulkItemResponse>()
+            val nonRetryableFailures = mutableListOf<BulkItemResponse>()
             if (requestsToRetry.isNotEmpty()) {
                 retryIngestPolicy.retry(logger, listOf(RestStatus.TOO_MANY_REQUESTS)) {
                     if (it.seconds >= (Rollup.ROLLUP_LOCK_DURATION_SECONDS / 2)) {

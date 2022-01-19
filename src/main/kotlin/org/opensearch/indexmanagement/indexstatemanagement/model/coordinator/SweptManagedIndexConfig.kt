@@ -31,7 +31,7 @@ data class SweptManagedIndexConfig(
 ) {
 
     companion object {
-        @Suppress("ComplexMethod")
+        @Suppress("ComplexMethod", "UnusedPrivateMember")
         @JvmStatic
         @Throws(IOException::class)
         fun parse(xcp: XContentParser, id: String = NO_ID, seqNo: Long, primaryTerm: Long): SweptManagedIndexConfig {

@@ -14,13 +14,14 @@ import org.opensearch.common.xcontent.XContentParser.Token
 import org.opensearch.common.xcontent.XContentParserUtils.ensureExpectedToken
 
 class ValueCount() : Metric(Type.VALUE_COUNT) {
+    @Suppress("UnusedPrivateMember")
     constructor(sin: StreamInput) : this()
 
     override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
         return builder.startObject().startObject(Type.VALUE_COUNT.type).endObject().endObject()
     }
 
-    override fun writeTo(out: StreamOutput) {} // nothing to write
+    override fun writeTo(out: StreamOutput) { /* nothing to write */ }
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true

@@ -104,7 +104,7 @@ class WaitForRollupCompletionStep(
             RollupMetadata.Status.STOPPED -> {
                 stepStatus = StepStatus.FAILED
                 hasRollupFailed = true
-                info = mapOf("message" to getJobFailedMessage(rollupJobId, indexName), "cause" to getJobStoppedMessage())
+                info = mapOf("message" to getJobFailedMessage(rollupJobId, indexName), "cause" to JOB_STOPPED_MESSAGE)
             }
         }
     }
@@ -121,11 +121,11 @@ class WaitForRollupCompletionStep(
 
     companion object {
         const val name = "wait_for_rollup_completion"
+        const val JOB_STOPPED_MESSAGE = "Rollup job was stopped"
         fun getFailedMessage(rollupJob: String, index: String) = "Failed to get the status of rollup job [$rollupJob] [index=$index]"
         fun getJobProcessingMessage(rollupJob: String, index: String) = "Rollup job [$rollupJob] is still processing [index=$index]"
         fun getJobCompletionMessage(rollupJob: String, index: String) = "Rollup job [$rollupJob] completed [index=$index]"
         fun getJobFailedMessage(rollupJob: String, index: String) = "Rollup job [$rollupJob] failed [index=$index]"
-        fun getJobStoppedMessage() = "Rollup job was stopped"
         fun getMissingRollupJobMessage(index: String) = "Rollup job was not found [index=$index]"
     }
 }

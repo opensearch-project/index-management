@@ -134,7 +134,7 @@ data class Rollup(
         dimensions = sin.let {
             val dimensionsList = mutableListOf<Dimension>()
             val size = it.readVInt()
-            for (i in 0 until size) {
+            repeat(size) { _ ->
                 val type = it.readEnum(Dimension.Type::class.java)
                 dimensionsList.add(
                     when (requireNotNull(type) { "Dimension type cannot be null" }) {
