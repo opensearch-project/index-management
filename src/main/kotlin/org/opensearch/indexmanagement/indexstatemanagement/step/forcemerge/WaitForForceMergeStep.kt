@@ -30,12 +30,11 @@ class WaitForForceMergeStep(private val action: ForceMergeAction) : Step(name) {
     override suspend fun execute(): WaitForForceMergeStep {
         val context = this.context ?: return this
         val indexName = context.metadata.index
-        val managedIndexMetadata = context.metadata
         // Retrieve maxNumSegments value from ActionProperties. If ActionProperties is null, update failed info and return early.
         val maxNumSegments = getMaxNumSegments(context) ?: return this
 
         // Get the number of shards with a segment count greater than maxNumSegments, meaning they are still merging
-        val shardsStillMergingSegments = getShardsStillMergingSegments(indexName, maxNumSegments)
+        val shardsStillMergingSegments = getShardsStillMergingSegments(indexName, maxNumSegments, context)
         // If shardsStillMergingSegments is null, failed info has already been updated and can return early
         shardsStillMergingSegments ?: return this
 
@@ -56,7 +55,7 @@ class WaitForForceMergeStep(private val action: ForceMergeAction) : Step(name) {
              * is optional, if no timeout is given, the segment count would stop going down as merging would no longer
              * occur and the managed index would become stuck in this action.
              */
-            val timeWaitingForForceMerge: Duration = Duration.between(getActionStartTime(), Instant.now())
+            val timeWaitingForForceMerge: Duration = Duration.between(getActionStartTime(context), Instant.now())
             // Get ActionTimeout if given, otherwise use default timeout of 12 hours
             val timeoutInSeconds: Long = action.configTimeout?.timeout?.seconds ?: FORCE_MERGE_TIMEOUT_IN_SECONDS
 
@@ -137,11 +136,9 @@ class WaitForForceMergeStep(private val action: ForceMergeAction) : Step(name) {
 
     private fun getActionStartTime(context: StepContext): Instant {
         val managedIndexMetaData = context.metadata
-        if (managedIndexMetaData.actionMetaData?.startTime == null) {
-            return Instant.now()
-        }
+        val startTime = managedIndexMetaData.actionMetaData?.startTime ?: return Instant.now()
 
-        return Instant.ofEpochMilli(managedIndexMetaData.actionMetaData.startTime)
+        return Instant.ofEpochMilli(startTime)
     }
 
     override fun getUpdatedManagedIndexMetadata(currentMetadata: ManagedIndexMetaData): ManagedIndexMetaData {

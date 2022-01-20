@@ -24,9 +24,9 @@ class ForceMergeAction(
         require(maxNumSegments > 0) { "Force merge {$MAX_NUM_SEGMENTS_FIELD} must be greater than 0" }
     }
 
-    private val attemptSetReadOnlyStep = AttemptSetReadOnlyStep()
-    private val attemptCallForceMergeStep = AttemptCallForceMergeStep()
-    private val waitForForceMergeStep = WaitForForceMergeStep()
+    private val attemptSetReadOnlyStep = AttemptSetReadOnlyStep(this)
+    private val attemptCallForceMergeStep = AttemptCallForceMergeStep(this)
+    private val waitForForceMergeStep = WaitForForceMergeStep(this)
 
     // Using a LinkedHashMap here to maintain order of steps for getSteps() while providing a convenient way to
     // get the current Step object using the current step's name in getStepToExecute()
