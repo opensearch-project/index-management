@@ -30,6 +30,7 @@ class SnapshotAction(
     private val waitForSnapshotStep = WaitForSnapshotStep(this)
     private val steps = listOf(attemptSnapshotStep, waitForSnapshotStep)
 
+    @Suppress("ReturnCount")
     override fun getStepToExecute(context: StepContext): Step {
         // If stepMetaData is null, return the first step
         val stepMetaData = context.metadata.stepMetaData ?: return attemptSnapshotStep

@@ -37,7 +37,7 @@ class AttemptSnapshotStep(private val action: SnapshotAction) : Step(name) {
     private var info: Map<String, Any>? = null
     private var snapshotName: String? = null
 
-    @Suppress("TooGenericExceptionCaught", "ComplexMethod")
+    @Suppress("TooGenericExceptionCaught", "ComplexMethod", "ReturnCount", "LongMethod")
     override suspend fun execute(): Step {
         val context = this.context ?: return this
         val indexName = context.metadata.index
@@ -129,7 +129,12 @@ class AttemptSnapshotStep(private val action: SnapshotAction) : Step(name) {
         info = mutableInfo.toMap()
     }
 
-    private fun compileTemplate(template: Script, managedIndexMetaData: ManagedIndexMetaData, defaultValue: String, scriptService: ScriptService): String {
+    private fun compileTemplate(
+        template: Script,
+        managedIndexMetaData: ManagedIndexMetaData,
+        defaultValue: String,
+        scriptService: ScriptService
+    ): String {
         val contextMap = managedIndexMetaData.convertToMap().filterKeys { key ->
             key in validTopContextFields
         }
