@@ -39,6 +39,8 @@ import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedInde
 import org.opensearch.test.OpenSearchTestCase
 
 // TODO: fixme - enable tests
+// TODO remove this suppression when refactoring is done
+@Suppress("UnusedPrivateMember")
 class XContentTests : OpenSearchTestCase() {
 
     private fun `test policy parsing`() {

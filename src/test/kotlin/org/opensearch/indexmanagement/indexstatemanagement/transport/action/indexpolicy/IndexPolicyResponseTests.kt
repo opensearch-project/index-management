@@ -16,6 +16,8 @@ import org.opensearch.test.OpenSearchTestCase
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 
+// TODO remove this suppression when refactoring is done
+@Suppress("UnusedPrivateMember")
 class IndexPolicyResponseTests : OpenSearchTestCase() {
 
     // TODO: fixme - enable the test

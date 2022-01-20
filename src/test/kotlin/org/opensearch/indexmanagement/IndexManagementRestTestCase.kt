@@ -90,6 +90,8 @@ abstract class IndexManagementRestTestCase : ODFERestTestCase() {
      * Inserts [docCount] sample documents into [index], optionally waiting [delay] milliseconds
      * in between each insertion
      */
+    // TODO remove this suppression when refactoring is done
+    @Suppress("UnusedPrivateMember")
     protected fun insertSampleData(index: String, docCount: Int, delay: Long = 0, jsonString: String = "{ \"test_field\": \"test_value\" }") {
         for (i in 1..docCount) {
             val request = Request("POST", "/$index/_doc/?refresh=true")

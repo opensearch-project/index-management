@@ -38,8 +38,10 @@ import java.util.Locale
 
 fun randomInterval(): String = if (OpenSearchRestTestCase.randomBoolean()) randomFixedInterval() else randomCalendarInterval()
 
+@Suppress("FunctionOnlyReturningConstant")
 fun randomCalendarInterval(): String = "1d"
 
+@Suppress("FunctionOnlyReturningConstant")
 fun randomFixedInterval(): String = "30m"
 
 fun randomFixedDateHistogram(): DateHistogram = OpenSearchRestTestCase.randomAlphaOfLength(10).let {
@@ -85,7 +87,7 @@ fun randomRollupMetrics(): RollupMetrics = OpenSearchRestTestCase.randomAlphaOfL
 
 fun randomRollupDimensions(): List<Dimension> {
     val dimensions = mutableListOf<Dimension>(randomDateHistogram())
-    for (i in 0..OpenSearchRestTestCase.randomInt(10)) {
+    repeat(OpenSearchRestTestCase.randomInt(10) + 1) {
         dimensions.add(if (OpenSearchRestTestCase.randomBoolean()) randomTerms() else randomHistogram())
     }
     return dimensions.toList()
