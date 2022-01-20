@@ -38,6 +38,7 @@ import org.opensearch.tasks.Task
 import org.opensearch.transport.TransportService
 
 // TODO: Field and mappings validations of source and target index, i.e. reject a histogram agg on example_field if its not possible
+@Suppress("LongParameterList")
 class TransportIndexRollupAction @Inject constructor(
     transportService: TransportService,
     val client: Client,

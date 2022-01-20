@@ -9,7 +9,6 @@ import com.carrotsearch.randomizedtesting.annotations.ThreadLeakScope
 import org.junit.Before
 import org.mockito.Mockito
 import org.opensearch.Version
-import org.opensearch.action.index.IndexResponse
 import org.opensearch.client.Client
 import org.opensearch.cluster.node.DiscoveryNode
 import org.opensearch.cluster.service.ClusterService
@@ -42,8 +41,6 @@ class ManagedIndexRunnerTests : OpenSearchTestCase() {
     private lateinit var settings: Settings
     private lateinit var discoveryNode: DiscoveryNode
     private lateinit var threadPool: ThreadPool
-
-    private lateinit var indexResponse: IndexResponse
 
     @Before
     @Throws(Exception::class)

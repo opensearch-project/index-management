@@ -37,6 +37,8 @@ import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import kotlin.test.assertFailsWith
 
+// TODO remove this suppression when refactoring is done
+@Suppress("UnusedPrivateMember")
 class ActionTests : OpenSearchTestCase() {
 
     fun `test invalid timeout for delete action fails`() {

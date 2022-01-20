@@ -455,15 +455,15 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
 class GuiceHolder @Inject constructor(
     remoteClusterService: TransportService
 ) : LifecycleComponent {
-    override fun close() {}
+    override fun close() { /* do nothing */ }
     override fun lifecycleState(): Lifecycle.State? {
         return null
     }
 
-    override fun addLifecycleListener(listener: LifecycleListener) {}
-    override fun removeLifecycleListener(listener: LifecycleListener) {}
-    override fun start() {}
-    override fun stop() {}
+    override fun addLifecycleListener(listener: LifecycleListener) { /* do nothing */ }
+    override fun removeLifecycleListener(listener: LifecycleListener) { /* do nothing */ }
+    override fun start() { /* do nothing */ }
+    override fun stop() { /* do nothing */ }
 
     companion object {
         lateinit var remoteClusterService: RemoteClusterService

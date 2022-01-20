@@ -42,7 +42,7 @@ class RestDeleteRollupActionIT : RollupRestTestCase() {
     fun `test deleting a rollup that doesn't exist and config index doesnt exist`() {
         try {
             deleteIndex(INDEX_MANAGEMENT_INDEX)
-            val res = client().makeRequest("DELETE", "$ROLLUP_JOBS_BASE_URI/foobarbaz")
+            client().makeRequest("DELETE", "$ROLLUP_JOBS_BASE_URI/foobarbaz")
             fail("expected 404 ResponseException")
         } catch (e: ResponseException) {
             assertEquals(RestStatus.NOT_FOUND, e.response.restStatus())

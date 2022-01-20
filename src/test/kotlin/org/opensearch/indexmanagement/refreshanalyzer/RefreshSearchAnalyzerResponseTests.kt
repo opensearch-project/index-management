@@ -22,14 +22,14 @@ class RefreshSearchAnalyzerResponseTests : OpenSearchTestCase() {
         val i2s0 = ShardId(index2, "xyz", 0)
         val i2s1 = ShardId(index2, "xyz", 1)
 
-        var response_i1s0 = RefreshSearchAnalyzerShardResponse(i1s0, listOf(syn1, syn2))
-        var response_i1s1 = RefreshSearchAnalyzerShardResponse(i1s1, listOf(syn1, syn2))
-        var response_i2s0 = RefreshSearchAnalyzerShardResponse(i2s0, listOf(syn1))
-        var response_i2s1 = RefreshSearchAnalyzerShardResponse(i2s1, listOf(syn1))
-        var failure_i1s0 = DefaultShardOperationFailedException(index1, 0, Throwable("dummyCause"))
-        var failure_i1s1 = DefaultShardOperationFailedException(index1, 1, Throwable("dummyCause"))
-        var failure_i2s0 = DefaultShardOperationFailedException(index2, 0, Throwable("dummyCause"))
-        var failure_i2s1 = DefaultShardOperationFailedException(index2, 1, Throwable("dummyCause"))
+        val response_i1s0 = RefreshSearchAnalyzerShardResponse(i1s0, listOf(syn1, syn2))
+        val response_i1s1 = RefreshSearchAnalyzerShardResponse(i1s1, listOf(syn1, syn2))
+        val response_i2s0 = RefreshSearchAnalyzerShardResponse(i2s0, listOf(syn1))
+        val response_i2s1 = RefreshSearchAnalyzerShardResponse(i2s1, listOf(syn1))
+        val failure_i1s0 = DefaultShardOperationFailedException(index1, 0, Throwable("dummyCause"))
+        val failure_i1s1 = DefaultShardOperationFailedException(index1, 1, Throwable("dummyCause"))
+        val failure_i2s0 = DefaultShardOperationFailedException(index2, 0, Throwable("dummyCause"))
+        val failure_i2s1 = DefaultShardOperationFailedException(index2, 1, Throwable("dummyCause"))
 
         // Case 1: All shards successful
         var aggregate_response = listOf(response_i1s0, response_i1s1, response_i2s0, response_i2s1)
