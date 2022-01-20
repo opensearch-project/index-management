@@ -136,7 +136,7 @@ class XContentTests : OpenSearchTestCase() {
 
         val forceMergeActionString = forceMergeAction.toJsonString()
         val parsedForceMergeAction = ISMActionsParser.instance.parse(parser(forceMergeActionString), 0)
-        assertEquals("Round tripping ForceMergeAction doesn't work", forceMergeAction, parsedForceMergeAction)
+        assertEquals("Round tripping ForceMergeAction doesn't work", forceMergeAction.convertToMap(), parsedForceMergeAction.convertToMap())
     }
 
     fun `test notification action parsing`() {
