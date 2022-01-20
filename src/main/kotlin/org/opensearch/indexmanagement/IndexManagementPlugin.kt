@@ -69,6 +69,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.transport.action.retr
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.retryfailedmanagedindex.TransportRetryFailedManagedIndexAction
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.updateindexmetadata.TransportUpdateManagedIndexMetaDataAction
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.updateindexmetadata.UpdateManagedIndexMetaDataAction
+import org.opensearch.indexmanagement.indexstatemanagement.util.IndexEvaluator
 import org.opensearch.indexmanagement.migration.ISMTemplateService
 import org.opensearch.indexmanagement.refreshanalyzer.RefreshSearchAnalyzerAction
 import org.opensearch.indexmanagement.refreshanalyzer.RestRefreshSearchAnalyzerAction
@@ -296,6 +297,7 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
         fieldCapsFilter = FieldCapsFilter(clusterService, settings, indexNameExpressionResolver)
         this.indexNameExpressionResolver = indexNameExpressionResolver
 
+        val indexEvaluator = IndexEvaluator(settings, clusterService)
         val skipFlag = SkipExecution(client, clusterService)
         val rollupRunner = RollupRunner
             .registerClient(client)
@@ -337,11 +339,11 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
 
         val managedIndexCoordinator = ManagedIndexCoordinator(
             environment.settings(),
-            client, clusterService, threadPool, indexManagementIndices, metadataService, templateService
+            client, clusterService, threadPool, indexManagementIndices, metadataService, templateService, indexEvaluator
         )
 
         return listOf(
-            managedIndexRunner, rollupRunner, transformRunner, indexManagementIndices, managedIndexCoordinator, indexStateManagementHistory
+            managedIndexRunner, rollupRunner, transformRunner, indexManagementIndices, managedIndexCoordinator, indexStateManagementHistory, indexEvaluator
         )
     }
 
@@ -370,6 +372,7 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
             ManagedIndexSettings.COORDINATOR_BACKOFF_MILLIS,
             ManagedIndexSettings.ALLOW_LIST,
             ManagedIndexSettings.SNAPSHOT_DENY_LIST,
+            ManagedIndexSettings.RESTRICTED_INDEX_PATTERN,
             RollupSettings.ROLLUP_INGEST_BACKOFF_COUNT,
             RollupSettings.ROLLUP_INGEST_BACKOFF_MILLIS,
             RollupSettings.ROLLUP_SEARCH_BACKOFF_COUNT,

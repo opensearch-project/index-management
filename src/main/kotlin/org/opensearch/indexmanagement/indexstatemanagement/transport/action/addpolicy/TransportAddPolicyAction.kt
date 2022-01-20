@@ -57,6 +57,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.transport.action.ISMS
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.managedIndex.ManagedIndexAction
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.managedIndex.ManagedIndexRequest
 import org.opensearch.indexmanagement.indexstatemanagement.util.FailedIndex
+import org.opensearch.indexmanagement.indexstatemanagement.util.IndexEvaluator
 import org.opensearch.indexmanagement.indexstatemanagement.util.managedIndexConfigIndexRequest
 import org.opensearch.indexmanagement.opensearchapi.parseFromGetResponse
 import org.opensearch.indexmanagement.settings.IndexManagementSettings
@@ -82,7 +83,8 @@ class TransportAddPolicyAction @Inject constructor(
     val settings: Settings,
     val clusterService: ClusterService,
     val xContentRegistry: NamedXContentRegistry,
-    val indexNameExpressionResolver: IndexNameExpressionResolver
+    val indexNameExpressionResolver: IndexNameExpressionResolver,
+    val indexEvaluator: IndexEvaluator
 ) : HandledTransportAction<AddPolicyRequest, ISMStatusResponse>(
     AddPolicyAction.NAME, transportService, actionFilters, ::AddPolicyRequest
 ) {
@@ -284,7 +286,13 @@ class TransportAddPolicyAction @Inject constructor(
             }
 
             // Removing all the unmanageable Indices
-            indicesToAdd.entries.removeIf { (_, indexName) -> IndexUtils.isUnManageableIndexPattern(indexName) }
+            indicesToAdd.entries.removeIf { (uuid, indexName) ->
+                val shouldRemove = indexEvaluator.isUnManageableIndex(indexName)
+                if (shouldRemove) {
+                    failedIndices.add(FailedIndex(indexName, uuid, "Matches restricted index pattern"))
+                }
+                shouldRemove
+            }
 
             if (indicesToAdd.isEmpty()) {
                 actionListener.onResponse(ISMStatusResponse(0, failedIndices))

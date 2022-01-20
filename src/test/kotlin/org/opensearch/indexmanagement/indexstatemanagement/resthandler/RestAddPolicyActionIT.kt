@@ -9,6 +9,7 @@ import org.apache.http.entity.ContentType.APPLICATION_JSON
 import org.apache.http.entity.StringEntity
 import org.opensearch.client.ResponseException
 import org.opensearch.common.settings.Settings
+import org.opensearch.indexmanagement.IndexManagementPlugin
 import org.opensearch.indexmanagement.indexstatemanagement.IndexStateManagementRestTestCase
 import org.opensearch.indexmanagement.indexstatemanagement.util.FAILED_INDICES
 import org.opensearch.indexmanagement.indexstatemanagement.util.FAILURES
@@ -202,8 +203,29 @@ class RestAddPolicyActionIT : IndexStateManagementRestTestCase() {
         // Not going to attach policy to ism config index or other restricted index patterns
         val expectedMessage = mapOf(
             UPDATED_INDICES to 1,
-            FAILURES to false,
-            FAILED_INDICES to listOf<Any>()
+            FAILURES to true,
+            FAILED_INDICES to listOf(
+                mapOf(
+                    "index_name" to indexOne,
+                    "index_uuid" to getUuid(indexOne),
+                    "reason" to "Matches restricted index pattern"
+                ),
+                mapOf(
+                    "index_name" to indexTwo,
+                    "index_uuid" to getUuid(indexTwo),
+                    "reason" to "Matches restricted index pattern"
+                ),
+                mapOf(
+                    "index_name" to indexThree,
+                    "index_uuid" to getUuid(indexThree),
+                    "reason" to "Matches restricted index pattern"
+                ),
+                mapOf(
+                    "index_name" to IndexManagementPlugin.INDEX_MANAGEMENT_INDEX,
+                    "index_uuid" to getUuid(IndexManagementPlugin.INDEX_MANAGEMENT_INDEX),
+                    "reason" to "Matches restricted index pattern"
+                )
+            )
         )
 
         assertAffectedIndicesResponseIsEqual(expectedMessage, actualMessage)

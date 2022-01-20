@@ -7,9 +7,7 @@ package org.opensearch.indexmanagement.util
 
 import org.opensearch.cluster.metadata.IndexMetadata
 import org.opensearch.common.xcontent.XContentType
-import org.opensearch.indexmanagement.IndexManagementPlugin
 import org.opensearch.test.OpenSearchTestCase
-import org.opensearch.test.rest.OpenSearchRestTestCase
 import kotlin.test.assertFailsWith
 
 class IndexUtilsTests : OpenSearchTestCase() {
@@ -89,24 +87,5 @@ class IndexUtilsTests : OpenSearchTestCase() {
 
         val shouldUpdateIndex = IndexUtils.shouldUpdateIndex(index, 1)
         assertFalse(shouldUpdateIndex)
-    }
-
-    fun `test security index and kibana should not be manageable`() {
-        assertTrue("Should not manage security index", IndexUtils.isUnManageableIndexPattern(".opendistro_security"))
-        assertTrue("Should not manage kibana index", IndexUtils.isUnManageableIndexPattern(".kibana_1"))
-        assertTrue("Should not manage kibana index", IndexUtils.isUnManageableIndexPattern(".kibana"))
-        assertTrue("Should not manage kibana index", IndexUtils.isUnManageableIndexPattern(".kibana_20"))
-        assertTrue("Should not manage kibana index", IndexUtils.isUnManageableIndexPattern(".kibana_022"))
-        assertTrue(
-            "Should not manage index management config index",
-            IndexUtils.isUnManageableIndexPattern(
-                IndexManagementPlugin
-                    .INDEX_MANAGEMENT_INDEX
-            )
-        )
-        assertTrue("Should not manage kibana index", IndexUtils.isUnManageableIndexPattern(".kibana_1242142_user"))
-
-        val randomIndex = OpenSearchRestTestCase.randomAlphaOfLength(OpenSearchRestTestCase.randomIntBetween(1, 20))
-        assertFalse("Should manage non kibana and security indices", IndexUtils.isUnManageableIndexPattern(randomIndex))
     }
 }

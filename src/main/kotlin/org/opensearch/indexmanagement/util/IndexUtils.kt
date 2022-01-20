@@ -14,7 +14,6 @@ import org.opensearch.cluster.ClusterState
 import org.opensearch.cluster.metadata.IndexAbstraction
 import org.opensearch.cluster.metadata.IndexMetadata
 import org.opensearch.common.hash.MurmurHash3
-import org.opensearch.common.regex.Regex
 import org.opensearch.common.xcontent.LoggingDeprecationHandler
 import org.opensearch.common.xcontent.NamedXContentRegistry
 import org.opensearch.common.xcontent.XContentParser.Token
@@ -192,14 +191,6 @@ class IndexUtils {
             val hash = MurmurHash3.hash128(docByteArray, 0, docByteArray.size, DOCUMENT_ID_SEED, MurmurHash3.Hash128())
             val byteArray = ByteBuffer.allocate(BYTE_ARRAY_SIZE).putLong(hash.h1).putLong(hash.h2).array()
             return Base64.getUrlEncoder().withoutPadding().encodeToString(byteArray)
-        }
-
-        /**
-         * Check if the index is unmanageable by policy
-         */
-        fun isUnManageableIndexPattern(index: String): Boolean {
-            // TODO: We can potentially expose this as setting if required
-            return Regex("\\.opendistro_security|\\.kibana.*|\\$INDEX_MANAGEMENT_INDEX").matches(index)
         }
     }
 }
