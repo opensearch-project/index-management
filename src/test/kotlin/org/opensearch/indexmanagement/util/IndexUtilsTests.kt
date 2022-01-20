@@ -97,8 +97,14 @@ class IndexUtilsTests : OpenSearchTestCase() {
         assertTrue("Should not manage kibana index", IndexUtils.isUnManageableIndexPattern(".kibana"))
         assertTrue("Should not manage kibana index", IndexUtils.isUnManageableIndexPattern(".kibana_20"))
         assertTrue("Should not manage kibana index", IndexUtils.isUnManageableIndexPattern(".kibana_022"))
-        assertTrue("Should not index management config index", IndexUtils.isUnManageableIndexPattern(IndexManagementPlugin.INDEX_MANAGEMENT_INDEX))
-        assertTrue("Should not manage kibana indices", IndexUtils.isUnManageableIndexPattern(".kibana_1242142_user"))
+        assertTrue(
+            "Should not manage index management config index",
+            IndexUtils.isUnManageableIndexPattern(
+                IndexManagementPlugin
+                    .INDEX_MANAGEMENT_INDEX
+            )
+        )
+        assertTrue("Should not manage kibana index", IndexUtils.isUnManageableIndexPattern(".kibana_1242142_user"))
 
         val randomIndex = OpenSearchRestTestCase.randomAlphaOfLength(OpenSearchRestTestCase.randomIntBetween(1, 20))
         assertFalse("Should manage non kibana and security indices", IndexUtils.isUnManageableIndexPattern(randomIndex))
