@@ -5,7 +5,6 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.resthandler
 
-import org.apache.logging.log4j.LogManager
 import org.opensearch.action.support.WriteRequest
 import org.opensearch.client.node.NodeClient
 import org.opensearch.cluster.service.ClusterService
@@ -35,8 +34,6 @@ import org.opensearch.rest.RestStatus
 import org.opensearch.rest.action.RestResponseListener
 import java.io.IOException
 import java.time.Instant
-
-private val log = LogManager.getLogger(RestIndexPolicyAction::class.java)
 
 class RestIndexPolicyAction(
     settings: Settings,

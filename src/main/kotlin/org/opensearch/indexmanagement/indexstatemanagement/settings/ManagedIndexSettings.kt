@@ -9,6 +9,7 @@ import org.opensearch.common.settings.Setting
 import org.opensearch.common.unit.TimeValue
 import java.util.function.Function
 
+@Suppress("UtilityClassWithPublicConstructor")
 class ManagedIndexSettings {
     companion object {
         const val DEFAULT_ISM_ENABLED = true

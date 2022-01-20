@@ -8,6 +8,8 @@ package org.opensearch.indexmanagement.indexstatemanagement.step.allocation
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
 
+// TODO remove this suppression when refactoring is done
+@Suppress("UnusedPrivateMember", "FunctionOnlyReturningConstant")
 class AttemptAllocationStep : Step(name) {
 
     override suspend fun execute(): Step {

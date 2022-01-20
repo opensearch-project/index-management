@@ -3,7 +3,6 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-@file:Suppress("ReturnCount")
 package org.opensearch.indexmanagement.indexstatemanagement
 
 import kotlinx.coroutines.CoroutineName
@@ -98,7 +97,7 @@ import org.opensearch.threadpool.ThreadPool
  * a user wants to update an existing [ManagedIndexConfig] to a new policy (or updated version of policy)
  * then they must use the ChangePolicy API.
  */
-@Suppress("TooManyFunctions")
+@Suppress("TooManyFunctions", "ReturnCount", "NestedBlockDepth", "LongParameterList")
 @OpenForTesting
 class ManagedIndexCoordinator(
     private val settings: Settings,

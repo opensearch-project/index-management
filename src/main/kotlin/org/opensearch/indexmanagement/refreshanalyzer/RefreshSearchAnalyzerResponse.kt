@@ -60,8 +60,8 @@ class RefreshSearchAnalyzerResponse : BroadcastResponse {
 
     // TODO: restrict it for testing
     fun getSuccessfulRefreshDetails(): MutableMap<String, List<String>> {
-        var successfulRefreshDetails: MutableMap<String, List<String>> = HashMap()
-        var failedIndices = mutableSetOf<String>()
+        val successfulRefreshDetails: MutableMap<String, List<String>> = HashMap()
+        val failedIndices = mutableSetOf<String>()
         for (failure in shardFailures) {
             failedIndices.add(failure.index()!!)
         }

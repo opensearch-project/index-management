@@ -23,6 +23,7 @@ import org.opensearch.indexmanagement.IndexManagementPlugin
 import java.nio.ByteBuffer
 import java.util.Base64
 
+@Suppress("UtilityClassWithPublicConstructor")
 class IndexUtils {
     companion object {
         @Suppress("ObjectPropertyNaming")

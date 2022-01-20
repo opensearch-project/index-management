@@ -255,6 +255,7 @@ fun randomChangePolicy(
 }
 
 // will only return null since we dont want to send actual notifications during integ tests
+@Suppress("FunctionOnlyReturningConstant")
 fun randomErrorNotification(): ErrorNotification? = null
 
 fun randomManagedIndexConfig(
@@ -440,6 +441,7 @@ fun ISMTemplate.toJsonString(): String {
     return this.toXContent(builder, ToXContent.EMPTY_PARAMS).string()
 }
 
+@Suppress("RethrowCaughtException")
 fun <T> wait(
     timeout: Instant = Instant.ofEpochSecond(10),
     block: () -> T

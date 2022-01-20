@@ -25,7 +25,7 @@ class ExplainTransformResponse(val idsToExplain: Map<String, ExplainTransform?>)
         idsToExplain = sin.let {
             val idsToExplain = mutableMapOf<String, ExplainTransform?>()
             val size = it.readVInt()
-            for (i in 0 until size) {
+            repeat(size) { _ ->
                 idsToExplain[it.readString()] = if (sin.readBoolean()) ExplainTransform(it) else null
             }
             idsToExplain.toMap()

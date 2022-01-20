@@ -31,7 +31,7 @@ import java.util.Locale
 
 fun randomGroups(): List<Dimension> {
     val dimensions = mutableListOf<Dimension>()
-    for (i in 0..OpenSearchRestTestCase.randomIntBetween(1, 10)) {
+    repeat(OpenSearchRestTestCase.randomIntBetween(1, 10)) {
         dimensions.add(randomDimension())
     }
     return dimensions
@@ -60,7 +60,7 @@ fun randomAggregationBuilder(): AggregationBuilder {
 
 fun randomAggregationFactories(): AggregatorFactories.Builder {
     val factories = AggregatorFactories.builder()
-    for (i in 1..OpenSearchRestTestCase.randomIntBetween(1, 10)) {
+    repeat(OpenSearchRestTestCase.randomIntBetween(1, 10)) {
         factories.addAggregator(randomAggregationBuilder())
     }
     return factories
