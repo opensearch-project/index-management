@@ -179,7 +179,7 @@ class XContentTests : OpenSearchTestCase() {
 
         val allocationActionString = allocationAction.toJsonString()
         val parsedAllocationAction = ISMActionsParser.instance.parse(parser(allocationActionString), 0)
-        assertEquals("Round tripping AllocationAction doesn't work", allocationAction, parsedAllocationAction)
+        assertEquals("Round tripping AllocationAction doesn't work", allocationAction.convertToMap(), parsedAllocationAction.convertToMap())
     }
 
     fun `test managed index config parsing`() {
