@@ -67,6 +67,7 @@ class ManagedIndexCoordinatorTests : OpenSearchAllocationTestCase() {
         settingSet.add(ManagedIndexSettings.TEMPLATE_MIGRATION_CONTROL)
         settingSet.add(ManagedIndexSettings.COORDINATOR_BACKOFF_COUNT)
         settingSet.add(ManagedIndexSettings.COORDINATOR_BACKOFF_MILLIS)
+        settingSet.add(ManagedIndexSettings.RESTRICTED_INDEX_PATTERN)
 
         val clusterSettings = ClusterSettings(settings, settingSet)
         val originClusterService: ClusterService = ClusterServiceUtils.createClusterService(threadPool, discoveryNode, clusterSettings)
