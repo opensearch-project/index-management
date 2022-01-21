@@ -58,6 +58,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.transport.action.mana
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.managedIndex.ManagedIndexRequest
 import org.opensearch.indexmanagement.indexstatemanagement.util.FailedIndex
 import org.opensearch.indexmanagement.indexstatemanagement.util.IndexEvaluator
+import org.opensearch.indexmanagement.indexstatemanagement.util.IndexEvaluator.Companion.EVALUATION_FAILURE_MESSAGE
 import org.opensearch.indexmanagement.indexstatemanagement.util.managedIndexConfigIndexRequest
 import org.opensearch.indexmanagement.opensearchapi.parseFromGetResponse
 import org.opensearch.indexmanagement.settings.IndexManagementSettings
@@ -289,7 +290,7 @@ class TransportAddPolicyAction @Inject constructor(
             indicesToAdd.entries.removeIf { (uuid, indexName) ->
                 val shouldRemove = indexEvaluator.isUnManageableIndex(indexName)
                 if (shouldRemove) {
-                    failedIndices.add(FailedIndex(indexName, uuid, "Matches restricted index pattern defined in the cluster setting"))
+                    failedIndices.add(FailedIndex(indexName, uuid, EVALUATION_FAILURE_MESSAGE))
                 }
                 shouldRemove
             }

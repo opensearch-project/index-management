@@ -22,4 +22,8 @@ class IndexEvaluator(settings: Settings, clusterService: ClusterService) {
     fun isUnManageableIndex(index: String): Boolean {
         return Regex(restrictedIndexPattern).matches(index)
     }
+
+    companion object {
+        const val EVALUATION_FAILURE_MESSAGE = "Matches restricted index pattern defined in the cluster setting"
+    }
 }
