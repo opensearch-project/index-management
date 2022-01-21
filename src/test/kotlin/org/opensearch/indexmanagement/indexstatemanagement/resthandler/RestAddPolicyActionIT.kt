@@ -208,22 +208,22 @@ class RestAddPolicyActionIT : IndexStateManagementRestTestCase() {
                 mapOf(
                     "index_name" to indexOne,
                     "index_uuid" to getUuid(indexOne),
-                    "reason" to "Matches restricted index pattern"
+                    "reason" to "Matches restricted index pattern defined in the cluster setting"
                 ),
                 mapOf(
                     "index_name" to indexTwo,
                     "index_uuid" to getUuid(indexTwo),
-                    "reason" to "Matches restricted index pattern"
+                    "reason" to "Matches restricted index pattern defined in the cluster setting"
                 ),
                 mapOf(
                     "index_name" to indexThree,
                     "index_uuid" to getUuid(indexThree),
-                    "reason" to "Matches restricted index pattern"
+                    "reason" to "Matches restricted index pattern defined in the cluster setting"
                 ),
                 mapOf(
                     "index_name" to IndexManagementPlugin.INDEX_MANAGEMENT_INDEX,
                     "index_uuid" to getUuid(IndexManagementPlugin.INDEX_MANAGEMENT_INDEX),
-                    "reason" to "Matches restricted index pattern"
+                    "reason" to "Matches restricted index pattern defined in the cluster setting"
                 )
             )
         )

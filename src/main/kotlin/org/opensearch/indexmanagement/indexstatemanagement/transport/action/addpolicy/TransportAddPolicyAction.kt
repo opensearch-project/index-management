@@ -289,7 +289,7 @@ class TransportAddPolicyAction @Inject constructor(
             indicesToAdd.entries.removeIf { (uuid, indexName) ->
                 val shouldRemove = indexEvaluator.isUnManageableIndex(indexName)
                 if (shouldRemove) {
-                    failedIndices.add(FailedIndex(indexName, uuid, "Matches restricted index pattern"))
+                    failedIndices.add(FailedIndex(indexName, uuid, "Matches restricted index pattern defined in the cluster setting"))
                 }
                 shouldRemove
             }
