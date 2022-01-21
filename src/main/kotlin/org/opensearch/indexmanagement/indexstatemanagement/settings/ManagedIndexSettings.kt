@@ -7,6 +7,7 @@ package org.opensearch.indexmanagement.indexstatemanagement.settings
 
 import org.opensearch.common.settings.Setting
 import org.opensearch.common.unit.TimeValue
+import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
 import java.util.function.Function
 
 @Suppress("UtilityClassWithPublicConstructor")
@@ -16,6 +17,7 @@ class ManagedIndexSettings {
         const val DEFAULT_TEMPLATE_MIGRATION_TIMESTAMP = 0L
         const val DEFAULT_JOB_INTERVAL = 5
         const val DEFAULT_JITTER = 0.6
+        const val DEFAULT_RESTRICTED_PATTERN = "\\.opendistro_security|\\.kibana.*|\\$INDEX_MANAGEMENT_INDEX"
         val ALLOW_LIST_NONE = emptyList<String>()
         val SNAPSHOT_DENY_LIST_NONE = emptyList<String>()
         const val HOST_DENY_LIST = "opendistro.destination.host.deny_list"
@@ -186,6 +188,13 @@ class ManagedIndexSettings {
             DEFAULT_JITTER,
             0.0,
             1.0,
+            Setting.Property.NodeScope,
+            Setting.Property.Dynamic
+        )
+
+        val RESTRICTED_INDEX_PATTERN = Setting.simpleString(
+            "plugins.index_state_management.restricted_index_pattern",
+            DEFAULT_RESTRICTED_PATTERN,
             Setting.Property.NodeScope,
             Setting.Property.Dynamic
         )

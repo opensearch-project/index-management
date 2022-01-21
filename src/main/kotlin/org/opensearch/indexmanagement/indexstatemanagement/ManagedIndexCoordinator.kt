@@ -63,6 +63,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndex
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.managedIndex.ManagedIndexAction
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.managedIndex.ManagedIndexRequest
 import org.opensearch.indexmanagement.indexstatemanagement.util.ISM_TEMPLATE_FIELD
+import org.opensearch.indexmanagement.indexstatemanagement.util.IndexEvaluator
 import org.opensearch.indexmanagement.indexstatemanagement.util.deleteManagedIndexMetadataRequest
 import org.opensearch.indexmanagement.indexstatemanagement.util.deleteManagedIndexRequest
 import org.opensearch.indexmanagement.indexstatemanagement.util.getDeleteManagedIndexRequests
@@ -112,7 +113,8 @@ class ManagedIndexCoordinator(
     private val threadPool: ThreadPool,
     indexManagementIndices: IndexManagementIndices,
     private val metadataService: MetadataService,
-    private val templateService: ISMTemplateService
+    private val templateService: ISMTemplateService,
+    private val indexEvaluator: IndexEvaluator = IndexEvaluator(settings, clusterService)
 ) : ClusterStateListener,
     CoroutineScope by CoroutineScope(SupervisorJob() + Dispatchers.Default + CoroutineName("ManagedIndexCoordinator")),
     LifecycleListener() {
@@ -320,7 +322,7 @@ class ManagedIndexCoordinator(
         // Iterate over each unmanaged hot/warm index and if it matches an ISM template add a managed index config index request
         indexNames.forEach { indexName ->
             val lookupName = findIndexLookupName(indexName, clusterState)
-            if (lookupName != null) {
+            if (lookupName != null && !indexEvaluator.isUnManageableIndex(lookupName)) {
                 val indexMetadata = clusterState.metadata.index(indexName)
                 val creationDate = indexMetadata.creationDate
                 val indexUuid = indexMetadata.indexUUID
@@ -581,9 +583,9 @@ class ManagedIndexCoordinator(
 
         val currentManagedIndices = sweepManagedIndexJobs(client, ismIndices.indexManagementIndexExists())
 
-        // check all un-managed indices, if its name matches any template
+        // check all un-managed indices that are manageable, if its name matches any template
         val unManagedIndices = currentIndices
-            .filter { it.index.uuid !in currentManagedIndices.keys }
+            .filter { it.index.uuid !in currentManagedIndices.keys && !indexEvaluator.isUnManageableIndex(it.index.name) }
             .map { it.index }.distinct()
         val updateMatchingIndicesReqs = getMatchingIndicesUpdateReq(clusterService.state(), unManagedIndices.map { it.name })
 
