@@ -34,8 +34,8 @@ class IndexPriorityActionParser : ActionParser() {
         }
 
         return IndexPriorityAction(
-                indexPriority = requireNotNull(indexPriority) { "$INDEX_PRIORITY_FIELD is null" },
-                index = index
+            indexPriority = requireNotNull(indexPriority) { "$INDEX_PRIORITY_FIELD is null" },
+            index = index
         )
     }
 

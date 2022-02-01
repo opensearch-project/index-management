@@ -31,10 +31,10 @@ class AttemptSetIndexPriorityStep(private val action: IndexPriorityAction) : Ste
         val managedIndexMetaData = context.metadata
         try {
             val updateSettingsRequest = UpdateSettingsRequest()
-                    .indices(managedIndexMetaData.index)
-                    .settings(Settings.builder().put(SETTING_PRIORITY, action.indexPriority))
+                .indices(managedIndexMetaData.index)
+                .settings(Settings.builder().put(SETTING_PRIORITY, action.indexPriority))
             val response: AcknowledgedResponse = context.client.admin().indices()
-                    .suspendUntil { updateSettings(updateSettingsRequest, it) }
+                .suspendUntil { updateSettings(updateSettingsRequest, it) }
 
             if (response.isAcknowledged) {
                 stepStatus = StepStatus.COMPLETED
@@ -66,9 +66,9 @@ class AttemptSetIndexPriorityStep(private val action: IndexPriorityAction) : Ste
 
     override fun getUpdatedManagedIndexMetadata(currentMetadata: ManagedIndexMetaData): ManagedIndexMetaData {
         return currentMetadata.copy(
-                stepMetaData = StepMetaData(name, getStepStartTime(currentMetadata).toEpochMilli(), stepStatus),
-                transitionTo = null,
-                info = info
+            stepMetaData = StepMetaData(name, getStepStartTime(currentMetadata).toEpochMilli(), stepStatus),
+            transitionTo = null,
+            info = info
         )
     }
 

@@ -5,7 +5,11 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.step
 
-import com.nhaarman.mockitokotlin2.*
+import com.nhaarman.mockitokotlin2.any
+import com.nhaarman.mockitokotlin2.doAnswer
+import com.nhaarman.mockitokotlin2.doReturn
+import com.nhaarman.mockitokotlin2.mock
+import com.nhaarman.mockitokotlin2.whenever
 import kotlinx.coroutines.runBlocking
 import org.opensearch.action.ActionListener
 import org.opensearch.action.support.master.AcknowledgedResponse
