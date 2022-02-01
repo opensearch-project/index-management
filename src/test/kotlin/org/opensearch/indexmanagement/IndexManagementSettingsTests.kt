@@ -81,6 +81,7 @@ class IndexManagementSettingsTests : OpenSearchTestCase() {
                     ManagedIndexSettings.COORDINATOR_BACKOFF_COUNT,
                     ManagedIndexSettings.COORDINATOR_BACKOFF_MILLIS,
                     ManagedIndexSettings.ALLOW_LIST,
+                    ManagedIndexSettings.BLOCKED_ACTIONS_LIST,
                     ManagedIndexSettings.SNAPSHOT_DENY_LIST,
                     ManagedIndexSettings.JITTER,
                     RollupSettings.ROLLUP_INGEST_BACKOFF_COUNT,

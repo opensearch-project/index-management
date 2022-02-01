@@ -37,7 +37,7 @@ class SetReadWriteStepTests : OpenSearchTestCase() {
         val client = getClient(getAdminClient(getIndicesAdminClient(setReadWriteResponse, null)))
 
         runBlocking {
-            val managedIndexMetaData = ManagedIndexMetaData("test", "indexUuid", "policy_id", null, null, null, null, null, null, null, null, null, null)
+            val managedIndexMetaData = ManagedIndexMetaData("test", "indexUuid", "policy_id", null, null, null, null, null, null, null, null, null, null, null)
             val setReadWriteStep = SetReadWriteStep()
             val context = StepContext(managedIndexMetaData, clusterService, client, null, null, scriptService, settings)
             setReadWriteStep.preExecute(logger, context).execute()
@@ -51,7 +51,7 @@ class SetReadWriteStepTests : OpenSearchTestCase() {
         val client = getClient(getAdminClient(getIndicesAdminClient(null, exception)))
 
         runBlocking {
-            val managedIndexMetaData = ManagedIndexMetaData("test", "indexUuid", "policy_id", null, null, null, null, null, null, null, null, null, null)
+            val managedIndexMetaData = ManagedIndexMetaData("test", "indexUuid", "policy_id", null, null, null, null, null, null, null, null, null, null, null)
             val setReadWriteStep = SetReadWriteStep()
             val context = StepContext(managedIndexMetaData, clusterService, client, null, null, scriptService, settings)
             setReadWriteStep.preExecute(logger, context).execute()
@@ -65,7 +65,7 @@ class SetReadWriteStepTests : OpenSearchTestCase() {
         val client = getClient(getAdminClient(getIndicesAdminClient(null, exception)))
 
         runBlocking {
-            val managedIndexMetaData = ManagedIndexMetaData("test", "indexUuid", "policy_id", null, null, null, null, null, null, null, null, null, null)
+            val managedIndexMetaData = ManagedIndexMetaData("test", "indexUuid", "policy_id", null, null, null, null, null, null, null, null, null, null, null)
             val setReadWriteStep = SetReadWriteStep()
             val context = StepContext(managedIndexMetaData, clusterService, client, null, null, scriptService, settings)
             setReadWriteStep.preExecute(logger, context).execute()

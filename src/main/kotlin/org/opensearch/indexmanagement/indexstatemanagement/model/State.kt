@@ -15,6 +15,7 @@ import org.opensearch.common.xcontent.XContentParser
 import org.opensearch.common.xcontent.XContentParser.Token
 import org.opensearch.common.xcontent.XContentParserUtils.ensureExpectedToken
 import org.opensearch.indexmanagement.indexstatemanagement.ISMActionsParser
+import org.opensearch.indexmanagement.indexstatemanagement.IndexMetadataProvider
 import org.opensearch.indexmanagement.indexstatemanagement.action.DeleteAction
 import org.opensearch.indexmanagement.indexstatemanagement.action.TransitionsAction
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Action
@@ -68,17 +69,18 @@ data class State(
     }
 
     fun getActionToExecute(
-        managedIndexMetaData: ManagedIndexMetaData
+        managedIndexMetaData: ManagedIndexMetaData,
+        indexMetadataProvider: IndexMetadataProvider
     ): Action? {
         var actionConfig: Action?
         val actionMetaData = managedIndexMetaData.actionMetaData
         // If we are transitioning to this state get the first action in the state
         // If the action/actionIndex are null it means we just initialized and should get the first action from the state
         if (managedIndexMetaData.transitionTo != null || actionMetaData == null) {
-            actionConfig = this.actions.firstOrNull() ?: TransitionsAction(this.transitions)
+            actionConfig = this.actions.firstOrNull() ?: TransitionsAction(this.transitions, indexMetadataProvider)
         } else if (actionMetaData.name == TransitionsAction.name) {
             // If the current action is transition and we do not have a transitionTo set then we should be in Transition
-            actionConfig = TransitionsAction(this.transitions)
+            actionConfig = TransitionsAction(this.transitions, indexMetadataProvider)
         } else {
             // Get the current actionConfig that is in the ManagedIndexMetaData
             actionConfig = this.actions.filterIndexed { index, config ->
@@ -92,7 +94,7 @@ data class State(
             if (stepMetaData != null && stepMetaData.stepStatus == Step.StepStatus.COMPLETED) {
                 val action = actionConfig
                 if (action.isLastStep(stepMetaData.name)) {
-                    actionConfig = this.actions.getOrNull(actionMetaData.index + 1) ?: TransitionsAction(this.transitions)
+                    actionConfig = this.actions.getOrNull(actionMetaData.index + 1) ?: TransitionsAction(this.transitions, indexMetadataProvider)
                 }
             }
         }

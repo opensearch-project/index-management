@@ -6,10 +6,30 @@
 package org.opensearch.indexmanagement.indexstatemanagement.runner
 
 import org.opensearch.indexmanagement.indexstatemanagement.IndexStateManagementRestTestCase
+import org.opensearch.indexmanagement.indexstatemanagement.action.OpenAction
+import org.opensearch.indexmanagement.indexstatemanagement.action.ReadOnlyAction
+import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
+import org.opensearch.indexmanagement.indexstatemanagement.model.State
+import org.opensearch.indexmanagement.indexstatemanagement.randomErrorNotification
+import org.opensearch.indexmanagement.indexstatemanagement.randomPolicy
+import org.opensearch.indexmanagement.indexstatemanagement.randomReadOnlyActionConfig
+import org.opensearch.indexmanagement.indexstatemanagement.randomReadWriteActionConfig
+import org.opensearch.indexmanagement.indexstatemanagement.randomState
+import org.opensearch.indexmanagement.indexstatemanagement.randomTransition
+import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings
+import org.opensearch.indexmanagement.indexstatemanagement.step.readonly.SetReadOnlyStep
+import org.opensearch.indexmanagement.indexstatemanagement.step.readwrite.SetReadWriteStep
+import org.opensearch.indexmanagement.indexstatemanagement.step.transition.AttemptTransitionStep
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.PolicyRetryInfoMetaData
+import org.opensearch.indexmanagement.waitFor
+import org.opensearch.jobscheduler.spi.schedule.IntervalSchedule
+import java.time.Instant
+import java.time.temporal.ChronoUnit
 
 class ManagedIndexRunnerIT : IndexStateManagementRestTestCase() {
 
-    /*fun `test version conflict fails job`() {
+    fun `test version conflict fails job`() {
         val indexName = "version_conflict_index"
         val policyID = "version_conflict_policy"
         val actionConfig = OpenAction(0)
@@ -72,6 +92,12 @@ class ManagedIndexRunnerIT : IndexStateManagementRestTestCase() {
 
         // init policy
         updateManagedIndexConfigStartTime(managedIndexConfig)
+        waitFor { assertEquals(createdPolicy.id, getManagedIndexConfigByDocId(managedIndexConfig.id)?.policyID) }
+        // change cluster job interval setting to 2 (minutes)
+        updateClusterSetting(ManagedIndexSettings.JOB_INTERVAL.key, "2")
+        // fast forward to next execution where at the end we should change the job interval time
+        updateManagedIndexConfigStartTime(managedIndexConfig)
+        waitFor { (getManagedIndexConfigByDocId(managedIndexConfig.id)?.jobSchedule as? IntervalSchedule)?.interval == 2 }
         waitFor {
             assertEquals(createdPolicy.id, getManagedIndexConfigByDocId(managedIndexConfig.id)?.policyID)
             val currInterval = (getManagedIndexConfigByDocId(managedIndexConfig.id)?.jobSchedule as? IntervalSchedule)?.interval
@@ -103,8 +129,8 @@ class ManagedIndexRunnerIT : IndexStateManagementRestTestCase() {
         }
     }
 
-    fun `test allow list fails execution`() {
-        val indexName = "allow_list_index"
+    fun `test blocked action fails execution`() {
+        val indexName = "blocked_action_index"
 
         val firstState = randomState(
             name = "first_state", actions = listOf(randomReadOnlyActionConfig()),
@@ -141,11 +167,8 @@ class ManagedIndexRunnerIT : IndexStateManagementRestTestCase() {
         updateManagedIndexConfigStartTime(managedIndexConfig)
         waitFor { assertEquals(AttemptTransitionStep.getSuccessMessage(indexName, firstState.name), getExplainManagedIndexMetaData(indexName).info?.get("message")) }
 
-        // remove read_only from the allowlist
-        val allowedActions = ActionConfig.ActionType.values().toList()
-            .filter { actionType -> actionType != ActionConfig.ActionType.READ_ONLY }
-            .joinToString(prefix = "[", postfix = "]") { string -> "\"$string\"" }
-        updateClusterSetting(ManagedIndexSettings.ALLOW_LIST.key, allowedActions, escapeValue = false)
+        // block the read_only action
+        updateClusterSetting(ManagedIndexSettings.BLOCKED_ACTIONS_LIST.key, "[\"${ReadOnlyAction.name}\"]", escapeValue = false)
 
         // speed up to fifth execution that should try to set index to read only and fail because the action is not allowed
         updateManagedIndexConfigStartTime(managedIndexConfig)
@@ -188,5 +211,5 @@ class ManagedIndexRunnerIT : IndexStateManagementRestTestCase() {
             val currJitter = getManagedIndexConfigByDocId(newManagedIndexConfig.id)?.jitter
             assertEquals("Failed to update ManagedIndexConfig jitter", newJitter, currJitter)
         }
-    }*/
+    }
 }

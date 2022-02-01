@@ -9,9 +9,12 @@ import org.apache.logging.log4j.LogManager
 import org.opensearch.ExceptionsHelper
 import org.opensearch.action.admin.indices.stats.IndicesStatsRequest
 import org.opensearch.action.admin.indices.stats.IndicesStatsResponse
+import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.unit.ByteSizeValue
+import org.opensearch.indexmanagement.indexstatemanagement.IndexMetadataProvider
 import org.opensearch.indexmanagement.indexstatemanagement.action.TransitionsAction
 import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.getOldestRolloverTime
+import org.opensearch.indexmanagement.indexstatemanagement.util.DEFAULT_INDEX_TYPE
 import org.opensearch.indexmanagement.indexstatemanagement.util.evaluateConditions
 import org.opensearch.indexmanagement.indexstatemanagement.util.hasStatsConditions
 import org.opensearch.indexmanagement.opensearchapi.getUsefulCauseString
@@ -31,12 +34,13 @@ class AttemptTransitionStep(private val action: TransitionsAction) : Step(name) 
     private var policyCompleted: Boolean = false
     private var info: Map<String, Any>? = null
 
-    @Suppress("ReturnCount", "ComplexMethod", "LongMethod")
+    @Suppress("ReturnCount", "ComplexMethod", "LongMethod", "NestedBlockDepth")
     override suspend fun execute(): Step {
         val context = this.context ?: return this
         val indexName = context.metadata.index
         val clusterService = context.clusterService
         val transitions = action.transitions
+        val indexMetadataProvider = action.indexMetadataProvider
         try {
             if (transitions.isEmpty()) {
                 logger.info("$indexName transitions are empty, completing policy")
@@ -45,8 +49,10 @@ class AttemptTransitionStep(private val action: TransitionsAction) : Step(name) 
                 return this
             }
 
-            val indexMetaData = clusterService.state().metadata().index(indexName)
-            val indexCreationDate = indexMetaData.creationDate
+            val indexMetadata = clusterService.state().metadata().index(indexName)
+            val inCluster = clusterService.state().metadata().hasIndex(indexName) && indexMetadata?.indexUUID == context.metadata.indexUuid
+
+            val indexCreationDate = getIndexCreationDate(context.metadata, indexMetadataProvider, clusterService, indexName, inCluster)
             val indexCreationDateInstant = Instant.ofEpochMilli(indexCreationDate)
             if (indexCreationDate == -1L) {
                 logger.warn("$indexName had an indexCreationDate=-1L, cannot use for comparison")
@@ -54,8 +60,8 @@ class AttemptTransitionStep(private val action: TransitionsAction) : Step(name) 
             val stepStartTime = getStepStartTime(context.metadata)
             var numDocs: Long? = null
             var indexSize: ByteSizeValue? = null
-            val rolloverDate: Instant? = indexMetaData.getOldestRolloverTime()
 
+            val rolloverDate: Instant? = if (inCluster) indexMetadata.getOldestRolloverTime() else null
             if (transitions.any { it.conditions?.rolloverAge !== null }) {
                 // if we have a transition with rollover age condition, then we must have a rollover date
                 // otherwise fail this transition
@@ -69,22 +75,27 @@ class AttemptTransitionStep(private val action: TransitionsAction) : Step(name) 
             }
 
             if (transitions.any { it.hasStatsConditions() }) {
-                val statsRequest = IndicesStatsRequest()
-                    .indices(indexName).clear().docs(true)
-                val statsResponse: IndicesStatsResponse = context.client.admin().indices().suspendUntil { stats(statsRequest, it) }
+                if (inCluster) {
+                    val statsRequest = IndicesStatsRequest()
+                        .indices(indexName).clear().docs(true)
+                    val statsResponse: IndicesStatsResponse =
+                        context.client.admin().indices().suspendUntil { stats(statsRequest, it) }
 
-                if (statsResponse.status != RestStatus.OK) {
-                    val message = getFailedStatsMessage(indexName)
-                    logger.warn("$message - ${statsResponse.status}")
-                    stepStatus = StepStatus.FAILED
-                    info = mapOf(
-                        "message" to message,
-                        "shard_failures" to statsResponse.shardFailures.map { it.getUsefulCauseString() }
-                    )
-                    return this
+                    if (statsResponse.status != RestStatus.OK) {
+                        val message = getFailedStatsMessage(indexName)
+                        logger.warn("$message - ${statsResponse.status}")
+                        stepStatus = StepStatus.FAILED
+                        info = mapOf(
+                            "message" to message,
+                            "shard_failures" to statsResponse.shardFailures.map { it.getUsefulCauseString() }
+                        )
+                        return this
+                    }
+                    numDocs = statsResponse.primaries.getDocs()?.count ?: 0
+                    indexSize = ByteSizeValue(statsResponse.primaries.getDocs()?.totalSizeInBytes ?: 0)
+                } else {
+                    logger.warn("Cannot use index size/doc count transition conditions for index [$indexName] that does not exist in cluster")
                 }
-                numDocs = statsResponse.primaries.getDocs()?.count ?: 0
-                indexSize = ByteSizeValue(statsResponse.primaries.getDocs()?.totalSizeInBytes ?: 0)
             }
 
             // Find the first transition that evaluates to true and get the state to transition to, otherwise return null if none are true
@@ -131,6 +142,38 @@ class AttemptTransitionStep(private val action: TransitionsAction) : Step(name) 
             stepMetaData = StepMetaData(name, getStepStartTime(currentMetadata).toEpochMilli(), stepStatus),
             info = info
         )
+    }
+
+    @Suppress("ReturnCount")
+    private suspend fun getIndexCreationDate(
+        metadata: ManagedIndexMetaData,
+        indexMetadataProvider: IndexMetadataProvider,
+        clusterService: ClusterService,
+        indexName: String,
+        inCluster: Boolean
+    ): Long {
+        try {
+            // If we do have an index creation date cached already then use that
+            metadata.indexCreationDate?.let { return it }
+            // Otherwise, check if this index is in cluster state first
+            return if (inCluster) {
+                val clusterStateMetadata = clusterService.state().metadata()
+                clusterStateMetadata.index(indexName).creationDate
+            } else {
+                // And then finally check all other index types which may not be in the cluster
+                val nonDefaultIndexTypes = indexMetadataProvider.services.keys.filter { it != DEFAULT_INDEX_TYPE }
+                val multiTypeIndexNameToMetaData = indexMetadataProvider.getMultiTypeIndexMetadata(nonDefaultIndexTypes, listOf(indexName))
+                // the managedIndexConfig.indexUuid should be unique across all index types
+                val indexCreationDate = multiTypeIndexNameToMetaData.values.firstOrNull {
+                    it[indexName]?.indexUuid == metadata.indexUuid
+                }?.get(indexName)?.indexCreationDate
+                indexCreationDate ?: -1
+            }
+        } catch (e: Exception) {
+            logger.error("Failed to get index creation date for $indexName", e)
+        }
+        // -1L index age is ignored during condition checks
+        return -1L
     }
 
     override fun isIdempotent() = true

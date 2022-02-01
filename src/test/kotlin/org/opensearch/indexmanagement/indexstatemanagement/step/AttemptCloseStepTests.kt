@@ -39,7 +39,7 @@ class AttemptCloseStepTests : OpenSearchTestCase() {
         val client = getClient(getAdminClient(getIndicesAdminClient(closeIndexResponse, null)))
 
         runBlocking {
-            val managedIndexMetaData = ManagedIndexMetaData("test", "indexUuid", "policy_id", null, null, null, null, null, null, null, null, null, null)
+            val managedIndexMetaData = ManagedIndexMetaData("test", "indexUuid", "policy_id", null, null, null, null, null, null, null, null, null, null, null)
             val attemptCloseStep = AttemptCloseStep()
             val context = StepContext(managedIndexMetaData, clusterService, client, null, null, scriptService, settings)
             attemptCloseStep.preExecute(logger, context).execute()
@@ -53,7 +53,7 @@ class AttemptCloseStepTests : OpenSearchTestCase() {
         val client = getClient(getAdminClient(getIndicesAdminClient(closeIndexResponse, null)))
 
         runBlocking {
-            val managedIndexMetaData = ManagedIndexMetaData("test", "indexUuid", "policy_id", null, null, null, null, null, null, null, null, null, null)
+            val managedIndexMetaData = ManagedIndexMetaData("test", "indexUuid", "policy_id", null, null, null, null, null, null, null, null, null, null, null)
             val attemptCloseStep = AttemptCloseStep()
             val context = StepContext(managedIndexMetaData, clusterService, client, null, null, scriptService, settings)
             attemptCloseStep.preExecute(logger, context).execute()
@@ -67,7 +67,7 @@ class AttemptCloseStepTests : OpenSearchTestCase() {
         val client = getClient(getAdminClient(getIndicesAdminClient(null, exception)))
 
         runBlocking {
-            val managedIndexMetaData = ManagedIndexMetaData("test", "indexUuid", "policy_id", null, null, null, null, null, null, null, null, null, null)
+            val managedIndexMetaData = ManagedIndexMetaData("test", "indexUuid", "policy_id", null, null, null, null, null, null, null, null, null, null, null)
             val attemptCloseStep = AttemptCloseStep()
             val context = StepContext(managedIndexMetaData, clusterService, client, null, null, scriptService, settings)
             attemptCloseStep.preExecute(logger, context).execute()
@@ -81,7 +81,7 @@ class AttemptCloseStepTests : OpenSearchTestCase() {
         val client = getClient(getAdminClient(getIndicesAdminClient(null, exception)))
 
         runBlocking {
-            val managedIndexMetaData = ManagedIndexMetaData("test", "indexUuid", "policy_id", null, null, null, null, null, null, null, null, null, null)
+            val managedIndexMetaData = ManagedIndexMetaData("test", "indexUuid", "policy_id", null, null, null, null, null, null, null, null, null, null, null)
             val attemptCloseStep = AttemptCloseStep()
             val context = StepContext(managedIndexMetaData, clusterService, client, null, null, scriptService, settings)
             attemptCloseStep.preExecute(logger, context).execute()
@@ -95,7 +95,7 @@ class AttemptCloseStepTests : OpenSearchTestCase() {
         val client = getClient(getAdminClient(getIndicesAdminClient(null, exception)))
 
         runBlocking {
-            val managedIndexMetaData = ManagedIndexMetaData("test", "indexUuid", "policy_id", null, null, null, null, null, null, null, null, null, null)
+            val managedIndexMetaData = ManagedIndexMetaData("test", "indexUuid", "policy_id", null, null, null, null, null, null, null, null, null, null, null)
             val attemptCloseStep = AttemptCloseStep()
             val context = StepContext(managedIndexMetaData, clusterService, client, null, null, scriptService, settings)
             attemptCloseStep.preExecute(logger, context).execute()
@@ -109,7 +109,7 @@ class AttemptCloseStepTests : OpenSearchTestCase() {
         val client = getClient(getAdminClient(getIndicesAdminClient(null, exception)))
 
         runBlocking {
-            val managedIndexMetaData = ManagedIndexMetaData("test", "indexUuid", "policy_id", null, null, null, null, null, null, null, null, null, null)
+            val managedIndexMetaData = ManagedIndexMetaData("test", "indexUuid", "policy_id", null, null, null, null, null, null, null, null, null, null, null)
             val attemptCloseStep = AttemptCloseStep()
             val context = StepContext(managedIndexMetaData, clusterService, client, null, null, scriptService, settings)
             attemptCloseStep.preExecute(logger, context).execute()

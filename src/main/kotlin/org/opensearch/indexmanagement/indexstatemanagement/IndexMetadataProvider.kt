@@ -45,6 +45,10 @@ class IndexMetadataProvider(
         return service.getMetadata(indexNames, client, clusterService)
     }
 
+    /*
+     * Attempts to get the index metadata for of all indexNames for each of the index types designated in the types parameter.
+     * Returns a map of <index type to <index names to index metadata>>
+     */
     suspend fun getMultiTypeISMIndexMetadata(
         types: List<String> = services.keys.toList(),
         indexNames: List<String>
