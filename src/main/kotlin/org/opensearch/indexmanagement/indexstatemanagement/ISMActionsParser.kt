@@ -11,6 +11,7 @@ import org.opensearch.common.xcontent.XContentParserUtils
 import org.opensearch.indexmanagement.indexstatemanagement.action.CloseActionParser
 import org.opensearch.indexmanagement.indexstatemanagement.action.DeleteActionParser
 import org.opensearch.indexmanagement.indexstatemanagement.action.ForceMergeActionParser
+import org.opensearch.indexmanagement.indexstatemanagement.action.IndexPriorityActionParser
 import org.opensearch.indexmanagement.indexstatemanagement.action.NotificationActionParser
 import org.opensearch.indexmanagement.indexstatemanagement.action.OpenActionParser
 import org.opensearch.indexmanagement.indexstatemanagement.action.ReadOnlyActionParser
@@ -34,6 +35,7 @@ class ISMActionsParser private constructor() {
         CloseActionParser(),
         DeleteActionParser(),
         ForceMergeActionParser(),
+        IndexPriorityActionParser(),
         NotificationActionParser(),
         OpenActionParser(),
         ReadOnlyActionParser(),

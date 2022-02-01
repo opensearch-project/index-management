@@ -5,6 +5,7 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.action
 
+import org.opensearch.indexmanagement.indexstatemanagement.step.indexpriority.AttemptSetIndexPriorityStep
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Action
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepContext
@@ -14,13 +15,16 @@ class IndexPriorityAction(
     index: Int
 ) : Action(name, index) {
 
-    override fun getStepToExecute(context: StepContext): Step {
-        TODO("Not yet implemented")
+    init {
+        require(indexPriority >= 0) { "IndexPriorityAction index_priority value must be a non-negative number" }
     }
 
-    override fun getSteps(): List<Step> {
-        TODO("Not yet implemented")
-    }
+    private val attemptSetIndexPriorityStep = AttemptSetIndexPriorityStep(this)
+    private val steps = listOf(attemptSetIndexPriorityStep)
+
+    override fun getStepToExecute(context: StepContext): Step = attemptSetIndexPriorityStep
+
+    override fun getSteps(): List<Step> = steps
 
     companion object {
         const val name = "index_priority"

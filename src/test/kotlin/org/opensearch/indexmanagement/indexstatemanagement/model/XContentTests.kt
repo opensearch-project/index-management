@@ -123,12 +123,12 @@ class XContentTests : OpenSearchTestCase() {
         assertEquals("Round tripping ReplicaCountAction doesn't work", replicaCountAction.convertToMap(), parsedReplicaCountAction.convertToMap())
     }
 
-    private fun `test set_index_priority action config parsing`() {
-        val indexPriorityActionConfig = randomIndexPriorityActionConfig()
+    fun `test set_index_priority action config parsing`() {
+        val indexPriorityAction = randomIndexPriorityActionConfig()
 
-        val indexPriorityActionConfigString = indexPriorityActionConfig.toJsonString()
-        val parsedIndexPriorityActionConfig = ISMActionsParser.instance.parse(parser(indexPriorityActionConfigString), 0)
-        assertEquals("Round tripping indexPriorityActionConfig doesn't work", indexPriorityActionConfig, parsedIndexPriorityActionConfig)
+        val indexPriorityActionString = indexPriorityAction.toJsonString()
+        val parsedIndexPriorityAction = ISMActionsParser.instance.parse(parser(indexPriorityActionString), 0)
+        assertEquals("Round tripping indexPriorityAction doesn't work", indexPriorityAction.convertToMap(), parsedIndexPriorityAction.convertToMap())
     }
 
     fun `test force_merge action config parsing`() {

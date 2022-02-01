@@ -22,8 +22,7 @@ import java.time.temporal.ChronoUnit
 @Suppress("UnusedPrivateMember")
 class IndexPolicyRequestTests : OpenSearchTestCase() {
 
-    // TODO: fixme - enable the test
-    private fun `test index policy request index priority action`() {
+    fun `test index policy request index priority action`() {
         val policyID = "policyID"
         val actionConfig = IndexPriorityAction(50, 0)
         val states = listOf(State(name = "SetPriorityState", actions = listOf(actionConfig), transitions = listOf()))

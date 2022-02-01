@@ -302,7 +302,6 @@ integTest {
     exclude 'org/opensearch/indexmanagement/indexstatemanagement/action/ActionRetryIT.class'
     exclude 'org/opensearch/indexmanagement/indexstatemanagement/action/ActionTimeoutIT.class'
     exclude 'org/opensearch/indexmanagement/indexstatemanagement/action/AllocationActionIT.class'
-    exclude 'org/opensearch/indexmanagement/indexstatemanagement/action/IndexPriorityActionIT.class'
     exclude 'org/opensearch/indexmanagement/indexstatemanagement/action/IndexStateManagementHistoryIT.class'
     exclude 'org/opensearch/indexmanagement/indexstatemanagement/action/SnapshotActionIT.class'
     exclude 'org/opensearch/indexmanagement/indexstatemanagement/runner/*'
