@@ -25,7 +25,7 @@ class AllocationActionParser : ActionParser() {
         val waitFor = sin.readBoolean()
         val index = sin.readInt()
 
-        return AllocationAction(require, exclude, include, waitFor, index)
+        return AllocationAction(require, include, exclude, waitFor, index)
     }
 
     override fun fromXContent(xcp: XContentParser, index: Int): Action {
@@ -43,7 +43,7 @@ class AllocationActionParser : ActionParser() {
                 INCLUDE -> assignObject(xcp, include)
                 EXCLUDE -> assignObject(xcp, exclude)
                 WAIT_FOR -> waitFor = xcp.booleanValue()
-                else -> throw IllegalArgumentException("Invalid field: [$fieldName] found in AllocationActionConfig.")
+                else -> throw IllegalArgumentException("Invalid field: [$fieldName] found in AllocationAction.")
             }
         }
         return AllocationAction(require, include, exclude, waitFor, index)

@@ -175,7 +175,11 @@ class XContentTests : OpenSearchTestCase() {
     }
 
     fun `test allocation action config parsing`() {
-        val allocationAction = randomAllocationActionConfig(require = mapOf("box_type" to "hot"))
+        val allocationAction = randomAllocationActionConfig(
+            require = mapOf("box_type" to "hot"),
+            include = mapOf(randomAlphaOfLengthBetween(1, 10) to randomAlphaOfLengthBetween(1, 10)),
+            exclude = mapOf(randomAlphaOfLengthBetween(1, 10) to randomAlphaOfLengthBetween(1, 10))
+        )
 
         val allocationActionString = allocationAction.toJsonString()
         val parsedAllocationAction = ISMActionsParser.instance.parse(parser(allocationActionString), 0)
