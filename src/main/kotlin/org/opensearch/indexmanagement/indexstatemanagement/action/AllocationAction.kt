@@ -15,8 +15,8 @@ import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepContext
 
 class AllocationAction(
     val require: Map<String, String>,
-    val exclude: Map<String, String>,
     val include: Map<String, String>,
+    val exclude: Map<String, String>,
     val waitFor: Boolean = false,
     index: Int
 ) : Action(name, index) {

@@ -147,8 +147,6 @@ class AllocationActionIT : IndexStateManagementRestTestCase() {
 
         waitFor {
             val settings = getFlatSettings(indexName)
-            // Debug use
-            logger.info("test exclude flat settings: $settings")
             assertTrue(settings.containsKey("index.routing.allocation.exclude._name"))
             assertEquals(actionConfig.exclude["_name"], settings["index.routing.allocation.exclude._name"])
         }
@@ -201,8 +199,6 @@ class AllocationActionIT : IndexStateManagementRestTestCase() {
 
         waitFor {
             val settings = getFlatSettings(indexName)
-            // Debug use
-            logger.info("test include flat settings: $settings")
             assertTrue(settings.containsKey("index.routing.allocation.include._name"))
             assertEquals(actionConfig.include["_name"], settings["index.routing.allocation.include._name"])
         }
