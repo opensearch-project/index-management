@@ -301,7 +301,6 @@ integTest {
     // TODO: Remove me after refactoring all actions
     exclude 'org/opensearch/indexmanagement/indexstatemanagement/action/ActionRetryIT.class'
     exclude 'org/opensearch/indexmanagement/indexstatemanagement/action/ActionTimeoutIT.class'
-    exclude 'org/opensearch/indexmanagement/indexstatemanagement/action/AllocationActionIT.class'
     exclude 'org/opensearch/indexmanagement/indexstatemanagement/action/IndexStateManagementHistoryIT.class'
     exclude 'org/opensearch/indexmanagement/indexstatemanagement/runner/*'
     exclude 'org/opensearch/indexmanagement/indexstatemanagement/resthandler/*'

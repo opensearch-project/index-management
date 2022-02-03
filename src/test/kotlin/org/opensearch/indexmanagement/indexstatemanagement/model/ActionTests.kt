@@ -115,9 +115,15 @@ class ActionTests : OpenSearchTestCase() {
         roundTripAction(randomIndexPriorityActionConfig())
     }
 
-    // TODO: fixme - enable the test
-    private fun `test allocation action round trip`() {
-        roundTripAction(randomAllocationActionConfig(require = mapOf("box_type" to "hot")))
+    fun `test allocation action round trip`() {
+        roundTripAction(
+            randomAllocationActionConfig
+            (
+                require = mapOf("box_type" to "hot"),
+                include = mapOf(randomAlphaOfLengthBetween(1, 10) to randomAlphaOfLengthBetween(1, 10)),
+                exclude = mapOf(randomAlphaOfLengthBetween(1, 10) to randomAlphaOfLengthBetween(1, 10))
+            )
+        )
     }
 
     fun `test close action round trip`() {
