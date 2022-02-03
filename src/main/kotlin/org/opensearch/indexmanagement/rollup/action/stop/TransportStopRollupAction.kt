@@ -25,6 +25,7 @@ import org.opensearch.common.xcontent.LoggingDeprecationHandler
 import org.opensearch.common.xcontent.NamedXContentRegistry
 import org.opensearch.common.xcontent.XContentHelper
 import org.opensearch.common.xcontent.XContentType
+import org.opensearch.commons.ConfigConstants
 import org.opensearch.indexmanagement.IndexManagementPlugin
 import org.opensearch.indexmanagement.opensearchapi.parseWithType
 import org.opensearch.indexmanagement.rollup.model.Rollup
@@ -76,6 +77,11 @@ class TransportStopRollupAction @Inject constructor(
     @Suppress("ReturnCount")
     override fun doExecute(task: Task, request: StopRollupRequest, actionListener: ActionListener<AcknowledgedResponse>) {
         log.debug("Executing StopRollupAction on ${request.id()}")
+        log.debug(
+            "User and roles string from thread context: ${client.threadPool().threadContext.getTransient<String>(
+                ConfigConstants.OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT
+            )}"
+        )
         val getRequest = GetRequest(IndexManagementPlugin.INDEX_MANAGEMENT_INDEX, request.id())
         val user = buildUser(client.threadPool().threadContext)
         client.threadPool().threadContext.stashContext().use {
@@ -177,6 +183,7 @@ class TransportStopRollupAction @Inject constructor(
                     )
                 )
             )
+            .routing(rollup.id)
         client.update(
             updateRequest,
             object : ActionListener<UpdateResponse> {

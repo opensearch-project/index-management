@@ -166,10 +166,11 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
         alias: String? = null,
         replicas: String? = null,
         shards: String? = null,
-        mapping: String = ""
+        mapping: String = "",
+        settings: Settings? = null
     ): Pair<String, String?> {
         val waitForActiveShards = if (isMultiNode) "all" else "1"
-        val settings = Settings.builder().let {
+        val builtSettings = Settings.builder().let {
             if (alias == null) {
                 it.putNull(ManagedIndexSettings.ROLLOVER_ALIAS.key)
             } else {
@@ -178,9 +179,11 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
             it.put(INDEX_NUMBER_OF_REPLICAS, replicas ?: "1")
             it.put(INDEX_NUMBER_OF_SHARDS, shards ?: "1")
             it.put("index.write.wait_for_active_shards", waitForActiveShards)
+            if (settings != null) it.put(settings)
+            it
         }.build()
         val aliases = if (alias == null) "" else "\"$alias\": { \"is_write_index\": true }"
-        createIndex(index, settings, mapping, aliases)
+        createIndex(index, builtSettings, mapping, aliases)
         if (policyID != null) {
             addPolicyToIndex(index, policyID)
         }
@@ -210,9 +213,9 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
         assertEquals("Unexpected RestStatus", RestStatus.OK, response.restStatus())
     }
 
-    /** Refresh all indices in the cluster */
-    protected fun refresh() {
-        val request = Request("POST", "/_refresh")
+    /** Refresh indices in the cluster */
+    protected fun refresh(target: String = "_all") {
+        val request = Request("POST", "/$target/_refresh")
         client().performRequest(request)
     }
 
@@ -358,7 +361,7 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
         }
     }
 
-    protected fun updateManagedIndexConfigStartTime(update: ManagedIndexConfig, desiredStartTimeMillis: Long? = null) {
+    protected fun updateManagedIndexConfigStartTime(update: ManagedIndexConfig, desiredStartTimeMillis: Long? = null, retryOnConflict: Int = 0) {
         // Before updating start time of a job always make sure there are no unassigned shards that could cause the config
         // index to move to a new node and negate this forced start
         if (isMultiNode) {
@@ -379,8 +382,9 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
         val millis = Duration.of(intervalSchedule.interval.toLong(), intervalSchedule.unit).minusSeconds(2).toMillis()
         val startTimeMillis = desiredStartTimeMillis ?: Instant.now().toEpochMilli() - millis
         val waitForActiveShards = if (isMultiNode) "all" else "1"
+        val endpoint = "$INDEX_MANAGEMENT_INDEX/_update/${update.id}?wait_for_active_shards=$waitForActiveShards;retry_on_conflict=$retryOnConflict"
         val response = client().makeRequest(
-            "POST", "$INDEX_MANAGEMENT_INDEX/_update/${update.id}?wait_for_active_shards=$waitForActiveShards",
+            "POST", endpoint,
             StringEntity(
                 "{\"doc\":{\"managed_index\":{\"schedule\":{\"interval\":{\"start_time\":" +
                     "\"$startTimeMillis\"}}}}}",
@@ -614,11 +618,11 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
         assertEquals("Unable to create a new repository", RestStatus.OK, response.restStatus())
     }
 
-    private fun getShardsList(): List<Any> {
+    protected fun getShardsList(target: String = "*"): List<Any> {
         val response = client()
             .makeRequest(
                 "GET",
-                "_cat/shards?format=json",
+                "_cat/shards/$target?format=json",
                 emptyMap()
             )
         assertEquals("Unable to get allocation info", RestStatus.OK, response.restStatus())
@@ -629,6 +633,35 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
         } catch (e: IOException) {
             throw OpenSearchParseException("Failed to parse content to list", e)
         }
+    }
+
+    protected fun cat(endpoint: String = "indices"): List<Any> {
+        val response = client()
+            .makeRequest(
+                "GET",
+                "_cat/$endpoint",
+                emptyMap()
+            )
+        assertEquals("Unable to get cat info", RestStatus.OK, response.restStatus())
+        try {
+            return jsonXContent
+                .createParser(NamedXContentRegistry.EMPTY, DeprecationHandler.THROW_UNSUPPORTED_OPERATION, response.entity.content)
+                .use { parser -> parser.list() }
+        } catch (e: IOException) {
+            throw OpenSearchParseException("Failed to parse content to list", e)
+        }
+    }
+
+    protected fun forceMerge(target: String, maxNumSegments: String) {
+        val response = client().makeRequest("POST", "$target/_forcemerge?max_num_segments=$maxNumSegments")
+        assertEquals("Unable to get cat info", RestStatus.OK, response.restStatus())
+    }
+
+    protected fun stats(target: String? = null, metrics: String? = null): Map<String, Any> {
+        val endpoint = "${target ?: ""}/_stats${if (metrics == null) "" else "/$metrics"}"
+        val response = client().makeRequest("GET", endpoint, emptyMap())
+        assertEquals("Unable to get a stats", RestStatus.OK, response.restStatus())
+        return response.asMap()
     }
 
     private fun getSnapshotsList(repository: String): List<Any> {
@@ -861,5 +894,83 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
             assertEquals(expected.priority, actual.priority)
         }
         return true
+    }
+
+    protected fun createV1Template(templateName: String, indexPatterns: String, policyID: String, order: Int = 0) {
+        val response = client().makeRequest(
+            "PUT", "_template/$templateName",
+            StringEntity(
+                "{\n" +
+                    "  \"index_patterns\": [\"$indexPatterns\"],\n" +
+                    "  \"settings\": {\n" +
+                    "    \"opendistro.index_state_management.policy_id\": \"$policyID\"\n" +
+                    "  }, \n" +
+                    "  \"order\": $order\n" +
+                    "}",
+                APPLICATION_JSON
+            )
+        )
+        assertEquals("Request failed", RestStatus.OK, response.restStatus())
+    }
+
+    protected fun createV1Template2(templateName: String, indexPatterns: String, order: Int = 0) {
+        val response = client().makeRequest(
+            "PUT", "_template/$templateName",
+            StringEntity(
+                "{\n" +
+                    "  \"index_patterns\": [\"$indexPatterns\"],\n" +
+                    "  \"order\": $order\n" +
+                    "}",
+                APPLICATION_JSON
+            )
+        )
+        assertEquals("Request failed", RestStatus.OK, response.restStatus())
+    }
+
+    protected fun deleteV1Template(templateName: String) {
+        val response = client().makeRequest("DELETE", "_template/$templateName")
+        assertEquals("Request failed", RestStatus.OK, response.restStatus())
+    }
+
+    protected fun createV2Template(templateName: String, indexPatterns: String, policyID: String) {
+        val response = client().makeRequest(
+            "PUT", "_index_template/$templateName",
+            StringEntity(
+                "{\n" +
+                    "  \"index_patterns\": [\"$indexPatterns\"],\n" +
+                    "  \"template\": {\n" +
+                    "    \"settings\": {\n" +
+                    "      \"opendistro.index_state_management.policy_id\": \"$policyID\"\n" +
+                    "    }\n" +
+                    "  }\n" +
+                    "}",
+                APPLICATION_JSON
+            )
+        )
+        assertEquals("Request failed", RestStatus.OK, response.restStatus())
+    }
+
+    protected fun deleteV2Template(templateName: String) {
+        val response = client().makeRequest("DELETE", "_index_template/$templateName")
+        assertEquals("Request failed", RestStatus.OK, response.restStatus())
+    }
+
+    fun catIndexTemplates(): List<Any> {
+        val response = client().makeRequest("GET", "_cat/templates?format=json")
+        logger.info("response: $response")
+
+        assertEquals("cat template request failed", RestStatus.OK, response.restStatus())
+
+        try {
+            return jsonXContent
+                .createParser(
+                    NamedXContentRegistry.EMPTY,
+                    DeprecationHandler.THROW_UNSUPPORTED_OPERATION,
+                    response.entity.content
+                )
+                .use { parser -> parser.list() }
+        } catch (e: IOException) {
+            throw OpenSearchParseException("Failed to parse content to list", e)
+        }
     }
 }

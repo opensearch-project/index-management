@@ -5,6 +5,7 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.transport.action.removepolicy
 
+import org.apache.logging.log4j.LogManager
 import org.opensearch.ExceptionsHelper
 import org.opensearch.OpenSearchSecurityException
 import org.opensearch.OpenSearchStatusException
@@ -30,6 +31,7 @@ import org.opensearch.cluster.metadata.IndexMetadata.SETTING_READ_ONLY_ALLOW_DEL
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.inject.Inject
 import org.opensearch.common.settings.Settings
+import org.opensearch.commons.ConfigConstants
 import org.opensearch.commons.authuser.User
 import org.opensearch.index.Index
 import org.opensearch.index.IndexNotFoundException
@@ -58,6 +60,8 @@ class TransportRemovePolicyAction @Inject constructor(
     RemovePolicyAction.NAME, transportService, actionFilters, ::RemovePolicyRequest
 ) {
 
+    private val log = LogManager.getLogger(javaClass)
+
     override fun doExecute(task: Task, request: RemovePolicyRequest, listener: ActionListener<ISMStatusResponse>) {
         RemovePolicyHandler(client, listener, request).start()
     }
@@ -76,6 +80,11 @@ class TransportRemovePolicyAction @Inject constructor(
         private val indicesWithReadOnlyAllowDeleteBlock = mutableSetOf<String>()
 
         fun start() {
+            log.debug(
+                "User and roles string from thread context: ${client.threadPool().threadContext.getTransient<String>(
+                    ConfigConstants.OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT
+                )}"
+            )
             if (user == null) {
                 getClusterState()
             } else {
