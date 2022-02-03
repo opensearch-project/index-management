@@ -29,12 +29,14 @@ import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANA
 import org.opensearch.indexmanagement.indexstatemanagement.ManagedIndexCoordinator
 import org.opensearch.indexmanagement.indexstatemanagement.action.RolloverAction
 import org.opensearch.indexmanagement.indexstatemanagement.model.ChangePolicy
+import org.opensearch.indexmanagement.indexstatemanagement.model.ISMTemplate
 import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexConfig
 import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
 import org.opensearch.indexmanagement.indexstatemanagement.model.State
 import org.opensearch.indexmanagement.indexstatemanagement.model.Transition
 import org.opensearch.indexmanagement.indexstatemanagement.model.coordinator.SweptManagedIndexConfig
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings
+import org.opensearch.indexmanagement.opensearchapi.optionalISMTemplateField
 import org.opensearch.indexmanagement.opensearchapi.optionalTimeField
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Action
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
@@ -124,6 +126,17 @@ private fun updateEnabledField(uuid: String, enabled: Boolean, enabledTime: Long
         .endObject()
         .endObject()
     return UpdateRequest(INDEX_MANAGEMENT_INDEX, uuid).doc(builder)
+}
+
+fun updateISMTemplateRequest(policyID: String, ismTemplates: List<ISMTemplate>, seqNo: Long, primaryTerm: Long): UpdateRequest {
+    val builder = XContentFactory.jsonBuilder()
+        .startObject()
+        .startObject(Policy.POLICY_TYPE)
+        .optionalISMTemplateField(Policy.ISM_TEMPLATE, ismTemplates)
+        .endObject()
+        .endObject()
+    return UpdateRequest(INDEX_MANAGEMENT_INDEX, policyID).doc(builder)
+        .setIfSeqNo(seqNo).setIfPrimaryTerm(primaryTerm)
 }
 
 fun updateDisableManagedIndexRequest(uuid: String): UpdateRequest {
@@ -248,11 +261,13 @@ fun Transition.hasStatsConditions(): Boolean = this.conditions?.docCount != null
 fun RolloverAction.evaluateConditions(
     indexAgeTimeValue: TimeValue,
     numDocs: Long,
-    indexSize: ByteSizeValue
+    indexSize: ByteSizeValue,
+    primaryShardSize: ByteSizeValue
 ): Boolean {
     if (this.minDocs == null &&
         this.minAge == null &&
-        this.minSize == null
+        this.minSize == null &&
+        this.minPrimaryShardSize == null
     ) {
         // If no conditions specified we default to true
         return true
@@ -270,7 +285,11 @@ fun RolloverAction.evaluateConditions(
         if (this.minSize <= indexSize) return true
     }
 
-    // return false if non of the conditions were true.
+    if (this.minPrimaryShardSize != null) {
+        if (this.minPrimaryShardSize <= primaryShardSize) return true
+    }
+
+    // return false if none of the conditions were true.
     return false
 }
 

@@ -165,7 +165,7 @@ class ManagedIndexCoordinatorIT : IndexStateManagementRestTestCase() {
         val policyID = "test_policy_1"
 
         // Create a policy with one State that performs rollover
-        val rolloverActionConfig = RolloverAction(index = 0, minDocs = 5, minAge = null, minSize = null)
+        val rolloverActionConfig = RolloverAction(index = 0, minDocs = 5, minAge = null, minSize = null, minPrimaryShardSize = null)
         val states =
             listOf(State(name = "RolloverState", actions = listOf(rolloverActionConfig), transitions = listOf()))
         val policy = Policy(
@@ -202,7 +202,6 @@ class ManagedIndexCoordinatorIT : IndexStateManagementRestTestCase() {
         // Confirm job was disabled
         val disabledManagedIndexConfig: ManagedIndexConfig = waitFor {
             val config = getManagedIndexConfigByDocId(managedIndexConfig.id)
-            assertNotNull("Could not find ManagedIndexConfig", config)
             assertEquals("ManagedIndexConfig was not disabled", false, config!!.enabled)
             config
         }
@@ -230,16 +229,12 @@ class ManagedIndexCoordinatorIT : IndexStateManagementRestTestCase() {
 
         // Confirm job was re-enabled
         val enabledManagedIndexConfig: ManagedIndexConfig = waitFor {
-            val config = getExistingManagedIndexConfig(indexName)
-            assertEquals("ManagedIndexConfig was not re-enabled", true, config.enabled)
+            val config = getManagedIndexConfigByDocId(disabledManagedIndexConfig.id)
+            assertEquals("ManagedIndexConfig was not re-enabled", true, config!!.enabled)
             config
         }
 
-        // TODO seen version conflict flaky failure here
-        logger.info("Config we use on update: $enabledManagedIndexConfig")
-        logger.info("Latest config: ${getExistingManagedIndexConfig(indexName)}")
-        // seems the config from above waitFor, after that, config got updated again?
-        updateManagedIndexConfigStartTime(enabledManagedIndexConfig)
+        updateManagedIndexConfigStartTime(enabledManagedIndexConfig, retryOnConflict = 4)
 
         waitFor {
             assertEquals(

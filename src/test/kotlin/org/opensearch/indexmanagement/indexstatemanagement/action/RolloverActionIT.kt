@@ -10,6 +10,7 @@ import org.apache.http.entity.StringEntity
 import org.hamcrest.core.Is.isA
 import org.junit.Assert
 import org.opensearch.cluster.metadata.DataStream
+import org.opensearch.common.settings.Settings
 import org.opensearch.common.unit.ByteSizeUnit
 import org.opensearch.common.unit.ByteSizeValue
 import org.opensearch.common.unit.TimeValue
@@ -27,6 +28,7 @@ import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ActionRetry
 import org.opensearch.indexmanagement.waitFor
 import org.opensearch.rest.RestRequest
 import org.opensearch.rest.RestStatus
+import org.opensearch.test.OpenSearchTestCase
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 import java.util.Locale
@@ -41,7 +43,7 @@ class RolloverActionIT : IndexStateManagementRestTestCase() {
         val indexNameBase = "${testIndexName}_index"
         val firstIndex = "$indexNameBase-1"
         val policyID = "${testIndexName}_testPolicyName_1"
-        val actionConfig = RolloverAction(null, null, null, 0)
+        val actionConfig = RolloverAction(null, null, null, null, 0)
         val states = listOf(State(name = "RolloverAction", actions = listOf(actionConfig), transitions = listOf()))
         val policy = Policy(
             id = policyID,
@@ -95,7 +97,7 @@ class RolloverActionIT : IndexStateManagementRestTestCase() {
         )
 
         val policyID = "${testIndexName}_bwc"
-        val actionConfig = RolloverAction(null, null, null, 0)
+        val actionConfig = RolloverAction(null, null, null, null, 0)
         val states = listOf(State(name = "RolloverAction", actions = listOf(actionConfig), transitions = listOf()))
         val policy = Policy(
             id = policyID,
@@ -132,7 +134,7 @@ class RolloverActionIT : IndexStateManagementRestTestCase() {
         val indexNameBase = "${testIndexName}_index_byte"
         val firstIndex = "$indexNameBase-1"
         val policyID = "${testIndexName}_testPolicyName_byte_1"
-        val actionConfig = RolloverAction(ByteSizeValue(10, ByteSizeUnit.BYTES), 1000000, null, 0)
+        val actionConfig = RolloverAction(ByteSizeValue(10, ByteSizeUnit.BYTES), 1000000, null, null, 0)
         val states = listOf(State(name = "RolloverAction", actions = listOf(actionConfig), transitions = listOf()))
         val policy = Policy(
             id = policyID,
@@ -198,12 +200,118 @@ class RolloverActionIT : IndexStateManagementRestTestCase() {
     }
 
     @Suppress("UNCHECKED_CAST")
+    fun `test rollover min primary shard size`() {
+        // Setup creating index with 20 primary shards and policy that rolls over on 100kb min primary shard size
+        val aliasName = "${testIndexName}_primary_shard_alias"
+        val indexNameBase = "${testIndexName}_index_primary_shard"
+        val firstIndex = "$indexNameBase-1"
+        val policyID = "${testIndexName}_primary_shard_1"
+        val actionConfig = RolloverAction(null, null, null, ByteSizeValue(100, ByteSizeUnit.KB), 0)
+        val states = listOf(State(name = "RolloverAction", actions = listOf(actionConfig), transitions = listOf()))
+        val policy = Policy(
+            id = policyID,
+            description = "$testIndexName description",
+            schemaVersion = 1L,
+            lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
+            errorNotification = randomErrorNotification(),
+            defaultState = states[0].name,
+            states = states
+        )
+
+        createPolicy(policy, policyID)
+        // create index defaults
+        createIndex(
+            index = firstIndex,
+            policyID = policyID,
+            alias = aliasName,
+            replicas = "0",
+            shards = "20",
+            settings = Settings.builder().put("store.stats_refresh_interval", "1s").build()
+        )
+
+        val managedIndexConfig = getExistingManagedIndexConfig(firstIndex)
+
+        // Change the start time so the job will trigger in 2 seconds, this will trigger the first initialization of the policy
+        updateManagedIndexConfigStartTime(managedIndexConfig)
+        waitFor { assertEquals(policyID, getExplainManagedIndexMetaData(firstIndex).policyID) }
+
+        // assuming our ingestion is randomly split between the 20 primary shards
+        // then 250kb/20 gives around 12.5kb per primary shard which is below our 100kb condition
+        val KB_250 = 250_000
+        var primaryStoreSizeBytes = 0
+        var count = 0
+        // Ingest data into the test index until the total size of the index is greater than our min primary size condition
+        while (primaryStoreSizeBytes < KB_250) {
+            // this count should never get as high as 10... if it does just fail the test
+            if (count++ > 10) fail("Something is wrong with the data ingestion for testing rollover condition")
+            insertSampleData(index = firstIndex, docCount = 20, jsonString = "{ \"test_field\": \"${OpenSearchTestCase.randomAlphaOfLength(7000)}\" }", delay = 0)
+            flush(firstIndex, true)
+            forceMerge(firstIndex, "1")
+            val catIndex = (cat("indices/$firstIndex?format=json&bytes=b") as List<Map<String, Any>>).find { it["index"] == firstIndex }
+            assertNotNull("Did not find index in cat response", catIndex)
+            primaryStoreSizeBytes = (catIndex!!["pri.store.size"] as String).toInt()
+        }
+
+        // Need to speed up to second execution where it will trigger the first execution of the action
+        // Confirm index is waiting to meet the rollover condition
+        updateManagedIndexConfigStartTime(managedIndexConfig)
+        waitFor {
+            val info = getExplainManagedIndexMetaData(firstIndex).info as Map<String, Any?>
+            assertEquals(
+                "Index rollover before it met the condition.",
+                AttemptRolloverStep.getPendingMessage(firstIndex), info["message"]
+            )
+            val conditions = info["conditions"] as Map<String, Any?>
+            assertEquals(
+                "Did not have exclusively min primary shard size condition",
+                setOf(RolloverAction.MIN_PRIMARY_SHARD_SIZE_FIELD), conditions.keys
+            )
+            val minPrimarySize = conditions[RolloverAction.MIN_PRIMARY_SHARD_SIZE_FIELD] as Map<String, Any?>
+            assertEquals("Did not have min size condition", "100kb", minPrimarySize["condition"])
+            assertThat("Did not have min size current", minPrimarySize["current"], isA(String::class.java))
+        }
+
+        val KB_150 = 150_000
+        var primaryShardSizeBytes = 0
+        count = 0
+        // Ingest data into the test index using custom routing so it always goes to a single shard until the size of the
+        // primary shard is over 150kb
+        while (primaryShardSizeBytes < KB_150) {
+            // this count should never get as high as 10... if it does just fail the test
+            if (count++ > 10) fail("Something is wrong with the data ingestion for testing rollover condition")
+            insertSampleData(index = firstIndex, docCount = 20, delay = 0, jsonString = "{ \"test_field\": \"${OpenSearchTestCase.randomAlphaOfLength(7000)}\" }", routing = "custom_routing")
+            flush(firstIndex, true)
+            forceMerge(firstIndex, "1")
+            val primaryShards = (cat("shards/$firstIndex?format=json&bytes=b") as List<Map<String, Any>>).filter { it["prirep"] == "p" }
+            val primaryShardsOver100KB = primaryShards.filter { (it["store"] as String).toInt() > 100000 }
+            assertTrue("Found multiple shards over 100kb", primaryShardsOver100KB.size == 1)
+            primaryShardSizeBytes = primaryShards.maxOf { (it["store"] as String).toInt() }
+        }
+
+        // Speed up to third execution
+        updateManagedIndexConfigStartTime(managedIndexConfig)
+        waitFor {
+            val info = getExplainManagedIndexMetaData(firstIndex).info as Map<String, Any?>
+            assertEquals("Index did not rollover", AttemptRolloverStep.getSuccessMessage(firstIndex), info["message"])
+            val conditions = info["conditions"] as Map<String, Any?>
+            assertEquals(
+                "Did not have exclusively min primary shard size conditions",
+                setOf(RolloverAction.MIN_PRIMARY_SHARD_SIZE_FIELD), conditions.keys
+            )
+            val minPrimaryShardSize = conditions[RolloverAction.MIN_PRIMARY_SHARD_SIZE_FIELD] as Map<String, Any?>
+            assertEquals("Did not have min primary shard size condition", "100kb", minPrimaryShardSize["condition"])
+            assertThat("Did not have min primary shard size current", minPrimaryShardSize["current"], isA(String::class.java))
+        }
+        assertTrue("New rollover index does not exist.", indexExists("$indexNameBase-000002"))
+    }
+
+    @Suppress("UNCHECKED_CAST")
     fun `test rollover multi condition doc size`() {
         val aliasName = "${testIndexName}_doc_alias"
         val indexNameBase = "${testIndexName}_index_doc"
         val firstIndex = "$indexNameBase-1"
         val policyID = "${testIndexName}_testPolicyName_doc_1"
-        val actionConfig = RolloverAction(null, 3, TimeValue.timeValueDays(2), 0)
+        val actionConfig = RolloverAction(null, 3, TimeValue.timeValueDays(2), null, 0)
         val states = listOf(State(name = "RolloverAction", actions = listOf(actionConfig), transitions = listOf()))
         val policy = Policy(
             id = policyID,
@@ -276,7 +384,7 @@ class RolloverActionIT : IndexStateManagementRestTestCase() {
         val index2 = "index-2"
         val alias1 = "x"
         val policyID = "${testIndexName}_precheck"
-        val actionConfig = RolloverAction(null, 3, TimeValue.timeValueDays(2), 0)
+        val actionConfig = RolloverAction(null, 3, TimeValue.timeValueDays(2), null, 0)
         actionConfig.configRetry = ActionRetry(0)
         val states = listOf(State(name = "RolloverAction", actions = listOf(actionConfig), transitions = listOf()))
         val policy = Policy(
@@ -335,8 +443,8 @@ class RolloverActionIT : IndexStateManagementRestTestCase() {
         val policyID = "${testIndexName}_rollover_policy"
 
         // Create the rollover policy
-        val RolloverAction = RolloverAction(null, null, null, 0)
-        val states = listOf(State(name = "default", actions = listOf(RolloverAction), transitions = listOf()))
+        val rolloverAction = RolloverAction(null, null, null, null, 0)
+        val states = listOf(State(name = "default", actions = listOf(rolloverAction), transitions = listOf()))
         val policy = Policy(
             id = policyID,
             description = "rollover policy description",
@@ -391,7 +499,7 @@ class RolloverActionIT : IndexStateManagementRestTestCase() {
         val policyID = "${testIndexName}_rollover_policy_multi"
 
         // Create the rollover policy
-        val rolloverAction = RolloverAction(null, 3, TimeValue.timeValueDays(2), 0)
+        val rolloverAction = RolloverAction(null, 3, TimeValue.timeValueDays(2), null, 0)
         val states = listOf(State(name = "default", actions = listOf(rolloverAction), transitions = listOf()))
         val policy = Policy(
             id = policyID,
@@ -484,7 +592,7 @@ class RolloverActionIT : IndexStateManagementRestTestCase() {
         val indexNameBase = "${testIndexName}_index"
         val firstIndex = "$indexNameBase-1"
         val policyID = "${testIndexName}_testPolicyName_1"
-        val actionConfig = RolloverAction(null, null, null, 0)
+        val actionConfig = RolloverAction(null, null, null, null, 0)
         val states = listOf(State(name = "RolloverAction", actions = listOf(actionConfig), transitions = listOf()))
         val policy = Policy(
             id = policyID,

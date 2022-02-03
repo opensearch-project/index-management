@@ -27,6 +27,7 @@ import org.opensearch.cluster.block.ClusterBlockException
 import org.opensearch.common.inject.Inject
 import org.opensearch.common.xcontent.ToXContent
 import org.opensearch.common.xcontent.XContentFactory
+import org.opensearch.commons.ConfigConstants
 import org.opensearch.commons.authuser.User
 import org.opensearch.index.Index
 import org.opensearch.index.IndexNotFoundException
@@ -79,6 +80,11 @@ class TransportRetryFailedManagedIndexAction @Inject constructor(
 
         @Suppress("SpreadOperator")
         fun start() {
+            log.debug(
+                "User and roles string from thread context: ${client.threadPool().threadContext.getTransient<String>(
+                    ConfigConstants.OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT
+                )}"
+            )
             if (user == null) {
                 // Security plugin is not enabled
                 getClusterState()
@@ -276,7 +282,7 @@ class TransportRetryFailedManagedIndexAction @Inject constructor(
 
                 val updateMetadataRequests = listOfIndexToMetadata.map { (index, metadata) ->
                     val builder = metadata.toXContent(XContentFactory.jsonBuilder(), ToXContent.EMPTY_PARAMS, true)
-                    UpdateRequest(INDEX_MANAGEMENT_INDEX, managedIndexMetadataID(index.uuid)).doc(builder)
+                    UpdateRequest(INDEX_MANAGEMENT_INDEX, managedIndexMetadataID(index.uuid)).routing(index.uuid).doc(builder)
                 }
                 val bulkUpdateMetadataRequest = BulkRequest().add(updateMetadataRequests)
 

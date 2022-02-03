@@ -96,8 +96,12 @@ abstract class ODFERestTestCase : OpenSearchRestTestCase() {
         }
     }
 
+    open fun preserveODFEIndicesAfterTest(): Boolean = false
+
     @Throws(IOException::class)
     open fun wipeAllODFEIndices() {
+        if (preserveODFEIndicesAfterTest()) return
+
         // Delete all data stream indices
         client().performRequest(Request("DELETE", "/_data_stream/*"))
 

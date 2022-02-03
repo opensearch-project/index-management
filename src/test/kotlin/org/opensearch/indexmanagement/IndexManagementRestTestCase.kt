@@ -14,7 +14,9 @@ import org.opensearch.client.Request
 import org.opensearch.client.RequestOptions
 import org.opensearch.client.Response
 import org.opensearch.client.RestClient
+import org.opensearch.common.Strings
 import org.opensearch.common.settings.Settings
+import org.opensearch.indexmanagement.indexstatemanagement.util.INDEX_HIDDEN
 import org.opensearch.rest.RestStatus
 import java.nio.file.Files
 import java.nio.file.Path
@@ -25,7 +27,7 @@ import javax.management.remote.JMXServiceURL
 
 abstract class IndexManagementRestTestCase : ODFERestTestCase() {
 
-    val configSchemaVersion = 12
+    val configSchemaVersion = 13
     val historySchemaVersion = 3
 
     // Having issues with tests leaking into other tests and mappings being incorrect and they are not caught by any pending task wait check as
@@ -37,6 +39,20 @@ abstract class IndexManagementRestTestCase : ODFERestTestCase() {
             "PUT", "_cluster/settings",
             StringEntity("""{"persistent":{"action.auto_create_index":"-.opendistro-*,*"}}""", ContentType.APPLICATION_JSON)
         )
+    }
+
+    // Tests on lower resource machines are experiencing flaky failures due to attempting to force a job to
+    // start before the job scheduler has registered the index operations listener. Initializing the index
+    // preemptively seems to give the job scheduler time to listen to operations.
+    @Before
+    fun initializeManagedIndex() {
+        if (!indexExists(IndexManagementPlugin.INDEX_MANAGEMENT_INDEX)) {
+            val request = Request("PUT", "/${IndexManagementPlugin.INDEX_MANAGEMENT_INDEX}")
+            var entity = "{\"settings\": " + Strings.toString(Settings.builder().put(INDEX_HIDDEN, true).build())
+            entity += ",\"mappings\" : ${IndexManagementIndices.indexManagementMappings}}"
+            request.setJsonEntity(entity)
+            client().performRequest(request)
+        }
     }
 
     protected val isDebuggingTest = DisableOnDebug(null).isDebugging
@@ -90,11 +106,11 @@ abstract class IndexManagementRestTestCase : ODFERestTestCase() {
      * Inserts [docCount] sample documents into [index], optionally waiting [delay] milliseconds
      * in between each insertion
      */
-    // TODO remove this suppression when refactoring is done
-    @Suppress("UnusedPrivateMember")
-    protected fun insertSampleData(index: String, docCount: Int, delay: Long = 0, jsonString: String = "{ \"test_field\": \"test_value\" }") {
-        for (i in 1..docCount) {
-            val request = Request("POST", "/$index/_doc/?refresh=true")
+    protected fun insertSampleData(index: String, docCount: Int, delay: Long = 0, jsonString: String = "{ \"test_field\": \"test_value\" }", routing: String? = null) {
+        var endpoint = "/$index/_doc/?refresh=true"
+        if (routing != null) endpoint += "&routing=$routing"
+        repeat(docCount) {
+            val request = Request("POST", endpoint)
             request.setJsonEntity(jsonString)
             client().performRequest(request)
 

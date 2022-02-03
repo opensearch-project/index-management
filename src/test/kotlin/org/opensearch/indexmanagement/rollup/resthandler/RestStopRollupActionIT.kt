@@ -6,9 +6,14 @@
 package org.opensearch.indexmanagement.rollup.resthandler
 
 import org.opensearch.client.ResponseException
+import org.opensearch.common.settings.Settings
+import org.opensearch.indexmanagement.IndexManagementIndices
+import org.opensearch.indexmanagement.IndexManagementPlugin
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.ROLLUP_JOBS_BASE_URI
 import org.opensearch.indexmanagement.common.model.dimension.DateHistogram
 import org.opensearch.indexmanagement.common.model.dimension.Terms
+import org.opensearch.indexmanagement.indexstatemanagement.util.INDEX_HIDDEN
+import org.opensearch.indexmanagement.indexstatemanagement.util.INDEX_NUMBER_OF_SHARDS
 import org.opensearch.indexmanagement.makeRequest
 import org.opensearch.indexmanagement.randomInstant
 import org.opensearch.indexmanagement.rollup.RollupRestTestCase
@@ -242,5 +247,63 @@ class RestStopRollupActionIT : RollupRestTestCase() {
         } catch (e: ResponseException) {
             assertEquals("Unexpected status", RestStatus.BAD_REQUEST, e.response.restStatus())
         }
+    }
+
+    fun `test stop rollup when multiple shards configured for IM config index`() {
+        // setup ism-config index with multiple primary shards
+        deleteIndex(IndexManagementPlugin.INDEX_MANAGEMENT_INDEX)
+        val mapping = IndexManagementIndices.indexManagementMappings.trim().trimStart('{').trimEnd('}')
+        val settings = Settings.builder()
+            .put(INDEX_HIDDEN, true)
+            .put(INDEX_NUMBER_OF_SHARDS, 5)
+            .build()
+        createIndex(IndexManagementPlugin.INDEX_MANAGEMENT_INDEX, settings, mapping)
+        assertIndexExists(IndexManagementPlugin.INDEX_MANAGEMENT_INDEX)
+
+        generateNYCTaxiData("source_multi_shard_stop")
+        val rollup = Rollup(
+            id = "multi_shard_stop",
+            schemaVersion = 1L,
+            enabled = true,
+            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+            jobLastUpdatedTime = Instant.now(),
+            jobEnabledTime = Instant.now(),
+            description = "basic search test",
+            sourceIndex = "source_multi_shard_stop",
+            targetIndex = "target_multi_shard_stop",
+            metadataID = null,
+            roles = emptyList(),
+            pageSize = 1,
+            delay = 0,
+            continuous = true,
+            dimensions = listOf(
+                DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "1h"),
+                Terms("RatecodeID", "RatecodeID"),
+                Terms("PULocationID", "PULocationID")
+            ),
+            metrics = emptyList()
+        ).let { createRollup(it, it.id) }
+
+        // The updateRollupStartTime call can be missed if the job scheduler hasn't started listening to the new index yet,
+        // sleep a bit to let it initialize
+        Thread.sleep(2000L)
+        updateRollupStartTime(rollup)
+
+        waitFor {
+            val rollupJob = getRollup(rollupId = rollup.id)
+            assertNotNull("Rollup job doesn't have metadata set", rollupJob.metadataID)
+        }
+        val response = client().makeRequest("POST", "$ROLLUP_JOBS_BASE_URI/${rollup.id}/_stop")
+        assertEquals("Stop rollup failed", RestStatus.OK, response.restStatus())
+        val expectedResponse = mapOf("acknowledged" to true)
+        assertEquals(expectedResponse, response.asMap())
+
+        val updatedRollup = getRollup(rollup.id)
+        assertFalse("Rollup was not disabled", updatedRollup.enabled)
+        val rollupMetadata = getRollupMetadataWithRoutingId(rollup.id, updatedRollup.metadataID!!)
+        assertEquals("Rollup is not STOPPED", RollupMetadata.Status.STOPPED, rollupMetadata.status)
+
+        // clearing the config index to prevent other tests using this multi shard index
+        deleteIndex(IndexManagementPlugin.INDEX_MANAGEMENT_INDEX)
     }
 }
