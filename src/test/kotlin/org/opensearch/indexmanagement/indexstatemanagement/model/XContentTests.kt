@@ -123,12 +123,12 @@ class XContentTests : OpenSearchTestCase() {
         assertEquals("Round tripping ReplicaCountAction doesn't work", replicaCountAction.convertToMap(), parsedReplicaCountAction.convertToMap())
     }
 
-    private fun `test set_index_priority action config parsing`() {
-        val indexPriorityActionConfig = randomIndexPriorityActionConfig()
+    fun `test set_index_priority action config parsing`() {
+        val indexPriorityAction = randomIndexPriorityActionConfig()
 
-        val indexPriorityActionConfigString = indexPriorityActionConfig.toJsonString()
-        val parsedIndexPriorityActionConfig = ISMActionsParser.instance.parse(parser(indexPriorityActionConfigString), 0)
-        assertEquals("Round tripping indexPriorityActionConfig doesn't work", indexPriorityActionConfig, parsedIndexPriorityActionConfig)
+        val indexPriorityActionString = indexPriorityAction.toJsonString()
+        val parsedIndexPriorityAction = ISMActionsParser.instance.parse(parser(indexPriorityActionString), 0)
+        assertEquals("Round tripping indexPriorityAction doesn't work", indexPriorityAction.convertToMap(), parsedIndexPriorityAction.convertToMap())
     }
 
     fun `test force_merge action config parsing`() {
@@ -166,12 +166,15 @@ class XContentTests : OpenSearchTestCase() {
         )
     }
 
-    private fun `test snapshot action config parsing`() {
-        val snapshotActionConfig = randomSnapshotActionConfig("repository", "snapshot")
+    fun `test snapshot action config parsing`() {
+        val snapshotAction = randomSnapshotActionConfig("repository", "snapshot")
 
-        val snapshotActionConfigString = snapshotActionConfig.toJsonString()
-        val parsedSnapshotActionConfig = ISMActionsParser.instance.parse(parser(snapshotActionConfigString), 0)
-        assertEquals("Round tripping SnapshotActionConfig doesn't work", snapshotActionConfig, parsedSnapshotActionConfig)
+        val snapshotActionString = snapshotAction.toJsonString()
+        val parsedSnapshotAction = ISMActionsParser.instance.parse(parser(snapshotActionString), 0)
+        assertEquals(
+            "Round tripping SnapshotAction doesn't work",
+            snapshotAction.convertToMap(), parsedSnapshotAction.convertToMap()
+        )
     }
 
     fun `test allocation action config parsing`() {

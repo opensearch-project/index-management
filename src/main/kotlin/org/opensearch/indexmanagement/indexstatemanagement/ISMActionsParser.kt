@@ -12,6 +12,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.action.AllocationActi
 import org.opensearch.indexmanagement.indexstatemanagement.action.CloseActionParser
 import org.opensearch.indexmanagement.indexstatemanagement.action.DeleteActionParser
 import org.opensearch.indexmanagement.indexstatemanagement.action.ForceMergeActionParser
+import org.opensearch.indexmanagement.indexstatemanagement.action.IndexPriorityActionParser
 import org.opensearch.indexmanagement.indexstatemanagement.action.NotificationActionParser
 import org.opensearch.indexmanagement.indexstatemanagement.action.OpenActionParser
 import org.opensearch.indexmanagement.indexstatemanagement.action.ReadOnlyActionParser
@@ -19,6 +20,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.action.ReadWriteActio
 import org.opensearch.indexmanagement.indexstatemanagement.action.ReplicaCountActionParser
 import org.opensearch.indexmanagement.indexstatemanagement.action.RolloverActionParser
 import org.opensearch.indexmanagement.indexstatemanagement.action.RollupActionParser
+import org.opensearch.indexmanagement.indexstatemanagement.action.SnapshotActionParser
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Action
 import org.opensearch.indexmanagement.spi.indexstatemanagement.ActionParser
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ActionRetry
@@ -36,13 +38,15 @@ class ISMActionsParser private constructor() {
         CloseActionParser(),
         DeleteActionParser(),
         ForceMergeActionParser(),
+        IndexPriorityActionParser(),
         NotificationActionParser(),
         OpenActionParser(),
         ReadOnlyActionParser(),
         ReadWriteActionParser(),
         ReplicaCountActionParser(),
         RollupActionParser(),
-        RolloverActionParser()
+        RolloverActionParser(),
+        SnapshotActionParser()
     )
 
     fun addParser(parser: ActionParser) {
