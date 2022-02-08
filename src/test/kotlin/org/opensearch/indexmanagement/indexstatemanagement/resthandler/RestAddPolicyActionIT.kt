@@ -9,6 +9,8 @@ import org.apache.http.entity.ContentType.APPLICATION_JSON
 import org.apache.http.entity.StringEntity
 import org.opensearch.client.ResponseException
 import org.opensearch.common.settings.Settings
+import org.opensearch.common.xcontent.XContentHelper
+import org.opensearch.common.xcontent.XContentType
 import org.opensearch.indexmanagement.IndexManagementPlugin
 import org.opensearch.indexmanagement.indexstatemanagement.IndexStateManagementRestTestCase
 import org.opensearch.indexmanagement.indexstatemanagement.util.FAILED_INDICES
@@ -207,22 +209,22 @@ class RestAddPolicyActionIT : IndexStateManagementRestTestCase() {
             FAILED_INDICES to listOf(
                 mapOf(
                     "index_name" to indexOne,
-                    "index_uuid" to getUuid(indexOne),
+                    "index_uuid" to getUuidWithOutStrictChecking(indexOne),
                     "reason" to "Matches restricted index pattern defined in the cluster setting"
                 ),
                 mapOf(
                     "index_name" to indexTwo,
-                    "index_uuid" to getUuid(indexTwo),
+                    "index_uuid" to getUuidWithOutStrictChecking(indexTwo),
                     "reason" to "Matches restricted index pattern defined in the cluster setting"
                 ),
                 mapOf(
                     "index_name" to indexThree,
-                    "index_uuid" to getUuid(indexThree),
+                    "index_uuid" to getUuidWithOutStrictChecking(indexThree),
                     "reason" to "Matches restricted index pattern defined in the cluster setting"
                 ),
                 mapOf(
                     "index_name" to IndexManagementPlugin.INDEX_MANAGEMENT_INDEX,
-                    "index_uuid" to getUuid(IndexManagementPlugin.INDEX_MANAGEMENT_INDEX),
+                    "index_uuid" to getUuidWithOutStrictChecking(IndexManagementPlugin.INDEX_MANAGEMENT_INDEX),
                     "reason" to "Matches restricted index pattern defined in the cluster setting"
                 )
             )
@@ -234,5 +236,14 @@ class RestAddPolicyActionIT : IndexStateManagementRestTestCase() {
         waitFor {
             assertEquals(policy.id, getPolicyIDOfManagedIndex(indexFour))
         }
+    }
+
+    /**
+     * The util UUID method doesn't work for hidden indices because strict warning check, the following method skips the strict check
+     */
+    private fun getUuidWithOutStrictChecking(index: String): String {
+        val response = client().makeRequest("GET", "/$index/_settings?flat_settings=true")
+        val settings = response.entity.content.use { XContentHelper.convertToMap(XContentType.JSON.xContent(), it, true) } as Map<String, Map<String, Map<String, Any?>>>
+        return settings[index]!!["settings"]!!["index.uuid"] as String
     }
 }
