@@ -107,6 +107,7 @@ class TransformSearchService(
         }
     }
 
+    @Suppress("RethrowCaughtException")
     suspend fun getModifiedBuckets(transform: Transform, afterKey: Map<String, Any>?, currentShard: ShardNewDocuments): BucketSearchResult {
         try {
             var retryAttempt = 0
@@ -137,6 +138,7 @@ class TransformSearchService(
         }
     }
 
+    @Suppress("RethrowCaughtException")
     suspend fun executeCompositeSearch(
         transform: Transform,
         afterKey: Map<String, Any>? = null,
