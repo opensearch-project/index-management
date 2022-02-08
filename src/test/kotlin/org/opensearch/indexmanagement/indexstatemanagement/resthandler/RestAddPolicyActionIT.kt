@@ -241,6 +241,7 @@ class RestAddPolicyActionIT : IndexStateManagementRestTestCase() {
     /**
      * The util UUID method doesn't work for hidden indices because strict warning check, the following method skips the strict check
      */
+    @Suppress("UNCHECKED_CAST")
     private fun getUuidWithOutStrictChecking(index: String): String {
         val response = client().makeRequest("GET", "/$index/_settings?flat_settings=true")
         val settings = response.entity.content.use { XContentHelper.convertToMap(XContentType.JSON.xContent(), it, true) } as Map<String, Map<String, Map<String, Any?>>>
