@@ -5,6 +5,10 @@
 
 package org.opensearch.indexmanagement.transform.model
 
+import org.opensearch.action.admin.indices.stats.IndicesStatsAction
+import org.opensearch.action.admin.indices.stats.IndicesStatsRequest
+import org.opensearch.action.admin.indices.stats.IndicesStatsResponse
+import org.opensearch.client.Client
 import org.opensearch.common.bytes.BytesReference
 import org.opensearch.common.io.stream.StreamInput
 import org.opensearch.common.io.stream.StreamOutput
@@ -22,6 +26,7 @@ import org.opensearch.index.query.AbstractQueryBuilder
 import org.opensearch.index.query.MatchAllQueryBuilder
 import org.opensearch.index.query.QueryBuilder
 import org.opensearch.index.seqno.SequenceNumbers
+import org.opensearch.index.shard.ShardId
 import org.opensearch.indexmanagement.common.model.dimension.DateHistogram
 import org.opensearch.indexmanagement.common.model.dimension.Dimension
 import org.opensearch.indexmanagement.common.model.dimension.Histogram
@@ -31,12 +36,15 @@ import org.opensearch.indexmanagement.indexstatemanagement.util.WITH_USER
 import org.opensearch.indexmanagement.opensearchapi.instant
 import org.opensearch.indexmanagement.opensearchapi.optionalTimeField
 import org.opensearch.indexmanagement.opensearchapi.optionalUserField
+import org.opensearch.indexmanagement.opensearchapi.suspendUntil
+import org.opensearch.indexmanagement.transform.TransformSearchService
 import org.opensearch.indexmanagement.util.IndexUtils
 import org.opensearch.jobscheduler.spi.ScheduledJobParameter
 import org.opensearch.jobscheduler.spi.schedule.CronSchedule
 import org.opensearch.jobscheduler.spi.schedule.IntervalSchedule
 import org.opensearch.jobscheduler.spi.schedule.Schedule
 import org.opensearch.jobscheduler.spi.schedule.ScheduleParser
+import org.opensearch.rest.RestStatus
 import org.opensearch.search.aggregations.AggregatorFactories
 import java.io.IOException
 import java.time.Instant
@@ -167,6 +175,41 @@ data class Transform(
                 TRANSFORM_DOC_COUNT_FIELD to docCount
             )
         }
+    }
+
+    suspend fun getContinuousStats(client: Client, metadata: TransformMetadata): ContinuousTransformStats? {
+        val indicesStatsRequest = IndicesStatsRequest().indices(sourceIndex).clear()
+        val response: IndicesStatsResponse = client.suspendUntil { execute(IndicesStatsAction.INSTANCE, indicesStatsRequest, it) }
+        val shardIDsToGlobalCheckpoint = if (response.status == RestStatus.OK) {
+            TransformSearchService.convertIndicesStatsResponse(response)
+        } else return null
+        return ContinuousTransformStats(
+            metadata.continuousStats?.lastTimestamp,
+            getDocumentsBehind(
+                metadata.shardIDToGlobalCheckpoint,
+                shardIDsToGlobalCheckpoint
+            )
+        )
+    }
+
+    private fun getDocumentsBehind(
+        oldShardIDsToGlobalCheckpoint: Map<ShardId, Long>?,
+        newShardIDsToGlobalCheckpoint: Map<ShardId, Long>?
+    ): MutableMap<String, Long> {
+        val documentsBehind: MutableMap<String, Long> = HashMap()
+        if (newShardIDsToGlobalCheckpoint == null) {
+            return documentsBehind
+        }
+        newShardIDsToGlobalCheckpoint.forEach { (shardID, globalCheckpoint) ->
+            val indexName = shardID.indexName
+            val newGlobalCheckpoint = java.lang.Long.max(0, globalCheckpoint)
+            // global checkpoint may be -1 or -2 if not initialized, just set to 0 in those cases
+            val oldGlobalCheckpoint = java.lang.Long.max(0, oldShardIDsToGlobalCheckpoint?.get(shardID) ?: 0)
+            val localDocsBehind = newGlobalCheckpoint - oldGlobalCheckpoint
+            documentsBehind[indexName] = (documentsBehind[indexName] ?: 0) + localDocsBehind
+        }
+
+        return documentsBehind
     }
 
     @Throws(IOException::class)

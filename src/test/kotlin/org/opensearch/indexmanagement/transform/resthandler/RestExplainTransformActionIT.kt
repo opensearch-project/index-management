@@ -7,6 +7,7 @@ package org.opensearch.indexmanagement.transform.resthandler
 
 import org.junit.Assert
 import org.opensearch.client.ResponseException
+import org.opensearch.indexmanagement.IndexManagementPlugin
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.TRANSFORM_BASE_URI
 import org.opensearch.indexmanagement.makeRequest
 import org.opensearch.indexmanagement.transform.TransformRestTestCase
@@ -157,16 +158,21 @@ class RestExplainTransformActionIT : TransformRestTestCase() {
 
     @Throws(Exception::class)
     fun `test explain transform when config doesnt exist`() {
+        deleteIndex(IndexManagementPlugin.INDEX_MANAGEMENT_INDEX)
         val responseExplicit = client().makeRequest("GET", "$TRANSFORM_BASE_URI/no_config_some_transform/_explain")
-        assertEquals("Non-existent transform didn't return null", mapOf("no_config_some_transform" to null), responseExplicit.asMap())
+        val expectedResponse = mapOf("no_config_some_transform" to "Failed to search transform metadata")
+        assertEquals("Non-existent transform didn't return null", expectedResponse, responseExplicit.asMap())
 
         val responseExplicitMultiple = client().makeRequest("GET", "$TRANSFORM_BASE_URI/no_config_some_transform,no_config_another_transform/_explain")
-        assertEquals("Non-existent transform didn't return null", mapOf("no_config_some_transform" to null, "no_config_another_transform" to null), responseExplicitMultiple.asMap())
+        val expectedResponseMultiple = mapOf("no_config_some_transform" to "Failed to search transform metadata", "no_config_another_transform" to "Failed to search transform metadata")
+        assertEquals("Non-existent transform didn't return null", expectedResponseMultiple, responseExplicitMultiple.asMap())
 
         val responseWildcard = client().makeRequest("GET", "$TRANSFORM_BASE_URI/no_config_another_*/_explain")
-        assertEquals("Wildcard transform didn't return nothing", mapOf<String, Map<String, Any>?>(), responseWildcard.asMap())
+        val expectedResponseWildcard = mapOf<String, Map<String, Any>?>()
+        assertEquals("Wildcard transform didn't return nothing", expectedResponseWildcard, responseWildcard.asMap())
 
         val responseMultipleTypes = client().makeRequest("GET", "$TRANSFORM_BASE_URI/no_config_some_transform,no_config_another_*/_explain")
-        assertEquals("Non-existent and wildcard transform didn't return only non-existent as null", mapOf("no_config_some_transform" to null), responseMultipleTypes.asMap())
+        val expectedResponseMixed = mapOf("no_config_some_transform" to "Failed to search transform metadata")
+        assertEquals("Non-existent and wildcard transform didn't return only non-existent with error", expectedResponseMixed, responseMultipleTypes.asMap())
     }
 }

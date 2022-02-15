@@ -27,9 +27,10 @@ import org.opensearch.indexmanagement.transform.action.index.IndexTransformActio
 import org.opensearch.indexmanagement.transform.action.index.IndexTransformRequest
 import org.opensearch.indexmanagement.transform.action.index.IndexTransformResponse
 import org.opensearch.indexmanagement.transform.model.BucketsToTransform
-import org.opensearch.indexmanagement.transform.model.ShardNewDocuments
+import org.opensearch.indexmanagement.transform.model.ContinuousTransformStats
 import org.opensearch.indexmanagement.transform.model.Transform
 import org.opensearch.indexmanagement.transform.model.TransformMetadata
+import org.opensearch.indexmanagement.transform.model.initializeShardsToSearch
 import org.opensearch.indexmanagement.transform.settings.TransformSettings
 import org.opensearch.indexmanagement.util.acquireLockForScheduledJob
 import org.opensearch.indexmanagement.util.releaseLockForScheduledJob
@@ -104,6 +105,8 @@ object TransformRunner :
     // TODO: Add circuit breaker checks - [cluster healthy, utilization within limit]
     @Suppress("NestedBlockDepth", "ComplexMethod", "LongMethod", "ReturnCount")
     private suspend fun executeJob(transform: Transform, metadata: TransformMetadata, context: JobExecutionContext) {
+        var newGlobalCheckpoints: Map<ShardId, Long>? = null
+        var newGlobalCheckpointTime: Instant? = null
         var currentMetadata = metadata
         val backoffPolicy = BackoffPolicy.exponentialBackoff(
             TimeValue.timeValueMillis(TransformSettings.DEFAULT_RENEW_LOCK_RETRY_DELAY),
@@ -132,6 +135,16 @@ object TransformRunner :
                             return
                         }
                         if (transform.continuous && (bucketsToTransform.shardsToSearch == null || bucketsToTransform.currentShard != null)) {
+                            // If we have not populated the list of shards to search, do so now
+                            if (bucketsToTransform.shardsToSearch == null) {
+                                // Note the timestamp when we got the shard global checkpoints to the user may know what data is included
+                                newGlobalCheckpointTime = Instant.now()
+                                newGlobalCheckpoints = transformSearchService.getShardsGlobalCheckpoint(transform.sourceIndex)
+                                bucketsToTransform = bucketsToTransform.initializeShardsToSearch(
+                                    metadata.shardIDToGlobalCheckpoint,
+                                    newGlobalCheckpoints
+                                )
+                            }
                             bucketsToTransform = getBucketsToTransformIteration(transform, bucketsToTransform)
                             currentMetadata = bucketsToTransform.metadata
                         } else {
@@ -156,6 +169,13 @@ object TransformRunner :
             )
         } finally {
             lock?.let {
+                // Update the global checkpoints only after execution finishes successfully
+                if (transform.continuous && currentMetadata.status != TransformMetadata.Status.FAILED) {
+                    currentMetadata = currentMetadata.copy(
+                        shardIDToGlobalCheckpoint = newGlobalCheckpoints,
+                        continuousStats = ContinuousTransformStats(newGlobalCheckpointTime, null)
+                    )
+                }
                 transformMetadataService.writeMetadata(currentMetadata, true)
                 if (!transform.continuous || currentMetadata.status == TransformMetadata.Status.FAILED) {
                     logger.info("Disabling the transform job ${transform.id}")
@@ -168,38 +188,22 @@ object TransformRunner :
 
     private suspend fun getBucketsToTransformIteration(transform: Transform, bucketsToTransform: BucketsToTransform): BucketsToTransform {
         var currentBucketsToTransform = bucketsToTransform
-        var currentShard = bucketsToTransform.currentShard
-        // If we have not populated the list of shards to search, do so now
-        if (bucketsToTransform.shardsToSearch == null) {
-            val oldShardIDToMaxSeqNo = bucketsToTransform.metadata.shardIDToGlobalCheckpoint
-            val shardIdToGlobalCheckpoint = withTransformSecurityContext(transform) {
-                transformSearchService.getShardsGlobalCheckpoint(transform.sourceIndex)
-            }
-            val shardsToSearch = getShardsToSearch(oldShardIDToMaxSeqNo, shardIdToGlobalCheckpoint).iterator()
-            currentBucketsToTransform = bucketsToTransform.copy(
-                metadata = bucketsToTransform.metadata.copy(
-                    shardIDToGlobalCheckpoint = shardIdToGlobalCheckpoint,
-                    continuousStats = bucketsToTransform.metadata.continuousStats?.copy(lastTimestamp = Instant.now())
-                ),
-                shardsToSearch = shardsToSearch
-            )
-            if (shardsToSearch.hasNext()) currentShard = shardsToSearch.next()
-        }
+        val currentShard = bucketsToTransform.currentShard
 
         if (currentShard != null) {
-            val modifiedBuckets = withTransformSecurityContext(transform) {
-                transformSearchService.getModifiedBuckets(transform, currentBucketsToTransform.metadata.afterKey, currentShard)
+            val shardLevelModifiedBuckets = withTransformSecurityContext(transform) {
+                transformSearchService.getShardLevelModifiedBuckets(transform, currentBucketsToTransform.metadata.afterKey, currentShard)
             }
-            currentBucketsToTransform.modifiedBuckets.addAll(modifiedBuckets.modifiedBuckets)
+            currentBucketsToTransform.modifiedBuckets.addAll(shardLevelModifiedBuckets.modifiedBuckets)
             val mergedSearchTime = currentBucketsToTransform.metadata.stats.searchTimeInMillis +
-                modifiedBuckets.searchTimeInMillis
+                shardLevelModifiedBuckets.searchTimeInMillis
             currentBucketsToTransform = currentBucketsToTransform.copy(
                 metadata = currentBucketsToTransform.metadata.copy(
                     stats = currentBucketsToTransform.metadata.stats.copy(
                         pagesProcessed = currentBucketsToTransform.metadata.stats.pagesProcessed + 1,
                         searchTimeInMillis = mergedSearchTime
                     ),
-                    afterKey = modifiedBuckets.afterKey
+                    afterKey = shardLevelModifiedBuckets.afterKey
                 ),
                 currentShard = currentShard
             )
@@ -214,18 +218,6 @@ object TransformRunner :
             }
         }
         return currentBucketsToTransform
-    }
-
-    // Processes through the old and new maps of sequence numbers to generate a list of objects with the shardId and the seq numbers to search
-    private fun getShardsToSearch(oldShardIDToMaxSeqNo: Map<ShardId, Long>?, newShardIDToMaxSeqNo: Map<ShardId, Long>): List<ShardNewDocuments> {
-        val shardsToSearch: MutableList<ShardNewDocuments> = ArrayList()
-        newShardIDToMaxSeqNo.forEach { (shardId, currentMaxSeqNo) ->
-            // if there are no seq number records, or no records for this shard, or the shard seq number is greater than the record, search it
-            if ((oldShardIDToMaxSeqNo == null) || oldShardIDToMaxSeqNo[shardId].let { it == null || currentMaxSeqNo > it }) {
-                shardsToSearch.add(ShardNewDocuments(shardId, oldShardIDToMaxSeqNo?.get(shardId), currentMaxSeqNo))
-            }
-        }
-        return shardsToSearch
     }
 
     private suspend fun validateTransform(transform: Transform, transformMetadata: TransformMetadata): TransformMetadata {

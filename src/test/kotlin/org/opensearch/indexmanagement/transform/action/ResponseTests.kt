@@ -23,7 +23,8 @@ class ResponseTests : OpenSearchTestCase() {
 
     fun `test explain transform response`() {
         val idsToExplain = randomList(10) { randomAlphaOfLength(10) to randomExplainTransform() }.toMap()
-        val res = ExplainTransformResponse(idsToExplain)
+        val failedToExplain = randomList(10) { randomAlphaOfLength(10) to randomAlphaOfLength(10) }.toMap()
+        val res = ExplainTransformResponse(idsToExplain, failedToExplain)
         val out = BytesStreamOutput().apply { res.writeTo(this) }
         val streamedRes = ExplainTransformResponse(buildStreamInputForTransforms(out))
 

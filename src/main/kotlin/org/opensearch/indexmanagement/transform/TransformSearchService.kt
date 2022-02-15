@@ -59,7 +59,7 @@ import org.opensearch.transport.RemoteTransportException
 import kotlin.math.max
 import kotlin.math.pow
 
-@Suppress("ThrowsCount")
+@Suppress("ThrowsCount", "TooManyFunctions")
 class TransformSearchService(
     val settings: Settings,
     val clusterService: ClusterService,
@@ -108,7 +108,7 @@ class TransformSearchService(
     }
 
     @Suppress("RethrowCaughtException")
-    suspend fun getModifiedBuckets(transform: Transform, afterKey: Map<String, Any>?, currentShard: ShardNewDocuments): BucketSearchResult {
+    suspend fun getShardLevelModifiedBuckets(transform: Transform, afterKey: Map<String, Any>?, currentShard: ShardNewDocuments): BucketSearchResult {
         try {
             var retryAttempt = 0
             val searchResponse = backoffPolicy.retry(logger) {
@@ -121,7 +121,7 @@ class TransformSearchService(
                                 "again with reduced page size [$pageSize]"
                         )
                     }
-                    val request = getBucketSearchRequest(transform, afterKey, pageSize, currentShard)
+                    val request = getShardLevelBucketsSearchRequest(transform, afterKey, pageSize, currentShard)
                     search(request, listener)
                 }
             }
@@ -232,7 +232,7 @@ class TransformSearchService(
                 .allowPartialSearchResults(false)
         }
 
-        fun getBucketSearchRequest(
+        fun getShardLevelBucketsSearchRequest(
             transform: Transform,
             afterKey: Map<String, Any>? = null,
             pageSize: Int,
@@ -288,11 +288,13 @@ class TransformSearchService(
         }
 
         // Gathers and returns from the bucket search response the modified buckets from the query, the afterkey, and the search time
-        private fun convertBucketSearchResponse(transform: Transform, searchResponse: SearchResponse): BucketSearchResult {
+        private fun convertBucketSearchResponse(
+            transform: Transform,
+            searchResponse: SearchResponse
+        ): BucketSearchResult {
             val aggs = searchResponse.aggregations.get(transform.id) as CompositeAggregation
-            val bucketSearchResult = BucketSearchResult(HashSet(), aggs.afterKey(), searchResponse.took.millis)
-            bucketSearchResult.modifiedBuckets.addAll(aggs.buckets.map { it.key })
-            return bucketSearchResult
+            val modifiedBuckets = aggs.buckets.map { it.key }.toMutableSet()
+            return BucketSearchResult(modifiedBuckets, aggs.afterKey(), searchResponse.took.millis)
         }
 
         private fun getAggregationValue(aggregation: Aggregation): Any {
