@@ -316,4 +316,42 @@ class IndexStateManagementRestApiIT : IndexStateManagementRestTestCase() {
 
         assertEquals(expectedMessage.toString(), actualMessage.toString())
     }
+
+    fun `test get policies with hyphen`() {
+        val randomPolicy = randomPolicy(id = "testing-hyphens-01")
+        createPolicy(randomPolicy, policyId = randomPolicy.id, refresh = true)
+        val policy = getPolicy(randomPolicy.id)
+
+        val response = client().makeRequest(RestRequest.Method.GET.toString(), "$POLICY_BASE_URI?queryString=*testing-hyphens*")
+
+        val actualMessage = response.asMap()
+        val expectedMessage = mapOf(
+            "total_policies" to 1,
+            "policies" to listOf(
+                mapOf(
+                    _SEQ_NO to policy.seqNo,
+                    _ID to policy.id,
+                    _PRIMARY_TERM to policy.primaryTerm,
+                    Policy.POLICY_TYPE to mapOf(
+                        "schema_version" to policy.schemaVersion,
+                        "policy_id" to policy.id,
+                        "last_updated_time" to policy.lastUpdatedTime.toEpochMilli(),
+                        "default_state" to policy.defaultState,
+                        "ism_template" to null,
+                        "description" to policy.description,
+                        "error_notification" to policy.errorNotification,
+                        "states" to policy.states.map {
+                            mapOf(
+                                "name" to it.name,
+                                "transitions" to it.transitions,
+                                "actions" to it.actions
+                            )
+                        }
+                    )
+                )
+            )
+        )
+
+        assertEquals(expectedMessage.toString(), actualMessage.toString())
+    }
 }

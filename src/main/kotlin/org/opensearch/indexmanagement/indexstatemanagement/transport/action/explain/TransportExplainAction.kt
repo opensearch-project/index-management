@@ -110,7 +110,7 @@ class TransportExplainAction @Inject constructor(
                 .must(
                     QueryBuilders
                         .queryStringQuery(params.queryString)
-                        .defaultField("managed_index.name")
+                        .defaultField("managed_index.name.keyword")
                         .defaultOperator(Operator.AND)
                 )
 

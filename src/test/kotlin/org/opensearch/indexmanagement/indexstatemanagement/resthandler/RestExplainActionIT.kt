@@ -126,6 +126,114 @@ class RestExplainActionIT : IndexStateManagementRestTestCase() {
         }
     }
 
+    fun `test search query string`() {
+        val indexName1 = "$testIndexName-search-query-string"
+        val indexName2 = "$indexName1-testing-2"
+        val indexName3 = "$indexName1-testing-3"
+        val indexName4 = "$indexName1-testing-4-2022-02-15"
+        val indexName5 = "$indexName1-testing-5-15-02-2022"
+        val dataStreamName = "$indexName1-data-stream"
+        createDataStream(dataStreamName)
+
+        val policy = createRandomPolicy()
+        createIndex(indexName1, policyID = policy.id)
+        createIndex(indexName2, policyID = policy.id)
+        createIndex(indexName3, null)
+        createIndex(indexName4, policyID = policy.id)
+        createIndex(indexName5, policyID = policy.id)
+        addPolicyToIndex(dataStreamName, policy.id)
+        val indexName1Map = indexName1 to mapOf<String, Any>(
+            explainResponseOpendistroPolicyIdSetting to policy.id,
+            explainResponseOpenSearchPolicyIdSetting to policy.id,
+            "index" to indexName1,
+            "index_uuid" to getUuid(indexName1),
+            "policy_id" to policy.id,
+            "enabled" to true
+        )
+        val indexName2Map = indexName2 to mapOf<String, Any>(
+            explainResponseOpendistroPolicyIdSetting to policy.id,
+            explainResponseOpenSearchPolicyIdSetting to policy.id,
+            "index" to indexName2,
+            "index_uuid" to getUuid(indexName2),
+            "policy_id" to policy.id,
+            "enabled" to true
+        )
+        val indexName4Map = indexName4 to mapOf<String, Any>(
+            explainResponseOpendistroPolicyIdSetting to policy.id,
+            explainResponseOpenSearchPolicyIdSetting to policy.id,
+            "index" to indexName4,
+            "index_uuid" to getUuid(indexName4),
+            "policy_id" to policy.id,
+            "enabled" to true
+        )
+        val indexName5Map = indexName5 to mapOf<String, Any>(
+            explainResponseOpendistroPolicyIdSetting to policy.id,
+            explainResponseOpenSearchPolicyIdSetting to policy.id,
+            "index" to indexName5,
+            "index_uuid" to getUuid(indexName5),
+            "policy_id" to policy.id,
+            "enabled" to true
+        )
+        val datastreamMap = ".ds-$dataStreamName-000001" to mapOf<String, Any>(
+            explainResponseOpendistroPolicyIdSetting to policy.id,
+            explainResponseOpenSearchPolicyIdSetting to policy.id,
+            "index" to ".ds-$dataStreamName-000001",
+            "index_uuid" to getUuid(".ds-$dataStreamName-000001"),
+            "policy_id" to policy.id,
+            "enabled" to true
+        )
+
+        waitFor {
+            val expected = mapOf(
+                indexName1Map,
+                indexName2Map,
+                indexName4Map,
+                indexName5Map,
+                "total_managed_indices" to 4
+            )
+            // These should match all non datastream managed indices
+            assertResponseMap(expected, getExplainMap(indexName = null, queryParams = "queryString=$testIndexName*"))
+            assertResponseMap(expected, getExplainMap(indexName = null, queryParams = "queryString=$testIndexName-*"))
+            assertResponseMap(expected, getExplainMap(indexName = null, queryParams = "queryString=$testIndexName-search-*"))
+        }
+
+        waitFor {
+            val expected = mapOf(
+                indexName1Map,
+                indexName2Map,
+                indexName4Map,
+                indexName5Map,
+                datastreamMap,
+                "total_managed_indices" to 5
+            )
+            // These should match all managed indices including datastreams
+            assertResponseMap(expected, getExplainMap(indexName = null, queryParams = "queryString=*$testIndexName-*"))
+            assertResponseMap(expected, getExplainMap(indexName = null, queryParams = "queryString=*search*"))
+            assertResponseMap(expected, getExplainMap(indexName = null, queryParams = "queryString=*search-query*"))
+        }
+
+        waitFor {
+            val expected = mapOf(
+                datastreamMap,
+                "total_managed_indices" to 1
+            )
+            // These should match all datastream managed indices (and system/hidden indices)
+            assertResponseMap(expected, getExplainMap(indexName = null, queryParams = "queryString=.*"))
+            assertResponseMap(expected, getExplainMap(indexName = null, queryParams = "queryString=.ds-$testIndexName-*"))
+        }
+
+        waitFor {
+            val expected = mapOf(
+                indexName4Map,
+                "total_managed_indices" to 1
+            )
+            // These should match all just the single index, and validates that it does not match the 15-02-2022 index
+            // i.e. if it was still matching on tokens then ["2022", "02", "15"] would match both which we don't want
+            assertResponseMap(expected, getExplainMap(indexName = null, queryParams = "queryString=*2022-02-15"))
+            assertResponseMap(expected, getExplainMap(indexName = null, queryParams = "queryString=*2022-02-15*"))
+        }
+    }
+
     fun `test attached policy`() {
         val indexName = "${testIndexName}_watermelon"
         val policy = createRandomPolicy()
