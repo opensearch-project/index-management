@@ -50,7 +50,6 @@ class MetadataRegressionIT : IndexStateManagementIntegTestCase() {
         val indexName = "${testIndexName}_index_1"
         val policyID = "${testIndexName}_testPolicyName_1"
         val actionConfig = ReplicaCountActionConfig(10, 0)
-
         val states = listOf(State(name = "ReplicaCountState", actions = listOf(actionConfig), transitions = listOf()))
         val policy = Policy(
             id = policyID,
@@ -105,10 +104,18 @@ class MetadataRegressionIT : IndexStateManagementIntegTestCase() {
         logger.info("metadata has moved")
 
         val managedIndexConfig = getExistingManagedIndexConfig(indexName)
-        // Change the start time so the job will trigger in 2 seconds, since there is metadata and policy with the index there is no initialization
+        // Change the start time so the job will trigger in 2 seconds, this will trigger the first initialization of the policy
         updateManagedIndexConfigStartTime(managedIndexConfig)
 
         waitFor { assertEquals(policyID, getExplainManagedIndexMetaData(indexName).policyID) }
+        waitFor {
+            assertEquals(
+                "Successfully initialized policy: ${policy.id}",
+                getExplainManagedIndexMetaData(indexName).info?.get("message")
+            )
+        }
+
+        updateManagedIndexConfigStartTime(managedIndexConfig)
         waitFor {
             assertEquals(
                 "Index did not set number_of_replicas to ${actionConfig.numOfReplicas}",
