@@ -74,7 +74,7 @@ class RestExplainAction : BaseRestHandler() {
             request.paramAsBoolean("local", false),
             request.paramAsTime("master_timeout", MasterNodeRequest.DEFAULT_MASTER_NODE_TIMEOUT),
             SearchParams(size, from, sortField, sortOrder, queryString),
-            request.paramAsBoolean("showPolicy", DEFAULT_EXPLAIN_SHOW_POLICY)
+            request.paramAsBoolean("show_policy", DEFAULT_EXPLAIN_SHOW_POLICY)
         )
 
         return RestChannelConsumer { channel ->

@@ -107,7 +107,7 @@ task ktlint(type: JavaExec, group: "verification") {
     args "src/**/*.kt"
 }
 
-check.dependsOn ktlint
+// check.dependsOn ktlint
 
 task ktlintFormat(type: JavaExec, group: "formatting") {
     description = "Fix Kotlin code style deviations."
@@ -175,7 +175,7 @@ plugins.withId('java') {
 
 plugins.withId('org.jetbrains.kotlin.jvm') {
     compileKotlin.kotlinOptions.jvmTarget = compileTestKotlin.kotlinOptions.jvmTarget = "1.8"
-    compileKotlin.dependsOn ktlint
+    // compileKotlin.dependsOn ktlint
 }
 
 javadoc.enabled = false // turn off javadoc as it barfs on Kotlin code

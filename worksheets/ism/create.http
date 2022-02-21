@@ -11,7 +11,7 @@ Content-Type: application/json
 }
 
 ###
-GET localhost:9200/_opendistro/_ism/explain/testindex?showPolicy
+GET localhost:9200/_opendistro/_ism/explain/testindex?show_policy
 Accept: application/json
 
 ###

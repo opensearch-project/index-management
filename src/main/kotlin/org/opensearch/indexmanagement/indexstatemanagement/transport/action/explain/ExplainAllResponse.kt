@@ -57,9 +57,9 @@ class ExplainAllResponse : ExplainResponse, ToXContentObject {
             builder.field(LegacyOpenDistroManagedIndexSettings.POLICY_ID.key, indexPolicyIDs[ind])
             builder.field(ManagedIndexSettings.POLICY_ID.key, indexPolicyIDs[ind])
             indexMetadatas[ind]?.toXContent(builder, ToXContent.EMPTY_PARAMS)
-            val policy = policies[name]
-            if (policy != null)
-                builder.field(Policy.POLICY_TYPE, policy)
+            policies[name]?.let {
+                builder.field(Policy.POLICY_TYPE, it)
+            }
             builder.field("enabled", enabledState[name])
             builder.endObject()
         }
