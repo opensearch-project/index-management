@@ -484,7 +484,7 @@ class ManagedIndexCoordinator(
                 launch {
                     try {
                         logger.debug("Performing background sweep of managed indices")
-                        // sweep()
+                        sweep()
                     } catch (e: Exception) {
                         logger.error("Failed to sweep managed indices", e)
                     }
@@ -598,7 +598,7 @@ class ManagedIndexCoordinator(
         updateManagedIndices(updateMatchingIndicesReqs + deleteManagedIndexRequests)
 
         // clean metadata of un-managed index
-        val indicesToDeleteMetadataFrom = unManagedIndices.map { it.uuid } + currentManagedIndexUuids
+        val indicesToDeleteMetadataFrom = unManagedIndices.map { it.uuid }
         clearManagedIndexMetaData(indicesToDeleteMetadataFrom.map { deleteManagedIndexMetadataRequest(it) })
 
         lastFullSweepTimeNano = System.nanoTime()
