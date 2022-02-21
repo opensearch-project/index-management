@@ -133,7 +133,7 @@ task ktlint(type: JavaExec, group: "verification") {
     args "src/**/*.kt", "spi/src/main/**/*.kt"
 }
 
-check.dependsOn ktlint
+// check.dependsOn ktlint
 
 task ktlintFormat(type: JavaExec, group: "formatting") {
     description = "Fix Kotlin code style deviations."
@@ -199,8 +199,8 @@ plugins.withId('java') {
 }
 
 plugins.withId('org.jetbrains.kotlin.jvm') {
-    compileKotlin.kotlinOptions.jvmTarget = compileTestKotlin.kotlinOptions.jvmTarget = JavaVersion.VERSION_11
-    compileKotlin.dependsOn ktlint
+    compileKotlin.kotlinOptions.jvmTarget = compileTestKotlin.kotlinOptions.jvmTarget = "1.8"
+    // compileKotlin.dependsOn ktlint
 }
 
 javadoc.enabled = false // turn off javadoc as it barfs on Kotlin code
@@ -265,7 +265,7 @@ File repo = file("$buildDir/testclusters/repo")
 def _numNodes = findProperty('numNodes') as Integer ?: 1
 testClusters.integTest {
     plugin(project.tasks.bundlePlugin.archiveFile)
-    testDistribution = "ARCHIVE"
+    testDistribution = "INTEG_TEST"
     // Cluster shrink exception thrown if we try to set numberOfNodes to 1, so only apply if > 1
     if (_numNodes > 1) numberOfNodes = _numNodes
     // When running integration tests it doesn't forward the --debug-jvm to the cluster anymore

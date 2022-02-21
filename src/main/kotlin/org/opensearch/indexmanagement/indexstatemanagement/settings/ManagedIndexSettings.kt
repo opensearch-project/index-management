@@ -13,8 +13,8 @@ import java.util.function.Function
 @Suppress("UtilityClassWithPublicConstructor")
 class ManagedIndexSettings {
     companion object {
-        const val DEFAULT_ISM_ENABLED = true
-        const val DEFAULT_TEMPLATE_MIGRATION_TIMESTAMP = 0L
+        const val DEFAULT_ISM_ENABLED = false
+        const val DEFAULT_TEMPLATE_MIGRATION_TIMESTAMP = -1L
         const val DEFAULT_JOB_INTERVAL = 5
         const val DEFAULT_JITTER = 0.6
         const val DEFAULT_RESTRICTED_PATTERN = "\\.opendistro_security|\\.kibana.*|\\$INDEX_MANAGEMENT_INDEX"

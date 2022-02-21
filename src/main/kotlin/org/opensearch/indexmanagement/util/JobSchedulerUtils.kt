@@ -66,3 +66,7 @@ suspend fun renewLockForScheduledJob(context: JobExecutionContext, lock: LockMod
 
     return updatedLock
 }
+
+enum class ScheduleType {
+    CRON, INTERVAL;
+}

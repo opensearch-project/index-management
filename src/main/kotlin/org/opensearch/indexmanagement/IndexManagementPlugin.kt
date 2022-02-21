@@ -111,6 +111,12 @@ import org.opensearch.indexmanagement.rollup.resthandler.RestStopRollupAction
 import org.opensearch.indexmanagement.rollup.settings.LegacyOpenDistroRollupSettings
 import org.opensearch.indexmanagement.rollup.settings.RollupSettings
 import org.opensearch.indexmanagement.settings.IndexManagementSettings
+import org.opensearch.indexmanagement.snapshotmanagement.api.index.IndexSMAction
+import org.opensearch.indexmanagement.snapshotmanagement.api.index.RestIndexSMAction
+import org.opensearch.indexmanagement.snapshotmanagement.api.index.TransportIndexSMAction
+import org.opensearch.indexmanagement.snapshotmanagement.engine.SMRunner
+import org.opensearch.indexmanagement.snapshotmanagement.model.SM
+import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata
 import org.opensearch.indexmanagement.spi.IndexManagementExtension
 import org.opensearch.indexmanagement.spi.indexstatemanagement.IndexMetadataService
 import org.opensearch.indexmanagement.spi.indexstatemanagement.StatusChecker
@@ -164,6 +170,8 @@ import java.util.function.Supplier
 @Suppress("TooManyFunctions")
 class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin, ExtensiblePlugin, Plugin() {
 
+    private val log = LogManager.getLogger(javaClass)
+
     private val logger = LogManager.getLogger(javaClass)
     lateinit var indexManagementIndices: IndexManagementIndices
     lateinit var clusterService: ClusterService
@@ -183,6 +191,8 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
         const val TRANSFORM_BASE_URI = "$PLUGINS_BASE_URI/_transform"
         const val POLICY_BASE_URI = "$ISM_BASE_URI/policies"
         const val ROLLUP_JOBS_BASE_URI = "$ROLLUP_BASE_URI/jobs"
+        const val SM_BASE_URI = "$PLUGINS_BASE_URI/_sm"
+
         const val INDEX_MANAGEMENT_INDEX = ".opendistro-ism-config"
         const val INDEX_MANAGEMENT_JOB_TYPE = "opendistro-index-management"
         const val INDEX_STATE_MANAGEMENT_HISTORY_TYPE = "managed_index_meta_data"
@@ -208,6 +218,7 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
     @Suppress("ComplexMethod")
     override fun getJobParser(): ScheduledJobParser {
         return ScheduledJobParser { xcp, id, jobDocVersion ->
+            log.info("Plugin job parser")
             ensureExpectedToken(Token.START_OBJECT, xcp.nextToken(), xcp)
             while (xcp.nextToken() != Token.END_OBJECT) {
                 val fieldName = xcp.currentName()
@@ -233,6 +244,12 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
                         return@ScheduledJobParser null
                     }
                     ManagedIndexMetaData.MANAGED_INDEX_METADATA_TYPE -> {
+                        return@ScheduledJobParser null
+                    }
+                    SM.SM_TYPE -> {
+                        return@ScheduledJobParser SM.parse(xcp, id, jobDocVersion.seqNo, jobDocVersion.primaryTerm)
+                    }
+                    SMMetadata.SM_METADATA_TYPE -> {
                         return@ScheduledJobParser null
                     }
                     else -> {
@@ -300,7 +317,8 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
             RestDeleteTransformAction(),
             RestExplainTransformAction(),
             RestStartTransformAction(),
-            RestStopTransformAction()
+            RestStopTransformAction(),
+            RestIndexSMAction()
         )
     }
 
@@ -388,6 +406,8 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
             environment.settings(),
             client, clusterService, threadPool, indexManagementIndices, metadataService, templateService, indexMetadataProvider
         )
+
+        SMRunner.init(client)
 
         return listOf(
             managedIndexRunner,
@@ -502,7 +522,8 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
             ActionPlugin.ActionHandler(ExplainTransformAction.INSTANCE, TransportExplainTransformAction::class.java),
             ActionPlugin.ActionHandler(StartTransformAction.INSTANCE, TransportStartTransformAction::class.java),
             ActionPlugin.ActionHandler(StopTransformAction.INSTANCE, TransportStopTransformAction::class.java),
-            ActionPlugin.ActionHandler(ManagedIndexAction.INSTANCE, TransportManagedIndexAction::class.java)
+            ActionPlugin.ActionHandler(ManagedIndexAction.INSTANCE, TransportManagedIndexAction::class.java),
+            ActionPlugin.ActionHandler(IndexSMAction.INSTANCE, TransportIndexSMAction::class.java),
         )
     }
 
