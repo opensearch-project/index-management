@@ -27,6 +27,7 @@ val XCONTENT_WITHOUT_TYPE_AND_USER = ToXContent.MapParams(mapOf(WITH_TYPE to "fa
 const val FAILURES = "failures"
 const val FAILED_INDICES = "failed_indices"
 const val UPDATED_INDICES = "updated_indices"
+const val TOTAL_MANAGED_INDICES = "total_managed_indices"
 
 const val ISM_TEMPLATE_FIELD = "policy.ism_template"
 

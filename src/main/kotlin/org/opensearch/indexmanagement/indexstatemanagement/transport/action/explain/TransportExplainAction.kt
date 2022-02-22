@@ -362,11 +362,7 @@ class TransportExplainAction @Inject constructor(
             enabledStatus: Map<String, Boolean> = enabledState,
             totalIndices: Int = totalManagedIndices
         ) {
-            if (explainAll) {
-                actionListener.onResponse(ExplainAllResponse(indices, policies, metadata, totalIndices, enabledStatus))
-                return
-            }
-            actionListener.onResponse(ExplainResponse(indices, policies, metadata))
+            actionListener.onResponse(ExplainResponse(indices, policies, metadata, totalIndices, enabledStatus))
         }
 
         private fun getMetadata(response: GetResponse?): ManagedIndexMetaData? {

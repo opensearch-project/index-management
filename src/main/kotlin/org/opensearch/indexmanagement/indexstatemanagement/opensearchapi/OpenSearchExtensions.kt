@@ -26,7 +26,6 @@ import org.opensearch.common.xcontent.ToXContentFragment
 import org.opensearch.common.xcontent.XContentBuilder
 import org.opensearch.common.xcontent.XContentHelper
 import org.opensearch.common.xcontent.XContentType
-import org.opensearch.index.Index
 import org.opensearch.index.IndexNotFoundException
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
 import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
@@ -119,17 +118,16 @@ suspend fun IndexMetadata.getManagedIndexMetadata(client: Client): ManagedIndexM
  *
  * @return list of metadata
  */
-suspend fun Client.mgetManagedIndexMetadata(indices: List<Index>): List<Pair<ManagedIndexMetaData?, Exception?>?> {
-    log.debug("trying to get back metadata for indices ${indices.map { it.name }}")
-
-    if (indices.isEmpty()) return emptyList()
+suspend fun Client.mgetManagedIndexMetadata(indexUuids: List<String>): List<Pair<ManagedIndexMetaData?, Exception?>?> {
+    log.debug("trying to get back metadata for index [$indexUuids]")
+    if (indexUuids.isEmpty()) return emptyList()
 
     val mgetRequest = MultiGetRequest()
-    indices.forEach {
+    indexUuids.forEach {
         mgetRequest.add(
             MultiGetRequest.Item(
-                INDEX_MANAGEMENT_INDEX, managedIndexMetadataID(it.uuid)
-            ).routing(it.uuid)
+                INDEX_MANAGEMENT_INDEX, managedIndexMetadataID(it)
+            ).routing(it)
         )
     }
     var mgetMetadataList = listOf<Pair<ManagedIndexMetaData?, Exception?>?>()
@@ -137,10 +135,11 @@ suspend fun Client.mgetManagedIndexMetadata(indices: List<Index>): List<Pair<Man
         val response: MultiGetResponse = this.suspendUntil { multiGet(mgetRequest, it) }
         mgetMetadataList = mgetResponseToList(response)
     } catch (e: ActionRequestValidationException) {
-        log.info("No managed index metadata for indices [$indices], ${e.message}")
+        log.info("No managed index metadata for indices [$indexUuids], ${e.message}")
     } catch (e: Exception) {
-        log.error("Failed to multi-get managed index metadata for indices [$indices]", e)
+        log.error("Failed to multi-get managed index metadata for indices [$indexUuids]", e)
     }
+
     return mgetMetadataList
 }
 
