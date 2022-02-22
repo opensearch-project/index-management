@@ -8,6 +8,7 @@ package org.opensearch.indexmanagement.indexstatemanagement.resthandler
 import org.opensearch.indexmanagement.IndexManagementPlugin
 import org.opensearch.indexmanagement.indexstatemanagement.IndexStateManagementRestTestCase
 import org.opensearch.indexmanagement.indexstatemanagement.model.ChangePolicy
+import org.opensearch.indexmanagement.indexstatemanagement.util.TOTAL_MANAGED_INDICES
 import org.opensearch.indexmanagement.makeRequest
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.PolicyRetryInfoMetaData
@@ -26,9 +27,11 @@ class RestExplainActionIT : IndexStateManagementRestTestCase() {
         val indexName = "${testIndexName}_movies"
         createIndex(indexName, null)
         val expected = mapOf(
-            indexName to mapOf<String, String?>(
+            TOTAL_MANAGED_INDICES to 0,
+            indexName to mapOf<String, Any?>(
                 explainResponseOpendistroPolicyIdSetting to null,
-                explainResponseOpenSearchPolicyIdSetting to null
+                explainResponseOpenSearchPolicyIdSetting to null,
+                ManagedIndexMetaData.ENABLED to null
             )
         )
         assertResponseMap(expected, getExplainMap(indexName))
@@ -52,16 +55,19 @@ class RestExplainActionIT : IndexStateManagementRestTestCase() {
         createIndex(indexName2, null)
 
         val expected = mapOf(
+            TOTAL_MANAGED_INDICES to 1,
             indexName1 to mapOf<String, Any>(
                 explainResponseOpendistroPolicyIdSetting to policy.id,
                 explainResponseOpenSearchPolicyIdSetting to policy.id,
                 "index" to indexName1,
                 "index_uuid" to getUuid(indexName1),
-                "policy_id" to policy.id
+                "policy_id" to policy.id,
+                ManagedIndexMetaData.ENABLED to true
             ),
             indexName2 to mapOf<String, Any?>(
                 explainResponseOpendistroPolicyIdSetting to null,
-                explainResponseOpenSearchPolicyIdSetting to null
+                explainResponseOpenSearchPolicyIdSetting to null,
+                ManagedIndexMetaData.ENABLED to null
             )
         )
         waitFor {
@@ -102,23 +108,27 @@ class RestExplainActionIT : IndexStateManagementRestTestCase() {
         createIndex(indexName2, policyID = policy.id)
         createIndex(indexName3, null)
         val expected = mapOf(
+            TOTAL_MANAGED_INDICES to 2,
             indexName1 to mapOf<String, Any>(
                 explainResponseOpendistroPolicyIdSetting to policy.id,
                 explainResponseOpenSearchPolicyIdSetting to policy.id,
                 "index" to indexName1,
                 "index_uuid" to getUuid(indexName1),
-                "policy_id" to policy.id
+                "policy_id" to policy.id,
+                ManagedIndexMetaData.ENABLED to true
             ),
             indexName2 to mapOf<String, Any>(
                 explainResponseOpendistroPolicyIdSetting to policy.id,
                 explainResponseOpenSearchPolicyIdSetting to policy.id,
                 "index" to indexName2,
                 "index_uuid" to getUuid(indexName2),
-                "policy_id" to policy.id
+                "policy_id" to policy.id,
+                ManagedIndexMetaData.ENABLED to true
             ),
             indexName3 to mapOf<String, Any?>(
                 explainResponseOpendistroPolicyIdSetting to null,
-                explainResponseOpenSearchPolicyIdSetting to null
+                explainResponseOpenSearchPolicyIdSetting to null,
+                ManagedIndexMetaData.ENABLED to null
             )
         )
         waitFor {
@@ -155,7 +165,8 @@ class RestExplainActionIT : IndexStateManagementRestTestCase() {
                             ),
                         PolicyRetryInfoMetaData.RETRY_INFO to fun(retryInfoMetaDataMap: Any?): Boolean =
                             assertRetryInfoEquals(PolicyRetryInfoMetaData(false, 0), retryInfoMetaDataMap),
-                        ManagedIndexMetaData.INFO to fun(info: Any?): Boolean = expectedInfoString == info.toString()
+                        ManagedIndexMetaData.INFO to fun(info: Any?): Boolean = expectedInfoString == info.toString(),
+                        ManagedIndexMetaData.ENABLED to true::equals
                     )
                 ),
                 getExplainMap(indexName)
@@ -195,7 +206,8 @@ class RestExplainActionIT : IndexStateManagementRestTestCase() {
                         ManagedIndexMetaData.POLICY_ID to newPolicy.id::equals,
                         PolicyRetryInfoMetaData.RETRY_INFO to fun(retryInfoMetaDataMap: Any?): Boolean =
                             assertRetryInfoEquals(PolicyRetryInfoMetaData(true, 0), retryInfoMetaDataMap),
-                        ManagedIndexMetaData.INFO to fun(info: Any?): Boolean = expectedInfoString == info.toString()
+                        ManagedIndexMetaData.INFO to fun(info: Any?): Boolean = expectedInfoString == info.toString(),
+                        ManagedIndexMetaData.ENABLED to true::equals
                     )
                 ),
                 getExplainMap(indexName)

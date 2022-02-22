@@ -10,19 +10,16 @@ package org.opensearch.indexmanagement.indexstatemanagement.util
 import inet.ipaddr.IPAddressString
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
-import org.opensearch.action.DocWriteRequest
 import org.opensearch.action.delete.DeleteRequest
 import org.opensearch.action.index.IndexRequest
 import org.opensearch.action.search.SearchRequest
 import org.opensearch.action.support.WriteRequest
 import org.opensearch.action.update.UpdateRequest
 import org.opensearch.alerting.destination.message.BaseMessage
-import org.opensearch.cluster.metadata.IndexMetadata
 import org.opensearch.common.unit.ByteSizeValue
 import org.opensearch.common.unit.TimeValue
 import org.opensearch.common.xcontent.ToXContent
 import org.opensearch.common.xcontent.XContentFactory
-import org.opensearch.index.Index
 import org.opensearch.index.query.BoolQueryBuilder
 import org.opensearch.index.query.QueryBuilders
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
@@ -163,53 +160,32 @@ fun updateManagedIndexRequest(sweptManagedIndexConfig: SweptManagedIndexConfig):
 }
 
 /**
- * Creates DeleteRequests for [ManagedIndexConfig].
- *
  * Finds ManagedIndices that exist in [INDEX_MANAGEMENT_INDEX] that do not exist in the cluster state
  * anymore which means we need to delete the [ManagedIndexConfig].
  *
- * @param currentIndices List of current [IndexMetadata] in cluster state.
- * @param currentManagedIndexConfigs map of IndexUuid to [SweptManagedIndexConfig].
- * @return list of [DocWriteRequest].
+ * @param currentIndexUuids List of current index uuids in cluster.
+ * @param currentManagedIndexUuids List of current managed index uuids in cluster.
+ * @return list of managedIndexUuids to delete.
  */
-fun getDeleteManagedIndexRequests(
-    currentIndices: List<IndexMetadata>,
-    currentManagedIndexConfigs: Map<String, SweptManagedIndexConfig>
-): List<DocWriteRequest<*>> {
-    return currentManagedIndexConfigs.filter { currentManagedIndex ->
-        !currentIndices.map { it.index.uuid }.contains(currentManagedIndex.key)
-    }.map { deleteManagedIndexRequest(it.value.uuid) }
-}
-
-// if managed index exist but the index is not existing any more
-// then we should delete this managed index
 fun getManagedIndicesToDelete(
-    currentIndices: List<IndexMetadata>,
-    currentManagedIndexConfigs: Map<String, SweptManagedIndexConfig>
-): List<Index> {
-    val currentIndicesSet = currentIndices.map { it.index }.toSet()
-    val managedIndicesSet = currentManagedIndexConfigs.values.map { Index(it.index, it.uuid) }.toSet()
-    return (managedIndicesSet - currentIndicesSet).toList()
+    currentIndexUuids: List<String>,
+    currentManagedIndexUuids: List<String>
+): List<String> {
+    return currentManagedIndexUuids.filter { currentManagedIndex ->
+        !currentIndexUuids.contains(currentManagedIndex)
+    }
 }
 
 fun getSweptManagedIndexSearchRequest(): SearchRequest {
     val boolQueryBuilder = BoolQueryBuilder().filter(QueryBuilders.existsQuery(ManagedIndexConfig.MANAGED_INDEX_TYPE))
     return SearchRequest()
         .indices(INDEX_MANAGEMENT_INDEX)
+        .scroll(TimeValue.timeValueMinutes(1))
         .source(
             SearchSourceBuilder.searchSource()
-                // TODO: Get all ManagedIndices at once or split into searchAfter queries?
                 .size(ManagedIndexCoordinator.MAX_HITS)
                 .seqNoAndPrimaryTerm(true)
-                .fetchSource(
-                    arrayOf(
-                        "${ManagedIndexConfig.MANAGED_INDEX_TYPE}.${ManagedIndexConfig.INDEX_FIELD}",
-                        "${ManagedIndexConfig.MANAGED_INDEX_TYPE}.${ManagedIndexConfig.INDEX_UUID_FIELD}",
-                        "${ManagedIndexConfig.MANAGED_INDEX_TYPE}.${ManagedIndexConfig.POLICY_ID_FIELD}",
-                        "${ManagedIndexConfig.MANAGED_INDEX_TYPE}.${ManagedIndexConfig.CHANGE_POLICY_FIELD}"
-                    ),
-                    emptyArray()
-                )
+                .fetchSource(emptyArray(), emptyArray())
                 .query(boolQueryBuilder)
         )
 }

@@ -16,6 +16,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.randomErrorNotificati
 import org.opensearch.indexmanagement.indexstatemanagement.randomPolicy
 import org.opensearch.indexmanagement.indexstatemanagement.util.INDEX_HIDDEN
 import org.opensearch.indexmanagement.randomInstant
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.waitFor
 import org.opensearch.rest.RestStatus
 import java.time.Instant
@@ -116,7 +117,8 @@ class ISMTemplateRestAPIIT : IndexStateManagementRestTestCase() {
             listOf(
                 indexName1 to listOf(
                     explainResponseOpendistroPolicyIdSetting to fun(policyID: Any?): Boolean = policyID == null,
-                    explainResponseOpenSearchPolicyIdSetting to fun(policyID: Any?): Boolean = policyID == null
+                    explainResponseOpenSearchPolicyIdSetting to fun(policyID: Any?): Boolean = policyID == null,
+                    ManagedIndexMetaData.ENABLED to fun(enabled: Any?): Boolean = enabled == null
                 )
             ),
             getExplainMap(indexName1),
@@ -129,7 +131,8 @@ class ISMTemplateRestAPIIT : IndexStateManagementRestTestCase() {
             listOf(
                 indexName1 to listOf(
                     explainResponseOpendistroPolicyIdSetting to fun(policyID: Any?): Boolean = policyID == null,
-                    explainResponseOpenSearchPolicyIdSetting to fun(policyID: Any?): Boolean = policyID == null
+                    explainResponseOpenSearchPolicyIdSetting to fun(policyID: Any?): Boolean = policyID == null,
+                    ManagedIndexMetaData.ENABLED to fun(enabled: Any?): Boolean = enabled == null
                 )
             ),
             getExplainMap(indexName1),
