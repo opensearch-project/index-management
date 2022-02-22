@@ -7,7 +7,6 @@ package org.opensearch.indexmanagement.transform
 
 import org.apache.http.entity.ContentType
 import org.apache.http.entity.StringEntity
-import org.opensearch.client.Request
 import org.opensearch.common.settings.Settings
 import org.opensearch.index.query.TermQueryBuilder
 import org.opensearch.indexmanagement.common.model.dimension.DateHistogram
@@ -24,6 +23,7 @@ import org.opensearch.script.ScriptType
 import org.opensearch.search.aggregations.AggregationBuilders
 import org.opensearch.search.aggregations.AggregatorFactories
 import org.opensearch.search.aggregations.metrics.ScriptedMetricAggregationBuilder
+import java.lang.Integer.min
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 
@@ -566,10 +566,8 @@ class TransformRunnerIT : TransformRestTestCase() {
         val sourceIndex = "modified-bucket-source-index"
         createIndex(sourceIndex, Settings.EMPTY, """"properties":{"iterating_id":{"type":"integer"},"twice_id":{"type":"integer"}}""")
         for (i in 0..47) {
-            val request = Request("POST", "/$sourceIndex/_doc/?refresh=true")
             val jsonString = "{\"iterating_id\": \"$i\",\"twice_id\": \"${i * 2}\"}"
-            request.setJsonEntity(jsonString)
-            client().performRequest(request)
+            insertSampleData(sourceIndex, 1, jsonString = jsonString)
         }
 
         val aggregatorFactories = AggregatorFactories.builder()
@@ -646,10 +644,8 @@ class TransformRunnerIT : TransformRestTestCase() {
         }
         // Add more data
         for (i in 48..99) {
-            val request = Request("POST", "/$sourceIndex/_doc/?refresh=true")
             val jsonString = "{\"iterating_id\": \"$i\",\"twice_id\": \"${i * 2}\"}"
-            request.setJsonEntity(jsonString)
-            client().performRequest(request)
+            insertSampleData(sourceIndex, 1, jsonString = jsonString)
         }
 
         waitFor {
@@ -775,6 +771,179 @@ class TransformRunnerIT : TransformRestTestCase() {
         assertTrue("Timestamp was not updated", secondIterationMetadata.continuousStats!!.lastTimestamp!!.isAfter(firstIterationMetadata.continuousStats!!.lastTimestamp))
 
         disableTransform(transform.id)
+    }
+
+    fun `test continuous transforms with null buckets`() {
+        val sourceIndex = "null-bucket-source-index"
+        createIndex(sourceIndex, Settings.EMPTY, """"properties":{"iterating_id":{"type":"integer"},"term_id":{"type":"keyword"},"twice_id":{"type":"integer"}}""")
+        for (i in 0..12) {
+            val jsonString = "{\"iterating_id\": \"$i\",\"term_id\": \"${i % 5}\",\"twice_id\": \"${i * 2}\"}"
+            insertSampleData(sourceIndex, 1, jsonString = jsonString)
+            val idNullJsonString = "{\"iterating_id\": null,\"term_id\": \"${i % 5}\",\"twice_id\": \"${i * 2}\"}"
+            insertSampleData(sourceIndex, 1, jsonString = idNullJsonString)
+            val termNullJsonString = "{\"iterating_id\": \"$i\",\"term_id\": null,\"twice_id\": \"${i * 2}\"}"
+            insertSampleData(sourceIndex, 1, jsonString = termNullJsonString)
+            val bothNullJsonString = "{\"iterating_id\": null,\"term_id\": null,\"twice_id\": \"${i * 2}\"}"
+            insertSampleData(sourceIndex, 1, jsonString = bothNullJsonString)
+        }
+
+        val aggregatorFactories = AggregatorFactories.builder()
+        aggregatorFactories.addAggregator(AggregationBuilders.sum("twice_id_sum").field("twice_id"))
+
+        val transform = Transform(
+            id = "id_12",
+            schemaVersion = 1L,
+            enabled = true,
+            enabledAt = Instant.now(),
+            updatedAt = Instant.now(),
+            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+            description = "test transform",
+            metadataId = null,
+            sourceIndex = sourceIndex,
+            targetIndex = "null-bucket-target-index",
+            roles = emptyList(),
+            pageSize = 100,
+            groups = listOf(
+                Histogram(sourceField = "iterating_id", targetField = "id_group", interval = 5.0),
+                Terms(sourceField = "term_id", targetField = "id_term")
+            ),
+            continuous = true,
+            aggregations = aggregatorFactories
+        ).let { createTransform(it, it.id) }
+
+        updateTransformStartTime(transform)
+
+        waitFor { assertTrue("Target transform index was not created", indexExists(transform.targetIndex)) }
+
+        val firstIterationMetadata = waitFor {
+            val job = getTransform(transformId = transform.id)
+            assertNotNull("Transform job doesn't have metadata set", job.metadataId)
+            val transformMetadata = getTransformMetadata(job.metadataId!!)
+            assertEquals("Transform did not complete iteration or had incorrect number of documents processed", 52, transformMetadata.stats.documentsProcessed)
+            assertEquals("Transform did not complete iteration", null, transformMetadata.afterKey)
+            transformMetadata
+        }
+
+        assertEquals("Not the expected transform status", TransformMetadata.Status.STARTED, firstIterationMetadata.status)
+        assertEquals("Not the expected pages processed", 2L, firstIterationMetadata.stats.pagesProcessed)
+        assertEquals("Not the expected documents indexed", 22L, firstIterationMetadata.stats.documentsIndexed)
+        assertEquals("Not the expected documents processed", 52L, firstIterationMetadata.stats.documentsProcessed)
+        assertTrue("Doesn't capture indexed time", firstIterationMetadata.stats.indexTimeInMillis > 0)
+        assertTrue("Didn't capture search time", firstIterationMetadata.stats.searchTimeInMillis > 0)
+
+        // Get all of the buckets
+        var hits = waitFor {
+            val response = client().makeRequest(
+                "GET", "${transform.targetIndex}/_search",
+                StringEntity("{\"size\": 25}", ContentType.APPLICATION_JSON)
+            )
+            assertEquals("Request failed", RestStatus.OK, response.restStatus())
+            val responseHits = response.asMap().getValue("hits") as Map<*, *>
+            val totalDocs = (responseHits["hits"] as ArrayList<*>).fold(0) { sum, bucket ->
+                val docCount = ((bucket as Map<*, *>)["_source"] as Map<*, *>)["transform._doc_count"] as Int
+                sum + docCount
+            }
+            assertEquals("Not all documents included in the transform target index", 52, totalDocs)
+
+            responseHits["hits"] as ArrayList<*>
+        }
+
+        // Validate the buckets include the correct information
+        hits.forEach {
+            val bucket = ((it as Map<*, *>)["_source"] as Map<*, *>)
+            val idGroup = (bucket["id_group"] as Double?)?.toInt()
+            val idTerm = (bucket["id_term"] as String?)?.toInt()
+            if (idGroup == null) {
+                if (idTerm == null) {
+                    val expectedSum = (0..(24) step 2).sum()
+                    assertEquals("ID sum not calculated correctly", expectedSum, (bucket["twice_id_sum"] as Double).toInt())
+                } else {
+                    val expectedSum = ((idTerm * 2)..(24) step 10).sum()
+                    assertEquals("ID sum not calculated correctly", expectedSum, (bucket["twice_id_sum"] as Double).toInt())
+                }
+            } else if (idTerm == null) {
+                // use the min to get the correct sum for the half full top bucket
+                val expectedSum = ((idGroup * 2)..(min(idGroup * 2 + 8, 24)) step 2).sum()
+                assertEquals("ID sum not calculated correctly", expectedSum, (bucket["twice_id_sum"] as Double).toInt())
+            } else {
+                val expectedSum = idGroup * 2 + idTerm * 2
+                assertEquals("ID sum not calculated correctly", expectedSum, (bucket["twice_id_sum"] as Double).toInt())
+            }
+        }
+
+        // Add more data, don't add any to the (null, null) bucket to check that it won't be updated without new data
+        for (i in 13..24) {
+            val jsonString = "{\"iterating_id\": \"$i\",\"term_id\": \"${i % 5}\",\"twice_id\": \"${i * 2}\"}"
+            insertSampleData(sourceIndex, 1, jsonString = jsonString)
+            val idNullJsonString = "{\"iterating_id\": null,\"term_id\": \"${i % 5}\",\"twice_id\": \"${i * 2}\"}"
+            insertSampleData(sourceIndex, 1, jsonString = idNullJsonString)
+            val termNullJsonString = "{\"iterating_id\": \"$i\",\"term_id\": null,\"twice_id\": \"${i * 2}\"}"
+            insertSampleData(sourceIndex, 1, jsonString = termNullJsonString)
+        }
+
+        waitFor {
+            val documentsBehind = getTransformDocumentsBehind(transform.id)[transform.sourceIndex]
+            assertEquals("Documents behind not calculated correctly", 36, documentsBehind)
+        }
+
+        updateTransformStartTime(transform)
+
+        val secondIterationMetadata = waitFor {
+            val job = getTransform(transformId = transform.id)
+            assertNotNull("Transform job doesn't have metadata set", job.metadataId)
+            val transformMetadata = getTransformMetadata(job.metadataId!!)
+            assertEquals("Transform did not complete iteration or had incorrect number of documents processed", 104L, transformMetadata.stats.documentsProcessed)
+            assertEquals("Transform did not have null afterKey after iteration", null, transformMetadata.afterKey)
+            transformMetadata
+        }
+
+        assertEquals("Not the expected transform status", TransformMetadata.Status.STARTED, secondIterationMetadata.status)
+        assertEquals("More than expected pages processed", 4L, secondIterationMetadata.stats.pagesProcessed)
+        assertEquals("More than expected documents indexed", 42L, secondIterationMetadata.stats.documentsIndexed)
+        assertEquals("Not the expected documents processed", 104L, secondIterationMetadata.stats.documentsProcessed)
+        assertTrue("Doesn't capture indexed time", secondIterationMetadata.stats.indexTimeInMillis > firstIterationMetadata.stats.indexTimeInMillis)
+        assertTrue("Didn't capture search time", secondIterationMetadata.stats.searchTimeInMillis > firstIterationMetadata.stats.searchTimeInMillis)
+
+        disableTransform(transform.id)
+
+        hits = waitFor {
+            val response = client().makeRequest(
+                "GET", "${transform.targetIndex}/_search",
+                StringEntity("{\"size\": 40}", ContentType.APPLICATION_JSON)
+            )
+            assertEquals("Request failed", RestStatus.OK, response.restStatus())
+            val responseHits = response.asMap().getValue("hits") as Map<*, *>
+            val totalDocs = (responseHits["hits"] as ArrayList<*>).fold(0) { sum, bucket ->
+                val docCount = ((bucket as Map<*, *>)["_source"] as Map<*, *>)["transform._doc_count"] as Int
+                sum + docCount
+            }
+            assertEquals("Not all documents included in the transform target index", 88, totalDocs)
+
+            responseHits["hits"] as ArrayList<*>
+        }
+
+        // Validate the buckets include the correct information
+        hits.forEach {
+            val bucket = ((it as Map<*, *>)["_source"] as Map<*, *>)
+            val idGroup = (bucket["id_group"] as Double?)?.toInt()
+            val idTerm = (bucket["id_term"] as String?)?.toInt()
+            if (idGroup == null) {
+                if (idTerm == null) {
+                    val expectedSum = (0..(24) step 2).sum()
+                    assertEquals("ID sum not calculated correctly", expectedSum, (bucket["twice_id_sum"] as Double).toInt())
+                } else {
+                    val expectedSum = ((idTerm * 2)..(48) step 10).sum()
+                    assertEquals("ID sum not calculated correctly", expectedSum, (bucket["twice_id_sum"] as Double).toInt())
+                }
+            } else if (idTerm == null) {
+                // use the min to get the correct sum for the half full top bucket
+                val expectedSum = ((idGroup * 2)..(idGroup * 2 + 8) step 2).sum()
+                assertEquals("ID sum not calculated correctly", expectedSum, (bucket["twice_id_sum"] as Double).toInt())
+            } else {
+                val expectedSum = idGroup * 2 + idTerm * 2
+                assertEquals("ID sum not calculated correctly", expectedSum, (bucket["twice_id_sum"] as Double).toInt())
+            }
+        }
     }
 
     private fun getStrictMappings(): String {

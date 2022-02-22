@@ -23,6 +23,7 @@ import org.opensearch.common.settings.Settings
 import org.opensearch.common.xcontent.XContentType
 import org.opensearch.index.Index
 import org.opensearch.index.query.BoolQueryBuilder
+import org.opensearch.index.query.ExistsQueryBuilder
 import org.opensearch.index.query.QueryBuilder
 import org.opensearch.index.query.QueryBuilders
 import org.opensearch.index.query.RangeQueryBuilder
@@ -188,7 +189,7 @@ class TransformSearchService(
             modifiedBuckets: MutableSet<Map<String, Any>>? = null
         ): SearchRequest {
             val sources = mutableListOf<CompositeValuesSourceBuilder<*>>()
-            transform.groups.forEach { group -> sources.add(group.toSourceBuilder().missingBucket(!transform.continuous)) }
+            transform.groups.forEach { group -> sources.add(group.toSourceBuilder().missingBucket(true)) }
             val aggregationBuilder = CompositeAggregationBuilder(transform.id, sources)
                 .size(pageSize)
                 .subAggregations(transform.aggregations)
@@ -213,8 +214,13 @@ class TransformSearchService(
                     // There should be a transform grouping for each bucket key, if not then throw an error
                     val transformGroup = groups.find { it.targetField == group.key }
                         ?: throw TransformSearchServiceException(noTransformGroupErrorMessage(group.key))
-                    val subQuery = transformGroup.toBucketQuery(group.value)
-                    bucketQuery.filter(subQuery)
+                    if (group.value as Any? == null) {
+                        val subQuery = ExistsQueryBuilder(transformGroup.sourceField)
+                        bucketQuery.mustNot(subQuery)
+                    } else {
+                        val subQuery = transformGroup.toBucketQuery(group.value)
+                        bucketQuery.filter(subQuery)
+                    }
                 }
                 query.should(bucketQuery)
             }
@@ -240,7 +246,7 @@ class TransformSearchService(
         ): SearchRequest {
             val rangeQuery = getSeqNoRangeQuery(currentShard.from, currentShard.to)
             val query = QueryBuilders.boolQuery().filter(rangeQuery).must(transform.dataSelectionQuery)
-            val sources = transform.groups.map { it.toSourceBuilder().missingBucket(false) }
+            val sources = transform.groups.map { it.toSourceBuilder().missingBucket(true) }
             val aggregationBuilder = CompositeAggregationBuilder(transform.id, sources)
                 .size(pageSize)
                 .apply { afterKey?.let { this.aggregateAfter(it) } }
