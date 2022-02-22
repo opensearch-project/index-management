@@ -95,7 +95,8 @@ class ManagedIndexCoordinatorIT : IndexStateManagementRestTestCase() {
                         explainResponseOpendistroPolicyIdSetting to fun(policyID: Any?): Boolean =
                             policyID == null,
                         explainResponseOpenSearchPolicyIdSetting to fun(policyID: Any?): Boolean =
-                            policyID == null
+                            policyID == null,
+                        ManagedIndexMetaData.ENABLED to fun(enabled: Any?): Boolean = enabled == null
                     )
                 ),
                 getExplainMap(index),
@@ -202,6 +203,7 @@ class ManagedIndexCoordinatorIT : IndexStateManagementRestTestCase() {
         // Confirm job was disabled
         val disabledManagedIndexConfig: ManagedIndexConfig = waitFor {
             val config = getManagedIndexConfigByDocId(managedIndexConfig.id)
+            assertNotNull("Could not find ManagedIndexConfig", config)
             assertEquals("ManagedIndexConfig was not disabled", false, config!!.enabled)
             config
         }
