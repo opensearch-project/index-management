@@ -69,7 +69,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.util.ISM_TEMPLATE_FIE
 import org.opensearch.indexmanagement.indexstatemanagement.util.IndexEvaluator
 import org.opensearch.indexmanagement.indexstatemanagement.util.deleteManagedIndexMetadataRequest
 import org.opensearch.indexmanagement.indexstatemanagement.util.deleteManagedIndexRequest
-import org.opensearch.indexmanagement.indexstatemanagement.util.getDeleteRequestsForManagedIndices
+import org.opensearch.indexmanagement.indexstatemanagement.util.getManagedIndicesToDelete
 import org.opensearch.indexmanagement.indexstatemanagement.util.getSweptManagedIndexSearchRequest
 import org.opensearch.indexmanagement.indexstatemanagement.util.isFailed
 import org.opensearch.indexmanagement.indexstatemanagement.util.isPolicyCompleted
@@ -592,13 +592,13 @@ class ManagedIndexCoordinator(
         )
 
         // check all managed indices, if the index has already been deleted
-        val deleteManagedIndexRequests =
-            getDeleteRequestsForManagedIndices(currentIndices.map { it.uuid }, currentManagedIndexUuids)
+        val managedIndicesToDelete = getManagedIndicesToDelete(currentIndices.map { it.uuid }, currentManagedIndexUuids)
+        val deleteManagedIndexRequests = managedIndicesToDelete.map { deleteManagedIndexRequest(it) }
 
         updateManagedIndices(updateMatchingIndicesReqs + deleteManagedIndexRequests)
 
         // clean metadata of un-managed index
-        val indicesToDeleteMetadataFrom = unManagedIndices.map { it.uuid }
+        val indicesToDeleteMetadataFrom = unManagedIndices.map { it.uuid } + managedIndicesToDelete
         clearManagedIndexMetaData(indicesToDeleteMetadataFrom.map { deleteManagedIndexMetadataRequest(it) })
 
         lastFullSweepTimeNano = System.nanoTime()

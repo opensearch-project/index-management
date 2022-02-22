@@ -103,10 +103,11 @@ class ManagedIndexUtilsTests : OpenSearchTestCase() {
             uuid = clusterConfig.uuid, policyID = clusterConfig.policyID, seqNo = 5, primaryTerm = 17
         )
 
-        val requests = getDeleteRequestsForManagedIndices(
+        val managedIndicesToDelete = getManagedIndicesToDelete(
             listOf(clusterConfig.uuid, clusterConfigToUpdate.uuid, clusterConfigBeingUpdated.uuid, clusterConfigToCreate.uuid),
             listOf(sweptConfig.uuid, sweptConfigToDelete.uuid, sweptConfigToBeUpdated.uuid, sweptConfigBeingUpdated.uuid)
         )
+        val requests = managedIndicesToDelete.map { deleteManagedIndexRequest(it) }
 
         assertEquals("Too many requests", 1, requests.size)
         val request = requests.first()

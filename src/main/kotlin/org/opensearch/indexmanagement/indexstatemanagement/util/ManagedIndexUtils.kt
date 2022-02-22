@@ -10,7 +10,6 @@ package org.opensearch.indexmanagement.indexstatemanagement.util
 import inet.ipaddr.IPAddressString
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
-import org.opensearch.action.DocWriteRequest
 import org.opensearch.action.delete.DeleteRequest
 import org.opensearch.action.index.IndexRequest
 import org.opensearch.action.search.SearchRequest
@@ -168,22 +167,20 @@ fun updateManagedIndexRequest(sweptManagedIndexConfig: SweptManagedIndexConfig):
 }
 
 /**
- * Creates DeleteRequests for [ManagedIndexConfig].
- *
  * Finds ManagedIndices that exist in [INDEX_MANAGEMENT_INDEX] that do not exist in the cluster state
  * anymore which means we need to delete the [ManagedIndexConfig].
  *
  * @param currentIndexUuids List of current index uuids in cluster.
  * @param currentManagedIndexUuids List of current managed index uuids in cluster.
- * @return list of [DocWriteRequest].
+ * @return list of managedIndexUuids to delete.
  */
-fun getDeleteRequestsForManagedIndices(
+fun getManagedIndicesToDelete(
     currentIndexUuids: List<String>,
     currentManagedIndexUuids: List<String>
-): List<DocWriteRequest<*>> {
+): List<String> {
     return currentManagedIndexUuids.filter { currentManagedIndex ->
         !currentIndexUuids.contains(currentManagedIndex)
-    }.map { deleteManagedIndexRequest(it) }
+    }
 }
 
 fun getSweptManagedIndexSearchRequest(): SearchRequest {
