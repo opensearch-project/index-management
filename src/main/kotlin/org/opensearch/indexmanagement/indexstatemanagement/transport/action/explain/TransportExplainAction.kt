@@ -342,7 +342,10 @@ class TransportExplainAction @Inject constructor(
                             // do nothing - skip the index and go to next one
                             filter(current + 1, filteredIndices, filteredMetadata, filteredPolicies, enabledStatus, filteredAppliedPolicies)
                         } else {
-                            sendResponse(filteredIndices, filteredMetadata, filteredPolicies, enabledStatus, totalManagedIndices, filteredAppliedPolicies)
+                            sendResponse(
+                                filteredIndices, filteredMetadata, filteredPolicies, enabledStatus,
+                                totalManagedIndices, filteredAppliedPolicies
+                            )
                         }
                     }
 
@@ -361,7 +364,10 @@ class TransportExplainAction @Inject constructor(
                                         filteredAppliedPolicies
                                     )
                                 } else {
-                                    sendResponse(filteredIndices, filteredMetadata, filteredPolicies, enabledStatus, totalManagedIndices, filteredAppliedPolicies)
+                                    sendResponse(
+                                        filteredIndices, filteredMetadata, filteredPolicies, enabledStatus,
+                                        totalManagedIndices, filteredAppliedPolicies
+                                    )
                                 }
                             }
                             false -> {
