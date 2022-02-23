@@ -5,6 +5,9 @@
 
 package org.opensearch.indexmanagement.transform.action.explain
 
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import org.apache.logging.log4j.LogManager
 import org.opensearch.ExceptionsHelper
 import org.opensearch.ResourceNotFoundException
@@ -72,6 +75,7 @@ class TransportExplainTransformAction @Inject constructor(
         // Instantiate concrete ids to metadata map by removing wildcard matches
         val idsToExplain: MutableMap<String, ExplainTransform?> = ids.filter { !it.contains("*") }
             .map { it to null }.toMap(mutableMapOf())
+        val failedToExplain: MutableMap<String, String> = mutableMapOf()
         val queryBuilder = BoolQueryBuilder().minimumShouldMatch(1).apply {
             ids.forEach {
                 this.should(WildcardQueryBuilder("${ Transform.TRANSFORM_TYPE}.${Transform.TRANSFORM_ID_FIELD}.keyword", "*$it*"))
@@ -87,10 +91,12 @@ class TransportExplainTransformAction @Inject constructor(
                 searchRequest,
                 object : ActionListener<SearchResponse> {
                     override fun onResponse(response: SearchResponse) {
+                        val metadataIdToTransform: MutableMap<String, Transform> = HashMap()
                         try {
                             response.hits.hits.forEach {
                                 val transform = contentParser(it.sourceRef).parseWithType(it.id, it.seqNo, it.primaryTerm, Transform.Companion::parse)
                                 idsToExplain[transform.id] = ExplainTransform(metadataID = transform.metadataId)
+                                if (transform.metadataId != null) metadataIdToTransform[transform.metadataId] = transform
                             }
                         } catch (e: Exception) {
                             log.error("Failed to parse explain response", e)
@@ -105,19 +111,30 @@ class TransportExplainTransformAction @Inject constructor(
                             metadataSearchRequest,
                             object : ActionListener<SearchResponse> {
                                 override fun onResponse(response: SearchResponse) {
-                                    try {
+                                    CoroutineScope(Dispatchers.IO).launch {
                                         response.hits.hits.forEach {
-                                            val metadata = contentParser(it.sourceRef)
-                                                .parseWithType(it.id, it.seqNo, it.primaryTerm, TransformMetadata.Companion::parse)
-                                            idsToExplain.computeIfPresent(metadata.transformId) { _, explainTransform ->
-                                                explainTransform.copy(metadata = metadata)
+                                            try {
+                                                val metadata = contentParser(it.sourceRef)
+                                                    .parseWithType(it.id, it.seqNo, it.primaryTerm, TransformMetadata.Companion::parse)
+
+                                                val transform = metadataIdToTransform[metadata.id]
+                                                // Only add continuous stats for continuous transforms which have not failed
+                                                if (transform?.continuous == true && metadata.status != TransformMetadata.Status.FAILED) {
+                                                    addContinuousStats(transform, metadata)
+                                                } else {
+                                                    idsToExplain.computeIfPresent(metadata.transformId) { _, explainTransform ->
+                                                        // Don't provide shardIDToGlobalCheckpoint for a failed or non-continuous transform
+                                                        explainTransform.copy(metadata = metadata.copy(shardIDToGlobalCheckpoint = null))
+                                                    }
+                                                }
+                                            } catch (e: Exception) {
+                                                log.error("Failed to parse transform [${it.id}] metadata", e)
+                                                idsToExplain.remove(it.id)
+                                                failedToExplain[it.id] =
+                                                    "Failed to parse transform metadata - ${e.message}"
                                             }
                                         }
-                                        actionListener.onResponse(ExplainTransformResponse(idsToExplain.toMap()))
-                                    } catch (e: Exception) {
-                                        log.error("Failed to parse transform metadata", e)
-                                        actionListener.onFailure(e)
-                                        return
+                                        actionListener.onResponse(ExplainTransformResponse(idsToExplain.toMap(), failedToExplain))
                                     }
                                 }
 
@@ -129,6 +146,25 @@ class TransportExplainTransformAction @Inject constructor(
                                         else -> actionListener.onFailure(e)
                                     }
                                 }
+
+                                private suspend fun addContinuousStats(transform: Transform, metadata: TransformMetadata) {
+                                    val continuousStats = transform.getContinuousStats(client, metadata)
+                                    if (continuousStats == null) {
+                                        log.error("Failed to get continuous transform stats for transform [${transform.id}]")
+                                        idsToExplain.remove(transform.id)
+                                        failedToExplain[transform.id] =
+                                            "Failed to get continuous transform stats"
+                                    } else {
+                                        idsToExplain.computeIfPresent(metadata.transformId) { _, explainTransform ->
+                                            explainTransform.copy(
+                                                metadata = metadata.copy(
+                                                    shardIDToGlobalCheckpoint = null,
+                                                    continuousStats = continuousStats
+                                                )
+                                            )
+                                        }
+                                    }
+                                }
                             }
                         )
                     }
@@ -137,8 +173,9 @@ class TransportExplainTransformAction @Inject constructor(
                         log.error("Failed to search for transforms", e)
                         when (e) {
                             is ResourceNotFoundException -> {
-                                val nonWildcardIds = ids.filter { !it.contains("*") }.map { it to null }.toMap(mutableMapOf())
-                                actionListener.onResponse(ExplainTransformResponse(nonWildcardIds))
+                                val failureReason = "Failed to search transform metadata"
+                                val nonWildcardIds = ids.filter { !it.contains("*") }.map { it to failureReason }.toMap(mutableMapOf())
+                                actionListener.onResponse(ExplainTransformResponse(mapOf(), nonWildcardIds))
                             }
                             is RemoteTransportException -> actionListener.onFailure(ExceptionsHelper.unwrapCause(e) as java.lang.Exception)
                             else -> actionListener.onFailure(e)

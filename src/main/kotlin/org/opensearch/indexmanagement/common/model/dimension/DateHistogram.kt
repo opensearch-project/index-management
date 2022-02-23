@@ -12,6 +12,8 @@ import org.opensearch.common.xcontent.XContentBuilder
 import org.opensearch.common.xcontent.XContentParser
 import org.opensearch.common.xcontent.XContentParser.Token
 import org.opensearch.common.xcontent.XContentParserUtils.ensureExpectedToken
+import org.opensearch.index.query.AbstractQueryBuilder
+import org.opensearch.index.query.RangeQueryBuilder
 import org.opensearch.indexmanagement.util.IndexUtils.Companion.getFieldFromMappings
 import org.opensearch.search.aggregations.AggregatorFactories
 import org.opensearch.search.aggregations.bucket.composite.CompositeValuesSourceBuilder
@@ -81,6 +83,18 @@ data class DateHistogram(
                     this.fixedInterval(DateHistogramInterval(it))
                 }
             }
+    }
+
+    override fun toBucketQuery(bucketKey: Any): AbstractQueryBuilder<*> {
+        if (bucketKey !is Long) {
+            throw IllegalArgumentException("Received invalid date histogram bucket key type [${bucketKey::class}] when Long is expected.")
+        }
+        val interval: Long = DateHistogramInterval(fixedInterval ?: calendarInterval).estimateMillis()
+        return RangeQueryBuilder(sourceField)
+            .from(bucketKey, true)
+            .to(bucketKey + interval, false)
+            .timeZone(timezone.toString())
+            .format("epoch_millis")
     }
 
     override fun canBeRealizedInMappings(mappings: Map<String, Any>): Boolean {

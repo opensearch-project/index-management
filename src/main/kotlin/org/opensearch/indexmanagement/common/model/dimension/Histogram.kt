@@ -13,6 +13,8 @@ import org.opensearch.common.xcontent.XContentParser
 import org.opensearch.common.xcontent.XContentParser.Token
 import org.opensearch.common.xcontent.XContentParserUtils.ensureExpectedToken
 import org.opensearch.index.mapper.NumberFieldMapper
+import org.opensearch.index.query.AbstractQueryBuilder
+import org.opensearch.index.query.RangeQueryBuilder
 import org.opensearch.indexmanagement.util.IndexUtils.Companion.getFieldFromMappings
 import org.opensearch.search.aggregations.AggregatorFactories
 import org.opensearch.search.aggregations.bucket.composite.CompositeValuesSourceBuilder
@@ -63,6 +65,15 @@ data class Histogram(
             .interval(this.interval)
     }
 
+    override fun toBucketQuery(bucketKey: Any): AbstractQueryBuilder<*> {
+        if (bucketKey !is Double) {
+            throw IllegalArgumentException("Received invalid histogram bucket key type [${bucketKey::class}] when Double is expected.")
+        }
+        return RangeQueryBuilder(sourceField)
+            .from(bucketKey - Companion.bucketError, true)
+            .to(bucketKey + interval + Companion.bucketError, true)
+    }
+
     override fun canBeRealizedInMappings(mappings: Map<String, Any>): Boolean {
         val fieldType = getFieldFromMappings(sourceField, mappings)?.get("type") ?: return false
 
@@ -98,6 +109,9 @@ data class Histogram(
 
     companion object {
         const val HISTOGRAM_INTERVAL_FIELD = "interval"
+        // There can be rounding issues with small intervals where the range query will select documents differently than the Histogram
+        // so add an error to the range query and then limit the buckets indexed later.
+        private const val bucketError = 0.00005
 
         @Suppress("ComplexMethod", "LongMethod")
         @JvmStatic
