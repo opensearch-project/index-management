@@ -14,6 +14,7 @@ import org.opensearch.common.xcontent.XContentBuilder
 import org.opensearch.common.xcontent.XContentParser
 import org.opensearch.common.xcontent.XContentParserUtils.ensureExpectedToken
 import org.opensearch.index.seqno.SequenceNumbers
+import org.opensearch.index.shard.ShardId
 import org.opensearch.indexmanagement.indexstatemanagement.util.WITH_TYPE
 import org.opensearch.indexmanagement.opensearchapi.instant
 import org.opensearch.indexmanagement.opensearchapi.optionalTimeField
@@ -30,7 +31,9 @@ data class TransformMetadata(
     val lastUpdatedAt: Instant,
     val status: Status,
     val failureReason: String? = null,
-    val stats: TransformStats
+    val stats: TransformStats,
+    val shardIDToGlobalCheckpoint: Map<ShardId, Long>? = null,
+    val continuousStats: ContinuousTransformStats? = null
 ) : ToXContentObject, Writeable {
 
     enum class Status(val type: String) {
@@ -55,7 +58,9 @@ data class TransformMetadata(
         lastUpdatedAt = sin.readInstant(),
         status = sin.readEnum(Status::class.java),
         failureReason = sin.readOptionalString(),
-        stats = TransformStats(sin)
+        stats = TransformStats(sin),
+        shardIDToGlobalCheckpoint = if (sin.readBoolean()) sin.readMap({ ShardId(it) }, { it.readLong() }) else null,
+        continuousStats = if (sin.readBoolean()) ContinuousTransformStats(sin) else null
     )
 
     override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
@@ -68,7 +73,10 @@ data class TransformMetadata(
         builder.field(STATUS_FIELD, status.type)
         builder.field(FAILURE_REASON, failureReason)
         builder.field(STATS_FIELD, stats)
-
+        if (shardIDToGlobalCheckpoint != null) {
+            builder.field(SHARD_ID_TO_GLOBAL_CHECKPOINT_FIELD, shardIDToGlobalCheckpoint.mapKeys { it.key.toString() })
+        }
+        if (continuousStats != null) builder.field(CONTINUOUS_STATS_FIELD, continuousStats)
         if (params.paramAsBoolean(WITH_TYPE, true)) builder.endObject()
         return builder.endObject()
     }
@@ -84,6 +92,10 @@ data class TransformMetadata(
         out.writeEnum(status)
         out.writeOptionalString(failureReason)
         stats.writeTo(out)
+        out.writeBoolean(shardIDToGlobalCheckpoint != null)
+        shardIDToGlobalCheckpoint?.let { out.writeMap(it, { writer, k -> k.writeTo(writer) }, { writer, v -> writer.writeLong(v) }) }
+        out.writeBoolean(continuousStats != null)
+        continuousStats?.let { it.writeTo(out) }
     }
 
     fun mergeStats(stats: TransformStats): TransformMetadata {
@@ -105,6 +117,8 @@ data class TransformMetadata(
         const val LAST_UPDATED_AT_FIELD = "last_updated_at"
         const val STATUS_FIELD = "status"
         const val STATS_FIELD = "stats"
+        const val SHARD_ID_TO_GLOBAL_CHECKPOINT_FIELD = "shard_id_to_global_checkpoint"
+        const val CONTINUOUS_STATS_FIELD = "continuous_stats"
         const val FAILURE_REASON = "failure_reason"
 
         @Suppress("ComplexMethod", "LongMethod")
@@ -122,6 +136,8 @@ data class TransformMetadata(
             var status: Status? = null
             var failureReason: String? = null
             var stats: TransformStats? = null
+            var shardIDToGlobalCheckpoint: Map<ShardId, Long>? = null
+            var continuousStats: ContinuousTransformStats? = null
 
             ensureExpectedToken(XContentParser.Token.START_OBJECT, xcp.currentToken(), xcp)
             while (xcp.nextToken() != XContentParser.Token.END_OBJECT) {
@@ -135,6 +151,10 @@ data class TransformMetadata(
                     STATUS_FIELD -> status = Status.valueOf(xcp.text().toUpperCase(Locale.ROOT))
                     FAILURE_REASON -> failureReason = xcp.textOrNull()
                     STATS_FIELD -> stats = TransformStats.parse(xcp)
+                    SHARD_ID_TO_GLOBAL_CHECKPOINT_FIELD ->
+                        shardIDToGlobalCheckpoint = xcp.map({ HashMap<String, Long>() }, { parser -> parser.longValue() })
+                            .mapKeys { ShardId.fromString(it.key) }
+                    CONTINUOUS_STATS_FIELD -> continuousStats = ContinuousTransformStats.parse(xcp)
                 }
             }
 
@@ -147,7 +167,9 @@ data class TransformMetadata(
                 lastUpdatedAt = requireNotNull(lastUpdatedAt) { "Last updated time must not be null" },
                 status = requireNotNull(status) { "Status must not be null" },
                 failureReason = failureReason,
-                stats = requireNotNull(stats) { "Stats must not be null" }
+                stats = requireNotNull(stats) { "Stats must not be null" },
+                shardIDToGlobalCheckpoint = shardIDToGlobalCheckpoint,
+                continuousStats = continuousStats
             )
         }
     }

@@ -87,4 +87,32 @@ class RestIndexTransformActionIT : TransformRestTestCase() {
 
         assertEquals("Mappings are different", expectedMap, mappingsMap)
     }
+
+    @Throws(Exception::class)
+    fun `test updating transform continuous field fails`() {
+        val transform = createRandomTransform()
+        try {
+            client().makeRequest(
+                "PUT",
+                "$TRANSFORM_BASE_URI/${transform.id}?refresh=true&if_seq_no=${transform.seqNo}&if_primary_term=${transform.primaryTerm}",
+                emptyMap(),
+                transform.copy(continuous = !transform.continuous, pageSize = 50).toHttpEntity() // Lower page size to make sure that doesn't throw an error first
+            )
+            fail("Expected 405 Method Not Allowed response")
+        } catch (e: ResponseException) {
+            assertEquals("Unexpected status", RestStatus.BAD_REQUEST, e.response.restStatus())
+            val actualMessage = e.response.asMap()
+            val expectedErrorMessage = mapOf(
+                "error" to mapOf(
+                    "root_cause" to listOf<Map<String, Any>>(
+                        mapOf("type" to "status_exception", "reason" to "Not allowed to modify [continuous]")
+                    ),
+                    "type" to "status_exception",
+                    "reason" to "Not allowed to modify [continuous]"
+                ),
+                "status" to 400
+            )
+            assertEquals(expectedErrorMessage, actualMessage)
+        }
+    }
 }
