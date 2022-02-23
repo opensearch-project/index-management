@@ -68,7 +68,9 @@ data class Policy(
             .field(SCHEMA_VERSION_FIELD, schemaVersion)
             .field(ERROR_NOTIFICATION_FIELD, errorNotification)
             .field(DEFAULT_STATE_FIELD, defaultState)
-            .field(STATES_FIELD, states.toTypedArray())
+            .startArray(STATES_FIELD)
+            .also { states.forEach { state -> state.toXContent(it, params) } }
+            .endArray()
             .optionalISMTemplateField(ISM_TEMPLATE, ismTemplate)
         if (params.paramAsBoolean(WITH_USER, true)) builder.optionalUserField(USER_FIELD, user)
         if (params.paramAsBoolean(WITH_TYPE, true)) builder.endObject()

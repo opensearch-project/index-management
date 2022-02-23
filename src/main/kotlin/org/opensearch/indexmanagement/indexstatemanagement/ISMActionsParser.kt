@@ -32,7 +32,6 @@ class ISMActionsParser private constructor() {
         val instance = ISMActionsParser()
     }
 
-    // TODO: Add other action parsers as they are implemented
     val parsers = mutableListOf<ActionParser>(
         AllocationActionParser(),
         CloseActionParser(),
@@ -50,6 +49,9 @@ class ISMActionsParser private constructor() {
     )
 
     fun addParser(parser: ActionParser) {
+        if (parsers.map { it.getActionType() }.contains(parser.getActionType())) {
+            throw IllegalArgumentException(getDuplicateActionTypesMessage(parser.getActionType()))
+        }
         parsers.add(parser)
     }
 
@@ -77,6 +79,19 @@ class ISMActionsParser private constructor() {
             when (type) {
                 ActionTimeout.TIMEOUT_FIELD -> timeout = ActionTimeout.parse(xcp)
                 ActionRetry.RETRY_FIELD -> retry = ActionRetry.parse(xcp)
+                Action.CUSTOM_ACTION_FIELD -> {
+                    xcp.nextToken()
+                    val customActionType = xcp.currentName()
+                    xcp.nextToken()
+                    val customParser = parsers.firstOrNull { it.getActionType() == customActionType }
+                    if (customParser != null) {
+                        action = customParser.fromXContent(xcp, totalActions)
+                    } else {
+                        throw IllegalArgumentException("Invalid field: [$customActionType] found in custom Actions.")
+                    }
+                    XContentParserUtils.ensureExpectedToken(XContentParser.Token.END_OBJECT, xcp.currentToken(), xcp)
+                    xcp.nextToken()
+                }
                 else -> {
                     val parser = parsers.firstOrNull { it.getActionType() == type }
                     if (parser != null) {
@@ -98,5 +113,6 @@ class ISMActionsParser private constructor() {
 
     companion object {
         val instance: ISMActionsParser by lazy { HOLDER.instance }
+        fun getDuplicateActionTypesMessage(actionType: String) = "Multiple action parsers attempted to register the same action type [$actionType]"
     }
 }

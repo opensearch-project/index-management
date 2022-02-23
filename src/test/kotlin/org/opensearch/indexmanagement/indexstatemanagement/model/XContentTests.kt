@@ -34,16 +34,12 @@ import org.opensearch.indexmanagement.indexstatemanagement.randomTransition
 import org.opensearch.indexmanagement.indexstatemanagement.toJsonString
 import org.opensearch.indexmanagement.opensearchapi.convertToMap
 import org.opensearch.indexmanagement.opensearchapi.parseWithType
-import org.opensearch.indexmanagement.spi.indexstatemanagement.Action
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.test.OpenSearchTestCase
 
-// TODO: fixme - enable tests
-// TODO remove this suppression when refactoring is done
-@Suppress("UnusedPrivateMember")
 class XContentTests : OpenSearchTestCase() {
 
-    private fun `test policy parsing`() {
+    fun `test policy parsing`() {
         val policy = randomPolicy()
 
         val policyString = policy.toJsonString()
@@ -51,7 +47,7 @@ class XContentTests : OpenSearchTestCase() {
         assertEquals("Round tripping Policy doesn't work", policy, parsedPolicy)
     }
 
-    private fun `test state parsing`() {
+    fun `test state parsing`() {
         val state = randomState()
 
         val stateString = state.toJsonString()
@@ -73,14 +69,6 @@ class XContentTests : OpenSearchTestCase() {
         val conditionsString = conditions.toJsonString()
         val parsedConditions = Conditions.parse(parser(conditionsString))
         assertEquals("Round tripping Conditions doesn't work", conditions, parsedConditions)
-    }
-
-    private fun `test action config parsing`() {
-        val deleteActionConfig = randomDeleteActionConfig()
-
-        val deleteActionConfigString = deleteActionConfig.toJsonString()
-        val parsedActionConfig = ISMActionsParser.instance.parse((parser(deleteActionConfigString)), 0)
-        assertEquals("Round tripping ActionConfig doesn't work", deleteActionConfig as Action, parsedActionConfig)
     }
 
     fun `test delete action parsing`() {
@@ -256,7 +244,7 @@ class XContentTests : OpenSearchTestCase() {
         assertEquals("Round tripping ManagedIndexMetaData doesn't work", metadata, parsedMetaData)
     }
 
-    private fun `test change policy parsing`() {
+    fun `test change policy parsing`() {
         val changePolicy = randomChangePolicy()
 
         val changePolicyString = changePolicy.toJsonString()

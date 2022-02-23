@@ -45,7 +45,9 @@ data class State(
         builder
             .startObject()
             .field(NAME_FIELD, name)
-            .field(ACTIONS_FIELD, actions.toTypedArray())
+            .startArray(ACTIONS_FIELD)
+            .also { actions.forEach { action -> action.toXContent(it, params) } }
+            .endArray()
             .field(TRANSITIONS_FIELD, transitions.toTypedArray())
             .endObject()
         return builder

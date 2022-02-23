@@ -16,7 +16,8 @@ import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepContext
 
 abstract class Action(
     val type: String,
-    val actionIndex: Int
+    val actionIndex: Int,
+    val customAction: Boolean = false
 ) : ToXContentObject, Writeable {
 
     var configTimeout: ActionTimeout? = null
@@ -26,8 +27,9 @@ abstract class Action(
         builder.startObject()
         configTimeout?.toXContent(builder, params)
         configRetry?.toXContent(builder, params)
-        // TODO: We should add "custom" object wrapper based on the params
+        if (customAction && !params.paramAsBoolean(EXCLUDE_CUSTOM_FIELD_PARAM, false)) builder.startObject(CUSTOM_ACTION_FIELD)
         populateAction(builder, params)
+        if (customAction && !params.paramAsBoolean(EXCLUDE_CUSTOM_FIELD_PARAM, false)) builder.endObject()
         return builder.endObject()
     }
 
@@ -70,5 +72,7 @@ abstract class Action(
 
     companion object {
         const val DEFAULT_RETRIES = 3L
+        const val CUSTOM_ACTION_FIELD = "custom"
+        const val EXCLUDE_CUSTOM_FIELD_PARAM = "exclude_custom"
     }
 }
