@@ -78,7 +78,11 @@ class AttemptSetReadOnlyStep(private val action: ForceMergeAction) : Step(name) 
     }
 
     override fun getUpdatedManagedIndexMetadata(currentMetadata: ManagedIndexMetaData): ManagedIndexMetaData =
-        currentMetadata.copy(stepMetaData = StepMetaData(name, getStepStartTime(currentMetadata).toEpochMilli(), stepStatus), transitionTo = null, info = info)
+        currentMetadata.copy(
+            stepMetaData = StepMetaData(name, getStepStartTime(currentMetadata).toEpochMilli(), stepStatus),
+            transitionTo = null,
+            info = info
+        )
 
     override fun isIdempotent() = true
 

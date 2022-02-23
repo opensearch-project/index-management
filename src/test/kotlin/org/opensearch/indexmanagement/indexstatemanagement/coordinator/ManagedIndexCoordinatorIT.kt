@@ -95,7 +95,8 @@ class ManagedIndexCoordinatorIT : IndexStateManagementRestTestCase() {
                         explainResponseOpendistroPolicyIdSetting to fun(policyID: Any?): Boolean =
                             policyID == null,
                         explainResponseOpenSearchPolicyIdSetting to fun(policyID: Any?): Boolean =
-                            policyID == null
+                            policyID == null,
+                        ManagedIndexMetaData.ENABLED to fun(enabled: Any?): Boolean = enabled == null
                     )
                 ),
                 getExplainMap(index),

@@ -5,13 +5,9 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.util
 
-import com.nhaarman.mockitokotlin2.doReturn
-import com.nhaarman.mockitokotlin2.mock
-import com.nhaarman.mockitokotlin2.whenever
 import org.opensearch.action.delete.DeleteRequest
 import org.opensearch.alerting.destination.message.BaseMessage
 import org.opensearch.alerting.destination.message.CustomWebhookMessage
-import org.opensearch.cluster.metadata.IndexMetadata
 import org.opensearch.common.bytes.BytesReference
 import org.opensearch.common.unit.ByteSizeValue
 import org.opensearch.common.unit.TimeValue
@@ -19,7 +15,6 @@ import org.opensearch.common.xcontent.LoggingDeprecationHandler
 import org.opensearch.common.xcontent.XContentHelper
 import org.opensearch.common.xcontent.XContentParser
 import org.opensearch.common.xcontent.XContentType
-import org.opensearch.index.Index
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
 import org.opensearch.indexmanagement.indexstatemanagement.action.RolloverAction
 import org.opensearch.indexmanagement.indexstatemanagement.model.Conditions
@@ -108,24 +103,11 @@ class ManagedIndexUtilsTests : OpenSearchTestCase() {
             uuid = clusterConfig.uuid, policyID = clusterConfig.policyID, seqNo = 5, primaryTerm = 17
         )
 
-        val indexMetadata1: IndexMetadata = mock()
-        val indexMetadata2: IndexMetadata = mock()
-        val indexMetadata3: IndexMetadata = mock()
-        val indexMetadata4: IndexMetadata = mock()
-        whenever(indexMetadata1.index).doReturn(Index(clusterConfig.index, clusterConfig.uuid))
-        whenever(indexMetadata2.index).doReturn(Index(clusterConfigToUpdate.index, clusterConfigToUpdate.uuid))
-        whenever(indexMetadata3.index).doReturn(Index(clusterConfigBeingUpdated.index, clusterConfigBeingUpdated.uuid))
-        whenever(indexMetadata4.index).doReturn(Index(clusterConfigToCreate.index, clusterConfigToCreate.uuid))
-
-        val requests = getDeleteManagedIndexRequests(
-            listOf(indexMetadata1, indexMetadata2, indexMetadata3, indexMetadata4),
-            mapOf(
-                sweptConfig.uuid to sweptConfig,
-                sweptConfigToDelete.uuid to sweptConfigToDelete,
-                sweptConfigToBeUpdated.uuid to sweptConfigToBeUpdated,
-                sweptConfigBeingUpdated.uuid to sweptConfigBeingUpdated
-            )
+        val managedIndicesToDelete = getManagedIndicesToDelete(
+            listOf(clusterConfig.uuid, clusterConfigToUpdate.uuid, clusterConfigBeingUpdated.uuid, clusterConfigToCreate.uuid),
+            listOf(sweptConfig.uuid, sweptConfigToDelete.uuid, sweptConfigToBeUpdated.uuid, sweptConfigBeingUpdated.uuid)
         )
+        val requests = managedIndicesToDelete.map { deleteManagedIndexRequest(it) }
 
         assertEquals("Too many requests", 1, requests.size)
         val request = requests.first()

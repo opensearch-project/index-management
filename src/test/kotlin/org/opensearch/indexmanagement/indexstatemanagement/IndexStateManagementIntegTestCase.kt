@@ -36,6 +36,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.transport.action.expl
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.explain.TransportExplainAction
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.updateindexmetadata.TransportUpdateManagedIndexMetaDataAction
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.updateindexmetadata.UpdateManagedIndexMetaDataAction
+import org.opensearch.indexmanagement.indexstatemanagement.util.TOTAL_MANAGED_INDICES
 import org.opensearch.indexmanagement.makeRequest
 import org.opensearch.indexmanagement.opensearchapi.parseWithType
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
@@ -272,11 +273,12 @@ abstract class IndexStateManagementIntegTestCase : OpenSearchIntegTestCase() {
             xcp.nextToken(),
             xcp
         )
+        var totalManagedIndices = 0
         while (xcp.nextToken() != XContentParser.Token.END_OBJECT) {
             xcp.currentName()
             xcp.nextToken()
-
-            metadata = ManagedIndexMetaData.parse(xcp)
+            if (xcp.currentName() == TOTAL_MANAGED_INDICES) totalManagedIndices = xcp.intValue()
+            else metadata = ManagedIndexMetaData.parse(xcp)
         }
         return metadata
     }
