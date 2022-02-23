@@ -65,7 +65,6 @@ import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndex
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.managedIndex.ManagedIndexAction
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.managedIndex.ManagedIndexRequest
 import org.opensearch.indexmanagement.indexstatemanagement.util.ISM_TEMPLATE_FIELD
-import org.opensearch.indexmanagement.indexstatemanagement.util.IndexEvaluator
 import org.opensearch.indexmanagement.indexstatemanagement.util.deleteManagedIndexMetadataRequest
 import org.opensearch.indexmanagement.indexstatemanagement.util.deleteManagedIndexRequest
 import org.opensearch.indexmanagement.indexstatemanagement.util.getManagedIndicesToDelete
@@ -82,6 +81,8 @@ import org.opensearch.indexmanagement.opensearchapi.parseWithType
 import org.opensearch.indexmanagement.opensearchapi.retry
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.opensearchapi.withClosableContext
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ISMIndexMetadata
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.util.OpenForTesting
 import org.opensearch.rest.RestStatus
 import org.opensearch.search.builder.SearchSourceBuilder
@@ -114,7 +115,7 @@ class ManagedIndexCoordinator(
     indexManagementIndices: IndexManagementIndices,
     private val metadataService: MetadataService,
     private val templateService: ISMTemplateService,
-    private val indexEvaluator: IndexEvaluator = IndexEvaluator(settings, clusterService)
+    private val indexMetadataProvider: IndexMetadataProvider
 ) : ClusterStateListener,
     CoroutineScope by CoroutineScope(SupervisorJob() + Dispatchers.Default + CoroutineName("ManagedIndexCoordinator")),
     LifecycleListener() {
@@ -294,7 +295,9 @@ class ManagedIndexCoordinator(
         var indicesToClean = emptyList<Index>()
         if (event.indicesDeleted().isNotEmpty()) {
             val managedIndices = getManagedIndices(event.indicesDeleted().map { it.uuid })
-            indicesToClean = event.indicesDeleted().filter { it.uuid in managedIndices.keys }
+            val allIndicesUuid = indexMetadataProvider.getAllISMIndexMetadata().map { it.indexUuid }
+            // Check if the deleted index uuid is still part of any metadata service in the cluster and has an existing managed index job
+            indicesToClean = event.indicesDeleted().filter { it.uuid in managedIndices.keys && !allIndicesUuid.contains(it.uuid) }
             removeManagedIndexReq = indicesToClean.map { deleteManagedIndexRequest(it.uuid) }
         }
 
@@ -317,20 +320,23 @@ class ManagedIndexCoordinator(
         if (indexNames.isEmpty()) return updateManagedIndexReqs
 
         val policiesWithTemplates = getPoliciesWithISMTemplates()
-
+        // We use the metadata provider to give us the correct uuid for the index when creating managed index for the index
+        val ismIndicesMetadata: Map<String, ISMIndexMetadata> = indexMetadataProvider.getISMIndexMetadata(indexNames = indexNames)
         // Iterate over each unmanaged hot/warm index and if it matches an ISM template add a managed index config index request
         indexNames.forEach { indexName ->
+            val ismIndexMetadata = ismIndicesMetadata[indexName]
+            // We try to find lookup name instead of using index name as datastream indices need the alias to match policy
             val lookupName = findIndexLookupName(indexName, clusterState)
-            if (lookupName != null && !indexEvaluator.isUnManageableIndex(lookupName)) {
-                val indexMetadata = clusterState.metadata.index(indexName)
-                val creationDate = indexMetadata.creationDate
+            if (lookupName != null && !indexMetadataProvider.isUnManageableIndex(lookupName) && ismIndexMetadata != null) {
+                val creationDate = ismIndexMetadata.indexCreationDate
+                val indexUuid = ismIndexMetadata.indexUuid
                 findMatchingPolicy(lookupName, creationDate, policiesWithTemplates)
                     ?.let { policy ->
                         logger.info("Index [$indexName] matched ISM policy template and will be managed by ${policy.id}")
                         updateManagedIndexReqs.add(
                             managedIndexConfigIndexRequest(
-                                indexMetadata.index.name,
-                                indexMetadata.indexUUID,
+                                indexName,
+                                indexUuid,
                                 policy.id,
                                 jobInterval,
                                 policy,
@@ -582,33 +588,36 @@ class ManagedIndexCoordinator(
         val currentManagedIndexUuids = sweepManagedIndexJobs(client)
 
         // get all indices in the cluster state
-        val currentIndices = getAllClusterIndices()
+        val currentIndices = indexMetadataProvider.getISMIndexMetadata(indexNames = listOf("*"))
         val unManagedIndices = getUnManagedIndices(currentIndices, currentManagedIndexUuids.toHashSet())
 
         // Get the matching policyIds for applicable indices
         val updateMatchingIndicesReqs = createManagedIndexRequests(
-            clusterService.state(), unManagedIndices.map { it.name }
+            clusterService.state(), unManagedIndices.map { (indexName, _) -> indexName }
         )
 
         // check all managed indices, if the index has already been deleted
-        val managedIndicesToDelete = getManagedIndicesToDelete(currentIndices.map { it.uuid }, currentManagedIndexUuids)
+        val allIndicesUuids = indexMetadataProvider.getAllISMIndexMetadata().map { it.indexUuid }
+        val managedIndicesToDelete = getManagedIndicesToDelete(allIndicesUuids, currentManagedIndexUuids)
         val deleteManagedIndexRequests = managedIndicesToDelete.map { deleteManagedIndexRequest(it) }
 
         updateManagedIndices(updateMatchingIndicesReqs + deleteManagedIndexRequests)
 
         // clean metadata of un-managed index
-        val indicesToDeleteMetadataFrom = unManagedIndices.map { it.uuid } + managedIndicesToDelete
+        val indicesToDeleteMetadataFrom = unManagedIndices.map { (_, ismMetadata) -> ismMetadata.indexUuid } + managedIndicesToDelete
         clearManagedIndexMetaData(indicesToDeleteMetadataFrom.map { deleteManagedIndexMetadataRequest(it) })
 
         lastFullSweepTimeNano = System.nanoTime()
     }
 
-    private fun getAllClusterIndices(): List<Index> {
-        return clusterService.state().metadata.indices.values().map { it.value.index }.distinct().filterNotNull()
-    }
-
-    private fun getUnManagedIndices(allIndices: List<Index>, managedIndexUuids: Set<String>): List<Index> {
-        return allIndices.filter { it.uuid !in managedIndexUuids && !indexEvaluator.isUnManageableIndex(it.name) }
+    private fun getUnManagedIndices(allIndices: Map<String, ISMIndexMetadata>, managedIndexUuids: Set<String>): Map<String, ISMIndexMetadata> {
+        val unManagedIndices = mutableMapOf<String, ISMIndexMetadata>()
+        allIndices.forEach { (indexName, ismMetadata) ->
+            if (ismMetadata.indexUuid !in managedIndexUuids) {
+                unManagedIndices[indexName] = ismMetadata
+            }
+        }
+        return unManagedIndices
     }
 
     /**

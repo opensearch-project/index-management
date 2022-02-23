@@ -14,5 +14,10 @@ interface IndexMetadataService {
     /**
      * Returns the index metadata needed for ISM
      */
-    fun getMetadata(indices: List<String>, client: Client, clusterService: ClusterService): Map<String, ISMIndexMetadata>
+    suspend fun getMetadata(indices: List<String>, client: Client, clusterService: ClusterService): Map<String, ISMIndexMetadata>
+
+    /**
+     * Returns all the indices metadata
+     */
+    suspend fun getMetadataForAllIndices(client: Client, clusterService: ClusterService): Map<String, ISMIndexMetadata>
 }
