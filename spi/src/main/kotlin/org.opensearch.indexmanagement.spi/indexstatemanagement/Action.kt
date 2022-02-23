@@ -16,12 +16,12 @@ import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepContext
 
 abstract class Action(
     val type: String,
-    val actionIndex: Int,
-    val customAction: Boolean = false
+    val actionIndex: Int
 ) : ToXContentObject, Writeable {
 
     var configTimeout: ActionTimeout? = null
     var configRetry: ActionRetry? = ActionRetry(DEFAULT_RETRIES)
+    var customAction: Boolean = false
 
     final override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
         builder.startObject()

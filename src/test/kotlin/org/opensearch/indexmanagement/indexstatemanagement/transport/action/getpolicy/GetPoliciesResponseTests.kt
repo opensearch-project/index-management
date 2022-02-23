@@ -41,6 +41,7 @@ class GetPoliciesResponseTests : OpenSearchTestCase() {
     @Suppress("UNCHECKED_CAST")
     fun `test get policies response custom action`() {
         val customActionParser = SampleCustomActionParser()
+        customActionParser.customAction = true
         ISMActionsParser.instance.addParser(customActionParser)
         val policyID = "policyID"
         val action = SampleCustomActionParser.SampleCustomAction(someInt = randomInt(), index = 0)

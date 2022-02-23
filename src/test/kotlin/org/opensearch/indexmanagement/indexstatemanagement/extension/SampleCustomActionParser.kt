@@ -44,7 +44,7 @@ class SampleCustomActionParser : ActionParser() {
     override fun getActionType(): String {
         return SampleCustomAction.name
     }
-    class SampleCustomAction(val someInt: Int, index: Int) : Action(name, index, true) {
+    class SampleCustomAction(val someInt: Int, index: Int) : Action(name, index) {
 
         private val sampleCustomStep = SampleCustomStep()
         private val steps = listOf(sampleCustomStep)

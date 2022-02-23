@@ -86,6 +86,7 @@ class ISMActionsParser private constructor() {
                     val customParser = parsers.firstOrNull { it.getActionType() == customActionType }
                     if (customParser != null) {
                         action = customParser.fromXContent(xcp, totalActions)
+                        action.customAction = customParser.customAction
                     } else {
                         throw IllegalArgumentException("Invalid field: [$customActionType] found in custom Actions.")
                     }
@@ -96,6 +97,7 @@ class ISMActionsParser private constructor() {
                     val parser = parsers.firstOrNull { it.getActionType() == type }
                     if (parser != null) {
                         action = parser.fromXContent(xcp, totalActions)
+                        action.customAction = parser.customAction
                     } else {
                         throw IllegalArgumentException("Invalid field: [$type] found in Actions.")
                     }

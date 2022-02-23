@@ -8,7 +8,7 @@ package org.opensearch.indexmanagement.spi.indexstatemanagement
 import org.opensearch.common.io.stream.StreamInput
 import org.opensearch.common.xcontent.XContentParser
 
-abstract class ActionParser() {
+abstract class ActionParser(var customAction: Boolean = false) {
 
     /**
      * The action type parser will parse

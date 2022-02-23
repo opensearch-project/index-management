@@ -29,6 +29,7 @@ class ISMActionsParserTests : OpenSearchTestCase() {
 
     fun `test duplicate action names fail`() {
         val customActionParser = SampleCustomActionParser()
+        customActionParser.customAction = true
         // Duplicate custom parser names should fail
         ISMActionsParser.instance.addParser(customActionParser)
         assertFailsWith<IllegalArgumentException>("Expected IllegalArgumentException for duplicate action names") {
@@ -43,6 +44,7 @@ class ISMActionsParserTests : OpenSearchTestCase() {
 
     fun `test custom action parsing`() {
         val customActionParser = SampleCustomActionParser()
+        customActionParser.customAction = true
         ISMActionsParser.instance.addParser(customActionParser)
         val customAction = SampleCustomActionParser.SampleCustomAction(randomInt(), 0)
         val builder = XContentFactory.jsonBuilder()
@@ -51,18 +53,23 @@ class ISMActionsParserTests : OpenSearchTestCase() {
         val parser = XContentType.JSON.xContent().createParser(xContentRegistry(), LoggingDeprecationHandler.INSTANCE, customActionString)
         parser.nextToken()
         val parsedCustomAction = ISMActionsParser.instance.parse(parser, 1)
+        assertTrue("Action was not set to be custom after parsing", parsedCustomAction.customAction)
+        customAction.customAction = true
         assertEquals("Round tripping custom action doesn't work", customAction.convertToMap(), parsedCustomAction.convertToMap())
     }
 
     fun `test parsing custom action without custom flag`() {
         val customActionParser = SampleCustomActionParser()
+        customActionParser.customAction = true
         ISMActionsParser.instance.addParser(customActionParser)
         val customAction = SampleCustomActionParser.SampleCustomAction(randomInt(), 0)
+        customAction.customAction = true
 
         val customActionString = "{\"retry\":{\"count\":3,\"backoff\":\"exponential\",\"delay\":\"1m\"},\"some_custom_action\":{\"some_int_field\":${customAction.someInt}}}"
         val parser = XContentType.JSON.xContent().createParser(xContentRegistry(), LoggingDeprecationHandler.INSTANCE, customActionString)
         parser.nextToken()
         val parsedCustomAction = ISMActionsParser.instance.parse(parser, 1)
+        assertTrue("Action was not set to be custom after parsing", parsedCustomAction.customAction)
         assertEquals("Round tripping custom action doesn't work", customAction.convertToMap(), parsedCustomAction.convertToMap())
         assertTrue("Custom action did not have custom keyword after parsing", parsedCustomAction.convertToMap().containsKey("custom"))
     }
