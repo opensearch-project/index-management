@@ -26,7 +26,7 @@ import org.opensearch.monitor.jvm.JvmService
 import org.opensearch.transport.RemoteTransportException
 import java.lang.IllegalStateException
 
-@Suppress("SpreadOperator", "ReturnCount")
+@Suppress("SpreadOperator", "ReturnCount", "ThrowsCount")
 class TransformValidator(
     private val indexNameExpressionResolver: IndexNameExpressionResolver,
     private val clusterService: ClusterService,

@@ -12,6 +12,8 @@ import org.opensearch.common.xcontent.XContentBuilder
 import org.opensearch.common.xcontent.XContentParser
 import org.opensearch.common.xcontent.XContentParser.Token
 import org.opensearch.common.xcontent.XContentParserUtils.ensureExpectedToken
+import org.opensearch.index.query.AbstractQueryBuilder
+import org.opensearch.index.query.TermsQueryBuilder
 import org.opensearch.indexmanagement.util.IndexUtils.Companion.getFieldFromMappings
 import org.opensearch.search.aggregations.AggregatorFactories
 import org.opensearch.search.aggregations.bucket.composite.CompositeValuesSourceBuilder
@@ -53,6 +55,10 @@ data class Terms(
         return TermsValuesSourceBuilder(name)
             .missingBucket(true)
             .field(this.sourceField)
+    }
+
+    override fun toBucketQuery(bucketKey: Any): AbstractQueryBuilder<*> {
+        return TermsQueryBuilder(sourceField, bucketKey)
     }
 
     override fun canBeRealizedInMappings(mappings: Map<String, Any>): Boolean {

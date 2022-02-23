@@ -20,9 +20,11 @@ import org.opensearch.common.xcontent.XContentParser.Token
 import org.opensearch.common.xcontent.XContentType
 import org.opensearch.indexmanagement.IndexManagementIndices
 import org.opensearch.indexmanagement.IndexManagementPlugin
+import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
 import java.nio.ByteBuffer
 import java.util.Base64
 
+@Suppress("UtilityClassWithPublicConstructor")
 class IndexUtils {
     companion object {
         @Suppress("ObjectPropertyNaming")

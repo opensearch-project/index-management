@@ -57,7 +57,8 @@ class RestStopTransformActionIT : TransformRestTestCase() {
                     jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
                     enabled = true,
                     enabledAt = Instant.now(),
-                    metadataId = null
+                    metadataId = null,
+                    continuous = false
                 )
         )
         updateTransformStartTime(transform)

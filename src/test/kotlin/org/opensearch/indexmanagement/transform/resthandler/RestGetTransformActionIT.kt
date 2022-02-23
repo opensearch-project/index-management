@@ -15,7 +15,6 @@ import org.opensearch.indexmanagement.transform.randomTransform
 import org.opensearch.rest.RestStatus
 import org.opensearch.test.OpenSearchTestCase
 import org.opensearch.test.junit.annotations.TestLogging
-import org.opensearch.test.rest.OpenSearchRestTestCase.randomList
 
 @TestLogging(value = "level:DEBUG", reason = "Debugging tests")
 @Suppress("UNCHECKED_CAST")

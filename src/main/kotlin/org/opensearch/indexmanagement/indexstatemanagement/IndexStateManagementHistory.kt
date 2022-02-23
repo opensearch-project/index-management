@@ -33,6 +33,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.step.Step
 import org.opensearch.indexmanagement.indexstatemanagement.util.INDEX_HIDDEN
 import org.opensearch.indexmanagement.indexstatemanagement.util.INDEX_NUMBER_OF_REPLICAS
 import org.opensearch.indexmanagement.indexstatemanagement.util.INDEX_NUMBER_OF_SHARDS
+import org.opensearch.indexmanagement.opensearchapi.OPENDISTRO_SECURITY_PROTECTED_INDICES_CONF_REQUEST
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.util.OpenForTesting
 import org.opensearch.indexmanagement.util._DOC
@@ -113,8 +114,16 @@ class IndexStateManagementHistory(
     }
 
     private fun rolloverAndDeleteHistoryIndex() {
-        if (historyEnabled) rolloverHistoryIndex()
-        deleteOldHistoryIndex()
+        val ctx = threadPool.threadContext.stashContext()
+        try {
+            if (threadPool.threadContext.getTransient<String?>(OPENDISTRO_SECURITY_PROTECTED_INDICES_CONF_REQUEST) == null) {
+                threadPool.threadContext.putTransient(OPENDISTRO_SECURITY_PROTECTED_INDICES_CONF_REQUEST, "true")
+            }
+            if (historyEnabled) rolloverHistoryIndex()
+            deleteOldHistoryIndex()
+        } finally {
+            ctx.close()
+        }
     }
 
     private fun rolloverHistoryIndex() {
@@ -186,7 +195,7 @@ class IndexStateManagementHistory(
     }
 
     private fun getIndicesToDelete(clusterStateResponse: ClusterStateResponse): List<String> {
-        var indicesToDelete = mutableListOf<String>()
+        val indicesToDelete = mutableListOf<String>()
         for (entry in clusterStateResponse.state.metadata.indices()) {
             val indexMetaData = entry.value
             val creationTime = indexMetaData.creationDate

@@ -10,7 +10,6 @@ package org.opensearch.indexmanagement.indexstatemanagement.util
 import inet.ipaddr.IPAddressString
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
-import org.opensearch.action.DocWriteRequest
 import org.opensearch.action.delete.DeleteRequest
 import org.opensearch.action.index.IndexRequest
 import org.opensearch.action.search.SearchRequest
@@ -18,20 +17,19 @@ import org.opensearch.action.support.WriteRequest
 import org.opensearch.action.update.UpdateRequest
 import org.opensearch.alerting.destination.message.BaseMessage
 import org.opensearch.client.Client
-import org.opensearch.cluster.metadata.IndexMetadata
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.settings.Settings
 import org.opensearch.common.unit.ByteSizeValue
 import org.opensearch.common.unit.TimeValue
 import org.opensearch.common.xcontent.ToXContent
 import org.opensearch.common.xcontent.XContentFactory
-import org.opensearch.index.Index
 import org.opensearch.index.query.BoolQueryBuilder
 import org.opensearch.index.query.QueryBuilders
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
 import org.opensearch.indexmanagement.indexstatemanagement.ManagedIndexCoordinator
 import org.opensearch.indexmanagement.indexstatemanagement.action.Action
 import org.opensearch.indexmanagement.indexstatemanagement.model.ChangePolicy
+import org.opensearch.indexmanagement.indexstatemanagement.model.ISMTemplate
 import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexConfig
 import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
@@ -48,6 +46,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmet
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings
 import org.opensearch.indexmanagement.indexstatemanagement.step.Step
 import org.opensearch.indexmanagement.indexstatemanagement.step.delete.AttemptDeleteStep
+import org.opensearch.indexmanagement.opensearchapi.optionalISMTemplateField
 import org.opensearch.indexmanagement.opensearchapi.optionalTimeField
 import org.opensearch.jobscheduler.spi.schedule.IntervalSchedule
 import org.opensearch.script.ScriptService
@@ -133,6 +132,17 @@ private fun updateEnabledField(uuid: String, enabled: Boolean, enabledTime: Long
     return UpdateRequest(INDEX_MANAGEMENT_INDEX, uuid).doc(builder)
 }
 
+fun updateISMTemplateRequest(policyID: String, ismTemplates: List<ISMTemplate>, seqNo: Long, primaryTerm: Long): UpdateRequest {
+    val builder = XContentFactory.jsonBuilder()
+        .startObject()
+        .startObject(Policy.POLICY_TYPE)
+        .optionalISMTemplateField(Policy.ISM_TEMPLATE, ismTemplates)
+        .endObject()
+        .endObject()
+    return UpdateRequest(INDEX_MANAGEMENT_INDEX, policyID).doc(builder)
+        .setIfSeqNo(seqNo).setIfPrimaryTerm(primaryTerm)
+}
+
 fun updateDisableManagedIndexRequest(uuid: String): UpdateRequest {
     return updateEnabledField(uuid, false, null)
 }
@@ -157,53 +167,32 @@ fun updateManagedIndexRequest(sweptManagedIndexConfig: SweptManagedIndexConfig):
 }
 
 /**
- * Creates DeleteRequests for [ManagedIndexConfig].
- *
  * Finds ManagedIndices that exist in [INDEX_MANAGEMENT_INDEX] that do not exist in the cluster state
  * anymore which means we need to delete the [ManagedIndexConfig].
  *
- * @param currentIndices List of current [IndexMetadata] in cluster state.
- * @param currentManagedIndexConfigs map of IndexUuid to [SweptManagedIndexConfig].
- * @return list of [DocWriteRequest].
+ * @param currentIndexUuids List of current index uuids in cluster.
+ * @param currentManagedIndexUuids List of current managed index uuids in cluster.
+ * @return list of managedIndexUuids to delete.
  */
-fun getDeleteManagedIndexRequests(
-    currentIndices: List<IndexMetadata>,
-    currentManagedIndexConfigs: Map<String, SweptManagedIndexConfig>
-): List<DocWriteRequest<*>> {
-    return currentManagedIndexConfigs.filter { currentManagedIndex ->
-        !currentIndices.map { it.index.uuid }.contains(currentManagedIndex.key)
-    }.map { deleteManagedIndexRequest(it.value.uuid) }
-}
-
-// if managed index exist but the index is not existing any more
-// then we should delete this managed index
 fun getManagedIndicesToDelete(
-    currentIndices: List<IndexMetadata>,
-    currentManagedIndexConfigs: Map<String, SweptManagedIndexConfig>
-): List<Index> {
-    val currentIndicesSet = currentIndices.map { it.index }.toSet()
-    val managedIndicesSet = currentManagedIndexConfigs.values.map { Index(it.index, it.uuid) }.toSet()
-    return (managedIndicesSet - currentIndicesSet).toList()
+    currentIndexUuids: List<String>,
+    currentManagedIndexUuids: List<String>
+): List<String> {
+    return currentManagedIndexUuids.filter { currentManagedIndex ->
+        !currentIndexUuids.contains(currentManagedIndex)
+    }
 }
 
 fun getSweptManagedIndexSearchRequest(): SearchRequest {
     val boolQueryBuilder = BoolQueryBuilder().filter(QueryBuilders.existsQuery(ManagedIndexConfig.MANAGED_INDEX_TYPE))
     return SearchRequest()
         .indices(INDEX_MANAGEMENT_INDEX)
+        .scroll(TimeValue.timeValueMinutes(1))
         .source(
             SearchSourceBuilder.searchSource()
-                // TODO: Get all ManagedIndices at once or split into searchAfter queries?
                 .size(ManagedIndexCoordinator.MAX_HITS)
                 .seqNoAndPrimaryTerm(true)
-                .fetchSource(
-                    arrayOf(
-                        "${ManagedIndexConfig.MANAGED_INDEX_TYPE}.${ManagedIndexConfig.INDEX_FIELD}",
-                        "${ManagedIndexConfig.MANAGED_INDEX_TYPE}.${ManagedIndexConfig.INDEX_UUID_FIELD}",
-                        "${ManagedIndexConfig.MANAGED_INDEX_TYPE}.${ManagedIndexConfig.POLICY_ID_FIELD}",
-                        "${ManagedIndexConfig.MANAGED_INDEX_TYPE}.${ManagedIndexConfig.CHANGE_POLICY_FIELD}"
-                    ),
-                    emptyArray()
-                )
+                .fetchSource(emptyArray(), emptyArray())
                 .query(boolQueryBuilder)
         )
 }

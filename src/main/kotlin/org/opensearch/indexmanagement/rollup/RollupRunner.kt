@@ -204,6 +204,7 @@ object RollupRunner :
                 is RollupJobValidationResult.Failure -> {
                     logger.error("Failed to validate [${job.id}]: [${jobValidity.message}]")
                     setFailedMetadataAndDisableJob(job, jobValidity.message)
+                    return
                 }
                 else -> {}
             }

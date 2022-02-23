@@ -5,7 +5,6 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.resthandler
 
-import org.apache.logging.log4j.LogManager
 import org.opensearch.client.node.NodeClient
 import org.opensearch.common.Strings
 import org.opensearch.common.xcontent.XContentParser.Token
@@ -25,8 +24,6 @@ import org.opensearch.rest.action.RestToXContentListener
 import java.io.IOException
 
 class RestChangePolicyAction : BaseRestHandler() {
-
-    private val log = LogManager.getLogger(javaClass)
 
     override fun routes(): List<Route> {
         return emptyList()

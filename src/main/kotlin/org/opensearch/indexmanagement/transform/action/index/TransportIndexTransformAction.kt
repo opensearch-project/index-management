@@ -44,7 +44,7 @@ import org.opensearch.rest.RestStatus
 import org.opensearch.tasks.Task
 import org.opensearch.transport.TransportService
 
-@Suppress("SpreadOperator")
+@Suppress("SpreadOperator", "LongParameterList")
 class TransportIndexTransformAction @Inject constructor(
     transportService: TransportService,
     val client: Client,
@@ -147,6 +147,7 @@ class TransportIndexTransformAction @Inject constructor(
             if (transform.groups != newTransform.groups) modified.add(Transform.GROUPS_FIELD)
             if (transform.aggregations != newTransform.aggregations) modified.add(Transform.AGGREGATIONS_FIELD)
             if (transform.roles != newTransform.roles) modified.add(Transform.ROLES_FIELD)
+            if (transform.continuous != newTransform.continuous) modified.add(Transform.CONTINUOUS_FIELD)
             return modified.toList()
         }
 

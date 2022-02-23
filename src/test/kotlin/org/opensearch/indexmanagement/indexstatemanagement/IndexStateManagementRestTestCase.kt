@@ -52,6 +52,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.util.FAILED_INDICES
 import org.opensearch.indexmanagement.indexstatemanagement.util.FAILURES
 import org.opensearch.indexmanagement.indexstatemanagement.util.INDEX_NUMBER_OF_REPLICAS
 import org.opensearch.indexmanagement.indexstatemanagement.util.INDEX_NUMBER_OF_SHARDS
+import org.opensearch.indexmanagement.indexstatemanagement.util.SHOW_POLICY_QUERY_PARAM
 import org.opensearch.indexmanagement.indexstatemanagement.util.UPDATED_INDICES
 import org.opensearch.indexmanagement.makeRequest
 import org.opensearch.indexmanagement.opensearchapi.parseWithType
@@ -432,7 +433,7 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
     }
 
     // Validate segment count per shard by specifying the min and max it should be
-    @Suppress("UNCHECKED_CAST")
+    @Suppress("UNCHECKED_CAST", "ReturnCount")
     protected fun validateSegmentCount(index: String, min: Int? = null, max: Int? = null): Boolean {
         if (min == null && max == null) throw IllegalArgumentException("Must provide at least a min or max")
         val statsResponse: Map<String, Any> = getShardSegmentStats(index)
@@ -535,7 +536,7 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
     protected fun getExplainMap(indexName: String?, showPolicy: Boolean = false): Map<String, Any> {
         var endpoint = RestExplainAction.EXPLAIN_BASE_URI
         if (indexName != null) endpoint += "/$indexName"
-        if (showPolicy) endpoint += "?showPolicy"
+        if (showPolicy) endpoint += "?$SHOW_POLICY_QUERY_PARAM"
         val response = client().makeRequest(RestRequest.Method.GET.toString(), endpoint)
         assertEquals("Unexpected RestStatus", RestStatus.OK, response.restStatus())
         return response.asMap()
@@ -571,6 +572,7 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
 
     // Calls explain API for a single concrete index and converts the response into a ManagedIndexMetaData
     // This only works for indices with a ManagedIndexMetaData that has been initialized
+    @Suppress("LoopWithTooManyJumpStatements")
     protected fun getExplainManagedIndexMetaData(indexName: String): ManagedIndexMetaData {
         if (indexName.contains("*") || indexName.contains(",")) {
             throw IllegalArgumentException("This method is only for a single concrete index")
@@ -894,5 +896,83 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
             assertEquals(expected.priority, actual.priority)
         }
         return true
+    }
+
+    protected fun createV1Template(templateName: String, indexPatterns: String, policyID: String, order: Int = 0) {
+        val response = client().makeRequest(
+            "PUT", "_template/$templateName",
+            StringEntity(
+                "{\n" +
+                    "  \"index_patterns\": [\"$indexPatterns\"],\n" +
+                    "  \"settings\": {\n" +
+                    "    \"opendistro.index_state_management.policy_id\": \"$policyID\"\n" +
+                    "  }, \n" +
+                    "  \"order\": $order\n" +
+                    "}",
+                APPLICATION_JSON
+            )
+        )
+        assertEquals("Request failed", RestStatus.OK, response.restStatus())
+    }
+
+    protected fun createV1Template2(templateName: String, indexPatterns: String, order: Int = 0) {
+        val response = client().makeRequest(
+            "PUT", "_template/$templateName",
+            StringEntity(
+                "{\n" +
+                    "  \"index_patterns\": [\"$indexPatterns\"],\n" +
+                    "  \"order\": $order\n" +
+                    "}",
+                APPLICATION_JSON
+            )
+        )
+        assertEquals("Request failed", RestStatus.OK, response.restStatus())
+    }
+
+    protected fun deleteV1Template(templateName: String) {
+        val response = client().makeRequest("DELETE", "_template/$templateName")
+        assertEquals("Request failed", RestStatus.OK, response.restStatus())
+    }
+
+    protected fun createV2Template(templateName: String, indexPatterns: String, policyID: String) {
+        val response = client().makeRequest(
+            "PUT", "_index_template/$templateName",
+            StringEntity(
+                "{\n" +
+                    "  \"index_patterns\": [\"$indexPatterns\"],\n" +
+                    "  \"template\": {\n" +
+                    "    \"settings\": {\n" +
+                    "      \"opendistro.index_state_management.policy_id\": \"$policyID\"\n" +
+                    "    }\n" +
+                    "  }\n" +
+                    "}",
+                APPLICATION_JSON
+            )
+        )
+        assertEquals("Request failed", RestStatus.OK, response.restStatus())
+    }
+
+    protected fun deleteV2Template(templateName: String) {
+        val response = client().makeRequest("DELETE", "_index_template/$templateName")
+        assertEquals("Request failed", RestStatus.OK, response.restStatus())
+    }
+
+    fun catIndexTemplates(): List<Any> {
+        val response = client().makeRequest("GET", "_cat/templates?format=json")
+        logger.info("response: $response")
+
+        assertEquals("cat template request failed", RestStatus.OK, response.restStatus())
+
+        try {
+            return jsonXContent
+                .createParser(
+                    NamedXContentRegistry.EMPTY,
+                    DeprecationHandler.THROW_UNSUPPORTED_OPERATION,
+                    response.entity.content
+                )
+                .use { parser -> parser.list() }
+        } catch (e: IOException) {
+            throw OpenSearchParseException("Failed to parse content to list", e)
+        }
     }
 }

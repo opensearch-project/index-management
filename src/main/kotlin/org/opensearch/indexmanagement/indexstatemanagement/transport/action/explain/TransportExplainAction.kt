@@ -97,7 +97,7 @@ class TransportExplainAction @Inject constructor(
         private val indexPolicyIDs = mutableListOf<String?>()
         private val indexMetadatas = mutableListOf<ManagedIndexMetaData?>()
         private var totalManagedIndices = 0
-        private val appliedPolicies: MutableMap<String, Policy?> = mutableMapOf()
+        private val appliedPolicies: MutableMap<String, Policy> = mutableMapOf()
 
         @Suppress("SpreadOperator", "NestedBlockDepth")
         fun start() {
@@ -161,25 +161,19 @@ class TransportExplainAction @Inject constructor(
                                 totalManagedIndices = totalHits.value.toInt()
                             }
 
-                            parseSearchHits(response.hits.hits)
-                            // response.hits.hits.map {
-                            //     val hitMap = it.sourceAsMap["managed_index"] as Map<String, Any>
-                            //     val managedIndex = hitMap["index"] as String
-                            //     managedIndices.add(managedIndex)
-                            //     enabledState[managedIndex] = hitMap["enabled"] as Boolean
-                            //     managedIndicesMetaDataMap[managedIndex] = mapOf(
-                            //         "index" to hitMap["index"] as String?,
-                            //         "index_uuid" to hitMap["index_uuid"] as String?,
-                            //         "policy_id" to hitMap["policy_id"] as String?,
-                            //         "enabled" to hitMap["enabled"]?.toString()
-                            //     )
-                            //     if (showPolicy) {
-                            //         val map = hitMap["policy"] as MutableMap<String, Any>
-                            //         if (map.containsKey(Policy.USER_FIELD))
-                            //             map.remove(Policy.USER_FIELD)
-                            //         appliedPolicies[managedIndex] = map.toString()
-                            //     }
-                            // }
+                            parseSearchHits(response.hits.hits).forEach { managedIndex ->
+                                managedIndices.add(managedIndex.index)
+                                enabledState[managedIndex.index] = managedIndex.enabled
+                                managedIndicesMetaDataMap[managedIndex.index] = mapOf(
+                                    "index" to managedIndex.index,
+                                    "index_uuid" to managedIndex.indexUuid,
+                                    "policy_id" to managedIndex.policyID,
+                                    "enabled" to managedIndex.enabled.toString()
+                                )
+                                if (showPolicy) {
+                                    managedIndex.policy?.let { appliedPolicies[managedIndex.index] = it }
+                                }
+                            }
 
                             // explain all only return managed indices
                             if (explainAll) {
@@ -320,7 +314,7 @@ class TransportExplainAction @Inject constructor(
             val filteredMetadata = mutableListOf<ManagedIndexMetaData?>()
             val filteredPolicies = mutableListOf<String?>()
             val enabledStatus = mutableMapOf<String, Boolean>()
-            val filteredAppliedPolicies = mutableMapOf<String, Policy?>()
+            val filteredAppliedPolicies = mutableMapOf<String, Policy>()
             filter(0, filteredIndices, filteredMetadata, filteredPolicies, enabledStatus, filteredAppliedPolicies)
         }
 
@@ -331,7 +325,7 @@ class TransportExplainAction @Inject constructor(
             filteredMetadata: MutableList<ManagedIndexMetaData?>,
             filteredPolicies: MutableList<String?>,
             enabledStatus: MutableMap<String, Boolean>,
-            filteredAppliedPolicies: MutableMap<String, Policy?>
+            filteredAppliedPolicies: MutableMap<String, Policy>
         ) {
             val request = ManagedIndexRequest().indices(indexNames[current])
             client.execute(
@@ -343,7 +337,7 @@ class TransportExplainAction @Inject constructor(
                         filteredMetadata.add(indexMetadatas[current])
                         filteredPolicies.add(indexPolicyIDs[current])
                         enabledStatus[indexNames[current]] = enabledState.getOrDefault(indexNames[current], false)
-                        filteredAppliedPolicies[indexNames[current]] = appliedPolicies.getOrDefault(indexNames[current], null)
+                        appliedPolicies[indexNames[current]]?.let { filteredAppliedPolicies[indexNames[current]] = it }
                         if (current < indexNames.count() - 1) {
                             // do nothing - skip the index and go to next one
                             filter(current + 1, filteredIndices, filteredMetadata, filteredPolicies, enabledStatus, filteredAppliedPolicies)
@@ -386,13 +380,9 @@ class TransportExplainAction @Inject constructor(
             policyIDs: List<String?>,
             enabledStatus: Map<String, Boolean>,
             totalIndices: Int,
-            policies: Map<String, Policy?>
+            policies: Map<String, Policy>
         ) {
-            if (explainAll) {
-                actionListener.onResponse(ExplainAllResponse(indices, policyIDs, metadata, policies, totalIndices, enabledStatus))
-                return
-            }
-            actionListener.onResponse(ExplainResponse(indices, policyIDs, metadata, policies))
+            actionListener.onResponse(ExplainResponse(indices, policyIDs, metadata, totalIndices, enabledStatus, policies))
         }
 
         private fun getMetadata(response: GetResponse?): ManagedIndexMetaData? {
@@ -411,29 +401,14 @@ class TransportExplainAction @Inject constructor(
             )
         }
 
-        fun parseSearchHits(hits: Array<SearchHit>) {
-            hits.forEach { hit ->
-                log.info("explain parse search ${hit.sourceAsString}")
-
-                val xcp = XContentHelper.createParser(
+        private fun parseSearchHits(hits: Array<SearchHit>): List<ManagedIndexConfig> {
+            return hits.map { hit ->
+                XContentHelper.createParser(
                     xContentRegistry,
                     LoggingDeprecationHandler.INSTANCE,
                     hit.sourceRef,
                     XContentType.JSON
-                )
-
-                val managedIndex = xcp.parseWithType(parse = ManagedIndexConfig.Companion::parse)
-                managedIndices.add(managedIndex.index)
-                enabledState[managedIndex.index] = managedIndex.enabled
-                managedIndicesMetaDataMap[managedIndex.index] = mapOf(
-                    "index" to managedIndex.index,
-                    "index_uuid" to managedIndex.indexUuid,
-                    "policy_id" to managedIndex.policyID,
-                    "enabled" to managedIndex.enabled.toString()
-                )
-                if (showPolicy) {
-                    appliedPolicies[managedIndex.index] = managedIndex.policy
-                }
+                ).parseWithType(parse = ManagedIndexConfig.Companion::parse)
             }
         }
     }

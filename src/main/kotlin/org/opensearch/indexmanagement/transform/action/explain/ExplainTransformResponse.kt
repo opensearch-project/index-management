@@ -14,7 +14,10 @@ import org.opensearch.common.xcontent.XContentBuilder
 import org.opensearch.indexmanagement.transform.model.ExplainTransform
 import java.io.IOException
 
-class ExplainTransformResponse(val idsToExplain: Map<String, ExplainTransform?>) : ActionResponse(), ToXContentObject {
+class ExplainTransformResponse(
+    val idsToExplain: Map<String, ExplainTransform?>,
+    private val failedToExplain: Map<String, String>
+) : ActionResponse(), ToXContentObject {
 
     internal fun getIdsToExplain(): Map<String, ExplainTransform?> {
         return this.idsToExplain
@@ -25,11 +28,12 @@ class ExplainTransformResponse(val idsToExplain: Map<String, ExplainTransform?>)
         idsToExplain = sin.let {
             val idsToExplain = mutableMapOf<String, ExplainTransform?>()
             val size = it.readVInt()
-            for (i in 0 until size) {
+            repeat(size) { _ ->
                 idsToExplain[it.readString()] = if (sin.readBoolean()) ExplainTransform(it) else null
             }
             idsToExplain.toMap()
-        }
+        },
+        failedToExplain = sin.readMap({ it.readString() }, { it.readString() })
     )
 
     @Throws(IOException::class)
@@ -40,6 +44,11 @@ class ExplainTransformResponse(val idsToExplain: Map<String, ExplainTransform?>)
             out.writeBoolean(metadata != null)
             metadata?.writeTo(out)
         }
+        out.writeMap(
+            failedToExplain,
+            { writer, value: String -> writer.writeString(value) },
+            { writer, value: String -> writer.writeString(value) }
+        )
     }
 
     @Throws(IOException::class)
@@ -47,6 +56,9 @@ class ExplainTransformResponse(val idsToExplain: Map<String, ExplainTransform?>)
         builder.startObject()
         idsToExplain.entries.forEach { (id, explain) ->
             builder.field(id, explain)
+        }
+        failedToExplain.entries.forEach { (id, failureReason) ->
+            builder.field(id, failureReason)
         }
         return builder.endObject()
     }

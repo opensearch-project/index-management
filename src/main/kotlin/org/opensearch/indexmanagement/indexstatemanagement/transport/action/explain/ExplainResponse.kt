@@ -15,6 +15,8 @@ import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMet
 import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
 import org.opensearch.indexmanagement.indexstatemanagement.settings.LegacyOpenDistroManagedIndexSettings
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings
+import org.opensearch.indexmanagement.indexstatemanagement.util.TOTAL_MANAGED_INDICES
+import org.opensearch.indexmanagement.indexstatemanagement.util.XCONTENT_WITHOUT_TYPE_AND_USER
 import java.io.IOException
 
 open class ExplainResponse : ActionResponse, ToXContentObject {
@@ -23,17 +25,23 @@ open class ExplainResponse : ActionResponse, ToXContentObject {
     val indexNames: List<String>
     val indexPolicyIDs: List<String?>
     val indexMetadatas: List<ManagedIndexMetaData?>
-    val policies: Map<String, String?>
+    val totalManagedIndices: Int
+    val enabledState: Map<String, Boolean>
+    val policies: Map<String, Policy>
 
     constructor(
         indexNames: List<String>,
         indexPolicyIDs: List<String?>,
         indexMetadatas: List<ManagedIndexMetaData?>,
-        policies: Map<String, String?>
+        totalManagedIndices: Int,
+        enabledState: Map<String, Boolean>,
+        policies: Map<String, Policy>
     ) : super() {
         this.indexNames = indexNames
         this.indexPolicyIDs = indexPolicyIDs
         this.indexMetadatas = indexMetadatas
+        this.totalManagedIndices = totalManagedIndices
+        this.enabledState = enabledState
         this.policies = policies
     }
 
@@ -42,7 +50,9 @@ open class ExplainResponse : ActionResponse, ToXContentObject {
         indexNames = sin.readStringList(),
         indexPolicyIDs = sin.readStringList(),
         indexMetadatas = sin.readList { ManagedIndexMetaData.fromStreamInput(it) },
-        policies = sin.readMap() as Map<String, String?>
+        totalManagedIndices = sin.readInt(),
+        enabledState = sin.readMap() as Map<String, Boolean>,
+        policies = sin.readMap(StreamInput::readString, ::Policy)
     )
 
     @Throws(IOException::class)
@@ -50,21 +60,31 @@ open class ExplainResponse : ActionResponse, ToXContentObject {
         out.writeStringCollection(indexNames)
         out.writeStringCollection(indexPolicyIDs)
         out.writeCollection(indexMetadatas)
-        out.writeMap(policies)
+        out.writeInt(totalManagedIndices)
+        out.writeMap(enabledState)
+        out.writeMap(
+            policies,
+            { _out, key -> _out.writeString(key) },
+            { _out, policy -> policy.writeTo(_out) }
+        )
     }
 
     override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
         builder.startObject()
         indexNames.forEachIndexed { ind, name ->
             builder.startObject(name)
-            builder.field(LegacyOpenDistroManagedIndexSettings.POLICY_ID.key, indexPolicyIDs[ind])
             builder.field(ManagedIndexSettings.POLICY_ID.key, indexPolicyIDs[ind])
+            builder.field(LegacyOpenDistroManagedIndexSettings.POLICY_ID.key, indexPolicyIDs[ind])
             indexMetadatas[ind]?.toXContent(builder, ToXContent.EMPTY_PARAMS)
-            val policy = policies[name]
-            if (policy != null)
-                builder.field(Policy.POLICY_TYPE, policy)
+            builder.field("enabled", enabledState[name])
+            policies[name]?.let { builder.field(CURRENT_APPLIED_POLICY_FIELD_NAME, it, XCONTENT_WITHOUT_TYPE_AND_USER) }
             builder.endObject()
         }
+        builder.field(TOTAL_MANAGED_INDICES, totalManagedIndices)
         return builder.endObject()
+    }
+
+    companion object {
+        const val CURRENT_APPLIED_POLICY_FIELD_NAME = "current_applied_policy"
     }
 }

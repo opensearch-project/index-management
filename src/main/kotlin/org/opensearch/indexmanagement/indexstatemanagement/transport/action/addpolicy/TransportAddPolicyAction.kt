@@ -57,6 +57,8 @@ import org.opensearch.indexmanagement.indexstatemanagement.transport.action.ISMS
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.managedIndex.ManagedIndexAction
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.managedIndex.ManagedIndexRequest
 import org.opensearch.indexmanagement.indexstatemanagement.util.FailedIndex
+import org.opensearch.indexmanagement.indexstatemanagement.util.IndexEvaluator
+import org.opensearch.indexmanagement.indexstatemanagement.util.IndexEvaluator.Companion.EVALUATION_FAILURE_MESSAGE
 import org.opensearch.indexmanagement.indexstatemanagement.util.managedIndexConfigIndexRequest
 import org.opensearch.indexmanagement.opensearchapi.parseFromGetResponse
 import org.opensearch.indexmanagement.settings.IndexManagementSettings
@@ -74,7 +76,7 @@ import java.time.Instant
 
 private val log = LogManager.getLogger(TransportAddPolicyAction::class.java)
 
-@Suppress("SpreadOperator", "ReturnCount")
+@Suppress("SpreadOperator", "ReturnCount", "LongParameterList")
 class TransportAddPolicyAction @Inject constructor(
     val client: NodeClient,
     transportService: TransportService,
@@ -82,7 +84,8 @@ class TransportAddPolicyAction @Inject constructor(
     val settings: Settings,
     val clusterService: ClusterService,
     val xContentRegistry: NamedXContentRegistry,
-    val indexNameExpressionResolver: IndexNameExpressionResolver
+    val indexNameExpressionResolver: IndexNameExpressionResolver,
+    val indexEvaluator: IndexEvaluator
 ) : HandledTransportAction<AddPolicyRequest, ISMStatusResponse>(
     AddPolicyAction.NAME, transportService, actionFilters, ::AddPolicyRequest
 ) {
@@ -282,6 +285,16 @@ class TransportAddPolicyAction @Inject constructor(
                 failedIndices.add(FailedIndex(indicesToAdd[it] as String, it, "This index is closed"))
                 indicesToAdd.remove(it)
             }
+
+            // Removing all the unmanageable Indices
+            indicesToAdd.entries.removeIf { (uuid, indexName) ->
+                val shouldRemove = indexEvaluator.isUnManageableIndex(indexName)
+                if (shouldRemove) {
+                    failedIndices.add(FailedIndex(indexName, uuid, EVALUATION_FAILURE_MESSAGE))
+                }
+                shouldRemove
+            }
+
             if (indicesToAdd.isEmpty()) {
                 actionListener.onResponse(ISMStatusResponse(0, failedIndices))
                 return
@@ -327,7 +340,8 @@ class TransportAddPolicyAction @Inject constructor(
                 // If after the ClusterStateResponse we go over the timeout for Add Policy (30 seconds), throw an
                 // exception since UpdateSettingsRequest cannot have a negative timeout
                 if (bulkReqTimeout < 0) {
-                    throw OpenSearchTimeoutException("Add policy API timed out after ClusterStateResponse")
+                    actionListener.onFailure(OpenSearchTimeoutException("Add policy API timed out after ClusterStateResponse"))
+                    return
                 }
 
                 val bulkReq = BulkRequest().timeout(TimeValue.timeValueMillis(bulkReqTimeout))

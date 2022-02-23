@@ -30,7 +30,7 @@ class ExplainRollupResponse : ActionResponse, ToXContentObject {
         idsToExplain = sin.let {
             val idsToExplain = mutableMapOf<String, ExplainRollup?>()
             val size = it.readVInt()
-            for (i in 0 until size) {
+            repeat(size) { _ ->
                 idsToExplain[it.readString()] = if (sin.readBoolean()) ExplainRollup(it) else null
             }
             idsToExplain.toMap()

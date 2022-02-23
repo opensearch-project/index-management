@@ -78,7 +78,7 @@ class RestStartTransformActionIT : TransformRestTestCase() {
     @Throws(Exception::class)
     fun `test starting a failed transform`() {
         val transform = randomTransform().copy(
-            id = "restart_failed_rollup",
+            id = "restart_failed_transform",
             schemaVersion = 1L,
             enabled = true,
             jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
@@ -133,10 +133,15 @@ class RestStartTransformActionIT : TransformRestTestCase() {
         // Transform should be able to finish, with actual transformed docs
         waitFor {
             val metadata = getTransformMetadata(updatedTransform.metadataId!!)
-            assertEquals("Status should be finished", TransformMetadata.Status.FINISHED, metadata.status)
+            if (transform.continuous) {
+                assertEquals("Status should be started", TransformMetadata.Status.STARTED, metadata.status)
+            } else {
+                assertEquals("Status should be finished", TransformMetadata.Status.FINISHED, metadata.status)
+            }
             assertEquals("Did not transform documents", 5000, metadata.stats.documentsProcessed)
             assertTrue("Did not transform documents", metadata.stats.documentsIndexed > 0)
         }
+        if (transform.continuous) disableTransform(transform.id)
     }
 
     @Throws(Exception::class)
@@ -144,7 +149,7 @@ class RestStartTransformActionIT : TransformRestTestCase() {
         generateNYCTaxiData("source_restart_finished_transform")
         assertIndexExists("source_restart_finished_transform")
         val transform = randomTransform().copy(
-            id = "restart_finished_rollup",
+            id = "restart_finished_transform",
             schemaVersion = 1L,
             enabled = true,
             jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
@@ -159,7 +164,8 @@ class RestStartTransformActionIT : TransformRestTestCase() {
             groups = listOf(
                 Terms(sourceField = "store_and_fwd_flag", targetField = "flag")
             ),
-            aggregations = AggregatorFactories.builder()
+            aggregations = AggregatorFactories.builder(),
+            continuous = false
         ).let { createTransform(it, it.id) }
 
         updateTransformStartTime(transform)

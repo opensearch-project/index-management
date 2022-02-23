@@ -20,6 +20,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.util.DEFAULT_PAGINATI
 import org.opensearch.indexmanagement.indexstatemanagement.util.DEFAULT_PAGINATION_SIZE
 import org.opensearch.indexmanagement.indexstatemanagement.util.DEFAULT_QUERY_STRING
 import org.opensearch.indexmanagement.indexstatemanagement.util.DEFAULT_SORT_ORDER
+import org.opensearch.indexmanagement.indexstatemanagement.util.SHOW_POLICY_QUERY_PARAM
 import org.opensearch.rest.BaseRestHandler
 import org.opensearch.rest.BaseRestHandler.RestChannelConsumer
 import org.opensearch.rest.RestHandler.ReplacedRoute
@@ -74,7 +75,7 @@ class RestExplainAction : BaseRestHandler() {
             request.paramAsBoolean("local", false),
             request.paramAsTime("master_timeout", MasterNodeRequest.DEFAULT_MASTER_NODE_TIMEOUT),
             SearchParams(size, from, sortField, sortOrder, queryString),
-            request.paramAsBoolean("show_policy", DEFAULT_EXPLAIN_SHOW_POLICY)
+            request.paramAsBoolean(SHOW_POLICY_QUERY_PARAM, DEFAULT_EXPLAIN_SHOW_POLICY)
         )
 
         return RestChannelConsumer { channel ->

@@ -69,6 +69,8 @@ import org.opensearch.indexmanagement.indexstatemanagement.transport.action.retr
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.retryfailedmanagedindex.TransportRetryFailedManagedIndexAction
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.updateindexmetadata.TransportUpdateManagedIndexMetaDataAction
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.updateindexmetadata.UpdateManagedIndexMetaDataAction
+import org.opensearch.indexmanagement.indexstatemanagement.util.IndexEvaluator
+import org.opensearch.indexmanagement.migration.ISMTemplateService
 import org.opensearch.indexmanagement.refreshanalyzer.RefreshSearchAnalyzerAction
 import org.opensearch.indexmanagement.refreshanalyzer.RestRefreshSearchAnalyzerAction
 import org.opensearch.indexmanagement.refreshanalyzer.TransportRefreshSearchAnalyzerAction
@@ -295,6 +297,7 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
         fieldCapsFilter = FieldCapsFilter(clusterService, settings, indexNameExpressionResolver)
         this.indexNameExpressionResolver = indexNameExpressionResolver
 
+        val indexEvaluator = IndexEvaluator(settings, clusterService)
         val skipFlag = SkipExecution(client, clusterService)
         val rollupRunner = RollupRunner
             .registerClient(client)
@@ -332,14 +335,15 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
             .registerThreadPool(threadPool)
 
         val metadataService = MetadataService(client, clusterService, skipFlag, indexManagementIndices)
+        val templateService = ISMTemplateService(client, clusterService, xContentRegistry, indexManagementIndices)
 
         val managedIndexCoordinator = ManagedIndexCoordinator(
             environment.settings(),
-            client, clusterService, threadPool, indexManagementIndices, metadataService
+            client, clusterService, threadPool, indexManagementIndices, metadataService, templateService, indexEvaluator
         )
 
         return listOf(
-            managedIndexRunner, rollupRunner, transformRunner, indexManagementIndices, managedIndexCoordinator, indexStateManagementHistory
+            managedIndexRunner, rollupRunner, transformRunner, indexManagementIndices, managedIndexCoordinator, indexStateManagementHistory, indexEvaluator
         )
     }
 
@@ -359,6 +363,8 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
             ManagedIndexSettings.INDEX_STATE_MANAGEMENT_ENABLED,
             ManagedIndexSettings.METADATA_SERVICE_ENABLED,
             ManagedIndexSettings.AUTO_MANAGE,
+            ManagedIndexSettings.METADATA_SERVICE_STATUS,
+            ManagedIndexSettings.TEMPLATE_MIGRATION_CONTROL,
             ManagedIndexSettings.JITTER,
             ManagedIndexSettings.JOB_INTERVAL,
             ManagedIndexSettings.SWEEP_PERIOD,
@@ -366,6 +372,7 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
             ManagedIndexSettings.COORDINATOR_BACKOFF_MILLIS,
             ManagedIndexSettings.ALLOW_LIST,
             ManagedIndexSettings.SNAPSHOT_DENY_LIST,
+            ManagedIndexSettings.RESTRICTED_INDEX_PATTERN,
             RollupSettings.ROLLUP_INGEST_BACKOFF_COUNT,
             RollupSettings.ROLLUP_INGEST_BACKOFF_MILLIS,
             RollupSettings.ROLLUP_SEARCH_BACKOFF_COUNT,
@@ -399,6 +406,9 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
             LegacyOpenDistroManagedIndexSettings.COORDINATOR_BACKOFF_MILLIS,
             LegacyOpenDistroManagedIndexSettings.ALLOW_LIST,
             LegacyOpenDistroManagedIndexSettings.SNAPSHOT_DENY_LIST,
+            LegacyOpenDistroManagedIndexSettings.AUTO_MANAGE,
+            LegacyOpenDistroManagedIndexSettings.METADATA_SERVICE_STATUS,
+            LegacyOpenDistroManagedIndexSettings.TEMPLATE_MIGRATION_CONTROL,
             LegacyOpenDistroRollupSettings.ROLLUP_INGEST_BACKOFF_COUNT,
             LegacyOpenDistroRollupSettings.ROLLUP_INGEST_BACKOFF_MILLIS,
             LegacyOpenDistroRollupSettings.ROLLUP_SEARCH_BACKOFF_COUNT,
@@ -455,15 +465,15 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
 class GuiceHolder @Inject constructor(
     remoteClusterService: TransportService
 ) : LifecycleComponent {
-    override fun close() {}
+    override fun close() { /* do nothing */ }
     override fun lifecycleState(): Lifecycle.State? {
         return null
     }
 
-    override fun addLifecycleListener(listener: LifecycleListener) {}
-    override fun removeLifecycleListener(listener: LifecycleListener) {}
-    override fun start() {}
-    override fun stop() {}
+    override fun addLifecycleListener(listener: LifecycleListener) { /* do nothing */ }
+    override fun removeLifecycleListener(listener: LifecycleListener) { /* do nothing */ }
+    override fun start() { /* do nothing */ }
+    override fun stop() { /* do nothing */ }
 
     companion object {
         lateinit var remoteClusterService: RemoteClusterService

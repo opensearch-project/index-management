@@ -9,6 +9,7 @@ import org.opensearch.client.ResponseException
 import org.opensearch.common.settings.Settings
 import org.opensearch.indexmanagement.indexstatemanagement.IndexStateManagementRestTestCase
 import org.opensearch.indexmanagement.indexstatemanagement.model.ISMTemplate
+import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
 import org.opensearch.indexmanagement.indexstatemanagement.model.State
 import org.opensearch.indexmanagement.indexstatemanagement.model.action.ReadOnlyActionConfig
@@ -116,7 +117,8 @@ class ISMTemplateRestAPIIT : IndexStateManagementRestTestCase() {
             listOf(
                 indexName1 to listOf(
                     explainResponseOpendistroPolicyIdSetting to fun(policyID: Any?): Boolean = policyID == null,
-                    explainResponseOpenSearchPolicyIdSetting to fun(policyID: Any?): Boolean = policyID == null
+                    explainResponseOpenSearchPolicyIdSetting to fun(policyID: Any?): Boolean = policyID == null,
+                    ManagedIndexMetaData.ENABLED to fun(enabled: Any?): Boolean = enabled == null
                 )
             ),
             getExplainMap(indexName1),
@@ -129,7 +131,8 @@ class ISMTemplateRestAPIIT : IndexStateManagementRestTestCase() {
             listOf(
                 indexName1 to listOf(
                     explainResponseOpendistroPolicyIdSetting to fun(policyID: Any?): Boolean = policyID == null,
-                    explainResponseOpenSearchPolicyIdSetting to fun(policyID: Any?): Boolean = policyID == null
+                    explainResponseOpenSearchPolicyIdSetting to fun(policyID: Any?): Boolean = policyID == null,
+                    ManagedIndexMetaData.ENABLED to fun(enabled: Any?): Boolean = enabled == null
                 )
             ),
             getExplainMap(indexName1),

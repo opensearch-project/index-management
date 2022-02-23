@@ -76,6 +76,16 @@ abstract class TransformRestTestCase : IndexManagementRestTestCase() {
         return response
     }
 
+    protected fun disableTransform(transformId: String) {
+        val response = client()
+            .makeRequest(
+                "POST",
+                "$TRANSFORM_BASE_URI/$transformId/_stop",
+                emptyMap()
+            )
+        assertEquals("Unable to disable transform $transformId", RestStatus.OK, response.restStatus())
+    }
+
     protected fun createRandomTransform(refresh: Boolean = true): Transform {
         val transform = randomTransform()
         val transformId = createTransform(transform, refresh = refresh).id
@@ -182,6 +192,21 @@ abstract class TransformRestTestCase : IndexManagementRestTestCase() {
         }
 
         return metadata
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    protected fun getTransformDocumentsBehind(
+        transformId: String,
+        header: BasicHeader = BasicHeader(HttpHeaders.CONTENT_TYPE, "application/json")
+    ): Map<String, Any> {
+        val explainResponse = client().makeRequest("GET", "$TRANSFORM_BASE_URI/$transformId/_explain", null, header)
+        assertEquals(RestStatus.OK, explainResponse.restStatus())
+
+        val explainResponseMap = explainResponse.asMap()
+        val explainMetadata = explainResponseMap[transformId] as Map<String, Any>
+        val metadata = explainMetadata["transform_metadata"] as Map<String, Any>
+        val continuousStats = metadata["continuous_stats"] as Map<String, Any>
+        return continuousStats["documents_behind"] as Map<String, Long>
     }
 
     protected fun updateTransformStartTime(update: Transform, desiredStartTimeMillis: Long? = null) {

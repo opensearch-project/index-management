@@ -27,6 +27,7 @@ val XCONTENT_WITHOUT_TYPE_AND_USER = ToXContent.MapParams(mapOf(WITH_TYPE to "fa
 const val FAILURES = "failures"
 const val FAILED_INDICES = "failed_indices"
 const val UPDATED_INDICES = "updated_indices"
+const val TOTAL_MANAGED_INDICES = "total_managed_indices"
 
 const val ISM_TEMPLATE_FIELD = "policy.ism_template"
 
@@ -36,6 +37,8 @@ const val DEFAULT_JOB_SORT_FIELD = "managed_index.index"
 const val DEFAULT_POLICY_SORT_FIELD = "policy.policy_id.keyword"
 const val DEFAULT_SORT_ORDER = "asc"
 const val DEFAULT_QUERY_STRING = "*"
+
+const val SHOW_POLICY_QUERY_PARAM = "show_applied_policy"
 const val DEFAULT_EXPLAIN_SHOW_POLICY = false
 
 const val INDEX_HIDDEN = "index.hidden"

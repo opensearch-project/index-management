@@ -5,14 +5,17 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.resthandler
 
+import org.opensearch.common.xcontent.XContentFactory
 import org.opensearch.indexmanagement.IndexManagementPlugin
 import org.opensearch.indexmanagement.indexstatemanagement.IndexStateManagementRestTestCase
 import org.opensearch.indexmanagement.indexstatemanagement.model.ChangePolicy
 import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.PolicyRetryInfoMetaData
 import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.StateMetaData
+import org.opensearch.indexmanagement.indexstatemanagement.util.TOTAL_MANAGED_INDICES
+import org.opensearch.indexmanagement.indexstatemanagement.util.XCONTENT_WITHOUT_TYPE_AND_USER
 import org.opensearch.indexmanagement.makeRequest
-import org.opensearch.indexmanagement.opensearchapi.convertToMap
+import org.opensearch.indexmanagement.opensearchapi.toMap
 import org.opensearch.indexmanagement.waitFor
 import org.opensearch.rest.RestRequest
 import org.opensearch.rest.RestStatus
@@ -27,9 +30,11 @@ class RestExplainActionIT : IndexStateManagementRestTestCase() {
         val indexName = "${testIndexName}_movies"
         createIndex(indexName, null)
         val expected = mapOf(
-            indexName to mapOf<String, String?>(
+            TOTAL_MANAGED_INDICES to 0,
+            indexName to mapOf<String, Any?>(
                 explainResponseOpendistroPolicyIdSetting to null,
-                explainResponseOpenSearchPolicyIdSetting to null
+                explainResponseOpenSearchPolicyIdSetting to null,
+                ManagedIndexMetaData.ENABLED to null
             )
         )
         assertResponseMap(expected, getExplainMap(indexName))
@@ -53,16 +58,19 @@ class RestExplainActionIT : IndexStateManagementRestTestCase() {
         createIndex(indexName2, null)
 
         val expected = mapOf(
+            TOTAL_MANAGED_INDICES to 1,
             indexName1 to mapOf<String, Any>(
                 explainResponseOpendistroPolicyIdSetting to policy.id,
                 explainResponseOpenSearchPolicyIdSetting to policy.id,
                 "index" to indexName1,
                 "index_uuid" to getUuid(indexName1),
-                "policy_id" to policy.id
+                "policy_id" to policy.id,
+                ManagedIndexMetaData.ENABLED to true
             ),
             indexName2 to mapOf<String, Any?>(
                 explainResponseOpendistroPolicyIdSetting to null,
-                explainResponseOpenSearchPolicyIdSetting to null
+                explainResponseOpenSearchPolicyIdSetting to null,
+                ManagedIndexMetaData.ENABLED to null
             )
         )
         waitFor {
@@ -103,23 +111,27 @@ class RestExplainActionIT : IndexStateManagementRestTestCase() {
         createIndex(indexName2, policyID = policy.id)
         createIndex(indexName3, null)
         val expected = mapOf(
+            TOTAL_MANAGED_INDICES to 2,
             indexName1 to mapOf<String, Any>(
                 explainResponseOpendistroPolicyIdSetting to policy.id,
                 explainResponseOpenSearchPolicyIdSetting to policy.id,
                 "index" to indexName1,
                 "index_uuid" to getUuid(indexName1),
-                "policy_id" to policy.id
+                "policy_id" to policy.id,
+                ManagedIndexMetaData.ENABLED to true
             ),
             indexName2 to mapOf<String, Any>(
                 explainResponseOpendistroPolicyIdSetting to policy.id,
                 explainResponseOpenSearchPolicyIdSetting to policy.id,
                 "index" to indexName2,
                 "index_uuid" to getUuid(indexName2),
-                "policy_id" to policy.id
+                "policy_id" to policy.id,
+                ManagedIndexMetaData.ENABLED to true
             ),
             indexName3 to mapOf<String, Any?>(
                 explainResponseOpendistroPolicyIdSetting to null,
-                explainResponseOpenSearchPolicyIdSetting to null
+                explainResponseOpenSearchPolicyIdSetting to null,
+                ManagedIndexMetaData.ENABLED to null
             )
         )
         waitFor {
@@ -156,7 +168,8 @@ class RestExplainActionIT : IndexStateManagementRestTestCase() {
                             ),
                         PolicyRetryInfoMetaData.RETRY_INFO to fun(retryInfoMetaDataMap: Any?): Boolean =
                             assertRetryInfoEquals(PolicyRetryInfoMetaData(false, 0), retryInfoMetaDataMap),
-                        ManagedIndexMetaData.INFO to fun(info: Any?): Boolean = expectedInfoString == info.toString()
+                        ManagedIndexMetaData.INFO to fun(info: Any?): Boolean = expectedInfoString == info.toString(),
+                        ManagedIndexMetaData.ENABLED to true::equals
                     )
                 ),
                 getExplainMap(indexName)
@@ -196,7 +209,8 @@ class RestExplainActionIT : IndexStateManagementRestTestCase() {
                         ManagedIndexMetaData.POLICY_ID to newPolicy.id::equals,
                         PolicyRetryInfoMetaData.RETRY_INFO to fun(retryInfoMetaDataMap: Any?): Boolean =
                             assertRetryInfoEquals(PolicyRetryInfoMetaData(true, 0), retryInfoMetaDataMap),
-                        ManagedIndexMetaData.INFO to fun(info: Any?): Boolean = expectedInfoString == info.toString()
+                        ManagedIndexMetaData.INFO to fun(info: Any?): Boolean = expectedInfoString == info.toString(),
+                        ManagedIndexMetaData.ENABLED to true::equals
                     )
                 ),
                 getExplainMap(indexName)
@@ -204,14 +218,12 @@ class RestExplainActionIT : IndexStateManagementRestTestCase() {
         }
     }
 
-    fun `test showPolicy query parameter`() {
-        val indexName = "${testIndexName}_showpolicy"
+    fun `test show_applied_policy query parameter`() {
+        val indexName = "${testIndexName}_show_applied_policy"
         val policy = createRandomPolicy()
         createIndex(indexName, policy.id)
 
-        val expectedPolicy = policy.convertToMap().getOrDefault("policy", emptyMap<String, Any>()) as MutableMap<String, Any>
-        expectedPolicy.remove("user")
-
+        val expectedPolicy = policy.toXContent(XContentFactory.jsonBuilder(), XCONTENT_WITHOUT_TYPE_AND_USER).toMap()
         val expected = mapOf(
             indexName to mapOf<String, Any>(
                 explainResponseOpendistroPolicyIdSetting to policy.id,
@@ -219,8 +231,10 @@ class RestExplainActionIT : IndexStateManagementRestTestCase() {
                 "index" to indexName,
                 "index_uuid" to getUuid(indexName),
                 "policy_id" to policy.id,
-                "policy" to expectedPolicy.toString()
-            )
+                ManagedIndexMetaData.ENABLED to true,
+                "current_applied_policy" to expectedPolicy
+            ),
+            TOTAL_MANAGED_INDICES to 1,
         )
         waitFor {
             assertResponseMap(expected, getExplainMap(indexName, true))
