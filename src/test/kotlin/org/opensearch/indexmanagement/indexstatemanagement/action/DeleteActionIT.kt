@@ -68,8 +68,7 @@ class DeleteActionIT : IndexStateManagementRestTestCase() {
                             val stepName = step["name"] as String
                             val stepStatus = step["step_status"] as String
                             index == indexName && actionName == "delete" && stepName == "attempt_delete" && stepStatus == "completed"
-                        }
-                        else {
+                        } else {
                             false
                         }
                     }
