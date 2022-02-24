@@ -61,12 +61,16 @@ class DeleteActionIT : IndexStateManagementRestTestCase() {
                     .any {
                         val metadata = it["managed_index_meta_data"] as Map<*, *>
                         val index = metadata["index"] as String
-                        val action = metadata["action"] as Map<*, *>
-                        val actionName = action["name"] as String
-                        val step = metadata["step"] as Map<*, *>
-                        val stepName = step["name"] as String
-                        val stepStatus = step["step_status"] as String
-                        index == indexName && actionName == "delete" && stepName == "attempt_delete" && stepStatus == "completed"
+                        if (metadata.containsKey("action")) {
+                            val action = metadata["action"] as Map<*, *>
+                            val actionName = action["name"] as String
+                            val step = metadata["step"] as Map<*, *>
+                            val stepName = step["name"] as String
+                            val stepStatus = step["step_status"] as String
+                            index == indexName && actionName == "delete" && stepName == "attempt_delete" && stepStatus == "completed"
+                        } else {
+                            false
+                        }
                     }
             )
         }

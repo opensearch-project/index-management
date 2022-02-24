@@ -29,6 +29,9 @@ import org.opensearch.common.xcontent.XContentParser.Token
 import org.opensearch.common.xcontent.XContentParserUtils.ensureExpectedToken
 import org.opensearch.env.Environment
 import org.opensearch.env.NodeEnvironment
+import org.opensearch.indexmanagement.indexstatemanagement.DefaultIndexMetadataService
+import org.opensearch.indexmanagement.indexstatemanagement.ISMActionsParser
+import org.opensearch.indexmanagement.indexstatemanagement.IndexMetadataProvider
 import org.opensearch.indexmanagement.indexstatemanagement.IndexStateManagementHistory
 import org.opensearch.indexmanagement.indexstatemanagement.ManagedIndexCoordinator
 import org.opensearch.indexmanagement.indexstatemanagement.ManagedIndexRunner
@@ -68,7 +71,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.transport.action.retr
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.retryfailedmanagedindex.TransportRetryFailedManagedIndexAction
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.updateindexmetadata.TransportUpdateManagedIndexMetaDataAction
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.updateindexmetadata.UpdateManagedIndexMetaDataAction
-import org.opensearch.indexmanagement.indexstatemanagement.util.IndexEvaluator
+import org.opensearch.indexmanagement.indexstatemanagement.util.DEFAULT_INDEX_TYPE
 import org.opensearch.indexmanagement.migration.ISMTemplateService
 import org.opensearch.indexmanagement.refreshanalyzer.RefreshSearchAnalyzerAction
 import org.opensearch.indexmanagement.refreshanalyzer.RestRefreshSearchAnalyzerAction
@@ -107,6 +110,8 @@ import org.opensearch.indexmanagement.rollup.resthandler.RestStopRollupAction
 import org.opensearch.indexmanagement.rollup.settings.LegacyOpenDistroRollupSettings
 import org.opensearch.indexmanagement.rollup.settings.RollupSettings
 import org.opensearch.indexmanagement.settings.IndexManagementSettings
+import org.opensearch.indexmanagement.spi.IndexManagementExtension
+import org.opensearch.indexmanagement.spi.indexstatemanagement.IndexMetadataService
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.transform.TransformRunner
 import org.opensearch.indexmanagement.transform.action.delete.DeleteTransformsAction
@@ -140,6 +145,7 @@ import org.opensearch.jobscheduler.spi.ScheduledJobParser
 import org.opensearch.jobscheduler.spi.ScheduledJobRunner
 import org.opensearch.monitor.jvm.JvmService
 import org.opensearch.plugins.ActionPlugin
+import org.opensearch.plugins.ExtensiblePlugin
 import org.opensearch.plugins.NetworkPlugin
 import org.opensearch.plugins.Plugin
 import org.opensearch.repositories.RepositoriesService
@@ -154,7 +160,7 @@ import org.opensearch.watcher.ResourceWatcherService
 import java.util.function.Supplier
 
 @Suppress("TooManyFunctions")
-class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin, Plugin() {
+class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin, ExtensiblePlugin, Plugin() {
 
     private val logger = LogManager.getLogger(javaClass)
     lateinit var indexManagementIndices: IndexManagementIndices
@@ -162,6 +168,8 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
     lateinit var indexNameExpressionResolver: IndexNameExpressionResolver
     lateinit var rollupInterceptor: RollupInterceptor
     lateinit var fieldCapsFilter: FieldCapsFilter
+    lateinit var indexMetadataProvider: IndexMetadataProvider
+    private val indexMetadataServices: MutableList<Map<String, IndexMetadataService>> = mutableListOf()
 
     companion object {
         const val PLUGINS_BASE_URI = "/_plugins"
@@ -232,6 +240,17 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
         }
     }
 
+    override fun loadExtensions(loader: ExtensiblePlugin.ExtensionLoader) {
+        val indexManagementExtensions = loader.loadExtensions(IndexManagementExtension::class.java)
+
+        indexManagementExtensions.forEach { extension ->
+            extension.getISMActionParsers().forEach { parser ->
+                ISMActionsParser.instance.addParser(parser)
+            }
+            indexMetadataServices.add(extension.getIndexMetadataService())
+        }
+    }
+
     override fun getRestHandlers(
         settings: Settings,
         restController: RestController,
@@ -297,7 +316,6 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
         fieldCapsFilter = FieldCapsFilter(clusterService, settings, indexNameExpressionResolver)
         this.indexNameExpressionResolver = indexNameExpressionResolver
 
-        val indexEvaluator = IndexEvaluator(settings, clusterService)
         val skipFlag = SkipExecution(client, clusterService)
         val rollupRunner = RollupRunner
             .registerClient(client)
@@ -322,6 +340,14 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
                 indexManagementIndices
             )
 
+        indexMetadataProvider = IndexMetadataProvider(
+            settings, client, clusterService,
+            hashMapOf(
+                DEFAULT_INDEX_TYPE to DefaultIndexMetadataService()
+            )
+        )
+        indexMetadataServices.forEach { indexMetadataProvider.addMetadataServices(it) }
+
         val managedIndexRunner = ManagedIndexRunner
             .registerClient(client)
             .registerClusterService(clusterService)
@@ -339,11 +365,17 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
 
         val managedIndexCoordinator = ManagedIndexCoordinator(
             environment.settings(),
-            client, clusterService, threadPool, indexManagementIndices, metadataService, templateService, indexEvaluator
+            client, clusterService, threadPool, indexManagementIndices, metadataService, templateService, indexMetadataProvider
         )
 
         return listOf(
-            managedIndexRunner, rollupRunner, transformRunner, indexManagementIndices, managedIndexCoordinator, indexStateManagementHistory, indexEvaluator
+            managedIndexRunner,
+            rollupRunner,
+            transformRunner,
+            indexManagementIndices,
+            managedIndexCoordinator,
+            indexStateManagementHistory,
+            indexMetadataProvider
         )
     }
 

@@ -141,7 +141,9 @@ class MetadataService(
                     .toList() + failedToCleanIndices
 
             cleanMetadatas(indicesToCleanMetadata)
-            logger.info("Failed to clean cluster metadata for: ${failedToCleanIndices.map { it.name }}")
+            if (failedToCleanIndices.isNotEmpty()) {
+                logger.info("Failed to clean cluster metadata for: ${failedToCleanIndices.map { it.name }}")
+            }
         } finally {
             runningLock = false
         }

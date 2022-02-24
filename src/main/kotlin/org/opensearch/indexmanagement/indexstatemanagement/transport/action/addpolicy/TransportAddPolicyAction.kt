@@ -50,6 +50,8 @@ import org.opensearch.common.xcontent.NamedXContentRegistry
 import org.opensearch.commons.ConfigConstants
 import org.opensearch.commons.authuser.User
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
+import org.opensearch.indexmanagement.indexstatemanagement.IndexMetadataProvider
+import org.opensearch.indexmanagement.indexstatemanagement.IndexMetadataProvider.Companion.EVALUATION_FAILURE_MESSAGE
 import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
 import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.getUuidsForClosedIndices
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings
@@ -57,8 +59,6 @@ import org.opensearch.indexmanagement.indexstatemanagement.transport.action.ISMS
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.managedIndex.ManagedIndexAction
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.managedIndex.ManagedIndexRequest
 import org.opensearch.indexmanagement.indexstatemanagement.util.FailedIndex
-import org.opensearch.indexmanagement.indexstatemanagement.util.IndexEvaluator
-import org.opensearch.indexmanagement.indexstatemanagement.util.IndexEvaluator.Companion.EVALUATION_FAILURE_MESSAGE
 import org.opensearch.indexmanagement.indexstatemanagement.util.managedIndexConfigIndexRequest
 import org.opensearch.indexmanagement.opensearchapi.parseFromGetResponse
 import org.opensearch.indexmanagement.settings.IndexManagementSettings
@@ -85,7 +85,7 @@ class TransportAddPolicyAction @Inject constructor(
     val clusterService: ClusterService,
     val xContentRegistry: NamedXContentRegistry,
     val indexNameExpressionResolver: IndexNameExpressionResolver,
-    val indexEvaluator: IndexEvaluator
+    val indexMetadataProvider: IndexMetadataProvider
 ) : HandledTransportAction<AddPolicyRequest, ISMStatusResponse>(
     AddPolicyAction.NAME, transportService, actionFilters, ::AddPolicyRequest
 ) {
@@ -288,7 +288,7 @@ class TransportAddPolicyAction @Inject constructor(
 
             // Removing all the unmanageable Indices
             indicesToAdd.entries.removeIf { (uuid, indexName) ->
-                val shouldRemove = indexEvaluator.isUnManageableIndex(indexName)
+                val shouldRemove = indexMetadataProvider.isUnManageableIndex(indexName)
                 if (shouldRemove) {
                     failedIndices.add(FailedIndex(indexName, uuid, EVALUATION_FAILURE_MESSAGE))
                 }
