@@ -321,7 +321,7 @@ class ManagedIndexCoordinator(
 
         val policiesWithTemplates = getPoliciesWithISMTemplates()
         // We use the metadata provider to give us the correct uuid for the index when creating managed index for the index
-        val ismIndicesMetadata: Map<String, ISMIndexMetadata> = indexMetadataProvider.getISMIndexMetadata(indexNames = indexNames)
+        val ismIndicesMetadata: Map<String, ISMIndexMetadata> = indexMetadataProvider.getISMIndexMetadataByType(indexNames = indexNames)
         // Iterate over each unmanaged hot/warm index and if it matches an ISM template add a managed index config index request
         indexNames.forEach { indexName ->
             val ismIndexMetadata = ismIndicesMetadata[indexName]
@@ -588,7 +588,7 @@ class ManagedIndexCoordinator(
         val currentManagedIndexUuids = sweepManagedIndexJobs(client)
 
         // get all indices in the cluster state
-        val currentIndices = indexMetadataProvider.getISMIndexMetadata(indexNames = listOf("*"))
+        val currentIndices = indexMetadataProvider.getISMIndexMetadataByType(indexNames = listOf("*"))
         val unManagedIndices = getUnManagedIndices(currentIndices, currentManagedIndexUuids.toHashSet())
 
         // Get the matching policyIds for applicable indices

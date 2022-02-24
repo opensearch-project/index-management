@@ -36,7 +36,7 @@ class IndexMetadataProvider(
         return Regex(restrictedIndexPattern).matches(index)
     }
 
-    suspend fun getISMIndexMetadata(type: String = DEFAULT_INDEX_TYPE, indexNames: List<String>): Map<String, ISMIndexMetadata> {
+    suspend fun getISMIndexMetadataByType(type: String = DEFAULT_INDEX_TYPE, indexNames: List<String>): Map<String, ISMIndexMetadata> {
         val service = services[type] ?: throw IllegalArgumentException(getTypeNotRecognizedMessage(type))
         return service.getMetadata(indexNames, client, clusterService)
     }
