@@ -60,6 +60,7 @@ abstract class Step(val name: String, val managedIndexMetaData: ManagedIndexMeta
     }
 
     protected val indexName: String = managedIndexMetaData.index
+    protected val indexCreationDate: Long? = managedIndexMetaData.indexCreationDate
 
     enum class StepStatus(val status: String) : Writeable {
         STARTING("starting"),

@@ -58,7 +58,7 @@ class AttemptTransitionStep(
             }
 
             val indexMetaData = clusterService.state().metadata().index(indexName)
-            val indexCreationDate = indexMetaData.creationDate
+            val indexCreationDate = getIndexCreationDate()
             val indexCreationDateInstant = Instant.ofEpochMilli(indexCreationDate)
             if (indexCreationDate == -1L) {
                 logger.warn("$indexName had an indexCreationDate=-1L, cannot use for comparison")
@@ -134,6 +134,21 @@ class AttemptTransitionStep(
         val errorMessage = e.message
         if (errorMessage != null) mutableInfo["cause"] = errorMessage
         info = mutableInfo.toMap()
+    }
+
+    @Suppress("ReturnCount")
+    private fun getIndexCreationDate(): Long {
+        try {
+            // If we do have an index creation date cached already then use that
+            if (indexCreationDate != null) return indexCreationDate
+
+            val clusterStateMetadata = clusterService.state().metadata()
+            clusterStateMetadata.index(indexName).creationDate
+        } catch (e: Exception) {
+            logger.error("Failed to get index creation date for $indexName", e)
+        }
+        // -1L index age is ignored during condition checks
+        return -1L
     }
 
     override fun getUpdatedManagedIndexMetaData(currentMetaData: ManagedIndexMetaData): ManagedIndexMetaData {

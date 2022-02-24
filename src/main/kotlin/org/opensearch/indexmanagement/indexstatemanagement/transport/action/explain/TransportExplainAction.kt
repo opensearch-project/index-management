@@ -287,10 +287,6 @@ class TransportExplainAction @Inject constructor(
                         managedIndexMetadata = ManagedIndexMetaData.fromMap(metadataMapFromManagedIndex)
                     }
 
-//                    if (!isMetadataMoved(clusterStateMetadata, configIndexMetadataMap, log)) {
-//                        val info = mapOf("message" to "Metadata is pending migration")
-//                        managedIndexMetadata = clusterStateMetadata?.copy(info = info)
-//                    }
                     val currentIndexUuid = indices[indexName]
                     val metadataCheck = checkMetadata(clusterStateMetadata, configIndexMetadataMap, currentIndexUuid, log)
                     if (metadataCheck == MetadataCheck.PENDING) {
