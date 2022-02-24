@@ -57,6 +57,8 @@ import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndex
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.INDEX_STATE_MANAGEMENT_ENABLED
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.JOB_INTERVAL
 import org.opensearch.indexmanagement.indexstatemanagement.step.Step
+import org.opensearch.indexmanagement.indexstatemanagement.util.MetadataCheck
+import org.opensearch.indexmanagement.indexstatemanagement.util.checkMetadata
 import org.opensearch.indexmanagement.indexstatemanagement.util.getActionToExecute
 import org.opensearch.indexmanagement.indexstatemanagement.util.getCompletedManagedIndexMetaData
 import org.opensearch.indexmanagement.indexstatemanagement.util.getStartingManagedIndexMetaData
@@ -67,7 +69,6 @@ import org.opensearch.indexmanagement.indexstatemanagement.util.hasTimedOut
 import org.opensearch.indexmanagement.indexstatemanagement.util.hasVersionConflict
 import org.opensearch.indexmanagement.indexstatemanagement.util.isAllowed
 import org.opensearch.indexmanagement.indexstatemanagement.util.isFailed
-import org.opensearch.indexmanagement.indexstatemanagement.util.isMetadataMoved
 import org.opensearch.indexmanagement.indexstatemanagement.util.isSafeToChange
 import org.opensearch.indexmanagement.indexstatemanagement.util.isSuccessfulDelete
 import org.opensearch.indexmanagement.indexstatemanagement.util.managedIndexConfigIndexRequest
@@ -223,23 +224,27 @@ object ManagedIndexRunner :
             return
         }
 
-        // Get current IndexMetaData and ManagedIndexMetaData
-        val indexMetaData = getIndexMetadata(managedIndexConfig.index)
-        if (indexMetaData == null) {
-            logger.warn("Failed to retrieve IndexMetadata.")
+        val (managedIndexMetaData, getMetadataSuccess) = client.getManagedIndexMetadata(managedIndexConfig.indexUuid)
+        if (!getMetadataSuccess) {
+            logger.info("Failed to retrieve managed index metadata of index [${managedIndexConfig.index}] from config index, abort this run.")
             return
         }
-        val managedIndexMetaData = indexMetaData.getManagedIndexMetadata(client)
-        val clusterStateMetadata = indexMetaData.getManagedIndexMetadata()
 
-        if (!isMetadataMoved(clusterStateMetadata, managedIndexMetaData, logger)) {
-            logger.info("Skipping execution while pending migration of metadata for ${managedIndexConfig.jobName}")
+        val indexMetadata = getIndexMetadata(managedIndexConfig.index)
+        if (indexMetadata == null) {
+            logger.warn("Failed to find IndexMetadata for ${managedIndexConfig.index}.")
             return
+        } else {
+            val clusterStateMetadata = indexMetadata.getManagedIndexMetadata()
+            val metadataCheck = checkMetadata(clusterStateMetadata, managedIndexMetaData, managedIndexConfig.indexUuid, logger)
+            if (metadataCheck != MetadataCheck.SUCCESS) {
+                logger.info("Skipping execution while metadata status is $metadataCheck")
+                return
+            }
         }
 
         // If policy or managedIndexMetaData is null then initialize
         val policy = managedIndexConfig.policy
-
         if (policy == null || managedIndexMetaData == null) {
             initManagedIndex(managedIndexConfig, managedIndexMetaData)
             return
