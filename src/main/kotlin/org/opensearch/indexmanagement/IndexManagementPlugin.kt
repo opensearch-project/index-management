@@ -343,8 +343,7 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
         indexMetadataProvider = IndexMetadataProvider(
             settings, client, clusterService,
             hashMapOf(
-                DEFAULT_INDEX_TYPE to DefaultIndexMetadataService
-                ()
+                DEFAULT_INDEX_TYPE to DefaultIndexMetadataService()
             )
         )
         indexMetadataServices.forEach { indexMetadataProvider.addMetadataServices(it) }

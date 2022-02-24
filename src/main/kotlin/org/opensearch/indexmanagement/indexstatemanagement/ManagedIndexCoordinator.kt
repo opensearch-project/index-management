@@ -295,7 +295,10 @@ class ManagedIndexCoordinator(
         var indicesToClean = emptyList<Index>()
         if (event.indicesDeleted().isNotEmpty()) {
             val managedIndices = getManagedIndices(event.indicesDeleted().map { it.uuid })
-            val allIndicesUuid = indexMetadataProvider.getAllISMIndexMetadata().map { it.indexUuid }
+            val deletedIndices = event.indicesDeleted().map { it.name }
+            val allIndicesUuid = indexMetadataProvider.getMultiTypeISMIndexMetadata(indexNames = deletedIndices).map { (_, metadataMapForType) ->
+                metadataMapForType.values
+            }
             // Check if the deleted index uuid is still part of any metadata service in the cluster and has an existing managed index job
             indicesToClean = event.indicesDeleted().filter { it.uuid in managedIndices.keys && !allIndicesUuid.contains(it.uuid) }
             removeManagedIndexReq = indicesToClean.map { deleteManagedIndexRequest(it.uuid) }

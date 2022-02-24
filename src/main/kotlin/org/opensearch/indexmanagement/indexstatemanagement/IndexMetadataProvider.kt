@@ -5,6 +5,10 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement
 
+import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import org.opensearch.client.Client
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.settings.Settings
@@ -41,6 +45,19 @@ class IndexMetadataProvider(
         return service.getMetadata(indexNames, client, clusterService)
     }
 
+    suspend fun getMultiTypeISMIndexMetadata(
+        types: List<String> = services.keys.toList(),
+        indexNames: List<String>
+    ): Map<String, Map<String, ISMIndexMetadata>> = coroutineScope {
+        val requests = ArrayList<Deferred<Pair<String, Map<String, ISMIndexMetadata>>>>()
+        // Start all index metadata requests at the same time
+        types.forEach { type ->
+            requests.add(async { type to getISMIndexMetadataByType(type, indexNames) })
+        }
+        // Wait for all index metadata responses, and return
+        requests.awaitAll().toMap()
+    }
+
     fun addMetadataServices(newServices: Map<String, IndexMetadataService>) {
         val duplicateIndexType = newServices.keys.firstOrNull { services.containsKey(it) }
         if (duplicateIndexType != null) {
@@ -49,14 +66,16 @@ class IndexMetadataProvider(
         services.putAll(newServices)
     }
 
-    suspend fun getAllISMIndexMetadata(): Set<ISMIndexMetadata> {
+    suspend fun getAllISMIndexMetadata(): Set<ISMIndexMetadata> = coroutineScope {
         val metadata = mutableSetOf<ISMIndexMetadata>()
+        val requests = ArrayList<Deferred<Map<String, ISMIndexMetadata>>>()
         services.forEach { (_, service) ->
-            val serviceMetadata = service.getMetadataForAllIndices(client, clusterService)
-            metadata.addAll(serviceMetadata.values)
+            requests.add(async { service.getMetadataForAllIndices(client, clusterService) })
         }
 
-        return metadata
+        requests.awaitAll().forEach { metadata.addAll(it.values) }
+
+        metadata
     }
 
     companion object {
