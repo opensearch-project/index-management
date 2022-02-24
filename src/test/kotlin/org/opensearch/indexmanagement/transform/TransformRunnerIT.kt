@@ -408,6 +408,7 @@ class TransformRunnerIT : TransformRestTestCase() {
             val transformMetadata = getTransformMetadata(job.metadataId!!)
             assertEquals("Transform did not complete iteration or had incorrect number of documents processed", 5000, transformMetadata.stats.documentsProcessed)
             assertEquals("Transform did not complete iteration", null, transformMetadata.afterKey)
+            assertNotNull("Continuous stats were not updated", transformMetadata.continuousStats)
             transformMetadata
         }
 
@@ -732,6 +733,7 @@ class TransformRunnerIT : TransformRestTestCase() {
             val transformMetadata = getTransformMetadata(job.metadataId!!)
             assertEquals("Transform did not complete iteration or had incorrect number of documents processed", 15000, transformMetadata.stats.documentsProcessed)
             assertEquals("Transform did not complete iteration", null, transformMetadata.afterKey)
+            assertNotNull("Continuous stats were not updated", transformMetadata.continuousStats)
             transformMetadata
         }
 
@@ -759,6 +761,7 @@ class TransformRunnerIT : TransformRestTestCase() {
             val transformMetadata = getTransformMetadata(job.metadataId!!)
             assertEquals("Transform did not complete iteration or had incorrect number of documents processed", 15000, transformMetadata.stats.documentsProcessed)
             assertEquals("Transform did not have null afterKey after iteration", null, transformMetadata.afterKey)
+            assertTrue("Timestamp was not updated", transformMetadata.continuousStats!!.lastTimestamp!!.isAfter(firstIterationMetadata.continuousStats!!.lastTimestamp))
             transformMetadata
         }
 
@@ -768,7 +771,6 @@ class TransformRunnerIT : TransformRestTestCase() {
         assertEquals("Not the expected documents processed", 15000L, secondIterationMetadata.stats.documentsProcessed)
         assertEquals("Not the expected indexed time", secondIterationMetadata.stats.indexTimeInMillis, firstIterationMetadata.stats.indexTimeInMillis)
         assertEquals("Not the expected search time", secondIterationMetadata.stats.searchTimeInMillis, firstIterationMetadata.stats.searchTimeInMillis)
-        assertTrue("Timestamp was not updated", secondIterationMetadata.continuousStats!!.lastTimestamp!!.isAfter(firstIterationMetadata.continuousStats!!.lastTimestamp))
 
         disableTransform(transform.id)
     }
