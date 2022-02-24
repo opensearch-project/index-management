@@ -24,7 +24,7 @@ class AttemptCreateRollupJobStepTests : OpenSearchTestCase() {
     private val client: Client = mock()
     private val clusterService: ClusterService = mock()
     private val metadata = ManagedIndexMetaData(
-        indexName, "indexUuid", "policy_id", null, null, null, null, null, null,
+        indexName, "indexUuid", "policy_id", null, null, null, null, null, null, null,
         ActionMetaData(AttemptCreateRollupJobStep.name, 1, 0, false, 0, null, ActionProperties(rollupId = rollupId)), null, null, null
     )
     private val step = AttemptCreateRollupJobStep(clusterService, client, rollupActionConfig.ismRollup, metadata)

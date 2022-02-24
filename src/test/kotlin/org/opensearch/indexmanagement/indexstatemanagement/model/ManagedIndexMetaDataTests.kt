@@ -16,6 +16,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.step.Step
 import org.opensearch.test.OpenSearchTestCase
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
+import java.time.Instant
 
 class ManagedIndexMetaDataTests : OpenSearchTestCase() {
 
@@ -28,6 +29,7 @@ class ManagedIndexMetaDataTests : OpenSearchTestCase() {
             policyPrimaryTerm = 1,
             policyCompleted = null,
             rolledOver = null,
+            indexCreationDate = Instant.now().toEpochMilli(),
             transitionTo = null,
             stateMetaData = StateMetaData("close-index", 1234),
             actionMetaData = null,
@@ -48,6 +50,7 @@ class ManagedIndexMetaDataTests : OpenSearchTestCase() {
             policyPrimaryTerm = 1,
             policyCompleted = null,
             rolledOver = null,
+            indexCreationDate = null,
             transitionTo = null,
             stateMetaData = StateMetaData("close-index", 1234),
             actionMetaData = ActionMetaData("close", 4321, 0, false, 0, 0, null),
@@ -68,6 +71,7 @@ class ManagedIndexMetaDataTests : OpenSearchTestCase() {
             policyPrimaryTerm = 1,
             policyCompleted = null,
             rolledOver = null,
+            indexCreationDate = null,
             transitionTo = null,
             stateMetaData = StateMetaData("close-index", 1234),
             actionMetaData = ActionMetaData("close", 4321, 0, false, 0, 0, ActionProperties(3)),
@@ -88,6 +92,7 @@ class ManagedIndexMetaDataTests : OpenSearchTestCase() {
             policyPrimaryTerm = 1,
             policyCompleted = null,
             rolledOver = false,
+            indexCreationDate = null,
             transitionTo = null,
             stateMetaData = StateMetaData("rollover-index", 1234),
             actionMetaData = ActionMetaData("rollover", 4321, 0, false, 0, 0, null),

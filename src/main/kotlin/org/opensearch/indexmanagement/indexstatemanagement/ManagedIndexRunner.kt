@@ -497,6 +497,7 @@ object ManagedIndexRunner :
             policyPrimaryTerm = null,
             policyCompleted = false,
             rolledOver = false,
+            indexCreationDate = getIndexCreationDate(managedIndexConfig),
             transitionTo = null,
             stateMetaData = null,
             actionMetaData = null,
@@ -524,6 +525,7 @@ object ManagedIndexRunner :
                 policyPrimaryTerm = policy.primaryTerm,
                 policyCompleted = false,
                 rolledOver = false,
+                indexCreationDate = getIndexCreationDate(managedIndexConfig),
                 transitionTo = null,
                 stateMetaData = stateMetaData,
                 actionMetaData = null,
@@ -777,5 +779,21 @@ object ManagedIndexRunner :
             }
             Instant.ofEpochMilli(requireNotNull(startTime))
         }
+    }
+
+    /**
+     * Get the index creation date for the first time to cache it on the ManagedIndexMetadata
+     */
+    private fun getIndexCreationDate(managedIndexConfig: ManagedIndexConfig): Long? {
+        try {
+            val metadata = clusterService.state().metadata()
+            // Check if this index is a hot/warm index in cluster state first
+            if (metadata.hasIndex(managedIndexConfig.index) && metadata.index(managedIndexConfig.index).indexUUID == managedIndexConfig.indexUuid) {
+                return metadata.index(managedIndexConfig.index).creationDate
+            }
+        } catch (e: Exception) {
+            logger.error("Failed to get the index creation date", e)
+        }
+        return null
     }
 }

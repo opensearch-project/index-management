@@ -158,6 +158,7 @@ class RestExplainActionIT : IndexStateManagementRestTestCase() {
                         ManagedIndexMetaData.POLICY_ID to managedIndexConfig.policyID::equals,
                         ManagedIndexMetaData.POLICY_SEQ_NO to policy.seqNo.toInt()::equals,
                         ManagedIndexMetaData.POLICY_PRIMARY_TERM to policy.primaryTerm.toInt()::equals,
+                        ManagedIndexMetaData.INDEX_CREATION_DATE to fun(indexCreationDate: Any?): Boolean = (indexCreationDate as Long) > 1L,
                         StateMetaData.STATE to fun(stateMetaDataMap: Any?): Boolean =
                             assertStateEquals(
                                 StateMetaData(policy.defaultState, Instant.now().toEpochMilli()),
@@ -207,6 +208,7 @@ class RestExplainActionIT : IndexStateManagementRestTestCase() {
                         PolicyRetryInfoMetaData.RETRY_INFO to fun(retryInfoMetaDataMap: Any?): Boolean =
                             assertRetryInfoEquals(PolicyRetryInfoMetaData(true, 0), retryInfoMetaDataMap),
                         ManagedIndexMetaData.INFO to fun(info: Any?): Boolean = expectedInfoString == info.toString(),
+                        ManagedIndexMetaData.INDEX_CREATION_DATE to fun(indexCreationDate: Any?): Boolean = (indexCreationDate as Long) > 1L,
                         ManagedIndexMetaData.ENABLED to true::equals
                     )
                 ),
