@@ -32,7 +32,6 @@ class ISMActionsParser private constructor() {
         val instance = ISMActionsParser()
     }
 
-    // TODO: Add other action parsers as they are implemented
     val parsers = mutableListOf<ActionParser>(
         AllocationActionParser(),
         CloseActionParser(),
@@ -50,6 +49,9 @@ class ISMActionsParser private constructor() {
     )
 
     fun addParser(parser: ActionParser) {
+        if (parsers.map { it.getActionType() }.contains(parser.getActionType())) {
+            throw IllegalArgumentException(getDuplicateActionTypesMessage(parser.getActionType()))
+        }
         parsers.add(parser)
     }
 
@@ -77,13 +79,17 @@ class ISMActionsParser private constructor() {
             when (type) {
                 ActionTimeout.TIMEOUT_FIELD -> timeout = ActionTimeout.parse(xcp)
                 ActionRetry.RETRY_FIELD -> retry = ActionRetry.parse(xcp)
+                Action.CUSTOM_ACTION_FIELD -> {
+                    // The "custom" wrapper allows extensions to create arbitrary actions without updating the config mappings
+                    // We consume the full custom wrapper and parse the action in this step
+                    XContentParserUtils.ensureExpectedToken(XContentParser.Token.START_OBJECT, xcp.nextToken(), xcp)
+                    val customActionType = xcp.currentName()
+                    XContentParserUtils.ensureExpectedToken(XContentParser.Token.FIELD_NAME, xcp.nextToken(), xcp)
+                    action = parseAction(xcp, totalActions, customActionType)
+                    XContentParserUtils.ensureExpectedToken(XContentParser.Token.END_OBJECT, xcp.nextToken(), xcp)
+                }
                 else -> {
-                    val parser = parsers.firstOrNull { it.getActionType() == type }
-                    if (parser != null) {
-                        action = parser.fromXContent(xcp, totalActions)
-                    } else {
-                        throw IllegalArgumentException("Invalid field: [$type] found in Actions.")
-                    }
+                    action = parseAction(xcp, totalActions, type)
                 }
             }
         }
@@ -96,7 +102,21 @@ class ISMActionsParser private constructor() {
         return action
     }
 
+    private fun parseAction(xcp: XContentParser, totalActions: Int, type: String): Action {
+        XContentParserUtils.ensureExpectedToken(XContentParser.Token.START_OBJECT, xcp.currentToken(), xcp)
+        val action: Action?
+        val parser = parsers.firstOrNull { it.getActionType() == type }
+        if (parser != null) {
+            action = parser.fromXContent(xcp, totalActions)
+            action.customAction = parser.customAction
+        } else {
+            throw IllegalArgumentException("Invalid field: [$type] found in Actions.")
+        }
+        return action
+    }
+
     companion object {
         val instance: ISMActionsParser by lazy { HOLDER.instance }
+        fun getDuplicateActionTypesMessage(actionType: String) = "Multiple action parsers attempted to register the same action type [$actionType]"
     }
 }

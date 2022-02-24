@@ -21,13 +21,17 @@ abstract class Action(
 
     var configTimeout: ActionTimeout? = null
     var configRetry: ActionRetry? = ActionRetry(DEFAULT_RETRIES)
+    var customAction: Boolean = false
 
     final override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
         builder.startObject()
         configTimeout?.toXContent(builder, params)
         configRetry?.toXContent(builder, params)
-        // TODO: We should add "custom" object wrapper based on the params
+        // Include a "custom" object wrapper for custom actions to allow extensions to put arbitrary action configs in the config
+        // index. The EXCLUDE_CUSTOM_FIELD_PARAM is used to not include this wrapper in api responses
+        if (customAction && !params.paramAsBoolean(EXCLUDE_CUSTOM_FIELD_PARAM, false)) builder.startObject(CUSTOM_ACTION_FIELD)
         populateAction(builder, params)
+        if (customAction && !params.paramAsBoolean(EXCLUDE_CUSTOM_FIELD_PARAM, false)) builder.endObject()
         return builder.endObject()
     }
 
@@ -70,5 +74,7 @@ abstract class Action(
 
     companion object {
         const val DEFAULT_RETRIES = 3L
+        const val CUSTOM_ACTION_FIELD = "custom"
+        const val EXCLUDE_CUSTOM_FIELD_PARAM = "exclude_custom"
     }
 }
