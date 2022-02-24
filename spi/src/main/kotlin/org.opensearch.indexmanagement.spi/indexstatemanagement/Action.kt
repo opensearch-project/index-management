@@ -27,6 +27,8 @@ abstract class Action(
         builder.startObject()
         configTimeout?.toXContent(builder, params)
         configRetry?.toXContent(builder, params)
+        // Include a "custom" object wrapper for custom actions to allow extensions to put arbitrary action configs in the config
+        // index. The EXCLUDE_CUSTOM_FIELD_PARAM is used to not include this wrapper in api responses
         if (customAction && !params.paramAsBoolean(EXCLUDE_CUSTOM_FIELD_PARAM, false)) builder.startObject(CUSTOM_ACTION_FIELD)
         populateAction(builder, params)
         if (customAction && !params.paramAsBoolean(EXCLUDE_CUSTOM_FIELD_PARAM, false)) builder.endObject()
