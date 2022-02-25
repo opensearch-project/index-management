@@ -15,7 +15,7 @@ import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.spi.indexstatemanagement.IndexMetadataService
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ISMIndexMetadata
 
-class DefaultIndexMetadataService : IndexMetadataService {
+class DefaultIndexMetadataService(val customUUIDSetting: String? = null) : IndexMetadataService {
 
     /**
      * Returns the default index metadata needed for ISM
@@ -37,8 +37,11 @@ class DefaultIndexMetadataService : IndexMetadataService {
 
         response.state.metadata.indices.forEach {
             // TODO waiting to add document count until it is definitely needed
-            // TODO find a way to avoid this managed service code difference
-            val uuid = it.value.settings.get(COLD_UUID_SETTING, it.value.indexUUID) // use the cold uuid if it exists
+            val uuid = if (customUUIDSetting != null) {
+                it.value.settings.get(customUUIDSetting, it.value.indexUUID)
+            } else {
+                it.value.indexUUID
+            }
             val indexMetadata = ISMIndexMetadata(uuid, it.value.creationDate, -1)
             indexNameToMetadata[it.key] = indexMetadata
         }
@@ -52,6 +55,5 @@ class DefaultIndexMetadataService : IndexMetadataService {
 
     companion object {
         const val DEFAULT_GET_METADATA_TIMEOUT_IN_MILLIS = 30000L
-        const val COLD_UUID_SETTING = "index.cold.uuid"
     }
 }

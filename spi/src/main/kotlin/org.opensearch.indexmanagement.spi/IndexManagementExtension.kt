@@ -21,8 +21,9 @@ interface IndexManagementExtension {
     fun getISMActionParsers(): List<ActionParser>
 
     /**
-     * Not Required to override but if extension is introducing a new index type and special handling is needed to handle this type
-     * use this to provide the metadata service for the new index types
+     * Not Required to override but if extension moves the index metadata outside of cluster state and requires IndexManagement to manage these
+     * indices provide the metadata service that can provide the index metadata for these indices. An extension need to label the metadata service
+     * with a type string which is used to distinguish indices in IndexManagement plugin
      */
     fun getIndexMetadataService(): Map<String, IndexMetadataService> {
         return mapOf()
@@ -32,16 +33,15 @@ interface IndexManagementExtension {
      * Not required to override but if extension wants to evaluate the cluster events before deciding whether to auto manage indices
      * on index creation or should/not clean up managed indices when indices are deleted - add new handlers for the sepcific event type
      */
-    fun getClusterEventHandlers(): Map<ClusterEventType, ClusterEventHandler> {
-        return mapOf()
+    fun getClusterEventHandlers(): List<ClusterEventHandler> {
+        return listOf()
     }
-}
 
-enum class ClusterEventType(val type: String) {
-    CREATE("create"),
-    DELETE("delete");
-
-    override fun toString(): String {
-        return type
+    /**
+     * Not Required to override but if extension wants IndexManagement to determine cluster state indices UUID based on custom index setting if
+     * present of cluster state. This setting will be checked and used if a value is present otherwise fallback to default cluster state uuid
+     */
+    fun indexUUIDSetting(): String? {
+        return null
     }
 }

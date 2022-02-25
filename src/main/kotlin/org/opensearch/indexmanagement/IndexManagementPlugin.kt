@@ -170,6 +170,7 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
     lateinit var fieldCapsFilter: FieldCapsFilter
     lateinit var indexMetadataProvider: IndexMetadataProvider
     private val indexMetadataServices: MutableList<Map<String, IndexMetadataService>> = mutableListOf()
+    private var customIndexUUIDSetting: String? = null
 
     companion object {
         const val PLUGINS_BASE_URI = "/_plugins"
@@ -248,6 +249,12 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
                 ISMActionsParser.instance.addParser(parser)
             }
             indexMetadataServices.add(extension.getIndexMetadataService())
+            extension.indexUUIDSetting()?.let {
+                if (customIndexUUIDSetting != null) {
+                    throw IllegalStateException("Multiple extension of IndexManagement plugin overriding indexUUIDSetting - cannot resolve")
+                }
+                customIndexUUIDSetting = extension.indexUUIDSetting()
+            }
         }
     }
 
@@ -343,7 +350,7 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
         indexMetadataProvider = IndexMetadataProvider(
             settings, client, clusterService,
             hashMapOf(
-                DEFAULT_INDEX_TYPE to DefaultIndexMetadataService()
+                DEFAULT_INDEX_TYPE to DefaultIndexMetadataService(customIndexUUIDSetting)
             )
         )
         indexMetadataServices.forEach { indexMetadataProvider.addMetadataServices(it) }
