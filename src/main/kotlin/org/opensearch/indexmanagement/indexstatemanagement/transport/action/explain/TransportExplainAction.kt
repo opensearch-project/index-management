@@ -394,7 +394,7 @@ class TransportExplainAction @Inject constructor(
         }
     }
     companion object {
-        private const val METADATA_MOVING_WARNING = "Managed index's metadata is pending migration."
-        private const val METADATA_CORRUPT_WARNING = "Managed index's metadata is corrupt, please use remove policy API to clean it."
+        const val METADATA_MOVING_WARNING = "Managed index's metadata is pending migration."
+        const val METADATA_CORRUPT_WARNING = "Managed index's metadata is corrupt, please use remove policy API to clean it."
     }
 }
