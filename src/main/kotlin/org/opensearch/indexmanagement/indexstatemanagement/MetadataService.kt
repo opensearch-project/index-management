@@ -112,7 +112,9 @@ class MetadataService(
                 }
             }
             logger.info("Corrupt managed indices with outdated index uuid in metadata: $corruptManagedIndices")
-            clusterStateManagedIndexMetadata = clusterStateManagedIndexMetadata.filter { (indexName, _) -> indexName !in corruptManagedIndices.map { it.name } }
+            clusterStateManagedIndexMetadata = clusterStateManagedIndexMetadata.filter { (indexName, _) ->
+                indexName !in corruptManagedIndices.map { it.name }
+            }
 
             if (clusterStateManagedIndexMetadata.isEmpty()) {
                 if (failedToCleanIndices.isNotEmpty()) {

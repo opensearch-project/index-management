@@ -385,15 +385,19 @@ class TransportRemovePolicyAction @Inject constructor(
         fun removeClusterStateMetadatas(indices: List<Index>) {
             val request = UpdateManagedIndexMetaDataRequest(indicesToRemoveManagedIndexMetaDataFrom = indices)
 
-            client.execute(UpdateManagedIndexMetaDataAction.INSTANCE, request, object : ActionListener<AcknowledgedResponse> {
-                override fun onResponse(response: AcknowledgedResponse) {
-                    log.debug("Cleaned cluster state metadata for $indices, ${response.isAcknowledged}")
-                }
+            client.execute(
+                UpdateManagedIndexMetaDataAction.INSTANCE,
+                request,
+                object : ActionListener<AcknowledgedResponse> {
+                    override fun onResponse(response: AcknowledgedResponse) {
+                        log.debug("Cleaned cluster state metadata for $indices, ${response.isAcknowledged}")
+                    }
 
-                override fun onFailure(e: Exception) {
-                    log.error("Failed to clean cluster state metadata for $indices")
+                    override fun onFailure(e: Exception) {
+                        log.error("Failed to clean cluster state metadata for $indices")
+                    }
                 }
-            })
+            )
         }
     }
 }
