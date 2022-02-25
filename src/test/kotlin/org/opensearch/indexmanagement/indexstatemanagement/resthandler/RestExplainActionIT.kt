@@ -232,7 +232,7 @@ class RestExplainActionIT : IndexStateManagementRestTestCase() {
                 "index_uuid" to getUuid(indexName),
                 "policy_id" to policy.id,
                 ManagedIndexMetaData.ENABLED to true,
-                "current_applied_policy" to expectedPolicy
+                "policy" to expectedPolicy
             ),
             TOTAL_MANAGED_INDICES to 1,
         )

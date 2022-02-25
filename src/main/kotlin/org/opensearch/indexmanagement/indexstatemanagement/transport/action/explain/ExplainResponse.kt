@@ -77,14 +77,10 @@ open class ExplainResponse : ActionResponse, ToXContentObject {
             builder.field(LegacyOpenDistroManagedIndexSettings.POLICY_ID.key, indexPolicyIDs[ind])
             indexMetadatas[ind]?.toXContent(builder, ToXContent.EMPTY_PARAMS)
             builder.field("enabled", enabledState[name])
-            policies[name]?.let { builder.field(CURRENT_APPLIED_POLICY_FIELD_NAME, it, XCONTENT_WITHOUT_TYPE_AND_USER) }
+            policies[name]?.let { builder.field(Policy.POLICY_TYPE, it, XCONTENT_WITHOUT_TYPE_AND_USER) }
             builder.endObject()
         }
         builder.field(TOTAL_MANAGED_INDICES, totalManagedIndices)
         return builder.endObject()
-    }
-
-    companion object {
-        const val CURRENT_APPLIED_POLICY_FIELD_NAME = "current_applied_policy"
     }
 }
