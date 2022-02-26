@@ -8,6 +8,7 @@ package org.opensearch.indexmanagement.indexstatemanagement.transport.action.exp
 import org.opensearch.common.io.stream.BytesStreamOutput
 import org.opensearch.common.io.stream.StreamInput
 import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
+import org.opensearch.indexmanagement.indexstatemanagement.randomPolicy
 import org.opensearch.test.OpenSearchTestCase
 
 class ExplainResponseTests : OpenSearchTestCase() {
@@ -33,7 +34,8 @@ class ExplainResponseTests : OpenSearchTestCase() {
         val indexMetadatas = listOf(metadata)
         val totalManagedIndices = 1
         val enabledState = mapOf("index1" to true)
-        val res = ExplainResponse(indexNames, indexPolicyIDs, indexMetadatas, totalManagedIndices, enabledState)
+        val appliedPolicies = mapOf("policy" to randomPolicy())
+        val res = ExplainResponse(indexNames, indexPolicyIDs, indexMetadatas, totalManagedIndices, enabledState, appliedPolicies)
 
         val out = BytesStreamOutput()
         res.writeTo(out)
@@ -44,5 +46,6 @@ class ExplainResponseTests : OpenSearchTestCase() {
         assertEquals(indexMetadatas, newRes.indexMetadatas)
         assertEquals(totalManagedIndices, newRes.totalManagedIndices)
         assertEquals(enabledState, newRes.enabledState)
+        assertEquals(appliedPolicies, newRes.policies)
     }
 }

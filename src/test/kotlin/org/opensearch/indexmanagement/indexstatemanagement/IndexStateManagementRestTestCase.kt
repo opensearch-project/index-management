@@ -52,6 +52,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.util.FAILED_INDICES
 import org.opensearch.indexmanagement.indexstatemanagement.util.FAILURES
 import org.opensearch.indexmanagement.indexstatemanagement.util.INDEX_NUMBER_OF_REPLICAS
 import org.opensearch.indexmanagement.indexstatemanagement.util.INDEX_NUMBER_OF_SHARDS
+import org.opensearch.indexmanagement.indexstatemanagement.util.SHOW_POLICY_QUERY_PARAM
 import org.opensearch.indexmanagement.indexstatemanagement.util.UPDATED_INDICES
 import org.opensearch.indexmanagement.makeRequest
 import org.opensearch.indexmanagement.opensearchapi.parseWithType
@@ -532,9 +533,10 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
     protected fun getFlatSettings(indexName: String) =
         (getIndexSettings(indexName) as Map<String, Map<String, Map<String, Any?>>>)[indexName]!!["settings"] as Map<String, String>
 
-    protected fun getExplainMap(indexName: String?): Map<String, Any> {
+    protected fun getExplainMap(indexName: String?, showPolicy: Boolean = false): Map<String, Any> {
         var endpoint = RestExplainAction.EXPLAIN_BASE_URI
         if (indexName != null) endpoint += "/$indexName"
+        if (showPolicy) endpoint += "?$SHOW_POLICY_QUERY_PARAM"
         val response = client().makeRequest(RestRequest.Method.GET.toString(), endpoint)
         assertEquals("Unexpected RestStatus", RestStatus.OK, response.restStatus())
         return response.asMap()
