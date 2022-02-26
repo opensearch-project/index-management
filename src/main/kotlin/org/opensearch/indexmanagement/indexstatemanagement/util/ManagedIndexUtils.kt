@@ -24,7 +24,9 @@ import org.opensearch.index.query.BoolQueryBuilder
 import org.opensearch.index.query.QueryBuilders
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
 import org.opensearch.indexmanagement.indexstatemanagement.ManagedIndexCoordinator
+import org.opensearch.indexmanagement.indexstatemanagement.action.DeleteAction
 import org.opensearch.indexmanagement.indexstatemanagement.action.RolloverAction
+import org.opensearch.indexmanagement.indexstatemanagement.action.TransitionsAction
 import org.opensearch.indexmanagement.indexstatemanagement.model.ChangePolicy
 import org.opensearch.indexmanagement.indexstatemanagement.model.ISMTemplate
 import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexConfig
@@ -377,10 +379,9 @@ fun ManagedIndexMetaData.getCompletedManagedIndexMetaData(
     )
 }
 
-// TODO: Change to constant type
 val ManagedIndexMetaData.isSuccessfulDelete: Boolean
-    get() = (this.actionMetaData?.name == "delete" && !this.actionMetaData!!.failed) &&
-        (this.stepMetaData?.name == "delete" && this.stepMetaData!!.stepStatus == Step.StepStatus.COMPLETED) &&
+    get() = (this.actionMetaData?.name == DeleteAction.name && !this.actionMetaData!!.failed) &&
+        (this.stepMetaData?.name == DeleteAction.name && this.stepMetaData!!.stepStatus == Step.StepStatus.COMPLETED) &&
         (this.policyRetryInfo?.failed != true)
 
 val ManagedIndexMetaData.isFailed: Boolean
@@ -419,13 +420,11 @@ fun ManagedIndexConfig.shouldChangePolicy(managedIndexMetaData: ManagedIndexMeta
 
     // we need this in so that we can change policy before the first transition happens so policy doesnt get completed
     // before we have a chance to change policy
-    // TODO: change to constant
-    if (actionToExecute?.type == "transition") {
+    if (actionToExecute?.type == TransitionsAction.name) {
         return true
     }
 
-    // TODO: Change to constant
-    if (managedIndexMetaData.actionMetaData?.name != "transition") {
+    if (managedIndexMetaData.actionMetaData?.name != TransitionsAction.name) {
         return false
     }
 

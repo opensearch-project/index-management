@@ -21,4 +21,8 @@ class StepContext(
     val user: User?,
     val scriptService: ScriptService,
     val settings: Settings,
-)
+) {
+    fun getUpdatedContext(metadata: ManagedIndexMetaData): StepContext {
+        return StepContext(metadata, this.clusterService, this.client, this.threadContext, this.user, this.scriptService, this.settings)
+    }
+}
