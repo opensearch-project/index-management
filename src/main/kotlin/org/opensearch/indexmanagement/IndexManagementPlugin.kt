@@ -343,7 +343,8 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
         )
 
         return listOf(
-            managedIndexRunner, rollupRunner, transformRunner, indexManagementIndices, managedIndexCoordinator, indexStateManagementHistory, indexEvaluator
+            managedIndexRunner, rollupRunner, transformRunner, indexManagementIndices,
+            managedIndexCoordinator, indexStateManagementHistory, indexEvaluator
         )
     }
 
