@@ -15,6 +15,7 @@ import org.opensearch.common.xcontent.XContentParser
 import org.opensearch.common.xcontent.XContentParser.Token
 import org.opensearch.common.xcontent.XContentParserUtils.ensureExpectedToken
 import org.opensearch.indexmanagement.indexstatemanagement.ISMActionsParser
+import org.opensearch.indexmanagement.indexstatemanagement.action.DeleteAction
 import org.opensearch.indexmanagement.indexstatemanagement.action.TransitionsAction
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Action
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
@@ -33,8 +34,7 @@ data class State(
         actions.forEach { actionConfig ->
             // dont allow actions after delete as they will never happen
             require(!hasDelete) { "State=$name must not contain an action after a delete action" }
-            // TODO: Replace with delete action constant
-            hasDelete = actionConfig.type == "delete"
+            hasDelete = actionConfig.type == DeleteAction.name
         }
 
         // dont allow transitions if state contains delete

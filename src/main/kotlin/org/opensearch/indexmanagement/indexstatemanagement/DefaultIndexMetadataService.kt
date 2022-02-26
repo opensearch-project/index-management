@@ -24,14 +24,15 @@ class DefaultIndexMetadataService : IndexMetadataService {
     override suspend fun getMetadata(indices: List<String>, client: Client, clusterService: ClusterService): Map<String, ISMIndexMetadata> {
         val indexNameToMetadata: MutableMap<String, ISMIndexMetadata> = HashMap()
 
-        val strictExpandOptions = IndicesOptions.strictExpand()
+        // We want to go through all cluster indices - open/closed/hidden
+        val lenientExpandOptions = IndicesOptions.lenientExpandHidden()
         val clusterStateRequest = ClusterStateRequest()
             .clear()
             .indices(*indices.toTypedArray())
             .metadata(true)
             .local(false)
             .waitForTimeout(TimeValue.timeValueMillis(DEFAULT_GET_METADATA_TIMEOUT_IN_MILLIS))
-            .indicesOptions(strictExpandOptions)
+            .indicesOptions(lenientExpandOptions)
 
         val response: ClusterStateResponse = client.suspendUntil { client.admin().cluster().state(clusterStateRequest, it) }
 
