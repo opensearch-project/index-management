@@ -5,6 +5,7 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.resthandler
 
+import org.opensearch.common.xcontent.XContentFactory
 import org.opensearch.indexmanagement.IndexManagementPlugin
 import org.opensearch.indexmanagement.indexstatemanagement.IndexStateManagementRestTestCase
 import org.opensearch.indexmanagement.indexstatemanagement.model.ChangePolicy
@@ -12,7 +13,9 @@ import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMet
 import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.PolicyRetryInfoMetaData
 import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.StateMetaData
 import org.opensearch.indexmanagement.indexstatemanagement.util.TOTAL_MANAGED_INDICES
+import org.opensearch.indexmanagement.indexstatemanagement.util.XCONTENT_WITHOUT_TYPE_AND_USER
 import org.opensearch.indexmanagement.makeRequest
+import org.opensearch.indexmanagement.opensearchapi.toMap
 import org.opensearch.indexmanagement.waitFor
 import org.opensearch.rest.RestRequest
 import org.opensearch.rest.RestStatus
@@ -212,6 +215,29 @@ class RestExplainActionIT : IndexStateManagementRestTestCase() {
                 ),
                 getExplainMap(indexName)
             )
+        }
+    }
+
+    fun `test show_applied_policy query parameter`() {
+        val indexName = "${testIndexName}_show_applied_policy"
+        val policy = createRandomPolicy()
+        createIndex(indexName, policy.id)
+
+        val expectedPolicy = policy.toXContent(XContentFactory.jsonBuilder(), XCONTENT_WITHOUT_TYPE_AND_USER).toMap()
+        val expected = mapOf(
+            indexName to mapOf<String, Any>(
+                explainResponseOpendistroPolicyIdSetting to policy.id,
+                explainResponseOpenSearchPolicyIdSetting to policy.id,
+                "index" to indexName,
+                "index_uuid" to getUuid(indexName),
+                "policy_id" to policy.id,
+                ManagedIndexMetaData.ENABLED to true,
+                "policy" to expectedPolicy
+            ),
+            TOTAL_MANAGED_INDICES to 1,
+        )
+        waitFor {
+            assertResponseMap(expected, getExplainMap(indexName, true))
         }
     }
 

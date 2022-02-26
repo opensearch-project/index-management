@@ -19,17 +19,20 @@ class ExplainRequest : ActionRequest {
     val local: Boolean
     val masterTimeout: TimeValue
     val searchParams: SearchParams
+    val showPolicy: Boolean
 
     constructor(
         indices: List<String>,
         local: Boolean,
         masterTimeout: TimeValue,
-        searchParams: SearchParams
+        searchParams: SearchParams,
+        showPolicy: Boolean
     ) : super() {
         this.indices = indices
         this.local = local
         this.masterTimeout = masterTimeout
         this.searchParams = searchParams
+        this.showPolicy = showPolicy
     }
 
     @Throws(IOException::class)
@@ -37,7 +40,8 @@ class ExplainRequest : ActionRequest {
         indices = sin.readStringList(),
         local = sin.readBoolean(),
         masterTimeout = sin.readTimeValue(),
-        searchParams = SearchParams(sin)
+        searchParams = SearchParams(sin),
+        showPolicy = sin.readBoolean()
     )
 
     override fun validate(): ActionRequestValidationException? {
@@ -50,5 +54,6 @@ class ExplainRequest : ActionRequest {
         out.writeBoolean(local)
         out.writeTimeValue(masterTimeout)
         searchParams.writeTo(out)
+        out.writeBoolean(showPolicy)
     }
 }
