@@ -110,6 +110,7 @@ object ManagedIndexRunner :
     private lateinit var ismHistory: IndexStateManagementHistory
     private lateinit var skipExecFlag: SkipExecution
     private lateinit var threadPool: ThreadPool
+    private lateinit var extensionStatusChecker: ExtensionStatusChecker
     private var indexStateManagementEnabled: Boolean = DEFAULT_ISM_ENABLED
     @Suppress("MagicNumber")
     private val savePolicyRetryPolicy = BackoffPolicy.exponentialBackoff(TimeValue.timeValueMillis(250), 3)
@@ -184,6 +185,11 @@ object ManagedIndexRunner :
 
     fun registerThreadPool(threadPool: ThreadPool): ManagedIndexRunner {
         this.threadPool = threadPool
+        return this
+    }
+
+    fun registerExtensionChecker(extensionStatusChecker: ExtensionStatusChecker): ManagedIndexRunner {
+        this.extensionStatusChecker = extensionStatusChecker
         return this
     }
 
@@ -315,9 +321,13 @@ object ManagedIndexRunner :
             }
         }
 
+        val actionExtensionName = ISMActionsParser.instance.customActionExtensionMap[action?.type]
         // If this action is not allowed and the step to be executed is the first step in the action then we will fail
         // as this action has been removed from the AllowList, but if its not the first step we will let it finish as it's already inflight
-        if (action?.isAllowed(allowList) == false && step != null && action.isFirstStep(step.name) && action.type != TransitionsAction.name) {
+        if (action?.isAllowed(allowList) == false && step != null && action.isFirstStep(step.name) &&
+            action.type != TransitionsAction.name && extensionStatusChecker.isEnabled(actionExtensionName)
+        ) {
+
             val info = mapOf("message" to "Attempted to execute action=${action.type} which is not allowed.")
             val updated = updateManagedIndexMetaData(
                 managedIndexMetaData.copy(

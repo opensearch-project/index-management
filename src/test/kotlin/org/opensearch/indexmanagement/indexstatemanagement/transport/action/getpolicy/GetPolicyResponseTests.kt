@@ -58,7 +58,8 @@ class GetPolicyResponseTests : OpenSearchTestCase() {
     fun `test get policy response custom action`() {
         val customActionParser = SampleCustomActionParser()
         customActionParser.customAction = true
-        ISMActionsParser.instance.addParser(customActionParser)
+        val extensionName = "testExtension"
+        ISMActionsParser.instance.addParser(customActionParser, extensionName)
         val id = "id"
         val version: Long = 1
         val primaryTerm: Long = 123

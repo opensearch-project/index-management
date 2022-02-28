@@ -30,6 +30,7 @@ import org.opensearch.common.xcontent.XContentParserUtils.ensureExpectedToken
 import org.opensearch.env.Environment
 import org.opensearch.env.NodeEnvironment
 import org.opensearch.indexmanagement.indexstatemanagement.DefaultIndexMetadataService
+import org.opensearch.indexmanagement.indexstatemanagement.ExtensionStatusChecker
 import org.opensearch.indexmanagement.indexstatemanagement.ISMActionsParser
 import org.opensearch.indexmanagement.indexstatemanagement.IndexMetadataProvider
 import org.opensearch.indexmanagement.indexstatemanagement.IndexStateManagementHistory
@@ -112,6 +113,7 @@ import org.opensearch.indexmanagement.rollup.settings.RollupSettings
 import org.opensearch.indexmanagement.settings.IndexManagementSettings
 import org.opensearch.indexmanagement.spi.IndexManagementExtension
 import org.opensearch.indexmanagement.spi.indexstatemanagement.IndexMetadataService
+import org.opensearch.indexmanagement.spi.indexstatemanagement.StatusChecker
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.transform.TransformRunner
 import org.opensearch.indexmanagement.transform.action.delete.DeleteTransformsAction
@@ -171,6 +173,8 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
     lateinit var indexMetadataProvider: IndexMetadataProvider
     private val indexMetadataServices: MutableList<Map<String, IndexMetadataService>> = mutableListOf()
     private var customIndexUUIDSetting: String? = null
+    private val extensions = mutableSetOf<String>()
+    private val extensionCheckerMap = mutableMapOf<String, StatusChecker>()
 
     companion object {
         const val PLUGINS_BASE_URI = "/_plugins"
@@ -245,16 +249,23 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
         val indexManagementExtensions = loader.loadExtensions(IndexManagementExtension::class.java)
 
         indexManagementExtensions.forEach { extension ->
+            val extensionName = extension.getExtensionName()
+            if (extensionName in extensions) {
+                throw IllegalStateException("Mutliple extensions of IndexManagement have same name $extensionName - not supported")
+            }
             extension.getISMActionParsers().forEach { parser ->
-                ISMActionsParser.instance.addParser(parser)
+                ISMActionsParser.instance.addParser(parser, extensionName)
             }
             indexMetadataServices.add(extension.getIndexMetadataService())
-            extension.indexUUIDSetting()?.let {
+            extension.overrideClusterStateIndexUuidSetting()?.let {
                 if (customIndexUUIDSetting != null) {
-                    throw IllegalStateException("Multiple extension of IndexManagement plugin overriding indexUUIDSetting - cannot resolve")
+                    throw IllegalStateException(
+                        "Multiple extensions of IndexManagement plugin overriding ClusterStateIndexUUIDSetting - not supported"
+                    )
                 }
-                customIndexUUIDSetting = extension.indexUUIDSetting()
+                customIndexUUIDSetting = extension.overrideClusterStateIndexUuidSetting()
             }
+            extensionCheckerMap[extensionName] = extension.statusChecker()
         }
     }
 
@@ -355,6 +366,7 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
         )
         indexMetadataServices.forEach { indexMetadataProvider.addMetadataServices(it) }
 
+        val extensionChecker = ExtensionStatusChecker(extensionCheckerMap, clusterService)
         val managedIndexRunner = ManagedIndexRunner
             .registerClient(client)
             .registerClusterService(clusterService)
@@ -366,6 +378,7 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
             .registerHistoryIndex(indexStateManagementHistory)
             .registerSkipFlag(skipFlag)
             .registerThreadPool(threadPool)
+            .registerExtensionChecker(extensionChecker)
 
         val metadataService = MetadataService(client, clusterService, skipFlag, indexManagementIndices)
         val templateService = ISMTemplateService(client, clusterService, xContentRegistry, indexManagementIndices)

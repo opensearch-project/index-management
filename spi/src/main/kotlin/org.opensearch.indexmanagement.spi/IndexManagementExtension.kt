@@ -6,8 +6,9 @@
 package org.opensearch.indexmanagement.spi
 
 import org.opensearch.indexmanagement.spi.indexstatemanagement.ActionParser
-import org.opensearch.indexmanagement.spi.indexstatemanagement.ClusterEventHandler
+import org.opensearch.indexmanagement.spi.indexstatemanagement.DefaultStatusChecker
 import org.opensearch.indexmanagement.spi.indexstatemanagement.IndexMetadataService
+import org.opensearch.indexmanagement.spi.indexstatemanagement.StatusChecker
 
 /**
  * SPI for IndexManagement
@@ -21,6 +22,19 @@ interface IndexManagementExtension {
     fun getISMActionParsers(): List<ActionParser>
 
     /**
+     * Status checker is used by IndexManagement to check the status of the extension before executing the actions registered by the extension.
+     * Actions registered by the plugin can only be executed if in enabled
+     */
+    fun statusChecker(): StatusChecker {
+        return DefaultStatusChecker()
+    }
+
+    /**
+     * Name of the extension
+     */
+    fun getExtensionName(): String
+
+    /**
      * Not Required to override but if extension moves the index metadata outside of cluster state and requires IndexManagement to manage these
      * indices provide the metadata service that can provide the index metadata for these indices. An extension need to label the metadata service
      * with a type string which is used to distinguish indices in IndexManagement plugin
@@ -30,18 +44,12 @@ interface IndexManagementExtension {
     }
 
     /**
-     * Not required to override but if extension wants to evaluate the cluster events before deciding whether to auto manage indices
-     * on index creation or should/not clean up managed indices when indices are deleted - add new handlers for the sepcific event type
+     * Caution: Experimental and can be removed in future
+     *
+     * If extension wants IndexManagement to determine cluster state indices UUID based on custom index setting if
+     * present of cluster state override this method.
      */
-    fun getClusterEventHandlers(): List<ClusterEventHandler> {
-        return listOf()
-    }
-
-    /**
-     * Not Required to override but if extension wants IndexManagement to determine cluster state indices UUID based on custom index setting if
-     * present of cluster state. This setting will be checked and used if a value is present otherwise fallback to default cluster state uuid
-     */
-    fun indexUUIDSetting(): String? {
+    fun overrideClusterStateIndexUuidSetting(): String? {
         return null
     }
 }
