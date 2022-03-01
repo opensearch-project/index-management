@@ -6,8 +6,9 @@
 package org.opensearch.indexmanagement.spi
 
 import org.opensearch.indexmanagement.spi.indexstatemanagement.ActionParser
-import org.opensearch.indexmanagement.spi.indexstatemanagement.ClusterEventHandler
+import org.opensearch.indexmanagement.spi.indexstatemanagement.DefaultStatusChecker
 import org.opensearch.indexmanagement.spi.indexstatemanagement.IndexMetadataService
+import org.opensearch.indexmanagement.spi.indexstatemanagement.StatusChecker
 
 /**
  * SPI for IndexManagement
@@ -21,27 +22,36 @@ interface IndexManagementExtension {
     fun getISMActionParsers(): List<ActionParser>
 
     /**
-     * Not Required to override but if extension is introducing a new index type and special handling is needed to handle this type
-     * use this to provide the metadata service for the new index types
+     * Status checker is used by IndexManagement to check the status of the extension before executing the actions registered by the extension.
+     * Actions registered by the plugin can only be executed if in enabled, otherwise the action fails without retries. The status returned
+     * should represent if the extension is enabled or disabled, and should not represent extension health or the availability of some extension
+     * dependency.
+     */
+    fun statusChecker(): StatusChecker {
+        return DefaultStatusChecker()
+    }
+
+    /**
+     * Name of the extension
+     */
+    fun getExtensionName(): String
+
+    /**
+     * Not Required to override but if extension moves the index metadata outside of cluster state and requires IndexManagement to manage these
+     * indices provide the metadata service that can provide the index metadata for these indices. An extension need to label the metadata service
+     * with a type string which is used to distinguish indices in IndexManagement plugin
      */
     fun getIndexMetadataService(): Map<String, IndexMetadataService> {
         return mapOf()
     }
 
     /**
-     * Not required to override but if extension wants to evaluate the cluster events before deciding whether to auto manage indices
-     * on index creation or should/not clean up managed indices when indices are deleted - add new handlers for the sepcific event type
+     * Caution: Experimental and can be removed in future
+     *
+     * If extension wants IndexManagement to determine cluster state indices UUID based on custom index setting if
+     * present of cluster state override this method.
      */
-    fun getClusterEventHandlers(): Map<ClusterEventType, ClusterEventHandler> {
-        return mapOf()
-    }
-}
-
-enum class ClusterEventType(val type: String) {
-    CREATE("create"),
-    DELETE("delete");
-
-    override fun toString(): String {
-        return type
+    fun overrideClusterStateIndexUuidSetting(): String? {
+        return null
     }
 }

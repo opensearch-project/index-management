@@ -13,6 +13,7 @@ import org.opensearch.common.xcontent.XContentType
 import org.opensearch.common.xcontent.json.JsonXContent.jsonXContent
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.POLICY_BASE_URI
+import org.opensearch.indexmanagement.indexstatemanagement.ISMActionsParser
 import org.opensearch.indexmanagement.indexstatemanagement.IndexStateManagementRestTestCase
 import org.opensearch.indexmanagement.indexstatemanagement.action.ReadOnlyAction
 import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
@@ -93,8 +94,7 @@ class IndexStateManagementRestApiIT : IndexStateManagementRestTestCase() {
     fun `test creating a policy with a disallowed actions fails`() {
         try {
             // remove read_only from the allowlist
-            // TODO: fix me - populate all the actions
-            val allowedActions = listOf<String>()
+            val allowedActions = ISMActionsParser.instance.parsers.map { it.getActionType() }.toList()
                 .filter { actionType -> actionType != ReadOnlyAction.name }
                 .joinToString(prefix = "[", postfix = "]") { string -> "\"$string\"" }
             updateClusterSetting(ManagedIndexSettings.ALLOW_LIST.key, allowedActions, escapeValue = false)
@@ -110,8 +110,7 @@ class IndexStateManagementRestApiIT : IndexStateManagementRestTestCase() {
     fun `test updating a policy with a disallowed actions fails`() {
         try {
             // remove read_only from the allowlist
-            // TODO: fix me - populate all actions
-            val allowedActions = listOf<String>()
+            val allowedActions = ISMActionsParser.instance.parsers.map { it.getActionType() }.toList()
                 .filter { actionType -> actionType != ReadOnlyAction.name }
                 .joinToString(prefix = "[", postfix = "]") { string -> "\"$string\"" }
             updateClusterSetting(ManagedIndexSettings.ALLOW_LIST.key, allowedActions, escapeValue = false)

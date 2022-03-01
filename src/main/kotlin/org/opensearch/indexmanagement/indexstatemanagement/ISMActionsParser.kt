@@ -32,7 +32,7 @@ class ISMActionsParser private constructor() {
         val instance = ISMActionsParser()
     }
 
-    val parsers = mutableListOf<ActionParser>(
+    val parsers = mutableListOf(
         AllocationActionParser(),
         CloseActionParser(),
         DeleteActionParser(),
@@ -48,11 +48,14 @@ class ISMActionsParser private constructor() {
         SnapshotActionParser()
     )
 
-    fun addParser(parser: ActionParser) {
+    val customActionExtensionMap = mutableMapOf<String, String>()
+
+    fun addParser(parser: ActionParser, extensionName: String) {
         if (parsers.map { it.getActionType() }.contains(parser.getActionType())) {
             throw IllegalArgumentException(getDuplicateActionTypesMessage(parser.getActionType()))
         }
         parsers.add(parser)
+        customActionExtensionMap[parser.getActionType()] = extensionName
     }
 
     fun fromStreamInput(sin: StreamInput): Action {

@@ -20,7 +20,7 @@ import org.opensearch.rest.RestStatus
 import java.time.Duration
 import java.time.Instant
 
-class WaitForForceMergeStep(private val action: ForceMergeAction) : Step(name) {
+class WaitForForceMergeStep(private val action: ForceMergeAction) : Step(name, false) {
 
     private val logger = LogManager.getLogger(javaClass)
     private var stepStatus = StepStatus.STARTING

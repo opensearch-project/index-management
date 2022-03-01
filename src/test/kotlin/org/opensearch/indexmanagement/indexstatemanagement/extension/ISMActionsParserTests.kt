@@ -18,6 +18,8 @@ import kotlin.test.assertFailsWith
 
 class ISMActionsParserTests : OpenSearchTestCase() {
 
+    val extensionName = "testExtension"
+
     /*
      * If any tests added the custom action parser, it should be removed from the static instance to not impact other tests
      */
@@ -31,21 +33,21 @@ class ISMActionsParserTests : OpenSearchTestCase() {
         val customActionParser = SampleCustomActionParser()
         customActionParser.customAction = true
         // Duplicate custom parser names should fail
-        ISMActionsParser.instance.addParser(customActionParser)
+        ISMActionsParser.instance.addParser(customActionParser, extensionName)
         assertFailsWith<IllegalArgumentException>("Expected IllegalArgumentException for duplicate action names") {
-            ISMActionsParser.instance.addParser(customActionParser)
+            ISMActionsParser.instance.addParser(customActionParser, extensionName)
         }
         // Adding any duplicate parser should fail
         assertFailsWith<IllegalArgumentException>("Expected IllegalArgumentException for duplicate action names") {
             val randomExistingParser = ISMActionsParser.instance.parsers.random()
-            ISMActionsParser.instance.addParser(randomExistingParser)
+            ISMActionsParser.instance.addParser(randomExistingParser, extensionName)
         }
     }
 
     fun `test custom action parsing`() {
         val customActionParser = SampleCustomActionParser()
         customActionParser.customAction = true
-        ISMActionsParser.instance.addParser(customActionParser)
+        ISMActionsParser.instance.addParser(customActionParser, extensionName)
         val customAction = SampleCustomActionParser.SampleCustomAction(randomInt(), 0)
         val builder = XContentFactory.jsonBuilder()
 
@@ -61,7 +63,7 @@ class ISMActionsParserTests : OpenSearchTestCase() {
     fun `test parsing custom action without custom flag`() {
         val customActionParser = SampleCustomActionParser()
         customActionParser.customAction = true
-        ISMActionsParser.instance.addParser(customActionParser)
+        ISMActionsParser.instance.addParser(customActionParser, extensionName)
         val customAction = SampleCustomActionParser.SampleCustomAction(randomInt(), 0)
         customAction.customAction = true
 

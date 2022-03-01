@@ -112,7 +112,8 @@ class IndexPolicyRequestTests : OpenSearchTestCase() {
     fun `test index policy request custom action`() {
         val customActionParser = SampleCustomActionParser()
         customActionParser.customAction = true
-        ISMActionsParser.instance.addParser(customActionParser)
+        val extensionName = "testExtension"
+        ISMActionsParser.instance.addParser(customActionParser, extensionName)
         val policyID = "policyID"
         val action = SampleCustomActionParser.SampleCustomAction(someInt = randomInt(), index = 0)
         val states = listOf(State("MyState", listOf(action), listOf()))

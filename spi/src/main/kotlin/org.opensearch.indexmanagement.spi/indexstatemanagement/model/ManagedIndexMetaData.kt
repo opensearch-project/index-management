@@ -113,10 +113,9 @@ data class ManagedIndexMetaData(
         if (policyPrimaryTerm != null) builder.field(POLICY_PRIMARY_TERM, policyPrimaryTerm)
 
         // Only show rolled_over if we have rolled over or we are in the rollover action
-        // TODO: Fix this
-        /*if (rolledOver == true || (actionMetaData != null && actionMetaData.name == ActionConfig.ActionType.ROLLOVER.type)) {
+        if (rolledOver == true || (actionMetaData != null && actionMetaData.name == "rollover")) {
             builder.field(ROLLED_OVER, rolledOver)
-        }*/
+        }
 
         if (policyCompleted == true) {
             builder.field(POLICY_COMPLETED, policyCompleted)

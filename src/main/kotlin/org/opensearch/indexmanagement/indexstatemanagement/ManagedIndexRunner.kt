@@ -59,6 +59,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.util.hasTimedOut
 import org.opensearch.indexmanagement.indexstatemanagement.util.hasVersionConflict
 import org.opensearch.indexmanagement.indexstatemanagement.util.isAllowed
 import org.opensearch.indexmanagement.indexstatemanagement.util.isFailed
+import org.opensearch.indexmanagement.indexstatemanagement.util.isMetadataMoved
 import org.opensearch.indexmanagement.indexstatemanagement.util.isSafeToChange
 import org.opensearch.indexmanagement.indexstatemanagement.util.isSuccessfulDelete
 import org.opensearch.indexmanagement.indexstatemanagement.util.managedIndexConfigIndexRequest
@@ -109,6 +110,7 @@ object ManagedIndexRunner :
     private lateinit var ismHistory: IndexStateManagementHistory
     private lateinit var skipExecFlag: SkipExecution
     private lateinit var threadPool: ThreadPool
+    private lateinit var extensionStatusChecker: ExtensionStatusChecker
     private var indexStateManagementEnabled: Boolean = DEFAULT_ISM_ENABLED
     @Suppress("MagicNumber")
     private val savePolicyRetryPolicy = BackoffPolicy.exponentialBackoff(TimeValue.timeValueMillis(250), 3)
@@ -186,6 +188,11 @@ object ManagedIndexRunner :
         return this
     }
 
+    fun registerExtensionChecker(extensionStatusChecker: ExtensionStatusChecker): ManagedIndexRunner {
+        this.extensionStatusChecker = extensionStatusChecker
+        return this
+    }
+
     override fun runJob(job: ScheduledJobParameter, context: JobExecutionContext) {
         if (job !is ManagedIndexConfig) {
             throw IllegalArgumentException("Invalid job type, found ${job.javaClass.simpleName} with id: ${context.jobId}")
@@ -228,13 +235,12 @@ object ManagedIndexRunner :
             return
         }
         val managedIndexMetaData = indexMetaData.getManagedIndexMetadata(client)
-        // TODO: fixme - not checking metadata migration
-        // val clusterStateMetadata = indexMetaData.getManagedIndexMetadata()
+        val clusterStateMetadata = indexMetaData.getManagedIndexMetadata()
 
-        /*if (!isMetadataMoved(clusterStateMetadata, managedIndexMetaData, logger)) {
+        if (!isMetadataMoved(clusterStateMetadata, managedIndexMetaData, logger)) {
             logger.info("Skipping execution while pending migration of metadata for ${managedIndexConfig.jobName}")
             return
-        }*/
+        }
 
         // If policy or managedIndexMetaData is null then initialize
         val policy = managedIndexConfig.policy
@@ -269,13 +275,6 @@ object ManagedIndexRunner :
         val stepContext = StepContext(managedIndexMetaData, clusterService, client, null, null, scriptService, settings)
         val step: Step? = action?.getStepToExecute(stepContext)
         val currentActionMetaData = action?.getUpdatedActionMetaData(managedIndexMetaData, state)
-
-        // TODO: Unsure check later
-        if (action == null || step == null) {
-            // This should never happen but if it is returning
-            disableManagedIndexConfig(managedIndexConfig)
-            return
-        }
 
         // If Index State Management is disabled and the current step is not null and safe to disable on
         // then disable the job and return early
@@ -322,10 +321,23 @@ object ManagedIndexRunner :
             }
         }
 
+        // If the extension from which action is registered is not enabled then the action will fail
+        val actionExtensionName = ISMActionsParser.instance.customActionExtensionMap[action?.type]
+        if (!extensionStatusChecker.isEnabled(actionExtensionName)) {
+            val info = mapOf("message" to "Failed to execute action=${action?.type} as extension [$actionExtensionName] is not enabled.")
+            val updated = updateManagedIndexMetaData(
+                managedIndexMetaData.copy(
+                    policyRetryInfo = PolicyRetryInfoMetaData(true, 0), info = info
+                )
+            )
+            if (updated.metadataSaved) disableManagedIndexConfig(managedIndexConfig)
+            return
+        }
+
         // If this action is not allowed and the step to be executed is the first step in the action then we will fail
         // as this action has been removed from the AllowList, but if its not the first step we will let it finish as it's already inflight
-        if (!action?.isAllowed(allowList) && action.isFirstStep(step?.name) && action.type != TransitionsAction.name) {
-            val info = mapOf("message" to "Attempted to execute action=${action.type} which is not allowed.")
+        if (action?.isAllowed(allowList) == false && step != null && action.isFirstStep(step.name) && action.type != TransitionsAction.name) {
+            val info = mapOf("message" to "Attempted to execute action=${action?.type} which is not allowed.")
             val updated = updateManagedIndexMetaData(
                 managedIndexMetaData.copy(
                     policyRetryInfo = PolicyRetryInfoMetaData(true, 0), info = info
@@ -347,7 +359,7 @@ object ManagedIndexRunner :
                     managedIndexConfig.id, settings, threadPool.threadContext, managedIndexConfig.policy.user
                 )
             ) {
-                step.preExecute(logger, stepContext).execute().postExecute(logger)
+                step.preExecute(logger, stepContext.getUpdatedContext(startingManagedIndexMetaData)).execute().postExecute(logger)
             }
             var executedManagedIndexMetaData = startingManagedIndexMetaData.getCompletedManagedIndexMetaData(action, step)
 
