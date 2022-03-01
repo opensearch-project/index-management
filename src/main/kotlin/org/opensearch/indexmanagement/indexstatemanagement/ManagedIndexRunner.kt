@@ -321,14 +321,22 @@ object ManagedIndexRunner :
             }
         }
 
+        // If the extension from which action is registered is not enabled then the action will fail
         val actionExtensionName = ISMActionsParser.instance.customActionExtensionMap[action?.type]
+        if (!extensionStatusChecker.isEnabled(actionExtensionName)) {
+            val info = mapOf("message" to "Failed to execute action=${action?.type} as extension [$actionExtensionName] is not enabled.")
+            val updated = updateManagedIndexMetaData(
+                managedIndexMetaData.copy(
+                    policyRetryInfo = PolicyRetryInfoMetaData(true, 0), info = info
+                )
+            )
+            if (updated.metadataSaved) disableManagedIndexConfig(managedIndexConfig)
+            return
+        }
+
         // If this action is not allowed and the step to be executed is the first step in the action then we will fail
         // as this action has been removed from the AllowList, but if its not the first step we will let it finish as it's already inflight
-        // We check if the action is allowed in cluster settings and the extension from which action is registered is enabled
-        if ((action?.isAllowed(allowList) == false || !extensionStatusChecker.isEnabled(actionExtensionName)) && step != null &&
-            action.isFirstStep(step.name) && action.type != TransitionsAction.name
-        ) {
-
+        if (action?.isAllowed(allowList) == false && step != null && action.isFirstStep(step.name) && action.type != TransitionsAction.name) {
             val info = mapOf("message" to "Attempted to execute action=${action?.type} which is not allowed.")
             val updated = updateManagedIndexMetaData(
                 managedIndexMetaData.copy(

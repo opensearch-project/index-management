@@ -23,7 +23,9 @@ interface IndexManagementExtension {
 
     /**
      * Status checker is used by IndexManagement to check the status of the extension before executing the actions registered by the extension.
-     * Actions registered by the plugin can only be executed if in enabled
+     * Actions registered by the plugin can only be executed if in enabled, otherwise the action fails without retries. The status returned
+     * should represent if the extension is enabled or disabled, and should not represent extension health or the availability of some extension
+     * dependency.
      */
     fun statusChecker(): StatusChecker {
         return DefaultStatusChecker()
