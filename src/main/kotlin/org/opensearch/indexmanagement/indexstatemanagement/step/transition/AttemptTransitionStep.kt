@@ -138,14 +138,12 @@ class AttemptTransitionStep(
 
     @Suppress("ReturnCount")
     private fun getIndexCreationDate(): Long {
-        try {
-            // If we do have an index creation date cached already then use that
-            if (indexCreationDate != null) return indexCreationDate
+        // If we do have an index creation date cached already then use that
+        if (indexCreationDate != null) return indexCreationDate
 
-            val clusterStateMetadata = clusterService.state().metadata()
-            clusterStateMetadata.index(indexName).creationDate
-        } catch (e: Exception) {
-            logger.error("Failed to get index creation date for $indexName", e)
+        val clusterStateMetadata = clusterService.state().metadata()
+        if (clusterStateMetadata.hasIndex(indexName)) {
+            return clusterStateMetadata.index(indexName).creationDate
         }
         // -1L index age is ignored during condition checks
         return -1L
