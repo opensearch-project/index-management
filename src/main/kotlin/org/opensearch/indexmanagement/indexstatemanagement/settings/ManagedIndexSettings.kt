@@ -18,7 +18,6 @@ class ManagedIndexSettings {
         const val DEFAULT_JOB_INTERVAL = 5
         const val DEFAULT_JITTER = 0.6
         const val DEFAULT_RESTRICTED_PATTERN = "\\.opendistro_security|\\.kibana.*|\\$INDEX_MANAGEMENT_INDEX"
-        val DEFAULT_BLOCKED_ACTIONS = emptyList<String>()
         val ALLOW_LIST_NONE = emptyList<String>()
         val SNAPSHOT_DENY_LIST_NONE = emptyList<String>()
         const val HOST_DENY_LIST = "opendistro.destination.host.deny_list"
@@ -171,15 +170,6 @@ class ManagedIndexSettings {
         val ALLOW_LIST: Setting<List<String>> = Setting.listSetting(
             "plugins.index_state_management.allow_list",
             LegacyOpenDistroManagedIndexSettings.ALLOW_LIST,
-            Function.identity(),
-            Setting.Property.NodeScope,
-            Setting.Property.Dynamic,
-            Setting.Property.Deprecated
-        )
-
-        val BLOCKED_ACTIONS_LIST: Setting<List<String>> = Setting.listSetting(
-            "plugins.index_state_management.blocked_actions_list",
-            DEFAULT_BLOCKED_ACTIONS,
             Function.identity(),
             Setting.Property.NodeScope,
             Setting.Property.Dynamic

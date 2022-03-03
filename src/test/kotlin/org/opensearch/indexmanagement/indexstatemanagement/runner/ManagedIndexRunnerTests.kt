@@ -62,7 +62,6 @@ class ManagedIndexRunnerTests : OpenSearchTestCase() {
         settingSet.add(ManagedIndexSettings.JOB_INTERVAL)
         settingSet.add(ManagedIndexSettings.INDEX_STATE_MANAGEMENT_ENABLED)
         settingSet.add(ManagedIndexSettings.ALLOW_LIST)
-        settingSet.add(ManagedIndexSettings.BLOCKED_ACTIONS_LIST)
         val clusterSettings = ClusterSettings(settings, settingSet)
         val originClusterService: ClusterService = ClusterServiceUtils.createClusterService(threadPool, discoveryNode, clusterSettings)
         clusterService = Mockito.spy(originClusterService)

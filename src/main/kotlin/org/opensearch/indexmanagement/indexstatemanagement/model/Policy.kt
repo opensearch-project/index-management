@@ -118,16 +118,15 @@ data class Policy(
     }
 
     /**
-     * Disallowed actions are specified in the [ManagedIndexSettings.BLOCKED_ACTIONS_LIST], or are not specified in the
-     * deprecated [ManagedIndexSettings.ALLOW_LIST] setting.
+     * Disallowed actions are ones that are not specified in the [ManagedIndexSettings.ALLOW_LIST] setting.
      */
-    fun getDisallowedActions(allowList: List<String>, blockedActionsList: List<String>): List<String> {
-        val allowedActionsSet = allowList.toSet() - blockedActionsList.toSet()
+    fun getDisallowedActions(allowList: List<String>): List<String> {
+        val allowListSet = allowList.toSet()
         val disallowedActions = mutableListOf<String>()
         this.states.forEach { state ->
-            state.actions.forEach { action ->
-                if (!allowedActionsSet.contains(action.type)) {
-                    disallowedActions.add(action.type)
+            state.actions.forEach { actionConfig ->
+                if (!allowListSet.contains(actionConfig.type)) {
+                    disallowedActions.add(actionConfig.type)
                 }
             }
         }

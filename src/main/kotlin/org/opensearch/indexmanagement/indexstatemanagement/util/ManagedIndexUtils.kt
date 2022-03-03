@@ -468,12 +468,9 @@ fun Policy.isSafeToChange(stateName: String?, newPolicy: Policy, changePolicy: C
 }
 
 /**
- * Allowed actions are specified in the [ManagedIndexSettings.ALLOW_LIST] setting, and are not specified in the
- * [ManagedIndexSettings.BLOCKED_ACTIONS_LIST] setting.
+ * Allowed actions are ones that are specified in the [ManagedIndexSettings.ALLOW_LIST] setting.
  */
-fun Action.isAllowed(blockedActionsList: List<String>, allowList: List<String>): Boolean {
-    return allowList.contains(this.type) && !blockedActionsList.contains(this.type)
-}
+fun Action.isAllowed(allowList: List<String>): Boolean = allowList.contains(this.type)
 
 /**
  * Check if cluster state metadata has been moved to config index

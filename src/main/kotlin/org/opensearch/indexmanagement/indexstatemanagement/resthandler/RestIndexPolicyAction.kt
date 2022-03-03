@@ -15,7 +15,6 @@ import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.LEGACY_POL
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.POLICY_BASE_URI
 import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.ALLOW_LIST
-import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.BLOCKED_ACTIONS_LIST
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.indexpolicy.IndexPolicyAction
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.indexpolicy.IndexPolicyRequest
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.indexpolicy.IndexPolicyResponse
@@ -42,11 +41,9 @@ class RestIndexPolicyAction(
 ) : BaseRestHandler() {
 
     @Volatile private var allowList = ALLOW_LIST.get(settings)
-    @Volatile private var blockedActionsList = BLOCKED_ACTIONS_LIST.get(settings)
 
     init {
         clusterService.clusterSettings.addSettingsUpdateConsumer(ALLOW_LIST) { allowList = it }
-        clusterService.clusterSettings.addSettingsUpdateConsumer(BLOCKED_ACTIONS_LIST) { blockedActionsList = it }
     }
 
     override fun routes(): List<Route> {
@@ -88,7 +85,7 @@ class RestIndexPolicyAction(
             WriteRequest.RefreshPolicy.IMMEDIATE
         }
 
-        val disallowedActions = policy.getDisallowedActions(allowList, blockedActionsList)
+        val disallowedActions = policy.getDisallowedActions(allowList)
         if (disallowedActions.isNotEmpty()) {
             return RestChannelConsumer { channel ->
                 channel.sendResponse(

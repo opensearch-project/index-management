@@ -379,6 +379,7 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
             .registerSkipFlag(skipFlag)
             .registerThreadPool(threadPool)
             .registerExtensionChecker(extensionChecker)
+            .registerIndexMetadataProvider(indexMetadataProvider)
 
         val metadataService = MetadataService(client, clusterService, skipFlag, indexManagementIndices)
         val templateService = ISMTemplateService(client, clusterService, xContentRegistry, indexManagementIndices)

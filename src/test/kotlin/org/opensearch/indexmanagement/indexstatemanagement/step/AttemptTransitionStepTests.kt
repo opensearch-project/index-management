@@ -69,7 +69,7 @@ class AttemptTransitionStepTests : OpenSearchTestCase() {
         whenever(docsStats.count).doReturn(6L)
         whenever(docsStats.totalSizeInBytes).doReturn(2)
         val client = getClient(getAdminClient(getIndicesAdminClient(statsResponse, null)))
-        val indexMetadataProvider = IndexMetadataProvider(client, clusterService, mutableMapOf())
+        val indexMetadataProvider = IndexMetadataProvider(settings, client, clusterService, mutableMapOf())
 
         runBlocking {
             val managedIndexMetadata = ManagedIndexMetaData(indexName, indexUUID, "policy_id", null, null, null, null, null, null, null, null, null, null, null)
@@ -87,7 +87,7 @@ class AttemptTransitionStepTests : OpenSearchTestCase() {
         whenever(indexMetadata.creationDate).doReturn(5L)
         val exception = IllegalArgumentException("example")
         val client = getClient(getAdminClient(getIndicesAdminClient(null, exception)))
-        val indexMetadataProvider = IndexMetadataProvider(client, clusterService, mutableMapOf())
+        val indexMetadataProvider = IndexMetadataProvider(settings, client, clusterService, mutableMapOf())
 
         runBlocking {
             val managedIndexMetadata = ManagedIndexMetaData(indexName, indexUUID, "policy_id", null, null, null, null, null, null, null, null, null, null, null)
@@ -105,7 +105,7 @@ class AttemptTransitionStepTests : OpenSearchTestCase() {
         whenever(indexMetadata.creationDate).doReturn(5L)
         val exception = RemoteTransportException("rte", IllegalArgumentException("nested"))
         val client = getClient(getAdminClient(getIndicesAdminClient(null, exception)))
-        val indexMetadataProvider = IndexMetadataProvider(client, clusterService, mutableMapOf())
+        val indexMetadataProvider = IndexMetadataProvider(settings, client, clusterService, mutableMapOf())
 
         runBlocking {
             val managedIndexMetadata = ManagedIndexMetaData(indexName, indexUUID, "policy_id", null, null, null, null, null, null, null, null, null, null, null)
@@ -120,7 +120,7 @@ class AttemptTransitionStepTests : OpenSearchTestCase() {
     }
 
     fun `test step start time resetting between two transitions`() {
-        val indexMetadataProvider = IndexMetadataProvider(mock(), clusterService, mutableMapOf())
+        val indexMetadataProvider = IndexMetadataProvider(settings, mock(), clusterService, mutableMapOf())
         runBlocking {
             val completedStartTime = Instant.now()
             val managedIndexMetadata = ManagedIndexMetaData(indexName, indexUUID, "policy_id", null, null, null, null, null, null, null, null, StepMetaData("attempt_transition", completedStartTime.toEpochMilli(), Step.StepStatus.COMPLETED), null, null)

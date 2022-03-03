@@ -65,7 +65,6 @@ import org.opensearch.indexmanagement.indexstatemanagement.util.hasTimedOut
 import org.opensearch.indexmanagement.indexstatemanagement.util.hasVersionConflict
 import org.opensearch.indexmanagement.indexstatemanagement.util.isAllowed
 import org.opensearch.indexmanagement.indexstatemanagement.util.isFailed
-import org.opensearch.indexmanagement.indexstatemanagement.util.isMetadataMoved
 import org.opensearch.indexmanagement.indexstatemanagement.util.isSafeToChange
 import org.opensearch.indexmanagement.indexstatemanagement.util.isSuccessfulDelete
 import org.opensearch.indexmanagement.indexstatemanagement.util.managedIndexConfigIndexRequest
@@ -252,7 +251,8 @@ object ManagedIndexRunner :
             indexMetadata = null
             // If the cluster state/default index type didn't have an index with a matching name and uuid combination, try all other index types
             val nonDefaultIndexTypes = indexMetadataProvider.services.keys.filter { it != DEFAULT_INDEX_TYPE }
-            val multiTypeIndexNameToMetaData = indexMetadataProvider.getMultiTypeIndexMetadata(nonDefaultIndexTypes, listOf(managedIndexConfig.index))
+            val multiTypeIndexNameToMetaData =
+                indexMetadataProvider.getMultiTypeISMIndexMetadata(nonDefaultIndexTypes, listOf(managedIndexConfig.index))
             val someTypeMatchedUuid = multiTypeIndexNameToMetaData.values.any {
                 it[managedIndexConfig.index]?.indexUuid == managedIndexConfig.indexUuid
             }
@@ -841,7 +841,7 @@ object ManagedIndexRunner :
     @Suppress("ReturnCount")
     private suspend fun getIndexCreationDate(managedIndexConfig: ManagedIndexConfig): Long? {
         try {
-            val multiTypeIndexNameToMetaData = indexMetadataProvider.getMultiTypeIndexMetadata(indexNames = listOf(managedIndexConfig.index))
+            val multiTypeIndexNameToMetaData = indexMetadataProvider.getMultiTypeISMIndexMetadata(indexNames = listOf(managedIndexConfig.index))
             // the managedIndexConfig.indexUuid should be unique across all index types
             val indexCreationDate = multiTypeIndexNameToMetaData.values.firstOrNull {
                 it[managedIndexConfig.index]?.indexUuid == managedIndexConfig.indexUuid

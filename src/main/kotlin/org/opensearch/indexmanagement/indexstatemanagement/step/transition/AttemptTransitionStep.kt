@@ -162,7 +162,7 @@ class AttemptTransitionStep(private val action: TransitionsAction) : Step(name) 
             } else {
                 // And then finally check all other index types which may not be in the cluster
                 val nonDefaultIndexTypes = indexMetadataProvider.services.keys.filter { it != DEFAULT_INDEX_TYPE }
-                val multiTypeIndexNameToMetaData = indexMetadataProvider.getMultiTypeIndexMetadata(nonDefaultIndexTypes, listOf(indexName))
+                val multiTypeIndexNameToMetaData = indexMetadataProvider.getMultiTypeISMIndexMetadata(nonDefaultIndexTypes, listOf(indexName))
                 // the managedIndexConfig.indexUuid should be unique across all index types
                 val indexCreationDate = multiTypeIndexNameToMetaData.values.firstOrNull {
                     it[indexName]?.indexUuid == metadata.indexUuid

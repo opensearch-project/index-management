@@ -5,6 +5,7 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.runner
 
+import org.opensearch.indexmanagement.indexstatemanagement.ISMActionsParser
 import org.opensearch.indexmanagement.indexstatemanagement.IndexStateManagementRestTestCase
 import org.opensearch.indexmanagement.indexstatemanagement.action.OpenAction
 import org.opensearch.indexmanagement.indexstatemanagement.action.ReadOnlyAction
@@ -129,8 +130,8 @@ class ManagedIndexRunnerIT : IndexStateManagementRestTestCase() {
         }
     }
 
-    fun `test blocked action fails execution`() {
-        val indexName = "blocked_action_index"
+    fun `test allow list fails execution`() {
+        val indexName = "allow_list_index"
 
         val firstState = randomState(
             name = "first_state", actions = listOf(randomReadOnlyActionConfig()),
@@ -167,8 +168,11 @@ class ManagedIndexRunnerIT : IndexStateManagementRestTestCase() {
         updateManagedIndexConfigStartTime(managedIndexConfig)
         waitFor { assertEquals(AttemptTransitionStep.getSuccessMessage(indexName, firstState.name), getExplainManagedIndexMetaData(indexName).info?.get("message")) }
 
-        // block the read_only action
-        updateClusterSetting(ManagedIndexSettings.BLOCKED_ACTIONS_LIST.key, "[\"${ReadOnlyAction.name}\"]", escapeValue = false)
+        // remove read_only from the allowlist
+        val allowedActions = ISMActionsParser.instance.parsers.map { it.getActionType() }.toList()
+            .filter { actionType -> actionType != ReadOnlyAction.name }
+            .joinToString(prefix = "[", postfix = "]") { string -> "\"$string\"" }
+        updateClusterSetting(ManagedIndexSettings.ALLOW_LIST.key, allowedActions, escapeValue = false)
 
         // speed up to fifth execution that should try to set index to read only and fail because the action is not allowed
         updateManagedIndexConfigStartTime(managedIndexConfig)
