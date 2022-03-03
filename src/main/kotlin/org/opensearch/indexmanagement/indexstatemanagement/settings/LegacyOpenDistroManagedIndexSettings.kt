@@ -179,7 +179,8 @@ class LegacyOpenDistroManagedIndexSettings {
             ALLOW_LIST_ALL,
             Function.identity(),
             Setting.Property.NodeScope,
-            Setting.Property.Dynamic
+            Setting.Property.Dynamic,
+            Setting.Property.Deprecated
         )
 
         val SNAPSHOT_DENY_LIST: Setting<List<String>> = Setting.listSetting(

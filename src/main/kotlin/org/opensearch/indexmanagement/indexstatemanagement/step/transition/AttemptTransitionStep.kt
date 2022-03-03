@@ -158,7 +158,7 @@ class AttemptTransitionStep(private val action: TransitionsAction) : Step(name) 
             // Otherwise, check if this index is in cluster state first
             return if (inCluster) {
                 val clusterStateMetadata = clusterService.state().metadata()
-                clusterStateMetadata.index(indexName).creationDate
+                if (clusterStateMetadata.hasIndex(indexName)) clusterStateMetadata.index(indexName).creationDate else -1L
             } else {
                 // And then finally check all other index types which may not be in the cluster
                 val nonDefaultIndexTypes = indexMetadataProvider.services.keys.filter { it != DEFAULT_INDEX_TYPE }
