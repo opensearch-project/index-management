@@ -414,8 +414,10 @@ object ManagedIndexRunner :
                 return
             }
 
+            // If a custom action deletes some off-cluster index and has deleteIndexMetadataAfterFinish set to true,
+            // then when the action successfully finishes, we will delete the managed index config and metadata. We do not
+            // need to do this for the standard delete action as the coordinator picks up the index deletion and removes the config
             if (action.isFinishedSuccessfully(executedManagedIndexMetaData)) {
-                // Custom actions added by extensions may require a manual deletion of the managed index metadata after a successful execution
                 if (action.deleteIndexMetadataAfterFinish()) {
                     deleteFromManagedIndex(managedIndexConfig, action.type)
                     return

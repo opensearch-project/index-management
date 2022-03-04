@@ -91,11 +91,14 @@ abstract class Action(
     final fun isFirstStep(stepName: String): Boolean = getSteps().first().name == stepName
 
     /*
-     * Gets if the managedIndexMetaData reflects a state in which this action has completed successfully
+     * Gets if the managedIndexMetaData reflects a state in which this action has completed successfully. Used in the
+     * runner when determining if the index metadata should be deleted. If the action isFinishedSuccessfully and
+     * deleteIndexMetadataAfterFinish is set to true, then we issue a request to delete the managedIndexConfig and its
+     * managedIndexMetadata.
      */
     final fun isFinishedSuccessfully(managedIndexMetaData: ManagedIndexMetaData): Boolean {
         val policyRetryInfo = managedIndexMetaData.policyRetryInfo
-        if (policyRetryInfo == null || policyRetryInfo.failed) return false
+        if (policyRetryInfo?.failed == true) return false
         val actionMetaData = managedIndexMetaData.actionMetaData
         if (actionMetaData == null || actionMetaData.failed || actionMetaData.name != this.type) return false
         val stepMetaData = managedIndexMetaData.stepMetaData
@@ -105,7 +108,8 @@ abstract class Action(
 
     /*
      * Denotes if the index metadata in the config index should be deleted for the index this action has just
-     * successfully finished running on.
+     * successfully finished running on. This may be used by custom actions which delete some off-cluster index,
+     * and following the action's success, the managed index config and metadata need to be deleted.
      */
     open fun deleteIndexMetadataAfterFinish(): Boolean = false
 

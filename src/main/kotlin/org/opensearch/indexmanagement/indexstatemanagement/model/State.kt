@@ -32,10 +32,10 @@ data class State(
     init {
         require(name.isNotBlank()) { "State must contain a valid name" }
         var hasDelete = false
-        actions.forEach { actionConfig ->
+        actions.forEach { action ->
             // dont allow actions after delete as they will never happen
             require(!hasDelete) { "State=$name must not contain an action after a delete action" }
-            hasDelete = actionConfig.type == DeleteAction.name
+            hasDelete = action.type == DeleteAction.name || action.deleteIndexMetadataAfterFinish()
         }
 
         // dont allow transitions if state contains delete
