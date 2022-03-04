@@ -18,6 +18,8 @@ import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
 import org.opensearch.indexmanagement.indexstatemanagement.model.State
 import org.opensearch.indexmanagement.indexstatemanagement.model.action.ReplicaCountActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings
+import org.opensearch.indexmanagement.indexstatemanagement.transport.action.explain.TransportExplainAction.Companion.METADATA_CORRUPT_WARNING
+import org.opensearch.indexmanagement.indexstatemanagement.transport.action.explain.TransportExplainAction.Companion.METADATA_MOVING_WARNING
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.updateindexmetadata.UpdateManagedIndexMetaDataAction
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.updateindexmetadata.UpdateManagedIndexMetaDataRequest
 import org.opensearch.indexmanagement.waitFor
@@ -89,7 +91,7 @@ class MetadataRegressionIT : IndexStateManagementIntegTestCase() {
 
         waitFor {
             assertEquals(
-                "Metadata is pending migration",
+                METADATA_MOVING_WARNING,
                 getExplainManagedIndexMetaData(indexName).info?.get("message")
             )
         }
@@ -174,7 +176,7 @@ class MetadataRegressionIT : IndexStateManagementIntegTestCase() {
 
         waitFor {
             assertEquals(
-                "Metadata is pending migration",
+                METADATA_MOVING_WARNING,
                 getExplainManagedIndexMetaData(indexName).info?.get("message")
             )
         }
@@ -198,6 +200,57 @@ class MetadataRegressionIT : IndexStateManagementIntegTestCase() {
                 getNumberOfReplicasSetting(indexName)
             )
         }
+    }
+
+    fun `test clean corrupt metadata`() {
+        val indexName = "${testIndexName}_index_3"
+        val policyID = "${testIndexName}_testPolicyName_3"
+        val actionConfig = ReplicaCountActionConfig(10, 0)
+        val states = listOf(State(name = "ReplicaCountState", actions = listOf(actionConfig), transitions = listOf()))
+        val policy = Policy(
+            id = policyID,
+            description = "$testIndexName description",
+            schemaVersion = 1L,
+            lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
+            errorNotification = randomErrorNotification(),
+            defaultState = states[0].name,
+            states = states
+        )
+
+        createPolicy(policy, policyID)
+        createIndex(indexName)
+
+        // create a job
+        addPolicyToIndex(indexName, policyID)
+
+        // put some metadata into cluster state
+        val indexMetadata = getIndexMetadata(indexName)
+        metadataToClusterState = metadataToClusterState.copy(
+            index = indexName,
+            indexUuid = "randomindexuuid",
+            policyID = policyID
+        )
+        val request = UpdateManagedIndexMetaDataRequest(
+            indicesToAddManagedIndexMetaDataTo = listOf(
+                Pair(Index(indexName, indexMetadata.indexUUID), metadataToClusterState)
+            )
+        )
+        client().execute(UpdateManagedIndexMetaDataAction.INSTANCE, request).get()
+        logger.info("check if metadata is saved in cluster state: ${getIndexMetadata(indexName).getCustomData("managed_index_metadata")}")
+
+        waitFor {
+            assertEquals(
+                METADATA_CORRUPT_WARNING,
+                getExplainManagedIndexMetaData(indexName).info?.get("message")
+            )
+        }
+
+        waitFor(Instant.ofEpochSecond(120)) {
+            assertEquals(null, getExplainManagedIndexMetaData(indexName).info?.get("message"))
+            assertEquals(null, getIndexMetadata(indexName).getCustomData("managed_index_metadata"))
+        }
+
+        logger.info("corrupt metadata has been cleaned")
     }
 
     fun `test new node skip execution when old node exist in cluster`() {

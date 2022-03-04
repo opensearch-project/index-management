@@ -33,7 +33,7 @@ class SetReadWriteStepTests : OpenSearchTestCase() {
 
         runBlocking {
             val readWriteActionConfig = ReadWriteActionConfig(0)
-            val managedIndexMetaData = ManagedIndexMetaData("test", "indexUuid", "policy_id", null, null, null, null, null, null, null, null, null, null)
+            val managedIndexMetaData = ManagedIndexMetaData("test", "indexUuid", "policy_id", null, null, null, null, null, null, null, null, null, null, null)
             val setReadWriteStep = SetReadWriteStep(clusterService, client, readWriteActionConfig, managedIndexMetaData)
             setReadWriteStep.execute()
             val updatedManagedIndexMetaData = setReadWriteStep.getUpdatedManagedIndexMetaData(managedIndexMetaData)
@@ -47,7 +47,7 @@ class SetReadWriteStepTests : OpenSearchTestCase() {
 
         runBlocking {
             val readWriteActionConfig = ReadWriteActionConfig(0)
-            val managedIndexMetaData = ManagedIndexMetaData("test", "indexUuid", "policy_id", null, null, null, null, null, null, null, null, null, null)
+            val managedIndexMetaData = ManagedIndexMetaData("test", "indexUuid", "policy_id", null, null, null, null, null, null, null, null, null, null, null)
             val setReadWriteStep = SetReadWriteStep(clusterService, client, readWriteActionConfig, managedIndexMetaData)
             setReadWriteStep.execute()
             val updatedManagedIndexMetaData = setReadWriteStep.getUpdatedManagedIndexMetaData(managedIndexMetaData)
@@ -61,7 +61,7 @@ class SetReadWriteStepTests : OpenSearchTestCase() {
 
         runBlocking {
             val readWriteActionConfig = ReadWriteActionConfig(0)
-            val managedIndexMetaData = ManagedIndexMetaData("test", "indexUuid", "policy_id", null, null, null, null, null, null, null, null, null, null)
+            val managedIndexMetaData = ManagedIndexMetaData("test", "indexUuid", "policy_id", null, null, null, null, null, null, null, null, null, null, null)
             val setReadWriteStep = SetReadWriteStep(clusterService, client, readWriteActionConfig, managedIndexMetaData)
             setReadWriteStep.execute()
             val updatedManagedIndexMetaData = setReadWriteStep.getUpdatedManagedIndexMetaData(managedIndexMetaData)

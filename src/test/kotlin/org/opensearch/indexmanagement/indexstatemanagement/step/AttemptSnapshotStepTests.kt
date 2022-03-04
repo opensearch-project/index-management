@@ -40,7 +40,7 @@ class AttemptSnapshotStepTests : OpenSearchTestCase() {
     private val clusterService: ClusterService = mock()
     private val scriptService: ScriptService = mock()
     private val config = randomSnapshotActionConfig("repo", "snapshot-name")
-    private val metadata = ManagedIndexMetaData("test", "indexUuid", "policy_id", null, null, null, null, null, null, ActionMetaData(AttemptSnapshotStep.name, 1, 0, false, 0, null, ActionProperties(snapshotName = "snapshot-name")), null, null, null)
+    private val metadata = ManagedIndexMetaData("test", "indexUuid", "policy_id", null, null, null, null, null, null, null, ActionMetaData(AttemptSnapshotStep.name, 1, 0, false, 0, null, ActionProperties(snapshotName = "snapshot-name")), null, null, null)
 
     @Before
     fun settings() {

@@ -42,7 +42,8 @@ import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
 import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.getManagedIndexMetadata
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.managedIndex.ManagedIndexAction
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.managedIndex.ManagedIndexRequest
-import org.opensearch.indexmanagement.indexstatemanagement.util.isMetadataMoved
+import org.opensearch.indexmanagement.indexstatemanagement.util.MetadataCheck
+import org.opensearch.indexmanagement.indexstatemanagement.util.checkMetadata
 import org.opensearch.indexmanagement.indexstatemanagement.util.managedIndexMetadataID
 import org.opensearch.indexmanagement.opensearchapi.parseWithType
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.buildUser
@@ -275,25 +276,32 @@ class TransportExplainAction @Inject constructor(
             threadContext: ThreadContext.StoredContext
         ) {
 
-            // cluster state response will not resisting the sort order
+            // cluster state response will not resist the sort order
             // so use the order from previous search result saved in indexNames
             for (indexName in indexNames) {
-                var managedIndexMetadataMap = managedIndicesMetaDataMap[indexName]
-                indexPolicyIDs.add(managedIndexMetadataMap?.get("policy_id")) // use policyID from metadata
+                var metadataMapFromManagedIndex = managedIndicesMetaDataMap[indexName]
+                indexPolicyIDs.add(metadataMapFromManagedIndex?.get("policy_id")) // use policyID from metadata
 
                 val clusterStateMetadata = clusterStateIndexMetadatas[indexName]?.getManagedIndexMetadata()
                 var managedIndexMetadata: ManagedIndexMetaData? = null
-                val configIndexMetadataMap = metadataMap[indices[indexName]?.let { managedIndexMetadataID(it) }]
-                if (managedIndexMetadataMap != null) {
+                val managedIndexMetadataDocUUID = indices[indexName]?.let { managedIndexMetadataID(it) }
+                val configIndexMetadataMap = metadataMap[managedIndexMetadataDocUUID]
+                if (metadataMapFromManagedIndex != null) {
                     if (configIndexMetadataMap != null) { // if has metadata saved, use that
-                        managedIndexMetadataMap = configIndexMetadataMap
+                        metadataMapFromManagedIndex = configIndexMetadataMap
                     }
-                    if (managedIndexMetadataMap.isNotEmpty()) {
-                        managedIndexMetadata = ManagedIndexMetaData.fromMap(managedIndexMetadataMap)
+                    if (metadataMapFromManagedIndex.isNotEmpty()) {
+                        managedIndexMetadata = ManagedIndexMetaData.fromMap(metadataMapFromManagedIndex)
                     }
 
-                    if (!isMetadataMoved(clusterStateMetadata, configIndexMetadataMap, log)) {
-                        val info = mapOf("message" to "Metadata is pending migration")
+                    val currentIndexUuid = indices[indexName]
+                    val metadataCheck = checkMetadata(clusterStateMetadata, configIndexMetadataMap, currentIndexUuid, log)
+                    if (metadataCheck == MetadataCheck.PENDING) {
+                        val info = mapOf("message" to METADATA_MOVING_WARNING)
+                        managedIndexMetadata = clusterStateMetadata?.copy(info = info)
+                    }
+                    if (metadataCheck == MetadataCheck.CORRUPT) {
+                        val info = mapOf("message" to METADATA_CORRUPT_WARNING)
                         managedIndexMetadata = clusterStateMetadata?.copy(info = info)
                     }
                 }
@@ -391,20 +399,24 @@ class TransportExplainAction @Inject constructor(
             actionListener.onResponse(ExplainResponse(indices, policyIDs, metadata, totalIndices, enabledStatus, policies))
         }
 
+        @Suppress("ReturnCount")
         private fun getMetadata(response: GetResponse?): ManagedIndexMetaData? {
             if (response == null || response.sourceAsBytesRef == null)
                 return null
 
-            val xcp = XContentHelper.createParser(
-                xContentRegistry,
-                LoggingDeprecationHandler.INSTANCE,
-                response.sourceAsBytesRef,
-                XContentType.JSON
-            )
-            return ManagedIndexMetaData.parseWithType(
-                xcp,
-                response.id, response.seqNo, response.primaryTerm
-            )
+            try {
+                val xcp = XContentHelper.createParser(
+                    xContentRegistry,
+                    LoggingDeprecationHandler.INSTANCE,
+                    response.sourceAsBytesRef,
+                    XContentType.JSON
+                )
+                return ManagedIndexMetaData.parseWithType(xcp, response.id, response.seqNo, response.primaryTerm)
+            } catch (e: Exception) {
+                log.error("Failed to parse the ManagedIndexMetadata for ${response.id}", e)
+            }
+
+            return null
         }
 
         private fun parseSearchHits(hits: Array<SearchHit>): List<ManagedIndexConfig> {
@@ -417,5 +429,9 @@ class TransportExplainAction @Inject constructor(
                 ).parseWithType(parse = ManagedIndexConfig.Companion::parse)
             }
         }
+    }
+    companion object {
+        const val METADATA_MOVING_WARNING = "Managed index's metadata is pending migration."
+        const val METADATA_CORRUPT_WARNING = "Managed index's metadata is corrupt, please use remove policy API to clean it."
     }
 }
