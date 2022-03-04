@@ -24,7 +24,7 @@ class WaitForRollupCompletionStepTests : OpenSearchTestCase() {
     private val rollupId: String = "dummy-id"
     private val indexName: String = "test"
     private val metadata = ManagedIndexMetaData(
-        indexName, "indexUuid", "policy_id", null, null, null, null, null, null,
+        indexName, "indexUuid", "policy_id", null, null, null, null, null, null, null,
         ActionMetaData
         (WaitForRollupCompletionStep.name, 1, 0, false, 0, null, ActionProperties(rollupId = rollupId)),
         null, null, null

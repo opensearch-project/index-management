@@ -71,6 +71,7 @@ abstract class IndexStateManagementIntegTestCase : OpenSearchIntegTestCase() {
         policyPrimaryTerm = 1,
         policyCompleted = false,
         rolledOver = false,
+        indexCreationDate = null,
         transitionTo = null,
         stateMetaData = StateMetaData("ReplicaCountState", 1234),
         actionMetaData = null,

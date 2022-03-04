@@ -145,6 +145,7 @@ class ActionRetryIT : IndexStateManagementRestTestCase() {
                         ManagedIndexMetaData.POLICY_SEQ_NO to policySeq::equals,
                         ManagedIndexMetaData.POLICY_PRIMARY_TERM to policyPrimaryTerm::equals,
                         ManagedIndexMetaData.ROLLED_OVER to false::equals,
+                        ManagedIndexMetaData.INDEX_CREATION_DATE to fun(indexCreationDate: Any?): Boolean = (indexCreationDate as Long) > 1L,
                         StateMetaData.STATE to fun(stateMetaDataMap: Any?): Boolean =
                             assertStateEquals(StateMetaData("Ingest", Instant.now().toEpochMilli()), stateMetaDataMap),
                         ActionMetaData.ACTION to fun(actionMetaDataMap: Any?): Boolean =

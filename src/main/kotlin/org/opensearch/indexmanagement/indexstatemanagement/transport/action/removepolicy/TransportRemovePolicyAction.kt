@@ -41,6 +41,8 @@ import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndex
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.ISMStatusResponse
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.managedIndex.ManagedIndexAction
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.managedIndex.ManagedIndexRequest
+import org.opensearch.indexmanagement.indexstatemanagement.transport.action.updateindexmetadata.UpdateManagedIndexMetaDataAction
+import org.opensearch.indexmanagement.indexstatemanagement.transport.action.updateindexmetadata.UpdateManagedIndexMetaDataRequest
 import org.opensearch.indexmanagement.indexstatemanagement.util.FailedIndex
 import org.opensearch.indexmanagement.indexstatemanagement.util.deleteManagedIndexMetadataRequest
 import org.opensearch.indexmanagement.indexstatemanagement.util.deleteManagedIndexRequest
@@ -320,6 +322,8 @@ class TransportRemovePolicyAction @Inject constructor(
 
                             // clean metadata for indicesToRemove
                             val indicesToRemoveMetadata = indicesToRemove.map { Index(it.value, it.key) }
+                            // best effort
+                            removeClusterStateMetadatas(indicesToRemoveMetadata)
                             removeMetadatas(indicesToRemoveMetadata)
                         }
 
@@ -373,6 +377,24 @@ class TransportRemovePolicyAction @Inject constructor(
                                 Exception("Failed to clean metadata for remove policy indices.", e)
                             )
                         )
+                    }
+                }
+            )
+        }
+
+        fun removeClusterStateMetadatas(indices: List<Index>) {
+            val request = UpdateManagedIndexMetaDataRequest(indicesToRemoveManagedIndexMetaDataFrom = indices)
+
+            client.execute(
+                UpdateManagedIndexMetaDataAction.INSTANCE,
+                request,
+                object : ActionListener<AcknowledgedResponse> {
+                    override fun onResponse(response: AcknowledgedResponse) {
+                        log.debug("Cleaned cluster state metadata for $indices, ${response.isAcknowledged}")
+                    }
+
+                    override fun onFailure(e: Exception) {
+                        log.error("Failed to clean cluster state metadata for $indices")
                     }
                 }
             )
