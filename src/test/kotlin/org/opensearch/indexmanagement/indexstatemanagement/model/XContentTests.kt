@@ -213,6 +213,7 @@ class XContentTests : OpenSearchTestCase() {
             policyPrimaryTerm = randomNonNegativeLong(),
             policyCompleted = null,
             rolledOver = null,
+            indexCreationDate = null,
             transitionTo = randomAlphaOfLength(10),
             stateMetaData = null,
             actionMetaData = null,

@@ -51,8 +51,8 @@ class MetadataService(
 
     @Volatile private var runningLock = false // in case 2 moveMetadata() process running
 
-    private val successfullyIndexedIndices = mutableSetOf<metadataDocID>()
-    private var failedToIndexIndices = mutableMapOf<metadataDocID, BulkItemResponse.Failure>()
+    private val successfullyIndexedIndices = mutableSetOf<MetadataDocID>()
+    private var failedToIndexIndices = mutableMapOf<MetadataDocID, BulkItemResponse.Failure>()
     private var failedToCleanIndices = mutableSetOf<Index>()
 
     private var counter = 0
@@ -98,7 +98,23 @@ class MetadataService(
             // filter out previous failedToClean indices which already been indexed
             clusterStateManagedIndexMetadata =
                 clusterStateManagedIndexMetadata.filter { it.key !in failedToCleanIndices.map { index -> index.name } }
-            val indexUuidMap = clusterStateManagedIndexMetadata.map { indicesMetadata[it.key].indexUUID to it.key }.toMap()
+
+            // filter out cluster state metadata with outdated index uuid
+            val corruptManagedIndices = mutableListOf<Index>()
+            val indexUuidMap = mutableMapOf<IndexUuid, IndexName>()
+            clusterStateManagedIndexMetadata.forEach { (indexName, metadata) ->
+                val indexMetadata = indicesMetadata[indexName]
+                val currentIndexUuid = indexMetadata.indexUUID
+                if (currentIndexUuid != metadata?.indexUuid) {
+                    corruptManagedIndices.add(indexMetadata.index)
+                } else {
+                    indexUuidMap[currentIndexUuid] = indexName
+                }
+            }
+            logger.info("Corrupt managed indices with outdated index uuid in metadata: $corruptManagedIndices")
+            clusterStateManagedIndexMetadata = clusterStateManagedIndexMetadata.filter { (indexName, _) ->
+                indexName !in corruptManagedIndices.map { it.name }
+            }
 
             if (clusterStateManagedIndexMetadata.isEmpty()) {
                 if (failedToCleanIndices.isNotEmpty()) {
@@ -107,7 +123,7 @@ class MetadataService(
                     finishFlag = false; runningLock = false
                     return
                 }
-                if (counter++ > 2) {
+                if (counter++ > 2 && corruptManagedIndices.isEmpty()) {
                     logger.info("Move Metadata succeed, set finish flag to true. Indices failed to get indexed: $failedToIndexIndices")
                     updateStatusSetting(1)
                     finishFlag = true; runningLock = false
@@ -138,7 +154,7 @@ class MetadataService(
             // clean metadata for indices which metadata already been indexed
             val indicesToCleanMetadata =
                 indexUuidMap.filter { it.key in successfullyIndexedIndices }.map { Index(it.value, it.key) }
-                    .toList() + failedToCleanIndices
+                    .toList() + failedToCleanIndices + corruptManagedIndices
 
             cleanMetadatas(indicesToCleanMetadata)
             logger.info("Failed to clean cluster metadata for: ${failedToCleanIndices.map { it.name }}")
@@ -237,4 +253,6 @@ class MetadataService(
     }
 }
 
-typealias metadataDocID = String
+typealias MetadataDocID = String
+typealias IndexUuid = String
+typealias IndexName = String

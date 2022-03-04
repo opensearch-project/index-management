@@ -49,6 +49,7 @@ import org.opensearch.common.unit.TimeValue
 import org.opensearch.common.xcontent.NamedXContentRegistry
 import org.opensearch.commons.ConfigConstants
 import org.opensearch.commons.authuser.User
+import org.opensearch.index.Index
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
 import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
 import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.getUuidsForClosedIndices
@@ -56,6 +57,8 @@ import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndex
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.ISMStatusResponse
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.managedIndex.ManagedIndexAction
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.managedIndex.ManagedIndexRequest
+import org.opensearch.indexmanagement.indexstatemanagement.transport.action.updateindexmetadata.UpdateManagedIndexMetaDataAction
+import org.opensearch.indexmanagement.indexstatemanagement.transport.action.updateindexmetadata.UpdateManagedIndexMetaDataRequest
 import org.opensearch.indexmanagement.indexstatemanagement.util.FailedIndex
 import org.opensearch.indexmanagement.indexstatemanagement.util.IndexEvaluator
 import org.opensearch.indexmanagement.indexstatemanagement.util.IndexEvaluator.Companion.EVALUATION_FAILURE_MESSAGE
@@ -110,6 +113,7 @@ class TransportAddPolicyAction @Inject constructor(
         AddPolicyHandler(client, listener, request).start()
     }
 
+    @Suppress("TooManyFunctions")
     inner class AddPolicyHandler(
         private val client: NodeClient,
         private val actionListener: ActionListener<ISMStatusResponse>,
@@ -270,6 +274,7 @@ class TransportAddPolicyAction @Inject constructor(
                                 indicesToAdd.putIfAbsent(it.value.indexUUID, it.key)
                             }
 
+                            removeClusterStateMetadatas(indicesToAdd.map { Index(it.value, it.key) })
                             populateLists(response.state)
                         }
 
@@ -389,6 +394,24 @@ class TransportAddPolicyAction @Inject constructor(
 
         private fun onFailure(t: Exception) {
             actionListener.onFailure(ExceptionsHelper.unwrapCause(t) as Exception)
+        }
+
+        fun removeClusterStateMetadatas(indices: List<Index>) {
+            val request = UpdateManagedIndexMetaDataRequest(indicesToRemoveManagedIndexMetaDataFrom = indices)
+
+            client.execute(
+                UpdateManagedIndexMetaDataAction.INSTANCE,
+                request,
+                object : ActionListener<AcknowledgedResponse> {
+                    override fun onResponse(response: AcknowledgedResponse) {
+                        log.debug("Cleaned cluster state metadata for $indices, ${response.isAcknowledged}")
+                    }
+
+                    override fun onFailure(e: Exception) {
+                        log.error("Failed to clean cluster state metadata for $indices")
+                    }
+                }
+            )
         }
     }
 

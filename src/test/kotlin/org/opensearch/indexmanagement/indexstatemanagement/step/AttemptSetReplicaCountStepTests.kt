@@ -33,7 +33,7 @@ class AttemptSetReplicaCountStepTests : OpenSearchTestCase() {
 
         runBlocking {
             val replicaCountActionConfig = ReplicaCountActionConfig(2, 0)
-            val managedIndexMetaData = ManagedIndexMetaData("test", "indexUuid", "policy_id", null, null, null, null, null, null, null, null, null, null)
+            val managedIndexMetaData = ManagedIndexMetaData("test", "indexUuid", "policy_id", null, null, null, null, null, null, null, null, null, null, null)
             val replicaCountStep = AttemptSetReplicaCountStep(clusterService, client, replicaCountActionConfig, managedIndexMetaData)
             replicaCountStep.execute()
             val updatedManagedIndexMetaData = replicaCountStep.getUpdatedManagedIndexMetaData(managedIndexMetaData)
@@ -47,7 +47,7 @@ class AttemptSetReplicaCountStepTests : OpenSearchTestCase() {
 
         runBlocking {
             val replicaCountActionConfig = ReplicaCountActionConfig(2, 0)
-            val managedIndexMetaData = ManagedIndexMetaData("test", "indexUuid", "policy_id", null, null, null, null, null, null, null, null, null, null)
+            val managedIndexMetaData = ManagedIndexMetaData("test", "indexUuid", "policy_id", null, null, null, null, null, null, null, null, null, null, null)
             val replicaCountStep = AttemptSetReplicaCountStep(clusterService, client, replicaCountActionConfig, managedIndexMetaData)
             replicaCountStep.execute()
             val updatedManagedIndexMetaData = replicaCountStep.getUpdatedManagedIndexMetaData(managedIndexMetaData)
@@ -61,7 +61,7 @@ class AttemptSetReplicaCountStepTests : OpenSearchTestCase() {
 
         runBlocking {
             val replicaCountActionConfig = ReplicaCountActionConfig(2, 0)
-            val managedIndexMetaData = ManagedIndexMetaData("test", "indexUuid", "policy_id", null, null, null, null, null, null, null, null, null, null)
+            val managedIndexMetaData = ManagedIndexMetaData("test", "indexUuid", "policy_id", null, null, null, null, null, null, null, null, null, null, null)
             val replicaCountStep = AttemptSetReplicaCountStep(clusterService, client, replicaCountActionConfig, managedIndexMetaData)
             replicaCountStep.execute()
             val updatedManagedIndexMetaData = replicaCountStep.getUpdatedManagedIndexMetaData(managedIndexMetaData)
