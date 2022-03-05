@@ -245,10 +245,15 @@ object ManagedIndexRunner :
             return
         }
 
-        var indexMetadata = getIndexMetadata(managedIndexConfig.index)
-        // The index uuids not matching can happen when two jobs share a name but have different index types
-        if (indexMetadata == null || indexMetadata.indexUUID != managedIndexConfig.indexUuid) {
-            indexMetadata = null
+        // Check the cluster state for the index metadata
+        var clusterStateIndexMetadata = getIndexMetadata(managedIndexConfig.index)
+        val defaultIndexMetadataService = indexMetadataProvider.services[DEFAULT_INDEX_TYPE] as DefaultIndexMetadataService
+        val clusterStateIndexUUID = clusterStateIndexMetadata?.let { defaultIndexMetadataService.getCustomIndexUUID(it) }
+        // If the index metadata is null, the index is not in the cluster state. If the index metadata is not null, but
+        // the cluster state index uuid differs from the one in the managed index config then the config is referring
+        // to a different index which does not exist in the cluster. We need to check all of the extensions to confirm an index exists
+        if (clusterStateIndexMetadata == null || clusterStateIndexUUID != managedIndexConfig.indexUuid) {
+            clusterStateIndexMetadata = null
             // If the cluster state/default index type didn't have an index with a matching name and uuid combination, try all other index types
             val nonDefaultIndexTypes = indexMetadataProvider.services.keys.filter { it != DEFAULT_INDEX_TYPE }
             val multiTypeIndexNameToMetaData =
@@ -262,7 +267,7 @@ object ManagedIndexRunner :
                 return
             }
         } else {
-            val clusterStateMetadata = indexMetadata.getManagedIndexMetadata()
+            val clusterStateMetadata = clusterStateIndexMetadata.getManagedIndexMetadata()
             val metadataCheck = checkMetadata(clusterStateMetadata, managedIndexMetaData, managedIndexConfig.indexUuid, logger)
             if (metadataCheck != MetadataCheck.SUCCESS) {
                 logger.info("Skipping execution while metadata status is $metadataCheck")
