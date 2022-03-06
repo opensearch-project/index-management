@@ -522,56 +522,6 @@ enum class MetadataCheck {
     PENDING, CORRUPT, SUCCESS
 }
 
-/**
- * Check if cluster state metadata has been moved to config index
- *
- * log warning if remaining cluster state metadata has newer last_updated_time
- */
-@Suppress("ReturnCount", "ComplexCondition", "ComplexMethod")
-fun checkMetadata(
-    clusterStateMetadata: ManagedIndexMetaData?,
-    configIndexMetadata: Any?,
-    currentIndexUuid: String?,
-    logger: Logger
-): MetadataCheck {
-    // indexUuid saved in ISM metadata may be outdated
-    // if an index restored from snapshot
-    val indexUuid1 = clusterStateMetadata?.indexUuid
-    val indexUuid2 = when (configIndexMetadata) {
-        is ManagedIndexMetaData -> configIndexMetadata.indexUuid
-        is Map<*, *> -> configIndexMetadata["index_uuid"]
-        else -> null
-    } as String?
-    if ((indexUuid1 != null && indexUuid1 != currentIndexUuid) ||
-        (indexUuid2 != null && indexUuid2 != currentIndexUuid)
-    ) {
-        return MetadataCheck.CORRUPT
-    }
-
-    if (clusterStateMetadata != null) {
-        if (configIndexMetadata == null) return MetadataCheck.PENDING
-
-        // compare last updated time between 2 metadatas
-        val t1 = clusterStateMetadata.stepMetaData?.startTime
-        val t2 = when (configIndexMetadata) {
-            is ManagedIndexMetaData -> configIndexMetadata.stepMetaData?.startTime
-            is Map<*, *> -> {
-                val stepMetadata = configIndexMetadata["step"] as Map<String, Any>?
-                stepMetadata?.get("start_time")
-            }
-            else -> null
-        } as Long?
-        if (t1 != null && t2 != null && t1 > t2) {
-            logger.warn("Cluster state metadata get updates after moved for [${clusterStateMetadata.index}]")
-        }
-    }
-    return MetadataCheck.SUCCESS
-}
-
-enum class MetadataCheck {
-    PENDING, CORRUPT, SUCCESS
-}
-
 private val baseMessageLogger = LogManager.getLogger(BaseMessage::class.java)
 
 fun BaseMessage.isHostInDenylist(networks: List<String>): Boolean {
