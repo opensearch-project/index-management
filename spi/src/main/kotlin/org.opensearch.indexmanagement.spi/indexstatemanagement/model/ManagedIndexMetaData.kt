@@ -31,6 +31,7 @@ data class ManagedIndexMetaData(
     val policyPrimaryTerm: Long?,
     val policyCompleted: Boolean?,
     val rolledOver: Boolean?,
+    val indexCreationDate: Long?,
     val transitionTo: String?,
     val stateMetaData: StateMetaData?,
     val actionMetaData: ActionMetaData?,
@@ -58,6 +59,7 @@ data class ManagedIndexMetaData(
         if (policyPrimaryTerm != null) resultMap[POLICY_PRIMARY_TERM] = policyPrimaryTerm.toString()
         if (policyCompleted != null) resultMap[POLICY_COMPLETED] = policyCompleted.toString()
         if (rolledOver != null) resultMap[ROLLED_OVER] = rolledOver.toString()
+        if (indexCreationDate != null) resultMap[INDEX_CREATION_DATE] = indexCreationDate.toString()
         if (transitionTo != null) resultMap[TRANSITION_TO] = transitionTo
         if (stateMetaData != null) resultMap[StateMetaData.STATE] = stateMetaData.getMapValueString()
         if (actionMetaData != null) resultMap[ActionMetaData.ACTION] = actionMetaData.getMapValueString()
@@ -82,6 +84,7 @@ data class ManagedIndexMetaData(
             .field(POLICY_PRIMARY_TERM, policyPrimaryTerm)
             .field(POLICY_COMPLETED, policyCompleted)
             .field(ROLLED_OVER, rolledOver)
+            .field(INDEX_CREATION_DATE, indexCreationDate)
             .field(TRANSITION_TO, transitionTo)
             .addObject(StateMetaData.STATE, stateMetaData, params, true)
             .addObject(ActionMetaData.ACTION, actionMetaData, params, true)
@@ -117,6 +120,8 @@ data class ManagedIndexMetaData(
             builder.field(ROLLED_OVER, rolledOver)
         }
 
+        if (indexCreationDate != null) builder.field(INDEX_CREATION_DATE, indexCreationDate)
+
         if (policyCompleted == true) {
             builder.field(POLICY_COMPLETED, policyCompleted)
             return builder
@@ -145,6 +150,7 @@ data class ManagedIndexMetaData(
         streamOutput.writeOptionalLong(policyPrimaryTerm)
         streamOutput.writeOptionalBoolean(policyCompleted)
         streamOutput.writeOptionalBoolean(rolledOver)
+        streamOutput.writeOptionalLong(indexCreationDate)
         streamOutput.writeOptionalString(transitionTo)
 
         streamOutput.writeOptionalWriteable(stateMetaData)
@@ -174,6 +180,7 @@ data class ManagedIndexMetaData(
         const val POLICY_PRIMARY_TERM = "policy_primary_term"
         const val POLICY_COMPLETED = "policy_completed"
         const val ROLLED_OVER = "rolled_over"
+        const val INDEX_CREATION_DATE = "index_creation_date"
         const val TRANSITION_TO = "transition_to"
         const val INFO = "info"
         const val ENABLED = "enabled"
@@ -186,6 +193,7 @@ data class ManagedIndexMetaData(
             val policyPrimaryTerm: Long? = si.readOptionalLong()
             val policyCompleted: Boolean? = si.readOptionalBoolean()
             val rolledOver: Boolean? = si.readOptionalBoolean()
+            val indexCreationDate: Long? = si.readOptionalLong()
             val transitionTo: String? = si.readOptionalString()
 
             val state: StateMetaData? = si.readOptionalWriteable { StateMetaData.fromStreamInput(it) }
@@ -207,6 +215,7 @@ data class ManagedIndexMetaData(
                 policyPrimaryTerm = policyPrimaryTerm,
                 policyCompleted = policyCompleted,
                 rolledOver = rolledOver,
+                indexCreationDate = indexCreationDate,
                 transitionTo = transitionTo,
                 stateMetaData = state,
                 actionMetaData = action,
@@ -233,6 +242,7 @@ data class ManagedIndexMetaData(
             var policyPrimaryTerm: Long? = null
             var policyCompleted: Boolean? = null
             var rolledOver: Boolean? = null
+            var indexCreationDate: Long? = null
             var transitionTo: String? = null
 
             var state: StateMetaData? = null
@@ -255,6 +265,7 @@ data class ManagedIndexMetaData(
                     POLICY_PRIMARY_TERM -> policyPrimaryTerm = if (xcp.currentToken() == XContentParser.Token.VALUE_NULL) null else xcp.longValue()
                     POLICY_COMPLETED -> policyCompleted = if (xcp.currentToken() == XContentParser.Token.VALUE_NULL) null else xcp.booleanValue()
                     ROLLED_OVER -> rolledOver = if (xcp.currentToken() == XContentParser.Token.VALUE_NULL) null else xcp.booleanValue()
+                    INDEX_CREATION_DATE -> indexCreationDate = if (xcp.currentToken() == XContentParser.Token.VALUE_NULL) null else xcp.longValue()
                     TRANSITION_TO -> transitionTo = if (xcp.currentToken() == XContentParser.Token.VALUE_NULL) null else xcp.text()
                     StateMetaData.STATE -> {
                         state = if (xcp.currentToken() == XContentParser.Token.VALUE_NULL) null else StateMetaData.parse(xcp)
@@ -282,6 +293,7 @@ data class ManagedIndexMetaData(
                 policyPrimaryTerm,
                 policyCompleted,
                 rolledOver,
+                indexCreationDate,
                 transitionTo,
                 state,
                 action,
@@ -320,6 +332,7 @@ data class ManagedIndexMetaData(
                 policyPrimaryTerm = map[POLICY_PRIMARY_TERM]?.toLong(),
                 policyCompleted = map[POLICY_COMPLETED]?.toBoolean(),
                 rolledOver = map[ROLLED_OVER]?.toBoolean(),
+                indexCreationDate = map[INDEX_CREATION_DATE]?.toLong(),
                 transitionTo = map[TRANSITION_TO],
                 stateMetaData = StateMetaData.fromManagedIndexMetaDataMap(map),
                 actionMetaData = ActionMetaData.fromManagedIndexMetaDataMap(map),

@@ -82,18 +82,22 @@ fun getUuidsForClosedIndices(state: ClusterState): MutableList<String> {
 fun <K, V> Map<K, V?>.filterNotNullValues(): Map<K, V> =
     filterValues { it != null } as Map<K, V>
 
-// get metadata from config index using doc id
+/**
+ * Get metadata from config index
+ *
+ * @return metadata object and get call successful or not
+ */
 @Suppress("ReturnCount")
-suspend fun IndexMetadata.getManagedIndexMetadata(client: Client): ManagedIndexMetaData? {
+suspend fun Client.getManagedIndexMetadata(indexUUID: String): Pair<ManagedIndexMetaData?, Boolean> {
     try {
         val getRequest = GetRequest(INDEX_MANAGEMENT_INDEX, managedIndexMetadataID(indexUUID))
-            .routing(this.indexUUID)
-        val getResponse: GetResponse = client.suspendUntil { get(getRequest, it) }
+            .routing(indexUUID)
+        val getResponse: GetResponse = this.suspendUntil { get(getRequest, it) }
         if (!getResponse.isExists || getResponse.isSourceEmpty) {
-            return null
+            return Pair(null, true)
         }
 
-        return withContext(Dispatchers.IO) {
+        val metadata = withContext(Dispatchers.IO) {
             val xcp = XContentHelper.createParser(
                 NamedXContentRegistry.EMPTY,
                 LoggingDeprecationHandler.INSTANCE,
@@ -101,6 +105,7 @@ suspend fun IndexMetadata.getManagedIndexMetadata(client: Client): ManagedIndexM
             )
             ManagedIndexMetaData.parseWithType(xcp, getResponse.id, getResponse.seqNo, getResponse.primaryTerm)
         }
+        return Pair(metadata, true)
     } catch (e: Exception) {
         when (e) {
             is IndexNotFoundException, is NoShardAvailableActionException -> {
@@ -109,7 +114,7 @@ suspend fun IndexMetadata.getManagedIndexMetadata(client: Client): ManagedIndexM
             else -> log.error("Failed to get metadata", e)
         }
 
-        return null
+        return Pair(null, false)
     }
 }
 

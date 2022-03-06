@@ -39,7 +39,7 @@ class AttemptSetReplicaCountStepTests : OpenSearchTestCase() {
 
         runBlocking {
             val replicaCountAction = ReplicaCountAction(2, 0)
-            val managedIndexMetaData = ManagedIndexMetaData("test", "indexUuid", "policy_id", null, null, null, null, null, null, null, null, null, null)
+            val managedIndexMetaData = ManagedIndexMetaData("test", "indexUuid", "policy_id", null, null, null, null, null, null, null, null, null, null, null)
             val replicaCountStep = AttemptReplicaCountStep(replicaCountAction)
             val context = StepContext(managedIndexMetaData, clusterService, client, null, null, scriptService, settings)
             replicaCountStep.preExecute(logger, context).execute()
@@ -54,7 +54,7 @@ class AttemptSetReplicaCountStepTests : OpenSearchTestCase() {
 
         runBlocking {
             val replicaCountAction = ReplicaCountAction(2, 0)
-            val managedIndexMetaData = ManagedIndexMetaData("test", "indexUuid", "policy_id", null, null, null, null, null, null, null, null, null, null)
+            val managedIndexMetaData = ManagedIndexMetaData("test", "indexUuid", "policy_id", null, null, null, null, null, null, null, null, null, null, null)
             val replicaCountStep = AttemptReplicaCountStep(replicaCountAction)
             val context = StepContext(managedIndexMetaData, clusterService, client, null, null, scriptService, settings)
             replicaCountStep.preExecute(logger, context).execute()
@@ -69,7 +69,7 @@ class AttemptSetReplicaCountStepTests : OpenSearchTestCase() {
 
         runBlocking {
             val replicaCountAction = ReplicaCountAction(2, 0)
-            val managedIndexMetaData = ManagedIndexMetaData("test", "indexUuid", "policy_id", null, null, null, null, null, null, null, null, null, null)
+            val managedIndexMetaData = ManagedIndexMetaData("test", "indexUuid", "policy_id", null, null, null, null, null, null, null, null, null, null, null)
             val replicaCountStep = AttemptReplicaCountStep(replicaCountAction)
             val context = StepContext(managedIndexMetaData, clusterService, client, null, null, scriptService, settings)
             replicaCountStep.preExecute(logger, context).execute()

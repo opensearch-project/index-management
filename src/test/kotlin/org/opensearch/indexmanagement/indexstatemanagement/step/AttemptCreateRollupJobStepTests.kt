@@ -19,7 +19,7 @@ class AttemptCreateRollupJobStepTests : OpenSearchTestCase() {
     private val indexName = "test"
     private val rollupId: String = rollupAction.ismRollup.toRollup(indexName).id
     private val metadata = ManagedIndexMetaData(
-        indexName, "indexUuid", "policy_id", null, null, null, null, null, null,
+        indexName, "indexUuid", "policy_id", null, null, null, null, null, null, null,
         ActionMetaData(AttemptCreateRollupJobStep.name, 1, 0, false, 0, null, ActionProperties(rollupId = rollupId)), null, null, null
     )
     private val step = AttemptCreateRollupJobStep(rollupAction)

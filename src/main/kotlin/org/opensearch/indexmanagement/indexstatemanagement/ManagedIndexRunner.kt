@@ -16,6 +16,8 @@ import org.apache.logging.log4j.LogManager
 import org.opensearch.action.admin.cluster.state.ClusterStateRequest
 import org.opensearch.action.admin.cluster.state.ClusterStateResponse
 import org.opensearch.action.bulk.BackoffPolicy
+import org.opensearch.action.bulk.BulkRequest
+import org.opensearch.action.bulk.BulkResponse
 import org.opensearch.action.get.GetRequest
 import org.opensearch.action.get.GetResponse
 import org.opensearch.action.index.IndexResponse
@@ -51,15 +53,18 @@ import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndex
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.DEFAULT_JOB_INTERVAL
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.INDEX_STATE_MANAGEMENT_ENABLED
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.JOB_INTERVAL
+import org.opensearch.indexmanagement.indexstatemanagement.util.DEFAULT_INDEX_TYPE
+import org.opensearch.indexmanagement.indexstatemanagement.util.MetadataCheck
+import org.opensearch.indexmanagement.indexstatemanagement.util.checkMetadata
+import org.opensearch.indexmanagement.indexstatemanagement.util.deleteManagedIndexMetadataRequest
+import org.opensearch.indexmanagement.indexstatemanagement.util.deleteManagedIndexRequest
 import org.opensearch.indexmanagement.indexstatemanagement.util.getCompletedManagedIndexMetaData
 import org.opensearch.indexmanagement.indexstatemanagement.util.getStartingManagedIndexMetaData
-import org.opensearch.indexmanagement.indexstatemanagement.util.getUpdatedActionMetaData
 import org.opensearch.indexmanagement.indexstatemanagement.util.hasDifferentJobInterval
 import org.opensearch.indexmanagement.indexstatemanagement.util.hasTimedOut
 import org.opensearch.indexmanagement.indexstatemanagement.util.hasVersionConflict
 import org.opensearch.indexmanagement.indexstatemanagement.util.isAllowed
 import org.opensearch.indexmanagement.indexstatemanagement.util.isFailed
-import org.opensearch.indexmanagement.indexstatemanagement.util.isMetadataMoved
 import org.opensearch.indexmanagement.indexstatemanagement.util.isSafeToChange
 import org.opensearch.indexmanagement.indexstatemanagement.util.isSuccessfulDelete
 import org.opensearch.indexmanagement.indexstatemanagement.util.managedIndexConfigIndexRequest
@@ -94,7 +99,7 @@ import org.opensearch.threadpool.ThreadPool
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 
-@Suppress("TooManyFunctions")
+@Suppress("TooManyFunctions", "LargeClass")
 object ManagedIndexRunner :
     ScheduledJobRunner,
     CoroutineScope by CoroutineScope(SupervisorJob() + Dispatchers.Default + CoroutineName("ManagedIndexRunner")) {
@@ -111,6 +116,7 @@ object ManagedIndexRunner :
     private lateinit var skipExecFlag: SkipExecution
     private lateinit var threadPool: ThreadPool
     private lateinit var extensionStatusChecker: ExtensionStatusChecker
+    private lateinit var indexMetadataProvider: IndexMetadataProvider
     private var indexStateManagementEnabled: Boolean = DEFAULT_ISM_ENABLED
     @Suppress("MagicNumber")
     private val savePolicyRetryPolicy = BackoffPolicy.exponentialBackoff(TimeValue.timeValueMillis(250), 3)
@@ -188,6 +194,11 @@ object ManagedIndexRunner :
         return this
     }
 
+    fun registerIndexMetadataProvider(indexMetadataProvider: IndexMetadataProvider): ManagedIndexRunner {
+        this.indexMetadataProvider = indexMetadataProvider
+        return this
+    }
+
     fun registerExtensionChecker(extensionStatusChecker: ExtensionStatusChecker): ManagedIndexRunner {
         this.extensionStatusChecker = extensionStatusChecker
         return this
@@ -219,7 +230,7 @@ object ManagedIndexRunner :
         }
     }
 
-    @Suppress("ReturnCount", "ComplexMethod", "LongMethod", "ComplexCondition")
+    @Suppress("ReturnCount", "ComplexMethod", "LongMethod", "ComplexCondition", "NestedBlockDepth")
     private suspend fun runManagedIndexConfig(managedIndexConfig: ManagedIndexConfig) {
         logger.debug("Run job for index ${managedIndexConfig.index}")
         // doing a check of local cluster health as we do not want to overload master node with potentially a lot of calls
@@ -228,18 +239,40 @@ object ManagedIndexRunner :
             return
         }
 
-        // Get current IndexMetaData and ManagedIndexMetaData
-        val indexMetaData = getIndexMetadata(managedIndexConfig.index)
-        if (indexMetaData == null) {
-            logger.warn("Failed to retrieve IndexMetadata.")
+        val (managedIndexMetaData, getMetadataSuccess) = client.getManagedIndexMetadata(managedIndexConfig.indexUuid)
+        if (!getMetadataSuccess) {
+            logger.info("Failed to retrieve managed index metadata of index [${managedIndexConfig.index}] from config index, abort this run.")
             return
         }
-        val managedIndexMetaData = indexMetaData.getManagedIndexMetadata(client)
-        val clusterStateMetadata = indexMetaData.getManagedIndexMetadata()
 
-        if (!isMetadataMoved(clusterStateMetadata, managedIndexMetaData, logger)) {
-            logger.info("Skipping execution while pending migration of metadata for ${managedIndexConfig.jobName}")
-            return
+        // Check the cluster state for the index metadata
+        var clusterStateIndexMetadata = getIndexMetadata(managedIndexConfig.index)
+        val defaultIndexMetadataService = indexMetadataProvider.services[DEFAULT_INDEX_TYPE] as DefaultIndexMetadataService
+        val clusterStateIndexUUID = clusterStateIndexMetadata?.let { defaultIndexMetadataService.getCustomIndexUUID(it) }
+        // If the index metadata is null, the index is not in the cluster state. If the index metadata is not null, but
+        // the cluster state index uuid differs from the one in the managed index config then the config is referring
+        // to a different index which does not exist in the cluster. We need to check all of the extensions to confirm an index exists
+        if (clusterStateIndexMetadata == null || clusterStateIndexUUID != managedIndexConfig.indexUuid) {
+            clusterStateIndexMetadata = null
+            // If the cluster state/default index type didn't have an index with a matching name and uuid combination, try all other index types
+            val nonDefaultIndexTypes = indexMetadataProvider.services.keys.filter { it != DEFAULT_INDEX_TYPE }
+            val multiTypeIndexNameToMetaData =
+                indexMetadataProvider.getMultiTypeISMIndexMetadata(nonDefaultIndexTypes, listOf(managedIndexConfig.index))
+            val someTypeMatchedUuid = multiTypeIndexNameToMetaData.values.any {
+                it[managedIndexConfig.index]?.indexUuid == managedIndexConfig.indexUuid
+            }
+            // If no index types had an index with a matching name and uuid combination, return
+            if (!someTypeMatchedUuid) {
+                logger.warn("Failed to find IndexMetadata for ${managedIndexConfig.index}.")
+                return
+            }
+        } else {
+            val clusterStateMetadata = clusterStateIndexMetadata.getManagedIndexMetadata()
+            val metadataCheck = checkMetadata(clusterStateMetadata, managedIndexMetaData, managedIndexConfig.indexUuid, logger)
+            if (metadataCheck != MetadataCheck.SUCCESS) {
+                logger.info("Skipping execution while metadata status is $metadataCheck")
+                return
+            }
         }
 
         // If policy or managedIndexMetaData is null then initialize
@@ -271,10 +304,13 @@ object ManagedIndexRunner :
         }
 
         val state = policy.getStateToExecute(managedIndexMetaData)
-        val action: Action? = state?.getActionToExecute(managedIndexMetaData.copy(user = policy.user, threadContext = threadPool.threadContext))
+        val action: Action? = state?.getActionToExecute(
+            managedIndexMetaData.copy(user = policy.user, threadContext = threadPool.threadContext),
+            indexMetadataProvider
+        )
         val stepContext = StepContext(managedIndexMetaData, clusterService, client, null, null, scriptService, settings)
         val step: Step? = action?.getStepToExecute(stepContext)
-        val currentActionMetaData = action?.getUpdatedActionMetaData(managedIndexMetaData, state)
+        val currentActionMetaData = action?.getUpdatedActionMetadata(managedIndexMetaData, state.name)
 
         // If Index State Management is disabled and the current step is not null and safe to disable on
         // then disable the job and return early
@@ -383,6 +419,16 @@ object ManagedIndexRunner :
                 return
             }
 
+            // If a custom action deletes some off-cluster index and has deleteIndexMetadataAfterFinish set to true,
+            // then when the action successfully finishes, we will delete the managed index config and metadata. We do not
+            // need to do this for the standard delete action as the coordinator picks up the index deletion and removes the config
+            if (action.isFinishedSuccessfully(executedManagedIndexMetaData)) {
+                if (action.deleteIndexMetadataAfterFinish()) {
+                    deleteFromManagedIndex(managedIndexConfig, action.type)
+                    return
+                }
+            }
+
             if (!updateManagedIndexMetaData(executedManagedIndexMetaData, updateResult).metadataSaved) {
                 logger.error("Failed to update ManagedIndexMetaData after executing the Step : ${step.name}")
             }
@@ -418,7 +464,7 @@ object ManagedIndexRunner :
             getInitializedManagedIndexMetaData(managedIndexMetaData, managedIndexConfig, policy)
         }
 
-        updateManagedIndexMetaData(updatedManagedIndexMetaData)
+        updateManagedIndexMetaData(updatedManagedIndexMetaData, create = managedIndexMetaData == null)
     }
 
     @Suppress("ReturnCount", "BlockingMethodInNonBlockingContext")
@@ -497,7 +543,7 @@ object ManagedIndexRunner :
         }
     }
 
-    private fun getFailedInitializedManagedIndexMetaData(
+    private suspend fun getFailedInitializedManagedIndexMetaData(
         managedIndexMetaData: ManagedIndexMetaData?,
         managedIndexConfig: ManagedIndexConfig,
         policyID: String
@@ -514,6 +560,7 @@ object ManagedIndexRunner :
             policyPrimaryTerm = null,
             policyCompleted = false,
             rolledOver = false,
+            indexCreationDate = getIndexCreationDate(managedIndexConfig),
             transitionTo = null,
             stateMetaData = null,
             actionMetaData = null,
@@ -541,6 +588,7 @@ object ManagedIndexRunner :
                 policyPrimaryTerm = policy.primaryTerm,
                 policyCompleted = false,
                 rolledOver = false,
+                indexCreationDate = getIndexCreationDate(managedIndexConfig),
                 transitionTo = null,
                 stateMetaData = stateMetaData,
                 actionMetaData = null,
@@ -589,7 +637,8 @@ object ManagedIndexRunner :
      */
     private suspend fun updateManagedIndexMetaData(
         managedIndexMetaData: ManagedIndexMetaData,
-        lastUpdateResult: UpdateMetadataResult? = null
+        lastUpdateResult: UpdateMetadataResult? = null,
+        create: Boolean = false
     ): UpdateMetadataResult {
         var result = UpdateMetadataResult()
         if (!imIndices.attemptUpdateConfigIndexMapping()) {
@@ -602,7 +651,7 @@ object ManagedIndexRunner :
             metadata = managedIndexMetaData.copy(seqNo = lastUpdateResult.seqNo, primaryTerm = lastUpdateResult.primaryTerm)
         }
 
-        val indexRequest = managedIndexMetadataIndexRequest(metadata)
+        val indexRequest = managedIndexMetadataIndexRequest(metadata, create = create)
         try {
             updateMetaDataRetryPolicy.retry(logger) {
                 val indexResponse: IndexResponse = client.suspendUntil { index(indexRequest, it) }
@@ -764,9 +813,6 @@ object ManagedIndexRunner :
             val response: ClusterStateResponse = client.admin().cluster().suspendUntil { state(clusterStateRequest, it) }
 
             indexMetaData = response.state.metadata.indices.firstOrNull()?.value
-            if (indexMetaData == null) {
-                logger.error("Could not find IndexMetaData in master cluster state for $index")
-            }
         } catch (e: Exception) {
             logger.error("Failed to get IndexMetaData from master cluster state for index=$index", e)
         }
@@ -793,6 +839,51 @@ object ManagedIndexRunner :
                 }
             }
             Instant.ofEpochMilli(requireNotNull(startTime))
+        }
+    }
+
+    /**
+     * Get the index creation date for the first time to cache it on the ManagedIndexMetadata
+     */
+    @Suppress("ReturnCount")
+    private suspend fun getIndexCreationDate(managedIndexConfig: ManagedIndexConfig): Long? {
+        try {
+            val multiTypeIndexNameToMetaData = indexMetadataProvider.getMultiTypeISMIndexMetadata(indexNames = listOf(managedIndexConfig.index))
+            // the managedIndexConfig.indexUuid should be unique across all index types
+            val indexCreationDate = multiTypeIndexNameToMetaData.values.firstOrNull {
+                it[managedIndexConfig.index]?.indexUuid == managedIndexConfig.indexUuid
+            }?.get(managedIndexConfig.index)?.indexCreationDate
+            return indexCreationDate
+        } catch (e: Exception) {
+            logger.error("Failed to get the index creation date", e)
+        }
+        return null
+    }
+
+    /**
+     * Deletes a managedIndexConfig and its managedIndexMetadata. Used after an action has successfully completely
+     * and the action has deleteIndexMetadataAfterFinish set to true. This should only be set to true for custom
+     * actions added by extensions, as when indices in the cluster are deleted,the deletion should get picked up
+     * and the ism config metadata for the index will be removed, but if the index is not in the cluster, as it
+     * might be for some other index type, we have to do this manually
+     */
+    private suspend fun deleteFromManagedIndex(managedIndexConfig: ManagedIndexConfig, actionType: String) {
+        try {
+            val bulkRequest = BulkRequest()
+                .add(deleteManagedIndexRequest(managedIndexConfig.indexUuid))
+                .add(deleteManagedIndexMetadataRequest(managedIndexConfig.indexUuid))
+
+            val bulkResponse: BulkResponse = client.suspendUntil { bulk(bulkRequest, it) }
+            for (bulkItemResponse in bulkResponse) {
+                if (bulkItemResponse.isFailed) {
+                    logger.warn(
+                        "Failed to delete managed index job/metadata [id=${bulkItemResponse.id}] for ${managedIndexConfig.index}" +
+                            " after a successful $actionType [result=${bulkItemResponse.failureMessage}]"
+                    )
+                }
+            }
+        } catch (e: Exception) {
+            logger.warn("Failed to delete managed index job for for ${managedIndexConfig.index} after a successful $actionType", e)
         }
     }
 }
