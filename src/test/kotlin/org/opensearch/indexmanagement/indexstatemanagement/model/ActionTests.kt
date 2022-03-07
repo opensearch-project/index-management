@@ -16,6 +16,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.ISMActionsParser
 import org.opensearch.indexmanagement.indexstatemanagement.action.DeleteAction
 import org.opensearch.indexmanagement.indexstatemanagement.randomAllocationActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomCloseActionConfig
+import org.opensearch.indexmanagement.indexstatemanagement.randomDeleteActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomForceMergeActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomIndexPriorityActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomNotificationActionConfig
@@ -37,8 +38,6 @@ import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import kotlin.test.assertFailsWith
 
-// TODO remove this suppression when refactoring is done
-@Suppress("UnusedPrivateMember")
 class ActionTests : OpenSearchTestCase() {
 
     fun `test invalid timeout for delete action fails`() {
@@ -65,15 +64,13 @@ class ActionTests : OpenSearchTestCase() {
         }
     }
 
-    // TODO: fixme - enable the test
-    private fun `test force merge action max num segments of zero fails`() {
+    fun `test force merge action max num segments of zero fails`() {
         assertFailsWith(IllegalArgumentException::class, "Expected IllegalArgumentException for maxNumSegments less than 1") {
             randomForceMergeActionConfig(maxNumSegments = 0)
         }
     }
 
-    // TODO: fixme - enable the test
-    private fun `test allocation action empty parameters fails`() {
+    fun `test allocation action empty parameters fails`() {
         assertFailsWith(IllegalArgumentException::class, "Expected IllegalArgumentException for empty parameters") {
             randomAllocationActionConfig()
         }
@@ -132,6 +129,10 @@ class ActionTests : OpenSearchTestCase() {
 
     fun `test open action round trip`() {
         roundTripAction(randomOpenActionConfig())
+    }
+
+    fun `test delete action round trip`() {
+        roundTripAction(randomDeleteActionConfig())
     }
 
     fun `test action timeout and retry round trip`() {

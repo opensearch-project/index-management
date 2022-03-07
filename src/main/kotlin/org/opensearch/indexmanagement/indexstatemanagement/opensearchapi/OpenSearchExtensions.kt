@@ -28,6 +28,7 @@ import org.opensearch.common.xcontent.XContentHelper
 import org.opensearch.common.xcontent.XContentType
 import org.opensearch.index.IndexNotFoundException
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
+import org.opensearch.indexmanagement.indexstatemanagement.DefaultIndexMetadataService
 import org.opensearch.indexmanagement.indexstatemanagement.settings.LegacyOpenDistroManagedIndexSettings
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings
 import org.opensearch.indexmanagement.indexstatemanagement.util.managedIndexMetadataID
@@ -66,13 +67,13 @@ fun IndexMetadata.getManagedIndexMetadata(): ManagedIndexMetaData? {
     return null
 }
 
-fun getUuidsForClosedIndices(state: ClusterState): MutableList<String> {
+fun getUuidsForClosedIndices(state: ClusterState, defaultIndexMetadataService: DefaultIndexMetadataService): MutableList<String> {
     val indexMetadatas = state.metadata.indices
     val closeList = mutableListOf<String>()
     indexMetadatas.forEach {
         // it.key is index name
         if (it.value.state == IndexMetadata.State.CLOSE) {
-            closeList.add(it.value.indexUUID)
+            closeList.add(defaultIndexMetadataService.getCustomIndexUUID(it.value))
         }
     }
     return closeList
@@ -138,7 +139,7 @@ suspend fun Client.mgetManagedIndexMetadata(indexUuids: List<String>): List<Pair
     var mgetMetadataList = listOf<Pair<ManagedIndexMetaData?, Exception?>?>()
     try {
         val response: MultiGetResponse = this.suspendUntil { multiGet(mgetRequest, it) }
-        mgetMetadataList = mgetResponseToList(response)
+        mgetMetadataList = mgetResponseToMap(response).map { it.value }
     } catch (e: ActionRequestValidationException) {
         log.info("No managed index metadata for indices [$indexUuids], ${e.message}")
     } catch (e: Exception) {
@@ -154,41 +155,27 @@ suspend fun Client.mgetManagedIndexMetadata(indexUuids: List<String>): List<Pair
  * when this function used in change and retry API, if exception is
  * not null, the API will abort and show get metadata failed
  *
- * @return list of Pair of metadata or exception
+ * @return map of <indexuuid>#metadata to Pair of metadata or exception
  */
-fun mgetResponseToList(mgetResponse: MultiGetResponse):
-    List<Pair<ManagedIndexMetaData?, Exception?>?> {
-    val mgetList = mutableListOf<Pair<ManagedIndexMetaData?, Exception?>?>()
+fun mgetResponseToMap(mgetResponse: MultiGetResponse): Map<String, Pair<ManagedIndexMetaData?, Exception?>?> {
+    val mgetMap = mutableMapOf<String, Pair<ManagedIndexMetaData?, Exception?>?>()
     mgetResponse.responses.forEach {
         if (it.isFailed) {
-            mgetList.add(Pair(null, it.failure.failure))
+            mgetMap[it.id] = Pair(null, it.failure.failure)
         } else if (it.response != null && !it.response.isSourceEmpty) {
             val xcp = contentParser(it.response.sourceAsBytesRef)
-            mgetList.add(
-                Pair(
-                    ManagedIndexMetaData.parseWithType(
-                        xcp, it.response.id, it.response.seqNo, it.response.primaryTerm
-                    ),
-                    null
-                )
-            )
+            mgetMap[it.id] = Pair(ManagedIndexMetaData.parseWithType(xcp, it.response.id, it.response.seqNo, it.response.primaryTerm), null)
         } else {
-            mgetList.add(null)
+            mgetMap[it.id] = null
         }
     }
 
-    return mgetList
+    return mgetMap
 }
 
-fun buildMgetMetadataRequest(clusterState: ClusterState): MultiGetRequest {
+fun buildMgetMetadataRequest(indexUuids: List<String>): MultiGetRequest {
     val mgetMetadataRequest = MultiGetRequest()
-    clusterState.metadata.indices.map { it.value.index }.forEach {
-        mgetMetadataRequest.add(
-            MultiGetRequest.Item(
-                INDEX_MANAGEMENT_INDEX, managedIndexMetadataID(it.uuid)
-            ).routing(it.uuid)
-        )
-    }
+    indexUuids.forEach { mgetMetadataRequest.add(MultiGetRequest.Item(INDEX_MANAGEMENT_INDEX, managedIndexMetadataID(it)).routing(it)) }
     return mgetMetadataRequest
 }
 

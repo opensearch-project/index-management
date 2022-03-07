@@ -31,4 +31,9 @@ interface IndexMetadataService {
      * Returns all the indices metadata
      */
     suspend fun getMetadataForAllIndices(client: Client, clusterService: ClusterService): Map<String, ISMIndexMetadata>
+
+    /**
+     * Returns an optional setting path which, when set to true in the index settings, overrides a cluster level metadata write block.
+     */
+    fun getIndexMetadataWriteOverrideSetting(): String? = null
 }

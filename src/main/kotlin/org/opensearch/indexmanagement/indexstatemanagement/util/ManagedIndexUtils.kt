@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-@file:Suppress("TooManyFunctions")
+@file:Suppress("TooManyFunctions", "MatchingDeclarationName")
 @file:JvmName("ManagedIndexUtils")
 package org.opensearch.indexmanagement.indexstatemanagement.util
 
@@ -471,36 +471,6 @@ fun Policy.isSafeToChange(stateName: String?, newPolicy: Policy, changePolicy: C
  * Allowed actions are ones that are specified in the [ManagedIndexSettings.ALLOW_LIST] setting.
  */
 fun Action.isAllowed(allowList: List<String>): Boolean = allowList.contains(this.type)
-
-/**
- * Check if cluster state metadata has been moved to config index
- *
- * log warning if remaining cluster state metadata has newer last_updated_time
- */
-fun isMetadataMoved(
-    clusterStateMetadata: ManagedIndexMetaData?,
-    configIndexMetadata: Any?,
-    logger: Logger
-): Boolean {
-    if (clusterStateMetadata != null) {
-        if (configIndexMetadata == null) return false
-
-        // compare last updated time between 2 metadatas
-        val t1 = clusterStateMetadata.stepMetaData?.startTime
-        val t2 = when (configIndexMetadata) {
-            is ManagedIndexMetaData? -> configIndexMetadata.stepMetaData?.startTime
-            is Map<*, *>? -> {
-                val stepMetadata = configIndexMetadata["step"] as Map<String, Any>?
-                stepMetadata?.get("start_time")
-            }
-            else -> null
-        } as Long?
-        if (t1 != null && t2 != null && t1 > t2) {
-            logger.warn("Cluster state metadata get updates after moved for [${clusterStateMetadata.index}]")
-        }
-    }
-    return true
-}
 
 /**
  * Check if cluster state metadata has been moved to config index

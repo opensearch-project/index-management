@@ -306,9 +306,6 @@ integTest {
     if (System.getProperty("tests.clustername") != null) {
         exclude 'org/opensearch/indexmanagement/indexstatemanagement/MetadataRegressionIT.class'
     }
-
-    // TODO: Remove me after refactoring all actions
-    exclude 'org/opensearch/indexmanagement/indexstatemanagement/resthandler/*'
 }
 
 String bwcVersion = "1.13.2.0"

@@ -31,6 +31,7 @@ class ISMTemplateRestAPIIT : IndexStateManagementRestTestCase() {
     private val policyID2 = "t2"
     private val policyID3 = "t3"
 
+    @Suppress("UNCHECKED_CAST")
     fun `test add template with invalid index pattern`() {
         try {
             val ismTemp = ISMTemplate(listOf(" "), 100, randomInstant())
@@ -44,6 +45,7 @@ class ISMTemplateRestAPIIT : IndexStateManagementRestTestCase() {
         }
     }
 
+    @Suppress("UNCHECKED_CAST")
     fun `test add template with self-overlapping index pattern`() {
         try {
             val ismTemp = ISMTemplate(listOf("ab*"), 100, randomInstant())
@@ -58,6 +60,7 @@ class ISMTemplateRestAPIIT : IndexStateManagementRestTestCase() {
         }
     }
 
+    @Suppress("UNCHECKED_CAST")
     fun `test add template with overlapping index pattern`() {
         try {
             val ismTemp = ISMTemplate(listOf("log*"), 100, randomInstant())
@@ -86,9 +89,9 @@ class ISMTemplateRestAPIIT : IndexStateManagementRestTestCase() {
 
         val ismTemp = ISMTemplate(listOf("log*"), 100, randomInstant())
 
-        val actionConfig = ReadOnlyAction(0)
+        val action = ReadOnlyAction(0)
         val states = listOf(
-            State("ReadOnlyState", listOf(actionConfig), listOf())
+            State("ReadOnlyState", listOf(action), listOf())
         )
         val policy = Policy(
             id = policyID,

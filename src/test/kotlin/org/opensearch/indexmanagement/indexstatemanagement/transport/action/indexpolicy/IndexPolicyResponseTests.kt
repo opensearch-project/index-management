@@ -32,8 +32,8 @@ class IndexPolicyResponseTests : OpenSearchTestCase() {
         val primaryTerm: Long = 123
         val seqNo: Long = 456
         val policyID = "policyID"
-        val actionConfig = IndexPriorityAction(50, 0)
-        val states = listOf(State(name = "SetPriorityState", actions = listOf(actionConfig), transitions = listOf()))
+        val action = IndexPriorityAction(50, 0)
+        val states = listOf(State(name = "SetPriorityState", actions = listOf(action), transitions = listOf()))
         val policy = Policy(
             id = policyID,
             description = "description",
