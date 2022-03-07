@@ -126,7 +126,7 @@ class MetadataService(
                 if (counter++ > 2 && corruptManagedIndices.isEmpty()) {
                     logger.info("Move Metadata succeed, set finish flag to true. Indices failed to get indexed: $failedToIndexIndices")
                     updateStatusSetting(1)
-                    finishFlag = true; runningLock = false
+                    finishFlag = true; runningLock = false; runTimeCounter = 0
                     return
                 }
             } else {
