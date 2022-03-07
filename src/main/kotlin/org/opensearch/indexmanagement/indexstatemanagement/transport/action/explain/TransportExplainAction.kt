@@ -39,20 +39,23 @@ import org.opensearch.index.query.QueryBuilders
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
 import org.opensearch.indexmanagement.indexstatemanagement.IndexMetadataProvider
 import org.opensearch.indexmanagement.indexstatemanagement.ManagedIndexCoordinator.Companion.MAX_HITS
+import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexConfig
+import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
 import org.opensearch.indexmanagement.indexstatemanagement.model.SearchParams
 import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.getManagedIndexMetadata
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.managedIndex.ManagedIndexAction
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.managedIndex.ManagedIndexRequest
 import org.opensearch.indexmanagement.indexstatemanagement.util.DEFAULT_INDEX_TYPE
-import org.opensearch.indexmanagement.indexstatemanagement.util.MANAGED_INDEX_FIELD
 import org.opensearch.indexmanagement.indexstatemanagement.util.MANAGED_INDEX_INDEX_UUID_FIELD
 import org.opensearch.indexmanagement.indexstatemanagement.util.MANAGED_INDEX_NAME_FIELD
 import org.opensearch.indexmanagement.indexstatemanagement.util.MetadataCheck
 import org.opensearch.indexmanagement.indexstatemanagement.util.checkMetadata
 import org.opensearch.indexmanagement.indexstatemanagement.util.managedIndexMetadataID
+import org.opensearch.indexmanagement.opensearchapi.parseWithType
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ISMIndexMetadata
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.buildUser
+import org.opensearch.search.SearchHit
 import org.opensearch.search.builder.SearchSourceBuilder
 import org.opensearch.search.fetch.subphase.FetchSourceContext.FETCH_SOURCE
 import org.opensearch.search.sort.SortBuilders
@@ -100,6 +103,7 @@ class TransportExplainAction @Inject constructor(
     ) {
         private val indices: List<String> = request.indices
         private val explainAll: Boolean = indices.isEmpty()
+        private val showPolicy: Boolean = request.showPolicy
 
         // Map of indexName to index metadata got from config index job which is fake/not a real full metadata document
         private val managedIndicesMetaDataMap: MutableMap<IndexName, ManagedIndexMetadataMap> = mutableMapOf()
@@ -113,6 +117,7 @@ class TransportExplainAction @Inject constructor(
         private val indexPolicyIDs = mutableListOf<PolicyID?>()
         private val indexMetadatas = mutableListOf<ManagedIndexMetaData?>()
         private var totalManagedIndices = 0
+        private val appliedPolicies: MutableMap<String, Policy> = mutableMapOf()
 
         @Suppress("SpreadOperator", "NestedBlockDepth")
         fun start() {
@@ -182,17 +187,18 @@ class TransportExplainAction @Inject constructor(
                                 totalManagedIndices = totalHits.value.toInt()
                             }
 
-                            response.hits.hits.map {
-                                val hitMap = it.sourceAsMap[MANAGED_INDEX_FIELD] as Map<String, Any>
-                                val managedIndex = hitMap["index"] as String
-                                managedIndices.add(managedIndex)
-                                enabledState[managedIndex] = hitMap["enabled"] as Boolean
-                                managedIndicesMetaDataMap[managedIndex] = mapOf(
-                                    "index" to hitMap["index"] as String?,
-                                    "index_uuid" to hitMap["index_uuid"] as String?,
-                                    "policy_id" to hitMap["policy_id"] as String?,
-                                    ManagedIndexMetaData.ENABLED to hitMap["enabled"]?.toString()
+                            parseSearchHits(response.hits.hits).forEach { managedIndex ->
+                                managedIndices.add(managedIndex.index)
+                                enabledState[managedIndex.index] = managedIndex.enabled
+                                managedIndicesMetaDataMap[managedIndex.index] = mapOf(
+                                    "index" to managedIndex.index,
+                                    "index_uuid" to managedIndex.indexUuid,
+                                    "policy_id" to managedIndex.policyID,
+                                    "enabled" to managedIndex.enabled.toString()
                                 )
+                                if (showPolicy) {
+                                    managedIndex.policy?.let { appliedPolicies[managedIndex.index] = it }
+                                }
                             }
 
                             // explain all only return managed indices
@@ -201,7 +207,7 @@ class TransportExplainAction @Inject constructor(
                                     // edge case: if specify query param pagination size to be 0
                                     // we still show total managed indices
                                     indexNames.clear()
-                                    sendResponse()
+                                    sendResponse(indexNames, indexMetadatas, indexPolicyIDs, enabledState, totalManagedIndices, appliedPolicies)
                                     return
                                 } else {
                                     // Clear and add the managedIndices from the response to preserve the sort order and size
@@ -227,7 +233,7 @@ class TransportExplainAction @Inject constructor(
                                     return
                                 }
                                 indexNames.clear()
-                                sendResponse()
+                                sendResponse(indexNames, indexMetadatas, indexPolicyIDs, enabledState, totalManagedIndices, appliedPolicies)
                                 return
                             }
                             actionListener.onFailure(ExceptionsHelper.unwrapCause(t) as Exception)
@@ -324,7 +330,7 @@ class TransportExplainAction @Inject constructor(
             managedIndicesMetaDataMap.clear()
 
             if (user == null || indexNames.isEmpty()) {
-                sendResponse()
+                sendResponse(indexNames, indexMetadatas, indexPolicyIDs, enabledState, totalManagedIndices, appliedPolicies)
             } else {
                 filterAndSendResponse(threadContext)
             }
@@ -336,15 +342,18 @@ class TransportExplainAction @Inject constructor(
             val filteredMetadata = mutableListOf<ManagedIndexMetaData?>()
             val filteredPolicies = mutableListOf<PolicyID?>()
             val enabledStatus = mutableMapOf<String, Boolean>()
-            filter(0, filteredIndices, filteredMetadata, filteredPolicies, enabledStatus)
+            val filteredAppliedPolicies = mutableMapOf<String, Policy>()
+            filter(0, filteredIndices, filteredMetadata, filteredPolicies, enabledStatus, filteredAppliedPolicies)
         }
 
+        @Suppress("LongParameterList")
         private fun filter(
             current: Int,
             filteredIndices: MutableList<String>,
             filteredMetadata: MutableList<ManagedIndexMetaData?>,
             filteredPolicies: MutableList<PolicyID?>,
-            enabledStatus: MutableMap<String, Boolean>
+            enabledStatus: MutableMap<String, Boolean>,
+            filteredAppliedPolicies: MutableMap<String, Policy>
         ) {
             val request = ManagedIndexRequest().indices(indexNames[current])
             client.execute(
@@ -356,11 +365,15 @@ class TransportExplainAction @Inject constructor(
                         filteredMetadata.add(indexMetadatas[current])
                         filteredPolicies.add(indexPolicyIDs[current])
                         enabledStatus[indexNames[current]] = enabledState.getOrDefault(indexNames[current], false)
+                        appliedPolicies[indexNames[current]]?.let { filteredAppliedPolicies[indexNames[current]] = it }
                         if (current < indexNames.count() - 1) {
                             // do nothing - skip the index and go to next one
-                            filter(current + 1, filteredIndices, filteredMetadata, filteredPolicies, enabledStatus)
+                            filter(current + 1, filteredIndices, filteredMetadata, filteredPolicies, enabledStatus, filteredAppliedPolicies)
                         } else {
-                            sendResponse(filteredIndices, filteredMetadata, filteredPolicies, enabledStatus)
+                            sendResponse(
+                                filteredIndices, filteredMetadata, filteredPolicies, enabledStatus,
+                                totalManagedIndices, filteredAppliedPolicies
+                            )
                         }
                     }
 
@@ -370,9 +383,19 @@ class TransportExplainAction @Inject constructor(
                                 totalManagedIndices -= 1
                                 if (current < indexNames.count() - 1) {
                                     // do nothing - skip the index and go to next one
-                                    filter(current + 1, filteredIndices, filteredMetadata, filteredPolicies, enabledStatus)
+                                    filter(
+                                        current + 1,
+                                        filteredIndices,
+                                        filteredMetadata,
+                                        filteredPolicies,
+                                        enabledStatus,
+                                        filteredAppliedPolicies
+                                    )
                                 } else {
-                                    sendResponse(filteredIndices, filteredMetadata, filteredPolicies, enabledStatus)
+                                    sendResponse(
+                                        filteredIndices, filteredMetadata, filteredPolicies, enabledStatus,
+                                        totalManagedIndices, filteredAppliedPolicies
+                                    )
                                 }
                             }
                             false -> {
@@ -384,14 +407,16 @@ class TransportExplainAction @Inject constructor(
             )
         }
 
+        @Suppress("LongParameterList")
         private fun sendResponse(
-            indices: List<String> = indexNames,
-            metadata: List<ManagedIndexMetaData?> = indexMetadatas,
-            policies: List<PolicyID?> = indexPolicyIDs,
-            enabledStatus: Map<String, Boolean> = enabledState,
-            totalIndices: Int = totalManagedIndices
+            indices: List<String>,
+            metadata: List<ManagedIndexMetaData?>,
+            policyIDs: List<PolicyID?>,
+            enabledStatus: Map<String, Boolean>,
+            totalIndices: Int,
+            policies: Map<String, Policy>
         ) {
-            actionListener.onResponse(ExplainResponse(indices, policies, metadata, totalIndices, enabledStatus))
+            actionListener.onResponse(ExplainResponse(indices, policyIDs, metadata, totalIndices, enabledStatus, policies))
         }
 
         @Suppress("ReturnCount")
@@ -412,6 +437,17 @@ class TransportExplainAction @Inject constructor(
             }
 
             return null
+        }
+
+        private fun parseSearchHits(hits: Array<SearchHit>): List<ManagedIndexConfig> {
+            return hits.map { hit ->
+                XContentHelper.createParser(
+                    xContentRegistry,
+                    LoggingDeprecationHandler.INSTANCE,
+                    hit.sourceRef,
+                    XContentType.JSON
+                ).parseWithType(parse = ManagedIndexConfig.Companion::parse)
+            }
         }
     }
 

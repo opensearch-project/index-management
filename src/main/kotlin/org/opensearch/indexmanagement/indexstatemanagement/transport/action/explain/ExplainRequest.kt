@@ -21,6 +21,7 @@ class ExplainRequest : ActionRequest {
     val local: Boolean
     val masterTimeout: TimeValue
     val searchParams: SearchParams
+    val showPolicy: Boolean
     val indexType: String
 
     constructor(
@@ -28,12 +29,14 @@ class ExplainRequest : ActionRequest {
         local: Boolean,
         masterTimeout: TimeValue,
         searchParams: SearchParams,
+        showPolicy: Boolean,
         indexType: String
     ) : super() {
         this.indices = indices
         this.local = local
         this.masterTimeout = masterTimeout
         this.searchParams = searchParams
+        this.showPolicy = showPolicy
         this.indexType = indexType
     }
 
@@ -43,6 +46,7 @@ class ExplainRequest : ActionRequest {
         local = sin.readBoolean(),
         masterTimeout = sin.readTimeValue(),
         searchParams = SearchParams(sin),
+        showPolicy = sin.readBoolean(),
         indexType = sin.readString()
     )
 
@@ -63,6 +67,7 @@ class ExplainRequest : ActionRequest {
         out.writeBoolean(local)
         out.writeTimeValue(masterTimeout)
         searchParams.writeTo(out)
+        out.writeBoolean(showPolicy)
         out.writeString(indexType)
     }
 

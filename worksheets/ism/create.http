@@ -1,3 +1,24 @@
+###
+PUT http://localhost:9200/testindex
+Content-Type: application/json
+
+###
+POST http://localhost:9200/_opendistro/_ism/add/testindex
+Content-Type: application/json
+
+{
+  "policy_id": "example"
+}
+
+###
+GET localhost:9200/_opendistro/_ism/explain/testindex?show_applied_policy
+Accept: application/json
+
+###
+GET localhost:9200/.opendistro-ism-config/_search
+Accept: application/json
+
+###
 
 PUT localhost:9200/_opendistro/_ism/policies/example
 Content-Type: application/json
@@ -46,3 +67,6 @@ Content-Type: application/json
     ]
   }
 }
+
+###
+DELETE localhost:9200/_opendistro/_ism/policies/example
