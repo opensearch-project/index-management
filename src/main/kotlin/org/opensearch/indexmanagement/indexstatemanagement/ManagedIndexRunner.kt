@@ -304,11 +304,8 @@ object ManagedIndexRunner :
         }
 
         val state = policy.getStateToExecute(managedIndexMetaData)
-        val action: Action? = state?.getActionToExecute(
-            managedIndexMetaData.copy(user = policy.user, threadContext = threadPool.threadContext),
-            indexMetadataProvider
-        )
-        val stepContext = StepContext(managedIndexMetaData, clusterService, client, null, null, scriptService, settings)
+        val action: Action? = state?.getActionToExecute(managedIndexMetaData, indexMetadataProvider)
+        val stepContext = StepContext(managedIndexMetaData, clusterService, client, threadPool.threadContext, policy.user, scriptService, settings)
         val step: Step? = action?.getStepToExecute(stepContext)
         val currentActionMetaData = action?.getUpdatedActionMetadata(managedIndexMetaData, state.name)
 

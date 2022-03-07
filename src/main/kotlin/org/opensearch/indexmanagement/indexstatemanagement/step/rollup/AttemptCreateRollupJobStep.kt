@@ -39,7 +39,7 @@ class AttemptCreateRollupJobStep(private val action: RollupAction) : Step(name) 
         val hasPreviousRollupAttemptFailed = managedIndexMetadata.actionMetaData?.actionProperties?.hasRollupFailed
 
         // Creating a rollup job
-        val rollup = action.ismRollup.toRollup(indexName, managedIndexMetadata.user)
+        val rollup = action.ismRollup.toRollup(indexName, context.user)
         rollupId = rollup.id
         logger.info("Attempting to create a rollup job $rollupId for index $indexName")
 

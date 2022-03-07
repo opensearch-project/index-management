@@ -9,7 +9,6 @@ import org.opensearch.common.Strings
 import org.opensearch.common.io.stream.StreamInput
 import org.opensearch.common.io.stream.StreamOutput
 import org.opensearch.common.io.stream.Writeable
-import org.opensearch.common.util.concurrent.ThreadContext
 import org.opensearch.common.xcontent.ToXContent
 import org.opensearch.common.xcontent.ToXContentFragment
 import org.opensearch.common.xcontent.XContentBuilder
@@ -18,7 +17,6 @@ import org.opensearch.common.xcontent.XContentHelper
 import org.opensearch.common.xcontent.XContentParser
 import org.opensearch.common.xcontent.XContentParserUtils
 import org.opensearch.common.xcontent.json.JsonXContent
-import org.opensearch.commons.authuser.User
 import org.opensearch.index.seqno.SequenceNumbers
 import org.opensearch.indexmanagement.spi.indexstatemanagement.addObject
 import java.io.IOException
@@ -40,13 +38,7 @@ data class ManagedIndexMetaData(
     val info: Map<String, Any>?,
     val id: String = NO_ID,
     val seqNo: Long = SequenceNumbers.UNASSIGNED_SEQ_NO,
-    val primaryTerm: Long = SequenceNumbers.UNASSIGNED_PRIMARY_TERM,
-    // TODO: Remove this once the step interface is updated to pass in user information.
-    //  The user information is not being stored/written anywhere, this is only intended to be used during the step execution.
-    val user: User? = null,
-    // TODO: Remove this once the step interface is updated to pass in thread context information.
-    //  This information is not being stored/written anywhere, this is only intended to be used during the step execution.
-    val threadContext: ThreadContext? = null
+    val primaryTerm: Long = SequenceNumbers.UNASSIGNED_PRIMARY_TERM
 ) : Writeable, ToXContentFragment {
 
     @Suppress("ComplexMethod")

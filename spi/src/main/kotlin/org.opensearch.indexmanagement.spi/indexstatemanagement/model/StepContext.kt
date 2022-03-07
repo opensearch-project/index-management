@@ -12,7 +12,6 @@ import org.opensearch.common.util.concurrent.ThreadContext
 import org.opensearch.commons.authuser.User
 import org.opensearch.script.ScriptService
 
-// TODO: Add more attributes here if needed
 class StepContext(
     val metadata: ManagedIndexMetaData,
     val clusterService: ClusterService,
