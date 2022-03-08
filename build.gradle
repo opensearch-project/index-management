@@ -307,6 +307,29 @@ integTest {
     }
 }
 
+task integTestRemote(type: RestIntegTestTask)  {
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    systemProperty 'tests.security.manager', 'false'
+    systemProperty 'java.io.tmpdir', opensearch_tmp_dir.absolutePath
+    systemProperty "https", System.getProperty("https")
+    systemProperty "user", System.getProperty("user")
+    systemProperty "password", System.getProperty("password")
+
+    if (System.getProperty("tests.rest.bwcsuite") == null) {
+        filter {
+            excludeTestsMatching "org.opensearch.indexmanagement.bwc.*IT"
+        }
+    }
+
+    // Only rest case can run with remote cluster
+    if (System.getProperty("tests.rest.cluster") != null) {
+        exclude 'org/opensearch/indexmanagement/indexstatemanagement/MetadataRegressionIT.class'
+    }
+    // Snapshot action integration tests rely on node level setting path.repo which we can't set remotely
+    exclude 'org/opensearch/indexmanagement/indexstatemanagement/action/SnapshotActionIT.class'
+}
+
 String bwcVersion = "1.13.2.0"
 String bwcJobSchedulerVersion = "1.13.0.0"
 String baseName = "indexmanagementBwcCluster"

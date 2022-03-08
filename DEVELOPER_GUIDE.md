@@ -52,11 +52,12 @@ However, to build the `index management` plugin project, we also use the OpenSea
 4. `./gradlew integTest` launches a single node cluster with the index management (and job-scheduler) plugin installed and runs all integ tests.
 5. `./gradlew integTest -PnumNodes=3` launches a multi-node cluster with the index management (and job-scheduler) plugin installed and runs all integ tests.
 6. `./gradlew integTest -Dtests.class=*RestChangePolicyActionIT` runs a single integ class
-7.  `./gradlew integTest -Dtests.class=*RestChangePolicyActionIT -Dtests.method="test missing index"` runs a single integ test method (remember to quote the test method name if it contains spaces)
+7. `./gradlew integTest -Dtests.class=*RestChangePolicyActionIT -Dtests.method="test missing index"` runs a single integ test method (remember to quote the test method name if it contains spaces)
 8. `./gradlew indexmanagementBwcCluster#mixedClusterTask -Dtests.security.manager=false` launches a cluster of three nodes of bwc version of OpenSearch with index management and tests backwards compatibility by performing rolling upgrade of each node with the current version of OpenSearch with index management.
 9. `./gradlew indexmanagementBwcCluster#rollingUpgradeClusterTask -Dtests.security.manager=false` launches a cluster with three nodes of bwc version of OpenSearch with index management and tests backwards compatibility by performing rolling upgrade of each node with the current version of OpenSearch with index management.
 10. `./gradlew indexmanagementBwcCluster#fullRestartClusterTask -Dtests.security.manager=false` launches a cluster with three nodes of bwc version of OpenSearch with index management and tests backwards compatibility by performing a full restart on the cluster upgrading all the nodes with the current version of OpenSearch with index management.
 11. `./gradlew bwcTestSuite -Dtests.security.manager=false` runs all the above bwc tests combined.
+12. `./gradlew integTestRemote -Dtests.rest.cluster=localhost:9200 -Dtests.cluster=localhost:9200 -Dtests.clustername="docker-cluster" -Dhttps=true -Duser=admin -Dpassword=admin` launches integration tests against a local cluster and run tests with security
 
 When launching a cluster using one of the above commands, logs are placed in `build/testclusters/integTest-0/logs`. Though the logs are teed to the console, in practices it's best to check the actual log file.
 
