@@ -73,7 +73,7 @@ typealias ManagedIndexConfigDocUUID = String
 typealias ManagedIndexMetadataDocUUID = String // managedIndexMetadataID(indexUuid) -> <indexUuid>#metadata
 typealias ManagedIndexMetadataMap = Map<String, String?>
 
-@Suppress("SpreadOperator")
+@Suppress("SpreadOperator", "TooManyFunctions")
 class TransportExplainAction @Inject constructor(
     val client: NodeClient,
     transportService: TransportService,

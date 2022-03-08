@@ -213,7 +213,9 @@ class TransportAddPolicyAction @Inject constructor(
                         clusterStateRequest,
                         object : ActionListener<ClusterStateResponse> {
                             override fun onResponse(response: ClusterStateResponse) {
-                                CoroutineScope(Dispatchers.IO).launch { removeClusterStateMetadatas(client, log, indicesToAdd.map { Index(it.value, it.key) }) }
+                                CoroutineScope(Dispatchers.IO).launch {
+                                    removeClusterStateMetadatas(client, log, indicesToAdd.map { Index(it.value, it.key) })
+                                }
 
                                 val defaultIndexMetadataService = indexMetadataProvider.services[DEFAULT_INDEX_TYPE] as DefaultIndexMetadataService
                                 getUuidsForClosedIndices(response.state, defaultIndexMetadataService).forEach {

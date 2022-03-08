@@ -192,7 +192,7 @@ fun getSweptManagedIndexSearchRequest(): SearchRequest {
         )
 }
 
-@Suppress("ReturnCount")
+@Suppress("ReturnCount", "ComplexCondition")
 fun Transition.evaluateConditions(
     indexCreationDate: Instant,
     numDocs: Long?,
