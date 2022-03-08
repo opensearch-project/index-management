@@ -326,6 +326,12 @@ task integTestRemote(type: RestIntegTestTask)  {
     if (System.getProperty("tests.rest.cluster") != null) {
         exclude 'org/opensearch/indexmanagement/indexstatemanagement/MetadataRegressionIT.class'
     }
+    // TODO: Fix running notification test against remote cluster with security plugin installed
+    if (System.getProperty("https") != null) {
+        filter {
+            excludeTestsMatching "org.opensearch.indexmanagement.indexstatemanagement.action.NotificationActionIT"
+        }
+    }
     // Snapshot action integration tests rely on node level setting path.repo which we can't set remotely
     exclude 'org/opensearch/indexmanagement/indexstatemanagement/action/SnapshotActionIT.class'
 }
