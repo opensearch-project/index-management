@@ -1,5 +1,6 @@
 [![Test and Build Workflow](https://github.com/opensearch-project/index-management/workflows/Test%20and%20Build%20Workflow/badge.svg)](https://github.com/opensearch-project/index-management/actions)
 [![codecov](https://codecov.io/gh/opensearch-project/index-management/branch/main/graph/badge.svg)](https://codecov.io/gh/opensearch-project/index-management)
+[![Roadmap](https://img.shields.io/badge/roadmap-checkout-ff69b4)](https://github.com/opensearch-project/index-management/projects/1)
 [![Documentation](https://img.shields.io/badge/api-reference-blue.svg)](https://opensearch.org/docs/im-plugin/index/)
 [![Chat](https://img.shields.io/badge/chat-on%20forums-blue)](https://discuss.opendistrocommunity.dev/c/index-management/)
 ![PRs welcome!](https://img.shields.io/badge/PRs-welcome!-success)
