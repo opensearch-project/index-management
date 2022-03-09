@@ -344,7 +344,7 @@ class TransportExplainAction @Inject constructor(
                         filteredIndices.add(indexNames[current])
                         filteredMetadata.add(indexMetadatas[current])
                         filteredPolicies.add(indexPolicyIDs[current])
-                        enabledStatus[indexNames[current]] = enabledState.getOrDefault(indexNames[current], false)
+                        enabledState[indexNames[current]]?.let { enabledStatus[indexNames[current]] = it }
                         appliedPolicies[indexNames[current]]?.let { filteredAppliedPolicies[indexNames[current]] = it }
                         if (current < indexNames.count() - 1) {
                             // do nothing - skip the index and go to next one
