@@ -33,6 +33,9 @@ Compatible with OpenSearch 1.3.0
 * Add backport and auto delete workflow ([#283](https://github.com/opensearch-project/index-management/pull/283))
 * Updates integTest gradle scripts to run via remote cluster independently ([#291](https://github.com/opensearch-project/index-management/pull/291))
 
+### Documentation
+* Add roadmap badge in README ([#295](https://github.com/opensearch-project/index-management/pull/295))
+
 ### Maintenance
 * Updating license headers ([#196](https://github.com/opensearch-project/index-management/pull/196))
 * Configure WhiteSource for GitHub.com ([#244](https://github.com/opensearch-project/index-management/pull/244))
