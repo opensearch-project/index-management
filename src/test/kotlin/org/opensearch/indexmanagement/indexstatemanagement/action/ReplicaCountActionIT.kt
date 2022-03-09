@@ -8,7 +8,6 @@ package org.opensearch.indexmanagement.indexstatemanagement.action
 import org.opensearch.indexmanagement.indexstatemanagement.IndexStateManagementRestTestCase
 import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
 import org.opensearch.indexmanagement.indexstatemanagement.model.State
-import org.opensearch.indexmanagement.indexstatemanagement.model.action.ReplicaCountActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomErrorNotification
 import org.opensearch.indexmanagement.waitFor
 import java.time.Instant
@@ -22,7 +21,7 @@ class ReplicaCountActionIT : IndexStateManagementRestTestCase() {
     fun `test basic replica count`() {
         val indexName = "${testIndexName}_index_1"
         val policyID = "${testIndexName}_testPolicyName_1"
-        val actionConfig = ReplicaCountActionConfig(10, 0)
+        val actionConfig = ReplicaCountAction(10, 0)
         val states = listOf(State(name = "ReplicaCountState", actions = listOf(actionConfig), transitions = listOf()))
         val policy = Policy(
             id = policyID,

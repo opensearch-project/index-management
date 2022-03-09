@@ -5,6 +5,9 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.transport.action.changepolicy
 
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import org.apache.logging.log4j.LogManager
 import org.opensearch.ExceptionsHelper
 import org.opensearch.OpenSearchSecurityException
@@ -23,7 +26,6 @@ import org.opensearch.action.support.HandledTransportAction
 import org.opensearch.action.support.IndicesOptions
 import org.opensearch.action.support.master.AcknowledgedResponse
 import org.opensearch.client.node.NodeClient
-import org.opensearch.cluster.ClusterState
 import org.opensearch.cluster.metadata.IndexMetadata
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.inject.Inject
@@ -33,8 +35,9 @@ import org.opensearch.commons.ConfigConstants
 import org.opensearch.commons.authuser.User
 import org.opensearch.index.Index
 import org.opensearch.indexmanagement.IndexManagementPlugin
+import org.opensearch.indexmanagement.indexstatemanagement.DefaultIndexMetadataService
+import org.opensearch.indexmanagement.indexstatemanagement.IndexMetadataProvider
 import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexConfig
-import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
 import org.opensearch.indexmanagement.indexstatemanagement.model.coordinator.SweptManagedIndexConfig
 import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.buildMgetMetadataRequest
@@ -44,6 +47,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.resthandler.RestChang
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.ISMStatusResponse
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.managedIndex.ManagedIndexAction
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.managedIndex.ManagedIndexRequest
+import org.opensearch.indexmanagement.indexstatemanagement.util.DEFAULT_INDEX_TYPE
 import org.opensearch.indexmanagement.indexstatemanagement.util.FailedIndex
 import org.opensearch.indexmanagement.indexstatemanagement.util.isSafeToChange
 import org.opensearch.indexmanagement.indexstatemanagement.util.managedIndexMetadataID
@@ -52,6 +56,8 @@ import org.opensearch.indexmanagement.opensearchapi.contentParser
 import org.opensearch.indexmanagement.opensearchapi.parseFromGetResponse
 import org.opensearch.indexmanagement.opensearchapi.parseWithType
 import org.opensearch.indexmanagement.settings.IndexManagementSettings
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ISMIndexMetadata
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.util.IndexManagementException
 import org.opensearch.indexmanagement.util.IndexUtils
 import org.opensearch.indexmanagement.util.NO_ID
@@ -66,14 +72,15 @@ import java.lang.IllegalArgumentException
 
 private val log = LogManager.getLogger(TransportChangePolicyAction::class.java)
 
-@Suppress("SpreadOperator", "TooManyFunctions")
+@Suppress("SpreadOperator", "TooManyFunctions", "LongParameterList")
 class TransportChangePolicyAction @Inject constructor(
     val client: NodeClient,
     transportService: TransportService,
     actionFilters: ActionFilters,
     val clusterService: ClusterService,
     val settings: Settings,
-    val xContentRegistry: NamedXContentRegistry
+    val xContentRegistry: NamedXContentRegistry,
+    val indexMetadataProvider: IndexMetadataProvider
 ) : HandledTransportAction<ChangePolicyRequest, ISMStatusResponse>(
     ChangePolicyAction.NAME, transportService, actionFilters, ::ChangePolicyRequest
 ) {
@@ -104,7 +111,6 @@ class TransportChangePolicyAction @Inject constructor(
         private val indexUuidToIndexMetadata = mutableMapOf<String, IndexMetadata>() // uuid -> indexmetadata
         private val changePolicy = request.changePolicy
         private lateinit var policy: Policy
-        private lateinit var clusterState: ClusterState
         private var updated: Int = 0
 
         fun start() {
@@ -158,6 +164,7 @@ class TransportChangePolicyAction @Inject constructor(
             }
         }
 
+        @Suppress("ReturnCount")
         private fun onGetPolicyResponse(response: GetResponse) {
             if (!response.isExists || response.isSourceEmpty) {
                 actionListener.onFailure(OpenSearchStatusException("Could not find policy=${request.changePolicy.policyID}", RestStatus.NOT_FOUND))
@@ -191,31 +198,61 @@ class TransportChangePolicyAction @Inject constructor(
                 return
             }
 
-            getClusterState()
+            getIndicesToUpdate()
+        }
+
+        private fun getIndicesToUpdate() {
+            CoroutineScope(Dispatchers.IO).launch {
+                val indexNameToMetadata: MutableMap<String, ISMIndexMetadata> = HashMap()
+                try {
+                    indexNameToMetadata.putAll(indexMetadataProvider.getISMIndexMetadataByType(request.indexType, request.indices))
+                } catch (e: Exception) {
+                    actionListener.onFailure(ExceptionsHelper.unwrapCause(e) as Exception)
+                    return@launch
+                }
+                indexNameToMetadata.forEach { (indexName, indexMetadata) ->
+                    indicesToUpdate.putIfAbsent(indexMetadata.indexUuid, indexName)
+                }
+                if (request.indexType == DEFAULT_INDEX_TYPE) {
+                    getClusterState()
+                } else {
+                    getManagedIndexMetadata()
+                }
+            }
         }
 
         @Suppress("SpreadOperator")
         private fun getClusterState() {
+            val strictExpandOptions = IndicesOptions.strictExpand()
             val clusterStateRequest = ClusterStateRequest()
                 .clear()
                 .indices(*request.indices.toTypedArray())
                 .metadata(true)
                 .local(false)
-                .indicesOptions(IndicesOptions.strictExpand())
+                .indicesOptions(strictExpandOptions)
+            client.admin()
+                .cluster()
+                .state(
+                    clusterStateRequest,
+                    object : ActionListener<ClusterStateResponse> {
+                        override fun onResponse(response: ClusterStateResponse) {
+                            val clusterState = response.state
+                            val defaultIndexMetadataService = indexMetadataProvider.services[DEFAULT_INDEX_TYPE] as DefaultIndexMetadataService
+                            clusterState.metadata.indices.forEach {
+                                val indexUUID = defaultIndexMetadataService.getCustomIndexUUID(it.value)
+                                indexUuidToIndexMetadata[indexUUID] = it.value
+                            }
+                            // ISMIndexMetadata from the default index metadata service uses lenient expand, we want to use strict expand, filter
+                            // out the indices which are not also in the strict expand response
+                            indicesToUpdate.filter { indexUuidToIndexMetadata.containsKey(it.key) }
+                            getManagedIndexMetadata()
+                        }
 
-            client.admin().cluster().state(clusterStateRequest, ActionListener.wrap(::onClusterStateResponse, ::onFailure))
-        }
-
-        @Suppress("ComplexMethod")
-        private fun onClusterStateResponse(response: ClusterStateResponse) {
-            clusterState = response.state
-            clusterState.metadata.indices.forEach {
-                val indexUuid = it.value.indexUUID
-                indicesToUpdate.putIfAbsent(indexUuid, it.value.index.name)
-                indexUuidToIndexMetadata[indexUuid] = it.value
-            }
-            // get back managed index metadata
-            getManagedIndexMetadata()
+                        override fun onFailure(t: Exception) {
+                            actionListener.onFailure(ExceptionsHelper.unwrapCause(t) as Exception)
+                        }
+                    }
+                )
         }
 
         private fun getManagedIndexMetadata() {
@@ -230,9 +267,8 @@ class TransportChangePolicyAction @Inject constructor(
             val metadataMap = mgetResponseToMap(mgetResponse)
             val includedStates = changePolicy.include.map { it.state }.toSet()
 
-            indicesToUpdate.forEach {
-                val indexUuid = it.key
-                val indexName = it.value
+            indicesToUpdate.forEach { (indexUuid, indexName) ->
+                // indexMetaData and clusterStateMetadata will be null for non-default index types
                 val indexMetaData = indexUuidToIndexMetadata[indexUuid]
                 val clusterStateMetadata = indexMetaData?.getManagedIndexMetadata()
                 val mgetFailure = metadataMap[indexUuid]?.second

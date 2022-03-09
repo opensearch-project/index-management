@@ -17,6 +17,7 @@ import org.opensearch.common.settings.Setting
 import org.opensearch.common.settings.Settings
 import org.opensearch.common.xcontent.NamedXContentRegistry
 import org.opensearch.indexmanagement.IndexManagementIndices
+import org.opensearch.indexmanagement.indexstatemanagement.IndexMetadataProvider
 import org.opensearch.indexmanagement.indexstatemanagement.ManagedIndexCoordinator
 import org.opensearch.indexmanagement.indexstatemanagement.MetadataService
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings
@@ -38,6 +39,7 @@ class ManagedIndexCoordinatorTests : OpenSearchAllocationTestCase() {
     private lateinit var metadataService: MetadataService
     private lateinit var templateService: ISMTemplateService
     private lateinit var coordinator: ManagedIndexCoordinator
+    private lateinit var indexMetadataProvider: IndexMetadataProvider
 
     private lateinit var discoveryNode: DiscoveryNode
 
@@ -72,8 +74,11 @@ class ManagedIndexCoordinatorTests : OpenSearchAllocationTestCase() {
         val clusterSettings = ClusterSettings(settings, settingSet)
         val originClusterService: ClusterService = ClusterServiceUtils.createClusterService(threadPool, discoveryNode, clusterSettings)
         clusterService = Mockito.spy(originClusterService)
-
-        coordinator = ManagedIndexCoordinator(settings, client, clusterService, threadPool, indexManagementIndices, metadataService, templateService)
+        indexMetadataProvider = IndexMetadataProvider(settings, client, clusterService, mutableMapOf())
+        coordinator = ManagedIndexCoordinator(
+            settings, client, clusterService, threadPool, indexManagementIndices, metadataService,
+            templateService, indexMetadataProvider
+        )
     }
 
     fun `test after start`() {

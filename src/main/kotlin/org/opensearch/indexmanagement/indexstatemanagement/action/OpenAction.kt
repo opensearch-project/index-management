@@ -5,28 +5,24 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.action
 
-import org.opensearch.client.Client
-import org.opensearch.cluster.service.ClusterService
-import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
-import org.opensearch.indexmanagement.indexstatemanagement.model.action.ActionConfig.ActionType
-import org.opensearch.indexmanagement.indexstatemanagement.model.action.OpenActionConfig
-import org.opensearch.indexmanagement.indexstatemanagement.step.Step
 import org.opensearch.indexmanagement.indexstatemanagement.step.open.AttemptOpenStep
+import org.opensearch.indexmanagement.spi.indexstatemanagement.Action
+import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepContext
 
 class OpenAction(
-    clusterService: ClusterService,
-    client: Client,
-    managedIndexMetaData: ManagedIndexMetaData,
-    config: OpenActionConfig
-) : Action(ActionType.OPEN, config, managedIndexMetaData) {
+    index: Int
+) : Action(name, index) {
 
-    private val attemptOpenStep = AttemptOpenStep(clusterService, client, config, managedIndexMetaData)
-
+    companion object {
+        const val name = "open"
+    }
+    private val attemptOpenStep = AttemptOpenStep()
     private val steps = listOf(attemptOpenStep)
 
-    override fun getSteps(): List<Step> = steps
-
-    override fun getStepToExecute(): Step {
+    override fun getStepToExecute(context: StepContext): Step {
         return attemptOpenStep
     }
+
+    override fun getSteps(): List<Step> = steps
 }

@@ -9,34 +9,24 @@ import org.apache.logging.log4j.LogManager
 import org.opensearch.ExceptionsHelper
 import org.opensearch.action.admin.indices.delete.DeleteIndexRequest
 import org.opensearch.action.support.master.AcknowledgedResponse
-import org.opensearch.client.Client
-import org.opensearch.cluster.service.ClusterService
-import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
-import org.opensearch.indexmanagement.indexstatemanagement.model.action.DeleteActionConfig
-import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.StepMetaData
-import org.opensearch.indexmanagement.indexstatemanagement.step.Step
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
+import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepMetaData
 import org.opensearch.snapshots.SnapshotInProgressException
 import org.opensearch.transport.RemoteTransportException
-import java.lang.Exception
 
-class AttemptDeleteStep(
-    val clusterService: ClusterService,
-    val client: Client,
-    val config: DeleteActionConfig,
-    managedIndexMetaData: ManagedIndexMetaData
-) : Step(name, managedIndexMetaData) {
+class AttemptDeleteStep : Step(name) {
 
     private val logger = LogManager.getLogger(javaClass)
     private var stepStatus = StepStatus.STARTING
     private var info: Map<String, Any>? = null
 
-    override fun isIdempotent() = true
-
-    @Suppress("TooGenericExceptionCaught")
-    override suspend fun execute(): AttemptDeleteStep {
+    override suspend fun execute(): Step {
+        val context = this.context ?: return this
+        val indexName = context.metadata.index
         try {
-            val response: AcknowledgedResponse = client.admin().indices()
+            val response: AcknowledgedResponse = context.client.admin().indices()
                 .suspendUntil { delete(DeleteIndexRequest(indexName), it) }
 
             if (response.isAcknowledged) {
@@ -51,27 +41,27 @@ class AttemptDeleteStep(
         } catch (e: RemoteTransportException) {
             val cause = ExceptionsHelper.unwrapCause(e)
             if (cause is SnapshotInProgressException) {
-                handleSnapshotException(cause)
+                handleSnapshotException(indexName, cause)
             } else {
-                handleException(cause as Exception)
+                handleException(indexName, cause as Exception)
             }
         } catch (e: SnapshotInProgressException) {
-            handleSnapshotException(e)
+            handleSnapshotException(indexName, e)
         } catch (e: Exception) {
-            handleException(e)
+            handleException(indexName, e)
         }
 
         return this
     }
 
-    private fun handleSnapshotException(e: SnapshotInProgressException) {
+    private fun handleSnapshotException(indexName: String, e: SnapshotInProgressException) {
         val message = getSnapshotMessage(indexName)
         logger.warn(message, e)
         stepStatus = StepStatus.CONDITION_NOT_MET
         info = mapOf("message" to message)
     }
 
-    private fun handleException(e: Exception) {
+    private fun handleException(indexName: String, e: Exception) {
         val message = getFailedMessage(indexName)
         logger.error(message, e)
         stepStatus = StepStatus.FAILED
@@ -81,18 +71,20 @@ class AttemptDeleteStep(
         info = mutableInfo.toMap()
     }
 
-    override fun getUpdatedManagedIndexMetaData(currentMetaData: ManagedIndexMetaData): ManagedIndexMetaData {
-        return currentMetaData.copy(
-            stepMetaData = StepMetaData(name, getStepStartTime().toEpochMilli(), stepStatus),
+    override fun getUpdatedManagedIndexMetadata(currentMetadata: ManagedIndexMetaData): ManagedIndexMetaData {
+        return currentMetadata.copy(
+            stepMetaData = StepMetaData(name, getStepStartTime(currentMetadata).toEpochMilli(), stepStatus),
             transitionTo = null,
             info = info
         )
     }
 
+    override fun isIdempotent() = true
+
     companion object {
         const val name = "attempt_delete"
-        fun getFailedMessage(index: String) = "Failed to delete index [index=$index]"
-        fun getSuccessMessage(index: String) = "Successfully deleted index [index=$index]"
-        fun getSnapshotMessage(index: String) = "Index had snapshot in progress, retrying deletion [index=$index]"
+        fun getFailedMessage(indexName: String) = "Failed to delete index [index=$indexName]"
+        fun getSuccessMessage(indexName: String) = "Successfully deleted index [index=$indexName]"
+        fun getSnapshotMessage(indexName: String) = "Index had snapshot in progress, retrying deletion [index=$indexName]"
     }
 }

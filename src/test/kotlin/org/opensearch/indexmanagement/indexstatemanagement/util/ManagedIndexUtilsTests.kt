@@ -16,10 +16,10 @@ import org.opensearch.common.xcontent.XContentHelper
 import org.opensearch.common.xcontent.XContentParser
 import org.opensearch.common.xcontent.XContentType
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
+import org.opensearch.indexmanagement.indexstatemanagement.action.RolloverAction
 import org.opensearch.indexmanagement.indexstatemanagement.model.Conditions
 import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexConfig
 import org.opensearch.indexmanagement.indexstatemanagement.model.Transition
-import org.opensearch.indexmanagement.indexstatemanagement.model.action.RolloverActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.model.coordinator.SweptManagedIndexConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomChangePolicy
 import org.opensearch.indexmanagement.indexstatemanagement.randomClusterStateManagedIndexConfig
@@ -125,7 +125,7 @@ class ManagedIndexUtilsTests : OpenSearchTestCase() {
     }
 
     fun `test rollover action config evaluate conditions`() {
-        val noConditionsConfig = RolloverActionConfig(minSize = null, minDocs = null, minAge = null, minPrimaryShardSize = null, index = 0)
+        val noConditionsConfig = RolloverAction(minSize = null, minDocs = null, minAge = null, minPrimaryShardSize = null, index = 0)
         assertTrue(
             "No conditions should always pass",
             noConditionsConfig
@@ -142,7 +142,7 @@ class ManagedIndexUtilsTests : OpenSearchTestCase() {
                 .evaluateConditions(indexAgeTimeValue = TimeValue.timeValueMillis(6000), numDocs = 5, indexSize = ByteSizeValue(5), primaryShardSize = ByteSizeValue(5))
         )
 
-        val minSizeConfig = RolloverActionConfig(minSize = ByteSizeValue(5), minDocs = null, minAge = null, minPrimaryShardSize = null, index = 0)
+        val minSizeConfig = RolloverAction(minSize = ByteSizeValue(5), minDocs = null, minAge = null, minPrimaryShardSize = null, index = 0)
         assertFalse(
             "Less bytes should not pass",
             minSizeConfig
@@ -159,7 +159,7 @@ class ManagedIndexUtilsTests : OpenSearchTestCase() {
                 .evaluateConditions(indexAgeTimeValue = TimeValue.timeValueMillis(1000), numDocs = 0, indexSize = ByteSizeValue(10), primaryShardSize = ByteSizeValue(10))
         )
 
-        val minPrimarySizeConfig = RolloverActionConfig(minSize = null, minDocs = null, minAge = null, minPrimaryShardSize = ByteSizeValue(5), index = 0)
+        val minPrimarySizeConfig = RolloverAction(minSize = null, minDocs = null, minAge = null, minPrimaryShardSize = ByteSizeValue(5), index = 0)
         assertFalse(
             "Less primary bytes should not pass",
             minPrimarySizeConfig
@@ -176,7 +176,7 @@ class ManagedIndexUtilsTests : OpenSearchTestCase() {
                 .evaluateConditions(indexAgeTimeValue = TimeValue.timeValueMillis(1000), numDocs = 0, indexSize = ByteSizeValue(10), primaryShardSize = ByteSizeValue(10))
         )
 
-        val minDocsConfig = RolloverActionConfig(minSize = null, minDocs = 5, minAge = null, minPrimaryShardSize = null, index = 0)
+        val minDocsConfig = RolloverAction(minSize = null, minDocs = 5, minAge = null, minPrimaryShardSize = null, index = 0)
         assertFalse(
             "Less docs should not pass",
             minDocsConfig
@@ -193,7 +193,7 @@ class ManagedIndexUtilsTests : OpenSearchTestCase() {
                 .evaluateConditions(indexAgeTimeValue = TimeValue.timeValueMillis(1000), numDocs = 10, indexSize = ByteSizeValue.ZERO, primaryShardSize = ByteSizeValue.ZERO)
         )
 
-        val minAgeConfig = RolloverActionConfig(minSize = null, minDocs = null, minAge = TimeValue.timeValueSeconds(5), minPrimaryShardSize = null, index = 0)
+        val minAgeConfig = RolloverAction(minSize = null, minDocs = null, minAge = TimeValue.timeValueSeconds(5), minPrimaryShardSize = null, index = 0)
         assertFalse(
             "Index age that is too young should not pass",
             minAgeConfig
@@ -205,7 +205,7 @@ class ManagedIndexUtilsTests : OpenSearchTestCase() {
                 .evaluateConditions(indexAgeTimeValue = TimeValue.timeValueMillis(10000), numDocs = 0, indexSize = ByteSizeValue.ZERO, primaryShardSize = ByteSizeValue.ZERO)
         )
 
-        val multiConfig = RolloverActionConfig(minSize = ByteSizeValue(1), minDocs = 1, minAge = TimeValue.timeValueSeconds(5), minPrimaryShardSize = ByteSizeValue(1), index = 0)
+        val multiConfig = RolloverAction(minSize = ByteSizeValue(1), minDocs = 1, minAge = TimeValue.timeValueSeconds(5), minPrimaryShardSize = ByteSizeValue(1), index = 0)
         assertFalse(
             "No conditions met should not pass",
             multiConfig

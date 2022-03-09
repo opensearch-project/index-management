@@ -14,7 +14,6 @@ import org.opensearch.indexmanagement.indexstatemanagement.IndexStateManagementR
 import org.opensearch.indexmanagement.indexstatemanagement.model.ISMTemplate
 import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
 import org.opensearch.indexmanagement.indexstatemanagement.model.State
-import org.opensearch.indexmanagement.indexstatemanagement.model.action.RollupActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomErrorNotification
 import org.opensearch.indexmanagement.indexstatemanagement.step.rollup.AttemptCreateRollupJobStep
 import org.opensearch.indexmanagement.indexstatemanagement.step.rollup.WaitForRollupCompletionStep
@@ -60,7 +59,7 @@ class RollupActionIT : IndexStateManagementRestTestCase() {
                 RollupMetrics(sourceField = "total_amount", targetField = "total_amount", metrics = listOf(Max(), Min()))
             )
         )
-        val actionConfig = RollupActionConfig(rollup, 0)
+        val actionConfig = RollupAction(rollup, 0)
         val states = listOf(
             State("rollup", listOf(actionConfig), listOf())
         )
@@ -110,7 +109,7 @@ class RollupActionIT : IndexStateManagementRestTestCase() {
         )
 
         // Create an ISM policy to rollup backing indices of a data stream.
-        val actionConfig = RollupActionConfig(rollup, 0)
+        val actionConfig = RollupAction(rollup, 0)
         val states = listOf(State("rollup", listOf(actionConfig), listOf()))
         val policy = Policy(
             id = policyID,
@@ -170,7 +169,7 @@ class RollupActionIT : IndexStateManagementRestTestCase() {
             )
         )
         val rollupId = rollup.toRollup(indexName).id
-        val actionConfig = RollupActionConfig(rollup, 0)
+        val actionConfig = RollupAction(rollup, 0)
         val states = listOf(
             State("rollup", listOf(actionConfig), listOf())
         )

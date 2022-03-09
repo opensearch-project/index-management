@@ -8,18 +8,20 @@ package org.opensearch.indexmanagement.indexstatemanagement.model
 import org.opensearch.common.xcontent.LoggingDeprecationHandler
 import org.opensearch.common.xcontent.XContentParser
 import org.opensearch.common.xcontent.XContentType
-import org.opensearch.indexmanagement.indexstatemanagement.model.action.ActionConfig
-import org.opensearch.indexmanagement.indexstatemanagement.model.action.RollupActionConfig
+import org.opensearch.indexmanagement.indexstatemanagement.ISMActionsParser
+import org.opensearch.indexmanagement.indexstatemanagement.action.RollupAction
 import org.opensearch.indexmanagement.indexstatemanagement.model.destination.DestinationType
 import org.opensearch.indexmanagement.indexstatemanagement.nonNullRandomConditions
 import org.opensearch.indexmanagement.indexstatemanagement.randomAllocationActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomChangePolicy
+import org.opensearch.indexmanagement.indexstatemanagement.randomCloseActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomDeleteActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomDestination
 import org.opensearch.indexmanagement.indexstatemanagement.randomForceMergeActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomIndexPriorityActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomManagedIndexConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomNotificationActionConfig
+import org.opensearch.indexmanagement.indexstatemanagement.randomOpenActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomPolicy
 import org.opensearch.indexmanagement.indexstatemanagement.randomReadOnlyActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomReadWriteActionConfig
@@ -30,7 +32,9 @@ import org.opensearch.indexmanagement.indexstatemanagement.randomSnapshotActionC
 import org.opensearch.indexmanagement.indexstatemanagement.randomState
 import org.opensearch.indexmanagement.indexstatemanagement.randomTransition
 import org.opensearch.indexmanagement.indexstatemanagement.toJsonString
+import org.opensearch.indexmanagement.opensearchapi.convertToMap
 import org.opensearch.indexmanagement.opensearchapi.parseWithType
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.test.OpenSearchTestCase
 
 class XContentTests : OpenSearchTestCase() {
@@ -67,111 +71,110 @@ class XContentTests : OpenSearchTestCase() {
         assertEquals("Round tripping Conditions doesn't work", conditions, parsedConditions)
     }
 
-    fun `test action config parsing`() {
-        val deleteActionConfig = randomDeleteActionConfig()
+    fun `test delete action parsing`() {
+        val deleteAction = randomDeleteActionConfig()
 
-        val deleteActionConfigString = deleteActionConfig.toJsonString()
-        val parsedActionConfig = ActionConfig.parse((parser(deleteActionConfigString)), 0)
-        assertEquals("Round tripping ActionConfig doesn't work", deleteActionConfig as ActionConfig, parsedActionConfig)
+        val deleteActionString = deleteAction.toJsonString()
+        val parsedDeleteAction = ISMActionsParser.instance.parse(parser(deleteActionString), 0)
+        assertEquals("Round tripping DeleteAction doesn't work", deleteAction.convertToMap(), parsedDeleteAction.convertToMap())
     }
 
-    fun `test delete action config parsing`() {
-        val deleteActionConfig = randomDeleteActionConfig()
+    fun `test rollover action parsing`() {
+        val rolloverAction = randomRolloverActionConfig()
 
-        val deleteActionConfigString = deleteActionConfig.toJsonString()
-        val parsedDeleteActionConfig = ActionConfig.parse(parser(deleteActionConfigString), 0)
-        assertEquals("Round tripping DeleteActionConfig doesn't work", deleteActionConfig, parsedDeleteActionConfig)
+        val rolloverActionString = rolloverAction.toJsonString()
+        val parsedRolloverAction = ISMActionsParser.instance.parse(parser(rolloverActionString), 0)
+        assertEquals("Round tripping RolloverAction doesn't work", rolloverAction.convertToMap(), parsedRolloverAction.convertToMap())
     }
 
-    fun `test rollover action config parsing`() {
-        val rolloverActionConfig = randomRolloverActionConfig()
+    fun `test read_only action parsing`() {
+        val readOnlyAction = randomReadOnlyActionConfig()
 
-        val rolloverActionConfigString = rolloverActionConfig.toJsonString()
-        val parsedRolloverActionConfig = ActionConfig.parse(parser(rolloverActionConfigString), 0)
-        assertEquals("Round tripping RolloverActionConfig doesn't work", rolloverActionConfig, parsedRolloverActionConfig)
+        val readOnlyActionString = readOnlyAction.toJsonString()
+        val parsedReadOnlyAction = ISMActionsParser.instance.parse(parser(readOnlyActionString), 0)
+        assertEquals("Round tripping ReadOnlyAction doesn't work", readOnlyAction.convertToMap(), parsedReadOnlyAction.convertToMap())
     }
 
-    fun `test read_only action config parsing`() {
-        val readOnlyActionConfig = randomReadOnlyActionConfig()
+    fun `test read_write action parsing`() {
+        val readWriteAction = randomReadWriteActionConfig()
 
-        val readOnlyActionConfigString = readOnlyActionConfig.toJsonString()
-        val parsedReadOnlyActionConfig = ActionConfig.parse(parser(readOnlyActionConfigString), 0)
-        assertEquals("Round tripping ReadOnlyActionConfig doesn't work", readOnlyActionConfig, parsedReadOnlyActionConfig)
-    }
-
-    fun `test read_write action config parsing`() {
-        val readWriteActionConfig = randomReadWriteActionConfig()
-
-        val readWriteActionConfigString = readWriteActionConfig.toJsonString()
-        val parsedReadWriteActionConfig = ActionConfig.parse(parser(readWriteActionConfigString), 0)
-        assertEquals("Round tripping ReadWriteActionConfig doesn't work", readWriteActionConfig, parsedReadWriteActionConfig)
+        val readWriteActionString = readWriteAction.toJsonString()
+        val parsedReadWriteAction = ISMActionsParser.instance.parse(parser(readWriteActionString), 0)
+        assertEquals("Round tripping ReadWriteAction doesn't work", readWriteAction.convertToMap(), parsedReadWriteAction.convertToMap())
     }
 
     fun `test replica_count action config parsing`() {
-        val replicaCountActionConfig = randomReplicaCountActionConfig()
+        val replicaCountAction = randomReplicaCountActionConfig()
 
-        val replicaCountActionConfigString = replicaCountActionConfig.toJsonString()
-        val parsedReplicaCountActionConfig = ActionConfig.parse(parser(replicaCountActionConfigString), 0)
-        assertEquals("Round tripping ReplicaCountActionConfig doesn't work", replicaCountActionConfig, parsedReplicaCountActionConfig)
+        val replicaCountActionString = replicaCountAction.toJsonString()
+        val parsedReplicaCountAction = ISMActionsParser.instance.parse(parser(replicaCountActionString), 0)
+        assertEquals("Round tripping ReplicaCountAction doesn't work", replicaCountAction.convertToMap(), parsedReplicaCountAction.convertToMap())
     }
 
     fun `test set_index_priority action config parsing`() {
-        val indexPriorityActionConfig = randomIndexPriorityActionConfig()
+        val indexPriorityAction = randomIndexPriorityActionConfig()
 
-        val indexPriorityActionConfigString = indexPriorityActionConfig.toJsonString()
-        val parsedIndexPriorityActionConfig = ActionConfig.parse(parser(indexPriorityActionConfigString), 0)
-        assertEquals("Round tripping indexPriorityActionConfig doesn't work", indexPriorityActionConfig, parsedIndexPriorityActionConfig)
+        val indexPriorityActionString = indexPriorityAction.toJsonString()
+        val parsedIndexPriorityAction = ISMActionsParser.instance.parse(parser(indexPriorityActionString), 0)
+        assertEquals("Round tripping indexPriorityAction doesn't work", indexPriorityAction.convertToMap(), parsedIndexPriorityAction.convertToMap())
     }
 
     fun `test force_merge action config parsing`() {
-        val forceMergeActionConfig = randomForceMergeActionConfig()
+        val forceMergeAction = randomForceMergeActionConfig()
 
-        val forceMergeActionConfigString = forceMergeActionConfig.toJsonString()
-        val parsedForceMergeActionConfig = ActionConfig.parse(parser(forceMergeActionConfigString), 0)
-        assertEquals("Round tripping ForceMergeActionConfig doesn't work", forceMergeActionConfig, parsedForceMergeActionConfig)
+        val forceMergeActionString = forceMergeAction.toJsonString()
+        val parsedForceMergeAction = ISMActionsParser.instance.parse(parser(forceMergeActionString), 0)
+        assertEquals("Round tripping ForceMergeAction doesn't work", forceMergeAction.convertToMap(), parsedForceMergeAction.convertToMap())
     }
 
-    fun `test notification action config parsing`() {
-        val chimeNotificationActionConfig = randomNotificationActionConfig(destination = randomDestination(type = DestinationType.CHIME))
-        val slackNotificationActionConfig = randomNotificationActionConfig(destination = randomDestination(type = DestinationType.SLACK))
-        val customNotificationActionConfig = randomNotificationActionConfig(destination = randomDestination(type = DestinationType.CUSTOM_WEBHOOK))
+    fun `test notification action parsing`() {
+        val chimeNotificationAction = randomNotificationActionConfig(destination = randomDestination(type = DestinationType.CHIME))
+        val slackNotificationAction = randomNotificationActionConfig(destination = randomDestination(type = DestinationType.SLACK))
+        val customNotificationAction = randomNotificationActionConfig(destination = randomDestination(type = DestinationType.CUSTOM_WEBHOOK))
 
-        val chimeNotificationActionConfigString = chimeNotificationActionConfig.toJsonString()
-        val chimeParsedNotificationActionConfig = ActionConfig.parse(parser(chimeNotificationActionConfigString), 0)
+        val chimeNotificationActionString = chimeNotificationAction.toJsonString()
+        val chimeParsedNotificationAction = ISMActionsParser.instance.parse(parser(chimeNotificationActionString), 0)
         assertEquals(
-            "Round tripping chime NotificationActionConfig doesn't work",
-            chimeNotificationActionConfig, chimeParsedNotificationActionConfig
+            "Round tripping chime NotificationAction doesn't work",
+            chimeNotificationAction.convertToMap(), chimeParsedNotificationAction.convertToMap()
         )
 
-        val slackNotificationActionConfigString = slackNotificationActionConfig.toJsonString()
-        val slackParsedNotificationActionConfig = ActionConfig.parse(parser(slackNotificationActionConfigString), 0)
+        val slackNotificationActionString = slackNotificationAction.toJsonString()
+        val slackParsedNotificationAction = ISMActionsParser.instance.parse(parser(slackNotificationActionString), 0)
         assertEquals(
-            "Round tripping slack NotificationActionConfig doesn't work",
-            slackNotificationActionConfig, slackParsedNotificationActionConfig
+            "Round tripping slack NotificationAction doesn't work",
+            slackNotificationAction.convertToMap(), slackParsedNotificationAction.convertToMap()
         )
 
-        val customNotificationActionConfigString = customNotificationActionConfig.toJsonString()
-        val customParsedNotificationActionConfig = ActionConfig.parse(parser(customNotificationActionConfigString), 0)
+        val customNotificationActionString = customNotificationAction.toJsonString()
+        val customParsedNotificationAction = ISMActionsParser.instance.parse(parser(customNotificationActionString), 0)
         assertEquals(
-            "Round tripping custom webhook NotificationActionConfig doesn't work",
-            customNotificationActionConfig, customParsedNotificationActionConfig
+            "Round tripping custom webhook NotificationAction doesn't work",
+            customNotificationAction.convertToMap(), customParsedNotificationAction.convertToMap()
         )
     }
 
     fun `test snapshot action config parsing`() {
-        val snapshotActionConfig = randomSnapshotActionConfig("repository", "snapshot")
+        val snapshotAction = randomSnapshotActionConfig("repository", "snapshot")
 
-        val snapshotActionConfigString = snapshotActionConfig.toJsonString()
-        val parsedNotificationActionConfig = ActionConfig.parse(parser(snapshotActionConfigString), 0)
-        assertEquals("Round tripping SnapshotActionConfig doesn't work", snapshotActionConfig, parsedNotificationActionConfig)
+        val snapshotActionString = snapshotAction.toJsonString()
+        val parsedSnapshotAction = ISMActionsParser.instance.parse(parser(snapshotActionString), 0)
+        assertEquals(
+            "Round tripping SnapshotAction doesn't work",
+            snapshotAction.convertToMap(), parsedSnapshotAction.convertToMap()
+        )
     }
 
     fun `test allocation action config parsing`() {
-        val allocationActionConfig = randomAllocationActionConfig(require = mapOf("box_type" to "hot"))
+        val allocationAction = randomAllocationActionConfig(
+            require = mapOf("box_type" to "hot"),
+            include = mapOf(randomAlphaOfLengthBetween(1, 10) to randomAlphaOfLengthBetween(1, 10)),
+            exclude = mapOf(randomAlphaOfLengthBetween(1, 10) to randomAlphaOfLengthBetween(1, 10))
+        )
 
-        val allocationActionConfigString = allocationActionConfig.toJsonString()
-        val parsedAllocationActionConfig = ActionConfig.parse(parser(allocationActionConfigString), 0)
-        assertEquals("Round tripping AllocationActionConfig doesn't work", allocationActionConfig, parsedAllocationActionConfig)
+        val allocationActionString = allocationAction.toJsonString()
+        val parsedAllocationAction = ISMActionsParser.instance.parse(parser(allocationActionString), 0)
+        assertEquals("Round tripping AllocationAction doesn't work", allocationAction.convertToMap(), parsedAllocationAction.convertToMap())
     }
 
     fun `test managed index config parsing`() {
@@ -196,12 +199,28 @@ class XContentTests : OpenSearchTestCase() {
     }
 
     fun `test rollup action parsing`() {
-        val rollupActionConfig = randomRollupActionConfig()
-        val rollupActionConfigString = rollupActionConfig.toJsonString()
-        val parsedRollupActionConfig = ActionConfig.parse(parser(rollupActionConfigString), 0) as RollupActionConfig
+        val rollupAction = randomRollupActionConfig()
+        val rollupActionString = rollupAction.toJsonString()
+        val parsedRollupAction = ISMActionsParser.instance.parse(parser(rollupActionString), 0) as RollupAction
 
-        assertEquals("Round tripping RollupActionConfig doesn't work", rollupActionConfig.index, parsedRollupActionConfig.index)
-        assertEquals("Round tripping RollupActionConfig doesn't work", rollupActionConfig.ismRollup, parsedRollupActionConfig.ismRollup)
+        assertEquals("Round tripping RollupAction doesn't work", rollupAction.actionIndex, parsedRollupAction.actionIndex)
+        assertEquals("Round tripping RollupAction doesn't work", rollupAction.ismRollup, parsedRollupAction.ismRollup)
+    }
+
+    fun `test close action parsing`() {
+        val closeAction = randomCloseActionConfig()
+        val closeActionString = closeAction.toJsonString()
+        val parsedCloseAction = ISMActionsParser.instance.parse(parser(closeActionString), 0)
+
+        assertEquals("Round tripping CloseAction doesn't work", closeAction.convertToMap(), parsedCloseAction.convertToMap())
+    }
+
+    fun `test open action parsing`() {
+        val openAction = randomOpenActionConfig()
+        val openActionString = openAction.toJsonString()
+        val parsedOpenAction = ISMActionsParser.instance.parse(parser(openActionString), 0)
+
+        assertEquals("Round tripping OpenAction doesn't work", openAction.convertToMap(), parsedOpenAction.convertToMap())
     }
 
     fun `test managed index metadata parsing`() {

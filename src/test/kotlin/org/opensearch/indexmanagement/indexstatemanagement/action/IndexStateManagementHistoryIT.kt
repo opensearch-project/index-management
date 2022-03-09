@@ -8,32 +8,29 @@ package org.opensearch.indexmanagement.indexstatemanagement.action
 import org.opensearch.action.search.SearchResponse
 import org.opensearch.indexmanagement.IndexManagementIndices
 import org.opensearch.indexmanagement.indexstatemanagement.IndexStateManagementRestTestCase
-import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
 import org.opensearch.indexmanagement.indexstatemanagement.model.State
-import org.opensearch.indexmanagement.indexstatemanagement.model.action.ActionConfig
-import org.opensearch.indexmanagement.indexstatemanagement.model.action.ReadOnlyActionConfig
-import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.ActionMetaData
-import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.PolicyRetryInfoMetaData
-import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.StateMetaData
-import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.StepMetaData
 import org.opensearch.indexmanagement.indexstatemanagement.randomErrorNotification
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings
-import org.opensearch.indexmanagement.indexstatemanagement.step.Step
 import org.opensearch.indexmanagement.indexstatemanagement.step.readonly.SetReadOnlyStep
+import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ActionMetaData
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.PolicyRetryInfoMetaData
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StateMetaData
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepMetaData
 import org.opensearch.indexmanagement.waitFor
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 import java.util.Locale
 
 class IndexStateManagementHistoryIT : IndexStateManagementRestTestCase() {
-
     private val testIndexName = javaClass.simpleName.toLowerCase(Locale.ROOT)
 
     fun `test basic workflow`() {
         val indexName = "${testIndexName}_index_1"
         val policyID = "${testIndexName}_testPolicyName_1"
-        val actionConfig = ReadOnlyActionConfig(0)
+        val actionConfig = ReadOnlyAction(0)
         val states = listOf(
             State("ReadOnlyState", listOf(actionConfig), listOf())
         )
@@ -82,7 +79,7 @@ class IndexStateManagementHistoryIT : IndexStateManagementRestTestCase() {
             indexCreationDate = actualHistory.indexCreationDate,
             transitionTo = null,
             stateMetaData = StateMetaData("ReadOnlyState", actualHistory.stateMetaData!!.startTime),
-            actionMetaData = ActionMetaData(ActionConfig.ActionType.READ_ONLY.toString(), actualHistory.actionMetaData!!.startTime, 0, false, 0, 0, null),
+            actionMetaData = ActionMetaData(ReadOnlyAction.name, actualHistory.actionMetaData!!.startTime, 0, false, 0, 0, null),
             stepMetaData = StepMetaData("set_read_only", actualHistory.stepMetaData!!.startTime, Step.StepStatus.COMPLETED),
             policyRetryInfo = PolicyRetryInfoMetaData(false, 0),
             info = mapOf("message" to SetReadOnlyStep.getSuccessMessage(indexName))
@@ -96,7 +93,7 @@ class IndexStateManagementHistoryIT : IndexStateManagementRestTestCase() {
     fun `test short retention period and history enabled`() {
         val indexName = "${testIndexName}_index_2"
         val policyID = "${testIndexName}_testPolicyName_2"
-        val actionConfig = ReadOnlyActionConfig(0)
+        val actionConfig = ReadOnlyAction(0)
         val states = listOf(
             State("ReadOnlyState", listOf(actionConfig), listOf())
         )
@@ -149,7 +146,7 @@ class IndexStateManagementHistoryIT : IndexStateManagementRestTestCase() {
             indexCreationDate = actualHistory.indexCreationDate,
             transitionTo = null,
             stateMetaData = StateMetaData("ReadOnlyState", actualHistory.stateMetaData!!.startTime),
-            actionMetaData = ActionMetaData(ActionConfig.ActionType.READ_ONLY.toString(), actualHistory.actionMetaData!!.startTime, 0, false, 0, 0, null),
+            actionMetaData = ActionMetaData(ReadOnlyAction.name, actualHistory.actionMetaData!!.startTime, 0, false, 0, 0, null),
             stepMetaData = StepMetaData("set_read_only", actualHistory.stepMetaData!!.startTime, Step.StepStatus.COMPLETED),
             policyRetryInfo = PolicyRetryInfoMetaData(false, 0),
             info = mapOf("message" to SetReadOnlyStep.getSuccessMessage(indexName))
@@ -163,7 +160,7 @@ class IndexStateManagementHistoryIT : IndexStateManagementRestTestCase() {
     fun `test small doc count rolledover index`() {
         val indexName = "${testIndexName}_index_3"
         val policyID = "${testIndexName}_testPolicyNam_3"
-        val actionConfig = ReadOnlyActionConfig(0)
+        val actionConfig = ReadOnlyAction(0)
         val states = listOf(
             State("ReadOnlyState", listOf(actionConfig), listOf())
         )
@@ -216,7 +213,7 @@ class IndexStateManagementHistoryIT : IndexStateManagementRestTestCase() {
             indexCreationDate = actualHistory.indexCreationDate,
             transitionTo = null,
             stateMetaData = StateMetaData("ReadOnlyState", actualHistory.stateMetaData!!.startTime),
-            actionMetaData = ActionMetaData(ActionConfig.ActionType.READ_ONLY.toString(), actualHistory.actionMetaData!!.startTime, 0, false, 0, 0, null),
+            actionMetaData = ActionMetaData(ReadOnlyAction.name, actualHistory.actionMetaData!!.startTime, 0, false, 0, 0, null),
             stepMetaData = StepMetaData("set_read_only", actualHistory.stepMetaData!!.startTime, Step.StepStatus.COMPLETED),
             policyRetryInfo = PolicyRetryInfoMetaData(false, 0),
             info = mapOf("message" to SetReadOnlyStep.getSuccessMessage(indexName))
@@ -230,7 +227,7 @@ class IndexStateManagementHistoryIT : IndexStateManagementRestTestCase() {
     fun `test short retention period and rolledover index`() {
         val indexName = "${testIndexName}_index_4"
         val policyID = "${testIndexName}_testPolicyNam_4"
-        val actionConfig = ReadOnlyActionConfig(0)
+        val actionConfig = ReadOnlyAction(0)
         val states = listOf(
             State("ReadOnlyState", listOf(actionConfig), listOf())
         )
@@ -308,7 +305,7 @@ class IndexStateManagementHistoryIT : IndexStateManagementRestTestCase() {
             indexCreationDate = actualHistory1.indexCreationDate,
             transitionTo = null,
             stateMetaData = StateMetaData(states[0].name, actualHistory1.stateMetaData!!.startTime),
-            actionMetaData = ActionMetaData(ActionConfig.ActionType.READ_ONLY.toString(), actualHistory1.actionMetaData!!.startTime, 0, false, 0, 0, null),
+            actionMetaData = ActionMetaData(ReadOnlyAction.name, actualHistory1.actionMetaData!!.startTime, 0, false, 0, 0, null),
             stepMetaData = StepMetaData("set_read_only", actualHistory1.stepMetaData!!.startTime, Step.StepStatus.COMPLETED),
             policyRetryInfo = PolicyRetryInfoMetaData(false, 0),
             info = mapOf("message" to SetReadOnlyStep.getSuccessMessage(indexName))
@@ -332,7 +329,7 @@ class IndexStateManagementHistoryIT : IndexStateManagementRestTestCase() {
     fun `test short retention period and history disabled`() {
         val indexName = "${testIndexName}_index_5"
         val policyID = "${testIndexName}_testPolicyName_5"
-        val actionConfig = ReadOnlyActionConfig(0)
+        val actionConfig = ReadOnlyAction(0)
         val states = listOf(
             State("ReadOnlyState", listOf(actionConfig), listOf())
         )
@@ -400,7 +397,7 @@ class IndexStateManagementHistoryIT : IndexStateManagementRestTestCase() {
     fun `test history shard settings`() {
         val indexName = "${testIndexName}_shard_settings"
         val policyID = "${testIndexName}_shard_settings_1"
-        val actionConfig = ReadOnlyActionConfig(0)
+        val actionConfig = ReadOnlyAction(0)
         val states = listOf(State("ReadOnlyState", listOf(actionConfig), listOf()))
 
         val policy = Policy(

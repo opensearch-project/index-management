@@ -11,39 +11,34 @@ import org.opensearch.action.admin.indices.rollover.RolloverRequest
 import org.opensearch.action.admin.indices.rollover.RolloverResponse
 import org.opensearch.action.admin.indices.stats.IndicesStatsRequest
 import org.opensearch.action.admin.indices.stats.IndicesStatsResponse
-import org.opensearch.client.Client
-import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.unit.ByteSizeValue
 import org.opensearch.common.unit.TimeValue
-import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
-import org.opensearch.indexmanagement.indexstatemanagement.model.action.RolloverActionConfig
-import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.StepMetaData
+import org.opensearch.indexmanagement.indexstatemanagement.action.RolloverAction
 import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.getRolloverAlias
 import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.getRolloverSkip
-import org.opensearch.indexmanagement.indexstatemanagement.step.Step
 import org.opensearch.indexmanagement.indexstatemanagement.util.evaluateConditions
 import org.opensearch.indexmanagement.opensearchapi.getUsefulCauseString
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
+import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepContext
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepMetaData
 import org.opensearch.rest.RestStatus
 import org.opensearch.transport.RemoteTransportException
 import java.time.Instant
 
-@Suppress("ReturnCount", "TooGenericExceptionCaught")
-class AttemptRolloverStep(
-    val clusterService: ClusterService,
-    val client: Client,
-    val config: RolloverActionConfig,
-    managedIndexMetaData: ManagedIndexMetaData
-) : Step("attempt_rollover", managedIndexMetaData) {
+@Suppress("ReturnCount")
+class AttemptRolloverStep(private val action: RolloverAction) : Step(name) {
 
     private val logger = LogManager.getLogger(javaClass)
     private var stepStatus = StepStatus.STARTING
     private var info: Map<String, Any>? = null
 
-    override fun isIdempotent() = false
-
-    @Suppress("ComplexMethod", "LongMethod", "TooGenericExceptionCaught")
-    override suspend fun execute(): AttemptRolloverStep {
+    @Suppress("ComplexMethod", "LongMethod")
+    override suspend fun execute(): Step {
+        val context = this.context ?: return this
+        val indexName = context.metadata.index
+        val clusterService = context.clusterService
         val skipRollover = clusterService.state().metadata.index(indexName).getRolloverSkip()
         if (skipRollover) {
             stepStatus = StepStatus.COMPLETED
@@ -51,7 +46,7 @@ class AttemptRolloverStep(
             return this
         }
 
-        val (rolloverTarget, isDataStream) = getRolloverTargetOrUpdateInfo()
+        val (rolloverTarget, isDataStream) = getRolloverTargetOrUpdateInfo(context)
         // If the rolloverTarget is null, we would've already updated the failed info from getRolloverTargetOrUpdateInfo and can return early
         rolloverTarget ?: return this
 
@@ -61,13 +56,13 @@ class AttemptRolloverStep(
             return this
         }
 
-        if (!isDataStream && !preCheckIndexAlias(rolloverTarget)) {
+        if (!isDataStream && !preCheckIndexAlias(context, rolloverTarget)) {
             stepStatus = StepStatus.FAILED
             info = mapOf("message" to getFailedPreCheckMessage(indexName))
             return this
         }
 
-        val statsResponse = getIndexStatsOrUpdateInfo()
+        val statsResponse = getIndexStatsOrUpdateInfo(context)
         // If statsResponse is null we already updated failed info from getIndexStatsOrUpdateInfo and can return early
         statsResponse ?: return this
 
@@ -83,28 +78,29 @@ class AttemptRolloverStep(
         val indexSize = ByteSizeValue(statsResponse.primaries.docs?.totalSizeInBytes ?: 0)
         val largestPrimaryShard = statsResponse.shards.maxByOrNull { it.stats.docs?.totalSizeInBytes ?: 0 }
         val largestPrimaryShardSize = ByteSizeValue(largestPrimaryShard?.stats?.docs?.totalSizeInBytes ?: 0)
+
         val conditions = listOfNotNull(
-            config.minAge?.let {
-                RolloverActionConfig.MIN_INDEX_AGE_FIELD to mapOf(
+            action.minAge?.let {
+                RolloverAction.MIN_INDEX_AGE_FIELD to mapOf(
                     "condition" to it.toString(),
                     "current" to indexAgeTimeValue.toString(),
                     "creationDate" to indexCreationDate
                 )
             },
-            config.minDocs?.let {
-                RolloverActionConfig.MIN_DOC_COUNT_FIELD to mapOf(
+            action.minDocs?.let {
+                RolloverAction.MIN_DOC_COUNT_FIELD to mapOf(
                     "condition" to it,
                     "current" to numDocs
                 )
             },
-            config.minSize?.let {
-                RolloverActionConfig.MIN_SIZE_FIELD to mapOf(
+            action.minSize?.let {
+                RolloverAction.MIN_SIZE_FIELD to mapOf(
                     "condition" to it.toString(),
                     "current" to indexSize.toString()
                 )
             },
-            config.minPrimaryShardSize?.let {
-                RolloverActionConfig.MIN_PRIMARY_SHARD_SIZE_FIELD to mapOf(
+            action.minPrimaryShardSize?.let {
+                RolloverAction.MIN_PRIMARY_SHARD_SIZE_FIELD to mapOf(
                     "condition" to it.toString(),
                     "current" to largestPrimaryShardSize.toString(),
                     "shard" to largestPrimaryShard?.shardRouting?.id()
@@ -112,12 +108,12 @@ class AttemptRolloverStep(
             }
         ).toMap()
 
-        if (config.evaluateConditions(indexAgeTimeValue, numDocs, indexSize, largestPrimaryShardSize)) {
+        if (action.evaluateConditions(indexAgeTimeValue, numDocs, indexSize, largestPrimaryShardSize)) {
             logger.info(
                 "$indexName rollover conditions evaluated to true [indexCreationDate=$indexCreationDate," +
                     " numDocs=$numDocs, indexSize=${indexSize.bytes}, primaryShardSize=${largestPrimaryShardSize.bytes}]"
             )
-            executeRollover(rolloverTarget, isDataStream, conditions)
+            executeRollover(context, rolloverTarget, isDataStream, conditions)
         } else {
             stepStatus = StepStatus.CONDITION_NOT_MET
             info = mapOf("message" to getPendingMessage(indexName), "conditions" to conditions)
@@ -126,11 +122,96 @@ class AttemptRolloverStep(
         return this
     }
 
+    private fun getRolloverTargetOrUpdateInfo(context: StepContext): Pair<String?, Boolean> {
+        val indexName = context.metadata.index
+        val metadata = context.clusterService.state().metadata()
+        val indexAbstraction = metadata.indicesLookup[indexName]
+        val isDataStreamIndex = indexAbstraction?.parentDataStream != null
+
+        val rolloverTarget = when {
+            isDataStreamIndex -> indexAbstraction?.parentDataStream?.name
+            else -> metadata.index(indexName).getRolloverAlias()
+        }
+
+        if (rolloverTarget == null) {
+            val message = getFailedNoValidAliasMessage(indexName)
+            logger.warn(message)
+            stepStatus = StepStatus.FAILED
+            info = mapOf("message" to message)
+        }
+
+        return rolloverTarget to isDataStreamIndex
+    }
+
+    /**
+     * pre-condition check on managed-index's alias before rollover
+     *
+     * This will block
+     *  when managed index doesn't have alias
+     *  when managed index has alias but not the write index,
+     *      and this alias contains more than one index
+     * User can use skip rollover setting to bypass this
+     *
+     * @param alias user defined ISM rollover alias
+     */
+    private fun preCheckIndexAlias(context: StepContext, alias: String): Boolean {
+        val indexName = context.metadata.index
+        val metadata = context.clusterService.state().metadata
+        val indexAlias = metadata.index(indexName)?.aliases?.get(alias)
+        logger.debug("Index $indexName has aliases $indexAlias")
+        if (indexAlias == null) {
+            return false
+        }
+        val isWriteIndex = indexAlias.writeIndex() // this could be null
+        if (isWriteIndex != true) {
+            val aliasIndices = metadata.indicesLookup[alias]?.indices?.map { it.index }
+            logger.debug("Alias $alias contains indices $aliasIndices")
+            if (aliasIndices != null && aliasIndices.size > 1) {
+                return false
+            }
+        }
+
+        return true
+    }
+
+    private suspend fun getIndexStatsOrUpdateInfo(context: StepContext): IndicesStatsResponse? {
+        val indexName = context.metadata.index
+        try {
+            val statsRequest = IndicesStatsRequest()
+                .indices(indexName).clear().docs(true)
+            val statsResponse: IndicesStatsResponse = context.client.admin().indices().suspendUntil { stats(statsRequest, it) }
+
+            if (statsResponse.status == RestStatus.OK) {
+                return statsResponse
+            }
+
+            val message = getFailedEvaluateMessage(indexName)
+            logger.warn("$message - ${statsResponse.status}")
+            stepStatus = StepStatus.FAILED
+            info = mapOf(
+                "message" to message,
+                "shard_failures" to statsResponse.shardFailures.map { it.getUsefulCauseString() }
+            )
+        } catch (e: RemoteTransportException) {
+            handleException(indexName, ExceptionsHelper.unwrapCause(e) as Exception)
+        } catch (e: Exception) {
+            handleException(indexName, e, getFailedEvaluateMessage(indexName))
+        }
+
+        return null
+    }
+
     @Suppress("ComplexMethod")
-    private suspend fun executeRollover(rolloverTarget: String, isDataStream: Boolean, conditions: Map<String, Map<String, Any?>>) {
+    private suspend fun executeRollover(
+        context: StepContext,
+        rolloverTarget: String,
+        isDataStream: Boolean,
+        conditions: Map<String, Map<String, Any?>>
+    ) {
+        val indexName = context.metadata.index
         try {
             val request = RolloverRequest(rolloverTarget, null)
-            val response: RolloverResponse = client.admin().indices().suspendUntil { rolloverIndex(request, it) }
+            val response: RolloverResponse = context.client.admin().indices().suspendUntil { rolloverIndex(request, it) }
 
             // Do not need to check for isRolledOver as we are not passing any conditions or dryrun=true
             // which are the only two ways it comes back as false
@@ -164,89 +245,22 @@ class AttemptRolloverStep(
                 ).toMap()
             }
         } catch (e: RemoteTransportException) {
-            handleException(ExceptionsHelper.unwrapCause(e) as Exception)
+            handleException(indexName, ExceptionsHelper.unwrapCause(e) as Exception)
         } catch (e: Exception) {
-            handleException(e)
+            handleException(indexName, e)
         }
     }
 
-    /**
-     * pre-condition check on managed-index's alias before rollover
-     *
-     * This will block
-     *  when managed index dont have alias
-     *  when managed index has alias but not the write index,
-     *      and this alias contains more than one index
-     * User can use skip rollover setting to bypass this
-     *
-     * @param alias user defined ISM rollover alias
-     */
-    private fun preCheckIndexAlias(alias: String): Boolean {
-        val metadata = clusterService.state().metadata
-        val indexAlias = metadata.index(indexName)?.aliases?.get(alias)
-        logger.debug("Index $indexName has aliases $indexAlias")
-        if (indexAlias == null) {
-            return false
-        }
-        val isWriteIndex = indexAlias.writeIndex() // this could be null
-        if (isWriteIndex != true) {
-            val aliasIndices = metadata.indicesLookup[alias]?.indices?.map { it.index }
-            logger.debug("Alias $alias contains indices $aliasIndices")
-            if (aliasIndices != null && aliasIndices.size > 1) {
-                return false
-            }
-        }
-
-        return true
+    override fun getUpdatedManagedIndexMetadata(currentMetadata: ManagedIndexMetaData): ManagedIndexMetaData {
+        return currentMetadata.copy(
+            stepMetaData = StepMetaData(name, getStepStartTime(currentMetadata).toEpochMilli(), stepStatus),
+            rolledOver = if (currentMetadata.rolledOver == true) true else stepStatus == StepStatus.COMPLETED,
+            transitionTo = null,
+            info = info
+        )
     }
 
-    private fun getRolloverTargetOrUpdateInfo(): Pair<String?, Boolean> {
-        val metadata = clusterService.state().metadata()
-        val indexAbstraction = metadata.indicesLookup[indexName]
-        val isDataStreamIndex = indexAbstraction?.parentDataStream != null
-
-        val rolloverTarget = when {
-            isDataStreamIndex -> indexAbstraction?.parentDataStream?.name
-            else -> metadata.index(indexName).getRolloverAlias()
-        }
-
-        if (rolloverTarget == null) {
-            val message = getFailedNoValidAliasMessage(indexName)
-            logger.warn(message)
-            stepStatus = StepStatus.FAILED
-            info = mapOf("message" to message)
-        }
-
-        return rolloverTarget to isDataStreamIndex
-    }
-
-    private suspend fun getIndexStatsOrUpdateInfo(): IndicesStatsResponse? {
-        try {
-            val statsRequest = IndicesStatsRequest()
-                .indices(indexName).clear().docs(true)
-            val statsResponse: IndicesStatsResponse = client.admin().indices().suspendUntil { stats(statsRequest, it) }
-
-            if (statsResponse.status == RestStatus.OK) {
-                return statsResponse
-            }
-
-            val message = getFailedEvaluateMessage(indexName)
-            logger.warn("$message - ${statsResponse.status}")
-            stepStatus = StepStatus.FAILED
-            info = mapOf(
-                "message" to message,
-                "shard_failures" to statsResponse.shardFailures.map { it.getUsefulCauseString() }
-            )
-        } catch (e: RemoteTransportException) {
-            handleException(ExceptionsHelper.unwrapCause(e) as Exception)
-        } catch (e: Exception) {
-            handleException(e, getFailedEvaluateMessage(indexName))
-        }
-
-        return null
-    }
-
-    private fun handleException(e: Exception, message: String = getFailedMessage(indexName)) {
+    private fun handleException(indexName: String, e: Exception, message: String = getFailedMessage(indexName)) {
         logger.error(message, e)
         stepStatus = StepStatus.FAILED
         val mutableInfo = mutableMapOf("message" to message)
@@ -255,17 +269,11 @@ class AttemptRolloverStep(
         info = mutableInfo.toMap()
     }
 
-    override fun getUpdatedManagedIndexMetaData(currentMetaData: ManagedIndexMetaData): ManagedIndexMetaData {
-        return currentMetaData.copy(
-            stepMetaData = StepMetaData(name, getStepStartTime().toEpochMilli(), stepStatus),
-            rolledOver = if (currentMetaData.rolledOver == true) true else stepStatus == StepStatus.COMPLETED,
-            transitionTo = null,
-            info = info
-        )
-    }
+    override fun isIdempotent(): Boolean = false
 
     @Suppress("TooManyFunctions")
     companion object {
+        const val name = "attempt_rollover"
         fun getFailedMessage(index: String) = "Failed to rollover index [index=$index]"
         fun getFailedAliasUpdateMessage(index: String, newIndex: String) =
             "New index created, but failed to update alias [index=$index, newIndex=$newIndex]"

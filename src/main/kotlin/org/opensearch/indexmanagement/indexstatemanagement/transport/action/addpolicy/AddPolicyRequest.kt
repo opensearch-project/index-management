@@ -10,23 +10,31 @@ import org.opensearch.action.ActionRequestValidationException
 import org.opensearch.action.ValidateActions
 import org.opensearch.common.io.stream.StreamInput
 import org.opensearch.common.io.stream.StreamOutput
+import org.opensearch.indexmanagement.indexstatemanagement.util.DEFAULT_INDEX_TYPE
 import java.io.IOException
 
 class AddPolicyRequest(
     val indices: List<String>,
-    val policyID: String
+    val policyID: String,
+    val indexType: String
 ) : ActionRequest() {
 
     @Throws(IOException::class)
     constructor(sin: StreamInput) : this(
         indices = sin.readStringList(),
-        policyID = sin.readString()
+        policyID = sin.readString(),
+        indexType = sin.readString()
     )
 
     override fun validate(): ActionRequestValidationException? {
         var validationException: ActionRequestValidationException? = null
         if (indices.isEmpty()) {
             validationException = ValidateActions.addValidationError("Missing indices", validationException)
+        } else if (indexType != DEFAULT_INDEX_TYPE && indices.size > 1) {
+            validationException = ValidateActions.addValidationError(
+                MULTIPLE_INDICES_CUSTOM_INDEX_TYPE_ERROR,
+                validationException
+            )
         }
         return validationException
     }
@@ -35,5 +43,11 @@ class AddPolicyRequest(
     override fun writeTo(out: StreamOutput) {
         out.writeStringCollection(indices)
         out.writeString(policyID)
+        out.writeString(indexType)
+    }
+
+    companion object {
+        const val MULTIPLE_INDICES_CUSTOM_INDEX_TYPE_ERROR =
+            "Cannot add policy to more than one index name/pattern when using a custom index type"
     }
 }

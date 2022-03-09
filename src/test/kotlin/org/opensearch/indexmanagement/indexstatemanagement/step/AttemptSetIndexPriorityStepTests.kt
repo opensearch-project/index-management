@@ -17,27 +17,33 @@ import org.opensearch.client.AdminClient
 import org.opensearch.client.Client
 import org.opensearch.client.IndicesAdminClient
 import org.opensearch.cluster.service.ClusterService
-import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
-import org.opensearch.indexmanagement.indexstatemanagement.model.action.IndexPriorityActionConfig
+import org.opensearch.common.settings.Settings
+import org.opensearch.indexmanagement.indexstatemanagement.action.IndexPriorityAction
 import org.opensearch.indexmanagement.indexstatemanagement.step.indexpriority.AttemptSetIndexPriorityStep
+import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepContext
+import org.opensearch.script.ScriptService
 import org.opensearch.test.OpenSearchTestCase
 import org.opensearch.transport.RemoteTransportException
-import kotlin.IllegalArgumentException
 
 class AttemptSetIndexPriorityStepTests : OpenSearchTestCase() {
 
     private val clusterService: ClusterService = mock()
+    private val scriptService: ScriptService = mock()
+    private val settings: Settings = Settings.EMPTY
 
     fun `test set priority step sets step status to completed when successful`() {
         val acknowledgedResponse = AcknowledgedResponse(true)
         val client = getClient(getAdminClient(getIndicesAdminClient(acknowledgedResponse, null)))
 
         runBlocking {
-            val indexPriorityActionConfig = IndexPriorityActionConfig(50, 0)
+            val indexPriorityAction = IndexPriorityAction(50, 0)
             val managedIndexMetaData = ManagedIndexMetaData("test", "indexUuid", "policy_id", null, null, null, null, null, null, null, null, null, null, null)
-            val attemptSetPriorityStep = AttemptSetIndexPriorityStep(clusterService, client, indexPriorityActionConfig, managedIndexMetaData)
-            attemptSetPriorityStep.execute()
-            val updatedManagedIndexMetaData = attemptSetPriorityStep.getUpdatedManagedIndexMetaData(managedIndexMetaData)
+            val attemptSetPriorityStep = AttemptSetIndexPriorityStep(indexPriorityAction)
+            val context = StepContext(managedIndexMetaData, clusterService, client, null, null, scriptService, settings)
+            attemptSetPriorityStep.preExecute(logger, context).execute()
+            val updatedManagedIndexMetaData = attemptSetPriorityStep.getUpdatedManagedIndexMetadata(managedIndexMetaData)
             assertEquals("Step status is not COMPLETED", Step.StepStatus.COMPLETED, updatedManagedIndexMetaData.stepMetaData?.stepStatus)
         }
     }
@@ -47,11 +53,12 @@ class AttemptSetIndexPriorityStepTests : OpenSearchTestCase() {
         val client = getClient(getAdminClient(getIndicesAdminClient(acknowledgedResponse, null)))
 
         runBlocking {
-            val indexPriorityActionConfig = IndexPriorityActionConfig(50, 0)
+            val indexPriorityAction = IndexPriorityAction(50, 0)
             val managedIndexMetaData = ManagedIndexMetaData("test", "indexUuid", "policy_id", null, null, null, null, null, null, null, null, null, null, null)
-            val attemptSetPriorityStep = AttemptSetIndexPriorityStep(clusterService, client, indexPriorityActionConfig, managedIndexMetaData)
-            attemptSetPriorityStep.execute()
-            val updatedManagedIndexMetaData = attemptSetPriorityStep.getUpdatedManagedIndexMetaData(managedIndexMetaData)
+            val attemptSetPriorityStep = AttemptSetIndexPriorityStep(indexPriorityAction)
+            val context = StepContext(managedIndexMetaData, clusterService, client, null, null, scriptService, settings)
+            attemptSetPriorityStep.preExecute(logger, context).execute()
+            val updatedManagedIndexMetaData = attemptSetPriorityStep.getUpdatedManagedIndexMetadata(managedIndexMetaData)
             assertEquals("Step status is not FAILED", Step.StepStatus.FAILED, updatedManagedIndexMetaData.stepMetaData?.stepStatus)
         }
     }
@@ -61,11 +68,12 @@ class AttemptSetIndexPriorityStepTests : OpenSearchTestCase() {
         val client = getClient(getAdminClient(getIndicesAdminClient(null, exception)))
 
         runBlocking {
-            val indexPriorityActionConfig = IndexPriorityActionConfig(50, 0)
+            val indexPriorityAction = IndexPriorityAction(50, 0)
             val managedIndexMetaData = ManagedIndexMetaData("test", "indexUuid", "policy_id", null, null, null, null, null, null, null, null, null, null, null)
-            val attemptSetPriorityStep = AttemptSetIndexPriorityStep(clusterService, client, indexPriorityActionConfig, managedIndexMetaData)
-            attemptSetPriorityStep.execute()
-            val updatedManagedIndexMetaData = attemptSetPriorityStep.getUpdatedManagedIndexMetaData(managedIndexMetaData)
+            val attemptSetPriorityStep = AttemptSetIndexPriorityStep(indexPriorityAction)
+            val context = StepContext(managedIndexMetaData, clusterService, client, null, null, scriptService, settings)
+            attemptSetPriorityStep.preExecute(logger, context).execute()
+            val updatedManagedIndexMetaData = attemptSetPriorityStep.getUpdatedManagedIndexMetadata(managedIndexMetaData)
             logger.info(updatedManagedIndexMetaData)
             assertEquals("Step status is not FAILED", Step.StepStatus.FAILED, updatedManagedIndexMetaData.stepMetaData?.stepStatus)
         }
@@ -76,11 +84,12 @@ class AttemptSetIndexPriorityStepTests : OpenSearchTestCase() {
         val client = getClient(getAdminClient(getIndicesAdminClient(null, exception)))
 
         runBlocking {
-            val indexPriorityActionConfig = IndexPriorityActionConfig(50, 0)
+            val indexPriorityAction = IndexPriorityAction(50, 0)
             val managedIndexMetaData = ManagedIndexMetaData("test", "indexUuid", "policy_id", null, null, null, null, null, null, null, null, null, null, null)
-            val attemptSetPriorityStep = AttemptSetIndexPriorityStep(clusterService, client, indexPriorityActionConfig, managedIndexMetaData)
-            attemptSetPriorityStep.execute()
-            val updatedManagedIndexMetaData = attemptSetPriorityStep.getUpdatedManagedIndexMetaData(managedIndexMetaData)
+            val attemptSetPriorityStep = AttemptSetIndexPriorityStep(indexPriorityAction)
+            val context = StepContext(managedIndexMetaData, clusterService, client, null, null, scriptService, settings)
+            attemptSetPriorityStep.preExecute(logger, context).execute()
+            val updatedManagedIndexMetaData = attemptSetPriorityStep.getUpdatedManagedIndexMetadata(managedIndexMetaData)
             logger.info(updatedManagedIndexMetaData)
             assertEquals("Step status is not FAILED", Step.StepStatus.FAILED, updatedManagedIndexMetaData.stepMetaData?.stepStatus)
             assertEquals("Did not get cause from nested exception", "nested", updatedManagedIndexMetaData.info!!["cause"])

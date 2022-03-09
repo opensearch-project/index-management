@@ -9,7 +9,6 @@ import org.junit.Assume
 import org.opensearch.indexmanagement.indexstatemanagement.IndexStateManagementRestTestCase
 import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
 import org.opensearch.indexmanagement.indexstatemanagement.model.State
-import org.opensearch.indexmanagement.indexstatemanagement.model.action.AllocationActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomErrorNotification
 import org.opensearch.indexmanagement.indexstatemanagement.step.allocation.AttemptAllocationStep
 import org.opensearch.indexmanagement.waitFor
@@ -18,13 +17,12 @@ import java.time.temporal.ChronoUnit
 import java.util.Locale
 
 class AllocationActionIT : IndexStateManagementRestTestCase() {
-
     private val testIndexName = javaClass.simpleName.toLowerCase(Locale.ROOT)
 
     fun `test basic`() {
         val indexName = "${testIndexName}_index_1"
         val policyID = "${testIndexName}_testPolicyName_1"
-        val actionConfig = AllocationActionConfig(require = mapOf("box_type" to "hot"), exclude = emptyMap(), include = emptyMap(), index = 0)
+        val actionConfig = AllocationAction(require = mapOf("box_type" to "hot"), exclude = emptyMap(), include = emptyMap(), index = 0)
         val states = listOf(
             State("Allocate", listOf(actionConfig), listOf())
         )
@@ -69,7 +67,7 @@ class AllocationActionIT : IndexStateManagementRestTestCase() {
 
         availableNodes.remove(getIndexShardNodes(indexName)[0])
 
-        val actionConfig = AllocationActionConfig(require = mapOf("_name" to availableNodes.first()), exclude = emptyMap(), include = emptyMap(), index = 0)
+        val actionConfig = AllocationAction(require = mapOf("_name" to availableNodes.first()), exclude = emptyMap(), include = emptyMap(), index = 0)
         val states = listOf(
             State("Allocate", listOf(actionConfig), listOf())
         )
@@ -120,7 +118,7 @@ class AllocationActionIT : IndexStateManagementRestTestCase() {
 
         val excludedNode = getIndexShardNodes(indexName)[0].toString()
 
-        val actionConfig = AllocationActionConfig(require = emptyMap(), exclude = mapOf("_name" to excludedNode), include = emptyMap(), index = 0)
+        val actionConfig = AllocationAction(require = emptyMap(), exclude = mapOf("_name" to excludedNode), include = emptyMap(), index = 0)
         val states = listOf(
             State("Allocate", listOf(actionConfig), listOf())
         )
@@ -172,7 +170,7 @@ class AllocationActionIT : IndexStateManagementRestTestCase() {
 
         availableNodes.remove(getIndexShardNodes(indexName)[0])
 
-        val actionConfig = AllocationActionConfig(require = emptyMap(), exclude = emptyMap(), include = mapOf("_name" to availableNodes.first()), index = 0)
+        val actionConfig = AllocationAction(require = emptyMap(), exclude = emptyMap(), include = mapOf("_name" to availableNodes.first()), index = 0)
         val states = listOf(
             State("Allocate", listOf(actionConfig), listOf())
         )
@@ -216,7 +214,7 @@ class AllocationActionIT : IndexStateManagementRestTestCase() {
     fun `test fail on illegal key`() {
         val indexName = "${testIndexName}_illegal_key"
         val policyID = "${testIndexName}_illegal_key"
-        val actionConfig = AllocationActionConfig(require = mapOf("..//" to "value"), exclude = emptyMap(), include = emptyMap(), index = 0)
+        val actionConfig = AllocationAction(require = mapOf("..//" to "value"), exclude = emptyMap(), include = emptyMap(), index = 0)
         val states = listOf(
             State("Allocate", listOf(actionConfig), listOf())
         )

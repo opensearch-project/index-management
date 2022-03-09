@@ -429,6 +429,10 @@
                       }
                     }
                   }
+                },
+                "custom": {
+                  "enabled": false,
+                  "type":  "object"
                 }
               }
             },
