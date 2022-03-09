@@ -10,7 +10,6 @@ import org.opensearch.common.settings.Settings
 import org.opensearch.indexmanagement.indexstatemanagement.IndexStateManagementRestTestCase
 import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
 import org.opensearch.indexmanagement.indexstatemanagement.model.State
-import org.opensearch.indexmanagement.indexstatemanagement.model.action.ForceMergeActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomErrorNotification
 import org.opensearch.indexmanagement.indexstatemanagement.step.forcemerge.AttemptCallForceMergeStep
 import org.opensearch.indexmanagement.indexstatemanagement.step.forcemerge.AttemptSetReadOnlyStep
@@ -21,7 +20,6 @@ import java.time.temporal.ChronoUnit
 import java.util.Locale
 
 class ForceMergeActionIT : IndexStateManagementRestTestCase() {
-
     private val testIndexName = javaClass.simpleName.toLowerCase(Locale.ROOT)
 
     fun `test basic workflow`() {
@@ -29,7 +27,7 @@ class ForceMergeActionIT : IndexStateManagementRestTestCase() {
         val policyID = "${testIndexName}_testPolicyName_1"
 
         // Create a Policy with one State that only preforms a force_merge Action
-        val forceMergeActionConfig = ForceMergeActionConfig(maxNumSegments = 1, index = 0)
+        val forceMergeActionConfig = ForceMergeAction(maxNumSegments = 1, index = 0)
         val states = listOf(State("ForceMergeState", listOf(forceMergeActionConfig), listOf()))
 
         val policy = Policy(
@@ -90,7 +88,7 @@ class ForceMergeActionIT : IndexStateManagementRestTestCase() {
         val policyID = "${testIndexName}_testPolicyName_2"
 
         // Create a Policy with one State that only preforms a force_merge Action
-        val forceMergeActionConfig = ForceMergeActionConfig(maxNumSegments = 1, index = 0)
+        val forceMergeActionConfig = ForceMergeAction(maxNumSegments = 1, index = 0)
         val states = listOf(State("ForceMergeState", listOf(forceMergeActionConfig), listOf()))
 
         val policy = Policy(

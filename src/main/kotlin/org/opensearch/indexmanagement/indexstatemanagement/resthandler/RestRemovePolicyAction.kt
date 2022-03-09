@@ -11,6 +11,8 @@ import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.ISM_BASE_U
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.LEGACY_ISM_BASE_URI
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.removepolicy.RemovePolicyAction
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.removepolicy.RemovePolicyRequest
+import org.opensearch.indexmanagement.indexstatemanagement.util.DEFAULT_INDEX_TYPE
+import org.opensearch.indexmanagement.indexstatemanagement.util.TYPE_PARAM_KEY
 import org.opensearch.rest.BaseRestHandler
 import org.opensearch.rest.RestHandler.ReplacedRoute
 import org.opensearch.rest.RestHandler.Route
@@ -49,7 +51,9 @@ class RestRemovePolicyAction : BaseRestHandler() {
             throw IllegalArgumentException("Missing indices")
         }
 
-        val removePolicyRequest = RemovePolicyRequest(indices.toList())
+        val indexType = request.param(TYPE_PARAM_KEY, DEFAULT_INDEX_TYPE)
+
+        val removePolicyRequest = RemovePolicyRequest(indices.toList(), indexType)
 
         return RestChannelConsumer { channel ->
             client.execute(RemovePolicyAction.INSTANCE, removePolicyRequest, RestToXContentListener(channel))

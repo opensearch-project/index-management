@@ -28,12 +28,13 @@ import org.opensearch.common.xcontent.XContentHelper
 import org.opensearch.common.xcontent.XContentType
 import org.opensearch.index.IndexNotFoundException
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
-import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
+import org.opensearch.indexmanagement.indexstatemanagement.DefaultIndexMetadataService
 import org.opensearch.indexmanagement.indexstatemanagement.settings.LegacyOpenDistroManagedIndexSettings
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings
 import org.opensearch.indexmanagement.indexstatemanagement.util.managedIndexMetadataID
 import org.opensearch.indexmanagement.opensearchapi.contentParser
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
 import java.time.Instant
 
 private val log = LogManager.getLogger("Index Management Helper")
@@ -66,13 +67,13 @@ fun IndexMetadata.getManagedIndexMetadata(): ManagedIndexMetaData? {
     return null
 }
 
-fun getUuidsForClosedIndices(state: ClusterState): MutableList<String> {
+fun getUuidsForClosedIndices(state: ClusterState, defaultIndexMetadataService: DefaultIndexMetadataService): MutableList<String> {
     val indexMetadatas = state.metadata.indices
     val closeList = mutableListOf<String>()
     indexMetadatas.forEach {
         // it.key is index name
         if (it.value.state == IndexMetadata.State.CLOSE) {
-            closeList.add(it.value.indexUUID)
+            closeList.add(defaultIndexMetadataService.getCustomIndexUUID(it.value))
         }
     }
     return closeList

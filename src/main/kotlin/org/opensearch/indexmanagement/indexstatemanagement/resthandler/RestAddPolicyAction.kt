@@ -12,6 +12,8 @@ import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.ISM_BASE_U
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.LEGACY_ISM_BASE_URI
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.addpolicy.AddPolicyAction
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.addpolicy.AddPolicyRequest
+import org.opensearch.indexmanagement.indexstatemanagement.util.DEFAULT_INDEX_TYPE
+import org.opensearch.indexmanagement.indexstatemanagement.util.TYPE_PARAM_KEY
 import org.opensearch.rest.BaseRestHandler
 import org.opensearch.rest.BaseRestHandler.RestChannelConsumer
 import org.opensearch.rest.RestHandler.ReplacedRoute
@@ -57,9 +59,11 @@ class RestAddPolicyAction : BaseRestHandler() {
             mapOf()
         }
 
+        val indexType = request.param(TYPE_PARAM_KEY, DEFAULT_INDEX_TYPE)
+
         val policyID = requireNotNull(body.getOrDefault("policy_id", null)) { "Missing policy_id" }
 
-        val addPolicyRequest = AddPolicyRequest(indices.toList(), policyID as String)
+        val addPolicyRequest = AddPolicyRequest(indices.toList(), policyID as String, indexType)
 
         return RestChannelConsumer { channel ->
             client.execute(AddPolicyAction.INSTANCE, addPolicyRequest, RestToXContentListener(channel))

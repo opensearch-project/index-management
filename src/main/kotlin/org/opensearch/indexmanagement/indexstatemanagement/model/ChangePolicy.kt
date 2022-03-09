@@ -15,9 +15,9 @@ import org.opensearch.common.xcontent.XContentParser
 import org.opensearch.common.xcontent.XContentParser.Token
 import org.opensearch.common.xcontent.XContentParserUtils.ensureExpectedToken
 import org.opensearch.commons.authuser.User
-import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.StateMetaData
 import org.opensearch.indexmanagement.indexstatemanagement.util.WITH_USER
 import org.opensearch.indexmanagement.opensearchapi.optionalUserField
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StateMetaData
 import java.io.IOException
 
 /**

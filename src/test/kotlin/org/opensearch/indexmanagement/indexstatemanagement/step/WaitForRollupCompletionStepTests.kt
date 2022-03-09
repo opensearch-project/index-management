@@ -9,18 +9,24 @@ import com.nhaarman.mockitokotlin2.mock
 import kotlinx.coroutines.runBlocking
 import org.opensearch.client.Client
 import org.opensearch.cluster.service.ClusterService
-import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
-import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.ActionMetaData
-import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.ActionProperties
+import org.opensearch.common.settings.Settings
 import org.opensearch.indexmanagement.indexstatemanagement.step.rollup.WaitForRollupCompletionStep
 import org.opensearch.indexmanagement.rollup.model.RollupMetadata
 import org.opensearch.indexmanagement.rollup.model.RollupStats
+import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ActionMetaData
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ActionProperties
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepContext
+import org.opensearch.script.ScriptService
 import org.opensearch.test.OpenSearchTestCase
 import java.time.Instant
 
 class WaitForRollupCompletionStepTests : OpenSearchTestCase() {
 
     private val clusterService: ClusterService = mock()
+    private val scriptService: ScriptService = mock()
+    private val settings: Settings = Settings.EMPTY
     private val rollupId: String = "dummy-id"
     private val indexName: String = "test"
     private val metadata = ManagedIndexMetaData(
@@ -34,18 +40,19 @@ class WaitForRollupCompletionStepTests : OpenSearchTestCase() {
         stats = RollupStats(1, 1, 1, 1, 1)
     )
     private val client: Client = mock()
-    private val step = WaitForRollupCompletionStep(clusterService, client, metadata)
+    private val step = WaitForRollupCompletionStep()
 
     fun `test wait for rollup when missing rollup id`() {
         val actionMetadata = metadata.actionMetaData!!.copy(actionProperties = ActionProperties())
         val metadata = metadata.copy(actionMetaData = actionMetadata)
-        val step = WaitForRollupCompletionStep(clusterService, client, metadata)
+        val context = StepContext(metadata, clusterService, client, null, null, scriptService, settings)
+        val step = WaitForRollupCompletionStep()
 
         runBlocking {
-            step.execute()
+            step.preExecute(logger, context).execute()
         }
 
-        val updatedManagedIndexMetaData = step.getUpdatedManagedIndexMetaData(metadata)
+        val updatedManagedIndexMetaData = step.getUpdatedManagedIndexMetadata(metadata)
         assertEquals("Step status is not FAILED", Step.StepStatus.FAILED, updatedManagedIndexMetaData.stepMetaData?.stepStatus)
         assertEquals(
             "Missing failure message",
@@ -56,9 +63,9 @@ class WaitForRollupCompletionStepTests : OpenSearchTestCase() {
 
     fun `test process rollup metadata FAILED status`() {
         val rollupMetadata = rollupMetadata.copy(status = RollupMetadata.Status.FAILED)
-        step.processRollupMetadataStatus(rollupId, rollupMetadata)
+        step.processRollupMetadataStatus(rollupId, indexName, rollupMetadata)
 
-        val updateManagedIndexMetaData = step.getUpdatedManagedIndexMetaData(metadata)
+        val updateManagedIndexMetaData = step.getUpdatedManagedIndexMetadata(metadata)
         assertEquals("Step status is not FAILED", Step.StepStatus.FAILED, updateManagedIndexMetaData.stepMetaData?.stepStatus)
         assertEquals(
             "Missing failure message",
@@ -70,9 +77,9 @@ class WaitForRollupCompletionStepTests : OpenSearchTestCase() {
 
     fun `test process rollup metadata STOPPED status`() {
         val rollupMetadata = rollupMetadata.copy(status = RollupMetadata.Status.STOPPED)
-        step.processRollupMetadataStatus(rollupId, rollupMetadata)
+        step.processRollupMetadataStatus(rollupId, indexName, rollupMetadata)
 
-        val updateManagedIndexMetaData = step.getUpdatedManagedIndexMetaData(metadata)
+        val updateManagedIndexMetaData = step.getUpdatedManagedIndexMetadata(metadata)
         assertEquals("Step status is not FAILED", Step.StepStatus.FAILED, updateManagedIndexMetaData.stepMetaData?.stepStatus)
         assertEquals(
             "Missing failure message",
@@ -85,9 +92,9 @@ class WaitForRollupCompletionStepTests : OpenSearchTestCase() {
 
     fun `test process rollup metadata INIT status`() {
         val rollupMetadata = rollupMetadata.copy(status = RollupMetadata.Status.INIT)
-        step.processRollupMetadataStatus(rollupId, rollupMetadata)
+        step.processRollupMetadataStatus(rollupId, indexName, rollupMetadata)
 
-        val updateManagedIndexMetaData = step.getUpdatedManagedIndexMetaData(metadata)
+        val updateManagedIndexMetaData = step.getUpdatedManagedIndexMetadata(metadata)
         assertEquals("Step status is not CONDITION_NOT_MET", Step.StepStatus.CONDITION_NOT_MET, updateManagedIndexMetaData.stepMetaData?.stepStatus)
         assertEquals(
             "Missing processing message",
@@ -99,9 +106,9 @@ class WaitForRollupCompletionStepTests : OpenSearchTestCase() {
 
     fun `test process rollup metadata STARTED status`() {
         val rollupMetadata = rollupMetadata.copy(status = RollupMetadata.Status.STARTED)
-        step.processRollupMetadataStatus(rollupId, rollupMetadata)
+        step.processRollupMetadataStatus(rollupId, indexName, rollupMetadata)
 
-        val updateManagedIndexMetaData = step.getUpdatedManagedIndexMetaData(metadata)
+        val updateManagedIndexMetaData = step.getUpdatedManagedIndexMetadata(metadata)
         assertEquals("Step status is not CONDITION_NOT_MET", Step.StepStatus.CONDITION_NOT_MET, updateManagedIndexMetaData.stepMetaData?.stepStatus)
         assertEquals(
             "Missing processing message",
@@ -113,9 +120,9 @@ class WaitForRollupCompletionStepTests : OpenSearchTestCase() {
 
     fun `test process rollup metadata FINISHED status`() {
         val rollupMetadata = rollupMetadata.copy(status = RollupMetadata.Status.FINISHED)
-        step.processRollupMetadataStatus(rollupId, rollupMetadata)
+        step.processRollupMetadataStatus(rollupId, indexName, rollupMetadata)
 
-        val updateManagedIndexMetaData = step.getUpdatedManagedIndexMetaData(metadata)
+        val updateManagedIndexMetaData = step.getUpdatedManagedIndexMetadata(metadata)
         assertEquals("Step status is not COMPLETED", Step.StepStatus.COMPLETED, updateManagedIndexMetaData.stepMetaData?.stepStatus)
         assertEquals(
             "Missing processing message",
@@ -127,9 +134,9 @@ class WaitForRollupCompletionStepTests : OpenSearchTestCase() {
 
     fun `test process rollup metadata RETRY status`() {
         val rollupMetadata = rollupMetadata.copy(status = RollupMetadata.Status.RETRY)
-        step.processRollupMetadataStatus(rollupId, rollupMetadata)
+        step.processRollupMetadataStatus(rollupId, indexName, rollupMetadata)
 
-        val updateManagedIndexMetaData = step.getUpdatedManagedIndexMetaData(metadata)
+        val updateManagedIndexMetaData = step.getUpdatedManagedIndexMetadata(metadata)
         assertEquals("Step status is not CONDITION_NOT_MET", Step.StepStatus.CONDITION_NOT_MET, updateManagedIndexMetaData.stepMetaData?.stepStatus)
         assertEquals(
             "Missing processing message",
@@ -140,9 +147,9 @@ class WaitForRollupCompletionStepTests : OpenSearchTestCase() {
     }
 
     fun `test process failure`() {
-        step.processFailure(rollupId, Exception("dummy-exception"))
+        step.processFailure(rollupId, indexName, Exception("dummy-exception"))
 
-        val updateManagedIndexMetaData = step.getUpdatedManagedIndexMetaData(metadata)
+        val updateManagedIndexMetaData = step.getUpdatedManagedIndexMetadata(metadata)
         assertEquals("Mismatch in cause", "dummy-exception", updateManagedIndexMetaData.info?.get("cause"))
         assertEquals(
             "Mismatch in message",

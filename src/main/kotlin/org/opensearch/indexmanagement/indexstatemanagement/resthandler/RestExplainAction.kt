@@ -15,12 +15,14 @@ import org.opensearch.indexmanagement.indexstatemanagement.model.SearchParams
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.explain.ExplainAction
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.explain.ExplainRequest
 import org.opensearch.indexmanagement.indexstatemanagement.util.DEFAULT_EXPLAIN_SHOW_POLICY
+import org.opensearch.indexmanagement.indexstatemanagement.util.DEFAULT_INDEX_TYPE
 import org.opensearch.indexmanagement.indexstatemanagement.util.DEFAULT_JOB_SORT_FIELD
 import org.opensearch.indexmanagement.indexstatemanagement.util.DEFAULT_PAGINATION_FROM
 import org.opensearch.indexmanagement.indexstatemanagement.util.DEFAULT_PAGINATION_SIZE
 import org.opensearch.indexmanagement.indexstatemanagement.util.DEFAULT_QUERY_STRING
 import org.opensearch.indexmanagement.indexstatemanagement.util.DEFAULT_SORT_ORDER
 import org.opensearch.indexmanagement.indexstatemanagement.util.SHOW_POLICY_QUERY_PARAM
+import org.opensearch.indexmanagement.indexstatemanagement.util.TYPE_PARAM_KEY
 import org.opensearch.rest.BaseRestHandler
 import org.opensearch.rest.BaseRestHandler.RestChannelConsumer
 import org.opensearch.rest.RestHandler.ReplacedRoute
@@ -70,12 +72,15 @@ class RestExplainAction : BaseRestHandler() {
         val sortOrder = request.param("sortOrder", DEFAULT_SORT_ORDER)
         val queryString = request.param("queryString", DEFAULT_QUERY_STRING)
 
+        val indexType = request.param(TYPE_PARAM_KEY, DEFAULT_INDEX_TYPE)
+
         val explainRequest = ExplainRequest(
             indices.toList(),
             request.paramAsBoolean("local", false),
             request.paramAsTime("master_timeout", MasterNodeRequest.DEFAULT_MASTER_NODE_TIMEOUT),
             SearchParams(size, from, sortField, sortOrder, queryString),
-            request.paramAsBoolean(SHOW_POLICY_QUERY_PARAM, DEFAULT_EXPLAIN_SHOW_POLICY)
+            request.paramAsBoolean(SHOW_POLICY_QUERY_PARAM, DEFAULT_EXPLAIN_SHOW_POLICY),
+            indexType
         )
 
         return RestChannelConsumer { channel ->

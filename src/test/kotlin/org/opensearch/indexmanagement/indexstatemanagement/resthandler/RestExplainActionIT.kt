@@ -9,13 +9,13 @@ import org.opensearch.common.xcontent.XContentFactory
 import org.opensearch.indexmanagement.IndexManagementPlugin
 import org.opensearch.indexmanagement.indexstatemanagement.IndexStateManagementRestTestCase
 import org.opensearch.indexmanagement.indexstatemanagement.model.ChangePolicy
-import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
-import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.PolicyRetryInfoMetaData
-import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.StateMetaData
 import org.opensearch.indexmanagement.indexstatemanagement.util.TOTAL_MANAGED_INDICES
 import org.opensearch.indexmanagement.indexstatemanagement.util.XCONTENT_WITHOUT_TYPE_AND_USER
 import org.opensearch.indexmanagement.makeRequest
 import org.opensearch.indexmanagement.opensearchapi.toMap
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.PolicyRetryInfoMetaData
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StateMetaData
 import org.opensearch.indexmanagement.waitFor
 import org.opensearch.rest.RestRequest
 import org.opensearch.rest.RestStatus
