@@ -126,7 +126,7 @@ class MetadataService(
                 if (counter++ > 2 && corruptManagedIndices.isEmpty()) {
                     logger.info("Move Metadata succeed, set finish flag to true. Indices failed to get indexed: $failedToIndexIndices")
                     updateStatusSetting(1)
-                    finishFlag = true; runningLock = false
+                    finishFlag = true; runningLock = false; runTimeCounter = 0
                     return
                 }
             } else {
@@ -157,7 +157,9 @@ class MetadataService(
                     .toList() + failedToCleanIndices + corruptManagedIndices
 
             cleanMetadatas(indicesToCleanMetadata)
-            logger.info("Failed to clean cluster metadata for: ${failedToCleanIndices.map { it.name }}")
+            if (failedToCleanIndices.isNotEmpty()) {
+                logger.info("Failed to clean cluster metadata for: ${failedToCleanIndices.map { it.name }}")
+            }
         } finally {
             runningLock = false
         }

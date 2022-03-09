@@ -14,9 +14,9 @@ import org.opensearch.cluster.metadata.IndexMetadata
 import org.opensearch.common.settings.Settings
 import org.opensearch.index.Index
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
+import org.opensearch.indexmanagement.indexstatemanagement.action.ReplicaCountAction
 import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
 import org.opensearch.indexmanagement.indexstatemanagement.model.State
-import org.opensearch.indexmanagement.indexstatemanagement.model.action.ReplicaCountActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.explain.TransportExplainAction.Companion.METADATA_CORRUPT_WARNING
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.explain.TransportExplainAction.Companion.METADATA_MOVING_WARNING
@@ -51,8 +51,7 @@ class MetadataRegressionIT : IndexStateManagementIntegTestCase() {
     fun `test move metadata service`() {
         val indexName = "${testIndexName}_index_1"
         val policyID = "${testIndexName}_testPolicyName_1"
-        val actionConfig = ReplicaCountActionConfig(10, 0)
-
+        val actionConfig = ReplicaCountAction(10, 0)
         val states = listOf(State(name = "ReplicaCountState", actions = listOf(actionConfig), transitions = listOf()))
         val policy = Policy(
             id = policyID,
@@ -133,7 +132,7 @@ class MetadataRegressionIT : IndexStateManagementIntegTestCase() {
 
         val indexName = "${testIndexName}_index_2"
         val policyID = "${testIndexName}_testPolicyName_2"
-        val actionConfig = ReplicaCountActionConfig(10, 0)
+        val actionConfig = ReplicaCountAction(10, 0)
         val states = listOf(State(name = "ReplicaCountState", actions = listOf(actionConfig), transitions = listOf()))
         val policy = Policy(
             id = policyID,
@@ -205,8 +204,8 @@ class MetadataRegressionIT : IndexStateManagementIntegTestCase() {
     fun `test clean corrupt metadata`() {
         val indexName = "${testIndexName}_index_3"
         val policyID = "${testIndexName}_testPolicyName_3"
-        val actionConfig = ReplicaCountActionConfig(10, 0)
-        val states = listOf(State(name = "ReplicaCountState", actions = listOf(actionConfig), transitions = listOf()))
+        val action = ReplicaCountAction(10, 0)
+        val states = listOf(State(name = "ReplicaCountState", actions = listOf(action), transitions = listOf()))
         val policy = Policy(
             id = policyID,
             description = "$testIndexName description",
@@ -269,7 +268,7 @@ class MetadataRegressionIT : IndexStateManagementIntegTestCase() {
 
         val indexName = "${testIndexName}_index_1"
         val policyID = "${testIndexName}_testPolicyName_1"
-        val actionConfig = ReplicaCountActionConfig(10, 0)
+        val actionConfig = ReplicaCountAction(10, 0)
         val states = listOf(State(name = "ReplicaCountState", actions = listOf(actionConfig), transitions = listOf()))
         val policy = Policy(
             id = policyID,

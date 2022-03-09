@@ -9,7 +9,6 @@ import org.opensearch.common.settings.Settings
 import org.opensearch.indexmanagement.indexstatemanagement.IndexStateManagementRestTestCase
 import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
 import org.opensearch.indexmanagement.indexstatemanagement.model.State
-import org.opensearch.indexmanagement.indexstatemanagement.model.action.ReadWriteActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomErrorNotification
 import org.opensearch.indexmanagement.waitFor
 import java.time.Instant
@@ -23,7 +22,7 @@ class ReadWriteActionIT : IndexStateManagementRestTestCase() {
     fun `test basic workflow`() {
         val indexName = "${testIndexName}_index_1"
         val policyID = "${testIndexName}_testPolicyName_1"
-        val actionConfig = ReadWriteActionConfig(0)
+        val actionConfig = ReadWriteAction(0)
         val states = listOf(
             State("ReadWriteState", listOf(actionConfig), listOf())
         )

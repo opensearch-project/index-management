@@ -9,39 +9,30 @@ import org.apache.logging.log4j.LogManager
 import org.opensearch.ExceptionsHelper
 import org.opensearch.action.admin.indices.settings.put.UpdateSettingsRequest
 import org.opensearch.action.support.master.AcknowledgedResponse
-import org.opensearch.client.Client
 import org.opensearch.cluster.metadata.IndexMetadata.SETTING_BLOCKS_WRITE
-import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.settings.Settings
-import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
-import org.opensearch.indexmanagement.indexstatemanagement.model.action.ReadWriteActionConfig
-import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.StepMetaData
-import org.opensearch.indexmanagement.indexstatemanagement.step.Step
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
+import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepMetaData
 import org.opensearch.transport.RemoteTransportException
 
-class SetReadWriteStep(
-    val clusterService: ClusterService,
-    val client: Client,
-    val config: ReadWriteActionConfig,
-    managedIndexMetaData: ManagedIndexMetaData
-) : Step("set_read_write", managedIndexMetaData) {
+class SetReadWriteStep : Step(name) {
 
     private val logger = LogManager.getLogger(javaClass)
     private var stepStatus = StepStatus.STARTING
     private var info: Map<String, Any>? = null
 
-    override fun isIdempotent() = true
-
-    @Suppress("TooGenericExceptionCaught")
-    override suspend fun execute(): SetReadWriteStep {
+    override suspend fun execute(): Step {
+        val context = this.context ?: return this
+        val indexName = context.metadata.index
         try {
             val updateSettingsRequest = UpdateSettingsRequest()
                 .indices(indexName)
                 .settings(
                     Settings.builder().put(SETTING_BLOCKS_WRITE, false)
                 )
-            val response: AcknowledgedResponse = client.admin().indices()
+            val response: AcknowledgedResponse = context.client.admin().indices()
                 .suspendUntil { updateSettings(updateSettingsRequest, it) }
 
             if (response.isAcknowledged) {
@@ -54,15 +45,15 @@ class SetReadWriteStep(
                 info = mapOf("message" to message)
             }
         } catch (e: RemoteTransportException) {
-            handleException(ExceptionsHelper.unwrapCause(e) as Exception)
+            handleException(indexName, ExceptionsHelper.unwrapCause(e) as Exception)
         } catch (e: Exception) {
-            handleException(e)
+            handleException(indexName, e)
         }
 
         return this
     }
 
-    private fun handleException(e: Exception) {
+    private fun handleException(indexName: String, e: Exception) {
         val message = getFailedMessage(indexName)
         logger.error(message, e)
         stepStatus = StepStatus.FAILED
@@ -72,15 +63,18 @@ class SetReadWriteStep(
         info = mutableInfo.toMap()
     }
 
-    override fun getUpdatedManagedIndexMetaData(currentMetaData: ManagedIndexMetaData): ManagedIndexMetaData {
-        return currentMetaData.copy(
-            stepMetaData = StepMetaData(name, getStepStartTime().toEpochMilli(), stepStatus),
+    override fun getUpdatedManagedIndexMetadata(currentMetadata: ManagedIndexMetaData): ManagedIndexMetaData {
+        return currentMetadata.copy(
+            stepMetaData = StepMetaData(name, getStepStartTime(currentMetadata).toEpochMilli(), stepStatus),
             transitionTo = null,
             info = info
         )
     }
 
+    override fun isIdempotent(): Boolean = true
+
     companion object {
+        const val name = "set_read_write"
         fun getFailedMessage(index: String) = "Failed to set index to read-write [index=$index]"
         fun getSuccessMessage(index: String) = "Successfully set index to read-write [index=$index]"
     }

@@ -8,7 +8,6 @@ package org.opensearch.indexmanagement.indexstatemanagement.action
 import org.opensearch.indexmanagement.indexstatemanagement.IndexStateManagementRestTestCase
 import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
 import org.opensearch.indexmanagement.indexstatemanagement.model.State
-import org.opensearch.indexmanagement.indexstatemanagement.model.action.SnapshotActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomErrorNotification
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.SNAPSHOT_DENY_LIST
 import org.opensearch.indexmanagement.indexstatemanagement.step.snapshot.AttemptSnapshotStep
@@ -27,7 +26,7 @@ class SnapshotActionIT : IndexStateManagementRestTestCase() {
         val policyID = "${testIndexName}_policy_basic"
         val repository = "repository"
         val snapshot = "snapshot"
-        val actionConfig = SnapshotActionConfig(repository, snapshot, 0)
+        val actionConfig = SnapshotAction(repository, snapshot, 0)
         val states = listOf(
             State("Snapshot", listOf(actionConfig), listOf())
         )
@@ -64,7 +63,7 @@ class SnapshotActionIT : IndexStateManagementRestTestCase() {
         val indexName = "${testIndexName}_index_basic"
         val policyID = "${testIndexName}_policy_basic"
         val repository = "repository"
-        val actionConfig = SnapshotActionConfig(repository, "{{ctx.index}}", 0)
+        val actionConfig = SnapshotAction(repository, "{{ctx.index}}", 0)
         val states = listOf(
             State("Snapshot", listOf(actionConfig), listOf())
         )
@@ -101,7 +100,7 @@ class SnapshotActionIT : IndexStateManagementRestTestCase() {
         val indexName = "${testIndexName}_index_basic"
         val policyID = "${testIndexName}_policy_basic"
         val repository = "repository"
-        val actionConfig = SnapshotActionConfig(repository, "{{ctx.someField}}", 0)
+        val actionConfig = SnapshotAction(repository, "{{ctx.someField}}", 0)
         val states = listOf(
             State("Snapshot", listOf(actionConfig), listOf())
         )
@@ -139,7 +138,7 @@ class SnapshotActionIT : IndexStateManagementRestTestCase() {
         val policyID = "${testIndexName}_policy_success"
         val repository = "repository"
         val snapshot = "snapshot_success_test"
-        val actionConfig = SnapshotActionConfig(repository, snapshot, 0)
+        val actionConfig = SnapshotAction(repository, snapshot, 0)
         val states = listOf(
             State("Snapshot", listOf(actionConfig), listOf())
         )
@@ -188,7 +187,7 @@ class SnapshotActionIT : IndexStateManagementRestTestCase() {
         val policyID = "${testIndexName}_policy_success"
         val repository = "repository"
         val snapshot = "-"
-        val actionConfig = SnapshotActionConfig(repository, "", 0)
+        val actionConfig = SnapshotAction(repository, "", 0)
         val states = listOf(
             State("Snapshot", listOf(actionConfig), listOf())
         )
@@ -237,7 +236,7 @@ class SnapshotActionIT : IndexStateManagementRestTestCase() {
         val policyID = "${testIndexName}_policy_failed"
         val repository = "repository"
         val snapshot = "snapshot_failed_test"
-        val actionConfig = SnapshotActionConfig(repository, snapshot, 0)
+        val actionConfig = SnapshotAction(repository, snapshot, 0)
         val states = listOf(
             State("Snapshot", listOf(actionConfig), listOf())
         )
@@ -290,7 +289,7 @@ class SnapshotActionIT : IndexStateManagementRestTestCase() {
         val indexName = "${testIndexName}_index_blocked"
         val policyID = "${testIndexName}_policy_basic"
         val repository = "hello-world"
-        val actionConfig = SnapshotActionConfig(repository, "snapshot", 0)
+        val actionConfig = SnapshotAction(repository, "snapshot", 0)
         val states = listOf(
             State("Snapshot", listOf(actionConfig), listOf())
         )

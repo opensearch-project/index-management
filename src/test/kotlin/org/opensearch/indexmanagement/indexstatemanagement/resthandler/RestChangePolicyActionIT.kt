@@ -10,18 +10,15 @@ import org.opensearch.client.ResponseException
 import org.opensearch.common.settings.Settings
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
 import org.opensearch.indexmanagement.indexstatemanagement.IndexStateManagementRestTestCase
+import org.opensearch.indexmanagement.indexstatemanagement.action.DeleteAction
+import org.opensearch.indexmanagement.indexstatemanagement.action.OpenAction
+import org.opensearch.indexmanagement.indexstatemanagement.action.ReadOnlyAction
+import org.opensearch.indexmanagement.indexstatemanagement.action.RolloverAction
+import org.opensearch.indexmanagement.indexstatemanagement.action.TransitionsAction
 import org.opensearch.indexmanagement.indexstatemanagement.model.ChangePolicy
 import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexConfig
-import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.indexstatemanagement.model.StateFilter
 import org.opensearch.indexmanagement.indexstatemanagement.model.Transition
-import org.opensearch.indexmanagement.indexstatemanagement.model.action.ActionConfig
-import org.opensearch.indexmanagement.indexstatemanagement.model.action.DeleteActionConfig
-import org.opensearch.indexmanagement.indexstatemanagement.model.action.OpenActionConfig
-import org.opensearch.indexmanagement.indexstatemanagement.model.action.ReadOnlyActionConfig
-import org.opensearch.indexmanagement.indexstatemanagement.model.action.RolloverActionConfig
-import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.ActionMetaData
-import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.StateMetaData
 import org.opensearch.indexmanagement.indexstatemanagement.randomPolicy
 import org.opensearch.indexmanagement.indexstatemanagement.randomReplicaCountActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomState
@@ -31,6 +28,9 @@ import org.opensearch.indexmanagement.indexstatemanagement.util.FAILED_INDICES
 import org.opensearch.indexmanagement.indexstatemanagement.util.FAILURES
 import org.opensearch.indexmanagement.indexstatemanagement.util.UPDATED_INDICES
 import org.opensearch.indexmanagement.makeRequest
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ActionMetaData
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StateMetaData
 import org.opensearch.indexmanagement.waitFor
 import org.opensearch.rest.RestRequest
 import org.opensearch.rest.RestStatus
@@ -272,15 +272,15 @@ class RestChangePolicyActionIT : IndexStateManagementRestTestCase() {
 
     fun `test changing policy on an index in a state`() {
         // Creates a policy that has one state with one action (sets index to read only)
-        val stateWithReadOnlyAction = randomState(actions = listOf(ReadOnlyActionConfig(index = 0)))
+        val stateWithReadOnlyAction = randomState(actions = listOf(ReadOnlyAction(index = 0)))
         val randomPolicy = randomPolicy(states = listOf(stateWithReadOnlyAction))
         val policy = createPolicy(randomPolicy)
 
         // Creates new policy that has two states, same as before except a second state with a delete action and a transition from readonly to delete states
         // we will also add a new action to readonly state otherwise an immediate change policy is triggered
-        val stateWithDeleteAction = randomState(actions = listOf(DeleteActionConfig(index = 0)))
+        val stateWithDeleteAction = randomState(actions = listOf(DeleteAction(index = 0)))
         val updatedStateWithReadOnlyAction = stateWithReadOnlyAction.copy(
-            actions = listOf(stateWithReadOnlyAction.actions.first(), OpenActionConfig(index = 1)),
+            actions = listOf(stateWithReadOnlyAction.actions.first(), OpenAction(index = 1)),
             transitions = listOf(Transition(stateWithDeleteAction.name, null))
         )
         val newPolicy = createPolicy(randomPolicy(states = listOf(updatedStateWithReadOnlyAction, stateWithDeleteAction)), "new_policy", true)
@@ -373,7 +373,7 @@ class RestChangePolicyActionIT : IndexStateManagementRestTestCase() {
                         ActionMetaData.ACTION to fun(actionMetaDataMap: Any?): Boolean =
                             assertActionEquals(
                                 ActionMetaData(
-                                    name = ActionConfig.ActionType.READ_ONLY.type, startTime = Instant.now().toEpochMilli(), index = 0,
+                                    name = ReadOnlyAction.name, startTime = Instant.now().toEpochMilli(), index = 0,
                                     failed = false, consumedRetries = 0, lastRetryTime = null, actionProperties = null
                                 ),
                                 actionMetaDataMap
@@ -412,7 +412,7 @@ class RestChangePolicyActionIT : IndexStateManagementRestTestCase() {
                         ActionMetaData.ACTION to fun(actionMetaDataMap: Any?): Boolean =
                             assertActionEquals(
                                 ActionMetaData(
-                                    name = ActionConfig.ActionType.TRANSITION.type, startTime = Instant.now().toEpochMilli(), index = 0,
+                                    name = TransitionsAction.name, startTime = Instant.now().toEpochMilli(), index = 0,
                                     failed = false, consumedRetries = 0, lastRetryTime = null, actionProperties = null
                                 ),
                                 actionMetaDataMap
@@ -551,8 +551,8 @@ class RestChangePolicyActionIT : IndexStateManagementRestTestCase() {
 
     fun `test allowing change policy to happen in middle of state if same state structure`() {
         // Creates a policy that has one state with rollover
-        val actionConfig = RolloverActionConfig(index = 0, minDocs = 100_000_000, minAge = null, minSize = null, minPrimaryShardSize = null)
-        val stateWithReadOnlyAction = randomState(actions = listOf(actionConfig))
+        val action = RolloverAction(index = 0, minDocs = 100_000_000, minAge = null, minSize = null, minPrimaryShardSize = null)
+        val stateWithReadOnlyAction = randomState(actions = listOf(action))
         val randomPolicy = randomPolicy(states = listOf(stateWithReadOnlyAction))
         val policy = createPolicy(randomPolicy)
         val indexName = "${testIndexName}_safe-000001"
@@ -574,14 +574,17 @@ class RestChangePolicyActionIT : IndexStateManagementRestTestCase() {
         updateManagedIndexConfigStartTime(managedIndexConfig)
         // verify we are in rollover and have not completed it yet
         waitFor {
-            assertEquals(ActionConfig.ActionType.ROLLOVER.type, getExplainManagedIndexMetaData(indexName).actionMetaData?.name)
+            assertEquals(RolloverAction.name, getExplainManagedIndexMetaData(indexName).actionMetaData?.name)
             assertEquals(
                 AttemptRolloverStep.getPendingMessage(indexName),
                 getExplainManagedIndexMetaData(indexName).info?.get("message")
             )
         }
 
-        val newStateWithReadOnlyAction = randomState(name = stateWithReadOnlyAction.name, actions = listOf(actionConfig.copy(minDocs = 5)))
+        val newStateWithReadOnlyAction = randomState(
+            name = stateWithReadOnlyAction.name,
+            actions = listOf(RolloverAction(index = 0, minDocs = 5, minAge = null, minSize = null, minPrimaryShardSize = null))
+        )
         val newRandomPolicy = randomPolicy(states = listOf(newStateWithReadOnlyAction))
         val newPolicy = createPolicy(newRandomPolicy)
         val changePolicy = ChangePolicy(newPolicy.id, null, emptyList(), false)

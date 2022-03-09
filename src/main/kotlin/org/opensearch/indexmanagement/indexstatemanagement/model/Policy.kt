@@ -22,6 +22,7 @@ import org.opensearch.indexmanagement.opensearchapi.instant
 import org.opensearch.indexmanagement.opensearchapi.optionalISMTemplateField
 import org.opensearch.indexmanagement.opensearchapi.optionalTimeField
 import org.opensearch.indexmanagement.opensearchapi.optionalUserField
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.util.IndexUtils
 import java.io.IOException
 import java.time.Instant
@@ -67,7 +68,9 @@ data class Policy(
             .field(SCHEMA_VERSION_FIELD, schemaVersion)
             .field(ERROR_NOTIFICATION_FIELD, errorNotification)
             .field(DEFAULT_STATE_FIELD, defaultState)
-            .field(STATES_FIELD, states.toTypedArray())
+            .startArray(STATES_FIELD)
+            .also { states.forEach { state -> state.toXContent(it, params) } }
+            .endArray()
             .optionalISMTemplateField(ISM_TEMPLATE, ismTemplate)
         if (params.paramAsBoolean(WITH_USER, true)) builder.optionalUserField(USER_FIELD, user)
         if (params.paramAsBoolean(WITH_TYPE, true)) builder.endObject()
@@ -112,6 +115,32 @@ data class Policy(
         }
         out.writeBoolean(user != null)
         user?.writeTo(out)
+    }
+
+    /**
+     * Disallowed actions are ones that are not specified in the [ManagedIndexSettings.ALLOW_LIST] setting.
+     */
+    fun getDisallowedActions(allowList: List<String>): List<String> {
+        val allowListSet = allowList.toSet()
+        val disallowedActions = mutableListOf<String>()
+        this.states.forEach { state ->
+            state.actions.forEach { actionConfig ->
+                if (!allowListSet.contains(actionConfig.type)) {
+                    disallowedActions.add(actionConfig.type)
+                }
+            }
+        }
+        return disallowedActions.distinct()
+    }
+
+    fun getStateToExecute(managedIndexMetaData: ManagedIndexMetaData): State? {
+        if (managedIndexMetaData.transitionTo != null) {
+            return this.states.find { it.name == managedIndexMetaData.transitionTo }
+        }
+        return this.states.find {
+            val stateMetaData = managedIndexMetaData.stateMetaData
+            stateMetaData != null && it.name == stateMetaData.name
+        }
     }
 
     companion object {
