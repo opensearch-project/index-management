@@ -1,7 +1,7 @@
 - [Developer Guide](#developer-guide)
     - [Forking and Cloning](#forking-and-cloning)
     - [Install Prerequisites](#install-prerequisites)
-        - [JDK 14](#jdk-14)
+        - [JDK 11](#jdk-11)
     - [Setup](#setup)  
     - [Build](#build)
         - [Building from the command line](#building-from-the-command-line)
@@ -19,15 +19,17 @@ Fork this repository on GitHub, and clone locally with `git clone`.
 
 ### Install Prerequisites
 
-#### JDK 14
+#### JDK 11
 
-OpenSearch components build using Java 14 at a minimum. This means you must have a JDK 14 installed with the environment variable `JAVA_HOME` referencing the path to Java home for your JDK 14 installation, e.g. `JAVA_HOME=/usr/lib/jvm/jdk-14`.
+OpenSearch components build using Java 11 at a minimum. This means you must have a JDK 11 installed with the environment variable `JAVA_HOME` referencing the path to Java home for your JDK 11 installation, e.g. `JAVA_HOME=/usr/lib/jvm/jdk-11`.
+
+Download Java 11 from [here](https://adoptium.net/releases.html?variant=openjdk11).
 
 ## Setup
 
 1. Check out this package from version control.
 2. Launch Intellij IDEA, choose **Import Project**, and select the `settings.gradle` file in the root of this package.
-3. To build from the command line, set `JAVA_HOME` to point to a JDK >= 14 before running `./gradlew`.
+3. To build from the command line, set `JAVA_HOME` to point to a JDK >= 11 before running `./gradlew`.
 - Unix System
     1. `export JAVA_HOME=jdk-install-dir`: Replace `jdk-install-dir` with the JAVA_HOME directory of your system.
     2. `export PATH=$JAVA_HOME/bin:$PATH`
@@ -52,11 +54,12 @@ However, to build the `index management` plugin project, we also use the OpenSea
 4. `./gradlew integTest` launches a single node cluster with the index management (and job-scheduler) plugin installed and runs all integ tests.
 5. `./gradlew integTest -PnumNodes=3` launches a multi-node cluster with the index management (and job-scheduler) plugin installed and runs all integ tests.
 6. `./gradlew integTest -Dtests.class=*RestChangePolicyActionIT` runs a single integ class
-7.  `./gradlew integTest -Dtests.class=*RestChangePolicyActionIT -Dtests.method="test missing index"` runs a single integ test method (remember to quote the test method name if it contains spaces)
+7. `./gradlew integTest -Dtests.class=*RestChangePolicyActionIT -Dtests.method="test missing index"` runs a single integ test method (remember to quote the test method name if it contains spaces)
 8. `./gradlew indexmanagementBwcCluster#mixedClusterTask -Dtests.security.manager=false` launches a cluster of three nodes of bwc version of OpenSearch with index management and tests backwards compatibility by performing rolling upgrade of each node with the current version of OpenSearch with index management.
 9. `./gradlew indexmanagementBwcCluster#rollingUpgradeClusterTask -Dtests.security.manager=false` launches a cluster with three nodes of bwc version of OpenSearch with index management and tests backwards compatibility by performing rolling upgrade of each node with the current version of OpenSearch with index management.
 10. `./gradlew indexmanagementBwcCluster#fullRestartClusterTask -Dtests.security.manager=false` launches a cluster with three nodes of bwc version of OpenSearch with index management and tests backwards compatibility by performing a full restart on the cluster upgrading all the nodes with the current version of OpenSearch with index management.
 11. `./gradlew bwcTestSuite -Dtests.security.manager=false` runs all the above bwc tests combined.
+12. `./gradlew integTestRemote -Dtests.rest.cluster=localhost:9200 -Dtests.cluster=localhost:9200 -Dtests.clustername="docker-cluster" -Dhttps=true -Duser=admin -Dpassword=admin` launches integration tests against a local cluster and run tests with security
 
 When launching a cluster using one of the above commands, logs are placed in `build/testclusters/integTest-0/logs`. Though the logs are teed to the console, in practices it's best to check the actual log file.
 

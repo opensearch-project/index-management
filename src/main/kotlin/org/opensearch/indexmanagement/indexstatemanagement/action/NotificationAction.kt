@@ -5,29 +5,52 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.action
 
-import org.opensearch.client.Client
-import org.opensearch.cluster.service.ClusterService
-import org.opensearch.common.settings.Settings
-import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
-import org.opensearch.indexmanagement.indexstatemanagement.model.action.ActionConfig
-import org.opensearch.indexmanagement.indexstatemanagement.model.action.NotificationActionConfig
-import org.opensearch.indexmanagement.indexstatemanagement.step.Step
+import org.opensearch.common.io.stream.StreamOutput
+import org.opensearch.common.xcontent.ToXContent
+import org.opensearch.common.xcontent.XContentBuilder
+import org.opensearch.indexmanagement.indexstatemanagement.model.destination.Destination
 import org.opensearch.indexmanagement.indexstatemanagement.step.notification.AttemptNotificationStep
-import org.opensearch.script.ScriptService
+import org.opensearch.indexmanagement.spi.indexstatemanagement.Action
+import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepContext
+import org.opensearch.script.Script
 
 class NotificationAction(
-    clusterService: ClusterService,
-    scriptService: ScriptService,
-    client: Client,
-    settings: Settings,
-    managedIndexMetaData: ManagedIndexMetaData,
-    config: NotificationActionConfig
-) : Action(ActionConfig.ActionType.NOTIFICATION, config, managedIndexMetaData) {
+    val destination: Destination,
+    val messageTemplate: Script,
+    index: Int
+) : Action(name, index) {
 
-    private val attemptNotificationStep = AttemptNotificationStep(clusterService, scriptService, client, settings, config, managedIndexMetaData)
+    init {
+        require(messageTemplate.lang == MUSTACHE) { "Notification message template must be a mustache script" }
+    }
+
+    private val attemptNotificationStep = AttemptNotificationStep(this)
     private val steps = listOf(attemptNotificationStep)
+
+    override fun getStepToExecute(context: StepContext): Step {
+        return attemptNotificationStep
+    }
 
     override fun getSteps(): List<Step> = steps
 
-    override fun getStepToExecute(): Step = attemptNotificationStep
+    override fun populateAction(builder: XContentBuilder, params: ToXContent.Params) {
+        builder.startObject(type)
+        builder.field(DESTINATION_FIELD, destination)
+        builder.field(MESSAGE_TEMPLATE_FIELD, messageTemplate)
+        builder.endObject()
+    }
+
+    override fun populateAction(out: StreamOutput) {
+        destination.writeTo(out)
+        messageTemplate.writeTo(out)
+        out.writeInt(actionIndex)
+    }
+
+    companion object {
+        const val name = "notification"
+        const val DESTINATION_FIELD = "destination"
+        const val MESSAGE_TEMPLATE_FIELD = "message_template"
+        const val MUSTACHE = "mustache"
+    }
 }

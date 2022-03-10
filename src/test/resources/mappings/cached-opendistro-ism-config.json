@@ -429,6 +429,10 @@
                       }
                     }
                   }
+                },
+                "custom": {
+                  "enabled": false,
+                  "type":  "object"
                 }
               }
             },
@@ -657,6 +661,10 @@
         },
         "rolled_over": {
           "type": "boolean"
+        },
+        "index_creation_date": {
+          "type": "date",
+          "format": "strict_date_time||epoch_millis"
         },
         "transition_to": {
           "type": "text",

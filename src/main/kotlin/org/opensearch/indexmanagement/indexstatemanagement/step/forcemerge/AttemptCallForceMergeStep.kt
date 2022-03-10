@@ -14,43 +14,36 @@ import org.apache.logging.log4j.LogManager
 import org.opensearch.ExceptionsHelper
 import org.opensearch.action.admin.indices.forcemerge.ForceMergeRequest
 import org.opensearch.action.admin.indices.forcemerge.ForceMergeResponse
-import org.opensearch.client.Client
-import org.opensearch.cluster.service.ClusterService
-import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
-import org.opensearch.indexmanagement.indexstatemanagement.model.action.ForceMergeActionConfig
-import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.ActionProperties
-import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.StepMetaData
-import org.opensearch.indexmanagement.indexstatemanagement.step.Step
+import org.opensearch.indexmanagement.indexstatemanagement.action.ForceMergeAction
 import org.opensearch.indexmanagement.opensearchapi.getUsefulCauseString
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
+import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ActionProperties
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepMetaData
 import org.opensearch.rest.RestStatus
 import org.opensearch.transport.RemoteTransportException
 import java.time.Instant
 
-class AttemptCallForceMergeStep(
-    val clusterService: ClusterService,
-    val client: Client,
-    val config: ForceMergeActionConfig,
-    managedIndexMetaData: ManagedIndexMetaData
-) : Step(name, managedIndexMetaData) {
+class AttemptCallForceMergeStep(private val action: ForceMergeAction) : Step(name) {
 
     private val logger = LogManager.getLogger(javaClass)
     private var stepStatus = StepStatus.STARTING
     private var info: Map<String, Any>? = null
 
-    override fun isIdempotent() = false
-
     @Suppress("TooGenericExceptionCaught", "ComplexMethod")
     override suspend fun execute(): AttemptCallForceMergeStep {
+        val context = this.context ?: return this
+        val indexName = context.metadata.index
         try {
 
             val startTime = Instant.now().toEpochMilli()
-            val request = ForceMergeRequest(indexName).maxNumSegments(config.maxNumSegments)
+            val request = ForceMergeRequest(indexName).maxNumSegments(action.maxNumSegments)
             var response: ForceMergeResponse? = null
             var throwable: Throwable? = null
             GlobalScope.launch(Dispatchers.IO + CoroutineName("ISM-ForceMerge-$indexName")) {
                 try {
-                    response = client.admin().indices().suspendUntil { forceMerge(request, it) }
+                    response = context.client.admin().indices().suspendUntil { forceMerge(request, it) }
                     if (response?.status == RestStatus.OK) {
                         logger.info(getSuccessMessage(indexName))
                     } else {
@@ -80,15 +73,15 @@ class AttemptCallForceMergeStep(
                 )
             }
         } catch (e: RemoteTransportException) {
-            handleException(ExceptionsHelper.unwrapCause(e) as Exception)
+            handleException(indexName, ExceptionsHelper.unwrapCause(e) as Exception)
         } catch (e: Exception) {
-            handleException(e)
+            handleException(indexName, e)
         }
 
         return this
     }
 
-    private fun handleException(e: Exception) {
+    private fun handleException(indexName: String, e: Exception) {
         val message = getFailedMessage(indexName)
         logger.error(message, e)
         stepStatus = StepStatus.FAILED
@@ -98,17 +91,19 @@ class AttemptCallForceMergeStep(
         info = mutableInfo.toMap()
     }
 
-    override fun getUpdatedManagedIndexMetaData(currentMetaData: ManagedIndexMetaData): ManagedIndexMetaData {
+    override fun getUpdatedManagedIndexMetadata(currentMetadata: ManagedIndexMetaData): ManagedIndexMetaData {
         // Saving maxNumSegments in ActionProperties after the force merge operation has begun so that if a ChangePolicy occurred
         // in between this step and WaitForForceMergeStep, a cached segment count expected from the operation is available
-        val currentActionMetaData = currentMetaData.actionMetaData
-        return currentMetaData.copy(
-            actionMetaData = currentActionMetaData?.copy(actionProperties = ActionProperties(maxNumSegments = config.maxNumSegments)),
-            stepMetaData = StepMetaData(name, getStepStartTime().toEpochMilli(), stepStatus),
+        val currentActionMetaData = currentMetadata.actionMetaData
+        return currentMetadata.copy(
+            actionMetaData = currentActionMetaData?.copy(actionProperties = ActionProperties(maxNumSegments = action.maxNumSegments)),
+            stepMetaData = StepMetaData(name, getStepStartTime(currentMetadata).toEpochMilli(), stepStatus),
             transitionTo = null,
             info = info
         )
     }
+
+    override fun isIdempotent() = false
 
     companion object {
         const val name = "attempt_call_force_merge"

@@ -1,0 +1,85 @@
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+import org.opensearch.gradle.test.RestIntegTestTask
+
+plugins {
+    id 'com.github.johnrengelman.shadow'
+    id 'jacoco'
+}
+
+apply plugin: 'opensearch.java'
+apply plugin: 'opensearch.testclusters'
+apply plugin: 'opensearch.java-rest-test'
+apply plugin: 'kotlin'
+apply plugin: 'org.jetbrains.kotlin.jvm'
+apply plugin: 'org.jetbrains.kotlin.plugin.allopen'
+
+ext {
+    projectSubstitutions = [:]
+    licenseFile = rootProject.file('LICENSE.txt')
+    noticeFile = rootProject.file('NOTICE')
+}
+
+jacoco {
+    toolVersion = '0.8.5'
+    reportsDir = file("$buildDir/JacocoReport")
+}
+
+jacocoTestReport {
+    reports {
+        xml.enabled false
+        csv.enabled false
+        html.destination file("${buildDir}/jacoco/")
+    }
+}
+check.dependsOn jacocoTestReport
+
+repositories {
+    mavenLocal()
+    mavenCentral()
+    maven { url "https://plugins.gradle.org/m2/" }
+    maven { url "https://aws.oss.sonatype.org/content/repositories/snapshots" }
+}
+
+configurations.all {
+    if (it.state != Configuration.State.UNRESOLVED) return
+    resolutionStrategy {
+        force "org.jetbrains.kotlin:kotlin-stdlib:${kotlin_version}"
+        force "org.jetbrains.kotlin:kotlin-stdlib-common:${kotlin_version}"
+    }
+}
+
+dependencies {
+    compileOnly "org.opensearch:opensearch:${opensearch_version}"
+    compileOnly "org.jetbrains.kotlin:kotlin-stdlib:${kotlin_version}"
+    compileOnly "org.jetbrains.kotlin:kotlin-stdlib-common:${kotlin_version}"
+    compileOnly "org.jetbrains.kotlin:kotlin-stdlib-jdk8:${kotlin_version}"
+    compileOnly "org.jetbrains.kotlinx:kotlinx-coroutines-core:1.3.9"
+    compileOnly "org.opensearch:common-utils:${common_utils_version}"
+
+    testImplementation "org.opensearch.test:framework:${opensearch_version}"
+    testImplementation "org.apache.logging.log4j:log4j-core:${versions.log4j}"
+}
+
+test {
+    doFirst {
+        test.classpath -= project.files(project.tasks.named('shadowJar'))
+        test.classpath -= project.configurations.getByName(ShadowBasePlugin.CONFIGURATION_NAME)
+        test.classpath += project.extensions.getByType(SourceSetContainer).getByName(SourceSet.MAIN_SOURCE_SET_NAME).runtimeClasspath
+    }
+    systemProperty 'tests.security.manager', 'false'
+}
+
+task integTest(type: RestIntegTestTask) {
+    description 'Run integ test with opensearch test framework'
+    group 'verification'
+    systemProperty 'tests.security.manager', 'false'
+    dependsOn test
+}
+check.dependsOn integTest
+
+testClusters.javaRestTest {
+    testDistribution = 'INTEG_TEST'
+}

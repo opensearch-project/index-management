@@ -49,6 +49,7 @@ import org.opensearch.search.aggregations.AggregatorFactories
 import java.io.IOException
 import java.time.Instant
 
+@Suppress("TooManyFunctions")
 data class Transform(
     val id: String = NO_ID,
     val seqNo: Long = SequenceNumbers.UNASSIGNED_SEQ_NO,

@@ -18,7 +18,6 @@ import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndex
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.indexpolicy.IndexPolicyAction
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.indexpolicy.IndexPolicyRequest
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.indexpolicy.IndexPolicyResponse
-import org.opensearch.indexmanagement.indexstatemanagement.util.getDisallowedActions
 import org.opensearch.indexmanagement.opensearchapi.parseWithType
 import org.opensearch.indexmanagement.util.IF_PRIMARY_TERM
 import org.opensearch.indexmanagement.util.IF_SEQ_NO

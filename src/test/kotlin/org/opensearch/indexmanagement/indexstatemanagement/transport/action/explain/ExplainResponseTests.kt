@@ -7,8 +7,8 @@ package org.opensearch.indexmanagement.indexstatemanagement.transport.action.exp
 
 import org.opensearch.common.io.stream.BytesStreamOutput
 import org.opensearch.common.io.stream.StreamInput
-import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.indexstatemanagement.randomPolicy
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.test.OpenSearchTestCase
 
 class ExplainResponseTests : OpenSearchTestCase() {
@@ -24,6 +24,7 @@ class ExplainResponseTests : OpenSearchTestCase() {
             policyPrimaryTerm = randomNonNegativeLong(),
             policyCompleted = null,
             rolledOver = null,
+            indexCreationDate = null,
             transitionTo = randomAlphaOfLength(10),
             stateMetaData = null,
             actionMetaData = null,

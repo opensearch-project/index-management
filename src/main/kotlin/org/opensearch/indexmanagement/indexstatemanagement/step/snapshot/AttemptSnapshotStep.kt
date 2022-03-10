@@ -9,17 +9,15 @@ import org.apache.logging.log4j.LogManager
 import org.opensearch.ExceptionsHelper
 import org.opensearch.action.admin.cluster.snapshots.create.CreateSnapshotRequest
 import org.opensearch.action.admin.cluster.snapshots.create.CreateSnapshotResponse
-import org.opensearch.client.Client
-import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.regex.Regex
-import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
-import org.opensearch.indexmanagement.indexstatemanagement.model.action.SnapshotActionConfig
-import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.ActionProperties
-import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.StepMetaData
+import org.opensearch.indexmanagement.indexstatemanagement.action.SnapshotAction
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.SNAPSHOT_DENY_LIST
-import org.opensearch.indexmanagement.indexstatemanagement.step.Step
 import org.opensearch.indexmanagement.opensearchapi.convertToMap
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
+import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ActionProperties
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepMetaData
 import org.opensearch.rest.RestStatus
 import org.opensearch.script.Script
 import org.opensearch.script.ScriptService
@@ -32,30 +30,28 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
-class AttemptSnapshotStep(
-    val clusterService: ClusterService,
-    val scriptService: ScriptService,
-    val client: Client,
-    val config: SnapshotActionConfig,
-    managedIndexMetaData: ManagedIndexMetaData
-) : Step(name, managedIndexMetaData) {
+class AttemptSnapshotStep(private val action: SnapshotAction) : Step(name) {
 
     private val logger = LogManager.getLogger(javaClass)
     private var stepStatus = StepStatus.STARTING
     private var info: Map<String, Any>? = null
     private var snapshotName: String? = null
-    private var denyList: List<String> = clusterService.clusterSettings.get(SNAPSHOT_DENY_LIST)
 
-    override fun isIdempotent() = false
-
-    @Suppress("TooGenericExceptionCaught", "ComplexMethod")
-    override suspend fun execute(): AttemptSnapshotStep {
+    @Suppress("TooGenericExceptionCaught", "ComplexMethod", "ReturnCount", "LongMethod")
+    override suspend fun execute(): Step {
+        val context = this.context ?: return this
+        val indexName = context.metadata.index
+        val managedIndexMetadata = context.metadata
+        val scriptService = context.scriptService
+        val denyList: List<String> = context.clusterService.clusterSettings.get(SNAPSHOT_DENY_LIST)
+        val repository = action.repository
+        val snapshot = action.snapshot
         try {
             val mutableInfo = mutableMapOf<String, String>()
 
-            if (isDenied(denyList, config.repository)) {
+            if (isDenied(denyList, repository)) {
                 stepStatus = StepStatus.FAILED
-                mutableInfo["message"] = getBlockedMessage(denyList, config.repository, indexName)
+                mutableInfo["message"] = getBlockedMessage(denyList, repository, indexName)
                 info = mutableInfo.toMap()
                 return this
             }
@@ -64,19 +60,19 @@ class AttemptSnapshotStep(
                     .format(DateTimeFormatter.ofPattern("uuuu.MM.dd-HH:mm:ss.SSS", Locale.ROOT))
             )
 
-            val snapshotScript = Script(ScriptType.INLINE, Script.DEFAULT_TEMPLATE_LANG, config.snapshot, mapOf())
+            val snapshotScript = Script(ScriptType.INLINE, Script.DEFAULT_TEMPLATE_LANG, snapshot, mapOf())
             // If user intentionally set the snapshot name empty then we are going to honor it
-            val defaultSnapshotName = if (config.snapshot.isBlank()) config.snapshot else indexName
-            snapshotName = compileTemplate(snapshotScript, managedIndexMetaData, defaultSnapshotName).plus(snapshotNameSuffix)
+            val defaultSnapshotName = if (snapshot.isBlank()) snapshot else indexName
+            snapshotName = compileTemplate(snapshotScript, managedIndexMetadata, defaultSnapshotName, scriptService).plus(snapshotNameSuffix)
 
             val createSnapshotRequest = CreateSnapshotRequest()
                 .userMetadata(mapOf("snapshot_created" to "Open Distro for Elasticsearch Index Management"))
                 .indices(indexName)
                 .snapshot(snapshotName)
-                .repository(config.repository)
+                .repository(repository)
                 .waitForCompletion(false)
 
-            val response: CreateSnapshotResponse = client.admin().cluster().suspendUntil { createSnapshot(createSnapshotRequest, it) }
+            val response: CreateSnapshotResponse = context.client.admin().cluster().suspendUntil { createSnapshot(createSnapshotRequest, it) }
             when (response.status()) {
                 RestStatus.ACCEPTED -> {
                     stepStatus = StepStatus.COMPLETED
@@ -98,14 +94,14 @@ class AttemptSnapshotStep(
         } catch (e: RemoteTransportException) {
             val cause = ExceptionsHelper.unwrapCause(e)
             if (cause is ConcurrentSnapshotExecutionException) {
-                handleSnapshotException(cause)
+                handleSnapshotException(indexName, cause)
             } else {
-                handleException(cause as Exception)
+                handleException(indexName, cause as Exception)
             }
         } catch (e: ConcurrentSnapshotExecutionException) {
-            handleSnapshotException(e)
+            handleSnapshotException(indexName, e)
         } catch (e: Exception) {
-            handleException(e)
+            handleException(indexName, e)
         }
 
         return this
@@ -116,14 +112,14 @@ class AttemptSnapshotStep(
         return denyList.stream().anyMatch(predicate)
     }
 
-    private fun handleSnapshotException(e: ConcurrentSnapshotExecutionException) {
+    private fun handleSnapshotException(indexName: String, e: ConcurrentSnapshotExecutionException) {
         val message = getFailedConcurrentSnapshotMessage(indexName)
         logger.debug(message, e)
         stepStatus = StepStatus.CONDITION_NOT_MET
         info = mapOf("message" to message)
     }
 
-    private fun handleException(e: Exception) {
+    private fun handleException(indexName: String, e: Exception) {
         val message = getFailedMessage(indexName)
         logger.error(message, e)
         stepStatus = StepStatus.FAILED
@@ -133,7 +129,12 @@ class AttemptSnapshotStep(
         info = mutableInfo.toMap()
     }
 
-    private fun compileTemplate(template: Script, managedIndexMetaData: ManagedIndexMetaData, defaultValue: String): String {
+    private fun compileTemplate(
+        template: Script,
+        managedIndexMetaData: ManagedIndexMetaData,
+        defaultValue: String,
+        scriptService: ScriptService
+    ): String {
         val contextMap = managedIndexMetaData.convertToMap().filterKeys { key ->
             key in validTopContextFields
         }
@@ -143,15 +144,17 @@ class AttemptSnapshotStep(
         return if (compiledValue.isBlank()) defaultValue else compiledValue
     }
 
-    override fun getUpdatedManagedIndexMetaData(currentMetaData: ManagedIndexMetaData): ManagedIndexMetaData {
-        val currentActionMetaData = currentMetaData.actionMetaData
-        return currentMetaData.copy(
+    override fun getUpdatedManagedIndexMetadata(currentMetadata: ManagedIndexMetaData): ManagedIndexMetaData {
+        val currentActionMetaData = currentMetadata.actionMetaData
+        return currentMetadata.copy(
             actionMetaData = currentActionMetaData?.copy(actionProperties = ActionProperties(snapshotName = snapshotName)),
-            stepMetaData = StepMetaData(name, getStepStartTime().toEpochMilli(), stepStatus),
+            stepMetaData = StepMetaData(name, getStepStartTime(currentMetadata).toEpochMilli(), stepStatus),
             transitionTo = null,
             info = info
         )
     }
+
+    override fun isIdempotent(): Boolean = false
 
     companion object {
         val validTopContextFields = setOf("index", "indexUuid")

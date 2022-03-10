@@ -6,7 +6,7 @@
 package org.opensearch.indexmanagement.indexstatemanagement.model
 
 import org.opensearch.common.xcontent.XContentType
-import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.ActionProperties
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ActionProperties
 import org.opensearch.test.OpenSearchTestCase
 
 class ActionPropertiesTests : OpenSearchTestCase() {

@@ -5,21 +5,9 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.transport.action.addpolicy
 
-/*
- * Copyright 2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
- *
- * Licensed under the Apache License, Version 2.0 (the "License").
- * You may not use this file except in compliance with the License.
- * A copy of the License is located at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * or in the "license" file accompanying this file. This file is distributed
- * on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
- * express or implied. See the License for the specific language governing
- * permissions and limitations under the License.
- */
-
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import org.apache.logging.log4j.LogManager
 import org.opensearch.ExceptionsHelper
 import org.opensearch.OpenSearchSecurityException
@@ -39,9 +27,7 @@ import org.opensearch.action.support.HandledTransportAction
 import org.opensearch.action.support.IndicesOptions
 import org.opensearch.action.support.master.AcknowledgedResponse
 import org.opensearch.client.node.NodeClient
-import org.opensearch.cluster.ClusterState
 import org.opensearch.cluster.block.ClusterBlockException
-import org.opensearch.cluster.metadata.IndexNameExpressionResolver
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.inject.Inject
 import org.opensearch.common.settings.Settings
@@ -49,19 +35,24 @@ import org.opensearch.common.unit.TimeValue
 import org.opensearch.common.xcontent.NamedXContentRegistry
 import org.opensearch.commons.ConfigConstants
 import org.opensearch.commons.authuser.User
+import org.opensearch.index.Index
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
+import org.opensearch.indexmanagement.indexstatemanagement.DefaultIndexMetadataService
+import org.opensearch.indexmanagement.indexstatemanagement.IndexMetadataProvider
+import org.opensearch.indexmanagement.indexstatemanagement.IndexMetadataProvider.Companion.EVALUATION_FAILURE_MESSAGE
 import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
 import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.getUuidsForClosedIndices
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.ISMStatusResponse
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.managedIndex.ManagedIndexAction
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.managedIndex.ManagedIndexRequest
+import org.opensearch.indexmanagement.indexstatemanagement.util.DEFAULT_INDEX_TYPE
 import org.opensearch.indexmanagement.indexstatemanagement.util.FailedIndex
-import org.opensearch.indexmanagement.indexstatemanagement.util.IndexEvaluator
-import org.opensearch.indexmanagement.indexstatemanagement.util.IndexEvaluator.Companion.EVALUATION_FAILURE_MESSAGE
 import org.opensearch.indexmanagement.indexstatemanagement.util.managedIndexConfigIndexRequest
+import org.opensearch.indexmanagement.indexstatemanagement.util.removeClusterStateMetadatas
 import org.opensearch.indexmanagement.opensearchapi.parseFromGetResponse
 import org.opensearch.indexmanagement.settings.IndexManagementSettings
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ISMIndexMetadata
 import org.opensearch.indexmanagement.util.IndexUtils
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.buildUser
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.userHasPermissionForResource
@@ -84,8 +75,7 @@ class TransportAddPolicyAction @Inject constructor(
     val settings: Settings,
     val clusterService: ClusterService,
     val xContentRegistry: NamedXContentRegistry,
-    val indexNameExpressionResolver: IndexNameExpressionResolver,
-    val indexEvaluator: IndexEvaluator
+    val indexMetadataProvider: IndexMetadataProvider
 ) : HandledTransportAction<AddPolicyRequest, ISMStatusResponse>(
     AddPolicyAction.NAME, transportService, actionFilters, ::AddPolicyRequest
 ) {
@@ -110,6 +100,7 @@ class TransportAddPolicyAction @Inject constructor(
         AddPolicyHandler(client, listener, request).start()
     }
 
+    @Suppress("TooManyFunctions")
     inner class AddPolicyHandler(
         private val client: NodeClient,
         private val actionListener: ActionListener<ISMStatusResponse>,
@@ -118,7 +109,7 @@ class TransportAddPolicyAction @Inject constructor(
     ) {
         private lateinit var startTime: Instant
         private lateinit var policy: Policy
-        private val resolvedIndices = mutableListOf<String>()
+        private val permittedIndices = mutableListOf<String>()
         private val indicesToAdd = mutableMapOf<String, String>() // uuid: name
         private val failedIndices: MutableList<FailedIndex> = mutableListOf()
 
@@ -131,41 +122,47 @@ class TransportAddPolicyAction @Inject constructor(
             if (!validateUserConfiguration(user, filterByEnabled, actionListener)) {
                 return
             }
-            val requestedIndices = mutableListOf<String>()
-            request.indices.forEach { index ->
-                requestedIndices.addAll(
-                    indexNameExpressionResolver.concreteIndexNames(
-                        clusterService.state(),
-                        IndicesOptions.lenientExpand(),
-                        true,
-                        index
-                    )
-                )
-            }
-            if (requestedIndices.isEmpty()) {
-                // Nothing to do will ignore since found no matching indices
-                actionListener.onResponse(ISMStatusResponse(0, failedIndices))
-                return
-            }
-            if (user == null) {
-                resolvedIndices.addAll(requestedIndices)
-                getPolicy()
-            } else {
-                validateAndGetPolicy(0, requestedIndices)
+            getClusterState()
+        }
+
+        @Suppress("SpreadOperator")
+        fun getClusterState() {
+            startTime = Instant.now()
+            CoroutineScope(Dispatchers.IO).launch {
+                val indexNameToMetadata: MutableMap<String, ISMIndexMetadata> = HashMap()
+                try {
+                    indexNameToMetadata.putAll(indexMetadataProvider.getISMIndexMetadataByType(request.indexType, request.indices))
+                } catch (e: Exception) {
+                    actionListener.onFailure(ExceptionsHelper.unwrapCause(e) as Exception)
+                    return@launch
+                }
+                indexNameToMetadata.forEach { (indexName, indexMetadata) ->
+                    indicesToAdd.putIfAbsent(indexMetadata.indexUuid, indexName)
+                }
+                if (indicesToAdd.isEmpty()) {
+                    // Nothing to do will ignore since found no matching indices
+                    actionListener.onResponse(ISMStatusResponse(0, failedIndices))
+                    return@launch
+                }
+                if (user != null) {
+                    validateIndexPermissions(0, indicesToAdd.values.toList())
+                } else {
+                    removeClosedIndices()
+                }
             }
         }
 
         /**
          * We filter the requested indices to the indices user has permission to manage and apply policies only on top of those
          */
-        private fun validateAndGetPolicy(current: Int, indices: List<String>) {
+        private fun validateIndexPermissions(current: Int, indices: List<String>) {
             val request = ManagedIndexRequest().indices(indices[current])
             client.execute(
                 ManagedIndexAction.INSTANCE,
                 request,
                 object : ActionListener<AcknowledgedResponse> {
                     override fun onResponse(response: AcknowledgedResponse) {
-                        resolvedIndices.add(indices[current])
+                        permittedIndices.add(indices[current])
                         proceed(current, indices)
                     }
 
@@ -186,13 +183,54 @@ class TransportAddPolicyAction @Inject constructor(
 
         private fun proceed(current: Int, indices: List<String>) {
             if (current < indices.count() - 1) {
-                validateAndGetPolicy(current + 1, indices)
+                validateIndexPermissions(current + 1, indices)
             } else {
                 // sanity check that there are indices - if none then return
-                if (resolvedIndices.isEmpty()) {
+                if (permittedIndices.isEmpty()) {
                     actionListener.onResponse(ISMStatusResponse(0, failedIndices))
                     return
                 }
+                // Filter out the indices that the user does not have permissions for
+                indicesToAdd.values.removeIf { !permittedIndices.contains(it) }
+                removeClosedIndices()
+            }
+        }
+
+        private fun removeClosedIndices() {
+            // Do another cluster state request to fail closed indices
+            if (request.indexType == DEFAULT_INDEX_TYPE) {
+                val strictExpandOptions = IndicesOptions.strictExpand()
+                val clusterStateRequest = ClusterStateRequest()
+                    .clear()
+                    .indices(*indicesToAdd.values.toTypedArray())
+                    .metadata(true)
+                    .local(false)
+                    .waitForTimeout(TimeValue.timeValueMillis(ADD_POLICY_TIMEOUT_IN_MILLIS))
+                    .indicesOptions(strictExpandOptions)
+                client.admin()
+                    .cluster()
+                    .state(
+                        clusterStateRequest,
+                        object : ActionListener<ClusterStateResponse> {
+                            override fun onResponse(response: ClusterStateResponse) {
+                                CoroutineScope(Dispatchers.IO).launch {
+                                    removeClusterStateMetadatas(client, log, indicesToAdd.map { Index(it.value, it.key) })
+                                }
+
+                                val defaultIndexMetadataService = indexMetadataProvider.services[DEFAULT_INDEX_TYPE] as DefaultIndexMetadataService
+                                getUuidsForClosedIndices(response.state, defaultIndexMetadataService).forEach {
+                                    failedIndices.add(FailedIndex(indicesToAdd[it] as String, it, "This index is closed"))
+                                    indicesToAdd.remove(it)
+                                }
+                                getPolicy()
+                            }
+
+                            override fun onFailure(t: Exception) {
+                                actionListener.onFailure(ExceptionsHelper.unwrapCause(t) as Exception)
+                            }
+                        }
+                    )
+            } else {
                 getPolicy()
             }
         }
@@ -233,7 +271,7 @@ class TransportAddPolicyAction @Inject constructor(
         private fun onUpdateMapping(response: AcknowledgedResponse) {
             if (response.isAcknowledged) {
                 log.info("Successfully created or updated $INDEX_MANAGEMENT_INDEX with newest mappings.")
-                getClusterState()
+                getExistingManagedIndices()
             } else {
                 log.error("Unable to create or update $INDEX_MANAGEMENT_INDEX with newest mapping.")
 
@@ -246,55 +284,15 @@ class TransportAddPolicyAction @Inject constructor(
             }
         }
 
-        @Suppress("SpreadOperator")
-        fun getClusterState() {
-            val strictExpandOptions = IndicesOptions.strictExpand()
-
-            val clusterStateRequest = ClusterStateRequest()
-                .clear()
-                .indices(*resolvedIndices.toTypedArray())
-                .metadata(true)
-                .local(false)
-                .waitForTimeout(TimeValue.timeValueMillis(ADD_POLICY_TIMEOUT_IN_MILLIS))
-                .indicesOptions(strictExpandOptions)
-
-            startTime = Instant.now()
-
-            client.admin()
-                .cluster()
-                .state(
-                    clusterStateRequest,
-                    object : ActionListener<ClusterStateResponse> {
-                        override fun onResponse(response: ClusterStateResponse) {
-                            response.state.metadata.indices.forEach {
-                                indicesToAdd.putIfAbsent(it.value.indexUUID, it.key)
-                            }
-
-                            populateLists(response.state)
-                        }
-
-                        override fun onFailure(t: Exception) {
-                            actionListener.onFailure(ExceptionsHelper.unwrapCause(t) as Exception)
-                        }
-                    }
-                )
-        }
-
-        private fun populateLists(state: ClusterState) {
-            getUuidsForClosedIndices(state).forEach {
-                failedIndices.add(FailedIndex(indicesToAdd[it] as String, it, "This index is closed"))
-                indicesToAdd.remove(it)
-            }
-
+        private fun getExistingManagedIndices() {
             // Removing all the unmanageable Indices
             indicesToAdd.entries.removeIf { (uuid, indexName) ->
-                val shouldRemove = indexEvaluator.isUnManageableIndex(indexName)
+                val shouldRemove = indexMetadataProvider.isUnManageableIndex(indexName)
                 if (shouldRemove) {
                     failedIndices.add(FailedIndex(indexName, uuid, EVALUATION_FAILURE_MESSAGE))
                 }
                 shouldRemove
             }
-
             if (indicesToAdd.isEmpty()) {
                 actionListener.onResponse(ISMStatusResponse(0, failedIndices))
                 return
