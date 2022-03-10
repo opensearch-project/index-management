@@ -19,21 +19,28 @@ jobs:
       fail-fast: false
       # This starts three jobs, setting these environment variables uniquely for the different jobs
       matrix:
+        java: [8, 11, 14]
+        os: [ubuntu-latest, windows-latest, macos-latest]
         include:
-          - os: ubuntu-latest
           - os: windows-latest
             os_build_args: -x integTest -x jacocoTestReport
             working_directory: X:\
             os_java_options: -Xmx4096M
           - os: macos-latest
             os_build_args: -x integTest -x jacocoTestReport
+        # Only testing the LTS java version on mac and windows
+        exclude:
+          - os: windows-latest
+            java: [8, 14]
+          - os: macos-latest
+            java: [8, 14]
     runs-on: ${{ matrix.os }}
     steps:
       # This step uses the setup-java Github action: https://github.com/actions/setup-java
-      - name: Set Up JDK 11
+      - name: Set Up JDK ${{ matrix.java }}
         uses: actions/setup-java@v1
         with:
-          java-version: 11
+          java-version: ${{ matrix.java }}
       # build index management
       - name: Checkout Branch
         uses: actions/checkout@v2
