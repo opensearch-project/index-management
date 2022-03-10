@@ -19,7 +19,7 @@ jobs:
       fail-fast: false
       # This starts three jobs, setting these environment variables uniquely for the different jobs
       matrix:
-        java: [8, 11, 14, 17]
+        java: [8, 11, 14]
         os: [ubuntu-latest, windows-latest, macos-latest]
         include:
           - os: windows-latest
@@ -31,9 +31,9 @@ jobs:
         # Only testing the LTS java version on mac and windows
         exclude:
           - os: windows-latest
-            java: [8, 14, 17]
+            java: [8, 14]
           - os: macos-latest
-            java: [8, 14, 17]
+            java: [8, 14]
     runs-on: ${{ matrix.os }}
     steps:
       # This step uses the setup-java Github action: https://github.com/actions/setup-java
