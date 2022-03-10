@@ -35,6 +35,7 @@ Compatible with OpenSearch 1.3.0
 
 ### Documentation
 * Add roadmap badge in README ([#295](https://github.com/opensearch-project/index-management/pull/295))
+* Add backport documentation link ([#300](https://github.com/opensearch-project/index-management/pull/300))
 
 ### Maintenance
 * Updating license headers ([#196](https://github.com/opensearch-project/index-management/pull/196))
