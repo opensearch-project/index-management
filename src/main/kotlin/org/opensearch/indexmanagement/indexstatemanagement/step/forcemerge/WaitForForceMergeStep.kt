@@ -59,7 +59,7 @@ class WaitForForceMergeStep(private val action: ForceMergeAction) : Step(name, f
             // Get ActionTimeout if given, otherwise use default timeout of 12 hours
             val timeoutInSeconds: Long = action.configTimeout?.timeout?.seconds ?: FORCE_MERGE_TIMEOUT_IN_SECONDS
 
-            if (timeWaitingForForceMerge.toSeconds() > timeoutInSeconds) {
+            if (timeWaitingForForceMerge.seconds > timeoutInSeconds) {
                 logger.error(
                     "Force merge on [$indexName] timed out with" +
                         " [$shardsStillMergingSegments] shards containing unmerged segments"
