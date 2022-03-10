@@ -15,6 +15,7 @@ import org.opensearch.client.RequestOptions
 import org.opensearch.client.Response
 import org.opensearch.client.RestClient
 import org.opensearch.common.Strings
+import org.opensearch.common.io.PathUtils
 import org.opensearch.common.settings.Settings
 import org.opensearch.indexmanagement.indexstatemanagement.util.INDEX_HIDDEN
 import org.opensearch.rest.RestStatus
@@ -171,7 +172,7 @@ abstract class IndexManagementRestTestCase : ODFERestTestCase() {
                     false
                 )
                 proxy.getExecutionData(false)?.let {
-                    val path = Paths.get("$jacocoBuildPath/integTest.exec")
+                    val path = PathUtils.get("$jacocoBuildPath/integTest.exec")
                     Files.write(path, it)
                 }
             }
