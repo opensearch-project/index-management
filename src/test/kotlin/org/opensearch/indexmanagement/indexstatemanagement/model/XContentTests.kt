@@ -12,6 +12,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.ISMActionsParser
 import org.opensearch.indexmanagement.indexstatemanagement.action.RollupAction
 import org.opensearch.indexmanagement.indexstatemanagement.model.destination.DestinationType
 import org.opensearch.indexmanagement.indexstatemanagement.nonNullRandomConditions
+import org.opensearch.indexmanagement.indexstatemanagement.randomAliasAction
 import org.opensearch.indexmanagement.indexstatemanagement.randomAllocationActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomChangePolicy
 import org.opensearch.indexmanagement.indexstatemanagement.randomCloseActionConfig
@@ -251,6 +252,14 @@ class XContentTests : OpenSearchTestCase() {
         val changePolicyString = changePolicy.toJsonString()
         val parsedChangePolicy = ChangePolicy.parse(parser(changePolicyString))
         assertEquals("Round tripping ChangePolicy doesn't work", changePolicy, parsedChangePolicy)
+    }
+
+    fun `test alias action parsing`() {
+        val aliasAction = randomAliasAction()
+
+        val aliasActionString = aliasAction.toJsonString()
+        val parsedAliasAction = ISMActionsParser.instance.parse(parser(aliasActionString), 0)
+        assertEquals("Round tripping AliasAction doesn't work", aliasAction.convertToMap(), parsedAliasAction.convertToMap())
     }
 
     private fun parser(xc: String): XContentParser {
