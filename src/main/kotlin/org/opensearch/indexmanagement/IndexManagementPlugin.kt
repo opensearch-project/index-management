@@ -251,7 +251,7 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
         indexManagementExtensions.forEach { extension ->
             val extensionName = extension.getExtensionName()
             if (extensionName in extensions) {
-                throw IllegalStateException("Mutliple extensions of IndexManagement have same name $extensionName - not supported")
+                throw IllegalStateException("Multiple extensions of IndexManagement have same name $extensionName - not supported")
             }
             extension.getISMActionParsers().forEach { parser ->
                 ISMActionsParser.instance.addParser(parser, extensionName)

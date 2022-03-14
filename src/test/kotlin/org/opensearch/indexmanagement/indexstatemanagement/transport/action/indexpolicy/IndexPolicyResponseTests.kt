@@ -62,7 +62,6 @@ class IndexPolicyResponseTests : OpenSearchTestCase() {
     @Suppress("UNCHECKED_CAST")
     fun `test index policy response custom action`() {
         val customActionParser = SampleCustomActionParser()
-        customActionParser.customAction = true
         val extensionName = "testExtension"
         ISMActionsParser.instance.addParser(customActionParser, extensionName)
         val id = "id"
