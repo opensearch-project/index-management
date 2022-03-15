@@ -24,6 +24,7 @@ Compatible with OpenSearch 1.3.0
 * Fixes flaky continuous transforms test ([#276](https://github.com/opensearch-project/index-management/pull/276))
 * Porting additional missing logic ([#275](https://github.com/opensearch-project/index-management/pull/275))
 * Fixes test failures with security enabled ([#292](https://github.com/opensearch-project/index-management/pull/292))
+* Enforces extension action parsers have custom flag ([#306](https://github.com/opensearch-project/index-management/pull/306))
 
 ### Infrastructure
 * Add support for codeowners to repo ([#195](https://github.com/opensearch-project/index-management/pull/195))
