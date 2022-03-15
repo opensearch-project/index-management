@@ -91,9 +91,9 @@ class ISMActionsParser private constructor() {
                 Action.CUSTOM_ACTION_FIELD -> {
                     // The "custom" wrapper allows extensions to create arbitrary actions without updating the config mappings
                     // We consume the full custom wrapper and parse the action in this step
-                    XContentParserUtils.ensureExpectedToken(XContentParser.Token.START_OBJECT, xcp.nextToken(), xcp)
-                    val customActionType = xcp.currentName()
                     XContentParserUtils.ensureExpectedToken(XContentParser.Token.FIELD_NAME, xcp.nextToken(), xcp)
+                    val customActionType = xcp.currentName()
+                    XContentParserUtils.ensureExpectedToken(XContentParser.Token.START_OBJECT, xcp.nextToken(), xcp)
                     action = parseAction(xcp, totalActions, customActionType)
                     XContentParserUtils.ensureExpectedToken(XContentParser.Token.END_OBJECT, xcp.nextToken(), xcp)
                 }
