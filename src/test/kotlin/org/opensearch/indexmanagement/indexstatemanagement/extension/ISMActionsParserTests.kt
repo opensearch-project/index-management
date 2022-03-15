@@ -72,4 +72,19 @@ class ISMActionsParserTests : OpenSearchTestCase() {
         assertEquals("Round tripping custom action doesn't work", customAction.convertToMap(), parsedCustomAction.convertToMap())
         assertTrue("Custom action did not have custom keyword after parsing", parsedCustomAction.convertToMap().containsKey("custom"))
     }
+
+    fun `test parsing custom action with custom flag`() {
+        val customActionParser = SampleCustomActionParser()
+        ISMActionsParser.instance.addParser(customActionParser, extensionName)
+        val customAction = SampleCustomActionParser.SampleCustomAction(randomInt(), 0)
+        customAction.customAction = true
+
+        val customActionString = "{\"retry\":{\"count\":3,\"backoff\":\"exponential\",\"delay\":\"1m\"},\"custom\": {\"some_custom_action\":{\"some_int_field\":${customAction.someInt}}}}"
+        val parser = XContentType.JSON.xContent().createParser(xContentRegistry(), LoggingDeprecationHandler.INSTANCE, customActionString)
+        parser.nextToken()
+        val parsedCustomAction = ISMActionsParser.instance.parse(parser, 1)
+        assertTrue("Action was not set to be custom after parsing", parsedCustomAction.customAction)
+        assertEquals("Round tripping custom action doesn't work", customAction.convertToMap(), parsedCustomAction.convertToMap())
+        assertTrue("Custom action did not have custom keyword after parsing", parsedCustomAction.convertToMap().containsKey("custom"))
+    }
 }
