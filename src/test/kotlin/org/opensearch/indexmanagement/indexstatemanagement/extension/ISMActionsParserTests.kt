@@ -31,7 +31,6 @@ class ISMActionsParserTests : OpenSearchTestCase() {
 
     fun `test duplicate action names fail`() {
         val customActionParser = SampleCustomActionParser()
-        customActionParser.customAction = true
         // Duplicate custom parser names should fail
         ISMActionsParser.instance.addParser(customActionParser, extensionName)
         assertFailsWith<IllegalArgumentException>("Expected IllegalArgumentException for duplicate action names") {
@@ -46,7 +45,6 @@ class ISMActionsParserTests : OpenSearchTestCase() {
 
     fun `test custom action parsing`() {
         val customActionParser = SampleCustomActionParser()
-        customActionParser.customAction = true
         ISMActionsParser.instance.addParser(customActionParser, extensionName)
         val customAction = SampleCustomActionParser.SampleCustomAction(randomInt(), 0)
         val builder = XContentFactory.jsonBuilder()
@@ -62,7 +60,6 @@ class ISMActionsParserTests : OpenSearchTestCase() {
 
     fun `test parsing custom action without custom flag`() {
         val customActionParser = SampleCustomActionParser()
-        customActionParser.customAction = true
         ISMActionsParser.instance.addParser(customActionParser, extensionName)
         val customAction = SampleCustomActionParser.SampleCustomAction(randomInt(), 0)
         customAction.customAction = true
