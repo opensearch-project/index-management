@@ -50,10 +50,16 @@ class ISMActionsParser private constructor() {
 
     val customActionExtensionMap = mutableMapOf<String, String>()
 
+    /*
+     * This method is used for adding custom action parsers. Action parsers from ISM should be added directly
+     * to the parsers list.
+     */
     fun addParser(parser: ActionParser, extensionName: String) {
         if (parsers.map { it.getActionType() }.contains(parser.getActionType())) {
             throw IllegalArgumentException(getDuplicateActionTypesMessage(parser.getActionType()))
         }
+        // Set the parser as custom to make sure that the custom actions are written with the "custom" wrapper
+        parser.customAction = true
         parsers.add(parser)
         customActionExtensionMap[parser.getActionType()] = extensionName
     }
