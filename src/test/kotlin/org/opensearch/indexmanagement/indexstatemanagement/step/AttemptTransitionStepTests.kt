@@ -37,6 +37,7 @@ import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepContext
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepMetaData
+import org.opensearch.jobscheduler.spi.JobExecutionContext
 import org.opensearch.rest.RestStatus
 import org.opensearch.script.ScriptService
 import org.opensearch.test.OpenSearchTestCase
@@ -60,6 +61,7 @@ class AttemptTransitionStepTests : OpenSearchTestCase() {
     private val clusterService: ClusterService = mock { on { state() } doReturn clusterState }
     private val scriptService: ScriptService = mock()
     private val settings: Settings = Settings.EMPTY
+    private val jobContext: JobExecutionContext = mock()
 
     private val docsStats: DocsStats = mock()
     private val primaries: CommonStats = mock { on { getDocs() } doReturn docsStats }
@@ -83,7 +85,7 @@ class AttemptTransitionStepTests : OpenSearchTestCase() {
             val managedIndexMetadata = ManagedIndexMetaData(indexName, indexUUID, "policy_id", null, null, null, null, null, null, null, null, null, null, null)
             val transitionsAction = TransitionsAction(listOf(Transition("some_state", Conditions(docCount = 5L))), indexMetadataProvider)
             val attemptTransitionStep = AttemptTransitionStep(transitionsAction)
-            val context = StepContext(managedIndexMetadata, clusterService, client, null, null, scriptService, settings)
+            val context = StepContext(managedIndexMetadata, clusterService, client, null, null, scriptService, settings, jobContext)
             attemptTransitionStep.preExecute(logger, context).execute()
             val updatedManagedIndexMetaData = attemptTransitionStep.getUpdatedManagedIndexMetadata(managedIndexMetadata)
             assertEquals("Step status is not FAILED", Step.StepStatus.FAILED, updatedManagedIndexMetaData.stepMetaData?.stepStatus)
@@ -101,7 +103,7 @@ class AttemptTransitionStepTests : OpenSearchTestCase() {
             val managedIndexMetadata = ManagedIndexMetaData(indexName, indexUUID, "policy_id", null, null, null, null, null, null, null, null, null, null, null)
             val transitionsAction = TransitionsAction(listOf(Transition("some_state", Conditions(docCount = 5L))), indexMetadataProvider)
             val attemptTransitionStep = AttemptTransitionStep(transitionsAction)
-            val context = StepContext(managedIndexMetadata, clusterService, client, null, null, scriptService, settings)
+            val context = StepContext(managedIndexMetadata, clusterService, client, null, null, scriptService, settings, jobContext)
             attemptTransitionStep.preExecute(logger, context).execute()
             val updatedManagedIndexMetaData = attemptTransitionStep.getUpdatedManagedIndexMetadata(managedIndexMetadata)
             assertEquals("Step status is not FAILED", Step.StepStatus.FAILED, updatedManagedIndexMetaData.stepMetaData?.stepStatus)
@@ -119,7 +121,7 @@ class AttemptTransitionStepTests : OpenSearchTestCase() {
             val managedIndexMetadata = ManagedIndexMetaData(indexName, indexUUID, "policy_id", null, null, null, null, null, null, null, null, null, null, null)
             val transitionsAction = TransitionsAction(listOf(Transition("some_state", Conditions(docCount = 5L))), indexMetadataProvider)
             val attemptTransitionStep = AttemptTransitionStep(transitionsAction)
-            val context = StepContext(managedIndexMetadata, clusterService, client, null, null, scriptService, settings)
+            val context = StepContext(managedIndexMetadata, clusterService, client, null, null, scriptService, settings, jobContext)
             attemptTransitionStep.preExecute(logger, context).execute()
             val updatedManagedIndexMetaData = attemptTransitionStep.getUpdatedManagedIndexMetadata(managedIndexMetadata)
             assertEquals("Step status is not FAILED", Step.StepStatus.FAILED, updatedManagedIndexMetaData.stepMetaData?.stepStatus)

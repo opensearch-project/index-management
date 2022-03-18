@@ -28,6 +28,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.randomReadWriteAction
 import org.opensearch.indexmanagement.indexstatemanagement.randomReplicaCountActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomRolloverActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomRollupActionConfig
+import org.opensearch.indexmanagement.indexstatemanagement.randomShrinkAction
 import org.opensearch.indexmanagement.indexstatemanagement.randomSnapshotActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomState
 import org.opensearch.indexmanagement.indexstatemanagement.randomTransition
@@ -221,6 +222,14 @@ class XContentTests : OpenSearchTestCase() {
         val parsedOpenAction = ISMActionsParser.instance.parse(parser(openActionString), 0)
 
         assertEquals("Round tripping OpenAction doesn't work", openAction.convertToMap(), parsedOpenAction.convertToMap())
+    }
+
+    fun `test shrink action parsing`() {
+        val shrinkAction = randomShrinkAction()
+        val shrinkActionString = shrinkAction.toJsonString()
+        val parsedShrinkAction = ISMActionsParser.instance.parse(parser(shrinkActionString), 0)
+
+        assertEquals("Round tripping ShrinkAction doesn't work", shrinkAction.convertToMap(), parsedShrinkAction.convertToMap())
     }
 
     fun `test managed index metadata parsing`() {

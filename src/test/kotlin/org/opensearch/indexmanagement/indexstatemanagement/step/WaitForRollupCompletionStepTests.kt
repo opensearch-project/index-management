@@ -18,6 +18,7 @@ import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ActionMetaD
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ActionProperties
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepContext
+import org.opensearch.jobscheduler.spi.JobExecutionContext
 import org.opensearch.script.ScriptService
 import org.opensearch.test.OpenSearchTestCase
 import java.time.Instant
@@ -41,11 +42,12 @@ class WaitForRollupCompletionStepTests : OpenSearchTestCase() {
     )
     private val client: Client = mock()
     private val step = WaitForRollupCompletionStep()
+    private val jobContext: JobExecutionContext = mock()
 
     fun `test wait for rollup when missing rollup id`() {
         val actionMetadata = metadata.actionMetaData!!.copy(actionProperties = ActionProperties())
         val metadata = metadata.copy(actionMetaData = actionMetadata)
-        val context = StepContext(metadata, clusterService, client, null, null, scriptService, settings)
+        val context = StepContext(metadata, clusterService, client, null, null, scriptService, settings, jobContext)
         val step = WaitForRollupCompletionStep()
 
         runBlocking {

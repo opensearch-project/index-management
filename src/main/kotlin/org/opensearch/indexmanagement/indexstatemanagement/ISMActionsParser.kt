@@ -20,6 +20,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.action.ReadWriteActio
 import org.opensearch.indexmanagement.indexstatemanagement.action.ReplicaCountActionParser
 import org.opensearch.indexmanagement.indexstatemanagement.action.RolloverActionParser
 import org.opensearch.indexmanagement.indexstatemanagement.action.RollupActionParser
+import org.opensearch.indexmanagement.indexstatemanagement.action.ShrinkActionParser
 import org.opensearch.indexmanagement.indexstatemanagement.action.SnapshotActionParser
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Action
 import org.opensearch.indexmanagement.spi.indexstatemanagement.ActionParser
@@ -45,6 +46,7 @@ class ISMActionsParser private constructor() {
         ReplicaCountActionParser(),
         RollupActionParser(),
         RolloverActionParser(),
+        ShrinkActionParser(),
         SnapshotActionParser()
     )
 

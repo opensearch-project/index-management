@@ -16,6 +16,7 @@ import org.apache.logging.log4j.Logger
 import org.opensearch.ExceptionsHelper
 import org.opensearch.OpenSearchException
 import org.opensearch.action.ActionListener
+import org.opensearch.action.admin.indices.alias.Alias
 import org.opensearch.action.bulk.BackoffPolicy
 import org.opensearch.action.get.GetResponse
 import org.opensearch.action.search.SearchResponse
@@ -39,6 +40,7 @@ import org.opensearch.common.xcontent.XContentType
 import org.opensearch.commons.InjectSecurity
 import org.opensearch.commons.authuser.User
 import org.opensearch.index.seqno.SequenceNumbers
+import org.opensearch.indexmanagement.indexstatemanagement.action.ShrinkAction
 import org.opensearch.indexmanagement.indexstatemanagement.model.ISMTemplate
 import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
 import org.opensearch.indexmanagement.util.NO_ID
@@ -78,6 +80,12 @@ fun XContentParser.instant(): Instant? {
             null // unreachable
         }
     }
+}
+
+fun XContentBuilder.aliasesField(aliases: List<Alias>): XContentBuilder {
+    val builder = this.startObject(ShrinkAction.ALIASES_FIELD)
+    aliases.forEach { it.toXContent(builder, ToXContent.EMPTY_PARAMS) }
+    return builder.endObject()
 }
 
 fun XContentBuilder.optionalTimeField(name: String, instant: Instant?): XContentBuilder {

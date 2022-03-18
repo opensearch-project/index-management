@@ -1,6 +1,6 @@
 {
   "_meta" : {
-    "schema_version": 13
+    "schema_version": 14
   },
   "dynamic": "strict",
   "properties": {
@@ -430,6 +430,29 @@
                     }
                   }
                 },
+                "shrink": {
+                  "properties": {
+                    "num_new_shards": {
+                      "type": "integer"
+                    },
+                    "max_shard_size": {
+                      "type": "keyword"
+                    },
+                    "percentage_decrease": {
+                      "type": "double"
+                    },
+                    "target_index_suffix": {
+                      "type": "text"
+                    },
+                    "aliases": {
+                      "type": "object",
+                      "enabled": false
+                    },
+                    "force_unsafe": {
+                      "type": "boolean"
+                    }
+                  }
+                },
                 "custom": {
                   "enabled": false,
                   "type":  "object"
@@ -733,6 +756,10 @@
                 },
                 "has_rollup_failed": {
                   "type": "boolean"
+                },
+                "shrink_action_properties": {
+                  "type": "object",
+                  "enabled": false
                 }
               }
             }
