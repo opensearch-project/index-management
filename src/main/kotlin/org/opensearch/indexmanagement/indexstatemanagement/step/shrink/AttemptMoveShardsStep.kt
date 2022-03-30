@@ -18,9 +18,10 @@ import org.opensearch.cluster.routing.allocation.command.MoveAllocationCommand
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.collect.Tuple
 import org.opensearch.common.settings.Settings
-import org.opensearch.common.unit.ByteSizeValue
+import org.opensearch.index.shard.DocsStats
 import org.opensearch.indexmanagement.indexstatemanagement.action.ShrinkAction
 import org.opensearch.indexmanagement.indexstatemanagement.util.getActionStartTime
+import org.opensearch.indexmanagement.indexstatemanagement.util.getFreeBytesThresholdHigh
 import org.opensearch.indexmanagement.indexstatemanagement.util.isIndexGreen
 import org.opensearch.indexmanagement.indexstatemanagement.util.issueUpdateSettingsRequest
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
@@ -38,7 +39,6 @@ import java.time.Duration
 import java.time.Instant
 import java.util.PriorityQueue
 import kotlin.collections.ArrayList
-import kotlin.collections.HashSet
 import kotlin.math.ceil
 import kotlin.math.floor
 import kotlin.math.min
@@ -72,9 +72,10 @@ class AttemptMoveShardsStep(private val action: ShrinkAction) : Step(name) {
 
             // Fail if there is only one primary shard, as that cannot be shrunk
             val numOriginalShards = context.clusterService.state().metadata.indices[indexName].numberOfShards
+            //
             if (numOriginalShards == 1) {
-                info = mapOf("message" to ONE_PRIMARY_SHARD_FAILURE_MESSAGE)
-                stepStatus = StepStatus.FAILED
+                info = mapOf("message" to ONE_PRIMARY_SHARD_MESSAGE)
+                stepStatus = StepStatus.COMPLETED
                 return this
             }
 
@@ -84,16 +85,19 @@ class AttemptMoveShardsStep(private val action: ShrinkAction) : Step(name) {
                 stats(statsRequest, it)
             }
             val statsStore = statsResponse.total.store
-            if (statsStore == null) {
+            val statsDocs = statsResponse.total.docs
+            if (statsStore == null || statsDocs == null) {
                 info = mapOf("message" to FAILURE_MESSAGE)
                 stepStatus = StepStatus.FAILED
                 return this
             }
             val indexSize = statsStore.sizeInBytes
-
             val numTargetShards = getNumTargetShards(numOriginalShards, indexSize)
+
+            if (shouldFailTooManyDocuments(statsDocs, numTargetShards)) return this
+
             // get the nodes with enough memory in increasing order of free space
-            val suitableNodes = findSuitableNodes(context, statsResponse, indexSize, bufferPercentage, numOriginalShards)
+            val suitableNodes = findSuitableNodes(context, statsResponse, indexSize)
             // iterate through the nodes and try to acquire a lock on one
             val lock = acquireLockOnNode(context.jobContext, suitableNodes)
             if (lock == null) {
@@ -120,6 +124,19 @@ class AttemptMoveShardsStep(private val action: ShrinkAction) : Step(name) {
             stepStatus = StepStatus.FAILED
             return this
         }
+    }
+
+    private fun shouldFailTooManyDocuments(docsStats: DocsStats, numTargetShards: Int): Boolean {
+        val totalDocs: Long = docsStats.count
+        val docsPerTargetShard: Long = totalDocs / numTargetShards
+        // The maximum number of documents per shard is 2^31
+        val maximumDocsPerShard = 0x80000000
+        if (docsPerTargetShard > maximumDocsPerShard) {
+            info = mapOf("message" to TOO_MANY_DOCS_FAILURE_MESSAGE)
+            stepStatus = StepStatus.FAILED
+            return true
+        }
+        return false
     }
 
     /*
@@ -196,9 +213,7 @@ class AttemptMoveShardsStep(private val action: ShrinkAction) : Step(name) {
     private suspend fun findSuitableNodes(
         stepContext: StepContext,
         indicesStatsResponse: IndicesStatsResponse,
-        indexSizeInBytes: Long,
-        buffer: Long,
-        numOriginalShards: Int
+        indexSizeInBytes: Long
     ): List<String> {
         val nodesStatsReq = NodesStatsRequest().addMetric(OS_METRIC)
         val nodeStatsResponse: NodesStatsResponse = stepContext.client.admin().cluster().suspendUntil { nodesStats(nodesStatsReq, it) }
@@ -211,8 +226,9 @@ class AttemptMoveShardsStep(private val action: ShrinkAction) : Step(name) {
             if (osStats != null) {
                 val memLeftInNode = osStats.mem.free.bytes
                 val totalNodeMem = osStats.mem.total.bytes
-                val bufferSize = ByteSizeValue(buffer * totalNodeMem)
-                val requiredBytes = (2 * indexSizeInBytes) + bufferSize.bytes
+                val freeBytesThresholdHigh = getFreeBytesThresholdHigh(stepContext.settings, stepContext.clusterService.clusterSettings, totalNodeMem)
+                // We require that a node has enough space to be below the high watermark disk level with an additional 2 * the index size free
+                val requiredBytes = (2 * indexSizeInBytes) + freeBytesThresholdHigh
                 if (memLeftInNode > requiredBytes) {
                     val memLeftAfterTransfer: Long = memLeftInNode - requiredBytes
                     nodesWithSpace.add(Tuple(memLeftAfterTransfer, node.node.name))
@@ -220,29 +236,21 @@ class AttemptMoveShardsStep(private val action: ShrinkAction) : Step(name) {
             }
         }
         val suitableNodes: ArrayList<String> = ArrayList()
+        // For each node, do a dry run of moving all shards to the node to make sure there is enough space.
+        // This should be rejected if allocation puts it above the low disk watermark setting
         for (sizeNodeTuple in nodesWithSpace) {
             val nodeName = sizeNodeTuple.v2()
-            val movableShardIds = HashSet<Int>()
+            val indexName = stepContext.metadata.index
+            val clusterRerouteRequest = ClusterRerouteRequest().explain(true).dryRun(true)
             for (shard in indicesStatsResponse.shards) {
                 val shardId = shard.shardRouting.shardId()
                 val currentShardNode = stepContext.clusterService.state().nodes[shard.shardRouting.currentNodeId()]
-                if (currentShardNode.name.equals(nodeName)) {
-                    movableShardIds.add(shardId.id)
-                } else {
-                    val indexName = stepContext.metadata.index
-                    val allocationCommand = MoveAllocationCommand(indexName, shardId.id, currentShardNode.name, nodeName)
-                    // Do a dry run to make sure the shard can successfully move to the target node
-                    val rerouteRequest = ClusterRerouteRequest().explain(true).dryRun(true).add(allocationCommand)
-
-                    val clusterRerouteResponse: ClusterRerouteResponse =
-                        stepContext.client.admin().cluster().suspendUntil { reroute(rerouteRequest, it) }
-                    // As there is only a single shard, there should be a single decision. If it is yes, note the shard as moveable
-                    if (clusterRerouteResponse.explanations.yesDecisionMessages.isNotEmpty()) {
-                        movableShardIds.add(shardId.id)
-                    }
-                }
+                clusterRerouteRequest.add(MoveAllocationCommand(indexName, shardId.id, currentShardNode.name, nodeName))
             }
-            if (movableShardIds.size >= numOriginalShards) {
+            val clusterRerouteResponse: ClusterRerouteResponse =
+                stepContext.client.admin().cluster().suspendUntil { reroute(clusterRerouteRequest, it) }
+            // Should be the same number of yes decisions as the number of primary shards
+            if (clusterRerouteResponse.explanations.yesDecisionMessages.size == indicesStatsResponse.shards.size) {
                 suitableNodes.add(sizeNodeTuple.v2())
             }
         }
@@ -254,9 +262,9 @@ class AttemptMoveShardsStep(private val action: ShrinkAction) : Step(name) {
         // case where user specifies a certain number of shards in the target index
         if (action.numNewShards != null) return getGreatestFactorLessThan(numOriginalShards, action.numNewShards)
 
-        // case where user specifies a percentage decrease in the number of shards in the target index
-        if (action.percentageDecrease != null) {
-            val numTargetShards = floor((action.percentageDecrease) * numOriginalShards).toInt()
+        // case where user specifies a percentage of source shards to shrink to in the number of shards in the target index
+        if (action.percentageOfSourceShards != null) {
+            val numTargetShards = floor((action.percentageOfSourceShards) * numOriginalShards).toInt()
             return getGreatestFactorLessThan(numOriginalShards, numTargetShards)
         }
         // case where the user specifies a max shard size in the target index
@@ -329,13 +337,19 @@ class AttemptMoveShardsStep(private val action: ShrinkAction) : Step(name) {
 
     override fun getUpdatedManagedIndexMetadata(currentMetadata: ManagedIndexMetaData): ManagedIndexMetaData {
         val currentActionMetaData = currentMetadata.actionMetaData
+        // If we succeeded because there was only one source primary shard, we no-op by skipping to the last step
+        val stepMetaData = if (info?.get("message") == ONE_PRIMARY_SHARD_MESSAGE) {
+            StepMetaData(WaitForShrinkStep.name, getStepStartTime(currentMetadata).toEpochMilli(), stepStatus)
+        } else {
+            StepMetaData(name, getStepStartTime(currentMetadata).toEpochMilli(), stepStatus)
+        }
         return currentMetadata.copy(
             actionMetaData = currentActionMetaData?.copy(
                 actionProperties = ActionProperties(
                     shrinkActionProperties = shrinkActionProperties
                 )
             ),
-            stepMetaData = StepMetaData(name, getStepStartTime(currentMetadata).toEpochMilli(), stepStatus),
+            stepMetaData = stepMetaData,
             transitionTo = null,
             info = info
         )
@@ -348,7 +362,6 @@ class AttemptMoveShardsStep(private val action: ShrinkAction) : Step(name) {
         const val ROUTING_SETTING = "index.routing.allocation.require._name"
         const val RESOURCE_NAME = "node_name"
         const val DEFAULT_TARGET_SUFFIX = "_shrunken"
-        const val bufferPercentage = 0.05.toLong()
         const val MOVE_SHARDS_TIMEOUT_IN_SECONDS = 43200L // 12hrs in seconds
         const val name = "attempt_move_shards_step"
         const val RESOURCE_TYPE = "shrink"
@@ -357,7 +370,8 @@ class AttemptMoveShardsStep(private val action: ShrinkAction) : Step(name) {
         const val NO_AVAILABLE_NODES_MESSAGE =
             "There are no available nodes for to move to to execute a shrink. Delaying until node becomes available."
         const val UNSAFE_FAILURE_MESSAGE = "Shrink failed because index has no replicas and force_unsafe is not set to true."
-        const val ONE_PRIMARY_SHARD_FAILURE_MESSAGE = "Shrink failed because index only has one primary shard."
+        const val ONE_PRIMARY_SHARD_MESSAGE = "Shrink action did not do anything because source index only has one primary shard."
+        const val TOO_MANY_DOCS_FAILURE_MESSAGE = "Shrink failed because there would be too many documents on each target shard following the shrink."
         const val FAILURE_MESSAGE = "Shrink failed to start moving shards."
         fun getSuccessMessage(node: String) = "Successfully started moving the shards to $node."
         fun getIndexExistsMessage(newIndex: String) = "Shrink failed because $newIndex already exists."

@@ -23,20 +23,20 @@ import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepContext
 class ShrinkAction(
     val numNewShards: Int?,
     val maxShardSize: ByteSizeValue?,
-    val percentageDecrease: Double?,
+    val percentageOfSourceShards: Double?,
     val targetIndexSuffix: String?,
     val aliases: List<Alias>?,
     val forceUnsafe: Boolean?,
     index: Int
 ) : Action(name, index) {
     init {
-        val numSet = arrayOf(maxShardSize != null, percentageDecrease != null, numNewShards != null).count { it }
+        val numSet = arrayOf(maxShardSize != null, percentageOfSourceShards != null, numNewShards != null).count { it }
         require(numSet == 1) { "Exactly one option specifying the number of shards to shrink to must be used." }
 
         if (maxShardSize != null) {
             require(maxShardSize.bytes > 0) { "Shrink action maxShardSize must be greater than 0." }
-        } else if (percentageDecrease != null) {
-            require(percentageDecrease > 0.0 && percentageDecrease < 1.0) { "Percentage decrease must be between 0.0 and 1.0 exclusively" }
+        } else if (percentageOfSourceShards != null) {
+            require(percentageOfSourceShards > 0.0 && percentageOfSourceShards < 1.0) { "Percentage of source shards must be between 0.0 and 1.0 exclusively" }
         } else if (numNewShards != null) {
             require(numNewShards > 0) { "Shrink action numNewShards must be greater than 0." }
         }
@@ -80,7 +80,7 @@ class ShrinkAction(
         builder.startObject(type)
         if (numNewShards != null) builder.field(NUM_NEW_SHARDS_FIELD, numNewShards)
         if (maxShardSize != null) builder.field(MAX_SHARD_SIZE_FIELD, maxShardSize.stringRep)
-        if (percentageDecrease != null) builder.field(PERCENTAGE_DECREASE_FIELD, percentageDecrease)
+        if (percentageOfSourceShards != null) builder.field(PERCENTAGE_OF_SOURCE_SHARDS_FIELD, percentageOfSourceShards)
         if (targetIndexSuffix != null) builder.field(TARGET_INDEX_SUFFIX_FIELD, targetIndexSuffix)
         if (aliases != null) { builder.aliasesField(aliases) }
         if (forceUnsafe != null) builder.field(FORCE_UNSAFE_FIELD, forceUnsafe)
@@ -90,7 +90,7 @@ class ShrinkAction(
     override fun populateAction(out: StreamOutput) {
         out.writeOptionalInt(numNewShards)
         out.writeOptionalWriteable(maxShardSize)
-        out.writeOptionalDouble(percentageDecrease)
+        out.writeOptionalDouble(percentageOfSourceShards)
         out.writeOptionalString(targetIndexSuffix)
         if (aliases != null) {
             out.writeBoolean(true)
@@ -105,7 +105,7 @@ class ShrinkAction(
     companion object {
         const val name = "shrink"
         const val NUM_NEW_SHARDS_FIELD = "num_new_shards"
-        const val PERCENTAGE_DECREASE_FIELD = "percentage_decrease"
+        const val PERCENTAGE_OF_SOURCE_SHARDS_FIELD = "percentage_of_source_shards"
         const val MAX_SHARD_SIZE_FIELD = "max_shard_size"
         const val TARGET_INDEX_SUFFIX_FIELD = "target_index_suffix"
         const val ALIASES_FIELD = "aliases"

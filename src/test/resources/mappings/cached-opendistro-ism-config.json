@@ -438,7 +438,7 @@
                     "max_shard_size": {
                       "type": "keyword"
                     },
-                    "percentage_decrease": {
+                    "percentage_of_source_shards": {
                       "type": "double"
                     },
                     "target_index_suffix": {

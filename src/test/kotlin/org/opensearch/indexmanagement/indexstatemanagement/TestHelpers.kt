@@ -143,19 +143,19 @@ fun randomRolloverActionConfig(
 fun randomShrinkAction(
     numNewShards: Int? = null,
     maxShardSize: ByteSizeValue? = null,
-    percentageDecrease: Double? = null,
+    percentageOfSourceShards: Double? = null,
     targetIndexSuffix: String? = if (randomBoolean()) randomAlphaOfLength(10) else null,
     aliases: List<Alias>? = if (randomBoolean()) randomList(10) { randomAlias() } else null,
     forceUnsafe: Boolean? = if (randomBoolean()) randomBoolean() else null
 ): ShrinkAction {
-    if (numNewShards == null && maxShardSize == null && percentageDecrease == null) {
+    if (numNewShards == null && maxShardSize == null && percentageOfSourceShards == null) {
         when (randomInt(2)) {
             0 -> return ShrinkAction(abs(randomInt()) + 1, null, null, targetIndexSuffix, aliases, forceUnsafe, 0)
             1 -> return ShrinkAction(null, randomByteSizeValue(), null, targetIndexSuffix, aliases, forceUnsafe, 0)
             2 -> return ShrinkAction(null, null, randomDoubleBetween(0.0, 1.0, true), targetIndexSuffix, aliases, forceUnsafe, 0)
         }
     }
-    return ShrinkAction(numNewShards, maxShardSize, percentageDecrease, targetIndexSuffix, aliases, forceUnsafe, 0)
+    return ShrinkAction(numNewShards, maxShardSize, percentageOfSourceShards, targetIndexSuffix, aliases, forceUnsafe, 0)
 }
 
 fun randomReadOnlyActionConfig(): ReadOnlyAction {

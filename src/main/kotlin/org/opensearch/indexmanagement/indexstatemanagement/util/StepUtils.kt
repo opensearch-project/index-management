@@ -11,6 +11,8 @@ import org.opensearch.action.admin.cluster.health.ClusterHealthResponse
 import org.opensearch.action.admin.indices.settings.put.UpdateSettingsRequest
 import org.opensearch.action.support.master.AcknowledgedResponse
 import org.opensearch.client.Client
+import org.opensearch.cluster.routing.allocation.DiskThresholdSettings
+import org.opensearch.common.settings.ClusterSettings
 import org.opensearch.common.settings.Settings
 import org.opensearch.indexmanagement.indexstatemanagement.step.shrink.WaitForMoveShardsStep
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
@@ -82,6 +84,23 @@ fun getActionStartTime(managedIndexMetaData: ManagedIndexMetaData): Instant {
     // Return the action start time, or if that is null return now
     actionMetadata?.startTime?.let { return Instant.ofEpochMilli(it) }
     return Instant.now()
+}
+
+/*
+ * For disk threshold, if the values are set as a percentage, the percent parameter will return a value and the bytes
+ * parameter will return 0, and vice versa for when the values are set as bytes. This method provides a single place to
+ * parse either and get the byte value back.
+ */
+fun getFreeBytesThresholdHigh(settings: Settings, clusterSettings: ClusterSettings?, totalNodeBytes: Long): Long {
+    val diskThresholdSettings = DiskThresholdSettings(settings, clusterSettings)
+    // Depending on how a user provided input, this setting may be a percentage or byte value
+    val diskThresholdPercent = diskThresholdSettings.freeDiskThresholdHigh
+    val diskThresholdBytes = diskThresholdSettings.freeBytesThresholdHigh
+    // If the disk threshold is set as a percentage, use it and convert it to bytes. If
+    return if (diskThresholdPercent > 0.001) {
+        // If the user set value is 95%, diskThresholdPercent will be returned as 5% from the DiskThresholdSettings object
+        ((diskThresholdPercent / 100) * totalNodeBytes).toLong()
+    } else diskThresholdBytes.bytes
 }
 
 suspend fun isIndexGreen(client: Client, indexName: String): Boolean {

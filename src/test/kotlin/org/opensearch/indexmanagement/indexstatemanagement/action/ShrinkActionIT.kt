@@ -33,7 +33,7 @@ class ShrinkActionIT : IndexStateManagementRestTestCase() {
         val shrinkAction = ShrinkAction(
             numNewShards = 1,
             maxShardSize = null,
-            percentageDecrease = null,
+            percentageOfSourceShards = null,
             targetIndexSuffix = "_shrink_test",
             aliases = null,
             forceUnsafe = true,
@@ -122,7 +122,7 @@ class ShrinkActionIT : IndexStateManagementRestTestCase() {
         val shrinkAction = ShrinkAction(
             numNewShards = null,
             maxShardSize = testMaxShardSize,
-            percentageDecrease = null,
+            percentageOfSourceShards = null,
             targetIndexSuffix = "_shrink_test",
             aliases = null,
             forceUnsafe = true,
@@ -200,14 +200,14 @@ class ShrinkActionIT : IndexStateManagementRestTestCase() {
         }
     }
 
-    fun `test basic workflow percentage decrease`() {
+    fun `test basic workflow percentage to decrease to`() {
         val indexName = "${testIndexName}_index_1"
         val policyID = "${testIndexName}_testPolicyName_1"
         // Create a Policy with one State that only preforms a force_merge Action
         val shrinkAction = ShrinkAction(
             numNewShards = null,
             maxShardSize = null,
-            percentageDecrease = 0.5,
+            percentageOfSourceShards = 0.5,
             targetIndexSuffix = "_shrink_test",
             aliases = null,
             forceUnsafe = true,
@@ -296,7 +296,7 @@ class ShrinkActionIT : IndexStateManagementRestTestCase() {
             val shrinkAction = ShrinkAction(
                 numNewShards = null,
                 maxShardSize = null,
-                percentageDecrease = 0.5,
+                percentageOfSourceShards = 0.5,
                 targetIndexSuffix = "_shrink_test",
                 aliases = null,
                 forceUnsafe = true,
@@ -384,6 +384,64 @@ class ShrinkActionIT : IndexStateManagementRestTestCase() {
                     getExplainManagedIndexMetaData(indexName).info?.get("message")
                 )
             }
+        }
+    }
+
+    fun `test no-op with single source index primary shard`() {
+        val logger = LogManager.getLogger(::ShrinkActionIT)
+        val indexName = "${testIndexName}_index_1_shard_noop"
+        val policyID = "${testIndexName}_testPolicyName_1_shard_noop"
+
+        // Create a Policy with one State that only preforms a force_merge Action
+        val shrinkAction = ShrinkAction(
+            numNewShards = null,
+            maxShardSize = null,
+            percentageOfSourceShards = 0.5,
+            targetIndexSuffix = "_shrink_test",
+            aliases = null,
+            forceUnsafe = true,
+            index = 0
+        )
+        val states = listOf(State("ShrinkState", listOf(shrinkAction), listOf()))
+
+        val policy = Policy(
+            id = policyID,
+            description = "$testIndexName description",
+            schemaVersion = 11L,
+            lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
+            errorNotification = randomErrorNotification(),
+            defaultState = states[0].name,
+            states = states
+        )
+
+        createPolicy(policy, policyID)
+        createIndex(indexName, policyID, null, "0", "1", "")
+
+        insertSampleData(indexName, 3)
+
+        // Will change the startTime each execution so that it triggers in 2 seconds
+        // First execution: Policy is initialized
+        val managedIndexConfig = getExistingManagedIndexConfig(indexName)
+
+        updateManagedIndexConfigStartTime(managedIndexConfig)
+        waitFor { assertEquals(policyID, getExplainManagedIndexMetaData(indexName).policyID) }
+        logger.info("before attempt move shards")
+        // Starts AttemptMoveShardsStep
+        updateManagedIndexConfigStartTime(managedIndexConfig)
+
+        // The action should be done after the no-op
+        waitFor {
+            val metadata = getExplainManagedIndexMetaData(indexName)
+            assertEquals(
+                "Did not get the no-op due to single primary shard message",
+                AttemptMoveShardsStep.ONE_PRIMARY_SHARD_MESSAGE,
+                metadata.info?.get("message")
+            )
+            assertEquals(
+                "Was not on the last step after no-op due to single primary shard",
+                WaitForShrinkStep.name,
+                metadata.stepMetaData?.name
+            )
         }
     }
 }
