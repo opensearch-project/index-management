@@ -9,7 +9,7 @@ import org.apache.logging.log4j.LogManager
 import org.opensearch.action.admin.indices.stats.IndicesStatsRequest
 import org.opensearch.action.admin.indices.stats.IndicesStatsResponse
 import org.opensearch.action.admin.indices.stats.ShardStats
-import org.opensearch.index.shard.ShardId
+import org.opensearch.common.collect.ImmutableOpenIntMap
 import org.opensearch.indexmanagement.indexstatemanagement.action.ShrinkAction
 import org.opensearch.indexmanagement.indexstatemanagement.util.getActionStartTime
 import org.opensearch.indexmanagement.indexstatemanagement.util.releaseShrinkLock
@@ -36,7 +36,7 @@ class WaitForMoveShardsStep(private val action: ShrinkAction) : Step(name) {
         val actionMetadata = context.metadata.actionMetaData
         val shrinkActionProperties = actionMetadata?.actionProperties?.shrinkActionProperties
         if (shrinkActionProperties == null) {
-            info = mapOf("message" to "Metadata not properly populated")
+            info = mapOf("message" to "Shrink action properties are null, metadata was not properly populated")
             stepStatus = StepStatus.FAILED
             return this
         }
@@ -45,38 +45,31 @@ class WaitForMoveShardsStep(private val action: ShrinkAction) : Step(name) {
             val response: IndicesStatsResponse = context.client.admin().indices().suspendUntil { stats(indexStatsRequests, it) }
             val numPrimaryShards = context.clusterService.state().metadata.indices[indexName].numberOfShards
             val nodeToMoveOnto = shrinkActionProperties.nodeName
+            val inSyncAllocations = context.clusterService.state().metadata.indices[indexName].inSyncAllocationIds
+            val numReplicas = context.clusterService.state().metadata.indices[indexName].numberOfReplicas
             var numShardsOnNode = 0
-            val shardToCheckpointSetMap: MutableMap<ShardId, MutableSet<Long>> = mutableMapOf()
+            var numShardsInSync = 0
             for (shard: ShardStats in response.shards) {
-                val seqNoStats = shard.seqNoStats
                 val routingInfo = shard.shardRouting
-                if (seqNoStats != null) {
-                    val checkpoint = seqNoStats.localCheckpoint
-                    val shardId = shard.shardRouting.shardId()
-                    val checkpointsOfShard = shardToCheckpointSetMap.getOrDefault(shardId, mutableSetOf())
-                    checkpointsOfShard.add(checkpoint)
-                    shardToCheckpointSetMap[shardId] = checkpointsOfShard
-                }
-                // TODO: Test if we can make this appear / if we can, fail the action.
-                shardToCheckpointSetMap.entries.forEach {
-                    (_, checkpointSet) ->
-                    if (checkpointSet.size > 1) {
-                        logger.warn("There are shards with varying local checkpoints")
+                val nodeIdShardIsOn = routingInfo.currentNodeId()
+                val nodeNameShardIsOn = context.clusterService.state().nodes()[nodeIdShardIsOn].name
+                if (routingInfo.primary()) {
+                    if (nodeNameShardIsOn.equals(nodeToMoveOnto) && routingInfo.started()) {
+                        numShardsOnNode++
+                    }
+                    if (numReplicas == 0 || inSyncReplicaExists(routingInfo.id, inSyncAllocations)) {
+                        numShardsInSync++
                     }
                 }
-                val nodeIdShardIsOn = routingInfo.currentNodeId()
-                val nodeShardIsOn = context.clusterService.state().nodes()[nodeIdShardIsOn].name
-                if (nodeShardIsOn.equals(nodeToMoveOnto) && routingInfo.started()) {
-                    numShardsOnNode++
-                }
             }
-            if (numShardsOnNode >= numPrimaryShards) {
+            if (numShardsOnNode >= numPrimaryShards && numShardsInSync >= numPrimaryShards) {
                 info = mapOf("message" to getSuccessMessage(nodeToMoveOnto))
                 stepStatus = StepStatus.COMPLETED
-                return this
+            } else {
+                val numShardsNotOnNode = numPrimaryShards - numShardsOnNode
+                val numShardsNotInSync = numPrimaryShards - numShardsInSync
+                checkTimeOut(context, shrinkActionProperties, numShardsNotOnNode, numShardsNotInSync, nodeToMoveOnto)
             }
-            val numShardsLeft = numPrimaryShards - numShardsOnNode
-            checkTimeOut(context, shrinkActionProperties, numShardsLeft, nodeToMoveOnto)
             return this
         } catch (e: RemoteTransportException) {
             releaseShrinkLock(shrinkActionProperties, context.jobContext, logger)
@@ -90,6 +83,8 @@ class WaitForMoveShardsStep(private val action: ShrinkAction) : Step(name) {
             return this
         }
     }
+
+    private fun inSyncReplicaExists(shardId: Int, inSyncAllocations: ImmutableOpenIntMap<MutableSet<String>>): Boolean = inSyncAllocations[shardId].size > 1
 
     override fun getUpdatedManagedIndexMetadata(currentMetadata: ManagedIndexMetaData): ManagedIndexMetaData {
         // Saving maxNumSegments in ActionProperties after the force merge operation has begun so that if a ChangePolicy occurred
@@ -106,18 +101,19 @@ class WaitForMoveShardsStep(private val action: ShrinkAction) : Step(name) {
     private suspend fun checkTimeOut(
         stepContext: StepContext,
         shrinkActionProperties: ShrinkActionProperties,
-        numShardsLeft: Int,
+        numShardsNotOnNode: Int,
+        numShardsNotInSync: Int,
         nodeToMoveOnto: String
     ) {
         val managedIndexMetadata = stepContext.metadata
         val indexName = managedIndexMetadata.index
-        val timeFromActionStarted: Duration = Duration.between(getActionStartTime(managedIndexMetadata), Instant.now())
+        val timeSinceActionStarted: Duration = Duration.between(getActionStartTime(managedIndexMetadata), Instant.now())
         val timeOutInSeconds = action.configTimeout?.timeout?.seconds ?: MOVE_SHARDS_TIMEOUT_IN_SECONDS
         // Get ActionTimeout if given, otherwise use default timeout of 12 hours
-        stepStatus = if (timeFromActionStarted.toSeconds() > timeOutInSeconds) {
-            logger.debug(
-                "Move shards failing on [$indexName] because" +
-                    " [$numShardsLeft] shards still needing to be moved"
+        stepStatus = if (timeSinceActionStarted.toSeconds() > timeOutInSeconds) {
+            logger.error(
+                "Shrink Action move shards failed on [$indexName], the action timed out with [$numShardsNotOnNode] shards not yet " +
+                    "moved and [$numShardsNotInSync] shards without an in sync replica."
             )
             if (managedIndexMetadata.actionMetaData?.actionProperties?.shrinkActionProperties != null) {
                 releaseShrinkLock(shrinkActionProperties, stepContext.jobContext, logger)
@@ -126,8 +122,8 @@ class WaitForMoveShardsStep(private val action: ShrinkAction) : Step(name) {
             StepStatus.FAILED
         } else {
             logger.debug(
-                "Move shards still running on [$indexName] with" +
-                    " [$numShardsLeft] shards still needing to be moved"
+                "Shrink action move shards step running on [$indexName], [$numShardsNotOnNode] shards need to be moved, " +
+                    "[$numShardsNotInSync] shards need an in sync replica."
             )
             info = mapOf("message" to getTimeoutDelay(nodeToMoveOnto))
             StepStatus.CONDITION_NOT_MET

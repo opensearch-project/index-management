@@ -6,11 +6,10 @@
 package org.opensearch.indexmanagement.indexstatemanagement.step.shrink
 
 import org.apache.logging.log4j.LogManager
-import org.opensearch.action.admin.indices.settings.put.UpdateSettingsRequest
 import org.opensearch.action.admin.indices.stats.IndicesStatsRequest
 import org.opensearch.action.admin.indices.stats.IndicesStatsResponse
-import org.opensearch.action.admin.indices.stats.ShardStats
 import org.opensearch.action.support.master.AcknowledgedResponse
+import org.opensearch.client.Client
 import org.opensearch.common.settings.Settings
 import org.opensearch.indexmanagement.indexstatemanagement.action.ShrinkAction
 import org.opensearch.indexmanagement.indexstatemanagement.util.getActionStartTime
@@ -37,35 +36,23 @@ class WaitForShrinkStep(private val action: ShrinkAction) : Step(name) {
         val actionMetadata = context.metadata.actionMetaData
         val shrinkActionProperties = actionMetadata?.actionProperties?.shrinkActionProperties
         if (shrinkActionProperties == null) {
-            info = mapOf("message" to "Metadata not properly populated")
+            info = mapOf("message" to "Shrink action properties are null, metadata was not properly populated")
             stepStatus = StepStatus.FAILED
             return this
         }
         try {
             val targetIndex = shrinkActionProperties.targetIndexName
-            val targetIndexStatsRequests: IndicesStatsRequest = IndicesStatsRequest().indices(targetIndex)
-            val targetStatsResponse: IndicesStatsResponse = context.client.admin().indices().suspendUntil { stats(targetIndexStatsRequests, it) }
-            var numShardsStarted = 0
-            for (shard: ShardStats in targetStatsResponse.shards) {
-                if (shard.shardRouting.started()) {
-                    numShardsStarted++
-                }
-            }
-            if (numShardsStarted < shrinkActionProperties.targetNumShards) {
+            val numPrimaryShardsStarted = getNumPrimaryShardsStarted(context.client, targetIndex)
+            val numPrimaryShards = context.clusterService.state().metadata.indices[targetIndex].numberOfShards
+            if (numPrimaryShards != shrinkActionProperties.targetNumShards || numPrimaryShardsStarted != shrinkActionProperties.targetNumShards) {
                 checkTimeOut(context, shrinkActionProperties, targetIndex)
                 return this
             }
-            val allocationSettings = Settings.builder().putNull(AttemptMoveShardsStep.ROUTING_SETTING).build()
-            val response: AcknowledgedResponse = context.client.admin().indices().suspendUntil {
-                updateSettings(UpdateSettingsRequest(allocationSettings, targetIndex), it)
-            }
-            if (!response.isAcknowledged) {
-                releaseShrinkLock(shrinkActionProperties, context.jobContext, logger)
-                stepStatus = StepStatus.FAILED
-                info = mapOf("message" to getFailureMessage(targetIndex))
-                return this
-            }
-            issueUpdateSettingsRequest(context.client, context.metadata, allocationSettings)
+
+            // Clear source and target allocation, if either fails the step will be set to failed and the function will return false
+            if (!clearAllocationSettings(context, targetIndex, shrinkActionProperties)) return this
+            if (!clearAllocationSettings(context, context.metadata.index, shrinkActionProperties)) return this
+
             releaseShrinkLock(shrinkActionProperties, context.jobContext, logger)
             stepStatus = StepStatus.COMPLETED
             info = mapOf("message" to SUCCESS_MESSAGE)
@@ -81,6 +68,24 @@ class WaitForShrinkStep(private val action: ShrinkAction) : Step(name) {
             stepStatus = StepStatus.FAILED
             return this
         }
+    }
+
+    private suspend fun clearAllocationSettings(context: StepContext, index: String, shrinkActionProperties: ShrinkActionProperties): Boolean {
+        val allocationSettings = Settings.builder().putNull(AttemptMoveShardsStep.ROUTING_SETTING).build()
+        val response: AcknowledgedResponse = issueUpdateSettingsRequest(context.client, index, allocationSettings)
+        if (!response.isAcknowledged) {
+            releaseShrinkLock(shrinkActionProperties, context.jobContext, logger)
+            stepStatus = StepStatus.FAILED
+            info = mapOf("message" to getFailureMessage(index))
+            return false
+        }
+        return true
+    }
+
+    private suspend fun getNumPrimaryShardsStarted(client: Client, targetIndex: String): Int {
+        val targetIndexStatsRequests: IndicesStatsRequest = IndicesStatsRequest().indices(targetIndex)
+        val targetStatsResponse: IndicesStatsResponse = client.admin().indices().suspendUntil { stats(targetIndexStatsRequests, it) }
+        return targetStatsResponse.shards.filter { it.shardRouting.started() && it.shardRouting.primary() }.size
     }
 
     private suspend fun checkTimeOut(stepContext: StepContext, shrinkActionProperties: ShrinkActionProperties, targetIndex: String) {

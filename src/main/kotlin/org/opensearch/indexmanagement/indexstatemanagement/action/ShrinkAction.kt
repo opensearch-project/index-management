@@ -30,36 +30,15 @@ class ShrinkAction(
     index: Int
 ) : Action(name, index) {
     init {
-        /* The numbers associated with each shard config are all k % mod 3 == 1.
-         * Because of the % 3 == 1 property, we can check if more than one shard configs are specified by
-         * modding the sum by 3. Any sum % 3 != 1 is a sum of more than one of the configs and thus invalid.
-         * We can then check the error message by checking the sum against each unique sum combination.
-         */
-        val maxShardSizeNotNull = if (maxShardSize != null) MAX_SHARD_NOT_NULL else 0
-        val percentageDecreaseNotNull = if (percentageDecrease != null) PERCENTAGE_DECREASE_NOT_NULL else 0
-        val numNewShardsNotNull = if (numNewShards != null) NUM_SHARDS_NOT_NULL else 0
-        val numSet = maxShardSizeNotNull + percentageDecreaseNotNull + numNewShardsNotNull
-        require(numSet % NUM_SHARD_CONFIGS == 1) {
-            when (numSet) {
-                MAX_SHARD_NOT_NULL + PERCENTAGE_DECREASE_NOT_NULL ->
-                    "Cannot specify both maximum shard size and percentage decrease. Please pick one."
-                MAX_SHARD_NOT_NULL + NUM_SHARDS_NOT_NULL ->
-                    "Cannot specify both maximum shard size and number of new shards. Please pick one."
-                PERCENTAGE_DECREASE_NOT_NULL + NUM_SHARDS_NOT_NULL ->
-                    "Cannot specify both percentage decrease and number of new shards. Please pick one."
-                MAX_SHARD_NOT_NULL + PERCENTAGE_DECREASE_NOT_NULL + NUM_SHARDS_NOT_NULL ->
-                    "Cannot specify maximum shard size, percentage decrease, and number of new shards. Please pick one."
-                // Never executes this code block.
-                else -> ""
-            }
-        }
-        if (percentageDecreaseNotNull != 0) {
-            require(percentageDecrease!!.compareTo(0.0) == 1 && percentageDecrease.compareTo(1.0) == -1) {
-                "Percentage decrease must be between 0.0 and 1.0 exclusively"
-            }
-        }
-        if (maxShardSizeNotNull != 0) {
-            require(maxShardSize!!.bytes > 0) { "The max_shard_size must be greater than 0." }
+        val numSet = arrayOf(maxShardSize != null, percentageDecrease != null, numNewShards != null).count { it }
+        require(numSet == 1) { "Exactly one option specifying the number of shards to shrink to must be used." }
+
+        if (maxShardSize != null) {
+            require(maxShardSize.bytes > 0) { "Shrink action maxShardSize must be greater than 0." }
+        } else if (percentageDecrease != null) {
+            require(percentageDecrease > 0.0 && percentageDecrease < 1.0) { "Percentage decrease must be between 0.0 and 1.0 exclusively" }
+        } else if (numNewShards != null) {
+            require(numNewShards > 0) { "Shrink action numNewShards must be greater than 0." }
         }
     }
 
@@ -131,9 +110,5 @@ class ShrinkAction(
         const val TARGET_INDEX_SUFFIX_FIELD = "target_index_suffix"
         const val ALIASES_FIELD = "aliases"
         const val FORCE_UNSAFE_FIELD = "force_unsafe"
-        const val MAX_SHARD_NOT_NULL = 1
-        const val PERCENTAGE_DECREASE_NOT_NULL = 4
-        const val NUM_SHARDS_NOT_NULL = 7
-        const val NUM_SHARD_CONFIGS = 3
     }
 }

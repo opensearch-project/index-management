@@ -60,6 +60,7 @@ import org.opensearch.test.rest.OpenSearchRestTestCase
 import java.time.Instant
 import java.time.ZoneId
 import java.time.temporal.ChronoUnit
+import kotlin.math.abs
 
 fun randomPolicy(
     id: String = OpenSearchRestTestCase.randomAlphaOfLength(10),
@@ -149,7 +150,7 @@ fun randomShrinkAction(
 ): ShrinkAction {
     if (numNewShards == null && maxShardSize == null && percentageDecrease == null) {
         when (randomInt(2)) {
-            0 -> return ShrinkAction(randomInt(), null, null, targetIndexSuffix, aliases, forceUnsafe, 0)
+            0 -> return ShrinkAction(abs(randomInt()) + 1, null, null, targetIndexSuffix, aliases, forceUnsafe, 0)
             1 -> return ShrinkAction(null, randomByteSizeValue(), null, targetIndexSuffix, aliases, forceUnsafe, 0)
             2 -> return ShrinkAction(null, null, randomDoubleBetween(0.0, 1.0, true), targetIndexSuffix, aliases, forceUnsafe, 0)
         }
