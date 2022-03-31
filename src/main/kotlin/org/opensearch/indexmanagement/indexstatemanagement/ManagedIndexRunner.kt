@@ -398,7 +398,7 @@ object ManagedIndexRunner :
             if (executedManagedIndexMetaData.isFailed) {
                 try {
                     // if the policy has no error_notification this will do nothing otherwise it will try to send the configured error message
-                    publishErrorNotification(policy, executedManagedIndexMetaData)
+                    // publishErrorNotification(policy, executedManagedIndexMetaData)
                 } catch (e: Exception) {
                     logger.error("Failed to publish error notification", e)
                     val errorMessage = e.message ?: "Failed to publish error notification"
@@ -605,8 +605,9 @@ object ManagedIndexRunner :
             // this is an edge case where a user deletes the job config or index and we already have a policySeqNo/primaryTerm
             // in the metadata, in this case we just want to say we successfully initialized the policy again but we will not
             // modify the state, action, etc. so it can resume where it left off
-            managedIndexMetaData.policySeqNo == policy.seqNo && managedIndexMetaData.policyPrimaryTerm == policy.primaryTerm
-                && managedIndexMetaData.policyID == policy.id ->
+            managedIndexMetaData.policySeqNo == policy.seqNo &&
+                managedIndexMetaData.policyPrimaryTerm == policy.primaryTerm &&
+                managedIndexMetaData.policyID == policy.id ->
                 // If existing PolicySeqNo and PolicyPrimaryTerm is equal to cached Policy then no issue.
                 managedIndexMetaData.copy(
                     policyRetryInfo = PolicyRetryInfoMetaData(failed = false, consumedRetries = 0),
@@ -776,7 +777,7 @@ object ManagedIndexRunner :
         policy.errorNotification?.run {
             errorNotificationRetryPolicy.retry(logger) {
                 withContext(Dispatchers.IO) {
-                    destination.publish(null, compileTemplate(messageTemplate, managedIndexMetaData), hostDenyList)
+                    // destination.publish(null, compileTemplate(messageTemplate, managedIndexMetaData), hostDenyList)
                 }
             }
         }

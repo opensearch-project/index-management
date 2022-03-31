@@ -26,7 +26,6 @@ import org.opensearch.common.xcontent.XContentHelper
 import org.opensearch.common.xcontent.XContentType
 import org.opensearch.indexmanagement.indexstatemanagement.util.XCONTENT_WITHOUT_TYPE
 import org.opensearch.indexmanagement.util.IndexUtils.Companion._META
-import org.opensearch.indexmanagement.util._DOC
 import org.opensearch.threadpool.ThreadPool
 import org.opensearch.transport.TransportService
 import java.lang.Exception
@@ -114,7 +113,7 @@ class TransportUpdateRollupMappingAction @Inject constructor(
         }
 
         // TODO: Does schema_version get overwritten?
-        val putMappingRequest = PutMappingRequest(request.rollup.targetIndex).type(_DOC).source(metaMappings)
+        val putMappingRequest = PutMappingRequest(request.rollup.targetIndex).source(metaMappings)
         client.admin().indices().putMapping(
             putMappingRequest,
             object : ActionListener<AcknowledgedResponse> {

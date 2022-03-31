@@ -7,15 +7,15 @@
 @file:JvmName("ManagedIndexUtils")
 package org.opensearch.indexmanagement.indexstatemanagement.util
 
-import inet.ipaddr.IPAddressString
-import org.apache.logging.log4j.LogManager
+// import inet.ipaddr.IPAddressString
+// import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.opensearch.action.delete.DeleteRequest
 import org.opensearch.action.index.IndexRequest
 import org.opensearch.action.search.SearchRequest
 import org.opensearch.action.support.WriteRequest
 import org.opensearch.action.update.UpdateRequest
-import org.opensearch.alerting.destination.message.BaseMessage
+// import org.opensearch.alerting.destination.message.BaseMessage
 import org.opensearch.common.unit.ByteSizeValue
 import org.opensearch.common.unit.TimeValue
 import org.opensearch.common.xcontent.ToXContent
@@ -46,7 +46,7 @@ import org.opensearch.indexmanagement.spi.indexstatemanagement.model.PolicyRetry
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StateMetaData
 import org.opensearch.jobscheduler.spi.schedule.IntervalSchedule
 import org.opensearch.search.builder.SearchSourceBuilder
-import java.net.InetAddress
+// import java.net.InetAddress
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 
@@ -522,16 +522,16 @@ enum class MetadataCheck {
     PENDING, CORRUPT, SUCCESS
 }
 
-private val baseMessageLogger = LogManager.getLogger(BaseMessage::class.java)
-
-fun BaseMessage.isHostInDenylist(networks: List<String>): Boolean {
-    val ipStr = IPAddressString(this.uri.host)
-    for (network in networks) {
-        val netStr = IPAddressString(network)
-        if (netStr.contains(ipStr)) {
-            baseMessageLogger.error("Host: {} resolves to: {} which is in denylist: {}.", uri.host, InetAddress.getByName(uri.host), netStr)
-            return true
-        }
-    }
-    return false
-}
+// private val baseMessageLogger = LogManager.getLogger(BaseMessage::class.java)
+//
+// fun BaseMessage.isHostInDenylist(networks: List<String>): Boolean {
+//     val ipStr = IPAddressString(this.uri.host)
+//     for (network in networks) {
+//         val netStr = IPAddressString(network)
+//         if (netStr.contains(ipStr)) {
+//             baseMessageLogger.error("Host: {} resolves to: {} which is in denylist: {}.", uri.host, InetAddress.getByName(uri.host), netStr)
+//             return true
+//         }
+//     }
+//     return false
+// }

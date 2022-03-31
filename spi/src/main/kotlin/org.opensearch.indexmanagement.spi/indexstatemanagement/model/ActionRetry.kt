@@ -72,7 +72,7 @@ data class ActionRetry(
 
                 when (fieldName) {
                     COUNT_FIELD -> count = xcp.longValue()
-                    BACKOFF_FIELD -> backoff = Backoff.valueOf(xcp.text().toUpperCase(Locale.ROOT))
+                    BACKOFF_FIELD -> backoff = Backoff.valueOf(xcp.text().uppercase(Locale.ROOT))
                     DELAY_FIELD -> delay = TimeValue.parseTimeValue(xcp.text(), DELAY_FIELD)
                 }
             }

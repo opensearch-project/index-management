@@ -19,7 +19,6 @@ import org.opensearch.client.Client
 import org.opensearch.client.IndicesAdminClient
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.settings.Settings
-import org.opensearch.common.xcontent.XContentType
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings
 import org.opensearch.indexmanagement.indexstatemanagement.util.INDEX_HIDDEN
@@ -28,7 +27,6 @@ import org.opensearch.indexmanagement.indexstatemanagement.util.INDEX_NUMBER_OF_
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.util.IndexUtils
 import org.opensearch.indexmanagement.util.OpenForTesting
-import org.opensearch.indexmanagement.util._DOC
 
 @OpenForTesting
 class IndexManagementIndices(
@@ -54,7 +52,7 @@ class IndexManagementIndices(
     fun checkAndUpdateIMConfigIndex(actionListener: ActionListener<AcknowledgedResponse>) {
         if (!indexManagementIndexExists()) {
             val indexRequest = CreateIndexRequest(INDEX_MANAGEMENT_INDEX)
-                .mapping(_DOC, indexManagementMappings, XContentType.JSON)
+                .mapping(indexManagementMappings)
                 .settings(Settings.builder().put(INDEX_HIDDEN, true).build())
             client.create(
                 indexRequest,
@@ -141,7 +139,7 @@ class IndexManagementIndices(
         if (existsResponse.isExists) return true
 
         val request = CreateIndexRequest(index)
-            .mapping(_DOC, indexStateManagementHistoryMappings, XContentType.JSON)
+            .mapping(indexStateManagementHistoryMappings)
             .settings(
                 Settings.builder()
                     .put(INDEX_HIDDEN, true)

@@ -74,6 +74,6 @@ class XContentTests : OpenSearchTestCase() {
     }
 
     override fun xContentRegistry(): NamedXContentRegistry {
-        return NamedXContentRegistry(SearchModule(Settings.EMPTY, false, emptyList()).namedXContents)
+        return NamedXContentRegistry(SearchModule(Settings.EMPTY, emptyList()).namedXContents)
     }
 }

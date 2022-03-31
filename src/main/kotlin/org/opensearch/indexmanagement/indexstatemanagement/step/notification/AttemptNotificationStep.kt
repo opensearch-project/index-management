@@ -31,7 +31,7 @@ class AttemptNotificationStep(private val action: NotificationAction) : Step(nam
         val scriptService = context.scriptService
         try {
             withContext(Dispatchers.IO) {
-                action.destination.publish(null, compileTemplate(scriptService, action.messageTemplate, context.metadata), hostDenyList)
+                // action.destination.publish(null, compileTemplate(scriptService, action.messageTemplate, context.metadata), hostDenyList)
             }
 
             // publish internally throws an error for any invalid responses so its safe to assume if we reach this point it was successful

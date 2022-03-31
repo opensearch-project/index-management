@@ -6,7 +6,6 @@
 @file:Suppress("TopLevelPropertyNaming", "MatchingDeclarationName")
 package org.opensearch.indexmanagement.util
 
-const val _DOC = "_doc"
 const val _ID = "_id"
 const val NO_ID = ""
 const val _VERSION = "_version"
