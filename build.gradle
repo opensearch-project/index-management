@@ -13,9 +13,18 @@ import java.util.function.Predicate
 
 buildscript {
     ext {
+        isSnapshot = "true" == System.getProperty("build.snapshot", "true")
         opensearch_version = System.getProperty("opensearch.version", "2.0.0-alpha1-SNAPSHOT")
-        // 1.1.0 -> 1.1.0.0, 1.1.0-SNAPSHOT -> 1.1.0.0-SNAPSHOT, and 2.0.0-alpha1-SNAPSHOT -> 2.0.0.0-alpha1-SNAPSHOT
-        opensearch_build = opensearch_version.replaceAll(/(\.\d)(-.*)$/, '$1.0$2')
+        buildVersionQualifier = System.getProperty("build.version_qualifier", "alpha1")
+        // 2.0.0-alpha1-SNAPSHOT -> 2.0.0.0-alpha1-SNAPSHOT
+        version_tokens = opensearch_version.tokenize('-')
+        opensearch_build = version_tokens[0] + '.0'
+        if (buildVersionQualifier) {
+            opensearch_build += "-${buildVersionQualifier}"
+        }
+        if (isSnapshot) {
+            opensearch_build += "-SNAPSHOT"
+        }
         // notification_version = System.getProperty("notification.version", opensearch_build)
         common_utils_version = System.getProperty("common_utils.version", opensearch_build)
         job_scheduler_version = System.getProperty("job_scheduler_version.version", opensearch_build)
@@ -127,17 +136,13 @@ configurations.testImplementation {
 
 ext {
     projectSubstitutions = [:]
-    isSnapshot = "true" == System.getProperty("build.snapshot", "true")
     licenseFile = rootProject.file('LICENSE')
     noticeFile = rootProject.file('NOTICE')
 }
 
 allprojects {
     group = "org.opensearch"
-    version = "${opensearch_version}" - "-SNAPSHOT" + ".0"
-    if (isSnapshot) {
-        version += "-SNAPSHOT"
-    }
+    version = "${opensearch_build}"
 }
 
 dependencies {
@@ -347,7 +352,7 @@ String bwcFilePath = "src/test/resources/bwc/"
     testClusters {
         "${baseName}$i" {
             testDistribution = "ARCHIVE"
-            versions = ["7.10.2", "2.0.0-alpha1-SNAPSHOT"]
+            versions = ["7.10.2", opensearch_version]
             numberOfNodes = 3
             plugin(provider(new Callable<RegularFile>(){
                 @Override
