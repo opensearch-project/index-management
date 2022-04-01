@@ -41,8 +41,7 @@ class FieldCapsFilter(
     @Volatile private var shouldIntercept = RollupSettings.ROLLUP_DASHBOARDS.get(settings)
 
     init {
-        clusterService.clusterSettings.addSettingsUpdateConsumer(RollupSettings.ROLLUP_DASHBOARDS) {
-            flag ->
+        clusterService.clusterSettings.addSettingsUpdateConsumer(RollupSettings.ROLLUP_DASHBOARDS) { flag ->
             shouldIntercept = flag
         }
     }
@@ -58,8 +57,7 @@ class FieldCapsFilter(
             val indices = request.indices().map { it.toString() }.toTypedArray()
             val rollupIndices = mutableSetOf<String>()
             val nonRollupIndices = mutableSetOf<String>()
-            val remoteClusterIndices = GuiceHolder.remoteClusterService.groupIndices(request.indicesOptions(), indices) {
-                idx: String? ->
+            val remoteClusterIndices = GuiceHolder.remoteClusterService.groupIndices(request.indicesOptions(), indices) { idx: String? ->
                 indexNameExpressionResolver.hasIndexAbstraction(idx, clusterService.state())
             }
             val localIndices = remoteClusterIndices.remove(RemoteClusterAware.LOCAL_CLUSTER_GROUP_KEY)

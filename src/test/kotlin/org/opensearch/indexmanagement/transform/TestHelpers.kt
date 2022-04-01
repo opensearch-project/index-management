@@ -166,6 +166,6 @@ fun TransformMetadata.toJsonString(params: ToXContent.Params = ToXContent.EMPTY_
 
 // Builds the required stream input for transforms by wrapping the stream input with required NamedWriteableRegistry.
 fun buildStreamInputForTransforms(out: BytesStreamOutput): NamedWriteableAwareStreamInput {
-    val namedWriteableRegistry = NamedWriteableRegistry(SearchModule(Settings.EMPTY, false, emptyList()).namedWriteables)
+    val namedWriteableRegistry = NamedWriteableRegistry(SearchModule(Settings.EMPTY, emptyList()).namedWriteables)
     return NamedWriteableAwareStreamInput(out.bytes().streamInput(), namedWriteableRegistry)
 }

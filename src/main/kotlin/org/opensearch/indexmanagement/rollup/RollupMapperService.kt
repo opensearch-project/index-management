@@ -21,7 +21,6 @@ import org.opensearch.cluster.metadata.IndexNameExpressionResolver
 import org.opensearch.cluster.metadata.MappingMetadata
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.settings.Settings
-import org.opensearch.common.xcontent.XContentType
 import org.opensearch.indexmanagement.IndexManagementIndices
 import org.opensearch.indexmanagement.common.model.dimension.DateHistogram
 import org.opensearch.indexmanagement.common.model.dimension.Histogram
@@ -36,7 +35,6 @@ import org.opensearch.indexmanagement.rollup.settings.RollupSettings
 import org.opensearch.indexmanagement.rollup.util.isRollupIndex
 import org.opensearch.indexmanagement.util.IndexUtils.Companion._META
 import org.opensearch.indexmanagement.util.IndexUtils.Companion.getFieldFromMappings
-import org.opensearch.indexmanagement.util._DOC
 import org.opensearch.transport.RemoteTransportException
 
 // TODO: Validation of fields across source and target indices overwriting existing rollup data
@@ -104,7 +102,7 @@ class RollupMapperService(
         }
         val request = CreateIndexRequest(job.targetIndex)
             .settings(settings)
-            .mapping(_DOC, IndexManagementIndices.rollupTargetMappings, XContentType.JSON)
+            .mapping(IndexManagementIndices.rollupTargetMappings)
         // TODO: Perhaps we can do better than this for mappings... as it'll be dynamic for rest
         //  Can we read in the actual mappings from the source index and use that?
         //  Can it have issues with metrics? i.e. an int mapping with 3, 5, 6 added up and divided by 3 for avg is 14/3 = 4.6666
@@ -148,13 +146,11 @@ class RollupMapperService(
             }
 
             val indexTypeMappings = res.mappings[index]
-            if (indexTypeMappings.isEmpty) {
+            if (indexTypeMappings == null) {
                 return RollupJobValidationResult.Invalid("Source index [$index] mappings are empty, cannot validate the job.")
             }
 
-            // Starting from 6.0.0 an index can only have one mapping type, but mapping type is still part of the APIs in 7.x, allowing users to
-            // set a custom mapping type. As a result using first mapping type found instead of _DOC mapping type to validate
-            val indexMappingSource = indexTypeMappings.first().value.sourceAsMap
+            val indexMappingSource = indexTypeMappings.sourceAsMap
 
             val issues = mutableSetOf<String>()
             // Validate source fields in dimensions
@@ -215,7 +211,7 @@ class RollupMapperService(
                 return RollupJobValidationResult.Failure(getMappingsResult.message, getMappingsResult.cause)
         }
 
-        val indexMapping: MappingMetadata = res.mappings[rollup.targetIndex][_DOC]
+        val indexMapping: MappingMetadata = res.mappings[rollup.targetIndex]
 
         return if (((indexMapping.sourceAsMap?.get(_META) as Map<*, *>?)?.get(ROLLUPS) as Map<*, *>?)?.containsKey(rollup.id) == true) {
             RollupJobValidationResult.Valid

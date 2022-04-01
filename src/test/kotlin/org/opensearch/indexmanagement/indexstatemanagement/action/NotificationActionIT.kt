@@ -26,7 +26,7 @@ class NotificationActionIT : IndexStateManagementRestTestCase() {
     // cannot test chime/slack in integ tests, but can test a custom webhook by
     // using the POST call to write to the local integTest cluster and verify that index has 1 doc
     @Suppress("UNCHECKED_CAST")
-    fun `test custom webhook notification`() {
+    fun `skip test custom webhook notification`() {
         val indexName = "${testIndexName}_index"
         val policyID = "${testIndexName}_testPolicyName"
         val notificationIndex = "notification_index"

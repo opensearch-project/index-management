@@ -254,7 +254,7 @@ class ISMTemplateService(
 
     private fun populateV2ISMTemplateMap(policyID: String, indexPatterns: List<String>, priority: Int) {
         var v1Increment = 0
-        val v1MaxOrder = v1orderToBucketIncrement.keys.max()
+        val v1MaxOrder = v1orderToBucketIncrement.keys.maxOrNull()
         if (v1MaxOrder != null) {
             v1Increment = v1MaxOrder + v1orderToBucketIncrement.values.sum()
         }

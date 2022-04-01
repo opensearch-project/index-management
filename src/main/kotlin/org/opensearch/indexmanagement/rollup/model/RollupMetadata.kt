@@ -265,7 +265,7 @@ data class RollupMetadata(
                     AFTER_KEY_FIELD -> afterKey = xcp.map()
                     LAST_UPDATED_FIELD -> lastUpdatedTime = xcp.instant()
                     CONTINUOUS_FIELD -> continuous = ContinuousMetadata.parse(xcp)
-                    STATUS_FIELD -> status = Status.valueOf(xcp.text().toUpperCase(Locale.ROOT))
+                    STATUS_FIELD -> status = Status.valueOf(xcp.text().uppercase(Locale.ROOT))
                     FAILURE_REASON -> failureReason = xcp.textOrNull()
                     STATS_FIELD -> stats = RollupStats.parse(xcp)
                 }

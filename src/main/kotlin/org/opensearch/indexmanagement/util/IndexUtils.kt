@@ -20,7 +20,6 @@ import org.opensearch.common.xcontent.XContentParser.Token
 import org.opensearch.common.xcontent.XContentType
 import org.opensearch.indexmanagement.IndexManagementIndices
 import org.opensearch.indexmanagement.IndexManagementPlugin
-import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
 import java.nio.ByteBuffer
 import java.util.Base64
 
@@ -134,7 +133,7 @@ class IndexUtils {
         ) {
             if (clusterState.metadata.indices.containsKey(index)) {
                 if (shouldUpdateIndex(clusterState.metadata.indices[index], schemaVersion)) {
-                    val putMappingRequest: PutMappingRequest = PutMappingRequest(index).type(_DOC).source(mapping, XContentType.JSON)
+                    val putMappingRequest: PutMappingRequest = PutMappingRequest(index).source(mapping, XContentType.JSON)
                     client.putMapping(putMappingRequest, actionListener)
                 } else {
                     actionListener.onResponse(AcknowledgedResponse(true))
@@ -167,7 +166,7 @@ class IndexUtils {
                 } else {
                     if (shouldUpdateIndex(writeIndex, schemaVersion)) {
                         val putMappingRequest: PutMappingRequest = PutMappingRequest(writeIndex.index.name)
-                            .type(_DOC).source(mapping, XContentType.JSON)
+                            .source(mapping, XContentType.JSON)
                         client.putMapping(putMappingRequest, actionListener)
                     } else {
                         actionListener.onResponse(AcknowledgedResponse(true))

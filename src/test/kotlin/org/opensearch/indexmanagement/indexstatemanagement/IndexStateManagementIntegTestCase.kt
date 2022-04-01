@@ -96,9 +96,10 @@ abstract class IndexStateManagementIntegTestCase : OpenSearchIntegTestCase() {
         }
     }
 
-    override fun transportClientPlugins(): Collection<Class<out Plugin>> {
-        return listOf(TestPlugin::class.java)
-    }
+    // TODO: ...convert into a test REST plugin that allows us to execute the transport action?
+//    override fun transportClientPlugins(): Collection<Class<out Plugin>> {
+//        return listOf(TestPlugin::class.java)
+//    }
 
     protected fun getIndexMetadata(indexName: String): IndexMetadata {
         return client().admin().cluster().prepareState()

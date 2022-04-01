@@ -103,14 +103,12 @@ class TransformValidator(
         fun validateMappingsResponse(index: String, response: GetMappingsResponse, transform: Transform): List<String> {
             val issues = mutableListOf<String>()
             val indexTypeMappings = response.mappings[index]
-            if (indexTypeMappings.isEmpty) {
+            if (indexTypeMappings == null) {
                 issues.add("Source index [$index] mappings are empty, cannot validate the job.")
                 return issues
             }
 
-            // Starting from 6.0.0 an index can only have one mapping type, but mapping type is still part of the APIs in 7.x, allowing users to
-            // set a custom mapping type. As a result using first mapping type found instead of _DOC mapping type to validate
-            val indexMappingSource = indexTypeMappings.first().value.sourceAsMap
+            val indexMappingSource = indexTypeMappings.sourceAsMap
 
             transform.groups.forEach { group ->
                 if (!group.canBeRealizedInMappings(indexMappingSource)) {

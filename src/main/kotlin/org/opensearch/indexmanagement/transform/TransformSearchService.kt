@@ -74,7 +74,7 @@ class TransformSearchService(
 
     init {
         clusterService.clusterSettings.addSettingsUpdateConsumer(TRANSFORM_JOB_SEARCH_BACKOFF_MILLIS, TRANSFORM_JOB_SEARCH_BACKOFF_COUNT) {
-            millis, count ->
+                millis, count ->
             backoffPolicy = BackoffPolicy.constantBackoff(millis, count)
         }
     }

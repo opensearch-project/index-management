@@ -12,14 +12,14 @@ jobs:
     # Job name
     name: Build Index Management
     env:
-      BUILD_ARGS: -D"opensearch.version=1.3.0-SNAPSHOT" ${{ matrix.os_build_args }}
+      BUILD_ARGS: -D"opensearch.version=2.0.0-alpha1-SNAPSHOT" ${{ matrix.os_build_args }}
       WORKING_DIR: ${{ matrix.working_directory }}.
     strategy:
       # This setting says that all jobs should finish, even if one fails
       fail-fast: false
       # This starts three jobs, setting these environment variables uniquely for the different jobs
       matrix:
-        java: [8, 11, 14]
+        java: [11, 17]
         os: [ubuntu-latest, windows-latest, macos-latest]
         include:
           - os: windows-latest
@@ -28,12 +28,6 @@ jobs:
             os_java_options: -Xmx4096M
           - os: macos-latest
             os_build_args: -x integTest -x jacocoTestReport
-        # Only testing the LTS java version on mac and windows
-        exclude:
-          - os: windows-latest
-            java: [8, 14]
-          - os: macos-latest
-            java: [8, 14]
     runs-on: ${{ matrix.os }}
     steps:
       # This step uses the setup-java Github action: https://github.com/actions/setup-java
