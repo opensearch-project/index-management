@@ -7,19 +7,28 @@
 @file:JvmName("ManagedIndexUtils")
 package org.opensearch.indexmanagement.indexstatemanagement.util
 
-// import inet.ipaddr.IPAddressString
-// import org.apache.logging.log4j.LogManager
+//import inet.ipaddr.IPAddressString
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+//import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.opensearch.action.delete.DeleteRequest
+import org.opensearch.action.get.GetRequest
+import org.opensearch.action.get.GetResponse
 import org.opensearch.action.index.IndexRequest
 import org.opensearch.action.search.SearchRequest
 import org.opensearch.action.support.WriteRequest
 import org.opensearch.action.update.UpdateRequest
-// import org.opensearch.alerting.destination.message.BaseMessage
+//import org.opensearch.alerting.destination.message.BaseMessage
+import org.opensearch.client.Client
 import org.opensearch.common.unit.ByteSizeValue
 import org.opensearch.common.unit.TimeValue
+import org.opensearch.common.xcontent.LoggingDeprecationHandler
+import org.opensearch.common.xcontent.NamedXContentRegistry
 import org.opensearch.common.xcontent.ToXContent
 import org.opensearch.common.xcontent.XContentFactory
+import org.opensearch.common.xcontent.XContentHelper
+import org.opensearch.common.xcontent.XContentType
 import org.opensearch.index.query.BoolQueryBuilder
 import org.opensearch.index.query.QueryBuilders
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
@@ -37,6 +46,8 @@ import org.opensearch.indexmanagement.indexstatemanagement.model.coordinator.Swe
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings
 import org.opensearch.indexmanagement.opensearchapi.optionalISMTemplateField
 import org.opensearch.indexmanagement.opensearchapi.optionalTimeField
+import org.opensearch.indexmanagement.opensearchapi.parseWithType
+import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Action
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ActionMetaData
@@ -535,3 +546,25 @@ enum class MetadataCheck {
 //     }
 //     return false
 // }
+
+@Suppress("BlockingMethodInNonBlockingContext")
+suspend fun getManagedIndexConfig(indexUuid: String, client: Client): ManagedIndexConfig? {
+    val request = GetRequest().routing(indexUuid).index(INDEX_MANAGEMENT_INDEX).id(indexUuid)
+    val response: GetResponse = client.suspendUntil { get(request, it) }
+    var managedIndexConfig: ManagedIndexConfig? = null
+    val configSource = response.sourceAsBytesRef
+    // Intellij complains about createParser/parseWithType blocking because it sees they throw IOExceptions
+    configSource?.let {
+        withContext(Dispatchers.IO) {
+            val xcp = XContentHelper.createParser(NamedXContentRegistry.EMPTY, LoggingDeprecationHandler.INSTANCE, configSource, XContentType.JSON)
+            managedIndexConfig = xcp.parseWithType(response.id, response.seqNo, response.primaryTerm, ManagedIndexConfig.Companion::parse)
+        }
+    }
+    return managedIndexConfig
+}
+
+// extracts the job scheduler interval from the managed index config and returns the millisecond value
+fun getIntervalFromManagedIndexConfig(managedIndexConfig: ManagedIndexConfig): Long {
+    val periodTuple = managedIndexConfig.jobSchedule.getPeriodStartingAt(Instant.now())
+    return periodTuple.v2().toEpochMilli() - periodTuple.v1().toEpochMilli()
+}

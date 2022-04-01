@@ -40,6 +40,9 @@ class ShrinkAction(
         } else if (numNewShards != null) {
             require(numNewShards > 0) { "Shrink action numNewShards must be greater than 0." }
         }
+        if (targetIndexSuffix != null) {
+            require(!targetIndexSuffix.contains('*') && !targetIndexSuffix.contains('?')) { "Target index suffix must not contain wildcards." }
+        }
     }
 
     private val attemptMoveShardsStep = AttemptMoveShardsStep(this)
@@ -71,6 +74,9 @@ class ShrinkAction(
                 AttemptShrinkStep.name -> waitForShrinkStep
                 else -> stepNameToStep[currentStep]!!
             }
+        } else if (currentStepStatus == Step.StepStatus.FAILED) {
+            // If we failed at any point, retries should start from the beginning
+            return attemptMoveShardsStep
         }
         // step not completed
         return stepNameToStep[currentStep]!!

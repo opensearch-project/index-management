@@ -20,7 +20,8 @@ data class ShrinkActionProperties(
     val targetNumShards: Int,
     val lockPrimaryTerm: Long,
     val lockSeqNo: Long,
-    val lockEpochSecond: Long
+    val lockEpochSecond: Long,
+    val lockDurationSecond: Long
 ) : Writeable, ToXContentFragment {
 
     override fun writeTo(out: StreamOutput) {
@@ -30,6 +31,7 @@ data class ShrinkActionProperties(
         out.writeLong(lockPrimaryTerm)
         out.writeLong(lockSeqNo)
         out.writeLong(lockEpochSecond)
+        out.writeLong(lockDurationSecond)
     }
 
     override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
@@ -39,6 +41,7 @@ data class ShrinkActionProperties(
         builder.field(ShrinkProperties.LOCK_SEQ_NO.key, lockSeqNo)
         builder.field(ShrinkProperties.LOCK_PRIMARY_TERM.key, lockPrimaryTerm)
         builder.field(ShrinkProperties.LOCK_EPOCH_SECOND.key, lockEpochSecond)
+        builder.field(ShrinkProperties.LOCK_DURATION_SECOND.key, lockDurationSecond)
         return builder
     }
 
@@ -52,8 +55,9 @@ data class ShrinkActionProperties(
             val lockPrimaryTerm: Long = si.readLong()
             val lockSeqNo: Long = si.readLong()
             val lockEpochSecond: Long = si.readLong()
+            val lockDurationSecond: Long = si.readLong()
 
-            return ShrinkActionProperties(nodeName, targetIndexName, targetNumShards, lockPrimaryTerm, lockSeqNo, lockEpochSecond)
+            return ShrinkActionProperties(nodeName, targetIndexName, targetNumShards, lockPrimaryTerm, lockSeqNo, lockEpochSecond, lockDurationSecond)
         }
 
         fun parse(xcp: XContentParser): ShrinkActionProperties {
@@ -63,6 +67,7 @@ data class ShrinkActionProperties(
             var lockPrimaryTerm: Long? = null
             var lockSeqNo: Long? = null
             var lockEpochSecond: Long? = null
+            var lockDurationSecond: Long? = null
 
             XContentParserUtils.ensureExpectedToken(XContentParser.Token.START_OBJECT, xcp.currentToken(), xcp)
             while (xcp.nextToken() != XContentParser.Token.END_OBJECT) {
@@ -76,6 +81,7 @@ data class ShrinkActionProperties(
                     ShrinkProperties.LOCK_PRIMARY_TERM.key -> lockPrimaryTerm = xcp.longValue()
                     ShrinkProperties.LOCK_SEQ_NO.key -> lockSeqNo = xcp.longValue()
                     ShrinkProperties.LOCK_EPOCH_SECOND.key -> lockEpochSecond = xcp.longValue()
+                    ShrinkProperties.LOCK_DURATION_SECOND.key -> lockDurationSecond = xcp.longValue()
                 }
             }
 
@@ -85,7 +91,8 @@ data class ShrinkActionProperties(
                 requireNotNull(targetNumShards),
                 requireNotNull(lockPrimaryTerm),
                 requireNotNull(lockSeqNo),
-                requireNotNull(lockEpochSecond)
+                requireNotNull(lockEpochSecond),
+                requireNotNull(lockDurationSecond)
             )
         }
     }
@@ -96,6 +103,7 @@ data class ShrinkActionProperties(
         TARGET_NUM_SHARDS("target_num_shards"),
         LOCK_SEQ_NO("lock_seq_no"),
         LOCK_PRIMARY_TERM("lock_primary_term"),
-        LOCK_EPOCH_SECOND("lock_epoch_second")
+        LOCK_EPOCH_SECOND("lock_epoch_second"),
+        LOCK_DURATION_SECOND("lock_duration_second")
     }
 }

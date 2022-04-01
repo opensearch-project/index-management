@@ -6,13 +6,20 @@
 package org.opensearch.indexmanagement.indexstatemanagement.step.shrink
 
 import org.apache.logging.log4j.LogManager
+import org.opensearch.action.admin.cluster.node.stats.NodesStatsRequest
+import org.opensearch.action.admin.cluster.node.stats.NodesStatsResponse
 import org.opensearch.action.admin.indices.shrink.ResizeRequest
 import org.opensearch.action.admin.indices.shrink.ResizeResponse
+import org.opensearch.action.admin.indices.stats.IndicesStatsRequest
+import org.opensearch.action.admin.indices.stats.IndicesStatsResponse
 import org.opensearch.common.settings.Settings
 import org.opensearch.indexmanagement.indexstatemanagement.action.ShrinkAction
 import org.opensearch.indexmanagement.indexstatemanagement.util.INDEX_NUMBER_OF_SHARDS
+import org.opensearch.indexmanagement.indexstatemanagement.util.clearReadOnlyAndRouting
+import org.opensearch.indexmanagement.indexstatemanagement.util.getNodeFreeMemoryAfterShrink
 import org.opensearch.indexmanagement.indexstatemanagement.util.isIndexGreen
 import org.opensearch.indexmanagement.indexstatemanagement.util.releaseShrinkLock
+import org.opensearch.indexmanagement.indexstatemanagement.util.renewShrinkLock
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
@@ -34,8 +41,12 @@ class AttemptShrinkStep(private val action: ShrinkAction) : Step(name) {
         val actionMetadata = context.metadata.actionMetaData
         val shrinkActionProperties = actionMetadata?.actionProperties?.shrinkActionProperties
         if (shrinkActionProperties == null) {
-            info = mapOf("message" to "Shrink action properties are null, metadata was not properly populated")
-            stepStatus = StepStatus.FAILED
+            cleanupAndFail(WaitForMoveShardsStep.METADATA_FAILURE_MESSAGE)
+            return this
+        }
+        val lock = renewShrinkLock(shrinkActionProperties, context.jobContext, logger)
+        if (lock == null) {
+            cleanupAndFail("Failed to renew lock on node [${shrinkActionProperties.nodeName}]")
             return this
         }
         try {
@@ -44,22 +55,67 @@ class AttemptShrinkStep(private val action: ShrinkAction) : Step(name) {
                 info = mapOf("message" to INDEX_HEALTH_NOT_GREEN_MESSAGE)
                 return this
             }
+            if (!isNodeStillSuitable(shrinkActionProperties.nodeName, indexName, context)) return this
+
             // If the resize index api fails, the step will be set to failed and resizeIndex will return false
             if (!resizeIndex(indexName, shrinkActionProperties, context)) return this
             info = mapOf("message" to getSuccessMessage(shrinkActionProperties.targetIndexName))
             stepStatus = StepStatus.COMPLETED
             return this
         } catch (e: RemoteTransportException) {
-            info = mapOf("message" to FAILURE_MESSAGE)
-            releaseShrinkLock(shrinkActionProperties, context.jobContext, logger)
-            stepStatus = StepStatus.FAILED
+            cleanupAndFail(FAILURE_MESSAGE)
             return this
         } catch (e: Exception) {
-            releaseShrinkLock(shrinkActionProperties, context.jobContext, logger)
-            info = mapOf("message" to FAILURE_MESSAGE, "cause" to "{${e.message}}")
-            stepStatus = StepStatus.FAILED
+            cleanupAndFail(FAILURE_MESSAGE, e.message)
             return this
         }
+    }
+
+    // Sets the action to failed, clears the readonly and allocation settings on the source index, and releases the shrink lock
+    private suspend fun cleanupAndFail(message: String, cause: String? = null) {
+        info = if (cause == null) mapOf("message" to message) else mapOf("message" to message, "cause" to cause)
+        stepStatus = StepStatus.FAILED
+        val context = this.context ?: return
+        try {
+            clearReadOnlyAndRouting(context.metadata.index, context.client)
+        } catch (e: Exception) {
+            logger.error("Shrink action failed while trying to clean up routing and readonly setting after a failure: $e")
+        }
+        try {
+            val shrinkActionProperties = context.metadata.actionMetaData?.actionProperties?.shrinkActionProperties ?: return
+            releaseShrinkLock(shrinkActionProperties, context.jobContext, logger)
+        } catch (e: Exception) {
+            logger.error("Shrink action failed while trying to release the node lock after a failure: $e")
+        }
+    }
+
+    private suspend fun isNodeStillSuitable(nodeName: String, indexName: String, context: StepContext): Boolean {
+        // Get the size of the index
+        val statsRequest = IndicesStatsRequest().indices(indexName)
+        val statsResponse: IndicesStatsResponse = context.client.admin().indices().suspendUntil {
+            stats(statsRequest, it)
+        }
+        val statsStore = statsResponse.total.store
+        if (statsStore == null) {
+            cleanupAndFail(FAILURE_MESSAGE)
+            return false
+        }
+        val indexSizeInBytes = statsStore.sizeInBytes
+        // Get the remaining memory in the node
+        val nodesStatsReq = NodesStatsRequest().addMetric(AttemptMoveShardsStep.OS_METRIC)
+        val nodeStatsResponse: NodesStatsResponse = context.client.admin().cluster().suspendUntil { nodesStats(nodesStatsReq, it) }
+        // If the node has been replaced, this will fail
+        val node = nodeStatsResponse.nodes.firstOrNull { it.node.name == nodeName }
+        if (node == null) {
+            cleanupAndFail(FAILURE_MESSAGE)
+            return false
+        }
+        val remainingMem = getNodeFreeMemoryAfterShrink(node, indexSizeInBytes, context.settings, context.clusterService.clusterSettings)
+        if (remainingMem < 1L) {
+            cleanupAndFail(NOT_ENOUGH_SPACE_FAILURE_MESSAGE)
+            return false
+        }
+        return true
     }
 
     private suspend fun resizeIndex(sourceIndex: String, shrinkActionProperties: ShrinkActionProperties, context: StepContext): Boolean {
@@ -74,9 +130,7 @@ class AttemptShrinkStep(private val action: ShrinkAction) : Step(name) {
         action.aliases?.forEach { req.targetIndexRequest.alias(it) }
         val resizeResponse: ResizeResponse = context.client.admin().indices().suspendUntil { resizeIndex(req, it) }
         if (!resizeResponse.isAcknowledged) {
-            info = mapOf("message" to FAILURE_MESSAGE)
-            releaseShrinkLock(shrinkActionProperties, context.jobContext, logger)
-            stepStatus = StepStatus.FAILED
+            cleanupAndFail(FAILURE_MESSAGE)
             return false
         }
         return true
@@ -97,6 +151,7 @@ class AttemptShrinkStep(private val action: ShrinkAction) : Step(name) {
     companion object {
         const val name = "attempt_shrink_step"
         const val FAILURE_MESSAGE = "Shrink failed when sending shrink request."
+        const val NOT_ENOUGH_SPACE_FAILURE_MESSAGE = "Shrink failed as the selected node no longer had enough free space to shrink to."
         const val INDEX_HEALTH_NOT_GREEN_MESSAGE = "Shrink delayed because index health is not green."
         fun getSuccessMessage(newIndex: String) = "Shrink started. $newIndex currently being populated."
     }

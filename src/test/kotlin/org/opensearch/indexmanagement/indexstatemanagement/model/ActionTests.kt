@@ -183,10 +183,6 @@ class ActionTests : OpenSearchTestCase() {
         assertEquals("Free bytes threshold not being calculated correctly for byte setting.", thresholdBytes, byteValue.bytes)
     }
 
-    fun `test for fun`() {
-        println(0x80000000)
-    }
-
     private fun roundTripAction(expectedAction: Action) {
         val baos = ByteArrayOutputStream()
         val osso = OutputStreamStreamOutput(baos)

@@ -9,14 +9,15 @@ import org.apache.logging.log4j.LogManager
 import org.opensearch.action.admin.indices.stats.IndicesStatsRequest
 import org.opensearch.action.admin.indices.stats.IndicesStatsResponse
 import org.opensearch.action.admin.indices.stats.ShardStats
-import org.opensearch.common.collect.ImmutableOpenIntMap
 import org.opensearch.indexmanagement.indexstatemanagement.action.ShrinkAction
+import org.opensearch.indexmanagement.indexstatemanagement.util.clearReadOnlyAndRouting
 import org.opensearch.indexmanagement.indexstatemanagement.util.getActionStartTime
+import org.opensearch.indexmanagement.indexstatemanagement.util.getShrinkLockModel
 import org.opensearch.indexmanagement.indexstatemanagement.util.releaseShrinkLock
+import org.opensearch.indexmanagement.indexstatemanagement.util.renewShrinkLock
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
-import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ShrinkActionProperties
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepContext
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepMetaData
 import org.opensearch.transport.RemoteTransportException
@@ -36,10 +37,16 @@ class WaitForMoveShardsStep(private val action: ShrinkAction) : Step(name) {
         val actionMetadata = context.metadata.actionMetaData
         val shrinkActionProperties = actionMetadata?.actionProperties?.shrinkActionProperties
         if (shrinkActionProperties == null) {
-            info = mapOf("message" to "Shrink action properties are null, metadata was not properly populated")
-            stepStatus = StepStatus.FAILED
+            cleanupAndFail(METADATA_FAILURE_MESSAGE)
             return this
         }
+        println(getShrinkLockModel(shrinkActionProperties, context.jobContext))
+        val lock = renewShrinkLock(shrinkActionProperties, context.jobContext, logger)
+        if (lock == null) {
+            cleanupAndFail("Failed to renew lock on node [${shrinkActionProperties.nodeName}]")
+            return this
+        }
+        println(lock)
         try {
             val indexStatsRequests: IndicesStatsRequest = IndicesStatsRequest().indices(indexName)
             val response: IndicesStatsResponse = context.client.admin().indices().suspendUntil { stats(indexStatsRequests, it) }
@@ -57,7 +64,9 @@ class WaitForMoveShardsStep(private val action: ShrinkAction) : Step(name) {
                     if (nodeNameShardIsOn.equals(nodeToMoveOnto) && routingInfo.started()) {
                         numShardsOnNode++
                     }
-                    if (numReplicas == 0 || inSyncReplicaExists(routingInfo.id, inSyncAllocations)) {
+                    // Either there must be no replicas (force unsafe must have been set) or all replicas must be in sync as
+                    // it isn't known which shard (any replica or primary) will be moved to the target node and used in the shrink.
+                    if (numReplicas == 0 || inSyncAllocations[routingInfo.id].size == (numReplicas + 1)) {
                         numShardsInSync++
                     }
                 }
@@ -68,23 +77,35 @@ class WaitForMoveShardsStep(private val action: ShrinkAction) : Step(name) {
             } else {
                 val numShardsNotOnNode = numPrimaryShards - numShardsOnNode
                 val numShardsNotInSync = numPrimaryShards - numShardsInSync
-                checkTimeOut(context, shrinkActionProperties, numShardsNotOnNode, numShardsNotInSync, nodeToMoveOnto)
+                checkTimeOut(context, numShardsNotOnNode, numShardsNotInSync, nodeToMoveOnto)
             }
             return this
         } catch (e: RemoteTransportException) {
-            releaseShrinkLock(shrinkActionProperties, context.jobContext, logger)
-            info = mapOf("message" to FAILURE_MESSAGE)
-            stepStatus = StepStatus.FAILED
+            cleanupAndFail(FAILURE_MESSAGE)
             return this
         } catch (e: Exception) {
-            releaseShrinkLock(shrinkActionProperties, context.jobContext, logger)
-            info = mapOf("message" to FAILURE_MESSAGE, "cause" to "{${e.message}}")
-            stepStatus = StepStatus.FAILED
+            cleanupAndFail(FAILURE_MESSAGE, cause = e.message)
             return this
         }
     }
 
-    private fun inSyncReplicaExists(shardId: Int, inSyncAllocations: ImmutableOpenIntMap<MutableSet<String>>): Boolean = inSyncAllocations[shardId].size > 1
+    // Sets the action to failed, clears the readonly and allocation settings on the source index, and releases the shrink lock
+    private suspend fun cleanupAndFail(message: String, cause: String? = null) {
+        info = if (cause == null) mapOf("message" to message) else mapOf("message" to message, "cause" to cause)
+        stepStatus = StepStatus.FAILED
+        val context = this.context ?: return
+        try {
+            clearReadOnlyAndRouting(context.metadata.index, context.client)
+        } catch (e: Exception) {
+            logger.error("Shrink action failed while trying to clean up routing and readonly setting after a failure: $e")
+        }
+        try {
+            val shrinkActionProperties = context.metadata.actionMetaData?.actionProperties?.shrinkActionProperties ?: return
+            releaseShrinkLock(shrinkActionProperties, context.jobContext, logger)
+        } catch (e: Exception) {
+            logger.error("Shrink action failed while trying to release the node lock after a failure: $e")
+        }
+    }
 
     override fun getUpdatedManagedIndexMetadata(currentMetadata: ManagedIndexMetaData): ManagedIndexMetaData {
         // Saving maxNumSegments in ActionProperties after the force merge operation has begun so that if a ChangePolicy occurred
@@ -100,7 +121,6 @@ class WaitForMoveShardsStep(private val action: ShrinkAction) : Step(name) {
 
     private suspend fun checkTimeOut(
         stepContext: StepContext,
-        shrinkActionProperties: ShrinkActionProperties,
         numShardsNotOnNode: Int,
         numShardsNotInSync: Int,
         nodeToMoveOnto: String
@@ -110,23 +130,19 @@ class WaitForMoveShardsStep(private val action: ShrinkAction) : Step(name) {
         val timeSinceActionStarted: Duration = Duration.between(getActionStartTime(managedIndexMetadata), Instant.now())
         val timeOutInSeconds = action.configTimeout?.timeout?.seconds ?: MOVE_SHARDS_TIMEOUT_IN_SECONDS
         // Get ActionTimeout if given, otherwise use default timeout of 12 hours
-        stepStatus = if (timeSinceActionStarted.toSeconds() > timeOutInSeconds) {
+        if (timeSinceActionStarted.toSeconds() > timeOutInSeconds) {
             logger.error(
                 "Shrink Action move shards failed on [$indexName], the action timed out with [$numShardsNotOnNode] shards not yet " +
                     "moved and [$numShardsNotInSync] shards without an in sync replica."
             )
-            if (managedIndexMetadata.actionMetaData?.actionProperties?.shrinkActionProperties != null) {
-                releaseShrinkLock(shrinkActionProperties, stepContext.jobContext, logger)
-            }
-            info = mapOf("message" to getTimeoutFailure(nodeToMoveOnto))
-            StepStatus.FAILED
+            cleanupAndFail(getTimeoutFailure(nodeToMoveOnto))
         } else {
             logger.debug(
                 "Shrink action move shards step running on [$indexName], [$numShardsNotOnNode] shards need to be moved, " +
                     "[$numShardsNotInSync] shards need an in sync replica."
             )
             info = mapOf("message" to getTimeoutDelay(nodeToMoveOnto))
-            StepStatus.CONDITION_NOT_MET
+            stepStatus = StepStatus.CONDITION_NOT_MET
         }
     }
 
@@ -138,6 +154,7 @@ class WaitForMoveShardsStep(private val action: ShrinkAction) : Step(name) {
         fun getTimeoutFailure(node: String) = "Shrink failed because it took to long to move shards to $node"
         fun getTimeoutDelay(node: String) = "Shrink delayed because it took to long to move shards to $node"
         const val FAILURE_MESSAGE = "Shrink failed when waiting for shards to move."
+        const val METADATA_FAILURE_MESSAGE = "Shrink action properties are null, metadata was not properly populated"
         const val MOVE_SHARDS_TIMEOUT_IN_SECONDS = 43200L // 12hrs in seconds
         const val RESOURCE_NAME = "node_name"
         const val RESOURCE_TYPE = "shrink"
