@@ -10,10 +10,12 @@ import org.opensearch.common.xcontent.XContentParser
 import org.opensearch.common.xcontent.XContentType
 import org.opensearch.indexmanagement.indexstatemanagement.ISMActionsParser
 import org.opensearch.indexmanagement.indexstatemanagement.action.RollupAction
+import org.opensearch.indexmanagement.indexstatemanagement.model.destination.Channel
 import org.opensearch.indexmanagement.indexstatemanagement.model.destination.DestinationType
 import org.opensearch.indexmanagement.indexstatemanagement.nonNullRandomConditions
 import org.opensearch.indexmanagement.indexstatemanagement.randomAllocationActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomChangePolicy
+import org.opensearch.indexmanagement.indexstatemanagement.randomChannel
 import org.opensearch.indexmanagement.indexstatemanagement.randomCloseActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomDeleteActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomDestination
@@ -251,6 +253,14 @@ class XContentTests : OpenSearchTestCase() {
         val changePolicyString = changePolicy.toJsonString()
         val parsedChangePolicy = ChangePolicy.parse(parser(changePolicyString))
         assertEquals("Round tripping ChangePolicy doesn't work", changePolicy, parsedChangePolicy)
+    }
+
+    fun `test channel parsing`() {
+        val channel = randomChannel()
+
+        val channelString = channel.toJsonString()
+        val parsedChannel = Channel.parse(parser(channelString))
+        assertEquals("Round tripping Channel doesn't work", channel, parsedChannel)
     }
 
     private fun parser(xc: String): XContentParser {

@@ -14,9 +14,12 @@ import org.opensearch.common.xcontent.XContentFactory
 import org.opensearch.common.xcontent.XContentType
 import org.opensearch.indexmanagement.indexstatemanagement.ISMActionsParser
 import org.opensearch.indexmanagement.indexstatemanagement.action.DeleteAction
+import org.opensearch.indexmanagement.indexstatemanagement.action.NotificationAction
 import org.opensearch.indexmanagement.indexstatemanagement.randomAllocationActionConfig
+import org.opensearch.indexmanagement.indexstatemanagement.randomChannel
 import org.opensearch.indexmanagement.indexstatemanagement.randomCloseActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomDeleteActionConfig
+import org.opensearch.indexmanagement.indexstatemanagement.randomDestination
 import org.opensearch.indexmanagement.indexstatemanagement.randomForceMergeActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomIndexPriorityActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomNotificationActionConfig
@@ -27,6 +30,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.randomReplicaCountAct
 import org.opensearch.indexmanagement.indexstatemanagement.randomRolloverActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomRollupActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomSnapshotActionConfig
+import org.opensearch.indexmanagement.indexstatemanagement.randomTemplateScript
 import org.opensearch.indexmanagement.indexstatemanagement.randomTimeValueObject
 import org.opensearch.indexmanagement.opensearchapi.convertToMap
 import org.opensearch.indexmanagement.opensearchapi.string
@@ -82,6 +86,12 @@ class ActionTests : OpenSearchTestCase() {
 
     fun `test set read only action round trip`() {
         roundTripAction(randomReadOnlyActionConfig())
+    }
+
+    fun `test notification having both channel and destination fails`() {
+        assertFailsWith(IllegalArgumentException::class, "Expected IllegalArgumentException for notification using both destination and channel") {
+            NotificationAction(destination = randomDestination(), channel = randomChannel(), messageTemplate = randomTemplateScript(), index = 0)
+        }
     }
 
     fun `test rollover action round trip`() {

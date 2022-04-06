@@ -25,7 +25,6 @@ buildscript {
         if (isSnapshot) {
             opensearch_build += "-SNAPSHOT"
         }
-        // notification_version = System.getProperty("notification.version", opensearch_build)
         common_utils_version = System.getProperty("common_utils.version", opensearch_build)
         job_scheduler_version = System.getProperty("job_scheduler_version.version", opensearch_build)
         kotlin_version = System.getProperty("kotlin.version", "1.6.10")
@@ -154,10 +153,9 @@ dependencies {
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.3.9'
     implementation "org.jetbrains:annotations:13.0"
     implementation project(path: ":${rootProject.name}-spi", configuration: 'shadow')
-    // implementation "org.opensearch:notification:${notification_version}"
     implementation "org.opensearch:common-utils:${common_utils_version}"
     implementation "com.github.seancfoley:ipaddress:5.3.3"
-    implementation "commons-codec:commons-codec:1.13"
+    implementation "commons-codec:commons-codec:${versions.commonscodec}"
 
     testImplementation "org.opensearch.test:framework:${opensearch_version}"
     testImplementation "org.jetbrains.kotlin:kotlin-test:${kotlin_version}"
@@ -257,6 +255,15 @@ testClusters.integTest {
             File getAsFile() { fileTree("src/test/resources/job-scheduler").getSingleFile() }
         }
     }))
+
+    fileTree("src/test/resources/notifications").getFiles().forEach {file ->
+        plugin(provider({
+            new RegularFile() {
+                @Override
+                File getAsFile() { file }
+            }
+        }))
+    }
 
     if (securityEnabled) {
         plugin(provider({
@@ -548,6 +555,15 @@ testClusters.mixedCluster {
                 File getAsFile() { fileTree("src/test/resources/job-scheduler").getSingleFile() }
             }
         }))
+
+        fileTree("src/test/resources/notifications").getFiles().forEach {file ->
+            plugin(provider({
+                new RegularFile() {
+                    @Override
+                    File getAsFile() { file }
+                }
+            }))
+        }
 
         if (mixedClusterFlag && node.name == "mixedCluster-1") {
             node.plugin(provider({

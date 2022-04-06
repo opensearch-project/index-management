@@ -34,6 +34,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.model.StateFilter
 import org.opensearch.indexmanagement.indexstatemanagement.model.Transition
 import org.opensearch.indexmanagement.indexstatemanagement.model.coordinator.ClusterStateManagedIndexConfig
 import org.opensearch.indexmanagement.indexstatemanagement.model.coordinator.SweptManagedIndexConfig
+import org.opensearch.indexmanagement.indexstatemanagement.model.destination.Channel
 import org.opensearch.indexmanagement.indexstatemanagement.model.destination.Chime
 import org.opensearch.indexmanagement.indexstatemanagement.model.destination.CustomWebhook
 import org.opensearch.indexmanagement.indexstatemanagement.model.destination.Destination
@@ -158,7 +159,7 @@ fun randomNotificationActionConfig(
     messageTemplate: Script = randomTemplateScript("random message"),
     index: Int = 0
 ): NotificationAction {
-    return NotificationAction(destination, messageTemplate, index)
+    return NotificationAction(destination, null, messageTemplate, index)
 }
 
 fun randomAllocationActionConfig(require: Map<String, String> = emptyMap(), exclude: Map<String, String> = emptyMap(), include: Map<String, String> = emptyMap()): AllocationAction {
@@ -214,9 +215,11 @@ fun randomCustomWebhook(): CustomWebhook {
 }
 
 fun randomTemplateScript(
-    source: String,
-    params: Map<String, String> = emptyMap()
-): Script = Script(ScriptType.INLINE, Script.DEFAULT_TEMPLATE_LANG, source, params)
+    source: String = OpenSearchRestTestCase.randomAlphaOfLength(10),
+    params: Map<String, String> = emptyMap(),
+    scriptType: ScriptType = ScriptType.INLINE,
+    lang: String = Script.DEFAULT_TEMPLATE_LANG
+): Script = Script(scriptType, lang, source, params)
 
 fun randomSnapshotActionConfig(repository: String = "repo", snapshot: String = "sp"): SnapshotAction {
     return SnapshotAction(repository, snapshot, index = 0)
@@ -338,6 +341,10 @@ fun randomISMTemplate(
     )
 }
 
+fun randomChannel(id: String = OpenSearchRestTestCase.randomAlphaOfLength(10)): Channel {
+    return Channel(id = id)
+}
+
 fun Policy.toJsonString(): String {
     val builder = XContentFactory.jsonBuilder()
     return this.toXContent(builder).string()
@@ -439,6 +446,11 @@ fun OpenAction.toJsonString(): String {
 }
 
 fun ISMTemplate.toJsonString(): String {
+    val builder = XContentFactory.jsonBuilder()
+    return this.toXContent(builder, ToXContent.EMPTY_PARAMS).string()
+}
+
+fun Channel.toJsonString(): String {
     val builder = XContentFactory.jsonBuilder()
     return this.toXContent(builder, ToXContent.EMPTY_PARAMS).string()
 }
