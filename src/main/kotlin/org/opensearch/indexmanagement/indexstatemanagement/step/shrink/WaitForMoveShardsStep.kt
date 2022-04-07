@@ -12,12 +12,14 @@ import org.opensearch.action.admin.indices.stats.ShardStats
 import org.opensearch.indexmanagement.indexstatemanagement.action.ShrinkAction
 import org.opensearch.indexmanagement.indexstatemanagement.util.clearReadOnlyAndRouting
 import org.opensearch.indexmanagement.indexstatemanagement.util.getActionStartTime
-import org.opensearch.indexmanagement.indexstatemanagement.util.getShrinkLockModel
 import org.opensearch.indexmanagement.indexstatemanagement.util.releaseShrinkLock
 import org.opensearch.indexmanagement.indexstatemanagement.util.renewShrinkLock
+import org.opensearch.indexmanagement.indexstatemanagement.util.getUpdatedShrinkActionProperties
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ActionProperties
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ShrinkActionProperties
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepContext
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepMetaData
 import org.opensearch.transport.RemoteTransportException
@@ -29,29 +31,31 @@ class WaitForMoveShardsStep(private val action: ShrinkAction) : Step(name) {
     private val logger = LogManager.getLogger(javaClass)
     private var stepStatus = StepStatus.STARTING
     private var info: Map<String, Any>? = null
+    private var shrinkActionProperties: ShrinkActionProperties? = null
 
     @Suppress("TooGenericExceptionCaught", "ComplexMethod", "ReturnCount", "NestedBlockDepth")
     override suspend fun execute(): WaitForMoveShardsStep {
         val context = this.context ?: return this
         val indexName = context.metadata.index
         val actionMetadata = context.metadata.actionMetaData
-        val shrinkActionProperties = actionMetadata?.actionProperties?.shrinkActionProperties
-        if (shrinkActionProperties == null) {
+        val localShrinkActionProperties = actionMetadata?.actionProperties?.shrinkActionProperties
+        shrinkActionProperties = localShrinkActionProperties
+        if (localShrinkActionProperties == null) {
             cleanupAndFail(METADATA_FAILURE_MESSAGE)
             return this
         }
-        println(getShrinkLockModel(shrinkActionProperties, context.jobContext))
-        val lock = renewShrinkLock(shrinkActionProperties, context.jobContext, logger)
+        val lock = renewShrinkLock(localShrinkActionProperties, context.jobContext, logger)
         if (lock == null) {
-            cleanupAndFail("Failed to renew lock on node [${shrinkActionProperties.nodeName}]")
+            cleanupAndFail("Failed to renew lock on node [${localShrinkActionProperties.nodeName}]")
             return this
         }
-        println(lock)
+        // After renewing the lock we need to update the primary term and sequence number
+        shrinkActionProperties = getUpdatedShrinkActionProperties(localShrinkActionProperties, lock)
         try {
             val indexStatsRequests: IndicesStatsRequest = IndicesStatsRequest().indices(indexName)
             val response: IndicesStatsResponse = context.client.admin().indices().suspendUntil { stats(indexStatsRequests, it) }
             val numPrimaryShards = context.clusterService.state().metadata.indices[indexName].numberOfShards
-            val nodeToMoveOnto = shrinkActionProperties.nodeName
+            val nodeToMoveOnto = localShrinkActionProperties.nodeName
             val inSyncAllocations = context.clusterService.state().metadata.indices[indexName].inSyncAllocationIds
             val numReplicas = context.clusterService.state().metadata.indices[indexName].numberOfReplicas
             var numShardsOnNode = 0
@@ -93,26 +97,27 @@ class WaitForMoveShardsStep(private val action: ShrinkAction) : Step(name) {
     private suspend fun cleanupAndFail(message: String, cause: String? = null) {
         info = if (cause == null) mapOf("message" to message) else mapOf("message" to message, "cause" to cause)
         stepStatus = StepStatus.FAILED
-        val context = this.context ?: return
+        // Non-null assertion !! is used to throw an exception on null which would just be caught and logged
         try {
-            clearReadOnlyAndRouting(context.metadata.index, context.client)
+            clearReadOnlyAndRouting(context!!.metadata.index, context!!.client)
         } catch (e: Exception) {
             logger.error("Shrink action failed while trying to clean up routing and readonly setting after a failure: $e")
         }
         try {
-            val shrinkActionProperties = context.metadata.actionMetaData?.actionProperties?.shrinkActionProperties ?: return
-            releaseShrinkLock(shrinkActionProperties, context.jobContext, logger)
+            releaseShrinkLock(shrinkActionProperties!!, context!!.jobContext, logger)
         } catch (e: Exception) {
             logger.error("Shrink action failed while trying to release the node lock after a failure: $e")
         }
+        shrinkActionProperties = null
     }
 
     override fun getUpdatedManagedIndexMetadata(currentMetadata: ManagedIndexMetaData): ManagedIndexMetaData {
-        // Saving maxNumSegments in ActionProperties after the force merge operation has begun so that if a ChangePolicy occurred
-        // in between this step and WaitForForceMergeStep, a cached segment count expected from the operation is available
-        val currentActionMetaData = currentMetadata.actionMetaData
         return currentMetadata.copy(
-            actionMetaData = currentActionMetaData?.copy(),
+            actionMetaData = currentMetadata.actionMetaData?.copy(
+                actionProperties = ActionProperties(
+                    shrinkActionProperties = shrinkActionProperties
+                )
+            ),
             stepMetaData = StepMetaData(name, getStepStartTime(currentMetadata).toEpochMilli(), stepStatus),
             transitionTo = null,
             info = info
@@ -156,7 +161,5 @@ class WaitForMoveShardsStep(private val action: ShrinkAction) : Step(name) {
         const val FAILURE_MESSAGE = "Shrink failed when waiting for shards to move."
         const val METADATA_FAILURE_MESSAGE = "Shrink action properties are null, metadata was not properly populated"
         const val MOVE_SHARDS_TIMEOUT_IN_SECONDS = 43200L // 12hrs in seconds
-        const val RESOURCE_NAME = "node_name"
-        const val RESOURCE_TYPE = "shrink"
     }
 }

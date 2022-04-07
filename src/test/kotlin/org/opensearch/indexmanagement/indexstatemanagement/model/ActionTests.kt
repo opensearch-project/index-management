@@ -30,6 +30,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.randomReadWriteAction
 import org.opensearch.indexmanagement.indexstatemanagement.randomReplicaCountActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomRolloverActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomRollupActionConfig
+import org.opensearch.indexmanagement.indexstatemanagement.randomShrinkAction
 import org.opensearch.indexmanagement.indexstatemanagement.randomSnapshotActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomTimeValueObject
 import org.opensearch.indexmanagement.indexstatemanagement.util.getFreeBytesThresholdHigh
@@ -72,6 +73,12 @@ class ActionTests : OpenSearchTestCase() {
     fun `test force merge action max num segments of zero fails`() {
         assertFailsWith(IllegalArgumentException::class, "Expected IllegalArgumentException for maxNumSegments less than 1") {
             randomForceMergeActionConfig(maxNumSegments = 0)
+        }
+    }
+
+    fun `test shrink action multiple shard options fails`() {
+        assertFailsWith(IllegalArgumentException::class, "Expected IllegalArgumentException for multiple shard options used") {
+            randomShrinkAction(3, randomByteSizeValue(), .30)
         }
     }
 
@@ -138,6 +145,10 @@ class ActionTests : OpenSearchTestCase() {
 
     fun `test delete action round trip`() {
         roundTripAction(randomDeleteActionConfig())
+    }
+
+    fun `test shrink action round trip`() {
+        roundTripAction(randomShrinkAction())
     }
 
     fun `test action timeout and retry round trip`() {

@@ -36,7 +36,9 @@ class ShrinkAction(
         if (maxShardSize != null) {
             require(maxShardSize.bytes > 0) { "Shrink action maxShardSize must be greater than 0." }
         } else if (percentageOfSourceShards != null) {
-            require(percentageOfSourceShards > 0.0 && percentageOfSourceShards < 1.0) { "Percentage of source shards must be between 0.0 and 1.0 exclusively" }
+            require(percentageOfSourceShards > 0.0 && percentageOfSourceShards < 1.0) {
+                "Percentage of source shards must be between 0.0 and 1.0 exclusively"
+            }
         } else if (numNewShards != null) {
             require(numNewShards > 0) { "Shrink action numNewShards must be greater than 0." }
         }
@@ -116,5 +118,7 @@ class ShrinkAction(
         const val TARGET_INDEX_SUFFIX_FIELD = "target_index_suffix"
         const val ALIASES_FIELD = "aliases"
         const val FORCE_UNSAFE_FIELD = "force_unsafe"
+        const val LOCK_RESOURCE_TYPE = "shrink"
+        const val LOCK_RESOURCE_NAME = "node_name"
     }
 }

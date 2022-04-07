@@ -14,13 +14,17 @@ import org.opensearch.client.Client
 import org.opensearch.common.settings.Settings
 import org.opensearch.indexmanagement.indexstatemanagement.action.ShrinkAction
 import org.opensearch.indexmanagement.indexstatemanagement.util.clearReadOnlyAndRouting
+import org.opensearch.indexmanagement.indexstatemanagement.util.deleteShrinkLock
 import org.opensearch.indexmanagement.indexstatemanagement.util.getActionStartTime
 import org.opensearch.indexmanagement.indexstatemanagement.util.issueUpdateSettingsRequest
 import org.opensearch.indexmanagement.indexstatemanagement.util.releaseShrinkLock
 import org.opensearch.indexmanagement.indexstatemanagement.util.renewShrinkLock
+import org.opensearch.indexmanagement.indexstatemanagement.util.getUpdatedShrinkActionProperties
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ActionProperties
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ShrinkActionProperties
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepContext
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepMetaData
 import org.opensearch.transport.RemoteTransportException
@@ -31,26 +35,30 @@ class WaitForShrinkStep(private val action: ShrinkAction) : Step(name) {
     private val logger = LogManager.getLogger(javaClass)
     private var stepStatus = StepStatus.STARTING
     private var info: Map<String, Any>? = null
+    private var shrinkActionProperties: ShrinkActionProperties? = null
 
     @Suppress("TooGenericExceptionCaught", "ComplexMethod", "ReturnCount", "LongMethod")
     override suspend fun execute(): WaitForShrinkStep {
         val context = this.context ?: return this
         val actionMetadata = context.metadata.actionMetaData
-        val shrinkActionProperties = actionMetadata?.actionProperties?.shrinkActionProperties
-        if (shrinkActionProperties == null) {
+        val localShrinkActionProperties = actionMetadata?.actionProperties?.shrinkActionProperties
+        shrinkActionProperties = localShrinkActionProperties
+        if (localShrinkActionProperties == null) {
             cleanupAndFail(WaitForMoveShardsStep.METADATA_FAILURE_MESSAGE)
             return this
         }
-        val lock = renewShrinkLock(shrinkActionProperties, context.jobContext, logger)
+        val lock = renewShrinkLock(localShrinkActionProperties, context.jobContext, logger)
         if (lock == null) {
-            cleanupAndFail("Failed to renew lock on node [${shrinkActionProperties.nodeName}]")
+            cleanupAndFail("Failed to renew lock on node [${localShrinkActionProperties.nodeName}]")
             return this
         }
+        shrinkActionProperties = getUpdatedShrinkActionProperties(localShrinkActionProperties, lock)
         try {
-            val targetIndex = shrinkActionProperties.targetIndexName
+            val targetIndex = localShrinkActionProperties.targetIndexName
             val numPrimaryShardsStarted = getNumPrimaryShardsStarted(context.client, targetIndex)
             val numPrimaryShards = context.clusterService.state().metadata.indices[targetIndex].numberOfShards
-            if (numPrimaryShards != shrinkActionProperties.targetNumShards || numPrimaryShardsStarted != shrinkActionProperties.targetNumShards) {
+            val targetNumShards = localShrinkActionProperties.targetNumShards
+            if (numPrimaryShards != targetNumShards || numPrimaryShardsStarted != targetNumShards) {
                 checkTimeOut(context, targetIndex)
                 return this
             }
@@ -59,12 +67,12 @@ class WaitForShrinkStep(private val action: ShrinkAction) : Step(name) {
             if (!clearAllocationSettings(context, targetIndex)) return this
             if (!clearAllocationSettings(context, context.metadata.index)) return this
 
-            releaseShrinkLock(shrinkActionProperties, context.jobContext, logger)
+            deleteShrinkLock(localShrinkActionProperties, context.jobContext, logger)
             stepStatus = StepStatus.COMPLETED
             info = mapOf("message" to SUCCESS_MESSAGE)
             return this
         } catch (e: RemoteTransportException) {
-            cleanupAndFail(getFailureMessage(shrinkActionProperties.targetIndexName))
+            cleanupAndFail(getFailureMessage(localShrinkActionProperties.targetIndexName))
             return this
         } catch (e: Exception) {
             cleanupAndFail(GENERIC_FAILURE_MESSAGE, e.message)
@@ -72,34 +80,37 @@ class WaitForShrinkStep(private val action: ShrinkAction) : Step(name) {
         }
     }
 
-    // Sets the action to failed, clears the readonly and allocation settings on the source index, deletes the target index, and releases the shrink lock
+    // Sets the action to failed, clears the readonly and allocation settings on the source index, deletes the target index,
+    // and releases the shrink lock
     private suspend fun cleanupAndFail(message: String, cause: String? = null) {
         info = if (cause == null) mapOf("message" to message) else mapOf("message" to message, "cause" to cause)
         stepStatus = StepStatus.FAILED
-        val context = this.context ?: return
         // Using a try/catch for each cleanup action as we should clean up as much as possible despite any failures
+        // Non-null assertion !! is used to throw an exception on null which would just be caught and logged
         try {
-            clearReadOnlyAndRouting(context.metadata.index, context.client)
+            clearReadOnlyAndRouting(context!!.metadata.index, context!!.client)
         } catch (e: Exception) {
             logger.error("Shrink action failed while trying to clean up routing and readonly setting after a failure: $e")
         }
-        val shrinkActionProperties = context.metadata.actionMetaData?.actionProperties?.shrinkActionProperties ?: return
         try {
-            // TODO CLAY use plugin permissions when cleaning up
-            // Delete the target index
-            val deleteRequest = DeleteIndexRequest(shrinkActionProperties.targetIndexName)
-            val response: AcknowledgedResponse = context.client.admin().indices().suspendUntil { delete(deleteRequest, it) }
-            if (!response.isAcknowledged) {
-                logger.error("Shrink action failed to delete target index during cleanup after a failure")
+            // Use plugin level permissions when deleting the failed target shrink index after a failure
+            context!!.client.threadPool().threadContext.stashContext().use {
+                val deleteRequest = DeleteIndexRequest(shrinkActionProperties!!.targetIndexName)
+                val response: AcknowledgedResponse =
+                    context!!.client.admin().indices().suspendUntil { delete(deleteRequest, it) }
+                if (!response.isAcknowledged) {
+                    logger.error("Shrink action failed to delete target index during cleanup after a failure")
+                }
             }
         } catch (e: Exception) {
             logger.error("Shrink action failed while trying to delete the target index after a failure: $e")
         }
         try {
-            releaseShrinkLock(shrinkActionProperties, context.jobContext, logger)
+            releaseShrinkLock(shrinkActionProperties!!, context!!.jobContext, logger)
         } catch (e: Exception) {
             logger.error("Shrink action failed while trying to release the node lock after a failure: $e")
         }
+        shrinkActionProperties = null
     }
 
     private suspend fun clearAllocationSettings(context: StepContext, index: String): Boolean {
@@ -132,11 +143,12 @@ class WaitForShrinkStep(private val action: ShrinkAction) : Step(name) {
     }
 
     override fun getUpdatedManagedIndexMetadata(currentMetadata: ManagedIndexMetaData): ManagedIndexMetaData {
-        // Saving maxNumSegments in ActionProperties after the force merge operation has begun so that if a ChangePolicy occurred
-        // in between this step and WaitForForceMergeStep, a cached segment count expected from the operation is available
-        val currentActionMetaData = currentMetadata.actionMetaData
         return currentMetadata.copy(
-            actionMetaData = currentActionMetaData?.copy(),
+            actionMetaData = currentMetadata.actionMetaData?.copy(
+                actionProperties = ActionProperties(
+                    shrinkActionProperties = shrinkActionProperties
+                )
+            ),
             stepMetaData = StepMetaData(name, getStepStartTime(currentMetadata).toEpochMilli(), stepStatus),
             transitionTo = null,
             info = info

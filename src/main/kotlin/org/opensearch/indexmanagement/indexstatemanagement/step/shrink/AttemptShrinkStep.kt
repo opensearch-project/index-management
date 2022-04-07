@@ -20,8 +20,10 @@ import org.opensearch.indexmanagement.indexstatemanagement.util.getNodeFreeMemor
 import org.opensearch.indexmanagement.indexstatemanagement.util.isIndexGreen
 import org.opensearch.indexmanagement.indexstatemanagement.util.releaseShrinkLock
 import org.opensearch.indexmanagement.indexstatemanagement.util.renewShrinkLock
+import org.opensearch.indexmanagement.indexstatemanagement.util.getUpdatedShrinkActionProperties
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ActionProperties
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ShrinkActionProperties
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepContext
@@ -33,33 +35,36 @@ class AttemptShrinkStep(private val action: ShrinkAction) : Step(name) {
     private val logger = LogManager.getLogger(javaClass)
     private var stepStatus = StepStatus.STARTING
     private var info: Map<String, Any>? = null
+    private var shrinkActionProperties: ShrinkActionProperties? = null
 
     @Suppress("TooGenericExceptionCaught", "ComplexMethod", "ReturnCount")
     override suspend fun execute(): AttemptShrinkStep {
         val context = this.context ?: return this
         val indexName = context.metadata.index
         val actionMetadata = context.metadata.actionMetaData
-        val shrinkActionProperties = actionMetadata?.actionProperties?.shrinkActionProperties
-        if (shrinkActionProperties == null) {
+        val localShrinkActionProperties = actionMetadata?.actionProperties?.shrinkActionProperties
+        shrinkActionProperties = localShrinkActionProperties
+        if (localShrinkActionProperties == null) {
             cleanupAndFail(WaitForMoveShardsStep.METADATA_FAILURE_MESSAGE)
             return this
         }
-        val lock = renewShrinkLock(shrinkActionProperties, context.jobContext, logger)
+        val lock = renewShrinkLock(localShrinkActionProperties, context.jobContext, logger)
         if (lock == null) {
-            cleanupAndFail("Failed to renew lock on node [${shrinkActionProperties.nodeName}]")
+            cleanupAndFail("Failed to renew lock on node [${localShrinkActionProperties.nodeName}]")
             return this
         }
+        shrinkActionProperties = getUpdatedShrinkActionProperties(localShrinkActionProperties, lock)
         try {
             if (!isIndexGreen(context.client, indexName)) {
                 stepStatus = StepStatus.CONDITION_NOT_MET
                 info = mapOf("message" to INDEX_HEALTH_NOT_GREEN_MESSAGE)
                 return this
             }
-            if (!isNodeStillSuitable(shrinkActionProperties.nodeName, indexName, context)) return this
+            if (!isNodeStillSuitable(localShrinkActionProperties.nodeName, indexName, context)) return this
 
             // If the resize index api fails, the step will be set to failed and resizeIndex will return false
-            if (!resizeIndex(indexName, shrinkActionProperties, context)) return this
-            info = mapOf("message" to getSuccessMessage(shrinkActionProperties.targetIndexName))
+            if (!resizeIndex(indexName, localShrinkActionProperties, context)) return this
+            info = mapOf("message" to getSuccessMessage(localShrinkActionProperties.targetIndexName))
             stepStatus = StepStatus.COMPLETED
             return this
         } catch (e: RemoteTransportException) {
@@ -75,20 +80,21 @@ class AttemptShrinkStep(private val action: ShrinkAction) : Step(name) {
     private suspend fun cleanupAndFail(message: String, cause: String? = null) {
         info = if (cause == null) mapOf("message" to message) else mapOf("message" to message, "cause" to cause)
         stepStatus = StepStatus.FAILED
-        val context = this.context ?: return
+        // Non-null assertion !! is used to throw an exception on null which would just be caught and logged
         try {
-            clearReadOnlyAndRouting(context.metadata.index, context.client)
+            clearReadOnlyAndRouting(context!!.metadata.index, context!!.client)
         } catch (e: Exception) {
             logger.error("Shrink action failed while trying to clean up routing and readonly setting after a failure: $e")
         }
         try {
-            val shrinkActionProperties = context.metadata.actionMetaData?.actionProperties?.shrinkActionProperties ?: return
-            releaseShrinkLock(shrinkActionProperties, context.jobContext, logger)
+            releaseShrinkLock(shrinkActionProperties!!, context!!.jobContext, logger)
         } catch (e: Exception) {
             logger.error("Shrink action failed while trying to release the node lock after a failure: $e")
         }
+        shrinkActionProperties = null
     }
 
+    @Suppress("ReturnCount")
     private suspend fun isNodeStillSuitable(nodeName: String, indexName: String, context: StepContext): Boolean {
         // Get the size of the index
         val statsRequest = IndicesStatsRequest().indices(indexName)
@@ -137,9 +143,12 @@ class AttemptShrinkStep(private val action: ShrinkAction) : Step(name) {
     }
 
     override fun getUpdatedManagedIndexMetadata(currentMetadata: ManagedIndexMetaData): ManagedIndexMetaData {
-        val currentActionMetaData = currentMetadata.actionMetaData
         return currentMetadata.copy(
-            actionMetaData = currentActionMetaData?.copy(),
+            actionMetaData = currentMetadata.actionMetaData?.copy(
+                actionProperties = ActionProperties(
+                    shrinkActionProperties = shrinkActionProperties
+                )
+            ),
             stepMetaData = StepMetaData(name, getStepStartTime(currentMetadata).toEpochMilli(), stepStatus),
             transitionTo = null,
             info = info

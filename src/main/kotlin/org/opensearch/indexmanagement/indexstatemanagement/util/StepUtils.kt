@@ -16,8 +16,9 @@ import org.opensearch.cluster.metadata.IndexMetadata
 import org.opensearch.cluster.routing.allocation.DiskThresholdSettings
 import org.opensearch.common.settings.ClusterSettings
 import org.opensearch.common.settings.Settings
+import org.opensearch.indexmanagement.indexstatemanagement.action.ShrinkAction.Companion.LOCK_RESOURCE_NAME
+import org.opensearch.indexmanagement.indexstatemanagement.action.ShrinkAction.Companion.LOCK_RESOURCE_TYPE
 import org.opensearch.indexmanagement.indexstatemanagement.step.shrink.AttemptMoveShardsStep
-import org.opensearch.indexmanagement.indexstatemanagement.step.shrink.WaitForMoveShardsStep
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ShrinkActionProperties
@@ -44,14 +45,15 @@ suspend fun releaseShrinkLock(
     }
 }
 
-suspend fun releaseShrinkLock(
-    lock: LockModel,
+suspend fun deleteShrinkLock(
+    shrinkActionProperties: ShrinkActionProperties,
     jobExecutionContext: JobExecutionContext,
     logger: Logger
 ) {
-    val released: Boolean = jobExecutionContext.lockService.suspendUntil { release(lock, it) }
-    if (!released) {
-        logger.error("Failed to release Shrink action lock on node [${lock.resource[AttemptMoveShardsStep.RESOURCE_NAME] as String}]")
+    val lockID = getShrinkLockID(shrinkActionProperties.nodeName)
+    val deleted: Boolean = jobExecutionContext.lockService.suspendUntil { deleteLock(lockID, it) }
+    if (!deleted) {
+        logger.error("Failed to delete Shrink action lock on node [${shrinkActionProperties.nodeName}]")
     }
 }
 
@@ -61,7 +63,6 @@ suspend fun renewShrinkLock(
     logger: Logger
 ): LockModel? {
     val lock: LockModel = getShrinkLockModel(shrinkActionProperties, jobExecutionContext)
-    println(lock.lockDurationSeconds)
     return try {
         jobExecutionContext.lockService.suspendUntil { renewLock(lock, it) }
     } catch (e: Exception) {
@@ -77,7 +78,6 @@ fun getShrinkLockModel(
     return getShrinkLockModel(
         shrinkActionProperties.nodeName,
         jobExecutionContext.jobIndexName,
-        jobExecutionContext.jobId,
         shrinkActionProperties.lockEpochSecond,
         shrinkActionProperties.lockPrimaryTerm,
         shrinkActionProperties.lockSeqNo,
@@ -89,25 +89,34 @@ fun getShrinkLockModel(
 fun getShrinkLockModel(
     nodeName: String,
     jobIndexName: String,
-    jobId: String,
     lockEpochSecond: Long,
     lockPrimaryTerm: Long,
     lockSeqNo: Long,
     lockDurationSecond: Long
 ): LockModel {
-    val resource: HashMap<String, String> = HashMap()
-    resource[WaitForMoveShardsStep.RESOURCE_NAME] = nodeName
+    val lockID = getShrinkLockID(nodeName)
     val lockCreationInstant: Instant = Instant.ofEpochSecond(lockEpochSecond)
     return LockModel(
         jobIndexName,
-        jobId,
-        WaitForMoveShardsStep.RESOURCE_TYPE,
-        resource as Map<String, Any>?,
+        lockID,
         lockCreationInstant,
         lockDurationSecond,
         false,
         lockSeqNo,
         lockPrimaryTerm
+    )
+}
+
+// Returns copied ShrinkActionProperties with the details of the provided lock added in
+fun getUpdatedShrinkActionProperties(shrinkActionProperties: ShrinkActionProperties, lock: LockModel): ShrinkActionProperties {
+    return ShrinkActionProperties(
+        shrinkActionProperties.nodeName,
+        shrinkActionProperties.targetIndexName,
+        shrinkActionProperties.targetNumShards,
+        lock.primaryTerm,
+        lock.seqNo,
+        lock.lockTime.epochSecond,
+        lock.lockDurationSeconds
     )
 }
 
@@ -123,12 +132,13 @@ fun getActionStartTime(managedIndexMetaData: ManagedIndexMetaData): Instant {
  * parameter will return 0, and vice versa for when the values are set as bytes. This method provides a single place to
  * parse either and get the byte value back.
  */
+@Suppress("MagicNumber")
 fun getFreeBytesThresholdHigh(settings: Settings, clusterSettings: ClusterSettings?, totalNodeBytes: Long): Long {
     val diskThresholdSettings = DiskThresholdSettings(settings, clusterSettings)
     // Depending on how a user provided input, this setting may be a percentage or byte value
     val diskThresholdPercent = diskThresholdSettings.freeDiskThresholdHigh
     val diskThresholdBytes = diskThresholdSettings.freeBytesThresholdHigh
-    // If the disk threshold is set as a percentage, use it and convert it to bytes. If
+    // If the disk threshold is set as a percentage, use it and convert it to bytes
     return if (diskThresholdPercent > 0.001) {
         // If the user set value is 95%, diskThresholdPercent will be returned as 5% from the DiskThresholdSettings object
         ((diskThresholdPercent / 100) * totalNodeBytes).toLong()
@@ -169,4 +179,8 @@ suspend fun clearReadOnlyAndRouting(index: String, client: Client): Boolean {
         return false
     }
     return true
+}
+
+fun getShrinkLockID(nodeName: String): String {
+    return "$LOCK_RESOURCE_TYPE-$LOCK_RESOURCE_NAME-$nodeName"
 }

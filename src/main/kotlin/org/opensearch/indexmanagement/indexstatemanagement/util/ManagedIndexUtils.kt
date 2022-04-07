@@ -7,10 +7,10 @@
 @file:JvmName("ManagedIndexUtils")
 package org.opensearch.indexmanagement.indexstatemanagement.util
 
-//import inet.ipaddr.IPAddressString
+// import inet.ipaddr.IPAddressString
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-//import org.apache.logging.log4j.LogManager
+// import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.opensearch.action.delete.DeleteRequest
 import org.opensearch.action.get.GetRequest
@@ -19,7 +19,7 @@ import org.opensearch.action.index.IndexRequest
 import org.opensearch.action.search.SearchRequest
 import org.opensearch.action.support.WriteRequest
 import org.opensearch.action.update.UpdateRequest
-//import org.opensearch.alerting.destination.message.BaseMessage
+// import org.opensearch.alerting.destination.message.BaseMessage
 import org.opensearch.client.Client
 import org.opensearch.common.unit.ByteSizeValue
 import org.opensearch.common.unit.TimeValue
