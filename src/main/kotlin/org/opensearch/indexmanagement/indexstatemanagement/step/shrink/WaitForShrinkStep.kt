@@ -13,6 +13,7 @@ import org.opensearch.action.support.master.AcknowledgedResponse
 import org.opensearch.client.Client
 import org.opensearch.common.settings.Settings
 import org.opensearch.indexmanagement.indexstatemanagement.action.ShrinkAction
+import org.opensearch.indexmanagement.indexstatemanagement.step.shrink.WaitForMoveShardsStep.Companion.getTimeoutFailure
 import org.opensearch.indexmanagement.indexstatemanagement.util.clearReadOnlyAndRouting
 import org.opensearch.indexmanagement.indexstatemanagement.util.deleteShrinkLock
 import org.opensearch.indexmanagement.indexstatemanagement.util.getActionStartTime
@@ -44,11 +45,13 @@ class WaitForShrinkStep(private val action: ShrinkAction) : Step(name) {
         val localShrinkActionProperties = actionMetadata?.actionProperties?.shrinkActionProperties
         shrinkActionProperties = localShrinkActionProperties
         if (localShrinkActionProperties == null) {
+            logger.error(WaitForMoveShardsStep.METADATA_FAILURE_MESSAGE)
             cleanupAndFail(WaitForMoveShardsStep.METADATA_FAILURE_MESSAGE)
             return this
         }
         val lock = renewShrinkLock(localShrinkActionProperties, context.jobContext, logger)
         if (lock == null) {
+            logger.error("Shrink action failed to renew lock on node [${localShrinkActionProperties.nodeName}]")
             cleanupAndFail("Failed to renew lock on node [${localShrinkActionProperties.nodeName}]")
             return this
         }
@@ -72,17 +75,18 @@ class WaitForShrinkStep(private val action: ShrinkAction) : Step(name) {
             info = mapOf("message" to SUCCESS_MESSAGE)
             return this
         } catch (e: RemoteTransportException) {
-            cleanupAndFail(getFailureMessage(localShrinkActionProperties.targetIndexName))
+            cleanupAndFail(getFailureMessage(localShrinkActionProperties.targetIndexName), e = e)
             return this
         } catch (e: Exception) {
-            cleanupAndFail(GENERIC_FAILURE_MESSAGE, e.message)
+            cleanupAndFail(GENERIC_FAILURE_MESSAGE, e.message, e)
             return this
         }
     }
 
     // Sets the action to failed, clears the readonly and allocation settings on the source index, deletes the target index,
     // and releases the shrink lock
-    private suspend fun cleanupAndFail(message: String, cause: String? = null) {
+    private suspend fun cleanupAndFail(message: String, cause: String? = null, e: Exception? = null) {
+        e?.let { logger.error(message, e) }
         info = if (cause == null) mapOf("message" to message) else mapOf("message" to message, "cause" to cause)
         stepStatus = StepStatus.FAILED
         // Using a try/catch for each cleanup action as we should clean up as much as possible despite any failures
@@ -117,6 +121,7 @@ class WaitForShrinkStep(private val action: ShrinkAction) : Step(name) {
         val allocationSettings = Settings.builder().putNull(AttemptMoveShardsStep.ROUTING_SETTING).build()
         val response: AcknowledgedResponse = issueUpdateSettingsRequest(context.client, index, allocationSettings)
         if (!response.isAcknowledged) {
+            logger.error("Shrink action to clear the allocation settings on index [$index] following shrinking.")
             cleanupAndFail(getFailureMessage(index))
             return false
         }
@@ -135,7 +140,8 @@ class WaitForShrinkStep(private val action: ShrinkAction) : Step(name) {
         val timeOutInSeconds = action.configTimeout?.timeout?.seconds ?: WaitForMoveShardsStep.MOVE_SHARDS_TIMEOUT_IN_SECONDS
         // Get ActionTimeout if given, otherwise use default timeout of 12 hours
         if (timeFromActionStarted.toSeconds() > timeOutInSeconds) {
-            cleanupAndFail(getFailureMessage(targetIndex))
+            logger.error(getTimeoutFailure(targetIndex))
+            cleanupAndFail(getTimeoutFailure(targetIndex))
         } else {
             info = mapOf("message" to getDelayedMessage(targetIndex))
             stepStatus = StepStatus.CONDITION_NOT_MET
@@ -163,5 +169,6 @@ class WaitForShrinkStep(private val action: ShrinkAction) : Step(name) {
         const val GENERIC_FAILURE_MESSAGE = "Shrink failed while waiting for shards to start."
         fun getDelayedMessage(newIndex: String) = "Shrink delayed because $newIndex shards not in started state."
         fun getFailureMessage(newIndex: String) = "Shrink failed while waiting for $newIndex shards to start."
+        fun getTimeoutFailure(newIndex: String) = "Shrink failed because it timed out while waiting for $newIndex shrink to finish."
     }
 }

@@ -45,11 +45,13 @@ class AttemptShrinkStep(private val action: ShrinkAction) : Step(name) {
         val localShrinkActionProperties = actionMetadata?.actionProperties?.shrinkActionProperties
         shrinkActionProperties = localShrinkActionProperties
         if (localShrinkActionProperties == null) {
+            logger.error(WaitForMoveShardsStep.METADATA_FAILURE_MESSAGE)
             cleanupAndFail(WaitForMoveShardsStep.METADATA_FAILURE_MESSAGE)
             return this
         }
         val lock = renewShrinkLock(localShrinkActionProperties, context.jobContext, logger)
         if (lock == null) {
+            logger.error("Shrink action failed to renew lock on node [${localShrinkActionProperties.nodeName}]")
             cleanupAndFail("Failed to renew lock on node [${localShrinkActionProperties.nodeName}]")
             return this
         }
@@ -68,16 +70,17 @@ class AttemptShrinkStep(private val action: ShrinkAction) : Step(name) {
             stepStatus = StepStatus.COMPLETED
             return this
         } catch (e: RemoteTransportException) {
-            cleanupAndFail(FAILURE_MESSAGE)
+            cleanupAndFail(FAILURE_MESSAGE, e = e)
             return this
         } catch (e: Exception) {
-            cleanupAndFail(FAILURE_MESSAGE, e.message)
+            cleanupAndFail(FAILURE_MESSAGE, e.message, e)
             return this
         }
     }
 
     // Sets the action to failed, clears the readonly and allocation settings on the source index, and releases the shrink lock
-    private suspend fun cleanupAndFail(message: String, cause: String? = null) {
+    private suspend fun cleanupAndFail(message: String, cause: String? = null, e: Exception? = null) {
+        e?.let { logger.error(message, e) }
         info = if (cause == null) mapOf("message" to message) else mapOf("message" to message, "cause" to cause)
         stepStatus = StepStatus.FAILED
         // Non-null assertion !! is used to throw an exception on null which would just be caught and logged
@@ -103,6 +106,7 @@ class AttemptShrinkStep(private val action: ShrinkAction) : Step(name) {
         }
         val statsStore = statsResponse.total.store
         if (statsStore == null) {
+            logger.error("Shrink action failed as indices stats request was missing store stats.")
             cleanupAndFail(FAILURE_MESSAGE)
             return false
         }
@@ -113,11 +117,13 @@ class AttemptShrinkStep(private val action: ShrinkAction) : Step(name) {
         // If the node has been replaced, this will fail
         val node = nodeStatsResponse.nodes.firstOrNull { it.node.name == nodeName }
         if (node == null) {
+            logger.error("Shrink action failed as node stats were missing the previously selected node.")
             cleanupAndFail(FAILURE_MESSAGE)
             return false
         }
         val remainingMem = getNodeFreeMemoryAfterShrink(node, indexSizeInBytes, context.settings, context.clusterService.clusterSettings)
         if (remainingMem < 1L) {
+            logger.error("Shrink action failed as the previously selected node no longer has enough free space.")
             cleanupAndFail(NOT_ENOUGH_SPACE_FAILURE_MESSAGE)
             return false
         }
@@ -136,6 +142,7 @@ class AttemptShrinkStep(private val action: ShrinkAction) : Step(name) {
         action.aliases?.forEach { req.targetIndexRequest.alias(it) }
         val resizeResponse: ResizeResponse = context.client.admin().indices().suspendUntil { resizeIndex(req, it) }
         if (!resizeResponse.isAcknowledged) {
+            logger.error("Shrink action failed as the resize index request was not acknowledged.")
             cleanupAndFail(FAILURE_MESSAGE)
             return false
         }

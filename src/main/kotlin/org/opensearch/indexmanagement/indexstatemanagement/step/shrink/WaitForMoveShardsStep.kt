@@ -41,11 +41,13 @@ class WaitForMoveShardsStep(private val action: ShrinkAction) : Step(name) {
         val localShrinkActionProperties = actionMetadata?.actionProperties?.shrinkActionProperties
         shrinkActionProperties = localShrinkActionProperties
         if (localShrinkActionProperties == null) {
+            logger.error(METADATA_FAILURE_MESSAGE)
             cleanupAndFail(METADATA_FAILURE_MESSAGE)
             return this
         }
         val lock = renewShrinkLock(localShrinkActionProperties, context.jobContext, logger)
         if (lock == null) {
+            logger.error("Shrink action failed to renew lock on node [${localShrinkActionProperties.nodeName}]")
             cleanupAndFail("Failed to renew lock on node [${localShrinkActionProperties.nodeName}]")
             return this
         }
@@ -85,16 +87,17 @@ class WaitForMoveShardsStep(private val action: ShrinkAction) : Step(name) {
             }
             return this
         } catch (e: RemoteTransportException) {
-            cleanupAndFail(FAILURE_MESSAGE)
+            cleanupAndFail(FAILURE_MESSAGE, e = e)
             return this
         } catch (e: Exception) {
-            cleanupAndFail(FAILURE_MESSAGE, cause = e.message)
+            cleanupAndFail(FAILURE_MESSAGE, cause = e.message, e)
             return this
         }
     }
 
     // Sets the action to failed, clears the readonly and allocation settings on the source index, and releases the shrink lock
-    private suspend fun cleanupAndFail(message: String, cause: String? = null) {
+    private suspend fun cleanupAndFail(message: String, cause: String? = null, e: Exception? = null) {
+        e?.let { logger.error(message, e) }
         info = if (cause == null) mapOf("message" to message) else mapOf("message" to message, "cause" to cause)
         stepStatus = StepStatus.FAILED
         // Non-null assertion !! is used to throw an exception on null which would just be caught and logged

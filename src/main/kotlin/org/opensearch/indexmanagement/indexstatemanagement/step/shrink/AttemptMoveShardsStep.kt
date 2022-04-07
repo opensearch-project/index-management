@@ -17,6 +17,7 @@ import org.opensearch.action.support.master.AcknowledgedResponse
 import org.opensearch.client.Client
 import org.opensearch.cluster.metadata.IndexMetadata
 import org.opensearch.cluster.routing.allocation.command.MoveAllocationCommand
+import org.opensearch.cluster.routing.allocation.decider.Decision
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.collect.Tuple
 import org.opensearch.common.settings.Settings
@@ -86,6 +87,7 @@ class AttemptMoveShardsStep(private val action: ShrinkAction) : Step(name) {
             val statsStore = statsResponse.total.store
             val statsDocs = statsResponse.total.docs
             if (statsStore == null || statsDocs == null) {
+                logger.error("Failed to move shards in shrink action as IndicesStatsResponse was missing store or doc stats.")
                 fail(FAILURE_MESSAGE)
                 return this
             }
@@ -123,15 +125,16 @@ class AttemptMoveShardsStep(private val action: ShrinkAction) : Step(name) {
             stepStatus = StepStatus.COMPLETED
             return this
         } catch (e: OpenSearchSecurityException) {
-            fail(getSecurityFailureMessage(e.localizedMessage), e.message)
+            fail(getSecurityFailureMessage(e.localizedMessage), e.message, e)
             return this
         } catch (e: Exception) {
-            fail(FAILURE_MESSAGE, e.message)
+            fail(FAILURE_MESSAGE, e.message, e)
             return this
         }
     }
 
-    private fun fail(message: String, cause: String? = null) {
+    private fun fail(message: String, cause: String? = null, e: Exception? = null) {
+        e?.let { logger.error(message, e) }
         info = if (cause == null) mapOf("message" to message) else mapOf("message" to message, "cause" to cause)
         stepStatus = StepStatus.FAILED
         shrinkActionProperties = null
@@ -153,6 +156,7 @@ class AttemptMoveShardsStep(private val action: ShrinkAction) : Step(name) {
         val totalDocs: Long = docsStats.count
         val docsPerTargetShard: Long = totalDocs / numTargetShards
         if (docsPerTargetShard > MAXIMUM_DOCS_PER_SHARD) {
+            logger.error(TOO_MANY_DOCS_FAILURE_MESSAGE)
             fail(TOO_MANY_DOCS_FAILURE_MESSAGE)
             return true
         }
@@ -170,6 +174,7 @@ class AttemptMoveShardsStep(private val action: ShrinkAction) : Step(name) {
         val numReplicas = clusterService.state().metadata.indices[indexName].numberOfReplicas
         val shouldFailForceUnsafeCheck = numReplicas == 0
         if (shouldFailForceUnsafeCheck) {
+            logger.error(UNSAFE_FAILURE_MESSAGE)
             fail(UNSAFE_FAILURE_MESSAGE)
             return true
         }
@@ -179,7 +184,9 @@ class AttemptMoveShardsStep(private val action: ShrinkAction) : Step(name) {
     private fun targetIndexNameExists(clusterService: ClusterService, shrinkTargetIndexName: String): Boolean {
         val indexExists = clusterService.state().metadata.indices.containsKey(shrinkTargetIndexName)
         if (indexExists) {
-            fail(getIndexExistsMessage(shrinkTargetIndexName))
+            val indexExistsMessage = getIndexExistsMessage(shrinkTargetIndexName)
+            logger.error(indexExistsMessage)
+            fail(indexExistsMessage)
             return true
         }
         return false
@@ -269,8 +276,9 @@ class AttemptMoveShardsStep(private val action: ShrinkAction) : Step(name) {
             }
             val clusterRerouteResponse: ClusterRerouteResponse =
                 stepContext.client.admin().cluster().suspendUntil { reroute(clusterRerouteRequest, it) }
+            val numYesDecisions = clusterRerouteResponse.explanations.explanations().count { it.decisions().type().equals((Decision.Type.YES)) }
             // Should be the same number of yes decisions as the number of primary shards
-            if (clusterRerouteResponse.explanations.yesDecisionMessages.size == numberOfRerouteRequests) {
+            if (numYesDecisions == numberOfRerouteRequests) {
                 suitableNodes.add(sizeNodeTuple.v2())
             }
         }
