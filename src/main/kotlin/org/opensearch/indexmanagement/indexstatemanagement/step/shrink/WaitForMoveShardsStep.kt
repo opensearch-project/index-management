@@ -6,10 +6,13 @@
 package org.opensearch.indexmanagement.indexstatemanagement.step.shrink
 
 import org.apache.logging.log4j.LogManager
+import org.opensearch.ExceptionsHelper
+import org.opensearch.OpenSearchSecurityException
 import org.opensearch.action.admin.indices.stats.IndicesStatsRequest
 import org.opensearch.action.admin.indices.stats.IndicesStatsResponse
 import org.opensearch.action.admin.indices.stats.ShardStats
 import org.opensearch.indexmanagement.indexstatemanagement.action.ShrinkAction
+import org.opensearch.indexmanagement.indexstatemanagement.action.ShrinkAction.Companion.getSecurityFailureMessage
 import org.opensearch.indexmanagement.indexstatemanagement.util.clearReadOnlyAndRouting
 import org.opensearch.indexmanagement.indexstatemanagement.util.getActionStartTime
 import org.opensearch.indexmanagement.indexstatemanagement.util.releaseShrinkLock
@@ -86,8 +89,12 @@ class WaitForMoveShardsStep(private val action: ShrinkAction) : Step(name) {
                 checkTimeOut(context, numShardsNotOnNode, numShardsNotInSync, nodeToMoveOnto)
             }
             return this
+        } catch (e: OpenSearchSecurityException) {
+            cleanupAndFail(getSecurityFailureMessage(e.localizedMessage), e.message, e)
+            return this
         } catch (e: RemoteTransportException) {
-            cleanupAndFail(FAILURE_MESSAGE, e = e)
+            val unwrappedException = ExceptionsHelper.unwrapCause(e)
+            cleanupAndFail(FAILURE_MESSAGE, cause = e.message, e = unwrappedException as Exception)
             return this
         } catch (e: Exception) {
             cleanupAndFail(FAILURE_MESSAGE, cause = e.message, e)

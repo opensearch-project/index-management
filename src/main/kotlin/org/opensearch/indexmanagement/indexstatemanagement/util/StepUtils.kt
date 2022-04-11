@@ -16,6 +16,7 @@ import org.opensearch.cluster.metadata.IndexMetadata
 import org.opensearch.cluster.routing.allocation.DiskThresholdSettings
 import org.opensearch.common.settings.ClusterSettings
 import org.opensearch.common.settings.Settings
+import org.opensearch.common.unit.TimeValue
 import org.opensearch.indexmanagement.indexstatemanagement.action.ShrinkAction.Companion.LOCK_RESOURCE_NAME
 import org.opensearch.indexmanagement.indexstatemanagement.action.ShrinkAction.Companion.LOCK_RESOURCE_TYPE
 import org.opensearch.indexmanagement.indexstatemanagement.step.shrink.AttemptMoveShardsStep
@@ -164,9 +165,13 @@ fun getNodeFreeMemoryAfterShrink(node: NodeStats, indexSizeInBytes: Long, settin
     return -1L
 }
 
-suspend fun isIndexGreen(client: Client, indexName: String): Boolean {
+suspend fun isIndexGreen(
+    client: Client,
+    indexName: String,
+    timeout: TimeValue = TimeValue(AttemptMoveShardsStep.THIRTY_SECONDS_IN_MILLIS)
+): Boolean {
     // get index health, waiting for a green status
-    val healthReq = ClusterHealthRequest().indices(indexName).waitForGreenStatus()
+    val healthReq = ClusterHealthRequest().indices(indexName).waitForGreenStatus().timeout(timeout)
     val response: ClusterHealthResponse = client.admin().cluster().suspendUntil { health(healthReq, it) }
     // The request was set to wait for green index, if the request timed out, the index never was green
     return !response.isTimedOut

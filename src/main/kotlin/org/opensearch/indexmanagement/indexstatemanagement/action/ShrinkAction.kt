@@ -6,6 +6,7 @@
 package org.opensearch.indexmanagement.indexstatemanagement.action
 
 import org.opensearch.action.admin.indices.alias.Alias
+import org.opensearch.common.Strings
 import org.opensearch.common.io.stream.StreamOutput
 import org.opensearch.common.unit.ByteSizeValue
 import org.opensearch.common.xcontent.ToXContent
@@ -35,15 +36,19 @@ class ShrinkAction(
 
         if (maxShardSize != null) {
             require(maxShardSize.bytes > 0) { "Shrink action maxShardSize must be greater than 0." }
-        } else if (percentageOfSourceShards != null) {
+        }
+        if (percentageOfSourceShards != null) {
             require(percentageOfSourceShards > 0.0 && percentageOfSourceShards < 1.0) {
                 "Percentage of source shards must be between 0.0 and 1.0 exclusively"
             }
-        } else if (numNewShards != null) {
+        }
+        if (numNewShards != null) {
             require(numNewShards > 0) { "Shrink action numNewShards must be greater than 0." }
         }
         if (targetIndexSuffix != null) {
-            require(!targetIndexSuffix.contains('*') && !targetIndexSuffix.contains('?')) { "Target index suffix must not contain wildcards." }
+            require(Strings.validFileName(targetIndexSuffix)) {
+                "Target index suffix must not contain the following characters ${Strings.INVALID_FILENAME_CHARS}"
+            }
         }
     }
 
@@ -74,14 +79,23 @@ class ShrinkAction(
                 AttemptMoveShardsStep.name -> waitForMoveShardsStep
                 WaitForMoveShardsStep.name -> attemptShrinkStep
                 AttemptShrinkStep.name -> waitForShrinkStep
-                else -> stepNameToStep[currentStep]!!
+                // We do not expect to ever hit this point, but if we do somehow, starting over is safe.
+                else -> attemptMoveShardsStep
             }
         } else if (currentStepStatus == Step.StepStatus.FAILED) {
             // If we failed at any point, retries should start from the beginning
             return attemptMoveShardsStep
         }
-        // step not completed
-        return stepNameToStep[currentStep]!!
+
+        // step not completed, return the same step
+        return when (stepMetaData.name) {
+            AttemptMoveShardsStep.name -> attemptMoveShardsStep
+            WaitForMoveShardsStep.name -> waitForMoveShardsStep
+            AttemptShrinkStep.name -> attemptShrinkStep
+            WaitForShrinkStep.name -> waitForShrinkStep
+            // Again, we don't expect to ever hit this point
+            else -> attemptMoveShardsStep
+        }
     }
 
     override fun populateAction(builder: XContentBuilder, params: ToXContent.Params) {
@@ -120,5 +134,6 @@ class ShrinkAction(
         const val FORCE_UNSAFE_FIELD = "force_unsafe"
         const val LOCK_RESOURCE_TYPE = "shrink"
         const val LOCK_RESOURCE_NAME = "node_name"
+        fun getSecurityFailureMessage(failure: String) = "Shrink action failed because of missing permissions: $failure"
     }
 }

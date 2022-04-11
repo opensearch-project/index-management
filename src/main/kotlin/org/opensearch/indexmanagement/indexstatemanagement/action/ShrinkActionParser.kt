@@ -48,9 +48,9 @@ class ShrinkActionParser : ActionParser() {
 
             when (fieldName) {
                 NUM_NEW_SHARDS_FIELD -> numNewShards = xcp.intValue()
-                MAX_SHARD_SIZE_FIELD -> maxShardSize = ByteSizeValue.parseBytesSizeValue(xcp.textOrNull(), MAX_SHARD_SIZE_FIELD)
+                MAX_SHARD_SIZE_FIELD -> maxShardSize = ByteSizeValue.parseBytesSizeValue(xcp.text(), MAX_SHARD_SIZE_FIELD)
                 PERCENTAGE_OF_SOURCE_SHARDS_FIELD -> percentageOfSourceShards = xcp.doubleValue()
-                TARGET_INDEX_SUFFIX_FIELD -> targetIndexSuffix = xcp.textOrNull()
+                TARGET_INDEX_SUFFIX_FIELD -> targetIndexSuffix = xcp.text()
                 ALIASES_FIELD -> {
                     if (xcp.currentToken() != XContentParser.Token.VALUE_NULL) {
                         aliases = mutableListOf()

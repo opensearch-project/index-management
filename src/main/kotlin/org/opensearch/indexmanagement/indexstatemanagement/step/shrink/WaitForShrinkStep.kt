@@ -6,6 +6,8 @@
 package org.opensearch.indexmanagement.indexstatemanagement.step.shrink
 
 import org.apache.logging.log4j.LogManager
+import org.opensearch.ExceptionsHelper
+import org.opensearch.OpenSearchSecurityException
 import org.opensearch.action.admin.indices.delete.DeleteIndexRequest
 import org.opensearch.action.admin.indices.stats.IndicesStatsRequest
 import org.opensearch.action.admin.indices.stats.IndicesStatsResponse
@@ -13,6 +15,7 @@ import org.opensearch.action.support.master.AcknowledgedResponse
 import org.opensearch.client.Client
 import org.opensearch.common.settings.Settings
 import org.opensearch.indexmanagement.indexstatemanagement.action.ShrinkAction
+import org.opensearch.indexmanagement.indexstatemanagement.action.ShrinkAction.Companion.getSecurityFailureMessage
 import org.opensearch.indexmanagement.indexstatemanagement.step.shrink.WaitForMoveShardsStep.Companion.getTimeoutFailure
 import org.opensearch.indexmanagement.indexstatemanagement.util.clearReadOnlyAndRouting
 import org.opensearch.indexmanagement.indexstatemanagement.util.deleteShrinkLock
@@ -74,8 +77,12 @@ class WaitForShrinkStep(private val action: ShrinkAction) : Step(name) {
             stepStatus = StepStatus.COMPLETED
             info = mapOf("message" to SUCCESS_MESSAGE)
             return this
+        } catch (e: OpenSearchSecurityException) {
+            cleanupAndFail(getSecurityFailureMessage(e.localizedMessage), e.message, e)
+            return this
         } catch (e: RemoteTransportException) {
-            cleanupAndFail(getFailureMessage(localShrinkActionProperties.targetIndexName), e = e)
+            val unwrappedException = ExceptionsHelper.unwrapCause(e)
+            cleanupAndFail(GENERIC_FAILURE_MESSAGE, cause = e.message, e = unwrappedException as java.lang.Exception)
             return this
         } catch (e: Exception) {
             cleanupAndFail(GENERIC_FAILURE_MESSAGE, e.message, e)
