@@ -17,14 +17,15 @@ import org.opensearch.cluster.routing.allocation.DiskThresholdSettings
 import org.opensearch.common.settings.ClusterSettings
 import org.opensearch.common.settings.Settings
 import org.opensearch.common.unit.TimeValue
+import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
 import org.opensearch.indexmanagement.indexstatemanagement.action.ShrinkAction.Companion.LOCK_RESOURCE_NAME
 import org.opensearch.indexmanagement.indexstatemanagement.action.ShrinkAction.Companion.LOCK_RESOURCE_TYPE
 import org.opensearch.indexmanagement.indexstatemanagement.step.shrink.AttemptMoveShardsStep
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ShrinkActionProperties
-import org.opensearch.jobscheduler.spi.JobExecutionContext
 import org.opensearch.jobscheduler.spi.LockModel
+import org.opensearch.jobscheduler.spi.utils.LockService
 import java.lang.Exception
 import java.time.Instant
 
@@ -36,11 +37,11 @@ suspend fun issueUpdateSettingsRequest(client: Client, indexName: String, settin
 
 suspend fun releaseShrinkLock(
     shrinkActionProperties: ShrinkActionProperties,
-    jobExecutionContext: JobExecutionContext,
+    lockService: LockService,
     logger: Logger
 ) {
-    val lock: LockModel = getShrinkLockModel(shrinkActionProperties, jobExecutionContext)
-    val released: Boolean = jobExecutionContext.lockService.suspendUntil { release(lock, it) }
+    val lock: LockModel = getShrinkLockModel(shrinkActionProperties)
+    val released: Boolean = lockService.suspendUntil { release(lock, it) }
     if (!released) {
         logger.error("Failed to release Shrink action lock on node [${shrinkActionProperties.nodeName}]")
     }
@@ -48,11 +49,11 @@ suspend fun releaseShrinkLock(
 
 suspend fun deleteShrinkLock(
     shrinkActionProperties: ShrinkActionProperties,
-    jobExecutionContext: JobExecutionContext,
+    lockService: LockService,
     logger: Logger
 ) {
     val lockID = getShrinkLockID(shrinkActionProperties.nodeName)
-    val deleted: Boolean = jobExecutionContext.lockService.suspendUntil { deleteLock(lockID, it) }
+    val deleted: Boolean = lockService.suspendUntil { deleteLock(lockID, it) }
     if (!deleted) {
         logger.error("Failed to delete Shrink action lock on node [${shrinkActionProperties.nodeName}]")
     }
@@ -60,12 +61,12 @@ suspend fun deleteShrinkLock(
 
 suspend fun renewShrinkLock(
     shrinkActionProperties: ShrinkActionProperties,
-    jobExecutionContext: JobExecutionContext,
+    lockService: LockService,
     logger: Logger
 ): LockModel? {
-    val lock: LockModel = getShrinkLockModel(shrinkActionProperties, jobExecutionContext)
+    val lock: LockModel = getShrinkLockModel(shrinkActionProperties)
     return try {
-        jobExecutionContext.lockService.suspendUntil { renewLock(lock, it) }
+        lockService.suspendUntil { renewLock(lock, it) }
     } catch (e: Exception) {
         logger.error("Failed to renew Shrink action lock on node [${shrinkActionProperties.nodeName}]: $e")
         null
@@ -73,12 +74,11 @@ suspend fun renewShrinkLock(
 }
 
 fun getShrinkLockModel(
-    shrinkActionProperties: ShrinkActionProperties,
-    jobExecutionContext: JobExecutionContext
+    shrinkActionProperties: ShrinkActionProperties
 ): LockModel {
     return getShrinkLockModel(
         shrinkActionProperties.nodeName,
-        jobExecutionContext.jobIndexName,
+        INDEX_MANAGEMENT_INDEX,
         shrinkActionProperties.lockEpochSecond,
         shrinkActionProperties.lockPrimaryTerm,
         shrinkActionProperties.lockSeqNo,

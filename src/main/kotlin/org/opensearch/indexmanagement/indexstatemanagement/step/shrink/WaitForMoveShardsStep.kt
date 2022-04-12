@@ -48,7 +48,7 @@ class WaitForMoveShardsStep(private val action: ShrinkAction) : Step(name) {
             cleanupAndFail(METADATA_FAILURE_MESSAGE)
             return this
         }
-        val lock = renewShrinkLock(localShrinkActionProperties, context.jobContext, logger)
+        val lock = renewShrinkLock(localShrinkActionProperties, context.lockService, logger)
         if (lock == null) {
             logger.error("Shrink action failed to renew lock on node [${localShrinkActionProperties.nodeName}]")
             cleanupAndFail("Failed to renew lock on node [${localShrinkActionProperties.nodeName}]")
@@ -114,7 +114,7 @@ class WaitForMoveShardsStep(private val action: ShrinkAction) : Step(name) {
             logger.error("Shrink action failed while trying to clean up routing and readonly setting after a failure: $e")
         }
         try {
-            releaseShrinkLock(shrinkActionProperties!!, context!!.jobContext, logger)
+            releaseShrinkLock(shrinkActionProperties!!, context!!.lockService, logger)
         } catch (e: Exception) {
             logger.error("Shrink action failed while trying to release the node lock after a failure: $e")
         }

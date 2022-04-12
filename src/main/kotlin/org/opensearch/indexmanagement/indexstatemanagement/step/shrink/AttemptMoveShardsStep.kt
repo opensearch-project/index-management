@@ -24,6 +24,7 @@ import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.collect.Tuple
 import org.opensearch.common.settings.Settings
 import org.opensearch.index.shard.DocsStats
+import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
 import org.opensearch.indexmanagement.indexstatemanagement.action.ShrinkAction
 import org.opensearch.indexmanagement.indexstatemanagement.action.ShrinkAction.Companion.getSecurityFailureMessage
 import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexConfig
@@ -42,8 +43,8 @@ import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepContext
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepMetaData
 import org.opensearch.indices.InvalidIndexNameException
 import org.opensearch.jobscheduler.repackage.com.cronutils.utils.VisibleForTesting
-import org.opensearch.jobscheduler.spi.JobExecutionContext
 import org.opensearch.jobscheduler.spi.LockModel
+import org.opensearch.jobscheduler.spi.utils.LockService
 import org.opensearch.transport.RemoteTransportException
 import java.lang.RuntimeException
 import java.util.PriorityQueue
@@ -108,7 +109,7 @@ class AttemptMoveShardsStep(private val action: ShrinkAction) : Step(name) {
             // Get the job interval to use in determining the lock length
             val interval = getJobIntervalSeconds(context.metadata.indexUuid, client)
             // iterate through the nodes and try to acquire a lock on one
-            val lockToNodeName: Pair<LockModel, String>? = acquireLockFromNodeList(context.jobContext, suitableNodes, interval)
+            val lockToNodeName: Pair<LockModel, String>? = acquireLockFromNodeList(context.lockService, suitableNodes, interval)
             if (lockToNodeName == null) {
                 logger.info("$indexName could not find available node to shrink onto.")
                 info = mapOf("message" to NO_AVAILABLE_NODES_MESSAGE)
@@ -211,7 +212,7 @@ class AttemptMoveShardsStep(private val action: ShrinkAction) : Step(name) {
             .put(IndexMetadata.SETTING_BLOCKS_WRITE, true)
             .put(ROUTING_SETTING, node)
             .build()
-        val jobContext = stepContext.jobContext
+        val lockService = stepContext.lockService
         var response: AcknowledgedResponse? = null
         val isUpdateAcknowledged: Boolean
         try {
@@ -220,7 +221,7 @@ class AttemptMoveShardsStep(private val action: ShrinkAction) : Step(name) {
             isUpdateAcknowledged = response != null && response.isAcknowledged
             if (!isUpdateAcknowledged) {
                 fail(UPDATE_FAILED_MESSAGE)
-                val released: Boolean = jobContext.lockService.suspendUntil { release(lock, it) }
+                val released: Boolean = lockService.suspendUntil { release(lock, it) }
                 if (!released) {
                     logger.error("Failed to release Shrink action lock on node [$node]")
                 }
@@ -234,14 +235,14 @@ class AttemptMoveShardsStep(private val action: ShrinkAction) : Step(name) {
      * is successfully acquired and the name of the node it acquired the lock on in a pair.
      */
     private suspend fun acquireLockFromNodeList(
-        jobContext: JobExecutionContext,
+        lockService: LockService,
         suitableNodes: List<String>,
         jobIntervalSeconds: Long?
     ): Pair<LockModel, String>? {
         for (nodeName in suitableNodes) {
             val lockID = getShrinkLockID(nodeName)
-            val lock: LockModel? = jobContext.lockService.suspendUntil {
-                acquireLockWithId(jobContext.jobIndexName, getShrinkLockDuration(jobIntervalSeconds), lockID, it)
+            val lock: LockModel? = lockService.suspendUntil {
+                acquireLockWithId(INDEX_MANAGEMENT_INDEX, getShrinkLockDuration(jobIntervalSeconds), lockID, it)
             }
             if (lock != null) {
                 return lock to nodeName

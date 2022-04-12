@@ -30,7 +30,7 @@ import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ActionPrope
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepContext
 import org.opensearch.ingest.TestTemplateService.MockTemplateScript
-import org.opensearch.jobscheduler.spi.JobExecutionContext
+import org.opensearch.jobscheduler.spi.utils.LockService
 import org.opensearch.rest.RestStatus
 import org.opensearch.script.ScriptService
 import org.opensearch.script.TemplateScript
@@ -45,7 +45,7 @@ class AttemptSnapshotStepTests : OpenSearchTestCase() {
     private val settings: Settings = Settings.EMPTY
     private val snapshotAction = randomSnapshotActionConfig("repo", "snapshot-name")
     private val metadata = ManagedIndexMetaData("test", "indexUuid", "policy_id", null, null, null, null, null, null, null, ActionMetaData(AttemptSnapshotStep.name, 1, 0, false, 0, null, ActionProperties(snapshotName = "snapshot-name")), null, null, null)
-    private val jobContext: JobExecutionContext = mock()
+    private val lockService: LockService = mock()
 
     @Before
     fun settings() {
@@ -60,7 +60,7 @@ class AttemptSnapshotStepTests : OpenSearchTestCase() {
         whenever(response.status()).doReturn(RestStatus.ACCEPTED)
         runBlocking {
             val step = AttemptSnapshotStep(snapshotAction)
-            val context = StepContext(metadata, clusterService, client, null, null, scriptService, settings, jobContext)
+            val context = StepContext(metadata, clusterService, client, null, null, scriptService, settings, lockService)
             step.preExecute(logger, context).execute()
             val updatedManagedIndexMetaData = step.getUpdatedManagedIndexMetadata(metadata)
             assertEquals("Step status is not COMPLETED", Step.StepStatus.COMPLETED, updatedManagedIndexMetaData.stepMetaData?.stepStatus)
@@ -69,7 +69,7 @@ class AttemptSnapshotStepTests : OpenSearchTestCase() {
         whenever(response.status()).doReturn(RestStatus.OK)
         runBlocking {
             val step = AttemptSnapshotStep(snapshotAction)
-            val context = StepContext(metadata, clusterService, client, null, null, scriptService, settings, jobContext)
+            val context = StepContext(metadata, clusterService, client, null, null, scriptService, settings, lockService)
             step.preExecute(logger, context).execute()
             val updatedManagedIndexMetaData = step.getUpdatedManagedIndexMetadata(metadata)
             assertEquals("Step status is not COMPLETED", Step.StepStatus.COMPLETED, updatedManagedIndexMetaData.stepMetaData?.stepStatus)
@@ -78,7 +78,7 @@ class AttemptSnapshotStepTests : OpenSearchTestCase() {
         whenever(response.status()).doReturn(RestStatus.INTERNAL_SERVER_ERROR)
         runBlocking {
             val step = AttemptSnapshotStep(snapshotAction)
-            val context = StepContext(metadata, clusterService, client, null, null, scriptService, settings, jobContext)
+            val context = StepContext(metadata, clusterService, client, null, null, scriptService, settings, lockService)
             step.preExecute(logger, context).execute()
             val updatedManagedIndexMetaData = step.getUpdatedManagedIndexMetadata(metadata)
             assertEquals("Step status is not FAILED", Step.StepStatus.FAILED, updatedManagedIndexMetaData.stepMetaData?.stepStatus)
@@ -90,7 +90,7 @@ class AttemptSnapshotStepTests : OpenSearchTestCase() {
         val client = getClient(getAdminClient(getClusterAdminClient(null, exception)))
         runBlocking {
             val step = AttemptSnapshotStep(snapshotAction)
-            val context = StepContext(metadata, clusterService, client, null, null, scriptService, settings, jobContext)
+            val context = StepContext(metadata, clusterService, client, null, null, scriptService, settings, lockService)
             step.preExecute(logger, context).execute()
             val updatedManagedIndexMetaData = step.getUpdatedManagedIndexMetadata(metadata)
             assertEquals("Step status is not FAILED", Step.StepStatus.FAILED, updatedManagedIndexMetaData.stepMetaData?.stepStatus)
@@ -103,7 +103,7 @@ class AttemptSnapshotStepTests : OpenSearchTestCase() {
         val client = getClient(getAdminClient(getClusterAdminClient(null, exception)))
         runBlocking {
             val step = AttemptSnapshotStep(snapshotAction)
-            val context = StepContext(metadata, clusterService, client, null, null, scriptService, settings, jobContext)
+            val context = StepContext(metadata, clusterService, client, null, null, scriptService, settings, lockService)
             step.preExecute(logger, context).execute()
             val updatedManagedIndexMetaData = step.getUpdatedManagedIndexMetadata(metadata)
             assertEquals("Step status is not CONDITION_NOT_MET", Step.StepStatus.CONDITION_NOT_MET, updatedManagedIndexMetaData.stepMetaData?.stepStatus)
@@ -116,7 +116,7 @@ class AttemptSnapshotStepTests : OpenSearchTestCase() {
         val client = getClient(getAdminClient(getClusterAdminClient(null, exception)))
         runBlocking {
             val step = AttemptSnapshotStep(snapshotAction)
-            val context = StepContext(metadata, clusterService, client, null, null, scriptService, settings, jobContext)
+            val context = StepContext(metadata, clusterService, client, null, null, scriptService, settings, lockService)
             step.preExecute(logger, context).execute()
             val updatedManagedIndexMetaData = step.getUpdatedManagedIndexMetadata(metadata)
             assertEquals("Step status is not CONDITION_NOT_MET", Step.StepStatus.CONDITION_NOT_MET, updatedManagedIndexMetaData.stepMetaData?.stepStatus)
@@ -129,7 +129,7 @@ class AttemptSnapshotStepTests : OpenSearchTestCase() {
         val client = getClient(getAdminClient(getClusterAdminClient(null, exception)))
         runBlocking {
             val step = AttemptSnapshotStep(snapshotAction)
-            val context = StepContext(metadata, clusterService, client, null, null, scriptService, settings, jobContext)
+            val context = StepContext(metadata, clusterService, client, null, null, scriptService, settings, lockService)
             step.preExecute(logger, context).execute()
             val updatedManagedIndexMetaData = step.getUpdatedManagedIndexMetadata(metadata)
             assertEquals("Step status is not FAILED", Step.StepStatus.FAILED, updatedManagedIndexMetaData.stepMetaData?.stepStatus)

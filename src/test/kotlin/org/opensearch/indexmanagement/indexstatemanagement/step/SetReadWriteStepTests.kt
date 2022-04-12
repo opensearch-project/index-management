@@ -22,7 +22,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.step.readwrite.SetRea
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepContext
-import org.opensearch.jobscheduler.spi.JobExecutionContext
+import org.opensearch.jobscheduler.spi.utils.LockService
 import org.opensearch.script.ScriptService
 import org.opensearch.test.OpenSearchTestCase
 import org.opensearch.transport.RemoteTransportException
@@ -32,7 +32,7 @@ class SetReadWriteStepTests : OpenSearchTestCase() {
     private val clusterService: ClusterService = mock()
     private val scriptService: ScriptService = mock()
     private val settings: Settings = Settings.EMPTY
-    private val jobContext: JobExecutionContext = mock()
+    private val lockService: LockService = mock()
 
     fun `test read write step sets step status to failed when not acknowledged`() {
         val setReadWriteResponse = AcknowledgedResponse(false)
@@ -41,7 +41,7 @@ class SetReadWriteStepTests : OpenSearchTestCase() {
         runBlocking {
             val managedIndexMetaData = ManagedIndexMetaData("test", "indexUuid", "policy_id", null, null, null, null, null, null, null, null, null, null, null)
             val setReadWriteStep = SetReadWriteStep()
-            val context = StepContext(managedIndexMetaData, clusterService, client, null, null, scriptService, settings, jobContext)
+            val context = StepContext(managedIndexMetaData, clusterService, client, null, null, scriptService, settings, lockService)
             setReadWriteStep.preExecute(logger, context).execute()
             val updatedManagedIndexMetaData = setReadWriteStep.getUpdatedManagedIndexMetadata(managedIndexMetaData)
             assertEquals("Step status is not FAILED", Step.StepStatus.FAILED, updatedManagedIndexMetaData.stepMetaData?.stepStatus)
@@ -55,7 +55,7 @@ class SetReadWriteStepTests : OpenSearchTestCase() {
         runBlocking {
             val managedIndexMetaData = ManagedIndexMetaData("test", "indexUuid", "policy_id", null, null, null, null, null, null, null, null, null, null, null)
             val setReadWriteStep = SetReadWriteStep()
-            val context = StepContext(managedIndexMetaData, clusterService, client, null, null, scriptService, settings, jobContext)
+            val context = StepContext(managedIndexMetaData, clusterService, client, null, null, scriptService, settings, lockService)
             setReadWriteStep.preExecute(logger, context).execute()
             val updatedManagedIndexMetaData = setReadWriteStep.getUpdatedManagedIndexMetadata(managedIndexMetaData)
             assertEquals("Step status is not FAILED", Step.StepStatus.FAILED, updatedManagedIndexMetaData.stepMetaData?.stepStatus)
@@ -69,7 +69,7 @@ class SetReadWriteStepTests : OpenSearchTestCase() {
         runBlocking {
             val managedIndexMetaData = ManagedIndexMetaData("test", "indexUuid", "policy_id", null, null, null, null, null, null, null, null, null, null, null)
             val setReadWriteStep = SetReadWriteStep()
-            val context = StepContext(managedIndexMetaData, clusterService, client, null, null, scriptService, settings, jobContext)
+            val context = StepContext(managedIndexMetaData, clusterService, client, null, null, scriptService, settings, lockService)
             setReadWriteStep.preExecute(logger, context).execute()
             val updatedManagedIndexMetaData = setReadWriteStep.getUpdatedManagedIndexMetadata(managedIndexMetaData)
             assertEquals("Step status is not FAILED", Step.StepStatus.FAILED, updatedManagedIndexMetaData.stepMetaData?.stepStatus)

@@ -27,7 +27,7 @@ import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ActionMetaD
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ActionProperties
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepContext
-import org.opensearch.jobscheduler.spi.JobExecutionContext
+import org.opensearch.jobscheduler.spi.utils.LockService
 import org.opensearch.script.ScriptService
 import org.opensearch.snapshots.Snapshot
 import org.opensearch.snapshots.SnapshotId
@@ -39,7 +39,7 @@ class WaitForSnapshotStepTests : OpenSearchTestCase() {
     private val clusterService: ClusterService = mock()
     private val scriptService: ScriptService = mock()
     private val settings: Settings = Settings.EMPTY
-    private val jobContext: JobExecutionContext = mock()
+    private val lockService: LockService = mock()
     val snapshot = "snapshot-name"
 
     fun `test snapshot missing snapshot name in action properties`() {
@@ -50,7 +50,7 @@ class WaitForSnapshotStepTests : OpenSearchTestCase() {
             val snapshotAction = SnapshotAction("repo", snapshot, 0)
             val metadata = ManagedIndexMetaData("test", "indexUuid", "policy_id", null, null, null, null, null, null, null, ActionMetaData(WaitForSnapshotStep.name, 1, 0, false, 0, null, emptyActionProperties), null, null, null)
             val step = WaitForSnapshotStep(snapshotAction)
-            val context = StepContext(metadata, clusterService, client, null, null, scriptService, settings, jobContext)
+            val context = StepContext(metadata, clusterService, client, null, null, scriptService, settings, lockService)
             step.preExecute(logger, context).execute()
             val updatedManagedIndexMetaData = step.getUpdatedManagedIndexMetadata(metadata)
             assertEquals("Step status is not FAILED", Step.StepStatus.FAILED, updatedManagedIndexMetaData.stepMetaData?.stepStatus)
@@ -62,7 +62,7 @@ class WaitForSnapshotStepTests : OpenSearchTestCase() {
             val snapshotAction = SnapshotAction("repo", snapshot, 0)
             val metadata = ManagedIndexMetaData("test", "indexUuid", "policy_id", null, null, null, null, null, null, null, ActionMetaData(WaitForSnapshotStep.name, 1, 0, false, 0, null, nullActionProperties), null, null, null)
             val step = WaitForSnapshotStep(snapshotAction)
-            val context = StepContext(metadata, clusterService, client, null, null, scriptService, settings, jobContext)
+            val context = StepContext(metadata, clusterService, client, null, null, scriptService, settings, lockService)
             step.preExecute(logger, context).execute()
             val updatedManagedIndexMetaData = step.getUpdatedManagedIndexMetadata(metadata)
             assertEquals("Step status is not FAILED", Step.StepStatus.FAILED, updatedManagedIndexMetaData.stepMetaData?.stepStatus)
@@ -82,7 +82,7 @@ class WaitForSnapshotStepTests : OpenSearchTestCase() {
             val snapshotAction = SnapshotAction("repo", snapshot, 0)
             val metadata = ManagedIndexMetaData("test", "indexUuid", "policy_id", null, null, null, null, null, null, null, ActionMetaData(WaitForSnapshotStep.name, 1, 0, false, 0, null, ActionProperties(snapshotName = "snapshot-name")), null, null, null)
             val step = WaitForSnapshotStep(snapshotAction)
-            val context = StepContext(metadata, clusterService, client, null, null, scriptService, settings, jobContext)
+            val context = StepContext(metadata, clusterService, client, null, null, scriptService, settings, lockService)
             step.preExecute(logger, context).execute()
             val updatedManagedIndexMetaData = step.getUpdatedManagedIndexMetadata(metadata)
             assertEquals("Step status is not CONDITION_NOT_MET", Step.StepStatus.CONDITION_NOT_MET, updatedManagedIndexMetaData.stepMetaData?.stepStatus)
@@ -94,7 +94,7 @@ class WaitForSnapshotStepTests : OpenSearchTestCase() {
             val snapshotAction = SnapshotAction("repo", snapshot, 0)
             val metadata = ManagedIndexMetaData("test", "indexUuid", "policy_id", null, null, null, null, null, null, null, ActionMetaData(WaitForSnapshotStep.name, 1, 0, false, 0, null, ActionProperties(snapshotName = "snapshot-name")), null, null, null)
             val step = WaitForSnapshotStep(snapshotAction)
-            val context = StepContext(metadata, clusterService, client, null, null, scriptService, settings, jobContext)
+            val context = StepContext(metadata, clusterService, client, null, null, scriptService, settings, lockService)
             step.preExecute(logger, context).execute()
             val updatedManagedIndexMetaData = step.getUpdatedManagedIndexMetadata(metadata)
             assertEquals("Step status is not CONDITION_NOT_MET", Step.StepStatus.CONDITION_NOT_MET, updatedManagedIndexMetaData.stepMetaData?.stepStatus)
@@ -106,7 +106,7 @@ class WaitForSnapshotStepTests : OpenSearchTestCase() {
             val snapshotAction = SnapshotAction("repo", snapshot, 0)
             val metadata = ManagedIndexMetaData("test", "indexUuid", "policy_id", null, null, null, null, null, null, null, ActionMetaData(WaitForSnapshotStep.name, 1, 0, false, 0, null, ActionProperties(snapshotName = "snapshot-name")), null, null, null)
             val step = WaitForSnapshotStep(snapshotAction)
-            val context = StepContext(metadata, clusterService, client, null, null, scriptService, settings, jobContext)
+            val context = StepContext(metadata, clusterService, client, null, null, scriptService, settings, lockService)
             step.preExecute(logger, context).execute()
             val updatedManagedIndexMetaData = step.getUpdatedManagedIndexMetadata(metadata)
             assertEquals("Step status is not COMPLETED", Step.StepStatus.COMPLETED, updatedManagedIndexMetaData.stepMetaData?.stepStatus)
@@ -118,7 +118,7 @@ class WaitForSnapshotStepTests : OpenSearchTestCase() {
             val snapshotAction = SnapshotAction("repo", snapshot, 0)
             val metadata = ManagedIndexMetaData("test", "indexUuid", "policy_id", null, null, null, null, null, null, null, ActionMetaData(WaitForSnapshotStep.name, 1, 0, false, 0, null, ActionProperties(snapshotName = "snapshot-name")), null, null, null)
             val step = WaitForSnapshotStep(snapshotAction)
-            val context = StepContext(metadata, clusterService, client, null, null, scriptService, settings, jobContext)
+            val context = StepContext(metadata, clusterService, client, null, null, scriptService, settings, lockService)
             step.preExecute(logger, context).execute()
             val updatedManagedIndexMetaData = step.getUpdatedManagedIndexMetadata(metadata)
             assertEquals("Step status is not FAILED", Step.StepStatus.FAILED, updatedManagedIndexMetaData.stepMetaData?.stepStatus)
@@ -130,7 +130,7 @@ class WaitForSnapshotStepTests : OpenSearchTestCase() {
             val snapshotAction = SnapshotAction("repo", snapshot, 0)
             val metadata = ManagedIndexMetaData("test", "indexUuid", "policy_id", null, null, null, null, null, null, null, ActionMetaData(WaitForSnapshotStep.name, 1, 0, false, 0, null, ActionProperties(snapshotName = "snapshot-name")), null, null, null)
             val step = WaitForSnapshotStep(snapshotAction)
-            val context = StepContext(metadata, clusterService, client, null, null, scriptService, settings, jobContext)
+            val context = StepContext(metadata, clusterService, client, null, null, scriptService, settings, lockService)
             step.preExecute(logger, context).execute()
             val updatedManagedIndexMetaData = step.getUpdatedManagedIndexMetadata(metadata)
             assertEquals("Step status is not FAILED", Step.StepStatus.FAILED, updatedManagedIndexMetaData.stepMetaData?.stepStatus)
@@ -149,7 +149,7 @@ class WaitForSnapshotStepTests : OpenSearchTestCase() {
             val snapshotAction = SnapshotAction("repo", snapshot, 0)
             val metadata = ManagedIndexMetaData("test", "indexUuid", "policy_id", null, null, null, null, null, null, null, ActionMetaData(WaitForSnapshotStep.name, 1, 0, false, 0, null, ActionProperties(snapshotName = "snapshot-name")), null, null, null)
             val step = WaitForSnapshotStep(snapshotAction)
-            val context = StepContext(metadata, clusterService, client, null, null, scriptService, settings, jobContext)
+            val context = StepContext(metadata, clusterService, client, null, null, scriptService, settings, lockService)
             step.preExecute(logger, context).execute()
             val updatedManagedIndexMetaData = step.getUpdatedManagedIndexMetadata(metadata)
             assertEquals("Step status is not FAILED", Step.StepStatus.FAILED, updatedManagedIndexMetaData.stepMetaData?.stepStatus)
@@ -164,7 +164,7 @@ class WaitForSnapshotStepTests : OpenSearchTestCase() {
             val snapshotAction = SnapshotAction("repo", snapshot, 0)
             val metadata = ManagedIndexMetaData("test", "indexUuid", "policy_id", null, null, null, null, null, null, null, ActionMetaData(WaitForSnapshotStep.name, 1, 0, false, 0, null, ActionProperties(snapshotName = "snapshot-name")), null, null, null)
             val step = WaitForSnapshotStep(snapshotAction)
-            val context = StepContext(metadata, clusterService, client, null, null, scriptService, settings, jobContext)
+            val context = StepContext(metadata, clusterService, client, null, null, scriptService, settings, lockService)
             step.preExecute(logger, context).execute()
             val updatedManagedIndexMetaData = step.getUpdatedManagedIndexMetadata(metadata)
             assertEquals("Step status is not FAILED", Step.StepStatus.FAILED, updatedManagedIndexMetaData.stepMetaData?.stepStatus)
@@ -179,7 +179,7 @@ class WaitForSnapshotStepTests : OpenSearchTestCase() {
             val snapshotAction = SnapshotAction("repo", snapshot, 0)
             val metadata = ManagedIndexMetaData("test", "indexUuid", "policy_id", null, null, null, null, null, null, null, ActionMetaData(WaitForSnapshotStep.name, 1, 0, false, 0, null, ActionProperties(snapshotName = "snapshot-name")), null, null, null)
             val step = WaitForSnapshotStep(snapshotAction)
-            val context = StepContext(metadata, clusterService, client, null, null, scriptService, settings, jobContext)
+            val context = StepContext(metadata, clusterService, client, null, null, scriptService, settings, lockService)
             step.preExecute(logger, context).execute()
             val updatedManagedIndexMetaData = step.getUpdatedManagedIndexMetadata(metadata)
             assertEquals("Step status is not FAILED", Step.StepStatus.FAILED, updatedManagedIndexMetaData.stepMetaData?.stepStatus)
