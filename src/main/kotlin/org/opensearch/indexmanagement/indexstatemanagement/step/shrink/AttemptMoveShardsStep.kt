@@ -34,6 +34,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.util.getNodeFreeMemor
 import org.opensearch.indexmanagement.indexstatemanagement.util.getShrinkLockID
 import org.opensearch.indexmanagement.indexstatemanagement.util.isIndexGreen
 import org.opensearch.indexmanagement.indexstatemanagement.util.issueUpdateSettingsRequest
+import org.opensearch.indexmanagement.opensearchapi.convertToMap
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ActionProperties
@@ -45,6 +46,9 @@ import org.opensearch.indices.InvalidIndexNameException
 import org.opensearch.jobscheduler.repackage.com.cronutils.utils.VisibleForTesting
 import org.opensearch.jobscheduler.spi.LockModel
 import org.opensearch.jobscheduler.spi.utils.LockService
+import org.opensearch.script.Script
+import org.opensearch.script.ScriptService
+import org.opensearch.script.TemplateScript
 import org.opensearch.transport.RemoteTransportException
 import java.lang.RuntimeException
 import java.util.PriorityQueue
@@ -67,7 +71,9 @@ class AttemptMoveShardsStep(private val action: ShrinkAction) : Step(name) {
         val indexName = context.metadata.index
 
         try {
-            val shrinkTargetIndexName = indexName + (action.targetIndexSuffix ?: DEFAULT_TARGET_SUFFIX)
+            val shrinkTargetIndexName =
+                compileTemplate(action.targetIndexTemplate, context.metadata, indexName + DEFAULT_TARGET_SUFFIX, context.scriptService)
+
             if (targetIndexNameIsInvalid(context.clusterService, shrinkTargetIndexName)) return this
 
             if (!isIndexGreen(client, indexName)) {
@@ -149,6 +155,22 @@ class AttemptMoveShardsStep(private val action: ShrinkAction) : Step(name) {
         info = if (cause == null) mapOf("message" to message) else mapOf("message" to message, "cause" to cause)
         stepStatus = StepStatus.FAILED
         shrinkActionProperties = null
+    }
+
+    private fun compileTemplate(
+        template: Script?,
+        managedIndexMetaData: ManagedIndexMetaData,
+        defaultValue: String,
+        scriptService: ScriptService
+    ): String {
+        if (template == null) return defaultValue
+        val contextMap = managedIndexMetaData.convertToMap().filterKeys { key ->
+            key in ALLOWED_TEMPLATE_FIELDS
+        }
+        val compiledValue = scriptService.compile(template, TemplateScript.CONTEXT)
+            .newInstance(template.params + mapOf("ctx" to contextMap))
+            .execute()
+        return compiledValue.ifBlank { defaultValue }
     }
 
     private suspend fun getJobIntervalSeconds(indexUuid: String, client: Client): Long? {
@@ -411,5 +433,6 @@ class AttemptMoveShardsStep(private val action: ShrinkAction) : Step(name) {
         // If user sets maximum jitter, it could be 2x the job interval before the next step is executed.
         private fun getShrinkLockDuration(jobInterval: Long?) = jobInterval?.let { (it * JOB_INTERVAL_LOCK_MULTIPLIER) + LOCK_BUFFER_SECONDS }
             ?: DEFAULT_LOCK_INTERVAL
+        private val ALLOWED_TEMPLATE_FIELDS = setOf("index", "indexUuid")
     }
 }

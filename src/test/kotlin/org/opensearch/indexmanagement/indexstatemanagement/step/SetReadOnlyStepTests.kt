@@ -32,7 +32,7 @@ class SetReadOnlyStepTests : OpenSearchTestCase() {
     private val clusterService: ClusterService = mock()
     private val scriptService: ScriptService = mock()
     private val settings: Settings = Settings.EMPTY
-    private val lockService: LockService = mock()
+    private val lockService: LockService = LockService(mock(), clusterService)
 
     fun `test read only step sets step status to failed when not acknowledged`() {
         val setReadOnlyResponse = AcknowledgedResponse(false)

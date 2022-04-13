@@ -15,21 +15,22 @@ import org.opensearch.indexmanagement.indexstatemanagement.action.ShrinkAction.C
 import org.opensearch.indexmanagement.indexstatemanagement.action.ShrinkAction.Companion.MAX_SHARD_SIZE_FIELD
 import org.opensearch.indexmanagement.indexstatemanagement.action.ShrinkAction.Companion.NUM_NEW_SHARDS_FIELD
 import org.opensearch.indexmanagement.indexstatemanagement.action.ShrinkAction.Companion.PERCENTAGE_OF_SOURCE_SHARDS_FIELD
-import org.opensearch.indexmanagement.indexstatemanagement.action.ShrinkAction.Companion.TARGET_INDEX_SUFFIX_FIELD
+import org.opensearch.indexmanagement.indexstatemanagement.action.ShrinkAction.Companion.TARGET_INDEX_TEMPLATE_FIELD
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Action
 import org.opensearch.indexmanagement.spi.indexstatemanagement.ActionParser
+import org.opensearch.script.Script
 
 class ShrinkActionParser : ActionParser() {
     override fun fromStreamInput(sin: StreamInput): Action {
         val numNewShards = sin.readOptionalInt()
         val maxShardSize = sin.readOptionalWriteable(::ByteSizeValue)
         val percentageOfSourceShards = sin.readOptionalDouble()
-        val targetIndexSuffix = sin.readOptionalString()
+        val targetIndexTemplate = if (sin.readBoolean()) Script(sin) else null
         val aliases = if (sin.readBoolean()) sin.readList(::Alias) else null
         val forceUnsafe = sin.readOptionalBoolean()
         val index = sin.readInt()
 
-        return ShrinkAction(numNewShards, maxShardSize, percentageOfSourceShards, targetIndexSuffix, aliases, forceUnsafe, index)
+        return ShrinkAction(numNewShards, maxShardSize, percentageOfSourceShards, targetIndexTemplate, aliases, forceUnsafe, index)
     }
 
     @Suppress("NestedBlockDepth")
@@ -37,7 +38,7 @@ class ShrinkActionParser : ActionParser() {
         var numNewShards: Int? = null
         var maxShardSize: ByteSizeValue? = null
         var percentageOfSourceShards: Double? = null
-        var targetIndexSuffix: String? = null
+        var targetIndexTemplate: Script? = null
         var aliases: List<Alias>? = null
         var forceUnsafe: Boolean? = null
 
@@ -50,7 +51,7 @@ class ShrinkActionParser : ActionParser() {
                 NUM_NEW_SHARDS_FIELD -> numNewShards = xcp.intValue()
                 MAX_SHARD_SIZE_FIELD -> maxShardSize = ByteSizeValue.parseBytesSizeValue(xcp.text(), MAX_SHARD_SIZE_FIELD)
                 PERCENTAGE_OF_SOURCE_SHARDS_FIELD -> percentageOfSourceShards = xcp.doubleValue()
-                TARGET_INDEX_SUFFIX_FIELD -> targetIndexSuffix = xcp.text()
+                TARGET_INDEX_TEMPLATE_FIELD -> targetIndexTemplate = Script.parse(xcp, Script.DEFAULT_TEMPLATE_LANG)
                 ALIASES_FIELD -> {
                     if (xcp.currentToken() != XContentParser.Token.VALUE_NULL) {
                         aliases = mutableListOf()
@@ -69,7 +70,7 @@ class ShrinkActionParser : ActionParser() {
             }
         }
 
-        return ShrinkAction(numNewShards, maxShardSize, percentageOfSourceShards, targetIndexSuffix, aliases, forceUnsafe, index)
+        return ShrinkAction(numNewShards, maxShardSize, percentageOfSourceShards, targetIndexTemplate, aliases, forceUnsafe, index)
     }
 
     override fun getActionType(): String {

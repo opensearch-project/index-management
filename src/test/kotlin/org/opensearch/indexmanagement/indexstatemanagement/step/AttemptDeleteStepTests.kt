@@ -32,7 +32,7 @@ class AttemptDeleteStepTests : OpenSearchTestCase() {
     private val clusterService: ClusterService = mock()
     private val scriptService: ScriptService = mock()
     private val settings: Settings = Settings.EMPTY
-    private val lockService: LockService = mock()
+    private val lockService: LockService = LockService(mock(), clusterService)
 
     fun `test delete step sets step status to completed when successful`() {
         val acknowledgedResponse = AcknowledgedResponse(true)

@@ -441,8 +441,9 @@
                     "percentage_of_source_shards": {
                       "type": "double"
                     },
-                    "target_index_suffix": {
-                      "type": "text"
+                    "target_index_name_template": {
+                      "type": "object",
+                      "enabled": false
                     },
                     "aliases": {
                       "type": "object",

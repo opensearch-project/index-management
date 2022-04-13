@@ -18,11 +18,14 @@ import org.opensearch.indexmanagement.indexstatemanagement.step.shrink.WaitForMo
 import org.opensearch.indexmanagement.indexstatemanagement.step.shrink.WaitForShrinkStep
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
 import org.opensearch.indexmanagement.waitFor
+import org.opensearch.script.Script
+import org.opensearch.script.ScriptType
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 
 class ShrinkActionIT : IndexStateManagementRestTestCase() {
     private val testIndexName = javaClass.simpleName.lowercase()
+    private val testIndexSuffix = "_shrink_test"
     fun `test basic workflow number of shards`() {
         val logger = LogManager.getLogger(::ShrinkActionIT)
         val indexName = "${testIndexName}_index_1"
@@ -32,7 +35,7 @@ class ShrinkActionIT : IndexStateManagementRestTestCase() {
             numNewShards = 1,
             maxShardSize = null,
             percentageOfSourceShards = null,
-            targetIndexSuffix = "_shrink_test",
+            targetIndexTemplate = Script(ScriptType.INLINE, Script.DEFAULT_TEMPLATE_LANG, "{{ctx.index}}$testIndexSuffix", mapOf()),
             aliases = null,
             forceUnsafe = true,
             index = 0
@@ -64,7 +67,7 @@ class ShrinkActionIT : IndexStateManagementRestTestCase() {
         // Starts AttemptMoveShardsStep
         updateManagedIndexConfigStartTime(managedIndexConfig)
 
-        val targetIndexName = indexName + shrinkAction.targetIndexSuffix
+        val targetIndexName = indexName + testIndexSuffix
         waitFor(Instant.ofEpochSecond(60)) {
             assertEquals(targetIndexName, getExplainManagedIndexMetaData(indexName).actionMetaData!!.actionProperties!!.shrinkActionProperties!!.targetIndexName)
             assertEquals("true", getIndexBlocksWriteSetting(indexName))
@@ -120,7 +123,7 @@ class ShrinkActionIT : IndexStateManagementRestTestCase() {
             numNewShards = null,
             maxShardSize = testMaxShardSize,
             percentageOfSourceShards = null,
-            targetIndexSuffix = "_shrink_test",
+            targetIndexTemplate = Script(ScriptType.INLINE, Script.DEFAULT_TEMPLATE_LANG, "{{ctx.index}}$testIndexSuffix", mapOf()),
             aliases = null,
             forceUnsafe = true,
             index = 0
@@ -152,7 +155,7 @@ class ShrinkActionIT : IndexStateManagementRestTestCase() {
         // Starts AttemptMoveShardsStep
         updateManagedIndexConfigStartTime(managedIndexConfig)
 
-        val targetIndexName = indexName + shrinkAction.targetIndexSuffix
+        val targetIndexName = indexName + testIndexSuffix
         waitFor(Instant.ofEpochSecond(60)) {
             assertEquals(targetIndexName, getExplainManagedIndexMetaData(indexName).actionMetaData!!.actionProperties!!.shrinkActionProperties!!.targetIndexName)
             assertEquals("true", getIndexBlocksWriteSetting(indexName))
@@ -204,7 +207,7 @@ class ShrinkActionIT : IndexStateManagementRestTestCase() {
             numNewShards = null,
             maxShardSize = null,
             percentageOfSourceShards = 0.5,
-            targetIndexSuffix = "_shrink_test",
+            targetIndexTemplate = Script(ScriptType.INLINE, Script.DEFAULT_TEMPLATE_LANG, "{{ctx.index}}$testIndexSuffix", mapOf()),
             aliases = null,
             forceUnsafe = true,
             index = 0
@@ -235,7 +238,7 @@ class ShrinkActionIT : IndexStateManagementRestTestCase() {
         // Starts AttemptMoveShardsStep
         updateManagedIndexConfigStartTime(managedIndexConfig)
 
-        val targetIndexName = indexName + shrinkAction.targetIndexSuffix
+        val targetIndexName = indexName + testIndexSuffix
         waitFor(Instant.ofEpochSecond(60)) {
             assertEquals(targetIndexName, getExplainManagedIndexMetaData(indexName).actionMetaData!!.actionProperties!!.shrinkActionProperties!!.targetIndexName)
             assertEquals("true", getIndexBlocksWriteSetting(indexName))
@@ -292,7 +295,7 @@ class ShrinkActionIT : IndexStateManagementRestTestCase() {
                 numNewShards = null,
                 maxShardSize = null,
                 percentageOfSourceShards = 0.5,
-                targetIndexSuffix = "_shrink_test",
+                targetIndexTemplate = Script(ScriptType.INLINE, Script.DEFAULT_TEMPLATE_LANG, "{{ctx.index}}$testIndexSuffix", mapOf()),
                 aliases = null,
                 forceUnsafe = true,
                 index = 0
@@ -326,7 +329,7 @@ class ShrinkActionIT : IndexStateManagementRestTestCase() {
             waitFor(Instant.ofEpochSecond(60)) { assertEquals(policyID, getExplainManagedIndexMetaData(indexName).policyID) }
             // Starts AttemptMoveShardsStep
             updateManagedIndexConfigStartTime(managedIndexConfig)
-            val targetIndexName = indexName + shrinkAction.targetIndexSuffix
+            val targetIndexName = indexName + testIndexSuffix
             waitFor(Instant.ofEpochSecond(60)) {
                 assertEquals(
                     targetIndexName,
@@ -392,7 +395,7 @@ class ShrinkActionIT : IndexStateManagementRestTestCase() {
             numNewShards = null,
             maxShardSize = null,
             percentageOfSourceShards = 0.5,
-            targetIndexSuffix = "_shrink_test",
+            targetIndexTemplate = Script(ScriptType.INLINE, Script.DEFAULT_TEMPLATE_LANG, "{{ctx.index}}$testIndexSuffix", mapOf()),
             aliases = null,
             forceUnsafe = true,
             index = 0
@@ -444,7 +447,7 @@ class ShrinkActionIT : IndexStateManagementRestTestCase() {
         val testPolicy = """
         {"policy":{"description":"Default policy","default_state":"Shrink","states":[
         {"name":"Shrink","actions":[{"retry":{"count":2,"backoff":"constant","delay":"1s"},"shrink":
-        {"num_new_shards":1, "target_index_suffix":"_shrink_test", "force_unsafe": "true"}}],"transitions":[]}]}}
+        {"num_new_shards":1, "target_index_name_template":{"source": "{{ctx.index}}_shrink_test"}, "force_unsafe": "true"}}],"transitions":[]}]}}
         """.trimIndent()
         val logger = LogManager.getLogger(::ShrinkActionIT)
         val indexName = "${testIndexName}_retry"

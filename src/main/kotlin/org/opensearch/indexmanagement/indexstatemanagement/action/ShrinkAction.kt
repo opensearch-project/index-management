@@ -6,11 +6,11 @@
 package org.opensearch.indexmanagement.indexstatemanagement.action
 
 import org.opensearch.action.admin.indices.alias.Alias
-import org.opensearch.common.Strings
 import org.opensearch.common.io.stream.StreamOutput
 import org.opensearch.common.unit.ByteSizeValue
 import org.opensearch.common.xcontent.ToXContent
 import org.opensearch.common.xcontent.XContentBuilder
+import org.opensearch.indexmanagement.indexstatemanagement.action.NotificationAction.Companion.MUSTACHE
 import org.opensearch.indexmanagement.indexstatemanagement.step.shrink.AttemptMoveShardsStep
 import org.opensearch.indexmanagement.indexstatemanagement.step.shrink.AttemptShrinkStep
 import org.opensearch.indexmanagement.indexstatemanagement.step.shrink.WaitForMoveShardsStep
@@ -19,13 +19,14 @@ import org.opensearch.indexmanagement.opensearchapi.aliasesField
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Action
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepContext
+import org.opensearch.script.Script
 
 @Suppress("LongParameterList")
 class ShrinkAction(
     val numNewShards: Int?,
     val maxShardSize: ByteSizeValue?,
     val percentageOfSourceShards: Double?,
-    val targetIndexSuffix: String?,
+    val targetIndexTemplate: Script?,
     val aliases: List<Alias>?,
     val forceUnsafe: Boolean?,
     index: Int
@@ -45,10 +46,8 @@ class ShrinkAction(
         if (numNewShards != null) {
             require(numNewShards > 0) { "Shrink action numNewShards must be greater than 0." }
         }
-        if (targetIndexSuffix != null) {
-            require(Strings.validFileName(targetIndexSuffix)) {
-                "Target index suffix must not contain the following characters ${Strings.INVALID_FILENAME_CHARS}"
-            }
+        if (targetIndexTemplate != null) {
+            require(targetIndexTemplate.lang == MUSTACHE) { "Target index name template must be a mustache script" }
         }
     }
 
@@ -103,7 +102,7 @@ class ShrinkAction(
         if (numNewShards != null) builder.field(NUM_NEW_SHARDS_FIELD, numNewShards)
         if (maxShardSize != null) builder.field(MAX_SHARD_SIZE_FIELD, maxShardSize.stringRep)
         if (percentageOfSourceShards != null) builder.field(PERCENTAGE_OF_SOURCE_SHARDS_FIELD, percentageOfSourceShards)
-        if (targetIndexSuffix != null) builder.field(TARGET_INDEX_SUFFIX_FIELD, targetIndexSuffix)
+        if (targetIndexTemplate != null) builder.field(TARGET_INDEX_TEMPLATE_FIELD, targetIndexTemplate)
         if (aliases != null) { builder.aliasesField(aliases) }
         if (forceUnsafe != null) builder.field(FORCE_UNSAFE_FIELD, forceUnsafe)
         builder.endObject()
@@ -113,7 +112,8 @@ class ShrinkAction(
         out.writeOptionalInt(numNewShards)
         out.writeOptionalWriteable(maxShardSize)
         out.writeOptionalDouble(percentageOfSourceShards)
-        out.writeOptionalString(targetIndexSuffix)
+        out.writeBoolean(targetIndexTemplate != null)
+        targetIndexTemplate?.writeTo(out)
         if (aliases != null) {
             out.writeBoolean(true)
             out.writeList(aliases)
@@ -129,7 +129,7 @@ class ShrinkAction(
         const val NUM_NEW_SHARDS_FIELD = "num_new_shards"
         const val PERCENTAGE_OF_SOURCE_SHARDS_FIELD = "percentage_of_source_shards"
         const val MAX_SHARD_SIZE_FIELD = "max_shard_size"
-        const val TARGET_INDEX_SUFFIX_FIELD = "target_index_suffix"
+        const val TARGET_INDEX_TEMPLATE_FIELD = "target_index_name_template"
         const val ALIASES_FIELD = "aliases"
         const val FORCE_UNSAFE_FIELD = "force_unsafe"
         const val LOCK_RESOURCE_TYPE = "shrink"
