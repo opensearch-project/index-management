@@ -298,6 +298,7 @@ class ShrinkActionIT : IndexStateManagementRestTestCase() {
         }
     }
 
+    @Suppress("UNCHECKED_CAST")
     fun `test allocation block picks correct node`() {
         val logger = LogManager.getLogger(::ShrinkActionIT)
         val nodes = getNodes()
@@ -394,7 +395,9 @@ class ShrinkActionIT : IndexStateManagementRestTestCase() {
                     WaitForShrinkStep.SUCCESS_MESSAGE,
                     getExplainManagedIndexMetaData(indexName).info?.get("message")
                 )
-                assertEquals("Write block setting was not reset after successful shrink", "false", getIndexBlocksWriteSetting(indexName))
+                val indexSettings = getIndexSettings(indexName) as Map<String, Map<String, Map<String, Any?>>>
+                val writeBlock = indexSettings[indexName]!!["settings"]!![IndexMetadata.SETTING_BLOCKS_WRITE] as String?
+                assertNull("Write block setting was not reset after successful shrink", writeBlock)
             }
         }
     }
