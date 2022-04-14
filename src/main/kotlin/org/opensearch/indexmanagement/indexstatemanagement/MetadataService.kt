@@ -56,7 +56,8 @@ class MetadataService(
     private var failedToCleanIndices = mutableSetOf<Index>()
 
     private var counter = 0
-    private var runTimeCounter = 0
+    final var runTimeCounter = 1
+        private set
     private val maxRunTime = 10
 
     // used in coordinator sweep to cancel scheduled process
@@ -84,12 +85,18 @@ class MetadataService(
                 return
             }
 
-            if (runTimeCounter >= maxRunTime) {
+            if (!imIndices.indexManagementIndexExists()) {
+                logger.info("ISM config index not exist, so we cancel the metadata migration job.")
+                finishFlag = true; runningLock = false; runTimeCounter = 0
+                return
+            }
+
+            if (runTimeCounter > maxRunTime) {
                 updateStatusSetting(-1)
                 finishFlag = true; runningLock = false; runTimeCounter = 0
                 return
             }
-            logger.info("Doing metadata migration ${++runTimeCounter} time.")
+            logger.info("Doing metadata migration $runTimeCounter time.")
 
             val indicesMetadata = clusterService.state().metadata.indices
             var clusterStateManagedIndexMetadata = indicesMetadata.map {
@@ -117,16 +124,16 @@ class MetadataService(
             }
 
             if (clusterStateManagedIndexMetadata.isEmpty()) {
-                if (failedToCleanIndices.isNotEmpty()) {
-                    logger.info("Failed to clean indices: $failedToCleanIndices. Only clean cluster state metadata in this run.")
-                    cleanMetadatas(failedToCleanIndices.toList())
-                    finishFlag = false; runningLock = false
-                    return
-                }
                 if (counter++ > 2 && corruptManagedIndices.isEmpty()) {
                     logger.info("Move Metadata succeed, set finish flag to true. Indices failed to get indexed: $failedToIndexIndices")
                     updateStatusSetting(1)
                     finishFlag = true; runningLock = false; runTimeCounter = 0
+                    return
+                }
+                if (failedToCleanIndices.isNotEmpty()) {
+                    logger.info("Failed to clean indices: $failedToCleanIndices. Only clean cluster state metadata in this run.")
+                    cleanMetadatas(failedToCleanIndices.toList())
+                    finishFlag = false; runningLock = false
                     return
                 }
             } else {
@@ -160,6 +167,8 @@ class MetadataService(
             if (failedToCleanIndices.isNotEmpty()) {
                 logger.info("Failed to clean cluster metadata for: ${failedToCleanIndices.map { it.name }}")
             }
+
+            runTimeCounter++
         } finally {
             runningLock = false
         }
