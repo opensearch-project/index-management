@@ -21,7 +21,9 @@ data class ShrinkActionProperties(
     val lockPrimaryTerm: Long,
     val lockSeqNo: Long,
     val lockEpochSecond: Long,
-    val lockDurationSecond: Long
+    val lockDurationSecond: Long,
+    // Used to store the original index allocation and write block setting to reapply after shrink
+    val originalIndexSettings: Map<String, String>
 ) : Writeable, ToXContentFragment {
 
     override fun writeTo(out: StreamOutput) {
@@ -32,6 +34,7 @@ data class ShrinkActionProperties(
         out.writeLong(lockSeqNo)
         out.writeLong(lockEpochSecond)
         out.writeLong(lockDurationSecond)
+        out.writeMap(originalIndexSettings)
     }
 
     override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
@@ -42,6 +45,7 @@ data class ShrinkActionProperties(
         builder.field(ShrinkProperties.LOCK_PRIMARY_TERM.key, lockPrimaryTerm)
         builder.field(ShrinkProperties.LOCK_EPOCH_SECOND.key, lockEpochSecond)
         builder.field(ShrinkProperties.LOCK_DURATION_SECOND.key, lockDurationSecond)
+        builder.field(ShrinkProperties.ORIGINAL_INDEX_SETTINGS.key, originalIndexSettings)
         return builder
     }
 
@@ -56,8 +60,11 @@ data class ShrinkActionProperties(
             val lockSeqNo: Long = si.readLong()
             val lockEpochSecond: Long = si.readLong()
             val lockDurationSecond: Long = si.readLong()
+            val originalIndexSettings: Map<String, String> = si.readMap({ it.readString() }, { it.readString() })
 
-            return ShrinkActionProperties(nodeName, targetIndexName, targetNumShards, lockPrimaryTerm, lockSeqNo, lockEpochSecond, lockDurationSecond)
+            return ShrinkActionProperties(
+                nodeName, targetIndexName, targetNumShards, lockPrimaryTerm, lockSeqNo, lockEpochSecond, lockDurationSecond, originalIndexSettings
+            )
         }
 
         fun parse(xcp: XContentParser): ShrinkActionProperties {
@@ -68,6 +75,7 @@ data class ShrinkActionProperties(
             var lockSeqNo: Long? = null
             var lockEpochSecond: Long? = null
             var lockDurationSecond: Long? = null
+            var originalIndexSettings: Map<String, String>? = null
 
             XContentParserUtils.ensureExpectedToken(XContentParser.Token.START_OBJECT, xcp.currentToken(), xcp)
             while (xcp.nextToken() != XContentParser.Token.END_OBJECT) {
@@ -82,6 +90,7 @@ data class ShrinkActionProperties(
                     ShrinkProperties.LOCK_SEQ_NO.key -> lockSeqNo = xcp.longValue()
                     ShrinkProperties.LOCK_EPOCH_SECOND.key -> lockEpochSecond = xcp.longValue()
                     ShrinkProperties.LOCK_DURATION_SECOND.key -> lockDurationSecond = xcp.longValue()
+                    ShrinkProperties.ORIGINAL_INDEX_SETTINGS.key -> originalIndexSettings = xcp.mapStrings()
                 }
             }
 
@@ -92,7 +101,8 @@ data class ShrinkActionProperties(
                 requireNotNull(lockPrimaryTerm),
                 requireNotNull(lockSeqNo),
                 requireNotNull(lockEpochSecond),
-                requireNotNull(lockDurationSecond)
+                requireNotNull(lockDurationSecond),
+                requireNotNull(originalIndexSettings)
             )
         }
     }
@@ -104,6 +114,7 @@ data class ShrinkActionProperties(
         LOCK_SEQ_NO("lock_seq_no"),
         LOCK_PRIMARY_TERM("lock_primary_term"),
         LOCK_EPOCH_SECOND("lock_epoch_second"),
-        LOCK_DURATION_SECOND("lock_duration_second")
+        LOCK_DURATION_SECOND("lock_duration_second"),
+        ORIGINAL_INDEX_SETTINGS("original_index_settings")
     }
 }

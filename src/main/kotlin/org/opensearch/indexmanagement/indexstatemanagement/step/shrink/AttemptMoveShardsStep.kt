@@ -16,7 +16,7 @@ import org.opensearch.action.admin.indices.stats.IndicesStatsRequest
 import org.opensearch.action.admin.indices.stats.IndicesStatsResponse
 import org.opensearch.action.support.master.AcknowledgedResponse
 import org.opensearch.client.Client
-import org.opensearch.cluster.metadata.IndexMetadata
+import org.opensearch.cluster.metadata.IndexMetadata.SETTING_BLOCKS_WRITE
 import org.opensearch.cluster.metadata.MetadataCreateIndexService.validateIndexOrAliasName
 import org.opensearch.cluster.routing.allocation.command.MoveAllocationCommand
 import org.opensearch.cluster.routing.allocation.decider.Decision
@@ -109,6 +109,8 @@ class AttemptMoveShardsStep(private val action: ShrinkAction) : Step(name) {
 
             if (shouldFailTooManyDocuments(statsDocs, numTargetShards)) return this
 
+            val originalIndexSettings = getOriginalSettings(indexName, context.clusterService)
+
             // get the nodes with enough memory in increasing order of free space
             val suitableNodes = findSuitableNodes(context, statsResponse, indexSize)
 
@@ -130,7 +132,8 @@ class AttemptMoveShardsStep(private val action: ShrinkAction) : Step(name) {
                 lock.primaryTerm,
                 lock.seqNo,
                 lock.lockTime.epochSecond,
-                lock.lockDurationSeconds
+                lock.lockDurationSeconds,
+                originalIndexSettings
             )
 
             setToReadOnlyAndMoveIndexToNode(context, nodeName, lock)
@@ -155,6 +158,15 @@ class AttemptMoveShardsStep(private val action: ShrinkAction) : Step(name) {
         info = if (cause == null) mapOf("message" to message) else mapOf("message" to message, "cause" to cause)
         stepStatus = StepStatus.FAILED
         shrinkActionProperties = null
+    }
+
+    // Gets the routing and write block setting of the index and returns it in a map of setting name to setting
+    private fun getOriginalSettings(indexName: String, clusterService: ClusterService): Map<String, String> {
+        val indexSettings = clusterService.state().metadata.index(indexName).settings
+        val originalSettings = mutableMapOf<String, String>()
+        indexSettings.get(ROUTING_SETTING)?.let { it -> originalSettings.put(ROUTING_SETTING, it) }
+        indexSettings.get(SETTING_BLOCKS_WRITE)?.let { it -> originalSettings.put(SETTING_BLOCKS_WRITE, it) }
+        return originalSettings
     }
 
     private fun compileTemplate(
@@ -231,7 +243,7 @@ class AttemptMoveShardsStep(private val action: ShrinkAction) : Step(name) {
 
     private suspend fun setToReadOnlyAndMoveIndexToNode(stepContext: StepContext, node: String, lock: LockModel): Boolean {
         val updateSettings = Settings.builder()
-            .put(IndexMetadata.SETTING_BLOCKS_WRITE, true)
+            .put(SETTING_BLOCKS_WRITE, true)
             .put(ROUTING_SETTING, node)
             .build()
         val lockService = stepContext.lockService

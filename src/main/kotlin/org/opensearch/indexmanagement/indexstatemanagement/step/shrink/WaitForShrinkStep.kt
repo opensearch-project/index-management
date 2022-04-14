@@ -17,7 +17,7 @@ import org.opensearch.common.settings.Settings
 import org.opensearch.indexmanagement.indexstatemanagement.action.ShrinkAction
 import org.opensearch.indexmanagement.indexstatemanagement.action.ShrinkAction.Companion.getSecurityFailureMessage
 import org.opensearch.indexmanagement.indexstatemanagement.step.shrink.WaitForMoveShardsStep.Companion.getTimeoutFailure
-import org.opensearch.indexmanagement.indexstatemanagement.util.clearReadOnlyAndRouting
+import org.opensearch.indexmanagement.indexstatemanagement.util.resetReadOnlyAndRouting
 import org.opensearch.indexmanagement.indexstatemanagement.util.deleteShrinkLock
 import org.opensearch.indexmanagement.indexstatemanagement.util.getActionStartTime
 import org.opensearch.indexmanagement.indexstatemanagement.util.issueUpdateSettingsRequest
@@ -71,7 +71,7 @@ class WaitForShrinkStep(private val action: ShrinkAction) : Step(name) {
 
             // Clear source and target allocation, if either fails the step will be set to failed and the function will return false
             if (!clearAllocationSettings(context, targetIndex)) return this
-            if (!clearAllocationSettings(context, context.metadata.index)) return this
+            if (!resetReadOnlyAndRouting(context.metadata.index, context.client, localShrinkActionProperties.originalIndexSettings)) return this
 
             deleteShrinkLock(localShrinkActionProperties, context.lockService, logger)
             stepStatus = StepStatus.COMPLETED
@@ -99,7 +99,7 @@ class WaitForShrinkStep(private val action: ShrinkAction) : Step(name) {
         // Using a try/catch for each cleanup action as we should clean up as much as possible despite any failures
         // Non-null assertion !! is used to throw an exception on null which would just be caught and logged
         try {
-            clearReadOnlyAndRouting(context!!.metadata.index, context!!.client)
+            resetReadOnlyAndRouting(context!!.metadata.index, context!!.client, shrinkActionProperties!!.originalIndexSettings)
         } catch (e: Exception) {
             logger.error("Shrink action failed while trying to clean up routing and readonly setting after a failure: $e")
         }

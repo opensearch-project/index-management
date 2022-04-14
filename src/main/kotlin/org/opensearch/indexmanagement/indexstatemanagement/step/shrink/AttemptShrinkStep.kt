@@ -18,7 +18,7 @@ import org.opensearch.common.settings.Settings
 import org.opensearch.indexmanagement.indexstatemanagement.action.ShrinkAction
 import org.opensearch.indexmanagement.indexstatemanagement.action.ShrinkAction.Companion.getSecurityFailureMessage
 import org.opensearch.indexmanagement.indexstatemanagement.util.INDEX_NUMBER_OF_SHARDS
-import org.opensearch.indexmanagement.indexstatemanagement.util.clearReadOnlyAndRouting
+import org.opensearch.indexmanagement.indexstatemanagement.util.resetReadOnlyAndRouting
 import org.opensearch.indexmanagement.indexstatemanagement.util.getNodeFreeMemoryAfterShrink
 import org.opensearch.indexmanagement.indexstatemanagement.util.isIndexGreen
 import org.opensearch.indexmanagement.indexstatemanagement.util.releaseShrinkLock
@@ -92,7 +92,7 @@ class AttemptShrinkStep(private val action: ShrinkAction) : Step(name) {
         stepStatus = StepStatus.FAILED
         // Non-null assertion !! is used to throw an exception on null which would just be caught and logged
         try {
-            clearReadOnlyAndRouting(context!!.metadata.index, context!!.client)
+            resetReadOnlyAndRouting(context!!.metadata.index, context!!.client, shrinkActionProperties!!.originalIndexSettings)
         } catch (e: Exception) {
             logger.error("Shrink action failed while trying to clean up routing and readonly setting after a failure: $e")
         }

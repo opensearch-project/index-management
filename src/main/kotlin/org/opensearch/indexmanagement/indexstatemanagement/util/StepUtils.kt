@@ -117,7 +117,8 @@ fun getUpdatedShrinkActionProperties(shrinkActionProperties: ShrinkActionPropert
         lock.primaryTerm,
         lock.seqNo,
         lock.lockTime.epochSecond,
-        lock.lockDurationSeconds
+        lock.lockDurationSeconds,
+        shrinkActionProperties.originalIndexSettings
     )
 }
 
@@ -177,8 +178,10 @@ suspend fun isIndexGreen(
     return !response.isTimedOut
 }
 
-suspend fun clearReadOnlyAndRouting(index: String, client: Client): Boolean {
-    val allocationSettings = Settings.builder().putNull(AttemptMoveShardsStep.ROUTING_SETTING).putNull(IndexMetadata.SETTING_BLOCKS_WRITE).build()
+suspend fun resetReadOnlyAndRouting(index: String, client: Client, originalSettings: Map<String, String>): Boolean {
+    val allocationSettings = Settings.builder()
+        .put(AttemptMoveShardsStep.ROUTING_SETTING, originalSettings[AttemptMoveShardsStep.ROUTING_SETTING])
+        .put(IndexMetadata.SETTING_BLOCKS_WRITE, originalSettings[IndexMetadata.SETTING_BLOCKS_WRITE]).build()
     val response: AcknowledgedResponse = issueUpdateSettingsRequest(client, index, allocationSettings)
     if (!response.isAcknowledged) {
         return false
