@@ -19,15 +19,21 @@ buildscript {
         // 2.0.0-alpha1-SNAPSHOT -> 2.0.0.0-alpha1-SNAPSHOT
         version_tokens = opensearch_version.tokenize('-')
         opensearch_build = version_tokens[0] + '.0'
+        job_scheduler_no_snapshot = opensearch_build
         if (buildVersionQualifier) {
             opensearch_build += "-${buildVersionQualifier}"
+            job_scheduler_no_snapshot += "-${buildVersionQualifier}"
         }
         if (isSnapshot) {
             opensearch_build += "-SNAPSHOT"
         }
+        opensearch_no_snapshot = opensearch_version.replace("-SNAPSHOT","")
+        job_scheduler_resource_folder = "src/test/resources/job-scheduler"
         // notification_version = System.getProperty("notification.version", opensearch_build)
         common_utils_version = System.getProperty("common_utils.version", opensearch_build)
         job_scheduler_version = System.getProperty("job_scheduler_version.version", opensearch_build)
+        job_scheduler_build_download = 'https://ci.opensearch.org/ci/dbc/distribution-build-opensearch/' + opensearch_no_snapshot +
+                '/latest/linux/x64/builds/opensearch/plugins/opensearch-job-scheduler-' + job_scheduler_no_snapshot + '.zip'
         kotlin_version = System.getProperty("kotlin.version", "1.6.10")
     }
 
@@ -234,6 +240,17 @@ test {
     systemProperty 'tests.security.manager', 'false'
 }
 
+ext.getPluginResource = { download_to_folder, download_from_src ->
+    project.mkdir download_to_folder
+    ant.get(src: download_from_src,
+            dest: download_to_folder,
+            httpusecaches: false)
+    return fileTree(download_to_folder).getSingleFile()
+}
+
+// Download the job scheduler test dependency
+getPluginResource(job_scheduler_resource_folder, job_scheduler_build_download)
+
 File repo = file("$buildDir/testclusters/repo")
 def _numNodes = findProperty('numNodes') as Integer ?: 1
 testClusters.integTest {
@@ -254,7 +271,7 @@ testClusters.integTest {
     plugin(provider({
         new RegularFile() {
             @Override
-            File getAsFile() { fileTree("src/test/resources/job-scheduler").getSingleFile() }
+            File getAsFile() { fileTree(job_scheduler_resource_folder).getSingleFile() }
         }
     }))
 
@@ -347,6 +364,18 @@ String bwcVersion = "1.13.2.0"
 String bwcJobSchedulerVersion = "1.13.0.0"
 String baseName = "indexmanagementBwcCluster"
 String bwcFilePath = "src/test/resources/bwc/"
+String bwc_js_resource_location = bwcFilePath + "job-scheduler/" + bwcJobSchedulerVersion
+String bwc_im_resource_location = bwcFilePath + "indexmanagement/" + bwcVersion
+
+// Downloads the bwc job scheduler version
+String bwc_js_download_url = "https://github.com/opendistro-for-elasticsearch/job-scheduler/releases/download/v" +
+        bwcJobSchedulerVersion + "/job-scheduler-artifacts.zip"
+getPluginResource(bwc_js_resource_location, bwc_js_download_url)
+
+// Downloads the bwc index management version
+String bwc_im_download_url = "https://github.com/opendistro-for-elasticsearch/index-management/releases/download/v" +
+        bwcVersion + "/index-management-artifacts.zip"
+getPluginResource(bwc_im_resource_location, bwc_im_download_url)
 
 2.times {i ->
     testClusters {
@@ -360,7 +389,7 @@ String bwcFilePath = "src/test/resources/bwc/"
                     return new RegularFile() {
                         @Override
                         File getAsFile() {
-                            return fileTree(bwcFilePath + "job-scheduler/" + bwcJobSchedulerVersion).getSingleFile()
+                            return fileTree(bwc_js_resource_location).getSingleFile()
                         }
                     }
                 }
@@ -372,7 +401,7 @@ String bwcFilePath = "src/test/resources/bwc/"
                     return new RegularFile() {
                         @Override
                         File getAsFile() {
-                            return fileTree(bwcFilePath + "indexmanagement/" + bwcVersion).getSingleFile()
+                            return fileTree(bwc_im_resource_location).getSingleFile()
                         }
                     }
                 }
@@ -397,7 +426,7 @@ task prepareBwcTests {
                         return new RegularFile() {
                             @Override
                             File getAsFile() {
-                                return fileTree("src/test/resources/job-scheduler").getSingleFile()
+                                return fileTree(job_scheduler_resource_folder).getSingleFile()
                             }
                         }
                     }
@@ -545,7 +574,7 @@ testClusters.mixedCluster {
         node.plugin(provider({
             new RegularFile() {
                 @Override
-                File getAsFile() { fileTree("src/test/resources/job-scheduler").getSingleFile() }
+                File getAsFile() { fileTree(job_scheduler_resource_folder).getSingleFile() }
             }
         }))
 
