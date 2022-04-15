@@ -378,11 +378,15 @@ String bwcFilePath = "src/test/resources/bwc/"
 String bwc_js_resource_location = bwcFilePath + "job-scheduler/" + bwcJobSchedulerVersion
 String bwc_im_resource_location = bwcFilePath + "indexmanagement/" + bwcVersion
 
+// Downloads the bwc job scheduler version
 String bwc_js_download_url = "https://github.com/opendistro-for-elasticsearch/job-scheduler/releases/download/v" +
         bwcJobSchedulerVersion + "/job-scheduler-artifacts.zip"
+getPluginResource(bwc_js_resource_location, bwc_js_download_url)
 
+// Downloads the bwc index management version
 String bwc_im_download_url = "https://github.com/opendistro-for-elasticsearch/index-management/releases/download/v" +
         bwcVersion + "/index-management-artifacts.zip"
+getPluginResource(bwc_im_resource_location, bwc_im_download_url)
 
 2.times {i ->
     testClusters {
@@ -390,6 +394,29 @@ String bwc_im_download_url = "https://github.com/opendistro-for-elasticsearch/in
             testDistribution = "ARCHIVE"
             versions = ["7.10.2", opensearch_version]
             numberOfNodes = 3
+            plugin(provider(new Callable<RegularFile>(){
+                @Override
+                RegularFile call() throws Exception {
+                    return new RegularFile() {
+                        @Override
+                        File getAsFile() {
+                            return fileTree(bwc_js_resource_location).getSingleFile()
+                        }
+                    }
+                }
+            }))
+
+            plugin(provider(new Callable<RegularFile>(){
+                @Override
+                RegularFile call() throws Exception {
+                    return new RegularFile() {
+                        @Override
+                        File getAsFile() {
+                            return fileTree(bwc_im_resource_location).getSingleFile()
+                        }
+                    }
+                }
+            }))
             setting 'path.repo', "${buildDir}/cluster/shared/repo/${baseName}"
             setting 'http.content_type.required', 'true'
         }
@@ -404,32 +431,8 @@ List<Provider<RegularFile>> plugins = []
 task prepareBwcTests {
     dependsOn bundlePlugin
     doLast {
-        getPluginResource(bwc_js_resource_location, bwc_js_download_url)
-        getPluginResource(bwc_im_resource_location, bwc_im_download_url)
         getPluginResource(job_scheduler_resource_folder, job_scheduler_build_download)
         plugins = [
-                provider(new Callable<RegularFile>(){
-                    @Override
-                    RegularFile call() throws Exception {
-                        return new RegularFile() {
-                            @Override
-                            File getAsFile() {
-                                return fileTree(bwc_js_resource_location).getSingleFile()
-                            }
-                        }
-                    }
-                }),
-                provider(new Callable<RegularFile>(){
-                    @Override
-                    RegularFile call() throws Exception {
-                        return new RegularFile() {
-                            @Override
-                            File getAsFile() {
-                                return fileTree(bwc_im_resource_location).getSingleFile()
-                            }
-                        }
-                    }
-                }),
                 provider(new Callable<RegularFile>(){
                     @Override
                     RegularFile call() throws Exception {
