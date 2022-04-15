@@ -396,62 +396,7 @@ String bwc_im_download_url = "https://github.com/opendistro-for-elasticsearch/in
     }
 }
 
-List<Provider<RegularFile>> plugins = [
-        provider(new Callable<RegularFile>(){
-            @Override
-            RegularFile call() throws Exception {
-                return new RegularFile() {
-                    @Override
-                    File getAsFile() {
-                        if (new File("$project.rootDir/$bwc_js_resource_location").exists()) {
-                            project.delete(files("$project.rootDir/$bwc_js_resource_location"))
-                        }
-                        project.mkdir bwc_js_resource_location
-                        ant.get(src: bwc_js_download_url,
-                                dest: bwc_js_resource_location,
-                                httpusecaches: false)
-                        return fileTree(bwc_js_resource_location).getSingleFile()
-                    }
-                }
-            }
-        }),
-        provider(new Callable<RegularFile>(){
-            @Override
-            RegularFile call() throws Exception {
-                return new RegularFile() {
-                    @Override
-                    File getAsFile() {
-                        if (new File("$project.rootDir/$bwc_im_resource_location").exists()) {
-                            project.delete(files("$project.rootDir/$bwc_im_resource_location"))
-                        }
-                        project.mkdir bwc_im_resource_location
-                        ant.get(src: bwc_im_download_url,
-                                dest: bwc_im_resource_location,
-                                httpusecaches: false)
-                        return fileTree(bwc_im_resource_location).getSingleFile()
-                    }
-                }
-            }
-        }),
-        provider(new Callable<RegularFile>(){
-            @Override
-            RegularFile call() throws Exception {
-                return new RegularFile() {
-                    @Override
-                    File getAsFile() {
-                        if (new File("$project.rootDir/$job_scheduler_resource_folder").exists()) {
-                            project.delete(files("$project.rootDir/$job_scheduler_resource_folder"))
-                        }
-                        project.mkdir job_scheduler_resource_folder
-                        ant.get(src: job_scheduler_build_download,
-                                dest: job_scheduler_resource_folder,
-                                httpusecaches: false)
-                        return fileTree(job_scheduler_resource_folder).getSingleFile()
-                    }
-                }
-            }
-        })
-    ]
+List<Provider<RegularFile>> plugins = []
 
 
 // Ensure the artifact for the current project version is available to be used for the bwc tests
@@ -459,7 +404,32 @@ List<Provider<RegularFile>> plugins = [
 task prepareBwcTests {
     dependsOn bundlePlugin
     doLast {
+        getPluginResource(bwc_js_resource_location, bwc_js_download_url)
+        getPluginResource(bwc_im_resource_location, bwc_im_download_url)
+        getPluginResource(job_scheduler_resource_folder, job_scheduler_build_download)
         plugins = [
+                provider(new Callable<RegularFile>(){
+                    @Override
+                    RegularFile call() throws Exception {
+                        return new RegularFile() {
+                            @Override
+                            File getAsFile() {
+                                return fileTree(bwc_js_resource_location).getSingleFile()
+                            }
+                        }
+                    }
+                }),
+                provider(new Callable<RegularFile>(){
+                    @Override
+                    RegularFile call() throws Exception {
+                        return new RegularFile() {
+                            @Override
+                            File getAsFile() {
+                                return fileTree(bwc_im_resource_location).getSingleFile()
+                            }
+                        }
+                    }
+                }),
                 provider(new Callable<RegularFile>(){
                     @Override
                     RegularFile call() throws Exception {
@@ -569,6 +539,7 @@ task "${baseName}#fullRestartClusterTask"(type: StandaloneRestIntegTestTask) {
 
 // A bwc test suite which runs all the bwc tasks combined
 task bwcTestSuite(type: StandaloneRestIntegTestTask) {
+    project.logger.lifecycle('bwcrun')
     exclude '**/*Test*'
     exclude '**/*IT*'
     dependsOn tasks.named("${baseName}#mixedClusterTask")
