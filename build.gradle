@@ -266,10 +266,23 @@ testClusters.integTest {
             debugPort += 1
         }
     }
-    plugin(provider({
-        new RegularFile() {
-            @Override
-            File getAsFile() { fileTree(job_scheduler_resource_folder).getSingleFile() }
+
+    plugin(provider(new Callable<RegularFile>(){
+        @Override
+        RegularFile call() throws Exception {
+            return new RegularFile() {
+                @Override
+                File getAsFile() {
+                    if (new File("$project.rootDir/$job_scheduler_resource_folder").exists()) {
+                        project.delete(files("$project.rootDir/$job_scheduler_resource_folder"))
+                    }
+                    project.mkdir job_scheduler_resource_folder
+                    ant.get(src: job_scheduler_build_download,
+                            dest: job_scheduler_resource_folder,
+                            httpusecaches: false)
+                    return fileTree(job_scheduler_resource_folder).getSingleFile()
+                }
+            }
         }
     }))
 
@@ -295,8 +308,6 @@ integTest {
     // Tell the test JVM if the cluster JVM is running under a debugger so that tests can use longer timeouts for
     // requests. The 'doFirst' delays reading the debug setting on the cluster till execution time.
     doFirst {
-        // Download the job scheduler test dependency
-        getPluginResource(job_scheduler_resource_folder, job_scheduler_build_download)
         systemProperty 'cluster.debug', getDebug()
         // Set number of nodes system property to be used in tests
         systemProperty 'cluster.number_of_nodes', "${_numNodes}"
