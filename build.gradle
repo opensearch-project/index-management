@@ -384,6 +384,17 @@ String bwc_js_download_url = "https://github.com/opendistro-for-elasticsearch/jo
 String bwc_im_download_url = "https://github.com/opendistro-for-elasticsearch/index-management/releases/download/v" +
         bwcVersion + "/index-management-artifacts.zip"
 
+2.times {i ->
+    testClusters {
+        "${baseName}$i" {
+            testDistribution = "ARCHIVE"
+            versions = ["7.10.2", opensearch_version]
+            numberOfNodes = 3
+            setting 'path.repo', "${buildDir}/cluster/shared/repo/${baseName}"
+            setting 'http.content_type.required', 'true'
+        }
+    }
+}
 
 List<Provider<RegularFile>> plugins = [
         provider(new Callable<RegularFile>(){
@@ -441,18 +452,6 @@ List<Provider<RegularFile>> plugins = [
             }
         })
     ]
-
-2.times {i ->
-    testClusters {
-        "${baseName}$i" {
-            testDistribution = "ARCHIVE"
-            versions = ["7.10.2", opensearch_version]
-            numberOfNodes = 3
-            setting 'path.repo', "${buildDir}/cluster/shared/repo/${baseName}"
-            setting 'http.content_type.required', 'true'
-        }
-    }
-}
 
 
 // Ensure the artifact for the current project version is available to be used for the bwc tests
