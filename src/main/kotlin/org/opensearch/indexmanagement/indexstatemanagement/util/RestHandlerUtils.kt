@@ -39,7 +39,7 @@ const val TOTAL_MANAGED_INDICES = "total_managed_indices"
 
 const val ISM_TEMPLATE_FIELD = "policy.ism_template"
 const val MANAGED_INDEX_FIELD = "managed_index"
-const val MANAGED_INDEX_NAME_FIELD = "$MANAGED_INDEX_FIELD.name"
+const val MANAGED_INDEX_NAME_KEYWORD_FIELD = "$MANAGED_INDEX_FIELD.name.keyword"
 const val MANAGED_INDEX_INDEX_FIELD = "$MANAGED_INDEX_FIELD.index"
 const val MANAGED_INDEX_INDEX_UUID_FIELD = "$MANAGED_INDEX_FIELD.index_uuid"
 

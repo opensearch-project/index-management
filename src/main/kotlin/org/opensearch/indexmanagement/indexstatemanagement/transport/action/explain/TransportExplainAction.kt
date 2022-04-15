@@ -47,7 +47,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.transport.action.mana
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.managedIndex.ManagedIndexRequest
 import org.opensearch.indexmanagement.indexstatemanagement.util.DEFAULT_INDEX_TYPE
 import org.opensearch.indexmanagement.indexstatemanagement.util.MANAGED_INDEX_INDEX_UUID_FIELD
-import org.opensearch.indexmanagement.indexstatemanagement.util.MANAGED_INDEX_NAME_FIELD
+import org.opensearch.indexmanagement.indexstatemanagement.util.MANAGED_INDEX_NAME_KEYWORD_FIELD
 import org.opensearch.indexmanagement.indexstatemanagement.util.MetadataCheck
 import org.opensearch.indexmanagement.indexstatemanagement.util.checkMetadata
 import org.opensearch.indexmanagement.indexstatemanagement.util.managedIndexMetadataID
@@ -158,7 +158,7 @@ class TransportExplainAction @Inject constructor(
                 .must(
                     QueryBuilders
                         .queryStringQuery(params.queryString)
-                        .defaultField(MANAGED_INDEX_NAME_FIELD)
+                        .defaultField(MANAGED_INDEX_NAME_KEYWORD_FIELD)
                         .defaultOperator(Operator.AND)
                 ).filter(QueryBuilders.termsQuery(MANAGED_INDEX_INDEX_UUID_FIELD, indexUUIDs))
 
