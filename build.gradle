@@ -248,8 +248,6 @@ ext.getPluginResource = { download_to_folder, download_from_src ->
     return fileTree(download_to_folder).getSingleFile()
 }
 
-// Download the job scheduler test dependency
-getPluginResource(job_scheduler_resource_folder, job_scheduler_build_download)
 
 File repo = file("$buildDir/testclusters/repo")
 def _numNodes = findProperty('numNodes') as Integer ?: 1
@@ -268,10 +266,23 @@ testClusters.integTest {
             debugPort += 1
         }
     }
-    plugin(provider({
-        new RegularFile() {
-            @Override
-            File getAsFile() { fileTree(job_scheduler_resource_folder).getSingleFile() }
+
+    plugin(provider(new Callable<RegularFile>(){
+        @Override
+        RegularFile call() throws Exception {
+            return new RegularFile() {
+                @Override
+                File getAsFile() {
+                    if (new File("$project.rootDir/$job_scheduler_resource_folder").exists()) {
+                        project.delete(files("$project.rootDir/$job_scheduler_resource_folder"))
+                    }
+                    project.mkdir job_scheduler_resource_folder
+                    ant.get(src: job_scheduler_build_download,
+                            dest: job_scheduler_resource_folder,
+                            httpusecaches: false)
+                    return fileTree(job_scheduler_resource_folder).getSingleFile()
+                }
+            }
         }
     }))
 
@@ -419,6 +430,8 @@ List<Provider<RegularFile>> plugins = []
 task prepareBwcTests {
     dependsOn bundlePlugin
     doLast {
+        // Download the job scheduler test dependency
+        getPluginResource(job_scheduler_resource_folder, job_scheduler_build_download)
         plugins = [
                 provider(new Callable<RegularFile>(){
                     @Override
