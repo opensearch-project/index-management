@@ -448,29 +448,6 @@ List<Provider<RegularFile>> plugins = [
             testDistribution = "ARCHIVE"
             versions = ["7.10.2", opensearch_version]
             numberOfNodes = 3
-            plugin(provider(new Callable<RegularFile>(){
-                @Override
-                RegularFile call() throws Exception {
-                    return new RegularFile() {
-                        @Override
-                        File getAsFile() {
-                            return fileTree(bwc_js_resource_location).getSingleFile()
-                        }
-                    }
-                }
-            }))
-
-            plugin(provider(new Callable<RegularFile>(){
-                @Override
-                RegularFile call() throws Exception {
-                    return new RegularFile() {
-                        @Override
-                        File getAsFile() {
-                            return fileTree(bwc_im_resource_location).getSingleFile()
-                        }
-                    }
-                }
-            }))
             setting 'path.repo', "${buildDir}/cluster/shared/repo/${baseName}"
             setting 'http.content_type.required', 'true'
         }
