@@ -378,15 +378,69 @@ String bwcFilePath = "src/test/resources/bwc/"
 String bwc_js_resource_location = bwcFilePath + "job-scheduler/" + bwcJobSchedulerVersion
 String bwc_im_resource_location = bwcFilePath + "indexmanagement/" + bwcVersion
 
-// Downloads the bwc job scheduler version
 String bwc_js_download_url = "https://github.com/opendistro-for-elasticsearch/job-scheduler/releases/download/v" +
         bwcJobSchedulerVersion + "/job-scheduler-artifacts.zip"
-getPluginResource(bwc_js_resource_location, bwc_js_download_url)
 
-// Downloads the bwc index management version
 String bwc_im_download_url = "https://github.com/opendistro-for-elasticsearch/index-management/releases/download/v" +
         bwcVersion + "/index-management-artifacts.zip"
-getPluginResource(bwc_im_resource_location, bwc_im_download_url)
+
+
+List<Provider<RegularFile>> plugins = [
+        provider(new Callable<RegularFile>(){
+            @Override
+            RegularFile call() throws Exception {
+                return new RegularFile() {
+                    @Override
+                    File getAsFile() {
+                        if (new File("$project.rootDir/$bwc_js_resource_location").exists()) {
+                            project.delete(files("$project.rootDir/$bwc_js_resource_location"))
+                        }
+                        project.mkdir bwc_js_resource_location
+                        ant.get(src: bwc_js_download_url,
+                                dest: bwc_js_resource_location,
+                                httpusecaches: false)
+                        return fileTree(bwc_js_resource_location).getSingleFile()
+                    }
+                }
+            }
+        }),
+        provider(new Callable<RegularFile>(){
+            @Override
+            RegularFile call() throws Exception {
+                return new RegularFile() {
+                    @Override
+                    File getAsFile() {
+                        if (new File("$project.rootDir/$bwc_im_resource_location").exists()) {
+                            project.delete(files("$project.rootDir/$bwc_im_resource_location"))
+                        }
+                        project.mkdir bwc_im_resource_location
+                        ant.get(src: bwc_im_download_url,
+                                dest: bwc_im_resource_location,
+                                httpusecaches: false)
+                        return fileTree(bwc_im_resource_location).getSingleFile()
+                    }
+                }
+            }
+        }),
+        provider(new Callable<RegularFile>(){
+            @Override
+            RegularFile call() throws Exception {
+                return new RegularFile() {
+                    @Override
+                    File getAsFile() {
+                        if (new File("$project.rootDir/$job_scheduler_resource_folder").exists()) {
+                            project.delete(files("$project.rootDir/$job_scheduler_resource_folder"))
+                        }
+                        project.mkdir job_scheduler_resource_folder
+                        ant.get(src: job_scheduler_build_download,
+                                dest: job_scheduler_resource_folder,
+                                httpusecaches: false)
+                        return fileTree(job_scheduler_resource_folder).getSingleFile()
+                    }
+                }
+            }
+        })
+    ]
 
 2.times {i ->
     testClusters {
@@ -423,7 +477,6 @@ getPluginResource(bwc_im_resource_location, bwc_im_download_url)
     }
 }
 
-List<Provider<RegularFile>> plugins = []
 
 // Ensure the artifact for the current project version is available to be used for the bwc tests
 
