@@ -430,6 +430,7 @@ List<Provider<RegularFile>> plugins = []
 task prepareBwcTests {
     dependsOn bundlePlugin
     doLast {
+        // Download the job scheduler test dependency
         getPluginResource(job_scheduler_resource_folder, job_scheduler_build_download)
         plugins = [
                 provider(new Callable<RegularFile>(){
