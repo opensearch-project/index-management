@@ -248,8 +248,6 @@ ext.getPluginResource = { download_to_folder, download_from_src ->
     return fileTree(download_to_folder).getSingleFile()
 }
 
-// Download the job scheduler test dependency
-getPluginResource(job_scheduler_resource_folder, job_scheduler_build_download)
 
 File repo = file("$buildDir/testclusters/repo")
 def _numNodes = findProperty('numNodes') as Integer ?: 1
@@ -297,6 +295,8 @@ integTest {
     // Tell the test JVM if the cluster JVM is running under a debugger so that tests can use longer timeouts for
     // requests. The 'doFirst' delays reading the debug setting on the cluster till execution time.
     doFirst {
+        // Download the job scheduler test dependency
+        getPluginResource(job_scheduler_resource_folder, job_scheduler_build_download)
         systemProperty 'cluster.debug', getDebug()
         // Set number of nodes system property to be used in tests
         systemProperty 'cluster.number_of_nodes', "${_numNodes}"
