@@ -6,9 +6,11 @@
 package org.opensearch.indexmanagement.indexstatemanagement.action
 
 import org.apache.logging.log4j.LogManager
+import org.opensearch.action.admin.indices.alias.Alias
 import org.opensearch.cluster.metadata.IndexMetadata
 import org.opensearch.common.settings.Settings
 import org.opensearch.common.unit.ByteSizeValue
+import org.opensearch.index.query.QueryBuilders
 import org.opensearch.indexmanagement.indexstatemanagement.IndexStateManagementRestTestCase
 import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
 import org.opensearch.indexmanagement.indexstatemanagement.model.State
@@ -37,7 +39,7 @@ class ShrinkActionIT : IndexStateManagementRestTestCase() {
             maxShardSize = null,
             percentageOfSourceShards = null,
             targetIndexTemplate = Script(ScriptType.INLINE, Script.DEFAULT_TEMPLATE_LANG, "{{ctx.index}}$testIndexSuffix", mapOf()),
-            aliases = null,
+            aliases = listOf(Alias("test-alias1"), Alias("test-alias2").filter(QueryBuilders.termQuery("foo", "bar")).writeIndex(true)),
             forceUnsafe = true,
             index = 0
         )
@@ -116,6 +118,8 @@ class ShrinkActionIT : IndexStateManagementRestTestCase() {
                 getExplainManagedIndexMetaData(indexName).info?.get("message")
             )
             assertEquals("Write block setting was not reset after successful shrink", "true", getIndexBlocksWriteSetting(indexName))
+            val aliases = getAlias(targetIndexName, "")
+            assertTrue("Aliases were not added to shrunken index", aliases.containsKey("test-alias1") && aliases.containsKey("test-alias2"))
         }
     }
 
@@ -130,7 +134,7 @@ class ShrinkActionIT : IndexStateManagementRestTestCase() {
             maxShardSize = testMaxShardSize,
             percentageOfSourceShards = null,
             targetIndexTemplate = Script(ScriptType.INLINE, Script.DEFAULT_TEMPLATE_LANG, "{{ctx.index}}$testIndexSuffix", mapOf()),
-            aliases = null,
+            aliases = listOf(Alias("max-shard-alias")),
             forceUnsafe = true,
             index = 0
         )
@@ -206,6 +210,8 @@ class ShrinkActionIT : IndexStateManagementRestTestCase() {
             val indexSettings = getIndexSettings(indexName) as Map<String, Map<String, Map<String, Any?>>>
             val writeBlock = indexSettings[indexName]!!["settings"]!![IndexMetadata.SETTING_BLOCKS_WRITE] as String?
             assertNull("Write block setting was not reset after successful shrink", writeBlock)
+            val aliases = getAlias(targetIndexName, "")
+            assertTrue("Alias was not added to shrunken index", aliases.containsKey("max-shard-alias"))
         }
     }
 

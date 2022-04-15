@@ -54,14 +54,12 @@ class ShrinkActionParser : ActionParser() {
                 TARGET_INDEX_TEMPLATE_FIELD -> targetIndexTemplate = Script.parse(xcp, Script.DEFAULT_TEMPLATE_LANG)
                 ALIASES_FIELD -> {
                     if (xcp.currentToken() != XContentParser.Token.VALUE_NULL) {
+                        ensureExpectedToken(XContentParser.Token.START_ARRAY, xcp.currentToken(), xcp)
                         aliases = mutableListOf()
-                        when (xcp.currentToken()) {
-                            XContentParser.Token.START_OBJECT -> {
-                                while (xcp.nextToken() != XContentParser.Token.END_OBJECT) {
-                                    aliases.add(Alias.fromXContent(xcp))
-                                }
-                            }
-                            else -> ensureExpectedToken(XContentParser.Token.START_ARRAY, xcp.currentToken(), xcp)
+                        while (xcp.nextToken() != XContentParser.Token.END_ARRAY) {
+                            ensureExpectedToken(XContentParser.Token.FIELD_NAME, xcp.nextToken(), xcp)
+                            aliases.add(Alias.fromXContent(xcp))
+                            ensureExpectedToken(XContentParser.Token.END_OBJECT, xcp.nextToken(), xcp)
                         }
                     }
                 }

@@ -83,9 +83,13 @@ fun XContentParser.instant(): Instant? {
 }
 
 fun XContentBuilder.aliasesField(aliases: List<Alias>): XContentBuilder {
-    val builder = this.startObject(ShrinkAction.ALIASES_FIELD)
-    aliases.forEach { it.toXContent(builder, ToXContent.EMPTY_PARAMS) }
-    return builder.endObject()
+    val builder = this.startArray(ShrinkAction.ALIASES_FIELD)
+    aliases.forEach {
+        builder.startObject()
+        it.toXContent(builder, ToXContent.EMPTY_PARAMS)
+        builder.endObject()
+    }
+    return builder.endArray()
 }
 
 fun XContentBuilder.optionalTimeField(name: String, instant: Instant?): XContentBuilder {
