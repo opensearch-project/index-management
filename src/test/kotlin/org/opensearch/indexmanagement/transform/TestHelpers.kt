@@ -5,12 +5,15 @@
 
 package org.opensearch.indexmanagement.transform
 
+import org.opensearch.cluster.metadata.IndexMetadata
 import org.opensearch.common.io.stream.BytesStreamOutput
 import org.opensearch.common.io.stream.NamedWriteableAwareStreamInput
 import org.opensearch.common.io.stream.NamedWriteableRegistry
 import org.opensearch.common.settings.Settings
 import org.opensearch.common.xcontent.ToXContent
 import org.opensearch.common.xcontent.XContentFactory
+import org.opensearch.index.Index
+import org.opensearch.index.shard.ShardId
 import org.opensearch.indexmanagement.common.model.dimension.Dimension
 import org.opensearch.indexmanagement.opensearchapi.string
 import org.opensearch.indexmanagement.randomInstant
@@ -18,6 +21,7 @@ import org.opensearch.indexmanagement.randomSchedule
 import org.opensearch.indexmanagement.randomUser
 import org.opensearch.indexmanagement.rollup.randomAfterKey
 import org.opensearch.indexmanagement.rollup.randomDimension
+import org.opensearch.indexmanagement.transform.model.ContinuousTransformStats
 import org.opensearch.indexmanagement.transform.model.ExplainTransform
 import org.opensearch.indexmanagement.transform.model.Transform
 import org.opensearch.indexmanagement.transform.model.TransformMetadata
@@ -68,6 +72,7 @@ fun randomAggregationFactories(): AggregatorFactories.Builder {
 
 fun randomTransform(): Transform {
     val enabled = OpenSearchRestTestCase.randomBoolean()
+    val isContinuous = OpenSearchRestTestCase.randomBoolean()
     return Transform(
         id = OpenSearchRestTestCase.randomAlphaOfLength(10),
         seqNo = OpenSearchRestTestCase.randomNonNegativeLong(),
@@ -82,15 +87,17 @@ fun randomTransform(): Transform {
         sourceIndex = OpenSearchRestTestCase.randomAlphaOfLength(10).toLowerCase(Locale.ROOT),
         targetIndex = OpenSearchRestTestCase.randomAlphaOfLength(10).toLowerCase(Locale.ROOT),
         roles = OpenSearchRestTestCase.randomList(10) { OpenSearchRestTestCase.randomAlphaOfLength(10) },
-        pageSize = OpenSearchRestTestCase.randomIntBetween(1, 10000),
+        pageSize = if (isContinuous) OpenSearchRestTestCase.randomIntBetween(1, 1000) else OpenSearchRestTestCase.randomIntBetween(1, 10000),
         groups = randomGroups(),
         aggregations = randomAggregationFactories(),
+        continuous = isContinuous,
         user = randomUser()
     )
 }
 
 fun randomTransformMetadata(): TransformMetadata {
     val status = randomTransformMetadataStatus()
+    val isContinuous = OpenSearchRestTestCase.randomBoolean()
     return TransformMetadata(
         id = OpenSearchRestTestCase.randomAlphaOfLength(10),
         seqNo = OpenSearchRestTestCase.randomNonNegativeLong(),
@@ -100,7 +107,9 @@ fun randomTransformMetadata(): TransformMetadata {
         lastUpdatedAt = randomInstant(),
         status = status,
         failureReason = if (status == TransformMetadata.Status.FAILED) OpenSearchRestTestCase.randomAlphaOfLength(10) else null,
-        stats = randomTransformStats()
+        stats = randomTransformStats(),
+        shardIDToGlobalCheckpoint = if (isContinuous) randomShardIDToGlobalCheckpoint() else null,
+        continuousStats = if (isContinuous) randomContinuousStats() else null
     )
 }
 
@@ -112,6 +121,33 @@ fun randomTransformStats(): TransformStats {
         indexTimeInMillis = OpenSearchRestTestCase.randomNonNegativeLong(),
         searchTimeInMillis = OpenSearchRestTestCase.randomNonNegativeLong()
     )
+}
+
+fun randomShardIDToGlobalCheckpoint(): Map<ShardId, Long> {
+    val numIndices = OpenSearchRestTestCase.randomIntBetween(1, 10)
+    val randomIndices = (1..numIndices).map { randomShardID() }
+    return randomIndices.associateWith { OpenSearchRestTestCase.randomNonNegativeLong() }
+}
+
+fun randomShardID(): ShardId {
+    val indexName: String = OpenSearchRestTestCase.randomAlphaOfLength(10).toLowerCase(Locale.ROOT)
+    // We lose the index uuid in an XContent round trip, but we don't use it anyways
+    val testIndex = Index(indexName, IndexMetadata.INDEX_UUID_NA_VALUE)
+    val shardNumber: Int = OpenSearchRestTestCase.randomIntBetween(0, 100)
+    return ShardId(testIndex, shardNumber)
+}
+
+fun randomContinuousStats(): ContinuousTransformStats {
+    return ContinuousTransformStats(
+        lastTimestamp = randomInstant(),
+        documentsBehind = randomDocumentsBehind()
+    )
+}
+
+fun randomDocumentsBehind(): Map<String, Long> {
+    val numIndices = OpenSearchRestTestCase.randomIntBetween(1, 10)
+    val randomIndices = (1..numIndices).map { OpenSearchRestTestCase.randomAlphaOfLength(10).toLowerCase(Locale.ROOT) }
+    return randomIndices.associateWith { OpenSearchRestTestCase.randomNonNegativeLong() }
 }
 
 fun randomTransformMetadataStatus(): TransformMetadata.Status {
@@ -130,6 +166,6 @@ fun TransformMetadata.toJsonString(params: ToXContent.Params = ToXContent.EMPTY_
 
 // Builds the required stream input for transforms by wrapping the stream input with required NamedWriteableRegistry.
 fun buildStreamInputForTransforms(out: BytesStreamOutput): NamedWriteableAwareStreamInput {
-    val namedWriteableRegistry = NamedWriteableRegistry(SearchModule(Settings.EMPTY, false, emptyList()).namedWriteables)
+    val namedWriteableRegistry = NamedWriteableRegistry(SearchModule(Settings.EMPTY, emptyList()).namedWriteables)
     return NamedWriteableAwareStreamInput(out.bytes().streamInput(), namedWriteableRegistry)
 }

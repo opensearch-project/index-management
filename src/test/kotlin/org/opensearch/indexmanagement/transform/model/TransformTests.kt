@@ -26,17 +26,22 @@ class TransformTests : OpenSearchTestCase() {
         }
     }
 
-    fun `test transform requires page size to be between 1 and 10K`() {
+    fun `test transform page size constraints`() {
         assertFailsWith(IllegalArgumentException::class, "Page size was less than 1") {
             randomTransform().copy(pageSize = -1)
         }
 
         assertFailsWith(IllegalArgumentException::class, "Page size was greater than 10K") {
-            randomTransform().copy(pageSize = 10001)
+            randomTransform().copy(continuous = false, pageSize = 10001)
+        }
+
+        assertFailsWith(IllegalArgumentException::class, "Page size was greater than 1K") {
+            randomTransform().copy(continuous = true, pageSize = 1001)
         }
 
         randomTransform().copy(pageSize = 1)
-        randomTransform().copy(pageSize = 10000)
+        randomTransform().copy(continuous = false, pageSize = 10000)
+        randomTransform().copy(continuous = true, pageSize = 1000)
         randomTransform().copy(pageSize = 500)
     }
 

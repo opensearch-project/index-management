@@ -24,18 +24,17 @@ import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.settings.Settings
 import org.opensearch.common.xcontent.ToXContent
 import org.opensearch.common.xcontent.XContentFactory
-import org.opensearch.common.xcontent.XContentType
 import org.opensearch.indexmanagement.IndexManagementIndices
 import org.opensearch.indexmanagement.IndexManagementPlugin
-import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings
-import org.opensearch.indexmanagement.indexstatemanagement.step.Step
 import org.opensearch.indexmanagement.indexstatemanagement.util.INDEX_HIDDEN
 import org.opensearch.indexmanagement.indexstatemanagement.util.INDEX_NUMBER_OF_REPLICAS
 import org.opensearch.indexmanagement.indexstatemanagement.util.INDEX_NUMBER_OF_SHARDS
+import org.opensearch.indexmanagement.opensearchapi.OPENDISTRO_SECURITY_PROTECTED_INDICES_CONF_REQUEST
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
+import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.util.OpenForTesting
-import org.opensearch.indexmanagement.util._DOC
 import org.opensearch.threadpool.Scheduler
 import org.opensearch.threadpool.ThreadPool
 import java.time.Instant
@@ -113,8 +112,16 @@ class IndexStateManagementHistory(
     }
 
     private fun rolloverAndDeleteHistoryIndex() {
-        if (historyEnabled) rolloverHistoryIndex()
-        deleteOldHistoryIndex()
+        val ctx = threadPool.threadContext.stashContext()
+        try {
+            if (threadPool.threadContext.getTransient<String?>(OPENDISTRO_SECURITY_PROTECTED_INDICES_CONF_REQUEST) == null) {
+                threadPool.threadContext.putTransient(OPENDISTRO_SECURITY_PROTECTED_INDICES_CONF_REQUEST, "true")
+            }
+            if (historyEnabled) rolloverHistoryIndex()
+            deleteOldHistoryIndex()
+        } finally {
+            ctx.close()
+        }
     }
 
     private fun rolloverHistoryIndex() {
@@ -125,7 +132,7 @@ class IndexStateManagementHistory(
         // We have to pass null for newIndexName in order to get Elastic to increment the index count.
         val request = RolloverRequest(IndexManagementIndices.HISTORY_WRITE_INDEX_ALIAS, null)
         request.createIndexRequest.index(IndexManagementIndices.HISTORY_INDEX_PATTERN)
-            .mapping(_DOC, IndexManagementIndices.indexStateManagementHistoryMappings, XContentType.JSON)
+            .mapping(IndexManagementIndices.indexStateManagementHistoryMappings)
             .settings(
                 Settings.builder()
                     .put(INDEX_HIDDEN, true)

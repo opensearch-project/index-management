@@ -3,58 +3,50 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-@file:Suppress("TooManyFunctions")
+@file:Suppress("TooManyFunctions", "MatchingDeclarationName")
 @file:JvmName("ManagedIndexUtils")
 package org.opensearch.indexmanagement.indexstatemanagement.util
 
-import inet.ipaddr.IPAddressString
-import org.apache.logging.log4j.LogManager
+// import inet.ipaddr.IPAddressString
+// import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
-import org.opensearch.action.DocWriteRequest
 import org.opensearch.action.delete.DeleteRequest
 import org.opensearch.action.index.IndexRequest
 import org.opensearch.action.search.SearchRequest
 import org.opensearch.action.support.WriteRequest
 import org.opensearch.action.update.UpdateRequest
-import org.opensearch.alerting.destination.message.BaseMessage
-import org.opensearch.client.Client
-import org.opensearch.cluster.metadata.IndexMetadata
-import org.opensearch.cluster.service.ClusterService
-import org.opensearch.common.settings.Settings
+// import org.opensearch.alerting.destination.message.BaseMessage
 import org.opensearch.common.unit.ByteSizeValue
 import org.opensearch.common.unit.TimeValue
 import org.opensearch.common.xcontent.ToXContent
 import org.opensearch.common.xcontent.XContentFactory
-import org.opensearch.index.Index
 import org.opensearch.index.query.BoolQueryBuilder
 import org.opensearch.index.query.QueryBuilders
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
 import org.opensearch.indexmanagement.indexstatemanagement.ManagedIndexCoordinator
-import org.opensearch.indexmanagement.indexstatemanagement.action.Action
+import org.opensearch.indexmanagement.indexstatemanagement.action.DeleteAction
+import org.opensearch.indexmanagement.indexstatemanagement.action.RolloverAction
+import org.opensearch.indexmanagement.indexstatemanagement.action.TransitionsAction
 import org.opensearch.indexmanagement.indexstatemanagement.model.ChangePolicy
 import org.opensearch.indexmanagement.indexstatemanagement.model.ISMTemplate
 import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexConfig
-import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
 import org.opensearch.indexmanagement.indexstatemanagement.model.State
 import org.opensearch.indexmanagement.indexstatemanagement.model.Transition
-import org.opensearch.indexmanagement.indexstatemanagement.model.action.ActionConfig
-import org.opensearch.indexmanagement.indexstatemanagement.model.action.ActionRetry
-import org.opensearch.indexmanagement.indexstatemanagement.model.action.RolloverActionConfig
-import org.opensearch.indexmanagement.indexstatemanagement.model.action.TransitionsActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.model.coordinator.SweptManagedIndexConfig
-import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.ActionMetaData
-import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.PolicyRetryInfoMetaData
-import org.opensearch.indexmanagement.indexstatemanagement.model.managedindexmetadata.StateMetaData
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings
-import org.opensearch.indexmanagement.indexstatemanagement.step.Step
-import org.opensearch.indexmanagement.indexstatemanagement.step.delete.AttemptDeleteStep
 import org.opensearch.indexmanagement.opensearchapi.optionalISMTemplateField
 import org.opensearch.indexmanagement.opensearchapi.optionalTimeField
+import org.opensearch.indexmanagement.spi.indexstatemanagement.Action
+import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ActionMetaData
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ActionRetry
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.PolicyRetryInfoMetaData
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StateMetaData
 import org.opensearch.jobscheduler.spi.schedule.IntervalSchedule
-import org.opensearch.script.ScriptService
 import org.opensearch.search.builder.SearchSourceBuilder
-import java.net.InetAddress
+// import java.net.InetAddress
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 
@@ -159,7 +151,7 @@ fun deleteManagedIndexRequest(uuid: String): DeleteRequest {
 }
 
 fun deleteManagedIndexMetadataRequest(uuid: String): DeleteRequest {
-    return DeleteRequest(INDEX_MANAGEMENT_INDEX, managedIndexMetadataID(uuid))
+    return DeleteRequest(INDEX_MANAGEMENT_INDEX, managedIndexMetadataID(uuid)).routing(uuid)
 }
 
 fun updateManagedIndexRequest(sweptManagedIndexConfig: SweptManagedIndexConfig): UpdateRequest {
@@ -170,58 +162,37 @@ fun updateManagedIndexRequest(sweptManagedIndexConfig: SweptManagedIndexConfig):
 }
 
 /**
- * Creates DeleteRequests for [ManagedIndexConfig].
- *
  * Finds ManagedIndices that exist in [INDEX_MANAGEMENT_INDEX] that do not exist in the cluster state
  * anymore which means we need to delete the [ManagedIndexConfig].
  *
- * @param currentIndices List of current [IndexMetadata] in cluster state.
- * @param currentManagedIndexConfigs map of IndexUuid to [SweptManagedIndexConfig].
- * @return list of [DocWriteRequest].
+ * @param currentIndexUuids List of current index uuids in cluster.
+ * @param currentManagedIndexUuids List of current managed index uuids in cluster.
+ * @return list of managedIndexUuids to delete.
  */
-fun getDeleteManagedIndexRequests(
-    currentIndices: List<IndexMetadata>,
-    currentManagedIndexConfigs: Map<String, SweptManagedIndexConfig>
-): List<DocWriteRequest<*>> {
-    return currentManagedIndexConfigs.filter { currentManagedIndex ->
-        !currentIndices.map { it.index.uuid }.contains(currentManagedIndex.key)
-    }.map { deleteManagedIndexRequest(it.value.uuid) }
-}
-
-// if managed index exist but the index is not existing any more
-// then we should delete this managed index
 fun getManagedIndicesToDelete(
-    currentIndices: List<IndexMetadata>,
-    currentManagedIndexConfigs: Map<String, SweptManagedIndexConfig>
-): List<Index> {
-    val currentIndicesSet = currentIndices.map { it.index }.toSet()
-    val managedIndicesSet = currentManagedIndexConfigs.values.map { Index(it.index, it.uuid) }.toSet()
-    return (managedIndicesSet - currentIndicesSet).toList()
+    currentIndexUuids: List<String>,
+    currentManagedIndexUuids: List<String>
+): List<String> {
+    return currentManagedIndexUuids.filter { currentManagedIndex ->
+        !currentIndexUuids.contains(currentManagedIndex)
+    }
 }
 
 fun getSweptManagedIndexSearchRequest(): SearchRequest {
     val boolQueryBuilder = BoolQueryBuilder().filter(QueryBuilders.existsQuery(ManagedIndexConfig.MANAGED_INDEX_TYPE))
     return SearchRequest()
         .indices(INDEX_MANAGEMENT_INDEX)
+        .scroll(TimeValue.timeValueMinutes(1))
         .source(
             SearchSourceBuilder.searchSource()
-                // TODO: Get all ManagedIndices at once or split into searchAfter queries?
                 .size(ManagedIndexCoordinator.MAX_HITS)
                 .seqNoAndPrimaryTerm(true)
-                .fetchSource(
-                    arrayOf(
-                        "${ManagedIndexConfig.MANAGED_INDEX_TYPE}.${ManagedIndexConfig.INDEX_FIELD}",
-                        "${ManagedIndexConfig.MANAGED_INDEX_TYPE}.${ManagedIndexConfig.INDEX_UUID_FIELD}",
-                        "${ManagedIndexConfig.MANAGED_INDEX_TYPE}.${ManagedIndexConfig.POLICY_ID_FIELD}",
-                        "${ManagedIndexConfig.MANAGED_INDEX_TYPE}.${ManagedIndexConfig.CHANGE_POLICY_FIELD}"
-                    ),
-                    emptyArray()
-                )
+                .fetchSource(emptyArray(), emptyArray())
                 .query(boolQueryBuilder)
         )
 }
 
-@Suppress("ReturnCount")
+@Suppress("ReturnCount", "ComplexCondition")
 fun Transition.evaluateConditions(
     indexCreationDate: Instant,
     numDocs: Long?,
@@ -264,8 +235,8 @@ fun Transition.evaluateConditions(
 
 fun Transition.hasStatsConditions(): Boolean = this.conditions?.docCount != null || this.conditions?.size != null
 
-@Suppress("ReturnCount", "ComplexMethod", "ComplexCondition")
-fun RolloverActionConfig.evaluateConditions(
+@Suppress("ReturnCount")
+fun RolloverAction.evaluateConditions(
     indexAgeTimeValue: TimeValue,
     numDocs: Long,
     indexSize: ByteSizeValue,
@@ -300,49 +271,6 @@ fun RolloverActionConfig.evaluateConditions(
     return false
 }
 
-fun Policy.getStateToExecute(managedIndexMetaData: ManagedIndexMetaData): State? {
-    if (managedIndexMetaData.transitionTo != null) {
-        return this.states.find { it.name == managedIndexMetaData.transitionTo }
-    }
-    return this.states.find { managedIndexMetaData.stateMetaData != null && it.name == managedIndexMetaData.stateMetaData.name }
-}
-
-fun State.getActionToExecute(
-    clusterService: ClusterService,
-    scriptService: ScriptService,
-    client: Client,
-    settings: Settings,
-    managedIndexMetaData: ManagedIndexMetaData
-): Action? {
-    var actionConfig: ActionConfig?
-
-    // If we are transitioning to this state get the first action in the state
-    // If the action/actionIndex are null it means we just initialized and should get the first action from the state
-    if (managedIndexMetaData.transitionTo != null || managedIndexMetaData.actionMetaData == null) {
-        actionConfig = this.actions.firstOrNull() ?: TransitionsActionConfig(this.transitions)
-    } else if (managedIndexMetaData.actionMetaData.name == ActionConfig.ActionType.TRANSITION.type) {
-        // If the current action is transition and we do not have a transitionTo set then we should be in Transition
-        actionConfig = TransitionsActionConfig(this.transitions)
-    } else {
-        // Get the current actionConfig that is in the ManagedIndexMetaData
-        actionConfig = this.actions.filterIndexed { index, config ->
-            index == managedIndexMetaData.actionMetaData.index && config.type.type == managedIndexMetaData.actionMetaData.name
-        }.firstOrNull()
-        if (actionConfig == null) return null
-
-        // TODO: Refactor so we can get isLastStep from somewhere besides an instantiated Action class so we can simplify this to a when block
-        // If stepCompleted is true and this is the last step of the action then we should get the next action
-        if (managedIndexMetaData.stepMetaData != null && managedIndexMetaData.stepMetaData.stepStatus == Step.StepStatus.COMPLETED) {
-            val action = actionConfig.toAction(clusterService, scriptService, client, settings, managedIndexMetaData)
-            if (action.isLastStep(managedIndexMetaData.stepMetaData.name)) {
-                actionConfig = this.actions.getOrNull(managedIndexMetaData.actionMetaData.index + 1) ?: TransitionsActionConfig(this.transitions)
-            }
-        }
-    }
-
-    return actionConfig.toAction(clusterService, scriptService, client, settings, managedIndexMetaData)
-}
-
 fun State.getUpdatedStateMetaData(managedIndexMetaData: ManagedIndexMetaData): StateMetaData {
     // If the current ManagedIndexMetaData state does not match this state, it means we transitioned and need to update the startStartTime
     val stateMetaData = managedIndexMetaData.stateMetaData
@@ -353,31 +281,16 @@ fun State.getUpdatedStateMetaData(managedIndexMetaData: ManagedIndexMetaData): S
     }
 }
 
-fun Action.getUpdatedActionMetaData(managedIndexMetaData: ManagedIndexMetaData, state: State): ActionMetaData {
-    val stateMetaData = managedIndexMetaData.stateMetaData
-    val actionMetaData = managedIndexMetaData.actionMetaData
-
-    return when {
-        // start a new action
-        stateMetaData?.name != state.name ->
-            ActionMetaData(this.type.type, Instant.now().toEpochMilli(), this.config.actionIndex, false, 0, 0, null)
-        actionMetaData?.index != this.config.actionIndex ->
-            ActionMetaData(this.type.type, Instant.now().toEpochMilli(), this.config.actionIndex, false, 0, 0, null)
-        // RetryAPI will reset startTime to null for actionMetaData and we'll reset it to "now" here
-        else -> actionMetaData.copy(startTime = actionMetaData.startTime ?: Instant.now().toEpochMilli())
-    }
-}
-
 fun Action.shouldBackoff(actionMetaData: ActionMetaData?, actionRetry: ActionRetry?): Pair<Boolean, Long?>? {
-    return this.config.configRetry?.backoff?.shouldBackoff(actionMetaData, actionRetry)
+    return this.configRetry?.backoff?.shouldBackoff(actionMetaData, actionRetry)
 }
 
 @Suppress("ReturnCount")
 fun Action.hasTimedOut(actionMetaData: ActionMetaData?): Boolean {
-    if (actionMetaData?.startTime == null) return false
-    val configTimeout = this.config.configTimeout
-    if (configTimeout == null) return false
-    return (Instant.now().toEpochMilli() - actionMetaData.startTime) > configTimeout.timeout.millis
+    val startTime = actionMetaData?.startTime
+    val configTimeout = this.configTimeout
+    if (startTime == null || configTimeout == null) return false
+    return (Instant.now().toEpochMilli() - startTime) > configTimeout.timeout.millis
 }
 
 @Suppress("ReturnCount")
@@ -404,8 +317,8 @@ fun ManagedIndexMetaData.getStartingManagedIndexMetaData(
     }
 
     val updatedStateMetaData = state.getUpdatedStateMetaData(this)
-    val updatedActionMetaData = action.getUpdatedActionMetaData(this, state)
-    val updatedStepMetaData = step.getStartingStepMetaData()
+    val updatedActionMetaData = action.getUpdatedActionMetadata(this, state.name)
+    val updatedStepMetaData = step.getStartingStepMetaData(this)
 
     return this.copy(
         stateMetaData = updatedStateMetaData,
@@ -420,7 +333,7 @@ fun ManagedIndexMetaData.getCompletedManagedIndexMetaData(
     action: Action,
     step: Step
 ): ManagedIndexMetaData {
-    val updatedStepMetaData = step.getUpdatedManagedIndexMetaData(this)
+    val updatedStepMetaData = step.getUpdatedManagedIndexMetadata(this)
     val actionMetaData = updatedStepMetaData.actionMetaData ?: return this.copy(
         policyRetryInfo = PolicyRetryInfoMetaData(true, 0),
         info = mapOf("message" to "Failed due to ActionMetaData being null")
@@ -428,8 +341,8 @@ fun ManagedIndexMetaData.getCompletedManagedIndexMetaData(
 
     val updatedActionMetaData = if (updatedStepMetaData.stepMetaData?.stepStatus == Step.StepStatus.FAILED) {
         when {
-            action.config.configRetry == null -> actionMetaData.copy(failed = true)
-            actionMetaData.consumedRetries >= action.config.configRetry!!.count -> actionMetaData.copy(failed = true)
+            action.configRetry == null -> actionMetaData.copy(failed = true)
+            actionMetaData.consumedRetries >= action.configRetry!!.count -> actionMetaData.copy(failed = true)
             else -> actionMetaData.copy(
                 failed = false,
                 consumedRetries = actionMetaData.consumedRetries + 1,
@@ -452,8 +365,8 @@ fun ManagedIndexMetaData.getCompletedManagedIndexMetaData(
 }
 
 val ManagedIndexMetaData.isSuccessfulDelete: Boolean
-    get() = (this.actionMetaData?.name == ActionConfig.ActionType.DELETE.type && !this.actionMetaData.failed) &&
-        (this.stepMetaData?.name == AttemptDeleteStep.name && this.stepMetaData.stepStatus == Step.StepStatus.COMPLETED) &&
+    get() = (this.actionMetaData?.name == DeleteAction.name && !this.actionMetaData!!.failed) &&
+        (this.stepMetaData?.name == DeleteAction.name && this.stepMetaData!!.stepStatus == Step.StepStatus.COMPLETED) &&
         (this.policyRetryInfo?.failed != true)
 
 val ManagedIndexMetaData.isFailed: Boolean
@@ -492,11 +405,11 @@ fun ManagedIndexConfig.shouldChangePolicy(managedIndexMetaData: ManagedIndexMeta
 
     // we need this in so that we can change policy before the first transition happens so policy doesnt get completed
     // before we have a chance to change policy
-    if (actionToExecute?.type == ActionConfig.ActionType.TRANSITION) {
+    if (actionToExecute?.type == TransitionsAction.name) {
         return true
     }
 
-    if (managedIndexMetaData.actionMetaData?.name != ActionConfig.ActionType.TRANSITION.type) {
+    if (managedIndexMetaData.actionMetaData?.name != TransitionsAction.name) {
         return false
     }
 
@@ -555,44 +468,44 @@ fun Policy.isSafeToChange(stateName: String?, newPolicy: Policy, changePolicy: C
 }
 
 /**
- * Disallowed actions are ones that are not specified in the [ManagedIndexSettings.ALLOW_LIST] setting.
- */
-fun Policy.getDisallowedActions(allowList: List<String>): List<String> {
-    val allowListSet = allowList.toSet()
-    val disallowedActions = mutableListOf<String>()
-    this.states.forEach { state ->
-        state.actions.forEach { actionConfig ->
-            if (!allowListSet.contains(actionConfig.type.type)) {
-                disallowedActions.add(actionConfig.type.type)
-            }
-        }
-    }
-    return disallowedActions.distinct()
-}
-
-/**
  * Allowed actions are ones that are specified in the [ManagedIndexSettings.ALLOW_LIST] setting.
  */
-fun Action.isAllowed(allowList: List<String>): Boolean = allowList.contains(this.type.type)
+fun Action.isAllowed(allowList: List<String>): Boolean = allowList.contains(this.type)
 
 /**
  * Check if cluster state metadata has been moved to config index
  *
  * log warning if remaining cluster state metadata has newer last_updated_time
  */
-fun isMetadataMoved(
+@Suppress("ReturnCount", "ComplexCondition", "ComplexMethod")
+fun checkMetadata(
     clusterStateMetadata: ManagedIndexMetaData?,
     configIndexMetadata: Any?,
+    currentIndexUuid: String?,
     logger: Logger
-): Boolean {
+): MetadataCheck {
+    // indexUuid saved in ISM metadata may be outdated
+    // if an index restored from snapshot
+    val indexUuid1 = clusterStateMetadata?.indexUuid
+    val indexUuid2 = when (configIndexMetadata) {
+        is ManagedIndexMetaData -> configIndexMetadata.indexUuid
+        is Map<*, *> -> configIndexMetadata["index_uuid"]
+        else -> null
+    } as String?
+    if ((indexUuid1 != null && indexUuid1 != currentIndexUuid) ||
+        (indexUuid2 != null && indexUuid2 != currentIndexUuid)
+    ) {
+        return MetadataCheck.CORRUPT
+    }
+
     if (clusterStateMetadata != null) {
-        if (configIndexMetadata == null) return false
+        if (configIndexMetadata == null) return MetadataCheck.PENDING
 
         // compare last updated time between 2 metadatas
         val t1 = clusterStateMetadata.stepMetaData?.startTime
         val t2 = when (configIndexMetadata) {
-            is ManagedIndexMetaData? -> configIndexMetadata.stepMetaData?.startTime
-            is Map<*, *>? -> {
+            is ManagedIndexMetaData -> configIndexMetadata.stepMetaData?.startTime
+            is Map<*, *> -> {
                 val stepMetadata = configIndexMetadata["step"] as Map<String, Any>?
                 stepMetadata?.get("start_time")
             }
@@ -602,19 +515,23 @@ fun isMetadataMoved(
             logger.warn("Cluster state metadata get updates after moved for [${clusterStateMetadata.index}]")
         }
     }
-    return true
+    return MetadataCheck.SUCCESS
 }
 
-private val baseMessageLogger = LogManager.getLogger(BaseMessage::class.java)
-
-fun BaseMessage.isHostInDenylist(networks: List<String>): Boolean {
-    val ipStr = IPAddressString(this.uri.host)
-    for (network in networks) {
-        val netStr = IPAddressString(network)
-        if (netStr.contains(ipStr)) {
-            baseMessageLogger.error("Host: {} resolves to: {} which is in denylist: {}.", uri.host, InetAddress.getByName(uri.host), netStr)
-            return true
-        }
-    }
-    return false
+enum class MetadataCheck {
+    PENDING, CORRUPT, SUCCESS
 }
+
+// private val baseMessageLogger = LogManager.getLogger(BaseMessage::class.java)
+//
+// fun BaseMessage.isHostInDenylist(networks: List<String>): Boolean {
+//     val ipStr = IPAddressString(this.uri.host)
+//     for (network in networks) {
+//         val netStr = IPAddressString(network)
+//         if (netStr.contains(ipStr)) {
+//             baseMessageLogger.error("Host: {} resolves to: {} which is in denylist: {}.", uri.host, InetAddress.getByName(uri.host), netStr)
+//             return true
+//         }
+//     }
+//     return false
+// }

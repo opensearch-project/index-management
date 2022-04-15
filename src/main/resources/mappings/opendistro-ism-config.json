@@ -429,6 +429,10 @@
                       }
                     }
                   }
+                },
+                "custom": {
+                  "enabled": false,
+                  "type":  "object"
                 }
               }
             },
@@ -657,6 +661,10 @@
         },
         "rolled_over": {
           "type": "boolean"
+        },
+        "index_creation_date": {
+          "type": "date",
+          "format": "strict_date_time||epoch_millis"
         },
         "transition_to": {
           "type": "text",
@@ -1211,6 +1219,9 @@
               }
             }
           }
+        },
+        "continuous": {
+          "type": "boolean"
         }
       }
     },
@@ -1240,6 +1251,14 @@
           "type": "text"
         },
         "stats": {
+          "type": "object",
+          "enabled": false
+        },
+        "continuous_stats": {
+          "type": "object",
+          "enabled": false
+        },
+        "shard_id_to_global_checkpoint": {
           "type": "object",
           "enabled": false
         }

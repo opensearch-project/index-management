@@ -13,13 +13,28 @@ import java.util.function.Predicate
 
 buildscript {
     ext {
-        opensearch_version = System.getProperty("opensearch.version", "1.3.0-SNAPSHOT")
-        // 1.1.0 -> 1.1.0.0, and 1.1.0-SNAPSHOT -> 1.1.0.0-SNAPSHOT
-        opensearch_build = opensearch_version.replaceAll(/(\.\d)([^\d]*)$/, '$1.0$2')
-        notification_version = System.getProperty("notification.version", opensearch_build)
+        isSnapshot = "true" == System.getProperty("build.snapshot", "true")
+        opensearch_version = System.getProperty("opensearch.version", "2.0.0-rc1-SNAPSHOT")
+        buildVersionQualifier = System.getProperty("build.version_qualifier", "rc1")
+        // 2.0.0-rc1-SNAPSHOT -> 2.0.0.0-rc1-SNAPSHOT
+        version_tokens = opensearch_version.tokenize('-')
+        opensearch_build = version_tokens[0] + '.0'
+        job_scheduler_no_snapshot = opensearch_build
+        if (buildVersionQualifier) {
+            opensearch_build += "-${buildVersionQualifier}"
+            job_scheduler_no_snapshot += "-${buildVersionQualifier}"
+        }
+        if (isSnapshot) {
+            opensearch_build += "-SNAPSHOT"
+        }
+        opensearch_no_snapshot = opensearch_version.replace("-SNAPSHOT","")
+        job_scheduler_resource_folder = "src/test/resources/job-scheduler"
+        // notification_version = System.getProperty("notification.version", opensearch_build)
         common_utils_version = System.getProperty("common_utils.version", opensearch_build)
         job_scheduler_version = System.getProperty("job_scheduler_version.version", opensearch_build)
-        kotlin_version = System.getProperty("kotlin.version", "1.4.0")
+        job_scheduler_build_download = 'https://ci.opensearch.org/ci/dbc/distribution-build-opensearch/' + opensearch_no_snapshot +
+                '/latest/linux/x64/builds/opensearch/plugins/opensearch-job-scheduler-' + job_scheduler_no_snapshot + '.zip'
+        kotlin_version = System.getProperty("kotlin.version", "1.6.10")
     }
 
     repositories {
@@ -34,7 +49,7 @@ buildscript {
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:${kotlin_version}"
         classpath "org.jetbrains.kotlin:kotlin-allopen:${kotlin_version}"
         classpath "io.gitlab.arturbosch.detekt:detekt-gradle-plugin:1.17.1"
-        classpath "org.jacoco:org.jacoco.agent:0.8.5"
+        classpath "org.jacoco:org.jacoco.agent:0.8.7"
     }
 }
 
@@ -104,7 +119,7 @@ task ktlint(type: JavaExec, group: "verification") {
     description = "Check Kotlin code style."
     main = "com.pinterest.ktlint.Main"
     classpath = configurations.ktlint
-    args "src/**/*.kt"
+    args "src/**/*.kt", "spi/src/main/**/*.kt"
 }
 
 check.dependsOn ktlint
@@ -113,7 +128,7 @@ task ktlintFormat(type: JavaExec, group: "formatting") {
     description = "Fix Kotlin code style deviations."
     main = "com.pinterest.ktlint.Main"
     classpath = configurations.ktlint
-    args "-F", "src/**/*.kt"
+    args "-F", "src/**/*.kt", "spi/src/main/**/*.kt"
 }
 
 detekt {
@@ -121,43 +136,41 @@ detekt {
     buildUponDefaultConfig = true
 }
 
-configurations.testCompile {
+configurations.testImplementation {
     exclude module: "securemock"
 }
 
 ext {
     projectSubstitutions = [:]
-    isSnapshot = "true" == System.getProperty("build.snapshot", "true")
     licenseFile = rootProject.file('LICENSE')
     noticeFile = rootProject.file('NOTICE')
 }
 
 allprojects {
     group = "org.opensearch"
-    version = "${opensearch_version}" - "-SNAPSHOT" + ".0"
-    if (isSnapshot) {
-        version += "-SNAPSHOT"
-    }
+    version = "${opensearch_build}"
 }
 
 dependencies {
     compileOnly "org.opensearch:opensearch:${opensearch_version}"
     compileOnly "org.opensearch:opensearch-job-scheduler-spi:${job_scheduler_version}"
-    compile "org.jetbrains.kotlin:kotlin-stdlib:${kotlin_version}"
-    compile "org.jetbrains.kotlin:kotlin-stdlib-common:${kotlin_version}"
-    compile "org.jetbrains.kotlin:kotlin-stdlib-jdk8:${kotlin_version}"
-    compile 'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.3.9'
-    compile "org.jetbrains:annotations:13.0"
-    compile "org.opensearch:notification:${notification_version}"
-    compile "org.opensearch:common-utils:${common_utils_version}"
-    compile "com.github.seancfoley:ipaddress:5.3.3"
+    implementation "org.jetbrains.kotlin:kotlin-stdlib:${kotlin_version}"
+    implementation "org.jetbrains.kotlin:kotlin-stdlib-common:${kotlin_version}"
+    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:${kotlin_version}"
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.3.9'
+    implementation "org.jetbrains:annotations:13.0"
+    implementation project(path: ":${rootProject.name}-spi", configuration: 'shadow')
+    // implementation "org.opensearch:notification:${notification_version}"
+    implementation "org.opensearch:common-utils:${common_utils_version}"
+    implementation "com.github.seancfoley:ipaddress:5.3.3"
+    implementation "commons-codec:commons-codec:1.13"
 
-    testCompile "org.opensearch.test:framework:${opensearch_version}"
-    testCompile "org.jetbrains.kotlin:kotlin-test:${kotlin_version}"
+    testImplementation "org.opensearch.test:framework:${opensearch_version}"
+    testImplementation "org.jetbrains.kotlin:kotlin-test:${kotlin_version}"
     testImplementation "com.nhaarman.mockitokotlin2:mockito-kotlin:2.2.0"
-    testCompile "org.mockito:mockito-core:3.12.4"
+    testImplementation "org.mockito:mockito-core:4.3.1"
 
-    add("ktlint", "com.pinterest:ktlint:0.41.0") {
+    add("ktlint", "com.pinterest:ktlint:0.45.1") {
         attributes {
             attribute(Bundling.BUNDLING_ATTRIBUTE, objects.named(Bundling, Bundling.EXTERNAL))
         }
@@ -170,11 +183,11 @@ repositories {
 }
 
 plugins.withId('java') {
-    sourceCompatibility = targetCompatibility = "1.8"
+    sourceCompatibility = targetCompatibility = JavaVersion.VERSION_11
 }
 
 plugins.withId('org.jetbrains.kotlin.jvm') {
-    compileKotlin.kotlinOptions.jvmTarget = compileTestKotlin.kotlinOptions.jvmTarget = "1.8"
+    compileKotlin.kotlinOptions.jvmTarget = compileTestKotlin.kotlinOptions.jvmTarget = JavaVersion.VERSION_11
     compileKotlin.dependsOn ktlint
 }
 
@@ -227,6 +240,15 @@ test {
     systemProperty 'tests.security.manager', 'false'
 }
 
+ext.getPluginResource = { download_to_folder, download_from_src ->
+    project.mkdir download_to_folder
+    ant.get(src: download_from_src,
+            dest: download_to_folder,
+            httpusecaches: false)
+    return fileTree(download_to_folder).getSingleFile()
+}
+
+
 File repo = file("$buildDir/testclusters/repo")
 def _numNodes = findProperty('numNodes') as Integer ?: 1
 testClusters.integTest {
@@ -244,10 +266,23 @@ testClusters.integTest {
             debugPort += 1
         }
     }
-    plugin(provider({
-        new RegularFile() {
-            @Override
-            File getAsFile() { fileTree("src/test/resources/job-scheduler").getSingleFile() }
+
+    plugin(provider(new Callable<RegularFile>(){
+        @Override
+        RegularFile call() throws Exception {
+            return new RegularFile() {
+                @Override
+                File getAsFile() {
+                    if (new File("$project.rootDir/$job_scheduler_resource_folder").exists()) {
+                        project.delete(files("$project.rootDir/$job_scheduler_resource_folder"))
+                    }
+                    project.mkdir job_scheduler_resource_folder
+                    ant.get(src: job_scheduler_build_download,
+                            dest: job_scheduler_resource_folder,
+                            httpusecaches: false)
+                    return fileTree(job_scheduler_resource_folder).getSingleFile()
+                }
+            }
         }
     }))
 
@@ -307,16 +342,57 @@ integTest {
     }
 }
 
+task integTestRemote(type: RestIntegTestTask)  {
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    systemProperty 'tests.security.manager', 'false'
+    systemProperty 'java.io.tmpdir', opensearch_tmp_dir.absolutePath
+    systemProperty "https", System.getProperty("https")
+    systemProperty "user", System.getProperty("user")
+    systemProperty "password", System.getProperty("password")
+
+    if (System.getProperty("tests.rest.bwcsuite") == null) {
+        filter {
+            excludeTestsMatching "org.opensearch.indexmanagement.bwc.*IT"
+        }
+    }
+
+    // Only rest case can run with remote cluster
+    if (System.getProperty("tests.rest.cluster") != null) {
+        exclude 'org/opensearch/indexmanagement/indexstatemanagement/MetadataRegressionIT.class'
+    }
+    // TODO: Fix running notification test against remote cluster with security plugin installed
+    if (System.getProperty("https") != null) {
+        filter {
+            excludeTestsMatching "org.opensearch.indexmanagement.indexstatemanagement.action.NotificationActionIT"
+        }
+    }
+    // Snapshot action integration tests rely on node level setting path.repo which we can't set remotely
+    exclude 'org/opensearch/indexmanagement/indexstatemanagement/action/SnapshotActionIT.class'
+}
+
 String bwcVersion = "1.13.2.0"
 String bwcJobSchedulerVersion = "1.13.0.0"
 String baseName = "indexmanagementBwcCluster"
 String bwcFilePath = "src/test/resources/bwc/"
+String bwc_js_resource_location = bwcFilePath + "job-scheduler/" + bwcJobSchedulerVersion
+String bwc_im_resource_location = bwcFilePath + "indexmanagement/" + bwcVersion
+
+// Downloads the bwc job scheduler version
+String bwc_js_download_url = "https://github.com/opendistro-for-elasticsearch/job-scheduler/releases/download/v" +
+        bwcJobSchedulerVersion + "/job-scheduler-artifacts.zip"
+getPluginResource(bwc_js_resource_location, bwc_js_download_url)
+
+// Downloads the bwc index management version
+String bwc_im_download_url = "https://github.com/opendistro-for-elasticsearch/index-management/releases/download/v" +
+        bwcVersion + "/index-management-artifacts.zip"
+getPluginResource(bwc_im_resource_location, bwc_im_download_url)
 
 2.times {i ->
     testClusters {
         "${baseName}$i" {
             testDistribution = "ARCHIVE"
-            versions = ["7.10.2", "1.3.0-SNAPSHOT"]
+            versions = ["7.10.2", opensearch_version]
             numberOfNodes = 3
             plugin(provider(new Callable<RegularFile>(){
                 @Override
@@ -324,7 +400,7 @@ String bwcFilePath = "src/test/resources/bwc/"
                     return new RegularFile() {
                         @Override
                         File getAsFile() {
-                            return fileTree(bwcFilePath + "job-scheduler/" + bwcJobSchedulerVersion).getSingleFile()
+                            return fileTree(bwc_js_resource_location).getSingleFile()
                         }
                     }
                 }
@@ -336,7 +412,7 @@ String bwcFilePath = "src/test/resources/bwc/"
                     return new RegularFile() {
                         @Override
                         File getAsFile() {
-                            return fileTree(bwcFilePath + "indexmanagement/" + bwcVersion).getSingleFile()
+                            return fileTree(bwc_im_resource_location).getSingleFile()
                         }
                     }
                 }
@@ -354,6 +430,8 @@ List<Provider<RegularFile>> plugins = []
 task prepareBwcTests {
     dependsOn bundlePlugin
     doLast {
+        // Download the job scheduler test dependency
+        getPluginResource(job_scheduler_resource_folder, job_scheduler_build_download)
         plugins = [
                 provider(new Callable<RegularFile>(){
                     @Override
@@ -361,7 +439,7 @@ task prepareBwcTests {
                         return new RegularFile() {
                             @Override
                             File getAsFile() {
-                                return fileTree("src/test/resources/job-scheduler").getSingleFile()
+                                return fileTree(job_scheduler_resource_folder).getSingleFile()
                             }
                         }
                     }
@@ -509,7 +587,7 @@ testClusters.mixedCluster {
         node.plugin(provider({
             new RegularFile() {
                 @Override
-                File getAsFile() { fileTree("src/test/resources/job-scheduler").getSingleFile() }
+                File getAsFile() { fileTree(job_scheduler_resource_folder).getSingleFile() }
             }
         }))
 
@@ -523,7 +601,6 @@ testClusters.mixedCluster {
         } else {
             node.plugin(project.tasks.bundlePlugin.archiveFile)
         }
-        node.plugins.each { println("plugin in the node: ${it.get()}") }
     }
     setting 'path.repo', repo.absolutePath
 }

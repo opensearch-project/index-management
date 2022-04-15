@@ -6,12 +6,12 @@
 package org.opensearch.indexmanagement.indexstatemanagement.model.destination
 
 import org.apache.logging.log4j.LogManager
-import org.opensearch.alerting.destination.Notification
-import org.opensearch.alerting.destination.message.BaseMessage
-import org.opensearch.alerting.destination.message.ChimeMessage
-import org.opensearch.alerting.destination.message.CustomWebhookMessage
-import org.opensearch.alerting.destination.message.SlackMessage
-import org.opensearch.alerting.destination.response.DestinationResponse
+// import org.opensearch.alerting.destination.Notification
+// import org.opensearch.alerting.destination.message.BaseMessage
+// import org.opensearch.alerting.destination.message.ChimeMessage
+// import org.opensearch.alerting.destination.message.CustomWebhookMessage
+// import org.opensearch.alerting.destination.message.SlackMessage
+// import org.opensearch.alerting.destination.response.DestinationResponse
 import org.opensearch.common.io.stream.StreamInput
 import org.opensearch.common.io.stream.StreamOutput
 import org.opensearch.common.io.stream.Writeable
@@ -21,7 +21,7 @@ import org.opensearch.common.xcontent.XContentBuilder
 import org.opensearch.common.xcontent.XContentParser
 import org.opensearch.common.xcontent.XContentParser.Token
 import org.opensearch.common.xcontent.XContentParserUtils.ensureExpectedToken
-import org.opensearch.indexmanagement.indexstatemanagement.util.isHostInDenylist
+// import org.opensearch.indexmanagement.indexstatemanagement.util.isHostInDenylist
 import org.opensearch.indexmanagement.opensearchapi.convertToMap
 import java.io.IOException
 
@@ -105,41 +105,41 @@ data class Destination(
         }
     }
 
-    @Throws(IOException::class)
-    fun publish(compiledSubject: String?, compiledMessage: String, denyHostRanges: List<String>): DestinationResponse {
-        val destinationMessage: BaseMessage
-        when (type) {
-            DestinationType.CHIME -> {
-                val messageContent = chime?.constructMessageContent(compiledSubject, compiledMessage)
-                destinationMessage = ChimeMessage.Builder("chime_message")
-                    .withUrl(chime?.url)
-                    .withMessage(messageContent)
-                    .build()
-            }
-            DestinationType.SLACK -> {
-                val messageContent = slack?.constructMessageContent(compiledSubject, compiledMessage)
-                destinationMessage = SlackMessage.Builder("slack_message")
-                    .withUrl(slack?.url)
-                    .withMessage(messageContent)
-                    .build()
-            }
-            DestinationType.CUSTOM_WEBHOOK -> {
-                destinationMessage = CustomWebhookMessage.Builder("custom_webhook")
-                    .withUrl(customWebhook?.url)
-                    .withScheme(customWebhook?.scheme)
-                    .withHost(customWebhook?.host)
-                    .withPort(customWebhook?.port)
-                    .withPath(customWebhook?.path)
-                    .withQueryParams(customWebhook?.queryParams)
-                    .withHeaderParams(customWebhook?.headerParams)
-                    .withMessage(compiledMessage).build()
-            }
-        }
-        validateDestinationUri(destinationMessage, denyHostRanges)
-        val response = Notification.publish(destinationMessage) as DestinationResponse
-        logger.info("Message published for action type: $type, messageid: ${response.responseContent}, statuscode: ${response.statusCode}")
-        return response
-    }
+//    @Throws(IOException::class)
+//    fun publish(compiledSubject: String?, compiledMessage: String, denyHostRanges: List<String>): DestinationResponse {
+//        val destinationMessage: BaseMessage
+//        when (type) {
+//            DestinationType.CHIME -> {
+//                val messageContent = chime?.constructMessageContent(compiledSubject, compiledMessage)
+//                destinationMessage = ChimeMessage.Builder("chime_message")
+//                    .withUrl(chime?.url)
+//                    .withMessage(messageContent)
+//                    .build()
+//            }
+//            DestinationType.SLACK -> {
+//                val messageContent = slack?.constructMessageContent(compiledSubject, compiledMessage)
+//                destinationMessage = SlackMessage.Builder("slack_message")
+//                    .withUrl(slack?.url)
+//                    .withMessage(messageContent)
+//                    .build()
+//            }
+//            DestinationType.CUSTOM_WEBHOOK -> {
+//                destinationMessage = CustomWebhookMessage.Builder("custom_webhook")
+//                    .withUrl(customWebhook?.url)
+//                    .withScheme(customWebhook?.scheme)
+//                    .withHost(customWebhook?.host)
+//                    .withPort(customWebhook?.port)
+//                    .withPath(customWebhook?.path)
+//                    .withQueryParams(customWebhook?.queryParams)
+//                    .withHeaderParams(customWebhook?.headerParams)
+//                    .withMessage(compiledMessage).build()
+//            }
+//        }
+//        validateDestinationUri(destinationMessage, denyHostRanges)
+//        val response = Notification.publish(destinationMessage) as DestinationResponse
+//        logger.info("Message published for action type: $type, messageid: ${response.responseContent}, statuscode: ${response.statusCode}")
+//        return response
+//    }
 
     fun constructResponseForDestinationType(type: DestinationType): Any {
         var content: Any? = null
@@ -154,9 +154,9 @@ data class Destination(
         return content
     }
 
-    private fun validateDestinationUri(destinationMessage: BaseMessage, denyHostRanges: List<String>) {
-        if (destinationMessage.isHostInDenylist(denyHostRanges)) {
-            throw IllegalArgumentException("The destination address is invalid.")
-        }
-    }
+//    private fun validateDestinationUri(destinationMessage: BaseMessage, denyHostRanges: List<String>) {
+//        if (destinationMessage.isHostInDenylist(denyHostRanges)) {
+//            throw IllegalArgumentException("The destination address is invalid.")
+//        }
+//    }
 }

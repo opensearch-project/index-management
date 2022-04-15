@@ -18,14 +18,13 @@ import org.opensearch.indexmanagement.indexstatemanagement.IndexStateManagementR
 import org.opensearch.indexmanagement.indexstatemanagement.model.ISMTemplate
 import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
 import org.opensearch.indexmanagement.indexstatemanagement.model.State
-import org.opensearch.indexmanagement.indexstatemanagement.model.action.ActionRetry
-import org.opensearch.indexmanagement.indexstatemanagement.model.action.RolloverActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomErrorNotification
 import org.opensearch.indexmanagement.indexstatemanagement.resthandler.RestRetryFailedManagedIndexAction
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings
-import org.opensearch.indexmanagement.indexstatemanagement.step.Step
 import org.opensearch.indexmanagement.indexstatemanagement.step.rollover.AttemptRolloverStep
 import org.opensearch.indexmanagement.makeRequest
+import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ActionRetry
 import org.opensearch.indexmanagement.waitFor
 import org.opensearch.rest.RestRequest
 import org.opensearch.rest.RestStatus
@@ -44,7 +43,7 @@ class RolloverActionIT : IndexStateManagementRestTestCase() {
         val indexNameBase = "${testIndexName}_index"
         val firstIndex = "$indexNameBase-1"
         val policyID = "${testIndexName}_testPolicyName_1"
-        val actionConfig = RolloverActionConfig(null, null, null, null, 0)
+        val actionConfig = RolloverAction(null, null, null, null, 0)
         val states = listOf(State(name = "RolloverAction", actions = listOf(actionConfig), transitions = listOf()))
         val policy = Policy(
             id = policyID,
@@ -98,7 +97,7 @@ class RolloverActionIT : IndexStateManagementRestTestCase() {
         )
 
         val policyID = "${testIndexName}_bwc"
-        val actionConfig = RolloverActionConfig(null, null, null, null, 0)
+        val actionConfig = RolloverAction(null, null, null, null, 0)
         val states = listOf(State(name = "RolloverAction", actions = listOf(actionConfig), transitions = listOf()))
         val policy = Policy(
             id = policyID,
@@ -135,7 +134,7 @@ class RolloverActionIT : IndexStateManagementRestTestCase() {
         val indexNameBase = "${testIndexName}_index_byte"
         val firstIndex = "$indexNameBase-1"
         val policyID = "${testIndexName}_testPolicyName_byte_1"
-        val actionConfig = RolloverActionConfig(ByteSizeValue(10, ByteSizeUnit.BYTES), 1000000, null, null, 0)
+        val actionConfig = RolloverAction(ByteSizeValue(10, ByteSizeUnit.BYTES), 1000000, null, null, 0)
         val states = listOf(State(name = "RolloverAction", actions = listOf(actionConfig), transitions = listOf()))
         val policy = Policy(
             id = policyID,
@@ -168,10 +167,10 @@ class RolloverActionIT : IndexStateManagementRestTestCase() {
             val conditions = info["conditions"] as Map<String, Any?>
             assertEquals(
                 "Did not have exclusively min size and min doc count conditions",
-                setOf(RolloverActionConfig.MIN_SIZE_FIELD, RolloverActionConfig.MIN_DOC_COUNT_FIELD), conditions.keys
+                setOf(RolloverAction.MIN_SIZE_FIELD, RolloverAction.MIN_DOC_COUNT_FIELD), conditions.keys
             )
-            val minSize = conditions[RolloverActionConfig.MIN_SIZE_FIELD] as Map<String, Any?>
-            val minDocCount = conditions[RolloverActionConfig.MIN_DOC_COUNT_FIELD] as Map<String, Any?>
+            val minSize = conditions[RolloverAction.MIN_SIZE_FIELD] as Map<String, Any?>
+            val minDocCount = conditions[RolloverAction.MIN_DOC_COUNT_FIELD] as Map<String, Any?>
             assertEquals("Did not have min size condition", "10b", minSize["condition"])
             assertThat("Did not have min size current", minSize["current"], isA(String::class.java))
             assertEquals("Did not have min doc count condition", 1000000, minDocCount["condition"])
@@ -188,10 +187,10 @@ class RolloverActionIT : IndexStateManagementRestTestCase() {
             val conditions = info["conditions"] as Map<String, Any?>
             assertEquals(
                 "Did not have exclusively min size and min doc count conditions",
-                setOf(RolloverActionConfig.MIN_SIZE_FIELD, RolloverActionConfig.MIN_DOC_COUNT_FIELD), conditions.keys
+                setOf(RolloverAction.MIN_SIZE_FIELD, RolloverAction.MIN_DOC_COUNT_FIELD), conditions.keys
             )
-            val minSize = conditions[RolloverActionConfig.MIN_SIZE_FIELD] as Map<String, Any?>
-            val minDocCount = conditions[RolloverActionConfig.MIN_DOC_COUNT_FIELD] as Map<String, Any?>
+            val minSize = conditions[RolloverAction.MIN_SIZE_FIELD] as Map<String, Any?>
+            val minDocCount = conditions[RolloverAction.MIN_DOC_COUNT_FIELD] as Map<String, Any?>
             assertEquals("Did not have min size condition", "10b", minSize["condition"])
             assertThat("Did not have min size current", minSize["current"], isA(String::class.java))
             assertEquals("Did not have min doc count condition", 1000000, minDocCount["condition"])
@@ -207,7 +206,7 @@ class RolloverActionIT : IndexStateManagementRestTestCase() {
         val indexNameBase = "${testIndexName}_index_primary_shard"
         val firstIndex = "$indexNameBase-1"
         val policyID = "${testIndexName}_primary_shard_1"
-        val actionConfig = RolloverActionConfig(null, null, null, ByteSizeValue(100, ByteSizeUnit.KB), 0)
+        val actionConfig = RolloverAction(null, null, null, ByteSizeValue(100, ByteSizeUnit.KB), 0)
         val states = listOf(State(name = "RolloverAction", actions = listOf(actionConfig), transitions = listOf()))
         val policy = Policy(
             id = policyID,
@@ -265,9 +264,9 @@ class RolloverActionIT : IndexStateManagementRestTestCase() {
             val conditions = info["conditions"] as Map<String, Any?>
             assertEquals(
                 "Did not have exclusively min primary shard size condition",
-                setOf(RolloverActionConfig.MIN_PRIMARY_SHARD_SIZE_FIELD), conditions.keys
+                setOf(RolloverAction.MIN_PRIMARY_SHARD_SIZE_FIELD), conditions.keys
             )
-            val minPrimarySize = conditions[RolloverActionConfig.MIN_PRIMARY_SHARD_SIZE_FIELD] as Map<String, Any?>
+            val minPrimarySize = conditions[RolloverAction.MIN_PRIMARY_SHARD_SIZE_FIELD] as Map<String, Any?>
             assertEquals("Did not have min size condition", "100kb", minPrimarySize["condition"])
             assertThat("Did not have min size current", minPrimarySize["current"], isA(String::class.java))
         }
@@ -297,9 +296,9 @@ class RolloverActionIT : IndexStateManagementRestTestCase() {
             val conditions = info["conditions"] as Map<String, Any?>
             assertEquals(
                 "Did not have exclusively min primary shard size conditions",
-                setOf(RolloverActionConfig.MIN_PRIMARY_SHARD_SIZE_FIELD), conditions.keys
+                setOf(RolloverAction.MIN_PRIMARY_SHARD_SIZE_FIELD), conditions.keys
             )
-            val minPrimaryShardSize = conditions[RolloverActionConfig.MIN_PRIMARY_SHARD_SIZE_FIELD] as Map<String, Any?>
+            val minPrimaryShardSize = conditions[RolloverAction.MIN_PRIMARY_SHARD_SIZE_FIELD] as Map<String, Any?>
             assertEquals("Did not have min primary shard size condition", "100kb", minPrimaryShardSize["condition"])
             assertThat("Did not have min primary shard size current", minPrimaryShardSize["current"], isA(String::class.java))
         }
@@ -312,7 +311,7 @@ class RolloverActionIT : IndexStateManagementRestTestCase() {
         val indexNameBase = "${testIndexName}_index_doc"
         val firstIndex = "$indexNameBase-1"
         val policyID = "${testIndexName}_testPolicyName_doc_1"
-        val actionConfig = RolloverActionConfig(null, 3, TimeValue.timeValueDays(2), null, 0)
+        val actionConfig = RolloverAction(null, 3, TimeValue.timeValueDays(2), null, 0)
         val states = listOf(State(name = "RolloverAction", actions = listOf(actionConfig), transitions = listOf()))
         val policy = Policy(
             id = policyID,
@@ -345,10 +344,10 @@ class RolloverActionIT : IndexStateManagementRestTestCase() {
             val conditions = info["conditions"] as Map<String, Any?>
             assertEquals(
                 "Did not have exclusively min age and min doc count conditions",
-                setOf(RolloverActionConfig.MIN_INDEX_AGE_FIELD, RolloverActionConfig.MIN_DOC_COUNT_FIELD), conditions.keys
+                setOf(RolloverAction.MIN_INDEX_AGE_FIELD, RolloverAction.MIN_DOC_COUNT_FIELD), conditions.keys
             )
-            val minAge = conditions[RolloverActionConfig.MIN_INDEX_AGE_FIELD] as Map<String, Any?>
-            val minDocCount = conditions[RolloverActionConfig.MIN_DOC_COUNT_FIELD] as Map<String, Any?>
+            val minAge = conditions[RolloverAction.MIN_INDEX_AGE_FIELD] as Map<String, Any?>
+            val minDocCount = conditions[RolloverAction.MIN_DOC_COUNT_FIELD] as Map<String, Any?>
             assertEquals("Did not have min age condition", "2d", minAge["condition"])
             assertThat("Did not have min age current", minAge["current"], isA(String::class.java))
             assertEquals("Did not have min doc count condition", 3, minDocCount["condition"])
@@ -365,10 +364,10 @@ class RolloverActionIT : IndexStateManagementRestTestCase() {
             val conditions = info["conditions"] as Map<String, Any?>
             assertEquals(
                 "Did not have exclusively min age and min doc count conditions",
-                setOf(RolloverActionConfig.MIN_INDEX_AGE_FIELD, RolloverActionConfig.MIN_DOC_COUNT_FIELD), conditions.keys
+                setOf(RolloverAction.MIN_INDEX_AGE_FIELD, RolloverAction.MIN_DOC_COUNT_FIELD), conditions.keys
             )
-            val minAge = conditions[RolloverActionConfig.MIN_INDEX_AGE_FIELD] as Map<String, Any?>
-            val minDocCount = conditions[RolloverActionConfig.MIN_DOC_COUNT_FIELD] as Map<String, Any?>
+            val minAge = conditions[RolloverAction.MIN_INDEX_AGE_FIELD] as Map<String, Any?>
+            val minDocCount = conditions[RolloverAction.MIN_DOC_COUNT_FIELD] as Map<String, Any?>
             assertEquals("Did not have min age condition", "2d", minAge["condition"])
             assertThat("Did not have min age current", minAge["current"], isA(String::class.java))
             assertEquals("Did not have min doc count condition", 3, minDocCount["condition"])
@@ -385,7 +384,7 @@ class RolloverActionIT : IndexStateManagementRestTestCase() {
         val index2 = "index-2"
         val alias1 = "x"
         val policyID = "${testIndexName}_precheck"
-        val actionConfig = RolloverActionConfig(null, 3, TimeValue.timeValueDays(2), null, 0)
+        val actionConfig = RolloverAction(null, 3, TimeValue.timeValueDays(2), null, 0)
         actionConfig.configRetry = ActionRetry(0)
         val states = listOf(State(name = "RolloverAction", actions = listOf(actionConfig), transitions = listOf()))
         val policy = Policy(
@@ -444,8 +443,8 @@ class RolloverActionIT : IndexStateManagementRestTestCase() {
         val policyID = "${testIndexName}_rollover_policy"
 
         // Create the rollover policy
-        val rolloverActionConfig = RolloverActionConfig(null, null, null, null, 0)
-        val states = listOf(State(name = "default", actions = listOf(rolloverActionConfig), transitions = listOf()))
+        val rolloverAction = RolloverAction(null, null, null, null, 0)
+        val states = listOf(State(name = "default", actions = listOf(rolloverAction), transitions = listOf()))
         val policy = Policy(
             id = policyID,
             description = "rollover policy description",
@@ -500,8 +499,8 @@ class RolloverActionIT : IndexStateManagementRestTestCase() {
         val policyID = "${testIndexName}_rollover_policy_multi"
 
         // Create the rollover policy
-        val rolloverActionConfig = RolloverActionConfig(null, 3, TimeValue.timeValueDays(2), null, 0)
-        val states = listOf(State(name = "default", actions = listOf(rolloverActionConfig), transitions = listOf()))
+        val rolloverAction = RolloverAction(null, 3, TimeValue.timeValueDays(2), null, 0)
+        val states = listOf(State(name = "default", actions = listOf(rolloverAction), transitions = listOf()))
         val policy = Policy(
             id = policyID,
             description = "rollover policy description",
@@ -543,12 +542,12 @@ class RolloverActionIT : IndexStateManagementRestTestCase() {
             val conditions = info["conditions"] as Map<String, Any?>
             assertEquals(
                 "Did not have exclusively min age and min doc count conditions",
-                setOf(RolloverActionConfig.MIN_INDEX_AGE_FIELD, RolloverActionConfig.MIN_DOC_COUNT_FIELD),
+                setOf(RolloverAction.MIN_INDEX_AGE_FIELD, RolloverAction.MIN_DOC_COUNT_FIELD),
                 conditions.keys
             )
 
-            val minAge = conditions[RolloverActionConfig.MIN_INDEX_AGE_FIELD] as Map<String, Any?>
-            val minDocCount = conditions[RolloverActionConfig.MIN_DOC_COUNT_FIELD] as Map<String, Any?>
+            val minAge = conditions[RolloverAction.MIN_INDEX_AGE_FIELD] as Map<String, Any?>
+            val minDocCount = conditions[RolloverAction.MIN_DOC_COUNT_FIELD] as Map<String, Any?>
             assertEquals("Incorrect min age condition", "2d", minAge["condition"])
             assertEquals("Incorrect min docs condition", 3, minDocCount["condition"])
             assertThat("Missing min age current", minAge["current"], isA(String::class.java))
@@ -571,12 +570,12 @@ class RolloverActionIT : IndexStateManagementRestTestCase() {
             val conditions = info["conditions"] as Map<String, Any?>
             assertEquals(
                 "Did not have exclusively min age and min doc count conditions",
-                setOf(RolloverActionConfig.MIN_INDEX_AGE_FIELD, RolloverActionConfig.MIN_DOC_COUNT_FIELD),
+                setOf(RolloverAction.MIN_INDEX_AGE_FIELD, RolloverAction.MIN_DOC_COUNT_FIELD),
                 conditions.keys
             )
 
-            val minAge = conditions[RolloverActionConfig.MIN_INDEX_AGE_FIELD] as Map<String, Any?>
-            val minDocCount = conditions[RolloverActionConfig.MIN_DOC_COUNT_FIELD] as Map<String, Any?>
+            val minAge = conditions[RolloverAction.MIN_INDEX_AGE_FIELD] as Map<String, Any?>
+            val minDocCount = conditions[RolloverAction.MIN_DOC_COUNT_FIELD] as Map<String, Any?>
             assertEquals("Incorrect min age condition", "2d", minAge["condition"])
             assertEquals("Incorrect min docs condition", 3, minDocCount["condition"])
             assertThat("Missing min age current", minAge["current"], isA(String::class.java))
@@ -593,7 +592,7 @@ class RolloverActionIT : IndexStateManagementRestTestCase() {
         val indexNameBase = "${testIndexName}_index"
         val firstIndex = "$indexNameBase-1"
         val policyID = "${testIndexName}_testPolicyName_1"
-        val actionConfig = RolloverActionConfig(null, null, null, null, 0)
+        val actionConfig = RolloverAction(null, null, null, null, 0)
         val states = listOf(State(name = "RolloverAction", actions = listOf(actionConfig), transitions = listOf()))
         val policy = Policy(
             id = policyID,

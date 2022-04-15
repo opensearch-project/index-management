@@ -5,6 +5,10 @@
 
 package org.opensearch.indexmanagement.transform.model
 
+import org.opensearch.action.admin.indices.stats.IndicesStatsAction
+import org.opensearch.action.admin.indices.stats.IndicesStatsRequest
+import org.opensearch.action.admin.indices.stats.IndicesStatsResponse
+import org.opensearch.client.Client
 import org.opensearch.common.bytes.BytesReference
 import org.opensearch.common.io.stream.StreamInput
 import org.opensearch.common.io.stream.StreamOutput
@@ -22,6 +26,7 @@ import org.opensearch.index.query.AbstractQueryBuilder
 import org.opensearch.index.query.MatchAllQueryBuilder
 import org.opensearch.index.query.QueryBuilder
 import org.opensearch.index.seqno.SequenceNumbers
+import org.opensearch.index.shard.ShardId
 import org.opensearch.indexmanagement.common.model.dimension.DateHistogram
 import org.opensearch.indexmanagement.common.model.dimension.Dimension
 import org.opensearch.indexmanagement.common.model.dimension.Histogram
@@ -31,16 +36,20 @@ import org.opensearch.indexmanagement.indexstatemanagement.util.WITH_USER
 import org.opensearch.indexmanagement.opensearchapi.instant
 import org.opensearch.indexmanagement.opensearchapi.optionalTimeField
 import org.opensearch.indexmanagement.opensearchapi.optionalUserField
+import org.opensearch.indexmanagement.opensearchapi.suspendUntil
+import org.opensearch.indexmanagement.transform.TransformSearchService
 import org.opensearch.indexmanagement.util.IndexUtils
 import org.opensearch.jobscheduler.spi.ScheduledJobParameter
 import org.opensearch.jobscheduler.spi.schedule.CronSchedule
 import org.opensearch.jobscheduler.spi.schedule.IntervalSchedule
 import org.opensearch.jobscheduler.spi.schedule.Schedule
 import org.opensearch.jobscheduler.spi.schedule.ScheduleParser
+import org.opensearch.rest.RestStatus
 import org.opensearch.search.aggregations.AggregatorFactories
 import java.io.IOException
 import java.time.Instant
 
+@Suppress("TooManyFunctions")
 data class Transform(
     val id: String = NO_ID,
     val seqNo: Long = SequenceNumbers.UNASSIGNED_SEQ_NO,
@@ -59,6 +68,7 @@ data class Transform(
     val pageSize: Int,
     val groups: List<Dimension>,
     val aggregations: AggregatorFactories.Builder = AggregatorFactories.builder(),
+    val continuous: Boolean = false,
     val user: User? = null
 ) : ScheduledJobParameter, Writeable {
 
@@ -76,7 +86,11 @@ data class Transform(
         }
         require(groups.isNotEmpty()) { "Groupings are Empty" }
         require(sourceIndex != targetIndex) { "Source and target indices cannot be the same" }
-        require(pageSize in MINIMUM_PAGE_SIZE..MAXIMUM_PAGE_SIZE) { "Page size must be between 1 and 10,000" }
+        if (continuous) {
+            require(pageSize in MINIMUM_PAGE_SIZE..MAXIMUM_PAGE_SIZE_CONTINUOUS) { "Page size must be between 1 and 1,000" }
+        } else {
+            require(pageSize in MINIMUM_PAGE_SIZE..MAXIMUM_PAGE_SIZE) { "Page size must be between 1 and 10,000" }
+        }
     }
 
     override fun getName() = id
@@ -108,6 +122,7 @@ data class Transform(
             .field(PAGE_SIZE_FIELD, pageSize)
             .field(GROUPS_FIELD, groups.toTypedArray())
             .field(AGGREGATIONS_FIELD, aggregations)
+            .field(CONTINUOUS_FIELD, continuous)
         if (params.paramAsBoolean(WITH_USER, true)) builder.optionalUserField(USER_FIELD, user)
         if (params.paramAsBoolean(WITH_TYPE, true)) builder.endObject()
         builder.endObject()
@@ -145,6 +160,7 @@ data class Transform(
             }
         }
         out.writeOptionalWriteable(aggregations)
+        out.writeBoolean(continuous)
         out.writeBoolean(user != null)
         user?.writeTo(out)
     }
@@ -160,6 +176,41 @@ data class Transform(
                 TRANSFORM_DOC_COUNT_FIELD to docCount
             )
         }
+    }
+
+    suspend fun getContinuousStats(client: Client, metadata: TransformMetadata): ContinuousTransformStats? {
+        val indicesStatsRequest = IndicesStatsRequest().indices(sourceIndex).clear()
+        val response: IndicesStatsResponse = client.suspendUntil { execute(IndicesStatsAction.INSTANCE, indicesStatsRequest, it) }
+        val shardIDsToGlobalCheckpoint = if (response.status == RestStatus.OK) {
+            TransformSearchService.convertIndicesStatsResponse(response)
+        } else return null
+        return ContinuousTransformStats(
+            metadata.continuousStats?.lastTimestamp,
+            getDocumentsBehind(
+                metadata.shardIDToGlobalCheckpoint,
+                shardIDsToGlobalCheckpoint
+            )
+        )
+    }
+
+    private fun getDocumentsBehind(
+        oldShardIDsToGlobalCheckpoint: Map<ShardId, Long>?,
+        newShardIDsToGlobalCheckpoint: Map<ShardId, Long>?
+    ): MutableMap<String, Long> {
+        val documentsBehind: MutableMap<String, Long> = HashMap()
+        if (newShardIDsToGlobalCheckpoint == null) {
+            return documentsBehind
+        }
+        newShardIDsToGlobalCheckpoint.forEach { (shardID, globalCheckpoint) ->
+            val indexName = shardID.indexName
+            val newGlobalCheckpoint = java.lang.Long.max(0, globalCheckpoint)
+            // global checkpoint may be -1 or -2 if not initialized, just set to 0 in those cases
+            val oldGlobalCheckpoint = java.lang.Long.max(0, oldShardIDsToGlobalCheckpoint?.get(shardID) ?: 0)
+            val localDocsBehind = newGlobalCheckpoint - oldGlobalCheckpoint
+            documentsBehind[indexName] = (documentsBehind[indexName] ?: 0) + localDocsBehind
+        }
+
+        return documentsBehind
     }
 
     @Throws(IOException::class)
@@ -200,6 +251,7 @@ data class Transform(
             dimensionList.toList()
         },
         aggregations = requireNotNull(sin.readOptionalWriteable { AggregatorFactories.Builder(it) }) { "Aggregations cannot be null" },
+        continuous = sin.readBoolean(),
         user = if (sin.readBoolean()) {
             User(sin)
         } else null
@@ -231,9 +283,11 @@ data class Transform(
         const val SCHEMA_VERSION_FIELD = "schema_version"
         const val MINIMUM_PAGE_SIZE = 1
         const val MAXIMUM_PAGE_SIZE = 10_000
+        const val MAXIMUM_PAGE_SIZE_CONTINUOUS = 1_000
         const val MINIMUM_JOB_INTERVAL = 1
         const val TRANSFORM_DOC_ID_FIELD = "$TRANSFORM_TYPE._id"
         const val TRANSFORM_DOC_COUNT_FIELD = "$TRANSFORM_TYPE._doc_count"
+        const val CONTINUOUS_FIELD = "continuous"
         const val USER_FIELD = "user"
 
         @Suppress("ComplexMethod", "LongMethod")
@@ -258,6 +312,7 @@ data class Transform(
             var pageSize: Int? = null
             val groups = mutableListOf<Dimension>()
             var aggregations: AggregatorFactories.Builder = AggregatorFactories.builder()
+            var continuous = false
             var user: User? = null
 
             ensureExpectedToken(Token.START_OBJECT, xcp.currentToken(), xcp)
@@ -305,6 +360,7 @@ data class Transform(
                         }
                     }
                     AGGREGATIONS_FIELD -> aggregations = AggregatorFactories.parseAggregators(xcp)
+                    CONTINUOUS_FIELD -> continuous = xcp.booleanValue()
                     USER_FIELD -> {
                         user = if (xcp.currentToken() == Token.VALUE_NULL) null else User.parse(xcp)
                     }
@@ -346,6 +402,7 @@ data class Transform(
                 pageSize = requireNotNull(pageSize) { "Transform page size is null" },
                 groups = groups,
                 aggregations = aggregations,
+                continuous = continuous,
                 user = user
             )
         }

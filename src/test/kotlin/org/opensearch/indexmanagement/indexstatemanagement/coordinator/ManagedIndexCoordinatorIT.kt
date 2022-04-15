@@ -5,25 +5,21 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.coordinator
 
-import org.opensearch.client.ResponseException
 import org.opensearch.indexmanagement.indexstatemanagement.IndexStateManagementRestTestCase
+import org.opensearch.indexmanagement.indexstatemanagement.action.DeleteAction
+import org.opensearch.indexmanagement.indexstatemanagement.action.ForceMergeAction
+import org.opensearch.indexmanagement.indexstatemanagement.action.RolloverAction
 import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexConfig
-import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
 import org.opensearch.indexmanagement.indexstatemanagement.model.State
 import org.opensearch.indexmanagement.indexstatemanagement.model.Transition
-import org.opensearch.indexmanagement.indexstatemanagement.model.action.DeleteActionConfig
-import org.opensearch.indexmanagement.indexstatemanagement.model.action.ForceMergeActionConfig
-import org.opensearch.indexmanagement.indexstatemanagement.model.action.RolloverActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomErrorNotification
-import org.opensearch.indexmanagement.indexstatemanagement.resthandler.RestExplainAction
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings
 import org.opensearch.indexmanagement.indexstatemanagement.step.forcemerge.WaitForForceMergeStep
 import org.opensearch.indexmanagement.indexstatemanagement.step.rollover.AttemptRolloverStep
-import org.opensearch.indexmanagement.makeRequest
+import org.opensearch.indexmanagement.indexstatemanagement.util.TOTAL_MANAGED_INDICES
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.waitFor
-import org.opensearch.rest.RestRequest
-import org.opensearch.rest.RestStatus
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 import kotlin.test.assertFailsWith
@@ -95,7 +91,8 @@ class ManagedIndexCoordinatorIT : IndexStateManagementRestTestCase() {
                         explainResponseOpendistroPolicyIdSetting to fun(policyID: Any?): Boolean =
                             policyID == null,
                         explainResponseOpenSearchPolicyIdSetting to fun(policyID: Any?): Boolean =
-                            policyID == null
+                            policyID == null,
+                        ManagedIndexMetaData.ENABLED to fun(enabled: Any?): Boolean = enabled == null
                     )
                 ),
                 getExplainMap(index),
@@ -127,35 +124,9 @@ class ManagedIndexCoordinatorIT : IndexStateManagementRestTestCase() {
 
         // Verify ManagedIndexMetadata has been cleared
         waitFor {
-            try {
-                client().makeRequest(RestRequest.Method.GET.toString(), RestExplainAction.EXPLAIN_BASE_URI)
-                fail("Expected a failure")
-            } catch (e: ResponseException) {
-                assertEquals("Unexpected RestStatus", RestStatus.NOT_FOUND, e.response.restStatus())
-                val actualMessage = e.response.asMap()
-                val expectedErrorMessage = mapOf(
-                    "error" to mapOf(
-                        "root_cause" to listOf(
-                            mapOf(
-                                "type" to "illegal_argument_exception", "reason" to "Missing indices",
-                                "reason" to "no such index [$index]",
-                                "index_uuid" to "_na_",
-                                "index" to index,
-                                "resource.type" to "index_or_alias",
-                                "type" to "index_not_found_exception",
-                                "resource.id" to index
-                            )
-                        ),
-                        "type" to "index_not_found_exception",
-                        "reason" to "no such index [$index]",
-                        "index_uuid" to "_na_",
-                        "index" to index,
-                        "resource.type" to "index_or_alias",
-                        "resource.id" to index
-                    ),
-                    "status" to 404
-                )
-                assertEquals(expectedErrorMessage, actualMessage)
+            val expected = mapOf(TOTAL_MANAGED_INDICES to 0)
+            waitFor {
+                assertEquals(expected, getExplainMap(null))
             }
         }
     }
@@ -165,7 +136,7 @@ class ManagedIndexCoordinatorIT : IndexStateManagementRestTestCase() {
         val policyID = "test_policy_1"
 
         // Create a policy with one State that performs rollover
-        val rolloverActionConfig = RolloverActionConfig(index = 0, minDocs = 5, minAge = null, minSize = null, minPrimaryShardSize = null)
+        val rolloverActionConfig = RolloverAction(index = 0, minDocs = 5, minAge = null, minSize = null, minPrimaryShardSize = null)
         val states =
             listOf(State(name = "RolloverState", actions = listOf(rolloverActionConfig), transitions = listOf()))
         val policy = Policy(
@@ -249,8 +220,8 @@ class ManagedIndexCoordinatorIT : IndexStateManagementRestTestCase() {
         val policyID = "test_policy_1"
 
         // Create a policy with one State that performs force_merge and another State that deletes the index
-        val forceMergeActionConfig = ForceMergeActionConfig(index = 0, maxNumSegments = 1)
-        val deleteActionConfig = DeleteActionConfig(index = 0)
+        val forceMergeActionConfig = ForceMergeAction(index = 0, maxNumSegments = 1)
+        val deleteActionConfig = DeleteAction(index = 0)
         val states = listOf(
             State(
                 name = "ForceMergeState",

@@ -10,6 +10,7 @@ import org.opensearch.common.xcontent.ToXContentObject
 import org.opensearch.common.xcontent.XContentParser
 import org.opensearch.common.xcontent.XContentParser.Token
 import org.opensearch.common.xcontent.XContentParserUtils.ensureExpectedToken
+import org.opensearch.index.query.AbstractQueryBuilder
 import org.opensearch.search.aggregations.bucket.composite.CompositeValuesSourceBuilder
 import java.io.IOException
 
@@ -29,6 +30,13 @@ abstract class Dimension(
     }
 
     abstract fun toSourceBuilder(appendType: Boolean = false): CompositeValuesSourceBuilder<*>
+
+    /**
+     * Helper method to get a query which specifies the documents contained within the bucket determined by this dimension.
+     *
+     * e.g. a terms dimension would return a TermsQueryBuilder specifying just the bucketKey term
+     */
+    abstract fun toBucketQuery(bucketKey: Any): AbstractQueryBuilder<*>
 
     /**
      * Helper method that evaluates if the dimension can be realized using mappings provided.

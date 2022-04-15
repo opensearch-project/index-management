@@ -7,3 +7,5 @@ root = true
 
 # See https://github.com/arturbosch/detekt
 max_line_length=off
+
+disabled_rules=import-ordering

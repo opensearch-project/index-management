@@ -15,11 +15,11 @@ import org.opensearch.client.RequestOptions
 import org.opensearch.client.Response
 import org.opensearch.client.RestClient
 import org.opensearch.common.Strings
+import org.opensearch.common.io.PathUtils
 import org.opensearch.common.settings.Settings
 import org.opensearch.indexmanagement.indexstatemanagement.util.INDEX_HIDDEN
 import org.opensearch.rest.RestStatus
 import java.nio.file.Files
-import java.nio.file.Path
 import javax.management.MBeanServerInvocationHandler
 import javax.management.ObjectName
 import javax.management.remote.JMXConnectorFactory
@@ -28,7 +28,7 @@ import javax.management.remote.JMXServiceURL
 abstract class IndexManagementRestTestCase : ODFERestTestCase() {
 
     val configSchemaVersion = 13
-    val historySchemaVersion = 3
+    val historySchemaVersion = 4
 
     // Having issues with tests leaking into other tests and mappings being incorrect and they are not caught by any pending task wait check as
     // they do not go through the pending task queue. Ideally this should probably be written in a way to wait for the
@@ -171,7 +171,7 @@ abstract class IndexManagementRestTestCase : ODFERestTestCase() {
                     false
                 )
                 proxy.getExecutionData(false)?.let {
-                    val path = Path.of("$jacocoBuildPath/integTest.exec")
+                    val path = PathUtils.get("$jacocoBuildPath/integTest.exec")
                     Files.write(path, it)
                 }
             }

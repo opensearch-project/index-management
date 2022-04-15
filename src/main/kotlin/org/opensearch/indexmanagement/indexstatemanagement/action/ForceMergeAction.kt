@@ -5,26 +5,28 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.action
 
-import org.opensearch.client.Client
-import org.opensearch.cluster.service.ClusterService
-import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexMetaData
-import org.opensearch.indexmanagement.indexstatemanagement.model.action.ActionConfig.ActionType
-import org.opensearch.indexmanagement.indexstatemanagement.model.action.ForceMergeActionConfig
-import org.opensearch.indexmanagement.indexstatemanagement.step.Step
+import org.opensearch.common.io.stream.StreamOutput
+import org.opensearch.common.xcontent.ToXContent
+import org.opensearch.common.xcontent.XContentBuilder
 import org.opensearch.indexmanagement.indexstatemanagement.step.forcemerge.AttemptCallForceMergeStep
 import org.opensearch.indexmanagement.indexstatemanagement.step.forcemerge.AttemptSetReadOnlyStep
 import org.opensearch.indexmanagement.indexstatemanagement.step.forcemerge.WaitForForceMergeStep
+import org.opensearch.indexmanagement.spi.indexstatemanagement.Action
+import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepContext
 
 class ForceMergeAction(
-    clusterService: ClusterService,
-    client: Client,
-    managedIndexMetaData: ManagedIndexMetaData,
-    config: ForceMergeActionConfig
-) : Action(ActionType.FORCE_MERGE, config, managedIndexMetaData) {
+    val maxNumSegments: Int,
+    index: Int
+) : Action(name, index) {
 
-    private val attemptSetReadOnlyStep = AttemptSetReadOnlyStep(clusterService, client, config, managedIndexMetaData)
-    private val attemptCallForceMergeStep = AttemptCallForceMergeStep(clusterService, client, config, managedIndexMetaData)
-    private val waitForForceMergeStep = WaitForForceMergeStep(clusterService, client, config, managedIndexMetaData)
+    init {
+        require(maxNumSegments > 0) { "Force merge {$MAX_NUM_SEGMENTS_FIELD} must be greater than 0" }
+    }
+
+    private val attemptSetReadOnlyStep = AttemptSetReadOnlyStep(this)
+    private val attemptCallForceMergeStep = AttemptCallForceMergeStep(this)
+    private val waitForForceMergeStep = WaitForForceMergeStep(this)
 
     // Using a LinkedHashMap here to maintain order of steps for getSteps() while providing a convenient way to
     // get the current Step object using the current step's name in getStepToExecute()
@@ -34,10 +36,9 @@ class ForceMergeAction(
         WaitForForceMergeStep.name to waitForForceMergeStep
     )
 
-    override fun getSteps(): List<Step> = stepNameToStep.values.toList()
-
     @Suppress("ReturnCount")
-    override fun getStepToExecute(): Step {
+    override fun getStepToExecute(context: StepContext): Step {
+        val managedIndexMetaData = context.metadata
         // If stepMetaData is null, return the first step in ForceMergeAction
         val stepMetaData = managedIndexMetaData.stepMetaData ?: return attemptSetReadOnlyStep
         val currentStep = stepMetaData.name
@@ -60,5 +61,23 @@ class ForceMergeAction(
 
         // If the current step has not completed, return it
         return stepNameToStep[currentStep]!!
+    }
+
+    override fun getSteps(): List<Step> = stepNameToStep.values.toList()
+
+    override fun populateAction(builder: XContentBuilder, params: ToXContent.Params) {
+        builder.startObject(type)
+        builder.field(MAX_NUM_SEGMENTS_FIELD, maxNumSegments)
+        builder.endObject()
+    }
+
+    override fun populateAction(out: StreamOutput) {
+        out.writeInt(maxNumSegments)
+        out.writeInt(actionIndex)
+    }
+
+    companion object {
+        const val name = "force_merge"
+        const val MAX_NUM_SEGMENTS_FIELD = "max_num_segments"
     }
 }

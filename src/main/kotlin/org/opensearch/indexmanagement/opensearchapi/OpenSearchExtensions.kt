@@ -54,6 +54,8 @@ import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import kotlin.coroutines.suspendCoroutine
 
+const val OPENDISTRO_SECURITY_PROTECTED_INDICES_CONF_REQUEST = "_opendistro_security_protected_indices_conf_request"
+
 fun contentParser(bytesReference: BytesReference): XContentParser {
     return XContentHelper.createParser(
         NamedXContentRegistry.EMPTY,
@@ -177,6 +179,8 @@ fun OpenSearchException.isRetryable(): Boolean {
  * Extension function for OpenSearch 6.3 and above that duplicates the OpenSearch 6.2 XContentBuilder.string() method.
  */
 fun XContentBuilder.string(): String = BytesReference.bytes(this).utf8ToString()
+
+fun XContentBuilder.toMap(): Map<String, Any> = XContentHelper.convertToMap(BytesReference.bytes(this), false, XContentType.JSON).v2()
 
 /**
  * Converts [OpenSearchClient] methods that take a callback into a kotlin suspending function.

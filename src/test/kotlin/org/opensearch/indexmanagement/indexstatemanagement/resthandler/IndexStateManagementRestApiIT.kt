@@ -13,9 +13,10 @@ import org.opensearch.common.xcontent.XContentType
 import org.opensearch.common.xcontent.json.JsonXContent.jsonXContent
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.POLICY_BASE_URI
+import org.opensearch.indexmanagement.indexstatemanagement.ISMActionsParser
 import org.opensearch.indexmanagement.indexstatemanagement.IndexStateManagementRestTestCase
+import org.opensearch.indexmanagement.indexstatemanagement.action.ReadOnlyAction
 import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
-import org.opensearch.indexmanagement.indexstatemanagement.model.action.ActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomPolicy
 import org.opensearch.indexmanagement.indexstatemanagement.randomReadOnlyActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomState
@@ -93,8 +94,8 @@ class IndexStateManagementRestApiIT : IndexStateManagementRestTestCase() {
     fun `test creating a policy with a disallowed actions fails`() {
         try {
             // remove read_only from the allowlist
-            val allowedActions = ActionConfig.ActionType.values().toList()
-                .filter { actionType -> actionType != ActionConfig.ActionType.READ_ONLY }
+            val allowedActions = ISMActionsParser.instance.parsers.map { it.getActionType() }.toList()
+                .filter { actionType -> actionType != ReadOnlyAction.name }
                 .joinToString(prefix = "[", postfix = "]") { string -> "\"$string\"" }
             updateClusterSetting(ManagedIndexSettings.ALLOW_LIST.key, allowedActions, escapeValue = false)
             val policy = randomPolicy(states = listOf(randomState(actions = listOf(randomReadOnlyActionConfig()))))
@@ -109,8 +110,8 @@ class IndexStateManagementRestApiIT : IndexStateManagementRestTestCase() {
     fun `test updating a policy with a disallowed actions fails`() {
         try {
             // remove read_only from the allowlist
-            val allowedActions = ActionConfig.ActionType.values().toList()
-                .filter { actionType -> actionType != ActionConfig.ActionType.READ_ONLY }
+            val allowedActions = ISMActionsParser.instance.parsers.map { it.getActionType() }.toList()
+                .filter { actionType -> actionType != ReadOnlyAction.name }
                 .joinToString(prefix = "[", postfix = "]") { string -> "\"$string\"" }
             updateClusterSetting(ManagedIndexSettings.ALLOW_LIST.key, allowedActions, escapeValue = false)
             // createRandomPolicy currently does not create a random list of actions so it won't accidentally create one with read_only
