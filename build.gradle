@@ -425,7 +425,6 @@ getPluginResource(bwc_im_resource_location, bwc_im_download_url)
 
 List<Provider<RegularFile>> plugins = []
 
-
 // Ensure the artifact for the current project version is available to be used for the bwc tests
 
 task prepareBwcTests {
@@ -542,7 +541,6 @@ task "${baseName}#fullRestartClusterTask"(type: StandaloneRestIntegTestTask) {
 
 // A bwc test suite which runs all the bwc tasks combined
 task bwcTestSuite(type: StandaloneRestIntegTestTask) {
-    project.logger.lifecycle('bwcrun')
     exclude '**/*Test*'
     exclude '**/*IT*'
     dependsOn tasks.named("${baseName}#mixedClusterTask")
