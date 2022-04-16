@@ -53,6 +53,7 @@ configurations.all {
 
 dependencies {
     compileOnly "org.opensearch:opensearch:${opensearch_version}"
+    compileOnly "org.opensearch:opensearch-job-scheduler-spi:${job_scheduler_version}"
     compileOnly "org.jetbrains.kotlin:kotlin-stdlib:${kotlin_version}"
     compileOnly "org.jetbrains.kotlin:kotlin-stdlib-common:${kotlin_version}"
     compileOnly "org.jetbrains.kotlin:kotlin-stdlib-jdk8:${kotlin_version}"

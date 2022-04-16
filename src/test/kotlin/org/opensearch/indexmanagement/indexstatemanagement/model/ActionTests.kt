@@ -5,8 +5,11 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.model
 
+import org.opensearch.cluster.routing.allocation.DiskThresholdSettings
 import org.opensearch.common.io.stream.InputStreamStreamInput
 import org.opensearch.common.io.stream.OutputStreamStreamOutput
+import org.opensearch.common.settings.ClusterSettings
+import org.opensearch.common.settings.Settings
 import org.opensearch.common.unit.ByteSizeValue
 import org.opensearch.common.unit.TimeValue
 import org.opensearch.common.xcontent.LoggingDeprecationHandler
@@ -15,6 +18,7 @@ import org.opensearch.common.xcontent.XContentType
 import org.opensearch.indexmanagement.indexstatemanagement.ISMActionsParser
 import org.opensearch.indexmanagement.indexstatemanagement.action.DeleteAction
 import org.opensearch.indexmanagement.indexstatemanagement.randomAllocationActionConfig
+import org.opensearch.indexmanagement.indexstatemanagement.randomByteSizeValue
 import org.opensearch.indexmanagement.indexstatemanagement.randomCloseActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomDeleteActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomForceMergeActionConfig
@@ -26,8 +30,10 @@ import org.opensearch.indexmanagement.indexstatemanagement.randomReadWriteAction
 import org.opensearch.indexmanagement.indexstatemanagement.randomReplicaCountActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomRolloverActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomRollupActionConfig
+import org.opensearch.indexmanagement.indexstatemanagement.randomShrinkAction
 import org.opensearch.indexmanagement.indexstatemanagement.randomSnapshotActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomTimeValueObject
+import org.opensearch.indexmanagement.indexstatemanagement.util.getFreeBytesThresholdHigh
 import org.opensearch.indexmanagement.opensearchapi.convertToMap
 import org.opensearch.indexmanagement.opensearchapi.string
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Action
@@ -67,6 +73,12 @@ class ActionTests : OpenSearchTestCase() {
     fun `test force merge action max num segments of zero fails`() {
         assertFailsWith(IllegalArgumentException::class, "Expected IllegalArgumentException for maxNumSegments less than 1") {
             randomForceMergeActionConfig(maxNumSegments = 0)
+        }
+    }
+
+    fun `test shrink action multiple shard options fails`() {
+        assertFailsWith(IllegalArgumentException::class, "Expected IllegalArgumentException for multiple shard options used") {
+            randomShrinkAction(3, randomByteSizeValue(), .30)
         }
     }
 
@@ -135,6 +147,10 @@ class ActionTests : OpenSearchTestCase() {
         roundTripAction(randomDeleteActionConfig())
     }
 
+    fun `test shrink action round trip`() {
+        roundTripAction(randomShrinkAction())
+    }
+
     fun `test action timeout and retry round trip`() {
         val builder = XContentFactory.jsonBuilder()
             .startObject()
@@ -153,6 +169,29 @@ class ActionTests : OpenSearchTestCase() {
 
         val action = ISMActionsParser.instance.parse(parser, 1)
         roundTripAction(action)
+    }
+
+    fun `test shrink disk threshold percentage settings`() {
+        val rawPercentage = randomIntBetween(0, 100)
+        val percentage = "$rawPercentage%"
+        val settings = Settings.builder().put(DiskThresholdSettings.CLUSTER_ROUTING_ALLOCATION_HIGH_DISK_WATERMARK_SETTING.key, percentage)
+            .put(DiskThresholdSettings.CLUSTER_ROUTING_ALLOCATION_DISK_FLOOD_STAGE_WATERMARK_SETTING.key, percentage)
+            .put(DiskThresholdSettings.CLUSTER_ROUTING_ALLOCATION_LOW_DISK_WATERMARK_SETTING.key, percentage).build()
+        val clusterSettings = ClusterSettings(settings, ClusterSettings.BUILT_IN_CLUSTER_SETTINGS.map { it }.toSet())
+        val totalNodeBytes = randomByteSizeValue().bytes
+        val thresholdBytes = getFreeBytesThresholdHigh(settings, clusterSettings, totalNodeBytes)
+        val expectedThreshold: Long = ((1 - (rawPercentage.toDouble() / 100.0)) * totalNodeBytes).toLong()
+        assertEquals("Free bytes threshold not being calculated correctly for percentage setting.", thresholdBytes, expectedThreshold)
+    }
+
+    fun `test shrink disk threshold byte settings`() {
+        val byteValue = randomByteSizeValue()
+        val settings = Settings.builder().put(DiskThresholdSettings.CLUSTER_ROUTING_ALLOCATION_HIGH_DISK_WATERMARK_SETTING.key, byteValue)
+            .put(DiskThresholdSettings.CLUSTER_ROUTING_ALLOCATION_DISK_FLOOD_STAGE_WATERMARK_SETTING.key, byteValue)
+            .put(DiskThresholdSettings.CLUSTER_ROUTING_ALLOCATION_LOW_DISK_WATERMARK_SETTING.key, byteValue).build()
+        val clusterSettings = ClusterSettings(settings, ClusterSettings.BUILT_IN_CLUSTER_SETTINGS.map { it }.toSet())
+        val thresholdBytes = getFreeBytesThresholdHigh(settings, clusterSettings, randomByteSizeValue().bytes)
+        assertEquals("Free bytes threshold not being calculated correctly for byte setting.", thresholdBytes, byteValue.bytes)
     }
 
     private fun roundTripAction(expectedAction: Action) {
