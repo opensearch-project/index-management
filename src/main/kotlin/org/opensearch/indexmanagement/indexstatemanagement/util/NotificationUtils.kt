@@ -1,8 +1,6 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
- *
- * com.maddyhome.idea.copyright.pattern.CommentInfo@396dcb57
  */
 
 @file:JvmName("NotificationUtils")
