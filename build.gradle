@@ -31,6 +31,7 @@ buildscript {
         }
         opensearch_no_snapshot = opensearch_version.replace("-SNAPSHOT","")
         job_scheduler_resource_folder = "src/test/resources/job-scheduler"
+
         notifications_resource_folder = "src/test/resources/notifications"
         notifications_core_resource_folder = "src/test/resources/notifications-core"
         // notification_version = System.getProperty("notification.version", opensearch_build)
@@ -43,6 +44,7 @@ buildscript {
                 '/latest/linux/x64/tar/builds/opensearch/plugins/opensearch-notifications-' + notifications_no_snapshot + '.zip'
         notifications_core_build_download = 'https://ci.opensearch.org/ci/dbc/distribution-build-opensearch/' + opensearch_no_snapshot +
                 '/latest/linux/x64/tar/builds/opensearch/plugins/opensearch-notifications-core' + notifications_no_snapshot + '.zip'
+
         kotlin_version = System.getProperty("kotlin.version", "1.6.10")
     }
 
