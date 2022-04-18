@@ -10,9 +10,11 @@ import org.opensearch.action.admin.cluster.health.ClusterHealthRequest
 import org.opensearch.action.admin.cluster.health.ClusterHealthResponse
 import org.opensearch.action.admin.cluster.node.stats.NodeStats
 import org.opensearch.action.admin.indices.settings.put.UpdateSettingsRequest
+import org.opensearch.action.admin.indices.stats.IndicesStatsResponse
 import org.opensearch.action.support.master.AcknowledgedResponse
 import org.opensearch.client.Client
 import org.opensearch.cluster.metadata.IndexMetadata
+import org.opensearch.cluster.node.DiscoveryNodes
 import org.opensearch.cluster.routing.allocation.DiskThresholdSettings
 import org.opensearch.common.settings.ClusterSettings
 import org.opensearch.common.settings.Settings
@@ -191,4 +193,21 @@ suspend fun resetReadOnlyAndRouting(index: String, client: Client, originalSetti
 
 fun getShrinkLockID(nodeName: String): String {
     return "$LOCK_RESOURCE_TYPE-$LOCK_RESOURCE_NAME-$nodeName"
+}
+
+// Creates a map of shardIds to the set of node names which the shard copies reside on. For example, with 2 replicas
+// each shardId would have a set containing 3 node names, for the nodes of the primary and two replicas.
+fun getShardIdToNodeNameSet(indicesStatsResponse: IndicesStatsResponse, nodes: DiscoveryNodes): Map<Int, Set<String>> {
+    val shardIdToNodeList: MutableMap<Int, MutableSet<String>> = mutableMapOf()
+    for (shard in indicesStatsResponse.shards) {
+        val shardId = shard.shardRouting.shardId().id
+        // If nodeName is null, then the nodes could have changed since the indicesStatsResponse, just skip adding it
+        val nodeName: String = nodes[shard.shardRouting.currentNodeId()].name ?: continue
+        if (shardIdToNodeList.containsKey(shardId)) {
+            shardIdToNodeList[shardId]?.add(nodeName)
+        } else {
+            shardIdToNodeList[shardId] = mutableSetOf(nodeName)
+        }
+    }
+    return shardIdToNodeList
 }

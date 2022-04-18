@@ -31,6 +31,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexCon
 import org.opensearch.indexmanagement.indexstatemanagement.util.getIntervalFromManagedIndexConfig
 import org.opensearch.indexmanagement.indexstatemanagement.util.getManagedIndexConfig
 import org.opensearch.indexmanagement.indexstatemanagement.util.getNodeFreeMemoryAfterShrink
+import org.opensearch.indexmanagement.indexstatemanagement.util.getShardIdToNodeNameSet
 import org.opensearch.indexmanagement.indexstatemanagement.util.getShrinkLockID
 import org.opensearch.indexmanagement.indexstatemanagement.util.isIndexGreen
 import org.opensearch.indexmanagement.indexstatemanagement.util.issueUpdateSettingsRequest
@@ -309,6 +310,7 @@ class AttemptMoveShardsStep(private val action: ShrinkAction) : Step(name) {
                 nodesWithSpace.add(Tuple(remainingMem, node.node.name))
             }
         }
+        val shardIdToNodeList: Map<Int, Set<String>> = getShardIdToNodeNameSet(indicesStatsResponse, stepContext.clusterService.state().nodes)
         val suitableNodes: ArrayList<String> = ArrayList()
         // For each node, do a dry run of moving all shards to the node to make sure that there aren't any other blockers
         // to the allocation.
@@ -316,20 +318,20 @@ class AttemptMoveShardsStep(private val action: ShrinkAction) : Step(name) {
             val targetNodeName = sizeNodeTuple.v2()
             val indexName = stepContext.metadata.index
             val clusterRerouteRequest = ClusterRerouteRequest().explain(true).dryRun(true)
-            var numberOfRerouteRequests = 0
+            val requestedShardIds: MutableSet<Int> = mutableSetOf()
             for (shard in indicesStatsResponse.shards) {
                 val shardId = shard.shardRouting.shardId()
                 val currentShardNode = stepContext.clusterService.state().nodes[shard.shardRouting.currentNodeId()]
-                // Don't attempt a dry run for shards which are already on that node
-                if (currentShardNode.name == targetNodeName) continue
+                // Don't attempt a dry run for shards which have a copy already on that node
+                if (shardIdToNodeList[shardId.id]?.contains(targetNodeName) == true || requestedShardIds.contains(shardId.id)) continue
                 clusterRerouteRequest.add(MoveAllocationCommand(indexName, shardId.id, currentShardNode.name, targetNodeName))
-                numberOfRerouteRequests++
+                requestedShardIds.add(shardId.id)
             }
             val clusterRerouteResponse: ClusterRerouteResponse =
                 stepContext.client.admin().cluster().suspendUntil { reroute(clusterRerouteRequest, it) }
             val numYesDecisions = clusterRerouteResponse.explanations.explanations().count { it.decisions().type().equals((Decision.Type.YES)) }
             // Should be the same number of yes decisions as the number of primary shards
-            if (numYesDecisions == numberOfRerouteRequests) {
+            if (numYesDecisions == requestedShardIds.size) {
                 suitableNodes.add(sizeNodeTuple.v2())
             }
         }

@@ -63,16 +63,16 @@ class WaitForMoveShardsStep(private val action: ShrinkAction) : Step(name) {
             val nodeToMoveOnto = localShrinkActionProperties.nodeName
             val inSyncAllocations = context.clusterService.state().metadata.indices[indexName].inSyncAllocationIds
             val numReplicas = context.clusterService.state().metadata.indices[indexName].numberOfReplicas
-            var numShardsOnNode = 0
+            val shardIdOnNode: MutableMap<Int, Boolean> = mutableMapOf()
             var numShardsInSync = 0
             for (shard: ShardStats in response.shards) {
                 val routingInfo = shard.shardRouting
                 val nodeIdShardIsOn = routingInfo.currentNodeId()
                 val nodeNameShardIsOn = context.clusterService.state().nodes()[nodeIdShardIsOn].name
+                if (nodeNameShardIsOn.equals(nodeToMoveOnto) && routingInfo.started()) {
+                    shardIdOnNode[shard.shardRouting.id] = true
+                }
                 if (routingInfo.primary()) {
-                    if (nodeNameShardIsOn.equals(nodeToMoveOnto) && routingInfo.started()) {
-                        numShardsOnNode++
-                    }
                     // Either there must be no replicas (force unsafe must have been set) or all replicas must be in sync as
                     // it isn't known which shard (any replica or primary) will be moved to the target node and used in the shrink.
                     if (numReplicas == 0 || inSyncAllocations[routingInfo.id].size == (numReplicas + 1)) {
@@ -80,11 +80,11 @@ class WaitForMoveShardsStep(private val action: ShrinkAction) : Step(name) {
                     }
                 }
             }
-            if (numShardsOnNode >= numPrimaryShards && numShardsInSync >= numPrimaryShards) {
+            if (shardIdOnNode.values.all { it } && numShardsInSync >= numPrimaryShards) {
                 info = mapOf("message" to getSuccessMessage(nodeToMoveOnto))
                 stepStatus = StepStatus.COMPLETED
             } else {
-                val numShardsNotOnNode = numPrimaryShards - numShardsOnNode
+                val numShardsNotOnNode = shardIdOnNode.values.count { !it }
                 val numShardsNotInSync = numPrimaryShards - numShardsInSync
                 checkTimeOut(context, numShardsNotOnNode, numShardsNotInSync, nodeToMoveOnto)
             }
@@ -166,8 +166,8 @@ class WaitForMoveShardsStep(private val action: ShrinkAction) : Step(name) {
     companion object {
         const val name = "wait_for_move_shards_step"
         fun getSuccessMessage(node: String) = "The shards successfully moved to $node."
-        fun getTimeoutFailure(node: String) = "Shrink failed because it took to long to move shards to $node"
-        fun getTimeoutDelay(node: String) = "Shrink delayed because it took to long to move shards to $node"
+        fun getTimeoutFailure(node: String) = "Shrink failed because it took too long to move shards to $node"
+        fun getTimeoutDelay(node: String) = "Shrink delayed because it took too long to move shards to $node"
         const val FAILURE_MESSAGE = "Shrink failed when waiting for shards to move."
         const val METADATA_FAILURE_MESSAGE = "Shrink action properties are null, metadata was not properly populated"
         const val MOVE_SHARDS_TIMEOUT_IN_SECONDS = 43200L // 12hrs in seconds
