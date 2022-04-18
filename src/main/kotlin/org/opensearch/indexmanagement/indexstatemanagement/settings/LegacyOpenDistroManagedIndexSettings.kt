@@ -41,7 +41,7 @@ class LegacyOpenDistroManagedIndexSettings {
             Setting.Property.Dynamic
         )
 
-        // 0: enabled, use onMaster time as ISM template last_updated_time
+        // 0: enabled, use onClusterManager time as ISM template last_updated_time
         // -1: migration ended successfully
         // -2: migration ended unsuccessfully
         // >0: use this setting (epoch millis) as ISM template last_updated_time

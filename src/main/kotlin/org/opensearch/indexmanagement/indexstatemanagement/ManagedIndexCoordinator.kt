@@ -99,7 +99,7 @@ import java.time.Instant
  * and the [INDEX_MANAGEMENT_INDEX] for current managed index jobs. It will then compare these
  * ManagedIndices to appropriately create or delete each [ManagedIndexConfig]. Each node that has
  * the [IndexManagementPlugin] installed will have an instance of this class, but only the elected
- * master node will set up the background sweep process and listen for [ClusterChangedEvent].
+ * cluster manager node will set up the background sweep process and listen for [ClusterChangedEvent].
  *
  * We do not allow updating to a new policy through Coordinator as this can have bad side effects. If
  * a user wants to update an existing [ManagedIndexConfig] to a new policy (or updated version of policy)
@@ -138,8 +138,8 @@ class ManagedIndexCoordinator(
     @Volatile private var jobInterval = JOB_INTERVAL.get(settings)
     @Volatile private var jobJitter = JITTER.get(settings)
 
-    @Volatile private var isMaster = false
-    @Volatile private var onMasterTimeStamp: Long = 0L
+    @Volatile private var isClusterManager = false
+    @Volatile private var onClusterManagerTimeStamp: Long = 0L
 
     init {
         clusterService.addListener(this)
@@ -177,11 +177,11 @@ class ManagedIndexCoordinator(
         return ThreadPool.Names.MANAGEMENT
     }
 
-    fun onMaster() {
-        onMasterTimeStamp = System.currentTimeMillis()
-        logger.info("Cache master node onMaster time: $onMasterTimeStamp")
+    fun onClusterManager() {
+        onClusterManagerTimeStamp = System.currentTimeMillis()
+        logger.info("Cache cluster manager node onClusterManager time: $onClusterManagerTimeStamp")
 
-        // Init background sweep when promoted to being master
+        // Init background sweep when promoted to being cluster manager
         initBackgroundSweep()
 
         initMoveMetadata()
@@ -189,8 +189,8 @@ class ManagedIndexCoordinator(
         initTemplateMigration(templateMigrationEnabledSetting)
     }
 
-    fun offMaster() {
-        // Cancel background sweep when demoted from being master
+    fun offClusterManager() {
+        // Cancel background sweep when demoted from being cluster manager
         scheduledFullSweep?.cancel()
 
         scheduledMoveMetadata?.cancel()
@@ -199,15 +199,15 @@ class ManagedIndexCoordinator(
     }
 
     override fun clusterChanged(event: ClusterChangedEvent) {
-        // Instead of using a LocalNodeMasterListener to track master changes, this service will
-        // track them here to avoid conditions where master listener events run after other
-        // listeners that depend on what happened in the master listener
-        if (this.isMaster != event.localNodeMaster()) {
-            this.isMaster = event.localNodeMaster()
-            if (this.isMaster) {
-                onMaster()
+        // Instead of using a LocalNodeMasterListener to track cluster manager changes, this service will
+        // track them here to avoid conditions where cluster manager listener events run after other
+        // listeners that depend on what happened in the cluster manager listener
+        if (this.isClusterManager != event.localNodeMaster()) {
+            this.isClusterManager = event.localNodeMaster()
+            if (this.isClusterManager) {
+                onClusterManager()
             } else {
-                offMaster()
+                offClusterManager()
             }
         }
 
@@ -465,7 +465,7 @@ class ManagedIndexCoordinator(
     /**
      * Background sweep process that periodically sweeps for updates to ManagedIndices
      *
-     * This background sweep will only be initialized if the local node is the elected master node.
+     * This background sweep will only be initialized if the local node is the elected cluster manager node.
      * Creates a runnable that is executed as a coroutine in the shared pool of threads on JVM.
      */
     @OpenForTesting
@@ -473,7 +473,7 @@ class ManagedIndexCoordinator(
         // If ISM is disabled return early
         if (!isIndexStateManagementEnabled()) return
 
-        // Do not setup background sweep if we're not the elected master node
+        // Do not setup background sweep if we're not the elected cluster manager node
         if (!clusterService.state().nodes().isLocalNodeElectedMaster) return
 
         // Cancel existing background sweep
@@ -555,10 +555,10 @@ class ManagedIndexCoordinator(
 
                     logger.info("Performing ISM template migration.")
                     if (enableSetting == 0L) {
-                        if (onMasterTimeStamp != 0L)
-                            templateService.doMigration(Instant.ofEpochMilli(onMasterTimeStamp))
+                        if (onClusterManagerTimeStamp != 0L)
+                            templateService.doMigration(Instant.ofEpochMilli(onClusterManagerTimeStamp))
                         else {
-                            logger.error("No valid onMaster time cached, cancel ISM template migration job.")
+                            logger.error("No valid onClusterManager time cached, cancel ISM template migration job.")
                             scheduledTemplateMigration?.cancel()
                         }
                     } else

@@ -19,7 +19,7 @@ class ExplainRequest : ActionRequest {
 
     val indices: List<String>
     val local: Boolean
-    val masterTimeout: TimeValue
+    val clusterManagerTimeout: TimeValue
     val searchParams: SearchParams
     val showPolicy: Boolean
     val indexType: String
@@ -27,14 +27,14 @@ class ExplainRequest : ActionRequest {
     constructor(
         indices: List<String>,
         local: Boolean,
-        masterTimeout: TimeValue,
+        clusterManagerTimeout: TimeValue,
         searchParams: SearchParams,
         showPolicy: Boolean,
         indexType: String
     ) : super() {
         this.indices = indices
         this.local = local
-        this.masterTimeout = masterTimeout
+        this.clusterManagerTimeout = clusterManagerTimeout
         this.searchParams = searchParams
         this.showPolicy = showPolicy
         this.indexType = indexType
@@ -44,7 +44,7 @@ class ExplainRequest : ActionRequest {
     constructor(sin: StreamInput) : this(
         indices = sin.readStringList(),
         local = sin.readBoolean(),
-        masterTimeout = sin.readTimeValue(),
+        clusterManagerTimeout = sin.readTimeValue(),
         searchParams = SearchParams(sin),
         showPolicy = sin.readBoolean(),
         indexType = sin.readString()
@@ -65,7 +65,7 @@ class ExplainRequest : ActionRequest {
     override fun writeTo(out: StreamOutput) {
         out.writeStringCollection(indices)
         out.writeBoolean(local)
-        out.writeTimeValue(masterTimeout)
+        out.writeTimeValue(clusterManagerTimeout)
         searchParams.writeTo(out)
         out.writeBoolean(showPolicy)
         out.writeString(indexType)

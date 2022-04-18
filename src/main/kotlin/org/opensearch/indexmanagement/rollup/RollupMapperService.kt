@@ -247,7 +247,7 @@ class RollupMapperService(
     private fun indexExists(index: String): Boolean = clusterService.state().routingTable.hasIndex(index)
 
     // TODO: error handling - can RemoteTransportException happen here?
-    // TODO: The use of the master transport action UpdateRollupMappingAction will prevent
+    // TODO: The use of the cluster manager transport action UpdateRollupMappingAction will prevent
     //   overwriting an existing rollup job _meta by checking for the job id
     //   but there is still a race condition if two jobs are added at the same time for the
     //   same target index. There is a small time window after get mapping and put mappings
