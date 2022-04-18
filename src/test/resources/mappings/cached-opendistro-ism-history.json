@@ -1,6 +1,6 @@
 {
   "_meta" : {
-    "schema_version": 4
+    "schema_version": 5
   },
   "dynamic": "strict",
   "properties": {
@@ -108,6 +108,10 @@
                 },
                 "has_rollup_failed": {
                   "type": "boolean"
+                },
+                "shrink_action_properties": {
+                  "type": "object",
+                  "enabled": false
                 }
               }
             }

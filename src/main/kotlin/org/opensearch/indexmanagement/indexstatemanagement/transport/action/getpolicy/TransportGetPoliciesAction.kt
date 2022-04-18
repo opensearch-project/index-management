@@ -81,7 +81,7 @@ class TransportGetPoliciesAction @Inject constructor(
             QueryBuilders
                 .queryStringQuery(params.queryString)
                 .defaultOperator(Operator.AND)
-                .field("policy.policy_id")
+                .field("policy.policy_id.keyword")
         )
 
         val searchSourceBuilder = SearchSourceBuilder()

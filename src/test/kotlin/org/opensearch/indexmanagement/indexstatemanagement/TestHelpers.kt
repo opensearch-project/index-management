@@ -5,10 +5,12 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement
 
+import org.opensearch.action.admin.indices.alias.Alias
 import org.opensearch.common.unit.ByteSizeValue
 import org.opensearch.common.unit.TimeValue
 import org.opensearch.common.xcontent.ToXContent
 import org.opensearch.common.xcontent.XContentFactory
+import org.opensearch.index.RandomCreateIndexGenerator.randomAlias
 import org.opensearch.index.seqno.SequenceNumbers
 import org.opensearch.indexmanagement.indexstatemanagement.action.AllocationAction
 import org.opensearch.indexmanagement.indexstatemanagement.action.CloseAction
@@ -22,6 +24,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.action.ReadWriteActio
 import org.opensearch.indexmanagement.indexstatemanagement.action.ReplicaCountAction
 import org.opensearch.indexmanagement.indexstatemanagement.action.RolloverAction
 import org.opensearch.indexmanagement.indexstatemanagement.action.RollupAction
+import org.opensearch.indexmanagement.indexstatemanagement.action.ShrinkAction
 import org.opensearch.indexmanagement.indexstatemanagement.action.SnapshotAction
 import org.opensearch.indexmanagement.indexstatemanagement.model.ChangePolicy
 import org.opensearch.indexmanagement.indexstatemanagement.model.Conditions
@@ -49,10 +52,16 @@ import org.opensearch.jobscheduler.spi.schedule.IntervalSchedule
 import org.opensearch.jobscheduler.spi.schedule.Schedule
 import org.opensearch.script.Script
 import org.opensearch.script.ScriptType
+import org.opensearch.test.OpenSearchTestCase.randomAlphaOfLength
+import org.opensearch.test.OpenSearchTestCase.randomBoolean
+import org.opensearch.test.OpenSearchTestCase.randomDoubleBetween
+import org.opensearch.test.OpenSearchTestCase.randomInt
+import org.opensearch.test.OpenSearchTestCase.randomList
 import org.opensearch.test.rest.OpenSearchRestTestCase
 import java.time.Instant
 import java.time.ZoneId
 import java.time.temporal.ChronoUnit
+import kotlin.math.abs
 
 fun randomPolicy(
     id: String = OpenSearchRestTestCase.randomAlphaOfLength(10),
@@ -130,6 +139,25 @@ fun randomRolloverActionConfig(
         minPrimaryShardSize = minPrimaryShardSize,
         index = 0
     )
+}
+
+@Suppress("ReturnCount")
+fun randomShrinkAction(
+    numNewShards: Int? = null,
+    maxShardSize: ByteSizeValue? = null,
+    percentageOfSourceShards: Double? = null,
+    targetIndexTemplate: Script? = if (randomBoolean()) randomTemplateScript(randomAlphaOfLength(10)) else null,
+    aliases: List<Alias>? = if (randomBoolean()) randomList(10) { randomAlias() } else null,
+    forceUnsafe: Boolean? = if (randomBoolean()) randomBoolean() else null
+): ShrinkAction {
+    if (numNewShards == null && maxShardSize == null && percentageOfSourceShards == null) {
+        when (randomInt(2)) {
+            0 -> return ShrinkAction(abs(randomInt()) + 1, null, null, targetIndexTemplate, aliases, forceUnsafe, 0)
+            1 -> return ShrinkAction(null, randomByteSizeValue(), null, targetIndexTemplate, aliases, forceUnsafe, 0)
+            2 -> return ShrinkAction(null, null, randomDoubleBetween(0.0, 1.0, true), targetIndexTemplate, aliases, forceUnsafe, 0)
+        }
+    }
+    return ShrinkAction(numNewShards, maxShardSize, percentageOfSourceShards, targetIndexTemplate, aliases, forceUnsafe, 0)
 }
 
 fun randomReadOnlyActionConfig(): ReadOnlyAction {
@@ -381,6 +409,11 @@ fun ReadOnlyAction.toJsonString(): String {
 }
 
 fun ReadWriteAction.toJsonString(): String {
+    val builder = XContentFactory.jsonBuilder()
+    return this.toXContent(builder, ToXContent.EMPTY_PARAMS).string()
+}
+
+fun ShrinkAction.toJsonString(): String {
     val builder = XContentFactory.jsonBuilder()
     return this.toXContent(builder, ToXContent.EMPTY_PARAMS).string()
 }

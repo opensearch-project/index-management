@@ -58,7 +58,7 @@ suspend fun Channel.sendNotification(client: Client, title: String, managedIndex
             it
         )
     }
-    validateResponseStatus(res.getStatus(), res.notificationId)
+    validateResponseStatus(res.getStatus(), res.notificationEvent.eventSource.referenceId)
 }
 
 fun ManagedIndexMetaData.getEventSource(title: String): EventSource {

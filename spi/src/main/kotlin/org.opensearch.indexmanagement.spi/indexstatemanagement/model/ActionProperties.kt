@@ -12,7 +12,9 @@ import org.opensearch.common.xcontent.ToXContent
 import org.opensearch.common.xcontent.ToXContentFragment
 import org.opensearch.common.xcontent.XContentBuilder
 import org.opensearch.common.xcontent.XContentParser
-import org.opensearch.common.xcontent.XContentParserUtils
+import org.opensearch.common.xcontent.XContentParser.Token
+import org.opensearch.common.xcontent.XContentParserUtils.ensureExpectedToken
+import org.opensearch.indexmanagement.spi.indexstatemanagement.addObject
 
 /** Properties that will persist across steps of a single Action. Will be stored in the [ActionMetaData]. */
 // TODO: Create namespaces to group properties together
@@ -20,7 +22,8 @@ data class ActionProperties(
     val maxNumSegments: Int? = null,
     val snapshotName: String? = null,
     val rollupId: String? = null,
-    val hasRollupFailed: Boolean? = null
+    val hasRollupFailed: Boolean? = null,
+    val shrinkActionProperties: ShrinkActionProperties? = null
 ) : Writeable, ToXContentFragment {
 
     override fun writeTo(out: StreamOutput) {
@@ -28,6 +31,7 @@ data class ActionProperties(
         out.writeOptionalString(snapshotName)
         out.writeOptionalString(rollupId)
         out.writeOptionalBoolean(hasRollupFailed)
+        out.writeOptionalWriteable(shrinkActionProperties)
     }
 
     override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
@@ -35,6 +39,7 @@ data class ActionProperties(
         if (snapshotName != null) builder.field(Properties.SNAPSHOT_NAME.key, snapshotName)
         if (rollupId != null) builder.field(Properties.ROLLUP_ID.key, rollupId)
         if (hasRollupFailed != null) builder.field(Properties.HAS_ROLLUP_FAILED.key, hasRollupFailed)
+        if (shrinkActionProperties != null) builder.addObject(ShrinkActionProperties.SHRINK_ACTION_PROPERTIES, shrinkActionProperties, params)
         return builder
     }
 
@@ -46,8 +51,8 @@ data class ActionProperties(
             val snapshotName: String? = si.readOptionalString()
             val rollupId: String? = si.readOptionalString()
             val hasRollupFailed: Boolean? = si.readOptionalBoolean()
-
-            return ActionProperties(maxNumSegments, snapshotName, rollupId, hasRollupFailed)
+            val shrinkActionProperties: ShrinkActionProperties? = si.readOptionalWriteable { ShrinkActionProperties.fromStreamInput(it) }
+            return ActionProperties(maxNumSegments, snapshotName, rollupId, hasRollupFailed, shrinkActionProperties)
         }
 
         fun parse(xcp: XContentParser): ActionProperties {
@@ -55,9 +60,10 @@ data class ActionProperties(
             var snapshotName: String? = null
             var rollupId: String? = null
             var hasRollupFailed: Boolean? = null
+            var shrinkActionProperties: ShrinkActionProperties? = null
 
-            XContentParserUtils.ensureExpectedToken(XContentParser.Token.START_OBJECT, xcp.currentToken(), xcp)
-            while (xcp.nextToken() != XContentParser.Token.END_OBJECT) {
+            ensureExpectedToken(Token.START_OBJECT, xcp.currentToken(), xcp)
+            while (xcp.nextToken() != Token.END_OBJECT) {
                 val fieldName = xcp.currentName()
                 xcp.nextToken()
 
@@ -66,10 +72,13 @@ data class ActionProperties(
                     Properties.SNAPSHOT_NAME.key -> snapshotName = xcp.text()
                     Properties.ROLLUP_ID.key -> rollupId = xcp.text()
                     Properties.HAS_ROLLUP_FAILED.key -> hasRollupFailed = xcp.booleanValue()
+                    ShrinkActionProperties.SHRINK_ACTION_PROPERTIES -> {
+                        shrinkActionProperties = if (xcp.currentToken() == Token.VALUE_NULL) null else ShrinkActionProperties.parse(xcp)
+                    }
                 }
             }
 
-            return ActionProperties(maxNumSegments, snapshotName, rollupId, hasRollupFailed)
+            return ActionProperties(maxNumSegments, snapshotName, rollupId, hasRollupFailed, shrinkActionProperties)
         }
     }
 
