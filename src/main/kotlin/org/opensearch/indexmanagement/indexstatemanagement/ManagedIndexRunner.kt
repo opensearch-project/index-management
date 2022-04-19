@@ -403,7 +403,7 @@ object ManagedIndexRunner :
             if (executedManagedIndexMetaData.isFailed) {
                 try {
                     // if the policy has no error_notification this will do nothing otherwise it will try to send the configured error message
-                    // publishErrorNotification(policy, executedManagedIndexMetaData)
+                    publishErrorNotification(policy, executedManagedIndexMetaData)
                 } catch (e: Exception) {
                     logger.error("Failed to publish error notification", e)
                     val errorMessage = e.message ?: "Failed to publish error notification"
@@ -783,7 +783,7 @@ object ManagedIndexRunner :
             errorNotificationRetryPolicy.retry(logger) {
                 val compiledMessage = compileTemplate(messageTemplate, managedIndexMetaData)
                 destination?.buildLegacyBaseMessage(null, compiledMessage)?.publishLegacyNotification(client)
-                channel?.sendNotification(client, ErrorNotification.CHANNEL_TITLE, managedIndexMetaData, compiledMessage)
+                channel?.sendNotification(client, ErrorNotification.CHANNEL_TITLE, managedIndexMetaData, compiledMessage, policy.user)
             }
         }
     }
