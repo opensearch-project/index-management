@@ -9,6 +9,8 @@ package org.opensearch.indexmanagement.indexstatemanagement.util
 import org.opensearch.OpenSearchStatusException
 import org.opensearch.client.Client
 import org.opensearch.client.node.NodeClient
+import org.opensearch.commons.ConfigConstants.OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT
+import org.opensearch.commons.authuser.User
 import org.opensearch.commons.destination.message.LegacyBaseMessage
 import org.opensearch.commons.notifications.NotificationsPluginInterface
 import org.opensearch.commons.notifications.action.LegacyPublishNotificationRequest
@@ -45,18 +47,37 @@ suspend fun LegacyBaseMessage.publishLegacyNotification(client: Client) {
 /**
  * Extension function for publishing a notification to a channel in the Notification plugin.
  */
-suspend fun Channel.sendNotification(client: Client, title: String, managedIndexMetaData: ManagedIndexMetaData, compiledMessage: String) {
+suspend fun Channel.sendNotification(
+    client: Client,
+    title: String,
+    managedIndexMetaData: ManagedIndexMetaData,
+    compiledMessage: String,
+    user: User?
+) {
     val channel = this
-    val res: SendNotificationResponse = NotificationsPluginInterface.suspendUntil {
-        this.sendNotification(
-            (client as NodeClient),
-            managedIndexMetaData.getEventSource(title),
-            ChannelMessage(compiledMessage, null, null),
-            listOf(channel.id),
-            it
-        )
+    client.threadPool().threadContext.stashContext().use {
+        // We need to set the user context information in the thread context for notification plugin to correctly resolve the user object
+        client.threadPool().threadContext.putTransient(OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT, generateUserString(user))
+        val res: SendNotificationResponse = NotificationsPluginInterface.suspendUntil {
+            this.sendNotification(
+                (client as NodeClient),
+                managedIndexMetaData.getEventSource(title),
+                ChannelMessage(compiledMessage, null, null),
+                listOf(channel.id),
+                it
+            )
+        }
+        validateResponseStatus(res.getStatus(), res.notificationEvent.eventSource.referenceId)
     }
-    validateResponseStatus(res.getStatus(), res.notificationEvent.eventSource.referenceId)
+}
+
+private fun generateUserString(user: User?): String {
+    if (user == null) return ""
+    val backendRoles = user.backendRoles.joinToString(",")
+    val roles = user.roles.joinToString(",")
+    val requestedTenant = user.requestedTenant
+    val userName = user.name
+    return "$userName|$backendRoles|$roles|$requestedTenant"
 }
 
 fun ManagedIndexMetaData.getEventSource(title: String): EventSource {

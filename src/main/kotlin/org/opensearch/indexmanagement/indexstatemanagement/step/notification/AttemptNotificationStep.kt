@@ -30,7 +30,7 @@ class AttemptNotificationStep(private val action: NotificationAction) : Step(nam
         try {
             val compiledMessage = compileTemplate(scriptService, action.messageTemplate, context.metadata)
             action.destination?.buildLegacyBaseMessage(null, compiledMessage)?.publishLegacyNotification(context.client)
-            action.channel?.sendNotification(context.client, CHANNEL_TITLE, context.metadata, compiledMessage)
+            action.channel?.sendNotification(context.client, CHANNEL_TITLE, context.metadata, compiledMessage, context.user)
             // publish and send throws an error for any invalid responses so its safe to assume if we reach this point it was successful
             stepStatus = StepStatus.COMPLETED
             info = mapOf("message" to getSuccessMessage(indexName))
