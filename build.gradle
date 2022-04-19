@@ -302,14 +302,14 @@ testClusters.integTest {
             return new RegularFile() {
                 @Override
                 File getAsFile() {
-                    if (new File("$project.rootDir/$notifications_resource_folder").exists()) {
-                        project.delete(files("$project.rootDir/$notifications_resource_folder"))
+                    if (new File("$project.rootDir/$notifications_core_resource_folder").exists()) {
+                        project.delete(files("$project.rootDir/$notifications_core_resource_folder"))
                     }
-                    project.mkdir notifications_resource_folder
-                    ant.get(src: notifications_build_download,
-                            dest: notifications_resource_folder,
+                    project.mkdir notifications_core_resource_folder
+                    ant.get(src: notifications_core_build_download,
+                            dest: notifications_core_resource_folder,
                             httpusecaches: false)
-                    return fileTree(notifications_resource_folder).getSingleFile()
+                    return fileTree(notifications_core_resource_folder).getSingleFile()
                 }
             }
         }
@@ -321,14 +321,14 @@ testClusters.integTest {
             return new RegularFile() {
                 @Override
                 File getAsFile() {
-                    if (new File("$project.rootDir/$notifications_core_resource_folder").exists()) {
-                        project.delete(files("$project.rootDir/$notifications_core_resource_folder"))
+                    if (new File("$project.rootDir/$notifications_resource_folder").exists()) {
+                        project.delete(files("$project.rootDir/$notifications_resource_folder"))
                     }
-                    project.mkdir notifications_core_resource_folder
-                    ant.get(src: notifications_core_build_download,
-                            dest: notifications_core_resource_folder,
+                    project.mkdir notifications_resource_folder
+                    ant.get(src: notifications_build_download,
+                            dest: notifications_resource_folder,
                             httpusecaches: false)
-                    return fileTree(notifications_core_resource_folder).getSingleFile()
+                    return fileTree(notifications_resource_folder).getSingleFile()
                 }
             }
         }
