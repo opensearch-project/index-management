@@ -1,5 +1,5 @@
 grant {
-    // needed to find the classloader to load whitelisted classes.
+    // needed to find the classloader to load allowlisted classes.
     permission java.lang.RuntimePermission "createClassLoader";
     permission java.lang.RuntimePermission "getClassLoader";
 

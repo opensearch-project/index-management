@@ -98,20 +98,20 @@ class ManagedIndexCoordinatorTests : OpenSearchAllocationTestCase() {
         Mockito.verify(cancellable).cancel()
     }
 
-    fun `test on master`() {
-        coordinator.onMaster()
+    fun `test on cluster manager`() {
+        coordinator.onClusterManager()
         Mockito.verify(threadPool, Mockito.times(3)).scheduleWithFixedDelay(Mockito.any(), Mockito.any(), Mockito.anyString())
     }
 
-    fun `test off master`() {
+    fun `test off cluster manager`() {
         val cancellable = Mockito.mock(Scheduler.Cancellable::class.java)
 
-        coordinator.offMaster()
+        coordinator.offClusterManager()
         Mockito.verify(cancellable, Mockito.times(0)).cancel()
 
         Mockito.`when`(threadPool.scheduleWithFixedDelay(Mockito.any(), Mockito.any(), Mockito.anyString())).thenReturn(cancellable)
         coordinator.initBackgroundSweep()
-        coordinator.offMaster()
+        coordinator.offClusterManager()
         Mockito.verify(cancellable).cancel()
     }
 

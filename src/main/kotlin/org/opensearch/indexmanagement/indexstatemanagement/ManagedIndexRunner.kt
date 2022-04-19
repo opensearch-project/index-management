@@ -236,7 +236,7 @@ object ManagedIndexRunner :
     @Suppress("ReturnCount", "ComplexMethod", "LongMethod", "ComplexCondition", "NestedBlockDepth")
     private suspend fun runManagedIndexConfig(managedIndexConfig: ManagedIndexConfig, jobContext: JobExecutionContext) {
         logger.debug("Run job for index ${managedIndexConfig.index}")
-        // doing a check of local cluster health as we do not want to overload master node with potentially a lot of calls
+        // doing a check of local cluster health as we do not want to overload cluster manager node with potentially a lot of calls
         if (clusterIsRed()) {
             logger.debug("Skipping current execution of ${managedIndexConfig.index} because of red cluster health")
             return
@@ -816,7 +816,7 @@ object ManagedIndexRunner :
 
             indexMetaData = response.state.metadata.indices.firstOrNull()?.value
         } catch (e: Exception) {
-            logger.error("Failed to get IndexMetaData from master cluster state for index=$index", e)
+            logger.error("Failed to get IndexMetaData from cluster manager cluster state for index=$index", e)
         }
 
         return indexMetaData

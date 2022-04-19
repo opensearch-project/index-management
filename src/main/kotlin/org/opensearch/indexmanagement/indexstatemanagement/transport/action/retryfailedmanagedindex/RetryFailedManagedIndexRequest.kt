@@ -17,7 +17,7 @@ import java.io.IOException
 class RetryFailedManagedIndexRequest(
     val indices: List<String>,
     val startState: String?,
-    val masterTimeout: TimeValue,
+    val clusterManagerTimeout: TimeValue,
     val indexType: String
 ) : ActionRequest() {
 
@@ -25,7 +25,7 @@ class RetryFailedManagedIndexRequest(
     constructor(sin: StreamInput) : this(
         indices = sin.readStringList(),
         startState = sin.readOptionalString(),
-        masterTimeout = sin.readTimeValue(),
+        clusterManagerTimeout = sin.readTimeValue(),
         indexType = sin.readString()
     )
 
@@ -46,7 +46,7 @@ class RetryFailedManagedIndexRequest(
     override fun writeTo(out: StreamOutput) {
         out.writeStringCollection(indices)
         out.writeOptionalString(startState)
-        out.writeTimeValue(masterTimeout)
+        out.writeTimeValue(clusterManagerTimeout)
         out.writeString(indexType)
     }
 
