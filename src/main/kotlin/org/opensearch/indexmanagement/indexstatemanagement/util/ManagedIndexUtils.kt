@@ -57,7 +57,6 @@ import org.opensearch.indexmanagement.spi.indexstatemanagement.model.PolicyRetry
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StateMetaData
 import org.opensearch.jobscheduler.spi.schedule.IntervalSchedule
 import org.opensearch.search.builder.SearchSourceBuilder
-// import java.net.InetAddress
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 
