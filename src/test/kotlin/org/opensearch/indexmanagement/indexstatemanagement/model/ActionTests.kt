@@ -189,7 +189,7 @@ class ActionTests : OpenSearchTestCase() {
             .put(DiskThresholdSettings.CLUSTER_ROUTING_ALLOCATION_LOW_DISK_WATERMARK_SETTING.key, percentage).build()
         val clusterSettings = ClusterSettings(settings, ClusterSettings.BUILT_IN_CLUSTER_SETTINGS.map { it }.toSet())
         val totalNodeBytes = randomByteSizeValue().bytes
-        val thresholdBytes = getFreeBytesThresholdHigh(settings, clusterSettings, totalNodeBytes)
+        val thresholdBytes = getFreeBytesThresholdHigh(clusterSettings, totalNodeBytes)
         val expectedThreshold: Long = ((1 - (rawPercentage.toDouble() / 100.0)) * totalNodeBytes).toLong()
         assertEquals("Free bytes threshold not being calculated correctly for percentage setting.", thresholdBytes, expectedThreshold)
     }
@@ -200,7 +200,7 @@ class ActionTests : OpenSearchTestCase() {
             .put(DiskThresholdSettings.CLUSTER_ROUTING_ALLOCATION_DISK_FLOOD_STAGE_WATERMARK_SETTING.key, byteValue)
             .put(DiskThresholdSettings.CLUSTER_ROUTING_ALLOCATION_LOW_DISK_WATERMARK_SETTING.key, byteValue).build()
         val clusterSettings = ClusterSettings(settings, ClusterSettings.BUILT_IN_CLUSTER_SETTINGS.map { it }.toSet())
-        val thresholdBytes = getFreeBytesThresholdHigh(settings, clusterSettings, randomByteSizeValue().bytes)
+        val thresholdBytes = getFreeBytesThresholdHigh(clusterSettings, randomByteSizeValue().bytes)
         assertEquals("Free bytes threshold not being calculated correctly for byte setting.", thresholdBytes, byteValue.bytes)
     }
 

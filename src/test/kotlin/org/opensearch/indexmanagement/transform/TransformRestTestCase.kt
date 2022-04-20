@@ -10,6 +10,7 @@ import org.apache.http.HttpHeaders
 import org.apache.http.entity.ContentType.APPLICATION_JSON
 import org.apache.http.entity.StringEntity
 import org.apache.http.message.BasicHeader
+import org.junit.AfterClass
 import org.opensearch.client.Response
 import org.opensearch.client.ResponseException
 import org.opensearch.common.settings.Settings
@@ -37,12 +38,18 @@ import java.time.Instant
 
 abstract class TransformRestTestCase : IndexManagementRestTestCase() {
 
+    companion object {
+        @AfterClass @JvmStatic fun clearIndicesAfterClassCompletion() {
+            wipeAllIndices()
+        }
+    }
+
     override fun preserveIndicesUponCompletion(): Boolean = true
 
     protected fun createTransform(
         transform: Transform,
         transformId: String = randomAlphaOfLength(10),
-        refresh: Boolean = true
+        refresh: Boolean = true,
     ): Transform {
         if (!indexExists(transform.sourceIndex)) {
             createTransformSourceIndex(transform)
@@ -63,7 +70,7 @@ abstract class TransformRestTestCase : IndexManagementRestTestCase() {
     private fun createTransformJson(
         transformString: String,
         transformId: String,
-        refresh: Boolean = true
+        refresh: Boolean = true,
     ): Response {
         val response = client()
             .makeRequest(
@@ -139,7 +146,7 @@ abstract class TransformRestTestCase : IndexManagementRestTestCase() {
 
     protected fun getTransform(
         transformId: String,
-        header: BasicHeader = BasicHeader(HttpHeaders.CONTENT_TYPE, "application/json")
+        header: BasicHeader = BasicHeader(HttpHeaders.CONTENT_TYPE, "application/json"),
     ): Transform {
         val response = client().makeRequest("GET", "$TRANSFORM_BASE_URI/$transformId", null, header)
         assertEquals("Unable to get transform $transformId", RestStatus.OK, response.restStatus())
@@ -167,7 +174,7 @@ abstract class TransformRestTestCase : IndexManagementRestTestCase() {
 
     protected fun getTransformMetadata(
         metadataId: String,
-        header: BasicHeader = BasicHeader(HttpHeaders.CONTENT_TYPE, "application/json")
+        header: BasicHeader = BasicHeader(HttpHeaders.CONTENT_TYPE, "application/json"),
     ): TransformMetadata {
         val response = client().makeRequest("GET", "$INDEX_MANAGEMENT_INDEX/_doc/$metadataId", null, header)
         assertEquals("Unable to get transform metadata $metadataId", RestStatus.OK, response.restStatus())
@@ -197,7 +204,7 @@ abstract class TransformRestTestCase : IndexManagementRestTestCase() {
     @Suppress("UNCHECKED_CAST")
     protected fun getTransformDocumentsBehind(
         transformId: String,
-        header: BasicHeader = BasicHeader(HttpHeaders.CONTENT_TYPE, "application/json")
+        header: BasicHeader = BasicHeader(HttpHeaders.CONTENT_TYPE, "application/json"),
     ): Map<String, Any> {
         val explainResponse = client().makeRequest("GET", "$TRANSFORM_BASE_URI/$transformId/_explain", null, header)
         assertEquals(RestStatus.OK, explainResponse.restStatus())
