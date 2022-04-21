@@ -128,7 +128,7 @@ class AttemptShrinkStep(private val action: ShrinkAction) : Step(name) {
             cleanupAndFail(FAILURE_MESSAGE)
             return false
         }
-        val remainingMem = getNodeFreeMemoryAfterShrink(node, indexSizeInBytes, context.settings, context.clusterService.clusterSettings)
+        val remainingMem = getNodeFreeMemoryAfterShrink(node, indexSizeInBytes, context.clusterService.clusterSettings)
         if (remainingMem < 1L) {
             logger.error("Shrink action failed as the previously selected node no longer has enough free space.")
             cleanupAndFail(NOT_ENOUGH_SPACE_FAILURE_MESSAGE)

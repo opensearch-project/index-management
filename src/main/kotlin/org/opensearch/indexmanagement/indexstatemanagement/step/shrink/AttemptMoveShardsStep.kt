@@ -305,7 +305,7 @@ class AttemptMoveShardsStep(private val action: ShrinkAction) : Step(name) {
         for (node in nodesList) {
             // Gets the amount of memory in the node which will be free below the high watermark level after adding 2*indexSizeInBytes,
             // as the source index is duplicated during the shrink
-            val remainingMem = getNodeFreeMemoryAfterShrink(node, indexSizeInBytes, stepContext.settings, stepContext.clusterService.clusterSettings)
+            val remainingMem = getNodeFreeMemoryAfterShrink(node, indexSizeInBytes, stepContext.clusterService.clusterSettings)
             if (remainingMem > 0L) {
                 nodesWithSpace.add(Tuple(remainingMem, node.node.name))
             }

@@ -10,6 +10,7 @@ import org.apache.http.HttpHeaders
 import org.apache.http.entity.ContentType.APPLICATION_JSON
 import org.apache.http.entity.StringEntity
 import org.apache.http.message.BasicHeader
+import org.junit.AfterClass
 import org.opensearch.client.Response
 import org.opensearch.client.ResponseException
 import org.opensearch.common.settings.Settings
@@ -40,14 +41,18 @@ import java.time.Instant
 
 abstract class RollupRestTestCase : IndexManagementRestTestCase() {
 
-    override fun preserveIndicesUponCompletion(): Boolean = true
+    companion object {
+        @AfterClass @JvmStatic fun clearIndicesAfterClassCompletion() {
+            wipeAllIndices()
+        }
+    }
 
-    override fun preserveDataStreamsUponCompletion(): Boolean = true
+    override fun preserveIndicesUponCompletion(): Boolean = true
 
     protected fun createRollup(
         rollup: Rollup,
         rollupId: String = OpenSearchTestCase.randomAlphaOfLength(10),
-        refresh: Boolean = true
+        refresh: Boolean = true,
     ): Rollup {
         val response = createRollupJson(rollup.toJsonString(), rollupId, refresh)
 
@@ -66,7 +71,7 @@ abstract class RollupRestTestCase : IndexManagementRestTestCase() {
     protected fun createRollupJson(
         rollupString: String,
         rollupId: String,
-        refresh: Boolean = true
+        refresh: Boolean = true,
     ): Response {
         val response = client()
             .makeRequest(
@@ -128,7 +133,7 @@ abstract class RollupRestTestCase : IndexManagementRestTestCase() {
 
     protected fun getRollup(
         rollupId: String,
-        header: BasicHeader = BasicHeader(HttpHeaders.CONTENT_TYPE, "application/json")
+        header: BasicHeader = BasicHeader(HttpHeaders.CONTENT_TYPE, "application/json"),
     ): Rollup {
         val response = client().makeRequest("GET", "$ROLLUP_JOBS_BASE_URI/$rollupId", null, header)
         assertEquals("Unable to get rollup $rollupId", RestStatus.OK, response.restStatus())
@@ -156,7 +161,7 @@ abstract class RollupRestTestCase : IndexManagementRestTestCase() {
 
     protected fun getRollupMetadata(
         metadataId: String,
-        header: BasicHeader = BasicHeader(HttpHeaders.CONTENT_TYPE, "application/json")
+        header: BasicHeader = BasicHeader(HttpHeaders.CONTENT_TYPE, "application/json"),
     ): RollupMetadata {
         val response = client().makeRequest("GET", "$INDEX_MANAGEMENT_INDEX/_doc/$metadataId", null, header)
         assertEquals("Unable to get rollup metadata $metadataId", RestStatus.OK, response.restStatus())
@@ -166,7 +171,7 @@ abstract class RollupRestTestCase : IndexManagementRestTestCase() {
     protected fun getRollupMetadataWithRoutingId(
         routingId: String,
         metadataId: String,
-        header: BasicHeader = BasicHeader(HttpHeaders.CONTENT_TYPE, "application/json")
+        header: BasicHeader = BasicHeader(HttpHeaders.CONTENT_TYPE, "application/json"),
     ): RollupMetadata {
         val response = client().makeRequest("GET", "$INDEX_MANAGEMENT_INDEX/_doc/$metadataId?routing=$routingId", null, header)
         assertEquals("Unable to get rollup metadata $metadataId", RestStatus.OK, response.restStatus())
