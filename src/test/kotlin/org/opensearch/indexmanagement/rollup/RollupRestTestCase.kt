@@ -45,15 +45,9 @@ abstract class RollupRestTestCase : IndexManagementRestTestCase() {
         @AfterClass @JvmStatic fun clearIndicesAfterClassCompletion() {
             wipeAllIndices()
         }
-
-        @AfterClass @JvmStatic fun clearDataStreamsAfterClassCompletion() {
-            wipeDataStreams()
-        }
     }
 
     override fun preserveIndicesUponCompletion(): Boolean = true
-
-    override fun preserveDataStreamsUponCompletion(): Boolean = true
 
     protected fun createRollup(
         rollup: Rollup,
