@@ -16,6 +16,9 @@ import org.opensearch.client.Client
 import org.opensearch.cluster.metadata.IndexMetadata
 import org.opensearch.cluster.node.DiscoveryNodes
 import org.opensearch.cluster.routing.allocation.DiskThresholdSettings
+import org.opensearch.cluster.routing.allocation.DiskThresholdSettings.CLUSTER_ROUTING_ALLOCATION_DISK_FLOOD_STAGE_WATERMARK_SETTING
+import org.opensearch.cluster.routing.allocation.DiskThresholdSettings.CLUSTER_ROUTING_ALLOCATION_HIGH_DISK_WATERMARK_SETTING
+import org.opensearch.cluster.routing.allocation.DiskThresholdSettings.CLUSTER_ROUTING_ALLOCATION_LOW_DISK_WATERMARK_SETTING
 import org.opensearch.common.settings.ClusterSettings
 import org.opensearch.common.settings.Settings
 import org.opensearch.common.unit.TimeValue
@@ -137,8 +140,8 @@ fun getActionStartTime(managedIndexMetaData: ManagedIndexMetaData): Instant {
  * parse either and get the byte value back.
  */
 @Suppress("MagicNumber")
-fun getFreeBytesThresholdHigh(settings: Settings, clusterSettings: ClusterSettings?, totalNodeBytes: Long): Long {
-    val diskThresholdSettings = DiskThresholdSettings(settings, clusterSettings)
+fun getFreeBytesThresholdHigh(clusterSettings: ClusterSettings, totalNodeBytes: Long): Long {
+    val diskThresholdSettings = DiskThresholdSettings(getDiskSettings(clusterSettings), clusterSettings)
     // Depending on how a user provided input, this setting may be a percentage or byte value
     val diskThresholdPercent = diskThresholdSettings.freeDiskThresholdHigh
     val diskThresholdBytes = diskThresholdSettings.freeBytesThresholdHigh
@@ -149,16 +152,29 @@ fun getFreeBytesThresholdHigh(settings: Settings, clusterSettings: ClusterSettin
     } else diskThresholdBytes.bytes
 }
 
+fun getDiskSettings(clusterSettings: ClusterSettings): Settings {
+    return Settings.builder().put(
+        CLUSTER_ROUTING_ALLOCATION_DISK_FLOOD_STAGE_WATERMARK_SETTING.key,
+        clusterSettings.get(CLUSTER_ROUTING_ALLOCATION_DISK_FLOOD_STAGE_WATERMARK_SETTING)
+    ).put(
+        CLUSTER_ROUTING_ALLOCATION_HIGH_DISK_WATERMARK_SETTING.key,
+        clusterSettings.get(CLUSTER_ROUTING_ALLOCATION_HIGH_DISK_WATERMARK_SETTING)
+    ).put(
+        CLUSTER_ROUTING_ALLOCATION_LOW_DISK_WATERMARK_SETTING.key,
+        clusterSettings.get(CLUSTER_ROUTING_ALLOCATION_LOW_DISK_WATERMARK_SETTING)
+    ).build()
+}
+
 /*
  * Returns the amount of memory in the node which will be free below the high watermark level after adding 2*indexSizeInBytes, or -1
  * if adding 2*indexSizeInBytes goes over the high watermark threshold, or if nodeStats does not contain OsStats.
 */
-fun getNodeFreeMemoryAfterShrink(node: NodeStats, indexSizeInBytes: Long, settings: Settings, clusterSettings: ClusterSettings?): Long {
+fun getNodeFreeMemoryAfterShrink(node: NodeStats, indexSizeInBytes: Long, clusterSettings: ClusterSettings): Long {
     val osStats = node.os
     if (osStats != null) {
         val memLeftInNode = osStats.mem.free.bytes
         val totalNodeMem = osStats.mem.total.bytes
-        val freeBytesThresholdHigh = getFreeBytesThresholdHigh(settings, clusterSettings, totalNodeMem)
+        val freeBytesThresholdHigh = getFreeBytesThresholdHigh(clusterSettings, totalNodeMem)
         // We require that a node has enough space to be below the high watermark disk level with an additional 2 * the index size free
         val requiredBytes = (2 * indexSizeInBytes) + freeBytesThresholdHigh
         if (memLeftInNode > requiredBytes) {
