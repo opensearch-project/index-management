@@ -113,6 +113,8 @@ class RollupRunnerIT : RollupRestTestCase() {
             // Non-continuous jobs will finish in a single execution
             assertEquals("Unexpected metadata state", RollupMetadata.Status.FINISHED, rollupMetadata.status)
         }
+        // Delete the data stream
+        client().makeRequest("DELETE", "/_data_stream/$dataStreamName")
     }
 
     fun `test metadata set to failed when rollup job has a metadata id but metadata doc doesn't exist`() {

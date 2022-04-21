@@ -409,6 +409,7 @@ class TransformRunnerIT : TransformRestTestCase() {
             assertEquals("Transform did not complete iteration or had incorrect number of documents processed", 5000, transformMetadata.stats.documentsProcessed)
             assertEquals("Transform did not complete iteration", null, transformMetadata.afterKey)
             assertNotNull("Continuous stats were not updated", transformMetadata.continuousStats)
+            assertNotNull("Continuous stats were set, but lastTimestamp was not", transformMetadata.continuousStats!!.lastTimestamp)
             transformMetadata
         }
 
@@ -734,6 +735,7 @@ class TransformRunnerIT : TransformRestTestCase() {
             assertEquals("Transform did not complete iteration or had incorrect number of documents processed", 15000, transformMetadata.stats.documentsProcessed)
             assertEquals("Transform did not complete iteration", null, transformMetadata.afterKey)
             assertNotNull("Continuous stats were not updated", transformMetadata.continuousStats)
+            assertNotNull("Continuous stats were set, but lastTimestamp was not", transformMetadata.continuousStats!!.lastTimestamp)
             transformMetadata
         }
 

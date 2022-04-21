@@ -5,12 +5,19 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.action
 
+import org.apache.http.entity.ContentType
+import org.apache.http.entity.StringEntity
 import org.apache.logging.log4j.LogManager
+import org.junit.Before
 import org.opensearch.action.admin.indices.alias.Alias
 import org.opensearch.cluster.metadata.IndexMetadata
+import org.opensearch.cluster.routing.allocation.DiskThresholdSettings.CLUSTER_ROUTING_ALLOCATION_DISK_FLOOD_STAGE_WATERMARK_SETTING
+import org.opensearch.cluster.routing.allocation.DiskThresholdSettings.CLUSTER_ROUTING_ALLOCATION_HIGH_DISK_WATERMARK_SETTING
+import org.opensearch.cluster.routing.allocation.DiskThresholdSettings.CLUSTER_ROUTING_ALLOCATION_LOW_DISK_WATERMARK_SETTING
 import org.opensearch.common.settings.Settings
 import org.opensearch.common.unit.ByteSizeValue
 import org.opensearch.index.query.QueryBuilders
+import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
 import org.opensearch.indexmanagement.indexstatemanagement.IndexStateManagementRestTestCase
 import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
 import org.opensearch.indexmanagement.indexstatemanagement.model.State
@@ -19,14 +26,41 @@ import org.opensearch.indexmanagement.indexstatemanagement.step.shrink.AttemptMo
 import org.opensearch.indexmanagement.indexstatemanagement.step.shrink.AttemptShrinkStep
 import org.opensearch.indexmanagement.indexstatemanagement.step.shrink.WaitForMoveShardsStep
 import org.opensearch.indexmanagement.indexstatemanagement.step.shrink.WaitForShrinkStep
+import org.opensearch.indexmanagement.makeRequest
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
 import org.opensearch.indexmanagement.waitFor
+import org.opensearch.rest.RestStatus
 import org.opensearch.script.Script
 import org.opensearch.script.ScriptType
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 
 class ShrinkActionIT : IndexStateManagementRestTestCase() {
+    @Suppress("UnusedPrivateMember")
+    @Before
+    private fun disableJobIndexShardRelocation() {
+        initializeManagedIndex()
+        // Shrink ITs would sometimes fail on multi node setups because of the job scheduler index being moved between nodes,
+        // descheduling the job
+        updateIndexSetting(INDEX_MANAGEMENT_INDEX, "routing.allocation.enable", "none")
+        // When doing remote testing, the docker image seems to keep the disk free space very low, causing the shrink action
+        // to not be able to find a node to shrink onto. Lowering these watermarks avoids that.
+        val request = """
+            {
+                "persistent": {
+                    "${CLUSTER_ROUTING_ALLOCATION_DISK_FLOOD_STAGE_WATERMARK_SETTING.key}": "5b",
+                    "${CLUSTER_ROUTING_ALLOCATION_HIGH_DISK_WATERMARK_SETTING.key}": "10b",
+                    "${CLUSTER_ROUTING_ALLOCATION_LOW_DISK_WATERMARK_SETTING.key}": "15b"
+                }
+            }
+        """.trimIndent()
+        val res = client().makeRequest(
+            "PUT", "_cluster/settings", emptyMap(),
+            StringEntity(request, ContentType.APPLICATION_JSON)
+        )
+        assertEquals("Request failed", RestStatus.OK, res.restStatus())
+    }
+
     private val testIndexName = javaClass.simpleName.lowercase()
     private val testIndexSuffix = "_shrink_test"
     fun `test basic workflow number of shards`() {
@@ -126,8 +160,8 @@ class ShrinkActionIT : IndexStateManagementRestTestCase() {
     @Suppress("UNCHECKED_CAST")
     fun `test basic workflow max shard size`() {
         val logger = LogManager.getLogger(::ShrinkActionIT)
-        val indexName = "${testIndexName}_index_1"
-        val policyID = "${testIndexName}_testPolicyName_1"
+        val indexName = "${testIndexName}_index_2"
+        val policyID = "${testIndexName}_testPolicyName_2"
         val testMaxShardSize: ByteSizeValue = ByteSizeValue.parseBytesSizeValue("1GB", "test")
         val shrinkAction = ShrinkAction(
             numNewShards = null,
@@ -217,8 +251,8 @@ class ShrinkActionIT : IndexStateManagementRestTestCase() {
 
     @Suppress("UNCHECKED_CAST")
     fun `test basic workflow percentage to decrease to`() {
-        val indexName = "${testIndexName}_index_1"
-        val policyID = "${testIndexName}_testPolicyName_1"
+        val indexName = "${testIndexName}_index_3"
+        val policyID = "${testIndexName}_testPolicyName_3"
         val shrinkAction = ShrinkAction(
             numNewShards = null,
             maxShardSize = null,
@@ -309,8 +343,8 @@ class ShrinkActionIT : IndexStateManagementRestTestCase() {
         val logger = LogManager.getLogger(::ShrinkActionIT)
         val nodes = getNodes()
         if (nodes.size > 1) {
-            val indexName = "${testIndexName}_index_1"
-            val policyID = "${testIndexName}_testPolicyName_1"
+            val indexName = "${testIndexName}_index_4"
+            val policyID = "${testIndexName}_testPolicyName_4"
             val shrinkAction = ShrinkAction(
                 numNewShards = null,
                 maxShardSize = null,
@@ -410,8 +444,8 @@ class ShrinkActionIT : IndexStateManagementRestTestCase() {
 
     fun `test no-op with single source index primary shard`() {
         val logger = LogManager.getLogger(::ShrinkActionIT)
-        val indexName = "${testIndexName}_index_1_shard_noop"
-        val policyID = "${testIndexName}_testPolicyName_1_shard_noop"
+        val indexName = "${testIndexName}_index_shard_noop"
+        val policyID = "${testIndexName}_testPolicyName_shard_noop"
 
         // Create a Policy with one State that only preforms a force_merge Action
         val shrinkAction = ShrinkAction(
@@ -561,8 +595,7 @@ class ShrinkActionIT : IndexStateManagementRestTestCase() {
         }
     }
 
-    // TODO This test is excessively flaky, disabling for now but it needs to be fixed
-    private fun `test retries from first step`() {
+    fun `test retries from first step`() {
         val testPolicy = """
         {"policy":{"description":"Default policy","default_state":"Shrink","states":[
         {"name":"Shrink","actions":[{"retry":{"count":2,"backoff":"constant","delay":"1s"},"shrink":
@@ -599,7 +632,7 @@ class ShrinkActionIT : IndexStateManagementRestTestCase() {
                 getExplainManagedIndexMetaData(indexName).info?.get("message")
             )
         }
-        val nodeToShrink = getExplainManagedIndexMetaData(indexName).actionMetaData!!.actionProperties!!.shrinkActionProperties!!.nodeName
+        var nodeToShrink = getExplainManagedIndexMetaData(indexName).actionMetaData!!.actionProperties!!.shrinkActionProperties!!.nodeName
         // starts WaitForMoveShardsStep
         updateManagedIndexConfigStartTime(managedIndexConfig)
         waitFor(Instant.ofEpochSecond(60)) {
@@ -645,6 +678,7 @@ class ShrinkActionIT : IndexStateManagementRestTestCase() {
             assertEquals(targetIndexName, getExplainManagedIndexMetaData(indexName).actionMetaData!!.actionProperties!!.shrinkActionProperties!!.targetIndexName)
             assertNotNull("Couldn't find node to shrink onto.", getExplainManagedIndexMetaData(indexName).actionMetaData!!.actionProperties!!.shrinkActionProperties!!.nodeName)
             val settings = getFlatSettings(indexName)
+            nodeToShrink = getExplainManagedIndexMetaData(indexName).actionMetaData!!.actionProperties!!.shrinkActionProperties!!.nodeName
             assertTrue("Did not set allocation setting", settings.containsKey("index.routing.allocation.require._name"))
             assertTrue(settings.containsKey("index.routing.allocation.require._name"))
             assertEquals(nodeToShrink, settings["index.routing.allocation.require._name"])
