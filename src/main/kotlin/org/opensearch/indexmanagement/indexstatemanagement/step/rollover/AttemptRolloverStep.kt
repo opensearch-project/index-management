@@ -46,14 +46,6 @@ class AttemptRolloverStep(private val action: RolloverAction) : Step(name) {
             return this
         }
 
-        // If we have already rolled over this index then fail as we only allow an index to be rolled over once
-        if (context.metadata.rolledOver == true) {
-            logger.warn("$indexName was already rolled over, cannot execute rollover step")
-            stepStatus = StepStatus.FAILED
-            info = mapOf("message" to getFailedDuplicateRolloverMessage(indexName))
-            return this
-        }
-
         val (rolloverTarget, isDataStream) = getRolloverTargetOrUpdateInfo(context)
         // If the rolloverTarget is null, we would've already updated the failed info from getRolloverTargetOrUpdateInfo and can return early
         rolloverTarget ?: return this
@@ -287,7 +279,6 @@ class AttemptRolloverStep(private val action: RolloverAction) : Step(name) {
             "New index created, but failed to update alias [index=$index, newIndex=$newIndex]"
         fun getFailedDataStreamRolloverMessage(dataStream: String) = "Failed to rollover data stream [data_stream=$dataStream]"
         fun getFailedNoValidAliasMessage(index: String) = "Missing rollover_alias index setting [index=$index]"
-        fun getFailedDuplicateRolloverMessage(index: String) = "Index has already been rolled over [index=$index]"
         fun getFailedEvaluateMessage(index: String) = "Failed to evaluate conditions for rollover [index=$index]"
         fun getPendingMessage(index: String) = "Pending rollover of index [index=$index]"
         fun getSuccessMessage(index: String) = "Successfully rolled over index [index=$index]"
