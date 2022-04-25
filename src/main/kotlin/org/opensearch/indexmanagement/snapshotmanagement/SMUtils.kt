@@ -34,7 +34,13 @@ private val log = LogManager.getLogger("Snapshot Management Helper")
 fun getSMDocId(policyName: String) = "$policyName-sm"
 fun getSMMetadataDocId(policyName: String) = "$policyName-sm-metadata"
 
-suspend fun Client.indexMetadata(metadata: SMMetadata, policyName: String, seqNo: Long = metadata.seqNo, primaryTerm: Long = metadata.primaryTerm, create: Boolean = false): IndexResponse {
+suspend fun Client.indexMetadata(
+    metadata: SMMetadata,
+    policyName: String,
+    seqNo: Long = metadata.seqNo,
+    primaryTerm: Long = metadata.primaryTerm,
+    create: Boolean = false
+): IndexResponse {
     val indexReq = IndexRequest(INDEX_MANAGEMENT_INDEX).create(create)
         .id(getSMMetadataDocId(policyName))
         .source(metadata.toXContent(XContentFactory.jsonBuilder(), ToXContent.EMPTY_PARAMS))

@@ -11,7 +11,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexCon
 import org.opensearch.indexmanagement.rollup.RollupRunner
 import org.opensearch.indexmanagement.rollup.model.Rollup
 import org.opensearch.indexmanagement.snapshotmanagement.engine.SMRunner
-import org.opensearch.indexmanagement.snapshotmanagement.model.SM
+import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy
 import org.opensearch.indexmanagement.transform.TransformRunner
 import org.opensearch.indexmanagement.transform.model.Transform
 import org.opensearch.jobscheduler.spi.JobExecutionContext
@@ -27,7 +27,7 @@ object IndexManagementRunner : ScheduledJobRunner {
             is ManagedIndexConfig -> ManagedIndexRunner.runJob(job, context)
             is Rollup -> RollupRunner.runJob(job, context)
             is Transform -> TransformRunner.runJob(job, context)
-            is SM -> SMRunner.runJob(job, context)
+            is SMPolicy -> SMRunner.runJob(job, context)
             else -> {
                 val errorMessage = "Invalid job type, found ${job.javaClass.simpleName} with id: ${context.jobId}"
                 logger.error(errorMessage)

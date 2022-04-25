@@ -35,7 +35,9 @@ object FinishedState : State {
                 return if (res.snapshots.firstOrNull()?.state == SnapshotsInProgress.State.SUCCESS) {
                     context.metadataToSave = metadata.copy(
                         currentState = SMState.FINISHED.toString(),
-                        creating = null,
+                        creation = metadata.creation.copy(
+                            started = null
+                        ),
                         info = metadata.info.upsert(
                             "last_success", "${metadata.creating} has been created."
                         )
@@ -61,12 +63,16 @@ object FinishedState : State {
                 return if (remainingSnapshots.isEmpty()) {
                     context.metadataToSave = metadata.copy(
                         currentState = SMState.FINISHED.toString(),
-                        deleting = null
+                        deletion = metadata.deletion.copy(
+                            started = null
+                        ),
                     )
                     true
                 } else {
                     context.metadataToSave = metadata.copy(
-                        deleting = remainingSnapshots.toList()
+                        deletion = metadata.deletion.copy(
+                            started = remainingSnapshots.toList()
+                        ),
                     )
                     false
                     // TODO if timeout pass

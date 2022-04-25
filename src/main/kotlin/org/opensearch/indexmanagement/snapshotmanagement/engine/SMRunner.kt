@@ -17,7 +17,7 @@ import org.opensearch.indexmanagement.snapshotmanagement.engine.statemachine.SMS
 import org.opensearch.indexmanagement.snapshotmanagement.getMetadata
 import org.opensearch.indexmanagement.snapshotmanagement.getNextExecutionTime
 import org.opensearch.indexmanagement.snapshotmanagement.indexMetadata
-import org.opensearch.indexmanagement.snapshotmanagement.model.SM
+import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata
 import org.opensearch.jobscheduler.spi.JobExecutionContext
 import org.opensearch.jobscheduler.spi.ScheduledJobParameter
@@ -41,7 +41,7 @@ object SMRunner :
         log.info("sm run job: $job")
 
         launch {
-            job as SM
+            job as SMPolicy
 
             var metadata = client.getMetadata(job.name)
 
@@ -50,18 +50,21 @@ object SMRunner :
                     policySeqNo = job.seqNo,
                     policyPrimaryTerm = job.primaryTerm,
                     currentState = SMState.FINISHED.toString(),
-                    nextCreationTime = getNextExecutionTime(job.createSchedule, Instant.now()),
-                    nextDeletionTime = getNextExecutionTime(job.deleteSchedule, Instant.now()),
+                    creation = SMMetadata.Creation(
+                        SMMetadata.Trigger(getNextExecutionTime(job.creation.schedule, Instant.now()))
+                    ),
+                    deletion = SMMetadata.Deletion(
+                        SMMetadata.Trigger(getNextExecutionTime(job.deletion.schedule, Instant.now()))
+                    ),
                 )
                 // TODO if exception throw here, will it stop the main process?
                 if (!initMetadata(metadata, job.policyName)) return@launch
             }
 
             val stateMachineContext = SMStateMachine(client, job, metadata)
-            if (job.seqNo != metadata.policySeqNo || job.primaryTerm != metadata.policyPrimaryTerm) {
-                stateMachineContext.handlePolicyChange()
-            }
-            stateMachineContext.next()
+            stateMachineContext
+                .handlePolicyChange()
+                .next()
         }
     }
 

@@ -10,10 +10,10 @@ import org.opensearch.indexmanagement.snapshotmanagement.engine.states.CreatingS
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.DeleteConditionMetState
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.DeletingState
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.FinishedState
-import org.opensearch.indexmanagement.snapshotmanagement.engine.states.WaitingState
+import org.opensearch.indexmanagement.snapshotmanagement.engine.states.StartState
 
 enum class SMState(val instance: State) {
-    WAITING(WaitingState),
+    START(StartState),
     CREATE_CONDITION_MET(CreateConditionMetState),
     DELETE_CONDITION_MET(DeleteConditionMetState),
     CREATING(CreatingState),
@@ -21,8 +21,13 @@ enum class SMState(val instance: State) {
     FINISHED(FinishedState),
 }
 
+/**
+ * Transitions are of 2 types
+ * Vertical: WAITING to CONDITION_MET
+ * Lateral: CREATE_CONDITION_MET and DELETE_CONDITION_MET, order matters
+ */
 val transitions: Map<SMState, List<SMState>> = mapOf(
-    SMState.FINISHED to listOf(
+    SMState.START to listOf(
         SMState.CREATE_CONDITION_MET,
         SMState.DELETE_CONDITION_MET,
     ),
@@ -36,4 +41,5 @@ val transitions: Map<SMState, List<SMState>> = mapOf(
         SMState.CREATE_CONDITION_MET,
         SMState.FINISHED,
     ),
+    SMState.FINISHED to listOf(SMState.START),
 )

@@ -40,7 +40,7 @@ class TransportIndexSMAction @Inject constructor(
         private val actionListener: ActionListener<IndexSMResponse>,
         private val request: IndexSMRequest,
     ) {
-        val policy = request.sm
+        val policy = request.smPolicy
 
         fun start() {
             log.info("slm build request")

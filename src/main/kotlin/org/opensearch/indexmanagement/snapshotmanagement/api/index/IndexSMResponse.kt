@@ -11,23 +11,23 @@ import org.opensearch.common.io.stream.StreamOutput
 import org.opensearch.common.xcontent.ToXContent
 import org.opensearch.common.xcontent.ToXContentObject
 import org.opensearch.common.xcontent.XContentBuilder
-import org.opensearch.indexmanagement.snapshotmanagement.model.SM
+import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy
 
-class IndexSMResponse(val sm: SM) : ActionResponse(), ToXContentObject {
+class IndexSMResponse(val smPolicy: SMPolicy) : ActionResponse(), ToXContentObject {
 
     constructor(sin: StreamInput) : this(
-        sm = SM(sin)
+        smPolicy = SMPolicy(sin)
     )
 
     override fun writeTo(out: StreamOutput) {
-        sm.writeTo(out)
+        smPolicy.writeTo(out)
     }
 
     override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
         return builder.startObject()
-            .startObject(sm.policyName)
-            .field(SM.CREATE_SCHEDULE_FIELD, sm.createSchedule)
-            .field(SM.SNAPSHOT_CONFIG_FIELD, sm.snapshotConfig)
+            .startObject(smPolicy.policyName)
+            .field(SMPolicy.CREATE_SCHEDULE_FIELD, smPolicy.createSchedule)
+            .field(SMPolicy.SNAPSHOT_CONFIG_FIELD, smPolicy.snapshotConfig)
             .endObject()
             .endObject()
     }

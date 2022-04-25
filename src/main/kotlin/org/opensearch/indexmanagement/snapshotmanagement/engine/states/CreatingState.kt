@@ -29,12 +29,12 @@ object CreatingState : State {
         val log = context.log
 
         if (metadata.apiCalling) {
-            // probably because we cannot index metadata after transaction
+            // probably because last time we cannot index metadata after transaction
             context.metadataToSave = metadata.copy(
                 currentState = SMState.FINISHED.toString(),
                 info = metadata.info.upsert(
                     "transaction_failure",
-                    "Undetermined about whether the last snapshot has been created, will go to next schedule."
+                    "Undetermined about whether the last snapshot has been created, skipping to next schedule."
                 )
             )
             return true
@@ -52,9 +52,8 @@ object CreatingState : State {
                 .waitForCompletion(false)
             res = client.admin().cluster().suspendUntil { createSnapshot(req, it) }
         } catch (ex: Exception) {
-            // TODO catch RepositoryMissingException, shown to user in info
             context.revertTransaction()
-            throw StateMachineExecutionException(cause = ex)
+            throw ex
         }
 
         return if (RestStatus.ACCEPTED == res.status()) {
@@ -62,7 +61,9 @@ object CreatingState : State {
             context.metadataToSave = metadata.copy(
                 currentState = SMState.CREATING.toString(),
                 apiCalling = false,
-                creating = snapshotName
+                creation = metadata.creation.copy(
+                    started = snapshotName
+                ),
             )
             true
         } else {

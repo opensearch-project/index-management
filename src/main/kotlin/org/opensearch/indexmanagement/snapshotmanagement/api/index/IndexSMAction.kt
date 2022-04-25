@@ -10,6 +10,6 @@ import org.opensearch.action.ActionType
 class IndexSMAction private constructor() : ActionType<IndexSMResponse>(NAME, ::IndexSMResponse) {
     companion object {
         val INSTANCE = IndexSMAction()
-        const val NAME = "cluster:admin/opensearch/slm/put"
+        const val NAME = "cluster:admin/opensearch/snapshot_management/put"
     }
 }

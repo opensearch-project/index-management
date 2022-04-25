@@ -29,16 +29,18 @@ import org.opensearch.jobscheduler.spi.schedule.ScheduleParser
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 
-private val log = LogManager.getLogger(SM::class.java)
+private val log = LogManager.getLogger(SMPolicy::class.java)
 
-data class SM(
+data class SMPolicy(
     val policyName: String,
     val description: String?,
     val jobEnabled: Boolean,
     val jobLastUpdateTime: Instant,
-    val createSchedule: Schedule, // TODO Required
+    val creation: Creation,
+    val deletion: Deletion,
+    val createSchedule: Schedule, // TODO Required field
     val snapshotConfig: Map<String, Any>,
-    val deleteSchedule: Schedule, // TODO Optional if not provided, default to every day midnight
+    val deleteSchedule: Schedule, // TODO Optional, if not provided, default to every day midnight
     val deleteCondition: DeleteCondition,
     val id: String = NO_ID,
     val seqNo: Long = SequenceNumbers.UNASSIGNED_SEQ_NO,
@@ -73,6 +75,8 @@ data class SM(
             .optionalTimeField(ENABLED_TIME_FIELD, jobEnabledTime)
             .field(SCHEDULE_FIELD, jobSchedule)
             .field(ENABLED_FIELD, jobEnabled)
+            .field(CREATION_FIELD, creation)
+            .field(DELETION_FIELD, deletion)
             .field(CREATE_SCHEDULE_FIELD, createSchedule)
             .field(SNAPSHOT_CONFIG_FIELD, snapshotConfig)
             .field(DELETE_SCHEDULE_FIELD, deleteSchedule)
@@ -88,6 +92,8 @@ data class SM(
         const val ENABLED_TIME_FIELD = "enabled_time"
         const val SCHEDULE_FIELD = "schedule"
         const val ENABLED_FIELD = "enabled"
+        const val CREATION_FIELD = "creation"
+        const val DELETION_FIELD = "deletion"
         const val CREATE_SCHEDULE_FIELD = "create_schedule"
         const val SNAPSHOT_CONFIG_FIELD = "snapshot_config"
         const val DELETE_SCHEDULE_FIELD = "delete_schedule"
@@ -99,12 +105,14 @@ data class SM(
             seqNo: Long = SequenceNumbers.UNASSIGNED_SEQ_NO,
             primaryTerm: Long = SequenceNumbers.UNASSIGNED_PRIMARY_TERM,
             policyName: String? = null
-        ): SM {
+        ): SMPolicy {
             var name: String? = policyName
             var lastUpdatedTime: Instant? = null
             var enabledTime: Instant? = null
             var schedule: Schedule? = null
             var enabled = true
+            var creation: Creation? = null
+            var deletion: Deletion? = null
             var createSchedule: Schedule? = null // TODO default to some schedule?
             var snapshotConfig: Map<String, Any>? = null
             var deleteSchedule: Schedule? = null // default
@@ -124,6 +132,8 @@ data class SM(
                     ENABLED_TIME_FIELD -> enabledTime = xcp.instant()
                     SCHEDULE_FIELD -> schedule = ScheduleParser.parse(xcp)
                     ENABLED_FIELD -> enabled = xcp.booleanValue()
+                    CREATION_FIELD -> creation = Creation.parse(xcp)
+                    DELETION_FIELD -> deletion = Deletion.parse(xcp)
                     CREATE_SCHEDULE_FIELD -> createSchedule = ScheduleParser.parse(xcp)
                     SNAPSHOT_CONFIG_FIELD -> snapshotConfig = xcp.map()
                     DELETE_SCHEDULE_FIELD -> deleteSchedule = ScheduleParser.parse(xcp)
@@ -148,7 +158,7 @@ data class SM(
                 schedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES)
             }
 
-            return SM(
+            return SMPolicy(
                 id = id,
                 seqNo = seqNo,
                 primaryTerm = primaryTerm,
@@ -158,6 +168,8 @@ data class SM(
                 jobSchedule = schedule,
                 jobEnabled = enabled,
                 description = null,
+                creation = requireNotNull(creation) { "creation field must not be null" },
+                deletion = requireNotNull(deletion) { "deletion field must not be null" },
                 createSchedule = requireNotNull(createSchedule) { "create_schedule field must not be null" },
                 snapshotConfig = requireNotNull(snapshotConfig) { "snapshot_config field must not be null" },
                 deleteSchedule = requireNotNull(deleteSchedule) { "delete_schedule field must not be null" },
@@ -176,6 +188,8 @@ data class SM(
         jobSchedule = requireNotNull(sin.readOptionalWriteable(::IntervalSchedule)),
         jobEnabled = sin.readBoolean(),
         description = null,
+        creation = Creation(sin),
+        deletion = Deletion(sin),
         createSchedule = sin.let {
             when (requireNotNull(sin.readEnum(ScheduleType::class.java)) { "ScheduleType cannot be null" }) {
                 ScheduleType.CRON -> CronSchedule(sin)
@@ -201,6 +215,8 @@ data class SM(
         out.writeInstant(jobEnabledTime)
         out.writeOptionalWriteable(jobSchedule)
         out.writeBoolean(jobEnabled)
+        creation.writeTo(out)
+        deletion.writeTo(out)
         if (createSchedule is CronSchedule) {
             out.writeEnum(ScheduleType.CRON)
         } else {
@@ -216,53 +232,159 @@ data class SM(
         deleteSchedule.writeTo(out)
         deleteCondition.writeTo(out)
     }
-}
 
-data class DeleteCondition(
-    val age: String, // TODO this is optional
-    val count: List<Int>
-) : Writeable, ToXContentFragment {
+    data class Creation(
+        val schedule: Schedule,
+        val timeout: String,
+    ) : Writeable, ToXContentFragment {
 
-    override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
-        return builder.startObject()
-            .field(AGE_FIELD, age)
-            .field(COUNT_FIELD, count)
-            .endObject()
-    }
+        override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
+            return builder.startObject()
+                .field(SCHEDULE_FIELD, schedule)
+                .field(TIMEOUT_FIELD, timeout)
+                .endObject()
+        }
 
-    companion object {
-        const val AGE_FIELD = "age"
-        const val COUNT_FIELD = "count"
+        companion object {
+            const val SCHEDULE_FIELD = "schedule"
+            const val TIMEOUT_FIELD = "timeout"
 
-        fun parse(xcp: XContentParser): DeleteCondition {
-            var age: String? = null
-            var count: List<Int>? = null
+            fun parse(xcp: XContentParser): Creation {
+                var schedule: Schedule? = null
+                var timeout: String? = null
 
-            ensureExpectedToken(Token.START_OBJECT, xcp.currentToken(), xcp)
-            while (xcp.nextToken() != Token.END_OBJECT) {
-                val fieldName = xcp.currentName()
-                xcp.nextToken()
+                ensureExpectedToken(Token.START_OBJECT, xcp.currentToken(), xcp)
+                while (xcp.nextToken() != Token.END_OBJECT) {
+                    val fieldName = xcp.currentName()
+                    xcp.nextToken()
 
-                when (fieldName) {
-                    AGE_FIELD -> age = xcp.text()
-                    COUNT_FIELD -> count = xcp.parseArray { intValue() }
+                    when (fieldName) {
+                        SCHEDULE_FIELD -> schedule = ScheduleParser.parse(xcp)
+                        TIMEOUT_FIELD -> timeout = xcp.text()
+                    }
                 }
-            }
 
-            return DeleteCondition(
-                age = requireNotNull(age) { "age field must not be null" },
-                count = requireNotNull(count) { "count field must not be null" }
-            )
+                return Creation(
+                    schedule = requireNotNull(schedule) { "schedule field must not be null" },
+                    timeout = requireNotNull(timeout) { "timeout field must not be null" }
+                )
+            }
+        }
+
+        constructor(sin: StreamInput) : this(
+            schedule = CronSchedule(sin),
+            timeout = sin.readString()
+        )
+
+        override fun writeTo(out: StreamOutput) {
+            schedule.writeTo(out)
+            out.writeString(timeout)
         }
     }
 
-    constructor(sin: StreamInput) : this(
-        sin.readString(),
-        sin.readIntArray().toList()
-    )
+    data class Deletion(
+        val schedule: Schedule,
+        val timeout: String,
+        val condition: DeleteCondition,
+    ) : Writeable, ToXContentFragment {
 
-    override fun writeTo(out: StreamOutput) {
-        out.writeString(age)
-        out.writeIntArray(count.toIntArray())
+        override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
+            return builder.startObject()
+                .field(SCHEDULE_FIELD, schedule)
+                .field(TIMEOUT_FIELD, timeout)
+                .field(CONDITION_FIELD, condition)
+                .endObject()
+        }
+
+        companion object {
+            const val SCHEDULE_FIELD = "schedule"
+            const val TIMEOUT_FIELD = "timeout"
+            const val CONDITION_FIELD = "condition"
+
+            fun parse(xcp: XContentParser): Deletion {
+                var schedule: Schedule? = null
+                var timeout: String? = null
+                var condition: DeleteCondition? = null
+
+                ensureExpectedToken(Token.START_OBJECT, xcp.currentToken(), xcp)
+                while (xcp.nextToken() != Token.END_OBJECT) {
+                    val fieldName = xcp.currentName()
+                    xcp.nextToken()
+
+                    when (fieldName) {
+                        SCHEDULE_FIELD -> schedule = ScheduleParser.parse(xcp)
+                        TIMEOUT_FIELD -> timeout = xcp.text()
+                        CONDITION_FIELD -> condition = DeleteCondition.parse(xcp)
+                    }
+                }
+
+                return Deletion(
+                    schedule = requireNotNull(schedule) { "schedule field must not be null" },
+                    timeout = requireNotNull(timeout) { "timeout field must not be null" },
+                    condition = requireNotNull(condition) { "condition field must not be null" },
+                )
+            }
+        }
+
+        constructor(sin: StreamInput) : this(
+            schedule = CronSchedule(sin),
+            timeout = sin.readString(),
+            condition = DeleteCondition(sin),
+        )
+
+        override fun writeTo(out: StreamOutput) {
+            schedule.writeTo(out)
+            out.writeString(timeout)
+            condition.writeTo(out)
+        }
+    }
+
+    data class DeleteCondition(
+        val age: String, // TODO this is optional
+        val count: List<Int>
+    ) : Writeable, ToXContentFragment {
+
+        override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
+            return builder.startObject()
+                .field(AGE_FIELD, age)
+                .field(COUNT_FIELD, count)
+                .endObject()
+        }
+
+        companion object {
+            const val AGE_FIELD = "age"
+            const val COUNT_FIELD = "count"
+
+            fun parse(xcp: XContentParser): DeleteCondition {
+                var age: String? = null
+                var count: List<Int>? = null
+
+                ensureExpectedToken(Token.START_OBJECT, xcp.currentToken(), xcp)
+                while (xcp.nextToken() != Token.END_OBJECT) {
+                    val fieldName = xcp.currentName()
+                    xcp.nextToken()
+
+                    when (fieldName) {
+                        AGE_FIELD -> age = xcp.text()
+                        COUNT_FIELD -> count = xcp.parseArray { intValue() }
+                    }
+                }
+
+                return DeleteCondition(
+                    age = requireNotNull(age) { "age field must not be null" },
+                    count = requireNotNull(count) { "count field must not be null" }
+                )
+            }
+        }
+
+        constructor(sin: StreamInput) : this(
+            sin.readString(),
+            sin.readIntArray().toList()
+        )
+
+        override fun writeTo(out: StreamOutput) {
+            out.writeString(age)
+            out.writeIntArray(count.toIntArray())
+        }
     }
 }

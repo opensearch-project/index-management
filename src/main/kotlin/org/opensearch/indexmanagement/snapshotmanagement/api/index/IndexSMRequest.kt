@@ -9,18 +9,18 @@ import org.opensearch.action.ActionRequest
 import org.opensearch.action.ActionRequestValidationException
 import org.opensearch.common.io.stream.StreamInput
 import org.opensearch.common.io.stream.StreamOutput
-import org.opensearch.indexmanagement.snapshotmanagement.model.SM
+import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy
 
-class IndexSMRequest(val sm: SM) : ActionRequest() {
+class IndexSMRequest(val smPolicy: SMPolicy) : ActionRequest() {
     override fun validate(): ActionRequestValidationException? {
         return null
     }
 
     constructor(sin: StreamInput) : this(
-        sm = SM(sin)
+        smPolicy = SMPolicy(sin)
     )
 
     override fun writeTo(out: StreamOutput) {
-        sm.writeTo(out)
+        smPolicy.writeTo(out)
     }
 }

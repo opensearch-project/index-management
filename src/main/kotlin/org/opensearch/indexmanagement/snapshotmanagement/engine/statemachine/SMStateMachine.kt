@@ -7,10 +7,11 @@ package org.opensearch.indexmanagement.snapshotmanagement.engine.statemachine
 
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
+import org.opensearch.action.index.IndexResponse
 import org.opensearch.client.Client
 import org.opensearch.indexmanagement.snapshotmanagement.getNextExecutionTime
 import org.opensearch.indexmanagement.snapshotmanagement.indexMetadata
-import org.opensearch.indexmanagement.snapshotmanagement.model.SM
+import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata
 import org.opensearch.rest.RestStatus
 import java.time.Instant
@@ -20,7 +21,7 @@ import java.time.Instant
  */
 class SMStateMachine(
     val client: Client,
-    val job: SM,
+    val job: SMPolicy,
     var metadata: SMMetadata
 ) {
     val log: Logger = LogManager.getLogger("${javaClass.name} [${job.policyName}]")
@@ -41,39 +42,37 @@ class SMStateMachine(
 
     suspend fun next() {
         try {
-            // loop for vertical level
             do {
                 val nextStates = transitions[currentState]
                 if (nextStates == null) {
                     log.info("Next state is null")
                     return
                 }
-                log.info("Next states: $nextStates")
+                log.info("Next lateral states: $nextStates")
+
                 var executionEndState = false
-                // loop for same level
                 for (nextState in nextStates) {
                     currentState = nextState
-                    log.info("Going to execute $currentState")
+                    log.info("Start executing $currentState")
                     executionEndState = nextState.instance.execute(this)
                     if (executionEndState) {
-                        log.info("[$currentState] execution satisfied, move to this state.")
                         updateMetadata()
-                        break
+                        log.info("[$currentState] execution satisfied, move to this state.")
+                        break // break the lateral loop
                     } else {
-                        log.info("[$currentState] execution not satisfied, stay in previous state.")
+                        log.info("[$currentState] execution not satisfied, try next lateral state if exist.")
                     }
                 }
                 if (!executionEndState) {
-                    log.info("$nextStates execution not satisfied, wait for next job run.")
-                    break
+                    log.info("[$nextStates] execution not satisfied, wait for next scheduled job run.")
+                    break // break the vertical loop
                 }
                 log.info("[$currentState] continuous flag: ${currentState.instance.continuous}")
             } while (currentState.instance.continuous)
         } catch (e: Exception) {
-            // TODO state execution failed with some exception, check timeout
-            //  if no timeout start time, add it, update exception info
-            //  if pass the timeout period ..., update exception info
-            //  if not, wait for next job run, update exception info
+            // TODO state execution failed with some exception
+            //  save to info, error notification; move to START state
+            //  special handle the updateMetadata exception, don't updateMetadata again
             log.error("Failed executing state $currentState", e)
         }
     }
@@ -82,15 +81,21 @@ class SMStateMachine(
      * if any failure during update metadata, the best we can do is to log out error
      * and state machine can only continue execution when it can update metadata
      */
-    suspend fun updateMetadata(md: SMMetadata? = metadataToSave) {
-        if (md == null) {
-            throw NullPointerException("Null metadataToSave")
+    suspend fun updateMetadata() {
+        val md = metadataToSave ?: throw NullPointerException("Null metadataToSave")
+
+        val res: IndexResponse
+        try {
+            res = client.indexMetadata(md, job.policyName, metadataSeqNo, metadataPrimaryTerm)
+        } catch (ex: Exception) {
+            log.error("")
+            // TODO throw special exception for update metadata
+            throw ex
         }
 
-        val res = client.indexMetadata(md, job.policyName, metadataSeqNo, metadataPrimaryTerm)
         if (res.status() != RestStatus.OK) {
             log.info("Update metadata call status code ${res.status()}")
-            // TODO retry and log out, throw exception is not useful
+            // TODO throw special exception for update metadata
         }
 
         metadataSeqNo = res.seqNo
@@ -99,8 +104,11 @@ class SMStateMachine(
         metadataToSave = null // force any metadataToSave to base on metadata
     }
 
-    suspend fun handlePolicyChange() {
-        if (job.seqNo != metadata.policySeqNo || job.primaryTerm != metadata.policyPrimaryTerm) {
+    /**
+     * Handle policy change during [SMStateMachine] initialization
+     */
+    suspend fun handlePolicyChange(): SMStateMachine {
+        if (job.seqNo > metadata.policySeqNo || job.primaryTerm > metadata.policyPrimaryTerm) {
             metadataToSave = metadata.copy(
                 policySeqNo = job.seqNo,
                 policyPrimaryTerm = job.primaryTerm,
@@ -109,5 +117,6 @@ class SMStateMachine(
             )
             updateMetadata()
         }
+        return this
     }
 }

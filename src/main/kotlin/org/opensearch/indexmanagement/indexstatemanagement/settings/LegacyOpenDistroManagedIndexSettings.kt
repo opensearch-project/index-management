@@ -15,8 +15,8 @@ import java.util.function.Function
 class LegacyOpenDistroManagedIndexSettings {
     companion object {
         const val DEFAULT_ISM_ENABLED = true
-        const val DEFAULT_METADATA_SERVICE_STATUS = 1
-        const val DEFAULT_METADATA_SERVICE_ENABLED = false
+        const val DEFAULT_METADATA_SERVICE_STATUS = 0
+        const val DEFAULT_METADATA_SERVICE_ENABLED = true
         const val DEFAULT_JOB_INTERVAL = 5
         private val ALLOW_LIST_ALL = ISMActionsParser.instance.parsers.map { it.getActionType() }.toList()
         val ALLOW_LIST_NONE = emptyList<String>()

@@ -12,12 +12,14 @@ import org.opensearch.indexmanagement.snapshotmanagement.engine.statemachine.Sta
 /**
  * Dummy start state of snapshot management state machine
  */
-object WaitingState : State {
+object StartState : State {
 
     override val continuous: Boolean = false
 
     override suspend fun execute(context: SMStateMachine): Boolean {
-        context.metadataToSave = context.metadata.copy(currentState = SMState.WAITING.toString())
+        context.metadataToSave = context.metadata.copy(
+            currentState = SMState.START.toString()
+        )
         context.log.info("Save current state as WAITING")
 
         return true

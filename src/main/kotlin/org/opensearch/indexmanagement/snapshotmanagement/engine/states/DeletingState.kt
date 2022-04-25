@@ -34,7 +34,7 @@ object DeletingState : State {
                 currentState = SMState.FINISHED.toString(),
                 info = metadata.info.upsert(
                     "transaction_failure",
-                    "Undetermined about whether the last snapshot has been deleted, will go to next schedule."
+                    "Undetermined about whether the last snapshot has been deleted, skipping to next schedule."
                 )
             )
             return true
@@ -58,7 +58,7 @@ object DeletingState : State {
             res = client.admin().cluster().suspendUntil { deleteSnapshot(req, it) }
         } catch (ex: Exception) {
             context.revertTransaction()
-            throw StateMachineExecutionException(cause = ex)
+            throw ex
         }
 
         return if (res.isAcknowledged) {
@@ -66,7 +66,9 @@ object DeletingState : State {
             context.metadataToSave = metadata.copy(
                 currentState = SMState.CREATING.toString(),
                 apiCalling = false,
-                deleting = snapshotToDelete
+                deletion = metadata.deletion.copy(
+                    started = snapshotToDelete
+                ),
             )
             true
         } else {

@@ -23,24 +23,29 @@ object DeleteConditionMetState : State {
         val job = context.job
         val metadata = context.metadata
 
-        if (metadata.deleting != null) {
-            log.info("There is deleting snapshot ${metadata.deleting}.")
+        if (metadata.deletion.started != null) {
+            log.info("There is already snapshot being deleted: ${metadata.deleting}.")
             return false
         }
 
+        val nextDeletionTime = metadata.deletion.trigger.nextExecutionTime
         val nextDeletionTimeToSave: Instant
-
-        if (!Instant.now().isBefore(metadata.nextDeletionTime)) {
-            log.info("current time [${Instant.now()}] has passed nextDeletionTime [${metadata.nextDeletionTime}]")
-            nextDeletionTimeToSave = getNextExecutionTime(job.deleteSchedule, Instant.now())
+        if (!Instant.now().isBefore(nextDeletionTime)) {
+            log.info("current time [${Instant.now()}] has passed nextDeletionTime [$nextDeletionTime]")
+            nextDeletionTimeToSave = getNextExecutionTime(job.deletion.schedule, Instant.now())
         } else {
-            log.info("current time [${Instant.now()}] has not passed nextDeletionTime [${metadata.nextDeletionTime}]")
+            log.info("current time [${Instant.now()}] has not passed nextDeletionTime [$nextDeletionTime]")
+            // TODO update job start_time
             return false
         }
 
         context.metadataToSave = metadata.copy(
             currentState = SMState.CREATE_CONDITION_MET.toString(),
-            nextDeletionTime = nextDeletionTimeToSave
+            deletion = metadata.deletion.copy(
+                trigger = metadata.deletion.trigger.copy(
+                    nextExecutionTime = nextDeletionTimeToSave
+                )
+            ),
         )
         log.info("Save current state as DELETE_CONDITION_MET [${context.metadataToSave}]")
         return true

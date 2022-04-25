@@ -115,7 +115,7 @@ import org.opensearch.indexmanagement.snapshotmanagement.api.index.IndexSMAction
 import org.opensearch.indexmanagement.snapshotmanagement.api.index.RestIndexSMAction
 import org.opensearch.indexmanagement.snapshotmanagement.api.index.TransportIndexSMAction
 import org.opensearch.indexmanagement.snapshotmanagement.engine.SMRunner
-import org.opensearch.indexmanagement.snapshotmanagement.model.SM
+import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata
 import org.opensearch.indexmanagement.spi.IndexManagementExtension
 import org.opensearch.indexmanagement.spi.indexstatemanagement.IndexMetadataService
@@ -246,8 +246,8 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
                     ManagedIndexMetaData.MANAGED_INDEX_METADATA_TYPE -> {
                         return@ScheduledJobParser null
                     }
-                    SM.SM_TYPE -> {
-                        return@ScheduledJobParser SM.parse(xcp, id, jobDocVersion.seqNo, jobDocVersion.primaryTerm)
+                    SMPolicy.SM_TYPE -> {
+                        return@ScheduledJobParser SMPolicy.parse(xcp, id, jobDocVersion.seqNo, jobDocVersion.primaryTerm)
                     }
                     SMMetadata.SM_METADATA_TYPE -> {
                         return@ScheduledJobParser null

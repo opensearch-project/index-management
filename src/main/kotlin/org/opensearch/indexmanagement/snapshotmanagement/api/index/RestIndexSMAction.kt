@@ -8,7 +8,7 @@ package org.opensearch.indexmanagement.snapshotmanagement.api.index
 import org.apache.logging.log4j.LogManager
 import org.opensearch.client.node.NodeClient
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.SM_BASE_URI
-import org.opensearch.indexmanagement.snapshotmanagement.model.SM
+import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy
 import org.opensearch.rest.BaseRestHandler
 import org.opensearch.rest.RestHandler
 import org.opensearch.rest.RestRequest
@@ -38,10 +38,10 @@ class RestIndexSMAction : BaseRestHandler() {
 
         val xcp = request.contentParser()
         log.info("sm receive request ${request.requiredContent().utf8ToString()}")
-        val sm = SM.parse(xcp, policyName = policyName)
-        log.info("sm parsed $sm")
+        val smPolicy = SMPolicy.parse(xcp, policyName = policyName)
+        log.info("sm parsed $smPolicy")
 
-        val indexReq = IndexSMRequest(sm)
+        val indexReq = IndexSMRequest(smPolicy)
 
         return RestChannelConsumer {
             client.execute(IndexSMAction.INSTANCE, indexReq, RestToXContentListener(it))
