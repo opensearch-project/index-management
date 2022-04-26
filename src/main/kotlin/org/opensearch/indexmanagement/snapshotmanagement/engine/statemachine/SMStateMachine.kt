@@ -14,7 +14,7 @@ import org.opensearch.indexmanagement.snapshotmanagement.indexMetadata
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata
 import org.opensearch.rest.RestStatus
-import java.time.Instant
+import java.time.Instant.now
 
 /**
  * Context for state machine execution
@@ -112,8 +112,8 @@ class SMStateMachine(
             metadataToSave = metadata.copy(
                 policySeqNo = job.seqNo,
                 policyPrimaryTerm = job.primaryTerm,
-                nextCreationTime = getNextExecutionTime(job.createSchedule, Instant.now()),
-                nextDeletionTime = getNextExecutionTime(job.deleteSchedule, Instant.now()),
+                nextCreationTime = getNextExecutionTime(job.creation.schedule, now()),
+                nextDeletionTime = getNextExecutionTime(job.deletion.schedule, now()),
             )
             updateMetadata()
         }

@@ -33,7 +33,7 @@ object CreateConditionMetState : State {
             nextCreationTimeToSave = getNextExecutionTime(job.creation.schedule, now())
         } else {
             log.info("current time [${now()}] has not passed nextCreationTime [$nextCreationTime]")
-            // TODO update job start_time
+            // TODO dynamically update job start_time
             return false
         }
 

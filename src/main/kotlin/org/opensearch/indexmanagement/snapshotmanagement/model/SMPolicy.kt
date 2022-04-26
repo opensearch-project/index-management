@@ -33,15 +33,15 @@ private val log = LogManager.getLogger(SMPolicy::class.java)
 
 data class SMPolicy(
     val policyName: String,
-    val description: String?,
+    val description: String? = null,
     val jobEnabled: Boolean,
     val jobLastUpdateTime: Instant,
     val creation: Creation,
     val deletion: Deletion,
-    val createSchedule: Schedule, // TODO Required field
+    val createSchedule: Schedule? = null, // TODO Required field
     val snapshotConfig: Map<String, Any>,
-    val deleteSchedule: Schedule, // TODO Optional, if not provided, default to every day midnight
-    val deleteCondition: DeleteCondition,
+    val deleteSchedule: Schedule? = null, // TODO Optional, if not provided, default to every day midnight
+    val deleteCondition: DeleteCondition? = null,
     val id: String = NO_ID,
     val seqNo: Long = SequenceNumbers.UNASSIGNED_SEQ_NO,
     val primaryTerm: Long = SequenceNumbers.UNASSIGNED_PRIMARY_TERM,
@@ -222,15 +222,15 @@ data class SMPolicy(
         } else {
             out.writeEnum(ScheduleType.INTERVAL)
         }
-        createSchedule.writeTo(out)
+        createSchedule?.writeTo(out)
         out.writeMap(snapshotConfig)
         if (deleteSchedule is CronSchedule) {
             out.writeEnum(ScheduleType.CRON)
         } else {
             out.writeEnum(ScheduleType.INTERVAL)
         }
-        deleteSchedule.writeTo(out)
-        deleteCondition.writeTo(out)
+        deleteSchedule?.writeTo(out)
+        deleteCondition?.writeTo(out)
     }
 
     data class Creation(

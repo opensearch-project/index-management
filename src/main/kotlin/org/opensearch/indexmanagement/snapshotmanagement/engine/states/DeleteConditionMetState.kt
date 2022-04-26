@@ -35,7 +35,7 @@ object DeleteConditionMetState : State {
             nextDeletionTimeToSave = getNextExecutionTime(job.deletion.schedule, Instant.now())
         } else {
             log.info("current time [${Instant.now()}] has not passed nextDeletionTime [$nextDeletionTime]")
-            // TODO update job start_time
+            // TODO dynamically update job start_time
             return false
         }
 
