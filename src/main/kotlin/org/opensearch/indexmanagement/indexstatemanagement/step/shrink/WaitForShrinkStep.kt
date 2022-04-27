@@ -5,10 +5,8 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.step.shrink
 
-import org.apache.logging.log4j.LogManager
 import org.opensearch.ExceptionsHelper
 import org.opensearch.OpenSearchSecurityException
-import org.opensearch.action.admin.indices.delete.DeleteIndexRequest
 import org.opensearch.action.admin.indices.stats.IndicesStatsRequest
 import org.opensearch.action.admin.indices.stats.IndicesStatsResponse
 import org.opensearch.action.support.master.AcknowledgedResponse
@@ -16,30 +14,22 @@ import org.opensearch.client.Client
 import org.opensearch.common.settings.Settings
 import org.opensearch.indexmanagement.indexstatemanagement.action.ShrinkAction
 import org.opensearch.indexmanagement.indexstatemanagement.action.ShrinkAction.Companion.getSecurityFailureMessage
-import org.opensearch.indexmanagement.indexstatemanagement.step.shrink.WaitForMoveShardsStep.Companion.getTimeoutFailure
 import org.opensearch.indexmanagement.indexstatemanagement.util.resetReadOnlyAndRouting
 import org.opensearch.indexmanagement.indexstatemanagement.util.deleteShrinkLock
 import org.opensearch.indexmanagement.indexstatemanagement.util.getActionStartTime
 import org.opensearch.indexmanagement.indexstatemanagement.util.issueUpdateSettingsRequest
-import org.opensearch.indexmanagement.indexstatemanagement.util.releaseShrinkLock
 import org.opensearch.indexmanagement.indexstatemanagement.util.renewShrinkLock
 import org.opensearch.indexmanagement.indexstatemanagement.util.getUpdatedShrinkActionProperties
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
-import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ActionProperties
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
-import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ShrinkActionProperties
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepContext
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepMetaData
 import org.opensearch.transport.RemoteTransportException
 import java.time.Duration
 import java.time.Instant
 
-class WaitForShrinkStep(private val action: ShrinkAction) : Step(name) {
-    private val logger = LogManager.getLogger(javaClass)
-    private var stepStatus = StepStatus.STARTING
-    private var info: Map<String, Any>? = null
-    private var shrinkActionProperties: ShrinkActionProperties? = null
+class WaitForShrinkStep(private val action: ShrinkAction) : ShrinkStep(name) {
 
     @Suppress("TooGenericExceptionCaught", "ComplexMethod", "ReturnCount", "LongMethod")
     override suspend fun execute(): WaitForShrinkStep {
@@ -48,14 +38,16 @@ class WaitForShrinkStep(private val action: ShrinkAction) : Step(name) {
         val localShrinkActionProperties = actionMetadata?.actionProperties?.shrinkActionProperties
         shrinkActionProperties = localShrinkActionProperties
         if (localShrinkActionProperties == null) {
-            logger.error(WaitForMoveShardsStep.METADATA_FAILURE_MESSAGE)
-            cleanupAndFail(WaitForMoveShardsStep.METADATA_FAILURE_MESSAGE)
+            logger.error(METADATA_FAILURE_MESSAGE)
+            cleanupAndFail(METADATA_FAILURE_MESSAGE)
             return this
         }
         val lock = renewShrinkLock(localShrinkActionProperties, context.lockService, logger)
         if (lock == null) {
-            logger.error("Shrink action failed to renew lock on node [${localShrinkActionProperties.nodeName}]")
-            cleanupAndFail("Failed to renew lock on node [${localShrinkActionProperties.nodeName}]")
+            cleanupAndFail(
+                "Failed to renew lock on node [${localShrinkActionProperties.nodeName}]",
+                "Shrink action failed to renew lock on node [${localShrinkActionProperties.nodeName}]"
+            )
             return this
         }
         shrinkActionProperties = getUpdatedShrinkActionProperties(localShrinkActionProperties, lock)
@@ -78,50 +70,24 @@ class WaitForShrinkStep(private val action: ShrinkAction) : Step(name) {
             info = mapOf("message" to SUCCESS_MESSAGE)
             return this
         } catch (e: OpenSearchSecurityException) {
-            cleanupAndFail(getSecurityFailureMessage(e.localizedMessage), e.message, e)
+            val securityFailureMessage = getSecurityFailureMessage(e.localizedMessage)
+            cleanupAndFail(securityFailureMessage, securityFailureMessage, e.message, e)
             return this
         } catch (e: RemoteTransportException) {
             val unwrappedException = ExceptionsHelper.unwrapCause(e)
-            cleanupAndFail(GENERIC_FAILURE_MESSAGE, cause = e.message, e = unwrappedException as java.lang.Exception)
+            cleanupAndFail(GENERIC_FAILURE_MESSAGE, GENERIC_FAILURE_MESSAGE, cause = e.message, e = unwrappedException as java.lang.Exception)
             return this
         } catch (e: Exception) {
-            cleanupAndFail(GENERIC_FAILURE_MESSAGE, e.message, e)
+            cleanupAndFail(GENERIC_FAILURE_MESSAGE, GENERIC_FAILURE_MESSAGE, e.message, e)
             return this
         }
     }
 
     // Sets the action to failed, clears the readonly and allocation settings on the source index, deletes the target index,
     // and releases the shrink lock
-    private suspend fun cleanupAndFail(message: String, cause: String? = null, e: Exception? = null) {
-        e?.let { logger.error(message, e) }
-        info = if (cause == null) mapOf("message" to message) else mapOf("message" to message, "cause" to cause)
-        stepStatus = StepStatus.FAILED
-        // Using a try/catch for each cleanup action as we should clean up as much as possible despite any failures
-        // Non-null assertion !! is used to throw an exception on null which would just be caught and logged
-        try {
-            resetReadOnlyAndRouting(context!!.metadata.index, context!!.client, shrinkActionProperties!!.originalIndexSettings)
-        } catch (e: Exception) {
-            logger.error("Shrink action failed while trying to clean up routing and readonly setting after a failure: $e")
-        }
-        try {
-            // Use plugin level permissions when deleting the failed target shrink index after a failure
-            context!!.client.threadPool().threadContext.stashContext().use {
-                val deleteRequest = DeleteIndexRequest(shrinkActionProperties!!.targetIndexName)
-                val response: AcknowledgedResponse =
-                    context!!.client.admin().indices().suspendUntil { delete(deleteRequest, it) }
-                if (!response.isAcknowledged) {
-                    logger.error("Shrink action failed to delete target index during cleanup after a failure")
-                }
-            }
-        } catch (e: Exception) {
-            logger.error("Shrink action failed while trying to delete the target index after a failure: $e")
-        }
-        try {
-            releaseShrinkLock(shrinkActionProperties!!, context!!.lockService, logger)
-        } catch (e: Exception) {
-            logger.error("Shrink action failed while trying to release the node lock after a failure: $e")
-        }
-        shrinkActionProperties = null
+    private suspend fun cleanupAndFail(infoMessage: String, logMessage: String? = null, cause: String? = null, e: Exception? = null) {
+        cleanupResources(resetSettings = true, releaseLock = true, deleteTargetIndex = true)
+        fail(infoMessage, logMessage, cause, e)
     }
 
     private suspend fun clearAllocationSettings(context: StepContext, index: String): Boolean {

@@ -5,7 +5,6 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.step.shrink
 
-import org.apache.logging.log4j.LogManager
 import org.opensearch.ExceptionsHelper
 import org.opensearch.OpenSearchSecurityException
 import org.opensearch.action.admin.cluster.node.stats.NodesStatsRequest
@@ -59,11 +58,7 @@ import kotlin.math.min
 import kotlin.math.sqrt
 
 @SuppressWarnings("TooManyFunctions")
-class AttemptMoveShardsStep(private val action: ShrinkAction) : Step(name) {
-    private val logger = LogManager.getLogger(javaClass)
-    private var stepStatus = StepStatus.STARTING
-    private var info: Map<String, Any>? = null
-    private var shrinkActionProperties: ShrinkActionProperties? = null
+class AttemptMoveShardsStep(private val action: ShrinkAction) : ShrinkStep(name) {
 
     @Suppress("TooGenericExceptionCaught", "ComplexMethod", "ReturnCount", "LongMethod")
     override suspend fun execute(): Step {
@@ -101,8 +96,7 @@ class AttemptMoveShardsStep(private val action: ShrinkAction) : Step(name) {
             val statsStore = statsResponse.total.store
             val statsDocs = statsResponse.total.docs
             if (statsStore == null || statsDocs == null) {
-                logger.error("Failed to move shards in shrink action as IndicesStatsResponse was missing store or doc stats.")
-                fail(FAILURE_MESSAGE)
+                fail(FAILURE_MESSAGE, "Failed to move shards in shrink action as IndicesStatsResponse was missing store or doc stats.")
                 return this
             }
             val indexSize = statsStore.sizeInBytes
@@ -142,23 +136,17 @@ class AttemptMoveShardsStep(private val action: ShrinkAction) : Step(name) {
             stepStatus = StepStatus.COMPLETED
             return this
         } catch (e: OpenSearchSecurityException) {
-            fail(getSecurityFailureMessage(e.localizedMessage), e.message, e)
+            val securityFailureMessage = getSecurityFailureMessage(e.localizedMessage)
+            fail(securityFailureMessage, securityFailureMessage, e.message, e)
             return this
         } catch (e: RemoteTransportException) {
             val unwrappedException = ExceptionsHelper.unwrapCause(e)
-            fail(FAILURE_MESSAGE, cause = e.message, e = unwrappedException as java.lang.Exception)
+            fail(FAILURE_MESSAGE, FAILURE_MESSAGE, cause = e.message, e = unwrappedException as java.lang.Exception)
             return this
         } catch (e: Exception) {
-            fail(FAILURE_MESSAGE, e.message, e)
+            fail(FAILURE_MESSAGE, FAILURE_MESSAGE, cause = e.message, e = e)
             return this
         }
-    }
-
-    private fun fail(message: String, cause: String? = null, e: Exception? = null) {
-        e?.let { logger.error(message, e) }
-        info = if (cause == null) mapOf("message" to message) else mapOf("message" to message, "cause" to cause)
-        stepStatus = StepStatus.FAILED
-        shrinkActionProperties = null
     }
 
     // Gets the routing and write block setting of the index and returns it in a map of setting name to setting
@@ -202,8 +190,7 @@ class AttemptMoveShardsStep(private val action: ShrinkAction) : Step(name) {
         val totalDocs: Long = docsStats.count
         val docsPerTargetShard: Long = totalDocs / numTargetShards
         if (docsPerTargetShard > MAXIMUM_DOCS_PER_SHARD) {
-            logger.error(TOO_MANY_DOCS_FAILURE_MESSAGE)
-            fail(TOO_MANY_DOCS_FAILURE_MESSAGE)
+            fail(TOO_MANY_DOCS_FAILURE_MESSAGE, TOO_MANY_DOCS_FAILURE_MESSAGE)
             return true
         }
         return false
@@ -231,8 +218,7 @@ class AttemptMoveShardsStep(private val action: ShrinkAction) : Step(name) {
         val indexExists = clusterService.state().metadata.indices.containsKey(shrinkTargetIndexName)
         if (indexExists) {
             val indexExistsMessage = getIndexExistsMessage(shrinkTargetIndexName)
-            logger.error(indexExistsMessage)
-            fail(indexExistsMessage)
+            fail(indexExistsMessage, indexExistsMessage)
             return true
         }
         val exceptionGenerator: (String, String) -> RuntimeException = { index_name, reason -> InvalidIndexNameException(index_name, reason) }
@@ -255,7 +241,7 @@ class AttemptMoveShardsStep(private val action: ShrinkAction) : Step(name) {
         } finally {
             isUpdateAcknowledged = response != null && response.isAcknowledged
             if (!isUpdateAcknowledged) {
-                fail(UPDATE_FAILED_MESSAGE)
+                fail(UPDATE_FAILED_MESSAGE, UPDATE_FAILED_MESSAGE)
                 val released: Boolean = lockService.suspendUntil { release(lock, it) }
                 if (!released) {
                     logger.error("Failed to release Shrink action lock on node [$node]")

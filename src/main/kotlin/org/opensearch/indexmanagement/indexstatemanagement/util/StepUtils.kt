@@ -42,14 +42,10 @@ suspend fun issueUpdateSettingsRequest(client: Client, indexName: String, settin
 
 suspend fun releaseShrinkLock(
     shrinkActionProperties: ShrinkActionProperties,
-    lockService: LockService,
-    logger: Logger
-) {
+    lockService: LockService
+): Boolean {
     val lock: LockModel = getShrinkLockModel(shrinkActionProperties)
-    val released: Boolean = lockService.suspendUntil { release(lock, it) }
-    if (!released) {
-        logger.error("Failed to release Shrink action lock on node [${shrinkActionProperties.nodeName}]")
-    }
+    return lockService.suspendUntil { release(lock, it) }
 }
 
 suspend fun deleteShrinkLock(
