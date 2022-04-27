@@ -26,7 +26,6 @@ class IndexSMResponse(val smPolicy: SMPolicy) : ActionResponse(), ToXContentObje
     override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
         return builder.startObject()
             .startObject(smPolicy.policyName)
-            .field(SMPolicy.CREATE_SCHEDULE_FIELD, smPolicy.createSchedule)
             .field(SMPolicy.SNAPSHOT_CONFIG_FIELD, smPolicy.snapshotConfig)
             .endObject()
             .endObject()

@@ -94,7 +94,7 @@ fun generateFormatTime(dateFormat: String): String {
 suspend fun SMStateMachine.startTransaction() {
     metadataToSave = metadata.copy(apiCalling = true)
     updateMetadata()
-    log.info("Set api_calling to true.")
+    log.info("Start transaction by setting api_calling to true.")
 }
 
 suspend fun SMStateMachine.revertTransaction() {

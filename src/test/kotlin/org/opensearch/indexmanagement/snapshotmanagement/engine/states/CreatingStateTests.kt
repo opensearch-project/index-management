@@ -7,9 +7,7 @@ package org.opensearch.indexmanagement.snapshotmanagement.engine.states
 
 import com.nhaarman.mockitokotlin2.any
 import com.nhaarman.mockitokotlin2.doAnswer
-import com.nhaarman.mockitokotlin2.doReturn
 import com.nhaarman.mockitokotlin2.mock
-import com.nhaarman.mockitokotlin2.stub
 import com.nhaarman.mockitokotlin2.whenever
 import kotlinx.coroutines.runBlocking
 import org.junit.Before
@@ -19,7 +17,6 @@ import org.opensearch.action.index.IndexResponse
 import org.opensearch.client.AdminClient
 import org.opensearch.client.Client
 import org.opensearch.client.ClusterAdminClient
-import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.snapshotmanagement.engine.statemachine.SMState
 import org.opensearch.indexmanagement.snapshotmanagement.engine.statemachine.SMStateMachine
 import org.opensearch.indexmanagement.snapshotmanagement.getTestSMMetadata

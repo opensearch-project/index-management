@@ -20,7 +20,7 @@ interface State {
     val continuous: Boolean
 
     /**
-     * @throws StateMachineExecutionException
+     * @throws StateMachineException
      * @return if true, save metadata and go to the next level state
      *  if false, can still try executing the same level states
      *   like [CREATE_CONDITION_MET, DELETE_CONDITION_MET]
@@ -29,8 +29,3 @@ interface State {
      */
     suspend fun execute(context: SMStateMachine): Boolean
 }
-
-/**
- * Represent state execution failure
- */
-class StateMachineExecutionException(message: String? = null, cause: Throwable? = null) : Exception(message, cause)

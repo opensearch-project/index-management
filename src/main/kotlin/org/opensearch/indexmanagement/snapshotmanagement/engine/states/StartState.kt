@@ -18,7 +18,7 @@ object StartState : State {
 
     override suspend fun execute(context: SMStateMachine): Boolean {
         context.metadataToSave = context.metadata.copy(
-            currentState = SMState.START.toString()
+            currentState = SMState.START
         )
         context.log.info("Save current state as WAITING")
 

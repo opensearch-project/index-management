@@ -22,7 +22,9 @@ import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata
 import org.opensearch.jobscheduler.spi.JobExecutionContext
 import org.opensearch.jobscheduler.spi.ScheduledJobParameter
 import org.opensearch.jobscheduler.spi.ScheduledJobRunner
+import org.opensearch.rest.RestStatus
 import java.time.Instant
+import java.time.Instant.now
 
 object SMRunner :
     ScheduledJobRunner,
@@ -38,27 +40,15 @@ object SMRunner :
     }
 
     override fun runJob(job: ScheduledJobParameter, context: JobExecutionContext) {
-        log.info("sm run job: $job")
+        log.info("Snapshot management running job: $job")
 
         launch {
             job as SMPolicy
 
             var metadata = client.getMetadata(job.name)
-
             if (metadata == null) {
-                metadata = SMMetadata(
-                    policySeqNo = job.seqNo,
-                    policyPrimaryTerm = job.primaryTerm,
-                    currentState = SMState.FINISHED.toString(),
-                    creation = SMMetadata.Creation(
-                        SMMetadata.Trigger(getNextExecutionTime(job.creation.schedule, Instant.now()))
-                    ),
-                    deletion = SMMetadata.Deletion(
-                        SMMetadata.Trigger(getNextExecutionTime(job.deletion.schedule, Instant.now()))
-                    ),
-                )
-                // TODO if exception throw here, will it stop the main process?
-                if (!initMetadata(metadata, job.policyName)) return@launch
+                metadata = initMetadata(job)
+                if (metadata == null) return@launch
             }
 
             val stateMachineContext = SMStateMachine(client, job, metadata)
@@ -68,11 +58,29 @@ object SMRunner :
         }
     }
 
-    private suspend fun initMetadata(metadata: SMMetadata, id: String): Boolean {
-        log.info("Init metadata [$metadata] for policy $id")
-        val res = client.indexMetadata(metadata, id, create = true)
-        log.info("Init metadata response: $res")
-        // status code should be 201
-        return true
+    private suspend fun initMetadata(job: SMPolicy): SMMetadata? {
+        val metadata = SMMetadata(
+            policySeqNo = job.seqNo,
+            policyPrimaryTerm = job.primaryTerm,
+            currentState = SMState.FINISHED,
+            creation = SMMetadata.Creation(
+                SMMetadata.Trigger(getNextExecutionTime(job.creation.schedule, now()))
+            ),
+            deletion = SMMetadata.Deletion(
+                SMMetadata.Trigger(getNextExecutionTime(job.deletion.schedule, now()))
+            ),
+        )
+        log.info("Initializing metadata [$metadata] for policy [${job.policyName}].")
+        try {
+            val res = client.indexMetadata(metadata, job.policyName, create = true)
+            if (res.status() != RestStatus.CREATED) {
+                log.error("Metadata initialization response status is ${res.status()}, expecting CREATED 201.")
+                return null
+            }
+        } catch (e: Exception) {
+            log.error("Caught exception while initializing SM metadata.", e)
+            return null
+        }
+        return metadata
     }
 }

@@ -13,6 +13,7 @@ import org.opensearch.indexmanagement.snapshotmanagement.getNextExecutionTime
 import org.opensearch.indexmanagement.snapshotmanagement.indexMetadata
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata
+import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata.Companion.upsert
 import org.opensearch.rest.RestStatus
 import java.time.Instant.now
 
@@ -23,7 +24,7 @@ class SMStateMachine(
     val client: Client,
     val job: SMPolicy,
     var metadata: SMMetadata
-) {
+) : StateMachine {
     val log: Logger = LogManager.getLogger("${javaClass.name} [${job.policyName}]")
 
     var currentState: SMState
@@ -33,22 +34,22 @@ class SMStateMachine(
     var metadataToSave: SMMetadata?
     init {
         log.info("Set state machine current state from metadata: ${metadata.currentState}")
-        currentState = SMState.valueOf(metadata.currentState)
+        currentState = metadata.currentState
 
         metadataSeqNo = metadata.seqNo
         metadataPrimaryTerm = metadata.primaryTerm
         metadataToSave = metadata
     }
 
-    suspend fun next() {
+    override suspend fun next() {
         try {
             do {
                 val nextStates = transitions[currentState]
                 if (nextStates == null) {
-                    log.info("Next state is null")
+                    log.error("Next state is null")
                     return
                 }
-                log.info("Next lateral states: $nextStates")
+                log.info("Next states: $nextStates")
 
                 var executionEndState = false
                 for (nextState in nextStates) {
@@ -58,44 +59,57 @@ class SMStateMachine(
                     if (executionEndState) {
                         updateMetadata()
                         log.info("[$currentState] execution satisfied, move to this state.")
-                        break // break the lateral loop
+                        break // break the lateral loop, refer SMState.transitions
                     } else {
                         log.info("[$currentState] execution not satisfied, try next lateral state if exist.")
                     }
                 }
                 if (!executionEndState) {
                     log.info("[$nextStates] execution not satisfied, wait for next scheduled job run.")
-                    break // break the vertical loop
+                    break // break the vertical loop, refer SMState.transitions
                 }
-                log.info("[$currentState] continuous flag: ${currentState.instance.continuous}")
             } while (currentState.instance.continuous)
-        } catch (e: Exception) {
-            // TODO state execution failed with some exception
-            //  save to info, error notification; move to START state
-            //  special handle the updateMetadata exception, don't updateMetadata again
-            log.error("Failed executing state $currentState", e)
+        } catch (ex: UpdateMetadataException) {
+            //  TODO error notification
+            log.error(ex)
+        } catch (ex: StateMachineException) {
+            log.error(ex)
+            metadataToSave = metadata.copy(
+                currentState = SMState.FINISHED,
+                info = metadata.info.upsert(
+                    "runtime_exception" to ex.message!!
+                )
+            )
+            updateMetadata()
+        } catch (ex: Exception) {
+            log.error("Caught exception while executing $currentState", ex)
+            metadataToSave = metadata.copy(
+                currentState = SMState.FINISHED,
+                info = metadata.info.upsert(
+                    "runtime_exception" to genericRunTimeExMsg()
+                )
+            )
+            updateMetadata()
         }
     }
 
     /**
-     * if any failure during update metadata, the best we can do is to log out error
+     * If any failure during update metadata, the best we can do is to log out error
      * and state machine can only continue execution when it can update metadata
+     *
+     * @throws UpdateMetadataException
      */
     suspend fun updateMetadata() {
-        val md = metadataToSave ?: throw NullPointerException("Null metadataToSave")
+        val md = metadataToSave!!
 
         val res: IndexResponse
         try {
             res = client.indexMetadata(md, job.policyName, metadataSeqNo, metadataPrimaryTerm)
         } catch (ex: Exception) {
-            log.error("")
-            // TODO throw special exception for update metadata
-            throw ex
+            throw UpdateMetadataException("Caught exception when updating snapshot management metadata.", ex)
         }
-
         if (res.status() != RestStatus.OK) {
-            log.info("Update metadata call status code ${res.status()}")
-            // TODO throw special exception for update metadata
+            throw UpdateMetadataException("Metadata update returns ${res.status()}, expecting ${RestStatus.OK}.")
         }
 
         metadataSeqNo = res.seqNo
@@ -112,11 +126,20 @@ class SMStateMachine(
             metadataToSave = metadata.copy(
                 policySeqNo = job.seqNo,
                 policyPrimaryTerm = job.primaryTerm,
-                nextCreationTime = getNextExecutionTime(job.creation.schedule, now()),
-                nextDeletionTime = getNextExecutionTime(job.deletion.schedule, now()),
+                creation = SMMetadata.Creation(
+                    SMMetadata.Trigger(getNextExecutionTime(job.creation.schedule, now()))
+                ),
+                deletion = SMMetadata.Deletion(
+                    SMMetadata.Trigger(getNextExecutionTime(job.deletion.schedule, now()))
+                ),
             )
             updateMetadata()
         }
         return this
+    }
+
+    companion object {
+        fun apiCallingMsg() = "Undetermined about whether the last snapshot has been created, moving to next."
+        fun genericRunTimeExMsg() = "Caught exception while snapshot management running."
     }
 }

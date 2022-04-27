@@ -23,6 +23,8 @@ import org.opensearch.action.search.SearchResponse
 import org.opensearch.action.support.DefaultShardOperationFailedException
 import org.opensearch.client.OpenSearchClient
 import org.opensearch.common.bytes.BytesReference
+import org.opensearch.common.io.stream.StreamInput
+import org.opensearch.common.io.stream.StreamOutput
 import org.opensearch.common.settings.Settings
 import org.opensearch.common.unit.TimeValue
 import org.opensearch.common.util.concurrent.ThreadContext
@@ -307,7 +309,15 @@ suspend fun <T> withClosableContext(
     }
 }
 
-fun <T> XContentParser.parseArray(block: XContentParser.() -> T): List<T> {
+fun XContentBuilder.optionalField(name: String, value: Any?): XContentBuilder {
+    return if (value != null) { this.field(name, value) } else this
+}
+
+inline fun <T> XContentParser.nullParser(block: XContentParser.() -> T): T? {
+    return if (currentToken() == Token.VALUE_NULL) null else block()
+}
+
+inline fun <T> XContentParser.parseArray(block: XContentParser.() -> T): List<T> {
     val resArr = mutableListOf<T>()
     if (currentToken() == Token.VALUE_NULL) return resArr
     ensureExpectedToken(Token.START_ARRAY, currentToken(), this)
@@ -315,4 +325,18 @@ fun <T> XContentParser.parseArray(block: XContentParser.() -> T): List<T> {
         resArr.add(block())
     }
     return resArr
+}
+
+// similar to readOptionalWriteable
+inline fun <T> StreamInput.readOptionalType(block: StreamInput.() -> T): T? {
+    return if (readBoolean()) { this.block() } else null
+}
+
+inline fun <T> StreamOutput.writeOptionalType(value: T, block: StreamOutput.(T) -> Unit) {
+    if (value == null) {
+        writeBoolean(false)
+    } else {
+        writeBoolean(true)
+        this.block(value)
+    }
 }

@@ -12,9 +12,9 @@ import org.opensearch.action.support.master.AcknowledgedResponse
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.snapshotmanagement.engine.statemachine.SMState
 import org.opensearch.indexmanagement.snapshotmanagement.engine.statemachine.SMStateMachine
+import org.opensearch.indexmanagement.snapshotmanagement.engine.statemachine.SMStateMachine.Companion.apiCallingMsg
 import org.opensearch.indexmanagement.snapshotmanagement.engine.statemachine.State
-import org.opensearch.indexmanagement.snapshotmanagement.engine.statemachine.StateMachineExecutionException
-import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata.Companion.upsert
+import org.opensearch.indexmanagement.snapshotmanagement.engine.statemachine.StateMachineException
 import org.opensearch.indexmanagement.snapshotmanagement.revertTransaction
 import org.opensearch.indexmanagement.snapshotmanagement.startTransaction
 
@@ -30,14 +30,7 @@ object DeletingState : State {
 
         if (metadata.apiCalling) {
             // probably because we cannot index metadata after transaction
-            context.metadataToSave = metadata.copy(
-                currentState = SMState.FINISHED.toString(),
-                info = metadata.info.upsert(
-                    "transaction_failure",
-                    "Undetermined about whether the last snapshot has been deleted, skipping to next schedule."
-                )
-            )
-            return true
+            throw StateMachineException(message = apiCallingMsg())
         }
 
         context.startTransaction()
@@ -64,7 +57,7 @@ object DeletingState : State {
         return if (res.isAcknowledged) {
             log.info("Delete snapshot acknowledged.")
             context.metadataToSave = metadata.copy(
-                currentState = SMState.CREATING.toString(),
+                currentState = SMState.CREATING,
                 apiCalling = false,
                 deletion = metadata.deletion.copy(
                     started = snapshotToDelete
@@ -72,7 +65,7 @@ object DeletingState : State {
             )
             true
         } else {
-            throw StateMachineExecutionException("Delete snapshot $snapshotToDelete not acknowledged.")
+            throw StateMachineException("Delete snapshot $snapshotToDelete not acknowledged.")
         }
     }
 

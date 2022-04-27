@@ -38,7 +38,7 @@ object CreateConditionMetState : State {
         }
 
         context.metadataToSave = metadata.copy(
-            currentState = SMState.CREATE_CONDITION_MET.toString(),
+            currentState = SMState.CREATE_CONDITION_MET,
             creation = metadata.creation.copy(
                 trigger = metadata.creation.trigger.copy(
                     nextExecutionTime = nextCreationTimeToSave

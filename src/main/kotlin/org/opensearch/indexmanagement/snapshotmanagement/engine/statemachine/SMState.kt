@@ -22,7 +22,7 @@ enum class SMState(val instance: State) {
 }
 
 /**
- * Transitions are of 2 types
+ * Transition has 2 directions
  * Vertical: WAITING to CONDITION_MET
  * Lateral: CREATE_CONDITION_MET and DELETE_CONDITION_MET, order matters
  */

@@ -26,32 +26,32 @@ object FinishedState : State {
         val log = context.log
 
         when {
-            metadata.creating != null -> {
+            metadata.creation.started != null -> {
                 val req = SnapshotsStatusRequest()
-                    .snapshots(arrayOf("${metadata.creating}"))
+                    .snapshots(arrayOf("${metadata.creation.started}"))
                     .repository(job.snapshotConfig["repository"] as String)
                 val res: SnapshotsStatusResponse = client.admin().cluster().suspendUntil { snapshotsStatus(req, it) }
                 log.info("Get snapshot status: ${res.snapshots}")
                 return if (res.snapshots.firstOrNull()?.state == SnapshotsInProgress.State.SUCCESS) {
                     context.metadataToSave = metadata.copy(
-                        currentState = SMState.FINISHED.toString(),
+                        currentState = SMState.FINISHED,
                         creation = metadata.creation.copy(
                             started = null
                         ),
                         info = metadata.info.upsert(
-                            "last_success", "${metadata.creating} has been created."
+                            "last_success" to "${metadata.creation.started} has been created."
                         )
                     )
                     true
                 } else {
                     // We can record the snapshot in progress state in info
-                    log.info("Creating snapshot [${metadata.creating}] has not succeed")
+                    log.info("Creating snapshot [${metadata.creation.started}] has not succeed")
                     false
 
                     // TODO if timeout pass
                 }
             }
-            metadata.deleting != null -> {
+            metadata.deletion.started != null -> {
                 val req = SnapshotsStatusRequest()
                     .snapshots(arrayOf("${job.policyName}*"))
                     .repository(job.snapshotConfig["repository"] as String)
@@ -59,10 +59,10 @@ object FinishedState : State {
                 log.info("Get snapshot status: ${res.snapshots}")
                 val existingSnapshots = res.snapshots.map { it.snapshot.snapshotId.name }
 
-                val remainingSnapshots = metadata.deleting.toSet() - existingSnapshots.toSet()
+                val remainingSnapshots = metadata.deletion.started.toSet() - existingSnapshots.toSet()
                 return if (remainingSnapshots.isEmpty()) {
                     context.metadataToSave = metadata.copy(
-                        currentState = SMState.FINISHED.toString(),
+                        currentState = SMState.FINISHED,
                         deletion = metadata.deletion.copy(
                             started = null
                         ),

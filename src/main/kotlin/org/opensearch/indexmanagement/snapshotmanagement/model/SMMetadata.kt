@@ -5,7 +5,6 @@
 
 package org.opensearch.indexmanagement.snapshotmanagement.model
 
-import org.apache.logging.log4j.LogManager
 import org.opensearch.common.io.stream.StreamInput
 import org.opensearch.common.io.stream.StreamOutput
 import org.opensearch.common.io.stream.Writeable
@@ -17,45 +16,40 @@ import org.opensearch.common.xcontent.XContentParser.Token
 import org.opensearch.common.xcontent.XContentParserUtils.ensureExpectedToken
 import org.opensearch.index.seqno.SequenceNumbers
 import org.opensearch.indexmanagement.opensearchapi.instant
-import org.opensearch.indexmanagement.opensearchapi.optionalTimeField
+import org.opensearch.indexmanagement.opensearchapi.nullParser
+import org.opensearch.indexmanagement.opensearchapi.optionalField
 import org.opensearch.indexmanagement.opensearchapi.parseArray
+import org.opensearch.indexmanagement.opensearchapi.readOptionalType
+import org.opensearch.indexmanagement.opensearchapi.writeOptionalType
+import org.opensearch.indexmanagement.snapshotmanagement.engine.statemachine.SMState
 import org.opensearch.indexmanagement.util.NO_ID
 import java.time.Instant
+
+typealias InfoType = Map<String, Any>?
 
 data class SMMetadata(
     val policySeqNo: Long,
     val policyPrimaryTerm: Long,
-    val currentState: String, // TODO maybe change to SMState is better
+    val currentState: SMState,
     val apiCalling: Boolean = false,
     val creation: Creation,
     val deletion: Deletion,
-    val nextCreationTime: Instant? = null,
-    val creating: String? = null,
-    val nextDeletionTime: Instant? = null,
-    val deleting: List<String>? = null,
-    val info: Map<String, Any>? = null,
+    val info: InfoType = null,
     val id: String = NO_ID,
     val seqNo: Long = SequenceNumbers.UNASSIGNED_SEQ_NO,
     val primaryTerm: Long = SequenceNumbers.UNASSIGNED_PRIMARY_TERM,
 ) : Writeable, ToXContentFragment {
 
-    private val log = LogManager.getLogger(javaClass)
-
     override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
-        // TODO no need to save if the field is null
         return builder.startObject()
             .startObject(SM_METADATA_TYPE)
             .field(POLICY_SEQ_NO_FIELD, policySeqNo)
             .field(POLICY_PRIMARY_TERM_FIELD, policyPrimaryTerm)
-            .field(CURRENT_STATE_FIELD, currentState)
+            .field(CURRENT_STATE_FIELD, currentState.toString())
             .field(API_CALLING_FIELD, apiCalling)
             .field(CREATION_FIELD, creation)
             .field(DELETION_FIELD, deletion)
-            .optionalTimeField(NEXT_CREATION_TIME, nextCreationTime)
-            .field(CREATING, creating)
-            .optionalTimeField(NEXT_DELETION_TIME, nextDeletionTime)
-            .field(DELETING, deleting)
-            .field(INFO_FIELD, info)
+            .optionalField(INFO_FIELD, info)
             .endObject()
             .endObject()
     }
@@ -68,15 +62,7 @@ data class SMMetadata(
         const val API_CALLING_FIELD = "api_calling"
         const val CREATION_FIELD = "creation"
         const val DELETION_FIELD = "deletion"
-        const val NEXT_CREATION_TIME = "next_creation_time"
-        const val CREATING = "creating"
-        const val NEXT_DELETION_TIME = "next_deletion_time"
-        const val DELETING = "deleting"
         const val INFO_FIELD = "info"
-
-        private fun <T> XContentParser.nullWrapper(block: XContentParser.() -> T): T? {
-            return if (currentToken() == Token.VALUE_NULL) null else block()
-        }
 
         fun parse(
             xcp: XContentParser,
@@ -86,15 +72,11 @@ data class SMMetadata(
         ): SMMetadata {
             var policySeqNo: Long? = null
             var policyPrimaryTerm: Long? = null
-            var currentState: String? = null
+            var currentState: SMState? = null
             var apiCalling = false
             var creation: Creation? = null
             var deletion: Deletion? = null
-            var nextCreationTime: Instant? = null
-            var creating: String? = null
-            var nextDeletionTime: Instant? = null
-            var deleting: List<String>? = null
-            var info: Map<String, Any>? = null
+            var info: InfoType = null
 
             ensureExpectedToken(Token.START_OBJECT, xcp.currentToken(), xcp)
             while (xcp.nextToken() != Token.END_OBJECT) {
@@ -104,15 +86,11 @@ data class SMMetadata(
                 when (fieldName) {
                     POLICY_SEQ_NO_FIELD -> policySeqNo = xcp.longValue()
                     POLICY_PRIMARY_TERM_FIELD -> policyPrimaryTerm = xcp.longValue()
-                    CURRENT_STATE_FIELD -> currentState = xcp.text()
+                    CURRENT_STATE_FIELD -> currentState = SMState.valueOf(xcp.text())
                     API_CALLING_FIELD -> apiCalling = xcp.booleanValue()
                     CREATION_FIELD -> creation = Creation.parse(xcp)
                     DELETION_FIELD -> deletion = Deletion.parse(xcp)
-                    NEXT_CREATION_TIME -> nextCreationTime = xcp.instant()
-                    CREATING -> creating = xcp.nullWrapper { text() }
-                    NEXT_DELETION_TIME -> nextDeletionTime = xcp.instant()
-                    DELETING -> deleting = xcp.parseArray { text() }
-                    INFO_FIELD -> info = xcp.nullWrapper { xcp.map() }
+                    INFO_FIELD -> info = xcp.nullParser { xcp.map() }
                 }
             }
 
@@ -121,12 +99,8 @@ data class SMMetadata(
                 policyPrimaryTerm = requireNotNull(policyPrimaryTerm) {},
                 currentState = requireNotNull(currentState) {},
                 apiCalling = apiCalling,
-                creation = requireNotNull(creation) {}, // won't be null from start
+                creation = requireNotNull(creation) {},
                 deletion = requireNotNull(deletion) {},
-                nextCreationTime = nextCreationTime,
-                creating = creating,
-                nextDeletionTime = nextDeletionTime,
-                deleting = deleting,
                 info = info,
                 id = id,
                 seqNo = seqNo,
@@ -134,19 +108,37 @@ data class SMMetadata(
             )
         }
 
-        fun InfoType.upsert(key: String, value: String): InfoType {
-            if (this == null) return this
-            val info = this.toMutableMap()
-            info[key] = value
+        fun InfoType.upsert(keyValuePair: Pair<String, String>): InfoType {
+            val info: MutableMap<String, Any> = this?.toMutableMap() ?: mutableMapOf()
+            info[keyValuePair.first] = keyValuePair.second
             return info
         }
     }
 
-    // constructor(sin: StreamInput): this(
-    //
-    // )
+    constructor(sin: StreamInput) : this(
+        policySeqNo = sin.readLong(),
+        policyPrimaryTerm = sin.readLong(),
+        currentState = sin.readEnum(SMState::class.java),
+        apiCalling = sin.readBoolean(),
+        creation = Creation(sin),
+        deletion = Deletion(sin),
+        info = sin.readMap(),
+        id = sin.readString(),
+        seqNo = sin.readLong(),
+        primaryTerm = sin.readLong(),
+    )
 
     override fun writeTo(out: StreamOutput) {
+        out.writeLong(policySeqNo)
+        out.writeLong(policyPrimaryTerm)
+        out.writeEnum(currentState)
+        out.writeBoolean(apiCalling)
+        creation.writeTo(out)
+        deletion.writeTo(out)
+        out.writeMap(info)
+        out.writeString(id)
+        out.writeLong(seqNo)
+        out.writeLong(primaryTerm)
     }
 
     data class Creation(
@@ -158,8 +150,8 @@ data class SMMetadata(
         override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
             return builder.startObject()
                 .field(TRIGGER_FIELD, trigger)
-                .field(STARTED_FIELD, started)
-                .field(FINISHED_FIELD, finished)
+                .optionalField(STARTED_FIELD, started)
+                .optionalField(FINISHED_FIELD, finished)
                 .endObject()
         }
 
@@ -180,8 +172,8 @@ data class SMMetadata(
 
                     when (fieldName) {
                         TRIGGER_FIELD -> trigger = Trigger.parse(xcp)
-                        STARTED_FIELD -> started = xcp.text()
-                        FINISHED_FIELD -> finished = xcp.text()
+                        STARTED_FIELD -> started = xcp.nullParser { text() }
+                        FINISHED_FIELD -> finished = xcp.nullParser { text() }
                     }
                 }
 
@@ -195,14 +187,14 @@ data class SMMetadata(
 
         constructor(sin: StreamInput) : this(
             trigger = Trigger(sin),
-            started = sin.readString(),
-            finished = sin.readString(),
+            started = sin.readOptionalString(),
+            finished = sin.readOptionalString(),
         )
 
         override fun writeTo(out: StreamOutput) {
             trigger.writeTo(out)
-            out.writeString(started)
-            out.writeString(finished)
+            out.writeOptionalString(started)
+            out.writeOptionalString(finished)
         }
     }
 
@@ -214,7 +206,7 @@ data class SMMetadata(
         override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
             return builder.startObject()
                 .field(TRIGGER_FIELD, trigger)
-                .field(STARTED_FIELD, started)
+                .optionalField(STARTED_FIELD, started)
                 .endObject()
         }
 
@@ -233,7 +225,7 @@ data class SMMetadata(
 
                     when (fieldName) {
                         TRIGGER_FIELD -> trigger = Trigger.parse(xcp)
-                        STARTED_FIELD -> started = xcp.parseArray { text() }
+                        STARTED_FIELD -> started = xcp.nullParser { parseArray { text() } }
                     }
                 }
 
@@ -246,12 +238,12 @@ data class SMMetadata(
 
         constructor(sin: StreamInput) : this(
             trigger = Trigger(sin),
-            started = sin.readStringList()
+            started = sin.readOptionalType(StreamInput::readStringList),
         )
 
         override fun writeTo(out: StreamOutput) {
             trigger.writeTo(out)
-            out.writeStringArray(started?.toTypedArray())
+            out.writeOptionalType(started?.toTypedArray(), StreamOutput::writeStringArray)
         }
     }
 
@@ -296,5 +288,3 @@ data class SMMetadata(
         }
     }
 }
-
-typealias InfoType = Map<String, Any>?

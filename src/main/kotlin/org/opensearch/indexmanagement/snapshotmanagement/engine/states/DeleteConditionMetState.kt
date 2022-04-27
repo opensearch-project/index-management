@@ -24,7 +24,7 @@ object DeleteConditionMetState : State {
         val metadata = context.metadata
 
         if (metadata.deletion.started != null) {
-            log.info("There is already snapshot being deleted: ${metadata.deleting}.")
+            log.info("There is already snapshot being deleted: ${metadata.deletion.started}.")
             return false
         }
 
@@ -40,7 +40,7 @@ object DeleteConditionMetState : State {
         }
 
         context.metadataToSave = metadata.copy(
-            currentState = SMState.CREATE_CONDITION_MET.toString(),
+            currentState = SMState.CREATE_CONDITION_MET,
             deletion = metadata.deletion.copy(
                 trigger = metadata.deletion.trigger.copy(
                     nextExecutionTime = nextDeletionTimeToSave
