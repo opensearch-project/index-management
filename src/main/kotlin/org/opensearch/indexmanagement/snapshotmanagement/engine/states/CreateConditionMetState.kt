@@ -8,6 +8,7 @@ package org.opensearch.indexmanagement.snapshotmanagement.engine.states
 import org.opensearch.indexmanagement.snapshotmanagement.engine.statemachine.SMStateMachine
 import org.opensearch.indexmanagement.snapshotmanagement.engine.statemachine.SMState
 import org.opensearch.indexmanagement.snapshotmanagement.engine.statemachine.State
+import org.opensearch.indexmanagement.snapshotmanagement.engine.statemachine.State.ExecutionResult
 import org.opensearch.indexmanagement.snapshotmanagement.getNextExecutionTime
 import java.time.Instant
 import java.time.Instant.now
@@ -16,14 +17,14 @@ object CreateConditionMetState : State {
 
     override val continuous = true
 
-    override suspend fun execute(context: SMStateMachine): Boolean {
+    override suspend fun execute(context: SMStateMachine): ExecutionResult {
         val job = context.job
         val metadata = context.metadata
         val log = context.log
 
         if (metadata.creation.started != null) {
             log.info("There is already a snapshot being created: ${metadata.creation.started}.")
-            return false
+            return ExecutionResult.NotMet()
         }
 
         val nextCreationTime = metadata.creation.trigger.nextExecutionTime
@@ -34,7 +35,7 @@ object CreateConditionMetState : State {
         } else {
             log.info("current time [${now()}] has not passed nextCreationTime [$nextCreationTime]")
             // TODO dynamically update job start_time
-            return false
+            return ExecutionResult.NotMet()
         }
 
         context.metadataToSave = metadata.copy(
@@ -46,6 +47,6 @@ object CreateConditionMetState : State {
             )
         )
         log.info("Save current state as CREATE_CONDITION_MET [${context.metadataToSave}]")
-        return true
+        return ExecutionResult.Next
     }
 }

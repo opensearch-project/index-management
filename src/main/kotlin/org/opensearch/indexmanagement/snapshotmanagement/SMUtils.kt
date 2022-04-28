@@ -23,6 +23,7 @@ import org.opensearch.indexmanagement.opensearchapi.parseWithType
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.snapshotmanagement.engine.statemachine.SMStateMachine
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata
+import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy
 import org.opensearch.jobscheduler.spi.schedule.CronSchedule
 import org.opensearch.jobscheduler.spi.schedule.IntervalSchedule
 import org.opensearch.jobscheduler.spi.schedule.Schedule
@@ -82,6 +83,16 @@ fun getNextExecutionTime(schedule: Schedule, fromTime: Instant): Instant {
         }
         else -> throw IllegalArgumentException("Schedule type is not in [CronSchedule, IntervalSchedule].")
     }
+}
+
+fun generateSnapshotName(policy: SMPolicy): String {
+    var result: String = policy.policyName
+    if (policy.snapshotConfig["date_format"] != null) {
+        val dateFormat = generateFormatTime(policy.snapshotConfig["date_format"] as String)
+        result += "-$dateFormat"
+    }
+    // TODO add hash suffix
+    return result
 }
 
 fun generateFormatTime(dateFormat: String): String {

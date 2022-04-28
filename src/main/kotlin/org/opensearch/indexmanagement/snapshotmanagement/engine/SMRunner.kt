@@ -23,12 +23,11 @@ import org.opensearch.jobscheduler.spi.JobExecutionContext
 import org.opensearch.jobscheduler.spi.ScheduledJobParameter
 import org.opensearch.jobscheduler.spi.ScheduledJobRunner
 import org.opensearch.rest.RestStatus
-import java.time.Instant
 import java.time.Instant.now
 
 object SMRunner :
     ScheduledJobRunner,
-    CoroutineScope by CoroutineScope(SupervisorJob() + Dispatchers.Default + CoroutineName("SLMRunner")) {
+    CoroutineScope by CoroutineScope(SupervisorJob() + Dispatchers.Default + CoroutineName("snapshot_management_runner")) {
 
     private val log = LogManager.getLogger(javaClass)
 

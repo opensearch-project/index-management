@@ -53,6 +53,7 @@ data class SMPolicy(
         // TODO validate snapshotConfig
         require(snapshotConfig["repository"] != null) { "Must provide a repository." }
         // indices, partial, include_global_state, ignore_unavailable, metadata
+        // TODO validate date_format is of right format
     }
 
     override fun getName() = policyName

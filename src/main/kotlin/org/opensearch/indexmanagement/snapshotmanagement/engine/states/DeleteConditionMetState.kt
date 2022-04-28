@@ -9,6 +9,7 @@ import org.apache.logging.log4j.LogManager
 import org.opensearch.indexmanagement.snapshotmanagement.engine.statemachine.SMState
 import org.opensearch.indexmanagement.snapshotmanagement.engine.statemachine.SMStateMachine
 import org.opensearch.indexmanagement.snapshotmanagement.engine.statemachine.State
+import org.opensearch.indexmanagement.snapshotmanagement.engine.statemachine.State.ExecutionResult
 import org.opensearch.indexmanagement.snapshotmanagement.getNextExecutionTime
 import java.time.Instant
 
@@ -19,13 +20,13 @@ object DeleteConditionMetState : State {
 
     override val continuous = true
 
-    override suspend fun execute(context: SMStateMachine): Boolean {
+    override suspend fun execute(context: SMStateMachine): ExecutionResult {
         val job = context.job
         val metadata = context.metadata
 
         if (metadata.deletion.started != null) {
             log.info("There is already snapshot being deleted: ${metadata.deletion.started}.")
-            return false
+            return ExecutionResult.NotMet()
         }
 
         val nextDeletionTime = metadata.deletion.trigger.nextExecutionTime
@@ -36,7 +37,7 @@ object DeleteConditionMetState : State {
         } else {
             log.info("current time [${Instant.now()}] has not passed nextDeletionTime [$nextDeletionTime]")
             // TODO dynamically update job start_time
-            return false
+            return ExecutionResult.NotMet()
         }
 
         context.metadataToSave = metadata.copy(
@@ -48,6 +49,6 @@ object DeleteConditionMetState : State {
             ),
         )
         log.info("Save current state as DELETE_CONDITION_MET [${context.metadataToSave}]")
-        return true
+        return ExecutionResult.Next
     }
 }

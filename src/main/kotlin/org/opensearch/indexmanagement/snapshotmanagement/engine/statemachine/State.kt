@@ -19,13 +19,18 @@ interface State {
      */
     val continuous: Boolean
 
+    suspend fun execute(context: SMStateMachine): ExecutionResult
+
     /**
-     * @throws StateMachineException
-     * @return if true, save metadata and go to the next level state
-     *  if false, can still try executing the same level states
-     *   like [CREATE_CONDITION_MET, DELETE_CONDITION_MET]
-     *   if no more same level state, wait for next job run
-     *  false doesn't mean state execution failure
+     * [Next]: go to the next vertical level state
+     * [NotMet]: if cont=true, try executing the next same level states
+     *  like [CREATE_CONDITION_MET, DELETE_CONDITION_MET] in [SMState]
+     *  if no more same level state, wait for next job run
+     * [Failure]: caught exception, skipping to the START state
      */
-    suspend fun execute(context: SMStateMachine): Boolean
+    sealed class ExecutionResult {
+        object Next : ExecutionResult()
+        data class NotMet(val cont: Boolean = true) : ExecutionResult()
+        data class Failure(val ex: Exception) : ExecutionResult()
+    }
 }

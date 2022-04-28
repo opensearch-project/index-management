@@ -12,14 +12,14 @@ import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.snapshotmanagement.engine.statemachine.SMStateMachine
 import org.opensearch.indexmanagement.snapshotmanagement.engine.statemachine.SMState
 import org.opensearch.indexmanagement.snapshotmanagement.engine.statemachine.State
+import org.opensearch.indexmanagement.snapshotmanagement.engine.statemachine.State.ExecutionResult
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata.Companion.upsert
 
-// check the status of creating, deleting snapshot
 object FinishedState : State {
 
     override val continuous = true
 
-    override suspend fun execute(context: SMStateMachine): Boolean {
+    override suspend fun execute(context: SMStateMachine): ExecutionResult {
         val client = context.client
         val job = context.job
         val metadata = context.metadata
@@ -42,11 +42,11 @@ object FinishedState : State {
                             "last_success" to "${metadata.creation.started} has been created."
                         )
                     )
-                    true
+                    ExecutionResult.Next
                 } else {
                     // We can record the snapshot in progress state in info
                     log.info("Creating snapshot [${metadata.creation.started}] has not succeed")
-                    false
+                    ExecutionResult.NotMet()
 
                     // TODO if timeout pass
                 }
@@ -67,20 +67,21 @@ object FinishedState : State {
                             started = null
                         ),
                     )
-                    true
+                    ExecutionResult.Next
                 } else {
                     context.metadataToSave = metadata.copy(
                         deletion = metadata.deletion.copy(
                             started = remainingSnapshots.toList()
                         ),
                     )
-                    false
+                    ExecutionResult.NotMet()
                     // TODO if timeout pass
                 }
             }
             else -> {
+                // TODO not supposed to enter here
                 log.info("Both creating and deleting are null.")
-                return false
+                return ExecutionResult.Next
             }
         }
     }

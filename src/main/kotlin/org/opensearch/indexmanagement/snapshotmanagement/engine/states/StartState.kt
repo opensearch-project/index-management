@@ -8,6 +8,7 @@ package org.opensearch.indexmanagement.snapshotmanagement.engine.states
 import org.opensearch.indexmanagement.snapshotmanagement.engine.statemachine.SMState
 import org.opensearch.indexmanagement.snapshotmanagement.engine.statemachine.SMStateMachine
 import org.opensearch.indexmanagement.snapshotmanagement.engine.statemachine.State
+import org.opensearch.indexmanagement.snapshotmanagement.engine.statemachine.State.ExecutionResult
 
 /**
  * Dummy start state of snapshot management state machine
@@ -16,12 +17,12 @@ object StartState : State {
 
     override val continuous: Boolean = false
 
-    override suspend fun execute(context: SMStateMachine): Boolean {
+    override suspend fun execute(context: SMStateMachine): ExecutionResult {
         context.metadataToSave = context.metadata.copy(
             currentState = SMState.START
         )
         context.log.info("Save current state as WAITING")
 
-        return true
+        return ExecutionResult.Next
     }
 }
