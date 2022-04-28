@@ -7,19 +7,73 @@ package org.opensearch.indexmanagement.indexstatemanagement.step.shrink
 
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
+import org.opensearch.ExceptionsHelper
+import org.opensearch.OpenSearchSecurityException
 import org.opensearch.action.admin.indices.delete.DeleteIndexRequest
 import org.opensearch.action.support.master.AcknowledgedResponse
+import org.opensearch.indexmanagement.indexstatemanagement.action.ShrinkAction.Companion.getSecurityFailureMessage
+import org.opensearch.indexmanagement.indexstatemanagement.util.getUpdatedShrinkActionProperties
 import org.opensearch.indexmanagement.indexstatemanagement.util.releaseShrinkLock
+import org.opensearch.indexmanagement.indexstatemanagement.util.renewShrinkLock
 import org.opensearch.indexmanagement.indexstatemanagement.util.resetReadOnlyAndRouting
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ShrinkActionProperties
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepContext
+import org.opensearch.transport.RemoteTransportException
 
 abstract class ShrinkStep(name: String) : Step(name) {
     protected val logger: Logger = LogManager.getLogger(javaClass)
     protected var stepStatus = StepStatus.STARTING
     protected var info: Map<String, Any>? = null
     protected var shrinkActionProperties: ShrinkActionProperties? = null
+
+    override suspend fun execute(): Step {
+        val context = this.context ?: return this
+        try {
+            wrappedExecute(context)
+        } catch (e: OpenSearchSecurityException) {
+            val securityFailureMessage = getSecurityFailureMessage(e.localizedMessage)
+            cleanupAndFail(securityFailureMessage, securityFailureMessage, e.message, e)
+            return this
+        } catch (e: RemoteTransportException) {
+            val unwrappedException = ExceptionsHelper.unwrapCause(e)
+            cleanupAndFail(getGenericFailureMessage(), getGenericFailureMessage(), cause = e.message, e = unwrappedException as java.lang.Exception)
+            return this
+        } catch (e: Exception) {
+            cleanupAndFail(getGenericFailureMessage(), getGenericFailureMessage(), cause = e.message, e = e)
+            return this
+        }
+        return this
+    }
+
+    abstract suspend fun cleanupAndFail(infoMessage: String, logMessage: String? = null, cause: String? = null, e: Exception? = null)
+
+    abstract fun getGenericFailureMessage(): String
+
+    abstract suspend fun wrappedExecute(context: StepContext): Step
+
+    protected suspend fun updateAndGetShrinkActionProperties(context: StepContext): ShrinkActionProperties? {
+        val actionMetadata = context.metadata.actionMetaData
+        var localShrinkActionProperties = actionMetadata?.actionProperties?.shrinkActionProperties
+        shrinkActionProperties = localShrinkActionProperties
+        if (localShrinkActionProperties == null) {
+            cleanupAndFail(METADATA_FAILURE_MESSAGE, METADATA_FAILURE_MESSAGE)
+            return null
+        }
+        val lock = renewShrinkLock(localShrinkActionProperties, context.lockService, logger)
+        if (lock == null) {
+            cleanupAndFail(
+                "Failed to renew lock on node [${localShrinkActionProperties.nodeName}]",
+                "Shrink action failed to renew lock on node [${localShrinkActionProperties.nodeName}]"
+            )
+            return null
+        }
+        // After renewing the lock we need to update the primary term and sequence number
+        localShrinkActionProperties = getUpdatedShrinkActionProperties(localShrinkActionProperties, lock)
+        shrinkActionProperties = localShrinkActionProperties
+        return localShrinkActionProperties
+    }
 
     protected fun fail(infoMessage: String, logMessage: String? = null, cause: String? = null, e: Exception? = null) {
         if (logMessage != null) {

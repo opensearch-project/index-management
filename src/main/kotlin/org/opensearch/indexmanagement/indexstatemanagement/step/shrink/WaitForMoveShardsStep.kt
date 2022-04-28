@@ -5,101 +5,100 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.step.shrink
 
-import org.opensearch.ExceptionsHelper
-import org.opensearch.OpenSearchSecurityException
 import org.opensearch.action.admin.indices.stats.IndicesStatsRequest
 import org.opensearch.action.admin.indices.stats.IndicesStatsResponse
 import org.opensearch.action.admin.indices.stats.ShardStats
+import org.opensearch.client.Client
+import org.opensearch.cluster.ClusterState
 import org.opensearch.indexmanagement.indexstatemanagement.action.ShrinkAction
-import org.opensearch.indexmanagement.indexstatemanagement.action.ShrinkAction.Companion.getSecurityFailureMessage
 import org.opensearch.indexmanagement.indexstatemanagement.util.getActionStartTime
-import org.opensearch.indexmanagement.indexstatemanagement.util.renewShrinkLock
-import org.opensearch.indexmanagement.indexstatemanagement.util.getUpdatedShrinkActionProperties
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ActionProperties
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepContext
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepMetaData
-import org.opensearch.transport.RemoteTransportException
 import java.lang.Exception
 import java.time.Duration
 import java.time.Instant
 
 class WaitForMoveShardsStep(private val action: ShrinkAction) : ShrinkStep(name) {
 
-    @Suppress("TooGenericExceptionCaught", "ComplexMethod", "ReturnCount", "NestedBlockDepth")
-    override suspend fun execute(): WaitForMoveShardsStep {
-        val context = this.context ?: return this
+    override suspend fun wrappedExecute(context: StepContext): WaitForMoveShardsStep {
         val indexName = context.metadata.index
-        val actionMetadata = context.metadata.actionMetaData
-        val localShrinkActionProperties = actionMetadata?.actionProperties?.shrinkActionProperties
-        shrinkActionProperties = localShrinkActionProperties
-        if (localShrinkActionProperties == null) {
-            cleanupAndFail(METADATA_FAILURE_MESSAGE, METADATA_FAILURE_MESSAGE)
-            return this
+        // If the returned shrinkActionProperties are null, then the status has been set to failed, just return
+        val localShrinkActionProperties = updateAndGetShrinkActionProperties(context) ?: return this
+
+        val shardStats = getShardStats(indexName, context.client) ?: return this
+
+        val numShardsInSync = getNumShardsInSync(shardStats, context.clusterService.state(), indexName)
+        val nodeToMoveOnto = localShrinkActionProperties.nodeName
+        val numShardsOnNode = getNumShardsWithCopyOnNode(shardStats, context.clusterService.state(), nodeToMoveOnto)
+        val numPrimaryShards = context.clusterService.state().metadata.indices[indexName].numberOfShards
+
+        // If a copy of each shard is on the node, and all shards are in sync, move on
+        if (numShardsOnNode >= numPrimaryShards && numShardsInSync >= numPrimaryShards) {
+            info = mapOf("message" to getSuccessMessage(nodeToMoveOnto))
+            stepStatus = StepStatus.COMPLETED
+        } else {
+            val numShardsNotOnNode = numPrimaryShards - numShardsOnNode
+            val numShardsNotInSync = numPrimaryShards - numShardsInSync
+            checkTimeOut(context, numShardsNotOnNode, numShardsNotInSync, nodeToMoveOnto)
         }
-        val lock = renewShrinkLock(localShrinkActionProperties, context.lockService, logger)
-        if (lock == null) {
-            cleanupAndFail(
-                "Failed to renew lock on node [${localShrinkActionProperties.nodeName}]",
-                "Shrink action failed to renew lock on node [${localShrinkActionProperties.nodeName}]"
-            )
-            return this
-        }
-        // After renewing the lock we need to update the primary term and sequence number
-        shrinkActionProperties = getUpdatedShrinkActionProperties(localShrinkActionProperties, lock)
-        try {
-            val indexStatsRequests: IndicesStatsRequest = IndicesStatsRequest().indices(indexName)
-            val response: IndicesStatsResponse = context.client.admin().indices().suspendUntil { stats(indexStatsRequests, it) }
-            val numPrimaryShards = context.clusterService.state().metadata.indices[indexName].numberOfShards
-            val nodeToMoveOnto = localShrinkActionProperties.nodeName
-            val inSyncAllocations = context.clusterService.state().metadata.indices[indexName].inSyncAllocationIds
-            val numReplicas = context.clusterService.state().metadata.indices[indexName].numberOfReplicas
-            val shardIdOnNode: MutableMap<Int, Boolean> = mutableMapOf()
-            var numShardsInSync = 0
-            for (shard: ShardStats in response.shards) {
-                val routingInfo = shard.shardRouting
-                val nodeIdShardIsOn = routingInfo.currentNodeId()
-                val nodeNameShardIsOn = context.clusterService.state().nodes()[nodeIdShardIsOn].name
-                if (nodeNameShardIsOn.equals(nodeToMoveOnto) && routingInfo.started()) {
-                    shardIdOnNode[shard.shardRouting.id] = true
-                }
-                if (routingInfo.primary()) {
-                    // Either there must be no replicas (force unsafe must have been set) or all replicas must be in sync as
-                    // it isn't known which shard (any replica or primary) will be moved to the target node and used in the shrink.
-                    if (numReplicas == 0 || inSyncAllocations[routingInfo.id].size == (numReplicas + 1)) {
-                        numShardsInSync++
-                    }
-                }
-            }
-            if (shardIdOnNode.values.all { it } && numShardsInSync >= numPrimaryShards) {
-                info = mapOf("message" to getSuccessMessage(nodeToMoveOnto))
-                stepStatus = StepStatus.COMPLETED
-            } else {
-                val numShardsNotOnNode = shardIdOnNode.values.count { !it }
-                val numShardsNotInSync = numPrimaryShards - numShardsInSync
-                checkTimeOut(context, numShardsNotOnNode, numShardsNotInSync, nodeToMoveOnto)
-            }
-            return this
-        } catch (e: OpenSearchSecurityException) {
-            val securityFailureMessage = getSecurityFailureMessage(e.localizedMessage)
-            cleanupAndFail(securityFailureMessage, securityFailureMessage, e.message, e)
-            return this
-        } catch (e: RemoteTransportException) {
-            val unwrappedException = ExceptionsHelper.unwrapCause(e)
-            cleanupAndFail(FAILURE_MESSAGE, FAILURE_MESSAGE, cause = e.message, e = unwrappedException as Exception)
-            return this
-        } catch (e: Exception) {
-            cleanupAndFail(FAILURE_MESSAGE, FAILURE_MESSAGE, cause = e.message, e)
-            return this
-        }
+        return this
     }
 
     // Sets the action to failed, clears the readonly and allocation settings on the source index, and releases the shrink lock
-    private suspend fun cleanupAndFail(infoMessage: String, logMessage: String? = null, cause: String? = null, e: Exception? = null) {
+    override suspend fun cleanupAndFail(infoMessage: String, logMessage: String?, cause: String?, e: Exception?) {
         cleanupResources(resetSettings = true, releaseLock = true, deleteTargetIndex = false)
         fail(infoMessage, logMessage, cause, e)
     }
+
+    // Returns the number of shard IDs where all primary and replicas are in sync
+    private fun getNumShardsInSync(shardStats: Array<ShardStats>, state: ClusterState, indexName: String): Int {
+        val numReplicas = state.metadata.indices[indexName].numberOfReplicas
+        val inSyncAllocations = state.metadata.indices[indexName].inSyncAllocationIds
+        var numShardsInSync = 0
+        for (shard: ShardStats in shardStats) {
+            val routingInfo = shard.shardRouting
+            // Only check primaries so that we only check once for each shardID
+            if (routingInfo.primary()) {
+                // All shards must be in sync as it isn't known which shard (replica or primary) will be
+                // moved to the target node and used in the shrink.
+                if (inSyncAllocations[routingInfo.id].size == (numReplicas + 1)) {
+                    numShardsInSync++
+                }
+            }
+        }
+        return numShardsInSync
+    }
+
+    // Returns the number of shard IDs which have either a primary or replica on the target node
+    private fun getNumShardsWithCopyOnNode(shardStats: Array<ShardStats>, clusterState: ClusterState, nodeToMoveOnto: String): Int {
+        val shardIdStartedOnNode: MutableMap<Int, Boolean> = mutableMapOf()
+        for (shard in shardStats) {
+            val routingInfo = shard.shardRouting
+            val shardId = routingInfo.shardId().id
+            // If we have already confirmed a copy of the shard is on the node and started, move on
+            if (shardIdStartedOnNode[shardId] == true) continue
+            // If nodeName is null, then the nodes could have changed since the indicesStatsResponse, just skip adding it
+            val nodeName: String = clusterState.nodes[routingInfo.currentNodeId()].name ?: continue
+            shardIdStartedOnNode[shardId] = nodeName == nodeToMoveOnto && routingInfo.started()
+        }
+        return shardIdStartedOnNode.values.count { it }
+    }
+
+    private suspend fun getShardStats(indexName: String, client: Client): Array<ShardStats>? {
+        val indexStatsRequests: IndicesStatsRequest = IndicesStatsRequest().indices(indexName)
+        val response: IndicesStatsResponse = client.admin().indices().suspendUntil { stats(indexStatsRequests, it) }
+        val shardStats = response.shards
+        if (shardStats == null) {
+            fail(AttemptMoveShardsStep.FAILURE_MESSAGE, "Failed to move shards in shrink action as shard stats were null.")
+            return null
+        }
+        return shardStats
+    }
+
+    override fun getGenericFailureMessage(): String = FAILURE_MESSAGE
 
     override fun getUpdatedManagedIndexMetadata(currentMetadata: ManagedIndexMetaData): ManagedIndexMetaData {
         return currentMetadata.copy(

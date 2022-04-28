@@ -5,8 +5,6 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.step.shrink
 
-import org.opensearch.ExceptionsHelper
-import org.opensearch.OpenSearchSecurityException
 import org.opensearch.action.admin.cluster.node.stats.NodesStatsRequest
 import org.opensearch.action.admin.cluster.node.stats.NodesStatsResponse
 import org.opensearch.action.admin.indices.shrink.ResizeRequest
@@ -15,75 +13,45 @@ import org.opensearch.action.admin.indices.stats.IndicesStatsRequest
 import org.opensearch.action.admin.indices.stats.IndicesStatsResponse
 import org.opensearch.common.settings.Settings
 import org.opensearch.indexmanagement.indexstatemanagement.action.ShrinkAction
-import org.opensearch.indexmanagement.indexstatemanagement.action.ShrinkAction.Companion.getSecurityFailureMessage
 import org.opensearch.indexmanagement.indexstatemanagement.util.INDEX_NUMBER_OF_SHARDS
 import org.opensearch.indexmanagement.indexstatemanagement.util.getNodeFreeMemoryAfterShrink
 import org.opensearch.indexmanagement.indexstatemanagement.util.isIndexGreen
-import org.opensearch.indexmanagement.indexstatemanagement.util.renewShrinkLock
-import org.opensearch.indexmanagement.indexstatemanagement.util.getUpdatedShrinkActionProperties
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ActionProperties
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ShrinkActionProperties
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepContext
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepMetaData
-import org.opensearch.transport.RemoteTransportException
 import java.lang.Exception
 
 class AttemptShrinkStep(private val action: ShrinkAction) : ShrinkStep(name) {
 
-    @Suppress("TooGenericExceptionCaught", "ComplexMethod", "ReturnCount")
-    override suspend fun execute(): AttemptShrinkStep {
-        val context = this.context ?: return this
+    override suspend fun wrappedExecute(context: StepContext): AttemptShrinkStep {
         val indexName = context.metadata.index
-        val actionMetadata = context.metadata.actionMetaData
-        val localShrinkActionProperties = actionMetadata?.actionProperties?.shrinkActionProperties
-        shrinkActionProperties = localShrinkActionProperties
-        if (localShrinkActionProperties == null) {
-            cleanupAndFail(METADATA_FAILURE_MESSAGE, METADATA_FAILURE_MESSAGE)
-            return this
-        }
-        val lock = renewShrinkLock(localShrinkActionProperties, context.lockService, logger)
-        if (lock == null) {
-            cleanupAndFail(
-                "Failed to renew lock on node [${localShrinkActionProperties.nodeName}]",
-                "Shrink action failed to renew lock on node [${localShrinkActionProperties.nodeName}]"
-            )
-            return this
-        }
-        shrinkActionProperties = getUpdatedShrinkActionProperties(localShrinkActionProperties, lock)
-        try {
-            if (!isIndexGreen(context.client, indexName)) {
-                stepStatus = StepStatus.CONDITION_NOT_MET
-                info = mapOf("message" to INDEX_HEALTH_NOT_GREEN_MESSAGE)
-                return this
-            }
-            if (!isNodeStillSuitable(localShrinkActionProperties.nodeName, indexName, context)) return this
+        // If the returned shrinkActionProperties are null, then the status has been set to failed, just return
+        val localShrinkActionProperties = updateAndGetShrinkActionProperties(context) ?: return this
 
-            // If the resize index api fails, the step will be set to failed and resizeIndex will return false
-            if (!resizeIndex(indexName, localShrinkActionProperties, context)) return this
-            info = mapOf("message" to getSuccessMessage(localShrinkActionProperties.targetIndexName))
-            stepStatus = StepStatus.COMPLETED
-            return this
-        } catch (e: OpenSearchSecurityException) {
-            val securityFailureMessage = getSecurityFailureMessage(e.localizedMessage)
-            cleanupAndFail(securityFailureMessage, securityFailureMessage, e.message, e)
-            return this
-        } catch (e: RemoteTransportException) {
-            val unwrappedException = ExceptionsHelper.unwrapCause(e)
-            cleanupAndFail(FAILURE_MESSAGE, FAILURE_MESSAGE, cause = e.message, e = unwrappedException as Exception)
-            return this
-        } catch (e: Exception) {
-            cleanupAndFail(FAILURE_MESSAGE, FAILURE_MESSAGE, e.message, e)
+        if (!isIndexGreen(context.client, indexName)) {
+            stepStatus = StepStatus.CONDITION_NOT_MET
+            info = mapOf("message" to INDEX_HEALTH_NOT_GREEN_MESSAGE)
             return this
         }
+        if (!isNodeStillSuitable(localShrinkActionProperties.nodeName, indexName, context)) return this
+
+        // If the resize index api fails, the step will be set to failed and resizeIndex will return false
+        if (!resizeIndex(indexName, localShrinkActionProperties, context)) return this
+        info = mapOf("message" to getSuccessMessage(localShrinkActionProperties.targetIndexName))
+        stepStatus = StepStatus.COMPLETED
+        return this
     }
 
     // Sets the action to failed, clears the readonly and allocation settings on the source index, and releases the shrink lock
-    private suspend fun cleanupAndFail(infoMessage: String, logMessage: String? = null, cause: String? = null, e: Exception? = null) {
+    override suspend fun cleanupAndFail(infoMessage: String, logMessage: String?, cause: String?, e: Exception?) {
         cleanupResources(resetSettings = true, releaseLock = true, deleteTargetIndex = false)
         fail(infoMessage, logMessage, cause, e)
     }
+
+    override fun getGenericFailureMessage(): String = FAILURE_MESSAGE
 
     @Suppress("ReturnCount")
     private suspend fun isNodeStillSuitable(nodeName: String, indexName: String, context: StepContext): Boolean {
