@@ -61,6 +61,7 @@ abstract class ShrinkStep(name: String) : Step(name) {
             cleanupAndFail(METADATA_FAILURE_MESSAGE, METADATA_FAILURE_MESSAGE)
             return null
         }
+        println("${localShrinkActionProperties.lockPrimaryTerm} ${localShrinkActionProperties.lockSeqNo}")
         val lock = renewShrinkLock(localShrinkActionProperties, context.lockService, logger)
         if (lock == null) {
             cleanupAndFail(
@@ -71,6 +72,7 @@ abstract class ShrinkStep(name: String) : Step(name) {
         }
         // After renewing the lock we need to update the primary term and sequence number
         localShrinkActionProperties = getUpdatedShrinkActionProperties(localShrinkActionProperties, lock)
+        println("${localShrinkActionProperties.lockPrimaryTerm} ${localShrinkActionProperties.lockSeqNo}")
         shrinkActionProperties = localShrinkActionProperties
         return localShrinkActionProperties
     }
@@ -89,11 +91,11 @@ abstract class ShrinkStep(name: String) : Step(name) {
     }
 
     protected suspend fun cleanupResources(resetSettings: Boolean, releaseLock: Boolean, deleteTargetIndex: Boolean) {
-        val shrinkActionProperties = context?.metadata?.actionMetaData?.actionProperties?.shrinkActionProperties
-        if (shrinkActionProperties != null) {
-            if (resetSettings) resetIndexSettings(shrinkActionProperties)
-            if (deleteTargetIndex) deleteTargetIndex(shrinkActionProperties)
-            if (releaseLock) releaseLock(shrinkActionProperties)
+        val localShrinkActionProperties = shrinkActionProperties
+        if (localShrinkActionProperties != null) {
+            if (resetSettings) resetIndexSettings(localShrinkActionProperties)
+            if (deleteTargetIndex) deleteTargetIndex(localShrinkActionProperties)
+            if (releaseLock) releaseLock(localShrinkActionProperties)
         } else {
             logger.error("Shrink action failed to clean up resources due to null shrink action properties.")
         }
@@ -141,6 +143,7 @@ abstract class ShrinkStep(name: String) : Step(name) {
         val lockService = context?.lockService
         try {
             if (lockService != null) {
+                println("Trying to release lock")
                 val released = releaseShrinkLock(shrinkActionProperties, lockService)
                 if (!released) logger.error("Failed to release Shrink action lock on node [${shrinkActionProperties.nodeName}]")
             } else {

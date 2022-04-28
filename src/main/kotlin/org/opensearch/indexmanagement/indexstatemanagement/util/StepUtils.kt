@@ -45,6 +45,7 @@ suspend fun releaseShrinkLock(
     lockService: LockService
 ): Boolean {
     val lock: LockModel = getShrinkLockModel(shrinkActionProperties)
+    println("Lock $lock, ${lock.lockId}, ${lock.isReleased}")
     return lockService.suspendUntil { release(lock, it) }
 }
 
