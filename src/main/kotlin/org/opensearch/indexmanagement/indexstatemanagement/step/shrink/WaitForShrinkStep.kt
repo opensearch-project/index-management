@@ -41,7 +41,9 @@ class WaitForShrinkStep(private val action: ShrinkAction) : ShrinkStep(name) {
         if (!clearAllocationSettings(context, targetIndex)) return this
         if (!resetReadOnlyAndRouting(indexName, context.client, localShrinkActionProperties.originalIndexSettings)) return this
 
-        deleteShrinkLock(localShrinkActionProperties, context.lockService, logger)
+        if (!deleteShrinkLock(localShrinkActionProperties, context.lockService)) {
+            logger.error("Failed to delete Shrink action lock on node [${localShrinkActionProperties.nodeName}]")
+        }
         stepStatus = StepStatus.COMPLETED
         info = mapOf("message" to SUCCESS_MESSAGE)
         return this

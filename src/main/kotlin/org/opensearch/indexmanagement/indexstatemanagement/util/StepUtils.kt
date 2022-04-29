@@ -45,20 +45,15 @@ suspend fun releaseShrinkLock(
     lockService: LockService
 ): Boolean {
     val lock: LockModel = getShrinkLockModel(shrinkActionProperties)
-    println("Lock $lock, ${lock.lockId}, ${lock.isReleased}")
     return lockService.suspendUntil { release(lock, it) }
 }
 
 suspend fun deleteShrinkLock(
     shrinkActionProperties: ShrinkActionProperties,
-    lockService: LockService,
-    logger: Logger
-) {
+    lockService: LockService
+): Boolean {
     val lockID = getShrinkLockID(shrinkActionProperties.nodeName)
-    val deleted: Boolean = lockService.suspendUntil { deleteLock(lockID, it) }
-    if (!deleted) {
-        logger.error("Failed to delete Shrink action lock on node [${shrinkActionProperties.nodeName}]")
-    }
+    return lockService.suspendUntil { deleteLock(lockID, it) }
 }
 
 suspend fun renewShrinkLock(

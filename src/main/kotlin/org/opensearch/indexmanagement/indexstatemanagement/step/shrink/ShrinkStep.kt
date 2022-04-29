@@ -61,7 +61,6 @@ abstract class ShrinkStep(name: String) : Step(name) {
             cleanupAndFail(METADATA_FAILURE_MESSAGE, METADATA_FAILURE_MESSAGE)
             return null
         }
-        println("${localShrinkActionProperties.lockPrimaryTerm} ${localShrinkActionProperties.lockSeqNo}")
         val lock = renewShrinkLock(localShrinkActionProperties, context.lockService, logger)
         if (lock == null) {
             cleanupAndFail(
@@ -72,7 +71,6 @@ abstract class ShrinkStep(name: String) : Step(name) {
         }
         // After renewing the lock we need to update the primary term and sequence number
         localShrinkActionProperties = getUpdatedShrinkActionProperties(localShrinkActionProperties, lock)
-        println("${localShrinkActionProperties.lockPrimaryTerm} ${localShrinkActionProperties.lockSeqNo}")
         shrinkActionProperties = localShrinkActionProperties
         return localShrinkActionProperties
     }
@@ -143,7 +141,6 @@ abstract class ShrinkStep(name: String) : Step(name) {
         val lockService = context?.lockService
         try {
             if (lockService != null) {
-                println("Trying to release lock")
                 val released = releaseShrinkLock(shrinkActionProperties, lockService)
                 if (!released) logger.error("Failed to release Shrink action lock on node [${shrinkActionProperties.nodeName}]")
             } else {
