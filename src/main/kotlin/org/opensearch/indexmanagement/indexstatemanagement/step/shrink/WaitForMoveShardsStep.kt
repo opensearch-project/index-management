@@ -23,6 +23,7 @@ import java.time.Instant
 
 class WaitForMoveShardsStep(private val action: ShrinkAction) : ShrinkStep(name) {
 
+    @Suppress("ReturnCount")
     override suspend fun wrappedExecute(context: StepContext): WaitForMoveShardsStep {
         val indexName = context.metadata.index
         // If the returned shrinkActionProperties are null, then the status has been set to failed, just return
@@ -73,6 +74,7 @@ class WaitForMoveShardsStep(private val action: ShrinkAction) : ShrinkStep(name)
     }
 
     // Returns the number of shard IDs which have either a primary or replica on the target node
+    @Suppress("LoopWithTooManyJumpStatements")
     private fun getNumShardsWithCopyOnNode(shardStats: Array<ShardStats>, clusterState: ClusterState, nodeToMoveOnto: String): Int {
         val shardIdStartedOnNode: MutableMap<Int, Boolean> = mutableMapOf()
         for (shard in shardStats) {

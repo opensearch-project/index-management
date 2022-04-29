@@ -57,6 +57,7 @@ import kotlin.math.sqrt
 @SuppressWarnings("TooManyFunctions")
 class AttemptMoveShardsStep(private val action: ShrinkAction) : ShrinkStep(name) {
 
+    @Suppress("ReturnCount")
     override suspend fun wrappedExecute(context: StepContext): AttemptMoveShardsStep {
         val client = context.client
         val indexName = context.metadata.index

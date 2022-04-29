@@ -26,6 +26,7 @@ import java.lang.Exception
 
 class AttemptShrinkStep(private val action: ShrinkAction) : ShrinkStep(name) {
 
+    @Suppress("ReturnCount")
     override suspend fun wrappedExecute(context: StepContext): AttemptShrinkStep {
         val indexName = context.metadata.index
         // If the returned shrinkActionProperties are null, then the status has been set to failed, just return

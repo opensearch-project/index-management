@@ -26,6 +26,7 @@ import java.time.Instant
 
 class WaitForShrinkStep(private val action: ShrinkAction) : ShrinkStep(name) {
 
+    @Suppress("ReturnCount")
     override suspend fun wrappedExecute(context: StepContext): WaitForShrinkStep {
         val indexName = context.metadata.index
         // If the returned shrinkActionProperties are null, then the status has been set to failed, just return

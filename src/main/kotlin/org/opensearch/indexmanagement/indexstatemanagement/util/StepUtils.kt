@@ -3,6 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+@file:Suppress("TooManyFunctions")
+
 package org.opensearch.indexmanagement.indexstatemanagement.util
 
 import org.apache.logging.log4j.Logger

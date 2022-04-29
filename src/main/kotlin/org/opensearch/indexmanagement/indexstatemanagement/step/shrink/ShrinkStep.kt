@@ -28,6 +28,7 @@ abstract class ShrinkStep(name: String) : Step(name) {
     protected var info: Map<String, Any>? = null
     protected var shrinkActionProperties: ShrinkActionProperties? = null
 
+    @Suppress("ReturnCount")
     override suspend fun execute(): Step {
         val context = this.context ?: return this
         try {
@@ -53,6 +54,7 @@ abstract class ShrinkStep(name: String) : Step(name) {
 
     abstract suspend fun wrappedExecute(context: StepContext): Step
 
+    @Suppress("ReturnCount")
     protected suspend fun updateAndGetShrinkActionProperties(context: StepContext): ShrinkActionProperties? {
         val actionMetadata = context.metadata.actionMetaData
         var localShrinkActionProperties = actionMetadata?.actionProperties?.shrinkActionProperties
@@ -115,6 +117,7 @@ abstract class ShrinkStep(name: String) : Step(name) {
         }
     }
 
+    @Suppress("NestedBlockDepth")
     private suspend fun deleteTargetIndex(shrinkActionProperties: ShrinkActionProperties) {
         val client = context?.client
         val targetIndexName = shrinkActionProperties.targetIndexName
@@ -130,7 +133,9 @@ abstract class ShrinkStep(name: String) : Step(name) {
                     }
                 }
             } else {
-                logger.error("Shrink action failed to delete target index [$targetIndexName] after a failure due to a null client in the step context")
+                logger.error(
+                    "Shrink action failed to delete target index [$targetIndexName] after a failure due to a null client in the step context"
+                )
             }
         } catch (e: Exception) {
             logger.error("Shrink action failed while trying to delete the target index [$targetIndexName] after a failure: $e")
@@ -144,7 +149,9 @@ abstract class ShrinkStep(name: String) : Step(name) {
                 val released = releaseShrinkLock(shrinkActionProperties, lockService)
                 if (!released) logger.error("Failed to release Shrink action lock on node [${shrinkActionProperties.nodeName}]")
             } else {
-                logger.error("Shrink action failed to release lock on node [${shrinkActionProperties.nodeName}] due to uninitialized metadata values.")
+                logger.error(
+                    "Shrink action failed to release lock on node [${shrinkActionProperties.nodeName}] due to uninitialized metadata values."
+                )
             }
         } catch (e: Exception) {
             logger.error("Failed to release Shrink action lock on node [${shrinkActionProperties.nodeName}]: $e")
