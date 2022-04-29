@@ -116,7 +116,7 @@ class StepUtilsTests : OpenSearchTestCase() {
         Mockito.`when`(nodeStats.os).thenReturn(osStats)
         val memStats: OsStats.Mem = mock()
         Mockito.`when`(osStats.mem).thenReturn(memStats)
-        val totalBytes = randomNonNegativeLong()
+        val totalBytes = randomLongBetween(10, 100000000)
         val freeBytes = randomLongBetween(0, totalBytes)
         val indexSize = randomLongBetween(0, totalBytes / 2)
         val threshold = randomLongBetween(0, totalBytes / 2)
