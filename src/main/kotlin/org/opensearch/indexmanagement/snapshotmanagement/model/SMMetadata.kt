@@ -16,11 +16,12 @@ import org.opensearch.common.xcontent.XContentParser.Token
 import org.opensearch.common.xcontent.XContentParserUtils.ensureExpectedToken
 import org.opensearch.index.seqno.SequenceNumbers
 import org.opensearch.indexmanagement.opensearchapi.instant
-import org.opensearch.indexmanagement.opensearchapi.nullParser
+import org.opensearch.indexmanagement.opensearchapi.nullValueHandler
 import org.opensearch.indexmanagement.opensearchapi.optionalField
+import org.opensearch.indexmanagement.opensearchapi.optionalTimeField
 import org.opensearch.indexmanagement.opensearchapi.parseArray
-import org.opensearch.indexmanagement.opensearchapi.readOptionalType
-import org.opensearch.indexmanagement.opensearchapi.writeOptionalType
+import org.opensearch.indexmanagement.opensearchapi.readOptionalValue
+import org.opensearch.indexmanagement.opensearchapi.writeOptionalValue
 import org.opensearch.indexmanagement.snapshotmanagement.engine.statemachine.SMState
 import org.opensearch.indexmanagement.util.NO_ID
 import java.time.Instant
@@ -31,14 +32,14 @@ data class SMMetadata(
     val policySeqNo: Long,
     val policyPrimaryTerm: Long,
     val currentState: SMState,
-    val apiCalling: Boolean = false,
+    val atomic: Boolean = false, // used to indicate an atomic operation started
     val creation: Creation,
     val deletion: Deletion,
     val info: InfoType = null,
     val id: String = NO_ID,
     val seqNo: Long = SequenceNumbers.UNASSIGNED_SEQ_NO,
     val primaryTerm: Long = SequenceNumbers.UNASSIGNED_PRIMARY_TERM,
-) : Writeable, ToXContentFragment {
+) : Writeable, ToXContent {
 
     override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
         return builder.startObject()
@@ -46,7 +47,7 @@ data class SMMetadata(
             .field(POLICY_SEQ_NO_FIELD, policySeqNo)
             .field(POLICY_PRIMARY_TERM_FIELD, policyPrimaryTerm)
             .field(CURRENT_STATE_FIELD, currentState.toString())
-            .field(API_CALLING_FIELD, apiCalling)
+            .field(ATOMIC_FIELD, atomic)
             .field(CREATION_FIELD, creation)
             .field(DELETION_FIELD, deletion)
             .optionalField(INFO_FIELD, info)
@@ -59,7 +60,7 @@ data class SMMetadata(
         const val POLICY_SEQ_NO_FIELD = "policy_seq_no"
         const val POLICY_PRIMARY_TERM_FIELD = "policy_primary_term"
         const val CURRENT_STATE_FIELD = "current_state"
-        const val API_CALLING_FIELD = "api_calling"
+        const val ATOMIC_FIELD = "atomic"
         const val CREATION_FIELD = "creation"
         const val DELETION_FIELD = "deletion"
         const val INFO_FIELD = "info"
@@ -73,7 +74,7 @@ data class SMMetadata(
             var policySeqNo: Long? = null
             var policyPrimaryTerm: Long? = null
             var currentState: SMState? = null
-            var apiCalling = false
+            var atomic = false
             var creation: Creation? = null
             var deletion: Deletion? = null
             var info: InfoType = null
@@ -87,10 +88,10 @@ data class SMMetadata(
                     POLICY_SEQ_NO_FIELD -> policySeqNo = xcp.longValue()
                     POLICY_PRIMARY_TERM_FIELD -> policyPrimaryTerm = xcp.longValue()
                     CURRENT_STATE_FIELD -> currentState = SMState.valueOf(xcp.text())
-                    API_CALLING_FIELD -> apiCalling = xcp.booleanValue()
+                    ATOMIC_FIELD -> atomic = xcp.booleanValue()
                     CREATION_FIELD -> creation = Creation.parse(xcp)
                     DELETION_FIELD -> deletion = Deletion.parse(xcp)
-                    INFO_FIELD -> info = xcp.nullParser { xcp.map() }
+                    INFO_FIELD -> info = xcp.nullValueHandler { xcp.map() }
                 }
             }
 
@@ -98,7 +99,7 @@ data class SMMetadata(
                 policySeqNo = requireNotNull(policySeqNo) {},
                 policyPrimaryTerm = requireNotNull(policyPrimaryTerm) {},
                 currentState = requireNotNull(currentState) {},
-                apiCalling = apiCalling,
+                atomic = atomic,
                 creation = requireNotNull(creation) {},
                 deletion = requireNotNull(deletion) {},
                 info = info,
@@ -119,7 +120,7 @@ data class SMMetadata(
         policySeqNo = sin.readLong(),
         policyPrimaryTerm = sin.readLong(),
         currentState = sin.readEnum(SMState::class.java),
-        apiCalling = sin.readBoolean(),
+        atomic = sin.readBoolean(),
         creation = Creation(sin),
         deletion = Deletion(sin),
         info = sin.readMap(),
@@ -132,7 +133,7 @@ data class SMMetadata(
         out.writeLong(policySeqNo)
         out.writeLong(policyPrimaryTerm)
         out.writeEnum(currentState)
-        out.writeBoolean(apiCalling)
+        out.writeBoolean(atomic)
         creation.writeTo(out)
         deletion.writeTo(out)
         out.writeMap(info)
@@ -143,8 +144,8 @@ data class SMMetadata(
 
     data class Creation(
         val trigger: Trigger,
-        val started: String? = null,
-        val finished: String? = null,
+        val started: SnapshotInfo? = null,
+        val finished: SnapshotInfo? = null,
     ) : Writeable, ToXContentFragment {
 
         override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
@@ -162,8 +163,8 @@ data class SMMetadata(
 
             fun parse(xcp: XContentParser): Creation {
                 var trigger: Trigger? = null
-                var started: String? = null
-                var finished: String? = null
+                var started: SnapshotInfo? = null
+                var finished: SnapshotInfo? = null
 
                 ensureExpectedToken(Token.START_OBJECT, xcp.currentToken(), xcp)
                 while (xcp.nextToken() != Token.END_OBJECT) {
@@ -172,51 +173,61 @@ data class SMMetadata(
 
                     when (fieldName) {
                         TRIGGER_FIELD -> trigger = Trigger.parse(xcp)
-                        STARTED_FIELD -> started = xcp.nullParser { text() }
-                        FINISHED_FIELD -> finished = xcp.nullParser { text() }
+                        STARTED_FIELD -> started = xcp.nullValueHandler { SnapshotInfo.parse(xcp) }
+                        FINISHED_FIELD -> finished = xcp.nullValueHandler { SnapshotInfo.parse(xcp) }
                     }
                 }
 
                 return Creation(
                     trigger = requireNotNull(trigger) { "trigger field must not be null" },
-                    started = requireNotNull(started) { "started field must not be null" },
-                    finished = requireNotNull(finished) { "finished field must not be null" },
+                    started = started,
+                    finished = finished,
                 )
             }
         }
 
         constructor(sin: StreamInput) : this(
             trigger = Trigger(sin),
-            started = sin.readOptionalString(),
-            finished = sin.readOptionalString(),
+            started = sin.readOptionalWriteable { SnapshotInfo(it) },
+            finished = sin.readOptionalWriteable { SnapshotInfo(it) },
         )
 
         override fun writeTo(out: StreamOutput) {
             trigger.writeTo(out)
-            out.writeOptionalString(started)
-            out.writeOptionalString(finished)
+            out.writeOptionalWriteable(started)
+            out.writeOptionalWriteable(finished)
         }
     }
 
     data class Deletion(
         val trigger: Trigger,
-        val started: List<String>? = null,
+        val started: List<SnapshotInfo>? = null,
+        val startedTime: Instant? = null
     ) : Writeable, ToXContentFragment {
+
+        init {
+            require(!(started != null).xor(startedTime != null)) {
+                "deletion started and startedTime must exist at the same time."
+            }
+        }
 
         override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
             return builder.startObject()
                 .field(TRIGGER_FIELD, trigger)
                 .optionalField(STARTED_FIELD, started)
+                .optionalField(STARTED_TIME_FIELD, startedTime)
                 .endObject()
         }
 
         companion object {
             const val TRIGGER_FIELD = "trigger"
             const val STARTED_FIELD = "started"
+            const val STARTED_TIME_FIELD = "started_time"
 
             fun parse(xcp: XContentParser): Deletion {
                 var trigger: Trigger? = null
-                var started: List<String>? = null
+                var started: List<SnapshotInfo>? = null
+                var startedTime: Instant? = null
 
                 ensureExpectedToken(Token.START_OBJECT, xcp.currentToken(), xcp)
                 while (xcp.nextToken() != Token.END_OBJECT) {
@@ -225,40 +236,50 @@ data class SMMetadata(
 
                     when (fieldName) {
                         TRIGGER_FIELD -> trigger = Trigger.parse(xcp)
-                        STARTED_FIELD -> started = xcp.nullParser { parseArray { text() } }
+                        STARTED_FIELD -> started = xcp.nullValueHandler { parseArray { SnapshotInfo.parse(xcp) } }
+                        STARTED_TIME_FIELD -> startedTime = xcp.instant()
                     }
                 }
 
                 return Deletion(
                     trigger = requireNotNull(trigger) { "trigger field must not be null" },
-                    started = requireNotNull(started) { "started field must not be null" },
+                    started = started,
+                    startedTime = startedTime,
                 )
             }
         }
 
         constructor(sin: StreamInput) : this(
             trigger = Trigger(sin),
-            started = sin.readOptionalType(StreamInput::readStringList),
+            started = sin.readOptionalValue(sin.readList { SnapshotInfo(it) }),
+            startedTime = sin.readOptionalInstant(),
         )
 
         override fun writeTo(out: StreamOutput) {
             trigger.writeTo(out)
-            out.writeOptionalType(started?.toTypedArray(), StreamOutput::writeStringArray)
+            out.writeOptionalValue(started, StreamOutput::writeList)
+            out.writeOptionalInstant(startedTime)
         }
     }
 
+    /**
+     * Trigger for recurring condition check
+     *
+     * index_size can be another possible trigger, e.g.: snapshot will be created
+     * every time index size increases 50gb
+     */
     data class Trigger(
-        val nextExecutionTime: Instant,
+        val time: Instant,
     ) : Writeable, ToXContentFragment {
 
         override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
             return builder.startObject()
-                .field(NEXT_EXECUTION_TIME_FIELD, nextExecutionTime)
+                .optionalTimeField(TIME_FIELD, time)
                 .endObject()
         }
 
         companion object {
-            const val NEXT_EXECUTION_TIME_FIELD = "next_execution_time"
+            const val TIME_FIELD = "time"
 
             fun parse(xcp: XContentParser): Trigger {
                 var nextExecutionTime: Instant? = null
@@ -269,22 +290,79 @@ data class SMMetadata(
                     xcp.nextToken()
 
                     when (fieldName) {
-                        NEXT_EXECUTION_TIME_FIELD -> nextExecutionTime = xcp.instant()
+                        TIME_FIELD -> nextExecutionTime = xcp.instant()
                     }
                 }
 
                 return Trigger(
-                    nextExecutionTime = requireNotNull(nextExecutionTime) { "nextExecutionTime field must not be null" },
+                    time = requireNotNull(nextExecutionTime) { "trigger time field must not be null." },
                 )
             }
         }
 
         constructor(sin: StreamInput) : this(
-            sin.readInstant()
+            time = sin.readInstant()
         )
 
         override fun writeTo(out: StreamOutput) {
-            out.writeInstant(nextExecutionTime)
+            out.writeInstant(time)
+        }
+    }
+
+    data class SnapshotInfo(
+        val name: String,
+        val startTime: Instant? = null,
+        val endTime: Instant? = null,
+    ) : Writeable, ToXContent {
+
+        override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
+            return builder.startObject()
+                .field(NAME_FIELD, name)
+                .optionalTimeField(START_TIME_FIELD, startTime)
+                .optionalField(END_TIME_FIELD, endTime)
+                .endObject()
+        }
+
+        companion object {
+            const val NAME_FIELD = "name"
+            const val START_TIME_FIELD = "start_time"
+            const val END_TIME_FIELD = "end_time"
+
+            fun parse(xcp: XContentParser): SnapshotInfo {
+                var name: String? = null
+                var startTime: Instant? = null
+                var endTime: Instant? = null
+
+                ensureExpectedToken(Token.START_OBJECT, xcp.currentToken(), xcp)
+                while (xcp.nextToken() != Token.END_OBJECT) {
+                    val fieldName = xcp.currentName()
+                    xcp.nextToken()
+
+                    when (fieldName) {
+                        NAME_FIELD -> name = xcp.text()
+                        START_TIME_FIELD -> startTime = xcp.instant()
+                        END_TIME_FIELD -> endTime = xcp.instant()
+                    }
+                }
+
+                return SnapshotInfo(
+                    name = requireNotNull(name) { "snapshot info name must not be null." },
+                    startTime = startTime,
+                    endTime = endTime,
+                )
+            }
+        }
+
+        constructor(sin: StreamInput) : this(
+            name = sin.readString(),
+            startTime = sin.readOptionalInstant(),
+            endTime = sin.readOptionalInstant(),
+        )
+
+        override fun writeTo(out: StreamOutput) {
+            out.writeString(name)
+            out.writeOptionalInstant(startTime)
+            out.writeOptionalInstant(endTime)
         }
     }
 }

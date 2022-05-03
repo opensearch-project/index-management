@@ -17,10 +17,9 @@ import org.opensearch.common.xcontent.XContentParser.Token
 import org.opensearch.common.xcontent.XContentParserUtils.ensureExpectedToken
 import org.opensearch.index.seqno.SequenceNumbers
 import org.opensearch.indexmanagement.opensearchapi.instant
-import org.opensearch.indexmanagement.opensearchapi.nullParser
+import org.opensearch.indexmanagement.opensearchapi.nullValueHandler
 import org.opensearch.indexmanagement.opensearchapi.optionalField
 import org.opensearch.indexmanagement.opensearchapi.optionalTimeField
-import org.opensearch.indexmanagement.opensearchapi.parseArray
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ActionTimeout
 import org.opensearch.indexmanagement.util.IndexUtils.Companion.NO_ID
 import org.opensearch.jobscheduler.spi.ScheduledJobParameter
@@ -122,7 +121,7 @@ data class SMPolicy(
 
                 when (fieldName) {
                     NAME_FIELD -> name = xcp.text()
-                    DESCRIPTION_FIELD -> description = xcp.nullParser { text() }
+                    DESCRIPTION_FIELD -> description = xcp.nullValueHandler { text() }
                     CREATION_FIELD -> creation = Creation.parse(xcp)
                     DELETION_FIELD -> deletion = Deletion.parse(xcp)
                     SNAPSHOT_CONFIG_FIELD -> snapshotConfig = xcp.map()
@@ -307,30 +306,37 @@ data class SMPolicy(
     }
 
     data class DeleteCondition(
-        val count: List<Int>,
-        val age: TimeValue? = null,
+        val maxCount: Int,
+        val maxAge: TimeValue? = null,
+        val minCount: Int? = null,
     ) : Writeable, ToXContent {
 
         init {
-            require(count.size == 2)
-            require(count[0] > 0)
-            require(count[1] >= count[0])
+            require(
+                (maxAge != null && minCount != null) || (maxAge == null && minCount == null)
+            ) { "max_age and min_count should exist at the same time." }
+            require(minCount == null || maxCount > minCount) {
+                "max_count should be bigger than min_count."
+            }
         }
 
         override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
             return builder.startObject()
-                .field(COUNT_FIELD, count)
-                .optionalField(AGE_FIELD, age)
+                .field(MAX_COUNT_FIELD, maxCount)
+                .optionalField(MAX_AGE_FIELD, maxAge)
+                .optionalField(MIN_COUNT_FIELD, minCount)
                 .endObject()
         }
 
         companion object {
-            const val COUNT_FIELD = "count"
-            const val AGE_FIELD = "age"
+            const val MAX_COUNT_FIELD = "max_count"
+            const val MAX_AGE_FIELD = "max_age"
+            const val MIN_COUNT_FIELD = "min_count"
 
             fun parse(xcp: XContentParser): DeleteCondition {
-                var count: List<Int>? = null
-                var age: TimeValue? = null
+                var maxCount: Int? = null
+                var maxAge: TimeValue? = null
+                var minCount: Int? = null
 
                 ensureExpectedToken(Token.START_OBJECT, xcp.currentToken(), xcp)
                 while (xcp.nextToken() != Token.END_OBJECT) {
@@ -338,26 +344,30 @@ data class SMPolicy(
                     xcp.nextToken()
 
                     when (fieldName) {
-                        COUNT_FIELD -> count = xcp.parseArray { intValue() }
-                        AGE_FIELD -> age = TimeValue.parseTimeValue(xcp.text(), AGE_FIELD)
+                        MAX_COUNT_FIELD -> maxCount = xcp.intValue()
+                        MAX_AGE_FIELD -> maxAge = TimeValue.parseTimeValue(xcp.text(), MAX_AGE_FIELD)
+                        MIN_COUNT_FIELD -> minCount = xcp.intValue()
                     }
                 }
 
                 return DeleteCondition(
-                    count = requireNotNull(count) { "count field must not be null" },
-                    age = age,
+                    maxCount = requireNotNull(maxCount) { "max_count field must not be null" },
+                    maxAge = maxAge,
+                    minCount = minCount,
                 )
             }
         }
 
         constructor(sin: StreamInput) : this(
-            count = sin.readIntArray().toList(),
-            age = sin.readOptionalTimeValue()
+            maxCount = sin.readInt(),
+            maxAge = sin.readOptionalTimeValue(),
+            minCount = sin.readOptionalInt()
         )
 
         override fun writeTo(out: StreamOutput) {
-            out.writeIntArray(count.toIntArray())
-            out.writeOptionalTimeValue(age)
+            out.writeInt(maxCount)
+            out.writeOptionalTimeValue(maxAge)
+            out.writeOptionalInt(minCount)
         }
     }
 }

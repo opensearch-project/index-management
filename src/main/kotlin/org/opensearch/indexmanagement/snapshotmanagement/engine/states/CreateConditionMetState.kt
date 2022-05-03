@@ -27,7 +27,7 @@ object CreateConditionMetState : State {
             return ExecutionResult.NotMet()
         }
 
-        val nextCreationTime = metadata.creation.trigger.nextExecutionTime
+        val nextCreationTime = metadata.creation.trigger.time
         val nextCreationTimeToSave: Instant
         if (!now().isBefore(nextCreationTime)) {
             log.info("current time [${now()}] has passed nextCreationTime [$nextCreationTime]")
@@ -38,15 +38,15 @@ object CreateConditionMetState : State {
             return ExecutionResult.NotMet()
         }
 
-        context.metadataToSave = metadata.copy(
+        val metadataToSave = metadata.copy(
             currentState = SMState.CREATE_CONDITION_MET,
             creation = metadata.creation.copy(
                 trigger = metadata.creation.trigger.copy(
-                    nextExecutionTime = nextCreationTimeToSave
+                    time = nextCreationTimeToSave
                 )
             )
         )
-        log.info("Save current state as CREATE_CONDITION_MET [${context.metadataToSave}]")
-        return ExecutionResult.Next
+        log.info("Save current state as CREATE_CONDITION_MET [$metadataToSave]")
+        return ExecutionResult.Next(metadataToSave)
     }
 }

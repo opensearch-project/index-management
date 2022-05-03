@@ -5,6 +5,8 @@
 
 package org.opensearch.indexmanagement.snapshotmanagement.engine.statemachine
 
+import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata
+
 /**
  * States contain different business logics
  *
@@ -29,8 +31,8 @@ interface State {
      * [Failure]: caught exception, skipping to the START state
      */
     sealed class ExecutionResult {
-        object Next : ExecutionResult()
-        data class NotMet(val cont: Boolean = true) : ExecutionResult()
+        data class Next(val md: SMMetadata) : ExecutionResult()
+        data class NotMet(val cont: Boolean = true, val md: SMMetadata? = null) : ExecutionResult()
         data class Failure(val ex: Exception) : ExecutionResult()
     }
 }

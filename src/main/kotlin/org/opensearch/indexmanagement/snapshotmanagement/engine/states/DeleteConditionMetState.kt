@@ -29,7 +29,7 @@ object DeleteConditionMetState : State {
             return ExecutionResult.NotMet()
         }
 
-        val nextDeletionTime = metadata.deletion.trigger.nextExecutionTime
+        val nextDeletionTime = metadata.deletion.trigger.time
         val nextDeletionTimeToSave: Instant
         if (!Instant.now().isBefore(nextDeletionTime)) {
             log.info("current time [${Instant.now()}] has passed nextDeletionTime [$nextDeletionTime]")
@@ -40,15 +40,15 @@ object DeleteConditionMetState : State {
             return ExecutionResult.NotMet()
         }
 
-        context.metadataToSave = metadata.copy(
+        val metadataToSave = metadata.copy(
             currentState = SMState.CREATE_CONDITION_MET,
             deletion = metadata.deletion.copy(
                 trigger = metadata.deletion.trigger.copy(
-                    nextExecutionTime = nextDeletionTimeToSave
+                    time = nextDeletionTimeToSave
                 )
             ),
         )
-        log.info("Save current state as DELETE_CONDITION_MET [${context.metadataToSave}]")
-        return ExecutionResult.Next
+        log.info("Save current state as DELETE_CONDITION_MET [$metadataToSave]")
+        return ExecutionResult.Next(metadataToSave)
     }
 }

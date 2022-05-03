@@ -33,20 +33,18 @@ object FinishedState : State {
                 val res: SnapshotsStatusResponse = client.admin().cluster().suspendUntil { snapshotsStatus(req, it) }
                 log.info("Get snapshot status: ${res.snapshots}")
                 return if (res.snapshots.firstOrNull()?.state == SnapshotsInProgress.State.SUCCESS) {
-                    context.metadataToSave = metadata.copy(
+                    val metadataToSave = metadata.copy(
                         currentState = SMState.FINISHED,
-                        creation = metadata.creation.copy(
-                            started = null
-                        ),
+                        creation = metadata.creation.copy(started = null),
                         info = metadata.info.upsert(
                             "last_success" to "${metadata.creation.started} has been created."
                         )
                     )
-                    ExecutionResult.Next
+                    ExecutionResult.Next(metadataToSave)
                 } else {
                     // We can record the snapshot in progress state in info
                     log.info("Creating snapshot [${metadata.creation.started}] has not succeed")
-                    ExecutionResult.NotMet()
+                    ExecutionResult.NotMet(false)
 
                     // TODO if timeout pass
                 }
@@ -59,29 +57,34 @@ object FinishedState : State {
                 log.info("Get snapshot status: ${res.snapshots}")
                 val existingSnapshots = res.snapshots.map { it.snapshot.snapshotId.name }
 
-                val remainingSnapshots = metadata.deletion.started.toSet() - existingSnapshots.toSet()
-                return if (remainingSnapshots.isEmpty()) {
-                    context.metadataToSave = metadata.copy(
+                val startedDeleteSnapshots = metadata.deletion.started
+                val remainingSnapshotsName = startedDeleteSnapshots.map { it.name }.toSet() - existingSnapshots.toSet()
+                return if (remainingSnapshotsName.isEmpty()) {
+                    val metadataToSave = metadata.copy(
                         currentState = SMState.FINISHED,
-                        deletion = metadata.deletion.copy(
-                            started = null
-                        ),
+                        deletion = metadata.deletion.copy(started = null),
                     )
-                    ExecutionResult.Next
+                    ExecutionResult.Next(metadataToSave)
                 } else {
-                    context.metadataToSave = metadata.copy(
+                    val remainingSnapshots = startedDeleteSnapshots.filter {
+                        it.name in remainingSnapshotsName
+                    }
+                    val metadataToSave = metadata.copy(
                         deletion = metadata.deletion.copy(
                             started = remainingSnapshots.toList()
                         ),
                     )
-                    ExecutionResult.NotMet()
+                    ExecutionResult.NotMet(false, metadataToSave)
                     // TODO if timeout pass
                 }
             }
             else -> {
                 // TODO not supposed to enter here
                 log.info("Both creating and deleting are null.")
-                return ExecutionResult.Next
+                val metadataToSave = metadata.copy(
+                    currentState = SMState.FINISHED
+                )
+                return ExecutionResult.Next(metadataToSave)
             }
         }
     }

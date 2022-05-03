@@ -5,6 +5,7 @@
 
 package org.opensearch.indexmanagement.snapshotmanagement.engine.statemachine
 
-interface StateMachine {
-    suspend fun next()
+abstract class StateMachine {
+    abstract var currentState: SMState
+    abstract suspend fun next()
 }

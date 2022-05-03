@@ -103,13 +103,13 @@ fun generateFormatTime(dateFormat: String): String {
 }
 
 suspend fun SMStateMachine.startTransaction() {
-    metadataToSave = metadata.copy(apiCalling = true)
-    updateMetadata()
-    log.info("Start transaction by setting api_calling to true.")
+    updateMetadata(metadata.copy(atomic = true))
+    log.info("Start transaction by setting atomic to true.")
 }
 
 suspend fun SMStateMachine.revertTransaction() {
-    metadataToSave = metadata.copy(apiCalling = false)
-    updateMetadata()
-    log.info("Set api_calling to false.")
+    updateMetadata(metadata.copy(atomic = false))
+    log.info("End transaction by setting atomic to false.")
 }
+
+fun formatUserMsg(msg: String) = "[${Instant.now()}]: " + msg

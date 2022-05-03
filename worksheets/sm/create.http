@@ -35,8 +35,7 @@ Content-Type: application/json
       }
     },
     "condition": {
-      "age": "1m",
-      "count": [1, 3]
+      "max_count": 5
     }
   },
   "snapshot_config": {

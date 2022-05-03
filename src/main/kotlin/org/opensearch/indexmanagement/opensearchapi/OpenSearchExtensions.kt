@@ -25,6 +25,7 @@ import org.opensearch.client.OpenSearchClient
 import org.opensearch.common.bytes.BytesReference
 import org.opensearch.common.io.stream.StreamInput
 import org.opensearch.common.io.stream.StreamOutput
+import org.opensearch.common.io.stream.Writeable
 import org.opensearch.common.settings.Settings
 import org.opensearch.common.unit.TimeValue
 import org.opensearch.common.util.concurrent.ThreadContext
@@ -313,7 +314,7 @@ fun XContentBuilder.optionalField(name: String, value: Any?): XContentBuilder {
     return if (value != null) { this.field(name, value) } else this
 }
 
-inline fun <T> XContentParser.nullParser(block: XContentParser.() -> T): T? {
+inline fun <T> XContentParser.nullValueHandler(block: XContentParser.() -> T): T? {
     return if (currentToken() == Token.VALUE_NULL) null else block()
 }
 
@@ -328,15 +329,15 @@ inline fun <T> XContentParser.parseArray(block: XContentParser.() -> T): List<T>
 }
 
 // similar to readOptionalWriteable
-inline fun <T> StreamInput.readOptionalType(block: StreamInput.() -> T): T? {
-    return if (readBoolean()) { this.block() } else null
+fun <T> StreamInput.readOptionalValue(value: T): T? {
+    return if (readBoolean()) { value } else null
 }
 
-inline fun <T> StreamOutput.writeOptionalType(value: T, block: StreamOutput.(T) -> Unit) {
+fun <T> StreamOutput.writeOptionalValue(value: T, writer: Writeable.Writer<T>) {
     if (value == null) {
         writeBoolean(false)
     } else {
         writeBoolean(true)
-        this.block(value)
+        writer.write(this, value)
     }
 }

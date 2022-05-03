@@ -6,17 +6,22 @@
 package org.opensearch.indexmanagement.snapshotmanagement.engine.states
 
 import org.opensearch.action.admin.cluster.snapshots.delete.DeleteSnapshotRequest
-import org.opensearch.action.admin.cluster.snapshots.status.SnapshotsStatusRequest
-import org.opensearch.action.admin.cluster.snapshots.status.SnapshotsStatusResponse
+import org.opensearch.action.admin.cluster.snapshots.get.GetSnapshotsRequest
+import org.opensearch.action.admin.cluster.snapshots.get.GetSnapshotsResponse
 import org.opensearch.action.support.master.AcknowledgedResponse
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.snapshotmanagement.engine.statemachine.SMState
 import org.opensearch.indexmanagement.snapshotmanagement.engine.statemachine.SMStateMachine
-import org.opensearch.indexmanagement.snapshotmanagement.engine.statemachine.SnapshotManagementException
-import org.opensearch.indexmanagement.snapshotmanagement.engine.statemachine.SnapshotManagementException.ExceptionCode.API_CALLING
+import org.opensearch.indexmanagement.snapshotmanagement.engine.statemachine.StateMachineException
+import org.opensearch.indexmanagement.snapshotmanagement.engine.statemachine.StateMachineException.ExceptionCode.ATOMIC
 import org.opensearch.indexmanagement.snapshotmanagement.engine.statemachine.State
 import org.opensearch.indexmanagement.snapshotmanagement.engine.statemachine.State.ExecutionResult
+import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata
+import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy
 import org.opensearch.indexmanagement.snapshotmanagement.startTransaction
+import org.opensearch.snapshots.SnapshotInfo
+import java.time.Instant
+import java.time.Instant.now
 
 object DeletingState : State {
 
@@ -28,25 +33,25 @@ object DeletingState : State {
         val metadata = context.metadata
         val log = context.log
 
-        if (metadata.apiCalling) {
-            return ExecutionResult.Failure(SnapshotManagementException(API_CALLING))
+        if (metadata.atomic) {
+            return ExecutionResult.Failure(StateMachineException(ATOMIC))
         }
 
         context.startTransaction()
 
         val res: AcknowledgedResponse
-        val snapshotToDelete: List<String>
+        val snapshotToDelete: List<SMMetadata.SnapshotInfo>
         try {
-            val getStatusReq = SnapshotsStatusRequest()
+            val getSnapshotsReq = GetSnapshotsRequest()
                 .snapshots(arrayOf(job.policyName))
                 .repository(job.snapshotConfig["repository"] as String)
-            val snapshotStatusRes: SnapshotsStatusResponse = client.admin().cluster().suspendUntil { snapshotsStatus(getStatusReq, it) }
-            log.info("Get snapshot status: ${snapshotStatusRes.snapshots}")
-            snapshotToDelete = findSnapshotsToDelete(snapshotStatusRes)
+            val getSnapshotsRes: GetSnapshotsResponse = client.admin().cluster().suspendUntil { getSnapshots(getSnapshotsReq, it) }
+            log.info("Get snapshot response: ${getSnapshotsRes.snapshots}")
+            snapshotToDelete = findSnapshotsToDelete(getSnapshotsRes.snapshots, job.deletion.condition)
 
             val req = DeleteSnapshotRequest(
                 job.snapshotConfig["repository"] as String,
-                *snapshotToDelete.toTypedArray()
+                *snapshotToDelete.map { it.name }.toTypedArray()
             )
             res = client.admin().cluster().suspendUntil { deleteSnapshot(req, it) }
         } catch (ex: Exception) {
@@ -54,24 +59,40 @@ object DeletingState : State {
         }
 
         log.info("Delete snapshot acknowledged: ${res.isAcknowledged}.")
-        context.metadataToSave = metadata.copy(
-            currentState = SMState.CREATING,
-            apiCalling = false,
+        val metadataToSave = metadata.copy(
+            currentState = SMState.DELETING,
+            atomic = false,
             deletion = metadata.deletion.copy(
-                started = snapshotToDelete
+                started = snapshotToDelete,
+                startedTime = now(),
             ),
         )
-        return ExecutionResult.Next
+        return ExecutionResult.Next(metadataToSave)
     }
 
-    private fun findSnapshotsToDelete(res: SnapshotsStatusResponse): List<String> {
-        val res = emptyList<String>()
+    private fun findSnapshotsToDelete(snapshots: List<SnapshotInfo>, deleteCondition: SMPolicy.DeleteCondition): List<SMMetadata.SnapshotInfo> {
+        val snapshotInfos = snapshots.map {
+            SMMetadata.SnapshotInfo(
+                it.snapshotId().name,
+                Instant.ofEpochMilli(it.startTime()),
+                Instant.ofEpochMilli(it.endTime()),
+            )
+        }.sortedBy { it.startTime } // start_time will always exist along with snapshotId
 
-        // get a map of snapshot name to endtime
-        // at least keep 5, at most keep 50
-        // 5-50 check age
-        // based on delete condition, age condition surpassed snapshots
+        var thresholdIndex = 0
+        if (deleteCondition.maxAge != null) {
+            val timeThreshold = now().minusSeconds(deleteCondition.maxAge.seconds())
+            val thresholdSnapshot = snapshotInfos.findLast { it.startTime?.isBefore(timeThreshold) ?: false }
+            thresholdIndex = snapshotInfos.indexOf(thresholdSnapshot)
+            if (thresholdIndex == -1) thresholdIndex = 0
+            if (snapshotInfos.size - thresholdIndex < deleteCondition.minCount!!) {
+                thresholdIndex = snapshotInfos.size - deleteCondition.minCount
+            }
+        }
+        if (snapshotInfos.size - thresholdIndex > deleteCondition.maxCount) {
+            thresholdIndex = snapshotInfos.size - deleteCondition.maxCount
+        }
 
-        return res
+        return snapshotInfos.subList(0, thresholdIndex)
     }
 }

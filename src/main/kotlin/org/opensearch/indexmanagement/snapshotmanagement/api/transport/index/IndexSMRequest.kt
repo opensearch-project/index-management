@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.indexmanagement.snapshotmanagement.api.index
+package org.opensearch.indexmanagement.snapshotmanagement.api.transport.index
 
 import org.opensearch.action.ActionRequest
 import org.opensearch.action.ActionRequestValidationException

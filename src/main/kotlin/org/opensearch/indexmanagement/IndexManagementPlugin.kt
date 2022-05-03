@@ -111,9 +111,9 @@ import org.opensearch.indexmanagement.rollup.resthandler.RestStopRollupAction
 import org.opensearch.indexmanagement.rollup.settings.LegacyOpenDistroRollupSettings
 import org.opensearch.indexmanagement.rollup.settings.RollupSettings
 import org.opensearch.indexmanagement.settings.IndexManagementSettings
-import org.opensearch.indexmanagement.snapshotmanagement.api.index.IndexSMAction
-import org.opensearch.indexmanagement.snapshotmanagement.api.index.RestIndexSMAction
-import org.opensearch.indexmanagement.snapshotmanagement.api.index.TransportIndexSMAction
+import org.opensearch.indexmanagement.snapshotmanagement.api.transport.SMActions
+import org.opensearch.indexmanagement.snapshotmanagement.api.resthandler.RestSMPolicyHandler
+import org.opensearch.indexmanagement.snapshotmanagement.api.transport.index.TransportIndexSMAction
 import org.opensearch.indexmanagement.snapshotmanagement.engine.SMRunner
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata
@@ -318,7 +318,7 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
             RestExplainTransformAction(),
             RestStartTransformAction(),
             RestStopTransformAction(),
-            RestIndexSMAction()
+            RestSMPolicyHandler()
         )
     }
 
@@ -523,7 +523,7 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
             ActionPlugin.ActionHandler(StartTransformAction.INSTANCE, TransportStartTransformAction::class.java),
             ActionPlugin.ActionHandler(StopTransformAction.INSTANCE, TransportStopTransformAction::class.java),
             ActionPlugin.ActionHandler(ManagedIndexAction.INSTANCE, TransportManagedIndexAction::class.java),
-            ActionPlugin.ActionHandler(IndexSMAction.INSTANCE, TransportIndexSMAction::class.java),
+            ActionPlugin.ActionHandler(SMActions.INDEX_SM_ACTION_TYPE, TransportIndexSMAction::class.java),
         )
     }
 

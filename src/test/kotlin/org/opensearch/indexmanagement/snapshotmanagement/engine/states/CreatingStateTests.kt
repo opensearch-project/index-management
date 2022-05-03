@@ -12,15 +12,18 @@ import com.nhaarman.mockitokotlin2.whenever
 import kotlinx.coroutines.runBlocking
 import org.junit.Before
 import org.opensearch.action.ActionListener
-import org.opensearch.action.admin.cluster.snapshots.create.CreateSnapshotResponse
+import org.opensearch.action.ActionResponse
 import org.opensearch.action.index.IndexResponse
 import org.opensearch.client.AdminClient
 import org.opensearch.client.Client
 import org.opensearch.client.ClusterAdminClient
 import org.opensearch.indexmanagement.snapshotmanagement.engine.statemachine.SMState
 import org.opensearch.indexmanagement.snapshotmanagement.engine.statemachine.SMStateMachine
-import org.opensearch.indexmanagement.snapshotmanagement.getTestSMMetadata
-import org.opensearch.indexmanagement.snapshotmanagement.getTestSMPolicy
+import org.opensearch.indexmanagement.snapshotmanagement.engine.statemachine.State.ExecutionResult
+import org.opensearch.indexmanagement.snapshotmanagement.engine.statemachine.StateMachineException
+import org.opensearch.indexmanagement.snapshotmanagement.engine.statemachine.StateMachineException.ExceptionCode.ATOMIC
+import org.opensearch.indexmanagement.snapshotmanagement.randomSMMetadata
+import org.opensearch.indexmanagement.snapshotmanagement.randomSMPolicy
 import org.opensearch.indexmanagement.snapshotmanagement.mockCreateSnapshotResponse
 import org.opensearch.indexmanagement.snapshotmanagement.mockIndexResponse
 import org.opensearch.test.OpenSearchTestCase
@@ -37,24 +40,68 @@ class CreatingStateTests : OpenSearchTestCase() {
             val listener = it.getArgument<ActionListener<IndexResponse>>(1)
             listener.onResponse(mockIndexResponse())
         }.whenever(client).index(any(), any())
+    }
 
+    private fun mockCreateSnapshotCall(
+        response: ActionResponse? = null,
+        exception: Exception? = null
+    ) {
+        assertTrue(
+            "Must provide either a response or an exception.",
+            (response != null).xor(exception != null)
+        )
         whenever(client.admin()).thenReturn(adminClient)
         whenever(adminClient.cluster()).thenReturn(clusterAdminClient)
         doAnswer {
-            val listener = it.getArgument<ActionListener<CreateSnapshotResponse>>(1)
-            listener.onResponse(mockCreateSnapshotResponse())
+            val listener = it.getArgument<ActionListener<ActionResponse>>(1)
+            if (response != null) listener.onResponse(response)
+            else listener.onFailure(exception)
         }.whenever(clusterAdminClient).createSnapshot(any(), any())
     }
 
-    fun `test create snapshot accepted`() = runBlocking {
-        val metadata = getTestSMMetadata(
+    fun `test create snapshot succeed`() = runBlocking {
+        mockCreateSnapshotCall(response = mockCreateSnapshotResponse())
+
+        val metadata = randomSMMetadata(
             currentState = SMState.CREATE_CONDITION_MET,
         )
-        val job = getTestSMPolicy()
+        val job = randomSMPolicy()
         val context = SMStateMachine(client, job, metadata)
 
         val end = SMState.CREATING.instance.execute(context)
-        assertEquals("Execution should return true.", true, end)
-        assertEquals("Current state should move to CREATING.", SMState.CREATING.toString(), context.metadataToSave!!.currentState)
+        assertTrue("Execution result should be Next.", end is ExecutionResult.Next)
+        end as ExecutionResult.Next
+        assertEquals("Current state should move to CREATING.", SMState.CREATING, end.md.currentState)
+    }
+
+    fun `test create snapshot exception`() = runBlocking {
+        val ex = Exception()
+        mockCreateSnapshotCall(exception = ex)
+
+        val metadata = randomSMMetadata(
+            currentState = SMState.CREATE_CONDITION_MET,
+        )
+        val job = randomSMPolicy()
+        val context = SMStateMachine(client, job, metadata)
+
+        val end = SMState.CREATING.instance.execute(context)
+        assertTrue("Execution result should be Failure.", end is ExecutionResult.Failure)
+    }
+
+    fun `test undetermined atomic operation`() = runBlocking {
+        val metadata = randomSMMetadata(
+            currentState = SMState.CREATE_CONDITION_MET,
+            atomic = true,
+        )
+        val job = randomSMPolicy()
+        val context = SMStateMachine(client, job, metadata)
+
+        val end = SMState.CREATING.instance.execute(context)
+        assertTrue("Execution result should be failure.", end is ExecutionResult.Failure)
+        end as ExecutionResult.Failure
+        val ex = end.ex
+        assertTrue("Failure exception should be StateMachineException.", ex is StateMachineException)
+        ex as StateMachineException
+        assertTrue("StateMachineException error code should be ATOMIC", ex.code == ATOMIC)
     }
 }

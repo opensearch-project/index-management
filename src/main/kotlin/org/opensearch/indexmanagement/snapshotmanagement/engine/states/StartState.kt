@@ -18,11 +18,11 @@ object StartState : State {
     override val continuous: Boolean = false
 
     override suspend fun execute(context: SMStateMachine): ExecutionResult {
-        context.metadataToSave = context.metadata.copy(
+        val metadataToSave = context.metadata.copy(
             currentState = SMState.START
         )
         context.log.info("Save current state as WAITING")
 
-        return ExecutionResult.Next
+        return ExecutionResult.Next(metadataToSave)
     }
 }

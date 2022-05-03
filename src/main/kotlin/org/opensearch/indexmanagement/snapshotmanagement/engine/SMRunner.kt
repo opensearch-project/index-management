@@ -47,7 +47,7 @@ object SMRunner :
             var metadata = client.getMetadata(job.name)
             if (metadata == null) {
                 metadata = initMetadata(job)
-                if (metadata == null) return@launch
+                metadata ?: return@launch
             }
 
             val stateMachineContext = SMStateMachine(client, job, metadata)
@@ -61,7 +61,7 @@ object SMRunner :
         val metadata = SMMetadata(
             policySeqNo = job.seqNo,
             policyPrimaryTerm = job.primaryTerm,
-            currentState = SMState.FINISHED,
+            currentState = SMState.START,
             creation = SMMetadata.Creation(
                 SMMetadata.Trigger(getNextExecutionTime(job.creation.schedule, now()))
             ),

@@ -10,11 +10,12 @@ import org.opensearch.action.admin.cluster.snapshots.create.CreateSnapshotRespon
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.snapshotmanagement.engine.statemachine.SMStateMachine
 import org.opensearch.indexmanagement.snapshotmanagement.engine.statemachine.SMState
-import org.opensearch.indexmanagement.snapshotmanagement.engine.statemachine.SnapshotManagementException
-import org.opensearch.indexmanagement.snapshotmanagement.engine.statemachine.SnapshotManagementException.ExceptionCode.API_CALLING
+import org.opensearch.indexmanagement.snapshotmanagement.engine.statemachine.StateMachineException
+import org.opensearch.indexmanagement.snapshotmanagement.engine.statemachine.StateMachineException.ExceptionCode.ATOMIC
 import org.opensearch.indexmanagement.snapshotmanagement.engine.statemachine.State
 import org.opensearch.indexmanagement.snapshotmanagement.engine.statemachine.State.ExecutionResult
 import org.opensearch.indexmanagement.snapshotmanagement.generateSnapshotName
+import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata
 import org.opensearch.indexmanagement.snapshotmanagement.startTransaction
 
 object CreatingState : State {
@@ -27,14 +28,14 @@ object CreatingState : State {
         val metadata = context.metadata
         val log = context.log
 
-        if (metadata.apiCalling) {
-            return ExecutionResult.Failure(SnapshotManagementException(API_CALLING))
+        if (metadata.atomic) {
+            return ExecutionResult.Failure(StateMachineException(ATOMIC))
         }
 
         context.startTransaction()
 
         val snapshotName = generateSnapshotName(job)
-        log.info("Snapshot name to create is $snapshotName")
+        log.info("Snapshot to create: $snapshotName.")
 
         val res: CreateSnapshotResponse
         try {
@@ -46,14 +47,14 @@ object CreatingState : State {
             return ExecutionResult.Failure(ex)
         }
 
-        log.info("Create snapshot response status code: ${res.status()}")
-        context.metadataToSave = metadata.copy(
+        log.info("Create snapshot response: $res.")
+        val metadataToSave = metadata.copy(
             currentState = SMState.CREATING,
-            apiCalling = false,
+            atomic = false,
             creation = metadata.creation.copy(
-                started = snapshotName
+                started = SMMetadata.SnapshotInfo(name = snapshotName)
             ),
         )
-        return ExecutionResult.Next
+        return ExecutionResult.Next(metadataToSave)
     }
 }
