@@ -16,7 +16,7 @@ import org.opensearch.common.unit.TimeValue
 import org.opensearch.indexmanagement.randomCronSchedule
 import org.opensearch.indexmanagement.randomInstant
 import org.opensearch.indexmanagement.randomIntervalSchedule
-import org.opensearch.indexmanagement.snapshotmanagement.engine.statemachine.SMState
+import org.opensearch.indexmanagement.snapshotmanagement.engine.states.SMState
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ActionTimeout

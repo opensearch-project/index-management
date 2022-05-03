@@ -22,11 +22,11 @@ import org.opensearch.indexmanagement.opensearchapi.optionalTimeField
 import org.opensearch.indexmanagement.opensearchapi.parseArray
 import org.opensearch.indexmanagement.opensearchapi.readOptionalValue
 import org.opensearch.indexmanagement.opensearchapi.writeOptionalValue
-import org.opensearch.indexmanagement.snapshotmanagement.engine.statemachine.SMState
+import org.opensearch.indexmanagement.snapshotmanagement.engine.states.SMState
 import org.opensearch.indexmanagement.util.NO_ID
 import java.time.Instant
 
-typealias InfoType = Map<String, Any>?
+typealias InfoType = Map<String, Any>
 
 data class SMMetadata(
     val policySeqNo: Long,
@@ -34,7 +34,7 @@ data class SMMetadata(
     val currentState: SMState,
     val creation: Creation,
     val deletion: Deletion,
-    val info: InfoType = null,
+    val info: InfoType? = null,
     val id: String = NO_ID,
     val seqNo: Long = SequenceNumbers.UNASSIGNED_SEQ_NO,
     val primaryTerm: Long = SequenceNumbers.UNASSIGNED_PRIMARY_TERM,
@@ -71,10 +71,9 @@ data class SMMetadata(
             var policySeqNo: Long? = null
             var policyPrimaryTerm: Long? = null
             var currentState: SMState? = null
-            var atomic = false
             var creation: Creation? = null
             var deletion: Deletion? = null
-            var info: InfoType = null
+            var info: InfoType? = null
 
             ensureExpectedToken(Token.START_OBJECT, xcp.currentToken(), xcp)
             while (xcp.nextToken() != Token.END_OBJECT) {
@@ -104,10 +103,14 @@ data class SMMetadata(
             )
         }
 
-        fun InfoType.upsert(keyValuePair: Pair<String, String>): InfoType {
+        fun InfoType?.upsert(keyValuePair: Pair<String, String>): InfoType {
             val info: MutableMap<String, Any> = this?.toMutableMap() ?: mutableMapOf()
             info[keyValuePair.first] = keyValuePair.second
             return info
+        }
+
+        fun InfoType?.remove(key: String): InfoType? {
+            return this?.toMutableMap().remove(key)
         }
     }
 
@@ -209,6 +212,7 @@ data class SMMetadata(
                 .field(TRIGGER_FIELD, trigger)
                 .optionalField(STARTED_FIELD, started)
                 .optionalField(STARTED_TIME_FIELD, startedTime)
+                .optionalTimeField(STARTED_TIME_FIELD, startedTime)
                 .endObject()
         }
 
@@ -312,7 +316,7 @@ data class SMMetadata(
             return builder.startObject()
                 .field(NAME_FIELD, name)
                 .optionalTimeField(START_TIME_FIELD, startTime)
-                .optionalField(END_TIME_FIELD, endTime)
+                .optionalTimeField(END_TIME_FIELD, endTime)
                 .endObject()
         }
 
