@@ -5,5 +5,4 @@
 
 package org.opensearch.indexmanagement.snapshotmanagement.engine.statemachine
 
-enum class SMState {
-}
+enum class SMState

@@ -204,7 +204,6 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
         const val LEGACY_ROLLUP_BASE_URI = "$OPEN_DISTRO_BASE_URI/_rollup"
         const val LEGACY_POLICY_BASE_URI = "$LEGACY_ISM_BASE_URI/policies"
         const val LEGACY_ROLLUP_JOBS_BASE_URI = "$LEGACY_ROLLUP_BASE_URI/jobs"
-
     }
 
     override fun getJobIndex(): String = INDEX_MANAGEMENT_INDEX
