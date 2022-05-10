@@ -633,28 +633,47 @@ class ManagedIndexCoordinator(
     suspend fun sweepManagedIndexJobs(client: Client): List<String> {
         val managedIndexUuids = mutableListOf<String>()
 
-        val managedIndexSearchRequest = getSweptManagedIndexSearchRequest()
-        var response: SearchResponse = client.suspendUntil { search(managedIndexSearchRequest, it) }
-        var uuids = response.hits.map { it.id }
-        val scrollIDsToClear = mutableSetOf<String>()
+        // if # of documents below 10k, don't use scroll search
+        val countReq = getSweptManagedIndexSearchRequest(size = 0)
+        val countRes: SearchResponse = client.suspendUntil { search(countReq, it) }
+        val totalHits = countRes.hits.totalHits ?: return managedIndexUuids
 
-        while (uuids.isNotEmpty()) {
-            managedIndexUuids.addAll(uuids)
-            val scrollID = response.scrollId
-            scrollIDsToClear.add(scrollID)
-            val scrollRequest = SearchScrollRequest().scrollId(scrollID).scroll(TimeValue.timeValueMinutes(1))
-            response = client.suspendUntil { searchScroll(scrollRequest, it) }
-            uuids = response.hits.map { it.id }
+        if (totalHits.value >= MAX_HITS) {
+            val managedIndexSearchRequest = getSweptManagedIndexSearchRequest(scroll = true)
+            var response: SearchResponse = client.suspendUntil { search(managedIndexSearchRequest, it) }
+            var uuids = transformManagedIndexSearchRes(response)
+            val scrollIDsToClear = mutableSetOf<String>()
+
+            while (uuids.isNotEmpty()) {
+                managedIndexUuids.addAll(uuids)
+                val scrollID = response.scrollId
+                scrollIDsToClear.add(scrollID)
+                val scrollRequest = SearchScrollRequest().scrollId(scrollID).scroll(TimeValue.timeValueMinutes(1))
+                response = client.suspendUntil { searchScroll(scrollRequest, it) }
+                uuids = transformManagedIndexSearchRes(response)
+            }
+
+            if (scrollIDsToClear.isNotEmpty()) {
+                val clearScrollRequest = ClearScrollRequest()
+                clearScrollRequest.scrollIds(scrollIDsToClear.toList())
+                val clearScrollResponse: ClearScrollResponse =
+                    client.suspendUntil { execute(ClearScrollAction.INSTANCE, clearScrollRequest, it) }
+            }
+            return managedIndexUuids
         }
 
-        if (scrollIDsToClear.isNotEmpty()) {
-            val clearScrollRequest = ClearScrollRequest()
-            clearScrollRequest.scrollIds(scrollIDsToClear.toList())
-            val clearScrollResponse: ClearScrollResponse =
-                client.suspendUntil { execute(ClearScrollAction.INSTANCE, clearScrollRequest, it) }
-        }
+        val response: SearchResponse = client.suspendUntil { search(getSweptManagedIndexSearchRequest(), it) }
+        return transformManagedIndexSearchRes(response)
+    }
 
-        return managedIndexUuids
+    fun transformManagedIndexSearchRes(response: SearchResponse): List<String> {
+        if (response.isTimedOut || response.failedShards > 0 || response.skippedShards > 0) {
+            throw Exception(
+                "Sweep managed indices failed. Timed out: ${response.isTimedOut} | " +
+                    "Failed shards: ${response.failedShards} | Skipped shards: ${response.skippedShards}."
+            )
+        }
+        return response.hits.map { it.id }
     }
 
     /**

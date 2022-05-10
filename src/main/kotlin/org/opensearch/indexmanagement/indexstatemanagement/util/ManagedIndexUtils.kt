@@ -188,18 +188,27 @@ fun getManagedIndicesToDelete(
     }
 }
 
-fun getSweptManagedIndexSearchRequest(): SearchRequest {
+fun getSweptManagedIndexSearchRequest(scroll: Boolean = false, size: Int = ManagedIndexCoordinator.MAX_HITS): SearchRequest {
     val boolQueryBuilder = BoolQueryBuilder().filter(QueryBuilders.existsQuery(ManagedIndexConfig.MANAGED_INDEX_TYPE))
-    return SearchRequest()
-        .indices(INDEX_MANAGEMENT_INDEX)
-        .scroll(TimeValue.timeValueMinutes(1))
+    val req = SearchRequest().indices(INDEX_MANAGEMENT_INDEX)
+        .allowPartialSearchResults(false)
         .source(
             SearchSourceBuilder.searchSource()
-                .size(ManagedIndexCoordinator.MAX_HITS)
+                .size(size)
                 .seqNoAndPrimaryTerm(true)
-                .fetchSource(emptyArray(), emptyArray())
+                .fetchSource(
+                    arrayOf(
+                        "${ManagedIndexConfig.MANAGED_INDEX_TYPE}.${ManagedIndexConfig.INDEX_FIELD}",
+                        "${ManagedIndexConfig.MANAGED_INDEX_TYPE}.${ManagedIndexConfig.INDEX_UUID_FIELD}",
+                        "${ManagedIndexConfig.MANAGED_INDEX_TYPE}.${ManagedIndexConfig.POLICY_ID_FIELD}",
+                        "${ManagedIndexConfig.MANAGED_INDEX_TYPE}.${ManagedIndexConfig.CHANGE_POLICY_FIELD}"
+                    ),
+                    emptyArray()
+                )
                 .query(boolQueryBuilder)
         )
+    if (scroll) req.scroll(TimeValue.timeValueMinutes(1))
+    return req
 }
 
 @Suppress("ReturnCount", "ComplexCondition")
