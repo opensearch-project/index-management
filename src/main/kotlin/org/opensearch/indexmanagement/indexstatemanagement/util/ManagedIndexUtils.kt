@@ -196,15 +196,7 @@ fun getSweptManagedIndexSearchRequest(scroll: Boolean = false, size: Int = Manag
             SearchSourceBuilder.searchSource()
                 .size(size)
                 .seqNoAndPrimaryTerm(true)
-                .fetchSource(
-                    arrayOf(
-                        "${ManagedIndexConfig.MANAGED_INDEX_TYPE}.${ManagedIndexConfig.INDEX_FIELD}",
-                        "${ManagedIndexConfig.MANAGED_INDEX_TYPE}.${ManagedIndexConfig.INDEX_UUID_FIELD}",
-                        "${ManagedIndexConfig.MANAGED_INDEX_TYPE}.${ManagedIndexConfig.POLICY_ID_FIELD}",
-                        "${ManagedIndexConfig.MANAGED_INDEX_TYPE}.${ManagedIndexConfig.CHANGE_POLICY_FIELD}"
-                    ),
-                    emptyArray()
-                )
+                .fetchSource(emptyArray(), emptyArray())
                 .query(boolQueryBuilder)
         )
     if (scroll) req.scroll(TimeValue.timeValueMinutes(1))
