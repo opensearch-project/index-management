@@ -46,6 +46,7 @@ import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ActionTimeo
 import org.opensearch.test.OpenSearchTestCase
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
+import java.lang.Math.abs
 import kotlin.test.assertFailsWith
 
 class ActionTests : OpenSearchTestCase() {
@@ -191,7 +192,9 @@ class ActionTests : OpenSearchTestCase() {
         val totalNodeBytes = randomByteSizeValue().bytes
         val thresholdBytes = getFreeBytesThresholdHigh(clusterSettings, totalNodeBytes)
         val expectedThreshold: Long = ((1 - (rawPercentage.toDouble() / 100.0)) * totalNodeBytes).toLong()
-        assertEquals("Free bytes threshold not being calculated correctly for percentage setting.", thresholdBytes, expectedThreshold)
+        // To account for some rounding issues, allow an error of 1
+        val approximatelyEqual = kotlin.math.abs(thresholdBytes - expectedThreshold) <= 1
+        assertTrue("Free bytes threshold not being calculated correctly for percentage setting.", approximatelyEqual)
     }
 
     fun `test shrink disk threshold byte settings`() {
