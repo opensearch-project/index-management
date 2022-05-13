@@ -22,7 +22,12 @@ import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ShrinkActio
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepContext
 import org.opensearch.transport.RemoteTransportException
 
-abstract class ShrinkStep(name: String) : Step(name) {
+abstract class ShrinkStep(
+    name: String,
+    private val cleanupSettings: Boolean,
+    private val cleanupLock: Boolean,
+    private val cleanupTargetIndex: Boolean
+) : Step(name) {
     protected val logger: Logger = LogManager.getLogger(javaClass)
     protected var stepStatus = StepStatus.STARTING
     protected var info: Map<String, Any>? = null
@@ -48,7 +53,10 @@ abstract class ShrinkStep(name: String) : Step(name) {
         return this
     }
 
-    abstract suspend fun cleanupAndFail(infoMessage: String, logMessage: String? = null, cause: String? = null, e: Exception? = null)
+    protected suspend fun cleanupAndFail(infoMessage: String, logMessage: String? = null, cause: String? = null, e: Exception? = null) {
+        cleanupResources(cleanupSettings, cleanupLock, cleanupTargetIndex)
+        fail(infoMessage, logMessage, cause, e)
+    }
 
     abstract fun getGenericFailureMessage(): String
 

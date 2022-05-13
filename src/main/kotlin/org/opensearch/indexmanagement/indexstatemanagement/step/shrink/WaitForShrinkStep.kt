@@ -24,7 +24,7 @@ import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepMetaDat
 import java.time.Duration
 import java.time.Instant
 
-class WaitForShrinkStep(private val action: ShrinkAction) : ShrinkStep(name) {
+class WaitForShrinkStep(private val action: ShrinkAction) : ShrinkStep(name, true, true, true) {
 
     @Suppress("ReturnCount")
     override suspend fun wrappedExecute(context: StepContext): WaitForShrinkStep {
@@ -48,13 +48,6 @@ class WaitForShrinkStep(private val action: ShrinkAction) : ShrinkStep(name) {
         stepStatus = StepStatus.COMPLETED
         info = mapOf("message" to SUCCESS_MESSAGE)
         return this
-    }
-
-    // Sets the action to failed, clears the readonly and allocation settings on the source index, deletes the target index,
-    // and releases the shrink lock
-    override suspend fun cleanupAndFail(infoMessage: String, logMessage: String?, cause: String?, e: Exception?) {
-        cleanupResources(resetSettings = true, releaseLock = true, deleteTargetIndex = true)
-        fail(infoMessage, logMessage, cause, e)
     }
 
     override fun getGenericFailureMessage(): String = GENERIC_FAILURE_MESSAGE

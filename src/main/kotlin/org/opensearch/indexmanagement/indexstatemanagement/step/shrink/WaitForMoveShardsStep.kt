@@ -17,11 +17,10 @@ import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ActionPrope
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepContext
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepMetaData
-import java.lang.Exception
 import java.time.Duration
 import java.time.Instant
 
-class WaitForMoveShardsStep(private val action: ShrinkAction) : ShrinkStep(name) {
+class WaitForMoveShardsStep(private val action: ShrinkAction) : ShrinkStep(name, true, true, false) {
 
     @Suppress("ReturnCount")
     override suspend fun wrappedExecute(context: StepContext): WaitForMoveShardsStep {
@@ -46,12 +45,6 @@ class WaitForMoveShardsStep(private val action: ShrinkAction) : ShrinkStep(name)
             checkTimeOut(context, numShardsNotOnNode, numShardsNotInSync, nodeToMoveOnto)
         }
         return this
-    }
-
-    // Sets the action to failed, clears the readonly and allocation settings on the source index, and releases the shrink lock
-    override suspend fun cleanupAndFail(infoMessage: String, logMessage: String?, cause: String?, e: Exception?) {
-        cleanupResources(resetSettings = true, releaseLock = true, deleteTargetIndex = false)
-        fail(infoMessage, logMessage, cause, e)
     }
 
     // Returns the number of shard IDs where all primary and replicas are in sync

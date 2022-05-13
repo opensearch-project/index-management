@@ -22,9 +22,8 @@ import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedInde
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ShrinkActionProperties
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepContext
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepMetaData
-import java.lang.Exception
 
-class AttemptShrinkStep(private val action: ShrinkAction) : ShrinkStep(name) {
+class AttemptShrinkStep(private val action: ShrinkAction) : ShrinkStep(name, true, true, false) {
 
     @Suppress("ReturnCount")
     override suspend fun wrappedExecute(context: StepContext): AttemptShrinkStep {
@@ -44,12 +43,6 @@ class AttemptShrinkStep(private val action: ShrinkAction) : ShrinkStep(name) {
         info = mapOf("message" to getSuccessMessage(localShrinkActionProperties.targetIndexName))
         stepStatus = StepStatus.COMPLETED
         return this
-    }
-
-    // Sets the action to failed, clears the readonly and allocation settings on the source index, and releases the shrink lock
-    override suspend fun cleanupAndFail(infoMessage: String, logMessage: String?, cause: String?, e: Exception?) {
-        cleanupResources(resetSettings = true, releaseLock = true, deleteTargetIndex = false)
-        fail(infoMessage, logMessage, cause, e)
     }
 
     override fun getGenericFailureMessage(): String = FAILURE_MESSAGE

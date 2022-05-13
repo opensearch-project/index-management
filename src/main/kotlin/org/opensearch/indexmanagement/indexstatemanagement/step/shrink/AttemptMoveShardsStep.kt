@@ -55,7 +55,7 @@ import kotlin.math.min
 import kotlin.math.sqrt
 
 @SuppressWarnings("TooManyFunctions")
-class AttemptMoveShardsStep(private val action: ShrinkAction) : ShrinkStep(name) {
+class AttemptMoveShardsStep(private val action: ShrinkAction) : ShrinkStep(name, false, false, false) {
 
     @Suppress("ReturnCount")
     override suspend fun wrappedExecute(context: StepContext): AttemptMoveShardsStep {
@@ -113,10 +113,6 @@ class AttemptMoveShardsStep(private val action: ShrinkAction) : ShrinkStep(name)
         info = mapOf("message" to getSuccessMessage(nodeName))
         stepStatus = StepStatus.COMPLETED
         return this
-    }
-
-    override suspend fun cleanupAndFail(infoMessage: String, logMessage: String?, cause: String?, e: Exception?) {
-        fail(infoMessage, logMessage, cause, e)
     }
 
     override fun getGenericFailureMessage(): String = FAILURE_MESSAGE
