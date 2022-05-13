@@ -37,7 +37,6 @@ class TransportDeleteSMAction @Inject constructor(
     ): DeleteSMResponse {
         val deleteReq = DeleteRequest(INDEX_MANAGEMENT_INDEX, getSMDocId(request.policyName))
         val deleteRes: DeleteResponse = client.suspendUntil { delete(deleteReq, it) }
-        log.info("Delete SM policy response: $deleteRes.")
         return DeleteSMResponse(deleteRes.status().toString())
     }
 }

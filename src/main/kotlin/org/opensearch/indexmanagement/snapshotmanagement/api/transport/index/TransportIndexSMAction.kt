@@ -43,7 +43,6 @@ class TransportIndexSMAction @Inject constructor(
             .id(getSMDocId(policy.policyName))
             .create(request.create)
         val indexRes: IndexResponse = client.suspendUntil { index(indexReq, it) }
-        log.info("Index SM policy response: $indexRes")
         return IndexSMResponse(policy)
     }
 }

@@ -219,7 +219,7 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
     @Suppress("ComplexMethod")
     override fun getJobParser(): ScheduledJobParser {
         return ScheduledJobParser { xcp, id, jobDocVersion ->
-            log.info("Plugin job parser")
+            log.info("sm dev: plugin job parser")
             ensureExpectedToken(Token.START_OBJECT, xcp.nextToken(), xcp)
             while (xcp.nextToken() != Token.END_OBJECT) {
                 val fieldName = xcp.currentName()

@@ -82,11 +82,11 @@ class RestSMPolicyHandler : BaseRestHandler() {
         }
         // TODO validate policy name validateGeneratedSnapshotName
 
-        log.info("sm receive request ${request.requiredContent().utf8ToString()}")
+        log.info("sm dev: receive request ${request.requiredContent().utf8ToString()}")
 
         val xcp = request.contentParser()
         val policy = SMPolicy.parse(xcp, policyName = policyName)
-        log.info("sm parsed $policy")
+        log.info("sm dev: policy parsed $policy")
 
         return RestChannelConsumer {
             client.execute(

@@ -44,7 +44,7 @@ abstract class BaseTransportAction<Request : ActionRequest, Response : ActionRes
     ) {
         val userStr: String? =
             client.threadPool().threadContext.getTransient<String>(OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT)
-        log.info("User and roles string from thread context: $userStr")
+        log.info("sm dev: user and roles string from thread context: $userStr")
         val user: User? = User.parse(userStr)
         coroutineScope.launch {
             try {
@@ -62,6 +62,6 @@ abstract class BaseTransportAction<Request : ActionRequest, Response : ActionRes
         }
     }
 
-    // TODO could we get userStr from threadContext?
+    // TODO SM test could we get userStr from threadContext? suppose no
     abstract suspend fun executeRequest(request: Request, user: User?, threadContext: StoredContext): Response
 }

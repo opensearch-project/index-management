@@ -111,11 +111,11 @@ data class SMPolicy(
             var schedule: Schedule? = null
             var enabled = true
 
-            log.info("first token:  ${xcp.currentToken()}, ${xcp.currentName()}")
+            log.info("sm dev: first token:  ${xcp.currentToken()}, ${xcp.currentName()}")
             if (xcp.currentToken() == null) xcp.nextToken()
             ensureExpectedToken(Token.START_OBJECT, xcp.currentToken(), xcp)
             while (xcp.nextToken() != Token.END_OBJECT) {
-                log.info("current token loop: ${xcp.currentToken()}, ${xcp.currentName()}")
+                log.info("sm dev: current token loop: ${xcp.currentToken()}, ${xcp.currentName()}")
                 val fieldName = xcp.currentName()
                 xcp.nextToken()
 
@@ -138,7 +138,7 @@ data class SMPolicy(
                 enabledTime = null
             }
 
-            // TODO update policy API can update this value
+            // TODO SM update policy API can update this value
             if (lastUpdatedTime == null) {
                 lastUpdatedTime = Instant.now()
             }

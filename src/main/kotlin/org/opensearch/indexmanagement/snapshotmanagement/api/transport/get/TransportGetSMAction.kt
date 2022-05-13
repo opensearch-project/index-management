@@ -40,10 +40,8 @@ class TransportGetSMAction @Inject constructor(
     ): GetSMResponse {
         val getReq = GetRequest(INDEX_MANAGEMENT_INDEX, getSMDocId(request.policyName))
         val getRes: GetResponse = client.suspendUntil { get(getReq, it) }
-        log.info("Get SM policy response: $getRes.")
         val xcp = contentParser(getRes.sourceAsBytesRef)
         val policy = xcp.parseWithType(getRes.id, getRes.seqNo, getRes.primaryTerm, SMPolicy.Companion::parse)
-        log.info("Parsed SM policy: $policy")
         return GetSMResponse(policy)
     }
 }
