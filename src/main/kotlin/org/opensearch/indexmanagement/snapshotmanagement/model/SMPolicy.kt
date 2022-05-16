@@ -49,10 +49,9 @@ data class SMPolicy(
 ) : ScheduledJobParameter, Writeable {
 
     init {
-        // TODO validate snapshotConfig
-        require(snapshotConfig["repository"] != null) { "Must provide a repository." }
-        // indices, partial, include_global_state, ignore_unavailable, metadata
-        // TODO validate date_format is of right format
+        require(snapshotConfig["repository"] != null) { "Must provide the repository in snapshot config." }
+        // Other fields in snapshotConfig: date_expression, indices, partial, include_global_state, ignore_unavailable, metadata
+        // TODO SM validate date_format is of right format
     }
 
     override fun getName() = policyName
