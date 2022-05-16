@@ -1,6 +1,6 @@
 {
   "_meta" : {
-    "schema_version": 14
+    "schema_version": 15
   },
   "dynamic": "strict",
   "properties": {
@@ -1473,9 +1473,6 @@
         },
         "current_state": {
           "type": "keyword"
-        },
-        "atomic": {
-          "type": "boolean"
         },
         "info": {
           "type": "object",
