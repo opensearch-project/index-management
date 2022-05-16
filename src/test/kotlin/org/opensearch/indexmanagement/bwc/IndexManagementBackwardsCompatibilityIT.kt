@@ -13,11 +13,11 @@ import org.opensearch.index.query.QueryBuilders
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.LEGACY_ISM_BASE_URI
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.LEGACY_POLICY_BASE_URI
 import org.opensearch.indexmanagement.IndexManagementRestTestCase
-import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
 import org.opensearch.indexmanagement.indexstatemanagement.randomPolicy
 import org.opensearch.indexmanagement.indexstatemanagement.util.XCONTENT_WITHOUT_USER
 import org.opensearch.indexmanagement.makeRequest
 import org.opensearch.indexmanagement.opensearchapi.string
+import org.opensearch.indexmanagement.util.NO_ID
 import org.opensearch.rest.RestStatus
 import org.opensearch.search.builder.SearchSourceBuilder
 
@@ -137,7 +137,7 @@ class IndexManagementBackwardsCompatibilityIT : IndexManagementRestTestCase() {
         val responseBody = createResponse.asMap()
         val createdId = responseBody["_id"] as String
         val createdVersion = responseBody["_version"] as Int
-        assertNotEquals("Create policy response is missing id", Policy.NO_ID, createdId)
+        assertNotEquals("Create policy response is missing id", NO_ID, createdId)
         assertTrue("Create policy response has incorrect version", createdVersion > 0)
         Thread.sleep(10000)
     }

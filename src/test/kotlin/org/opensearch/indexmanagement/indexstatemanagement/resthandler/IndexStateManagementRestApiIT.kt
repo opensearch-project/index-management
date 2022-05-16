@@ -22,6 +22,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.randomReadOnlyActionC
 import org.opensearch.indexmanagement.indexstatemanagement.randomState
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings
 import org.opensearch.indexmanagement.makeRequest
+import org.opensearch.indexmanagement.util.NO_ID
 import org.opensearch.indexmanagement.util._ID
 import org.opensearch.indexmanagement.util._PRIMARY_TERM
 import org.opensearch.indexmanagement.util._SEQ_NO
@@ -71,7 +72,7 @@ class IndexStateManagementRestApiIT : IndexStateManagementRestTestCase() {
         val createdId = responseBody["_id"] as String
         val createdSeqNo = responseBody[_SEQ_NO] as Int
         val createdPrimaryTerm = responseBody[_PRIMARY_TERM] as Int
-        assertNotEquals("response is missing Id", Policy.NO_ID, createdId)
+        assertNotEquals("response is missing Id", NO_ID, createdId)
         assertEquals("not same id", policyId, createdId)
         assertEquals("incorrect seqNo", 0, createdSeqNo)
         assertEquals("incorrect primaryTerm", 1, createdPrimaryTerm)
@@ -189,7 +190,7 @@ class IndexStateManagementRestApiIT : IndexStateManagementRestTestCase() {
         val responseBody = updateResponse.asMap()
         val updatedId = responseBody[_ID] as String
         val updatedSeqNo = (responseBody[_SEQ_NO] as Int).toLong()
-        assertNotEquals("response is missing Id", Policy.NO_ID, updatedId)
+        assertNotEquals("response is missing Id", NO_ID, updatedId)
         assertEquals("not same id", policy.id, updatedId)
         assertTrue("incorrect seqNo", policy.seqNo < updatedSeqNo)
     }
