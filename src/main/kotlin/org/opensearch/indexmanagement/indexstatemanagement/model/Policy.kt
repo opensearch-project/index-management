@@ -24,6 +24,7 @@ import org.opensearch.indexmanagement.opensearchapi.optionalTimeField
 import org.opensearch.indexmanagement.opensearchapi.optionalUserField
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.util.IndexUtils
+import org.opensearch.indexmanagement.util.NO_ID
 import java.io.IOException
 import java.time.Instant
 
@@ -147,7 +148,6 @@ data class Policy(
         const val POLICY_TYPE = "policy"
         const val POLICY_ID_FIELD = "policy_id"
         const val DESCRIPTION_FIELD = "description"
-        const val NO_ID = ""
         const val LAST_UPDATED_TIME_FIELD = "last_updated_time"
         const val SCHEMA_VERSION_FIELD = "schema_version"
         const val ERROR_NOTIFICATION_FIELD = "error_notification"

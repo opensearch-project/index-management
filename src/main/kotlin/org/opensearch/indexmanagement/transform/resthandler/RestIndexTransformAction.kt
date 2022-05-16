@@ -17,6 +17,7 @@ import org.opensearch.indexmanagement.transform.action.index.IndexTransformRespo
 import org.opensearch.indexmanagement.transform.model.Transform
 import org.opensearch.indexmanagement.util.IF_PRIMARY_TERM
 import org.opensearch.indexmanagement.util.IF_SEQ_NO
+import org.opensearch.indexmanagement.util.NO_ID
 import org.opensearch.indexmanagement.util.REFRESH
 import org.opensearch.rest.BaseRestHandler
 import org.opensearch.rest.BaseRestHandler.RestChannelConsumer
@@ -46,8 +47,8 @@ class RestIndexTransformAction : BaseRestHandler() {
 
     @Throws(IOException::class)
     override fun prepareRequest(request: RestRequest, client: NodeClient): RestChannelConsumer {
-        val id = request.param("transformID", Transform.NO_ID)
-        if (Transform.NO_ID == id) {
+        val id = request.param("transformID", NO_ID)
+        if (NO_ID == id) {
             throw IllegalArgumentException("Missing transform ID")
         }
 

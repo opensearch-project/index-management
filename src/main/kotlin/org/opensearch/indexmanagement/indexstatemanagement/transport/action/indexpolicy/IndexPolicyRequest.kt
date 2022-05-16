@@ -12,6 +12,7 @@ import org.opensearch.action.support.WriteRequest
 import org.opensearch.common.io.stream.StreamInput
 import org.opensearch.common.io.stream.StreamOutput
 import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
+import org.opensearch.indexmanagement.util.NO_ID
 import java.io.IOException
 
 class IndexPolicyRequest : ActionRequest {
@@ -47,7 +48,7 @@ class IndexPolicyRequest : ActionRequest {
 
     override fun validate(): ActionRequestValidationException? {
         var validationException: ActionRequestValidationException? = null
-        if (Policy.NO_ID == policyID) {
+        if (NO_ID == policyID) {
             validationException = ValidateActions.addValidationError("Missing policyID", validationException)
         }
         return validationException

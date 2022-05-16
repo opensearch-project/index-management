@@ -36,8 +36,6 @@ class IndexUtils {
         private const val BYTE_ARRAY_SIZE = 16
         private const val DOCUMENT_ID_SEED = 72390L
 
-        const val NO_ID = ""
-
         val logger = LogManager.getLogger(IndexUtils::class.java)
 
         var indexManagementConfigSchemaVersion: Long

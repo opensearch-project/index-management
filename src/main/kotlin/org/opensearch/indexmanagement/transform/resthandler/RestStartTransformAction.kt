@@ -9,7 +9,7 @@ import org.opensearch.client.node.NodeClient
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.TRANSFORM_BASE_URI
 import org.opensearch.indexmanagement.transform.action.start.StartTransformAction
 import org.opensearch.indexmanagement.transform.action.start.StartTransformRequest
-import org.opensearch.indexmanagement.transform.model.Transform
+import org.opensearch.indexmanagement.util.NO_ID
 import org.opensearch.rest.BaseRestHandler
 import org.opensearch.rest.BaseRestHandler.RestChannelConsumer
 import org.opensearch.rest.RestHandler.Route
@@ -32,7 +32,7 @@ class RestStartTransformAction : BaseRestHandler() {
 
     @Throws(IOException::class)
     override fun prepareRequest(request: RestRequest, client: NodeClient): RestChannelConsumer {
-        val id = request.param("transformID", Transform.NO_ID)
+        val id = request.param("transformID", NO_ID)
         val startRequest = StartTransformRequest(id)
         return RestChannelConsumer { channel ->
             client.execute(StartTransformAction.INSTANCE, startRequest, RestToXContentListener(channel))

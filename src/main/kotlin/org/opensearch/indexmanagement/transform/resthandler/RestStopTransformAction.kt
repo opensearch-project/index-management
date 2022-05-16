@@ -9,7 +9,7 @@ import org.opensearch.client.node.NodeClient
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.TRANSFORM_BASE_URI
 import org.opensearch.indexmanagement.transform.action.stop.StopTransformAction
 import org.opensearch.indexmanagement.transform.action.stop.StopTransformRequest
-import org.opensearch.indexmanagement.transform.model.Transform
+import org.opensearch.indexmanagement.util.NO_ID
 import org.opensearch.rest.BaseRestHandler
 import org.opensearch.rest.BaseRestHandler.RestChannelConsumer
 import org.opensearch.rest.RestHandler.Route
@@ -32,8 +32,8 @@ class RestStopTransformAction : BaseRestHandler() {
 
     @Throws(IOException::class)
     override fun prepareRequest(request: RestRequest, client: NodeClient): RestChannelConsumer {
-        val id = request.param("transformID", Transform.NO_ID)
-        if (Transform.NO_ID == id) {
+        val id = request.param("transformID", NO_ID)
+        if (NO_ID == id) {
             throw IllegalArgumentException("Missing transform ID")
         }
 
