@@ -311,11 +311,9 @@ data class SMPolicy(
     ) : Writeable, ToXContent {
 
         init {
-            require(
-                (maxAge != null && minCount != null) || (maxAge == null && minCount == null)
-            ) { "max_age and min_count should exist at the same time." }
-            require(minCount == null || maxCount > minCount) {
-                "max_count should be bigger than min_count."
+            require(maxCount > 0) { "$MAX_COUNT_FIELD should be bigger than 0." }
+            require(minCount == null || maxCount >= minCount && minCount > 0) {
+                "$MIN_COUNT_FIELD should be bigger than 0 and smaller than $MAX_COUNT_FIELD."
             }
         }
 
@@ -333,7 +331,7 @@ data class SMPolicy(
             const val MIN_COUNT_FIELD = "min_count"
 
             fun parse(xcp: XContentParser): DeleteCondition {
-                var maxCount: Int? = null
+                var maxCount = 50
                 var maxAge: TimeValue? = null
                 var minCount: Int? = null
 
@@ -349,8 +347,12 @@ data class SMPolicy(
                     }
                 }
 
+                if (maxAge != null && minCount == null) {
+                    minCount = minOf(5, maxCount)
+                }
+
                 return DeleteCondition(
-                    maxCount = requireNotNull(maxCount) { "max_count field must not be null" },
+                    maxCount = maxCount,
                     maxAge = maxAge,
                     minCount = minCount,
                 )
