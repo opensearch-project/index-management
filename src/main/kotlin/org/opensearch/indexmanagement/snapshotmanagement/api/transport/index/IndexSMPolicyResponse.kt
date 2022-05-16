@@ -25,9 +25,7 @@ class IndexSMPolicyResponse(val policy: SMPolicy) : ActionResponse(), ToXContent
 
     override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
         return builder.startObject()
-            .startObject(policy.policyName)
-            .field(SMPolicy.SNAPSHOT_CONFIG_FIELD, policy.snapshotConfig)
-            .endObject()
+            .field(SMPolicy.SM_TYPE, policy)
             .endObject()
     }
 }

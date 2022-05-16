@@ -19,7 +19,7 @@ import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANA
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.BaseTransportAction
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.SMActions.INDEX_SM_ACTION_NAME
-import org.opensearch.indexmanagement.snapshotmanagement.getSMDocId
+import org.opensearch.indexmanagement.snapshotmanagement.smPolicyNameToDocId
 import org.opensearch.transport.TransportService
 
 class TransportIndexSMPolicyAction @Inject constructor(
@@ -40,7 +40,7 @@ class TransportIndexSMPolicyAction @Inject constructor(
         val policy = request.policy
         val indexReq = IndexRequest(INDEX_MANAGEMENT_INDEX)
             .source(policy.toXContent(XContentFactory.jsonBuilder(), ToXContent.EMPTY_PARAMS))
-            .id(getSMDocId(policy.policyName))
+            .id(policy.id)
             .create(request.create)
         val indexRes: IndexResponse = client.suspendUntil { index(indexReq, it) }
         return IndexSMPolicyResponse(policy)

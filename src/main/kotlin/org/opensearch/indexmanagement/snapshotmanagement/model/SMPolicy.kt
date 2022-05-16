@@ -20,6 +20,7 @@ import org.opensearch.indexmanagement.opensearchapi.instant
 import org.opensearch.indexmanagement.opensearchapi.nullValueHandler
 import org.opensearch.indexmanagement.opensearchapi.optionalField
 import org.opensearch.indexmanagement.opensearchapi.optionalTimeField
+import org.opensearch.indexmanagement.snapshotmanagement.smDocIdToPolicyName
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ActionTimeout
 import org.opensearch.indexmanagement.util.NO_ID
 import org.opensearch.jobscheduler.spi.ScheduledJobParameter
@@ -34,7 +35,7 @@ import java.time.temporal.ChronoUnit
 private val log = LogManager.getLogger(SMPolicy::class.java)
 
 data class SMPolicy(
-    val policyName: String,
+    val id: String = NO_ID,
     val description: String? = null,
     val creation: Creation,
     val deletion: Deletion,
@@ -43,7 +44,6 @@ data class SMPolicy(
     val jobLastUpdateTime: Instant,
     val jobEnabledTime: Instant,
     val jobSchedule: Schedule,
-    val id: String = NO_ID,
     val seqNo: Long = SequenceNumbers.UNASSIGNED_SEQ_NO,
     val primaryTerm: Long = SequenceNumbers.UNASSIGNED_PRIMARY_TERM,
 ) : ScheduledJobParameter, Writeable {
@@ -54,7 +54,7 @@ data class SMPolicy(
         // TODO SM validate date_format is of right format
     }
 
-    override fun getName() = policyName
+    override fun getName() = id
 
     override fun getLastUpdateTime() = jobLastUpdateTime
 
@@ -68,7 +68,7 @@ data class SMPolicy(
         return builder
             .startObject()
             .startObject(SM_TYPE)
-            .field(NAME_FIELD, policyName)
+            .field(NAME_FIELD, smDocIdToPolicyName(id)) // for searching policy by name
             .optionalField(DESCRIPTION_FIELD, description)
             .field(CREATION_FIELD, creation)
             .field(DELETION_FIELD, deletion)
@@ -98,9 +98,7 @@ data class SMPolicy(
             id: String = NO_ID,
             seqNo: Long = SequenceNumbers.UNASSIGNED_SEQ_NO,
             primaryTerm: Long = SequenceNumbers.UNASSIGNED_PRIMARY_TERM,
-            policyName: String? = null // meant to only be used by Index API
         ): SMPolicy {
-            var name: String? = policyName
             var description: String? = null
             var creation: Creation? = null
             var deletion: Deletion? = null
@@ -119,7 +117,7 @@ data class SMPolicy(
                 xcp.nextToken()
 
                 when (fieldName) {
-                    NAME_FIELD -> name = xcp.text()
+                    NAME_FIELD -> requireNotNull(xcp.text()) { "The name field of SMPolicy must not be null." }
                     DESCRIPTION_FIELD -> description = xcp.nullValueHandler { text() }
                     CREATION_FIELD -> creation = Creation.parse(xcp)
                     DELETION_FIELD -> deletion = Deletion.parse(xcp)
@@ -147,7 +145,6 @@ data class SMPolicy(
             }
 
             return SMPolicy(
-                policyName = requireNotNull(name) { "policy_name field must not be null" },
                 description = description,
                 creation = requireNotNull(creation) { "creation field must not be null" },
                 deletion = requireNotNull(deletion) { "deletion field must not be null" },
@@ -164,7 +161,6 @@ data class SMPolicy(
     }
 
     constructor(sin: StreamInput) : this(
-        policyName = sin.readString(),
         description = sin.readOptionalString(),
         creation = Creation(sin),
         deletion = Deletion(sin),
@@ -179,7 +175,6 @@ data class SMPolicy(
     )
 
     override fun writeTo(out: StreamOutput) {
-        out.writeString(policyName)
         out.writeOptionalString(description)
         creation.writeTo(out)
         deletion.writeTo(out)

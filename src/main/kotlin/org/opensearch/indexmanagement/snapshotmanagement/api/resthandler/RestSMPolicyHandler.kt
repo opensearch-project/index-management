@@ -15,6 +15,7 @@ import org.opensearch.indexmanagement.snapshotmanagement.api.transport.delete.De
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.get.GetSMPolicyRequest
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.index.IndexSMPolicyRequest
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy
+import org.opensearch.indexmanagement.snapshotmanagement.smPolicyNameToDocId
 import org.opensearch.rest.BaseRestHandler
 import org.opensearch.rest.BytesRestResponse
 import org.opensearch.rest.RestHandler.Route
@@ -85,7 +86,7 @@ class RestSMPolicyHandler : BaseRestHandler() {
         log.info("sm dev: receive request ${request.requiredContent().utf8ToString()}")
 
         val xcp = request.contentParser()
-        val policy = SMPolicy.parse(xcp, policyName = policyName)
+        val policy = SMPolicy.parse(xcp, id = smPolicyNameToDocId(policyName))
         log.info("sm dev: policy parsed $policy")
 
         return RestChannelConsumer {

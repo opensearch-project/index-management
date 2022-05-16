@@ -57,7 +57,6 @@ fun randomSMMetadata(
 }
 
 fun randomSMPolicy(
-    policyName: String = randomAlphaOfLength(10),
     jobEnabled: Boolean = false,
     jobLastUpdateTime: Instant = randomInstant(),
     creationSchedule: CronSchedule = randomCronSchedule(),
@@ -75,7 +74,6 @@ fun randomSMPolicy(
     jobSchedule: IntervalSchedule = randomIntervalSchedule()
 ): SMPolicy {
     return SMPolicy(
-        policyName = policyName,
         jobEnabled = jobEnabled,
         jobLastUpdateTime = jobLastUpdateTime,
         creation = SMPolicy.Creation(

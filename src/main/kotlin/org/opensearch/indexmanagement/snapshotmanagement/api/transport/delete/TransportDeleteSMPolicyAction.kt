@@ -17,7 +17,7 @@ import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANA
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.BaseTransportAction
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.SMActions.DELETE_SM_ACTION_NAME
-import org.opensearch.indexmanagement.snapshotmanagement.getSMDocId
+import org.opensearch.indexmanagement.snapshotmanagement.smPolicyNameToDocId
 import org.opensearch.transport.TransportService
 
 class TransportDeleteSMPolicyAction @Inject constructor(
@@ -35,7 +35,7 @@ class TransportDeleteSMPolicyAction @Inject constructor(
         user: User?,
         threadContext: ThreadContext.StoredContext
     ): DeleteSMPolicyResponse {
-        val deleteReq = DeleteRequest(INDEX_MANAGEMENT_INDEX, getSMDocId(request.policyName))
+        val deleteReq = DeleteRequest(INDEX_MANAGEMENT_INDEX, smPolicyNameToDocId(request.policyName))
         val deleteRes: DeleteResponse = client.suspendUntil { delete(deleteReq, it) }
         return DeleteSMPolicyResponse(deleteRes.status().toString())
     }

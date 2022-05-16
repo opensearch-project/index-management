@@ -9,5 +9,7 @@ import org.apache.logging.log4j.LogManager
 
 private val log = LogManager.getLogger("Snapshot Management Helper")
 
-fun getSMDocId(policyName: String) = "$policyName-sm"
+const val smSuffix = "-sm"
+fun smPolicyNameToDocId(policyName: String) = "$policyName$smSuffix"
+fun smDocIdToPolicyName(id: String) = id.substringBeforeLast(smSuffix)
 fun getSMMetadataDocId(policyName: String) = "$policyName-sm-metadata"
