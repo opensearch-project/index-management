@@ -11,9 +11,9 @@ import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.SM_BASE_UR
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.SMActions
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.SMActions.DELETE_SM_ACTION_TYPE
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.SMActions.GET_SM_ACTION_TYPE
-import org.opensearch.indexmanagement.snapshotmanagement.api.transport.delete.DeleteSMRequest
-import org.opensearch.indexmanagement.snapshotmanagement.api.transport.get.GetSMRequest
-import org.opensearch.indexmanagement.snapshotmanagement.api.transport.index.IndexSMRequest
+import org.opensearch.indexmanagement.snapshotmanagement.api.transport.delete.DeleteSMPolicyRequest
+import org.opensearch.indexmanagement.snapshotmanagement.api.transport.get.GetSMPolicyRequest
+import org.opensearch.indexmanagement.snapshotmanagement.api.transport.index.IndexSMPolicyRequest
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy
 import org.opensearch.rest.BaseRestHandler
 import org.opensearch.rest.BytesRestResponse
@@ -69,7 +69,7 @@ class RestSMPolicyHandler : BaseRestHandler() {
         return RestChannelConsumer {
             client.execute(
                 GET_SM_ACTION_TYPE,
-                GetSMRequest(policyName),
+                GetSMPolicyRequest(policyName),
                 RestToXContentListener(it)
             )
         }
@@ -91,7 +91,7 @@ class RestSMPolicyHandler : BaseRestHandler() {
         return RestChannelConsumer {
             client.execute(
                 SMActions.INDEX_SM_ACTION_TYPE,
-                IndexSMRequest(policy, create),
+                IndexSMPolicyRequest(policy, create),
                 RestToXContentListener(it)
             )
         }
@@ -106,7 +106,7 @@ class RestSMPolicyHandler : BaseRestHandler() {
         return RestChannelConsumer {
             client.execute(
                 DELETE_SM_ACTION_TYPE,
-                DeleteSMRequest(policyName),
+                DeleteSMPolicyRequest(policyName),
                 RestToXContentListener(it)
             )
         }

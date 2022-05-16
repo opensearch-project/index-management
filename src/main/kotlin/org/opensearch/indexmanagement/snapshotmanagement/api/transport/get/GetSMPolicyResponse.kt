@@ -3,17 +3,20 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.indexmanagement.snapshotmanagement.api.transport.index
+package org.opensearch.indexmanagement.snapshotmanagement.api.transport.get
 
 import org.opensearch.action.ActionResponse
 import org.opensearch.common.io.stream.StreamInput
 import org.opensearch.common.io.stream.StreamOutput
 import org.opensearch.common.xcontent.ToXContent
+import org.opensearch.common.xcontent.ToXContent.EMPTY_PARAMS
 import org.opensearch.common.xcontent.ToXContentObject
 import org.opensearch.common.xcontent.XContentBuilder
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy
 
-class IndexSMResponse(val policy: SMPolicy) : ActionResponse(), ToXContentObject {
+class GetSMPolicyResponse(
+    val policy: SMPolicy
+) : ActionResponse(), ToXContentObject {
 
     constructor(sin: StreamInput) : this(
         policy = SMPolicy(sin)
@@ -24,10 +27,6 @@ class IndexSMResponse(val policy: SMPolicy) : ActionResponse(), ToXContentObject
     }
 
     override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
-        return builder.startObject()
-            .startObject(policy.policyName)
-            .field(SMPolicy.SNAPSHOT_CONFIG_FIELD, policy.snapshotConfig)
-            .endObject()
-            .endObject()
+        return policy.toXContent(builder, EMPTY_PARAMS)
     }
 }

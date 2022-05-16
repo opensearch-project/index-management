@@ -3,25 +3,29 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.indexmanagement.snapshotmanagement.api.transport.get
+package org.opensearch.indexmanagement.snapshotmanagement.api.transport.index
 
 import org.opensearch.action.ActionRequest
 import org.opensearch.action.ActionRequestValidationException
 import org.opensearch.common.io.stream.StreamInput
 import org.opensearch.common.io.stream.StreamOutput
+import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy
 
-class GetSMRequest(
-    val policyName: String
+class IndexSMPolicyRequest(
+    val policy: SMPolicy,
+    val create: Boolean,
 ) : ActionRequest() {
     override fun validate(): ActionRequestValidationException? {
         return null
     }
 
     constructor(sin: StreamInput) : this(
-        policyName = sin.readString(),
+        policy = SMPolicy(sin),
+        create = sin.readBoolean(),
     )
 
     override fun writeTo(out: StreamOutput) {
-        out.writeString(policyName)
+        policy.writeTo(out)
+        out.writeBoolean(create)
     }
 }

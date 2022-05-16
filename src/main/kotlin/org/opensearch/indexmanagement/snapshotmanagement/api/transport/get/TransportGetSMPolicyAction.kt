@@ -23,25 +23,25 @@ import org.opensearch.indexmanagement.snapshotmanagement.getSMDocId
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy
 import org.opensearch.transport.TransportService
 
-class TransportGetSMAction @Inject constructor(
+class TransportGetSMPolicyAction @Inject constructor(
     client: Client,
     transportService: TransportService,
     actionFilters: ActionFilters,
-) : BaseTransportAction<GetSMRequest, GetSMResponse>(
-    GET_SM_ACTION_NAME, transportService, client, actionFilters, ::GetSMRequest
+) : BaseTransportAction<GetSMPolicyRequest, GetSMPolicyResponse>(
+    GET_SM_ACTION_NAME, transportService, client, actionFilters, ::GetSMPolicyRequest
 ) {
 
     private val log = LogManager.getLogger(javaClass)
 
     override suspend fun executeRequest(
-        request: GetSMRequest,
+        request: GetSMPolicyRequest,
         user: User?,
         threadContext: ThreadContext.StoredContext
-    ): GetSMResponse {
+    ): GetSMPolicyResponse {
         val getReq = GetRequest(INDEX_MANAGEMENT_INDEX, getSMDocId(request.policyName))
         val getRes: GetResponse = client.suspendUntil { get(getReq, it) }
         val xcp = contentParser(getRes.sourceAsBytesRef)
         val policy = xcp.parseWithType(getRes.id, getRes.seqNo, getRes.primaryTerm, SMPolicy.Companion::parse)
-        return GetSMResponse(policy)
+        return GetSMPolicyResponse(policy)
     }
 }

@@ -20,23 +20,23 @@ import org.opensearch.indexmanagement.snapshotmanagement.api.transport.SMActions
 import org.opensearch.indexmanagement.snapshotmanagement.getSMDocId
 import org.opensearch.transport.TransportService
 
-class TransportDeleteSMAction @Inject constructor(
+class TransportDeleteSMPolicyAction @Inject constructor(
     client: Client,
     transportService: TransportService,
     actionFilters: ActionFilters,
-) : BaseTransportAction<DeleteSMRequest, DeleteSMResponse>(
-    DELETE_SM_ACTION_NAME, transportService, client, actionFilters, ::DeleteSMRequest
+) : BaseTransportAction<DeleteSMPolicyRequest, DeleteSMPolicyResponse>(
+    DELETE_SM_ACTION_NAME, transportService, client, actionFilters, ::DeleteSMPolicyRequest
 ) {
 
     private val log = LogManager.getLogger(javaClass)
 
     override suspend fun executeRequest(
-        request: DeleteSMRequest,
+        request: DeleteSMPolicyRequest,
         user: User?,
         threadContext: ThreadContext.StoredContext
-    ): DeleteSMResponse {
+    ): DeleteSMPolicyResponse {
         val deleteReq = DeleteRequest(INDEX_MANAGEMENT_INDEX, getSMDocId(request.policyName))
         val deleteRes: DeleteResponse = client.suspendUntil { delete(deleteReq, it) }
-        return DeleteSMResponse(deleteRes.status().toString())
+        return DeleteSMPolicyResponse(deleteRes.status().toString())
     }
 }
