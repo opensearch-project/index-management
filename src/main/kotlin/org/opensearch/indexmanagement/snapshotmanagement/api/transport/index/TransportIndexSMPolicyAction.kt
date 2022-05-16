@@ -19,7 +19,6 @@ import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANA
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.BaseTransportAction
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.SMActions.INDEX_SM_ACTION_NAME
-import org.opensearch.indexmanagement.snapshotmanagement.smPolicyNameToDocId
 import org.opensearch.transport.TransportService
 
 class TransportIndexSMPolicyAction @Inject constructor(

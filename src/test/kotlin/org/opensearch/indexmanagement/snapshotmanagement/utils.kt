@@ -25,7 +25,6 @@ import org.opensearch.jobscheduler.spi.schedule.IntervalSchedule
 import org.opensearch.rest.RestStatus
 import org.opensearch.snapshots.SnapshotId
 import org.opensearch.snapshots.SnapshotInfo
-import org.opensearch.test.OpenSearchTestCase.randomAlphaOfLength
 import org.opensearch.test.OpenSearchTestCase.randomNonNegativeLong
 import java.time.Instant
 import java.time.Instant.now
