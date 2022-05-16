@@ -42,7 +42,6 @@ fun randomSMMetadata(
         policySeqNo = policySeqNo,
         policyPrimaryTerm = policyPrimaryTerm,
         currentState = currentState,
-        atomic = atomic,
         creation = SMMetadata.Creation(
             trigger = SMMetadata.Trigger(
                 time = nextCreationTime

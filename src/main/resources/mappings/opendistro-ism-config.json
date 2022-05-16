@@ -1474,9 +1474,6 @@
         "current_state": {
           "type": "keyword"
         },
-        "atomic": {
-          "type": "boolean"
-        },
         "info": {
           "type": "object",
           "enabled": false

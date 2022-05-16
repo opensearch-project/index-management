@@ -32,7 +32,6 @@ data class SMMetadata(
     val policySeqNo: Long,
     val policyPrimaryTerm: Long,
     val currentState: SMState,
-    val atomic: Boolean = false, // used to indicate an atomic operation started
     val creation: Creation,
     val deletion: Deletion,
     val info: InfoType = null,
@@ -47,7 +46,6 @@ data class SMMetadata(
             .field(POLICY_SEQ_NO_FIELD, policySeqNo)
             .field(POLICY_PRIMARY_TERM_FIELD, policyPrimaryTerm)
             .field(CURRENT_STATE_FIELD, currentState.toString())
-            .field(ATOMIC_FIELD, atomic)
             .field(CREATION_FIELD, creation)
             .field(DELETION_FIELD, deletion)
             .optionalField(INFO_FIELD, info)
@@ -60,7 +58,6 @@ data class SMMetadata(
         const val POLICY_SEQ_NO_FIELD = "policy_seq_no"
         const val POLICY_PRIMARY_TERM_FIELD = "policy_primary_term"
         const val CURRENT_STATE_FIELD = "current_state"
-        const val ATOMIC_FIELD = "atomic"
         const val CREATION_FIELD = "creation"
         const val DELETION_FIELD = "deletion"
         const val INFO_FIELD = "info"
@@ -88,7 +85,6 @@ data class SMMetadata(
                     POLICY_SEQ_NO_FIELD -> policySeqNo = xcp.longValue()
                     POLICY_PRIMARY_TERM_FIELD -> policyPrimaryTerm = xcp.longValue()
                     CURRENT_STATE_FIELD -> currentState = SMState.valueOf(xcp.text())
-                    ATOMIC_FIELD -> atomic = xcp.booleanValue()
                     CREATION_FIELD -> creation = Creation.parse(xcp)
                     DELETION_FIELD -> deletion = Deletion.parse(xcp)
                     INFO_FIELD -> info = xcp.nullValueHandler { xcp.map() }
@@ -99,7 +95,6 @@ data class SMMetadata(
                 policySeqNo = requireNotNull(policySeqNo) {},
                 policyPrimaryTerm = requireNotNull(policyPrimaryTerm) {},
                 currentState = requireNotNull(currentState) {},
-                atomic = atomic,
                 creation = requireNotNull(creation) {},
                 deletion = requireNotNull(deletion) {},
                 info = info,
@@ -120,7 +115,6 @@ data class SMMetadata(
         policySeqNo = sin.readLong(),
         policyPrimaryTerm = sin.readLong(),
         currentState = sin.readEnum(SMState::class.java),
-        atomic = sin.readBoolean(),
         creation = Creation(sin),
         deletion = Deletion(sin),
         info = sin.readMap(),
@@ -133,7 +127,6 @@ data class SMMetadata(
         out.writeLong(policySeqNo)
         out.writeLong(policyPrimaryTerm)
         out.writeEnum(currentState)
-        out.writeBoolean(atomic)
         creation.writeTo(out)
         deletion.writeTo(out)
         out.writeMap(info)
