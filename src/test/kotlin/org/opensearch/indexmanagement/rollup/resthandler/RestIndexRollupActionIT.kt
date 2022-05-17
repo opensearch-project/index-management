@@ -15,7 +15,6 @@ import org.opensearch.indexmanagement.common.model.dimension.Histogram
 import org.opensearch.indexmanagement.common.model.dimension.Terms
 import org.opensearch.indexmanagement.makeRequest
 import org.opensearch.indexmanagement.rollup.RollupRestTestCase
-import org.opensearch.indexmanagement.rollup.model.Rollup
 import org.opensearch.indexmanagement.rollup.model.RollupMetrics
 import org.opensearch.indexmanagement.rollup.model.metric.Average
 import org.opensearch.indexmanagement.rollup.model.metric.Max
@@ -26,6 +25,7 @@ import org.opensearch.indexmanagement.rollup.model.metric.ValueCount
 import org.opensearch.indexmanagement.rollup.randomRollup
 import org.opensearch.indexmanagement.rollup.randomRollupDimensions
 import org.opensearch.indexmanagement.rollup.randomRollupMetrics
+import org.opensearch.indexmanagement.util.NO_ID
 import org.opensearch.indexmanagement.util._ID
 import org.opensearch.indexmanagement.util._SEQ_NO
 import org.opensearch.rest.RestStatus
@@ -43,7 +43,7 @@ class RestIndexRollupActionIT : RollupRestTestCase() {
         assertEquals("Create rollup failed", RestStatus.CREATED, response.restStatus())
         val responseBody = response.asMap()
         val createdId = responseBody["_id"] as String
-        assertNotEquals("Response is missing Id", Rollup.NO_ID, createdId)
+        assertNotEquals("Response is missing Id", NO_ID, createdId)
         assertEquals("Not same id", rollup.id, createdId)
         assertEquals("Incorrect Location header", "$ROLLUP_JOBS_BASE_URI/$createdId", response.getHeader("Location"))
     }
@@ -116,7 +116,7 @@ class RestIndexRollupActionIT : RollupRestTestCase() {
         val responseBody = updateResponse.asMap()
         val updatedId = responseBody[_ID] as String
         val updatedSeqNo = (responseBody[_SEQ_NO] as Int).toLong()
-        assertNotEquals("response is missing Id", Rollup.NO_ID, updatedId)
+        assertNotEquals("response is missing Id", NO_ID, updatedId)
         assertEquals("not same id", rollup.id, updatedId)
         assertTrue("incorrect seqNo", rollup.seqNo < updatedSeqNo)
     }

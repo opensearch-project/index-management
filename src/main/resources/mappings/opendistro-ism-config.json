@@ -1,6 +1,6 @@
 {
   "_meta" : {
-    "schema_version": 14
+    "schema_version": 15
   },
   "dynamic": "strict",
   "properties": {
@@ -1303,6 +1303,250 @@
         "shard_id_to_global_checkpoint": {
           "type": "object",
           "enabled": false
+        }
+      }
+    },
+    "sm": {
+      "properties": {
+        "name": {
+          "type": "keyword"
+        },
+        "description": {
+          "type": "text"
+        },
+        "creation": {
+          "properties": {
+            "schedule": {
+              "properties": {
+                "cron": {
+                  "properties": {
+                    "expression": {
+                      "type": "keyword"
+                    },
+                    "timezone": {
+                      "type": "keyword"
+                    },
+                    "schedule_delay": {
+                      "type": "long"
+                    }
+                  }
+                }
+              }
+            },
+            "timeout": {
+              "type": "keyword"
+            }
+          }
+        },
+        "deletion": {
+          "properties": {
+            "schedule": {
+              "properties": {
+                "cron": {
+                  "properties": {
+                    "expression": {
+                      "type": "keyword"
+                    },
+                    "timezone": {
+                      "type": "keyword"
+                    },
+                    "schedule_delay": {
+                      "type": "long"
+                    }
+                  }
+                }
+              }
+            },
+            "timeout": {
+              "type": "keyword"
+            },
+            "condition": {
+              "properties": {
+                "max_count": {
+                  "type": "integer"
+                },
+                "max_age": {
+                  "type": "keyword"
+                },
+                "min_count": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        },
+        "snapshot_config": {
+          "type": "object",
+          "enabled": false
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "enabled_time": {
+          "type": "date",
+          "format": "strict_date_time||epoch_millis"
+        },
+        "last_updated_time": {
+          "type": "date",
+          "format": "strict_date_time||epoch_millis"
+        },
+        "schedule": {
+          "properties": {
+            "interval": {
+              "properties": {
+                "period": {
+                  "type": "integer"
+                },
+                "unit": {
+                  "type": "keyword"
+                },
+                "start_time": {
+                  "type": "date",
+                  "format": "strict_date_time||epoch_millis"
+                },
+                "schedule_delay": {
+                  "type": "long"
+                }
+              }
+            },
+            "cron": {
+              "properties": {
+                "expression": {
+                  "type": "keyword"
+                },
+                "timezone": {
+                  "type": "keyword"
+                },
+                "schedule_delay": {
+                  "type": "long"
+                }
+              }
+            }
+          }
+        },
+        "user": {
+          "properties": {
+            "name": {
+              "type": "text",
+              "fields": {
+                "keyword": {
+                  "type": "keyword",
+                  "ignore_above": 256
+                }
+              }
+            },
+            "backend_roles": {
+              "type" : "text",
+              "fields" : {
+                "keyword" : {
+                  "type" : "keyword"
+                }
+              }
+            },
+            "roles": {
+              "type" : "text",
+              "fields" : {
+                "keyword" : {
+                  "type" : "keyword"
+                }
+              }
+            },
+            "custom_attribute_names": {
+              "type" : "text",
+              "fields" : {
+                "keyword" : {
+                  "type" : "keyword"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "sm_metadata": {
+      "properties": {
+        "policy_seq_no": {
+          "type": "long"
+        },
+        "policy_primary_term": {
+          "type": "long"
+        },
+        "current_state": {
+          "type": "keyword"
+        },
+        "info": {
+          "type": "object",
+          "enabled": false
+        },
+        "creation": {
+          "properties": {
+            "trigger": {
+              "properties": {
+                "time": {
+                  "type": "date",
+                  "format": "strict_date_time||epoch_millis"
+                }
+              }
+            },
+            "started": {
+              "properties": {
+                "name": {
+                  "type": "keyword"
+                },
+                "started_time": {
+                  "type": "date",
+                  "format": "strict_date_time||epoch_millis"
+                },
+                "end_time": {
+                  "type": "date",
+                  "format": "strict_date_time||epoch_millis"
+                }
+              }
+            },
+            "finished": {
+              "properties": {
+                "name": {
+                  "type": "keyword"
+                },
+                "started_time": {
+                  "type": "date",
+                  "format": "strict_date_time||epoch_millis"
+                },
+                "end_time": {
+                  "type": "date",
+                  "format": "strict_date_time||epoch_millis"
+                }
+              }
+            }
+          }
+        },
+        "deletion": {
+          "properties": {
+            "trigger": {
+              "properties": {
+                "time": {
+                  "type": "date",
+                  "format": "strict_date_time||epoch_millis"
+                }
+              }
+            },
+            "started": {
+              "type": "nested",
+              "properties": {
+                "name": {
+                  "type": "keyword"
+                },
+                "started_time": {
+                  "type": "date",
+                  "format": "strict_date_time||epoch_millis"
+                },
+                "end_time": {
+                  "type": "date",
+                  "format": "strict_date_time||epoch_millis"
+                }
+              }
+            }
+          }
         }
       }
     }

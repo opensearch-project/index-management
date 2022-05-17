@@ -1,0 +1,487 @@
+###
+PUT localhost:9200/_opendistro/_ism/policies/rollover
+Content-Type: application/json
+
+{
+  "policy": {
+    "description": "action test",
+    "default_state": "action",
+    "states": [
+      {
+        "name": "action",
+        "actions": [
+          {
+            "rollover": {
+              "min_doc_count": 0
+            }
+          }
+        ],
+        "transitions": [
+          {
+            "state_name": "delete"
+          }
+        ]
+      },
+      {
+        "name": "delete",
+        "actions": [
+          {
+            "delete": {}
+          }
+        ],
+        "transitions": []
+      }
+    ],
+    "ism_template": {
+      "index_patterns": ["rollover*"],
+      "priority": 100
+    }
+  }
+}
+
+###
+PUT http://localhost:9200/rollover_index
+Content-Type: application/json
+
+###
+PUT localhost:9200/_opendistro/_ism/policies/force_merge
+Content-Type: application/json
+
+{
+  "policy": {
+    "description": "action test",
+    "default_state": "action",
+    "states": [
+      {
+        "name": "action",
+        "actions": [
+          {
+            "force_merge": {
+              "max_num_segments": 1
+            }
+          }
+        ],
+        "transitions": [
+          {
+            "state_name": "delete"
+          }
+        ]
+      },
+      {
+        "name": "delete",
+        "actions": [
+          {
+            "delete": {}
+          }
+        ],
+        "transitions": []
+      }
+    ],
+    "ism_template": {
+      "index_patterns": ["force_merge*"],
+      "priority": 100
+    }
+  }
+}
+
+###
+PUT http://localhost:9200/force_merge_index
+Content-Type: application/json
+
+###
+PUT localhost:9200/_opendistro/_ism/policies/read_only
+Content-Type: application/json
+
+{
+  "policy": {
+    "description": "action test",
+    "default_state": "action",
+    "states": [
+      {
+        "name": "action",
+        "actions": [
+          {
+            "read_only": {}
+          }
+        ],
+        "transitions": [
+          {
+            "state_name": "delete"
+          }
+        ]
+      },
+      {
+        "name": "delete",
+        "actions": [
+          {
+            "delete": {}
+          }
+        ],
+        "transitions": []
+      }
+    ],
+    "ism_template": {
+      "index_patterns": ["read_only*"],
+      "priority": 100
+    }
+  }
+}
+
+###
+PUT http://localhost:9200/read_only_index
+Content-Type: application/json
+
+###
+PUT localhost:9200/_opendistro/_ism/policies/read_write
+Content-Type: application/json
+
+{
+  "policy": {
+    "description": "action test",
+    "default_state": "action",
+    "states": [
+      {
+        "name": "action",
+        "actions": [
+          {
+            "read_write": {}
+          }
+        ],
+        "transitions": [
+          {
+            "state_name": "delete"
+          }
+        ]
+      },
+      {
+        "name": "delete",
+        "actions": [
+          {
+            "delete": {}
+          }
+        ],
+        "transitions": []
+      }
+    ],
+    "ism_template": {
+      "index_patterns": ["read_write*"],
+      "priority": 100
+    }
+  }
+}
+
+###
+PUT http://localhost:9200/read_write_index
+Content-Type: application/json
+
+###
+PUT localhost:9200/_opendistro/_ism/policies/replica_count
+Content-Type: application/json
+
+{
+  "policy": {
+    "description": "action test",
+    "default_state": "action",
+    "states": [
+      {
+        "name": "action",
+        "actions": [
+          {
+            "replica_count": {
+              "number_of_replicas": 2
+            }
+          }
+        ],
+        "transitions": [
+          {
+            "state_name": "delete"
+          }
+        ]
+      },
+      {
+        "name": "delete",
+        "actions": [
+          {
+            "delete": {}
+          }
+        ],
+        "transitions": []
+      }
+    ],
+    "ism_template": {
+      "index_patterns": ["replica_count*"]
+    }
+  }
+}
+
+###
+PUT http://localhost:9200/replica_count_index
+Content-Type: application/json
+
+###
+PUT localhost:9200/_opendistro/_ism/policies/close
+Content-Type: application/json
+
+{
+  "policy": {
+    "description": "action test",
+    "default_state": "action",
+    "states": [
+      {
+        "name": "action",
+        "actions": [
+          {
+            "close": {}
+          }
+        ],
+        "transitions": [
+          {
+            "state_name": "delete"
+          }
+        ]
+      },
+      {
+        "name": "delete",
+        "actions": [
+          {
+            "delete": {}
+          }
+        ],
+        "transitions": []
+      }
+    ],
+    "ism_template": {
+      "index_patterns": ["close*"]
+    }
+  }
+}
+
+###
+PUT http://localhost:9200/close_index
+Content-Type: application/json
+
+###
+PUT localhost:9200/_opendistro/_ism/policies/open
+Content-Type: application/json
+
+{
+  "policy": {
+    "description": "action test",
+    "default_state": "action",
+    "states": [
+      {
+        "name": "action",
+        "actions": [
+          {
+            "open": {}
+          }
+        ],
+        "transitions": [
+          {
+            "state_name": "delete"
+          }
+        ]
+      },
+      {
+        "name": "delete",
+        "actions": [
+          {
+            "delete": {}
+          }
+        ],
+        "transitions": []
+      }
+    ],
+    "ism_template": {
+      "index_patterns": ["open*"]
+    }
+  }
+}
+
+###
+PUT http://localhost:9200/open_index
+Content-Type: application/json
+
+###
+PUT localhost:9200/_opendistro/_ism/policies/notification
+Content-Type: application/json
+
+{
+  "policy": {
+    "description": "action test",
+    "default_state": "action",
+    "states": [
+      {
+        "name": "action",
+        "actions": [
+          {
+            "notification": {
+             "destination": {
+               "chime": {
+                 "url": "<url>"
+               }
+             },
+             "message_template": {
+               "source": "the index is {{ctx.index}}"
+             }
+           }
+          }
+        ],
+        "transitions": [
+          {
+            "state_name": "delete"
+          }
+        ]
+      },
+      {
+        "name": "delete",
+        "actions": [
+          {
+            "delete": {}
+          }
+        ],
+        "transitions": []
+      }
+    ],
+    "ism_template": {
+      "index_patterns": ["notification*"]
+    }
+  }
+}
+
+###
+PUT http://localhost:9200/notification_index
+Content-Type: application/json
+
+###
+PUT localhost:9200/_opendistro/_ism/policies/snapshot
+Content-Type: application/json
+
+{
+  "policy": {
+    "description": "action test",
+    "default_state": "action",
+    "states": [
+      {
+        "name": "action",
+        "actions": [
+          {
+            "snapshot": {
+              "repository": "my_backup",
+              "snapshot": "snapshot1"
+            }
+          }
+        ],
+        "transitions": [
+          {
+            "state_name": "delete"
+          }
+        ]
+      },
+      {
+        "name": "delete",
+        "actions": [
+          {
+            "delete": {}
+          }
+        ],
+        "transitions": []
+      }
+    ],
+    "ism_template": {
+      "index_patterns": ["snapshot*"]
+    }
+  }
+}
+
+###
+PUT http://localhost:9200/snapshot_index
+Content-Type: application/json
+
+###
+PUT localhost:9200/_opendistro/_ism/policies/index_priority
+Content-Type: application/json
+
+{
+  "policy": {
+    "description": "action test",
+    "default_state": "action",
+    "states": [
+      {
+        "name": "action",
+        "actions": [
+          {
+            "index_priority": {
+              "priority": 50
+            }
+          }
+        ],
+        "transitions": [
+          {
+            "state_name": "delete"
+          }
+        ]
+      },
+      {
+        "name": "delete",
+        "actions": [
+          {
+            "delete": {}
+          }
+        ],
+        "transitions": []
+      }
+    ],
+    "ism_template": {
+      "index_patterns": ["index_priority*"]
+    }
+  }
+}
+
+###
+PUT http://localhost:9200/index_priority_index
+Content-Type: application/json
+
+###
+PUT localhost:9200/_opendistro/_ism/policies/allocation
+Content-Type: application/json
+
+{
+  "policy": {
+    "description": "action test",
+    "default_state": "action",
+    "states": [
+      {
+        "name": "action",
+        "actions": [
+          {
+            "allocation": {
+              "require": { "temp": "warm" }
+            }
+          }
+        ],
+        "transitions": [
+          {
+            "state_name": "delete"
+          }
+        ]
+      },
+      {
+        "name": "delete",
+        "actions": [
+          {
+            "delete": {}
+          }
+        ],
+        "transitions": []
+      }
+    ],
+    "ism_template": {
+      "index_patterns": ["allocation*"]
+    }
+  }
+}
+
+###
+PUT http://localhost:9200/allocation_index
+Content-Type: application/json

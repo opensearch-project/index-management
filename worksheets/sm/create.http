@@ -1,0 +1,84 @@
+###
+GET localhost:9200/
+Accept: application/json
+
+###
+POST localhost:9200/.opendistro-ism-config/_search
+Content-Type: application/json
+
+{
+  "seq_no_primary_term": true
+}
+
+###
+DELETE localhost:9200/.opendistro-ism-config
+
+### index sm
+PUT localhost:9200/_plugins/_sm/daily_snapshot
+Content-Type: application/json
+
+{
+  "description": "A daily snapshot policy",
+  "creation": {
+    "schedule": {
+      "cron": {
+        "expression": "* * * * *",
+        "timezone": "America/Los_Angeles"
+      }
+    }
+  },
+  "deletion": {
+    "schedule": {
+      "cron": {
+        "expression": "*/2 * * * *",
+        "timezone": "America/Los_Angeles"
+      }
+    },
+    "condition": {
+      "max_count": 5
+    }
+  },
+  "snapshot_config": {
+    "repository": "repo",
+    "date_format": "yyyy-MM-dd-HH:mm",
+    "indices": "*",
+    "partial": "false",
+    "include_global_state": "false",
+    "ignore_unavailable": "true",
+    "metadata": {
+      "taken_by": "snapshot management"
+    }
+  }
+}
+
+###
+#  "schedule": {
+#    "interval": {
+#      "start_time": 1645596970,
+#      "period": 1,
+#      "unit": "MINUTES"
+#    }
+#  },
+
+### register repo
+PUT localhost:9200/_snapshot/repo
+Content-Type: application/json
+
+{
+  "type": "fs",
+  "settings": {
+    "location": "my_backup_location"
+  }
+}
+
+### delete repo
+DELETE localhost:9200/_snapshot/repo
+
+### create snapshot
+PUT localhost:9200/_snapshot/repo/my_snapshot
+
+### delete snapshot
+DELETE localhost:9200/_snapshot/repo/test
+
+### get snapshot status
+GET localhost:9200/_snapshot/repo/daily_snapshot*

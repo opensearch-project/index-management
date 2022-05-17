@@ -10,7 +10,7 @@ import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.LEGACY_ROL
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.ROLLUP_JOBS_BASE_URI
 import org.opensearch.indexmanagement.rollup.action.stop.StopRollupAction
 import org.opensearch.indexmanagement.rollup.action.stop.StopRollupRequest
-import org.opensearch.indexmanagement.rollup.model.Rollup
+import org.opensearch.indexmanagement.util.NO_ID
 import org.opensearch.rest.BaseRestHandler
 import org.opensearch.rest.BaseRestHandler.RestChannelConsumer
 import org.opensearch.rest.RestHandler.ReplacedRoute
@@ -41,8 +41,8 @@ class RestStopRollupAction : BaseRestHandler() {
 
     @Throws(IOException::class)
     override fun prepareRequest(request: RestRequest, client: NodeClient): RestChannelConsumer {
-        val id = request.param("rollupID", Rollup.NO_ID)
-        if (Rollup.NO_ID == id) {
+        val id = request.param("rollupID", NO_ID)
+        if (NO_ID == id) {
             throw IllegalArgumentException("Missing rollup ID")
         }
 

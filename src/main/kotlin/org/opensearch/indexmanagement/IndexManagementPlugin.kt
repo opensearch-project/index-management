@@ -111,6 +111,13 @@ import org.opensearch.indexmanagement.rollup.resthandler.RestStopRollupAction
 import org.opensearch.indexmanagement.rollup.settings.LegacyOpenDistroRollupSettings
 import org.opensearch.indexmanagement.rollup.settings.RollupSettings
 import org.opensearch.indexmanagement.settings.IndexManagementSettings
+import org.opensearch.indexmanagement.snapshotmanagement.api.resthandler.RestSMPolicyHandler
+import org.opensearch.indexmanagement.snapshotmanagement.api.transport.SMActions
+import org.opensearch.indexmanagement.snapshotmanagement.api.transport.delete.TransportDeleteSMPolicyAction
+import org.opensearch.indexmanagement.snapshotmanagement.api.transport.get.TransportGetSMPolicyAction
+import org.opensearch.indexmanagement.snapshotmanagement.api.transport.index.TransportIndexSMPolicyAction
+import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata
+import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy
 import org.opensearch.indexmanagement.spi.IndexManagementExtension
 import org.opensearch.indexmanagement.spi.indexstatemanagement.IndexMetadataService
 import org.opensearch.indexmanagement.spi.indexstatemanagement.StatusChecker
@@ -164,6 +171,8 @@ import java.util.function.Supplier
 @Suppress("TooManyFunctions")
 class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin, ExtensiblePlugin, Plugin() {
 
+    private val log = LogManager.getLogger(javaClass)
+
     private val logger = LogManager.getLogger(javaClass)
     lateinit var indexManagementIndices: IndexManagementIndices
     lateinit var clusterService: ClusterService
@@ -187,6 +196,8 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
         const val INDEX_MANAGEMENT_JOB_TYPE = "opendistro-index-management"
         const val INDEX_STATE_MANAGEMENT_HISTORY_TYPE = "managed_index_meta_data"
 
+        const val SM_BASE_URI = "$PLUGINS_BASE_URI/_sm"
+
         const val OLD_PLUGIN_NAME = "opendistro-im"
         const val OPEN_DISTRO_BASE_URI = "/_opendistro"
         const val LEGACY_ISM_BASE_URI = "$OPEN_DISTRO_BASE_URI/_ism"
@@ -208,6 +219,7 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
     @Suppress("ComplexMethod")
     override fun getJobParser(): ScheduledJobParser {
         return ScheduledJobParser { xcp, id, jobDocVersion ->
+            log.info("sm dev: plugin job parser")
             ensureExpectedToken(Token.START_OBJECT, xcp.nextToken(), xcp)
             while (xcp.nextToken() != Token.END_OBJECT) {
                 val fieldName = xcp.currentName()
@@ -233,6 +245,12 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
                         return@ScheduledJobParser null
                     }
                     ManagedIndexMetaData.MANAGED_INDEX_METADATA_TYPE -> {
+                        return@ScheduledJobParser null
+                    }
+                    SMPolicy.SM_TYPE -> {
+                        return@ScheduledJobParser SMPolicy.parse(xcp, id, jobDocVersion.seqNo, jobDocVersion.primaryTerm)
+                    }
+                    SMMetadata.SM_METADATA_TYPE -> {
                         return@ScheduledJobParser null
                     }
                     else -> {
@@ -300,7 +318,8 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
             RestDeleteTransformAction(),
             RestExplainTransformAction(),
             RestStartTransformAction(),
-            RestStopTransformAction()
+            RestStopTransformAction(),
+            RestSMPolicyHandler(),
         )
     }
 
@@ -502,7 +521,10 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
             ActionPlugin.ActionHandler(ExplainTransformAction.INSTANCE, TransportExplainTransformAction::class.java),
             ActionPlugin.ActionHandler(StartTransformAction.INSTANCE, TransportStartTransformAction::class.java),
             ActionPlugin.ActionHandler(StopTransformAction.INSTANCE, TransportStopTransformAction::class.java),
-            ActionPlugin.ActionHandler(ManagedIndexAction.INSTANCE, TransportManagedIndexAction::class.java)
+            ActionPlugin.ActionHandler(ManagedIndexAction.INSTANCE, TransportManagedIndexAction::class.java),
+            ActionPlugin.ActionHandler(SMActions.INDEX_SM_ACTION_TYPE, TransportIndexSMPolicyAction::class.java),
+            ActionPlugin.ActionHandler(SMActions.GET_SM_ACTION_TYPE, TransportGetSMPolicyAction::class.java),
+            ActionPlugin.ActionHandler(SMActions.DELETE_SM_ACTION_TYPE, TransportDeleteSMPolicyAction::class.java),
         )
     }
 

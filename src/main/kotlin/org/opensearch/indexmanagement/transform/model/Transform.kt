@@ -39,6 +39,7 @@ import org.opensearch.indexmanagement.opensearchapi.optionalUserField
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.transform.TransformSearchService
 import org.opensearch.indexmanagement.util.IndexUtils
+import org.opensearch.indexmanagement.util.NO_ID
 import org.opensearch.jobscheduler.spi.ScheduledJobParameter
 import org.opensearch.jobscheduler.spi.schedule.CronSchedule
 import org.opensearch.jobscheduler.spi.schedule.IntervalSchedule
@@ -264,7 +265,6 @@ data class Transform(
 
         val supportedAggregations = listOf("sum", "max", "min", "value_count", "avg", "scripted_metric", "percentiles")
         const val LOCK_DURATION_SECONDS = 1800L
-        const val NO_ID = ""
         const val TRANSFORM_TYPE = "transform"
         const val TRANSFORM_ID_FIELD = "transform_id"
         const val ENABLED_FIELD = "enabled"

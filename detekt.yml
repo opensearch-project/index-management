@@ -1,6 +1,6 @@
 # TODO: Remove this before initial release, only for developmental purposes
 build:
-  maxIssues: 20
+  maxIssues: 100
 
 exceptions:
   TooGenericExceptionCaught:
