@@ -5,15 +5,13 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.step.shrink
 
-import org.apache.logging.log4j.LogManager
-import org.opensearch.ExceptionsHelper
-import org.opensearch.OpenSearchSecurityException
 import org.opensearch.action.admin.cluster.node.stats.NodesStatsRequest
 import org.opensearch.action.admin.cluster.node.stats.NodesStatsResponse
 import org.opensearch.action.admin.cluster.reroute.ClusterRerouteRequest
 import org.opensearch.action.admin.cluster.reroute.ClusterRerouteResponse
 import org.opensearch.action.admin.indices.stats.IndicesStatsRequest
 import org.opensearch.action.admin.indices.stats.IndicesStatsResponse
+import org.opensearch.action.admin.indices.stats.ShardStats
 import org.opensearch.action.support.master.AcknowledgedResponse
 import org.opensearch.client.Client
 import org.opensearch.cluster.metadata.IndexMetadata.SETTING_BLOCKS_WRITE
@@ -24,9 +22,9 @@ import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.collect.Tuple
 import org.opensearch.common.settings.Settings
 import org.opensearch.index.shard.DocsStats
+import org.opensearch.index.store.StoreStats
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
 import org.opensearch.indexmanagement.indexstatemanagement.action.ShrinkAction
-import org.opensearch.indexmanagement.indexstatemanagement.action.ShrinkAction.Companion.getSecurityFailureMessage
 import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexConfig
 import org.opensearch.indexmanagement.indexstatemanagement.util.getIntervalFromManagedIndexConfig
 import org.opensearch.indexmanagement.indexstatemanagement.util.getManagedIndexConfig
@@ -37,7 +35,6 @@ import org.opensearch.indexmanagement.indexstatemanagement.util.isIndexGreen
 import org.opensearch.indexmanagement.indexstatemanagement.util.issueUpdateSettingsRequest
 import org.opensearch.indexmanagement.opensearchapi.convertToMap
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
-import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ActionProperties
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ShrinkActionProperties
@@ -50,7 +47,6 @@ import org.opensearch.jobscheduler.spi.utils.LockService
 import org.opensearch.script.Script
 import org.opensearch.script.ScriptService
 import org.opensearch.script.TemplateScript
-import org.opensearch.transport.RemoteTransportException
 import java.lang.RuntimeException
 import java.util.PriorityQueue
 import kotlin.math.ceil
@@ -59,106 +55,81 @@ import kotlin.math.min
 import kotlin.math.sqrt
 
 @SuppressWarnings("TooManyFunctions")
-class AttemptMoveShardsStep(private val action: ShrinkAction) : Step(name) {
-    private val logger = LogManager.getLogger(javaClass)
-    private var stepStatus = StepStatus.STARTING
-    private var info: Map<String, Any>? = null
-    private var shrinkActionProperties: ShrinkActionProperties? = null
+class AttemptMoveShardsStep(private val action: ShrinkAction) : ShrinkStep(name, false, false, false) {
 
-    @Suppress("TooGenericExceptionCaught", "ComplexMethod", "ReturnCount", "LongMethod")
-    override suspend fun execute(): Step {
-        val context = this.context ?: return this
+    @Suppress("ReturnCount")
+    override suspend fun wrappedExecute(context: StepContext): AttemptMoveShardsStep {
         val client = context.client
         val indexName = context.metadata.index
+        val shrinkTargetIndexName =
+            compileTemplate(action.targetIndexTemplate, context.metadata, indexName + DEFAULT_TARGET_SUFFIX, context.scriptService)
 
-        try {
-            val shrinkTargetIndexName =
-                compileTemplate(action.targetIndexTemplate, context.metadata, indexName + DEFAULT_TARGET_SUFFIX, context.scriptService)
+        if (targetIndexNameIsInvalid(context.clusterService, shrinkTargetIndexName)) return this
 
-            if (targetIndexNameIsInvalid(context.clusterService, shrinkTargetIndexName)) return this
-
-            if (!isIndexGreen(client, indexName)) {
-                info = mapOf("message" to INDEX_NOT_GREEN_MESSAGE)
-                stepStatus = StepStatus.CONDITION_NOT_MET
-                return this
-            }
-
-            if (shouldFailUnsafe(context.clusterService, indexName)) return this
-
-            // If there is only one primary shard we complete the step and in getUpdatedManagedIndexMetadata will start a no-op
-            val numOriginalShards = context.clusterService.state().metadata.indices[indexName].numberOfShards
-            if (numOriginalShards == 1) {
-                info = mapOf("message" to ONE_PRIMARY_SHARD_MESSAGE)
-                stepStatus = StepStatus.COMPLETED
-                return this
-            }
-
-            // Get the size of the index
-            val statsRequest = IndicesStatsRequest().indices(indexName)
-            val statsResponse: IndicesStatsResponse = client.admin().indices().suspendUntil {
-                stats(statsRequest, it)
-            }
-            val statsStore = statsResponse.total.store
-            val statsDocs = statsResponse.total.docs
-            if (statsStore == null || statsDocs == null) {
-                logger.error("Failed to move shards in shrink action as IndicesStatsResponse was missing store or doc stats.")
-                fail(FAILURE_MESSAGE)
-                return this
-            }
-            val indexSize = statsStore.sizeInBytes
-            val numTargetShards = getNumTargetShards(numOriginalShards, indexSize)
-
-            if (shouldFailTooManyDocuments(statsDocs, numTargetShards)) return this
-
-            val originalIndexSettings = getOriginalSettings(indexName, context.clusterService)
-
-            // get the nodes with enough memory in increasing order of free space
-            val suitableNodes = findSuitableNodes(context, statsResponse, indexSize)
-
-            // Get the job interval to use in determining the lock length
-            val interval = getJobIntervalSeconds(context.metadata.indexUuid, client)
-            // iterate through the nodes and try to acquire a lock on one
-            val lockToNodeName: Pair<LockModel, String>? = acquireLockFromNodeList(context.lockService, suitableNodes, interval)
-            if (lockToNodeName == null) {
-                logger.info("$indexName could not find available node to shrink onto.")
-                info = mapOf("message" to NO_AVAILABLE_NODES_MESSAGE)
-                stepStatus = StepStatus.CONDITION_NOT_MET
-                return this
-            }
-            val (lock, nodeName) = lockToNodeName
-            shrinkActionProperties = ShrinkActionProperties(
-                nodeName,
-                shrinkTargetIndexName,
-                numTargetShards,
-                lock.primaryTerm,
-                lock.seqNo,
-                lock.lockTime.epochSecond,
-                lock.lockDurationSeconds,
-                originalIndexSettings
-            )
-
-            setToReadOnlyAndMoveIndexToNode(context, nodeName, lock)
-            info = mapOf("message" to getSuccessMessage(nodeName))
-            stepStatus = StepStatus.COMPLETED
-            return this
-        } catch (e: OpenSearchSecurityException) {
-            fail(getSecurityFailureMessage(e.localizedMessage), e.message, e)
-            return this
-        } catch (e: RemoteTransportException) {
-            val unwrappedException = ExceptionsHelper.unwrapCause(e)
-            fail(FAILURE_MESSAGE, cause = e.message, e = unwrappedException as java.lang.Exception)
-            return this
-        } catch (e: Exception) {
-            fail(FAILURE_MESSAGE, e.message, e)
+        if (!isIndexGreen(client, indexName)) {
+            info = mapOf("message" to INDEX_NOT_GREEN_MESSAGE)
+            stepStatus = StepStatus.CONDITION_NOT_MET
             return this
         }
+
+        if (shouldFailUnsafe(context.clusterService, indexName)) return this
+
+        // If there is only one primary shard we complete the step and in getUpdatedManagedIndexMetadata will start a no-op
+        val numOriginalShards = context.clusterService.state().metadata.indices[indexName].numberOfShards
+        if (numOriginalShards == 1) {
+            info = mapOf("message" to ONE_PRIMARY_SHARD_MESSAGE)
+            stepStatus = StepStatus.COMPLETED
+            return this
+        }
+
+        // Get stats on index size and docs
+        val (statsStore, statsDocs, shardStats) = getIndexStats(indexName, client) ?: return this
+        val indexSize = statsStore.sizeInBytes
+        val numTargetShards = getNumTargetShards(numOriginalShards, indexSize)
+
+        if (shouldFailTooManyDocuments(statsDocs, numTargetShards)) return this
+
+        val originalIndexSettings = getOriginalSettings(indexName, context.clusterService)
+
+        // get the nodes with enough memory in increasing order of free space
+        val suitableNodes = findSuitableNodes(context, shardStats, indexSize)
+
+        // Get the job interval to use in determining the lock length
+        val interval = getJobIntervalSeconds(context.metadata.indexUuid, client)
+        // iterate through the nodes and try to acquire a lock on one
+        val (lock, nodeName) = acquireLockFromNodeList(context.lockService, suitableNodes, interval, indexName) ?: return this
+        shrinkActionProperties = ShrinkActionProperties(
+            nodeName,
+            shrinkTargetIndexName,
+            numTargetShards,
+            lock.primaryTerm,
+            lock.seqNo,
+            lock.lockTime.epochSecond,
+            lock.lockDurationSeconds,
+            originalIndexSettings
+        )
+
+        setToReadOnlyAndMoveIndexToNode(context, nodeName, lock)
+        info = mapOf("message" to getSuccessMessage(nodeName))
+        stepStatus = StepStatus.COMPLETED
+        return this
     }
 
-    private fun fail(message: String, cause: String? = null, e: Exception? = null) {
-        e?.let { logger.error(message, e) }
-        info = if (cause == null) mapOf("message" to message) else mapOf("message" to message, "cause" to cause)
-        stepStatus = StepStatus.FAILED
-        shrinkActionProperties = null
+    override fun getGenericFailureMessage(): String = FAILURE_MESSAGE
+
+    private suspend fun getIndexStats(indexName: String, client: Client): Triple<StoreStats, DocsStats, Array<ShardStats>>? {
+        val statsRequest = IndicesStatsRequest().indices(indexName)
+        val statsResponse: IndicesStatsResponse = client.admin().indices().suspendUntil {
+            stats(statsRequest, it)
+        }
+        val statsStore = statsResponse.total.store
+        val statsDocs = statsResponse.total.docs
+        val statsShards = statsResponse.shards
+        if (statsStore == null || statsDocs == null || statsShards == null) {
+            fail(FAILURE_MESSAGE, "Failed to move shards in shrink action as IndicesStatsResponse was missing some stats.")
+            return null
+        }
+        return Triple(statsStore, statsDocs, statsShards)
     }
 
     // Gets the routing and write block setting of the index and returns it in a map of setting name to setting
@@ -202,8 +173,7 @@ class AttemptMoveShardsStep(private val action: ShrinkAction) : Step(name) {
         val totalDocs: Long = docsStats.count
         val docsPerTargetShard: Long = totalDocs / numTargetShards
         if (docsPerTargetShard > MAXIMUM_DOCS_PER_SHARD) {
-            logger.error(TOO_MANY_DOCS_FAILURE_MESSAGE)
-            fail(TOO_MANY_DOCS_FAILURE_MESSAGE)
+            fail(TOO_MANY_DOCS_FAILURE_MESSAGE, TOO_MANY_DOCS_FAILURE_MESSAGE)
             return true
         }
         return false
@@ -231,8 +201,7 @@ class AttemptMoveShardsStep(private val action: ShrinkAction) : Step(name) {
         val indexExists = clusterService.state().metadata.indices.containsKey(shrinkTargetIndexName)
         if (indexExists) {
             val indexExistsMessage = getIndexExistsMessage(shrinkTargetIndexName)
-            logger.error(indexExistsMessage)
-            fail(indexExistsMessage)
+            fail(indexExistsMessage, indexExistsMessage)
             return true
         }
         val exceptionGenerator: (String, String) -> RuntimeException = { index_name, reason -> InvalidIndexNameException(index_name, reason) }
@@ -255,7 +224,7 @@ class AttemptMoveShardsStep(private val action: ShrinkAction) : Step(name) {
         } finally {
             isUpdateAcknowledged = response != null && response.isAcknowledged
             if (!isUpdateAcknowledged) {
-                fail(UPDATE_FAILED_MESSAGE)
+                fail(UPDATE_FAILED_MESSAGE, UPDATE_FAILED_MESSAGE)
                 val released: Boolean = lockService.suspendUntil { release(lock, it) }
                 if (!released) {
                     logger.error("Failed to release Shrink action lock on node [$node]")
@@ -272,7 +241,8 @@ class AttemptMoveShardsStep(private val action: ShrinkAction) : Step(name) {
     private suspend fun acquireLockFromNodeList(
         lockService: LockService,
         suitableNodes: List<String>,
-        jobIntervalSeconds: Long?
+        jobIntervalSeconds: Long?,
+        indexName: String
     ): Pair<LockModel, String>? {
         for (nodeName in suitableNodes) {
             val lockID = getShrinkLockID(nodeName)
@@ -283,6 +253,9 @@ class AttemptMoveShardsStep(private val action: ShrinkAction) : Step(name) {
                 return lock to nodeName
             }
         }
+        logger.info("Shrink action could not find available node to shrink onto for index [$indexName].")
+        info = mapOf("message" to NO_AVAILABLE_NODES_MESSAGE)
+        stepStatus = StepStatus.CONDITION_NOT_MET
         return null
     }
 
@@ -293,7 +266,7 @@ class AttemptMoveShardsStep(private val action: ShrinkAction) : Step(name) {
     @SuppressWarnings("NestedBlockDepth", "ComplexMethod")
     private suspend fun findSuitableNodes(
         stepContext: StepContext,
-        indicesStatsResponse: IndicesStatsResponse,
+        shardStats: Array<ShardStats>,
         indexSizeInBytes: Long
     ): List<String> {
         val nodesStatsReq = NodesStatsRequest().addMetric(OS_METRIC)
@@ -310,7 +283,7 @@ class AttemptMoveShardsStep(private val action: ShrinkAction) : Step(name) {
                 nodesWithSpace.add(Tuple(remainingMem, node.node.name))
             }
         }
-        val shardIdToNodeList: Map<Int, Set<String>> = getShardIdToNodeNameSet(indicesStatsResponse, stepContext.clusterService.state().nodes)
+        val shardIdToNodeList: Map<Int, Set<String>> = getShardIdToNodeNameSet(shardStats, stepContext.clusterService.state().nodes)
         val suitableNodes: ArrayList<String> = ArrayList()
         // For each node, do a dry run of moving all shards to the node to make sure that there aren't any other blockers
         // to the allocation.
@@ -319,7 +292,7 @@ class AttemptMoveShardsStep(private val action: ShrinkAction) : Step(name) {
             val indexName = stepContext.metadata.index
             val clusterRerouteRequest = ClusterRerouteRequest().explain(true).dryRun(true)
             val requestedShardIds: MutableSet<Int> = mutableSetOf()
-            for (shard in indicesStatsResponse.shards) {
+            for (shard in shardStats) {
                 val shardId = shard.shardRouting.shardId()
                 val currentShardNode = stepContext.clusterService.state().nodes[shard.shardRouting.currentNodeId()]
                 // Don't attempt a dry run for shards which have a copy already on that node
@@ -330,7 +303,7 @@ class AttemptMoveShardsStep(private val action: ShrinkAction) : Step(name) {
             val clusterRerouteResponse: ClusterRerouteResponse =
                 stepContext.client.admin().cluster().suspendUntil { reroute(clusterRerouteRequest, it) }
             val numYesDecisions = clusterRerouteResponse.explanations.explanations().count { it.decisions().type().equals((Decision.Type.YES)) }
-            // Should be the same number of yes decisions as the number of primary shards
+            // Should be the same number of yes decisions as the number of requests
             if (numYesDecisions == requestedShardIds.size) {
                 suitableNodes.add(sizeNodeTuple.v2())
             }

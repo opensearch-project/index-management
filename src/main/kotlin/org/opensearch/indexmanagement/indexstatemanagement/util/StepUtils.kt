@@ -3,6 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+@file:Suppress("TooManyFunctions")
+
 package org.opensearch.indexmanagement.indexstatemanagement.util
 
 import org.apache.logging.log4j.Logger
@@ -10,7 +12,7 @@ import org.opensearch.action.admin.cluster.health.ClusterHealthRequest
 import org.opensearch.action.admin.cluster.health.ClusterHealthResponse
 import org.opensearch.action.admin.cluster.node.stats.NodeStats
 import org.opensearch.action.admin.indices.settings.put.UpdateSettingsRequest
-import org.opensearch.action.admin.indices.stats.IndicesStatsResponse
+import org.opensearch.action.admin.indices.stats.ShardStats
 import org.opensearch.action.support.master.AcknowledgedResponse
 import org.opensearch.client.Client
 import org.opensearch.cluster.metadata.IndexMetadata
@@ -42,26 +44,18 @@ suspend fun issueUpdateSettingsRequest(client: Client, indexName: String, settin
 
 suspend fun releaseShrinkLock(
     shrinkActionProperties: ShrinkActionProperties,
-    lockService: LockService,
-    logger: Logger
-) {
+    lockService: LockService
+): Boolean {
     val lock: LockModel = getShrinkLockModel(shrinkActionProperties)
-    val released: Boolean = lockService.suspendUntil { release(lock, it) }
-    if (!released) {
-        logger.error("Failed to release Shrink action lock on node [${shrinkActionProperties.nodeName}]")
-    }
+    return lockService.suspendUntil { release(lock, it) }
 }
 
 suspend fun deleteShrinkLock(
     shrinkActionProperties: ShrinkActionProperties,
-    lockService: LockService,
-    logger: Logger
-) {
+    lockService: LockService
+): Boolean {
     val lockID = getShrinkLockID(shrinkActionProperties.nodeName)
-    val deleted: Boolean = lockService.suspendUntil { deleteLock(lockID, it) }
-    if (!deleted) {
-        logger.error("Failed to delete Shrink action lock on node [${shrinkActionProperties.nodeName}]")
-    }
+    return lockService.suspendUntil { deleteLock(lockID, it) }
 }
 
 suspend fun renewShrinkLock(
@@ -213,9 +207,9 @@ fun getShrinkLockID(nodeName: String): String {
 
 // Creates a map of shardIds to the set of node names which the shard copies reside on. For example, with 2 replicas
 // each shardId would have a set containing 3 node names, for the nodes of the primary and two replicas.
-fun getShardIdToNodeNameSet(indicesStatsResponse: IndicesStatsResponse, nodes: DiscoveryNodes): Map<Int, Set<String>> {
+fun getShardIdToNodeNameSet(shardStats: Array<ShardStats>, nodes: DiscoveryNodes): Map<Int, Set<String>> {
     val shardIdToNodeList: MutableMap<Int, MutableSet<String>> = mutableMapOf()
-    for (shard in indicesStatsResponse.shards) {
+    for (shard in shardStats) {
         val shardId = shard.shardRouting.shardId().id
         // If nodeName is null, then the nodes could have changed since the indicesStatsResponse, just skip adding it
         val nodeName: String = nodes[shard.shardRouting.currentNodeId()].name ?: continue
