@@ -18,7 +18,7 @@ import org.opensearch.indexmanagement.opensearchapi.contentParser
 import org.opensearch.indexmanagement.opensearchapi.parseWithType
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.BaseTransportAction
-import org.opensearch.indexmanagement.snapshotmanagement.api.transport.SMActions.GET_SM_ACTION_NAME
+import org.opensearch.indexmanagement.snapshotmanagement.api.transport.SMActions.GET_SM_POLICY_ACTION_NAME
 import org.opensearch.indexmanagement.snapshotmanagement.smPolicyNameToDocId
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy
 import org.opensearch.transport.TransportService
@@ -28,7 +28,7 @@ class TransportGetSMPolicyAction @Inject constructor(
     transportService: TransportService,
     actionFilters: ActionFilters,
 ) : BaseTransportAction<GetSMPolicyRequest, GetSMPolicyResponse>(
-    GET_SM_ACTION_NAME, transportService, client, actionFilters, ::GetSMPolicyRequest
+    GET_SM_POLICY_ACTION_NAME, transportService, client, actionFilters, ::GetSMPolicyRequest
 ) {
 
     private val log = LogManager.getLogger(javaClass)

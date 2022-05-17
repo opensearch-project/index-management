@@ -16,7 +16,7 @@ import org.opensearch.commons.authuser.User
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.BaseTransportAction
-import org.opensearch.indexmanagement.snapshotmanagement.api.transport.SMActions.DELETE_SM_ACTION_NAME
+import org.opensearch.indexmanagement.snapshotmanagement.api.transport.SMActions.DELETE_SM_POLICY_ACTION_NAME
 import org.opensearch.indexmanagement.snapshotmanagement.smPolicyNameToDocId
 import org.opensearch.transport.TransportService
 
@@ -25,7 +25,7 @@ class TransportDeleteSMPolicyAction @Inject constructor(
     transportService: TransportService,
     actionFilters: ActionFilters,
 ) : BaseTransportAction<DeleteSMPolicyRequest, DeleteSMPolicyResponse>(
-    DELETE_SM_ACTION_NAME, transportService, client, actionFilters, ::DeleteSMPolicyRequest
+    DELETE_SM_POLICY_ACTION_NAME, transportService, client, actionFilters, ::DeleteSMPolicyRequest
 ) {
 
     private val log = LogManager.getLogger(javaClass)

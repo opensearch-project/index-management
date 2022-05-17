@@ -525,9 +525,9 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
             ActionPlugin.ActionHandler(StartTransformAction.INSTANCE, TransportStartTransformAction::class.java),
             ActionPlugin.ActionHandler(StopTransformAction.INSTANCE, TransportStopTransformAction::class.java),
             ActionPlugin.ActionHandler(ManagedIndexAction.INSTANCE, TransportManagedIndexAction::class.java),
-            ActionPlugin.ActionHandler(SMActions.INDEX_SM_ACTION_TYPE, TransportIndexSMPolicyAction::class.java),
-            ActionPlugin.ActionHandler(SMActions.GET_SM_ACTION_TYPE, TransportGetSMPolicyAction::class.java),
-            ActionPlugin.ActionHandler(SMActions.DELETE_SM_ACTION_TYPE, TransportDeleteSMPolicyAction::class.java),
+            ActionPlugin.ActionHandler(SMActions.INDEX_SM_POLICY_ACTION_TYPE, TransportIndexSMPolicyAction::class.java),
+            ActionPlugin.ActionHandler(SMActions.GET_SM_POLICY_ACTION_TYPE, TransportGetSMPolicyAction::class.java),
+            ActionPlugin.ActionHandler(SMActions.DELETE_SM_POLICY_ACTION_TYPE, TransportDeleteSMPolicyAction::class.java),
         )
     }
 

@@ -9,8 +9,8 @@ import org.apache.logging.log4j.LogManager
 import org.opensearch.client.node.NodeClient
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.SM_BASE_URI
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.SMActions
-import org.opensearch.indexmanagement.snapshotmanagement.api.transport.SMActions.DELETE_SM_ACTION_TYPE
-import org.opensearch.indexmanagement.snapshotmanagement.api.transport.SMActions.GET_SM_ACTION_TYPE
+import org.opensearch.indexmanagement.snapshotmanagement.api.transport.SMActions.DELETE_SM_POLICY_ACTION_TYPE
+import org.opensearch.indexmanagement.snapshotmanagement.api.transport.SMActions.GET_SM_POLICY_ACTION_TYPE
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.delete.DeleteSMPolicyRequest
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.get.GetSMPolicyRequest
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.index.IndexSMPolicyRequest
@@ -69,7 +69,7 @@ class RestSMPolicyHandler : BaseRestHandler() {
 
         return RestChannelConsumer {
             client.execute(
-                GET_SM_ACTION_TYPE,
+                GET_SM_POLICY_ACTION_TYPE,
                 GetSMPolicyRequest(policyName),
                 RestToXContentListener(it)
             )
@@ -91,7 +91,7 @@ class RestSMPolicyHandler : BaseRestHandler() {
 
         return RestChannelConsumer {
             client.execute(
-                SMActions.INDEX_SM_ACTION_TYPE,
+                SMActions.INDEX_SM_POLICY_ACTION_TYPE,
                 IndexSMPolicyRequest(policy, create),
                 RestToXContentListener(it)
             )
@@ -106,7 +106,7 @@ class RestSMPolicyHandler : BaseRestHandler() {
 
         return RestChannelConsumer {
             client.execute(
-                DELETE_SM_ACTION_TYPE,
+                DELETE_SM_POLICY_ACTION_TYPE,
                 DeleteSMPolicyRequest(policyName),
                 RestToXContentListener(it)
             )
