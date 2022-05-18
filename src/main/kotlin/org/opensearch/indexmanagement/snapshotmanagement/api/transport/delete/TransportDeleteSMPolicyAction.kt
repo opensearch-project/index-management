@@ -6,7 +6,6 @@
 package org.opensearch.indexmanagement.snapshotmanagement.api.transport.delete
 
 import org.apache.logging.log4j.LogManager
-import org.opensearch.action.delete.DeleteRequest
 import org.opensearch.action.delete.DeleteResponse
 import org.opensearch.action.support.ActionFilters
 import org.opensearch.client.Client
@@ -17,14 +16,14 @@ import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANA
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.BaseTransportAction
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.SMActions.DELETE_SM_ACTION_NAME
-import org.opensearch.indexmanagement.snapshotmanagement.smPolicyNameToDocId
+import org.opensearch.indexmanagement.snapshotmanagement.getSMPolicy
 import org.opensearch.transport.TransportService
 
 class TransportDeleteSMPolicyAction @Inject constructor(
     client: Client,
     transportService: TransportService,
     actionFilters: ActionFilters,
-) : BaseTransportAction<DeleteSMPolicyRequest, DeleteSMPolicyResponse>(
+) : BaseTransportAction<DeleteSMPolicyRequest, DeleteResponse>(
     DELETE_SM_ACTION_NAME, transportService, client, actionFilters, ::DeleteSMPolicyRequest
 ) {
 
@@ -34,9 +33,12 @@ class TransportDeleteSMPolicyAction @Inject constructor(
         request: DeleteSMPolicyRequest,
         user: User?,
         threadContext: ThreadContext.StoredContext
-    ): DeleteSMPolicyResponse {
-        val deleteReq = DeleteRequest(INDEX_MANAGEMENT_INDEX, smPolicyNameToDocId(request.policyName))
-        val deleteRes: DeleteResponse = client.suspendUntil { delete(deleteReq, it) }
-        return DeleteSMPolicyResponse(deleteRes.status().toString())
+    ): DeleteResponse {
+        val smPolicy = getSMPolicy(client, request.id())
+
+        // TODO verify permissions
+
+        val deleteReq = request.index(INDEX_MANAGEMENT_INDEX)
+        return client.suspendUntil { delete(deleteReq, it) }
     }
 }

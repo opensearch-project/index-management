@@ -320,6 +320,7 @@ inline fun <T> XContentParser.nullValueHandler(block: XContentParser.() -> T): T
 
 inline fun <T> XContentParser.parseArray(block: XContentParser.() -> T): List<T> {
     val resArr = mutableListOf<T>()
+    if (currentToken() == Token.VALUE_NULL) return resArr
     ensureExpectedToken(Token.START_ARRAY, currentToken(), this)
     while (nextToken() != Token.END_ARRAY) {
         resArr.add(block())

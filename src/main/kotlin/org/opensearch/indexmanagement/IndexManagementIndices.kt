@@ -27,6 +27,9 @@ import org.opensearch.indexmanagement.indexstatemanagement.util.INDEX_NUMBER_OF_
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.util.IndexUtils
 import org.opensearch.indexmanagement.util.OpenForTesting
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
+import kotlin.coroutines.suspendCoroutine
 
 @OpenForTesting
 class IndexManagementIndices(
@@ -68,6 +71,17 @@ class IndexManagementIndices(
             )
         } else {
             IndexUtils.checkAndUpdateConfigIndexMapping(clusterService.state(), client, actionListener)
+        }
+    }
+
+    suspend fun checkAndUpdateIMConfigIndex(): AcknowledgedResponse {
+        return suspendCoroutine { cont ->
+            checkAndUpdateIMConfigIndex(
+                object : ActionListener<AcknowledgedResponse> {
+                    override fun onResponse(response: AcknowledgedResponse) = cont.resume(response)
+                    override fun onFailure(e: Exception) = cont.resumeWithException(e)
+                }
+            )
         }
     }
 
