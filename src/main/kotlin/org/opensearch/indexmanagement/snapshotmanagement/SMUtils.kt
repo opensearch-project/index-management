@@ -21,6 +21,8 @@ import org.opensearch.common.xcontent.XContentType
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
 import org.opensearch.indexmanagement.opensearchapi.parseWithType
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
+import org.opensearch.indexmanagement.snapshotmanagement.engine.states.SMState
+import org.opensearch.indexmanagement.snapshotmanagement.model.InfoType
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy
 import org.opensearch.jobscheduler.spi.schedule.CronSchedule
@@ -151,3 +153,83 @@ fun generateFormatTime(dateFormat: String): String {
 // }
 
 fun formatUserMsg(msg: String) = "[${Instant.now()}]: " + msg
+
+/**
+ * Build snapshot management metadata in a flattened fashion
+ */
+class SMMetadataBuilder(private var metadata: SMMetadata) {
+
+    fun build() = metadata
+
+    fun currentState(state: SMState): SMMetadataBuilder {
+        metadata = metadata.copy(
+            currentState = state
+        )
+        return this
+    }
+
+    fun nextCreationTime(time: Instant): SMMetadataBuilder {
+        metadata = metadata.copy(
+            creation = metadata.creation.copy(
+                trigger = metadata.creation.trigger.copy(
+                    time = time
+                )
+            )
+        )
+        return this
+    }
+
+    fun startedCreation(snapshotInfo: SMMetadata.SnapshotInfo?): SMMetadataBuilder {
+        metadata = metadata.copy(
+            creation = metadata.creation.copy(
+                started = snapshotInfo
+            )
+        )
+        return this
+    }
+
+    fun finishedCreation(snapshotInfo: SMMetadata.SnapshotInfo?): SMMetadataBuilder {
+        metadata = metadata.copy(
+            creation = metadata.creation.copy(
+                finished = snapshotInfo
+            )
+        )
+        return this
+    }
+
+    fun nextDeletionTime(time: Instant): SMMetadataBuilder {
+        metadata = metadata.copy(
+            deletion = metadata.deletion.copy(
+                trigger = metadata.deletion.trigger.copy(
+                    time = time
+                )
+            )
+        )
+        return this
+    }
+
+    fun startedDeletion(snapshotInfo: List<SMMetadata.SnapshotInfo>?): SMMetadataBuilder {
+        metadata = metadata.copy(
+            deletion = metadata.deletion.copy(
+                started = snapshotInfo
+            )
+        )
+        return this
+    }
+
+    fun deletionStartTime(time: Instant?): SMMetadataBuilder {
+        metadata = metadata.copy(
+            deletion = metadata.deletion.copy(
+                startedTime = time
+            )
+        )
+        return this
+    }
+
+    fun info(info: InfoType?): SMMetadataBuilder {
+        metadata = metadata.copy(
+            info = info
+        )
+        return this
+    }
+}

@@ -40,7 +40,8 @@ object SMRunner :
     }
 
     private val backoffPolicy: BackoffPolicy = BackoffPolicy.exponentialBackoff(
-        TimeValue.timeValueMillis(1000L), 3)
+        TimeValue.timeValueMillis(1000L), 3
+    )
 
     override fun runJob(job: ScheduledJobParameter, context: JobExecutionContext) {
         log.info("sm dev: Snapshot management running job: $job")

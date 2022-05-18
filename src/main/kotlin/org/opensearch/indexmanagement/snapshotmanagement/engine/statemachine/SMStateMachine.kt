@@ -9,6 +9,7 @@ import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.opensearch.action.index.IndexResponse
 import org.opensearch.client.Client
+import org.opensearch.indexmanagement.snapshotmanagement.SMMetadataBuilder
 import org.opensearch.indexmanagement.snapshotmanagement.engine.statemachine.StateMachineException.ExceptionCode
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.State.ExecutionResult
 import org.opensearch.indexmanagement.snapshotmanagement.engine.statemachine.StateMachineException.Companion.getUserMsg
@@ -27,40 +28,44 @@ class SMStateMachine(
     val job: SMPolicy,
     var metadata: SMMetadata
 ) : StateMachine() {
+
     val log: Logger = LogManager.getLogger("$javaClass [${smJobIdToPolicyName(job.id)}]")
 
     override var currentState: SMState = metadata.currentState.also {
-        log.info("Set state machine current state from metadata: ${metadata.currentState}")
+        log.info("Snapshot management state machine current state set to [${metadata.currentState}].")
     }
-
 
     override suspend fun next() {
         try {
             do {
                 val nextStates = smTransitions[currentState]
                 if (nextStates == null) {
-                    log.error("Cannot find the next states")
+                    // Unlikely to reach unless the metadata is tampered
+                    log.error("No next states for current state [$currentState].")
                     return
                 }
 
                 var result: ExecutionResult = ExecutionResult.Stay()
                 for (nextState in nextStates) {
                     currentState = nextState
-                    log.info("Start executing $currentState")
+                    log.info("sm dev: Start executing $currentState.")
                     result = nextState.instance.execute(this)
                     when (result) {
                         is ExecutionResult.Next -> {
-                            log.info("[$currentState] execution fully finished, moving to [$currentState].")
+                            log.info("[$currentState]'s execution fully finished.")
                             updateMetadata(result.metadataToSave)
-                            break // break the nextStates loop
+                            // break the nextStates loop so to avoid execute other lateral states
+                            break
                         }
                         is ExecutionResult.Stay -> {
                             log.info("[$currentState] execution not fully finished.")
-                            if (result.metadataToSave != null) updateMetadata(result.metadataToSave!!)
+                            val metadataToSave = result.metadataToSave
+                            metadataToSave?.let { updateMetadata(metadataToSave) }
+                            // can still execute other lateral states if exists
                         }
                         is ExecutionResult.Failure -> {
                             val ex = result.ex
-                            log.error("Caught exception while executing [$currentState], skipping to next execution.")
+                            log.error("Caught exception while executing [$currentState], will skip to the START state.")
                             var userMessage: String
                             if (ex is StateMachineException) {
                                 userMessage = ex.getUserMsg()
@@ -69,20 +74,21 @@ class SMStateMachine(
                                 userMessage = StateMachineException(ex).getUserMsg()
                                 log.error("Exception details: ", ex)
                             }
-                            val metadataToSave = metadata.copy(
-                                currentState = SMState.START,
-                                creation = metadata.creation.copy(
-                                    started = null,
-                                    finished = null,
-                                ),
-                                deletion = metadata.deletion.copy(
-                                    started = null,
-                                    startedTime = null,
-                                ),
-                                info = metadata.info.upsert(
-                                    "exception" to userMessage
-                                )
+
+                            val info = metadata.info.upsert(
+                                "exception" to userMessage
                             )
+                            val metadataToSave = SMMetadataBuilder(metadata)
+                                .currentState(SMState.START)
+                                .startedCreation(null)
+                                .finishedCreation(null)
+                                .startedDeletion(null)
+                                .deletionStartTime(null)
+                                .info(info)
+                                .build()
+
+                            log.info("sm dev: will metadata be changed? $metadata")
+                            log.info("sm dev: metadataToSave: $metadataToSave")
                             updateMetadata(metadataToSave)
 
                             // TODO error notification
@@ -91,11 +97,12 @@ class SMStateMachine(
                     }
                 }
                 if (result !is ExecutionResult.Next) {
-                    break // break the do while loop
+                    // Only Next result requires checking continuous flag
+                    break
                 }
             } while (currentState.instance.continuous)
         } catch (ex: Exception) {
-            // update metadata exception
+            // update metadata exception will be caught here
             log.error("Uncaught exception:", ex)
         }
     }

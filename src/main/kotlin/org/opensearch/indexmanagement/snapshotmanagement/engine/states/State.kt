@@ -7,29 +7,28 @@ package org.opensearch.indexmanagement.snapshotmanagement.engine.states
 
 import org.opensearch.indexmanagement.snapshotmanagement.engine.statemachine.SMStateMachine
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata
+import org.opensearch.jobscheduler.spi.ScheduledJobParameter
 
 /**
- * States contain different business logics
+ * States contain the action to execute
  *
- * Supposed to be a stateless singleton so that it can be
- *  re-used by multiple state machine contexts
- * State metadata is supposed to be handled by the context like [SMStateMachine]
+ * Execution metadata can be handled by the context object. e.g. [SMStateMachine]
  */
 interface State {
     /**
-     * In single job run, this flag indicating whether we can
-     * continue to execute the next state
+     * In single [ScheduledJobParameter] run, this flag indicates
+     * whether to continue executing next state
      */
     val continuous: Boolean
 
     suspend fun execute(context: SMStateMachine): ExecutionResult
 
     /**
-     * [Next]: go to the next vertical level state
-     * [Stay]: if cont=true, try executing the next same level states
-     *  like [CREATE_CONDITION_MET, DELETE_CONDITION_MET] in [SMState]
+     * [Next]: move to the next state in vertical direction
+     *  For vertical, lateral's meaning, refer to [smTransitions]
+     * [Stay]: stay in this lateral level, try executing the next lateral states
      *  if no more same level state, wait for next job run
-     * [Failure]: caught exception, skipping to the START state
+     * [Failure]: caught exception, will skip to the START state
      */
     sealed class ExecutionResult {
         data class Next(val metadataToSave: SMMetadata) : ExecutionResult()
