@@ -20,7 +20,7 @@ import org.opensearch.indexmanagement.opensearchapi.instant
 import org.opensearch.indexmanagement.opensearchapi.nullValueHandler
 import org.opensearch.indexmanagement.opensearchapi.optionalField
 import org.opensearch.indexmanagement.opensearchapi.optionalTimeField
-import org.opensearch.indexmanagement.snapshotmanagement.smDocIdToPolicyName
+import org.opensearch.indexmanagement.snapshotmanagement.smJobIdToPolicyName
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ActionTimeout
 import org.opensearch.indexmanagement.util.NO_ID
 import org.opensearch.jobscheduler.spi.ScheduledJobParameter
@@ -68,7 +68,7 @@ data class SMPolicy(
         return builder
             .startObject()
             .startObject(SM_TYPE)
-            .field(NAME_FIELD, smDocIdToPolicyName(id)) // for searching policy by name
+            .field(NAME_FIELD, smJobIdToPolicyName(id)) // for searching policy by name
             .optionalField(DESCRIPTION_FIELD, description)
             .field(CREATION_FIELD, creation)
             .field(DELETION_FIELD, deletion)

@@ -13,7 +13,7 @@ import org.opensearch.indexmanagement.snapshotmanagement.engine.statemachine.SMS
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.State.ExecutionResult
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata.Companion.upsert
-import org.opensearch.indexmanagement.snapshotmanagement.smDocIdToPolicyName
+import org.opensearch.indexmanagement.snapshotmanagement.smJobIdToPolicyName
 
 object FinishedState : State {
 
@@ -50,7 +50,7 @@ object FinishedState : State {
             }
             metadata.deletion.started != null -> {
                 val req = SnapshotsStatusRequest()
-                    .snapshots(arrayOf("${smDocIdToPolicyName(job.id)}*"))
+                    .snapshots(arrayOf("${smJobIdToPolicyName(job.id)}*"))
                     .repository(job.snapshotConfig["repository"] as String)
                 val res: SnapshotsStatusResponse = context.client.admin().cluster().suspendUntil { snapshotsStatus(req, it) }
                 log.info("Get snapshot status: ${res.snapshots}")

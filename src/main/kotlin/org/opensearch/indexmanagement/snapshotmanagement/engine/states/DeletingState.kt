@@ -11,12 +11,10 @@ import org.opensearch.action.admin.cluster.snapshots.get.GetSnapshotsResponse
 import org.opensearch.action.support.master.AcknowledgedResponse
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.snapshotmanagement.engine.statemachine.SMStateMachine
-import org.opensearch.indexmanagement.snapshotmanagement.engine.statemachine.StateMachineException
-import org.opensearch.indexmanagement.snapshotmanagement.engine.statemachine.StateMachineException.ExceptionCode.ATOMIC
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.State.ExecutionResult
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy
-import org.opensearch.indexmanagement.snapshotmanagement.smDocIdToPolicyName
+import org.opensearch.indexmanagement.snapshotmanagement.smJobIdToPolicyName
 import org.opensearch.snapshots.SnapshotInfo
 import java.time.Instant
 import java.time.Instant.now
@@ -35,7 +33,7 @@ object DeletingState : State {
         val snapshotToDelete: List<SMMetadata.SnapshotInfo>
         try {
             val getSnapshotsReq = GetSnapshotsRequest()
-                .snapshots(arrayOf(smDocIdToPolicyName(job.id) + "*")) // TODO write IT to cover get snapshots
+                .snapshots(arrayOf(smJobIdToPolicyName(job.id) + "*")) // TODO write IT to cover get snapshots
                 .repository(job.snapshotConfig["repository"] as String)
             val getSnapshotsRes: GetSnapshotsResponse = client.admin().cluster().suspendUntil { getSnapshots(getSnapshotsReq, it) }
             log.info("Get snapshot response: ${getSnapshotsRes.snapshots}")

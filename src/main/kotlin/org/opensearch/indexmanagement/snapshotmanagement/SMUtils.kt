@@ -32,10 +32,16 @@ import java.time.ZoneId
 private val log = LogManager.getLogger("o.o.i.s.SnapshotManagementHelper")
 
 const val smSuffix = "-sm"
-fun smPolicyNameToDocId(policyName: String) = "$policyName$smSuffix"
-fun smDocIdToPolicyName(id: String) = id.substringBeforeLast(smSuffix)
-fun getSMMetadataDocId(policyName: String) = "$policyName-sm-metadata"
+const val smMetadataSuffix = "-metadata"
+fun smPolicyNameToJobId(policyName: String) = "$policyName$smSuffix"
+fun smJobIdToPolicyName(id: String) = id.substringBeforeLast(smSuffix)
+fun smMetadataId(jobId: String) = "$jobId$smMetadataSuffix"
 
+/**
+ * Save snapshot management job run metadata
+ *
+ * @param id: snapshot management job doc id
+ */
 suspend fun Client.indexMetadata(
     metadata: SMMetadata,
     id: String,
@@ -44,7 +50,7 @@ suspend fun Client.indexMetadata(
     create: Boolean = false
 ): IndexResponse {
     val indexReq = IndexRequest(INDEX_MANAGEMENT_INDEX).create(create)
-        .id(id)
+        .id(smMetadataId(id))
         .source(metadata.toXContent(XContentFactory.jsonBuilder(), ToXContent.EMPTY_PARAMS))
         .setIfSeqNo(seqNo)
         .setIfPrimaryTerm(primaryTerm)
@@ -53,20 +59,25 @@ suspend fun Client.indexMetadata(
     return suspendUntil { index(indexReq, it) }
 }
 
-suspend fun Client.getMetadata(id: String): SMMetadata? {
-    val getReq = GetRequest(INDEX_MANAGEMENT_INDEX, id).routing(id)
+/**
+ * Retrieve snapshot management job run metadata
+ *
+ * @return null indicate the retrieved metadata doesn't exist
+ */
+suspend fun Client.getMetadata(job: SMPolicy): SMMetadata? {
+    val getReq = GetRequest(INDEX_MANAGEMENT_INDEX, smMetadataId(job.id)).routing(job.id)
     val getRes: GetResponse = suspendUntil { get(getReq, it) }
-    var metadata: SMMetadata? = null
     if (getRes.isExists) {
-        log.info("Get metadata response: ${getRes.sourceAsBytesRef.utf8ToString()}")
+        log.info("sm dev: Get metadata response: ${getRes.sourceAsBytesRef.utf8ToString()}")
         val xcp = XContentHelper.createParser(
             NamedXContentRegistry.EMPTY, LoggingDeprecationHandler.INSTANCE,
             getRes.sourceAsBytesRef, XContentType.JSON
         )
-        metadata = xcp.parseWithType(getRes.id, getRes.seqNo, getRes.primaryTerm, SMMetadata.Companion::parse)
-        log.info("Parse metadata: $metadata")
+        val metadata = xcp.parseWithType(getRes.id, getRes.seqNo, getRes.primaryTerm, SMMetadata.Companion::parse)
+        log.info("sm dev: Parse metadata: $metadata")
+        return metadata
     }
-    return metadata
+    return null
 }
 
 fun getNextExecutionTime(schedule: Schedule, fromTime: Instant): Instant {
@@ -87,7 +98,7 @@ fun getNextExecutionTime(schedule: Schedule, fromTime: Instant): Instant {
 }
 
 fun generateSnapshotName(policy: SMPolicy): String {
-    var result: String = smDocIdToPolicyName(policy.id)
+    var result: String = smJobIdToPolicyName(policy.id)
     if (policy.snapshotConfig["date_format"] != null) {
         val dateFormat = generateFormatTime(policy.snapshotConfig["date_format"] as String)
         result += "-$dateFormat"

@@ -19,7 +19,7 @@ import org.opensearch.indexmanagement.snapshotmanagement.indexMetadata
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata.Companion.upsert
-import org.opensearch.indexmanagement.snapshotmanagement.smDocIdToPolicyName
+import org.opensearch.indexmanagement.snapshotmanagement.smJobIdToPolicyName
 import java.time.Instant.now
 
 class SMStateMachine(
@@ -27,14 +27,12 @@ class SMStateMachine(
     val job: SMPolicy,
     var metadata: SMMetadata
 ) : StateMachine() {
-    val log: Logger = LogManager.getLogger("$javaClass [${smDocIdToPolicyName(job.id)}]")
+    val log: Logger = LogManager.getLogger("$javaClass [${smJobIdToPolicyName(job.id)}]")
 
     override var currentState: SMState = metadata.currentState.also {
         log.info("Set state machine current state from metadata: ${metadata.currentState}")
     }
 
-    private var metadataSeqNo: Long = metadata.seqNo
-    private var metadataPrimaryTerm: Long = metadata.primaryTerm
 
     override suspend fun next() {
         try {
@@ -103,13 +101,17 @@ class SMStateMachine(
     }
 
     /**
-     * In one lifecycle of this context object, there could be multiple
-     * metadata update operations, so we keep seqNo and priTerm in this object.
+     * Update running job metadata in state machine
      *
-     * If any failure during update metadata, we can only log out the error.
-     * State machine continues to execute when metadata update is functional.
+     * In one lifecycle of this context object, there could be multiple
+     * metadata update operations, so we keep the seqNo and priTerm.
+     *
+     * If any failure during update metadata, state machine stuck,
+     * and error is logged.
      */
-    suspend fun updateMetadata(md: SMMetadata) {
+    private var metadataSeqNo: Long = metadata.seqNo
+    private var metadataPrimaryTerm: Long = metadata.primaryTerm
+    private suspend fun updateMetadata(md: SMMetadata) {
         val res: IndexResponse
         try {
             res = client.indexMetadata(md, job.id, metadataSeqNo, metadataPrimaryTerm)
@@ -125,7 +127,9 @@ class SMStateMachine(
     }
 
     /**
-     * Supposed to be used during [SMStateMachine] initialization
+     * Handle the policy change before job running
+     *
+     * Currently, only handle schedule change in policy.
      */
     suspend fun handlePolicyChange(): SMStateMachine {
         if (job.seqNo > metadata.policySeqNo || job.primaryTerm > metadata.policyPrimaryTerm) {
@@ -133,10 +137,14 @@ class SMStateMachine(
                 policySeqNo = job.seqNo,
                 policyPrimaryTerm = job.primaryTerm,
                 creation = SMMetadata.Creation(
-                    SMMetadata.Trigger(getNextExecutionTime(job.creation.schedule, now()))
+                    SMMetadata.Trigger(
+                        time = getNextExecutionTime(job.creation.schedule, now())
+                    )
                 ),
                 deletion = SMMetadata.Deletion(
-                    SMMetadata.Trigger(getNextExecutionTime(job.deletion.schedule, now()))
+                    SMMetadata.Trigger(
+                        time = getNextExecutionTime(job.deletion.schedule, now())
+                    )
                 ),
             )
             updateMetadata(metadataToSave)
