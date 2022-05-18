@@ -118,7 +118,7 @@ import org.opensearch.indexmanagement.snapshotmanagement.api.transport.get.Trans
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.index.TransportIndexSMPolicyAction
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy
-import org.opensearch.indexmanagement.snapshotmanagement.SMRunner
+import org.opensearch.indexmanagement.snapshotmanagement.engine.SMRunner
 import org.opensearch.indexmanagement.spi.IndexManagementExtension
 import org.opensearch.indexmanagement.spi.indexstatemanagement.IndexMetadataService
 import org.opensearch.indexmanagement.spi.indexstatemanagement.StatusChecker

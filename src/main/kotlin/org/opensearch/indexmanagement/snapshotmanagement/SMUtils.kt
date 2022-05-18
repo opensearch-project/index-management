@@ -30,6 +30,8 @@ import org.opensearch.jobscheduler.spi.schedule.IntervalSchedule
 import org.opensearch.jobscheduler.spi.schedule.Schedule
 import java.time.Instant
 import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.time.temporal.ChronoUnit
 
 private val log = LogManager.getLogger("o.o.i.s.SnapshotManagementHelper")
 
@@ -152,7 +154,10 @@ fun generateFormatTime(dateFormat: String): String {
 //     log.info("End delete snapshot transaction.")
 // }
 
-fun formatUserMsg(msg: String) = "[${Instant.now()}]: " + msg
+fun preFixTimeStamp(msg: String?): String {
+    val formatter = DateTimeFormatter.ISO_INSTANT
+    return "[${formatter.format(Instant.now().truncatedTo(ChronoUnit.SECONDS))}]: " + msg
+}
 
 /**
  * Build snapshot management metadata in a flattened fashion
@@ -160,6 +165,27 @@ fun formatUserMsg(msg: String) = "[${Instant.now()}]: " + msg
 class SMMetadataBuilder(private var metadata: SMMetadata) {
 
     fun build() = metadata
+
+    fun reset(): SMMetadataBuilder {
+        metadata = metadata.copy(
+            creation = metadata.creation.copy(
+                started = null,
+            ),
+            deletion = metadata.deletion.copy(
+                started = null,
+                startedTime = null,
+            )
+        )
+        return this
+    }
+
+    fun policyVersion(seqNo: Long, primaryTerm: Long): SMMetadataBuilder {
+        metadata = metadata.copy(
+            policySeqNo = seqNo,
+            policyPrimaryTerm = primaryTerm,
+        )
+        return this
+    }
 
     fun currentState(state: SMState): SMMetadataBuilder {
         metadata = metadata.copy(

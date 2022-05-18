@@ -64,6 +64,8 @@ data class SMPolicy(
 
     override fun isEnabled() = jobEnabled
 
+    override fun getLockDurationSeconds() = 1800L // 30 minutes
+
     override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
         return builder
             .startObject()

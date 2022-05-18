@@ -9,9 +9,11 @@ import org.opensearch.action.admin.cluster.snapshots.create.CreateSnapshotReques
 import org.opensearch.action.admin.cluster.snapshots.create.CreateSnapshotResponse
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.snapshotmanagement.engine.statemachine.SMStateMachine
+import org.opensearch.indexmanagement.snapshotmanagement.SnapshotManagementException
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.State.ExecutionResult
 import org.opensearch.indexmanagement.snapshotmanagement.generateSnapshotName
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata
+import org.opensearch.repositories.RepositoryMissingException
 
 object CreatingState : State {
 
@@ -33,6 +35,8 @@ object CreatingState : State {
                 .source(job.snapshotConfig)
                 .waitForCompletion(false)
             res = client.admin().cluster().suspendUntil { createSnapshot(req, it) }
+        } catch (ex: RepositoryMissingException) {
+            return ExecutionResult.Failure(SnapshotManagementException(ex))
         } catch (ex: Exception) {
             return ExecutionResult.Failure(ex)
         }

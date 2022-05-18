@@ -35,7 +35,6 @@ fun randomSMMetadata(
     nextDeletionTime: Instant = now(),
     policySeqNo: Long = randomNonNegativeLong(),
     policyPrimaryTerm: Long = randomNonNegativeLong(),
-    atomic: Boolean = false,
 ): SMMetadata {
     return SMMetadata(
         policySeqNo = policySeqNo,

@@ -10,7 +10,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.ManagedIndexRunner
 import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexConfig
 import org.opensearch.indexmanagement.rollup.RollupRunner
 import org.opensearch.indexmanagement.rollup.model.Rollup
-import org.opensearch.indexmanagement.snapshotmanagement.SMRunner
+import org.opensearch.indexmanagement.snapshotmanagement.engine.SMRunner
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy
 import org.opensearch.indexmanagement.transform.TransformRunner
 import org.opensearch.indexmanagement.transform.model.Transform

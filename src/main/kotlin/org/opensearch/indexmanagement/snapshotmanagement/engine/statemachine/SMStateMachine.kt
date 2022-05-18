@@ -7,12 +7,11 @@ package org.opensearch.indexmanagement.snapshotmanagement.engine.statemachine
 
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
-import org.opensearch.action.index.IndexResponse
 import org.opensearch.client.Client
 import org.opensearch.indexmanagement.snapshotmanagement.SMMetadataBuilder
-import org.opensearch.indexmanagement.snapshotmanagement.engine.statemachine.StateMachineException.ExceptionCode
+import org.opensearch.indexmanagement.snapshotmanagement.SnapshotManagementException
+import org.opensearch.indexmanagement.snapshotmanagement.preFixTimeStamp
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.State.ExecutionResult
-import org.opensearch.indexmanagement.snapshotmanagement.engine.statemachine.StateMachineException.Companion.getUserMsg
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.SMState
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.smTransitions
 import org.opensearch.indexmanagement.snapshotmanagement.getNextExecutionTime
@@ -32,7 +31,7 @@ class SMStateMachine(
     val log: Logger = LogManager.getLogger("$javaClass [${smJobIdToPolicyName(job.id)}]")
 
     override var currentState: SMState = metadata.currentState.also {
-        log.info("Snapshot management state machine current state set to [${metadata.currentState}].")
+        log.info("Current state: [${metadata.currentState}].")
     }
 
     override suspend fun next() {
@@ -52,43 +51,30 @@ class SMStateMachine(
                     result = nextState.instance.execute(this)
                     when (result) {
                         is ExecutionResult.Next -> {
-                            log.info("[$currentState]'s execution fully finished.")
+                            log.info("State [$currentState]'s execution finished, will execute its next state.")
                             updateMetadata(result.metadataToSave)
                             // break the nextStates loop so to avoid execute other lateral states
                             break
                         }
                         is ExecutionResult.Stay -> {
-                            log.info("[$currentState] execution not fully finished.")
+                            log.info("State [$currentState]'s execution not finished, will stay.")
                             val metadataToSave = result.metadataToSave
                             metadataToSave?.let { updateMetadata(metadataToSave) }
                             // can still execute other lateral states if exists
                         }
                         is ExecutionResult.Failure -> {
                             val ex = result.ex
-                            log.error("Caught exception while executing [$currentState], will skip to the START state.")
-                            var userMessage: String
-                            if (ex is StateMachineException) {
-                                userMessage = ex.getUserMsg()
-                                log.error("Exception details: $userMessage.")
-                            } else {
-                                userMessage = StateMachineException(ex).getUserMsg()
-                                log.error("Exception details: ", ex)
-                            }
+                            log.error("Caught exception while executing state [$currentState], will skip to the START state.", ex)
 
+                            val userMessage = preFixTimeStamp(SnapshotManagementException(ex).message)
                             val info = metadata.info.upsert(
                                 "exception" to userMessage
                             )
                             val metadataToSave = SMMetadataBuilder(metadata)
                                 .currentState(SMState.START)
-                                .startedCreation(null)
-                                .finishedCreation(null)
-                                .startedDeletion(null)
-                                .deletionStartTime(null)
+                                .reset()
                                 .info(info)
                                 .build()
-
-                            log.info("sm dev: will metadata be changed? $metadata")
-                            log.info("sm dev: metadataToSave: $metadataToSave")
                             updateMetadata(metadataToSave)
 
                             // TODO error notification
@@ -102,35 +88,29 @@ class SMStateMachine(
                 }
             } while (currentState.instance.continuous)
         } catch (ex: Exception) {
-            // update metadata exception will be caught here
-            log.error("Uncaught exception:", ex)
+            log.error("Snapshot management runtime exception.", ex)
         }
     }
 
     /**
-     * Update running job metadata in state machine
+     * Update job running status metadata
      *
      * In one lifecycle of this context object, there could be multiple
-     * metadata update operations, so we keep the seqNo and priTerm.
+     *  metadata update operations, so we keep the seqNo and priTerm.
      *
-     * If any failure during update metadata, state machine stuck,
-     * and error is logged.
+     * If experienced with any exception during update metadata, state machine stuck
+     * Indexing exception will be caught and logged in [SMStateMachine.next]
      */
     private var metadataSeqNo: Long = metadata.seqNo
     private var metadataPrimaryTerm: Long = metadata.primaryTerm
     private suspend fun updateMetadata(md: SMMetadata) {
-        val res: IndexResponse
-        try {
-            res = client.indexMetadata(md, job.id, metadataSeqNo, metadataPrimaryTerm)
-        } catch (ex: Exception) {
-            throw StateMachineException(ExceptionCode.METADATA_UPDATE, ex)
-        }
+        val res = client.indexMetadata(md, job.id, metadataSeqNo, metadataPrimaryTerm)
 
         metadataSeqNo = res.seqNo
         metadataPrimaryTerm = res.primaryTerm
         metadata = md
 
-        // TODO save a copy to history
+        // TODO SM save a copy to history
     }
 
     /**
@@ -140,20 +120,11 @@ class SMStateMachine(
      */
     suspend fun handlePolicyChange(): SMStateMachine {
         if (job.seqNo > metadata.policySeqNo || job.primaryTerm > metadata.policyPrimaryTerm) {
-            val metadataToSave = metadata.copy(
-                policySeqNo = job.seqNo,
-                policyPrimaryTerm = job.primaryTerm,
-                creation = SMMetadata.Creation(
-                    SMMetadata.Trigger(
-                        time = getNextExecutionTime(job.creation.schedule, now())
-                    )
-                ),
-                deletion = SMMetadata.Deletion(
-                    SMMetadata.Trigger(
-                        time = getNextExecutionTime(job.deletion.schedule, now())
-                    )
-                ),
-            )
+            val metadataToSave = SMMetadataBuilder(metadata)
+                .policyVersion(job.seqNo, job.primaryTerm)
+                .nextCreationTime(getNextExecutionTime(job.creation.schedule, now()))
+                .nextDeletionTime(getNextExecutionTime(job.deletion.schedule, now()))
+                .build()
             updateMetadata(metadataToSave)
         }
         return this
