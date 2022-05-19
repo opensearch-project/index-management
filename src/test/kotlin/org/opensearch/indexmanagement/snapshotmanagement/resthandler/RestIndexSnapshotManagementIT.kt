@@ -10,26 +10,32 @@ import org.opensearch.common.xcontent.XContentType
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.SM_POLICIES_URI
 import org.opensearch.indexmanagement.makeRequest
+import org.opensearch.indexmanagement.opensearchapi.convertToMap
 import org.opensearch.indexmanagement.snapshotmanagement.SnapshotManagementRestTestCase
+import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy
+import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy.Companion.SM_TYPE
 import org.opensearch.indexmanagement.snapshotmanagement.randomSMPolicy
-import org.opensearch.indexmanagement.snapshotmanagement.smPolicyNameToDocId
 import org.opensearch.indexmanagement.util.NO_ID
 import org.opensearch.indexmanagement.util._ID
 import org.opensearch.indexmanagement.util._SEQ_NO
 import org.opensearch.rest.RestStatus
+import java.time.Instant
 
 class RestIndexSnapshotManagementIT : SnapshotManagementRestTestCase() {
 
+    @Suppress("UNCHECKED_CAST")
     fun `test creating a snapshot management policy`() {
-        val smPolicy = randomSMPolicy()
+        var smPolicy = randomSMPolicy()
         val response = client().makeRequest("POST", "$SM_POLICIES_URI/${smPolicy.getSMPolicyName()}", emptyMap(), smPolicy.toHttpEntity())
         assertEquals("Create SM policy failed", RestStatus.CREATED, response.restStatus())
         val responseBody = response.asMap()
         val createdId = responseBody["_id"] as String
         assertNotEquals("Response is missing Id", NO_ID, createdId)
         assertEquals("Not same id", smPolicy.id, createdId)
-        assertTrue("Response is missing policy name", responseBody.containsKey(smPolicy.getSMPolicyName()))
         assertEquals("Incorrect Location header", "$SM_POLICIES_URI/${smPolicy.getSMPolicyName()}", response.getHeader("Location"))
+        val responseSMPolicy = responseBody[SM_TYPE] as Map<String, Any>
+        smPolicy = smPolicy.copy(jobLastUpdateTime = Instant.ofEpochMilli(responseSMPolicy[SMPolicy.LAST_UPDATED_TIME_FIELD] as Long))
+        assertEquals("Created and returned snapshot management policies differ", smPolicy.convertToMap()[SM_TYPE], responseSMPolicy)
     }
 
     fun `test updating a snapshot management policy with correct seq_no and primary_term`() {

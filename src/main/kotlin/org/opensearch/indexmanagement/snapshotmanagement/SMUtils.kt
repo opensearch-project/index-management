@@ -31,34 +31,39 @@ fun smDocIdToPolicyName(id: String) = id.substringBeforeLast(SM_DOC_ID_SUFFIX)
 fun getSMMetadataDocId(policyName: String) = "$policyName$SM_METADATA_ID_SUFFIX"
 
 suspend fun getSMPolicy(client: Client, policyID: String): SMPolicy {
-    val getRequest = GetRequest(IndexManagementPlugin.INDEX_MANAGEMENT_INDEX, policyID)
-    val getResponse: GetResponse = try {
-        client.suspendUntil { get(getRequest, it) }
+    val smPolicy = try {
+        getSMDoc(client, policyID, ::parseSMPolicy)
     } catch (e: IndexNotFoundException) {
         throw OpenSearchStatusException("Snapshot management config index not found", RestStatus.NOT_FOUND)
-    }
-    if (!getResponse.isExists) {
-        throw OpenSearchStatusException("Snapshot management policy not found", RestStatus.NOT_FOUND)
-    }
-    val smPolicy = try {
-        parseSMPolicy(getResponse)
-    } catch (e: IllegalArgumentException) {
+    } catch (e: Exception) {
         throw OpenSearchStatusException("Snapshot management policy not found", RestStatus.NOT_FOUND)
     }
     return smPolicy
 }
 
-suspend fun getSMMetadata(client: Client, metadataID: String): SMMetadata? {
-    val getRequest = GetRequest(IndexManagementPlugin.INDEX_MANAGEMENT_INDEX, metadataID)
+suspend fun getSMMetadata(client: Client, metadataID: String): SMMetadata {
+    val smMetadata = try {
+        getSMDoc(client, metadataID, ::parseSMMetadata)
+    } catch (e: IndexNotFoundException) {
+        throw OpenSearchStatusException("Snapshot management config index not found", RestStatus.NOT_FOUND)
+    } catch (e: Exception) {
+        throw OpenSearchStatusException("Snapshot management metadata not found", RestStatus.NOT_FOUND)
+    }
+    return smMetadata
+}
+
+suspend fun <T> getSMDoc(client: Client, docID: String, parser: (GetResponse, NamedXContentRegistry) -> T): T {
+    val getRequest = GetRequest(IndexManagementPlugin.INDEX_MANAGEMENT_INDEX, docID)
     val getResponse: GetResponse = client.suspendUntil { get(getRequest, it) }
     if (!getResponse.isExists) {
-        return null
+        throw OpenSearchStatusException("Snapshot management doc not found", RestStatus.NOT_FOUND)
     }
-    return try {
-        parseSMMetadata(getResponse)
+    val smDoc = try {
+        parser(getResponse, NamedXContentRegistry.EMPTY)
     } catch (e: IllegalArgumentException) {
-        null
+        throw OpenSearchStatusException("Snapshot management doc could not be parsed", RestStatus.NOT_FOUND)
     }
+    return smDoc
 }
 
 fun parseSMPolicy(response: GetResponse, xContentRegistry: NamedXContentRegistry = NamedXContentRegistry.EMPTY): SMPolicy {

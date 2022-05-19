@@ -29,7 +29,6 @@ import org.opensearch.rest.RestStatus
 import org.opensearch.snapshots.SnapshotId
 import org.opensearch.snapshots.SnapshotInfo
 import org.opensearch.test.OpenSearchTestCase.randomAlphaOfLength
-import org.opensearch.test.OpenSearchTestCase.randomLong
 import org.opensearch.test.OpenSearchTestCase.randomNonNegativeLong
 import org.opensearch.test.rest.OpenSearchRestTestCase
 import java.time.Instant

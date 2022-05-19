@@ -23,7 +23,7 @@ class IndexSMPolicyRequest : IndexRequest {
         policy: SMPolicy,
         create: Boolean,
         refreshPolicy: WriteRequest.RefreshPolicy
-    ): super() {
+    ) : super() {
         this.policy = policy
         this.create(create)
         if (policy.seqNo != SequenceNumbers.UNASSIGNED_SEQ_NO && policy.primaryTerm != SequenceNumbers.UNASSIGNED_PRIMARY_TERM) {
@@ -34,7 +34,8 @@ class IndexSMPolicyRequest : IndexRequest {
 
     override fun validate(): ActionRequestValidationException? {
         var validationException: ActionRequestValidationException? = null
-        val invalidSeqNumPrimaryTerm = this.ifSeqNo() == SequenceNumbers.UNASSIGNED_SEQ_NO || this.ifPrimaryTerm() == SequenceNumbers.UNASSIGNED_PRIMARY_TERM
+        val invalidSeqNumPrimaryTerm = this.ifSeqNo() == SequenceNumbers.UNASSIGNED_SEQ_NO ||
+            this.ifPrimaryTerm() == SequenceNumbers.UNASSIGNED_PRIMARY_TERM
         if (this.opType() != DocWriteRequest.OpType.CREATE && invalidSeqNumPrimaryTerm) {
             validationException = ValidateActions.addValidationError(SEQ_NUM_PRIMARY_TERM_UPDATE_ERROR, validationException)
         }
@@ -51,6 +52,7 @@ class IndexSMPolicyRequest : IndexRequest {
     }
 
     companion object {
-        private const val SEQ_NUM_PRIMARY_TERM_UPDATE_ERROR = "Sequence number and primary term must be provided when updating a snapshot management policy"
+        private const val SEQ_NUM_PRIMARY_TERM_UPDATE_ERROR =
+            "Sequence number and primary term must be provided when updating a snapshot management policy"
     }
 }

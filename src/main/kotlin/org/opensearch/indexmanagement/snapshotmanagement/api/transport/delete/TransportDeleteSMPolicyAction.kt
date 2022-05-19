@@ -36,7 +36,7 @@ class TransportDeleteSMPolicyAction @Inject constructor(
     ): DeleteResponse {
         val smPolicy = getSMPolicy(client, request.id())
 
-        // TODO verify permissions
+        // TODO sm verify permissions
 
         val deleteReq = request.index(INDEX_MANAGEMENT_INDEX)
         return client.suspendUntil { delete(deleteReq, it) }

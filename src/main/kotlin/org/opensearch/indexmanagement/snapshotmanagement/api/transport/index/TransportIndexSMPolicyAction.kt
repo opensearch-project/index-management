@@ -7,7 +7,6 @@ package org.opensearch.indexmanagement.snapshotmanagement.api.transport.index
 
 import org.apache.logging.log4j.LogManager
 import org.opensearch.OpenSearchStatusException
-import org.opensearch.action.DocWriteRequest
 import org.opensearch.action.index.IndexRequest
 import org.opensearch.action.index.IndexResponse
 import org.opensearch.action.support.ActionFilters
@@ -23,8 +22,6 @@ import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANA
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.BaseTransportAction
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.SMActions.INDEX_SM_ACTION_NAME
-import org.opensearch.indexmanagement.snapshotmanagement.getSMPolicy
-import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy
 import org.opensearch.rest.RestStatus
 import org.opensearch.transport.TransportService
 
@@ -57,7 +54,6 @@ class TransportIndexSMPolicyAction @Inject constructor(
             throw OpenSearchStatusException("Unable to create or update $INDEX_MANAGEMENT_INDEX with newest mapping.", RestStatus.INTERNAL_SERVER_ERROR)
         }
     }
-
 
     private suspend fun indexSMPolicy(request: IndexSMPolicyRequest): IndexSMPolicyResponse {
         val policy = request.policy

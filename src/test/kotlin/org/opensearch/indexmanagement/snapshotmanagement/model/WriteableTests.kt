@@ -7,7 +7,6 @@ package org.opensearch.indexmanagement.snapshotmanagement.model
 
 import org.opensearch.common.io.stream.BytesStreamOutput
 import org.opensearch.common.io.stream.StreamInput
-import org.opensearch.indexmanagement.snapshotmanagement.randomSMMetadata
 import org.opensearch.indexmanagement.snapshotmanagement.randomSMPolicy
 import org.opensearch.test.OpenSearchTestCase
 

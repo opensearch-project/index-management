@@ -71,7 +71,6 @@ data class SMMetadata(
             var policySeqNo: Long? = null
             var policyPrimaryTerm: Long? = null
             var currentState: SMState? = null
-            var atomic = false
             var creation: Creation? = null
             var deletion: Deletion? = null
             var info: InfoType = null

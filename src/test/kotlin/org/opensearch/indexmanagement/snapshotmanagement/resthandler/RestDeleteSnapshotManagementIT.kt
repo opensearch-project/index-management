@@ -43,7 +43,6 @@ class RestDeleteSnapshotManagementIT : SnapshotManagementRestTestCase() {
             client().makeRequest("DELETE", "${IndexManagementPlugin.SM_POLICIES_URI}/nonexistent_policy")
             fail("expected 404 ResponseException")
         } catch (e: ResponseException) {
-            println(e)
             assertEquals(RestStatus.NOT_FOUND, e.response.restStatus())
         }
     }

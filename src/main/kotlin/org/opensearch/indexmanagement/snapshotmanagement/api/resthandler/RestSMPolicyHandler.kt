@@ -98,7 +98,7 @@ class RestSMPolicyHandler : BaseRestHandler() {
         val xcp = request.contentParser()
         val policy = SMPolicy.parse(xcp, id = smPolicyNameToDocId(policyName), seqNo = seqNo, primaryTerm = primaryTerm)
             .copy(jobLastUpdateTime = Instant.now())
-        log.info("sm parsed $policy")
+        log.info("sm dev: policy parsed $policy")
 
         val refreshPolicy = if (request.hasParam(REFRESH)) {
             WriteRequest.RefreshPolicy.parse(request.param(REFRESH))
@@ -114,7 +114,7 @@ class RestSMPolicyHandler : BaseRestHandler() {
                     override fun buildResponse(response: IndexSMPolicyResponse): RestResponse {
                         val restResponse = BytesRestResponse(response.status, response.toXContent(channel.newBuilder(), ToXContent.EMPTY_PARAMS))
                         if (response.status == RestStatus.CREATED || response.status == RestStatus.OK) {
-                            val location = "${SM_POLICIES_URI}/${response.policy.getSMPolicyName()}"
+                            val location = "$SM_POLICIES_URI/${response.policy.getSMPolicyName()}"
                             restResponse.addHeader("Location", location)
                         }
                         return restResponse

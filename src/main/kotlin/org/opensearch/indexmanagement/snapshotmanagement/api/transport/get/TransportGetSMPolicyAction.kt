@@ -40,7 +40,7 @@ class TransportGetSMPolicyAction @Inject constructor(
     ): GetSMPolicyResponse {
         val getRequest = GetRequest(IndexManagementPlugin.INDEX_MANAGEMENT_INDEX, request.policyID)
         val getResponse: GetResponse = try {
-             client.suspendUntil { get(getRequest, it) }
+            client.suspendUntil { get(getRequest, it) }
         } catch (e: IndexNotFoundException) {
             throw OpenSearchStatusException("Snapshot management config index not found", RestStatus.NOT_FOUND)
         }
