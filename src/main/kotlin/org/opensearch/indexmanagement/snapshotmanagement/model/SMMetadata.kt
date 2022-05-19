@@ -362,4 +362,106 @@ data class SMMetadata(
             out.writeOptionalInstant(endTime)
         }
     }
+
+    /**
+     * Build the updated metadata in a flattened fashion
+     *  based on the existing metadata
+     */
+    class Builder(private var metadata: SMMetadata) {
+
+        fun build() = metadata
+
+        fun reset(): Builder {
+            metadata = metadata.copy(
+                creation = metadata.creation.copy(
+                    started = null,
+                ),
+                deletion = metadata.deletion.copy(
+                    started = null,
+                    startedTime = null,
+                )
+            )
+            return this
+        }
+
+        fun policyVersion(seqNo: Long, primaryTerm: Long): Builder {
+            metadata = metadata.copy(
+                policySeqNo = seqNo,
+                policyPrimaryTerm = primaryTerm,
+            )
+            return this
+        }
+
+        fun currentState(state: SMState): Builder {
+            metadata = metadata.copy(
+                currentState = state
+            )
+            return this
+        }
+
+        fun nextCreationTime(time: Instant): Builder {
+            metadata = metadata.copy(
+                creation = metadata.creation.copy(
+                    trigger = metadata.creation.trigger.copy(
+                        time = time
+                    )
+                )
+            )
+            return this
+        }
+
+        fun startedCreation(snapshotInfo: SnapshotInfo?): Builder {
+            metadata = metadata.copy(
+                creation = metadata.creation.copy(
+                    started = snapshotInfo
+                )
+            )
+            return this
+        }
+
+        fun finishedCreation(snapshotInfo: SnapshotInfo?): Builder {
+            metadata = metadata.copy(
+                creation = metadata.creation.copy(
+                    finished = snapshotInfo
+                )
+            )
+            return this
+        }
+
+        fun nextDeletionTime(time: Instant): Builder {
+            metadata = metadata.copy(
+                deletion = metadata.deletion.copy(
+                    trigger = metadata.deletion.trigger.copy(
+                        time = time
+                    )
+                )
+            )
+            return this
+        }
+
+        fun startedDeletion(snapshotInfo: List<SnapshotInfo>?): Builder {
+            metadata = metadata.copy(
+                deletion = metadata.deletion.copy(
+                    started = snapshotInfo
+                )
+            )
+            return this
+        }
+
+        fun deletionStartTime(time: Instant?): Builder {
+            metadata = metadata.copy(
+                deletion = metadata.deletion.copy(
+                    startedTime = time
+                )
+            )
+            return this
+        }
+
+        fun info(info: InfoType?): Builder {
+            metadata = metadata.copy(
+                info = info
+            )
+            return this
+        }
+    }
 }

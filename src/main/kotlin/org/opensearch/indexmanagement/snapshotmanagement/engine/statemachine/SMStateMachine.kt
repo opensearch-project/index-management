@@ -8,7 +8,6 @@ package org.opensearch.indexmanagement.snapshotmanagement.engine.statemachine
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.opensearch.client.Client
-import org.opensearch.indexmanagement.snapshotmanagement.SMMetadataBuilder
 import org.opensearch.indexmanagement.snapshotmanagement.SnapshotManagementException
 import org.opensearch.indexmanagement.snapshotmanagement.preFixTimeStamp
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.State.ExecutionResult
@@ -70,7 +69,7 @@ class SMStateMachine(
                             val info = metadata.info.upsert(
                                 "exception" to userMessage
                             )
-                            val metadataToSave = SMMetadataBuilder(metadata)
+                            val metadataToSave = SMMetadata.Builder(metadata)
                                 .currentState(SMState.START)
                                 .reset()
                                 .info(info)
@@ -120,7 +119,7 @@ class SMStateMachine(
      */
     suspend fun handlePolicyChange(): SMStateMachine {
         if (job.seqNo > metadata.policySeqNo || job.primaryTerm > metadata.policyPrimaryTerm) {
-            val metadataToSave = SMMetadataBuilder(metadata)
+            val metadataToSave = SMMetadata.Builder(metadata)
                 .policyVersion(job.seqNo, job.primaryTerm)
                 .nextCreationTime(getNextExecutionTime(job.creation.schedule, now()))
                 .nextDeletionTime(getNextExecutionTime(job.deletion.schedule, now()))

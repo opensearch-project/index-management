@@ -6,7 +6,7 @@
 package org.opensearch.indexmanagement.snapshotmanagement.engine.states
 
 enum class SMState(val instance: State) {
-    START(StartState),
+    START(StartState), // Dummy state
     CREATE_CONDITION_MET(CreateConditionMetState),
     DELETE_CONDITION_MET(DeleteConditionMetState),
     CREATING(CreatingState),
