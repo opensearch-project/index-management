@@ -7,13 +7,15 @@ package org.opensearch.indexmanagement.snapshotmanagement.engine.states
 
 import org.opensearch.action.admin.cluster.snapshots.status.SnapshotsStatusRequest
 import org.opensearch.action.admin.cluster.snapshots.status.SnapshotsStatusResponse
-import org.opensearch.cluster.SnapshotsInProgress
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.snapshotmanagement.engine.statemachine.SMStateMachine
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.State.ExecutionResult
+import org.opensearch.indexmanagement.snapshotmanagement.getSnapshots
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata
+import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata.ResetType
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata.Companion.upsert
 import org.opensearch.indexmanagement.snapshotmanagement.smJobIdToPolicyName
+import org.opensearch.snapshots.SnapshotState
 
 object FinishedState : State {
 
@@ -30,22 +32,28 @@ object FinishedState : State {
         var info = metadata.info
         when {
             metadata.creation.started != null -> {
-                val req = SnapshotsStatusRequest()
-                    .snapshots(arrayOf(metadata.creation.started.name))
-                    .repository(job.snapshotConfig["repository"] as String)
-                val res: SnapshotsStatusResponse = client.admin().cluster().suspendUntil { snapshotsStatus(req, it) }
-                log.info("Get snapshot status: ${res.snapshots}")
-                // TODO if someone delete the creating snapshot, we could face SnapshotMissingException
-                if (res.snapshots.firstOrNull()?.state == SnapshotsInProgress.State.SUCCESS) {
-                    creationStarted = null
-                    info = info.upsert(
-                        "last_success" to "${metadata.creation.started} has been created."
+                try {
+                    val snapshots = client.getSnapshots(
+                        metadata.creation.started.name,
+                        job.snapshotConfig["repository"] as String
                     )
-                } else {
-                    // We can record the snapshot in progress state in info
-                    log.info("Creating snapshot [${metadata.creation.started}] has not succeed")
+                    when (snapshots.firstOrNull()?.state()) {
+                        SnapshotState.SUCCESS -> {
+                            creationStarted = null
+                            info = info.upsert(
+                                "last_success" to "${metadata.creation.started} has been created."
+                            )
+                        }
+                        else -> {
+                            // We can record the snapshot in progress state in info
+                            log.info("Creating snapshot [${metadata.creation.started}] has not succeed")
 
-                    // TODO if timeout pass
+                            // TODO if timeout pass
+                        }
+                    }
+                } catch (ex: Exception) {
+                    // if someone deletes the creating snapshot, we could face SnapshotMissingException
+                    return ExecutionResult.Failure(ex, ResetType.CREATION)
                 }
             }
             metadata.deletion.started != null -> {

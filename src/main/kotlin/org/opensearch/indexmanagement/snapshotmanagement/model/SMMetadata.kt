@@ -363,6 +363,10 @@ data class SMMetadata(
         }
     }
 
+    enum class ResetType {
+        CREATION,
+        DELETION,
+    }
     /**
      * Build the updated metadata in a flattened fashion
      *  based on the existing metadata
@@ -371,15 +375,31 @@ data class SMMetadata(
 
         fun build() = metadata
 
-        fun reset(): Builder {
+        fun reset(resetType: ResetType): Builder {
+            var currentState = metadata.currentState
+            var startedCreation = metadata.creation.started
+            var startedDeletion = metadata.deletion.started
+            var deletionStartedTime = metadata.deletion.startedTime
+            when(resetType) {
+                ResetType.CREATION -> {
+                    currentState = SMState.CREATING
+                    startedCreation = null
+                }
+                ResetType.DELETION -> {
+                    currentState = SMState.DELETING
+                    startedDeletion = null
+                    deletionStartedTime = null
+                }
+            }
             metadata = metadata.copy(
+                currentState = currentState,
                 creation = metadata.creation.copy(
-                    started = null,
+                    started = startedCreation,
                 ),
                 deletion = metadata.deletion.copy(
-                    started = null,
-                    startedTime = null,
-                )
+                    started = startedDeletion,
+                    startedTime = deletionStartedTime,
+                ),
             )
             return this
         }

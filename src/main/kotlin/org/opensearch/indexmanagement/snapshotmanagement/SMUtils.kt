@@ -6,6 +6,8 @@
 package org.opensearch.indexmanagement.snapshotmanagement
 
 import org.apache.logging.log4j.LogManager
+import org.opensearch.action.admin.cluster.snapshots.get.GetSnapshotsRequest
+import org.opensearch.action.admin.cluster.snapshots.get.GetSnapshotsResponse
 import org.opensearch.action.get.GetRequest
 import org.opensearch.action.get.GetResponse
 import org.opensearch.action.index.IndexRequest
@@ -26,6 +28,7 @@ import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy
 import org.opensearch.jobscheduler.spi.schedule.CronSchedule
 import org.opensearch.jobscheduler.spi.schedule.IntervalSchedule
 import org.opensearch.jobscheduler.spi.schedule.Schedule
+import org.opensearch.snapshots.SnapshotInfo
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -85,15 +88,12 @@ suspend fun Client.getMetadata(job: SMPolicy): SMMetadata? {
 fun getNextExecutionTime(schedule: Schedule, fromTime: Instant): Instant {
     return when (schedule) {
         is CronSchedule -> {
-            log.info("next execution time: ${schedule.getNextExecutionTime(fromTime)}")
-            log.info("duration until next execution: ${schedule.nextTimeToExecute()}")
+            log.info("sm dev: next execution time: ${schedule.getNextExecutionTime(fromTime)}")
+            log.info("sm dev: duration until next execution: ${schedule.nextTimeToExecute()}")
             schedule.getNextExecutionTime(fromTime)
         }
         is IntervalSchedule -> {
-            // TODO: based on last success snapshot start time or end time
-            log.info("next execution time: ${schedule.getNextExecutionTime(fromTime)}.")
-            log.info("duration until next execution: ${schedule.nextTimeToExecute()}.")
-            schedule.getNextExecutionTime(fromTime)
+            TODO("Not yet implemented")
         }
         else -> throw IllegalArgumentException("Schedule type is not in [CronSchedule, IntervalSchedule].")
     }
@@ -155,4 +155,19 @@ fun generateFormatTime(dateFormat: String): String {
 fun preFixTimeStamp(msg: String?): String {
     val formatter = DateTimeFormatter.ISO_INSTANT
     return "[${formatter.format(Instant.now().truncatedTo(ChronoUnit.SECONDS))}]: " + msg
+}
+
+/**
+ * Get snapshots
+ *
+ * @param name: exact snapshot name or partial name with * at the end
+ * @return list of snapshot management snapshot info sorted by start time
+ */
+suspend fun Client.getSnapshots(name: String, repo: String): List<SnapshotInfo> {
+    val req = GetSnapshotsRequest()
+        .snapshots(arrayOf(name))
+        .repository(repo)
+    val res: GetSnapshotsResponse = admin().cluster().suspendUntil { getSnapshots(req, it) }
+    log.info("Get snapshot response: ${res.snapshots}")
+    return res.snapshots
 }

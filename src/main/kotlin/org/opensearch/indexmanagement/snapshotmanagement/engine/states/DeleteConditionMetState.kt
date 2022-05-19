@@ -9,6 +9,7 @@ import org.apache.logging.log4j.LogManager
 import org.opensearch.indexmanagement.snapshotmanagement.engine.statemachine.SMStateMachine
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.State.ExecutionResult
 import org.opensearch.indexmanagement.snapshotmanagement.getNextExecutionTime
+import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata
 import java.time.Instant
 
 // check the status of creating, deleting snapshot
@@ -23,30 +24,26 @@ object DeleteConditionMetState : State {
         val metadata = context.metadata
 
         if (metadata.deletion.started != null) {
-            log.info("There is already snapshot being deleted: ${metadata.deletion.started}.")
+            log.info("Snapshots deleting by snapshot management: [${metadata.deletion.started}].")
             return ExecutionResult.Stay()
         }
 
         val nextDeletionTime = metadata.deletion.trigger.time
         val nextDeletionTimeToSave: Instant
         if (!Instant.now().isBefore(nextDeletionTime)) {
-            log.info("current time [${Instant.now()}] has passed nextDeletionTime [$nextDeletionTime]")
+            log.info("sm dev current time [${Instant.now()}] has passed nextDeletionTime [$nextDeletionTime]")
             nextDeletionTimeToSave = getNextExecutionTime(job.deletion.schedule, Instant.now())
         } else {
-            log.info("current time [${Instant.now()}] has not passed nextDeletionTime [$nextDeletionTime]")
-            // TODO dynamically update job start_time
+            log.info("sm dev: current time [${Instant.now()}] has not passed nextDeletionTime [$nextDeletionTime]")
+            // TODO SM dynamically update job start_time to avoid unnecessary job runs
             return ExecutionResult.Stay()
         }
 
-        val metadataToSave = metadata.copy(
-            currentState = SMState.CREATE_CONDITION_MET,
-            deletion = metadata.deletion.copy(
-                trigger = metadata.deletion.trigger.copy(
-                    time = nextDeletionTimeToSave
-                )
-            ),
-        )
-        log.info("Save current state as DELETE_CONDITION_MET [$metadataToSave]")
+        val metadataToSave = SMMetadata.Builder(metadata)
+            .currentState(SMState.DELETE_CONDITION_MET)
+            .nextDeletionTime(nextDeletionTimeToSave)
+            .build()
+        log.info("sm dev: Save current state as DELETE_CONDITION_MET [$metadataToSave]")
         return ExecutionResult.Next(metadataToSave)
     }
 }

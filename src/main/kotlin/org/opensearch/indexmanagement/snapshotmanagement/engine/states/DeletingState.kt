@@ -12,6 +12,7 @@ import org.opensearch.action.support.master.AcknowledgedResponse
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.snapshotmanagement.engine.statemachine.SMStateMachine
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.State.ExecutionResult
+import org.opensearch.indexmanagement.snapshotmanagement.getSnapshots
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy
 import org.opensearch.indexmanagement.snapshotmanagement.smJobIdToPolicyName
@@ -32,12 +33,11 @@ object DeletingState : State {
         val res: AcknowledgedResponse
         val snapshotToDelete: List<SMMetadata.SnapshotInfo>
         try {
-            val getSnapshotsReq = GetSnapshotsRequest()
-                .snapshots(arrayOf(smJobIdToPolicyName(job.id) + "*")) // TODO write IT to cover get snapshots
-                .repository(job.snapshotConfig["repository"] as String)
-            val getSnapshotsRes: GetSnapshotsResponse = client.admin().cluster().suspendUntil { getSnapshots(getSnapshotsReq, it) }
-            log.info("Get snapshot response: ${getSnapshotsRes.snapshots}")
-            snapshotToDelete = findSnapshotsToDelete(getSnapshotsRes.snapshots, job.deletion.condition)
+            val snapshotInfos = client.getSnapshots(
+                smJobIdToPolicyName(job.id) + "*",
+                job.snapshotConfig["repository"] as String
+            )
+            snapshotToDelete = findSnapshotsToDelete(snapshotInfos, job.deletion.condition)
             log.info("Going to delete: ${snapshotToDelete.map { it.name }}")
 
             if (snapshotToDelete.isNotEmpty()) {

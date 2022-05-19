@@ -70,8 +70,7 @@ class SMStateMachine(
                                 "exception" to userMessage
                             )
                             val metadataToSave = SMMetadata.Builder(metadata)
-                                .currentState(SMState.START)
-                                .reset()
+                                .reset(result.resetType)
                                 .info(info)
                                 .build()
                             updateMetadata(metadataToSave)
@@ -103,6 +102,8 @@ class SMStateMachine(
     private var metadataSeqNo: Long = metadata.seqNo
     private var metadataPrimaryTerm: Long = metadata.primaryTerm
     private suspend fun updateMetadata(md: SMMetadata) {
+        // TODO SM before update metadata, check if next execution time is earlier than now()
+        //  if so we should update next execution time
         val res = client.indexMetadata(md, job.id, metadataSeqNo, metadataPrimaryTerm)
 
         metadataSeqNo = res.seqNo

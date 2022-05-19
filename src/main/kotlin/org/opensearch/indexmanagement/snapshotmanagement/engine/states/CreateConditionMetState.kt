@@ -8,6 +8,7 @@ package org.opensearch.indexmanagement.snapshotmanagement.engine.states
 import org.opensearch.indexmanagement.snapshotmanagement.engine.statemachine.SMStateMachine
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.State.ExecutionResult
 import org.opensearch.indexmanagement.snapshotmanagement.getNextExecutionTime
+import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata
 import java.time.Instant
 import java.time.Instant.now
 
@@ -21,30 +22,26 @@ object CreateConditionMetState : State {
         val log = context.log
 
         if (metadata.creation.started != null) {
-            log.info("There is an ongoing snapshot creation: ${metadata.creation.started}.")
+            log.info("Snapshot creating by snapshot management: [${metadata.creation.started}].")
             return ExecutionResult.Stay()
         }
 
         val nextCreationTime = metadata.creation.trigger.time
         val nextCreationTimeToSave: Instant
         if (!now().isBefore(nextCreationTime)) {
-            log.info("current time [${now()}] has passed nextCreationTime [$nextCreationTime]")
+            log.info("sm dev: Current time [${now()}] has passed nextCreationTime [$nextCreationTime]")
             nextCreationTimeToSave = getNextExecutionTime(job.creation.schedule, now())
         } else {
-            log.info("current time [${now()}] has not passed nextCreationTime [$nextCreationTime]")
-            // TODO dynamically update job start_time
+            log.info("sm dev: Current time [${now()}] has not passed nextCreationTime [$nextCreationTime]")
+            // TODO SM dynamically update job start_time to avoid unnecessary job runs
             return ExecutionResult.Stay()
         }
 
-        val metadataToSave = metadata.copy(
-            currentState = SMState.CREATE_CONDITION_MET,
-            creation = metadata.creation.copy(
-                trigger = metadata.creation.trigger.copy(
-                    time = nextCreationTimeToSave
-                )
-            )
-        )
-        log.info("Save current state as CREATE_CONDITION_MET [$metadataToSave]")
+        val metadataToSave = SMMetadata.Builder(metadata)
+            .currentState(SMState.CREATE_CONDITION_MET)
+            .nextCreationTime(nextCreationTimeToSave)
+            .build()
+        log.info("sm dev: Save current state as CREATE_CONDITION_MET [$metadataToSave]")
         return ExecutionResult.Next(metadataToSave)
     }
 }

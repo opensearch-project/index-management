@@ -9,11 +9,10 @@ import org.opensearch.action.admin.cluster.snapshots.create.CreateSnapshotReques
 import org.opensearch.action.admin.cluster.snapshots.create.CreateSnapshotResponse
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.snapshotmanagement.engine.statemachine.SMStateMachine
-import org.opensearch.indexmanagement.snapshotmanagement.SnapshotManagementException
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.State.ExecutionResult
 import org.opensearch.indexmanagement.snapshotmanagement.generateSnapshotName
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata
-import org.opensearch.repositories.RepositoryMissingException
+import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata.ResetType
 
 object CreatingState : State {
 
@@ -25,8 +24,12 @@ object CreatingState : State {
         val metadata = context.metadata
         val log = context.log
 
-        // Check if there's already creating snapshot
-        val snapshotName = generateSnapshotName(job)
+        var snapshotName: String
+        // TODO SM Check if there is any snapshot exists between last execution time and now()
+        val lastExecutionTime = job.creation.schedule.getPeriodStartingAt(null).v1()
+
+
+        snapshotName = generateSnapshotName(job)
         log.info("Snapshot to create: $snapshotName.")
 
         val res: CreateSnapshotResponse
@@ -35,19 +38,20 @@ object CreatingState : State {
                 .source(job.snapshotConfig)
                 .waitForCompletion(false)
             res = client.admin().cluster().suspendUntil { createSnapshot(req, it) }
-        } catch (ex: RepositoryMissingException) {
-            return ExecutionResult.Failure(SnapshotManagementException(ex))
-        } catch (ex: Exception) {
-            return ExecutionResult.Failure(ex)
+        }
+        // catch (ex: RepositoryMissingException) {
+        //     return ExecutionResult.Failure(SnapshotManagementException(ex), ActionType.CREATION)
+        // }
+        catch (ex: Exception) {
+            return ExecutionResult.Failure(ex, ResetType.CREATION)
         }
 
         log.info("Create snapshot response: $res.")
-        val metadataToSave = metadata.copy(
-            currentState = SMState.CREATING,
-            creation = metadata.creation.copy(
-                started = SMMetadata.SnapshotInfo(name = snapshotName)
-            ),
-        )
+
+        val metadataToSave = SMMetadata.Builder(metadata)
+            .currentState(SMState.CREATING)
+            .startedCreation(SMMetadata.SnapshotInfo(name = snapshotName))
+            .build()
         return ExecutionResult.Next(metadataToSave)
     }
 }
