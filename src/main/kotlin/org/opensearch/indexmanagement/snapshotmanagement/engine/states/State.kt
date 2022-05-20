@@ -28,7 +28,8 @@ interface State {
      *  For the meaning of vertical, lateral, refer to [smTransitions].
      * [Stay]: stay in this level, try executing the next lateral states if exists,
      *  otherwise wait for next job run.
-     * [Failure]: caught exception.
+     * [Failure]: caught exception, show the exception to user in metadata.info.
+     *  Reset metadata and skip the workflow to next execution.
      */
     sealed class ExecutionResult {
         data class Next(val metadataToSave: SMMetadata) : ExecutionResult()

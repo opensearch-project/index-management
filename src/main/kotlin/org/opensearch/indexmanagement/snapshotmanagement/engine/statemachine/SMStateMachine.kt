@@ -86,7 +86,7 @@ class SMStateMachine(
                 }
             } while (currentState.instance.continuous)
         } catch (ex: Exception) {
-            log.error("Snapshot management runtime exception.", ex)
+            log.error("Snapshot management uncaught runtime exception.", ex)
         }
     }
 

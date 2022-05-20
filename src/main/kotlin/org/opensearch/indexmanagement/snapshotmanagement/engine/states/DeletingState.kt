@@ -6,14 +6,13 @@
 package org.opensearch.indexmanagement.snapshotmanagement.engine.states
 
 import org.opensearch.action.admin.cluster.snapshots.delete.DeleteSnapshotRequest
-import org.opensearch.action.admin.cluster.snapshots.get.GetSnapshotsRequest
-import org.opensearch.action.admin.cluster.snapshots.get.GetSnapshotsResponse
 import org.opensearch.action.support.master.AcknowledgedResponse
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.snapshotmanagement.engine.statemachine.SMStateMachine
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.State.ExecutionResult
 import org.opensearch.indexmanagement.snapshotmanagement.getSnapshots
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata
+import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata.ResetType
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy
 import org.opensearch.indexmanagement.snapshotmanagement.smJobIdToPolicyName
 import org.opensearch.snapshots.SnapshotInfo
@@ -49,7 +48,7 @@ object DeletingState : State {
                 log.info("Delete snapshot acknowledged: ${res.isAcknowledged}.")
             }
         } catch (ex: Exception) {
-            return ExecutionResult.Failure(ex)
+            return ExecutionResult.Failure(ex, ResetType.DELETION)
         }
 
         val metadataToSave = metadata.copy(
