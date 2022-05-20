@@ -32,12 +32,13 @@ object DeletingState : State {
         val res: AcknowledgedResponse
         val snapshotToDelete: List<SMMetadata.SnapshotInfo>
         try {
+            // TODO SM what if there's no snapshot, will there be exception?
             val snapshotInfos = client.getSnapshots(
                 smJobIdToPolicyName(job.id) + "*",
                 job.snapshotConfig["repository"] as String
             )
             snapshotToDelete = findSnapshotsToDelete(snapshotInfos, job.deletion.condition)
-            log.info("Going to delete: ${snapshotToDelete.map { it.name }}")
+            log.info("sm dev: Going to delete: ${snapshotToDelete.map { it.name }}")
 
             if (snapshotToDelete.isNotEmpty()) {
                 val req = DeleteSnapshotRequest(
@@ -45,7 +46,7 @@ object DeletingState : State {
                     *snapshotToDelete.map { it.name }.toTypedArray()
                 )
                 res = client.admin().cluster().suspendUntil { deleteSnapshot(req, it) }
-                log.info("Delete snapshot acknowledged: ${res.isAcknowledged}.")
+                log.info("sm dev: Delete snapshot acknowledged: ${res.isAcknowledged}.")
             }
         } catch (ex: Exception) {
             return ExecutionResult.Failure(ex, ResetType.DELETION)
@@ -61,6 +62,14 @@ object DeletingState : State {
         return ExecutionResult.Next(metadataToSave)
     }
 
+    /**
+     * Based on the condition to delete, find snapshots to be deleted
+     *
+     * Logic:
+     *   outdated snapshots: snapshot.startedTime + max_age < now
+     *   keep at least min_count of snapshots even it's outdated
+     *   keep at most max_count of snapshots
+     */
     private fun findSnapshotsToDelete(snapshots: List<SnapshotInfo>, deleteCondition: SMPolicy.DeleteCondition): List<SMMetadata.SnapshotInfo> {
         val snapshotInfos = snapshots.map {
             SMMetadata.SnapshotInfo(
@@ -71,15 +80,18 @@ object DeletingState : State {
         }.sortedBy { it.startTime } // start_time will always exist along with snapshotId
 
         var thresholdIndex = 0
+
         if (deleteCondition.maxAge != null) {
             val timeThreshold = now().minusSeconds(deleteCondition.maxAge.seconds())
             val thresholdSnapshot = snapshotInfos.findLast { it.startTime?.isBefore(timeThreshold) ?: false }
             thresholdIndex = snapshotInfos.indexOf(thresholdSnapshot)
             if (thresholdIndex == -1) thresholdIndex = 0
-            if (snapshotInfos.size - thresholdIndex < deleteCondition.minCount!!) {
-                thresholdIndex = snapshotInfos.size - deleteCondition.minCount
+            val minCount = deleteCondition.minCount ?: SMPolicy.DeleteCondition.DEFAULT_MIN_COUNT
+            if (snapshotInfos.size - thresholdIndex < minCount) {
+                thresholdIndex = snapshotInfos.size - minCount
             }
         }
+
         if (snapshotInfos.size - thresholdIndex > deleteCondition.maxCount) {
             thresholdIndex = snapshotInfos.size - deleteCondition.maxCount
         }

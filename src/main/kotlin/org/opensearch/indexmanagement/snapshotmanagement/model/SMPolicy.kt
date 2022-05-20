@@ -326,6 +326,7 @@ data class SMPolicy(
             const val MAX_COUNT_FIELD = "max_count"
             const val MAX_AGE_FIELD = "max_age"
             const val MIN_COUNT_FIELD = "min_count"
+            const val DEFAULT_MIN_COUNT = 5
 
             fun parse(xcp: XContentParser): DeleteCondition {
                 var maxCount = 50
@@ -345,7 +346,7 @@ data class SMPolicy(
                 }
 
                 if (maxAge != null && minCount == null) {
-                    minCount = minOf(5, maxCount)
+                    minCount = minOf(DEFAULT_MIN_COUNT, maxCount)
                 }
 
                 return DeleteCondition(
