@@ -5,16 +5,14 @@
 
 package org.opensearch.indexmanagement.snapshotmanagement.engine.states
 
-import org.opensearch.action.admin.cluster.snapshots.status.SnapshotsStatusRequest
-import org.opensearch.action.admin.cluster.snapshots.status.SnapshotsStatusResponse
-import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.snapshotmanagement.engine.statemachine.SMStateMachine
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.State.ExecutionResult
 import org.opensearch.indexmanagement.snapshotmanagement.getSnapshots
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata
-import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata.ResetType
+import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata.WorkflowType
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata.Companion.upsert
 import org.opensearch.indexmanagement.snapshotmanagement.smJobIdToPolicyName
+import org.opensearch.snapshots.SnapshotMissingException
 import org.opensearch.snapshots.SnapshotState
 
 object FinishedState : State {
@@ -50,9 +48,12 @@ object FinishedState : State {
                             // TODO SM record the snapshot in progress state in info
                         }
                     }
+                } catch (ex: SnapshotMissingException) {
+                    // User may manually delete the creating snapshot
+                    return ExecutionResult.Failure(ex, WorkflowType.CREATION, reset = true)
                 } catch (ex: Exception) {
-                    // If someone deletes the creating snapshot, we could face the SnapshotMissingException
-                    return ExecutionResult.Failure(ex, ResetType.CREATION)
+                    // TODO SM need to implement retry mechanism so we don't stuck forever
+                    return ExecutionResult.Failure(ex, WorkflowType.CREATION, reset = false)
                 }
             }
             metadata.deletion.started != null -> {
@@ -77,7 +78,7 @@ object FinishedState : State {
             }
         }
 
-        // TODO SM deal with time limitation,
+        // TODO SM deal with time limitation
 
         val metadataToSave = SMMetadata.Builder(metadata)
             .startedCreation(creationStarted)

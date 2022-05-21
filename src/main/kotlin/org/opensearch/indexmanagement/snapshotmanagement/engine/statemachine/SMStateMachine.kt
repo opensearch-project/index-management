@@ -9,6 +9,7 @@ import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.opensearch.client.Client
 import org.opensearch.indexmanagement.snapshotmanagement.SnapshotManagementException
+import org.opensearch.indexmanagement.snapshotmanagement.SnapshotManagementException.ExceptionKey
 import org.opensearch.indexmanagement.snapshotmanagement.preFixTimeStamp
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.State.ExecutionResult
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.SMState
@@ -52,14 +53,14 @@ class SMStateMachine(
                     when (result) {
                         is ExecutionResult.Next -> {
                             log.info("State [$currentState]'s execution finished, will execute its next state.")
-                            updateMetadata(result.metadataToSave.copy(currentState=currentState))
+                            updateMetadata(result.metadataToSave.copy(currentState = currentState))
                             // break the nextStates loop so to avoid execute other lateral states
                             break
                         }
                         is ExecutionResult.Stay -> {
                             log.info("State [$currentState]'s execution not finished, will stay.")
                             val metadataToSave = result.metadataToSave
-                            metadataToSave?.let { updateMetadata(metadataToSave.copy(currentState=prevState)) }
+                            metadataToSave?.let { updateMetadata(metadataToSave.copy(currentState = prevState)) }
                             // can still execute other lateral states if exists
                         }
                         is ExecutionResult.Failure -> {
@@ -67,14 +68,11 @@ class SMStateMachine(
                             log.error("Caught exception while executing state [$currentState], will skip to the START state.", ex)
 
                             val userMessage = preFixTimeStamp(SnapshotManagementException(ex).message)
-                            val info = metadata.info.upsert(
-                                "exception" to userMessage
-                            )
-                            val metadataToSave = SMMetadata.Builder(metadata)
-                                .reset(result.resetType)
-                                .info(info)
-                                .build()
-                            updateMetadata(metadataToSave)
+                            val info = metadata.info.upsert("exception" to userMessage)
+                            val metadataToSave = SMMetadata.Builder(metadata).info(info)
+                            if (result.reset)
+                                metadataToSave.reset(result.workflowType)
+                            updateMetadata(metadataToSave.build())
 
                             // TODO error notification
                             break
@@ -87,8 +85,14 @@ class SMStateMachine(
                 }
             } while (currentState.instance.continuous)
         } catch (ex: Exception) {
-            // For update metadata exception, we won't try to update metadata again
+            if (ex is SnapshotManagementException &&
+                ex.exKey == ExceptionKey.METADATA_INDEXING_FAILURE
+            ) {
+                // For update metadata exception, we cannot update metadata again
+                return
+            }
             log.error("Snapshot management uncaught runtime exception.", ex)
+            // TODO SM retry mechanism
         }
     }
 
@@ -107,12 +111,17 @@ class SMStateMachine(
         // TODO SM before update metadata, check if next execution time is earlier than now()
         //  if so we should update it next execution time to keep it up to date
 
-        // TODO SM retry policy for update metadata
-        val res = client.indexMetadata(md, job.id, metadataSeqNo, metadataPrimaryTerm)
-
-        metadataSeqNo = res.seqNo
-        metadataPrimaryTerm = res.primaryTerm
-        metadata = md
+        try {
+            // TODO SM retry policy for update metadata
+            val res = client.indexMetadata(md, job.id, metadataSeqNo, metadataPrimaryTerm)
+            metadataSeqNo = res.seqNo
+            metadataPrimaryTerm = res.primaryTerm
+            metadata = md
+        } catch (ex: Exception) {
+            val smEx = SnapshotManagementException(ExceptionKey.METADATA_INDEXING_FAILURE, ex)
+            log.error(smEx.message, ex)
+            throw smEx
+        }
 
         // TODO SM save a copy to history
     }

@@ -22,6 +22,7 @@ import org.opensearch.indexmanagement.snapshotmanagement.engine.states.State.Exe
 import org.opensearch.indexmanagement.snapshotmanagement.randomSMMetadata
 import org.opensearch.indexmanagement.snapshotmanagement.randomSMPolicy
 import org.opensearch.indexmanagement.snapshotmanagement.mockCreateSnapshotResponse
+import org.opensearch.indexmanagement.snapshotmanagement.mockGetSnapshotResponse
 import org.opensearch.indexmanagement.snapshotmanagement.mockIndexResponse
 import org.opensearch.test.OpenSearchTestCase
 
@@ -39,24 +40,8 @@ class CreatingStateTests : OpenSearchTestCase() {
         }.whenever(client).index(any(), any())
     }
 
-    private fun mockCreateSnapshotCall(
-        response: ActionResponse? = null,
-        exception: Exception? = null
-    ) {
-        assertTrue(
-            "Must provide either a response or an exception.",
-            (response != null).xor(exception != null)
-        )
-        whenever(client.admin()).thenReturn(adminClient)
-        whenever(adminClient.cluster()).thenReturn(clusterAdminClient)
-        doAnswer {
-            val listener = it.getArgument<ActionListener<ActionResponse>>(1)
-            if (response != null) listener.onResponse(response)
-            else listener.onFailure(exception)
-        }.whenever(clusterAdminClient).createSnapshot(any(), any())
-    }
-
     fun `test create snapshot succeed`() = runBlocking {
+        mockGetSnapshotsCall(response = mockGetSnapshotResponse(0))
         mockCreateSnapshotCall(response = mockCreateSnapshotResponse())
 
         val metadata = randomSMMetadata(
@@ -73,6 +58,7 @@ class CreatingStateTests : OpenSearchTestCase() {
 
     fun `test create snapshot exception`() = runBlocking {
         val ex = Exception()
+        mockGetSnapshotsCall(response = mockGetSnapshotResponse(0))
         mockCreateSnapshotCall(exception = ex)
 
         val metadata = randomSMMetadata(
@@ -101,4 +87,38 @@ class CreatingStateTests : OpenSearchTestCase() {
     //     ex as SnapshotManagementException
     //     assertTrue("StateMachineException error code should be ATOMIC", ex.exKey == ATOMIC)
     // }
+
+    private fun mockCreateSnapshotCall(
+        response: ActionResponse? = null,
+        exception: Exception? = null
+    ) {
+        assertTrue(
+            "Must provide either a response or an exception.",
+            (response != null).xor(exception != null)
+        )
+        whenever(client.admin()).thenReturn(adminClient)
+        whenever(adminClient.cluster()).thenReturn(clusterAdminClient)
+        doAnswer {
+            val listener = it.getArgument<ActionListener<ActionResponse>>(1)
+            if (response != null) listener.onResponse(response)
+            else listener.onFailure(exception)
+        }.whenever(clusterAdminClient).createSnapshot(any(), any())
+    }
+
+    private fun mockGetSnapshotsCall(
+        response: ActionResponse? = null,
+        exception: Exception? = null
+    ) {
+        assertTrue(
+            "Must provide either a response or an exception.",
+            (response != null).xor(exception != null)
+        )
+        whenever(client.admin()).thenReturn(adminClient)
+        whenever(adminClient.cluster()).thenReturn(clusterAdminClient)
+        doAnswer {
+            val listener = it.getArgument<ActionListener<ActionResponse>>(1)
+            if (response != null) listener.onResponse(response)
+            else listener.onFailure(exception)
+        }.whenever(clusterAdminClient).getSnapshots(any(), any())
+    }
 }

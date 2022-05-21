@@ -13,7 +13,7 @@ import org.opensearch.indexmanagement.snapshotmanagement.engine.states.State.Exe
 import org.opensearch.indexmanagement.snapshotmanagement.generateSnapshotName
 import org.opensearch.indexmanagement.snapshotmanagement.getSnapshots
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata
-import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata.ResetType
+import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata.WorkflowType
 import org.opensearch.indexmanagement.snapshotmanagement.smJobIdToPolicyName
 import org.opensearch.snapshots.SnapshotInfo
 import java.time.Instant
@@ -52,7 +52,7 @@ object CreatingState : State {
             //     return ExecutionResult.Failure(SnapshotManagementException(ex), ActionType.CREATION)
             // }
             catch (ex: Exception) {
-                return ExecutionResult.Failure(ex, ResetType.CREATION)
+                return ExecutionResult.Failure(ex, WorkflowType.CREATION, reset = true)
             }
 
             log.info("Create snapshot response: $res.")

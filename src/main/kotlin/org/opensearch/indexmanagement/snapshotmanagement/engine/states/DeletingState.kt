@@ -12,7 +12,7 @@ import org.opensearch.indexmanagement.snapshotmanagement.engine.statemachine.SMS
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.State.ExecutionResult
 import org.opensearch.indexmanagement.snapshotmanagement.getSnapshots
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata
-import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata.ResetType
+import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata.WorkflowType
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy
 import org.opensearch.indexmanagement.snapshotmanagement.smJobIdToPolicyName
 import org.opensearch.snapshots.SnapshotInfo
@@ -49,16 +49,13 @@ object DeletingState : State {
                 log.info("sm dev: Delete snapshot acknowledged: ${res.isAcknowledged}.")
             }
         } catch (ex: Exception) {
-            return ExecutionResult.Failure(ex, ResetType.DELETION)
+            return ExecutionResult.Failure(ex, WorkflowType.DELETION, reset = true)
         }
 
-        val metadataToSave = metadata.copy(
-            currentState = SMState.DELETING,
-            deletion = metadata.deletion.copy(
-                started = snapshotToDelete,
-                startedTime = now(),
-            ),
-        )
+        val metadataToSave = SMMetadata.Builder(metadata)
+            .deletionStartTime(now())
+            .startedDeletion(snapshotToDelete)
+            .build()
         return ExecutionResult.Next(metadataToSave)
     }
 

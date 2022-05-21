@@ -363,7 +363,7 @@ data class SMMetadata(
         }
     }
 
-    enum class ResetType {
+    enum class WorkflowType {
         CREATION,
         DELETION,
     }
@@ -376,22 +376,23 @@ data class SMMetadata(
 
         fun build() = metadata
 
-        fun reset(resetType: ResetType): Builder {
+        fun reset(workflowType: WorkflowType): Builder {
             var currentState = metadata.currentState
             var startedCreation = metadata.creation.started
             var startedDeletion = metadata.deletion.started
             var deletionStartedTime = metadata.deletion.startedTime
-            when(resetType) {
-                ResetType.CREATION -> {
+            when (workflowType) {
+                WorkflowType.CREATION -> {
                     currentState = SMState.CREATING
                     startedCreation = null
                 }
-                ResetType.DELETION -> {
+                WorkflowType.DELETION -> {
                     currentState = SMState.DELETING
                     startedDeletion = null
                     deletionStartedTime = null
                 }
             }
+
             metadata = metadata.copy(
                 currentState = currentState,
                 creation = metadata.creation.copy(

@@ -33,6 +33,6 @@ interface State {
     sealed class ExecutionResult {
         data class Next(val metadataToSave: SMMetadata) : ExecutionResult()
         data class Stay(val metadataToSave: SMMetadata? = null) : ExecutionResult()
-        data class Failure(val ex: Exception, val resetType: SMMetadata.ResetType) : ExecutionResult()
+        data class Failure(val ex: Exception, val workflowType: SMMetadata.WorkflowType, val reset: Boolean) : ExecutionResult()
     }
 }

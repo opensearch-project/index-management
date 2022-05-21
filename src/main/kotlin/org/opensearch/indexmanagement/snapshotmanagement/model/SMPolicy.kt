@@ -21,7 +21,6 @@ import org.opensearch.indexmanagement.opensearchapi.nullValueHandler
 import org.opensearch.indexmanagement.opensearchapi.optionalField
 import org.opensearch.indexmanagement.opensearchapi.optionalTimeField
 import org.opensearch.indexmanagement.snapshotmanagement.smJobIdToPolicyName
-import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ActionTimeout
 import org.opensearch.indexmanagement.util.NO_ID
 import org.opensearch.jobscheduler.spi.ScheduledJobParameter
 import org.opensearch.jobscheduler.spi.schedule.CronSchedule
@@ -94,6 +93,9 @@ data class SMPolicy(
         const val LAST_UPDATED_TIME_FIELD = "last_updated_time"
         const val ENABLED_TIME_FIELD = "enabled_time"
         const val SCHEDULE_FIELD = "schedule"
+
+        // Used by sub models Creation and Deletion
+        const val TIME_LIMIT_FIELD = "time_limit"
 
         fun parse(
             xcp: XContentParser,
@@ -192,23 +194,22 @@ data class SMPolicy(
 
     data class Creation(
         val schedule: Schedule,
-        val timeout: ActionTimeout? = null,
+        val timeout: TimeValue? = null,
     ) : Writeable, ToXContent {
 
         override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
             return builder.startObject()
                 .field(SCHEDULE_FIELD, schedule)
-                .optionalField(TIMEOUT_FIELD, timeout)
+                .optionalField(TIME_LIMIT_FIELD, timeout)
                 .endObject()
         }
 
         companion object {
             const val SCHEDULE_FIELD = "schedule"
-            const val TIMEOUT_FIELD = "timeout"
 
             fun parse(xcp: XContentParser): Creation {
                 var schedule: Schedule? = null
-                var timeout: ActionTimeout? = null
+                var timeout: TimeValue? = null
 
                 ensureExpectedToken(Token.START_OBJECT, xcp.currentToken(), xcp)
                 while (xcp.nextToken() != Token.END_OBJECT) {
@@ -217,7 +218,7 @@ data class SMPolicy(
 
                     when (fieldName) {
                         SCHEDULE_FIELD -> schedule = ScheduleParser.parse(xcp)
-                        TIMEOUT_FIELD -> timeout = ActionTimeout.parse(xcp)
+                        TIME_LIMIT_FIELD -> timeout = TimeValue.parseTimeValue(xcp.text(), TIME_LIMIT_FIELD)
                     }
                 }
 
@@ -230,37 +231,36 @@ data class SMPolicy(
 
         constructor(sin: StreamInput) : this(
             schedule = CronSchedule(sin),
-            timeout = sin.readOptionalWriteable(::ActionTimeout),
+            timeout = sin.readOptionalTimeValue(),
         )
 
         override fun writeTo(out: StreamOutput) {
             schedule.writeTo(out)
-            out.writeOptionalWriteable(timeout)
+            out.writeOptionalTimeValue(timeout)
         }
     }
 
     data class Deletion(
         val schedule: Schedule,
-        val timeout: ActionTimeout? = null,
+        val timeout: TimeValue? = null,
         val condition: DeleteCondition,
     ) : Writeable, ToXContent {
 
         override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
             return builder.startObject()
                 .field(SCHEDULE_FIELD, schedule)
-                .optionalField(TIMEOUT_FIELD, timeout)
                 .field(CONDITION_FIELD, condition)
+                .optionalField(TIME_LIMIT_FIELD, timeout)
                 .endObject()
         }
 
         companion object {
             const val SCHEDULE_FIELD = "schedule"
-            const val TIMEOUT_FIELD = "timeout"
             const val CONDITION_FIELD = "condition"
 
             fun parse(xcp: XContentParser): Deletion {
                 var schedule: Schedule? = null
-                var timeout: ActionTimeout? = null
+                var timeout: TimeValue? = null
                 var condition: DeleteCondition? = null
 
                 ensureExpectedToken(Token.START_OBJECT, xcp.currentToken(), xcp)
@@ -270,7 +270,7 @@ data class SMPolicy(
 
                     when (fieldName) {
                         SCHEDULE_FIELD -> schedule = ScheduleParser.parse(xcp)
-                        TIMEOUT_FIELD -> timeout = ActionTimeout.parse(xcp)
+                        TIME_LIMIT_FIELD -> timeout = TimeValue.parseTimeValue(xcp.text(), TIME_LIMIT_FIELD)
                         CONDITION_FIELD -> condition = DeleteCondition.parse(xcp)
                     }
                 }
@@ -290,13 +290,13 @@ data class SMPolicy(
 
         constructor(sin: StreamInput) : this(
             schedule = CronSchedule(sin),
-            timeout = sin.readOptionalWriteable(::ActionTimeout),
+            timeout = sin.readOptionalTimeValue(),
             condition = DeleteCondition(sin),
         )
 
         override fun writeTo(out: StreamOutput) {
             schedule.writeTo(out)
-            out.writeOptionalWriteable(timeout)
+            out.writeOptionalTimeValue(timeout)
             condition.writeTo(out)
         }
     }
@@ -324,12 +324,13 @@ data class SMPolicy(
 
         companion object {
             const val MAX_COUNT_FIELD = "max_count"
+            private const val DEFAULT_MAX_COUNT = 50
             const val MAX_AGE_FIELD = "max_age"
             const val MIN_COUNT_FIELD = "min_count"
             const val DEFAULT_MIN_COUNT = 5
 
             fun parse(xcp: XContentParser): DeleteCondition {
-                var maxCount = 50
+                var maxCount = DEFAULT_MAX_COUNT
                 var maxAge: TimeValue? = null
                 var minCount: Int? = null
 
@@ -345,6 +346,8 @@ data class SMPolicy(
                     }
                 }
 
+                // minCount is used to prevent all managed snapshots got deleted even
+                //  they have been over the maxAge
                 if (maxAge != null && minCount == null) {
                     minCount = minOf(DEFAULT_MIN_COUNT, maxCount)
                 }

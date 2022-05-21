@@ -16,14 +16,14 @@ import kotlin.reflect.KClass
  *  Each exception key should have a corresponding user facing message
  */
 class SnapshotManagementException(
-    private val exKey: ExceptionKey? = null,
+    val exKey: ExceptionKey? = null,
     cause: Throwable? = null,
     message: String? = null,
 ) : OpenSearchException(message, cause) {
 
     enum class ExceptionKey {
         GENERAL,
-        ATOMIC,
+        METADATA_INDEXING_FAILURE,
         REPO_MISSING,
     }
 
@@ -45,8 +45,8 @@ class SnapshotManagementException(
 
         // User facing exception messages
         private val exceptionMsgMap: Map<ExceptionKey, String> = mapOf(
-            ExceptionKey.GENERAL to "Caught exception while snapshot management is running. Please check the error log.",
-            ExceptionKey.ATOMIC to "Undetermined about whether the last snapshot operation has fully finished.",
+            ExceptionKey.GENERAL to "Caught exception while snapshot management runs. Please check the error log.",
+            ExceptionKey.METADATA_INDEXING_FAILURE to "Failed to update metadata while snapshot management runs.",
             ExceptionKey.REPO_MISSING to "The repository provided is missing."
         )
     }
