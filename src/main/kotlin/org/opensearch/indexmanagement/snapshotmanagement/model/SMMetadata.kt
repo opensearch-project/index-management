@@ -308,7 +308,7 @@ data class SMMetadata(
 
     data class SnapshotInfo(
         val name: String,
-        val startTime: Instant? = null,
+        val startTime: Instant,
         val endTime: Instant? = null,
     ) : Writeable, ToXContent {
 
@@ -343,8 +343,8 @@ data class SMMetadata(
                 }
 
                 return SnapshotInfo(
-                    name = requireNotNull(name) { "snapshot info name must not be null." },
-                    startTime = startTime,
+                    name = requireNotNull(name) { "name in snapshot info must not be null." },
+                    startTime = requireNotNull(startTime) { "start time in snapshot info must not be null." },
                     endTime = endTime,
                 )
             }
@@ -352,13 +352,13 @@ data class SMMetadata(
 
         constructor(sin: StreamInput) : this(
             name = sin.readString(),
-            startTime = sin.readOptionalInstant(),
+            startTime = sin.readInstant(),
             endTime = sin.readOptionalInstant(),
         )
 
         override fun writeTo(out: StreamOutput) {
             out.writeString(name)
-            out.writeOptionalInstant(startTime)
+            out.writeInstant(startTime)
             out.writeOptionalInstant(endTime)
         }
     }
@@ -470,10 +470,11 @@ data class SMMetadata(
             return this
         }
 
-        fun deletionStartTime(time: Instant?): Builder {
+        fun deletionStart(startTime: Instant?, snapshotInfo: List<SnapshotInfo>?): Builder {
             metadata = metadata.copy(
                 deletion = metadata.deletion.copy(
-                    startedTime = time
+                    started = snapshotInfo,
+                    startedTime = startTime,
                 )
             )
             return this

@@ -19,7 +19,6 @@ import org.opensearch.indexmanagement.randomIntervalSchedule
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.SMState
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy
-import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ActionTimeout
 import org.opensearch.jobscheduler.spi.schedule.CronSchedule
 import org.opensearch.jobscheduler.spi.schedule.IntervalSchedule
 import org.opensearch.rest.RestStatus
@@ -75,11 +74,11 @@ fun randomSMPolicy(
         jobLastUpdateTime = jobLastUpdateTime,
         creation = SMPolicy.Creation(
             schedule = creationSchedule,
-            timeout = creationTimeout,
+            timeLimit = creationTimeout,
         ),
         deletion = SMPolicy.Deletion(
             schedule = deletionSchedule,
-            timeout = deletionTimeout,
+            timeLimit = deletionTimeout,
             condition = SMPolicy.DeleteCondition(
                 maxCount = deletionMaxCount,
                 maxAge = deletionMaxAge,

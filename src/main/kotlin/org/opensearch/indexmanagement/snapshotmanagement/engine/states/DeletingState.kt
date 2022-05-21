@@ -53,8 +53,11 @@ object DeletingState : State {
         }
 
         val metadataToSave = SMMetadata.Builder(metadata)
-            .deletionStartTime(now())
-            .startedDeletion(snapshotToDelete)
+            .currentState(SMState.DELETING)
+            .deletionStart(
+                startTime = now(),
+                snapshotInfo = snapshotToDelete
+            )
             .build()
         return ExecutionResult.Next(metadataToSave)
     }

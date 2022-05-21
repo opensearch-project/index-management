@@ -194,13 +194,13 @@ data class SMPolicy(
 
     data class Creation(
         val schedule: Schedule,
-        val timeout: TimeValue? = null,
+        val timeLimit: TimeValue? = null,
     ) : Writeable, ToXContent {
 
         override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
             return builder.startObject()
                 .field(SCHEDULE_FIELD, schedule)
-                .optionalField(TIME_LIMIT_FIELD, timeout)
+                .optionalField(TIME_LIMIT_FIELD, timeLimit)
                 .endObject()
         }
 
@@ -224,25 +224,25 @@ data class SMPolicy(
 
                 return Creation(
                     schedule = requireNotNull(schedule) { "schedule field must not be null" },
-                    timeout = timeout
+                    timeLimit = timeout
                 )
             }
         }
 
         constructor(sin: StreamInput) : this(
             schedule = CronSchedule(sin),
-            timeout = sin.readOptionalTimeValue(),
+            timeLimit = sin.readOptionalTimeValue(),
         )
 
         override fun writeTo(out: StreamOutput) {
             schedule.writeTo(out)
-            out.writeOptionalTimeValue(timeout)
+            out.writeOptionalTimeValue(timeLimit)
         }
     }
 
     data class Deletion(
         val schedule: Schedule,
-        val timeout: TimeValue? = null,
+        val timeLimit: TimeValue? = null,
         val condition: DeleteCondition,
     ) : Writeable, ToXContent {
 
@@ -250,7 +250,7 @@ data class SMPolicy(
             return builder.startObject()
                 .field(SCHEDULE_FIELD, schedule)
                 .field(CONDITION_FIELD, condition)
-                .optionalField(TIME_LIMIT_FIELD, timeout)
+                .optionalField(TIME_LIMIT_FIELD, timeLimit)
                 .endObject()
         }
 
@@ -282,7 +282,7 @@ data class SMPolicy(
 
                 return Deletion(
                     schedule = schedule,
-                    timeout = timeout,
+                    timeLimit = timeout,
                     condition = requireNotNull(condition) { "condition field must not be null" },
                 )
             }
@@ -290,13 +290,13 @@ data class SMPolicy(
 
         constructor(sin: StreamInput) : this(
             schedule = CronSchedule(sin),
-            timeout = sin.readOptionalTimeValue(),
+            timeLimit = sin.readOptionalTimeValue(),
             condition = DeleteCondition(sin),
         )
 
         override fun writeTo(out: StreamOutput) {
             schedule.writeTo(out)
-            out.writeOptionalTimeValue(timeout)
+            out.writeOptionalTimeValue(timeLimit)
             condition.writeTo(out)
         }
     }

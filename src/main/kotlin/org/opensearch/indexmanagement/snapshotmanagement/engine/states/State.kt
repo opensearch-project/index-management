@@ -34,5 +34,6 @@ interface State {
         data class Next(val metadataToSave: SMMetadata) : ExecutionResult()
         data class Stay(val metadataToSave: SMMetadata? = null) : ExecutionResult()
         data class Failure(val ex: Exception, val workflowType: SMMetadata.WorkflowType, val reset: Boolean) : ExecutionResult()
+        data class TimeLimitExceed(val workflowType: SMMetadata.WorkflowType) : ExecutionResult()
     }
 }

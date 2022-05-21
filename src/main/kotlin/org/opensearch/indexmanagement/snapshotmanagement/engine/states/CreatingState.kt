@@ -17,6 +17,7 @@ import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata.Workfl
 import org.opensearch.indexmanagement.snapshotmanagement.smJobIdToPolicyName
 import org.opensearch.snapshots.SnapshotInfo
 import java.time.Instant
+import java.time.Instant.now
 
 object CreatingState : State {
 
@@ -60,7 +61,12 @@ object CreatingState : State {
 
         val metadataToSave = SMMetadata.Builder(metadata)
             .currentState(SMState.CREATING)
-            .startedCreation(SMMetadata.SnapshotInfo(name = snapshotName))
+            .startedCreation(
+                SMMetadata.SnapshotInfo(
+                    name = snapshotName,
+                    startTime = now(),
+                )
+            )
             .build()
         return ExecutionResult.Next(metadataToSave)
     }

@@ -77,6 +77,13 @@ class SMStateMachine(
                             // TODO error notification
                             break
                         }
+                        is ExecutionResult.TimeLimitExceed -> {
+                            log.warn("${result.workflowType} has exceeded the time limit.")
+                            val metadataToSave = SMMetadata.Builder(metadata)
+                                .reset(result.workflowType)
+                                .build()
+                            updateMetadata(metadataToSave)
+                        }
                     }
                 }
                 if (result !is ExecutionResult.Next) {
