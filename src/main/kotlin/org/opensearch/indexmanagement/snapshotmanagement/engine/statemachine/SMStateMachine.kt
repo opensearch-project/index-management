@@ -45,20 +45,21 @@ class SMStateMachine(
 
                 var result: ExecutionResult = ExecutionResult.Stay()
                 for (nextState in nextStates) {
+                    val prevState = currentState
                     currentState = nextState
                     log.info("sm dev: Start executing $currentState.")
                     result = nextState.instance.execute(this)
                     when (result) {
                         is ExecutionResult.Next -> {
                             log.info("State [$currentState]'s execution finished, will execute its next state.")
-                            updateMetadata(result.metadataToSave)
+                            updateMetadata(result.metadataToSave.copy(currentState=currentState))
                             // break the nextStates loop so to avoid execute other lateral states
                             break
                         }
                         is ExecutionResult.Stay -> {
                             log.info("State [$currentState]'s execution not finished, will stay.")
                             val metadataToSave = result.metadataToSave
-                            metadataToSave?.let { updateMetadata(metadataToSave) }
+                            metadataToSave?.let { updateMetadata(metadataToSave.copy(currentState=prevState)) }
                             // can still execute other lateral states if exists
                         }
                         is ExecutionResult.Failure -> {
@@ -86,6 +87,7 @@ class SMStateMachine(
                 }
             } while (currentState.instance.continuous)
         } catch (ex: Exception) {
+            // For update metadata exception, we won't try to update metadata again
             log.error("Snapshot management uncaught runtime exception.", ex)
         }
     }
@@ -103,7 +105,9 @@ class SMStateMachine(
     private var metadataPrimaryTerm: Long = metadata.primaryTerm
     private suspend fun updateMetadata(md: SMMetadata) {
         // TODO SM before update metadata, check if next execution time is earlier than now()
-        //  if so we should update next execution time
+        //  if so we should update it next execution time to keep it up to date
+
+        // TODO SM retry policy for update metadata
         val res = client.indexMetadata(md, job.id, metadataSeqNo, metadataPrimaryTerm)
 
         metadataSeqNo = res.seqNo

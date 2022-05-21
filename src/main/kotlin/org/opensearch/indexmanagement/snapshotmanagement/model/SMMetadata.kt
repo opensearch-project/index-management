@@ -367,6 +367,7 @@ data class SMMetadata(
         CREATION,
         DELETION,
     }
+
     /**
      * Build the updated metadata in a flattened fashion
      *  based on the existing metadata

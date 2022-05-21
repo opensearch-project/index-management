@@ -24,10 +24,9 @@ interface State {
     suspend fun execute(context: SMStateMachine): ExecutionResult
 
     /**
+     * For the meaning of vertical, lateral, refer to [smTransitions].
      * [Next]: move to the next state in vertical direction.
-     *  For the meaning of vertical, lateral, refer to [smTransitions].
-     * [Stay]: stay in this level, try executing the next lateral states if exists,
-     *  otherwise wait for next job run.
+     * [Stay]: stay in this level, can execute the next lateral states if exists,
      * [Failure]: caught exception, show the exception to user in metadata.info.
      *  Reset metadata and skip the workflow to next execution.
      */

@@ -22,7 +22,6 @@ object CreateConditionMetState : State {
         val log = context.log
 
         if (metadata.creation.started != null) {
-            log.info("Snapshot creating by snapshot management: [${metadata.creation.started}].")
             return ExecutionResult.Stay()
         }
 

@@ -45,65 +45,49 @@ object FinishedState : State {
                             )
                         }
                         else -> {
-                            // We can record the snapshot in progress state in info
+                            // IN_PROGRESS, FAILED, PARTIAL, INCOMPATIBLE
                             log.info("Creating snapshot [${metadata.creation.started}] has not succeed")
-
-                            // TODO if timeout pass
+                            // TODO SM record the snapshot in progress state in info
                         }
                     }
                 } catch (ex: Exception) {
-                    // if someone deletes the creating snapshot, we could face SnapshotMissingException
+                    // If someone deletes the creating snapshot, we could face the SnapshotMissingException
                     return ExecutionResult.Failure(ex, ResetType.CREATION)
                 }
             }
             metadata.deletion.started != null -> {
-                val req = SnapshotsStatusRequest()
-                    .snapshots(arrayOf("${smJobIdToPolicyName(job.id)}*"))
-                    .repository(job.snapshotConfig["repository"] as String)
-                val res: SnapshotsStatusResponse = context.client.admin().cluster().suspendUntil { snapshotsStatus(req, it) }
-                log.info("Get snapshot status: ${res.snapshots}")
-                val existingSnapshots = res.snapshots.map { it.snapshot.snapshotId.name }
-
+                val snapshots = client.getSnapshots(
+                    "${smJobIdToPolicyName(job.id)}*",
+                    job.snapshotConfig["repository"] as String
+                )
+                val existingSnapshots = snapshots.map { it.snapshotId().name }
                 val startedDeleteSnapshots = metadata.deletion.started
                 val remainingSnapshotsName = startedDeleteSnapshots.map { it.name }.toSet() - existingSnapshots.toSet()
-                if (remainingSnapshotsName.isEmpty()) {
-                    deletionStarted = null
-                } else {
-                    val remainingSnapshots = startedDeleteSnapshots.filter {
-                        it.name in remainingSnapshotsName
-                    }
-                    deletionStarted = remainingSnapshots.toList()
 
-                    // TODO if timeout pass
+                deletionStarted = if (remainingSnapshotsName.isEmpty()) {
+                    null
+                } else {
+                    startedDeleteSnapshots.filter {
+                        it.name in remainingSnapshotsName
+                    }.toList()
                 }
             }
             else -> {
-                // TODO not supposed to enter here
-                log.info("Both creating and deleting are null.")
-                val metadataToSave = metadata.copy(
-                    currentState = SMState.FINISHED
-                )
-                return ExecutionResult.Next(metadataToSave)
+                log.info("No ongoing creating or deleting snapshots, will go to next execution schedule.")
             }
         }
 
-        val metadataToSave: SMMetadata = metadata.copy(
-            creation = metadata.creation.copy(
-                started = creationStarted
-            ),
-            deletion = metadata.deletion.copy(
-                started = deletionStarted
-            ),
-            info = info
-        )
-        if (creationStarted != null || deletionStarted != null) {
-            return ExecutionResult.Stay(metadataToSave = metadataToSave)
-        }
+        // TODO SM deal with time limitation,
 
-        return ExecutionResult.Next(
-            metadataToSave.copy(
-                currentState = SMState.FINISHED
-            )
-        )
+        val metadataToSave = SMMetadata.Builder(metadata)
+            .startedCreation(creationStarted)
+            .startedDeletion(deletionStarted)
+            .info(info)
+            .build()
+
+        if (creationStarted != null || deletionStarted != null) {
+            return ExecutionResult.Stay(metadataToSave)
+        }
+        return ExecutionResult.Next(metadataToSave)
     }
 }
