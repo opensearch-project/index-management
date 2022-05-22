@@ -18,6 +18,7 @@ import org.opensearch.indexmanagement.snapshotmanagement.getNextExecutionTime
 import org.opensearch.indexmanagement.snapshotmanagement.indexMetadata
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata
+import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata.WorkflowType
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata.Companion.upsert
 import org.opensearch.indexmanagement.snapshotmanagement.smJobIdToPolicyName
 import java.time.Instant.now
@@ -60,22 +61,52 @@ class SMStateMachine(
                         is Result.Stay -> {
                             log.info("State [$currentState]'s execution not finished, will stay.")
                             val metadataToSave = result.metadataToSave
-                            metadataToSave?.let { updateMetadata(metadataToSave.copy(currentState = prevState)) }
+                            metadataToSave?.let {
+                                updateMetadata(metadataToSave.copy(currentState = prevState))
+                            }
                             // can still execute other lateral states if exists
                         }
                         is Result.Failure -> {
                             val ex = result.ex
-                            log.error("Caught exception while executing state [$currentState], will skip to the START state.", ex)
+                            log.error("Caught exception while executing state [$currentState]. Reset workflow ${result.workflowType}.", ex)
 
                             val userMessage = preFixTimeStamp(SnapshotManagementException(ex).message)
                             val info = metadata.info.upsert("exception" to userMessage)
-                            val metadataToSave = SMMetadata.Builder(metadata).info(info)
-                            if (result.reset)
-                                metadataToSave.reset(result.workflowType)
+                            val metadataToSave = SMMetadata.Builder(metadata)
+                                .reset(result.workflowType)
+                            if (result.notifiable)
+                                metadataToSave.info(info)
+                            // TODO error notification
+                            //  only snapshot create, delete exception should be notified
+
                             updateMetadata(metadataToSave.build())
 
-                            // TODO error notification
                             break
+                        }
+                        is Result.Retry -> {
+                            val metadataToSave = SMMetadata.Builder(metadata)
+                                .currentState(prevState)
+                            val retry = when (result.workflowType) {
+                                WorkflowType.CREATION -> {
+                                    metadata.creation.retry
+                                }
+                                WorkflowType.DELETION -> {
+                                    metadata.deletion.retry
+                                }
+                            }
+                            val retryCount: Int
+                            if (retry == null) {
+                                metadataToSave.setRetry(result.workflowType, 3)
+                            } else {
+                                retryCount = retry.count - 1
+                                if (retryCount <= 0) {
+                                    metadataToSave.reset(result.workflowType)
+                                } else {
+                                    metadataToSave.setRetry(result.workflowType, retryCount)
+                                }
+                            }
+
+                            updateMetadata(metadataToSave.build())
                         }
                         is Result.TimeLimitExceed -> {
                             log.warn("${result.workflowType} has exceeded the time limit.")
@@ -92,14 +123,13 @@ class SMStateMachine(
                 }
             } while (currentState.instance.continuous)
         } catch (ex: Exception) {
-            if (ex is SnapshotManagementException &&
-                ex.exKey == ExceptionKey.METADATA_INDEXING_FAILURE
-            ) {
-                // For update metadata exception, we cannot update metadata again
-                return
-            }
-            log.error("Snapshot management uncaught runtime exception.", ex)
-            // TODO SM retry mechanism
+            // if (ex is SnapshotManagementException &&
+            //     ex.exKey == ExceptionKey.METADATA_INDEXING_FAILURE
+            // ) {
+            //     // For update metadata exception, we cannot update metadata again
+            //     return
+            // }
+            log.error("Uncaught snapshot management runtime exception.", ex)
         }
     }
 

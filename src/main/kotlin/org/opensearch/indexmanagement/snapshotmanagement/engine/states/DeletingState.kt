@@ -16,6 +16,7 @@ import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata.Workfl
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy
 import org.opensearch.indexmanagement.snapshotmanagement.smJobIdToPolicyName
 import org.opensearch.snapshots.SnapshotInfo
+import org.opensearch.snapshots.SnapshotMissingException
 import java.time.Instant
 import java.time.Instant.now
 
@@ -31,35 +32,44 @@ object DeletingState : State {
 
         val res: AcknowledgedResponse
         val snapshotToDelete: List<SMMetadata.SnapshotInfo>
-        try {
-            // TODO SM what if there's no snapshot, will there be exception?
-            val snapshotInfos = client.getSnapshots(
+
+        val snapshotInfos = try {
+            client.getSnapshots(
                 smJobIdToPolicyName(job.id) + "*",
                 job.snapshotConfig["repository"] as String
             )
-            snapshotToDelete = findSnapshotsToDelete(snapshotInfos, job.deletion.condition)
-            log.info("sm dev: Going to delete: ${snapshotToDelete.map { it.name }}")
+        } catch (ex: SnapshotMissingException) {
+            return Result.Failure(ex, WorkflowType.DELETION)
+        } catch (ex: Exception) {
+            log.error("Caught exception while get snapshots to decide which snapshots to delete.", ex)
+            return Result.Retry(WorkflowType.DELETION)
+        }
 
-            if (snapshotToDelete.isNotEmpty()) {
+        snapshotToDelete = findSnapshotsToDelete(snapshotInfos, job.deletion.condition)
+        log.info("sm dev: Going to delete: ${snapshotToDelete.map { it.name }}")
+
+        if (snapshotToDelete.isNotEmpty()) {
+            try {
                 val req = DeleteSnapshotRequest(
                     job.snapshotConfig["repository"] as String,
                     *snapshotToDelete.map { it.name }.toTypedArray()
                 )
                 res = client.admin().cluster().suspendUntil { deleteSnapshot(req, it) }
                 log.info("sm dev: Delete snapshot acknowledged: ${res.isAcknowledged}.")
+            } catch (ex: Exception) {
+                return Result.Failure(ex, WorkflowType.DELETION, notifiable = true)
             }
-        } catch (ex: Exception) {
-            return Result.Failure(ex, WorkflowType.DELETION, reset = true)
         }
 
         val metadataToSave = SMMetadata.Builder(metadata)
             .currentState(SMState.DELETING)
-            .deletionStart(
+        if (snapshotToDelete.isNotEmpty())
+            metadataToSave.deletionStart(
                 startTime = now(),
                 snapshotInfo = snapshotToDelete
             )
-            .build()
-        return Result.Next(metadataToSave)
+
+        return Result.Next(metadataToSave.build())
     }
 
     /**
@@ -83,7 +93,7 @@ object DeletingState : State {
 
         if (deleteCondition.maxAge != null) {
             val timeThreshold = now().minusSeconds(deleteCondition.maxAge.seconds())
-            val thresholdSnapshot = snapshotInfos.findLast { it.startTime?.isBefore(timeThreshold) ?: false }
+            val thresholdSnapshot = snapshotInfos.findLast { it.startTime.isBefore(timeThreshold) }
             thresholdIndex = snapshotInfos.indexOf(thresholdSnapshot)
             if (thresholdIndex == -1) thresholdIndex = 0
             val minCount = deleteCondition.minCount ?: SMPolicy.DeleteCondition.DEFAULT_MIN_COUNT

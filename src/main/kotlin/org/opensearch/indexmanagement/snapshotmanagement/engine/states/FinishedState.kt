@@ -40,10 +40,10 @@ object FinishedState : State {
                 )
             } catch (ex: SnapshotMissingException) {
                 // User may manually delete the creating snapshot
-                return Result.Failure(ex, WorkflowType.CREATION, reset = true)
+                return Result.Failure(ex, WorkflowType.CREATION)
             } catch (ex: Exception) {
-                // TODO SM need to implement retry mechanism so we don't stuck forever
-                return Result.Failure(ex, WorkflowType.CREATION, reset = false)
+                log.error("Caught exception while get snapshots for started creation.", ex)
+                return Result.Retry(WorkflowType.CREATION)
             }
 
             when (snapshots.firstOrNull()?.state()) {
@@ -52,18 +52,16 @@ object FinishedState : State {
                     info = info.upsert(
                         "last_success" to "$started"
                     )
+                    // TODO SM notification snapshot created
                 }
                 else -> {
                     // IN_PROGRESS, FAILED, PARTIAL, INCOMPATIBLE
                     log.info("Creating snapshot [$started] has not succeed")
-                    // TODO SM record the snapshot in progress state in info
                 }
             }
 
-            val timeLimit = job.creation.timeLimit
-            val startTime = metadata.creation.started.startTime
-            timeLimit?.let {
-                if (timeLimitExceed(startTime, timeLimit))
+            job.creation.timeLimit?.let {
+                if (timeLimitExceed(metadata.creation.started.startTime, it))
                     return Result.TimeLimitExceed(WorkflowType.CREATION)
             }
         }
@@ -75,13 +73,15 @@ object FinishedState : State {
                     job.snapshotConfig["repository"] as String
                 )
             } catch (ex: Exception) {
-                // TODO SM need to implement retry mechanism so we don't stuck forever
-                return Result.Failure(ex, WorkflowType.DELETION, reset = false)
+                log.error("Caught exception while get snapshots for started deletion.", ex)
+                return Result.Retry(WorkflowType.DELETION)
             }
+
             val existingSnapshots = snapshots.map { it.snapshotId().name }
             val remainingSnapshotsName = startedDeleteSnapshots.map { it.name }.toSet() - existingSnapshots.toSet()
 
             deletionStarted = if (remainingSnapshotsName.isEmpty()) {
+                // TODO SM notification snapshot deleted
                 null
             } else {
                 startedDeleteSnapshots.filter {
@@ -89,11 +89,9 @@ object FinishedState : State {
                 }.toList()
             }
 
-            val timeLimit = job.deletion.timeLimit
-            val startTime = metadata.deletion.startedTime
-            startTime?.let {
-                timeLimit?.let {
-                    if (timeLimitExceed(startTime, timeLimit))
+            metadata.deletion.startedTime?.let { startTime ->
+                job.deletion.timeLimit?.let {
+                    if (timeLimitExceed(startTime, it))
                         return Result.TimeLimitExceed(WorkflowType.DELETION)
                 }
             }
