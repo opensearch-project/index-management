@@ -9,10 +9,8 @@ import org.opensearch.action.admin.cluster.snapshots.delete.DeleteSnapshotReques
 import org.opensearch.action.support.master.AcknowledgedResponse
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.snapshotmanagement.engine.statemachine.SMStateMachine
-import org.opensearch.indexmanagement.snapshotmanagement.engine.states.State.Result
 import org.opensearch.indexmanagement.snapshotmanagement.getSnapshots
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata
-import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata.WorkflowType
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy
 import org.opensearch.indexmanagement.snapshotmanagement.smJobIdToPolicyName
 import org.opensearch.snapshots.SnapshotInfo
@@ -24,7 +22,7 @@ object DeletingState : State {
 
     override val continuous: Boolean = true
 
-    override suspend fun execute(context: SMStateMachine): Result {
+    override suspend fun execute(context: SMStateMachine): SMResult {
         val client = context.client
         val job = context.job
         val metadata = context.metadata
@@ -39,10 +37,10 @@ object DeletingState : State {
                 job.snapshotConfig["repository"] as String
             )
         } catch (ex: SnapshotMissingException) {
-            return Result.Failure(ex, WorkflowType.DELETION)
+            return SMResult.Failure(ex, WorkflowType.DELETION)
         } catch (ex: Exception) {
             log.error("Caught exception while get snapshots to decide which snapshots to delete.", ex)
-            return Result.Retry(WorkflowType.DELETION)
+            return SMResult.Retry(WorkflowType.DELETION)
         }
 
         snapshotToDelete = findSnapshotsToDelete(snapshotInfos, job.deletion.condition)
@@ -57,19 +55,19 @@ object DeletingState : State {
                 res = client.admin().cluster().suspendUntil { deleteSnapshot(req, it) }
                 log.info("sm dev: Delete snapshot acknowledged: ${res.isAcknowledged}.")
             } catch (ex: Exception) {
-                return Result.Failure(ex, WorkflowType.DELETION, notifiable = true)
+                return SMResult.Failure(ex, WorkflowType.DELETION, notifiable = true)
             }
         }
 
         val metadataToSave = SMMetadata.Builder(metadata)
             .currentState(SMState.DELETING)
         if (snapshotToDelete.isNotEmpty())
-            metadataToSave.deletionStart(
+            metadataToSave.deletion(
                 startTime = now(),
                 snapshotInfo = snapshotToDelete
             )
 
-        return Result.Next(metadataToSave.build())
+        return SMResult.Next(metadataToSave.build())
     }
 
     /**

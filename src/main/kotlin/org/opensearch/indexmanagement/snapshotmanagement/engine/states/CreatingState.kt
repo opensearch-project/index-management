@@ -9,11 +9,9 @@ import org.opensearch.action.admin.cluster.snapshots.create.CreateSnapshotReques
 import org.opensearch.action.admin.cluster.snapshots.create.CreateSnapshotResponse
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.snapshotmanagement.engine.statemachine.SMStateMachine
-import org.opensearch.indexmanagement.snapshotmanagement.engine.states.State.Result
 import org.opensearch.indexmanagement.snapshotmanagement.generateSnapshotName
 import org.opensearch.indexmanagement.snapshotmanagement.getSnapshots
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata
-import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata.WorkflowType
 import org.opensearch.indexmanagement.snapshotmanagement.smJobIdToPolicyName
 import org.opensearch.snapshots.SnapshotInfo
 import org.opensearch.snapshots.SnapshotMissingException
@@ -24,7 +22,7 @@ object CreatingState : State {
 
     override val continuous: Boolean = false
 
-    override suspend fun execute(context: SMStateMachine): Result {
+    override suspend fun execute(context: SMStateMachine): SMResult {
         val client = context.client
         val job = context.job
         val metadata = context.metadata
@@ -42,14 +40,13 @@ object CreatingState : State {
             emptyList()
         } catch (ex: Exception) {
             log.error("Caught exception while get snapshots to decide if snapshot has been created in previous execution schedule.", ex)
-            return Result.Retry(WorkflowType.CREATION)
+            return SMResult.Retry(WorkflowType.CREATION)
         }
-        snapshotName = checkCreatedSnapshots(lastExecutionTime, snapshots)
 
+        snapshotName = checkCreatedSnapshots(lastExecutionTime, snapshots)
         if (snapshotName == null) {
             snapshotName = generateSnapshotName(job)
             log.info("Snapshot to create: $snapshotName.")
-
             try {
                 val req = CreateSnapshotRequest(job.snapshotConfig["repository"] as String, snapshotName)
                     .source(job.snapshotConfig)
@@ -58,20 +55,20 @@ object CreatingState : State {
                 // TODO SM notification that snapshot starts to be created
                 log.info("sm dev: Create snapshot response: $res.")
             } catch (ex: Exception) {
-                return Result.Failure(ex, WorkflowType.CREATION, notifiable = true)
+                return SMResult.Failure(ex, WorkflowType.CREATION, notifiable = true)
             }
         }
 
         val metadataToSave = SMMetadata.Builder(metadata)
             .currentState(SMState.CREATING)
-            .startedCreation(
+            .creation(
                 SMMetadata.SnapshotInfo(
                     name = snapshotName,
                     startTime = now(),
                 )
             )
             .build()
-        return Result.Next(metadataToSave)
+        return SMResult.Next(metadataToSave)
     }
 
     /**

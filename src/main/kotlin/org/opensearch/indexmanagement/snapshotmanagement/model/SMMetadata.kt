@@ -22,6 +22,7 @@ import org.opensearch.indexmanagement.opensearchapi.parseArray
 import org.opensearch.indexmanagement.opensearchapi.readOptionalValue
 import org.opensearch.indexmanagement.opensearchapi.writeOptionalValue
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.SMState
+import org.opensearch.indexmanagement.snapshotmanagement.engine.states.WorkflowType
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata.Retry.Companion.RETRY_FIELD
 import org.opensearch.indexmanagement.util.NO_ID
 import java.time.Instant
@@ -419,11 +420,6 @@ data class SMMetadata(
         }
     }
 
-    enum class WorkflowType {
-        CREATION,
-        DELETION,
-    }
-
     /**
      * Build the updated metadata in a flattened fashion
      *  based on the existing metadata
@@ -515,7 +511,7 @@ data class SMMetadata(
             return this
         }
 
-        fun startedCreation(snapshotInfo: SnapshotInfo?): Builder {
+        fun creation(snapshotInfo: SnapshotInfo?): Builder {
             metadata = metadata.copy(
                 creation = metadata.creation.copy(
                     started = snapshotInfo
@@ -553,7 +549,7 @@ data class SMMetadata(
             return this
         }
 
-        fun deletionStart(startTime: Instant?, snapshotInfo: List<SnapshotInfo>?): Builder {
+        fun deletion(startTime: Instant?, snapshotInfo: List<SnapshotInfo>?): Builder {
             metadata = metadata.copy(
                 deletion = metadata.deletion.copy(
                     started = snapshotInfo,

@@ -24,7 +24,7 @@ import org.opensearch.indexmanagement.snapshotmanagement.mockIndexResponse
 import org.opensearch.indexmanagement.snapshotmanagement.randomSMMetadata
 import org.opensearch.indexmanagement.snapshotmanagement.randomSMPolicy
 import org.opensearch.test.OpenSearchTestCase
-import org.opensearch.indexmanagement.snapshotmanagement.engine.states.State.Result
+import org.opensearch.indexmanagement.snapshotmanagement.engine.states.State.SMResult
 
 class DeletingStateTests : OpenSearchTestCase() {
     private val client: Client = mock()
@@ -84,8 +84,8 @@ class DeletingStateTests : OpenSearchTestCase() {
         val context = SMStateMachine(client, job, metadata)
 
         val end = SMState.DELETING.instance.execute(context)
-        assertTrue("Execution result should be Next.", end is Result.Next)
-        end as Result.Next
+        assertTrue("Execution result should be Next.", end is SMResult.Next)
+        end as SMResult.Next
         assertEquals("Current state should move to DELETING.", SMState.DELETING, end.metadataToSave.currentState)
     }
 }

@@ -7,10 +7,8 @@ package org.opensearch.indexmanagement.snapshotmanagement.engine.states
 
 import org.opensearch.common.unit.TimeValue
 import org.opensearch.indexmanagement.snapshotmanagement.engine.statemachine.SMStateMachine
-import org.opensearch.indexmanagement.snapshotmanagement.engine.states.State.Result
 import org.opensearch.indexmanagement.snapshotmanagement.getSnapshots
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata
-import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata.WorkflowType
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata.Companion.upsert
 import org.opensearch.indexmanagement.snapshotmanagement.smJobIdToPolicyName
 import org.opensearch.snapshots.SnapshotMissingException
@@ -22,7 +20,7 @@ object FinishedState : State {
 
     override val continuous = true
 
-    override suspend fun execute(context: SMStateMachine): Result {
+    override suspend fun execute(context: SMStateMachine): SMResult {
         val client = context.client
         val job = context.job
         val metadata = context.metadata
@@ -30,6 +28,7 @@ object FinishedState : State {
 
         var creationStarted = metadata.creation.started
         var deletionStarted = metadata.deletion.started
+        var startedDeletionTime = metadata.deletion.startedTime
         var info = metadata.info
 
         metadata.creation.started?.let { started ->
@@ -40,10 +39,10 @@ object FinishedState : State {
                 )
             } catch (ex: SnapshotMissingException) {
                 // User may manually delete the creating snapshot
-                return Result.Failure(ex, WorkflowType.CREATION)
+                return SMResult.Failure(ex, WorkflowType.CREATION)
             } catch (ex: Exception) {
                 log.error("Caught exception while get snapshots for started creation.", ex)
-                return Result.Retry(WorkflowType.CREATION)
+                return SMResult.Retry(WorkflowType.CREATION)
             }
 
             when (snapshots.firstOrNull()?.state()) {
@@ -60,9 +59,11 @@ object FinishedState : State {
                 }
             }
 
+            // TODO SM if now is after next creation time, we can update nextCreationTime and try notify user
+
             job.creation.timeLimit?.let {
                 if (timeLimitExceed(metadata.creation.started.startTime, it))
-                    return Result.TimeLimitExceed(WorkflowType.CREATION)
+                    return SMResult.TimeLimitExceed(WorkflowType.CREATION)
             }
         }
 
@@ -74,7 +75,7 @@ object FinishedState : State {
                 )
             } catch (ex: Exception) {
                 log.error("Caught exception while get snapshots for started deletion.", ex)
-                return Result.Retry(WorkflowType.DELETION)
+                return SMResult.Retry(WorkflowType.DELETION)
             }
 
             val existingSnapshots = snapshots.map { it.snapshotId().name }
@@ -82,6 +83,7 @@ object FinishedState : State {
 
             deletionStarted = if (remainingSnapshotsName.isEmpty()) {
                 // TODO SM notification snapshot deleted
+                startedDeletionTime = null
                 null
             } else {
                 startedDeleteSnapshots.filter {
@@ -89,24 +91,26 @@ object FinishedState : State {
                 }.toList()
             }
 
+            // TODO SM if now is after next deletion time, we can update nextDeletionTime and try notify user
+
             metadata.deletion.startedTime?.let { startTime ->
                 job.deletion.timeLimit?.let {
                     if (timeLimitExceed(startTime, it))
-                        return Result.TimeLimitExceed(WorkflowType.DELETION)
+                        return SMResult.TimeLimitExceed(WorkflowType.DELETION)
                 }
             }
         }
 
         val metadataToSave = SMMetadata.Builder(metadata)
-            .startedCreation(creationStarted)
-            .startedDeletion(deletionStarted)
+            .creation(creationStarted)
+            .deletion(startedDeletionTime, deletionStarted)
             .info(info)
             .build()
 
         if (creationStarted != null || deletionStarted != null) {
-            return Result.Stay(metadataToSave)
+            return SMResult.Stay(metadataToSave)
         }
-        return Result.Next(metadataToSave)
+        return SMResult.Next(metadataToSave)
     }
 
     private fun timeLimitExceed(startTime: Instant, timeLimit: TimeValue): Boolean {

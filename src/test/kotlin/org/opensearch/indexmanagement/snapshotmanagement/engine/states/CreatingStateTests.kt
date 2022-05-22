@@ -18,7 +18,7 @@ import org.opensearch.client.AdminClient
 import org.opensearch.client.Client
 import org.opensearch.client.ClusterAdminClient
 import org.opensearch.indexmanagement.snapshotmanagement.engine.statemachine.SMStateMachine
-import org.opensearch.indexmanagement.snapshotmanagement.engine.states.State.Result
+import org.opensearch.indexmanagement.snapshotmanagement.engine.states.State.SMResult
 import org.opensearch.indexmanagement.snapshotmanagement.randomSMMetadata
 import org.opensearch.indexmanagement.snapshotmanagement.randomSMPolicy
 import org.opensearch.indexmanagement.snapshotmanagement.mockCreateSnapshotResponse
@@ -51,8 +51,8 @@ class CreatingStateTests : OpenSearchTestCase() {
         val context = SMStateMachine(client, job, metadata)
 
         val end = SMState.CREATING.instance.execute(context)
-        assertTrue("Execution result should be Next.", end is Result.Next)
-        end as Result.Next
+        assertTrue("Execution result should be Next.", end is SMResult.Next)
+        end as SMResult.Next
         assertEquals("Current state should move to CREATING.", SMState.CREATING, end.metadataToSave.currentState)
     }
 
@@ -68,7 +68,7 @@ class CreatingStateTests : OpenSearchTestCase() {
         val context = SMStateMachine(client, job, metadata)
 
         val end = SMState.CREATING.instance.execute(context)
-        assertTrue("Execution result should be Failure.", end is Result.Failure)
+        assertTrue("Execution result should be Failure.", end is SMResult.Failure)
     }
 
     // fun `test undetermined atomic operation`() = runBlocking {

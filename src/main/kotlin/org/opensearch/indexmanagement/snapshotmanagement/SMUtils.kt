@@ -33,6 +33,7 @@ import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
+import java.util.UUID
 
 private val log = LogManager.getLogger("o.o.i.s.SnapshotManagementHelper")
 
@@ -105,8 +106,7 @@ fun generateSnapshotName(policy: SMPolicy): String {
         val dateFormat = generateFormatTime(policy.snapshotConfig["date_format"] as String)
         result += "-$dateFormat"
     }
-    // TODO add hash suffix
-    return result
+    return result + "${UUID.randomUUID()}"
 }
 
 fun generateFormatTime(dateFormat: String): String {

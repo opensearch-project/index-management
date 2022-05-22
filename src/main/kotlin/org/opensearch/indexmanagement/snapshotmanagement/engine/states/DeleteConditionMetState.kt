@@ -6,7 +6,6 @@
 package org.opensearch.indexmanagement.snapshotmanagement.engine.states
 
 import org.opensearch.indexmanagement.snapshotmanagement.engine.statemachine.SMStateMachine
-import org.opensearch.indexmanagement.snapshotmanagement.engine.states.State.Result
 import org.opensearch.indexmanagement.snapshotmanagement.getNextExecutionTime
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata
 import java.time.Instant
@@ -17,13 +16,13 @@ object DeleteConditionMetState : State {
 
     override val continuous = true
 
-    override suspend fun execute(context: SMStateMachine): Result {
+    override suspend fun execute(context: SMStateMachine): SMResult {
         val job = context.job
         val metadata = context.metadata
         val log = context.log
 
         if (metadata.deletion.started != null) {
-            return Result.Stay()
+            return SMResult.Stay()
         }
 
         val nextDeletionTime = metadata.deletion.trigger.time
@@ -34,7 +33,7 @@ object DeleteConditionMetState : State {
         } else {
             log.info("sm dev: current time [${now()}] has not passed nextDeletionTime [$nextDeletionTime]")
             // TODO SM dynamically update job start_time to avoid unnecessary job runs
-            return Result.Stay()
+            return SMResult.Stay()
         }
 
         val metadataToSave = SMMetadata.Builder(metadata)
@@ -42,6 +41,6 @@ object DeleteConditionMetState : State {
             .nextDeletionTime(nextDeletionTimeToSave)
             .build()
         log.info("sm dev: Save current state as DELETE_CONDITION_MET [$metadataToSave]")
-        return Result.Next(metadataToSave)
+        return SMResult.Next(metadataToSave)
     }
 }
