@@ -21,19 +21,18 @@ interface State {
      */
     val continuous: Boolean
 
-    suspend fun execute(context: SMStateMachine): ExecutionResult
+    suspend fun execute(context: SMStateMachine): Result
 
     /**
      * For the meaning of vertical, lateral, refer to [smTransitions].
      * [Next]: move to the next state in vertical direction.
      * [Stay]: stay in this level, can execute the next lateral states if exists,
-     * [Failure]: caught exception, show the exception to user in metadata.info.
-     *  Reset metadata and skip the workflow to next execution.
+     * [Failure]: failures that should be shown to the user in metadata.info.
      */
-    sealed class ExecutionResult {
-        data class Next(val metadataToSave: SMMetadata) : ExecutionResult()
-        data class Stay(val metadataToSave: SMMetadata? = null) : ExecutionResult()
-        data class Failure(val ex: Exception, val workflowType: SMMetadata.WorkflowType, val reset: Boolean) : ExecutionResult()
-        data class TimeLimitExceed(val workflowType: SMMetadata.WorkflowType) : ExecutionResult()
+    sealed class Result {
+        data class Next(val metadataToSave: SMMetadata) : Result()
+        data class Stay(val metadataToSave: SMMetadata? = null) : Result()
+        data class Failure(val ex: java.lang.Exception, val workflowType: SMMetadata.WorkflowType, val reset: Boolean) : Result()
+        data class TimeLimitExceed(val workflowType: SMMetadata.WorkflowType) : Result()
     }
 }

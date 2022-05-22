@@ -9,7 +9,7 @@ import org.opensearch.action.admin.cluster.snapshots.delete.DeleteSnapshotReques
 import org.opensearch.action.support.master.AcknowledgedResponse
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.snapshotmanagement.engine.statemachine.SMStateMachine
-import org.opensearch.indexmanagement.snapshotmanagement.engine.states.State.ExecutionResult
+import org.opensearch.indexmanagement.snapshotmanagement.engine.states.State.Result
 import org.opensearch.indexmanagement.snapshotmanagement.getSnapshots
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata.WorkflowType
@@ -23,7 +23,7 @@ object DeletingState : State {
 
     override val continuous: Boolean = true
 
-    override suspend fun execute(context: SMStateMachine): ExecutionResult {
+    override suspend fun execute(context: SMStateMachine): Result {
         val client = context.client
         val job = context.job
         val metadata = context.metadata
@@ -49,7 +49,7 @@ object DeletingState : State {
                 log.info("sm dev: Delete snapshot acknowledged: ${res.isAcknowledged}.")
             }
         } catch (ex: Exception) {
-            return ExecutionResult.Failure(ex, WorkflowType.DELETION, reset = true)
+            return Result.Failure(ex, WorkflowType.DELETION, reset = true)
         }
 
         val metadataToSave = SMMetadata.Builder(metadata)
@@ -59,7 +59,7 @@ object DeletingState : State {
                 snapshotInfo = snapshotToDelete
             )
             .build()
-        return ExecutionResult.Next(metadataToSave)
+        return Result.Next(metadataToSave)
     }
 
     /**

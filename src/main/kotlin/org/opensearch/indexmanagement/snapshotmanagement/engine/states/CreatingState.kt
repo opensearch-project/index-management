@@ -9,7 +9,7 @@ import org.opensearch.action.admin.cluster.snapshots.create.CreateSnapshotReques
 import org.opensearch.action.admin.cluster.snapshots.create.CreateSnapshotResponse
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.snapshotmanagement.engine.statemachine.SMStateMachine
-import org.opensearch.indexmanagement.snapshotmanagement.engine.states.State.ExecutionResult
+import org.opensearch.indexmanagement.snapshotmanagement.engine.states.State.Result
 import org.opensearch.indexmanagement.snapshotmanagement.generateSnapshotName
 import org.opensearch.indexmanagement.snapshotmanagement.getSnapshots
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata
@@ -23,7 +23,7 @@ object CreatingState : State {
 
     override val continuous: Boolean = false
 
-    override suspend fun execute(context: SMStateMachine): ExecutionResult {
+    override suspend fun execute(context: SMStateMachine): Result {
         val client = context.client
         val job = context.job
         val metadata = context.metadata
@@ -48,12 +48,13 @@ object CreatingState : State {
                     .source(job.snapshotConfig)
                     .waitForCompletion(false)
                 res = client.admin().cluster().suspendUntil { createSnapshot(req, it) }
+                // TODO SM notification that snapshot starts to be created
             }
             // catch (ex: RepositoryMissingException) {
             //     return ExecutionResult.Failure(SnapshotManagementException(ex), ActionType.CREATION)
             // }
             catch (ex: Exception) {
-                return ExecutionResult.Failure(ex, WorkflowType.CREATION, reset = true)
+                return Result.Failure(ex, WorkflowType.CREATION, reset = true)
             }
 
             log.info("Create snapshot response: $res.")
@@ -68,12 +69,12 @@ object CreatingState : State {
                 )
             )
             .build()
-        return ExecutionResult.Next(metadataToSave)
+        return Result.Next(metadataToSave)
     }
 
     /**
      * If there is snapshot created after last execution time,
-     *  continue to next state but not recreate a snapshot
+     * continue to next state with this snapshot name.
      */
     private fun checkCreatedSnapshots(lastExecutionTime: Instant, snapshots: List<SnapshotInfo>): String? {
         for (i in snapshots.indices.reversed()) {

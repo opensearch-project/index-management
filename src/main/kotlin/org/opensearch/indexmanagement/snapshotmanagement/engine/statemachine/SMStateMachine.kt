@@ -11,7 +11,7 @@ import org.opensearch.client.Client
 import org.opensearch.indexmanagement.snapshotmanagement.SnapshotManagementException
 import org.opensearch.indexmanagement.snapshotmanagement.SnapshotManagementException.ExceptionKey
 import org.opensearch.indexmanagement.snapshotmanagement.preFixTimeStamp
-import org.opensearch.indexmanagement.snapshotmanagement.engine.states.State.ExecutionResult
+import org.opensearch.indexmanagement.snapshotmanagement.engine.states.State.Result
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.SMState
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.smTransitions
 import org.opensearch.indexmanagement.snapshotmanagement.getNextExecutionTime
@@ -44,26 +44,26 @@ class SMStateMachine(
                     return
                 }
 
-                var result: ExecutionResult = ExecutionResult.Stay()
+                var result: Result = Result.Stay()
                 for (nextState in nextStates) {
                     val prevState = currentState
                     currentState = nextState
                     log.info("sm dev: Start executing $currentState.")
                     result = nextState.instance.execute(this)
                     when (result) {
-                        is ExecutionResult.Next -> {
+                        is Result.Next -> {
                             log.info("State [$currentState]'s execution finished, will execute its next state.")
                             updateMetadata(result.metadataToSave.copy(currentState = currentState))
                             // break the nextStates loop so to avoid execute other lateral states
                             break
                         }
-                        is ExecutionResult.Stay -> {
+                        is Result.Stay -> {
                             log.info("State [$currentState]'s execution not finished, will stay.")
                             val metadataToSave = result.metadataToSave
                             metadataToSave?.let { updateMetadata(metadataToSave.copy(currentState = prevState)) }
                             // can still execute other lateral states if exists
                         }
-                        is ExecutionResult.Failure -> {
+                        is Result.Failure -> {
                             val ex = result.ex
                             log.error("Caught exception while executing state [$currentState], will skip to the START state.", ex)
 
@@ -77,7 +77,7 @@ class SMStateMachine(
                             // TODO error notification
                             break
                         }
-                        is ExecutionResult.TimeLimitExceed -> {
+                        is Result.TimeLimitExceed -> {
                             log.warn("${result.workflowType} has exceeded the time limit.")
                             val metadataToSave = SMMetadata.Builder(metadata)
                                 .reset(result.workflowType)
@@ -86,7 +86,7 @@ class SMStateMachine(
                         }
                     }
                 }
-                if (result !is ExecutionResult.Next) {
+                if (result !is Result.Next) {
                     // Only Next result requires checking continuous flag
                     break
                 }

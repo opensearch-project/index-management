@@ -376,6 +376,7 @@ data class SMMetadata(
 
         fun build() = metadata
 
+        // Reset the workflow
         fun reset(workflowType: WorkflowType): Builder {
             var currentState = metadata.currentState
             var startedCreation = metadata.creation.started
