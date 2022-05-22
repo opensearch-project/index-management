@@ -31,7 +31,7 @@ object CreatingState : State {
         var snapshotName: String?
 
         val lastExecutionTime = job.creation.schedule.getPeriodStartingAt(null).v1()
-        val snapshots = try {
+        val getSnapshots = try {
             client.getSnapshots(
                 smJobIdToPolicyName(job.id) + "*",
                 job.snapshotConfig["repository"] as String
@@ -43,10 +43,10 @@ object CreatingState : State {
             return SMResult.Retry(WorkflowType.CREATION)
         }
 
-        snapshotName = checkCreatedSnapshots(lastExecutionTime, snapshots)
+        snapshotName = checkCreatedSnapshots(lastExecutionTime, getSnapshots)
         if (snapshotName == null) {
             snapshotName = generateSnapshotName(job)
-            log.info("Snapshot to create: $snapshotName.")
+            log.info("sm dev: Snapshot to create: $snapshotName.")
             try {
                 val req = CreateSnapshotRequest(job.snapshotConfig["repository"] as String, snapshotName)
                     .source(job.snapshotConfig)
@@ -60,7 +60,6 @@ object CreatingState : State {
         }
 
         val metadataToSave = SMMetadata.Builder(metadata)
-            .currentState(SMState.CREATING)
             .creation(
                 SMMetadata.SnapshotInfo(
                     name = snapshotName,

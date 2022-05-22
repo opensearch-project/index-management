@@ -18,7 +18,6 @@ import org.opensearch.client.AdminClient
 import org.opensearch.client.Client
 import org.opensearch.client.ClusterAdminClient
 import org.opensearch.indexmanagement.snapshotmanagement.engine.statemachine.SMStateMachine
-import org.opensearch.indexmanagement.snapshotmanagement.engine.states.State.SMResult
 import org.opensearch.indexmanagement.snapshotmanagement.randomSMMetadata
 import org.opensearch.indexmanagement.snapshotmanagement.randomSMPolicy
 import org.opensearch.indexmanagement.snapshotmanagement.mockCreateSnapshotResponse
@@ -53,7 +52,7 @@ class CreatingStateTests : OpenSearchTestCase() {
         val end = SMState.CREATING.instance.execute(context)
         assertTrue("Execution result should be Next.", end is SMResult.Next)
         end as SMResult.Next
-        assertEquals("Current state should move to CREATING.", SMState.CREATING, end.metadataToSave.currentState)
+        assertNotNull("Creation started field is initialized.", end.metadataToSave.creation.started)
     }
 
     fun `test create snapshot exception`() = runBlocking {
@@ -70,23 +69,6 @@ class CreatingStateTests : OpenSearchTestCase() {
         val end = SMState.CREATING.instance.execute(context)
         assertTrue("Execution result should be Failure.", end is SMResult.Failure)
     }
-
-    // fun `test undetermined atomic operation`() = runBlocking {
-    //     val metadata = randomSMMetadata(
-    //         currentState = SMState.CREATE_CONDITION_MET,
-    //         atomic = true,
-    //     )
-    //     val job = randomSMPolicy()
-    //     val context = SMStateMachine(client, job, metadata)
-    //
-    //     val end = SMState.CREATING.instance.execute(context)
-    //     assertTrue("Execution result should be failure.", end is ExecutionResult.Failure)
-    //     end as ExecutionResult.Failure
-    //     val ex = end.ex
-    //     assertTrue("Failure exception should be StateMachineException.", ex is SnapshotManagementException)
-    //     ex as SnapshotManagementException
-    //     assertTrue("StateMachineException error code should be ATOMIC", ex.exKey == ATOMIC)
-    // }
 
     private fun mockCreateSnapshotCall(
         response: ActionResponse? = null,

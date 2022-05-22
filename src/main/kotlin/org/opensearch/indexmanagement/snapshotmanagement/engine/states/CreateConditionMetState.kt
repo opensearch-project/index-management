@@ -36,7 +36,6 @@ object CreateConditionMetState : State {
         }
 
         val metadataToSave = SMMetadata.Builder(metadata)
-            .currentState(SMState.CREATE_CONDITION_MET)
             .nextCreationTime(nextCreationTimeToSave)
             .build()
         log.info("sm dev: Save current state as CREATE_CONDITION_MET [$metadataToSave]")

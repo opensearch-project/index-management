@@ -24,6 +24,7 @@ import org.opensearch.jobscheduler.spi.schedule.IntervalSchedule
 import org.opensearch.rest.RestStatus
 import org.opensearch.snapshots.SnapshotId
 import org.opensearch.snapshots.SnapshotInfo
+import org.opensearch.test.OpenSearchTestCase.randomAlphaOfLength
 import org.opensearch.test.OpenSearchTestCase.randomNonNegativeLong
 import java.time.Instant
 import java.time.Instant.now
@@ -34,6 +35,7 @@ fun randomSMMetadata(
     nextDeletionTime: Instant = now(),
     policySeqNo: Long = randomNonNegativeLong(),
     policyPrimaryTerm: Long = randomNonNegativeLong(),
+    startedCreation: SMMetadata.SnapshotInfo? = null,
 ): SMMetadata {
     return SMMetadata(
         policySeqNo = policySeqNo,
@@ -42,7 +44,8 @@ fun randomSMMetadata(
         creation = SMMetadata.Creation(
             trigger = SMMetadata.Trigger(
                 time = nextCreationTime
-            )
+            ),
+            started = startedCreation,
         ),
         deletion = SMMetadata.Deletion(
             trigger = SMMetadata.Trigger(
@@ -53,6 +56,7 @@ fun randomSMMetadata(
 }
 
 fun randomSMPolicy(
+    id: String = randomAlphaOfLength(10),
     jobEnabled: Boolean = false,
     jobLastUpdateTime: Instant = randomInstant(),
     creationSchedule: CronSchedule = randomCronSchedule(),
@@ -70,6 +74,7 @@ fun randomSMPolicy(
     jobSchedule: IntervalSchedule = randomIntervalSchedule()
 ): SMPolicy {
     return SMPolicy(
+        id = id,
         jobEnabled = jobEnabled,
         jobLastUpdateTime = jobLastUpdateTime,
         creation = SMPolicy.Creation(
@@ -90,6 +95,14 @@ fun randomSMPolicy(
         jobSchedule = jobSchedule
     )
 }
+
+fun randomSMSnapshotInfo(
+    name: String = randomAlphaOfLength(10),
+    startTime: Instant = randomInstant(),
+) = SMMetadata.SnapshotInfo(
+    name = name,
+    startTime = startTime,
+)
 
 fun mockIndexResponse(status: RestStatus = RestStatus.OK): IndexResponse {
     val indexResponse: IndexResponse = mock()

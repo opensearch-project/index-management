@@ -24,7 +24,6 @@ import org.opensearch.indexmanagement.snapshotmanagement.mockIndexResponse
 import org.opensearch.indexmanagement.snapshotmanagement.randomSMMetadata
 import org.opensearch.indexmanagement.snapshotmanagement.randomSMPolicy
 import org.opensearch.test.OpenSearchTestCase
-import org.opensearch.indexmanagement.snapshotmanagement.engine.states.State.SMResult
 
 class DeletingStateTests : OpenSearchTestCase() {
     private val client: Client = mock()

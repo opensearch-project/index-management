@@ -53,22 +53,28 @@ class SMStateMachine(
                     result = nextState.instance.execute(this) as SMResult
                     when (result) {
                         is SMResult.Next -> {
-                            log.info("State [$currentState]'s execution finished, will execute its next state.")
-                            updateMetadata(result.metadataToSave.copy(currentState = currentState))
-                            // break the nextStates loop so to avoid execute other lateral states
+                            log.info("State [$currentState]'s execution finished. Will execute the next.")
+                            updateMetadata(
+                                result.metadataToSave
+                                    .copy(currentState = currentState)
+                            )
+                            // break the nextStates loop, to avoid executing other lateral states
                             break
                         }
                         is SMResult.Stay -> {
-                            log.info("State [$currentState]'s execution not finished, will stay.")
+                            log.info("State [$currentState]'s execution not finished. Will stay.")
                             val metadataToSave = result.metadataToSave
                             metadataToSave?.let {
-                                updateMetadata(metadataToSave.copy(currentState = prevState))
+                                updateMetadata(
+                                    metadataToSave
+                                        .copy(currentState = prevState)
+                                )
                             }
                             // can still execute other lateral states if exists
                         }
                         is SMResult.Failure -> {
                             val ex = result.ex
-                            log.error("Caught exception while executing state [$currentState]. Reset workflow ${result.workflowType}.", ex)
+                            log.error("Caught exception while executing state [$currentState]. Reset the workflow ${result.workflowType}.", ex)
 
                             val userMessage = preFixTimeStamp(SnapshotManagementException(ex).message)
                             val info = metadata.info.upsert("exception" to userMessage)
@@ -80,8 +86,6 @@ class SMStateMachine(
                             //  only snapshot create, delete exception should be notified
 
                             updateMetadata(metadataToSave.build())
-
-                            break
                         }
                         is SMResult.Retry -> {
                             val metadataToSave = SMMetadata.Builder(metadata)
@@ -117,8 +121,9 @@ class SMStateMachine(
                         }
                     }
                 }
+
                 if (result !is SMResult.Next) {
-                    // Only Next result requires checking continuous flag
+                    // Only Next result requires checking the continuous flag and may continue execute
                     break
                 }
             } while (currentState.instance.continuous)

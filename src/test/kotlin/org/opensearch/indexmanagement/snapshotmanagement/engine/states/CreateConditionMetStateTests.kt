@@ -11,6 +11,7 @@ import org.opensearch.client.Client
 import org.opensearch.indexmanagement.snapshotmanagement.engine.statemachine.SMStateMachine
 import org.opensearch.indexmanagement.snapshotmanagement.randomSMMetadata
 import org.opensearch.indexmanagement.snapshotmanagement.randomSMPolicy
+import org.opensearch.indexmanagement.snapshotmanagement.randomSMSnapshotInfo
 import org.opensearch.test.OpenSearchTestCase
 import java.time.Instant.now
 
@@ -21,15 +22,40 @@ class CreateConditionMetStateTests : OpenSearchTestCase() {
     fun `test next creation time met`() = runBlocking {
         val metadata = randomSMMetadata(
             currentState = SMState.START,
-            nextCreationTime = now().minusSeconds(5),
+            nextCreationTime = now().minusSeconds(60),
         )
         val job = randomSMPolicy()
         val context = SMStateMachine(client, job, metadata)
 
-        val end = SMState.CREATE_CONDITION_MET.instance.execute(context)
-        assertTrue("Execution result should be Next.", end is SMResult.Next)
-        end as SMResult.Next
-        assertEquals("Current state should move to CREATE_CONDITION_MET.", SMState.CREATE_CONDITION_MET, end.metadataToSave.currentState)
-        assertNotEquals("Next execution time should be updated.", metadata.creation.trigger.time, end.metadataToSave.creation.trigger.time)
+        val result = SMState.CREATE_CONDITION_MET.instance.execute(context)
+        assertTrue("Execution result should be Next.", result is SMResult.Next)
+        result as SMResult.Next
+        assertNotEquals("Next execution time should be updated.", metadata.creation.trigger.time, result.metadataToSave.creation.trigger.time)
+    }
+
+    fun `test next creation time has not met`() = runBlocking {
+        val metadata = randomSMMetadata(
+            currentState = SMState.START,
+            nextCreationTime = now().plusSeconds(60),
+        )
+        val job = randomSMPolicy()
+        val context = SMStateMachine(client, job, metadata)
+
+        val result = SMState.CREATE_CONDITION_MET.instance.execute(context)
+        assertTrue("Execution result should be Stay.", result is SMResult.Stay)
+        result as SMResult.Stay
+        assertNull("Next execution time should not be updated.", result.metadataToSave)
+    }
+
+    fun `test already started snapshot creation`() = runBlocking {
+        val metadata = randomSMMetadata(
+            currentState = SMState.START,
+            startedCreation = randomSMSnapshotInfo(),
+        )
+        val job = randomSMPolicy()
+        val context = SMStateMachine(client, job, metadata)
+
+        val result = SMState.CREATE_CONDITION_MET.instance.execute(context)
+        assertTrue("Execution result should be Retry.", result is SMResult.Stay)
     }
 }

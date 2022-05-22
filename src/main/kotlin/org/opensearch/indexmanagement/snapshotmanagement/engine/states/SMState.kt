@@ -17,8 +17,8 @@ enum class SMState(val instance: State) {
 }
 
 enum class WorkflowType {
-    CREATION,
-    DELETION,
+    CREATION, // CREATE_CONDITION_MET, CREATING
+    DELETION, // DELETE_CONDITION_MET, DELETING
 }
 
 /**
