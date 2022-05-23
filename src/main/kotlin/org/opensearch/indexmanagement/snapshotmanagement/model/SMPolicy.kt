@@ -34,7 +34,7 @@ import java.time.temporal.ChronoUnit
 private val log = LogManager.getLogger(SMPolicy::class.java)
 
 data class SMPolicy(
-    val id: String = NO_ID,
+    val id: String,
     val description: String? = null,
     val creation: Creation,
     val deletion: Deletion,
@@ -99,7 +99,7 @@ data class SMPolicy(
 
         fun parse(
             xcp: XContentParser,
-            id: String = NO_ID,
+            id: String,
             seqNo: Long = SequenceNumbers.UNASSIGNED_SEQ_NO,
             primaryTerm: Long = SequenceNumbers.UNASSIGNED_PRIMARY_TERM,
         ): SMPolicy {
