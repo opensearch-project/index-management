@@ -11,12 +11,9 @@ import org.apache.http.entity.ContentType.APPLICATION_JSON
 import org.apache.http.entity.StringEntity
 import org.apache.http.message.BasicHeader
 import org.opensearch.client.Response
-import org.opensearch.common.xcontent.LoggingDeprecationHandler
-import org.opensearch.common.xcontent.NamedXContentRegistry
 import org.opensearch.common.xcontent.XContentParser
 import org.opensearch.common.xcontent.XContentParserUtils.ensureExpectedToken
 import org.opensearch.common.xcontent.XContentType
-import org.opensearch.common.xcontent.json.JsonXContent
 import org.opensearch.index.seqno.SequenceNumbers
 import org.opensearch.indexmanagement.IndexManagementPlugin
 import org.opensearch.indexmanagement.IndexManagementRestTestCase
@@ -35,17 +32,7 @@ abstract class SnapshotManagementRestTestCase : IndexManagementRestTestCase() {
         refresh: Boolean = true,
     ): SMPolicy {
         val response = createSMPolicyJson(smPolicy.toJsonString(), smPolicy.getSMPolicyName(), refresh)
-
-        val smPolicyJson = JsonXContent.jsonXContent
-            .createParser(NamedXContentRegistry.EMPTY, LoggingDeprecationHandler.INSTANCE, response.entity.content)
-            .map()
-        val createdId = smPolicyJson[_ID] as String
-        assertEquals("policy ids are not the same", smPolicy.id, createdId)
-        return smPolicy.copy(
-            createdId,
-            seqNo = (smPolicyJson[_SEQ_NO] as Int).toLong(),
-            primaryTerm = (smPolicyJson[_PRIMARY_TERM] as Int).toLong()
-        )
+        return parseSMPolicy(response.entity.content)
     }
 
     protected fun createSMPolicyJson(

@@ -34,7 +34,7 @@ class TransportDeleteSMPolicyAction @Inject constructor(
         user: User?,
         threadContext: ThreadContext.StoredContext
     ): DeleteResponse {
-        val smPolicy = getSMPolicy(client, request.id())
+        val smPolicy = client.getSMPolicy(request.id())
 
         // TODO sm verify permissions
 

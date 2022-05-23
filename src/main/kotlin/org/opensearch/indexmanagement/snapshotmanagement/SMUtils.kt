@@ -30,9 +30,9 @@ fun smPolicyNameToDocId(policyName: String) = "$policyName$SM_DOC_ID_SUFFIX"
 fun smDocIdToPolicyName(id: String) = id.substringBeforeLast(SM_DOC_ID_SUFFIX)
 fun getSMMetadataDocId(policyName: String) = "$policyName$SM_METADATA_ID_SUFFIX"
 
-suspend fun getSMPolicy(client: Client, policyID: String): SMPolicy {
+suspend fun Client.getSMPolicy(policyID: String): SMPolicy {
     val smPolicy = try {
-        getSMDoc(client, policyID, ::parseSMPolicy)
+        this.getSMDoc(policyID, ::parseSMPolicy)
     } catch (e: IndexNotFoundException) {
         throw OpenSearchStatusException("Snapshot management config index not found", RestStatus.NOT_FOUND)
     } catch (e: Exception) {
@@ -41,9 +41,9 @@ suspend fun getSMPolicy(client: Client, policyID: String): SMPolicy {
     return smPolicy
 }
 
-suspend fun getSMMetadata(client: Client, metadataID: String): SMMetadata {
+suspend fun Client.getSMMetadata(metadataID: String): SMMetadata {
     val smMetadata = try {
-        getSMDoc(client, metadataID, ::parseSMMetadata)
+        this.getSMDoc(metadataID, ::parseSMMetadata)
     } catch (e: IndexNotFoundException) {
         throw OpenSearchStatusException("Snapshot management config index not found", RestStatus.NOT_FOUND)
     } catch (e: Exception) {
@@ -52,14 +52,14 @@ suspend fun getSMMetadata(client: Client, metadataID: String): SMMetadata {
     return smMetadata
 }
 
-suspend fun <T> getSMDoc(client: Client, docID: String, parser: (GetResponse, NamedXContentRegistry) -> T): T {
+suspend fun <T> Client.getSMDoc(docID: String, parser: (GetResponse) -> T): T {
     val getRequest = GetRequest(IndexManagementPlugin.INDEX_MANAGEMENT_INDEX, docID)
-    val getResponse: GetResponse = client.suspendUntil { get(getRequest, it) }
+    val getResponse: GetResponse = this.suspendUntil { get(getRequest, it) }
     if (!getResponse.isExists) {
         throw OpenSearchStatusException("Snapshot management doc not found", RestStatus.NOT_FOUND)
     }
     val smDoc = try {
-        parser(getResponse, NamedXContentRegistry.EMPTY)
+        parser(getResponse)
     } catch (e: IllegalArgumentException) {
         throw OpenSearchStatusException("Snapshot management doc could not be parsed", RestStatus.NOT_FOUND)
     }

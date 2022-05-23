@@ -61,7 +61,7 @@ data class SMPolicy(
 
     fun getSMPolicyName() = smDocIdToPolicyName(id)
 
-    fun getMetadataID() = getSMMetadataDocId(smDocIdToPolicyName(id))
+    val metadataID get() = getSMMetadataDocId(smDocIdToPolicyName(id))
 
     override fun getLastUpdateTime() = jobLastUpdateTime
 

@@ -50,7 +50,8 @@ class TransportGetSMPolicyAction @Inject constructor(
         val smPolicy = try {
             parseSMPolicy(getResponse)
         } catch (e: IllegalArgumentException) {
-            throw OpenSearchStatusException("Snapshot management policy not found", RestStatus.NOT_FOUND)
+            log.error("Error while parsing snapshot management policy ${request.policyID}", e)
+            throw OpenSearchStatusException("Snapshot management policy not found", RestStatus.INTERNAL_SERVER_ERROR)
         }
         // TODO SM security integration
 
