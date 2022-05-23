@@ -15,7 +15,7 @@ class RestGetSnapshotManagementIT : SnapshotManagementRestTestCase() {
 
     fun `test getting a snapshot management policy`() {
         var smPolicy = createSMPolicy(randomSMPolicy().copy(jobEnabled = false, jobEnabledTime = null))
-        val indexedSMPolicy = getSMPolicy(smPolicy.getSMPolicyName())
+        val indexedSMPolicy = getSMPolicy(smPolicy.policyName)
         // Schema version and last updated time are updated during the creation so we need to update the original too for comparison
         // Job schedule interval will have a dynamic start time
         smPolicy = smPolicy.copy(

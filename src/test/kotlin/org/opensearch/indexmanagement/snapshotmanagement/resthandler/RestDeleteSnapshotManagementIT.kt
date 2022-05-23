@@ -17,11 +17,11 @@ class RestDeleteSnapshotManagementIT : SnapshotManagementRestTestCase() {
 
     fun `test deleting a snapshot management policy`() {
         val smPolicy = createSMPolicy(randomSMPolicy())
-        val deleteResponse = client().makeRequest("DELETE", "${IndexManagementPlugin.SM_POLICIES_URI}/${smPolicy.getSMPolicyName()}?refresh=true")
+        val deleteResponse = client().makeRequest("DELETE", "${IndexManagementPlugin.SM_POLICIES_URI}/${smPolicy.policyName}?refresh=true")
         assertEquals("Delete failed", RestStatus.OK, deleteResponse.restStatus())
 
         try {
-            client().makeRequest("GET", "${IndexManagementPlugin.SM_POLICIES_URI}/${smPolicy.getSMPolicyName()}")
+            client().makeRequest("GET", "${IndexManagementPlugin.SM_POLICIES_URI}/${smPolicy.policyName}")
         } catch (e: ResponseException) {
             assertEquals(RestStatus.NOT_FOUND, e.response.restStatus())
         }

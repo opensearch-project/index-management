@@ -59,7 +59,8 @@ data class SMPolicy(
     // This name is used by the job scheduler and needs to match the id to avoid namespace conflicts with ISM policies sharing the same name
     override fun getName() = id
 
-    fun getSMPolicyName() = smDocIdToPolicyName(id)
+    // This is the name which the user provided when creating the policy, and should be used when outputting to the user in REST responses
+    val policyName get() = smDocIdToPolicyName(id)
 
     val metadataID get() = getSMMetadataDocId(smDocIdToPolicyName(id))
 

@@ -26,13 +26,13 @@ class RestIndexSnapshotManagementIT : SnapshotManagementRestTestCase() {
     @Suppress("UNCHECKED_CAST")
     fun `test creating a snapshot management policy`() {
         var smPolicy = randomSMPolicy()
-        val response = client().makeRequest("POST", "$SM_POLICIES_URI/${smPolicy.getSMPolicyName()}", emptyMap(), smPolicy.toHttpEntity())
+        val response = client().makeRequest("POST", "$SM_POLICIES_URI/${smPolicy.policyName}", emptyMap(), smPolicy.toHttpEntity())
         assertEquals("Create SM policy failed", RestStatus.CREATED, response.restStatus())
         val responseBody = response.asMap()
         val createdId = responseBody["_id"] as String
         assertNotEquals("Response is missing Id", NO_ID, createdId)
         assertEquals("Not same id", smPolicy.id, createdId)
-        assertEquals("Incorrect Location header", "$SM_POLICIES_URI/${smPolicy.getSMPolicyName()}", response.getHeader("Location"))
+        assertEquals("Incorrect Location header", "$SM_POLICIES_URI/${smPolicy.policyName}", response.getHeader("Location"))
         val responseSMPolicy = responseBody[SM_TYPE] as Map<String, Any>
         smPolicy = smPolicy.copy(jobLastUpdateTime = Instant.ofEpochMilli(responseSMPolicy[SMPolicy.LAST_UPDATED_TIME_FIELD] as Long))
         assertEquals("Created and returned snapshot management policies differ", smPolicy.convertToMap()[SM_TYPE], responseSMPolicy)
@@ -42,7 +42,7 @@ class RestIndexSnapshotManagementIT : SnapshotManagementRestTestCase() {
         val smPolicy = createSMPolicy(randomSMPolicy())
         val updateResponse = client().makeRequest(
             "PUT",
-            "$SM_POLICIES_URI/${smPolicy.getSMPolicyName()}?refresh=true&if_seq_no=${smPolicy.seqNo}&if_primary_term=${smPolicy.primaryTerm}",
+            "$SM_POLICIES_URI/${smPolicy.policyName}?refresh=true&if_seq_no=${smPolicy.seqNo}&if_primary_term=${smPolicy.primaryTerm}",
             emptyMap(), smPolicy.toHttpEntity()
         )
 
@@ -53,7 +53,7 @@ class RestIndexSnapshotManagementIT : SnapshotManagementRestTestCase() {
         assertNotEquals("response is missing Id", NO_ID, updatedId)
         assertEquals("not same id", smPolicy.id, updatedId)
         assertTrue("incorrect seqNo", smPolicy.seqNo < updatedSeqNo)
-        assertEquals("Incorrect Location header", "$SM_POLICIES_URI/${smPolicy.getSMPolicyName()}", updateResponse.getHeader("Location"))
+        assertEquals("Incorrect Location header", "$SM_POLICIES_URI/${smPolicy.policyName}", updateResponse.getHeader("Location"))
     }
 
     fun `test updating a snapshot management policy with incorrect seq_no and primary_term`() {
@@ -61,7 +61,7 @@ class RestIndexSnapshotManagementIT : SnapshotManagementRestTestCase() {
         try {
             client().makeRequest(
                 "PUT",
-                "$SM_POLICIES_URI/${smPolicy.getSMPolicyName()}?refresh=true&if_seq_no=10251989&if_primary_term=2342",
+                "$SM_POLICIES_URI/${smPolicy.policyName}?refresh=true&if_seq_no=10251989&if_primary_term=2342",
                 emptyMap(), smPolicy.toHttpEntity()
             )
             fail("expected 409 ResponseException")
@@ -71,7 +71,7 @@ class RestIndexSnapshotManagementIT : SnapshotManagementRestTestCase() {
         try {
             client().makeRequest(
                 "PUT",
-                "$SM_POLICIES_URI/${smPolicy.getSMPolicyName()}?refresh=true",
+                "$SM_POLICIES_URI/${smPolicy.policyName}?refresh=true",
                 emptyMap(), smPolicy.toHttpEntity()
             )
             fail("expected exception")
@@ -85,7 +85,7 @@ class RestIndexSnapshotManagementIT : SnapshotManagementRestTestCase() {
         try {
             client().makeRequest(
                 "PUT",
-                "$SM_POLICIES_URI/${smPolicy.getSMPolicyName()}?refresh=true&if_seq_no=10251989&if_primary_term=2342",
+                "$SM_POLICIES_URI/${smPolicy.policyName}?refresh=true&if_seq_no=10251989&if_primary_term=2342",
                 emptyMap(), smPolicy.toHttpEntity()
             )
             fail("expected exception")

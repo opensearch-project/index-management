@@ -114,7 +114,7 @@ class RestSMPolicyHandler : BaseRestHandler() {
                     override fun buildResponse(response: IndexSMPolicyResponse): RestResponse {
                         val restResponse = BytesRestResponse(response.status, response.toXContent(channel.newBuilder(), ToXContent.EMPTY_PARAMS))
                         if (response.status == RestStatus.CREATED || response.status == RestStatus.OK) {
-                            val location = "$SM_POLICIES_URI/${response.policy.getSMPolicyName()}"
+                            val location = "$SM_POLICIES_URI/${response.policy.policyName}"
                             restResponse.addHeader("Location", location)
                         }
                         return restResponse

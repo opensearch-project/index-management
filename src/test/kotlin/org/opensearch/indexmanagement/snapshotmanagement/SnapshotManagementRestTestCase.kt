@@ -31,7 +31,7 @@ abstract class SnapshotManagementRestTestCase : IndexManagementRestTestCase() {
         smPolicy: SMPolicy,
         refresh: Boolean = true,
     ): SMPolicy {
-        val response = createSMPolicyJson(smPolicy.toJsonString(), smPolicy.getSMPolicyName(), refresh)
+        val response = createSMPolicyJson(smPolicy.toJsonString(), smPolicy.policyName, refresh)
         return parseSMPolicy(response.entity.content)
     }
 
