@@ -5,17 +5,13 @@
 
 package org.opensearch.indexmanagement.snapshotmanagement.engine.states
 
-import com.nhaarman.mockitokotlin2.mock
 import kotlinx.coroutines.runBlocking
-import org.opensearch.client.Client
+import org.opensearch.indexmanagement.snapshotmanagement.SnapshotManagementClientMockTests
 import org.opensearch.indexmanagement.snapshotmanagement.engine.statemachine.SMStateMachine
 import org.opensearch.indexmanagement.snapshotmanagement.randomSMMetadata
 import org.opensearch.indexmanagement.snapshotmanagement.randomSMPolicy
-import org.opensearch.test.OpenSearchTestCase
 
-class StartStateTests : OpenSearchTestCase() {
-
-    private val client: Client = mock()
+class StartStateTests : SnapshotManagementClientMockTests() {
 
     fun `test start state execution`() = runBlocking {
         val metadata = randomSMMetadata(

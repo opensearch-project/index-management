@@ -35,7 +35,7 @@ import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
 import java.util.UUID
 
-private val log = LogManager.getLogger("o.o.i.s.SnapshotManagementHelper")
+private val log = LogManager.getLogger("o.i.s.SnapshotManagementHelper")
 
 const val smSuffix = "-sm"
 const val smMetadataSuffix = "-metadata"

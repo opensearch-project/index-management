@@ -25,6 +25,7 @@ import org.opensearch.rest.RestStatus
 import org.opensearch.snapshots.SnapshotId
 import org.opensearch.snapshots.SnapshotInfo
 import org.opensearch.test.OpenSearchTestCase.randomAlphaOfLength
+import org.opensearch.test.OpenSearchTestCase.randomIntBetween
 import org.opensearch.test.OpenSearchTestCase.randomNonNegativeLong
 import java.time.Instant
 import java.time.Instant.now
@@ -36,6 +37,8 @@ fun randomSMMetadata(
     policySeqNo: Long = randomNonNegativeLong(),
     policyPrimaryTerm: Long = randomNonNegativeLong(),
     startedCreation: SMMetadata.SnapshotInfo? = null,
+    startedDeletion: List<SMMetadata.SnapshotInfo>? = null,
+    deleteStartedTime: Instant? = null,
 ): SMMetadata {
     return SMMetadata(
         policySeqNo = policySeqNo,
@@ -50,7 +53,9 @@ fun randomSMMetadata(
         deletion = SMMetadata.Deletion(
             trigger = SMMetadata.Trigger(
                 time = nextDeletionTime
-            )
+            ),
+            started = startedDeletion,
+            startedTime = deleteStartedTime,
         ),
     )
 }
@@ -63,7 +68,7 @@ fun randomSMPolicy(
     creationTimeout: TimeValue? = null,
     deletionSchedule: CronSchedule = randomCronSchedule(),
     deletionTimeout: TimeValue? = null,
-    deletionMaxCount: Int = 5,
+    deletionMaxCount: Int = randomIntBetween(5, 10),
     deletionMaxAge: TimeValue? = null,
     deletionMinCount: Int? = null,
     snapshotConfig: Map<String, Any> = mapOf(

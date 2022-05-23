@@ -31,7 +31,7 @@ object DeletingState : State {
         val res: AcknowledgedResponse
         val snapshotToDelete: List<SMMetadata.SnapshotInfo>
 
-        val snapshotInfos = try {
+        val getSnapshots = try {
             client.getSnapshots(
                 smJobIdToPolicyName(job.id) + "*",
                 job.snapshotConfig["repository"] as String
@@ -43,7 +43,7 @@ object DeletingState : State {
             return SMResult.Retry(WorkflowType.DELETION)
         }
 
-        snapshotToDelete = findSnapshotsToDelete(snapshotInfos, job.deletion.condition)
+        snapshotToDelete = findSnapshotsToDelete(getSnapshots, job.deletion.condition)
         log.info("sm dev: Going to delete: ${snapshotToDelete.map { it.name }}")
 
         if (snapshotToDelete.isNotEmpty()) {
@@ -60,7 +60,6 @@ object DeletingState : State {
         }
 
         val metadataToSave = SMMetadata.Builder(metadata)
-            .currentState(SMState.DELETING)
         if (snapshotToDelete.isNotEmpty())
             metadataToSave.deletion(
                 startTime = now(),
