@@ -119,16 +119,16 @@ fun mockCreateSnapshotResponse(status: RestStatus = RestStatus.ACCEPTED): Create
     return createSnapshotRes
 }
 
-fun mockGetSnapshotResponse(num: Int): GetSnapshotsResponse {
+fun mockGetSnapshotResponse(num: Int, startTime: Long = randomNonNegativeLong()): GetSnapshotsResponse {
     val getSnapshotsRes: GetSnapshotsResponse = mock()
-    whenever(getSnapshotsRes.snapshots).doReturn(mockSnapshots(num))
+    whenever(getSnapshotsRes.snapshots).doReturn(mockSnapshots(num, startTime))
     return getSnapshotsRes
 }
 
-fun mockSnapshots(num: Int): List<SnapshotInfo> {
+fun mockSnapshots(num: Int, startTime: Long = randomNonNegativeLong()): List<SnapshotInfo> {
     val result = mutableListOf<SnapshotInfo>()
     for (i in 1..num) {
-        result.add(mockSnapshotInfo(idNum = i))
+        result.add(mockSnapshotInfo(idNum = i, startTime))
     }
     return result.toList()
 }

@@ -24,6 +24,7 @@ import org.opensearch.indexmanagement.snapshotmanagement.mockCreateSnapshotRespo
 import org.opensearch.indexmanagement.snapshotmanagement.mockGetSnapshotResponse
 import org.opensearch.indexmanagement.snapshotmanagement.mockIndexResponse
 import org.opensearch.test.OpenSearchTestCase
+import java.time.Instant.now
 
 class CreatingStateTests : OpenSearchTestCase() {
 
@@ -49,10 +50,10 @@ class CreatingStateTests : OpenSearchTestCase() {
         val job = randomSMPolicy()
         val context = SMStateMachine(client, job, metadata)
 
-        val end = SMState.CREATING.instance.execute(context)
-        assertTrue("Execution result should be Next.", end is SMResult.Next)
-        end as SMResult.Next
-        assertNotNull("Creation started field is initialized.", end.metadataToSave.creation.started)
+        val result = SMState.CREATING.instance.execute(context)
+        assertTrue("Execution result should be Next.", result is SMResult.Next)
+        result as SMResult.Next
+        assertNotNull("Creation started field is initialized.", result.metadataToSave.creation.started)
     }
 
     fun `test create snapshot exception`() = runBlocking {
@@ -66,8 +67,25 @@ class CreatingStateTests : OpenSearchTestCase() {
         val job = randomSMPolicy()
         val context = SMStateMachine(client, job, metadata)
 
-        val end = SMState.CREATING.instance.execute(context)
-        assertTrue("Execution result should be Failure.", end is SMResult.Failure)
+        val result = SMState.CREATING.instance.execute(context)
+        assertTrue("Execution result should be Failure.", result is SMResult.Failure)
+    }
+
+    fun `test snapshot already created in previous schedule`() = runBlocking {
+        val mockGetSnapshotResponse = mockGetSnapshotResponse(1, now().minusSeconds(30).toEpochMilli())
+        val snapshotName = mockGetSnapshotResponse.snapshots.first().snapshotId().name
+        mockGetSnapshotsCall(response = mockGetSnapshotResponse)
+
+        val metadata = randomSMMetadata(
+            currentState = SMState.CREATE_CONDITION_MET,
+        )
+        val job = randomSMPolicy()
+        val context = SMStateMachine(client, job, metadata)
+
+        val result = SMState.CREATING.instance.execute(context)
+        assertTrue("Execution result should be Next.", result is SMResult.Next)
+        result as SMResult.Next
+        assertEquals("Started create snapshot name is $snapshotName.", snapshotName, result.metadataToSave.creation.started!!.name)
     }
 
     private fun mockCreateSnapshotCall(
