@@ -74,7 +74,7 @@ class ManagedIndexSettings {
 
         val ROLLOVER_SKIP: Setting<Boolean> = Setting.boolSetting(
             "index.plugins.index_state_management.rollover_skip",
-            false,
+            LegacyOpenDistroManagedIndexSettings.ROLLOVER_SKIP,
             Setting.Property.IndexScope,
             Setting.Property.Dynamic
         )
@@ -194,7 +194,7 @@ class ManagedIndexSettings {
 
         val RESTRICTED_INDEX_PATTERN = Setting.simpleString(
             "plugins.index_state_management.restricted_index_pattern",
-            DEFAULT_RESTRICTED_PATTERN,
+            LegacyOpenDistroManagedIndexSettings.RESTRICTED_INDEX_PATTERN,
             Setting.Property.NodeScope,
             Setting.Property.Dynamic
         )

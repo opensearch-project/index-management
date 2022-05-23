@@ -41,7 +41,6 @@ import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ShrinkActio
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepContext
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepMetaData
 import org.opensearch.indices.InvalidIndexNameException
-import org.opensearch.jobscheduler.repackage.com.cronutils.utils.VisibleForTesting
 import org.opensearch.jobscheduler.spi.LockModel
 import org.opensearch.jobscheduler.spi.utils.LockService
 import org.opensearch.script.Script
@@ -262,7 +261,6 @@ class AttemptMoveShardsStep(private val action: ShrinkAction) : ShrinkStep(name,
     /*
      * Returns the list of node names for nodes with enough space to shrink to, in increasing order of space available
      */
-    @VisibleForTesting
     @SuppressWarnings("NestedBlockDepth", "ComplexMethod")
     private suspend fun findSuitableNodes(
         stepContext: StepContext,

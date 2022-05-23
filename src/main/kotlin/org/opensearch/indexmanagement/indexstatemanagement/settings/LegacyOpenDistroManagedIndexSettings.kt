@@ -75,6 +75,14 @@ class LegacyOpenDistroManagedIndexSettings {
             Setting.Property.Deprecated
         )
 
+        val ROLLOVER_SKIP: Setting<Boolean> = Setting.boolSetting(
+            "index.opendistro.index_state_management.rollover_skip",
+            false,
+            Setting.Property.IndexScope,
+            Setting.Property.Dynamic,
+            Setting.Property.Deprecated
+        )
+
         val AUTO_MANAGE: Setting<Boolean> = Setting.boolSetting(
             "index.opendistro.index_state_management.auto_manage",
             true,
@@ -187,6 +195,14 @@ class LegacyOpenDistroManagedIndexSettings {
             "opendistro.index_state_management.snapshot.deny_list",
             SNAPSHOT_DENY_LIST_NONE,
             Function.identity(),
+            Setting.Property.NodeScope,
+            Setting.Property.Dynamic,
+            Setting.Property.Deprecated
+        )
+
+        val RESTRICTED_INDEX_PATTERN = Setting.simpleString(
+            "opendistro.index_state_management.restricted_index_pattern",
+            ManagedIndexSettings.DEFAULT_RESTRICTED_PATTERN,
             Setting.Property.NodeScope,
             Setting.Property.Dynamic,
             Setting.Property.Deprecated

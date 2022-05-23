@@ -55,6 +55,9 @@ fun IndexMetadata.getRolloverAlias(): String? {
 }
 
 fun IndexMetadata.getRolloverSkip(): Boolean {
+    if (this.settings.get(ManagedIndexSettings.ROLLOVER_SKIP.key).isNullOrBlank()) {
+        return this.settings.getAsBoolean(LegacyOpenDistroManagedIndexSettings.ROLLOVER_SKIP.key, false)
+    }
     return this.settings.getAsBoolean(ManagedIndexSettings.ROLLOVER_SKIP.key, false)
 }
 
