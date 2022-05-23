@@ -39,7 +39,7 @@ object DeletingState : State {
         } catch (ex: SnapshotMissingException) {
             return SMResult.Failure(ex, WorkflowType.DELETION)
         } catch (ex: Exception) {
-            log.error("Caught exception while get snapshots to decide which snapshots to delete.", ex)
+            log.error("Caught exception while getting snapshots to decide which snapshots to delete.", ex)
             return SMResult.Retry(WorkflowType.DELETION)
         }
 

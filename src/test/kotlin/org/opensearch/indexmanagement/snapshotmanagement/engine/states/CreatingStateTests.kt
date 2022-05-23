@@ -6,15 +6,16 @@
 package org.opensearch.indexmanagement.snapshotmanagement.engine.states
 
 import kotlinx.coroutines.runBlocking
-import org.opensearch.indexmanagement.snapshotmanagement.SnapshotManagementClientMockTests
+import org.opensearch.indexmanagement.ClientMockTestCase
 import org.opensearch.indexmanagement.snapshotmanagement.engine.statemachine.SMStateMachine
 import org.opensearch.indexmanagement.snapshotmanagement.randomSMMetadata
 import org.opensearch.indexmanagement.snapshotmanagement.randomSMPolicy
 import org.opensearch.indexmanagement.snapshotmanagement.mockCreateSnapshotResponse
 import org.opensearch.indexmanagement.snapshotmanagement.mockGetSnapshotResponse
+import org.opensearch.indexmanagement.snapshotmanagement.mockSnapshotInfo
 import java.time.Instant.now
 
-class CreatingStateTests : SnapshotManagementClientMockTests() {
+class CreatingStateTests : ClientMockTestCase() {
 
     fun `test create snapshot succeed`() = runBlocking {
         mockGetSnapshotsCall(response = mockGetSnapshotResponse(0))
@@ -50,7 +51,8 @@ class CreatingStateTests : SnapshotManagementClientMockTests() {
     }
 
     fun `test snapshot already created in previous schedule`() = runBlocking {
-        val mockGetSnapshotResponse = mockGetSnapshotResponse(1, now().minusSeconds(30).toEpochMilli())
+        val mockSnapshotInfo = mockSnapshotInfo(startTime = now().minusSeconds(30).toEpochMilli())
+        val mockGetSnapshotResponse = mockGetSnapshotResponse(mockSnapshotInfo)
         val snapshotName = mockGetSnapshotResponse.snapshots.first().snapshotId().name
         mockGetSnapshotsCall(response = mockGetSnapshotResponse)
 

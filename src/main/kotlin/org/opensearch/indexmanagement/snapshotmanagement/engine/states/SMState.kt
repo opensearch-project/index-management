@@ -16,6 +16,9 @@ enum class SMState(val instance: State) {
     FINISHED(FinishedState),
 }
 
+/**
+ * The workflows are pseudo parallel, which means one running won't block the others
+ */
 enum class WorkflowType {
     CREATION, // CREATE_CONDITION_MET, CREATING, part of FINISHED
     DELETION, // DELETE_CONDITION_MET, DELETING, part of FINISHED
@@ -23,9 +26,12 @@ enum class WorkflowType {
 
 /**
  * For the meaning of vertical, lateral, refer to [smTransitions].
- * [Next]: move to the next state in vertical direction.
- * [Stay]: stay in this level, can execute the next lateral states if exists.
- * [Failure]: caught exception and decide whether to show to the user. always reset the workflow.
+ * [Next]: move to the next state in vertical direction. Save currentState to metadata.
+ * [Stay]: stay in this level, can execute the next lateral states if exists. Save prevState to metadata if needed.
+ * [Failure]: caught non-retryable exception and will decide whether to show to the user.
+ *  Reset this workflow.
+ * [Retry]: caught retryable exception. If retry count exhausted, reset this workflow.
+ * [TimeLimitExceed]: the time limit of the workflow exceeds, reset this workflow.
  */
 sealed class SMResult : State.Result() {
     data class Next(val metadataToSave: SMMetadata) : SMResult()
@@ -38,8 +44,8 @@ sealed class SMResult : State.Result() {
 /**
  * Transitions from current to next state
  *
- * Vertical: WAITING to CONDITION_MET
- * Lateral: CREATE_CONDITION_MET and DELETE_CONDITION_MET, order matters
+ * Vertical example: WAITING to CONDITION_MET
+ * Lateral example: CREATE_CONDITION_MET and DELETE_CONDITION_MET, order matters
  */
 val smTransitions: Map<SMState, List<SMState>> = mapOf(
     SMState.START to listOf(

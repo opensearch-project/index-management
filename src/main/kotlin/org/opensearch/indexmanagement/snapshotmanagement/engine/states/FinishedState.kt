@@ -41,30 +41,35 @@ object FinishedState : State {
                 // User may manually delete the creating snapshot
                 return SMResult.Failure(ex, WorkflowType.CREATION)
             } catch (ex: Exception) {
-                log.error("Caught exception while get snapshots for started creation.", ex)
+                log.error("Caught exception while getting snapshots for started creation [${started.name}].", ex)
                 return SMResult.Retry(WorkflowType.CREATION)
             }
 
-            when (snapshots.firstOrNull()?.state()) {
+            val snapshot = snapshots.firstOrNull() ?: return SMResult.Retry(WorkflowType.CREATION)
+            when (snapshot.state()) {
+                SnapshotState.IN_PROGRESS -> {
+                    job.creation.timeLimit?.let {
+                        if (timeLimitExceed(metadata.creation.started.startTime, it))
+                            return SMResult.TimeLimitExceed(WorkflowType.CREATION)
+                    }
+                }
                 SnapshotState.SUCCESS -> {
                     creationStarted = null
                     info = info.upsert(
-                        "last_success" to "$started"
+                        "last_success" to started.name
                     )
                     // TODO SM notification snapshot created
                 }
                 else -> {
-                    // IN_PROGRESS, FAILED, PARTIAL, INCOMPATIBLE
-                    log.info("Creating snapshot [$started] has not succeed")
+                    // FAILED, PARTIAL, INCOMPATIBLE
+                    creationStarted = null
+                    // TODO SM notification snapshot creation has problem
                 }
             }
 
-            // TODO SM if now is after next creation time, we can update nextCreationTime and try notify user
-
-            job.creation.timeLimit?.let {
-                if (timeLimitExceed(metadata.creation.started.startTime, it))
-                    return SMResult.TimeLimitExceed(WorkflowType.CREATION)
-            }
+            // TODO SM if now is after next creation time, update nextCreationTime to next execution schedule
+            //  and try notify user that we skip the execution because snapshot creation time
+            //  is longer than execution schedule
         }
 
         metadata.deletion.started?.let { startedDeleteSnapshots ->
@@ -73,32 +78,34 @@ object FinishedState : State {
                     "${smJobIdToPolicyName(job.id)}*",
                     job.snapshotConfig["repository"] as String
                 )
+            } catch (ex: SnapshotMissingException) {
+                // User may manually delete all snapshots under this policy...
+                return SMResult.Failure(ex, WorkflowType.DELETION)
             } catch (ex: Exception) {
-                log.error("Caught exception while get snapshots for started deletion.", ex)
+                log.error("Caught exception while getting snapshots for started deletion [$startedDeleteSnapshots].", ex)
                 return SMResult.Retry(WorkflowType.DELETION)
             }
 
             val existingSnapshots = snapshots.map { it.snapshotId().name }
             val remainingSnapshotsName = startedDeleteSnapshots.map { it.name }.toSet() - existingSnapshots.toSet()
-
             deletionStarted = if (remainingSnapshotsName.isEmpty()) {
-                // TODO SM notification snapshot deleted
                 startedDeletionTime = null
+                // TODO SM notification snapshot deleted
                 null
             } else {
+                metadata.deletion.startedTime?.let { startTime ->
+                    job.deletion.timeLimit?.let {
+                        if (timeLimitExceed(startTime, it))
+                            return SMResult.TimeLimitExceed(WorkflowType.DELETION)
+                    }
+                }
+
                 startedDeleteSnapshots.filter {
                     it.name in remainingSnapshotsName
                 }.toList()
             }
 
             // TODO SM if now is after next deletion time, we can update nextDeletionTime and try notify user
-
-            metadata.deletion.startedTime?.let { startTime ->
-                job.deletion.timeLimit?.let {
-                    if (timeLimitExceed(startTime, it))
-                        return SMResult.TimeLimitExceed(WorkflowType.DELETION)
-                }
-            }
         }
 
         val metadataToSave = SMMetadata.Builder(metadata)

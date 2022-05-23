@@ -24,6 +24,7 @@ import org.opensearch.jobscheduler.spi.schedule.IntervalSchedule
 import org.opensearch.rest.RestStatus
 import org.opensearch.snapshots.SnapshotId
 import org.opensearch.snapshots.SnapshotInfo
+import org.opensearch.snapshots.SnapshotState
 import org.opensearch.test.OpenSearchTestCase.randomAlphaOfLength
 import org.opensearch.test.OpenSearchTestCase.randomIntBetween
 import org.opensearch.test.OpenSearchTestCase.randomNonNegativeLong
@@ -124,35 +125,56 @@ fun mockCreateSnapshotResponse(status: RestStatus = RestStatus.ACCEPTED): Create
     return createSnapshotRes
 }
 
-fun mockGetSnapshotResponse(num: Int, startTime: Long = randomNonNegativeLong()): GetSnapshotsResponse {
+fun mockGetSnapshotResponse(snapshotInfo: SnapshotInfo): GetSnapshotsResponse {
     val getSnapshotsRes: GetSnapshotsResponse = mock()
-    whenever(getSnapshotsRes.snapshots).doReturn(mockSnapshots(num, startTime))
+    whenever(getSnapshotsRes.snapshots).doReturn(listOf(snapshotInfo))
     return getSnapshotsRes
 }
 
-fun mockSnapshots(num: Int, startTime: Long = randomNonNegativeLong()): List<SnapshotInfo> {
-    val result = mutableListOf<SnapshotInfo>()
-    for (i in 1..num) {
-        result.add(mockSnapshotInfo(idNum = i, startTime))
-    }
-    return result.toList()
-}
-
-/**
- * For our use case, only mock snapshotId, startTime and endTime
- */
-fun mockSnapshotInfo(idNum: Int, startTime: Long = randomNonNegativeLong(), endTime: Long = randomNonNegativeLong()): SnapshotInfo {
-    val snapshotId = SnapshotId("mock_snapshot-$idNum}", UUIDs.randomBase64UUID())
+fun mockSnapshotInfo(
+    name: String = randomAlphaOfLength(10),
+    startTime: Long = randomNonNegativeLong(),
+    endTime: Long = randomNonNegativeLong(),
+): SnapshotInfo {
     return SnapshotInfo(
-        snapshotId,
+        SnapshotId(name, UUIDs.randomBase64UUID()),
         listOf("index1"),
         listOf("ds-1"),
         startTime,
-        "",
+        "reason",
         endTime,
         5,
         emptyList(),
         false,
         emptyMap(),
     )
+}
+
+fun mockInProgressSnapshotInfo(
+    name: String = randomAlphaOfLength(10),
+): SnapshotInfo {
+    return SnapshotInfo(
+        SnapshotId(name, UUIDs.randomBase64UUID()),
+        listOf("index1"),
+        listOf("ds-1"),
+        SnapshotState.IN_PROGRESS,
+    )
+}
+
+fun mockGetSnapshotResponse(num: Int): GetSnapshotsResponse {
+    val getSnapshotsRes: GetSnapshotsResponse = mock()
+    whenever(getSnapshotsRes.snapshots).doReturn(mockSnapshotInfoList(num))
+    return getSnapshotsRes
+}
+
+fun mockSnapshotInfoList(num: Int, namePrefix: String = randomAlphaOfLength(10)): List<SnapshotInfo> {
+    val result = mutableListOf<SnapshotInfo>()
+    for (i in 1..num) {
+        result.add(
+            mockSnapshotInfo(
+                name = namePrefix + i
+            )
+        )
+    }
+    return result.toList()
 }

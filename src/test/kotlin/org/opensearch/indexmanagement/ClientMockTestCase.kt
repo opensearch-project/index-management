@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.indexmanagement.snapshotmanagement
+package org.opensearch.indexmanagement
 
 import com.nhaarman.mockitokotlin2.any
 import com.nhaarman.mockitokotlin2.doAnswer
@@ -16,9 +16,10 @@ import org.opensearch.action.index.IndexResponse
 import org.opensearch.client.AdminClient
 import org.opensearch.client.Client
 import org.opensearch.client.ClusterAdminClient
+import org.opensearch.indexmanagement.snapshotmanagement.mockIndexResponse
 import org.opensearch.test.OpenSearchTestCase
 
-open class SnapshotManagementClientMockTests : OpenSearchTestCase() {
+open class ClientMockTestCase : OpenSearchTestCase() {
 
     val client: Client = mock()
     private val adminClient: AdminClient = mock()

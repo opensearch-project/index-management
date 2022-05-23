@@ -7,13 +7,13 @@ package org.opensearch.indexmanagement.snapshotmanagement.engine.states
 
 import kotlinx.coroutines.runBlocking
 import org.opensearch.action.support.master.AcknowledgedResponse
-import org.opensearch.indexmanagement.snapshotmanagement.SnapshotManagementClientMockTests
+import org.opensearch.indexmanagement.ClientMockTestCase
 import org.opensearch.indexmanagement.snapshotmanagement.engine.statemachine.SMStateMachine
 import org.opensearch.indexmanagement.snapshotmanagement.mockGetSnapshotResponse
 import org.opensearch.indexmanagement.snapshotmanagement.randomSMMetadata
 import org.opensearch.indexmanagement.snapshotmanagement.randomSMPolicy
 
-class DeletingStateTests : SnapshotManagementClientMockTests() {
+class DeletingStateTests : ClientMockTestCase() {
 
     fun `test delete snapshots succeed`() = runBlocking {
         mockGetSnapshotsCall(response = mockGetSnapshotResponse(11))

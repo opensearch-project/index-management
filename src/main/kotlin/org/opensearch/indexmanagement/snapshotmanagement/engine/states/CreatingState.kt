@@ -39,7 +39,7 @@ object CreatingState : State {
         } catch (ex: SnapshotMissingException) {
             emptyList()
         } catch (ex: Exception) {
-            log.error("Caught exception while get snapshots to decide if snapshot has been created in previous execution schedule.", ex)
+            log.error("Caught exception while getting snapshots to decide if snapshot has been created in previous execution schedule.", ex)
             return SMResult.Retry(WorkflowType.CREATION)
         }
 
