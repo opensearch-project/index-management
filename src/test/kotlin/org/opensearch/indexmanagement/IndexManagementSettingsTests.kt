@@ -38,6 +38,7 @@ class IndexManagementSettingsTests : OpenSearchTestCase() {
                     LegacyOpenDistroManagedIndexSettings.HISTORY_NUMBER_OF_REPLICAS,
                     LegacyOpenDistroManagedIndexSettings.POLICY_ID,
                     LegacyOpenDistroManagedIndexSettings.ROLLOVER_ALIAS,
+                    LegacyOpenDistroManagedIndexSettings.ROLLOVER_SKIP,
                     LegacyOpenDistroManagedIndexSettings.INDEX_STATE_MANAGEMENT_ENABLED,
                     LegacyOpenDistroManagedIndexSettings.METADATA_SERVICE_ENABLED,
                     LegacyOpenDistroManagedIndexSettings.JOB_INTERVAL,
@@ -46,6 +47,7 @@ class IndexManagementSettingsTests : OpenSearchTestCase() {
                     LegacyOpenDistroManagedIndexSettings.COORDINATOR_BACKOFF_MILLIS,
                     LegacyOpenDistroManagedIndexSettings.ALLOW_LIST,
                     LegacyOpenDistroManagedIndexSettings.SNAPSHOT_DENY_LIST,
+                    LegacyOpenDistroManagedIndexSettings.RESTRICTED_INDEX_PATTERN,
                     LegacyOpenDistroRollupSettings.ROLLUP_INGEST_BACKOFF_COUNT,
                     LegacyOpenDistroRollupSettings.ROLLUP_INGEST_BACKOFF_MILLIS,
                     LegacyOpenDistroRollupSettings.ROLLUP_SEARCH_BACKOFF_COUNT,
@@ -110,6 +112,23 @@ class IndexManagementSettingsTests : OpenSearchTestCase() {
         assertEquals(LegacyOpenDistroManagedIndexSettings.JOB_INTERVAL.get(settings), 5)
     }
 
+    fun testIndexSettingLegacyFallback() {
+        var settings = Settings.builder()
+            .put("index.opendistro.index_state_management.rollover_skip", true)
+            .build()
+        assertEquals(ManagedIndexSettings.ROLLOVER_SKIP.get(settings), true)
+
+        settings = Settings.builder()
+            .put("index.opendistro.index_state_management.rollover_skip", true)
+            .put("index.plugins.index_state_management.rollover_skip", false)
+            .build()
+        assertEquals(ManagedIndexSettings.ROLLOVER_SKIP.get(settings), false)
+
+        assertSettingDeprecationsAndWarnings(
+            arrayOf(LegacyOpenDistroManagedIndexSettings.ROLLOVER_SKIP)
+        )
+    }
+
     fun testSettingsGetValueWithLegacyFallback() {
         val settings = Settings.builder()
             .put("opendistro.index_state_management.enabled", false)
@@ -127,6 +146,7 @@ class IndexManagementSettingsTests : OpenSearchTestCase() {
             .put("opendistro.index_state_management.history.number_of_replicas", 2)
             .putList("opendistro.index_state_management.allow_list", listOf("1"))
             .putList("opendistro.index_state_management.snapshot.deny_list", listOf("1"))
+            .put("opendistro.index_state_management.restricted_index_pattern", "blocked_index_pattern")
             .put("opendistro.rollup.enabled", false)
             .put("opendistro.rollup.search.enabled", false)
             .put("opendistro.rollup.ingest.backoff_millis", "1ms")
@@ -151,6 +171,7 @@ class IndexManagementSettingsTests : OpenSearchTestCase() {
         assertEquals(ManagedIndexSettings.HISTORY_NUMBER_OF_REPLICAS.get(settings), 2)
         assertEquals(ManagedIndexSettings.ALLOW_LIST.get(settings), listOf("1"))
         assertEquals(ManagedIndexSettings.SNAPSHOT_DENY_LIST.get(settings), listOf("1"))
+        assertEquals(ManagedIndexSettings.RESTRICTED_INDEX_PATTERN.get(settings), "blocked_index_pattern")
         assertEquals(RollupSettings.ROLLUP_ENABLED.get(settings), false)
         assertEquals(RollupSettings.ROLLUP_SEARCH_ENABLED.get(settings), false)
         assertEquals(RollupSettings.ROLLUP_SEARCH_ALL_JOBS.get(settings), false)
@@ -177,6 +198,7 @@ class IndexManagementSettingsTests : OpenSearchTestCase() {
                 LegacyOpenDistroManagedIndexSettings.HISTORY_NUMBER_OF_REPLICAS,
                 LegacyOpenDistroManagedIndexSettings.ALLOW_LIST,
                 LegacyOpenDistroManagedIndexSettings.SNAPSHOT_DENY_LIST,
+                LegacyOpenDistroManagedIndexSettings.RESTRICTED_INDEX_PATTERN,
                 LegacyOpenDistroRollupSettings.ROLLUP_ENABLED,
                 LegacyOpenDistroRollupSettings.ROLLUP_SEARCH_ENABLED,
                 LegacyOpenDistroRollupSettings.ROLLUP_INGEST_BACKOFF_MILLIS,
