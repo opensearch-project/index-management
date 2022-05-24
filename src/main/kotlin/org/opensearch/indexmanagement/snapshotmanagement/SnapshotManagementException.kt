@@ -39,6 +39,8 @@ class SnapshotManagementException(
     )
 
     companion object {
+        const val GENERAL_EXCEPTION_KEY = "exception"
+
         private val exceptionTypeMap: Map<KClass<out Exception>, ExceptionKey> = mapOf(
             RepositoryMissingException::class to ExceptionKey.REPO_MISSING
         )

@@ -9,6 +9,7 @@ import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.opensearch.client.Client
 import org.opensearch.indexmanagement.snapshotmanagement.SnapshotManagementException
+import org.opensearch.indexmanagement.snapshotmanagement.SnapshotManagementException.Companion.GENERAL_EXCEPTION_KEY
 import org.opensearch.indexmanagement.snapshotmanagement.SnapshotManagementException.ExceptionKey
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.SMResult
 import org.opensearch.indexmanagement.snapshotmanagement.preFixTimeStamp
@@ -48,8 +49,8 @@ class SMStateMachine(
                 }
 
                 var result: SMResult = SMResult.Stay()
+                val prevState = currentState
                 for (nextState in nextStates) {
-                    val prevState = currentState
                     currentState = nextState
                     log.info("sm dev: Start executing $currentState.")
                     result = nextState.instance.execute(this) as SMResult
@@ -65,19 +66,14 @@ class SMStateMachine(
                         }
                         is SMResult.Stay -> {
                             log.info("State [$currentState]'s execution not finished. Will stay.")
-                            val metadataToSave = result.metadataToSave
-                            metadataToSave?.let {
-                                updateMetadata(
-                                    metadataToSave
-                                        .copy(currentState = prevState)
-                                )
-                            }
+                            val metadataToSave = result.metadataToSave ?: metadata
+                            updateMetadata(metadataToSave.copy(currentState = prevState))
                             // can still execute other lateral states if exists
                         }
                         is SMResult.Failure -> {
                             val ex = result.ex
                             val userMessage = preFixTimeStamp(SnapshotManagementException(ex).message)
-                            val info = metadata.info.upsert("exception" to userMessage)
+                            val info = metadata.info.upsert(GENERAL_EXCEPTION_KEY to userMessage)
                             val metadataToSave = SMMetadata.Builder(metadata)
                                 .reset(result.workflowType)
                             if (result.notifiable) {
