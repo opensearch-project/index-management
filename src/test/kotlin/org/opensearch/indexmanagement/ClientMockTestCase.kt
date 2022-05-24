@@ -19,7 +19,7 @@ import org.opensearch.client.ClusterAdminClient
 import org.opensearch.indexmanagement.snapshotmanagement.mockIndexResponse
 import org.opensearch.test.OpenSearchTestCase
 
-open class ClientMockTestCase : OpenSearchTestCase() {
+abstract class ClientMockTestCase : OpenSearchTestCase() {
 
     val client: Client = mock()
     private val adminClient: AdminClient = mock()
