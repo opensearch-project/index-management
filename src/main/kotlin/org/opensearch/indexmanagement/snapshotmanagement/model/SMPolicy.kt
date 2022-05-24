@@ -21,7 +21,6 @@ import org.opensearch.indexmanagement.opensearchapi.nullValueHandler
 import org.opensearch.indexmanagement.opensearchapi.optionalField
 import org.opensearch.indexmanagement.opensearchapi.optionalTimeField
 import org.opensearch.indexmanagement.snapshotmanagement.smJobIdToPolicyName
-import org.opensearch.indexmanagement.util.NO_ID
 import org.opensearch.jobscheduler.spi.ScheduledJobParameter
 import org.opensearch.jobscheduler.spi.schedule.CronSchedule
 import org.opensearch.jobscheduler.spi.schedule.IntervalSchedule
@@ -209,7 +208,7 @@ data class SMPolicy(
 
             fun parse(xcp: XContentParser): Creation {
                 var schedule: Schedule? = null
-                var timeout: TimeValue? = null
+                var timeLimit: TimeValue? = null
 
                 ensureExpectedToken(Token.START_OBJECT, xcp.currentToken(), xcp)
                 while (xcp.nextToken() != Token.END_OBJECT) {
@@ -218,13 +217,13 @@ data class SMPolicy(
 
                     when (fieldName) {
                         SCHEDULE_FIELD -> schedule = ScheduleParser.parse(xcp)
-                        TIME_LIMIT_FIELD -> timeout = TimeValue.parseTimeValue(xcp.text(), TIME_LIMIT_FIELD)
+                        TIME_LIMIT_FIELD -> timeLimit = TimeValue.parseTimeValue(xcp.text(), TIME_LIMIT_FIELD)
                     }
                 }
 
                 return Creation(
                     schedule = requireNotNull(schedule) { "schedule field must not be null" },
-                    timeLimit = timeout
+                    timeLimit = timeLimit
                 )
             }
         }
@@ -260,7 +259,7 @@ data class SMPolicy(
 
             fun parse(xcp: XContentParser): Deletion {
                 var schedule: Schedule? = null
-                var timeout: TimeValue? = null
+                var timeLimit: TimeValue? = null
                 var condition: DeleteCondition? = null
 
                 ensureExpectedToken(Token.START_OBJECT, xcp.currentToken(), xcp)
@@ -270,7 +269,7 @@ data class SMPolicy(
 
                     when (fieldName) {
                         SCHEDULE_FIELD -> schedule = ScheduleParser.parse(xcp)
-                        TIME_LIMIT_FIELD -> timeout = TimeValue.parseTimeValue(xcp.text(), TIME_LIMIT_FIELD)
+                        TIME_LIMIT_FIELD -> timeLimit = TimeValue.parseTimeValue(xcp.text(), TIME_LIMIT_FIELD)
                         CONDITION_FIELD -> condition = DeleteCondition.parse(xcp)
                     }
                 }
@@ -282,7 +281,7 @@ data class SMPolicy(
 
                 return Deletion(
                     schedule = schedule,
-                    timeLimit = timeout,
+                    timeLimit = timeLimit,
                     condition = requireNotNull(condition) { "condition field must not be null" },
                 )
             }

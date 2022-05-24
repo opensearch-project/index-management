@@ -116,42 +116,6 @@ fun generateFormatTime(dateFormat: String): String {
     return dateFormatter.format(instant)
 }
 
-// suspend fun SMStateMachine.startCreateSnapshotTransaction() {
-//     updateMetadata(metadata.copy(
-//         creation = metadata.creation.copy(
-//             atomic = true
-//         )
-//     ))
-//     log.info("Started create snapshot transaction.")
-// }
-//
-// suspend fun SMStateMachine.startDeleteSnapshotTransaction() {
-//     updateMetadata(metadata.copy(
-//         deletion = metadata.deletion.copy(
-//             atomic = true
-//         )
-//     ))
-//     log.info("Started delete snapshot transaction.")
-// }
-//
-// suspend fun SMStateMachine.endCreateSnapshotTransaction() {
-//     updateMetadata(metadata.copy(
-//         creation = metadata.creation.copy(
-//             atomic = false
-//         )
-//     ))
-//     log.info("End create snapshot transaction.")
-// }
-//
-// suspend fun SMStateMachine.endDeleteSnapshotTransaction() {
-//     updateMetadata(metadata.copy(
-//         deletion = metadata.deletion.copy(
-//             atomic = false
-//         )
-//     ))
-//     log.info("End delete snapshot transaction.")
-// }
-
 fun preFixTimeStamp(msg: String?): String {
     val formatter = DateTimeFormatter.ISO_INSTANT
     return "[${formatter.format(Instant.now().truncatedTo(ChronoUnit.SECONDS))}]: " + msg
@@ -168,6 +132,6 @@ suspend fun Client.getSnapshots(name: String, repo: String): List<SnapshotInfo> 
         .snapshots(arrayOf(name))
         .repository(repo)
     val res: GetSnapshotsResponse = admin().cluster().suspendUntil { getSnapshots(req, it) }
-    log.info("Get snapshot response: ${res.snapshots}")
+    log.info("sm dev: Get snapshot response: ${res.snapshots}")
     return res.snapshots
 }

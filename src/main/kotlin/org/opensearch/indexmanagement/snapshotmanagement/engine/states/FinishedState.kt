@@ -38,10 +38,10 @@ object FinishedState : State {
                     job.snapshotConfig["repository"] as String
                 )
             } catch (ex: SnapshotMissingException) {
-                // User may manually delete the creating snapshot
+                log.warn("Snapshot ${started.name} not found while checking if it has been created.")
                 return SMResult.Failure(ex, WorkflowType.CREATION)
             } catch (ex: Exception) {
-                log.error("Caught exception while getting snapshots for started creation [${started.name}].", ex)
+                log.error("Caught exception while getting started creation snapshot [${started.name}].", ex)
                 return SMResult.Retry(WorkflowType.CREATION)
             }
 
@@ -79,15 +79,16 @@ object FinishedState : State {
                     job.snapshotConfig["repository"] as String
                 )
             } catch (ex: SnapshotMissingException) {
-                // User may manually delete all snapshots under this policy...
+                log.warn("No snapshots found under policy while getting snapshots to decide if snapshots has been deleted.")
                 return SMResult.Failure(ex, WorkflowType.DELETION)
             } catch (ex: Exception) {
-                log.error("Caught exception while getting snapshots for started deletion [$startedDeleteSnapshots].", ex)
+                log.error("Caught exception while getting snapshots to decide if snapshots [$startedDeleteSnapshots] has been deleted.", ex)
                 return SMResult.Retry(WorkflowType.DELETION)
             }
 
-            val existingSnapshots = snapshots.map { it.snapshotId().name }
-            val remainingSnapshotsName = startedDeleteSnapshots.map { it.name }.toSet() - existingSnapshots.toSet()
+            val existingSnapshotsNameSet = snapshots.map { it.snapshotId().name }.toSet()
+            val startedDeletionSnapshotsNameSet = startedDeleteSnapshots.map { it.name }.toSet()
+            val remainingSnapshotsName = existingSnapshotsNameSet intersect startedDeletionSnapshotsNameSet
             deletionStarted = if (remainingSnapshotsName.isEmpty()) {
                 startedDeletionTime = null
                 // TODO SM notification snapshot deleted

@@ -74,16 +74,15 @@ class SMStateMachine(
                         }
                         is SMResult.Failure -> {
                             val ex = result.ex
-                            log.error("Caught exception while executing state [$currentState]. Reset the workflow ${result.workflowType}.", ex)
-
                             val userMessage = preFixTimeStamp(SnapshotManagementException(ex).message)
                             val info = metadata.info.upsert("exception" to userMessage)
                             val metadataToSave = SMMetadata.Builder(metadata)
                                 .reset(result.workflowType)
-                            if (result.notifiable)
+                            if (result.notifiable) {
+                                log.error("Caught exception while executing state [$currentState]. Reset the workflow ${result.workflowType}.", ex)
                                 metadataToSave.info(info)
-                            // TODO error notification
-                            //  only snapshot create, delete exception should be notified
+                                // TODO error notification
+                            }
 
                             updateMetadata(metadataToSave.build())
                         }

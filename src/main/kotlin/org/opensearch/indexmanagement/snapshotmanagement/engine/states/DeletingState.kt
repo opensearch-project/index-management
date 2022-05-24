@@ -37,6 +37,7 @@ object DeletingState : State {
                 job.snapshotConfig["repository"] as String
             )
         } catch (ex: SnapshotMissingException) {
+            log.warn("No snapshots found under policy while getting snapshots to decide which snapshots to delete.")
             return SMResult.Failure(ex, WorkflowType.DELETION)
         } catch (ex: Exception) {
             log.error("Caught exception while getting snapshots to decide which snapshots to delete.", ex)

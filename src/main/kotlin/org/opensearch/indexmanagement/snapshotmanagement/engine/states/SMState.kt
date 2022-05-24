@@ -28,8 +28,8 @@ enum class WorkflowType {
  * For the meaning of vertical, lateral, refer to [smTransitions].
  * [Next]: move to the next state in vertical direction. Save currentState to metadata.
  * [Stay]: stay in this level, can execute the next lateral states if exists. Save prevState to metadata if needed.
- * [Failure]: caught non-retryable exception and will decide whether to show to the user.
- *  Reset this workflow.
+ * [Failure]: caught non-retryable exception and reset this workflow.
+ *  Only snapshot create, delete related exceptions are notifiable.
  * [Retry]: caught retryable exception. If retry count exhausted, reset this workflow.
  * [TimeLimitExceed]: the time limit of the workflow exceeds, reset this workflow.
  */

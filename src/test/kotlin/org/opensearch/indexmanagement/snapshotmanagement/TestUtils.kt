@@ -135,13 +135,14 @@ fun mockSnapshotInfo(
     name: String = randomAlphaOfLength(10),
     startTime: Long = randomNonNegativeLong(),
     endTime: Long = randomNonNegativeLong(),
+    reason: String? = null, // reason with valid string leads to FAILED snapshot state
 ): SnapshotInfo {
     return SnapshotInfo(
         SnapshotId(name, UUIDs.randomBase64UUID()),
         listOf("index1"),
         listOf("ds-1"),
         startTime,
-        "reason",
+        reason,
         endTime,
         5,
         emptyList(),
