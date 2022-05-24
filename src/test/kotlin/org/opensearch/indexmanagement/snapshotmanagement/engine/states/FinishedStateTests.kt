@@ -6,6 +6,7 @@
 package org.opensearch.indexmanagement.snapshotmanagement.engine.states
 
 import kotlinx.coroutines.runBlocking
+import org.opensearch.common.unit.TimeValue
 import org.opensearch.indexmanagement.ClientMockTestCase
 import org.opensearch.indexmanagement.snapshotmanagement.engine.statemachine.SMStateMachine
 import org.opensearch.indexmanagement.snapshotmanagement.mockGetSnapshotResponse
@@ -82,6 +83,43 @@ class FinishedStateTests : ClientMockTestCase() {
         assertNull("Started creation should be reset to null.", result.metadataToSave.creation.started)
     }
 
+    fun `test get snapshots exception in creation`() = runBlocking {
+        val snapshotName = "test_creation_get_snapshots_exception"
+        mockGetSnapshotsCall(exception = Exception())
+
+        val metadata = randomSMMetadata(
+            currentState = SMState.CREATING,
+            startedCreation = SMMetadata.SnapshotInfo(
+                name = snapshotName,
+                startTime = now(),
+            )
+        )
+        val job = randomSMPolicy()
+        val context = SMStateMachine(client, job, metadata)
+
+        val result = SMState.FINISHED.instance.execute(context)
+        assertTrue("Execution results should be Retry.", result is SMResult.Retry)
+    }
+
+    fun `test creation time limit exceed`() = runBlocking {
+        val snapshotName = "test_creation_time_exceed"
+        val snapshotInfo = mockInProgressSnapshotInfo(name = snapshotName)
+        mockGetSnapshotsCall(response = mockGetSnapshotResponse(snapshotInfo))
+
+        val metadata = randomSMMetadata(
+            currentState = SMState.CREATING,
+            startedCreation = SMMetadata.SnapshotInfo(
+                name = snapshotName,
+                startTime = now().minusSeconds(10),
+            )
+        )
+        val job = randomSMPolicy(creationTimeLimit = TimeValue.timeValueSeconds(5))
+        val context = SMStateMachine(client, job, metadata)
+
+        val result = SMState.FINISHED.instance.execute(context)
+        assertTrue("Execution results should be TimeLimitExceed.", result is SMResult.TimeLimitExceed)
+    }
+
     fun `test deletion succeed`() = runBlocking {
         val snapshotName = "test_deletion_success"
         mockGetSnapshotsCall(response = mockGetSnapshotResponse(0))
@@ -129,5 +167,48 @@ class FinishedStateTests : ClientMockTestCase() {
         result as SMResult.Stay
         assertNotNull("Started deletion should not be reset.", result.metadataToSave!!.deletion.started)
         assertNotNull("Started deletion time should not be reset.", result.metadataToSave!!.deletion.startedTime)
+    }
+
+    fun `test get snapshots exception in deletion`() = runBlocking {
+        val snapshotName = "test_deletion_get_snapshots_exception"
+        mockGetSnapshotsCall(exception = Exception())
+
+        val metadata = randomSMMetadata(
+            currentState = SMState.DELETING,
+            startedDeletion = listOf(
+                SMMetadata.SnapshotInfo(
+                    name = snapshotName,
+                    startTime = now().minusSeconds(100)
+                ),
+            ),
+            deleteStartedTime = now().minusSeconds(50),
+        )
+        val job = randomSMPolicy()
+        val context = SMStateMachine(client, job, metadata)
+
+        val result = SMState.FINISHED.instance.execute(context)
+        assertTrue("Execution results should be Retry.", result is SMResult.Retry)
+    }
+
+    fun `test deletion time limit exceed`() = runBlocking {
+        val snapshotName = "test_deletion_time_exceed"
+        val snapshotInfo = mockSnapshotInfo(name = snapshotName)
+        mockGetSnapshotsCall(response = mockGetSnapshotResponse(snapshotInfo))
+
+        val metadata = randomSMMetadata(
+            currentState = SMState.DELETING,
+            startedDeletion = listOf(
+                SMMetadata.SnapshotInfo(
+                    name = snapshotName,
+                    startTime = now().minusSeconds(100),
+                ),
+            ),
+            deleteStartedTime = now().minusSeconds(50),
+        )
+        val job = randomSMPolicy(deletionTimeLimit = TimeValue.timeValueSeconds(5))
+        val context = SMStateMachine(client, job, metadata)
+
+        val result = SMState.FINISHED.instance.execute(context)
+        assertTrue("Execution results should be TimeLimitExceed.", result is SMResult.TimeLimitExceed)
     }
 }

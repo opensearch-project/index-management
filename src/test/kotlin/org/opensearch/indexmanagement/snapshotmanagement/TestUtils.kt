@@ -66,9 +66,9 @@ fun randomSMPolicy(
     jobEnabled: Boolean = false,
     jobLastUpdateTime: Instant = randomInstant(),
     creationSchedule: CronSchedule = randomCronSchedule(),
-    creationTimeout: TimeValue? = null,
+    creationTimeLimit: TimeValue? = null,
     deletionSchedule: CronSchedule = randomCronSchedule(),
-    deletionTimeout: TimeValue? = null,
+    deletionTimeLimit: TimeValue? = null,
     deletionMaxCount: Int = randomIntBetween(5, 10),
     deletionMaxAge: TimeValue? = null,
     deletionMinCount: Int? = null,
@@ -85,11 +85,11 @@ fun randomSMPolicy(
         jobLastUpdateTime = jobLastUpdateTime,
         creation = SMPolicy.Creation(
             schedule = creationSchedule,
-            timeLimit = creationTimeout,
+            timeLimit = creationTimeLimit,
         ),
         deletion = SMPolicy.Deletion(
             schedule = deletionSchedule,
-            timeLimit = deletionTimeout,
+            timeLimit = deletionTimeLimit,
             condition = SMPolicy.DeleteCondition(
                 maxCount = deletionMaxCount,
                 maxAge = deletionMaxAge,
