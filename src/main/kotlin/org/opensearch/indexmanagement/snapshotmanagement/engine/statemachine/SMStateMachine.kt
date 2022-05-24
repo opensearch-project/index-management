@@ -21,24 +21,26 @@ import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata.Companion.upsert
 import org.opensearch.indexmanagement.snapshotmanagement.smJobIdToPolicyName
+import org.opensearch.indexmanagement.util.OpenForTesting
 import java.time.Instant.now
 
+@OpenForTesting
 class SMStateMachine(
     val client: Client,
     val job: SMPolicy,
     var metadata: SMMetadata
-) : StateMachine() {
+) {
 
     val log: Logger = LogManager.getLogger("$javaClass [${smJobIdToPolicyName(job.id)}]")
 
-    override var currentState: SMState = metadata.currentState.also {
+    var currentState: SMState = metadata.currentState.also {
         log.info("Current state: [${metadata.currentState}].")
     }
 
-    override suspend fun next() {
+    suspend fun next(transitions: Map<SMState, List<SMState>> = smTransitions) {
         try {
             do {
-                val nextStates = smTransitions[currentState]
+                val nextStates = transitions[currentState]
                 if (nextStates == null) {
                     // Unlikely to reach unless the metadata is tampered
                     log.error("No next states for current state [$currentState].")
@@ -148,7 +150,7 @@ class SMStateMachine(
      */
     private var metadataSeqNo: Long = metadata.seqNo
     private var metadataPrimaryTerm: Long = metadata.primaryTerm
-    private suspend fun updateMetadata(md: SMMetadata) {
+    suspend fun updateMetadata(md: SMMetadata) {
         try {
             // TODO SM retry policy for update metadata call
             val res = client.indexMetadata(md, job.id, metadataSeqNo, metadataPrimaryTerm)

@@ -32,7 +32,7 @@ import java.time.Instant
 import java.time.Instant.now
 
 fun randomSMMetadata(
-    currentState: SMState,
+    currentState: SMState = SMState.START,
     nextCreationTime: Instant = now(),
     nextDeletionTime: Instant = now(),
     policySeqNo: Long = randomNonNegativeLong(),
