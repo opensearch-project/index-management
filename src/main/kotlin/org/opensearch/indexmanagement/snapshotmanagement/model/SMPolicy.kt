@@ -16,10 +16,12 @@ import org.opensearch.common.xcontent.XContentParser
 import org.opensearch.common.xcontent.XContentParser.Token
 import org.opensearch.common.xcontent.XContentParserUtils.ensureExpectedToken
 import org.opensearch.index.seqno.SequenceNumbers
+import org.opensearch.indexmanagement.indexstatemanagement.util.WITH_TYPE
 import org.opensearch.indexmanagement.opensearchapi.instant
 import org.opensearch.indexmanagement.opensearchapi.nullValueHandler
 import org.opensearch.indexmanagement.opensearchapi.optionalField
 import org.opensearch.indexmanagement.opensearchapi.optionalTimeField
+import org.opensearch.indexmanagement.snapshotmanagement.getSMMetadataDocId
 import org.opensearch.indexmanagement.snapshotmanagement.smDocIdToPolicyName
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ActionTimeout
 import org.opensearch.indexmanagement.util.NO_ID
@@ -42,7 +44,7 @@ data class SMPolicy(
     val snapshotConfig: Map<String, Any>,
     val jobEnabled: Boolean,
     val jobLastUpdateTime: Instant,
-    val jobEnabledTime: Instant,
+    val jobEnabledTime: Instant?,
     val jobSchedule: Schedule,
     val seqNo: Long = SequenceNumbers.UNASSIGNED_SEQ_NO,
     val primaryTerm: Long = SequenceNumbers.UNASSIGNED_PRIMARY_TERM,
@@ -54,7 +56,13 @@ data class SMPolicy(
         // TODO SM validate date_format is of right format
     }
 
+    // This name is used by the job scheduler and needs to match the id to avoid namespace conflicts with ISM policies sharing the same name
     override fun getName() = id
+
+    // This is the name which the user provided when creating the policy, and should be used when outputting to the user in REST responses
+    val policyName get() = smDocIdToPolicyName(id)
+
+    val metadataID get() = getSMMetadataDocId(smDocIdToPolicyName(id))
 
     override fun getLastUpdateTime() = jobLastUpdateTime
 
@@ -65,10 +73,9 @@ data class SMPolicy(
     override fun isEnabled() = jobEnabled
 
     override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
-        return builder
-            .startObject()
-            .startObject(SM_TYPE)
-            .field(NAME_FIELD, smDocIdToPolicyName(id)) // for searching policy by name
+        builder.startObject()
+        if (params.paramAsBoolean(WITH_TYPE, true)) builder.startObject(SM_TYPE)
+        builder.field(NAME_FIELD, smDocIdToPolicyName(id)) // for searching policy by name
             .optionalField(DESCRIPTION_FIELD, description)
             .field(CREATION_FIELD, creation)
             .field(DELETION_FIELD, deletion)
@@ -77,12 +84,14 @@ data class SMPolicy(
             .field(ENABLED_FIELD, jobEnabled)
             .optionalTimeField(LAST_UPDATED_TIME_FIELD, jobLastUpdateTime)
             .optionalTimeField(ENABLED_TIME_FIELD, jobEnabledTime)
-            .endObject()
-            .endObject()
+        if (params.paramAsBoolean(WITH_TYPE, true)) builder.endObject()
+        return builder.endObject()
     }
 
     companion object {
         const val SM_TYPE = "sm"
+        const val SM_DOC_ID_SUFFIX = "-sm-policy"
+        const val SM_METADATA_ID_SUFFIX = "-sm-metadata"
         const val NAME_FIELD = "name"
         const val DESCRIPTION_FIELD = "description"
         const val CREATION_FIELD = "creation"
@@ -150,7 +159,7 @@ data class SMPolicy(
                 deletion = requireNotNull(deletion) { "deletion field must not be null" },
                 snapshotConfig = requireNotNull(snapshotConfig) { "snapshot_config field must not be null" },
                 jobLastUpdateTime = requireNotNull(lastUpdatedTime) { "last_updated_at field must not be null" },
-                jobEnabledTime = requireNotNull(enabledTime) { "job_enabled_time field must not be null" },
+                jobEnabledTime = enabledTime,
                 jobSchedule = schedule,
                 jobEnabled = enabled,
                 id = id,
@@ -166,7 +175,7 @@ data class SMPolicy(
         deletion = Deletion(sin),
         snapshotConfig = sin.readMap() as Map<String, Any>,
         jobLastUpdateTime = sin.readInstant(),
-        jobEnabledTime = sin.readInstant(),
+        jobEnabledTime = sin.readOptionalInstant(),
         jobSchedule = IntervalSchedule(sin),
         jobEnabled = sin.readBoolean(),
         id = sin.readString(),
@@ -180,8 +189,8 @@ data class SMPolicy(
         deletion.writeTo(out)
         out.writeMap(snapshotConfig)
         out.writeInstant(jobLastUpdateTime)
-        out.writeInstant(jobEnabledTime)
-        out.writeOptionalWriteable(jobSchedule)
+        out.writeOptionalInstant(jobEnabledTime)
+        jobSchedule.writeTo(out)
         out.writeBoolean(jobEnabled)
         out.writeString(id)
         out.writeLong(seqNo)
@@ -322,11 +331,13 @@ data class SMPolicy(
 
         companion object {
             const val MAX_COUNT_FIELD = "max_count"
+            private const val DEFAULT_MAX_COUNT = 50
             const val MAX_AGE_FIELD = "max_age"
             const val MIN_COUNT_FIELD = "min_count"
+            private const val DEFAULT_MIN_COUNT = 5
 
             fun parse(xcp: XContentParser): DeleteCondition {
-                var maxCount = 50
+                var maxCount = DEFAULT_MAX_COUNT
                 var maxAge: TimeValue? = null
                 var minCount: Int? = null
 
@@ -343,7 +354,7 @@ data class SMPolicy(
                 }
 
                 if (maxAge != null && minCount == null) {
-                    minCount = minOf(5, maxCount)
+                    minCount = minOf(DEFAULT_MIN_COUNT, maxCount)
                 }
 
                 return DeleteCondition(

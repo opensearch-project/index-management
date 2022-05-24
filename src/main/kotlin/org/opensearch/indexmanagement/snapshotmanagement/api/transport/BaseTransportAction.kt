@@ -20,6 +20,7 @@ import org.opensearch.common.io.stream.Writeable
 import org.opensearch.common.util.concurrent.ThreadContext.StoredContext
 import org.opensearch.commons.ConfigConstants.OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT
 import org.opensearch.commons.authuser.User
+import org.opensearch.index.engine.VersionConflictEngineException
 import org.opensearch.rest.RestStatus
 import org.opensearch.tasks.Task
 import org.opensearch.transport.TransportService
@@ -51,13 +52,13 @@ abstract class BaseTransportAction<Request : ActionRequest, Response : ActionRes
                 client.threadPool().threadContext.stashContext().use { threadContext ->
                     listener.onResponse(executeRequest(request, user, threadContext))
                 }
+            } catch (ex: VersionConflictEngineException) {
+                listener.onFailure(ex)
+            } catch (ex: OpenSearchStatusException) {
+                listener.onFailure(ex)
             } catch (ex: Exception) {
                 log.error("Uncaught exception:", ex)
-                listener.onFailure(
-                    OpenSearchStatusException(
-                        ex.message, RestStatus.INTERNAL_SERVER_ERROR
-                    )
-                )
+                listener.onFailure(OpenSearchStatusException(ex.message, RestStatus.INTERNAL_SERVER_ERROR))
             }
         }
     }
