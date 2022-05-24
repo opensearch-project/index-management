@@ -30,40 +30,48 @@ fun smPolicyNameToDocId(policyName: String) = "$policyName$SM_DOC_ID_SUFFIX"
 fun smDocIdToPolicyName(id: String) = id.substringBeforeLast(SM_DOC_ID_SUFFIX)
 fun getSMMetadataDocId(policyName: String) = "$policyName$SM_METADATA_ID_SUFFIX"
 
+@Suppress("RethrowCaughtException", "ThrowsCount")
 suspend fun Client.getSMPolicy(policyID: String): SMPolicy {
-    val smPolicy = try {
-        this.getSMDoc(policyID, ::parseSMPolicy)
+    try {
+        val getRequest = GetRequest(IndexManagementPlugin.INDEX_MANAGEMENT_INDEX, policyID)
+        val getResponse: GetResponse = this.suspendUntil { get(getRequest, it) }
+        if (!getResponse.isExists || getResponse.isSourceEmpty) {
+            throw OpenSearchStatusException("Snapshot management policy not found", RestStatus.NOT_FOUND)
+        }
+        return parseSMPolicy(getResponse)
+    } catch (e: OpenSearchStatusException) {
+        throw e
     } catch (e: IndexNotFoundException) {
         throw OpenSearchStatusException("Snapshot management config index not found", RestStatus.NOT_FOUND)
-    } catch (e: Exception) {
-        throw OpenSearchStatusException("Snapshot management policy not found", RestStatus.NOT_FOUND)
-    }
-    return smPolicy
-}
-
-suspend fun Client.getSMMetadata(metadataID: String): SMMetadata {
-    val smMetadata = try {
-        this.getSMDoc(metadataID, ::parseSMMetadata)
-    } catch (e: IndexNotFoundException) {
-        throw OpenSearchStatusException("Snapshot management config index not found", RestStatus.NOT_FOUND)
-    } catch (e: Exception) {
-        throw OpenSearchStatusException("Snapshot management metadata not found", RestStatus.NOT_FOUND)
-    }
-    return smMetadata
-}
-
-suspend fun <T> Client.getSMDoc(docID: String, parser: (GetResponse) -> T): T {
-    val getRequest = GetRequest(IndexManagementPlugin.INDEX_MANAGEMENT_INDEX, docID)
-    val getResponse: GetResponse = this.suspendUntil { get(getRequest, it) }
-    if (!getResponse.isExists) {
-        throw OpenSearchStatusException("Snapshot management doc not found", RestStatus.NOT_FOUND)
-    }
-    val smDoc = try {
-        parser(getResponse)
     } catch (e: IllegalArgumentException) {
-        throw OpenSearchStatusException("Snapshot management doc could not be parsed", RestStatus.NOT_FOUND)
+        log.error("Failed to retrieve snapshot management policy [$policyID]", e)
+        throw OpenSearchStatusException("Snapshot management policy could not be parsed", RestStatus.INTERNAL_SERVER_ERROR)
+    } catch (e: Exception) {
+        log.error("Failed to retrieve snapshot management policy [$policyID]", e)
+        throw OpenSearchStatusException("Failed to retrieve Snapshot management policy.", RestStatus.NOT_FOUND)
     }
-    return smDoc
+}
+
+@Suppress("RethrowCaughtException", "ThrowsCount")
+suspend fun Client.getSMMetadata(metadataID: String): SMMetadata {
+    try {
+        val getRequest = GetRequest(IndexManagementPlugin.INDEX_MANAGEMENT_INDEX, metadataID)
+        val getResponse: GetResponse = this.suspendUntil { get(getRequest, it) }
+        if (!getResponse.isExists || getResponse.isSourceEmpty) {
+            throw OpenSearchStatusException("Snapshot management metadata not found", RestStatus.NOT_FOUND)
+        }
+        return parseSMMetadata(getResponse)
+    } catch (e: OpenSearchStatusException) {
+        throw e
+    } catch (e: IndexNotFoundException) {
+        throw OpenSearchStatusException("Snapshot management config index not found", RestStatus.NOT_FOUND)
+    } catch (e: IllegalArgumentException) {
+        log.error("Failed to retrieve snapshot management metadata [$metadataID]", e)
+        throw OpenSearchStatusException("Snapshot management metadata could not be parsed", RestStatus.INTERNAL_SERVER_ERROR)
+    } catch (e: Exception) {
+        log.error("Failed to retrieve snapshot management metadata [$metadataID]", e)
+        throw OpenSearchStatusException("Failed to retrieve Snapshot management metadata.", RestStatus.NOT_FOUND)
+    }
 }
 
 fun parseSMPolicy(response: GetResponse, xContentRegistry: NamedXContentRegistry = NamedXContentRegistry.EMPTY): SMPolicy {
