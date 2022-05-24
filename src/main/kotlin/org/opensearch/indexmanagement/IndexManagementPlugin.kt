@@ -111,11 +111,17 @@ import org.opensearch.indexmanagement.rollup.resthandler.RestStopRollupAction
 import org.opensearch.indexmanagement.rollup.settings.LegacyOpenDistroRollupSettings
 import org.opensearch.indexmanagement.rollup.settings.RollupSettings
 import org.opensearch.indexmanagement.settings.IndexManagementSettings
+import org.opensearch.indexmanagement.snapshotmanagement.api.resthandler.RestExecuteSMPolicyHandler
 import org.opensearch.indexmanagement.snapshotmanagement.api.resthandler.RestSMPolicyHandler
+import org.opensearch.indexmanagement.snapshotmanagement.api.resthandler.RestStartSMPolicyHandler
+import org.opensearch.indexmanagement.snapshotmanagement.api.resthandler.RestStopSMPolicyHandler
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.SMActions
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.delete.TransportDeleteSMPolicyAction
+import org.opensearch.indexmanagement.snapshotmanagement.api.transport.execute.TransportExecuteSMAction
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.get.TransportGetSMPolicyAction
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.index.TransportIndexSMPolicyAction
+import org.opensearch.indexmanagement.snapshotmanagement.api.transport.start.TransportStartSMAction
+import org.opensearch.indexmanagement.snapshotmanagement.api.transport.stop.TransportStopSMAction
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy
 import org.opensearch.indexmanagement.spi.IndexManagementExtension
@@ -321,6 +327,9 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
             RestStartTransformAction(),
             RestStopTransformAction(),
             RestSMPolicyHandler(),
+            RestStartSMPolicyHandler(),
+            RestStopSMPolicyHandler(),
+            RestExecuteSMPolicyHandler()
         )
     }
 
@@ -526,6 +535,9 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
             ActionPlugin.ActionHandler(SMActions.INDEX_SM_ACTION_TYPE, TransportIndexSMPolicyAction::class.java),
             ActionPlugin.ActionHandler(SMActions.GET_SM_ACTION_TYPE, TransportGetSMPolicyAction::class.java),
             ActionPlugin.ActionHandler(SMActions.DELETE_SM_ACTION_TYPE, TransportDeleteSMPolicyAction::class.java),
+            ActionPlugin.ActionHandler(SMActions.START_SM_ACTION_TYPE, TransportStartSMAction::class.java),
+            ActionPlugin.ActionHandler(SMActions.STOP_SM_ACTION_TYPE, TransportStopSMAction::class.java),
+            ActionPlugin.ActionHandler(SMActions.EXECUTE_SM_ACTION_TYPE, TransportExecuteSMAction::class.java)
         )
     }
 

@@ -7,6 +7,7 @@ package org.opensearch.indexmanagement.snapshotmanagement.action
 
 import org.opensearch.common.io.stream.BytesStreamOutput
 import org.opensearch.common.io.stream.StreamInput
+import org.opensearch.indexmanagement.snapshotmanagement.api.transport.execute.ExecuteSMResponse
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.get.GetSMPolicyResponse
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.index.IndexSMPolicyResponse
 import org.opensearch.indexmanagement.snapshotmanagement.randomSMPolicy
@@ -40,5 +41,15 @@ class ResponseTests : OpenSearchTestCase() {
         assertEquals(2L, streamedRes.seqNo)
         assertEquals(3L, streamedRes.primaryTerm)
         assertEquals(smPolicy, streamedRes.policy)
+    }
+
+    fun `test execute sm policy response`() {
+        val smPolicy = randomSMPolicy()
+        val res = ExecuteSMResponse(smPolicy, RestStatus.OK)
+        val out = BytesStreamOutput().apply { res.writeTo(this) }
+        val sin = StreamInput.wrap(out.bytes().toBytesRef().bytes)
+        val streamedRes = ExecuteSMResponse(sin)
+        assertEquals(smPolicy, streamedRes.policy)
+        assertEquals(RestStatus.OK, streamedRes.status)
     }
 }

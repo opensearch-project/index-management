@@ -7,10 +7,16 @@ package org.opensearch.indexmanagement.snapshotmanagement.action
 
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.SMActions.DELETE_SM_ACTION_NAME
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.SMActions.DELETE_SM_ACTION_TYPE
+import org.opensearch.indexmanagement.snapshotmanagement.api.transport.SMActions.EXECUTE_SM_ACTION_NAME
+import org.opensearch.indexmanagement.snapshotmanagement.api.transport.SMActions.EXECUTE_SM_ACTION_TYPE
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.SMActions.GET_SM_ACTION_NAME
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.SMActions.GET_SM_ACTION_TYPE
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.SMActions.INDEX_SM_ACTION_NAME
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.SMActions.INDEX_SM_ACTION_TYPE
+import org.opensearch.indexmanagement.snapshotmanagement.api.transport.SMActions.START_SM_ACTION_NAME
+import org.opensearch.indexmanagement.snapshotmanagement.api.transport.SMActions.START_SM_ACTION_TYPE
+import org.opensearch.indexmanagement.snapshotmanagement.api.transport.SMActions.STOP_SM_ACTION_NAME
+import org.opensearch.indexmanagement.snapshotmanagement.api.transport.SMActions.STOP_SM_ACTION_TYPE
 import org.opensearch.test.OpenSearchTestCase
 
 class ActionTests : OpenSearchTestCase() {
@@ -28,5 +34,20 @@ class ActionTests : OpenSearchTestCase() {
     fun `test get action name`() {
         assertNotNull(GET_SM_ACTION_TYPE.name())
         assertEquals(GET_SM_ACTION_TYPE.name(), GET_SM_ACTION_NAME)
+    }
+
+    fun `test start action name`() {
+        assertNotNull(START_SM_ACTION_TYPE.name())
+        assertEquals(START_SM_ACTION_TYPE.name(), START_SM_ACTION_NAME)
+    }
+
+    fun `test stop action name`() {
+        assertNotNull(STOP_SM_ACTION_TYPE.name())
+        assertEquals(STOP_SM_ACTION_TYPE.name(), STOP_SM_ACTION_NAME)
+    }
+
+    fun `test execute action name`() {
+        assertNotNull(EXECUTE_SM_ACTION_TYPE.name())
+        assertEquals(EXECUTE_SM_ACTION_TYPE.name(), EXECUTE_SM_ACTION_NAME)
     }
 }

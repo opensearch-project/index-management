@@ -29,6 +29,7 @@ private val log = LogManager.getLogger("Snapshot Management Helper")
 fun smPolicyNameToDocId(policyName: String) = "$policyName$SM_DOC_ID_SUFFIX"
 fun smDocIdToPolicyName(id: String) = id.substringBeforeLast(SM_DOC_ID_SUFFIX)
 fun getSMMetadataDocId(policyName: String) = "$policyName$SM_METADATA_ID_SUFFIX"
+fun smMetadataDocIdToPolicyName(id: String) = id.substringBeforeLast(SM_METADATA_ID_SUFFIX)
 
 @Suppress("RethrowCaughtException", "ThrowsCount")
 suspend fun Client.getSMPolicy(policyID: String): SMPolicy {

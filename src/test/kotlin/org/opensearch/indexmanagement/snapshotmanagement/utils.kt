@@ -29,13 +29,14 @@ import org.opensearch.rest.RestStatus
 import org.opensearch.snapshots.SnapshotId
 import org.opensearch.snapshots.SnapshotInfo
 import org.opensearch.test.OpenSearchTestCase.randomAlphaOfLength
+import org.opensearch.test.OpenSearchTestCase.randomIntBetween
 import org.opensearch.test.OpenSearchTestCase.randomNonNegativeLong
 import org.opensearch.test.rest.OpenSearchRestTestCase
 import java.time.Instant
 import java.time.Instant.now
 
 fun randomSMMetadata(
-    currentState: SMState,
+    currentState: SMState = randomSMState(),
     nextCreationTime: Instant = now(),
     nextDeletionTime: Instant = now(),
     policySeqNo: Long = randomNonNegativeLong(),
@@ -98,6 +99,8 @@ fun randomSMPolicy(
         jobSchedule = jobSchedule
     )
 }
+
+fun randomSMState(): SMState = SMState.values()[randomIntBetween(0, SMState.values().size - 1)]
 
 fun SMPolicy.toJsonString(params: ToXContent.Params = ToXContent.EMPTY_PARAMS): String = this.toXContent(XContentFactory.jsonBuilder(), params).string()
 

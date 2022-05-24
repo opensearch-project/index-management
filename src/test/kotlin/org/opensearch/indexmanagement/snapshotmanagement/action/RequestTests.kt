@@ -12,8 +12,11 @@ import org.opensearch.common.io.stream.StreamInput
 import org.opensearch.index.seqno.SequenceNumbers
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.delete.DeleteSMPolicyRequest
+import org.opensearch.indexmanagement.snapshotmanagement.api.transport.execute.ExecuteSMRequest
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.get.GetSMPolicyRequest
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.index.IndexSMPolicyRequest
+import org.opensearch.indexmanagement.snapshotmanagement.api.transport.start.StartSMRequest
+import org.opensearch.indexmanagement.snapshotmanagement.api.transport.stop.StopSMRequest
 import org.opensearch.indexmanagement.snapshotmanagement.randomSMPolicy
 import org.opensearch.test.OpenSearchTestCase
 
@@ -65,5 +68,35 @@ class RequestTests : OpenSearchTestCase() {
         assertEquals(smPolicy.primaryTerm, streamedReq.ifPrimaryTerm())
         assertEquals(WriteRequest.RefreshPolicy.IMMEDIATE, streamedReq.refreshPolicy)
         assertEquals(DocWriteRequest.OpType.CREATE, streamedReq.opType())
+    }
+
+    fun `test start sm policy request`() {
+        val id = "some_id"
+        val req = StartSMRequest(id).index(INDEX_MANAGEMENT_INDEX)
+
+        val out = BytesStreamOutput().apply { req.writeTo(this) }
+        val sin = StreamInput.wrap(out.bytes().toBytesRef().bytes)
+        val streamedReq = StartSMRequest(sin)
+        assertEquals(id, streamedReq.id())
+    }
+
+    fun `test stop sm policy request`() {
+        val id = "some_id"
+        val req = StopSMRequest(id).index(INDEX_MANAGEMENT_INDEX)
+
+        val out = BytesStreamOutput().apply { req.writeTo(this) }
+        val sin = StreamInput.wrap(out.bytes().toBytesRef().bytes)
+        val streamedReq = StopSMRequest(sin)
+        assertEquals(id, streamedReq.id())
+    }
+
+    fun `test execute sm policy request`() {
+        val id = "some_id"
+        val req = ExecuteSMRequest(id)
+
+        val out = BytesStreamOutput().apply { req.writeTo(this) }
+        val sin = StreamInput.wrap(out.bytes().toBytesRef().bytes)
+        val streamedReq = ExecuteSMRequest(sin)
+        assertEquals(id, streamedReq.snapshotPolicyID)
     }
 }
