@@ -69,7 +69,6 @@ fi
 mkdir -p $OUTPUT
 
 ./gradlew assemble --no-daemon --refresh-dependencies -DskipTests=true -Dopensearch.version=$VERSION -Dbuild.snapshot=$SNAPSHOT -Dbuild.version_qualifier=$QUALIFIER
-./gradlew publishPluginZipPublicationToZipStagingRepository -Dopensearch.version=$VERSION -Dbuild.snapshot=$SNAPSHOT -Dbuild.version_qualifier=$QUALIFIER
 
 zipPath=$(find . -path \*build/distributions/*.zip)
 distributions="$(dirname "${zipPath}")"
@@ -77,3 +76,7 @@ distributions="$(dirname "${zipPath}")"
 echo "COPY ${distributions}/*.zip"
 mkdir -p $OUTPUT/plugins
 cp ${distributions}/*.zip ./$OUTPUT/plugins
+
+./gradlew publishPluginZipPublicationToZipStagingRepository -Dopensearch.version=$VERSION -Dbuild.snapshot=$SNAPSHOT -Dbuild.version_qualifier=$QUALIFIER
+mkdir -p $OUTPUT/maven/org/opensearch
+cp -r ./build/local-staging-repo/org/opensearch/. $OUTPUT/maven/org/opensearch
