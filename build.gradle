@@ -78,6 +78,7 @@ apply plugin: 'opensearch.rest-test'
 apply plugin: 'io.gitlab.arturbosch.detekt'
 apply plugin: 'org.jetbrains.kotlin.jvm'
 apply plugin: 'org.jetbrains.kotlin.plugin.allopen'
+apply plugin: 'opensearch.pluginzip'
 
 configurations.all {
     if (it.state != Configuration.State.UNRESOLVED) return
@@ -192,6 +193,29 @@ dependencies {
 repositories {
     mavenLocal()
     maven { url "https://aws.oss.sonatype.org/content/repositories/snapshots" }
+}
+
+publishing {
+    publications {
+        pluginZip(MavenPublication) { publication ->
+            pom {
+                name = opensearchplugin.name
+                description = opensearchplugin.description
+                licenses {
+                    license {
+                        name = "The Apache License, Version 2.0"
+                        url = "http://www.apache.org/licenses/LICENSE-2.0.txt"
+                    }
+                }
+                developers {
+                    developer {
+                        name = "OpenSearch"
+                        url = "https://github.com/opensearch-project/index-management"
+                    }
+                }
+            }
+        }
+    }
 }
 
 plugins.withId('java') {
