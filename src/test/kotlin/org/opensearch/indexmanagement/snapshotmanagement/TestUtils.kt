@@ -13,6 +13,7 @@ import org.opensearch.action.admin.cluster.snapshots.get.GetSnapshotsResponse
 import org.opensearch.action.index.IndexResponse
 import org.opensearch.common.UUIDs
 import org.opensearch.common.unit.TimeValue
+import org.opensearch.index.seqno.SequenceNumbers
 import org.opensearch.indexmanagement.randomCronSchedule
 import org.opensearch.indexmanagement.randomInstant
 import org.opensearch.indexmanagement.randomIntervalSchedule
@@ -39,7 +40,9 @@ fun randomSMMetadata(
     policyPrimaryTerm: Long = randomNonNegativeLong(),
     startedCreation: SMMetadata.SnapshotInfo? = null,
     startedDeletion: List<SMMetadata.SnapshotInfo>? = null,
+    creationRetryCount: Int? = null,
     deleteStartedTime: Instant? = null,
+    deletionRetryCount: Int? = null,
 ): SMMetadata {
     return SMMetadata(
         policySeqNo = policySeqNo,
@@ -50,6 +53,7 @@ fun randomSMMetadata(
                 time = nextCreationTime
             ),
             started = startedCreation,
+            retry = creationRetryCount?.let { SMMetadata.Retry(it) },
         ),
         deletion = SMMetadata.Deletion(
             trigger = SMMetadata.Trigger(
@@ -57,6 +61,7 @@ fun randomSMMetadata(
             ),
             started = startedDeletion,
             startedTime = deleteStartedTime,
+            retry = deletionRetryCount?.let { SMMetadata.Retry(it) },
         ),
     )
 }
@@ -77,7 +82,9 @@ fun randomSMPolicy(
         "date_format" to "yyyy-MM-dd-HH:mm"
     ),
     jobEnabledTime: Instant = randomInstant(),
-    jobSchedule: IntervalSchedule = randomIntervalSchedule()
+    jobSchedule: IntervalSchedule = randomIntervalSchedule(),
+    seqNo: Long = SequenceNumbers.UNASSIGNED_SEQ_NO,
+    primaryTerm: Long = SequenceNumbers.UNASSIGNED_PRIMARY_TERM,
 ): SMPolicy {
     return SMPolicy(
         id = id,
@@ -98,7 +105,9 @@ fun randomSMPolicy(
         ),
         snapshotConfig = snapshotConfig,
         jobEnabledTime = jobEnabledTime,
-        jobSchedule = jobSchedule
+        jobSchedule = jobSchedule,
+        seqNo = seqNo,
+        primaryTerm = primaryTerm,
     )
 }
 
@@ -128,6 +137,12 @@ fun mockCreateSnapshotResponse(status: RestStatus = RestStatus.ACCEPTED): Create
 fun mockGetSnapshotResponse(snapshotInfo: SnapshotInfo): GetSnapshotsResponse {
     val getSnapshotsRes: GetSnapshotsResponse = mock()
     whenever(getSnapshotsRes.snapshots).doReturn(listOf(snapshotInfo))
+    return getSnapshotsRes
+}
+
+fun mockGetSnapshotResponse(snapshotInfos: List<SnapshotInfo>): GetSnapshotsResponse {
+    val getSnapshotsRes: GetSnapshotsResponse = mock()
+    whenever(getSnapshotsRes.snapshots).doReturn(snapshotInfos)
     return getSnapshotsRes
 }
 

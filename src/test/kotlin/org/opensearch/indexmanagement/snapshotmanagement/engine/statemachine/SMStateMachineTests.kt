@@ -110,4 +110,65 @@ class SMStateMachineTests : ClientMockTestCase() {
             assertNull(secondValue.deletion.startedTime)
         }
     }
+
+    fun `test sm result Retry retry count initialized`() = runBlocking {
+        val currentState = SMState.CREATE_CONDITION_MET
+
+        val ex = Exception()
+        mockGetSnapshotsCall(exception = ex)
+        val metadata = randomSMMetadata(
+            currentState = currentState,
+        )
+        val job = randomSMPolicy()
+
+        val stateMachineSpy = spy(SMStateMachine(client, job, metadata))
+        stateMachineSpy.next(smTransitions)
+        argumentCaptor<SMMetadata>().apply {
+            verify(stateMachineSpy).updateMetadata(capture())
+            assertEquals(currentState, firstValue.currentState)
+            assertEquals(3, firstValue.creation.retry!!.count)
+        }
+    }
+
+    fun `test sm result Retry retry count has exhausted and reset workflow`() = runBlocking {
+        val currentState = SMState.DELETE_CONDITION_MET
+        val resetState = SMState.DELETING
+
+        val ex = Exception()
+        mockGetSnapshotsCall(exception = ex)
+        val metadata = randomSMMetadata(
+            currentState = currentState,
+            deletionRetryCount = 1,
+        )
+        val job = randomSMPolicy()
+
+        val stateMachineSpy = spy(SMStateMachine(client, job, metadata))
+        stateMachineSpy.next(smTransitions)
+        argumentCaptor<SMMetadata>().apply {
+            verify(stateMachineSpy).updateMetadata(capture())
+            assertEquals(resetState, firstValue.currentState)
+            assertNull(firstValue.deletion.retry)
+            assertNull(firstValue.deletion.started)
+            assertNull(firstValue.deletion.startedTime)
+        }
+    }
+
+    fun `test handlePolicyChange`() = runBlocking {
+        val metadata = randomSMMetadata(
+            policySeqNo = 0,
+            policyPrimaryTerm = 0,
+        )
+        val job = randomSMPolicy(
+            seqNo = 1,
+            primaryTerm = 1,
+        )
+
+        val stateMachineSpy = spy(SMStateMachine(client, job, metadata))
+        stateMachineSpy.handlePolicyChange()
+        argumentCaptor<SMMetadata>().apply {
+            verify(stateMachineSpy).updateMetadata(capture())
+            assertEquals(1, firstValue.policySeqNo)
+            assertEquals(1, firstValue.policyPrimaryTerm)
+        }
+    }
 }

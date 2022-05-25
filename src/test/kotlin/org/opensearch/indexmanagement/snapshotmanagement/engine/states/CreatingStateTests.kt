@@ -67,4 +67,17 @@ class CreatingStateTests : ClientMockTestCase() {
         result as SMResult.Next
         assertEquals("Started create snapshot name is $snapshotName.", snapshotName, result.metadataToSave.creation.started!!.name)
     }
+
+    fun `test get snapshots exception`() = runBlocking {
+        val ex = Exception()
+        mockGetSnapshotsCall(exception = ex)
+        val metadata = randomSMMetadata(
+            currentState = SMState.CREATE_CONDITION_MET,
+        )
+        val job = randomSMPolicy()
+        val context = SMStateMachine(client, job, metadata)
+
+        val result = SMState.CREATING.instance.execute(context)
+        assertTrue("Execution result should be Next.", result is SMResult.Retry)
+    }
 }

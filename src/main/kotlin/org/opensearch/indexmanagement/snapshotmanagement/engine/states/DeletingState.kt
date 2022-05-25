@@ -5,6 +5,7 @@
 
 package org.opensearch.indexmanagement.snapshotmanagement.engine.states
 
+import org.apache.logging.log4j.Logger
 import org.opensearch.action.admin.cluster.snapshots.delete.DeleteSnapshotRequest
 import org.opensearch.action.support.master.AcknowledgedResponse
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
@@ -44,7 +45,7 @@ object DeletingState : State {
             return SMResult.Retry(WorkflowType.DELETION)
         }
 
-        snapshotToDelete = findSnapshotsToDelete(getSnapshots, job.deletion.condition)
+        snapshotToDelete = findSnapshotsToDelete(getSnapshots, job.deletion.condition, log)
         log.info("sm dev: Going to delete: ${snapshotToDelete.map { it.name }}")
 
         if (snapshotToDelete.isNotEmpty()) {
@@ -74,11 +75,11 @@ object DeletingState : State {
      * Based on the condition to delete, find snapshots to be deleted
      *
      * Logic:
-     *   outdated snapshots: snapshot.startedTime + max_age < now
+     *   outdated snapshots: snapshot.startedTime < now - max_age
      *   keep at least min_count of snapshots even it's outdated
      *   keep at most max_count of snapshots
      */
-    private fun findSnapshotsToDelete(snapshots: List<SnapshotInfo>, deleteCondition: SMPolicy.DeleteCondition): List<SMMetadata.SnapshotInfo> {
+    private fun findSnapshotsToDelete(snapshots: List<SnapshotInfo>, deleteCondition: SMPolicy.DeleteCondition, log: Logger): List<SMMetadata.SnapshotInfo> {
         val snapshotInfos = snapshots.map {
             SMMetadata.SnapshotInfo(
                 it.snapshotId().name,
@@ -86,24 +87,27 @@ object DeletingState : State {
                 Instant.ofEpochMilli(it.endTime()),
             )
         }.sortedBy { it.startTime } // start_time will always exist along with snapshotId
+        log.info("sm dev: snapshotInfos $snapshotInfos")
 
-        var thresholdIndex = 0
+        var thresholdCount = 0
 
         if (deleteCondition.maxAge != null) {
             val timeThreshold = now().minusSeconds(deleteCondition.maxAge.seconds())
+            log.info("sm dev: time threshold: $timeThreshold")
             val thresholdSnapshot = snapshotInfos.findLast { it.startTime.isBefore(timeThreshold) }
-            thresholdIndex = snapshotInfos.indexOf(thresholdSnapshot)
-            if (thresholdIndex == -1) thresholdIndex = 0
+            log.info("sm dev: thresholdSnapshot: $thresholdSnapshot")
+            thresholdCount = snapshotInfos.indexOf(thresholdSnapshot) + 1
+            log.info("sm dev: thresholdCount: $thresholdCount")
             val minCount = deleteCondition.minCount ?: SMPolicy.DeleteCondition.DEFAULT_MIN_COUNT
-            if (snapshotInfos.size - thresholdIndex < minCount) {
-                thresholdIndex = snapshotInfos.size - minCount
+            if (snapshotInfos.size - thresholdCount < minCount) {
+                thresholdCount = snapshotInfos.size - minCount
             }
         }
 
-        if (snapshotInfos.size - thresholdIndex > deleteCondition.maxCount) {
-            thresholdIndex = snapshotInfos.size - deleteCondition.maxCount
+        if (snapshotInfos.size - thresholdCount > deleteCondition.maxCount) {
+            thresholdCount = snapshotInfos.size - deleteCondition.maxCount
         }
 
-        return snapshotInfos.subList(0, thresholdIndex)
+        return snapshotInfos.subList(0, thresholdCount)
     }
 }

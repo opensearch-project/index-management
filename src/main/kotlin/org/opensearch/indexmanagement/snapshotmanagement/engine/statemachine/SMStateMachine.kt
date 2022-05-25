@@ -97,6 +97,7 @@ class SMStateMachine(
                             }
                             val retryCount: Int
                             if (retry == null) {
+                                log.info("sm dev: retry init")
                                 metadataToSave.setRetry(result.workflowType, 3)
                             } else {
                                 retryCount = retry.count - 1
