@@ -1333,7 +1333,7 @@
                 }
               }
             },
-            "timeout": {
+            "time_limit": {
               "type": "keyword"
             }
           }
@@ -1357,7 +1357,7 @@
                 }
               }
             },
-            "timeout": {
+            "time_limit": {
               "type": "keyword"
             },
             "condition": {
@@ -1403,19 +1403,6 @@
                 "start_time": {
                   "type": "date",
                   "format": "strict_date_time||epoch_millis"
-                },
-                "schedule_delay": {
-                  "type": "long"
-                }
-              }
-            },
-            "cron": {
-              "properties": {
-                "expression": {
-                  "type": "keyword"
-                },
-                "timezone": {
-                  "type": "keyword"
                 },
                 "schedule_delay": {
                   "type": "long"
@@ -1503,18 +1490,10 @@
                 }
               }
             },
-            "finished": {
+            "retry": {
               "properties": {
-                "name": {
-                  "type": "keyword"
-                },
-                "started_time": {
-                  "type": "date",
-                  "format": "strict_date_time||epoch_millis"
-                },
-                "end_time": {
-                  "type": "date",
-                  "format": "strict_date_time||epoch_millis"
+                "count": {
+                  "type": "integer"
                 }
               }
             }
@@ -1543,6 +1522,17 @@
                 "end_time": {
                   "type": "date",
                   "format": "strict_date_time||epoch_millis"
+                }
+              }
+            },
+            "started_time": {
+              "type": "date",
+              "format": "strict_date_time||epoch_millis"
+            },
+            "retry": {
+              "properties": {
+                "count": {
+                  "type": "integer"
                 }
               }
             }
