@@ -6,25 +6,30 @@
 package org.opensearch.indexmanagement.snapshotmanagement
 
 import org.apache.logging.log4j.LogManager
-import org.opensearch.action.admin.cluster.snapshots.get.GetSnapshotsRequest
-import org.opensearch.action.admin.cluster.snapshots.get.GetSnapshotsResponse
+import org.opensearch.OpenSearchStatusException
 import org.opensearch.action.get.GetRequest
 import org.opensearch.action.get.GetResponse
-import org.opensearch.action.index.IndexRequest
-import org.opensearch.action.index.IndexResponse
 import org.opensearch.client.Client
-import org.opensearch.common.time.DateFormatter
 import org.opensearch.common.xcontent.LoggingDeprecationHandler
 import org.opensearch.common.xcontent.NamedXContentRegistry
-import org.opensearch.common.xcontent.ToXContent
-import org.opensearch.common.xcontent.XContentFactory
 import org.opensearch.common.xcontent.XContentHelper
 import org.opensearch.common.xcontent.XContentType
-import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
+import org.opensearch.index.IndexNotFoundException
 import org.opensearch.indexmanagement.opensearchapi.parseWithType
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy
+import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy.Companion.SM_DOC_ID_SUFFIX
+import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy.Companion.SM_METADATA_ID_SUFFIX
+import org.opensearch.rest.RestStatus
+import org.opensearch.action.admin.cluster.snapshots.get.GetSnapshotsRequest
+import org.opensearch.action.admin.cluster.snapshots.get.GetSnapshotsResponse
+import org.opensearch.action.index.IndexRequest
+import org.opensearch.action.index.IndexResponse
+import org.opensearch.common.time.DateFormatter
+import org.opensearch.common.xcontent.ToXContent
+import org.opensearch.common.xcontent.XContentFactory
+import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
 import org.opensearch.jobscheduler.spi.schedule.CronSchedule
 import org.opensearch.jobscheduler.spi.schedule.IntervalSchedule
 import org.opensearch.jobscheduler.spi.schedule.Schedule
@@ -37,11 +42,63 @@ import java.util.UUID
 
 private val log = LogManager.getLogger("o.i.s.SnapshotManagementHelper")
 
-const val smSuffix = "-sm"
-const val smMetadataSuffix = "-metadata"
-fun smPolicyNameToJobId(policyName: String) = "$policyName$smSuffix"
-fun smJobIdToPolicyName(id: String) = id.substringBeforeLast(smSuffix)
-fun smMetadataId(jobId: String) = "$jobId$smMetadataSuffix"
+fun smPolicyNameToDocId(policyName: String) = "$policyName$SM_DOC_ID_SUFFIX"
+fun smDocIdToPolicyName(id: String) = id.substringBeforeLast(SM_DOC_ID_SUFFIX)
+fun getSMMetadataDocId(policyName: String) = "$policyName$SM_METADATA_ID_SUFFIX"
+
+@Suppress("RethrowCaughtException", "ThrowsCount")
+suspend fun Client.getSMPolicy(policyID: String): SMPolicy {
+    try {
+        val getRequest = GetRequest(INDEX_MANAGEMENT_INDEX, policyID)
+        val getResponse: GetResponse = this.suspendUntil { get(getRequest, it) }
+        if (!getResponse.isExists || getResponse.isSourceEmpty) {
+            throw OpenSearchStatusException("Snapshot management policy not found", RestStatus.NOT_FOUND)
+        }
+        return parseSMPolicy(getResponse)
+    } catch (e: OpenSearchStatusException) {
+        throw e
+    } catch (e: IndexNotFoundException) {
+        throw OpenSearchStatusException("Snapshot management config index not found", RestStatus.NOT_FOUND)
+    } catch (e: IllegalArgumentException) {
+        log.error("Failed to retrieve snapshot management policy [$policyID]", e)
+        throw OpenSearchStatusException("Snapshot management policy could not be parsed", RestStatus.INTERNAL_SERVER_ERROR)
+    } catch (e: Exception) {
+        log.error("Failed to retrieve snapshot management policy [$policyID]", e)
+        throw OpenSearchStatusException("Failed to retrieve Snapshot management policy.", RestStatus.NOT_FOUND)
+    }
+}
+
+@Suppress("RethrowCaughtException", "ThrowsCount")
+suspend fun Client.getSMMetadata(metadataID: String): SMMetadata {
+    try {
+        val getRequest = GetRequest(INDEX_MANAGEMENT_INDEX, metadataID)
+        val getResponse: GetResponse = this.suspendUntil { get(getRequest, it) }
+        if (!getResponse.isExists || getResponse.isSourceEmpty) {
+            throw OpenSearchStatusException("Snapshot management metadata not found", RestStatus.NOT_FOUND)
+        }
+        return parseSMMetadata(getResponse)
+    } catch (e: OpenSearchStatusException) {
+        throw e
+    } catch (e: IndexNotFoundException) {
+        throw OpenSearchStatusException("Snapshot management config index not found", RestStatus.NOT_FOUND)
+    } catch (e: IllegalArgumentException) {
+        log.error("Failed to retrieve snapshot management metadata [$metadataID]", e)
+        throw OpenSearchStatusException("Snapshot management metadata could not be parsed", RestStatus.INTERNAL_SERVER_ERROR)
+    } catch (e: Exception) {
+        log.error("Failed to retrieve snapshot management metadata [$metadataID]", e)
+        throw OpenSearchStatusException("Failed to retrieve Snapshot management metadata.", RestStatus.NOT_FOUND)
+    }
+}
+
+fun parseSMPolicy(response: GetResponse, xContentRegistry: NamedXContentRegistry = NamedXContentRegistry.EMPTY): SMPolicy {
+    val xcp = XContentHelper.createParser(xContentRegistry, LoggingDeprecationHandler.INSTANCE, response.sourceAsBytesRef, XContentType.JSON)
+    return xcp.parseWithType(response.id, response.seqNo, response.primaryTerm, SMPolicy.Companion::parse)
+}
+
+fun parseSMMetadata(response: GetResponse, xContentRegistry: NamedXContentRegistry = NamedXContentRegistry.EMPTY): SMMetadata {
+    val xcp = XContentHelper.createParser(xContentRegistry, LoggingDeprecationHandler.INSTANCE, response.sourceAsBytesRef, XContentType.JSON)
+    return xcp.parseWithType(response.id, response.seqNo, response.primaryTerm, SMMetadata.Companion::parse)
+}
 
 /**
  * Save snapshot management job run metadata
@@ -56,7 +113,7 @@ suspend fun Client.indexMetadata(
     create: Boolean = false
 ): IndexResponse {
     val indexReq = IndexRequest(INDEX_MANAGEMENT_INDEX).create(create)
-        .id(smMetadataId(id))
+        .id(getSMMetadataDocId(smDocIdToPolicyName(id)))
         .source(metadata.toXContent(XContentFactory.jsonBuilder(), ToXContent.EMPTY_PARAMS))
         .setIfSeqNo(seqNo)
         .setIfPrimaryTerm(primaryTerm)
@@ -71,7 +128,7 @@ suspend fun Client.indexMetadata(
  * @return null indicate the retrieved metadata doesn't exist
  */
 suspend fun Client.getMetadata(job: SMPolicy): SMMetadata? {
-    val getReq = GetRequest(INDEX_MANAGEMENT_INDEX, smMetadataId(job.id)).routing(job.id)
+    val getReq = GetRequest(INDEX_MANAGEMENT_INDEX, getSMMetadataDocId(smDocIdToPolicyName(job.id))).routing(job.id)
     val getRes: GetResponse = suspendUntil { get(getReq, it) }
     if (getRes.isExists) {
         log.info("sm dev: Get metadata response: ${getRes.sourceAsBytesRef.utf8ToString()}")
@@ -101,7 +158,7 @@ fun getNextExecutionTime(schedule: Schedule, fromTime: Instant): Instant {
 }
 
 fun generateSnapshotName(policy: SMPolicy): String {
-    var result: String = smJobIdToPolicyName(policy.id)
+    var result: String = smDocIdToPolicyName(policy.id)
     if (policy.snapshotConfig["date_format"] != null) {
         val dateFormat = generateFormatTime(policy.snapshotConfig["date_format"] as String)
         result += "-$dateFormat"

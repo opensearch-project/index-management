@@ -520,30 +520,12 @@ data class SMMetadata(
             return this
         }
 
-        fun finishedCreation(snapshotInfo: SnapshotInfo?): Builder {
-            metadata = metadata.copy(
-                creation = metadata.creation.copy(
-                    finished = snapshotInfo
-                )
-            )
-            return this
-        }
-
         fun nextDeletionTime(time: Instant): Builder {
             metadata = metadata.copy(
                 deletion = metadata.deletion.copy(
                     trigger = metadata.deletion.trigger.copy(
                         time = time
                     )
-                )
-            )
-            return this
-        }
-
-        fun startedDeletion(snapshotInfo: List<SnapshotInfo>?): Builder {
-            metadata = metadata.copy(
-                deletion = metadata.deletion.copy(
-                    started = snapshotInfo
                 )
             )
             return this

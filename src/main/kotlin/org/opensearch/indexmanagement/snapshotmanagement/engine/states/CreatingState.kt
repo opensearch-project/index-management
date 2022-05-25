@@ -12,7 +12,7 @@ import org.opensearch.indexmanagement.snapshotmanagement.engine.statemachine.SMS
 import org.opensearch.indexmanagement.snapshotmanagement.generateSnapshotName
 import org.opensearch.indexmanagement.snapshotmanagement.getSnapshots
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata
-import org.opensearch.indexmanagement.snapshotmanagement.smJobIdToPolicyName
+import org.opensearch.indexmanagement.snapshotmanagement.smDocIdToPolicyName
 import org.opensearch.snapshots.SnapshotInfo
 import org.opensearch.snapshots.SnapshotMissingException
 import java.time.Instant
@@ -33,7 +33,7 @@ object CreatingState : State {
         val lastExecutionTime = job.creation.schedule.getPeriodStartingAt(null).v1()
         val getSnapshots = try {
             client.getSnapshots(
-                smJobIdToPolicyName(job.id) + "*",
+                smDocIdToPolicyName(job.id) + "*",
                 job.snapshotConfig["repository"] as String
             ).sortedBy { it.startTime() }
         } catch (ex: SnapshotMissingException) {

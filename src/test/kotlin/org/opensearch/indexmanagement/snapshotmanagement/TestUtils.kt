@@ -13,6 +13,9 @@ import org.opensearch.action.admin.cluster.snapshots.get.GetSnapshotsResponse
 import org.opensearch.action.index.IndexResponse
 import org.opensearch.common.UUIDs
 import org.opensearch.common.unit.TimeValue
+import org.opensearch.common.xcontent.ToXContent
+import org.opensearch.common.xcontent.XContentFactory
+import org.opensearch.indexmanagement.opensearchapi.string
 import org.opensearch.index.seqno.SequenceNumbers
 import org.opensearch.indexmanagement.randomCronSchedule
 import org.opensearch.indexmanagement.randomInstant
@@ -29,6 +32,7 @@ import org.opensearch.snapshots.SnapshotState
 import org.opensearch.test.OpenSearchTestCase.randomAlphaOfLength
 import org.opensearch.test.OpenSearchTestCase.randomIntBetween
 import org.opensearch.test.OpenSearchTestCase.randomNonNegativeLong
+import org.opensearch.test.rest.OpenSearchRestTestCase
 import java.time.Instant
 import java.time.Instant.now
 
@@ -67,8 +71,8 @@ fun randomSMMetadata(
 }
 
 fun randomSMPolicy(
-    id: String = randomAlphaOfLength(10),
-    jobEnabled: Boolean = false,
+    policyName: String = randomAlphaOfLength(10),
+    jobEnabled: Boolean = OpenSearchRestTestCase.randomBoolean(),
     jobLastUpdateTime: Instant = randomInstant(),
     creationSchedule: CronSchedule = randomCronSchedule(),
     creationTimeLimit: TimeValue? = null,
@@ -81,13 +85,13 @@ fun randomSMPolicy(
         "repository" to "repo",
         "date_format" to "yyyy-MM-dd-HH:mm"
     ),
-    jobEnabledTime: Instant = randomInstant(),
+    jobEnabledTime: Instant? = randomInstant(),
     jobSchedule: IntervalSchedule = randomIntervalSchedule(),
     seqNo: Long = SequenceNumbers.UNASSIGNED_SEQ_NO,
     primaryTerm: Long = SequenceNumbers.UNASSIGNED_PRIMARY_TERM,
 ): SMPolicy {
     return SMPolicy(
-        id = id,
+        id = smPolicyNameToDocId(policyName),
         jobEnabled = jobEnabled,
         jobLastUpdateTime = jobLastUpdateTime,
         creation = SMPolicy.Creation(
@@ -104,7 +108,7 @@ fun randomSMPolicy(
             )
         ),
         snapshotConfig = snapshotConfig,
-        jobEnabledTime = jobEnabledTime,
+        jobEnabledTime = if (jobEnabled) jobEnabledTime else null,
         jobSchedule = jobSchedule,
         seqNo = seqNo,
         primaryTerm = primaryTerm,
@@ -118,6 +122,8 @@ fun randomSMSnapshotInfo(
     name = name,
     startTime = startTime,
 )
+
+fun SMPolicy.toJsonString(params: ToXContent.Params = ToXContent.EMPTY_PARAMS): String = this.toXContent(XContentFactory.jsonBuilder(), params).string()
 
 fun mockIndexResponse(status: RestStatus = RestStatus.OK): IndexResponse {
     val indexResponse: IndexResponse = mock()

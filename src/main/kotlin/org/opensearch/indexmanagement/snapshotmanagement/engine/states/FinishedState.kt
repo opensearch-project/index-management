@@ -10,7 +10,7 @@ import org.opensearch.indexmanagement.snapshotmanagement.engine.statemachine.SMS
 import org.opensearch.indexmanagement.snapshotmanagement.getSnapshots
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata.Companion.upsert
-import org.opensearch.indexmanagement.snapshotmanagement.smJobIdToPolicyName
+import org.opensearch.indexmanagement.snapshotmanagement.smDocIdToPolicyName
 import org.opensearch.snapshots.SnapshotMissingException
 import org.opensearch.snapshots.SnapshotState
 import java.time.Instant
@@ -75,7 +75,7 @@ object FinishedState : State {
         metadata.deletion.started?.let { startedDeleteSnapshots ->
             val snapshots = try {
                 client.getSnapshots(
-                    "${smJobIdToPolicyName(job.id)}*",
+                    "${smDocIdToPolicyName(job.id)}*",
                     job.snapshotConfig["repository"] as String
                 )
             } catch (ex: SnapshotMissingException) {

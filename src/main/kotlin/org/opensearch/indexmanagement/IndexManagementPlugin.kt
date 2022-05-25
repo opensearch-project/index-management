@@ -198,6 +198,7 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
         const val INDEX_STATE_MANAGEMENT_HISTORY_TYPE = "managed_index_meta_data"
 
         const val SM_BASE_URI = "$PLUGINS_BASE_URI/_sm"
+        const val SM_POLICIES_URI = "$SM_BASE_URI/policies"
 
         const val OLD_PLUGIN_NAME = "opendistro-im"
         const val OPEN_DISTRO_BASE_URI = "/_opendistro"

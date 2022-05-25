@@ -21,7 +21,7 @@ import org.opensearch.indexmanagement.snapshotmanagement.indexMetadata
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata.Companion.upsert
-import org.opensearch.indexmanagement.snapshotmanagement.smJobIdToPolicyName
+import org.opensearch.indexmanagement.snapshotmanagement.smDocIdToPolicyName
 import org.opensearch.indexmanagement.util.OpenForTesting
 import java.time.Instant.now
 
@@ -32,7 +32,7 @@ class SMStateMachine(
     var metadata: SMMetadata
 ) {
 
-    val log: Logger = LogManager.getLogger("$javaClass [${smJobIdToPolicyName(job.id)}]")
+    val log: Logger = LogManager.getLogger("$javaClass [${smDocIdToPolicyName(job.id)}]")
 
     var currentState: SMState = metadata.currentState.also {
         log.info("Current state: [${metadata.currentState}].")
