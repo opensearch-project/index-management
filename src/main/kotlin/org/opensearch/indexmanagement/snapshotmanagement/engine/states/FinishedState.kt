@@ -31,6 +31,9 @@ object FinishedState : State {
         var startedDeletionTime = metadata.deletion.startedTime
         var info = metadata.info
 
+        var resetCreationRetry = false
+        var resetDeletionRetry = false
+
         metadata.creation.started?.let { started ->
             val snapshots = try {
                 client.getSnapshots(
@@ -44,8 +47,11 @@ object FinishedState : State {
                 log.error("Caught exception while getting started creation snapshot [${started.name}].", ex)
                 return SMResult.Retry(WorkflowType.CREATION)
             }
+            resetCreationRetry = true
 
-            val snapshot = snapshots.firstOrNull() ?: return SMResult.Retry(WorkflowType.CREATION)
+            val snapshot = snapshots.firstOrNull() ?: return SMResult.Failure(
+                SnapshotMissingException(job.snapshotConfig["repository"] as String, started.name), WorkflowType.CREATION
+            )
             when (snapshot.state()) {
                 SnapshotState.IN_PROGRESS -> {
                     job.creation.timeLimit?.let {
@@ -85,11 +91,13 @@ object FinishedState : State {
                 log.error("Caught exception while getting snapshots to decide if snapshots [$startedDeleteSnapshots] has been deleted.", ex)
                 return SMResult.Retry(WorkflowType.DELETION)
             }
+            resetDeletionRetry = true
 
             val existingSnapshotsNameSet = snapshots.map { it.snapshotId().name }.toSet()
             val startedDeletionSnapshotsNameSet = startedDeleteSnapshots.map { it.name }.toSet()
             val remainingSnapshotsName = existingSnapshotsNameSet intersect startedDeletionSnapshotsNameSet
             deletionStarted = if (remainingSnapshotsName.isEmpty()) {
+                log.info("Snapshots have been deleted: $existingSnapshotsNameSet.")
                 startedDeletionTime = null
                 // TODO SM notification snapshot deleted
                 null
@@ -100,6 +108,7 @@ object FinishedState : State {
                             return SMResult.TimeLimitExceed(WorkflowType.DELETION)
                     }
                 }
+                log.info("Snapshots haven't been deleted: $remainingSnapshotsName.")
 
                 startedDeleteSnapshots.filter {
                     it.name in remainingSnapshotsName
@@ -113,6 +122,7 @@ object FinishedState : State {
             .creation(creationStarted)
             .deletion(startedDeletionTime, deletionStarted)
             .info(info)
+            .resetRetry(resetCreationRetry, resetDeletionRetry)
             .build()
 
         if (creationStarted != null || deletionStarted != null) {

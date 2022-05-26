@@ -62,10 +62,11 @@ object DeletingState : State {
         }
 
         val metadataToSave = SMMetadata.Builder(metadata)
+            .resetRetry(deletion = true)
         if (snapshotToDelete.isNotEmpty())
             metadataToSave.deletion(
-                startTime = now(),
-                snapshotInfo = snapshotToDelete
+                startedTime = now(),
+                snapshotInfo = snapshotToDelete,
             )
 
         return SMResult.Next(metadataToSave.build())

@@ -38,7 +38,6 @@ import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
-import java.util.UUID
 
 private val log = LogManager.getLogger("o.i.s.SnapshotManagementHelper")
 
@@ -163,11 +162,18 @@ fun generateSnapshotName(policy: SMPolicy): String {
         val dateFormat = generateFormatTime(policy.snapshotConfig["date_format"] as String)
         result += "-$dateFormat"
     }
-    return result + "${UUID.randomUUID()}"
+    return result + "-${getRandomString(8)}"
+}
+
+fun getRandomString(length: Int): String {
+    val allowedChars = ('A'..'Z') + ('a'..'z') + ('0'..'9')
+    return (1..length)
+        .map { allowedChars.random() }
+        .joinToString("")
 }
 
 fun generateFormatTime(dateFormat: String): String {
-    val timeZone = ZoneId.of("America/Los_Angeles")
+    val timeZone = ZoneId.systemDefault()
     val dateFormatter = DateFormatter.forPattern(dateFormat).withZone(timeZone)
     val instant = dateFormatter.toDateMathParser().parse("now/s", System::currentTimeMillis, false, timeZone)
     return dateFormatter.format(instant)

@@ -56,16 +56,13 @@ class SMStateMachine(
                     result = nextState.instance.execute(this) as SMResult
                     when (result) {
                         is SMResult.Next -> {
-                            log.info("State [$currentState]'s execution finished. Will execute the next.")
-                            updateMetadata(
-                                result.metadataToSave
-                                    .copy(currentState = currentState)
-                            )
+                            log.info("State [$currentState] has finished.")
+                            updateMetadata(result.metadataToSave.copy(currentState = currentState))
                             // break the nextStates loop, to avoid executing other lateral states
                             break
                         }
                         is SMResult.Stay -> {
-                            log.info("State [$currentState]'s execution not finished. Will stay.")
+                            log.info("State [$currentState] has not finished.")
                             val metadataToSave = result.metadataToSave ?: metadata
                             updateMetadata(metadataToSave.copy(currentState = prevState))
                             // can still execute other lateral states if exists
@@ -97,13 +94,15 @@ class SMStateMachine(
                             }
                             val retryCount: Int
                             if (retry == null) {
-                                log.info("sm dev: retry init")
+                                log.warn("Start to retry state [$currentState], remaining count 3.")
                                 metadataToSave.setRetry(result.workflowType, 3)
                             } else {
                                 retryCount = retry.count - 1
                                 if (retryCount <= 0) {
+                                    log.warn("Retry count exhausted for state [$currentState], reset workflow ${result.workflowType}.")
                                     metadataToSave.reset(result.workflowType)
                                 } else {
+                                    log.warn("Retry state [$currentState], remaining count $retryCount.")
                                     metadataToSave.setRetry(result.workflowType, retryCount)
                                 }
                             }

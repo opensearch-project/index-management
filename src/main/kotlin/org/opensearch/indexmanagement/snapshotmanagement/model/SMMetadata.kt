@@ -9,6 +9,7 @@ import org.opensearch.common.io.stream.StreamInput
 import org.opensearch.common.io.stream.StreamOutput
 import org.opensearch.common.io.stream.Writeable
 import org.opensearch.common.xcontent.ToXContent
+import org.opensearch.common.xcontent.ToXContentObject
 import org.opensearch.common.xcontent.XContentBuilder
 import org.opensearch.common.xcontent.XContentParser
 import org.opensearch.common.xcontent.XContentParser.Token
@@ -19,8 +20,6 @@ import org.opensearch.indexmanagement.opensearchapi.nullValueHandler
 import org.opensearch.indexmanagement.opensearchapi.optionalField
 import org.opensearch.indexmanagement.opensearchapi.optionalTimeField
 import org.opensearch.indexmanagement.opensearchapi.parseArray
-import org.opensearch.indexmanagement.opensearchapi.readOptionalValue
-import org.opensearch.indexmanagement.opensearchapi.writeOptionalValue
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.SMState
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.WorkflowType
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata.Retry.Companion.RETRY_FIELD
@@ -39,7 +38,7 @@ data class SMMetadata(
     val id: String = NO_ID,
     val seqNo: Long = SequenceNumbers.UNASSIGNED_SEQ_NO,
     val primaryTerm: Long = SequenceNumbers.UNASSIGNED_PRIMARY_TERM,
-) : Writeable, ToXContent {
+) : Writeable, ToXContentObject {
 
     override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
         return builder.startObject()
@@ -144,7 +143,7 @@ data class SMMetadata(
         val started: SnapshotInfo? = null,
         val finished: SnapshotInfo? = null,
         val retry: Retry? = null,
-    ) : Writeable, ToXContent {
+    ) : Writeable, ToXContentObject {
 
         override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
             return builder.startObject()
@@ -203,54 +202,12 @@ data class SMMetadata(
         }
     }
 
-    data class Retry(
-        val count: Int,
-    ) : Writeable, ToXContent {
-
-        override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
-            return builder.startObject()
-                .field(COUNT_FIELD, count)
-                .endObject()
-        }
-
-        companion object {
-            const val RETRY_FIELD = "retry"
-            const val COUNT_FIELD = "count"
-
-            fun parse(xcp: XContentParser): Retry {
-                var count: Int? = null
-
-                ensureExpectedToken(Token.START_OBJECT, xcp.currentToken(), xcp)
-                while (xcp.nextToken() != Token.END_OBJECT) {
-                    val fieldName = xcp.currentName()
-                    xcp.nextToken()
-
-                    when (fieldName) {
-                        COUNT_FIELD -> count = xcp.intValue()
-                    }
-                }
-
-                return Retry(
-                    count = requireNotNull(count) { "count field in Retry must not be null." }
-                )
-            }
-        }
-
-        constructor(sin: StreamInput) : this(
-            count = sin.readInt()
-        )
-
-        override fun writeTo(out: StreamOutput) {
-            out.writeInt(count)
-        }
-    }
-
     data class Deletion(
         val trigger: Trigger,
         val started: List<SnapshotInfo>? = null,
         val startedTime: Instant? = null,
         val retry: Retry? = null,
-    ) : Writeable, ToXContent {
+    ) : Writeable, ToXContentObject {
 
         init {
             require(!(started != null).xor(startedTime != null)) {
@@ -262,7 +219,6 @@ data class SMMetadata(
             return builder.startObject()
                 .field(TRIGGER_FIELD, trigger)
                 .optionalField(STARTED_FIELD, started)
-                .optionalField(STARTED_TIME_FIELD, startedTime)
                 .optionalTimeField(STARTED_TIME_FIELD, startedTime)
                 .optionalField(RETRY_FIELD, retry)
                 .endObject()
@@ -303,14 +259,19 @@ data class SMMetadata(
 
         constructor(sin: StreamInput) : this(
             trigger = Trigger(sin),
-            started = sin.readOptionalValue(sin.readList { SnapshotInfo(it) }),
+            started = if (sin.readBoolean()) sin.readList { SnapshotInfo(it) } else null,
             startedTime = sin.readOptionalInstant(),
             retry = sin.readOptionalWriteable { Retry(it) },
         )
 
         override fun writeTo(out: StreamOutput) {
             trigger.writeTo(out)
-            out.writeOptionalValue(started, StreamOutput::writeList)
+            if (started == null) {
+                out.writeBoolean(false)
+            } else {
+                out.writeBoolean(true)
+                out.writeList(started)
+            }
             out.writeOptionalInstant(startedTime)
             out.writeOptionalWriteable(retry)
         }
@@ -324,7 +285,7 @@ data class SMMetadata(
      */
     data class Trigger(
         val time: Instant,
-    ) : Writeable, ToXContent {
+    ) : Writeable, ToXContentObject {
 
         override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
             return builder.startObject()
@@ -367,7 +328,7 @@ data class SMMetadata(
         val name: String,
         val startTime: Instant,
         val endTime: Instant? = null,
-    ) : Writeable, ToXContent {
+    ) : Writeable, ToXContentObject {
 
         override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
             return builder.startObject()
@@ -420,6 +381,48 @@ data class SMMetadata(
         }
     }
 
+    data class Retry(
+        val count: Int,
+    ) : Writeable, ToXContentObject {
+
+        override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
+            return builder.startObject()
+                .field(COUNT_FIELD, count)
+                .endObject()
+        }
+
+        companion object {
+            const val RETRY_FIELD = "retry"
+            const val COUNT_FIELD = "count"
+
+            fun parse(xcp: XContentParser): Retry {
+                var count: Int? = null
+
+                ensureExpectedToken(Token.START_OBJECT, xcp.currentToken(), xcp)
+                while (xcp.nextToken() != Token.END_OBJECT) {
+                    val fieldName = xcp.currentName()
+                    xcp.nextToken()
+
+                    when (fieldName) {
+                        COUNT_FIELD -> count = xcp.intValue()
+                    }
+                }
+
+                return Retry(
+                    count = requireNotNull(count) { "count field in Retry must not be null." }
+                )
+            }
+        }
+
+        constructor(sin: StreamInput) : this(
+            count = sin.readInt()
+        )
+
+        override fun writeTo(out: StreamOutput) {
+            out.writeInt(count)
+        }
+    }
+
     /**
      * Build the updated metadata in a flattened fashion
      *  based on the existing metadata
@@ -428,7 +431,6 @@ data class SMMetadata(
 
         fun build() = metadata
 
-        // Reset the workflow
         fun reset(workflowType: WorkflowType): Builder {
             var currentState = metadata.currentState
             var startedCreation = metadata.creation.started
@@ -531,11 +533,11 @@ data class SMMetadata(
             return this
         }
 
-        fun deletion(startTime: Instant?, snapshotInfo: List<SnapshotInfo>?): Builder {
+        fun deletion(startedTime: Instant?, snapshotInfo: List<SnapshotInfo>?): Builder {
             metadata = metadata.copy(
                 deletion = metadata.deletion.copy(
                     started = snapshotInfo,
-                    startedTime = startTime,
+                    startedTime = startedTime,
                 )
             )
             return this
@@ -545,6 +547,24 @@ data class SMMetadata(
             metadata = metadata.copy(
                 info = info
             )
+            return this
+        }
+
+        fun resetRetry(creation: Boolean = false, deletion: Boolean = false): Builder {
+            if (creation && metadata.creation.retry != null) {
+                metadata = metadata.copy(
+                    creation = metadata.creation.copy(
+                        retry = null
+                    )
+                )
+            }
+            if (deletion && metadata.deletion.retry != null) {
+                metadata = metadata.copy(
+                    deletion = metadata.deletion.copy(
+                        retry = null
+                    )
+                )
+            }
             return this
         }
     }

@@ -1480,7 +1480,7 @@
                 "name": {
                   "type": "keyword"
                 },
-                "started_time": {
+                "start_time": {
                   "type": "date",
                   "format": "strict_date_time||epoch_millis"
                 },
@@ -1515,7 +1515,7 @@
                 "name": {
                   "type": "keyword"
                 },
-                "started_time": {
+                "start_time": {
                   "type": "date",
                   "format": "strict_date_time||epoch_millis"
                 },

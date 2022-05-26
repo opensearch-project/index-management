@@ -48,7 +48,7 @@ class SnapshotManagementException(
         // User facing exception messages
         private val exceptionMsgMap: Map<ExceptionKey, String> = mapOf(
             ExceptionKey.GENERAL to "Caught exception while snapshot management runs. Please check the error log.",
-            ExceptionKey.METADATA_INDEXING_FAILURE to "Failed to update metadata while snapshot management runs.",
+            ExceptionKey.METADATA_INDEXING_FAILURE to "Failed to update metadata.",
             ExceptionKey.REPO_MISSING to "The repository provided is missing."
         )
     }

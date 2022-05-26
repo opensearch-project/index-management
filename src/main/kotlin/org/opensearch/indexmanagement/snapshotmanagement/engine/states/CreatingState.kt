@@ -66,6 +66,7 @@ object CreatingState : State {
                     startTime = now(),
                 )
             )
+            .resetRetry(creation = true)
             .build()
         return SMResult.Next(metadataToSave)
     }

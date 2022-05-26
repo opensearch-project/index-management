@@ -48,7 +48,7 @@ class GetSMPolicyResponse(
             .field(_VERSION, version)
             .field(_SEQ_NO, seqNo)
             .field(_PRIMARY_TERM, primaryTerm)
-            .field(SMPolicy.SM_TYPE, policy, XCONTENT_WITHOUT_TYPE_AND_USER)
+            .field("policy", policy, XCONTENT_WITHOUT_TYPE_AND_USER)
         return builder.endObject()
     }
 }

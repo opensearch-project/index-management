@@ -17,6 +17,7 @@ import org.opensearch.common.xcontent.ToXContent
 import org.opensearch.common.xcontent.XContentFactory
 import org.opensearch.indexmanagement.opensearchapi.string
 import org.opensearch.index.seqno.SequenceNumbers
+import org.opensearch.indexmanagement.opensearchapi.toMap
 import org.opensearch.indexmanagement.randomCronSchedule
 import org.opensearch.indexmanagement.randomInstant
 import org.opensearch.indexmanagement.randomIntervalSchedule
@@ -34,12 +35,11 @@ import org.opensearch.test.OpenSearchTestCase.randomIntBetween
 import org.opensearch.test.OpenSearchTestCase.randomNonNegativeLong
 import org.opensearch.test.rest.OpenSearchRestTestCase
 import java.time.Instant
-import java.time.Instant.now
 
 fun randomSMMetadata(
     currentState: SMState = SMState.START,
-    nextCreationTime: Instant = now(),
-    nextDeletionTime: Instant = now(),
+    nextCreationTime: Instant = randomInstant(),
+    nextDeletionTime: Instant = randomInstant(),
     policySeqNo: Long = randomNonNegativeLong(),
     policyPrimaryTerm: Long = randomNonNegativeLong(),
     startedCreation: SMMetadata.SnapshotInfo? = null,
@@ -123,7 +123,9 @@ fun randomSMSnapshotInfo(
     startTime = startTime,
 )
 
-fun SMPolicy.toJsonString(params: ToXContent.Params = ToXContent.EMPTY_PARAMS): String = this.toXContent(XContentFactory.jsonBuilder(), params).string()
+fun ToXContent.toJsonString(params: ToXContent.Params = ToXContent.EMPTY_PARAMS): String = this.toXContent(XContentFactory.jsonBuilder(), params).string()
+
+fun ToXContent.toMap(params: ToXContent.Params = ToXContent.EMPTY_PARAMS): Map<String, Any> = this.toXContent(XContentFactory.jsonBuilder(), params).toMap()
 
 fun mockIndexResponse(status: RestStatus = RestStatus.OK): IndexResponse {
     val indexResponse: IndexResponse = mock()
