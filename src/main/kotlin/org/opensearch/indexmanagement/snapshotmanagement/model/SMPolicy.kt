@@ -89,6 +89,7 @@ data class SMPolicy(
     }
 
     companion object {
+        const val SM_POLICY = "policy" // used in Index and Get SM policy response
         const val SM_TYPE = "sm"
         const val SM_DOC_ID_SUFFIX = "-sm-policy"
         const val SM_METADATA_ID_SUFFIX = "-sm-metadata"
