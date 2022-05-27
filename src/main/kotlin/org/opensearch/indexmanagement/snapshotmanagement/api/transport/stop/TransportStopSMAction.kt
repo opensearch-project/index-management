@@ -40,7 +40,7 @@ class TransportStopSMAction @Inject constructor(
         user: User?,
         threadContext: ThreadContext.StoredContext
     ): AcknowledgedResponse {
-        val smPolicy = getSMPolicy(client, request.id())
+        val smPolicy = client.getSMPolicy(request.id())
         if (!smPolicy.jobEnabled) {
             log.debug("Snapshot management policy is already disabled")
             return AcknowledgedResponse(true)

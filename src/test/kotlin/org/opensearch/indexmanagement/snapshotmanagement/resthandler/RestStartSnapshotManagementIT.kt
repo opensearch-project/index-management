@@ -18,12 +18,12 @@ class RestStartSnapshotManagementIT : SnapshotManagementRestTestCase() {
         val smPolicy = createSMPolicy(randomSMPolicy().copy(jobEnabled = false, jobEnabledTime = null))
         assertFalse("Snapshot management policy was not disabled", smPolicy.jobEnabled)
 
-        val response = client().makeRequest("PUT", "${IndexManagementPlugin.SM_POLICIES_URI}/${smPolicy.getSMPolicyName()}/_start")
+        val response = client().makeRequest("PUT", "${IndexManagementPlugin.SM_POLICIES_URI}/${smPolicy.policyName}/_start")
         assertEquals("Start snapshot management policy failed", RestStatus.OK, response.restStatus())
         val expectedResponse = mapOf("acknowledged" to true)
         assertEquals(expectedResponse, response.asMap())
 
-        val updatedSMPolicy = getSMPolicy(smPolicy.getSMPolicyName())
+        val updatedSMPolicy = getSMPolicy(smPolicy.policyName)
         assertTrue("Snapshot management policy was not enabled", updatedSMPolicy.jobEnabled)
     }
 

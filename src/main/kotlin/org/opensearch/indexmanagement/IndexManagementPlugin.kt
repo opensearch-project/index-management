@@ -112,16 +112,20 @@ import org.opensearch.indexmanagement.rollup.settings.LegacyOpenDistroRollupSett
 import org.opensearch.indexmanagement.rollup.settings.RollupSettings
 import org.opensearch.indexmanagement.settings.IndexManagementSettings
 import org.opensearch.indexmanagement.snapshotmanagement.api.resthandler.RestExecuteSMPolicyHandler
+import org.opensearch.indexmanagement.snapshotmanagement.api.resthandler.RestExplainSMPolicyHandler
 import org.opensearch.indexmanagement.snapshotmanagement.api.resthandler.RestSMPolicyHandler
 import org.opensearch.indexmanagement.snapshotmanagement.api.resthandler.RestStartSMPolicyHandler
 import org.opensearch.indexmanagement.snapshotmanagement.api.resthandler.RestStopSMPolicyHandler
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.SMActions
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.delete.TransportDeleteSMPolicyAction
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.execute.TransportExecuteSMAction
+import org.opensearch.indexmanagement.snapshotmanagement.api.transport.explain.TransportExplainSMAction
+import org.opensearch.indexmanagement.snapshotmanagement.api.transport.get.TransportGetSMPoliciesAction
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.get.TransportGetSMPolicyAction
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.index.TransportIndexSMPolicyAction
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.start.TransportStartSMAction
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.stop.TransportStopSMAction
+import org.opensearch.indexmanagement.snapshotmanagement.engine.SMRunner
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy
 import org.opensearch.indexmanagement.spi.IndexManagementExtension
@@ -329,7 +333,8 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
             RestSMPolicyHandler(),
             RestStartSMPolicyHandler(),
             RestStopSMPolicyHandler(),
-            RestExecuteSMPolicyHandler()
+            RestExecuteSMPolicyHandler(),
+            RestExplainSMPolicyHandler()
         )
     }
 
@@ -417,6 +422,8 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
             environment.settings(),
             client, clusterService, threadPool, indexManagementIndices, metadataService, templateService, indexMetadataProvider
         )
+
+        SMRunner.init(client)
 
         return listOf(
             managedIndexRunner,
@@ -537,7 +544,9 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
             ActionPlugin.ActionHandler(SMActions.DELETE_SM_ACTION_TYPE, TransportDeleteSMPolicyAction::class.java),
             ActionPlugin.ActionHandler(SMActions.START_SM_ACTION_TYPE, TransportStartSMAction::class.java),
             ActionPlugin.ActionHandler(SMActions.STOP_SM_ACTION_TYPE, TransportStopSMAction::class.java),
-            ActionPlugin.ActionHandler(SMActions.EXECUTE_SM_ACTION_TYPE, TransportExecuteSMAction::class.java)
+            ActionPlugin.ActionHandler(SMActions.EXECUTE_SM_ACTION_TYPE, TransportExecuteSMAction::class.java),
+            ActionPlugin.ActionHandler(SMActions.EXPLAIN_SM_ACTION_TYPE, TransportExplainSMAction::class.java),
+            ActionPlugin.ActionHandler(SMActions.GET_SM_POLICIES_ACTION_TYPE, TransportGetSMPoliciesAction::class.java)
         )
     }
 

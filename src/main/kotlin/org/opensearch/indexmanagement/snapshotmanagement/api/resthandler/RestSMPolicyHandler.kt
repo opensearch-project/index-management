@@ -14,7 +14,9 @@ import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.SM_POLICIE
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.SMActions
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.SMActions.DELETE_SM_ACTION_TYPE
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.SMActions.GET_SM_ACTION_TYPE
+import org.opensearch.indexmanagement.snapshotmanagement.api.transport.SMActions.GET_SM_POLICIES_ACTION_TYPE
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.delete.DeleteSMPolicyRequest
+import org.opensearch.indexmanagement.snapshotmanagement.api.transport.get.GetSMPoliciesRequest
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.get.GetSMPolicyRequest
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.index.IndexSMPolicyRequest
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.index.IndexSMPolicyResponse
@@ -50,6 +52,7 @@ class RestSMPolicyHandler : BaseRestHandler() {
             Route(POST, "$SM_POLICIES_URI/{policyName}"),
             Route(PUT, "$SM_POLICIES_URI/{policyName}"),
             Route(GET, "$SM_POLICIES_URI/{policyName}"),
+            Route(GET, "$SM_POLICIES_URI/"),
             Route(DELETE, "$SM_POLICIES_URI/{policyName}"),
         )
     }
@@ -73,16 +76,22 @@ class RestSMPolicyHandler : BaseRestHandler() {
 
     private fun getRequest(request: RestRequest, client: NodeClient): RestChannelConsumer {
         val policyName = request.param("policyName", "")
-        if (policyName == "") {
-            throw IllegalArgumentException("Missing policy name")
-        }
-
-        return RestChannelConsumer {
-            client.execute(
-                GET_SM_ACTION_TYPE,
-                GetSMPolicyRequest(smPolicyNameToDocId(policyName)),
-                RestToXContentListener(it)
-            )
+        if (policyName.isEmpty()) {
+            return RestChannelConsumer {
+                client.execute(
+                    GET_SM_POLICIES_ACTION_TYPE,
+                    GetSMPoliciesRequest(),
+                    RestToXContentListener(it)
+                )
+            }
+        } else {
+            return RestChannelConsumer {
+                client.execute(
+                    GET_SM_ACTION_TYPE,
+                    GetSMPolicyRequest(smPolicyNameToDocId(policyName)),
+                    RestToXContentListener(it)
+                )
+            }
         }
     }
 

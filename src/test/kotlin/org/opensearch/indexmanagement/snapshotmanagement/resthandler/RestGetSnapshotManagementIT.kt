@@ -5,8 +5,11 @@
 
 package org.opensearch.indexmanagement.snapshotmanagement.resthandler
 
+import org.apache.http.HttpHeaders
+import org.apache.http.message.BasicHeader
 import org.opensearch.client.ResponseException
 import org.opensearch.indexmanagement.IndexManagementPlugin
+import org.opensearch.indexmanagement.makeRequest
 import org.opensearch.indexmanagement.snapshotmanagement.SnapshotManagementRestTestCase
 import org.opensearch.indexmanagement.snapshotmanagement.randomSMPolicy
 import org.opensearch.rest.RestStatus
@@ -46,6 +49,26 @@ class RestGetSnapshotManagementIT : SnapshotManagementRestTestCase() {
             fail("expected response exception")
         } catch (e: ResponseException) {
             assertEquals(RestStatus.NOT_FOUND, e.response.restStatus())
+        }
+    }
+
+    @Throws(Exception::class)
+    @Suppress("UNCHECKED_CAST")
+    fun `test getting all snapshot management policies`() {
+        val smPolicies = randomList(1, 15) { createSMPolicy(randomSMPolicy()) }
+        val response = client().makeRequest(
+            "GET", "${IndexManagementPlugin.SM_POLICIES_URI}/", null,
+            BasicHeader(HttpHeaders.CONTENT_TYPE, "application/json")
+        )
+        val map = response.asMap()
+        val totalPolicies = map["total_policies"] as Int
+        val responsePolicies = map["policies"] as List<Map<String, Any?>>
+        assertTrue("Total policies was not the same", smPolicies.size <= totalPolicies)
+        assertTrue("SM Policies response has different size", smPolicies.size <= responsePolicies.size)
+        for (testSMPolicy in smPolicies) {
+            val foundPolicy = responsePolicies.find { testSMPolicy.id == it["_id"] as String }
+            assertNotNull("Did not find matching SM Policy that should exist", foundPolicy)
+            // TODO check other properties
         }
     }
 }

@@ -35,7 +35,7 @@ class TransportExecuteSMAction @Inject constructor(
         user: User?,
         threadContext: ThreadContext.StoredContext
     ): ExecuteSMResponse {
-        val smPolicy = getSMPolicy(client, request.snapshotPolicyID)
+        val smPolicy = client.getSMPolicy(request.snapshotPolicyID)
 
         return executeSMPolicy(smPolicy)
     }

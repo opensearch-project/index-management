@@ -1465,6 +1465,9 @@
     },
     "sm_metadata": {
       "properties": {
+        "name": {
+          "type": "text"
+        },
         "policy_seq_no": {
           "type": "long"
         },

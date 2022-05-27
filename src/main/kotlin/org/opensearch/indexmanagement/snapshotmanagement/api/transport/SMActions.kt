@@ -11,6 +11,7 @@ import org.opensearch.action.support.master.AcknowledgedResponse
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.delete.TransportDeleteSMPolicyAction
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.execute.ExecuteSMResponse
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.explain.ExplainSMPolicyResponse
+import org.opensearch.indexmanagement.snapshotmanagement.api.transport.get.GetSMPoliciesResponse
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.get.GetSMPolicyResponse
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.get.TransportGetSMPolicyAction
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.index.IndexSMPolicyResponse
@@ -28,6 +29,12 @@ object SMActions {
      */
     const val GET_SM_ACTION_NAME = "cluster:admin/opensearch/snapshot_management/policy/get"
     val GET_SM_ACTION_TYPE = ActionType(GET_SM_ACTION_NAME, ::GetSMPolicyResponse)
+
+    /**
+     * [TransportGetSMPoliciesAction]
+     */
+    const val GET_SM_POLICIES_ACTION_NAME = "cluster:admin/opensearch/snapshot_management/policies/get"
+    val GET_SM_POLICIES_ACTION_TYPE = ActionType(GET_SM_POLICIES_ACTION_NAME, ::GetSMPoliciesResponse)
 
     /**
      * [TransportDeleteSMPolicyAction]

@@ -19,7 +19,7 @@ class RestExecuteSnapshotManagementIT : SnapshotManagementRestTestCase() {
     @Suppress("UNCHECKED_CAST")
     fun `test executing a snapshot management policy`() {
         var smPolicy = createSMPolicy(randomSMPolicy())
-        val response = client().makeRequest("PUT", "$SM_POLICIES_URI/${smPolicy.getSMPolicyName()}/_execute")
+        val response = client().makeRequest("PUT", "$SM_POLICIES_URI/${smPolicy.policyName}/_execute")
         assertEquals("Create SM policy failed", RestStatus.OK, response.restStatus())
         val responseBody = response.asMap()
         assertTrue("Response is missing policy", responseBody.containsKey(SMPolicy.SM_TYPE))

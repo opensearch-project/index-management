@@ -15,9 +15,12 @@ import org.opensearch.action.support.ActionFilters
 import org.opensearch.client.Client
 import org.opensearch.common.inject.Inject
 import org.opensearch.common.util.concurrent.ThreadContext
+import org.opensearch.common.xcontent.XContentParser
+import org.opensearch.common.xcontent.XContentParserUtils.ensureExpectedToken
 import org.opensearch.commons.authuser.User
 import org.opensearch.index.IndexNotFoundException
 import org.opensearch.index.query.BoolQueryBuilder
+import org.opensearch.index.query.ExistsQueryBuilder
 import org.opensearch.index.query.WildcardQueryBuilder
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
 import org.opensearch.indexmanagement.indexstatemanagement.ManagedIndexCoordinator.Companion.MAX_HITS
@@ -30,10 +33,12 @@ import org.opensearch.indexmanagement.snapshotmanagement.model.ExplainSMPolicy
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata.Companion.SM_METADATA_TYPE
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy
+import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy.Companion.ENABLED_FIELD
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy.Companion.NAME_FIELD
 import org.opensearch.indexmanagement.snapshotmanagement.smMetadataDocIdToPolicyName
 import org.opensearch.rest.RestStatus
 import org.opensearch.search.builder.SearchSourceBuilder
+import org.opensearch.search.fetch.subphase.FetchSourceContext
 import org.opensearch.transport.TransportService
 
 class TransportExplainSMAction @Inject constructor(
@@ -51,7 +56,8 @@ class TransportExplainSMAction @Inject constructor(
         user: User?,
         threadContext: ThreadContext.StoredContext
     ): ExplainSMPolicyResponse {
-        val policyNames = request.smPolicyNames
+        // TODO SM explain should allow multiple policy names
+        val policyNames = setOf(request.policyName)
 
         val namesToEnabled = getPolicyEnabledStatus(policyNames.toSet())
         val namesToMetadata = getSMMetadata(namesToEnabled.keys)
@@ -59,19 +65,10 @@ class TransportExplainSMAction @Inject constructor(
     }
 
     private suspend fun getPolicyEnabledStatus(policyNames: Set<String>): Map<String, Boolean> {
-        // Search for all SM Policy documents which match at least one of the given names
-        val queryBuilder = BoolQueryBuilder().minimumShouldMatch(1).apply {
-            policyNames.forEach {
-                this.should(WildcardQueryBuilder("${SMPolicy.SM_TYPE}.$NAME_FIELD.keyword", it))
-            }
-        }
-        // TODO SM add user filter
-
-        // TODO CLAY only get the enabled field
         // Search the config index for SM policies
-        val searchRequest = SearchRequest(INDEX_MANAGEMENT_INDEX).source(SearchSourceBuilder().size(MAX_HITS).query(queryBuilder))
+        val searchRequest = getPolicyEnabledSearchRequest(policyNames)
         val searchResponse: SearchResponse = try {
-            client.suspendUntil { search(searchRequest) }
+            client.suspendUntil { search(searchRequest, it) }
         } catch (e: IndexNotFoundException) {
             throw OpenSearchStatusException("Snapshot management config index not found", RestStatus.NOT_FOUND)
         }
@@ -79,8 +76,7 @@ class TransportExplainSMAction @Inject constructor(
         // Parse each returned policy to get the job enabled status
         return try {
             searchResponse.hits.hits.associate {
-                val smPolicy = contentParser(it.sourceRef).parseWithType(it.id, it.seqNo, it.primaryTerm, SMPolicy.Companion::parse)
-                smPolicy.getSMPolicyName() to smPolicy.jobEnabled
+                parseNameToEnabled(contentParser(it.sourceRef))
             }
         } catch (e: Exception) {
             log.error("Failed to parse snapshot management policy in search response", e)
@@ -88,18 +84,31 @@ class TransportExplainSMAction @Inject constructor(
         }
     }
 
-    private suspend fun getSMMetadata(policyNames: Set<String>): Map<String, SMMetadata> {
-        // Search for all SM Metadata documents which match at least one of the given names
-        val queryBuilder = BoolQueryBuilder().minimumShouldMatch(1).apply {
+    private fun getPolicyEnabledSearchRequest(policyNames: Set<String>): SearchRequest {
+        // Search for all SM Policy documents which match at least one of the given names
+        val queryBuilder = BoolQueryBuilder().filter(ExistsQueryBuilder(SMPolicy.SM_TYPE))
+        queryBuilder.minimumShouldMatch(1).apply {
             policyNames.forEach {
-                this.should(WildcardQueryBuilder("$SM_METADATA_TYPE.$NAME_FIELD.keyword", it))
+                this.should(WildcardQueryBuilder("${SMPolicy.SM_TYPE}.$NAME_FIELD", "*$it*"))
             }
         }
 
-        // Search the config index for SM Metadata
-        val searchRequest = SearchRequest(INDEX_MANAGEMENT_INDEX).source(SearchSourceBuilder().size(MAX_HITS).query(queryBuilder))
+        // TODO SM add user filter
+
+        // Only return the name and enabled field
+        val includes = arrayOf(
+            "${SMPolicy.SM_TYPE}.$NAME_FIELD",
+            "${SMPolicy.SM_TYPE}.$ENABLED_FIELD"
+        )
+        val fetchSourceContext = FetchSourceContext(true, includes, arrayOf())
+        val searchSourceBuilder = SearchSourceBuilder().size(MAX_HITS).query(queryBuilder).fetchSource(fetchSourceContext)
+        return SearchRequest(INDEX_MANAGEMENT_INDEX).source(searchSourceBuilder)
+    }
+
+    private suspend fun getSMMetadata(policyNames: Set<String>): Map<String, SMMetadata> {
+        val searchRequest = getSMMetadataSearchRequest(policyNames)
         val searchResponse: SearchResponse = try {
-            client.suspendUntil { search(searchRequest) }
+            client.suspendUntil { search(searchRequest, it) }
         } catch (e: IndexNotFoundException) {
             throw OpenSearchStatusException("Snapshot management config index not found", RestStatus.NOT_FOUND)
         }
@@ -113,6 +122,37 @@ class TransportExplainSMAction @Inject constructor(
             log.error("Failed to parse snapshot management metadata in search response", e)
             throw OpenSearchStatusException("Failed to parse snapshot management metadata", RestStatus.NOT_FOUND)
         }
+    }
+
+    private fun getSMMetadataSearchRequest(policyNames: Set<String>): SearchRequest {
+        // Search for all SM Metadata documents which match at least one of the given names
+        val queryBuilder = BoolQueryBuilder().filter(ExistsQueryBuilder(SM_METADATA_TYPE))
+        queryBuilder.minimumShouldMatch(1).apply {
+            policyNames.forEach {
+                this.should(WildcardQueryBuilder("$SM_METADATA_TYPE.$NAME_FIELD", "*$it*"))
+            }
+        }
+
+        // Search the config index for SM Metadata
+        return SearchRequest(INDEX_MANAGEMENT_INDEX).source(SearchSourceBuilder().size(MAX_HITS).query(queryBuilder))
+    }
+
+    private fun parseNameToEnabled(xcp: XContentParser): Pair<String, Boolean> {
+        var name: String? = null
+        var enabled: Boolean? = null
+
+        if (xcp.currentToken() == null) xcp.nextToken()
+        ensureExpectedToken(XContentParser.Token.START_OBJECT, xcp.currentToken(), xcp)
+        while (xcp.nextToken() != XContentParser.Token.END_OBJECT) {
+            val fieldName = xcp.currentName()
+            xcp.nextToken()
+
+            when (fieldName) {
+                NAME_FIELD -> name = xcp.text()
+                ENABLED_FIELD -> enabled = xcp.booleanValue()
+            }
+        }
+        return requireNotNull(name) { "The name field of SMPolicy must not be null." } to requireNotNull(enabled) { "The enabled field of SMPolicy must not be null." }
     }
 
     private fun buildExplainResponse(namesToEnabled: Map<String, Boolean>, namesToMetadata: Map<String, SMMetadata>): ExplainSMPolicyResponse {

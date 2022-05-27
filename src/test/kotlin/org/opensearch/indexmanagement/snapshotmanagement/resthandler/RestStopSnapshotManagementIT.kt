@@ -19,12 +19,12 @@ class RestStopSnapshotManagementIT : SnapshotManagementRestTestCase() {
         val smPolicy = createSMPolicy(randomSMPolicy().copy(jobEnabled = true, jobEnabledTime = Instant.now()))
         assertTrue("Snapshot management policy was not enabled", smPolicy.jobEnabled)
 
-        val response = client().makeRequest("PUT", "${IndexManagementPlugin.SM_POLICIES_URI}/${smPolicy.getSMPolicyName()}/_stop")
+        val response = client().makeRequest("PUT", "${IndexManagementPlugin.SM_POLICIES_URI}/${smPolicy.policyName}/_stop")
         assertEquals("Stop snapshot management policy failed", RestStatus.OK, response.restStatus())
         val expectedResponse = mapOf("acknowledged" to true)
         assertEquals(expectedResponse, response.asMap())
 
-        val updatedSMPolicy = getSMPolicy(smPolicy.getSMPolicyName())
+        val updatedSMPolicy = getSMPolicy(smPolicy.policyName)
         assertFalse("Snapshot management policy was not disabled", updatedSMPolicy.jobEnabled)
     }
 

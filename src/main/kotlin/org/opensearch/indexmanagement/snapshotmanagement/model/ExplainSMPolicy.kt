@@ -11,6 +11,7 @@ import org.opensearch.common.io.stream.Writeable
 import org.opensearch.common.xcontent.ToXContent
 import org.opensearch.common.xcontent.ToXContentObject
 import org.opensearch.common.xcontent.XContentBuilder
+import org.opensearch.indexmanagement.indexstatemanagement.util.XCONTENT_WITHOUT_TYPE
 import java.io.IOException
 
 data class ExplainSMPolicy(
@@ -38,7 +39,7 @@ data class ExplainSMPolicy(
     override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
         return builder.startObject()
             .field(SMPolicy.NAME_FIELD, policyName)
-            .field(SMMetadata.SM_METADATA_TYPE, metadata)
+            .field(SMMetadata.SM_METADATA_TYPE, metadata, XCONTENT_WITHOUT_TYPE)
             .field(SMPolicy.ENABLED_FIELD, enabled)
             .endObject()
     }
