@@ -28,6 +28,7 @@ object DeletingState : State {
         val job = context.job
         val metadata = context.metadata
         val log = context.log
+        val metadataBuilder = SMMetadata.Builder(metadata)
 
         val res: AcknowledgedResponse
         val snapshotToDelete: List<SMMetadata.SnapshotInfo>
@@ -39,15 +40,15 @@ object DeletingState : State {
             )
         } catch (ex: SnapshotMissingException) {
             log.warn("No snapshots found under policy while getting snapshots to decide which snapshots to delete.")
-            return SMResult.Failure(ex, WorkflowType.DELETION)
+            return SMResult.Failure(metadataBuilder.build(), ex, WorkflowType.DELETION)
         } catch (ex: Exception) {
             log.error("Caught exception while getting snapshots to decide which snapshots to delete.", ex)
-            return SMResult.Retry(WorkflowType.DELETION)
+            return SMResult.Retry(metadataBuilder.build(), WorkflowType.DELETION)
         }
+        metadataBuilder.resetRetry(deletion = true)
 
         snapshotToDelete = findSnapshotsToDelete(getSnapshots, job.deletion.condition, log)
         log.info("sm dev: Going to delete: ${snapshotToDelete.map { it.name }}")
-
         if (snapshotToDelete.isNotEmpty()) {
             try {
                 val req = DeleteSnapshotRequest(
@@ -57,19 +58,17 @@ object DeletingState : State {
                 res = client.admin().cluster().suspendUntil { deleteSnapshot(req, it) }
                 log.info("sm dev: Delete snapshot acknowledged: ${res.isAcknowledged}.")
             } catch (ex: Exception) {
-                return SMResult.Failure(ex, WorkflowType.DELETION, notifiable = true)
+                return SMResult.Failure(metadataBuilder.build(), ex, WorkflowType.DELETION, notifiable = true)
             }
         }
 
-        val metadataToSave = SMMetadata.Builder(metadata)
-            .resetRetry(deletion = true)
         if (snapshotToDelete.isNotEmpty())
-            metadataToSave.deletion(
+            metadataBuilder.deletion(
                 startedTime = now(),
                 snapshotInfo = snapshotToDelete,
             )
 
-        return SMResult.Next(metadataToSave.build())
+        return SMResult.Next(metadataBuilder.build())
     }
 
     /**

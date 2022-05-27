@@ -48,7 +48,7 @@ class SMStateMachine(
                     return
                 }
 
-                var result: SMResult = SMResult.Stay()
+                lateinit var result: SMResult
                 val prevState = currentState
                 for (nextState in nextStates) {
                     currentState = nextState
@@ -63,15 +63,14 @@ class SMStateMachine(
                         }
                         is SMResult.Stay -> {
                             log.info("State [$currentState] has not finished.")
-                            val metadataToSave = result.metadataToSave ?: metadata
-                            updateMetadata(metadataToSave.copy(currentState = prevState))
+                            updateMetadata(result.metadataToSave.copy(currentState = prevState))
                             // can still execute other lateral states if exists
                         }
                         is SMResult.Failure -> {
                             val ex = result.ex
                             val userMessage = preFixTimeStamp(SnapshotManagementException(ex).message)
                             val info = metadata.info.upsert(GENERAL_EXCEPTION_KEY to userMessage)
-                            val metadataToSave = SMMetadata.Builder(metadata)
+                            val metadataToSave = SMMetadata.Builder(result.metadataToSave)
                                 .reset(result.workflowType)
                             if (result.notifiable) {
                                 log.error("Caught exception while executing state [$currentState]. Reset the workflow ${result.workflowType}.", ex)
@@ -82,7 +81,7 @@ class SMStateMachine(
                             updateMetadata(metadataToSave.build())
                         }
                         is SMResult.Retry -> {
-                            val metadataToSave = SMMetadata.Builder(metadata)
+                            val metadataToSave = SMMetadata.Builder(result.metadataToSave)
                                 .currentState(prevState)
                             val retry = when (result.workflowType) {
                                 WorkflowType.CREATION -> {
@@ -111,9 +110,10 @@ class SMStateMachine(
                         }
                         is SMResult.TimeLimitExceed -> {
                             log.warn("${result.workflowType} has exceeded the time limit.")
-                            val metadataToSave = SMMetadata.Builder(metadata)
+                            val metadataToSave = SMMetadata.Builder(result.metadataToSave)
                                 .reset(result.workflowType)
                                 .build()
+
                             updateMetadata(metadataToSave)
                         }
                     }

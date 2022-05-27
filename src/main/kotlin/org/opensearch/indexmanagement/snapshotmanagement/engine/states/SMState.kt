@@ -36,10 +36,21 @@ enum class WorkflowType {
  */
 sealed class SMResult : State.Result() {
     data class Next(val metadataToSave: SMMetadata) : SMResult()
-    data class Stay(val metadataToSave: SMMetadata? = null) : SMResult()
-    data class Failure(val ex: Exception, val workflowType: WorkflowType, val notifiable: Boolean = false) : SMResult()
-    data class Retry(val workflowType: WorkflowType) : SMResult()
-    data class TimeLimitExceed(val workflowType: WorkflowType) : SMResult()
+    data class Stay(val metadataToSave: SMMetadata) : SMResult()
+    data class Failure(
+        val metadataToSave: SMMetadata,
+        val ex: Exception,
+        val workflowType: WorkflowType,
+        val notifiable: Boolean = false
+    ) : SMResult()
+    data class Retry(
+        val metadataToSave: SMMetadata,
+        val workflowType: WorkflowType
+    ) : SMResult()
+    data class TimeLimitExceed(
+        val metadataToSave: SMMetadata,
+        val workflowType: WorkflowType
+    ) : SMResult()
 }
 
 /**

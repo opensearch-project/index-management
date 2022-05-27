@@ -26,13 +26,7 @@ object FinishedState : State {
         val metadata = context.metadata
         val log = context.log
 
-        var creationStarted = metadata.creation.started
-        var deletionStarted = metadata.deletion.started
-        var startedDeletionTime = metadata.deletion.startedTime
-        var info = metadata.info
-
-        var resetCreationRetry = false
-        var resetDeletionRetry = false
+        val metadataBuilder = SMMetadata.Builder(metadata)
 
         metadata.creation.started?.let { started ->
             val snapshots = try {
@@ -42,33 +36,39 @@ object FinishedState : State {
                 )
             } catch (ex: SnapshotMissingException) {
                 log.warn("Snapshot ${started.name} not found while checking if it has been created.")
-                return SMResult.Failure(ex, WorkflowType.CREATION)
+                return SMResult.Failure(metadataBuilder.build(), ex, WorkflowType.CREATION)
             } catch (ex: Exception) {
                 log.error("Caught exception while getting started creation snapshot [${started.name}].", ex)
-                return SMResult.Retry(WorkflowType.CREATION)
+                return SMResult.Retry(metadataBuilder.build(), WorkflowType.CREATION)
             }
-            resetCreationRetry = true
+            metadataBuilder.resetRetry(creation = true)
 
             val snapshot = snapshots.firstOrNull() ?: return SMResult.Failure(
-                SnapshotMissingException(job.snapshotConfig["repository"] as String, started.name), WorkflowType.CREATION
+                metadataBuilder.build(),
+                SnapshotMissingException(
+                    job.snapshotConfig["repository"] as String,
+                    started.name
+                ),
+                WorkflowType.CREATION
             )
             when (snapshot.state()) {
                 SnapshotState.IN_PROGRESS -> {
                     job.creation.timeLimit?.let {
                         if (timeLimitExceed(metadata.creation.started.startTime, it))
-                            return SMResult.TimeLimitExceed(WorkflowType.CREATION)
+                            return SMResult.TimeLimitExceed(metadataBuilder.build(), WorkflowType.CREATION)
                     }
                 }
                 SnapshotState.SUCCESS -> {
-                    creationStarted = null
-                    info = info.upsert(
+                    val info = metadata.info.upsert(
                         "last_success" to started.name
                     )
+                    metadataBuilder.creation(null)
+                        .info(info)
                     // TODO SM notification snapshot created
                 }
                 else -> {
                     // FAILED, PARTIAL, INCOMPATIBLE
-                    creationStarted = null
+                    metadataBuilder.creation(null)
                     // TODO SM notification snapshot creation has problem
                 }
             }
@@ -86,46 +86,43 @@ object FinishedState : State {
                 )
             } catch (ex: SnapshotMissingException) {
                 log.warn("No snapshots found under policy while getting snapshots to decide if snapshots has been deleted.")
-                return SMResult.Failure(ex, WorkflowType.DELETION)
+                return SMResult.Failure(metadataBuilder.build(), ex, WorkflowType.DELETION)
             } catch (ex: Exception) {
                 log.error("Caught exception while getting snapshots to decide if snapshots [$startedDeleteSnapshots] has been deleted.", ex)
-                return SMResult.Retry(WorkflowType.DELETION)
+                return SMResult.Retry(metadataBuilder.build(), WorkflowType.DELETION)
             }
-            resetDeletionRetry = true
+            metadataBuilder.resetRetry(deletion = true)
 
             val existingSnapshotsNameSet = snapshots.map { it.snapshotId().name }.toSet()
             val startedDeletionSnapshotsNameSet = startedDeleteSnapshots.map { it.name }.toSet()
             val remainingSnapshotsName = existingSnapshotsNameSet intersect startedDeletionSnapshotsNameSet
-            deletionStarted = if (remainingSnapshotsName.isEmpty()) {
+            if (remainingSnapshotsName.isEmpty()) {
                 log.info("Snapshots have been deleted: $existingSnapshotsNameSet.")
-                startedDeletionTime = null
                 // TODO SM notification snapshot deleted
-                null
+                metadataBuilder.deletion(null, null)
             } else {
-                metadata.deletion.startedTime?.let { startTime ->
+                val deletionStartedTime = metadata.deletion.startedTime
+                deletionStartedTime?.let { startTime ->
                     job.deletion.timeLimit?.let {
                         if (timeLimitExceed(startTime, it))
-                            return SMResult.TimeLimitExceed(WorkflowType.DELETION)
+                            return SMResult.TimeLimitExceed(metadataBuilder.build(), WorkflowType.DELETION)
                     }
                 }
-                log.info("Snapshots haven't been deleted: $remainingSnapshotsName.")
 
-                startedDeleteSnapshots.filter {
-                    it.name in remainingSnapshotsName
-                }.toList()
+                log.info("Snapshots haven't been deleted: $remainingSnapshotsName.")
+                metadataBuilder.deletion(
+                    deletionStartedTime,
+                    startedDeleteSnapshots.filter {
+                        it.name in remainingSnapshotsName
+                    }.toList()
+                )
             }
 
             // TODO SM if now is after next deletion time, we can update nextDeletionTime and try notify user
         }
 
-        val metadataToSave = SMMetadata.Builder(metadata)
-            .creation(creationStarted)
-            .deletion(startedDeletionTime, deletionStarted)
-            .info(info)
-            .resetRetry(resetCreationRetry, resetDeletionRetry)
-            .build()
-
-        if (creationStarted != null || deletionStarted != null) {
+        val metadataToSave = metadataBuilder.build()
+        if (metadataToSave.creation.started != null || metadataToSave.deletion.started != null) {
             return SMResult.Stay(metadataToSave)
         }
         return SMResult.Next(metadataToSave)

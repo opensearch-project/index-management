@@ -28,6 +28,8 @@ object CreatingState : State {
         val metadata = context.metadata
         val log = context.log
 
+        val metadataBuilder = SMMetadata.Builder(metadata)
+
         var snapshotName: String?
 
         val lastExecutionTime = job.creation.schedule.getPeriodStartingAt(null).v1()
@@ -40,11 +42,19 @@ object CreatingState : State {
             emptyList()
         } catch (ex: Exception) {
             log.error("Caught exception while getting snapshots to decide if snapshot has been created in previous execution schedule.", ex)
-            return SMResult.Retry(WorkflowType.CREATION)
+            return SMResult.Retry(metadataBuilder.build(), WorkflowType.CREATION)
         }
+        metadataBuilder.resetRetry(creation = true)
 
         snapshotName = checkCreatedSnapshots(lastExecutionTime, getSnapshots)
-        if (snapshotName == null) {
+        if (snapshotName != null) {
+            metadataBuilder.creation(
+                SMMetadata.SnapshotInfo(
+                    name = snapshotName,
+                    startTime = now(),
+                )
+            )
+        } else {
             snapshotName = generateSnapshotName(job)
             log.info("sm dev: Snapshot to create: $snapshotName.")
             try {
@@ -54,21 +64,18 @@ object CreatingState : State {
                 val res: CreateSnapshotResponse = client.admin().cluster().suspendUntil { createSnapshot(req, it) }
                 // TODO SM notification that snapshot starts to be created
                 log.info("sm dev: Create snapshot response: $res.")
+                metadataBuilder.creation(
+                    SMMetadata.SnapshotInfo(
+                        name = snapshotName,
+                        startTime = now(),
+                    )
+                )
             } catch (ex: Exception) {
-                return SMResult.Failure(ex, WorkflowType.CREATION, notifiable = true)
+                return SMResult.Failure(metadataBuilder.build(), ex, WorkflowType.CREATION, notifiable = true)
             }
         }
 
-        val metadataToSave = SMMetadata.Builder(metadata)
-            .creation(
-                SMMetadata.SnapshotInfo(
-                    name = snapshotName,
-                    startTime = now(),
-                )
-            )
-            .resetRetry(creation = true)
-            .build()
-        return SMResult.Next(metadataToSave)
+        return SMResult.Next(metadataBuilder.build())
     }
 
     /**

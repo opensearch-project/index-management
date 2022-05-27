@@ -41,7 +41,7 @@ class DeleteConditionMetStateTests : ClientMockTestCase() {
         val result = SMState.DELETE_CONDITION_MET.instance.execute(context)
         assertTrue("Execution result should be Stay.", result is SMResult.Stay)
         result as SMResult.Stay
-        assertNull("Next execution time should not be updated.", result.metadataToSave)
+        assertEquals("Next execution time should not be updated.", metadata, result.metadataToSave)
     }
 
     fun `test already started snapshot deletion`() = runBlocking {

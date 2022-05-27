@@ -21,8 +21,10 @@ object DeleteConditionMetState : State {
         val metadata = context.metadata
         val log = context.log
 
+        val metadataBuilder = SMMetadata.Builder(metadata)
+
         if (metadata.deletion.started != null) {
-            return SMResult.Stay()
+            return SMResult.Stay(metadataBuilder.build())
         }
 
         val nextDeletionTime = metadata.deletion.trigger.time
@@ -30,17 +32,13 @@ object DeleteConditionMetState : State {
         if (!now().isBefore(nextDeletionTime)) {
             log.info("sm dev current time [${now()}] has passed nextDeletionTime [$nextDeletionTime]")
             nextDeletionTimeToSave = getNextExecutionTime(job.deletion.schedule, now())
+            metadataBuilder.nextDeletionTime(nextDeletionTimeToSave)
         } else {
             log.info("sm dev: current time [${now()}] has not passed nextDeletionTime [$nextDeletionTime]")
             // TODO SM dynamically update job start_time to avoid unnecessary job runs
-            return SMResult.Stay()
+            return SMResult.Stay(metadataBuilder.build())
         }
 
-        val metadataToSave = SMMetadata.Builder(metadata)
-            .currentState(SMState.DELETE_CONDITION_MET)
-            .nextDeletionTime(nextDeletionTimeToSave)
-            .build()
-        log.info("sm dev: Save current state as DELETE_CONDITION_MET [$metadataToSave]")
-        return SMResult.Next(metadataToSave)
+        return SMResult.Next(metadataBuilder.build())
     }
 }

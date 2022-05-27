@@ -20,8 +20,10 @@ object CreateConditionMetState : State {
         val metadata = context.metadata
         val log = context.log
 
+        val metadataBuilder = SMMetadata.Builder(metadata)
+
         if (metadata.creation.started != null) {
-            return SMResult.Stay()
+            return SMResult.Stay(metadataBuilder.build())
         }
 
         val nextCreationTime = metadata.creation.trigger.time
@@ -29,16 +31,14 @@ object CreateConditionMetState : State {
         if (!now().isBefore(nextCreationTime)) {
             log.info("sm dev: Current time [${now()}] has passed nextCreationTime [$nextCreationTime]")
             nextCreationTimeToSave = getNextExecutionTime(job.creation.schedule, now())
+            metadataBuilder.nextCreationTime(nextCreationTimeToSave)
         } else {
             log.info("sm dev: Current time [${now()}] has not passed nextCreationTime [$nextCreationTime]")
             // TODO SM dynamically update job start_time to avoid unnecessary job runs
-            return SMResult.Stay()
+            return SMResult.Stay(metadataBuilder.build())
         }
 
-        val metadataToSave = SMMetadata.Builder(metadata)
-            .nextCreationTime(nextCreationTimeToSave)
-            .build()
-        log.info("sm dev: Save current state as CREATE_CONDITION_MET [$metadataToSave]")
-        return SMResult.Next(metadataToSave)
+        log.info("sm dev: Save current state as CREATE_CONDITION_MET [$metadataBuilder]")
+        return SMResult.Next(metadataBuilder.build())
     }
 }
