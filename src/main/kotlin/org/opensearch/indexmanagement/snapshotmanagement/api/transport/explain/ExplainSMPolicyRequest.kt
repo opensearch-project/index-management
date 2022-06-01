@@ -11,15 +11,15 @@ import org.opensearch.common.io.stream.StreamInput
 import org.opensearch.common.io.stream.StreamOutput
 
 class ExplainSMPolicyRequest(
-    val policyName: String
+    val policyNames: Array<String>
 ) : ActionRequest() {
     override fun validate(): ActionRequestValidationException? {
         return null
     }
 
-    constructor(sin: StreamInput) : this(policyName = sin.readString())
+    constructor(sin: StreamInput) : this(policyNames = sin.readStringArray())
 
     override fun writeTo(out: StreamOutput) {
-        out.writeString(policyName)
+        out.writeStringArray(policyNames)
     }
 }

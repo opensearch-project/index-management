@@ -13,6 +13,8 @@ import org.opensearch.index.seqno.SequenceNumbers
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.delete.DeleteSMPolicyRequest
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.execute.ExecuteSMRequest
+import org.opensearch.indexmanagement.snapshotmanagement.api.transport.explain.ExplainSMPolicyRequest
+import org.opensearch.indexmanagement.snapshotmanagement.api.transport.get.GetSMPoliciesRequest
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.get.GetSMPolicyRequest
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.index.IndexSMPolicyRequest
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.start.StartSMRequest
@@ -40,6 +42,14 @@ class RequestTests : OpenSearchTestCase() {
         val sin = StreamInput.wrap(out.bytes().toBytesRef().bytes)
         val streamedReq = GetSMPolicyRequest(sin)
         assertEquals(id, streamedReq.policyID)
+    }
+
+    fun `test get all sm policy request`() {
+        val req = GetSMPoliciesRequest()
+
+        val out = BytesStreamOutput().apply { req.writeTo(this) }
+        val sin = StreamInput.wrap(out.bytes().toBytesRef().bytes)
+        GetSMPoliciesRequest(sin)
     }
 
     fun `test index sm policy put request`() {
@@ -98,5 +108,17 @@ class RequestTests : OpenSearchTestCase() {
         val sin = StreamInput.wrap(out.bytes().toBytesRef().bytes)
         val streamedReq = ExecuteSMRequest(sin)
         assertEquals(id, streamedReq.snapshotPolicyID)
+    }
+
+    fun `test explain sm policy request`() {
+        val policyNames = randomList(1, 10) { randomAlphaOfLength(10) }
+        val req = ExplainSMPolicyRequest(policyNames.toTypedArray())
+
+        val out = BytesStreamOutput().apply { req.writeTo(this) }
+        val sin = StreamInput.wrap(out.bytes().toBytesRef().bytes)
+        val streamedReq = ExplainSMPolicyRequest(sin)
+        policyNames.forEach { name ->
+            assertTrue(streamedReq.policyNames.contains(name))
+        }
     }
 }

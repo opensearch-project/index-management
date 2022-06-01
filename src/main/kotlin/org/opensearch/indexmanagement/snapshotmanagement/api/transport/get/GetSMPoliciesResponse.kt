@@ -17,6 +17,7 @@ import org.opensearch.indexmanagement.util._ID
 import org.opensearch.indexmanagement.util._PRIMARY_TERM
 import org.opensearch.indexmanagement.util._SEQ_NO
 
+// totalPolicies may differ from the length of the policies field if the size parameter is introduced
 class GetSMPoliciesResponse(
     val policies: List<SMPolicy>,
     val totalPolicies: Int

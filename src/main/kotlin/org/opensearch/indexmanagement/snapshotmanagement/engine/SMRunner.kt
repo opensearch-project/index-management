@@ -90,7 +90,7 @@ object SMRunner :
             ),
             deletion = SMMetadata.Deletion(
                 SMMetadata.Trigger(
-                    time = job.creation.schedule.getNextExecutionTime(now())
+                    time = job.deletion.schedule.getNextExecutionTime(now())
                 )
             ),
         )

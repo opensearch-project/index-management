@@ -91,7 +91,7 @@ data class SMPolicy(
     }
 
     companion object {
-        const val SM_TYPE = "sm"
+        const val SM_TYPE = "sm_policy"
         const val SM_DOC_ID_SUFFIX = "-sm-policy"
         const val SM_METADATA_ID_SUFFIX = "-sm-metadata"
         const val NAME_FIELD = "name"

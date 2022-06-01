@@ -9,8 +9,12 @@ import org.opensearch.indexmanagement.snapshotmanagement.api.transport.SMActions
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.SMActions.DELETE_SM_ACTION_TYPE
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.SMActions.EXECUTE_SM_ACTION_NAME
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.SMActions.EXECUTE_SM_ACTION_TYPE
+import org.opensearch.indexmanagement.snapshotmanagement.api.transport.SMActions.EXPLAIN_SM_ACTION_NAME
+import org.opensearch.indexmanagement.snapshotmanagement.api.transport.SMActions.EXPLAIN_SM_ACTION_TYPE
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.SMActions.GET_SM_ACTION_NAME
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.SMActions.GET_SM_ACTION_TYPE
+import org.opensearch.indexmanagement.snapshotmanagement.api.transport.SMActions.GET_SM_POLICIES_ACTION_NAME
+import org.opensearch.indexmanagement.snapshotmanagement.api.transport.SMActions.GET_SM_POLICIES_ACTION_TYPE
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.SMActions.INDEX_SM_ACTION_NAME
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.SMActions.INDEX_SM_ACTION_TYPE
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.SMActions.START_SM_ACTION_NAME
@@ -36,6 +40,11 @@ class ActionTests : OpenSearchTestCase() {
         assertEquals(GET_SM_ACTION_TYPE.name(), GET_SM_ACTION_NAME)
     }
 
+    fun `test get all action name`() {
+        assertNotNull(GET_SM_POLICIES_ACTION_TYPE.name())
+        assertEquals(GET_SM_POLICIES_ACTION_TYPE.name(), GET_SM_POLICIES_ACTION_NAME)
+    }
+
     fun `test start action name`() {
         assertNotNull(START_SM_ACTION_TYPE.name())
         assertEquals(START_SM_ACTION_TYPE.name(), START_SM_ACTION_NAME)
@@ -49,5 +58,10 @@ class ActionTests : OpenSearchTestCase() {
     fun `test execute action name`() {
         assertNotNull(EXECUTE_SM_ACTION_TYPE.name())
         assertEquals(EXECUTE_SM_ACTION_TYPE.name(), EXECUTE_SM_ACTION_NAME)
+    }
+
+    fun `test explain action name`() {
+        assertNotNull(EXPLAIN_SM_ACTION_TYPE.name())
+        assertEquals(EXPLAIN_SM_ACTION_TYPE.name(), EXPLAIN_SM_ACTION_NAME)
     }
 }

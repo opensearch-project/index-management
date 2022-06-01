@@ -70,7 +70,7 @@ abstract class SnapshotManagementRestTestCase : IndexManagementRestTestCase() {
         smPolicyName: String,
         header: BasicHeader = BasicHeader(HttpHeaders.CONTENT_TYPE, "application/json"),
     ): Response {
-        val response = client().makeRequest("GET", "${IndexManagementPlugin.SM_POLICIES_URI}/$smPolicyName/explain", null, header)
+        val response = client().makeRequest("GET", "${IndexManagementPlugin.SM_POLICIES_URI}/$smPolicyName/_explain", null, header)
         assertEquals("Failed to explain snapshot management policy $smPolicyName", RestStatus.OK, response.restStatus())
         return response
     }
@@ -119,7 +119,7 @@ abstract class SnapshotManagementRestTestCase : IndexManagementRestTestCase() {
         val response = client().makeRequest(
             "POST", "$INDEX_MANAGEMENT_INDEX/_update/${update.id}?wait_for_active_shards=$waitForActiveShards",
             StringEntity(
-                "{\"doc\":{\"sm\":{\"schedule\":{\"interval\":{\"start_time\":\"$startTimeMillis\"}}}}}",
+                "{\"doc\":{\"sm_policy\":{\"schedule\":{\"interval\":{\"start_time\":\"$startTimeMillis\"}}}}}",
                 APPLICATION_JSON
             )
         )

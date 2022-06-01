@@ -1306,7 +1306,7 @@
         }
       }
     },
-    "sm": {
+    "sm_policy": {
       "properties": {
         "name": {
           "type": "keyword"

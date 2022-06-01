@@ -10,7 +10,9 @@ import org.apache.http.message.BasicHeader
 import org.opensearch.client.ResponseException
 import org.opensearch.indexmanagement.IndexManagementPlugin
 import org.opensearch.indexmanagement.makeRequest
+import org.opensearch.indexmanagement.opensearchapi.convertToMap
 import org.opensearch.indexmanagement.snapshotmanagement.SnapshotManagementRestTestCase
+import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy.Companion.SM_TYPE
 import org.opensearch.indexmanagement.snapshotmanagement.randomSMPolicy
 import org.opensearch.rest.RestStatus
 
@@ -68,7 +70,9 @@ class RestGetSnapshotManagementIT : SnapshotManagementRestTestCase() {
         for (testSMPolicy in smPolicies) {
             val foundPolicy = responsePolicies.find { testSMPolicy.id == it["_id"] as String }
             assertNotNull("Did not find matching SM Policy that should exist", foundPolicy)
-            // TODO check other properties
+            assertNotNull("Matching response did not have policy", foundPolicy?.get(SM_TYPE))
+            val policyInResponse = foundPolicy!![SM_TYPE]
+            assertEquals("Policy in get all response differed from actual", testSMPolicy.convertToMap()[SM_TYPE], policyInResponse)
         }
     }
 }

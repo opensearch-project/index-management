@@ -56,10 +56,9 @@ class TransportExplainSMAction @Inject constructor(
         user: User?,
         threadContext: ThreadContext.StoredContext
     ): ExplainSMPolicyResponse {
-        // TODO SM explain should allow multiple policy names
-        val policyNames = setOf(request.policyName)
+        val policyNames = request.policyNames.toSet()
 
-        val namesToEnabled = getPolicyEnabledStatus(policyNames.toSet())
+        val namesToEnabled = getPolicyEnabledStatus(policyNames)
         val namesToMetadata = getSMMetadata(namesToEnabled.keys)
         return buildExplainResponse(namesToEnabled, namesToMetadata)
     }
@@ -157,7 +156,7 @@ class TransportExplainSMAction @Inject constructor(
 
     private fun buildExplainResponse(namesToEnabled: Map<String, Boolean>, namesToMetadata: Map<String, SMMetadata>): ExplainSMPolicyResponse {
         val policiesToExplain = namesToEnabled.entries.associate { (policyName, enabled) ->
-            policyName to ExplainSMPolicy(policyName, namesToMetadata[policyName], enabled)
+            policyName to ExplainSMPolicy(namesToMetadata[policyName], enabled)
         }
         return ExplainSMPolicyResponse(policiesToExplain)
     }
