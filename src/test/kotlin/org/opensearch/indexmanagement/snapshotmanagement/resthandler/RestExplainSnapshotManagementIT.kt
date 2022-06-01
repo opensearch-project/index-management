@@ -65,6 +65,7 @@ class RestExplainSnapshotManagementIT : SnapshotManagementRestTestCase() {
 
     fun `test explain all with list of policy names`() {
         val smPolicies = randomList(2, 3) { createSMPolicy(randomSMPolicy(jobEnabled = true)) }
+        // if this proves to be flaky, just index the metadata directly instead of executing to generate metadata
         smPolicies.forEach { updateSMPolicyStartTime(it) }
         waitFor {
             val explainResponse = explainSMPolicy(smPolicies.joinToString(",") { it.policyName })
@@ -84,6 +85,7 @@ class RestExplainSnapshotManagementIT : SnapshotManagementRestTestCase() {
 
     fun `test explain all with empty policy name`() {
         val smPolicies = randomList(2, 3) { createSMPolicy(randomSMPolicy(jobEnabled = true)) }
+        // if this proves to be flaky, just index the metadata directly instead of executing to generate metadata
         smPolicies.forEach { updateSMPolicyStartTime(it) }
         waitFor {
             val explainResponse = explainSMPolicy("")

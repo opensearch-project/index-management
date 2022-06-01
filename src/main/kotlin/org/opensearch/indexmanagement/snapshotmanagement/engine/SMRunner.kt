@@ -11,11 +11,12 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import org.apache.logging.log4j.LogManager
+import org.opensearch.OpenSearchStatusException
 import org.opensearch.action.bulk.BackoffPolicy
 import org.opensearch.client.Client
 import org.opensearch.common.unit.TimeValue
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.SMState
-import org.opensearch.indexmanagement.snapshotmanagement.getMetadata
+import org.opensearch.indexmanagement.snapshotmanagement.getSMMetadata
 import org.opensearch.indexmanagement.snapshotmanagement.indexMetadata
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata
@@ -58,10 +59,10 @@ object SMRunner :
                 return@launch
             }
 
-            var metadata = client.getMetadata(job)
-            if (metadata == null) {
-                metadata = initMetadata(job)
-                metadata ?: return@launch
+            var metadata = try {
+                client.getSMMetadata(job.id)
+            } catch (e: OpenSearchStatusException) {
+                initMetadata(job) ?: return@launch
             }
 
             // TODO SM state machine logic
@@ -78,7 +79,24 @@ object SMRunner :
      * @return null indicates indexing metadata failed
      */
     private suspend fun initMetadata(job: SMPolicy): SMMetadata? {
-        val initMetadata = SMMetadata(
+        val initMetadata = getInitialMetadata(job)
+        log.info("Initializing metadata [$initMetadata] for job [${job.id}].")
+        try {
+            // TODO SM more granular error checking
+            val res = client.indexMetadata(initMetadata, job.id, create = true)
+            if (res.status() != RestStatus.CREATED) {
+                log.error("Metadata initialization response status is ${res.status()}, expecting CREATED 201.")
+                return null
+            }
+        } catch (e: Exception) {
+            log.error("Caught exception while initializing SM metadata.", e)
+            return null
+        }
+        return initMetadata
+    }
+
+    private fun getInitialMetadata(job: SMPolicy): SMMetadata {
+        return SMMetadata(
             id = job.id,
             policySeqNo = job.seqNo,
             policyPrimaryTerm = job.primaryTerm,
@@ -94,17 +112,5 @@ object SMRunner :
                 )
             ),
         )
-        log.info("Initializing metadata [$initMetadata] for job [${job.id}].")
-        try {
-            val res = client.indexMetadata(initMetadata, job.id, create = true)
-            if (res.status() != RestStatus.CREATED) {
-                log.error("Metadata initialization response status is ${res.status()}, expecting CREATED 201.")
-                return null
-            }
-        } catch (e: Exception) {
-            log.error("Caught exception while initializing SM metadata.", e)
-            return null
-        }
-        return initMetadata
     }
 }

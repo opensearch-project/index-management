@@ -8,7 +8,6 @@ package org.opensearch.indexmanagement.snapshotmanagement.api.transport.get
 import org.opensearch.action.ActionRequest
 import org.opensearch.action.ActionRequestValidationException
 import org.opensearch.common.io.stream.StreamInput
-import org.opensearch.common.io.stream.StreamOutput
 
 class GetSMPoliciesRequest() : ActionRequest() {
     override fun validate(): ActionRequestValidationException? {
@@ -16,7 +15,4 @@ class GetSMPoliciesRequest() : ActionRequest() {
     }
 
     constructor(sin: StreamInput) : this()
-
-    override fun writeTo(out: StreamOutput) {
-    }
 }

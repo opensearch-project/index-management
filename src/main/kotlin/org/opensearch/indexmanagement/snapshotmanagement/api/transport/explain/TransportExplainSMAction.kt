@@ -35,7 +35,7 @@ import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata.Compan
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy.Companion.ENABLED_FIELD
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy.Companion.NAME_FIELD
-import org.opensearch.indexmanagement.snapshotmanagement.smMetadataDocIdToPolicyName
+import org.opensearch.indexmanagement.snapshotmanagement.smMetadataIdToPolicyName
 import org.opensearch.rest.RestStatus
 import org.opensearch.search.builder.SearchSourceBuilder
 import org.opensearch.search.fetch.subphase.FetchSourceContext
@@ -115,7 +115,7 @@ class TransportExplainSMAction @Inject constructor(
         return try {
             searchResponse.hits.hits.associate {
                 val smMetadata = contentParser(it.sourceRef).parseWithType(it.id, it.seqNo, it.primaryTerm, SMMetadata.Companion::parse)
-                smMetadataDocIdToPolicyName(smMetadata.id) to smMetadata
+                smMetadataIdToPolicyName(smMetadata.id) to smMetadata
             }
         } catch (e: Exception) {
             log.error("Failed to parse snapshot management metadata in search response", e)

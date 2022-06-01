@@ -11,5 +11,10 @@ class SMUtilsTests : OpenSearchTestCase() {
     fun `test sm policy name and id conversion`() {
         val policyName = "daily-snapshot-sm-sm"
         assertEquals(policyName, smDocIdToPolicyName(smPolicyNameToDocId(policyName)))
+        assertEquals(policyName, smMetadataIdToPolicyName(smPolicyNameToMetadataId(policyName)))
+
+        val policyNameUnderscores = "daily-snapshot_sm_policy"
+        assertEquals(policyNameUnderscores, smDocIdToPolicyName(smPolicyNameToDocId(policyNameUnderscores)))
+        assertEquals(policyNameUnderscores, smMetadataIdToPolicyName(smPolicyNameToMetadataId(policyNameUnderscores)))
     }
 }

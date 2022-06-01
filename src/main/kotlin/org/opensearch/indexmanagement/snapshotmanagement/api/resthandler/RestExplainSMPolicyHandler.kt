@@ -50,6 +50,7 @@ class RestExplainSMPolicyHandler : BaseRestHandler() {
     private fun getRequest(request: RestRequest, client: NodeClient): RestChannelConsumer {
         var policyNames: Array<String> = Strings.splitStringByCommaToArray(request.param("policyName", ""))
         if (policyNames.isEmpty()) policyNames = arrayOf("")
+        log.debug("Explain snapshot management policy request received with policy name(s) [$policyNames]")
 
         return RestChannelConsumer {
             client.execute(

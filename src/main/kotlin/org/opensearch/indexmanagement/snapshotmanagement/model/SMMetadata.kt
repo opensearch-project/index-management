@@ -24,7 +24,7 @@ import org.opensearch.indexmanagement.opensearchapi.parseArray
 import org.opensearch.indexmanagement.opensearchapi.writeOptionalValue
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.SMState
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy.Companion.NAME_FIELD
-import org.opensearch.indexmanagement.snapshotmanagement.smMetadataDocIdToPolicyName
+import org.opensearch.indexmanagement.snapshotmanagement.smMetadataIdToPolicyName
 import org.opensearch.indexmanagement.util.NO_ID
 import java.time.Instant
 
@@ -45,7 +45,7 @@ data class SMMetadata(
     override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
         builder.startObject()
         if (params.paramAsBoolean(WITH_TYPE, true)) builder.startObject(SM_METADATA_TYPE)
-        builder.field(NAME_FIELD, smMetadataDocIdToPolicyName(id))
+        builder.field(NAME_FIELD, smMetadataIdToPolicyName(id))
             .field(POLICY_SEQ_NO_FIELD, policySeqNo)
             .field(POLICY_PRIMARY_TERM_FIELD, policyPrimaryTerm)
             .field(CURRENT_STATE_FIELD, currentState.toString())

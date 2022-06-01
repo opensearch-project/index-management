@@ -11,6 +11,7 @@ import org.opensearch.common.io.stream.StreamOutput
 import org.opensearch.common.xcontent.ToXContent
 import org.opensearch.common.xcontent.ToXContentObject
 import org.opensearch.common.xcontent.XContentBuilder
+import org.opensearch.indexmanagement.opensearchapi.readOptionalValue
 import org.opensearch.indexmanagement.snapshotmanagement.model.ExplainSMPolicy
 import java.io.IOException
 
@@ -31,7 +32,7 @@ class ExplainSMPolicyResponse : ActionResponse, ToXContentObject {
             val policiesToExplain = mutableMapOf<String, ExplainSMPolicy?>()
             val size = it.readVInt()
             repeat(size) { _ ->
-                policiesToExplain[it.readString()] = if (sin.readBoolean()) ExplainSMPolicy(it) else null
+                policiesToExplain[it.readString()] = sin.readOptionalValue(::ExplainSMPolicy)
             }
             policiesToExplain.toMap()
         }

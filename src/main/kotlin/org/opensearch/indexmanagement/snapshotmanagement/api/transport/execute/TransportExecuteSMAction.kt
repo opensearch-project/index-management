@@ -8,6 +8,7 @@
 package org.opensearch.indexmanagement.snapshotmanagement.api.transport.execute
 
 import org.apache.logging.log4j.LogManager
+import org.opensearch.action.admin.cluster.snapshots.create.CreateSnapshotResponse
 import org.opensearch.action.support.ActionFilters
 import org.opensearch.client.Client
 import org.opensearch.common.inject.Inject
@@ -18,6 +19,7 @@ import org.opensearch.indexmanagement.snapshotmanagement.api.transport.SMActions
 import org.opensearch.indexmanagement.snapshotmanagement.getSMPolicy
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy
 import org.opensearch.rest.RestStatus
+import org.opensearch.snapshots.SnapshotInfo
 import org.opensearch.transport.TransportService
 
 class TransportExecuteSMAction @Inject constructor(
@@ -37,10 +39,14 @@ class TransportExecuteSMAction @Inject constructor(
     ): ExecuteSMResponse {
         val smPolicy = client.getSMPolicy(request.snapshotPolicyID)
 
+        // TODO SM security integration
+
+        // TODO SM execute api implementation
         return executeSMPolicy(smPolicy)
     }
 
     private fun executeSMPolicy(smPolicy: SMPolicy): ExecuteSMResponse {
-        return ExecuteSMResponse(smPolicy, RestStatus.OK)
+        val snapshotInfo: SnapshotInfo? = null
+        return ExecuteSMResponse(CreateSnapshotResponse(snapshotInfo), RestStatus.OK)
     }
 }

@@ -5,6 +5,7 @@
 
 package org.opensearch.indexmanagement.snapshotmanagement.action
 
+import org.opensearch.action.admin.cluster.snapshots.create.CreateSnapshotResponse
 import org.opensearch.common.io.stream.BytesStreamOutput
 import org.opensearch.common.io.stream.StreamInput
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.execute.ExecuteSMResponse
@@ -17,6 +18,7 @@ import org.opensearch.indexmanagement.snapshotmanagement.randomSMMetadata
 import org.opensearch.indexmanagement.snapshotmanagement.randomSMPolicy
 import org.opensearch.indexmanagement.snapshotmanagement.smDocIdToPolicyName
 import org.opensearch.rest.RestStatus
+import org.opensearch.snapshots.SnapshotInfo
 import org.opensearch.test.OpenSearchTestCase
 
 class ResponseTests : OpenSearchTestCase() {
@@ -50,24 +52,26 @@ class ResponseTests : OpenSearchTestCase() {
 
     fun `test get all sm policy response`() {
         val smPolicies = randomList(1, 15) { randomSMPolicy() }
-        val res = GetSMPoliciesResponse(smPolicies, smPolicies.size)
+        val res = GetSMPoliciesResponse(smPolicies, smPolicies.size.toLong())
         val out = BytesStreamOutput().apply { res.writeTo(this) }
         val sin = StreamInput.wrap(out.bytes().toBytesRef().bytes)
         val streamedRes = GetSMPoliciesResponse(sin)
         assertEquals(res.totalPolicies, streamedRes.totalPolicies)
-        assertEquals(smPolicies.size, res.totalPolicies)
+        assertEquals(smPolicies.size.toLong(), res.totalPolicies)
         assertEquals(res.policies, streamedRes.policies)
         assertEquals(smPolicies, res.policies)
     }
 
     fun `test execute sm policy response`() {
-        val smPolicy = randomSMPolicy()
-        val res = ExecuteSMResponse(smPolicy, RestStatus.OK)
+        // TODO sm more realistic response
+        val snapshotInfo: SnapshotInfo? = null
+        val snapshotResponse = CreateSnapshotResponse(snapshotInfo)
+        val res = ExecuteSMResponse(snapshotResponse, RestStatus.CREATED)
         val out = BytesStreamOutput().apply { res.writeTo(this) }
         val sin = StreamInput.wrap(out.bytes().toBytesRef().bytes)
         val streamedRes = ExecuteSMResponse(sin)
-        assertEquals(smPolicy, streamedRes.policy)
-        assertEquals(RestStatus.OK, streamedRes.status)
+        assertEquals(snapshotResponse, streamedRes.createSnapshotResponse)
+        assertEquals(RestStatus.CREATED, streamedRes.status)
     }
 
     fun `test explain sm policy response`() {

@@ -18,7 +18,7 @@ import org.opensearch.index.IndexNotFoundException
 import org.opensearch.index.query.BoolQueryBuilder
 import org.opensearch.index.query.ExistsQueryBuilder
 import org.opensearch.indexmanagement.IndexManagementPlugin
-import org.opensearch.indexmanagement.indexstatemanagement.ManagedIndexCoordinator
+import org.opensearch.indexmanagement.indexstatemanagement.ManagedIndexCoordinator.Companion.MAX_HITS
 import org.opensearch.indexmanagement.opensearchapi.contentParser
 import org.opensearch.indexmanagement.opensearchapi.parseWithType
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
@@ -44,24 +44,37 @@ class TransportGetSMPoliciesAction @Inject constructor(
         user: User?,
         threadContext: ThreadContext.StoredContext
     ): GetSMPoliciesResponse {
-        val queryBuilder = BoolQueryBuilder().filter(ExistsQueryBuilder(SMPolicy.SM_TYPE))
-        // TODO SM add user filter
-        val searchSourceBuilder = SearchSourceBuilder().size(ManagedIndexCoordinator.MAX_HITS).query(queryBuilder)
-        val searchRequest = SearchRequest(IndexManagementPlugin.INDEX_MANAGEMENT_INDEX).source(searchSourceBuilder)
+        val (policies, totalPoliciesCount) = getAllPolicies()
+
+        return GetSMPoliciesResponse(policies, totalPoliciesCount)
+    }
+
+    private suspend fun getAllPolicies(): Pair<List<SMPolicy>, Long> {
+        val searchRequest = getAllPoliciesRequest()
         val searchResponse: SearchResponse = try {
             client.suspendUntil { search(searchRequest, it) }
         } catch (e: IndexNotFoundException) {
             throw OpenSearchStatusException("Snapshot management config index not found", RestStatus.NOT_FOUND)
         }
+        return parseGetAllPoliciesResponse(searchResponse)
+    }
 
-        val policies = try {
+    private fun getAllPoliciesRequest(): SearchRequest {
+        val queryBuilder = BoolQueryBuilder().filter(ExistsQueryBuilder(SMPolicy.SM_TYPE))
+        // TODO SM add user filter
+        val searchSourceBuilder = SearchSourceBuilder().size(MAX_HITS).query(queryBuilder).seqNoAndPrimaryTerm(true)
+        return SearchRequest(IndexManagementPlugin.INDEX_MANAGEMENT_INDEX).source(searchSourceBuilder)
+    }
+
+    private fun parseGetAllPoliciesResponse(searchResponse: SearchResponse): Pair<List<SMPolicy>, Long> {
+        return try {
+            val totalPolicies = searchResponse.hits.totalHits?.value ?: 0L
             searchResponse.hits.hits.map {
                 contentParser(it.sourceRef).parseWithType(it.id, it.seqNo, it.primaryTerm, SMPolicy.Companion::parse)
-            }
+            } to totalPolicies
         } catch (e: Exception) {
             log.error("Failed to parse snapshot management policy in search response", e)
             throw OpenSearchStatusException("Failed to parse snapshot management policy", RestStatus.NOT_FOUND)
         }
-        return GetSMPoliciesResponse(policies, policies.size)
     }
 }

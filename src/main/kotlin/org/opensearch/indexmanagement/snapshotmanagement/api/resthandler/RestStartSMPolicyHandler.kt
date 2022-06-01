@@ -52,6 +52,7 @@ class RestStartSMPolicyHandler : BaseRestHandler() {
         if (policyName == "") {
             throw IllegalArgumentException("Missing policy name")
         }
+        log.debug("Start snapshot management policy request received with policy name [$policyName]")
 
         val indexReq = StartSMRequest(smPolicyNameToDocId(policyName))
         return RestChannelConsumer {

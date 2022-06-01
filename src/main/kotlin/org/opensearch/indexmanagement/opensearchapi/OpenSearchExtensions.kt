@@ -328,8 +328,8 @@ inline fun <T> XContentParser.parseArray(block: XContentParser.() -> T): List<T>
 }
 
 // similar to readOptionalWriteable
-fun <T> StreamInput.readOptionalValue(value: T): T? {
-    return if (readBoolean()) { value } else null
+fun <T> StreamInput.readOptionalValue(reader: Writeable.Reader<T>): T? {
+    return if (readBoolean()) { reader.read(this) } else null
 }
 
 fun <T> StreamOutput.writeOptionalValue(value: T, writer: Writeable.Writer<T>) {

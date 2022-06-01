@@ -52,6 +52,7 @@ class RestStopSMPolicyHandler : BaseRestHandler() {
         if (policyName == "") {
             throw IllegalArgumentException("Missing policy name")
         }
+        log.debug("Stop snapshot management policy request received with policy name [$policyName]")
 
         val indexReq = StopSMRequest(smPolicyNameToDocId(policyName))
         return RestChannelConsumer {
