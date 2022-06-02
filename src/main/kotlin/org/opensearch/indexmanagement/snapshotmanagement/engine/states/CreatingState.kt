@@ -11,6 +11,7 @@ import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.snapshotmanagement.engine.statemachine.SMStateMachine
 import org.opensearch.indexmanagement.snapshotmanagement.generateSnapshotName
 import org.opensearch.indexmanagement.snapshotmanagement.getSnapshots
+import org.opensearch.indexmanagement.snapshotmanagement.addSMPolicyInSnapshotMetadata
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata
 import org.opensearch.indexmanagement.snapshotmanagement.smDocIdToPolicyName
 import org.opensearch.snapshots.SnapshotInfo
@@ -59,7 +60,7 @@ object CreatingState : State {
             log.info("sm dev: Snapshot to create: $snapshotName.")
             try {
                 val req = CreateSnapshotRequest(job.snapshotConfig["repository"] as String, snapshotName)
-                    .source(job.snapshotConfig)
+                    .source(addSMPolicyInSnapshotMetadata(job.snapshotConfig, job.policyName))
                     .waitForCompletion(false)
                 val res: CreateSnapshotResponse = client.admin().cluster().suspendUntil { createSnapshot(req, it) }
                 // TODO SM notification that snapshot starts to be created

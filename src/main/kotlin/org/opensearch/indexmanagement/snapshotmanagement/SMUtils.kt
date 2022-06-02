@@ -184,6 +184,21 @@ fun preFixTimeStamp(msg: String?): String {
     return "[${formatter.format(Instant.now().truncatedTo(ChronoUnit.SECONDS))}]: " + msg
 }
 
+fun addSMPolicyInSnapshotMetadata(snapshotConfig: Map<String, Any>, policyName: String): Map<String, Any> {
+    var snapshotMetadata = snapshotConfig["metadata"]
+    if (snapshotMetadata != null) {
+        snapshotMetadata as Map<String, String>
+        snapshotMetadata.plus("snapshot_management_policy" to policyName)
+    } else {
+        snapshotMetadata = mapOf("snapshot_management_policy" to policyName)
+    }
+    val markedSnapshotConfig = snapshotConfig.toMutableMap()
+    markedSnapshotConfig["metadata"] = snapshotMetadata
+    return markedSnapshotConfig
+}
+
+fun List<SnapshotInfo>.filterBySMPolicyInSnapshotMetadata(policyName: String): List<SnapshotInfo> = filter { it.userMetadata()?.get("snapshot_management_policy") == policyName }
+
 /**
  * Get snapshots
  *

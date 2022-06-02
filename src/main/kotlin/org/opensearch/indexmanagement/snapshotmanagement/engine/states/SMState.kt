@@ -17,7 +17,8 @@ enum class SMState(val instance: State) {
 }
 
 /**
- * The workflows are pseudo parallel, which means one running won't block the others
+ * These workflows are pseudo parallel, which means one running shouldn't block the others.
+ * These workflows have own set of metadata, so the executions shouldn't interfere.
  */
 enum class WorkflowType {
     CREATION, // CREATE_CONDITION_MET, CREATING, part of FINISHED
@@ -25,13 +26,14 @@ enum class WorkflowType {
 }
 
 /**
+ * Result contains the executed metadata to persist and its special flags
+ *
  * For the meaning of vertical, lateral, refer to [smTransitions].
- * [Next]: move to the next state in vertical direction. Save currentState to metadata.
- * [Stay]: stay in this level, can execute the next lateral states if exists. Save prevState to metadata if needed.
- * [Failure]: caught non-retryable exception and reset all the metadata fields for this workflow.
- *  Only snapshot create, delete related exceptions are notifiable.
+ * [Next]: move to the next state in vertical direction. Save this currentState.
+ * [Stay]: stay in this level, can execute the next lateral states if exists. Save the prevState.
+ * [Failure]: caught non-retryable exception. Will reset the related metadata fields for this workflow.
  * [Retry]: caught retryable exception. If retry count exhausted, reset this workflow.
- *  When being used, remember to resetRetry in metadata after passing.
+ *  When being used, remember to use [resetRetry] in metadata builder after passing the retry point.
  * [TimeLimitExceed]: the time limit of the workflow exceeds, reset this workflow.
  */
 sealed class SMResult : State.Result() {

@@ -431,6 +431,9 @@ data class SMMetadata(
 
         fun build() = metadata
 
+        // Reset the related metadata fields of the workflow
+        // so the state machine will skip/abort this execution
+        // and can go to the next execution period
         fun reset(workflowType: WorkflowType): Builder {
             var currentState = metadata.currentState
             var startedCreation = metadata.creation.started
@@ -483,6 +486,24 @@ data class SMMetadata(
                         )
                     )
                 }
+            }
+            return this
+        }
+
+        fun resetRetry(creation: Boolean = false, deletion: Boolean = false): Builder {
+            if (creation && metadata.creation.retry != null) {
+                metadata = metadata.copy(
+                    creation = metadata.creation.copy(
+                        retry = null
+                    )
+                )
+            }
+            if (deletion && metadata.deletion.retry != null) {
+                metadata = metadata.copy(
+                    deletion = metadata.deletion.copy(
+                        retry = null
+                    )
+                )
             }
             return this
         }
@@ -547,24 +568,6 @@ data class SMMetadata(
             metadata = metadata.copy(
                 info = info
             )
-            return this
-        }
-
-        fun resetRetry(creation: Boolean = false, deletion: Boolean = false): Builder {
-            if (creation && metadata.creation.retry != null) {
-                metadata = metadata.copy(
-                    creation = metadata.creation.copy(
-                        retry = null
-                    )
-                )
-            }
-            if (deletion && metadata.deletion.retry != null) {
-                metadata = metadata.copy(
-                    deletion = metadata.deletion.copy(
-                        retry = null
-                    )
-                )
-            }
             return this
         }
     }

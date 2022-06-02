@@ -10,6 +10,7 @@ import org.opensearch.action.admin.cluster.snapshots.delete.DeleteSnapshotReques
 import org.opensearch.action.support.master.AcknowledgedResponse
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.snapshotmanagement.engine.statemachine.SMStateMachine
+import org.opensearch.indexmanagement.snapshotmanagement.filterBySMPolicyInSnapshotMetadata
 import org.opensearch.indexmanagement.snapshotmanagement.getSnapshots
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy
@@ -44,10 +45,13 @@ object DeletingState : State {
         } catch (ex: Exception) {
             log.error("Caught exception while getting snapshots to decide which snapshots to delete.", ex)
             return SMResult.Retry(metadataBuilder.build(), WorkflowType.DELETION)
-        }
+        }.filterBySMPolicyInSnapshotMetadata(job.policyName)
         metadataBuilder.resetRetry(deletion = true)
 
-        snapshotToDelete = findSnapshotsToDelete(getSnapshots, job.deletion.condition, log)
+        snapshotToDelete = filterByPolicyDeleteCondition(
+            getSnapshots,
+            job.deletion.condition, log
+        )
         log.info("sm dev: Going to delete: ${snapshotToDelete.map { it.name }}")
         if (snapshotToDelete.isNotEmpty()) {
             try {
@@ -79,7 +83,7 @@ object DeletingState : State {
      *   keep at least min_count of snapshots even it's outdated
      *   keep at most max_count of snapshots
      */
-    private fun findSnapshotsToDelete(snapshots: List<SnapshotInfo>, deleteCondition: SMPolicy.DeleteCondition, log: Logger): List<SMMetadata.SnapshotInfo> {
+    private fun filterByPolicyDeleteCondition(snapshots: List<SnapshotInfo>, deleteCondition: SMPolicy.DeleteCondition, log: Logger): List<SMMetadata.SnapshotInfo> {
         val snapshotInfos = snapshots.map {
             SMMetadata.SnapshotInfo(
                 it.snapshotId().name,

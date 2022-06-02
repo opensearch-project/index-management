@@ -7,6 +7,7 @@ package org.opensearch.indexmanagement.snapshotmanagement.engine.states
 
 import org.opensearch.common.unit.TimeValue
 import org.opensearch.indexmanagement.snapshotmanagement.engine.statemachine.SMStateMachine
+import org.opensearch.indexmanagement.snapshotmanagement.filterBySMPolicyInSnapshotMetadata
 import org.opensearch.indexmanagement.snapshotmanagement.getSnapshots
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata.Companion.upsert
@@ -40,7 +41,7 @@ object FinishedState : State {
             } catch (ex: Exception) {
                 log.error("Caught exception while getting started creation snapshot [${started.name}].", ex)
                 return SMResult.Retry(metadataBuilder.build(), WorkflowType.CREATION)
-            }
+            }.filterBySMPolicyInSnapshotMetadata(job.policyName)
             metadataBuilder.resetRetry(creation = true)
 
             val snapshot = snapshots.firstOrNull() ?: return SMResult.Failure(
@@ -90,7 +91,7 @@ object FinishedState : State {
             } catch (ex: Exception) {
                 log.error("Caught exception while getting snapshots to decide if snapshots [$startedDeleteSnapshots] has been deleted.", ex)
                 return SMResult.Retry(metadataBuilder.build(), WorkflowType.DELETION)
-            }
+            }.filterBySMPolicyInSnapshotMetadata(job.policyName)
             metadataBuilder.resetRetry(deletion = true)
 
             val existingSnapshotsNameSet = snapshots.map { it.snapshotId().name }.toSet()

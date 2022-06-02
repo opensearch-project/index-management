@@ -67,6 +67,7 @@ class SMStateMachine(
                             // can still execute other lateral states if exists
                         }
                         is SMResult.Failure -> {
+                            log.warn("State [$currentState] has failed.")
                             val ex = result.ex
                             val userMessage = preFixTimeStamp(SnapshotManagementException(ex).message)
                             val info = metadata.info.upsert(GENERAL_EXCEPTION_KEY to userMessage)
@@ -81,6 +82,7 @@ class SMStateMachine(
                             updateMetadata(metadataToSave.build())
                         }
                         is SMResult.Retry -> {
+                            log.warn("State [$currentState] is going to retry.")
                             val metadataToSave = SMMetadata.Builder(result.metadataToSave)
                                 .currentState(prevState)
                             val retry = when (result.workflowType) {
@@ -120,7 +122,8 @@ class SMStateMachine(
                 }
 
                 if (result !is SMResult.Next) {
-                    // Only Next result requires checking the continuous flag and may continue execute
+                    // Only Next result requires checking the continuous flag and
+                    //  continue to execute next vertical state
                     break
                 }
             } while (currentState.instance.continuous)
