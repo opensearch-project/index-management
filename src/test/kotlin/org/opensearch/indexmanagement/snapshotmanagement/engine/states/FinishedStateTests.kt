@@ -31,7 +31,7 @@ class FinishedStateTests : ClientMockTestCase() {
                 startTime = now(),
             )
         )
-        val job = randomSMPolicy()
+        val job = randomSMPolicy(policyName = "daily-snapshot")
         val context = SMStateMachine(client, job, metadata)
 
         val result = SMState.FINISHED.instance.execute(context)
@@ -53,7 +53,7 @@ class FinishedStateTests : ClientMockTestCase() {
                 startTime = now(),
             )
         )
-        val job = randomSMPolicy()
+        val job = randomSMPolicy(policyName = "daily-snapshot")
         val context = SMStateMachine(client, job, metadata)
 
         val result = SMState.FINISHED.instance.execute(context)
@@ -74,7 +74,7 @@ class FinishedStateTests : ClientMockTestCase() {
                 startTime = now(),
             )
         )
-        val job = randomSMPolicy()
+        val job = randomSMPolicy(policyName = "daily-snapshot")
         val context = SMStateMachine(client, job, metadata)
 
         val result = SMState.FINISHED.instance.execute(context)
@@ -94,7 +94,7 @@ class FinishedStateTests : ClientMockTestCase() {
                 startTime = now(),
             )
         )
-        val job = randomSMPolicy()
+        val job = randomSMPolicy(policyName = "daily-snapshot")
         val context = SMStateMachine(client, job, metadata)
 
         val result = SMState.FINISHED.instance.execute(context)
@@ -113,7 +113,10 @@ class FinishedStateTests : ClientMockTestCase() {
                 startTime = now().minusSeconds(10),
             )
         )
-        val job = randomSMPolicy(creationTimeLimit = TimeValue.timeValueSeconds(5))
+        val job = randomSMPolicy(
+            policyName = "daily-snapshot",
+            creationTimeLimit = TimeValue.timeValueSeconds(5)
+        )
         val context = SMStateMachine(client, job, metadata)
 
         val result = SMState.FINISHED.instance.execute(context)
@@ -134,7 +137,7 @@ class FinishedStateTests : ClientMockTestCase() {
             ),
             deleteStartedTime = now().minusSeconds(50),
         )
-        val job = randomSMPolicy()
+        val job = randomSMPolicy(policyName = "daily-snapshot")
         val context = SMStateMachine(client, job, metadata)
 
         val result = SMState.FINISHED.instance.execute(context)
@@ -159,7 +162,7 @@ class FinishedStateTests : ClientMockTestCase() {
             ),
             deleteStartedTime = now().minusSeconds(50),
         )
-        val job = randomSMPolicy()
+        val job = randomSMPolicy(policyName = "daily-snapshot")
         val context = SMStateMachine(client, job, metadata)
 
         val result = SMState.FINISHED.instance.execute(context)
@@ -183,7 +186,7 @@ class FinishedStateTests : ClientMockTestCase() {
             ),
             deleteStartedTime = now().minusSeconds(50),
         )
-        val job = randomSMPolicy()
+        val job = randomSMPolicy(policyName = "daily-snapshot")
         val context = SMStateMachine(client, job, metadata)
 
         val result = SMState.FINISHED.instance.execute(context)
@@ -205,7 +208,7 @@ class FinishedStateTests : ClientMockTestCase() {
             ),
             deleteStartedTime = now().minusSeconds(50),
         )
-        val job = randomSMPolicy(deletionTimeLimit = TimeValue.timeValueSeconds(5))
+        val job = randomSMPolicy(policyName = "daily-snapshot", deletionTimeLimit = TimeValue.timeValueSeconds(5))
         val context = SMStateMachine(client, job, metadata)
 
         val result = SMState.FINISHED.instance.execute(context)

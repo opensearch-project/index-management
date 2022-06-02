@@ -67,7 +67,6 @@ class SMStateMachine(
                             // can still execute other lateral states if exists
                         }
                         is SMResult.Failure -> {
-                            log.warn("State [$currentState] has failed.")
                             val ex = result.ex
                             val userMessage = preFixTimeStamp(SnapshotManagementException(ex).message)
                             val info = metadata.info.upsert(GENERAL_EXCEPTION_KEY to userMessage)

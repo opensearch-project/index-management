@@ -48,6 +48,8 @@ object DeletingState : State {
         }.filterBySMPolicyInSnapshotMetadata(job.policyName)
         metadataBuilder.resetRetry(deletion = true)
 
+        log.info("snapshots $getSnapshots")
+
         snapshotToDelete = filterByPolicyDeleteCondition(
             getSnapshots,
             job.deletion.condition, log
@@ -84,6 +86,7 @@ object DeletingState : State {
      *   keep at most max_count of snapshots
      */
     private fun filterByPolicyDeleteCondition(snapshots: List<SnapshotInfo>, deleteCondition: SMPolicy.DeleteCondition, log: Logger): List<SMMetadata.SnapshotInfo> {
+        log.info("sm dev: snapshotInfos $snapshots")
         val snapshotInfos = snapshots.map {
             SMMetadata.SnapshotInfo(
                 it.snapshotId().name,

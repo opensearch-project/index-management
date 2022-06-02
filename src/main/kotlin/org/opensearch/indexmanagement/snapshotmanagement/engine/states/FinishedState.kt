@@ -52,6 +52,7 @@ object FinishedState : State {
                 ),
                 WorkflowType.CREATION
             )
+
             when (snapshot.state()) {
                 SnapshotState.IN_PROGRESS -> {
                     job.creation.timeLimit?.let {
@@ -122,8 +123,10 @@ object FinishedState : State {
             // TODO SM if now is after next deletion time, we can update nextDeletionTime and try notify user
         }
 
+        log.info("sm dev pass creation")
         val metadataToSave = metadataBuilder.build()
         if (metadataToSave.creation.started != null || metadataToSave.deletion.started != null) {
+            log.info("sm dev stay")
             return SMResult.Stay(metadataToSave)
         }
         return SMResult.Next(metadataToSave)

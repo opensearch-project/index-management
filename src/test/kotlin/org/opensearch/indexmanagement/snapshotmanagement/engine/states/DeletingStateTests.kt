@@ -26,6 +26,7 @@ class DeletingStateTests : ClientMockTestCase() {
             currentState = SMState.DELETE_CONDITION_MET,
         )
         val job = randomSMPolicy(
+            policyName = "daily-snapshot",
             deletionMaxCount = 10,
         )
         val context = SMStateMachine(client, job, metadata)
@@ -47,6 +48,7 @@ class DeletingStateTests : ClientMockTestCase() {
             currentState = SMState.DELETE_CONDITION_MET,
         )
         val job = randomSMPolicy(
+            policyName = "daily-snapshot",
             deletionMaxAge = TimeValue.timeValueMinutes(1),
             deletionMinCount = 2,
         )
@@ -69,6 +71,7 @@ class DeletingStateTests : ClientMockTestCase() {
             currentState = SMState.DELETE_CONDITION_MET,
         )
         val job = randomSMPolicy(
+            policyName = "daily-snapshot",
             deletionMaxAge = TimeValue.timeValueMinutes(1),
             deletionMinCount = 2,
         )
@@ -88,7 +91,7 @@ class DeletingStateTests : ClientMockTestCase() {
         val metadata = randomSMMetadata(
             currentState = SMState.DELETE_CONDITION_MET,
         )
-        val job = randomSMPolicy()
+        val job = randomSMPolicy(policyName = "daily-snapshot")
         val context = SMStateMachine(client, job, metadata)
 
         val result = SMState.DELETING.instance.execute(context)
@@ -104,7 +107,7 @@ class DeletingStateTests : ClientMockTestCase() {
         val metadata = randomSMMetadata(
             currentState = SMState.DELETE_CONDITION_MET,
         )
-        val job = randomSMPolicy()
+        val job = randomSMPolicy(policyName = "daily-snapshot")
         val context = SMStateMachine(client, job, metadata)
 
         val result = SMState.DELETING.instance.execute(context)

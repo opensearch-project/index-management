@@ -197,7 +197,9 @@ fun addSMPolicyInSnapshotMetadata(snapshotConfig: Map<String, Any>, policyName: 
     return markedSnapshotConfig
 }
 
-fun List<SnapshotInfo>.filterBySMPolicyInSnapshotMetadata(policyName: String): List<SnapshotInfo> = filter { it.userMetadata()?.get("snapshot_management_policy") == policyName }
+fun List<SnapshotInfo>.filterBySMPolicyInSnapshotMetadata(policyName: String): List<SnapshotInfo> {
+    return filter { it.userMetadata()?.get("snapshot_management_policy") == policyName }
+}
 
 /**
  * Get snapshots

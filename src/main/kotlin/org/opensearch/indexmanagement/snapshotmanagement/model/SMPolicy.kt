@@ -353,7 +353,7 @@ data class SMPolicy(
             const val MIN_COUNT_FIELD = "min_count"
             const val DEFAULT_MIN_COUNT = 5
 
-            val DEFAULT_DELETE_CONDITION = DeleteCondition(maxCount= DEFAULT_MAX_COUNT)
+            val DEFAULT_DELETE_CONDITION = DeleteCondition(maxCount = DEFAULT_MAX_COUNT)
 
             fun parse(xcp: XContentParser): DeleteCondition {
                 var maxCount = DEFAULT_MAX_COUNT

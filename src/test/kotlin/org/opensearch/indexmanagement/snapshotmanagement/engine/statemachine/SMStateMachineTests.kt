@@ -97,7 +97,7 @@ class SMStateMachineTests : ClientMockTestCase() {
             ),
             deleteStartedTime = now().minusSeconds(50),
         )
-        val job = randomSMPolicy(deletionTimeLimit = TimeValue.timeValueSeconds(5))
+        val job = randomSMPolicy(policyName = "daily-snapshot", deletionTimeLimit = TimeValue.timeValueSeconds(5))
 
         val stateMachineSpy = spy(SMStateMachine(client, job, metadata))
         stateMachineSpy.next(smTransitions)

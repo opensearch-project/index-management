@@ -8,10 +8,13 @@ package org.opensearch.indexmanagement.snapshotmanagement
 import com.nhaarman.mockitokotlin2.doReturn
 import com.nhaarman.mockitokotlin2.mock
 import com.nhaarman.mockitokotlin2.whenever
+import org.opensearch.Version
 import org.opensearch.action.admin.cluster.snapshots.create.CreateSnapshotResponse
 import org.opensearch.action.admin.cluster.snapshots.get.GetSnapshotsResponse
 import org.opensearch.action.index.IndexResponse
+import org.opensearch.cluster.SnapshotsInProgress
 import org.opensearch.common.UUIDs
+import org.opensearch.common.collect.ImmutableOpenMap
 import org.opensearch.common.unit.TimeValue
 import org.opensearch.common.xcontent.ToXContent
 import org.opensearch.common.xcontent.XContentFactory
@@ -27,9 +30,9 @@ import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy
 import org.opensearch.jobscheduler.spi.schedule.CronSchedule
 import org.opensearch.jobscheduler.spi.schedule.IntervalSchedule
 import org.opensearch.rest.RestStatus
+import org.opensearch.snapshots.Snapshot
 import org.opensearch.snapshots.SnapshotId
 import org.opensearch.snapshots.SnapshotInfo
-import org.opensearch.snapshots.SnapshotState
 import org.opensearch.test.OpenSearchTestCase.randomAlphaOfLength
 import org.opensearch.test.OpenSearchTestCase.randomIntBetween
 import org.opensearch.test.OpenSearchTestCase.randomNonNegativeLong
@@ -159,8 +162,9 @@ fun mockSnapshotInfo(
     startTime: Long = randomNonNegativeLong(),
     endTime: Long = randomNonNegativeLong(),
     reason: String? = null, // reason with valid string leads to FAILED snapshot state
+    policyName: String = "daily-snapshot",
 ): SnapshotInfo {
-    return SnapshotInfo(
+    val result = SnapshotInfo(
         SnapshotId(name, UUIDs.randomBase64UUID()),
         listOf("index1"),
         listOf("ds-1"),
@@ -170,19 +174,34 @@ fun mockSnapshotInfo(
         5,
         emptyList(),
         false,
-        emptyMap(),
+        mapOf("snapshot_management_policy" to policyName),
     )
+    return result
 }
 
+/**
+ * SnapshotInfo is final class so we cannot directly mock
+ *
+ * Need to mock the InProgress state and snapshot metadata
+ */
 fun mockInProgressSnapshotInfo(
     name: String = randomAlphaOfLength(10),
 ): SnapshotInfo {
-    return SnapshotInfo(
-        SnapshotId(name, UUIDs.randomBase64UUID()),
-        listOf("index1"),
-        listOf("ds-1"),
-        SnapshotState.IN_PROGRESS,
+    val entry = SnapshotsInProgress.Entry(
+        Snapshot("repo", SnapshotId(name, UUIDs.randomBase64UUID())),
+        false,
+        false,
+        SnapshotsInProgress.State.SUCCESS,
+        emptyList(),
+        emptyList(),
+        randomNonNegativeLong(),
+        randomNonNegativeLong(),
+        ImmutableOpenMap.of(),
+        "",
+        mapOf("snapshot_management_policy" to "daily-snapshot"),
+        Version.CURRENT,
     )
+    return SnapshotInfo(entry)
 }
 
 fun mockGetSnapshotResponse(num: Int): GetSnapshotsResponse {
