@@ -43,7 +43,7 @@ class SMStateMachine(
             do {
                 val nextStates = transitions[currentState]
                 if (nextStates == null) {
-                    // Unlikely to reach unless the metadata is tampered
+                    // Unlikely to reach unless the currentState field of metadata is tampered
                     log.error("No next states for current state [$currentState].")
                     return
                 }

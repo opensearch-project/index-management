@@ -22,6 +22,8 @@ import org.opensearch.indexmanagement.opensearchapi.nullValueHandler
 import org.opensearch.indexmanagement.opensearchapi.optionalField
 import org.opensearch.indexmanagement.opensearchapi.optionalTimeField
 import org.opensearch.indexmanagement.snapshotmanagement.getSMMetadataDocId
+import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy.DeleteCondition.Companion.DEFAULT_DELETE_CONDITION
+import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy.Deletion.Companion.DEFAULT_DELETE_SCHEDULE
 import org.opensearch.indexmanagement.snapshotmanagement.smDocIdToPolicyName
 import org.opensearch.jobscheduler.spi.ScheduledJobParameter
 import org.opensearch.jobscheduler.spi.schedule.CronSchedule
@@ -157,10 +159,17 @@ data class SMPolicy(
                 schedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES)
             }
 
+            if (deletion == null) {
+                deletion = Deletion(
+                    schedule = DEFAULT_DELETE_SCHEDULE,
+                    condition = DEFAULT_DELETE_CONDITION,
+                )
+            }
+
             return SMPolicy(
                 description = description,
                 creation = requireNotNull(creation) { "creation field must not be null" },
-                deletion = requireNotNull(deletion) { "deletion field must not be null" },
+                deletion = deletion,
                 snapshotConfig = requireNotNull(snapshotConfig) { "snapshot_config field must not be null" },
                 jobLastUpdateTime = requireNotNull(lastUpdatedTime) { "last_updated_at field must not be null" },
                 jobEnabledTime = enabledTime,
@@ -267,6 +276,8 @@ data class SMPolicy(
             const val SCHEDULE_FIELD = "schedule"
             const val CONDITION_FIELD = "condition"
 
+            val DEFAULT_DELETE_SCHEDULE = CronSchedule("0 1 * * *", ZoneId.systemDefault())
+
             fun parse(xcp: XContentParser): Deletion {
                 var schedule: Schedule? = null
                 var timeLimit: TimeValue? = null
@@ -286,13 +297,17 @@ data class SMPolicy(
 
                 // If user doesn't provide delete schedule, defaults to every day 1AM
                 if (schedule == null) {
-                    schedule = CronSchedule("0 1 * * *", ZoneId.systemDefault())
+                    schedule = DEFAULT_DELETE_SCHEDULE
+                }
+
+                if (condition == null) {
+                    condition = DEFAULT_DELETE_CONDITION
                 }
 
                 return Deletion(
                     schedule = schedule,
                     timeLimit = timeLimit,
-                    condition = requireNotNull(condition) { "condition field must not be null" },
+                    condition = condition,
                 )
             }
         }
@@ -337,6 +352,8 @@ data class SMPolicy(
             const val MAX_AGE_FIELD = "max_age"
             const val MIN_COUNT_FIELD = "min_count"
             const val DEFAULT_MIN_COUNT = 5
+
+            val DEFAULT_DELETE_CONDITION = DeleteCondition(maxCount= DEFAULT_MAX_COUNT)
 
             fun parse(xcp: XContentParser): DeleteCondition {
                 var maxCount = DEFAULT_MAX_COUNT
