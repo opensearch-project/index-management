@@ -9,7 +9,6 @@ import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.opensearch.client.Client
 import org.opensearch.indexmanagement.snapshotmanagement.SnapshotManagementException
-import org.opensearch.indexmanagement.snapshotmanagement.SnapshotManagementException.Companion.GENERAL_EXCEPTION_KEY
 import org.opensearch.indexmanagement.snapshotmanagement.SnapshotManagementException.ExceptionKey
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.SMResult
 import org.opensearch.indexmanagement.snapshotmanagement.preFixTimeStamp
@@ -20,7 +19,6 @@ import org.opensearch.indexmanagement.snapshotmanagement.getNextExecutionTime
 import org.opensearch.indexmanagement.snapshotmanagement.indexMetadata
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata
-import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata.Companion.upsert
 import org.opensearch.indexmanagement.snapshotmanagement.smDocIdToPolicyName
 import org.opensearch.indexmanagement.util.OpenForTesting
 import java.time.Instant.now
@@ -69,12 +67,12 @@ class SMStateMachine(
                         is SMResult.Failure -> {
                             val ex = result.ex
                             val userMessage = preFixTimeStamp(SnapshotManagementException(ex).message)
-                            val info = metadata.info.upsert(GENERAL_EXCEPTION_KEY to userMessage)
+                            // val info = metadata.info.upsert(GENERAL_EXCEPTION_KEY to userMessage)
                             val metadataToSave = SMMetadata.Builder(result.metadataToSave)
                                 .reset(result.workflowType)
                             if (result.notifiable) {
                                 log.error("Caught exception while executing state [$currentState]. Reset the workflow ${result.workflowType}.", ex)
-                                metadataToSave.info(info)
+                                // metadataToSave.info(info)
                                 // TODO error notification
                             }
 
@@ -151,6 +149,7 @@ class SMStateMachine(
     suspend fun updateMetadata(md: SMMetadata) {
         try {
             // TODO SM retry policy for update metadata call
+            log.info("sm dev update metadata $md")
             val res = client.indexMetadata(md, job.id, metadataSeqNo, metadataPrimaryTerm)
             metadataSeqNo = res.seqNo
             metadataPrimaryTerm = res.primaryTerm

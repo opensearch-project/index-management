@@ -6,12 +6,11 @@
 package org.opensearch.indexmanagement.snapshotmanagement.engine.states
 
 import kotlinx.coroutines.runBlocking
-import org.opensearch.indexmanagement.randomInstant
 import org.opensearch.indexmanagement.ClientMockTestCase
 import org.opensearch.indexmanagement.snapshotmanagement.engine.statemachine.SMStateMachine
 import org.opensearch.indexmanagement.snapshotmanagement.randomSMMetadata
 import org.opensearch.indexmanagement.snapshotmanagement.randomSMPolicy
-import org.opensearch.indexmanagement.snapshotmanagement.randomSMSnapshotInfo
+import org.opensearch.indexmanagement.snapshotmanagement.randomSnapshotName
 import java.time.Instant
 
 class DeleteConditionMetStateTests : ClientMockTestCase() {
@@ -47,8 +46,7 @@ class DeleteConditionMetStateTests : ClientMockTestCase() {
     fun `test already started snapshot deletion`() = runBlocking {
         val metadata = randomSMMetadata(
             currentState = SMState.START,
-            startedDeletion = listOf(randomSMSnapshotInfo()),
-            deleteStartedTime = randomInstant(),
+            startedDeletion = listOf(randomSnapshotName()),
         )
         val job = randomSMPolicy()
         val context = SMStateMachine(client, job, metadata)

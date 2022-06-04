@@ -59,7 +59,7 @@ class DeletingStateTests : ClientMockTestCase() {
         result as SMResult.Next
         assertNotNull("Deletion started field is initialized.", result.metadataToSave.deletion.started)
         assertEquals(1, result.metadataToSave.deletion.started!!.size)
-        assertEquals("old_snapshot", result.metadataToSave.deletion.started!!.first().name)
+        assertEquals("old_snapshot", result.metadataToSave.deletion.started!!.first())
     }
 
     fun `test snapshots exceed max age but need to remain min count`() = runBlocking {

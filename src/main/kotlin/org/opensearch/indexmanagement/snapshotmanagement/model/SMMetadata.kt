@@ -32,9 +32,8 @@ data class SMMetadata(
     val policySeqNo: Long,
     val policyPrimaryTerm: Long,
     val currentState: SMState,
-    val creation: Creation,
-    val deletion: Deletion,
-    val info: InfoType? = null,
+    val creation: WorkflowMetadata,
+    val deletion: WorkflowMetadata,
     val id: String = NO_ID,
     val seqNo: Long = SequenceNumbers.UNASSIGNED_SEQ_NO,
     val primaryTerm: Long = SequenceNumbers.UNASSIGNED_PRIMARY_TERM,
@@ -48,7 +47,6 @@ data class SMMetadata(
             .field(CURRENT_STATE_FIELD, currentState.toString())
             .field(CREATION_FIELD, creation)
             .field(DELETION_FIELD, deletion)
-            .optionalField(INFO_FIELD, info)
             .endObject()
             .endObject()
     }
@@ -60,7 +58,6 @@ data class SMMetadata(
         const val CURRENT_STATE_FIELD = "current_state"
         const val CREATION_FIELD = "creation"
         const val DELETION_FIELD = "deletion"
-        const val INFO_FIELD = "info"
 
         fun parse(
             xcp: XContentParser,
@@ -71,9 +68,8 @@ data class SMMetadata(
             var policySeqNo: Long? = null
             var policyPrimaryTerm: Long? = null
             var currentState: SMState? = null
-            var creation: Creation? = null
-            var deletion: Deletion? = null
-            var info: InfoType? = null
+            var creation: WorkflowMetadata? = null
+            var deletion: WorkflowMetadata? = null
 
             ensureExpectedToken(Token.START_OBJECT, xcp.currentToken(), xcp)
             while (xcp.nextToken() != Token.END_OBJECT) {
@@ -84,19 +80,17 @@ data class SMMetadata(
                     POLICY_SEQ_NO_FIELD -> policySeqNo = xcp.longValue()
                     POLICY_PRIMARY_TERM_FIELD -> policyPrimaryTerm = xcp.longValue()
                     CURRENT_STATE_FIELD -> currentState = SMState.valueOf(xcp.text())
-                    CREATION_FIELD -> creation = Creation.parse(xcp)
-                    DELETION_FIELD -> deletion = Deletion.parse(xcp)
-                    INFO_FIELD -> info = xcp.nullValueHandler { xcp.map() }
+                    CREATION_FIELD -> creation = WorkflowMetadata.parse(xcp)
+                    DELETION_FIELD -> deletion = WorkflowMetadata.parse(xcp)
                 }
             }
 
             return SMMetadata(
-                policySeqNo = requireNotNull(policySeqNo) {},
-                policyPrimaryTerm = requireNotNull(policyPrimaryTerm) {},
-                currentState = requireNotNull(currentState) {},
-                creation = requireNotNull(creation) {},
-                deletion = requireNotNull(deletion) {},
-                info = info,
+                policySeqNo = requireNotNull(policySeqNo) { "policy_seq_no field must not be null" },
+                policyPrimaryTerm = requireNotNull(policyPrimaryTerm) { "policy_primary_term field must not be null" },
+                currentState = requireNotNull(currentState) { "current_state field must not be null" },
+                creation = requireNotNull(creation) { "creation field must not be null" },
+                deletion = requireNotNull(deletion) { "deletion field must not be null" },
                 id = id,
                 seqNo = seqNo,
                 primaryTerm = primaryTerm
@@ -118,9 +112,8 @@ data class SMMetadata(
         policySeqNo = sin.readLong(),
         policyPrimaryTerm = sin.readLong(),
         currentState = sin.readEnum(SMState::class.java),
-        creation = Creation(sin),
-        deletion = Deletion(sin),
-        info = sin.readMap(),
+        creation = WorkflowMetadata(sin),
+        deletion = WorkflowMetadata(sin),
         id = sin.readString(),
         seqNo = sin.readLong(),
         primaryTerm = sin.readLong(),
@@ -132,16 +125,15 @@ data class SMMetadata(
         out.writeEnum(currentState)
         creation.writeTo(out)
         deletion.writeTo(out)
-        out.writeMap(info)
         out.writeString(id)
         out.writeLong(seqNo)
         out.writeLong(primaryTerm)
     }
 
-    data class Creation(
+    data class WorkflowMetadata(
         val trigger: Trigger,
-        val started: SnapshotInfo? = null,
-        val finished: SnapshotInfo? = null,
+        val started: List<String>? = null,
+        val latestExecution: LatestExecution? = null,
         val retry: Retry? = null,
     ) : Writeable, ToXContentObject {
 
@@ -149,7 +141,7 @@ data class SMMetadata(
             return builder.startObject()
                 .field(TRIGGER_FIELD, trigger)
                 .optionalField(STARTED_FIELD, started)
-                .optionalField(FINISHED_FIELD, finished)
+                .optionalField(LAST_EXECUTION_FIELD, latestExecution)
                 .optionalField(RETRY_FIELD, retry)
                 .endObject()
         }
@@ -157,12 +149,12 @@ data class SMMetadata(
         companion object {
             const val TRIGGER_FIELD = "trigger"
             const val STARTED_FIELD = "started"
-            const val FINISHED_FIELD = "finished"
+            const val LAST_EXECUTION_FIELD = "latest_execution"
 
-            fun parse(xcp: XContentParser): Creation {
+            fun parse(xcp: XContentParser): WorkflowMetadata {
                 var trigger: Trigger? = null
-                var started: SnapshotInfo? = null
-                var finished: SnapshotInfo? = null
+                var started: List<String>? = null
+                var latestExecution: LatestExecution? = null
                 var retry: Retry? = null
 
                 ensureExpectedToken(Token.START_OBJECT, xcp.currentToken(), xcp)
@@ -172,16 +164,16 @@ data class SMMetadata(
 
                     when (fieldName) {
                         TRIGGER_FIELD -> trigger = Trigger.parse(xcp)
-                        STARTED_FIELD -> started = xcp.nullValueHandler { SnapshotInfo.parse(xcp) }
-                        FINISHED_FIELD -> finished = xcp.nullValueHandler { SnapshotInfo.parse(xcp) }
+                        STARTED_FIELD -> started = xcp.nullValueHandler { parseArray { text() } }
+                        LAST_EXECUTION_FIELD -> latestExecution = xcp.nullValueHandler { LatestExecution.parse(xcp) }
                         RETRY_FIELD -> retry = xcp.nullValueHandler { Retry.parse(xcp) }
                     }
                 }
 
-                return Creation(
+                return WorkflowMetadata(
                     trigger = requireNotNull(trigger) { "trigger field must not be null." },
                     started = started,
-                    finished = finished,
+                    latestExecution = latestExecution,
                     retry = retry,
                 )
             }
@@ -189,51 +181,50 @@ data class SMMetadata(
 
         constructor(sin: StreamInput) : this(
             trigger = Trigger(sin),
-            started = sin.readOptionalWriteable { SnapshotInfo(it) },
-            finished = sin.readOptionalWriteable { SnapshotInfo(it) },
+            started = sin.readOptionalStringList(),
+            latestExecution = sin.readOptionalWriteable { LatestExecution(it) },
             retry = sin.readOptionalWriteable { Retry(it) },
         )
 
         override fun writeTo(out: StreamOutput) {
             trigger.writeTo(out)
-            out.writeOptionalWriteable(started)
-            out.writeOptionalWriteable(finished)
+            out.writeOptionalStringCollection(started)
+            out.writeOptionalWriteable(latestExecution)
             out.writeOptionalWriteable(retry)
         }
     }
 
-    data class Deletion(
-        val trigger: Trigger,
-        val started: List<SnapshotInfo>? = null,
-        val startedTime: Instant? = null,
-        val retry: Retry? = null,
+    data class LatestExecution(
+        val status: Status,
+        val startTime: Instant,
+        val endTime: Instant? = null,
+        val message: String? = null,
+        val snapshot: List<String>? = null,
     ) : Writeable, ToXContentObject {
-
-        init {
-            require(!(started != null).xor(startedTime != null)) {
-                "deletion started and startedTime must exist at the same time."
-            }
-        }
 
         override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
             return builder.startObject()
-                .field(TRIGGER_FIELD, trigger)
-                .optionalField(STARTED_FIELD, started)
-                .optionalTimeField(STARTED_TIME_FIELD, startedTime)
-                .optionalField(RETRY_FIELD, retry)
+                .field(STATUS_FIELD, status.toString())
+                .optionalTimeField(START_TIME_FIELD, startTime)
+                .optionalTimeField(END_TIME_FIELD, endTime)
+                .optionalField(MESSAGE_FIELD, message)
+                .optionalField(SNAPSHOT_FIELD, snapshot)
                 .endObject()
         }
 
         companion object {
-            const val TRIGGER_FIELD = "trigger"
-            const val STARTED_FIELD = "started"
-            const val STARTED_TIME_FIELD = "started_time"
+            const val STATUS_FIELD = "status"
+            const val START_TIME_FIELD = "start_time"
+            const val END_TIME_FIELD = "end_time"
+            const val MESSAGE_FIELD = "message"
+            const val SNAPSHOT_FIELD = "snapshot"
 
-            fun parse(xcp: XContentParser): Deletion {
-                var trigger: Trigger? = null
-                var started: List<SnapshotInfo>? = null
-                var startedTime: Instant? = null
-                var retry: Retry? = null
+            fun parse(xcp: XContentParser): LatestExecution {
+                var status: Status? = null
+                var startTime: Instant? = null
+                var endTime: Instant? = null
+                var message: String? = null
+                var snapshot: List<String>? = null
 
                 ensureExpectedToken(Token.START_OBJECT, xcp.currentToken(), xcp)
                 while (xcp.nextToken() != Token.END_OBJECT) {
@@ -241,39 +232,46 @@ data class SMMetadata(
                     xcp.nextToken()
 
                     when (fieldName) {
-                        TRIGGER_FIELD -> trigger = Trigger.parse(xcp)
-                        STARTED_FIELD -> started = xcp.nullValueHandler { parseArray { SnapshotInfo.parse(xcp) } }
-                        STARTED_TIME_FIELD -> startedTime = xcp.instant()
-                        RETRY_FIELD -> retry = xcp.nullValueHandler { Retry.parse(xcp) }
+                        STATUS_FIELD -> status = Status.valueOf(xcp.text())
+                        START_TIME_FIELD -> startTime = xcp.instant()
+                        END_TIME_FIELD -> endTime = xcp.instant()
+                        MESSAGE_FIELD -> message = xcp.nullValueHandler { text() }
+                        SNAPSHOT_FIELD -> snapshot = xcp.nullValueHandler { parseArray { text() } }
                     }
                 }
 
-                return Deletion(
-                    trigger = requireNotNull(trigger) { "trigger field must not be null" },
-                    started = started,
-                    startedTime = startedTime,
-                    retry = retry,
+                return LatestExecution(
+                    status = requireNotNull(status) { "last_execution.status must not be null" },
+                    startTime = requireNotNull(startTime) { "last_execution.start_time must not be null" },
+                    endTime = endTime,
+                    message = message,
+                    snapshot = snapshot,
                 )
             }
         }
 
         constructor(sin: StreamInput) : this(
-            trigger = Trigger(sin),
-            started = if (sin.readBoolean()) sin.readList { SnapshotInfo(it) } else null,
-            startedTime = sin.readOptionalInstant(),
-            retry = sin.readOptionalWriteable { Retry(it) },
+            status = sin.readEnum(Status::class.java),
+            startTime = sin.readInstant(),
+            endTime = sin.readOptionalInstant(),
+            message = sin.readOptionalString(),
+            snapshot = sin.readOptionalStringList(),
         )
 
         override fun writeTo(out: StreamOutput) {
-            trigger.writeTo(out)
-            if (started == null) {
-                out.writeBoolean(false)
-            } else {
-                out.writeBoolean(true)
-                out.writeList(started)
-            }
-            out.writeOptionalInstant(startedTime)
-            out.writeOptionalWriteable(retry)
+            out.writeEnum(status)
+            out.writeInstant(startTime)
+            out.writeOptionalInstant(endTime)
+            out.writeOptionalString(message)
+            out.writeOptionalStringCollection(snapshot)
+        }
+
+        enum class Status {
+            IN_PROGRESS,
+            SUCCESS,
+            RETRYING,
+            FAILED,
+            TIME_LIMIT_EXCEEDED,
         }
     }
 
@@ -321,63 +319,6 @@ data class SMMetadata(
 
         override fun writeTo(out: StreamOutput) {
             out.writeInstant(time)
-        }
-    }
-
-    data class SnapshotInfo(
-        val name: String,
-        val startTime: Instant,
-        val endTime: Instant? = null,
-    ) : Writeable, ToXContentObject {
-
-        override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
-            return builder.startObject()
-                .field(NAME_FIELD, name)
-                .optionalTimeField(START_TIME_FIELD, startTime)
-                .optionalTimeField(END_TIME_FIELD, endTime)
-                .endObject()
-        }
-
-        companion object {
-            const val NAME_FIELD = "name"
-            const val START_TIME_FIELD = "start_time"
-            const val END_TIME_FIELD = "end_time"
-
-            fun parse(xcp: XContentParser): SnapshotInfo {
-                var name: String? = null
-                var startTime: Instant? = null
-                var endTime: Instant? = null
-
-                ensureExpectedToken(Token.START_OBJECT, xcp.currentToken(), xcp)
-                while (xcp.nextToken() != Token.END_OBJECT) {
-                    val fieldName = xcp.currentName()
-                    xcp.nextToken()
-
-                    when (fieldName) {
-                        NAME_FIELD -> name = xcp.text()
-                        START_TIME_FIELD -> startTime = xcp.instant()
-                        END_TIME_FIELD -> endTime = xcp.instant()
-                    }
-                }
-
-                return SnapshotInfo(
-                    name = requireNotNull(name) { "name in snapshot info must not be null." },
-                    startTime = requireNotNull(startTime) { "start time in snapshot info must not be null." },
-                    endTime = endTime,
-                )
-            }
-        }
-
-        constructor(sin: StreamInput) : this(
-            name = sin.readString(),
-            startTime = sin.readInstant(),
-            endTime = sin.readOptionalInstant(),
-        )
-
-        override fun writeTo(out: StreamOutput) {
-            out.writeString(name)
-            out.writeInstant(startTime)
-            out.writeOptionalInstant(endTime)
         }
     }
 
@@ -439,7 +380,6 @@ data class SMMetadata(
             var startedCreation = metadata.creation.started
             var creationRetry = metadata.creation.retry
             var startedDeletion = metadata.deletion.started
-            var deletionStartedTime = metadata.deletion.startedTime
             var deletionRetry = metadata.deletion.retry
             when (workflowType) {
                 WorkflowType.CREATION -> {
@@ -450,7 +390,6 @@ data class SMMetadata(
                 WorkflowType.DELETION -> {
                     currentState = SMState.DELETING
                     startedDeletion = null
-                    deletionStartedTime = null
                     deletionRetry = null
                 }
             }
@@ -463,7 +402,6 @@ data class SMMetadata(
                 ),
                 deletion = metadata.deletion.copy(
                     started = startedDeletion,
-                    startedTime = deletionStartedTime,
                     retry = deletionRetry,
                 ),
             )
@@ -534,10 +472,12 @@ data class SMMetadata(
             return this
         }
 
-        fun creation(snapshotInfo: SnapshotInfo?): Builder {
+        // TODO SM update execution metadata and init execution metadata
+        fun creation(snapshot: String?, execution: LatestExecution): Builder {
             metadata = metadata.copy(
                 creation = metadata.creation.copy(
-                    started = snapshotInfo
+                    started = if (snapshot == null) null else listOf(snapshot),
+                    latestExecution = execution,
                 )
             )
             return this
@@ -554,19 +494,12 @@ data class SMMetadata(
             return this
         }
 
-        fun deletion(startedTime: Instant?, snapshotInfo: List<SnapshotInfo>?): Builder {
+        fun deletion(snapshots: List<String>?, execution: LatestExecution): Builder {
             metadata = metadata.copy(
                 deletion = metadata.deletion.copy(
-                    started = snapshotInfo,
-                    startedTime = startedTime,
+                    started = snapshots,
+                    latestExecution = execution,
                 )
-            )
-            return this
-        }
-
-        fun info(info: InfoType?): Builder {
-            metadata = metadata.copy(
-                info = info
             )
             return this
         }

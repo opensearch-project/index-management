@@ -87,12 +87,12 @@ object SMRunner :
             policySeqNo = job.seqNo,
             policyPrimaryTerm = job.primaryTerm,
             currentState = SMState.START,
-            creation = SMMetadata.Creation(
+            creation = SMMetadata.WorkflowMetadata(
                 SMMetadata.Trigger(
                     time = getNextExecutionTime(job.creation.schedule, now())
                 )
             ),
-            deletion = SMMetadata.Deletion(
+            deletion = SMMetadata.WorkflowMetadata(
                 SMMetadata.Trigger(
                     time = getNextExecutionTime(job.deletion.schedule, now())
                 )

@@ -38,6 +38,7 @@ import org.opensearch.test.OpenSearchTestCase.randomIntBetween
 import org.opensearch.test.OpenSearchTestCase.randomNonNegativeLong
 import org.opensearch.test.rest.OpenSearchRestTestCase
 import java.time.Instant
+import java.time.Instant.now
 
 fun randomSMMetadata(
     currentState: SMState = SMState.START,
@@ -45,33 +46,42 @@ fun randomSMMetadata(
     nextDeletionTime: Instant = randomInstant(),
     policySeqNo: Long = randomNonNegativeLong(),
     policyPrimaryTerm: Long = randomNonNegativeLong(),
-    startedCreation: SMMetadata.SnapshotInfo? = null,
-    startedDeletion: List<SMMetadata.SnapshotInfo>? = null,
+    startedCreation: String? = null,
+    startedCreationTime: Instant? = null,
+    startedDeletion: List<String>? = null,
+    startedDeletionTime: Instant? = null,
     creationRetryCount: Int? = null,
-    deleteStartedTime: Instant? = null,
     deletionRetryCount: Int? = null,
 ): SMMetadata {
     return SMMetadata(
         policySeqNo = policySeqNo,
         policyPrimaryTerm = policyPrimaryTerm,
         currentState = currentState,
-        creation = SMMetadata.Creation(
+        creation = SMMetadata.WorkflowMetadata(
             trigger = SMMetadata.Trigger(
                 time = nextCreationTime
             ),
-            started = startedCreation,
+            started = if (startedCreation != null) listOf(startedCreation) else null,
+            latestExecution = if (startedCreationTime != null) randomLatestExecution(startedCreationTime) else null,
             retry = creationRetryCount?.let { SMMetadata.Retry(it) },
         ),
-        deletion = SMMetadata.Deletion(
+        deletion = SMMetadata.WorkflowMetadata(
             trigger = SMMetadata.Trigger(
                 time = nextDeletionTime
             ),
             started = startedDeletion,
-            startedTime = deleteStartedTime,
+            latestExecution = if (startedDeletionTime != null) randomLatestExecution(startedDeletionTime) else null,
             retry = deletionRetryCount?.let { SMMetadata.Retry(it) },
         ),
     )
 }
+
+fun randomLatestExecution(
+    startTime: Instant = now()
+) = SMMetadata.LatestExecution(
+    SMMetadata.LatestExecution.Status.IN_PROGRESS,
+    startTime = startTime,
+)
 
 fun randomSMPolicy(
     policyName: String = randomAlphaOfLength(10),
@@ -118,13 +128,7 @@ fun randomSMPolicy(
     )
 }
 
-fun randomSMSnapshotInfo(
-    name: String = randomAlphaOfLength(10),
-    startTime: Instant = randomInstant(),
-) = SMMetadata.SnapshotInfo(
-    name = name,
-    startTime = startTime,
-)
+fun randomSnapshotName(): String = randomAlphaOfLength(10)
 
 fun ToXContent.toJsonString(params: ToXContent.Params = ToXContent.EMPTY_PARAMS): String = this.toXContent(XContentFactory.jsonBuilder(), params).string()
 

@@ -50,8 +50,9 @@ object CreatingState : State {
         snapshotName = checkCreatedSnapshots(lastExecutionTime, getSnapshots)
         if (snapshotName != null) {
             metadataBuilder.creation(
-                SMMetadata.SnapshotInfo(
-                    name = snapshotName,
+                snapshot = snapshotName,
+                execution = SMMetadata.LatestExecution(
+                    status = SMMetadata.LatestExecution.Status.IN_PROGRESS,
                     startTime = now(),
                 )
             )
@@ -66,8 +67,9 @@ object CreatingState : State {
                 // TODO SM notification that snapshot starts to be created
                 log.info("sm dev: Create snapshot response: $res.")
                 metadataBuilder.creation(
-                    SMMetadata.SnapshotInfo(
-                        name = snapshotName,
+                    snapshot = snapshotName,
+                    execution = SMMetadata.LatestExecution(
+                        status = SMMetadata.LatestExecution.Status.IN_PROGRESS,
                         startTime = now(),
                     )
                 )

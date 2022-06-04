@@ -10,7 +10,7 @@ import org.opensearch.indexmanagement.ClientMockTestCase
 import org.opensearch.indexmanagement.snapshotmanagement.engine.statemachine.SMStateMachine
 import org.opensearch.indexmanagement.snapshotmanagement.randomSMMetadata
 import org.opensearch.indexmanagement.snapshotmanagement.randomSMPolicy
-import org.opensearch.indexmanagement.snapshotmanagement.randomSMSnapshotInfo
+import org.opensearch.indexmanagement.snapshotmanagement.randomSnapshotName
 import java.time.Instant.now
 
 class CreateConditionMetStateTests : ClientMockTestCase() {
@@ -46,7 +46,7 @@ class CreateConditionMetStateTests : ClientMockTestCase() {
     fun `test already started snapshot creation`() = runBlocking {
         val metadata = randomSMMetadata(
             currentState = SMState.START,
-            startedCreation = randomSMSnapshotInfo(),
+            startedCreation = randomSnapshotName(),
         )
         val job = randomSMPolicy()
         val context = SMStateMachine(client, job, metadata)

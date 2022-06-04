@@ -32,7 +32,7 @@ object DeletingState : State {
         val metadataBuilder = SMMetadata.Builder(metadata)
 
         val res: AcknowledgedResponse
-        val snapshotToDelete: List<SMMetadata.SnapshotInfo>
+        val snapshotsToDelete: List<String>
 
         val getSnapshots = try {
             client.getSnapshots(
@@ -50,16 +50,16 @@ object DeletingState : State {
 
         log.info("snapshots $getSnapshots")
 
-        snapshotToDelete = filterByPolicyDeleteCondition(
+        snapshotsToDelete = filterByPolicyDeleteCondition(
             getSnapshots,
             job.deletion.condition, log
         )
-        log.info("sm dev: Going to delete: ${snapshotToDelete.map { it.name }}")
-        if (snapshotToDelete.isNotEmpty()) {
+        log.info("sm dev: Going to delete: $snapshotsToDelete")
+        if (snapshotsToDelete.isNotEmpty()) {
             try {
                 val req = DeleteSnapshotRequest(
                     job.snapshotConfig["repository"] as String,
-                    *snapshotToDelete.map { it.name }.toTypedArray()
+                    *snapshotsToDelete.toTypedArray()
                 )
                 res = client.admin().cluster().suspendUntil { deleteSnapshot(req, it) }
                 log.info("sm dev: Delete snapshot acknowledged: ${res.isAcknowledged}.")
@@ -68,10 +68,13 @@ object DeletingState : State {
             }
         }
 
-        if (snapshotToDelete.isNotEmpty())
+        if (snapshotsToDelete.isNotEmpty())
             metadataBuilder.deletion(
-                startedTime = now(),
-                snapshotInfo = snapshotToDelete,
+                snapshots = snapshotsToDelete,
+                execution = SMMetadata.LatestExecution(
+                    status = SMMetadata.LatestExecution.Status.IN_PROGRESS,
+                    startTime = now(),
+                ),
             )
 
         return SMResult.Next(metadataBuilder.build())
@@ -85,15 +88,9 @@ object DeletingState : State {
      *   keep at least min_count of snapshots even it's outdated
      *   keep at most max_count of snapshots
      */
-    private fun filterByPolicyDeleteCondition(snapshots: List<SnapshotInfo>, deleteCondition: SMPolicy.DeleteCondition, log: Logger): List<SMMetadata.SnapshotInfo> {
+    private fun filterByPolicyDeleteCondition(snapshots: List<SnapshotInfo>, deleteCondition: SMPolicy.DeleteCondition, log: Logger): List<String> {
         log.info("sm dev: snapshotInfos $snapshots")
-        val snapshotInfos = snapshots.map {
-            SMMetadata.SnapshotInfo(
-                it.snapshotId().name,
-                Instant.ofEpochMilli(it.startTime()),
-                Instant.ofEpochMilli(it.endTime()),
-            )
-        }.sortedBy { it.startTime } // start_time will always exist along with snapshotId
+        val snapshotInfos = snapshots.sortedBy { it.startTime() } // start_time will always exist along with snapshotId
         log.info("sm dev: snapshotInfos $snapshotInfos")
 
         var thresholdCount = 0
@@ -101,7 +98,7 @@ object DeletingState : State {
         if (deleteCondition.maxAge != null) {
             val timeThreshold = now().minusSeconds(deleteCondition.maxAge.seconds())
             log.info("sm dev: time threshold: $timeThreshold")
-            val thresholdSnapshot = snapshotInfos.findLast { it.startTime.isBefore(timeThreshold) }
+            val thresholdSnapshot = snapshotInfos.findLast { Instant.ofEpochMilli(it.startTime()).isBefore(timeThreshold) }
             log.info("sm dev: thresholdSnapshot: $thresholdSnapshot")
             thresholdCount = snapshotInfos.indexOf(thresholdSnapshot) + 1
             log.info("sm dev: thresholdCount: $thresholdCount")
@@ -115,6 +112,6 @@ object DeletingState : State {
             thresholdCount = snapshotInfos.size - deleteCondition.maxCount
         }
 
-        return snapshotInfos.subList(0, thresholdCount)
+        return snapshotInfos.subList(0, thresholdCount).map { it.snapshotId().name }
     }
 }

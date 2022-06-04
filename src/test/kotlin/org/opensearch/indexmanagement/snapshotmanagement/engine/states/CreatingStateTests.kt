@@ -65,7 +65,7 @@ class CreatingStateTests : ClientMockTestCase() {
         val result = SMState.CREATING.instance.execute(context)
         assertTrue("Execution result should be Next.", result is SMResult.Next)
         result as SMResult.Next
-        assertEquals("Started create snapshot name is $snapshotName.", snapshotName, result.metadataToSave.creation.started!!.name)
+        assertEquals("Started create snapshot name is $snapshotName.", snapshotName, result.metadataToSave.creation.started!!.first())
     }
 
     fun `test get snapshots exception`() = runBlocking {

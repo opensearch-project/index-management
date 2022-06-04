@@ -12,7 +12,6 @@ import org.opensearch.indexmanagement.snapshotmanagement.engine.statemachine.SMS
 import org.opensearch.indexmanagement.snapshotmanagement.mockGetSnapshotResponse
 import org.opensearch.indexmanagement.snapshotmanagement.mockInProgressSnapshotInfo
 import org.opensearch.indexmanagement.snapshotmanagement.mockSnapshotInfo
-import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata
 import org.opensearch.indexmanagement.snapshotmanagement.randomSMMetadata
 import org.opensearch.indexmanagement.snapshotmanagement.randomSMPolicy
 import java.time.Instant.now
@@ -26,10 +25,8 @@ class FinishedStateTests : ClientMockTestCase() {
 
         val metadata = randomSMMetadata(
             currentState = SMState.CREATING,
-            startedCreation = SMMetadata.SnapshotInfo(
-                name = snapshotName,
-                startTime = now(),
-            )
+            startedCreation = snapshotName,
+            startedCreationTime = now(),
         )
         val job = randomSMPolicy(policyName = "daily-snapshot")
         val context = SMStateMachine(client, job, metadata)
@@ -38,7 +35,6 @@ class FinishedStateTests : ClientMockTestCase() {
         assertTrue("Execution results should be Next.", result is SMResult.Next)
         result as SMResult.Next
         assertNull("Started creation should be reset to null.", result.metadataToSave.creation.started)
-        assertEquals("Info last_success should be set.", snapshotName, result.metadataToSave.info!!["last_success"])
     }
 
     fun `test creation in progress`() = runBlocking {
@@ -48,10 +44,8 @@ class FinishedStateTests : ClientMockTestCase() {
 
         val metadata = randomSMMetadata(
             currentState = SMState.CREATING,
-            startedCreation = SMMetadata.SnapshotInfo(
-                name = snapshotName,
-                startTime = now(),
-            )
+            startedCreation = snapshotName,
+            startedCreationTime = now(),
         )
         val job = randomSMPolicy(policyName = "daily-snapshot")
         val context = SMStateMachine(client, job, metadata)
@@ -69,10 +63,8 @@ class FinishedStateTests : ClientMockTestCase() {
 
         val metadata = randomSMMetadata(
             currentState = SMState.CREATING,
-            startedCreation = SMMetadata.SnapshotInfo(
-                name = snapshotName,
-                startTime = now(),
-            )
+            startedCreation = snapshotName,
+            startedCreationTime = now(),
         )
         val job = randomSMPolicy(policyName = "daily-snapshot")
         val context = SMStateMachine(client, job, metadata)
@@ -89,10 +81,8 @@ class FinishedStateTests : ClientMockTestCase() {
 
         val metadata = randomSMMetadata(
             currentState = SMState.CREATING,
-            startedCreation = SMMetadata.SnapshotInfo(
-                name = snapshotName,
-                startTime = now(),
-            )
+            startedCreation = snapshotName,
+            startedCreationTime = now(),
         )
         val job = randomSMPolicy(policyName = "daily-snapshot")
         val context = SMStateMachine(client, job, metadata)
@@ -108,10 +98,8 @@ class FinishedStateTests : ClientMockTestCase() {
 
         val metadata = randomSMMetadata(
             currentState = SMState.CREATING,
-            startedCreation = SMMetadata.SnapshotInfo(
-                name = snapshotName,
-                startTime = now().minusSeconds(10),
-            )
+            startedCreation = snapshotName,
+            startedCreationTime = now().minusSeconds(10),
         )
         val job = randomSMPolicy(
             policyName = "daily-snapshot",
@@ -129,13 +117,8 @@ class FinishedStateTests : ClientMockTestCase() {
 
         val metadata = randomSMMetadata(
             currentState = SMState.DELETING,
-            startedDeletion = listOf(
-                SMMetadata.SnapshotInfo(
-                    name = snapshotName,
-                    startTime = now().minusSeconds(100)
-                ),
-            ),
-            deleteStartedTime = now().minusSeconds(50),
+            startedDeletion = listOf(snapshotName),
+            startedDeletionTime = now().minusSeconds(50),
         )
         val job = randomSMPolicy(policyName = "daily-snapshot")
         val context = SMStateMachine(client, job, metadata)
@@ -144,7 +127,6 @@ class FinishedStateTests : ClientMockTestCase() {
         assertTrue("Execution results should be Next.", result is SMResult.Next)
         result as SMResult.Next
         assertNull("Started deletion should be reset to null.", result.metadataToSave.deletion.started)
-        assertNull("Deletion started time should be reset to null.", result.metadataToSave.deletion.startedTime)
     }
 
     fun `test deletion has not finished`() = runBlocking {
@@ -154,13 +136,8 @@ class FinishedStateTests : ClientMockTestCase() {
 
         val metadata = randomSMMetadata(
             currentState = SMState.DELETING,
-            startedDeletion = listOf(
-                SMMetadata.SnapshotInfo(
-                    name = snapshotName,
-                    startTime = now().minusSeconds(100),
-                ),
-            ),
-            deleteStartedTime = now().minusSeconds(50),
+            startedDeletion = listOf(snapshotName),
+            startedDeletionTime = now().minusSeconds(50),
         )
         val job = randomSMPolicy(policyName = "daily-snapshot")
         val context = SMStateMachine(client, job, metadata)
@@ -168,8 +145,7 @@ class FinishedStateTests : ClientMockTestCase() {
         val result = SMState.FINISHED.instance.execute(context)
         assertTrue("Execution results should be Stay.", result is SMResult.Stay)
         result as SMResult.Stay
-        assertNotNull("Started deletion should not be reset.", result.metadataToSave!!.deletion.started)
-        assertNotNull("Started deletion time should not be reset.", result.metadataToSave!!.deletion.startedTime)
+        assertNotNull("Started deletion should not be reset.", result.metadataToSave.deletion.started)
     }
 
     fun `test get snapshots exception in deletion`() = runBlocking {
@@ -178,13 +154,8 @@ class FinishedStateTests : ClientMockTestCase() {
 
         val metadata = randomSMMetadata(
             currentState = SMState.DELETING,
-            startedDeletion = listOf(
-                SMMetadata.SnapshotInfo(
-                    name = snapshotName,
-                    startTime = now().minusSeconds(100)
-                ),
-            ),
-            deleteStartedTime = now().minusSeconds(50),
+            startedDeletion = listOf(snapshotName),
+            startedDeletionTime = now().minusSeconds(50),
         )
         val job = randomSMPolicy(policyName = "daily-snapshot")
         val context = SMStateMachine(client, job, metadata)
@@ -200,13 +171,8 @@ class FinishedStateTests : ClientMockTestCase() {
 
         val metadata = randomSMMetadata(
             currentState = SMState.DELETING,
-            startedDeletion = listOf(
-                SMMetadata.SnapshotInfo(
-                    name = snapshotName,
-                    startTime = now().minusSeconds(100),
-                ),
-            ),
-            deleteStartedTime = now().minusSeconds(50),
+            startedDeletion = listOf(snapshotName),
+            startedDeletionTime = now().minusSeconds(50),
         )
         val job = randomSMPolicy(policyName = "daily-snapshot", deletionTimeLimit = TimeValue.timeValueSeconds(5))
         val context = SMStateMachine(client, job, metadata)
