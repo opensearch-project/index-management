@@ -15,6 +15,7 @@ import org.opensearch.common.xcontent.XContentParser
 import org.opensearch.common.xcontent.XContentParser.Token
 import org.opensearch.common.xcontent.XContentParserUtils.ensureExpectedToken
 import org.opensearch.index.seqno.SequenceNumbers
+import org.opensearch.indexmanagement.indexstatemanagement.util.WITH_TYPE
 import org.opensearch.indexmanagement.opensearchapi.instant
 import org.opensearch.indexmanagement.opensearchapi.nullValueHandler
 import org.opensearch.indexmanagement.opensearchapi.optionalField
@@ -23,7 +24,9 @@ import org.opensearch.indexmanagement.opensearchapi.parseArray
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.SMState
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.WorkflowType
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata.Retry.Companion.RETRY_FIELD
+import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy.Companion.NAME_FIELD
 import org.opensearch.indexmanagement.snapshotmanagement.preFixTimeStamp
+import org.opensearch.indexmanagement.snapshotmanagement.smMetadataIdToPolicyName
 import org.opensearch.indexmanagement.util.NO_ID
 import java.time.Instant
 import java.time.Instant.now
@@ -42,15 +45,16 @@ data class SMMetadata(
 ) : Writeable, ToXContentObject {
 
     override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
-        return builder.startObject()
-            .startObject(SM_METADATA_TYPE)
+        builder.startObject()
+        if (params.paramAsBoolean(WITH_TYPE, true)) builder.startObject(SM_METADATA_TYPE)
+        builder.field(NAME_FIELD, smMetadataIdToPolicyName(id))
             .field(POLICY_SEQ_NO_FIELD, policySeqNo)
             .field(POLICY_PRIMARY_TERM_FIELD, policyPrimaryTerm)
             .field(CREATION_FIELD, creation)
             .field(DELETION_FIELD, deletion)
             .field(CURRENT_STATE_FIELD, currentState.toString())
-            .endObject()
-            .endObject()
+        if (params.paramAsBoolean(WITH_TYPE, true)) builder.endObject()
+        return builder.endObject()
     }
 
     companion object {
@@ -79,6 +83,7 @@ data class SMMetadata(
                 xcp.nextToken()
 
                 when (fieldName) {
+                    NAME_FIELD -> requireNotNull(xcp.text()) { "The name field of SMPolicy must not be null." }
                     POLICY_SEQ_NO_FIELD -> policySeqNo = xcp.longValue()
                     POLICY_PRIMARY_TERM_FIELD -> policyPrimaryTerm = xcp.longValue()
                     CURRENT_STATE_FIELD -> currentState = SMState.valueOf(xcp.text())

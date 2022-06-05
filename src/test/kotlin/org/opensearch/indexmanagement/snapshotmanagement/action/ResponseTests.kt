@@ -35,7 +35,7 @@ class ResponseTests : OpenSearchTestCase() {
         val smPolicy = randomSMPolicy()
         val res = IndexSMPolicyResponse("someid", 1L, 2L, 3L, smPolicy, RestStatus.OK)
         val resMap = res.toMap()
-        assertEquals(resMap["policy"], smPolicy.toMap(XCONTENT_WITHOUT_TYPE))
+        assertEquals(resMap["sm_policy"], smPolicy.toMap(XCONTENT_WITHOUT_TYPE))
     }
 
     fun `test get sm policy response`() {
@@ -55,6 +55,6 @@ class ResponseTests : OpenSearchTestCase() {
         val smPolicy = randomSMPolicy()
         val res = GetSMPolicyResponse("someid", 1L, 2L, 3L, smPolicy)
         val resMap = res.toMap()
-        assertEquals(resMap["policy"], smPolicy.toMap(XCONTENT_WITHOUT_TYPE))
+        assertEquals(resMap["sm_policy"], smPolicy.toMap(XCONTENT_WITHOUT_TYPE))
     }
 }

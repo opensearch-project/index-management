@@ -21,7 +21,7 @@ import org.opensearch.indexmanagement.opensearchapi.instant
 import org.opensearch.indexmanagement.opensearchapi.nullValueHandler
 import org.opensearch.indexmanagement.opensearchapi.optionalField
 import org.opensearch.indexmanagement.opensearchapi.optionalTimeField
-import org.opensearch.indexmanagement.snapshotmanagement.getSMMetadataDocId
+import org.opensearch.indexmanagement.snapshotmanagement.smPolicyNameToMetadataId
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy.DeleteCondition.Companion.DEFAULT_DELETE_CONDITION
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy.Deletion.Companion.DEFAULT_DELETE_SCHEDULE
 import org.opensearch.indexmanagement.snapshotmanagement.smDocIdToPolicyName
@@ -62,7 +62,7 @@ data class SMPolicy(
     // This is the name which the user provided when creating the policy, and should be used when outputting to the user in REST responses
     val policyName get() = smDocIdToPolicyName(id)
 
-    val metadataID get() = getSMMetadataDocId(smDocIdToPolicyName(id))
+    val metadataID get() = smPolicyNameToMetadataId(smDocIdToPolicyName(id))
 
     override fun getLastUpdateTime() = jobLastUpdateTime
 
@@ -91,7 +91,6 @@ data class SMPolicy(
     }
 
     companion object {
-        const val SM_POLICY = "policy" // used in Index and Get SM policy response
         const val SM_TYPE = "sm_policy"
         const val SM_DOC_ID_SUFFIX = "-sm-policy"
         const val SM_METADATA_ID_SUFFIX = "-sm-metadata"

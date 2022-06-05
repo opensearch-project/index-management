@@ -76,7 +76,7 @@ abstract class SnapshotManagementRestTestCase : IndexManagementRestTestCase() {
                 _ID -> id = parser.text()
                 _SEQ_NO -> seqNo = parser.longValue()
                 _PRIMARY_TERM -> primaryTerm = parser.longValue()
-                SMPolicy.SM_POLICY -> smPolicy = SMPolicy.parse(parser, id, seqNo, primaryTerm)
+                SMPolicy.SM_TYPE -> smPolicy = SMPolicy.parse(parser, id, seqNo, primaryTerm)
             }
         }
         return smPolicy

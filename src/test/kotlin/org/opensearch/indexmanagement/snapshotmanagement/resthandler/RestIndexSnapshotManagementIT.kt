@@ -13,7 +13,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.util.XCONTENT_WITHOUT
 import org.opensearch.indexmanagement.makeRequest
 import org.opensearch.indexmanagement.snapshotmanagement.SnapshotManagementRestTestCase
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy
-import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy.Companion.SM_POLICY
+import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy.Companion.SM_TYPE
 import org.opensearch.indexmanagement.snapshotmanagement.randomSMPolicy
 import org.opensearch.indexmanagement.snapshotmanagement.toMap
 import org.opensearch.indexmanagement.util.NO_ID
@@ -34,7 +34,7 @@ class RestIndexSnapshotManagementIT : SnapshotManagementRestTestCase() {
         assertNotEquals("Response is missing Id", NO_ID, createdId)
         assertEquals("Not same id", smPolicy.id, createdId)
         assertEquals("Incorrect Location header", "$SM_POLICIES_URI/${smPolicy.policyName}", response.getHeader("Location"))
-        val responseSMPolicy = responseBody[SM_POLICY] as Map<String, Any>
+        val responseSMPolicy = responseBody[SM_TYPE] as Map<String, Any>
         smPolicy = smPolicy.copy(jobLastUpdateTime = Instant.ofEpochMilli(responseSMPolicy[SMPolicy.LAST_UPDATED_TIME_FIELD] as Long))
         assertEquals("Created and returned snapshot management policies differ", smPolicy.toMap(XCONTENT_WITHOUT_TYPE), responseSMPolicy)
     }

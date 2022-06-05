@@ -46,7 +46,8 @@ private val log = LogManager.getLogger("o.i.s.SnapshotManagementHelper")
 
 fun smPolicyNameToDocId(policyName: String) = "$policyName$SM_DOC_ID_SUFFIX"
 fun smDocIdToPolicyName(id: String) = id.substringBeforeLast(SM_DOC_ID_SUFFIX)
-fun getSMMetadataDocId(policyName: String) = "$policyName$SM_METADATA_ID_SUFFIX"
+fun smPolicyNameToMetadataId(policyName: String) = "$policyName$SM_METADATA_ID_SUFFIX"
+fun smMetadataIdToPolicyName(id: String) = id.substringBeforeLast(SM_METADATA_ID_SUFFIX)
 
 @Suppress("RethrowCaughtException", "ThrowsCount")
 suspend fun Client.getSMPolicy(policyID: String): SMPolicy {
@@ -115,7 +116,7 @@ suspend fun Client.indexMetadata(
     create: Boolean = false
 ): IndexResponse {
     val indexReq = IndexRequest(INDEX_MANAGEMENT_INDEX).create(create)
-        .id(getSMMetadataDocId(smDocIdToPolicyName(id)))
+        .id(smPolicyNameToMetadataId(smDocIdToPolicyName(id)))
         .source(metadata.toXContent(XContentFactory.jsonBuilder(), ToXContent.EMPTY_PARAMS))
         .setIfSeqNo(seqNo)
         .setIfPrimaryTerm(primaryTerm)
@@ -130,7 +131,7 @@ suspend fun Client.indexMetadata(
  * @return null indicate the retrieved metadata doesn't exist
  */
 suspend fun Client.getMetadata(job: SMPolicy): SMMetadata? {
-    val getReq = GetRequest(INDEX_MANAGEMENT_INDEX, getSMMetadataDocId(smDocIdToPolicyName(job.id))).routing(job.id)
+    val getReq = GetRequest(INDEX_MANAGEMENT_INDEX, smPolicyNameToMetadataId(smDocIdToPolicyName(job.id))).routing(job.id)
     val getRes: GetResponse = suspendUntil { get(getReq, it) }
     if (getRes.isExists) {
         log.info("sm dev: Get metadata response: ${getRes.sourceAsBytesRef.utf8ToString()}")
