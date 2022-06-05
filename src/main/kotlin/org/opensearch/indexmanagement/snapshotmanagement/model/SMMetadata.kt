@@ -432,9 +432,8 @@ data class SMMetadata(
             return this
         }
 
-        // Reset the related metadata fields of the workflow
-        // so the state machine will skip/abort this execution
-        // and can go to the next execution period
+        // Reset this execution period and go to next
+        //  Set the related metadata fields of the workflow to null
         fun resetWorkflow(): Builder {
             var currentState = metadata.currentState
             var startedCreation = metadata.creation.started
@@ -470,7 +469,8 @@ data class SMMetadata(
 
         fun setLatestExecution(
             status: LatestExecution.Status,
-            message: String? = null, cause: String? = null,
+            message: String? = null,
+            cause: String? = null,
             endTime: Instant? = null
         ): Builder {
             val messageWithTime = message?.let { preFixTimeStamp(message) }

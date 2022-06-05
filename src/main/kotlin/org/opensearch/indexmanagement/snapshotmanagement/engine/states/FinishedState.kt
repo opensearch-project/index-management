@@ -67,9 +67,15 @@ object FinishedState : State {
                     // TODO SM notification snapshot created
                 }
                 SnapshotState.IN_PROGRESS -> {
-                    job.creation.timeLimit?.let {
-                        if (timeLimitExceed(metadata.creation.latestExecution!!.startTime, it))
-                            return SMResult.TimeLimitExceed(metadataBuilder.build(), WorkflowType.CREATION)
+                    job.creation.timeLimit?.let { timeLimit ->
+                        if (timeLimit.isExceed(metadata.creation.latestExecution!!.startTime)) {
+                            metadataBuilder.setLatestExecution(
+                                status = SMMetadata.LatestExecution.Status.TIME_LIMIT_EXCEEDED,
+                                endTime = now(),
+                                cause = "Creation time limit ${job.creation.timeLimit} exceeded."
+                            )
+                            return SMResult.Failure(metadataBuilder.build(), WorkflowType.CREATION, timeLimitExceed = true)
+                        }
                     }
                 }
                 else -> {
@@ -129,9 +135,15 @@ object FinishedState : State {
                         endTime = now(),
                     )
             } else {
-                job.deletion.timeLimit?.let {
-                    if (timeLimitExceed(metadata.deletion.latestExecution!!.startTime, it))
-                        return SMResult.TimeLimitExceed(metadataBuilder.build(), WorkflowType.DELETION)
+                job.deletion.timeLimit?.let { timeLimit ->
+                    if (timeLimit.isExceed(metadata.deletion.latestExecution!!.startTime)) {
+                        metadataBuilder.setLatestExecution(
+                            status = SMMetadata.LatestExecution.Status.TIME_LIMIT_EXCEEDED,
+                            endTime = now(),
+                            cause = "Deletion time limit ${job.deletion.timeLimit} exceeded."
+                        )
+                        return SMResult.Failure(metadataBuilder.build(), WorkflowType.DELETION, timeLimitExceed = true)
+                    }
                 }
 
                 log.info("Snapshots haven't been deleted: $remainingSnapshotsName.")
@@ -155,7 +167,7 @@ object FinishedState : State {
     private fun getSnapshotMissingMessageInDeletionWorkflow() = "No snapshots found under policy while getting snapshots to decide if snapshots has been deleted."
     private fun getSnapshotExceptionInDeletionWorkflow(startedDeleteSnapshots: List<String>) = "Caught exception while getting snapshots to decide if snapshots [$startedDeleteSnapshots] has been deleted."
 
-    private fun timeLimitExceed(startTime: Instant, timeLimit: TimeValue): Boolean {
-        return (now().toEpochMilli() - startTime.toEpochMilli()) > timeLimit.millis
+    private fun TimeValue.isExceed(startTime: Instant): Boolean {
+        return (now().toEpochMilli() - startTime.toEpochMilli()) > this.millis
     }
 }

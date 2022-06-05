@@ -108,7 +108,9 @@ class FinishedStateTests : ClientMockTestCase() {
         val context = SMStateMachine(client, job, metadata)
 
         val result = SMState.FINISHED.instance.execute(context)
-        assertTrue("Execution results should be TimeLimitExceed.", result is SMResult.TimeLimitExceed)
+        assertTrue("Execution results should be Failure.", result is SMResult.Failure)
+        result as SMResult.Failure
+        assertTrue(result.timeLimitExceed!!)
     }
 
     fun `test deletion succeed`() = runBlocking {
@@ -178,6 +180,8 @@ class FinishedStateTests : ClientMockTestCase() {
         val context = SMStateMachine(client, job, metadata)
 
         val result = SMState.FINISHED.instance.execute(context)
-        assertTrue("Execution results should be TimeLimitExceed.", result is SMResult.TimeLimitExceed)
+        assertTrue("Execution results should be Failure.", result is SMResult.Failure)
+        result as SMResult.Failure
+        assertTrue(result.timeLimitExceed!!)
     }
 }

@@ -1461,10 +1461,6 @@
         "current_state": {
           "type": "keyword"
         },
-        "info": {
-          "type": "object",
-          "enabled": false
-        },
         "creation": {
           "properties": {
             "trigger": {
@@ -1479,23 +1475,27 @@
               "type": "keyword"
             },
             "latest_execution": {
-              "status": {
-                "type": "keyword"
-              },
-              "start_time": {
-                "type": "date",
-                "format": "strict_date_time||epoch_millis"
-              },
-              "end_time": {
-                "type": "date",
-                "format": "strict_date_time||epoch_millis"
-              },
-              "info": {
-                "message": {
-                  "type": "text"
+              "properties": {
+                "status": {
+                  "type": "keyword"
+                },
+                "start_time": {
+                  "type": "date",
+                  "format": "strict_date_time||epoch_millis"
+                },
+                "end_time": {
+                  "type": "date",
+                  "format": "strict_date_time||epoch_millis"
                 },
                 "info": {
-                  "type": "text"
+                  "properties": {
+                    "message": {
+                      "type": "text"
+                    },
+                    "cause": {
+                      "type": "text"
+                    }
+                  }
                 }
               }
             },
@@ -1522,23 +1522,27 @@
               "type": "keyword"
             },
             "latest_execution": {
-              "status": {
-                "type": "keyword"
-              },
-              "start_time": {
-                "type": "date",
-                "format": "strict_date_time||epoch_millis"
-              },
-              "end_time": {
-                "type": "date",
-                "format": "strict_date_time||epoch_millis"
-              },
-              "info": {
-                "message": {
-                  "type": "text"
+              "properties": {
+                "status": {
+                  "type": "keyword"
+                },
+                "start_time": {
+                  "type": "date",
+                  "format": "strict_date_time||epoch_millis"
+                },
+                "end_time": {
+                  "type": "date",
+                  "format": "strict_date_time||epoch_millis"
                 },
                 "info": {
-                  "type": "text"
+                  "properties": {
+                    "message": {
+                      "type": "text"
+                    },
+                    "cause": {
+                      "type": "text"
+                    }
+                  }
                 }
               }
             },

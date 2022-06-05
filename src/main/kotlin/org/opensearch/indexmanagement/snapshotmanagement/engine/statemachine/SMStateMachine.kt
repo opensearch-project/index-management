@@ -64,16 +64,16 @@ class SMStateMachine(
                             // can still execute other lateral states if exists
                         }
                         is SMResult.Failure -> {
-                            updateMetadata(handleRetry(result, prevState).build())
-                        }
-                        is SMResult.TimeLimitExceed -> {
-                            log.warn("${result.workflowType} has exceeded the time limit.")
-                            val metadataToSave = SMMetadata.Builder(result.metadataToSave)
-                                .workflow(result.workflowType)
-                                .resetWorkflow()
-                                .build()
-
-                            updateMetadata(metadataToSave)
+                            if (result.timeLimitExceed == true) {
+                                log.warn("${result.workflowType} exceeds the time limit.")
+                                val metadataToSave = SMMetadata.Builder(result.metadataToSave)
+                                    .workflow(result.workflowType)
+                                    .resetWorkflow()
+                                    .build()
+                                updateMetadata(metadataToSave)
+                            } else {
+                                updateMetadata(handleRetry(result, prevState).build())
+                            }
                         }
                     }
                 }
