@@ -23,8 +23,10 @@ import org.opensearch.indexmanagement.opensearchapi.parseArray
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.SMState
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.WorkflowType
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata.Retry.Companion.RETRY_FIELD
+import org.opensearch.indexmanagement.snapshotmanagement.preFixTimeStamp
 import org.opensearch.indexmanagement.util.NO_ID
 import java.time.Instant
+import java.time.Instant.now
 
 typealias InfoType = Map<String, Any>
 
@@ -242,6 +244,14 @@ data class SMMetadata(
                     info = info,
                 )
             }
+
+            fun init(status: Status, info: Info? = null): LatestExecution {
+                return LatestExecution(
+                    status = status,
+                    startTime = now(),
+                    info = info,
+                )
+            }
         }
 
         constructor(sin: StreamInput) : this(
@@ -409,14 +419,23 @@ data class SMMetadata(
      * Build the updated metadata in a flattened fashion
      *  based on the existing metadata
      */
-    class Builder(private var metadata: SMMetadata) {
+    class Builder(
+        private var metadata: SMMetadata,
+        ) {
 
         fun build() = metadata
+
+        private lateinit var workflowType: WorkflowType
+
+        fun setWorkflow(workflowType: WorkflowType): Builder {
+            this.workflowType = workflowType
+            return this
+        }
 
         // Reset the related metadata fields of the workflow
         // so the state machine will skip/abort this execution
         // and can go to the next execution period
-        fun reset(workflowType: WorkflowType): Builder {
+        fun reset(): Builder {
             var currentState = metadata.currentState
             var startedCreation = metadata.creation.started
             var creationRetry = metadata.creation.retry
@@ -449,7 +468,43 @@ data class SMMetadata(
             return this
         }
 
-        fun setRetry(workflowType: WorkflowType, count: Int): Builder {
+        fun updateLatestExecution(status: LatestExecution.Status, message: String? = null, cause: String? = null, endTime: Instant? = null): Builder {
+            val messageWithTime = message?.let { preFixTimeStamp(message) }
+            val causeWithTime = cause?.let { preFixTimeStamp(cause) }
+            when (workflowType) {
+                WorkflowType.CREATION -> {
+                    metadata = metadata.copy(
+                        creation = metadata.creation.copy(
+                            latestExecution = metadata.creation.latestExecution!!.copy(
+                                status = status,
+                                info = Info(
+                                    message = messageWithTime ?: metadata.creation.latestExecution!!.info?.message,
+                                    cause = causeWithTime ?: metadata.creation.latestExecution!!.info?.cause,
+                                ),
+                                endTime = endTime,
+                            )
+                        )
+                    )
+                }
+                WorkflowType.DELETION -> {
+                    metadata = metadata.copy(
+                        deletion = metadata.deletion.copy(
+                            latestExecution = metadata.deletion.latestExecution!!.copy(
+                                status = status,
+                                info = Info(
+                                    message = messageWithTime ?: metadata.deletion.latestExecution!!.info?.message,
+                                    cause = causeWithTime ?: metadata.deletion.latestExecution!!.info?.cause,
+                                ),
+                                endTime = endTime,
+                            )
+                        )
+                    )
+                }
+            }
+            return this
+        }
+
+        fun setRetry(count: Int): Builder {
             when (workflowType) {
                 WorkflowType.CREATION -> {
                     metadata = metadata.copy(
@@ -514,11 +569,11 @@ data class SMMetadata(
         }
 
         // TODO SM update execution metadata and init execution metadata
-        fun creation(snapshot: String?, execution: LatestExecution): Builder {
+        fun creation(snapshot: String?, initLatestExecution: LatestExecution? = null): Builder {
             metadata = metadata.copy(
                 creation = metadata.creation.copy(
                     started = if (snapshot == null) null else listOf(snapshot),
-                    latestExecution = execution,
+                    latestExecution = initLatestExecution ?: metadata.creation.latestExecution,
                 )
             )
             return this
@@ -535,11 +590,11 @@ data class SMMetadata(
             return this
         }
 
-        fun deletion(snapshots: List<String>?, execution: LatestExecution): Builder {
+        fun deletion(snapshots: List<String>?, initLatestExecution: LatestExecution? = null): Builder {
             metadata = metadata.copy(
                 deletion = metadata.deletion.copy(
                     started = snapshots,
-                    latestExecution = execution,
+                    latestExecution = initLatestExecution ?: metadata.deletion.latestExecution,
                 )
             )
             return this

@@ -65,52 +65,13 @@ class SMStateMachine(
                             // can still execute other lateral states if exists
                         }
                         is SMResult.Failure -> {
-                            val ex = result.ex
-                            val userMessage = preFixTimeStamp(SnapshotManagementException(ex).message)
-                            // val info = metadata.info.upsert(GENERAL_EXCEPTION_KEY to userMessage)
-                            val metadataToSave = SMMetadata.Builder(result.metadataToSave)
-                                .reset(result.workflowType)
-                            if (result.notifiable) {
-                                log.error("Caught exception while executing state [$currentState]. Reset the workflow ${result.workflowType}.", ex)
-                                // metadataToSave.info(info)
-                                // TODO error notification
-                            }
-
-                            updateMetadata(metadataToSave.build())
-                        }
-                        is SMResult.Retry -> {
-                            log.warn("State [$currentState] is going to retry.")
-                            val metadataToSave = SMMetadata.Builder(result.metadataToSave)
-                                .currentState(prevState)
-                            val retry = when (result.workflowType) {
-                                WorkflowType.CREATION -> {
-                                    metadata.creation.retry
-                                }
-                                WorkflowType.DELETION -> {
-                                    metadata.deletion.retry
-                                }
-                            }
-                            val retryCount: Int
-                            if (retry == null) {
-                                log.warn("Start to retry state [$currentState], remaining count 3.")
-                                metadataToSave.setRetry(result.workflowType, 3)
-                            } else {
-                                retryCount = retry.count - 1
-                                if (retryCount <= 0) {
-                                    log.warn("Retry count exhausted for state [$currentState], reset workflow ${result.workflowType}.")
-                                    metadataToSave.reset(result.workflowType)
-                                } else {
-                                    log.warn("Retry state [$currentState], remaining count $retryCount.")
-                                    metadataToSave.setRetry(result.workflowType, retryCount)
-                                }
-                            }
-
-                            updateMetadata(metadataToSave.build())
+                            updateMetadata(handleRetry(result, prevState).build())
                         }
                         is SMResult.TimeLimitExceed -> {
                             log.warn("${result.workflowType} has exceeded the time limit.")
                             val metadataToSave = SMMetadata.Builder(result.metadataToSave)
-                                .reset(result.workflowType)
+                                .setWorkflow(result.workflowType)
+                                .reset()
                                 .build()
 
                             updateMetadata(metadataToSave)
@@ -133,6 +94,40 @@ class SMStateMachine(
             }
             log.error("Uncaught snapshot management runtime exception.", ex)
         }
+    }
+
+    private fun handleRetry(result: SMResult, prevState: SMState): SMMetadata.Builder {
+        assert(result is SMResult.Failure)
+        result as SMResult.Failure
+        // latestExecution status should be RETRYING
+        val metadataToSave = SMMetadata.Builder(result.metadataToSave)
+            .setWorkflow(result.workflowType)
+            .currentState(prevState)
+        val retry = when (result.workflowType) {
+            WorkflowType.CREATION -> {
+                metadata.creation.retry
+            }
+            WorkflowType.DELETION -> {
+                metadata.deletion.retry
+            }
+        }
+        val retryCount: Int
+        if (retry == null) {
+            log.warn("Start to retry state [$currentState], remaining count 3.")
+            metadataToSave.setRetry(3) // TODO SM 3 retry count could be customizable
+        } else {
+            retryCount = retry.count - 1
+            if (retryCount > 0) {
+                log.warn("Retry state [$currentState], remaining count $retryCount.")
+                metadataToSave.setRetry(retryCount)
+            } else {
+                log.warn("Retry count exhausted for state [$currentState], reset workflow ${result.workflowType}.")
+                metadataToSave.reset()
+                    .updateLatestExecution(SMMetadata.LatestExecution.Status.FAILED, endTime = now())
+            }
+        }
+
+        return metadataToSave
     }
 
     /**

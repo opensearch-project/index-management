@@ -27,11 +27,6 @@ class SnapshotManagementException(
         REPO_MISSING,
     }
 
-    constructor(ex: Exception) : this(
-        message = exceptionMsgMap[exceptionTypeMap[ex::class] ?: ExceptionKey.GENERAL],
-        cause = ex
-    )
-
     constructor(exKey: ExceptionKey, ex: Exception? = null) : this(
         message = exceptionMsgMap[exKey],
         exKey = exKey,
@@ -39,17 +34,18 @@ class SnapshotManagementException(
     )
 
     companion object {
-        const val GENERAL_EXCEPTION_KEY = "exception"
-
-        private val exceptionTypeMap: Map<KClass<out Exception>, ExceptionKey> = mapOf(
-            RepositoryMissingException::class to ExceptionKey.REPO_MISSING
-        )
-
-        // User facing exception messages
+        // Customized user facing exception messages
         private val exceptionMsgMap: Map<ExceptionKey, String> = mapOf(
             ExceptionKey.GENERAL to "Caught exception while snapshot management runs. Please check the error log.",
             ExceptionKey.METADATA_INDEXING_FAILURE to "Failed to update metadata.",
-            ExceptionKey.REPO_MISSING to "The repository provided is missing."
+            ExceptionKey.REPO_MISSING to "The repository provided is missing.",
         )
+
+        fun wrap(ex: Exception, key: ExceptionKey? = null): SnapshotManagementException {
+            var message: String = exceptionMsgMap[ExceptionKey.GENERAL]!!
+            if (key != null) return SnapshotManagementException(key, ex)
+            if (ex.message != null) message = ex.message!!
+            return SnapshotManagementException(cause = ex, message = message)
+        }
     }
 }
