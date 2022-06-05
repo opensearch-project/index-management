@@ -64,7 +64,9 @@ object FinishedState : State {
                     val latestExecution = metadata.creation.latestExecution!!.copy(
                         status = SMMetadata.LatestExecution.Status.SUCCESS,
                         endTime = now(),
-                        snapshot = metadata.creation.started
+                        info = SMMetadata.Info(
+                            message = "Snapshot ${metadata.creation.started.first()} creation end with state ${snapshot.state()}."
+                        )
                     )
                     metadataBuilder.creation(null, latestExecution)
                     // TODO SM notification snapshot created
@@ -74,8 +76,9 @@ object FinishedState : State {
                     val latestExecution = metadata.creation.latestExecution!!.copy(
                         status = SMMetadata.LatestExecution.Status.FAILED,
                         endTime = now(),
-                        snapshot = metadata.creation.started,
-                        message = "Snapshot ${metadata.creation.started.first()} creation end with state ${snapshot.state()}."
+                        info = SMMetadata.Info(
+                            cause = "Snapshot ${metadata.creation.started.first()} creation end with state ${snapshot.state()}."
+                        )
                     )
                     metadataBuilder.creation(null, latestExecution)
                     // TODO SM notification snapshot creation has problem
@@ -111,7 +114,9 @@ object FinishedState : State {
                 val latestExecution = metadata.deletion.latestExecution!!.copy(
                     status = SMMetadata.LatestExecution.Status.SUCCESS,
                     endTime = now(),
-                    snapshot = metadata.deletion.started,
+                    info = SMMetadata.Info(
+                        message = "Snapshots ${metadata.creation.started} deletion has finished."
+                    )
                 )
                 metadataBuilder.deletion(null, latestExecution)
             } else {

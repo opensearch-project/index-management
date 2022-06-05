@@ -44,9 +44,9 @@ data class SMMetadata(
             .startObject(SM_METADATA_TYPE)
             .field(POLICY_SEQ_NO_FIELD, policySeqNo)
             .field(POLICY_PRIMARY_TERM_FIELD, policyPrimaryTerm)
-            .field(CURRENT_STATE_FIELD, currentState.toString())
             .field(CREATION_FIELD, creation)
             .field(DELETION_FIELD, deletion)
+            .field(CURRENT_STATE_FIELD, currentState.toString())
             .endObject()
             .endObject()
     }
@@ -198,8 +198,7 @@ data class SMMetadata(
         val status: Status,
         val startTime: Instant,
         val endTime: Instant? = null,
-        val message: String? = null,
-        val snapshot: List<String>? = null,
+        val info: Info? = null,
     ) : Writeable, ToXContentObject {
 
         override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
@@ -207,8 +206,7 @@ data class SMMetadata(
                 .field(STATUS_FIELD, status.toString())
                 .optionalTimeField(START_TIME_FIELD, startTime)
                 .optionalTimeField(END_TIME_FIELD, endTime)
-                .optionalField(MESSAGE_FIELD, message)
-                .optionalField(SNAPSHOT_FIELD, snapshot)
+                .optionalField(INFO_FIELD, info)
                 .endObject()
         }
 
@@ -216,15 +214,13 @@ data class SMMetadata(
             const val STATUS_FIELD = "status"
             const val START_TIME_FIELD = "start_time"
             const val END_TIME_FIELD = "end_time"
-            const val MESSAGE_FIELD = "message"
-            const val SNAPSHOT_FIELD = "snapshot"
+            const val INFO_FIELD = "info"
 
             fun parse(xcp: XContentParser): LatestExecution {
                 var status: Status? = null
                 var startTime: Instant? = null
                 var endTime: Instant? = null
-                var message: String? = null
-                var snapshot: List<String>? = null
+                var info: Info? = null
 
                 ensureExpectedToken(Token.START_OBJECT, xcp.currentToken(), xcp)
                 while (xcp.nextToken() != Token.END_OBJECT) {
@@ -235,8 +231,7 @@ data class SMMetadata(
                         STATUS_FIELD -> status = Status.valueOf(xcp.text())
                         START_TIME_FIELD -> startTime = xcp.instant()
                         END_TIME_FIELD -> endTime = xcp.instant()
-                        MESSAGE_FIELD -> message = xcp.nullValueHandler { text() }
-                        SNAPSHOT_FIELD -> snapshot = xcp.nullValueHandler { parseArray { text() } }
+                        INFO_FIELD -> info = Info.parse(xcp)
                     }
                 }
 
@@ -244,8 +239,7 @@ data class SMMetadata(
                     status = requireNotNull(status) { "last_execution.status must not be null" },
                     startTime = requireNotNull(startTime) { "last_execution.start_time must not be null" },
                     endTime = endTime,
-                    message = message,
-                    snapshot = snapshot,
+                    info = info,
                 )
             }
         }
@@ -254,16 +248,14 @@ data class SMMetadata(
             status = sin.readEnum(Status::class.java),
             startTime = sin.readInstant(),
             endTime = sin.readOptionalInstant(),
-            message = sin.readOptionalString(),
-            snapshot = sin.readOptionalStringList(),
+            info = sin.readOptionalWriteable { Info(it) },
         )
 
         override fun writeTo(out: StreamOutput) {
             out.writeEnum(status)
             out.writeInstant(startTime)
             out.writeOptionalInstant(endTime)
-            out.writeOptionalString(message)
-            out.writeOptionalStringCollection(snapshot)
+            out.writeOptionalWriteable(info)
         }
 
         enum class Status {
@@ -272,6 +264,55 @@ data class SMMetadata(
             RETRYING,
             FAILED,
             TIME_LIMIT_EXCEEDED,
+        }
+    }
+
+    data class Info(
+        val message: String? = null,
+        val cause: String? = null,
+    ) : Writeable, ToXContentObject {
+
+        override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
+            return builder.startObject()
+                .optionalField(MESSAGE_FIELD, message)
+                .optionalField(CAUSE_FIELD, cause)
+                .endObject()
+        }
+
+        companion object {
+            const val MESSAGE_FIELD = "message"
+            const val CAUSE_FIELD = "cause"
+
+            fun parse(xcp: XContentParser): Info {
+                var message: String? = null
+                var cause: String? = null
+
+                ensureExpectedToken(Token.START_OBJECT, xcp.currentToken(), xcp)
+                while (xcp.nextToken() != Token.END_OBJECT) {
+                    val fieldName = xcp.currentName()
+                    xcp.nextToken()
+
+                    when (fieldName) {
+                        MESSAGE_FIELD -> message = xcp.text()
+                        CAUSE_FIELD -> cause = xcp.text()
+                    }
+                }
+
+                return Info(
+                    message = message,
+                    cause = cause,
+                )
+            }
+        }
+
+        constructor(sin: StreamInput) : this(
+            message = sin.readOptionalString(),
+            cause = sin.readOptionalString(),
+        )
+
+        override fun writeTo(out: StreamOutput) {
+            out.writeOptionalString(message)
+            out.writeOptionalString(cause)
         }
     }
 

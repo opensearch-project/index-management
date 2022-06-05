@@ -82,7 +82,7 @@ object CreatingState : State {
     }
 
     /**
-     * If there is snapshot created after last execution time,
+     * If there is snapshot already created in this execution period,
      * continue to next state with this snapshot name.
      */
     private fun checkCreatedSnapshots(lastExecutionTime: Instant, snapshots: List<SnapshotInfo>): String? {

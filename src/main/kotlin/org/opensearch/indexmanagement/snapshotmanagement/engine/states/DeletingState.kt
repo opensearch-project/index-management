@@ -51,7 +51,7 @@ object DeletingState : State {
         log.info("snapshots $getSnapshots")
 
         snapshotsToDelete = filterByPolicyDeleteCondition(
-            getSnapshots,
+            getSnapshots, // TODO SM filter to only useful snapshots
             job.deletion.condition, log
         )
         log.info("sm dev: Going to delete: $snapshotsToDelete")
