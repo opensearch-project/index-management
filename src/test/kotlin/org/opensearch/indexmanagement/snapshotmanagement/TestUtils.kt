@@ -178,7 +178,7 @@ fun mockSnapshotInfo(
         5,
         emptyList(),
         false,
-        mapOf("snapshot_management_policy" to policyName),
+        mapOf("sm_policy" to policyName),
     )
     return result
 }
@@ -202,7 +202,7 @@ fun mockInProgressSnapshotInfo(
         randomNonNegativeLong(),
         ImmutableOpenMap.of(),
         "",
-        mapOf("snapshot_management_policy" to "daily-snapshot"),
+        mapOf("sm_policy" to "daily-snapshot"),
         Version.CURRENT,
     )
     return SnapshotInfo(entry)

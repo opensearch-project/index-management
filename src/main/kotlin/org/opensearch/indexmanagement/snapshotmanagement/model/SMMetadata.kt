@@ -421,7 +421,7 @@ data class SMMetadata(
      */
     class Builder(
         private var metadata: SMMetadata,
-        ) {
+    ) {
 
         fun build() = metadata
 
@@ -473,32 +473,60 @@ data class SMMetadata(
             val causeWithTime = cause?.let { preFixTimeStamp(cause) }
             when (workflowType) {
                 WorkflowType.CREATION -> {
-                    metadata = metadata.copy(
-                        creation = metadata.creation.copy(
-                            latestExecution = metadata.creation.latestExecution!!.copy(
-                                status = status,
-                                info = Info(
-                                    message = messageWithTime ?: metadata.creation.latestExecution!!.info?.message,
-                                    cause = causeWithTime ?: metadata.creation.latestExecution!!.info?.cause,
-                                ),
-                                endTime = endTime,
+                    if (metadata.creation.latestExecution == null) {
+                        metadata = metadata.copy(
+                            creation = metadata.creation.copy(
+                                latestExecution = LatestExecution.init(
+                                    status = status,
+                                    info = Info(
+                                        message = message,
+                                        cause = cause,
+                                    )
+                                )
                             )
                         )
-                    )
+                    } else {
+                        metadata = metadata.copy(
+                            creation = metadata.creation.copy(
+                                latestExecution = metadata.creation.latestExecution!!.copy(
+                                    status = status,
+                                    info = Info(
+                                        message = messageWithTime ?: metadata.creation.latestExecution!!.info?.message,
+                                        cause = causeWithTime ?: metadata.creation.latestExecution!!.info?.cause,
+                                    ),
+                                    endTime = endTime,
+                                )
+                            )
+                        )
+                    }
                 }
                 WorkflowType.DELETION -> {
-                    metadata = metadata.copy(
-                        deletion = metadata.deletion.copy(
-                            latestExecution = metadata.deletion.latestExecution!!.copy(
-                                status = status,
-                                info = Info(
-                                    message = messageWithTime ?: metadata.deletion.latestExecution!!.info?.message,
-                                    cause = causeWithTime ?: metadata.deletion.latestExecution!!.info?.cause,
-                                ),
-                                endTime = endTime,
+                    if (metadata.deletion.latestExecution == null) {
+                        metadata = metadata.copy(
+                            deletion = metadata.deletion.copy(
+                                latestExecution = LatestExecution.init(
+                                    status = status,
+                                    info = Info(
+                                        message = message,
+                                        cause = cause,
+                                    )
+                                )
                             )
                         )
-                    )
+                    } else {
+                        metadata = metadata.copy(
+                            deletion = metadata.deletion.copy(
+                                latestExecution = metadata.deletion.latestExecution!!.copy(
+                                    status = status,
+                                    info = Info(
+                                        message = messageWithTime ?: metadata.deletion.latestExecution!!.info?.message,
+                                        cause = causeWithTime ?: metadata.deletion.latestExecution!!.info?.cause,
+                                    ),
+                                    endTime = endTime,
+                                )
+                            )
+                        )
+                    }
                 }
             }
             return this

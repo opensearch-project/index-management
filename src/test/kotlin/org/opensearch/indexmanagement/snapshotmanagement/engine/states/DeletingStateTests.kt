@@ -97,7 +97,6 @@ class DeletingStateTests : ClientMockTestCase() {
         val result = SMState.DELETING.instance.execute(context)
         assertTrue("Execution result should be Failure.", result is SMResult.Failure)
         result as SMResult.Failure
-        assertTrue("Delete snapshot exception should notify user.", result.notifiable)
     }
 
     fun `test get snapshots exception`() = runBlocking {
@@ -106,11 +105,12 @@ class DeletingStateTests : ClientMockTestCase() {
 
         val metadata = randomSMMetadata(
             currentState = SMState.DELETE_CONDITION_MET,
+            startedDeletionTime = now().minusSeconds(10),
         )
         val job = randomSMPolicy(policyName = "daily-snapshot")
         val context = SMStateMachine(client, job, metadata)
 
         val result = SMState.DELETING.instance.execute(context)
-        assertTrue("Execution result should be Next.", result is SMResult.Retry)
+        assertTrue("Execution result should be Failure.", result is SMResult.Failure)
     }
 }

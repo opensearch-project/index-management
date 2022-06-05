@@ -58,9 +58,8 @@ class SMStateMachineTests : ClientMockTestCase() {
         }
     }
 
-    fun `test sm result Failure reset workflow and add info`() = runBlocking {
+    fun `test sm result Failure starts retry`() = runBlocking {
         val currentState = SMState.CREATE_CONDITION_MET
-        val resetState = SMState.CREATING
         val ex = Exception()
         mockGetSnapshotsCall(response = mockGetSnapshotResponse(0))
         mockCreateSnapshotCall(exception = ex)
@@ -73,8 +72,9 @@ class SMStateMachineTests : ClientMockTestCase() {
         stateMachineSpy.next(smTransitions)
         argumentCaptor<SMMetadata>().apply {
             verify(stateMachineSpy).updateMetadata(capture())
-            assertEquals(resetState, firstValue.currentState)
-            assertNull(firstValue.creation.started)
+            assertEquals(currentState, firstValue.currentState)
+            assertNotNull(firstValue.creation.started)
+            assertEquals(3, firstValue.creation.retry!!.count)
         }
     }
 

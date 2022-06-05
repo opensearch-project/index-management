@@ -33,7 +33,7 @@ enum class WorkflowType {
  * [Stay]: stay in this level, can execute the next lateral states if exists. Save the prevState.
  * [Failure]: caught non-retryable exception. Will reset the related metadata fields for this workflow.
  * [Retry]: caught retryable exception. If retry count exhausted, reset this workflow.
- *  When being used, remember to use [resetRetry] in metadata builder after passing the retry point.
+ *   TODO SM When being used, remember to use [resetRetry] in metadata builder after passing the retry point.
  * [TimeLimitExceed]: the time limit of the workflow exceeds, reset this workflow.
  */
 sealed class SMResult : State.Result() {

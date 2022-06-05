@@ -6,8 +6,6 @@
 package org.opensearch.indexmanagement.snapshotmanagement
 
 import org.opensearch.OpenSearchException
-import org.opensearch.repositories.RepositoryMissingException
-import kotlin.reflect.KClass
 
 /**
  * Wrap snapshot management related exception with a user facing error message

@@ -47,7 +47,6 @@ class CreatingStateTests : ClientMockTestCase() {
         val result = SMState.CREATING.instance.execute(context)
         assertTrue("Execution result should be Failure.", result is SMResult.Failure)
         result as SMResult.Failure
-        assertTrue("Create snapshot exception should notify user.", result.notifiable)
     }
 
     fun `test snapshot already created in previous schedule`() = runBlocking {
@@ -59,7 +58,7 @@ class CreatingStateTests : ClientMockTestCase() {
         val metadata = randomSMMetadata(
             currentState = SMState.CREATE_CONDITION_MET,
         )
-        val job = randomSMPolicy()
+        val job = randomSMPolicy(policyName = "daily-snapshot")
         val context = SMStateMachine(client, job, metadata)
 
         val result = SMState.CREATING.instance.execute(context)
@@ -78,6 +77,6 @@ class CreatingStateTests : ClientMockTestCase() {
         val context = SMStateMachine(client, job, metadata)
 
         val result = SMState.CREATING.instance.execute(context)
-        assertTrue("Execution result should be Next.", result is SMResult.Retry)
+        assertTrue("Execution result should be Failure.", result is SMResult.Failure)
     }
 }
