@@ -31,7 +31,7 @@ object CreateConditionMetState : State {
         if (!now().isBefore(nextCreationTime)) {
             log.info("sm dev: Current time [${now()}] has passed nextCreationTime [$nextCreationTime]")
             nextCreationTimeToSave = getNextExecutionTime(job.creation.schedule, now())
-            metadataBuilder.nextCreationTime(nextCreationTimeToSave)
+            metadataBuilder.setNextCreationTime(nextCreationTimeToSave)
         } else {
             log.info("sm dev: Current time [${now()}] has not passed nextCreationTime [$nextCreationTime]")
             // TODO SM dynamically update job start_time to avoid unnecessary job runs

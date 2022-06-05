@@ -69,8 +69,8 @@ class SMStateMachine(
                         is SMResult.TimeLimitExceed -> {
                             log.warn("${result.workflowType} has exceeded the time limit.")
                             val metadataToSave = SMMetadata.Builder(result.metadataToSave)
-                                .setWorkflow(result.workflowType)
-                                .reset()
+                                .workflow(result.workflowType)
+                                .resetWorkflow()
                                 .build()
 
                             updateMetadata(metadataToSave)
@@ -100,8 +100,8 @@ class SMStateMachine(
         result as SMResult.Failure
         // latestExecution status should be RETRYING
         val metadataToSave = SMMetadata.Builder(result.metadataToSave)
-            .setWorkflow(result.workflowType)
-            .currentState(prevState)
+            .workflow(result.workflowType)
+            .setCurrentState(prevState)
         val retry = when (result.workflowType) {
             WorkflowType.CREATION -> {
                 metadata.creation.retry
@@ -121,8 +121,8 @@ class SMStateMachine(
                 metadataToSave.setRetry(retryCount)
             } else {
                 log.warn("Retry count exhausted for state [$currentState], reset workflow ${result.workflowType}.")
-                metadataToSave.reset()
-                    .updateLatestExecution(SMMetadata.LatestExecution.Status.FAILED, endTime = now())
+                metadataToSave.resetWorkflow()
+                    .setLatestExecution(SMMetadata.LatestExecution.Status.FAILED, endTime = now())
             }
         }
 
@@ -165,9 +165,9 @@ class SMStateMachine(
     suspend fun handlePolicyChange(): SMStateMachine {
         if (job.seqNo > metadata.policySeqNo || job.primaryTerm > metadata.policyPrimaryTerm) {
             val metadataToSave = SMMetadata.Builder(metadata)
-                .policyVersion(job.seqNo, job.primaryTerm)
-                .nextCreationTime(getNextExecutionTime(job.creation.schedule, now()))
-                .nextDeletionTime(getNextExecutionTime(job.deletion.schedule, now()))
+                .setPolicyVersion(job.seqNo, job.primaryTerm)
+                .setNextCreationTime(getNextExecutionTime(job.creation.schedule, now()))
+                .setNextDeletionTime(getNextExecutionTime(job.deletion.schedule, now()))
                 .build()
             updateMetadata(metadataToSave)
         }

@@ -427,7 +427,7 @@ data class SMMetadata(
 
         private lateinit var workflowType: WorkflowType
 
-        fun setWorkflow(workflowType: WorkflowType): Builder {
+        fun workflow(workflowType: WorkflowType): Builder {
             this.workflowType = workflowType
             return this
         }
@@ -435,7 +435,7 @@ data class SMMetadata(
         // Reset the related metadata fields of the workflow
         // so the state machine will skip/abort this execution
         // and can go to the next execution period
-        fun reset(): Builder {
+        fun resetWorkflow(): Builder {
             var currentState = metadata.currentState
             var startedCreation = metadata.creation.started
             var creationRetry = metadata.creation.retry
@@ -468,7 +468,11 @@ data class SMMetadata(
             return this
         }
 
-        fun updateLatestExecution(status: LatestExecution.Status, message: String? = null, cause: String? = null, endTime: Instant? = null): Builder {
+        fun setLatestExecution(
+            status: LatestExecution.Status,
+            message: String? = null, cause: String? = null,
+            endTime: Instant? = null
+        ): Builder {
             val messageWithTime = message?.let { preFixTimeStamp(message) }
             val causeWithTime = cause?.let { preFixTimeStamp(cause) }
             when (workflowType) {
@@ -570,7 +574,7 @@ data class SMMetadata(
             return this
         }
 
-        fun policyVersion(seqNo: Long, primaryTerm: Long): Builder {
+        fun setPolicyVersion(seqNo: Long, primaryTerm: Long): Builder {
             metadata = metadata.copy(
                 policySeqNo = seqNo,
                 policyPrimaryTerm = primaryTerm,
@@ -578,14 +582,14 @@ data class SMMetadata(
             return this
         }
 
-        fun currentState(state: SMState): Builder {
+        fun setCurrentState(state: SMState): Builder {
             metadata = metadata.copy(
                 currentState = state
             )
             return this
         }
 
-        fun nextCreationTime(time: Instant): Builder {
+        fun setNextCreationTime(time: Instant): Builder {
             metadata = metadata.copy(
                 creation = metadata.creation.copy(
                     trigger = metadata.creation.trigger.copy(
@@ -596,8 +600,7 @@ data class SMMetadata(
             return this
         }
 
-        // TODO SM update execution metadata and init execution metadata
-        fun creation(snapshot: String?, initLatestExecution: LatestExecution? = null): Builder {
+        fun setCreation(snapshot: String?, initLatestExecution: LatestExecution? = null): Builder {
             metadata = metadata.copy(
                 creation = metadata.creation.copy(
                     started = if (snapshot == null) null else listOf(snapshot),
@@ -607,7 +610,7 @@ data class SMMetadata(
             return this
         }
 
-        fun nextDeletionTime(time: Instant): Builder {
+        fun setNextDeletionTime(time: Instant): Builder {
             metadata = metadata.copy(
                 deletion = metadata.deletion.copy(
                     trigger = metadata.deletion.trigger.copy(
@@ -618,7 +621,7 @@ data class SMMetadata(
             return this
         }
 
-        fun deletion(snapshots: List<String>?, initLatestExecution: LatestExecution? = null): Builder {
+        fun setDeletion(snapshots: List<String>?, initLatestExecution: LatestExecution? = null): Builder {
             metadata = metadata.copy(
                 deletion = metadata.deletion.copy(
                     started = snapshots,

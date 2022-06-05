@@ -237,7 +237,7 @@ suspend fun Client.getSnapshotsWithErrorHandling(
         emptyList()
     } catch (ex: Exception) {
         log.error(exceptionMsg, ex)
-        metadataBuilder.updateLatestExecution(
+        metadataBuilder.setLatestExecution(
             status = SMMetadata.LatestExecution.Status.RETRYING,
             message = exceptionMsg,
             cause = SnapshotManagementException.wrap(ex).message

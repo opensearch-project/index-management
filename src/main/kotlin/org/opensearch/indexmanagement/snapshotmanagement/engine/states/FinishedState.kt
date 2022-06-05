@@ -7,7 +7,6 @@ package org.opensearch.indexmanagement.snapshotmanagement.engine.states
 
 import org.opensearch.common.unit.TimeValue
 import org.opensearch.indexmanagement.snapshotmanagement.engine.statemachine.SMStateMachine
-import org.opensearch.indexmanagement.snapshotmanagement.getSnapshots
 import org.opensearch.indexmanagement.snapshotmanagement.getSnapshotsWithErrorHandling
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata
 import org.opensearch.indexmanagement.snapshotmanagement.smDocIdToPolicyName
@@ -29,7 +28,7 @@ object FinishedState : State {
 
         metadata.creation.started?.first()?.let { started ->
             assert(metadata.creation.latestExecution != null)
-            metadataBuilder.setWorkflow(WorkflowType.CREATION)
+            metadataBuilder.workflow(WorkflowType.CREATION)
 
             val getSnapshotsRes = client.getSnapshotsWithErrorHandling(
                 job,
@@ -47,20 +46,20 @@ object FinishedState : State {
 
             if (getSnapshots.isEmpty()) {
                 metadataBuilder
-                    .updateLatestExecution(
+                    .setLatestExecution(
                         SMMetadata.LatestExecution.Status.FAILED,
                         message = getSnapshotMissingMessageInCreationWorkflow(started),
                         endTime = now(),
                     )
-                    .reset()
+                    .resetWorkflow()
                 return@let
             }
             val snapshot = getSnapshots.first()
             when (snapshot.state()) {
                 SnapshotState.SUCCESS -> {
                     metadataBuilder
-                        .creation(snapshot = null)
-                        .updateLatestExecution(
+                        .setCreation(snapshot = null)
+                        .setLatestExecution(
                             status = SMMetadata.LatestExecution.Status.SUCCESS,
                             message = "Snapshot ${metadata.creation.started.first()} creation end with state ${snapshot.state()}.",
                             endTime = now(),
@@ -76,8 +75,8 @@ object FinishedState : State {
                 else -> {
                     // FAILED, PARTIAL, INCOMPATIBLE
                     metadataBuilder
-                        .creation(null)
-                        .updateLatestExecution(
+                        .setCreation(null)
+                        .setLatestExecution(
                             status = SMMetadata.LatestExecution.Status.FAILED,
                             cause = "Snapshot ${metadata.creation.started.first()} creation end with state ${snapshot.state()}.",
                             endTime = now(),
@@ -93,7 +92,7 @@ object FinishedState : State {
 
         metadata.deletion.started?.let { startedDeleteSnapshots ->
             assert(metadata.deletion.latestExecution != null)
-            metadataBuilder.setWorkflow(WorkflowType.DELETION)
+            metadataBuilder.workflow(WorkflowType.DELETION)
 
             val getSnapshotsRes = client.getSnapshotsWithErrorHandling(
                 job,
@@ -110,12 +109,12 @@ object FinishedState : State {
             val getSnapshots = getSnapshotsRes.snapshots
 
             if (getSnapshots.isEmpty()) {
-                metadataBuilder.updateLatestExecution(
+                metadataBuilder.setLatestExecution(
                     SMMetadata.LatestExecution.Status.FAILED,
                     message = getSnapshotMissingMessageInDeletionWorkflow(),
                     endTime = now(),
                 )
-                    .reset()
+                    .resetWorkflow()
             }
 
             val existingSnapshotsNameSet = getSnapshots.map { it.snapshotId().name }.toSet()
@@ -123,8 +122,8 @@ object FinishedState : State {
             if (remainingSnapshotsName.isEmpty()) {
                 log.info("Snapshots have been deleted: $existingSnapshotsNameSet.")
                 // TODO SM notification snapshot deleted
-                metadataBuilder.deletion(null)
-                    .updateLatestExecution(
+                metadataBuilder.setDeletion(null)
+                    .setLatestExecution(
                         status = SMMetadata.LatestExecution.Status.SUCCESS,
                         message = "Snapshots ${metadata.creation.started} deletion has finished.",
                         endTime = now(),
@@ -136,7 +135,7 @@ object FinishedState : State {
                 }
 
                 log.info("Snapshots haven't been deleted: $remainingSnapshotsName.")
-                metadataBuilder.deletion(
+                metadataBuilder.setDeletion(
                     remainingSnapshotsName.toList(),
                 )
             }

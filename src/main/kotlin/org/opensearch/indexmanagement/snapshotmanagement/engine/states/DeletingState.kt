@@ -30,7 +30,7 @@ object DeletingState : State {
         val log = context.log
 
         var metadataBuilder = SMMetadata.Builder(metadata)
-            .setWorkflow(WorkflowType.DELETION)
+            .workflow(WorkflowType.DELETION)
 
         val res: AcknowledgedResponse
         val snapshotsToDelete: List<String>
@@ -65,7 +65,7 @@ object DeletingState : State {
                 log.info("sm dev: Delete snapshot acknowledged: ${res.isAcknowledged}.")
             } catch (ex: Exception) {
                 log.error(getDeleteSnapshotErrorMessage(snapshotsToDelete), ex)
-                metadataBuilder.deletion(
+                metadataBuilder.setDeletion(
                     snapshots = snapshotsToDelete,
                     initLatestExecution = SMMetadata.LatestExecution.init(
                         status = SMMetadata.LatestExecution.Status.RETRYING,
@@ -81,7 +81,7 @@ object DeletingState : State {
         }
 
         if (snapshotsToDelete.isNotEmpty())
-            metadataBuilder.deletion(
+            metadataBuilder.setDeletion(
                 snapshots = snapshotsToDelete,
                 initLatestExecution = SMMetadata.LatestExecution(
                     status = SMMetadata.LatestExecution.Status.IN_PROGRESS,

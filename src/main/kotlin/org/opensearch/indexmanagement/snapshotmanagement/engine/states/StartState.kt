@@ -14,7 +14,7 @@ object StartState : State {
 
     override suspend fun execute(context: SMStateMachine): SMResult {
         val metadataToSave = SMMetadata.Builder(context.metadata)
-            .currentState(SMState.START)
+            .setCurrentState(SMState.START)
             .build()
 
         return SMResult.Next(metadataToSave)

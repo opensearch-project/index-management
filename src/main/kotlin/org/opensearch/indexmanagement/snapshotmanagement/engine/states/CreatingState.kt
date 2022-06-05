@@ -11,7 +11,6 @@ import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.snapshotmanagement.SnapshotManagementException
 import org.opensearch.indexmanagement.snapshotmanagement.engine.statemachine.SMStateMachine
 import org.opensearch.indexmanagement.snapshotmanagement.generateSnapshotName
-import org.opensearch.indexmanagement.snapshotmanagement.getSnapshots
 import org.opensearch.indexmanagement.snapshotmanagement.addSMPolicyInSnapshotMetadata
 import org.opensearch.indexmanagement.snapshotmanagement.getSnapshotsWithErrorHandling
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata
@@ -31,12 +30,12 @@ object CreatingState : State {
         val log = context.log
 
         var metadataBuilder = SMMetadata.Builder(metadata)
-            .setWorkflow(WorkflowType.CREATION)
+            .workflow(WorkflowType.CREATION)
 
         var snapshotName: String? = metadata.creation.started?.first()
 
         if (snapshotName !== null) {
-            metadataBuilder.creation(
+            metadataBuilder.setCreation(
                 snapshot = snapshotName,
                 initLatestExecution = SMMetadata.LatestExecution.init(
                     status = SMMetadata.LatestExecution.Status.IN_PROGRESS,
@@ -63,7 +62,7 @@ object CreatingState : State {
             log.info("sm dev last execution time $lastExecutionTime")
             snapshotName = checkCreatedSnapshots(lastExecutionTime, getSnapshots)
             if (snapshotName != null) {
-                metadataBuilder.creation(
+                metadataBuilder.setCreation(
                     snapshot = snapshotName,
                     initLatestExecution = SMMetadata.LatestExecution.init(
                         status = SMMetadata.LatestExecution.Status.IN_PROGRESS,
@@ -82,7 +81,7 @@ object CreatingState : State {
             val res: CreateSnapshotResponse = client.admin().cluster().suspendUntil { createSnapshot(req, it) }
             // TODO SM notification that snapshot starts to be created
             log.info("sm dev: Create snapshot response: $res.")
-            metadataBuilder.creation(
+            metadataBuilder.setCreation(
                 snapshot = snapshotName,
                 initLatestExecution = SMMetadata.LatestExecution(
                     status = SMMetadata.LatestExecution.Status.IN_PROGRESS,
@@ -91,7 +90,7 @@ object CreatingState : State {
             )
         } catch (ex: Exception) {
             log.error(getCreateSnapshotErrorMessage(snapshotName), ex)
-            metadataBuilder.creation(
+            metadataBuilder.setCreation(
                 snapshot = snapshotName,
                 initLatestExecution = SMMetadata.LatestExecution.init(
                     status = SMMetadata.LatestExecution.Status.RETRYING,

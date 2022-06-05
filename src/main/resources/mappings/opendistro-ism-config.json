@@ -1306,7 +1306,7 @@
         }
       }
     },
-    "sm": {
+    "sm_policy": {
       "properties": {
         "name": {
           "type": "keyword"
@@ -1476,17 +1476,26 @@
               }
             },
             "started": {
-              "properties": {
-                "name": {
-                  "type": "keyword"
+              "type": "keyword"
+            },
+            "latest_execution": {
+              "status": {
+                "type": "keyword"
+              },
+              "start_time": {
+                "type": "date",
+                "format": "strict_date_time||epoch_millis"
+              },
+              "end_time": {
+                "type": "date",
+                "format": "strict_date_time||epoch_millis"
+              },
+              "info": {
+                "message": {
+                  "type": "text"
                 },
-                "start_time": {
-                  "type": "date",
-                  "format": "strict_date_time||epoch_millis"
-                },
-                "end_time": {
-                  "type": "date",
-                  "format": "strict_date_time||epoch_millis"
+                "info": {
+                  "type": "text"
                 }
               }
             },
@@ -1510,24 +1519,28 @@
               }
             },
             "started": {
-              "type": "nested",
-              "properties": {
-                "name": {
-                  "type": "keyword"
+              "type": "keyword"
+            },
+            "latest_execution": {
+              "status": {
+                "type": "keyword"
+              },
+              "start_time": {
+                "type": "date",
+                "format": "strict_date_time||epoch_millis"
+              },
+              "end_time": {
+                "type": "date",
+                "format": "strict_date_time||epoch_millis"
+              },
+              "info": {
+                "message": {
+                  "type": "text"
                 },
-                "start_time": {
-                  "type": "date",
-                  "format": "strict_date_time||epoch_millis"
-                },
-                "end_time": {
-                  "type": "date",
-                  "format": "strict_date_time||epoch_millis"
+                "info": {
+                  "type": "text"
                 }
               }
-            },
-            "started_time": {
-              "type": "date",
-              "format": "strict_date_time||epoch_millis"
             },
             "retry": {
               "properties": {

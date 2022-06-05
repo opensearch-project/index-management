@@ -32,7 +32,7 @@ object DeleteConditionMetState : State {
         if (!now().isBefore(nextDeletionTime)) {
             log.info("sm dev current time [${now()}] has passed nextDeletionTime [$nextDeletionTime]")
             nextDeletionTimeToSave = getNextExecutionTime(job.deletion.schedule, now())
-            metadataBuilder.nextDeletionTime(nextDeletionTimeToSave)
+            metadataBuilder.setNextDeletionTime(nextDeletionTimeToSave)
         } else {
             log.info("sm dev: current time [${now()}] has not passed nextDeletionTime [$nextDeletionTime]")
             // TODO SM dynamically update job start_time to avoid unnecessary job runs
