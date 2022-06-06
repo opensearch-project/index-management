@@ -95,8 +95,8 @@ class DeletingStateTests : ClientMockTestCase() {
         val context = SMStateMachine(client, job, metadata)
 
         val result = SMState.DELETING.instance.execute(context)
-        assertTrue("Execution result should be Failure.", result is SMResult.Failure)
-        result as SMResult.Failure
+        assertTrue("Execution result should be Failure.", result is SMResult.Fail)
+        result as SMResult.Fail
     }
 
     fun `test get snapshots exception`() = runBlocking {
@@ -111,6 +111,6 @@ class DeletingStateTests : ClientMockTestCase() {
         val context = SMStateMachine(client, job, metadata)
 
         val result = SMState.DELETING.instance.execute(context)
-        assertTrue("Execution result should be Failure.", result is SMResult.Failure)
+        assertTrue("Execution result should be Failure.", result is SMResult.Fail)
     }
 }

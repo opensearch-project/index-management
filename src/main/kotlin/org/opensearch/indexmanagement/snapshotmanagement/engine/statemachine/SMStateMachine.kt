@@ -63,7 +63,7 @@ class SMStateMachine(
                             updateMetadata(result.metadataToSave.copy(currentState = prevState))
                             // can still execute other lateral states if exists
                         }
-                        is SMResult.Failure -> {
+                        is SMResult.Fail -> {
                             if (result.timeLimitExceed == true) {
                                 log.warn("${result.workflowType} exceeds the time limit.")
                                 val metadataToSave = SMMetadata.Builder(result.metadataToSave)
@@ -96,8 +96,8 @@ class SMStateMachine(
     }
 
     private fun handleRetry(result: SMResult, prevState: SMState): SMMetadata.Builder {
-        assert(result is SMResult.Failure)
-        result as SMResult.Failure
+        assert(result is SMResult.Fail)
+        result as SMResult.Fail
         // latestExecution status should be RETRYING
         val metadataToSave = SMMetadata.Builder(result.metadataToSave)
             .workflow(result.workflowType)

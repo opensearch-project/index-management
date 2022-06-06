@@ -45,8 +45,8 @@ class CreatingStateTests : ClientMockTestCase() {
         val context = SMStateMachine(client, job, metadata)
 
         val result = SMState.CREATING.instance.execute(context)
-        assertTrue("Execution result should be Failure.", result is SMResult.Failure)
-        result as SMResult.Failure
+        assertTrue("Execution result should be Failure.", result is SMResult.Fail)
+        result as SMResult.Fail
     }
 
     fun `test snapshot already created in previous schedule`() = runBlocking {
@@ -77,6 +77,6 @@ class CreatingStateTests : ClientMockTestCase() {
         val context = SMStateMachine(client, job, metadata)
 
         val result = SMState.CREATING.instance.execute(context)
-        assertTrue("Execution result should be Failure.", result is SMResult.Failure)
+        assertTrue("Execution result should be Failure.", result is SMResult.Fail)
     }
 }

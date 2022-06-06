@@ -275,8 +275,8 @@ data class SMMetadata(
 
         enum class Status {
             IN_PROGRESS,
-            SUCCESS,
             RETRYING,
+            SUCCESS,
             FAILED,
             TIME_LIMIT_EXCEEDED,
         }
@@ -437,8 +437,8 @@ data class SMMetadata(
             return this
         }
 
-        // Reset this execution period and go to next
-        //  Set the related metadata fields of the workflow to null
+        // Reset the workflow of this execution period so SM can
+        // go to execute the next
         fun resetWorkflow(): Builder {
             var currentState = metadata.currentState
             var startedCreation = metadata.creation.started
@@ -472,70 +472,56 @@ data class SMMetadata(
             return this
         }
 
+        // This need to be used before [setCreationStarted] & [setDeletionStarted]
+        //  because this depends on started field // TODO SM possible to refactor the builder
         fun setLatestExecution(
             status: LatestExecution.Status,
+            updateMessage: Boolean = true,
             message: String? = null,
+            updateCause: Boolean = true,
             cause: String? = null,
             endTime: Instant? = null
         ): Builder {
-            val messageWithTime = message?.let { preFixTimeStamp(message) }
-            val causeWithTime = cause?.let { preFixTimeStamp(cause) }
-            when (workflowType) {
+            val messageWithTime = if (message != null) preFixTimeStamp(message) else null
+            val causeWithTime = if (cause != null) preFixTimeStamp(cause) else null
+            fun getUpdatedWorkflowMetadata(workflowMetadata: WorkflowMetadata): WorkflowMetadata {
+                // if started is null, we need to override the previous latestExecution
+                //  w/ a newly initialized one
+                if (workflowMetadata.started == null) {
+                    return workflowMetadata.copy(
+                        latestExecution = LatestExecution.init(
+                            status = status,
+                            info = Info(
+                                message = messageWithTime,
+                                cause = causeWithTime,
+                            )
+                        )
+                    )
+                } else {
+                    // if started is not null, latestExecution shouldn't be null
+                    assert(workflowMetadata.latestExecution != null)
+                    return workflowMetadata.copy(
+                        latestExecution = workflowMetadata.latestExecution!!.copy(
+                            status = status,
+                            info = Info(
+                                message = if (updateMessage) messageWithTime else metadata.creation.latestExecution!!.info?.message,
+                                cause = if (updateCause) causeWithTime else metadata.creation.latestExecution!!.info?.cause,
+                            ),
+                            endTime = endTime,
+                        )
+                    )
+                }
+            }
+            metadata = when (workflowType) {
                 WorkflowType.CREATION -> {
-                    if (metadata.creation.latestExecution == null) {
-                        metadata = metadata.copy(
-                            creation = metadata.creation.copy(
-                                latestExecution = LatestExecution.init(
-                                    status = status,
-                                    info = Info(
-                                        message = message,
-                                        cause = cause,
-                                    )
-                                )
-                            )
-                        )
-                    } else {
-                        metadata = metadata.copy(
-                            creation = metadata.creation.copy(
-                                latestExecution = metadata.creation.latestExecution!!.copy(
-                                    status = status,
-                                    info = Info(
-                                        message = messageWithTime ?: metadata.creation.latestExecution!!.info?.message,
-                                        cause = causeWithTime ?: metadata.creation.latestExecution!!.info?.cause,
-                                    ),
-                                    endTime = endTime,
-                                )
-                            )
-                        )
-                    }
+                    metadata.copy(
+                        creation = getUpdatedWorkflowMetadata(metadata.creation)
+                    )
                 }
                 WorkflowType.DELETION -> {
-                    if (metadata.deletion.latestExecution == null) {
-                        metadata = metadata.copy(
-                            deletion = metadata.deletion.copy(
-                                latestExecution = LatestExecution.init(
-                                    status = status,
-                                    info = Info(
-                                        message = message,
-                                        cause = cause,
-                                    )
-                                )
-                            )
-                        )
-                    } else {
-                        metadata = metadata.copy(
-                            deletion = metadata.deletion.copy(
-                                latestExecution = metadata.deletion.latestExecution!!.copy(
-                                    status = status,
-                                    info = Info(
-                                        message = messageWithTime ?: metadata.deletion.latestExecution!!.info?.message,
-                                        cause = causeWithTime ?: metadata.deletion.latestExecution!!.info?.cause,
-                                    ),
-                                    endTime = endTime,
-                                )
-                            )
-                        )
-                    }
+                    metadata.copy(
+                        deletion = getUpdatedWorkflowMetadata(metadata.deletion)
+                    )
                 }
             }
             return this
@@ -561,6 +547,7 @@ data class SMMetadata(
             return this
         }
 
+        // This should be used after every [SMResult.Fail]
         fun resetRetry(creation: Boolean = false, deletion: Boolean = false): Builder {
             if (creation && metadata.creation.retry != null) {
                 metadata = metadata.copy(
@@ -605,11 +592,10 @@ data class SMMetadata(
             return this
         }
 
-        fun setCreation(snapshot: String?, initLatestExecution: LatestExecution? = null): Builder {
+        fun setCreationStarted(snapshot: String?): Builder {
             metadata = metadata.copy(
                 creation = metadata.creation.copy(
                     started = if (snapshot == null) null else listOf(snapshot),
-                    latestExecution = initLatestExecution ?: metadata.creation.latestExecution,
                 )
             )
             return this
@@ -626,11 +612,10 @@ data class SMMetadata(
             return this
         }
 
-        fun setDeletion(snapshots: List<String>?, initLatestExecution: LatestExecution? = null): Builder {
+        fun setDeletionStarted(snapshots: List<String>?): Builder {
             metadata = metadata.copy(
                 deletion = metadata.deletion.copy(
                     started = snapshots,
-                    latestExecution = initLatestExecution ?: metadata.deletion.latestExecution,
                 )
             )
             return this

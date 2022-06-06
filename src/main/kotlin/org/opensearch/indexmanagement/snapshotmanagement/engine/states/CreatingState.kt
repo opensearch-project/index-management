@@ -17,7 +17,6 @@ import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata
 import org.opensearch.indexmanagement.snapshotmanagement.smDocIdToPolicyName
 import org.opensearch.snapshots.SnapshotInfo
 import java.time.Instant
-import java.time.Instant.now
 
 object CreatingState : State {
 
@@ -34,45 +33,35 @@ object CreatingState : State {
 
         var snapshotName: String? = metadata.creation.started?.first()
 
-        if (snapshotName !== null) {
-            metadataBuilder.setCreation(
-                snapshot = snapshotName,
-                initLatestExecution = SMMetadata.LatestExecution.init(
-                    status = SMMetadata.LatestExecution.Status.IN_PROGRESS,
-                )
-            )
-            return SMResult.Next(metadataBuilder.build())
-        } else {
+        if (snapshotName == null) {
             val getSnapshotsRes = client.getSnapshotsWithErrorHandling(
                 job,
                 smDocIdToPolicyName(job.id) + "*",
                 metadataBuilder,
                 log,
                 null,
-                GET_SNAPSHOTS_ERROR_MESSAGE,
+                getSnapshotsErrorMessage(),
             )
             metadataBuilder = getSnapshotsRes.metadataBuilder
             if (getSnapshotsRes.failed)
-                return SMResult.Failure(metadataBuilder.build(), WorkflowType.CREATION)
+                return SMResult.Fail(metadataBuilder.build(), WorkflowType.CREATION)
             metadataBuilder.resetRetry(creation = true)
             val getSnapshots = getSnapshotsRes.snapshots
             log.info("sm dev getSnapshots ${getSnapshots.map { it.snapshotId().name }}")
 
             val lastExecutionTime = job.creation.schedule.getPeriodStartingAt(null).v1()
             log.info("sm dev last execution time $lastExecutionTime")
+
             snapshotName = checkCreatedSnapshots(lastExecutionTime, getSnapshots)
             if (snapshotName != null) {
-                metadataBuilder.setCreation(
-                    snapshot = snapshotName,
-                    initLatestExecution = SMMetadata.LatestExecution.init(
-                        status = SMMetadata.LatestExecution.Status.IN_PROGRESS,
-                    )
-                )
+                metadataBuilder.setLatestExecution(
+                    status = SMMetadata.LatestExecution.Status.IN_PROGRESS
+                ).setCreationStarted(snapshotName)
                 return SMResult.Next(metadataBuilder.build())
             }
         }
 
-        snapshotName = generateSnapshotName(job)
+        snapshotName = snapshotName ?: generateSnapshotName(job)
         log.info("sm dev: Snapshot to create: $snapshotName.")
         try {
             val req = CreateSnapshotRequest(job.snapshotConfig["repository"] as String, snapshotName)
@@ -81,35 +70,28 @@ object CreatingState : State {
             val res: CreateSnapshotResponse = client.admin().cluster().suspendUntil { createSnapshot(req, it) }
             // TODO SM notification that snapshot starts to be created
             log.info("sm dev: Create snapshot response: $res.")
-            metadataBuilder.setCreation(
-                snapshot = snapshotName,
-                initLatestExecution = SMMetadata.LatestExecution(
-                    status = SMMetadata.LatestExecution.Status.IN_PROGRESS,
-                    startTime = now(),
-                )
-            )
+            metadataBuilder.setLatestExecution(
+                status = SMMetadata.LatestExecution.Status.IN_PROGRESS,
+            ).setCreationStarted(snapshotName)
         } catch (ex: Exception) {
             log.error(getCreateSnapshotErrorMessage(snapshotName), ex)
-            metadataBuilder.setCreation(
-                snapshot = snapshotName,
-                initLatestExecution = SMMetadata.LatestExecution.init(
-                    status = SMMetadata.LatestExecution.Status.RETRYING,
-                    info = SMMetadata.Info(
-                        message = getCreateSnapshotErrorMessage(snapshotName),
-                        cause = SnapshotManagementException.wrap(ex).message
-                    )
-                )
-            )
+            metadataBuilder.setLatestExecution(
+                status = SMMetadata.LatestExecution.Status.RETRYING,
+                message = getCreateSnapshotErrorMessage(snapshotName),
+                cause = SnapshotManagementException.wrap(ex).message,
+            ).setCreationStarted(snapshotName)
 
-            return SMResult.Failure(metadataBuilder.build(), WorkflowType.CREATION)
+            return SMResult.Fail(metadataBuilder.build(), WorkflowType.CREATION)
         }
         metadataBuilder.resetRetry(creation = true)
 
         return SMResult.Next(metadataBuilder.build())
     }
 
-    private const val GET_SNAPSHOTS_ERROR_MESSAGE = "Caught exception while getting snapshots to decide if snapshot has been created in previous execution schedule."
-    private fun getCreateSnapshotErrorMessage(snapshotName: String) = "Caught exception while creating snapshot $snapshotName."
+    private fun getSnapshotsErrorMessage() = "Caught exception while getting snapshots to decide if snapshot has been created in previous execution schedule."
+
+    private fun getCreateSnapshotErrorMessage(snapshotName: String) =
+        "Caught exception while creating snapshot $snapshotName."
 
     /**
      * If there is snapshot already created in this execution period,

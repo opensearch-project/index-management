@@ -40,18 +40,18 @@ object DeletingState : State {
             smDocIdToPolicyName(job.id) + "*",
             metadataBuilder,
             log,
-            GET_SNAPSHOTS_MISSING_MESSAGE,
-            GET_SNAPSHOTS_ERROR_MESSAGE,
+            getSnapshotsMissingMessage(),
+            getSnapshotsErrorMessage(),
         )
         metadataBuilder = getSnapshotsRes.metadataBuilder
         if (getSnapshotsRes.failed)
-            return SMResult.Failure(metadataBuilder.build(), WorkflowType.DELETION)
+            return SMResult.Fail(metadataBuilder.build(), WorkflowType.DELETION)
         metadataBuilder.resetRetry(deletion = true)
         val getSnapshots = getSnapshotsRes.snapshots
-        log.info("snapshots $getSnapshots")
+        log.info("sm dev get snapshots $getSnapshots")
 
-        snapshotsToDelete = filterByPolicyDeleteCondition(
-            getSnapshots, // TODO SM filter to only useful snapshots
+        snapshotsToDelete = filterByDeleteCondition(
+            getSnapshots, // TODO SM filter to only useful snapshots: like not FAILED
             job.deletion.condition, log
         )
         log.info("sm dev: Going to delete: $snapshotsToDelete")
@@ -65,35 +65,26 @@ object DeletingState : State {
                 log.info("sm dev: Delete snapshot acknowledged: ${res.isAcknowledged}.")
             } catch (ex: Exception) {
                 log.error(getDeleteSnapshotErrorMessage(snapshotsToDelete), ex)
-                metadataBuilder.setDeletion(
-                    snapshots = snapshotsToDelete,
-                    initLatestExecution = SMMetadata.LatestExecution.init(
-                        status = SMMetadata.LatestExecution.Status.RETRYING,
-                        info = SMMetadata.Info(
-                            message = getDeleteSnapshotErrorMessage(snapshotsToDelete),
-                            cause = SnapshotManagementException.wrap(ex).message
-                        )
-                    )
-                )
-                return SMResult.Failure(metadataBuilder.build(), WorkflowType.DELETION)
+                metadataBuilder.setLatestExecution(
+                    status = SMMetadata.LatestExecution.Status.RETRYING,
+                    message = getDeleteSnapshotErrorMessage(snapshotsToDelete),
+                    cause = SnapshotManagementException.wrap(ex).message,
+                ).setDeletionStarted(snapshotsToDelete)
+                return SMResult.Fail(metadataBuilder.build(), WorkflowType.DELETION)
             }
             metadataBuilder.resetRetry(deletion = true)
         }
 
         if (snapshotsToDelete.isNotEmpty())
-            metadataBuilder.setDeletion(
-                snapshots = snapshotsToDelete,
-                initLatestExecution = SMMetadata.LatestExecution(
-                    status = SMMetadata.LatestExecution.Status.IN_PROGRESS,
-                    startTime = now(),
-                ),
-            )
+            metadataBuilder.setLatestExecution(
+                status = SMMetadata.LatestExecution.Status.IN_PROGRESS
+            ).setDeletionStarted(snapshotsToDelete)
 
         return SMResult.Next(metadataBuilder.build())
     }
 
-    private const val GET_SNAPSHOTS_MISSING_MESSAGE = "No snapshots found under policy while getting snapshots to decide which snapshots to delete."
-    private const val GET_SNAPSHOTS_ERROR_MESSAGE = "Caught exception while getting snapshots to decide which snapshots to delete."
+    private fun getSnapshotsMissingMessage() = "No snapshots found under policy while getting snapshots to decide which snapshots to delete."
+    private fun getSnapshotsErrorMessage() = "Caught exception while getting snapshots to decide which snapshots to delete."
     private fun getDeleteSnapshotErrorMessage(snapshotNames: List<String>) = "Caught exception while deleting snapshot $snapshotNames."
 
     /**
@@ -104,7 +95,7 @@ object DeletingState : State {
      *   keep at least min_count of snapshots even it's outdated
      *   keep at most max_count of snapshots
      */
-    private fun filterByPolicyDeleteCondition(snapshots: List<SnapshotInfo>, deleteCondition: SMPolicy.DeleteCondition, log: Logger): List<String> {
+    private fun filterByDeleteCondition(snapshots: List<SnapshotInfo>, deleteCondition: SMPolicy.DeleteCondition, log: Logger): List<String> {
         log.info("sm dev: snapshotInfos $snapshots")
         val snapshotInfos = snapshots.sortedBy { it.startTime() } // start_time will always exist along with snapshotId
         log.info("sm dev: snapshotInfos $snapshotInfos")
