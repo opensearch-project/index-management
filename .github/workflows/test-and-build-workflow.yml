@@ -12,7 +12,7 @@ jobs:
     # Job name
     name: Build Index Management
     env:
-      BUILD_ARGS: -D"opensearch.version=1.3.2-SNAPSHOT" ${{ matrix.os_build_args }}
+      BUILD_ARGS: -D"opensearch.version=1.3.3-SNAPSHOT" ${{ matrix.os_build_args }}
       WORKING_DIR: ${{ matrix.working_directory }}.
     strategy:
       # This setting says that all jobs should finish, even if one fails
