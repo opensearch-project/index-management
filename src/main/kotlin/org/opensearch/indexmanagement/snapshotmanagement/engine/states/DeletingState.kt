@@ -69,17 +69,17 @@ object DeletingState : State {
                     status = SMMetadata.LatestExecution.Status.RETRYING,
                     message = getDeleteSnapshotErrorMessage(snapshotsToDelete),
                     cause = SnapshotManagementException.wrap(ex).message,
-                ).setDeletionStarted(snapshotsToDelete)
+                )
                 return SMResult.Fail(metadataBuilder.build(), WorkflowType.DELETION)
             }
             metadataBuilder.resetRetry(deletion = true)
         }
 
-        if (snapshotsToDelete.isNotEmpty())
+        if (snapshotsToDelete.isNotEmpty()) {
             metadataBuilder.setLatestExecution(
                 status = SMMetadata.LatestExecution.Status.IN_PROGRESS
             ).setDeletionStarted(snapshotsToDelete)
-
+        }
         return SMResult.Next(metadataBuilder.build())
     }
 

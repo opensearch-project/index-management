@@ -44,6 +44,7 @@ sealed class SMResult : State.Result() {
     ) : SMResult()
 }
 
+// TODO SM enhance transition with predicate
 /**
  * Transitions from current to next state
  *

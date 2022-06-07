@@ -6,10 +6,8 @@
 package org.opensearch.indexmanagement.snapshotmanagement.engine.states
 
 import org.opensearch.indexmanagement.snapshotmanagement.engine.statemachine.SMStateMachine
-import org.opensearch.indexmanagement.snapshotmanagement.getNextExecutionTime
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata
-import java.time.Instant
-import java.time.Instant.now
+import org.opensearch.indexmanagement.snapshotmanagement.updateNextExecutionTime
 
 object CreateConditionMetState : State {
 
@@ -20,23 +18,17 @@ object CreateConditionMetState : State {
         val metadata = context.metadata
         val log = context.log
 
-        val metadataBuilder = SMMetadata.Builder(metadata)
+        var metadataBuilder = SMMetadata.Builder(metadata)
+            .workflow(WorkflowType.CREATION)
 
         if (metadata.creation.started != null) {
             return SMResult.Stay(metadataBuilder.build())
         }
 
         val nextCreationTime = metadata.creation.trigger.time
-        val nextCreationTimeToSave: Instant
-        if (!now().isBefore(nextCreationTime)) {
-            log.info("sm dev: Current time [${now()}] has passed nextCreationTime [$nextCreationTime]")
-            nextCreationTimeToSave = getNextExecutionTime(job.creation.schedule, now())
-            metadataBuilder.setNextCreationTime(nextCreationTimeToSave)
-        } else {
-            log.info("sm dev: Current time [${now()}] has not passed nextCreationTime [$nextCreationTime]")
-            // TODO SM dynamically update job start_time to avoid unnecessary job runs
-            return SMResult.Stay(metadataBuilder.build())
-        }
+        val result = updateNextExecutionTime(metadataBuilder, nextCreationTime, job.creation.schedule, WorkflowType.CREATION, log)
+        if (!result.updated) return SMResult.Stay(metadataBuilder.build())
+        metadataBuilder = result.metadataBuilder
 
         log.info("sm dev: Save current state as CREATE_CONDITION_MET [$metadataBuilder]")
         return SMResult.Next(metadataBuilder.build())

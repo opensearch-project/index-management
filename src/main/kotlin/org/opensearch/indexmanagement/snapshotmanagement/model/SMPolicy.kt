@@ -52,7 +52,7 @@ data class SMPolicy(
 
     init {
         require(snapshotConfig["repository"] != null) { "Must provide the repository in snapshot config." }
-        // Other fields in snapshotConfig: date_expression, indices, partial, include_global_state, ignore_unavailable, metadata
+        // TODO SM validate allowed fields in snapshotConfig: date_format, indices, partial, include_global_state, ignore_unavailable, metadata
         // TODO SM validate date_format is of right format
     }
 

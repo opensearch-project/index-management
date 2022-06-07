@@ -83,18 +83,19 @@ object SMRunner :
      * @return null indicates indexing metadata failed
      */
     private suspend fun initMetadata(job: SMPolicy): SMMetadata? {
+        val now = now()
         val initMetadata = SMMetadata(
             policySeqNo = job.seqNo,
             policyPrimaryTerm = job.primaryTerm,
             currentState = SMState.START,
             creation = SMMetadata.WorkflowMetadata(
                 SMMetadata.Trigger(
-                    time = getNextExecutionTime(job.creation.schedule, now())
+                    time = job.creation.schedule.getNextExecutionTime(now)
                 )
             ),
             deletion = SMMetadata.WorkflowMetadata(
                 SMMetadata.Trigger(
-                    time = getNextExecutionTime(job.deletion.schedule, now())
+                    time = job.deletion.schedule.getNextExecutionTime(now)
                 )
             ),
         )

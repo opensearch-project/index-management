@@ -472,8 +472,8 @@ data class SMMetadata(
             return this
         }
 
-        // This need to be used before [setCreationStarted] & [setDeletionStarted]
-        //  because this depends on started field // TODO SM possible to refactor the builder
+        // Use this **first** to update metadata, because it depends on started field
+        // TODO SM possible to refactor the builder so no internal dependency
         fun setLatestExecution(
             status: LatestExecution.Status,
             updateMessage: Boolean = true,

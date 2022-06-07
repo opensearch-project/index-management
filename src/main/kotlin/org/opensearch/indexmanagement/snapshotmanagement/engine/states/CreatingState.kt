@@ -33,6 +33,7 @@ object CreatingState : State {
 
         var snapshotName: String? = metadata.creation.started?.first()
 
+        // Check if there's already a snapshot created by SM in current execution period
         if (snapshotName == null) {
             val getSnapshotsRes = client.getSnapshotsWithErrorHandling(
                 job,
@@ -61,7 +62,7 @@ object CreatingState : State {
             }
         }
 
-        snapshotName = snapshotName ?: generateSnapshotName(job)
+        snapshotName = generateSnapshotName(job)
         log.info("sm dev: Snapshot to create: $snapshotName.")
         try {
             val req = CreateSnapshotRequest(job.snapshotConfig["repository"] as String, snapshotName)
@@ -69,6 +70,7 @@ object CreatingState : State {
                 .waitForCompletion(false)
             val res: CreateSnapshotResponse = client.admin().cluster().suspendUntil { createSnapshot(req, it) }
             // TODO SM notification that snapshot starts to be created
+
             log.info("sm dev: Create snapshot response: $res.")
             metadataBuilder.setLatestExecution(
                 status = SMMetadata.LatestExecution.Status.IN_PROGRESS,
@@ -79,7 +81,7 @@ object CreatingState : State {
                 status = SMMetadata.LatestExecution.Status.RETRYING,
                 message = getCreateSnapshotErrorMessage(snapshotName),
                 cause = SnapshotManagementException.wrap(ex).message,
-            ).setCreationStarted(snapshotName)
+            )
 
             return SMResult.Fail(metadataBuilder.build(), WorkflowType.CREATION)
         }

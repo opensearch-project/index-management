@@ -120,9 +120,13 @@ class SMStateMachine(
                 log.warn("Retry state [$currentState], remaining count $retryCount.")
                 metadataToSave.setRetry(retryCount)
             } else {
-                log.warn("Retry count exhausted for state [$currentState], reset workflow ${result.workflowType}.")
-                metadataToSave.resetWorkflow()
-                    .setLatestExecution(SMMetadata.LatestExecution.Status.FAILED, endTime = now())
+                val errorMessage = "Retry count exhausted for state [$currentState], reset workflow ${result.workflowType}."
+                log.warn(errorMessage)
+                metadataToSave.setLatestExecution(
+                    status = SMMetadata.LatestExecution.Status.FAILED,
+                    cause = errorMessage,
+                    endTime = now()
+                ).resetWorkflow()
             }
         }
 
@@ -164,10 +168,11 @@ class SMStateMachine(
      */
     suspend fun handlePolicyChange(): SMStateMachine {
         if (job.seqNo > metadata.policySeqNo || job.primaryTerm > metadata.policyPrimaryTerm) {
+            val now = now()
             val metadataToSave = SMMetadata.Builder(metadata)
                 .setPolicyVersion(job.seqNo, job.primaryTerm)
-                .setNextCreationTime(getNextExecutionTime(job.creation.schedule, now()))
-                .setNextDeletionTime(getNextExecutionTime(job.deletion.schedule, now()))
+                .setNextCreationTime(job.creation.schedule.getNextExecutionTime(now))
+                .setNextDeletionTime(job.deletion.schedule.getNextExecutionTime(now))
                 .build()
             updateMetadata(metadataToSave)
         }

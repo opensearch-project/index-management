@@ -58,7 +58,7 @@ class SMStateMachineTests : ClientMockTestCase() {
         }
     }
 
-    fun `test sm result Failure starts retry`() = runBlocking {
+    fun `test sm result Fail starts retry in CreatingState`() = runBlocking {
         val currentState = SMState.CREATE_CONDITION_MET
         val ex = Exception()
         mockGetSnapshotsCall(response = mockGetSnapshotResponse(0))
@@ -73,8 +73,31 @@ class SMStateMachineTests : ClientMockTestCase() {
         argumentCaptor<SMMetadata>().apply {
             verify(stateMachineSpy).updateMetadata(capture())
             assertEquals(currentState, firstValue.currentState)
-            assertNotNull(firstValue.creation.started)
+            assertNull(firstValue.creation.started)
             assertEquals(3, firstValue.creation.retry!!.count)
+        }
+    }
+
+    fun `test sm result Fail starts retry in DeletingState`() = runBlocking {
+        val currentState = SMState.DELETE_CONDITION_MET
+        val ex = Exception()
+        mockGetSnapshotsCall(response = mockGetSnapshotResponse(11))
+        mockDeleteSnapshotCall(exception = ex)
+
+        val metadata = randomSMMetadata(
+            currentState = currentState,
+        )
+        val job = randomSMPolicy(
+            policyName = "daily-snapshot",
+            deletionMaxCount = 10,
+        )
+        val stateMachineSpy = spy(SMStateMachine(client, job, metadata))
+        stateMachineSpy.next(smTransitions)
+        argumentCaptor<SMMetadata>().apply {
+            verify(stateMachineSpy).updateMetadata(capture())
+            assertEquals(currentState, firstValue.currentState)
+            assertNull(firstValue.deletion.started)
+            assertEquals(3, firstValue.deletion.retry!!.count)
         }
     }
 

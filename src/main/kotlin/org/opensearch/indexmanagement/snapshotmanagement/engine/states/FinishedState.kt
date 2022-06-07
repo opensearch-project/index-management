@@ -10,6 +10,7 @@ import org.opensearch.indexmanagement.snapshotmanagement.engine.statemachine.SMS
 import org.opensearch.indexmanagement.snapshotmanagement.getSnapshotsWithErrorHandling
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata
 import org.opensearch.indexmanagement.snapshotmanagement.smDocIdToPolicyName
+import org.opensearch.indexmanagement.snapshotmanagement.updateNextExecutionTime
 import org.opensearch.snapshots.SnapshotState
 import java.time.Instant
 import java.time.Instant.now
@@ -46,7 +47,7 @@ object FinishedState : State {
 
             if (getSnapshots.isEmpty()) {
                 metadataBuilder.setLatestExecution(
-                    SMMetadata.LatestExecution.Status.FAILED,
+                    status = SMMetadata.LatestExecution.Status.FAILED,
                     message = getSnapshotMissingMessageInCreationWorkflow(started),
                     endTime = now(),
                 ).resetWorkflow()
@@ -76,19 +77,20 @@ object FinishedState : State {
                 }
                 else -> {
                     // FAILED, PARTIAL, INCOMPATIBLE
-                    metadataBuilder
-                        .setLatestExecution(
-                            status = SMMetadata.LatestExecution.Status.FAILED,
-                            cause = "Snapshot ${metadata.creation.started.first()} creation end with state ${snapshot.state()}.",
-                            endTime = now(),
-                        ).setCreationStarted(null)
+                    metadataBuilder.setLatestExecution(
+                        status = SMMetadata.LatestExecution.Status.FAILED,
+                        cause = "Snapshot ${metadata.creation.started.first()} creation end with state ${snapshot.state()}.",
+                        endTime = now(),
+                    ).setCreationStarted(null)
                     // TODO SM notification snapshot creation has problem
                 }
             }
 
-            // TODO SM if now is after next creation time, update nextCreationTime to next execution schedule
+            // TODO SM notification: if now is after next creation time, update nextCreationTime to next execution schedule
             //  and try notify user that we skip the execution because snapshot creation time
             //  is longer than execution schedule
+            val result = updateNextExecutionTime(metadataBuilder, metadata.creation.trigger.time, job.creation.schedule, WorkflowType.CREATION, log)
+            if (result.updated) metadataBuilder = result.metadataBuilder
         }
 
         metadata.deletion.started?.let { startedDeleteSnapshots ->
@@ -111,7 +113,7 @@ object FinishedState : State {
 
             if (getSnapshots.isEmpty()) {
                 metadataBuilder.setLatestExecution(
-                    SMMetadata.LatestExecution.Status.FAILED,
+                    status = SMMetadata.LatestExecution.Status.FAILED,
                     message = getSnapshotMissingMessageInDeletionWorkflow(),
                     endTime = now(),
                 ).resetWorkflow()
@@ -145,7 +147,9 @@ object FinishedState : State {
                 )
             }
 
-            // TODO SM if now is after next deletion time, we can update nextDeletionTime and try notify user
+            // TODO SM notification: if now is after next deletion time, we can update nextDeletionTime and try notify user
+            val result = updateNextExecutionTime(metadataBuilder, metadata.deletion.trigger.time, job.deletion.schedule, WorkflowType.DELETION, log)
+            if (result.updated) metadataBuilder = result.metadataBuilder
         }
 
         val metadataToSave = metadataBuilder.build()

@@ -31,6 +31,7 @@ import org.opensearch.common.time.DateFormatter
 import org.opensearch.common.xcontent.ToXContent
 import org.opensearch.common.xcontent.XContentFactory
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
+import org.opensearch.indexmanagement.snapshotmanagement.engine.states.WorkflowType
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy.Companion.SM_TYPE
 import org.opensearch.jobscheduler.spi.schedule.CronSchedule
 import org.opensearch.jobscheduler.spi.schedule.IntervalSchedule
@@ -253,4 +254,35 @@ data class GetSnapshotsResult(
     val snapshots: List<SnapshotInfo>,
     val metadataBuilder: SMMetadata.Builder,
     val failed: Boolean,
+)
+
+fun updateNextExecutionTime(
+    metadataBuilder: SMMetadata.Builder,
+    nextTime: Instant,
+    schedule: Schedule,
+    workflowType: WorkflowType,
+    log: Logger
+): UpdateNextExecutionTimeResult {
+    val now = Instant.now()
+    return if (!now.isBefore(nextTime)) {
+        log.info("sm dev: Current time [${Instant.now()}] has passed nextExecutionTime [$nextTime]")
+        when (workflowType) {
+            WorkflowType.CREATION -> {
+                metadataBuilder.setNextCreationTime(schedule.getNextExecutionTime(now))
+            }
+            WorkflowType.DELETION -> {
+                metadataBuilder.setNextDeletionTime(schedule.getNextExecutionTime(now))
+            }
+        }
+        UpdateNextExecutionTimeResult(true, metadataBuilder)
+    } else {
+        log.info("sm dev: Current time [${Instant.now()}] has not passed nextExecutionTime [$nextTime]")
+        // TODO SM dynamically update job start_time to avoid unnecessary job runs
+        UpdateNextExecutionTimeResult(false, metadataBuilder)
+    }
+}
+
+data class UpdateNextExecutionTimeResult(
+    val updated: Boolean,
+    val metadataBuilder: SMMetadata.Builder,
 )
