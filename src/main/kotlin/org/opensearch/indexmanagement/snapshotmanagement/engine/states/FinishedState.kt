@@ -46,8 +46,9 @@ object FinishedState : State {
             val getSnapshots = getSnapshotsRes.snapshots
 
             if (getSnapshots.isEmpty()) {
+                // probably user deletes the creating snapshot
                 metadataBuilder.setLatestExecution(
-                    status = SMMetadata.LatestExecution.Status.FAILED,
+                    status = SMMetadata.LatestExecution.Status.SUCCESS,
                     message = getSnapshotMissingMessageInCreationWorkflow(started),
                     endTime = now(),
                 ).resetWorkflow()
@@ -111,22 +112,13 @@ object FinishedState : State {
             metadataBuilder.resetRetry(deletion = true)
             val getSnapshots = getSnapshotsRes.snapshots
 
-            if (getSnapshots.isEmpty()) {
-                metadataBuilder.setLatestExecution(
-                    status = SMMetadata.LatestExecution.Status.FAILED,
-                    message = getSnapshotMissingMessageInDeletionWorkflow(),
-                    endTime = now(),
-                ).resetWorkflow()
-            }
-
             val existingSnapshotsNameSet = getSnapshots.map { it.snapshotId().name }.toSet()
             val remainingSnapshotsName = existingSnapshotsNameSet intersect startedDeleteSnapshots.toSet()
             if (remainingSnapshotsName.isEmpty()) {
-                log.info("Snapshots have been deleted: $existingSnapshotsNameSet.")
                 // TODO SM notification snapshot deleted
                 metadataBuilder.setLatestExecution(
                     status = SMMetadata.LatestExecution.Status.SUCCESS,
-                    message = "Snapshots ${metadata.creation.started} deletion has finished.",
+                    message = "Snapshots ${metadata.deletion.started} deletion has finished.",
                     endTime = now(),
                 ).setDeletionStarted(null)
             } else {

@@ -17,6 +17,7 @@ import org.opensearch.indexmanagement.snapshotmanagement.engine.states.smTransit
 import org.opensearch.indexmanagement.snapshotmanagement.mockGetSnapshotResponse
 import org.opensearch.indexmanagement.snapshotmanagement.mockSnapshotInfo
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata
+import org.opensearch.indexmanagement.snapshotmanagement.randomLatestExecution
 import org.opensearch.indexmanagement.snapshotmanagement.randomSMMetadata
 import org.opensearch.indexmanagement.snapshotmanagement.randomSMPolicy
 import java.time.Instant.now
@@ -66,6 +67,9 @@ class SMStateMachineTests : ClientMockTestCase() {
 
         val metadata = randomSMMetadata(
             currentState = currentState,
+            creationLatestExecution = randomLatestExecution(
+                status = SMMetadata.LatestExecution.Status.RETRYING,
+            )
         )
         val job = randomSMPolicy()
         val stateMachineSpy = spy(SMStateMachine(client, job, metadata))
@@ -86,6 +90,9 @@ class SMStateMachineTests : ClientMockTestCase() {
 
         val metadata = randomSMMetadata(
             currentState = currentState,
+            deletionLatestExecution = randomLatestExecution(
+                status = SMMetadata.LatestExecution.Status.RETRYING,
+            ),
         )
         val job = randomSMPolicy(
             policyName = "daily-snapshot",
@@ -101,32 +108,6 @@ class SMStateMachineTests : ClientMockTestCase() {
         }
     }
 
-    fun `test sm result TimeLimitExceed reset workflow`() = runBlocking {
-        val currentState = SMState.CREATING
-        val resetState = SMState.DELETING
-
-        // deletion time limit exceed
-        val snapshotName = "test_state_machine_deletion_time_exceed"
-        val snapshotInfo = mockSnapshotInfo(name = snapshotName)
-        mockGetSnapshotsCall(response = mockGetSnapshotResponse(snapshotInfo))
-        val metadata = randomSMMetadata(
-            currentState = currentState,
-            startedDeletion = listOf(snapshotName),
-            startedDeletionTime = now().minusSeconds(50),
-        )
-        val job = randomSMPolicy(policyName = "daily-snapshot", deletionTimeLimit = TimeValue.timeValueSeconds(5))
-
-        val stateMachineSpy = spy(SMStateMachine(client, job, metadata))
-        stateMachineSpy.next(smTransitions)
-        argumentCaptor<SMMetadata>().apply {
-            // first try DELETE_CONDITION_MET state and Stay
-            verify(stateMachineSpy, times(2)).updateMetadata(capture())
-            assertEquals(currentState, firstValue.currentState)
-            assertEquals(resetState, secondValue.currentState)
-            assertNull(secondValue.deletion.started)
-        }
-    }
-
     fun `test sm result Retry retry count initialized`() = runBlocking {
         val currentState = SMState.CREATE_CONDITION_MET
 
@@ -134,6 +115,9 @@ class SMStateMachineTests : ClientMockTestCase() {
         mockGetSnapshotsCall(exception = ex)
         val metadata = randomSMMetadata(
             currentState = currentState,
+            creationLatestExecution = randomLatestExecution(
+                status = SMMetadata.LatestExecution.Status.RETRYING,
+            )
         )
         val job = randomSMPolicy()
 
@@ -155,6 +139,9 @@ class SMStateMachineTests : ClientMockTestCase() {
         val metadata = randomSMMetadata(
             currentState = currentState,
             deletionRetryCount = 1,
+            deletionLatestExecution = randomLatestExecution(
+                status = SMMetadata.LatestExecution.Status.RETRYING,
+            )
         )
         val job = randomSMPolicy()
 
@@ -165,6 +152,34 @@ class SMStateMachineTests : ClientMockTestCase() {
             assertEquals(resetState, firstValue.currentState)
             assertNull(firstValue.deletion.retry)
             assertNull(firstValue.deletion.started)
+        }
+    }
+
+    fun `test sm result TimeLimitExceed reset workflow`() = runBlocking {
+        val currentState = SMState.CREATING
+        val resetState = SMState.DELETING
+
+        // deletion time limit exceed
+        val snapshotName = "test_state_machine_deletion_time_exceed"
+        val snapshotInfo = mockSnapshotInfo(name = snapshotName)
+        mockGetSnapshotsCall(response = mockGetSnapshotResponse(snapshotInfo))
+        val metadata = randomSMMetadata(
+            currentState = currentState,
+            startedDeletion = listOf(snapshotName),
+            deletionLatestExecution = randomLatestExecution(
+                startTime = now().minusSeconds(50),
+            )
+        )
+        val job = randomSMPolicy(policyName = "daily-snapshot", deletionTimeLimit = TimeValue.timeValueSeconds(5))
+
+        val stateMachineSpy = spy(SMStateMachine(client, job, metadata))
+        stateMachineSpy.next(smTransitions)
+        argumentCaptor<SMMetadata>().apply {
+            // first try DELETE_CONDITION_MET state and Stay
+            verify(stateMachineSpy, times(2)).updateMetadata(capture())
+            assertEquals(currentState, firstValue.currentState)
+            assertEquals(resetState, secondValue.currentState)
+            assertNull(secondValue.deletion.started)
         }
     }
 

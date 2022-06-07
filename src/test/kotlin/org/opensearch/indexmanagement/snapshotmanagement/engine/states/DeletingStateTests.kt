@@ -12,6 +12,8 @@ import org.opensearch.indexmanagement.ClientMockTestCase
 import org.opensearch.indexmanagement.snapshotmanagement.engine.statemachine.SMStateMachine
 import org.opensearch.indexmanagement.snapshotmanagement.mockGetSnapshotResponse
 import org.opensearch.indexmanagement.snapshotmanagement.mockSnapshotInfo
+import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata
+import org.opensearch.indexmanagement.snapshotmanagement.randomLatestExecution
 import org.opensearch.indexmanagement.snapshotmanagement.randomSMMetadata
 import org.opensearch.indexmanagement.snapshotmanagement.randomSMPolicy
 import java.time.Instant.now
@@ -36,6 +38,7 @@ class DeletingStateTests : ClientMockTestCase() {
         result as SMResult.Next
         assertNotNull("Deletion started field is initialized.", result.metadataToSave.deletion.started)
         assertEquals(1, result.metadataToSave.deletion.started!!.size)
+        assertEquals("Latest execution status is in_progress", SMMetadata.LatestExecution.Status.IN_PROGRESS, result.metadataToSave.deletion.latestExecution!!.status)
     }
 
     fun `test snapshots exceed max age`() = runBlocking {
@@ -60,6 +63,7 @@ class DeletingStateTests : ClientMockTestCase() {
         assertNotNull("Deletion started field is initialized.", result.metadataToSave.deletion.started)
         assertEquals(1, result.metadataToSave.deletion.started!!.size)
         assertEquals("old_snapshot", result.metadataToSave.deletion.started!!.first())
+        assertEquals("Latest execution status is in_progress", SMMetadata.LatestExecution.Status.IN_PROGRESS, result.metadataToSave.deletion.latestExecution!!.status)
     }
 
     fun `test snapshots exceed max age but need to remain min count`() = runBlocking {
@@ -81,6 +85,7 @@ class DeletingStateTests : ClientMockTestCase() {
         assertTrue("Execution result should be Next.", result is SMResult.Next)
         result as SMResult.Next
         assertNull("Deletion started field should not be initialized.", result.metadataToSave.deletion.started)
+        assertNull("Latest execution should not be initialized", result.metadataToSave.deletion.latestExecution)
     }
 
     fun `test delete snapshot exception`() = runBlocking {
@@ -97,6 +102,9 @@ class DeletingStateTests : ClientMockTestCase() {
         val result = SMState.DELETING.instance.execute(context)
         assertTrue("Execution result should be Failure.", result is SMResult.Fail)
         result as SMResult.Fail
+        assertNull("Deletion started field should not be initialized.", result.metadataToSave.deletion.started)
+        assertEquals("Latest execution status is retrying", SMMetadata.LatestExecution.Status.RETRYING, result.metadataToSave.deletion.latestExecution!!.status)
+        assertNotNull("Latest execution info should not be null", result.metadataToSave.deletion.latestExecution!!.info)
     }
 
     fun `test get snapshots exception`() = runBlocking {
@@ -105,12 +113,18 @@ class DeletingStateTests : ClientMockTestCase() {
 
         val metadata = randomSMMetadata(
             currentState = SMState.DELETE_CONDITION_MET,
-            startedDeletionTime = now().minusSeconds(10),
+            deletionLatestExecution = randomLatestExecution(
+                startTime = now().minusSeconds(10),
+            )
         )
         val job = randomSMPolicy(policyName = "daily-snapshot")
         val context = SMStateMachine(client, job, metadata)
 
         val result = SMState.DELETING.instance.execute(context)
-        assertTrue("Execution result should be Failure.", result is SMResult.Fail)
+        assertTrue("Execution result should be Fail.", result is SMResult.Fail)
+        result as SMResult.Fail
+        assertNull("Deletion started field should not be initialized.", result.metadataToSave.deletion.started)
+        assertEquals("Latest execution status is retrying", SMMetadata.LatestExecution.Status.RETRYING, result.metadataToSave.deletion.latestExecution!!.status)
+        assertNotNull("Latest execution info should not be null", result.metadataToSave.deletion.latestExecution!!.info)
     }
 }

@@ -21,7 +21,6 @@ import org.opensearch.common.xcontent.XContentFactory
 import org.opensearch.indexmanagement.opensearchapi.string
 import org.opensearch.index.seqno.SequenceNumbers
 import org.opensearch.indexmanagement.opensearchapi.toMap
-import org.opensearch.indexmanagement.randomCronSchedule
 import org.opensearch.indexmanagement.randomInstant
 import org.opensearch.indexmanagement.randomIntervalSchedule
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.SMState
@@ -38,7 +37,7 @@ import org.opensearch.test.OpenSearchTestCase.randomIntBetween
 import org.opensearch.test.OpenSearchTestCase.randomNonNegativeLong
 import org.opensearch.test.rest.OpenSearchRestTestCase
 import java.time.Instant
-import java.time.Instant.now
+import java.time.ZoneOffset.UTC
 
 fun randomSMMetadata(
     currentState: SMState = SMState.START,
@@ -47,9 +46,9 @@ fun randomSMMetadata(
     policySeqNo: Long = randomNonNegativeLong(),
     policyPrimaryTerm: Long = randomNonNegativeLong(),
     startedCreation: String? = null,
-    startedCreationTime: Instant? = null,
+    creationLatestExecution: SMMetadata.LatestExecution? = null,
     startedDeletion: List<String>? = null,
-    startedDeletionTime: Instant? = null,
+    deletionLatestExecution: SMMetadata.LatestExecution? = null,
     creationRetryCount: Int? = null,
     deletionRetryCount: Int? = null,
 ): SMMetadata {
@@ -62,7 +61,7 @@ fun randomSMMetadata(
                 time = nextCreationTime
             ),
             started = if (startedCreation != null) listOf(startedCreation) else null,
-            latestExecution = if (startedCreationTime != null) randomLatestExecution(startedCreationTime) else null,
+            latestExecution = creationLatestExecution,
             retry = creationRetryCount?.let { SMMetadata.Retry(it) },
         ),
         deletion = SMMetadata.WorkflowMetadata(
@@ -70,16 +69,17 @@ fun randomSMMetadata(
                 time = nextDeletionTime
             ),
             started = startedDeletion,
-            latestExecution = if (startedDeletionTime != null) randomLatestExecution(startedDeletionTime) else null,
+            latestExecution = deletionLatestExecution,
             retry = deletionRetryCount?.let { SMMetadata.Retry(it) },
         ),
     )
 }
 
 fun randomLatestExecution(
-    startTime: Instant = now()
+    status: SMMetadata.LatestExecution.Status = SMMetadata.LatestExecution.Status.IN_PROGRESS,
+    startTime: Instant = randomInstant(),
 ) = SMMetadata.LatestExecution(
-    SMMetadata.LatestExecution.Status.IN_PROGRESS,
+    status = status,
     startTime = startTime,
 )
 
@@ -87,9 +87,9 @@ fun randomSMPolicy(
     policyName: String = randomAlphaOfLength(10),
     jobEnabled: Boolean = OpenSearchRestTestCase.randomBoolean(),
     jobLastUpdateTime: Instant = randomInstant(),
-    creationSchedule: CronSchedule = randomCronSchedule(),
+    creationSchedule: CronSchedule = CronSchedule("* * * * *", UTC),
     creationTimeLimit: TimeValue? = null,
-    deletionSchedule: CronSchedule = randomCronSchedule(),
+    deletionSchedule: CronSchedule = CronSchedule("* * * * *", UTC),
     deletionTimeLimit: TimeValue? = null,
     deletionMaxCount: Int = randomIntBetween(5, 10),
     deletionMaxAge: TimeValue? = null,

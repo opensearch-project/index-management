@@ -88,7 +88,7 @@ object DeletingState : State {
     private fun getDeleteSnapshotErrorMessage(snapshotNames: List<String>) = "Caught exception while deleting snapshot $snapshotNames."
 
     /**
-     * Based on the condition to delete, find snapshots to be deleted
+     * Based on the delete condition, find snapshots to be deleted
      *
      * Logic:
      *   outdated snapshots: snapshot.startedTime < now - max_age

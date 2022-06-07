@@ -98,26 +98,27 @@ class SMStateMachine(
     private fun handleRetry(result: SMResult, prevState: SMState): SMMetadata.Builder {
         assert(result is SMResult.Fail)
         result as SMResult.Fail
-        // latestExecution status should be RETRYING
         val metadataToSave = SMMetadata.Builder(result.metadataToSave)
             .workflow(result.workflowType)
             .setCurrentState(prevState)
         val retry = when (result.workflowType) {
             WorkflowType.CREATION -> {
+                assert(metadata.creation.latestExecution?.status == SMMetadata.LatestExecution.Status.RETRYING)
                 metadata.creation.retry
             }
             WorkflowType.DELETION -> {
+                assert(metadata.deletion.latestExecution?.status == SMMetadata.LatestExecution.Status.RETRYING)
                 metadata.deletion.retry
             }
         }
         val retryCount: Int
         if (retry == null) {
-            log.warn("Start to retry state [$currentState], remaining count 3.")
+            log.warn("Starting to retry state [$currentState], remaining count 3.")
             metadataToSave.setRetry(3) // TODO SM 3 retry count could be customizable
         } else {
             retryCount = retry.count - 1
             if (retryCount > 0) {
-                log.warn("Retry state [$currentState], remaining count $retryCount.")
+                log.warn("Retrying state [$currentState], remaining count $retryCount.")
                 metadataToSave.setRetry(retryCount)
             } else {
                 val errorMessage = "Retry count exhausted for state [$currentState], reset workflow ${result.workflowType}."

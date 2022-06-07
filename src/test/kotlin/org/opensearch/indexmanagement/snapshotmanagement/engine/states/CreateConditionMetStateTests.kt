@@ -52,6 +52,8 @@ class CreateConditionMetStateTests : ClientMockTestCase() {
         val context = SMStateMachine(client, job, metadata)
 
         val result = SMState.CREATE_CONDITION_MET.instance.execute(context)
-        assertTrue("Execution result should be Retry.", result is SMResult.Stay)
+        assertTrue("Execution result should be Stay.", result is SMResult.Stay)
+        result as SMResult.Stay
+        assertEquals("Metadata shouldn't be updated.", metadata, result.metadataToSave)
     }
 }

@@ -48,12 +48,10 @@ object CreatingState : State {
                 return SMResult.Fail(metadataBuilder.build(), WorkflowType.CREATION)
             metadataBuilder.resetRetry(creation = true)
             val getSnapshots = getSnapshotsRes.snapshots
-            log.info("sm dev getSnapshots ${getSnapshots.map { it.snapshotId().name }}")
 
             val lastExecutionTime = job.creation.schedule.getPeriodStartingAt(null).v1()
-            log.info("sm dev last execution time $lastExecutionTime")
-
             snapshotName = checkCreatedSnapshots(lastExecutionTime, getSnapshots)
+            log.info("sm dev already created snapshot $snapshotName")
             if (snapshotName != null) {
                 metadataBuilder.setLatestExecution(
                     status = SMMetadata.LatestExecution.Status.IN_PROGRESS
