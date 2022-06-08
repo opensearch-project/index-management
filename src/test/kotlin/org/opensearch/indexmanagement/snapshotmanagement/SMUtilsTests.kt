@@ -12,4 +12,9 @@ class SMUtilsTests : OpenSearchTestCase() {
         val policyName = "daily-snapshot-sm-sm"
         assertEquals(policyName, smDocIdToPolicyName(smPolicyNameToDocId(policyName)))
     }
+
+    fun `test snapshot name date_format`() {
+        val timeStr = generateFormatTime(randomAlphaOfLength(8))
+        assertEquals("Generate time string", "invalid_date_format", timeStr)
+    }
 }

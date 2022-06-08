@@ -14,7 +14,6 @@ import org.opensearch.indexmanagement.snapshotmanagement.engine.states.SMResult
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.SMState
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.WorkflowType
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.smTransitions
-import org.opensearch.indexmanagement.snapshotmanagement.getNextExecutionTime
 import org.opensearch.indexmanagement.snapshotmanagement.indexMetadata
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata
@@ -64,8 +63,7 @@ class SMStateMachine(
                             // can still execute other lateral states if exists
                         }
                         is SMResult.Fail -> {
-                            if (result.timeLimitExceed == true) {
-                                log.warn("${result.workflowType} exceeds the time limit.")
+                            if (result.forceReset == true) {
                                 val metadataToSave = SMMetadata.Builder(result.metadataToSave)
                                     .workflow(result.workflowType)
                                     .resetWorkflow()
@@ -107,8 +105,8 @@ class SMStateMachine(
                 metadata.creation.retry
             }
             WorkflowType.DELETION -> {
-                assert(metadata.deletion.latestExecution?.status == SMMetadata.LatestExecution.Status.RETRYING)
-                metadata.deletion.retry
+                assert(metadata.deletion?.latestExecution?.status == SMMetadata.LatestExecution.Status.RETRYING)
+                metadata.deletion?.retry
             }
         }
         val retryCount: Int
@@ -173,9 +171,11 @@ class SMStateMachine(
             val metadataToSave = SMMetadata.Builder(metadata)
                 .setPolicyVersion(job.seqNo, job.primaryTerm)
                 .setNextCreationTime(job.creation.schedule.getNextExecutionTime(now))
-                .setNextDeletionTime(job.deletion.schedule.getNextExecutionTime(now))
-                .build()
-            updateMetadata(metadataToSave)
+
+            job.deletion?.let {
+                metadataToSave.setNextDeletionTime(job.deletion!!.schedule.getNextExecutionTime(now))
+            }
+            updateMetadata(metadataToSave.build())
         }
         return this
     }

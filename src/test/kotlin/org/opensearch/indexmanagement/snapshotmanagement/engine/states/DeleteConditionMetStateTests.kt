@@ -26,7 +26,7 @@ class DeleteConditionMetStateTests : ClientMockTestCase() {
         val result = SMState.DELETE_CONDITION_MET.instance.execute(context)
         assertTrue("Execution result should be Next.", result is SMResult.Next)
         result as SMResult.Next
-        assertNotEquals("Next execution time should be updated.", metadata.deletion.trigger.time, result.metadataToSave.deletion.trigger.time)
+        assertNotEquals("Next execution time should be updated.", metadata.deletion!!.trigger.time, result.metadataToSave.deletion!!.trigger.time)
     }
 
     fun `test next deletion time has not met`() = runBlocking {

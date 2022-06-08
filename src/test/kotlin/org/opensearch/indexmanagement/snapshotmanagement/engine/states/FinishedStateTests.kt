@@ -154,7 +154,7 @@ class FinishedStateTests : ClientMockTestCase() {
         val result = SMState.FINISHED.instance.execute(context)
         assertTrue("Execution results should be Failure.", result is SMResult.Fail)
         result as SMResult.Fail
-        assertTrue(result.timeLimitExceed!!)
+        assertTrue(result.forceReset!!)
         assertEquals("Latest execution status is time limit exceed", SMMetadata.LatestExecution.Status.TIME_LIMIT_EXCEEDED, result.metadataToSave.creation.latestExecution!!.status)
         assertNotNull("Latest execution status end_time should not be null", result.metadataToSave.creation.latestExecution!!.endTime)
         assertNotNull("Latest execution status cause should not be null", result.metadataToSave.creation.latestExecution!!.info!!.cause)
@@ -177,10 +177,10 @@ class FinishedStateTests : ClientMockTestCase() {
         val result = SMState.FINISHED.instance.execute(context)
         assertTrue("Execution results should be Next.", result is SMResult.Next)
         result as SMResult.Next
-        assertNull("Started deletion should be reset to null.", result.metadataToSave.deletion.started)
-        assertEquals("Latest execution status is success", SMMetadata.LatestExecution.Status.SUCCESS, result.metadataToSave.deletion.latestExecution!!.status)
-        assertNotNull("Latest execution status end_time should not be null", result.metadataToSave.deletion.latestExecution!!.endTime)
-        assertNotNull("Latest execution status message should not be null", result.metadataToSave.deletion.latestExecution!!.info!!.message)
+        assertNull("Started deletion should be reset to null.", result.metadataToSave.deletion!!.started)
+        assertEquals("Latest execution status is success", SMMetadata.LatestExecution.Status.SUCCESS, result.metadataToSave.deletion!!.latestExecution!!.status)
+        assertNotNull("Latest execution status end_time should not be null", result.metadataToSave.deletion!!.latestExecution!!.endTime)
+        assertNotNull("Latest execution status message should not be null", result.metadataToSave.deletion!!.latestExecution!!.info!!.message)
     }
 
     fun `test deletion has not finished`() = runBlocking {
@@ -201,9 +201,9 @@ class FinishedStateTests : ClientMockTestCase() {
         val result = SMState.FINISHED.instance.execute(context)
         assertTrue("Execution results should be Stay.", result is SMResult.Stay)
         result as SMResult.Stay
-        assertNotNull("Started deletion should not be reset.", result.metadataToSave.deletion.started)
-        assertEquals("Latest execution status is in_progress", SMMetadata.LatestExecution.Status.IN_PROGRESS, result.metadataToSave.deletion.latestExecution!!.status)
-        assertNull("Latest execution status end_time should be null", result.metadataToSave.deletion.latestExecution!!.endTime)
+        assertNotNull("Started deletion should not be reset.", result.metadataToSave.deletion!!.started)
+        assertEquals("Latest execution status is in_progress", SMMetadata.LatestExecution.Status.IN_PROGRESS, result.metadataToSave.deletion!!.latestExecution!!.status)
+        assertNull("Latest execution status end_time should be null", result.metadataToSave.deletion!!.latestExecution!!.endTime)
     }
 
     fun `test get snapshots exception in deletion`() = runBlocking {
@@ -223,9 +223,9 @@ class FinishedStateTests : ClientMockTestCase() {
         val result = SMState.FINISHED.instance.execute(context)
         assertTrue("Execution results should be Failure.", result is SMResult.Fail)
         result as SMResult.Fail
-        assertEquals("Latest execution status is retrying", SMMetadata.LatestExecution.Status.RETRYING, result.metadataToSave.deletion.latestExecution!!.status)
-        assertNull("Latest execution status end_time should be null", result.metadataToSave.deletion.latestExecution!!.endTime)
-        assertNotNull("Latest execution status info should not be null", result.metadataToSave.deletion.latestExecution!!.info)
+        assertEquals("Latest execution status is retrying", SMMetadata.LatestExecution.Status.RETRYING, result.metadataToSave.deletion!!.latestExecution!!.status)
+        assertNull("Latest execution status end_time should be null", result.metadataToSave.deletion!!.latestExecution!!.endTime)
+        assertNotNull("Latest execution status info should not be null", result.metadataToSave.deletion!!.latestExecution!!.info)
     }
 
     fun `test deletion time limit exceed`() = runBlocking {
@@ -246,9 +246,9 @@ class FinishedStateTests : ClientMockTestCase() {
         val result = SMState.FINISHED.instance.execute(context)
         assertTrue("Execution results should be Failure.", result is SMResult.Fail)
         result as SMResult.Fail
-        assertTrue(result.timeLimitExceed!!)
-        assertEquals("Latest execution status is time limit exceed", SMMetadata.LatestExecution.Status.TIME_LIMIT_EXCEEDED, result.metadataToSave.deletion.latestExecution!!.status)
-        assertNotNull("Latest execution status end_time should not be null", result.metadataToSave.deletion.latestExecution!!.endTime)
-        assertNotNull("Latest execution status cause should not be null", result.metadataToSave.deletion.latestExecution!!.info!!.cause)
+        assertTrue(result.forceReset!!)
+        assertEquals("Latest execution status is time limit exceed", SMMetadata.LatestExecution.Status.TIME_LIMIT_EXCEEDED, result.metadataToSave.deletion!!.latestExecution!!.status)
+        assertNotNull("Latest execution status end_time should not be null", result.metadataToSave.deletion!!.latestExecution!!.endTime)
+        assertNotNull("Latest execution status cause should not be null", result.metadataToSave.deletion!!.latestExecution!!.info!!.cause)
     }
 }

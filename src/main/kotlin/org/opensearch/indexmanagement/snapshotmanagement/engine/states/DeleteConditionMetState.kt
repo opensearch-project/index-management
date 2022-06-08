@@ -22,6 +22,9 @@ object DeleteConditionMetState : State {
         var metadataBuilder = SMMetadata.Builder(metadata)
             .workflow(WorkflowType.DELETION)
 
+        if (job.deletion == null || metadata.deletion == null)
+            return SMResult.Fail(metadataBuilder.build(), WorkflowType.DELETION, forceReset = true)
+
         if (metadata.deletion.started != null) {
             return SMResult.Stay(metadataBuilder.build())
         }

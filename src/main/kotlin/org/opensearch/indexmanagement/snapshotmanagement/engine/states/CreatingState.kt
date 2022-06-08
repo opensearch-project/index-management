@@ -99,7 +99,8 @@ object CreatingState : State {
      */
     private fun checkCreatedSnapshots(lastExecutionTime: Instant, snapshots: List<SnapshotInfo>): String? {
         if (snapshots.isEmpty()) return null
-        for (i in snapshots.indices.reversed()) {
+        for (i in snapshots.sortedBy { it.startTime() }.indices.reversed()) {
+            // Loop from the latest snapshots
             return if (!Instant.ofEpochMilli(snapshots[i].startTime()).isBefore(lastExecutionTime)) {
                 snapshots[i].snapshotId().name
             } else {

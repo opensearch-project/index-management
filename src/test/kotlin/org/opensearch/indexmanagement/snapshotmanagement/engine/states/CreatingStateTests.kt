@@ -15,6 +15,7 @@ import org.opensearch.indexmanagement.snapshotmanagement.mockGetSnapshotResponse
 import org.opensearch.indexmanagement.snapshotmanagement.mockSnapshotInfo
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata
 import java.time.Instant.now
+import java.time.temporal.ChronoUnit
 
 class CreatingStateTests : ClientMockTestCase() {
 
@@ -71,6 +72,25 @@ class CreatingStateTests : ClientMockTestCase() {
         result as SMResult.Next
         assertEquals("Started create snapshot name is $snapshotName.", snapshotName, result.metadataToSave.creation.started!!.first())
         assertEquals("Latest execution status is in_progress", SMMetadata.LatestExecution.Status.IN_PROGRESS, result.metadataToSave.creation.latestExecution!!.status)
+    }
+
+    fun `test snapshot already created but not in previous schedule`() = runBlocking {
+        val mockSnapshotInfo = mockSnapshotInfo(startTime = now().minus(370, ChronoUnit.DAYS).toEpochMilli())
+        val mockGetSnapshotResponse = mockGetSnapshotResponse(mockSnapshotInfo)
+        val snapshotName = mockGetSnapshotResponse.snapshots.first().snapshotId().name
+        mockGetSnapshotsCall(response = mockGetSnapshotResponse)
+        mockCreateSnapshotCall(response = mockCreateSnapshotResponse())
+
+        val metadata = randomSMMetadata(
+            currentState = SMState.CREATE_CONDITION_MET,
+        )
+        val job = randomSMPolicy(policyName = "daily-snapshot")
+        val context = SMStateMachine(client, job, metadata)
+
+        val result = SMState.CREATING.instance.execute(context)
+        assertTrue("Execution result should be Next.", result is SMResult.Next)
+        result as SMResult.Next
+        assertNotEquals("Started create snapshot name should not be $snapshotName.", snapshotName, result.metadataToSave.creation.started!!.first())
     }
 
     fun `test get snapshots exception while checking if snapshot already created`() = runBlocking {

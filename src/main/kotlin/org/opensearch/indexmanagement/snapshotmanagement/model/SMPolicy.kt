@@ -23,7 +23,6 @@ import org.opensearch.indexmanagement.opensearchapi.optionalField
 import org.opensearch.indexmanagement.opensearchapi.optionalTimeField
 import org.opensearch.indexmanagement.snapshotmanagement.smPolicyNameToMetadataId
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy.DeleteCondition.Companion.DEFAULT_DELETE_CONDITION
-import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy.Deletion.Companion.DEFAULT_DELETE_SCHEDULE
 import org.opensearch.indexmanagement.snapshotmanagement.smDocIdToPolicyName
 import org.opensearch.jobscheduler.spi.ScheduledJobParameter
 import org.opensearch.jobscheduler.spi.schedule.CronSchedule
@@ -40,7 +39,7 @@ data class SMPolicy(
     val id: String,
     val description: String? = null,
     val creation: Creation,
-    val deletion: Deletion,
+    val deletion: Deletion?,
     val snapshotConfig: Map<String, Any>,
     val jobEnabled: Boolean,
     val jobLastUpdateTime: Instant,
@@ -52,8 +51,6 @@ data class SMPolicy(
 
     init {
         require(snapshotConfig["repository"] != null) { "Must provide the repository in snapshot config." }
-        // TODO SM validate allowed fields in snapshotConfig: date_format, indices, partial, include_global_state, ignore_unavailable, metadata
-        // TODO SM validate date_format is of right format
     }
 
     // This name is used by the job scheduler and needs to match the id to avoid namespace conflicts with ISM policies sharing the same name
@@ -80,7 +77,7 @@ data class SMPolicy(
         builder.field(NAME_FIELD, smDocIdToPolicyName(id)) // for searching policy by name
             .optionalField(DESCRIPTION_FIELD, description)
             .field(CREATION_FIELD, creation)
-            .field(DELETION_FIELD, deletion)
+            .optionalField(DELETION_FIELD, deletion)
             .field(SNAPSHOT_CONFIG_FIELD, snapshotConfig)
             .field(SCHEDULE_FIELD, jobSchedule)
             .field(ENABLED_FIELD, jobEnabled)
@@ -99,6 +96,7 @@ data class SMPolicy(
         const val CREATION_FIELD = "creation"
         const val DELETION_FIELD = "deletion"
         const val SNAPSHOT_CONFIG_FIELD = "snapshot_config"
+        const val DATE_FORMAT_FIELD = "date_format"
         const val ENABLED_FIELD = "enabled"
         const val LAST_UPDATED_TIME_FIELD = "last_updated_time"
         const val ENABLED_TIME_FIELD = "enabled_time"
@@ -158,16 +156,17 @@ data class SMPolicy(
                 schedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES)
             }
 
-            if (deletion == null) {
-                deletion = Deletion(
-                    schedule = DEFAULT_DELETE_SCHEDULE,
-                    condition = DEFAULT_DELETE_CONDITION,
+            require(creation != null) { "Must provide the schedule for snapshot creation." }
+            // If user doesn't provide delete schedule, use the creation schedule
+            if (deletion != null && !deletion.scheduleProvided) {
+                deletion = deletion.copy(
+                    schedule = creation.schedule
                 )
             }
 
             return SMPolicy(
                 description = description,
-                creation = requireNotNull(creation) { "creation field must not be null" },
+                creation = creation,
                 deletion = deletion,
                 snapshotConfig = requireNotNull(snapshotConfig) { "snapshot_config field must not be null" },
                 jobLastUpdateTime = requireNotNull(lastUpdatedTime) { "last_updated_at field must not be null" },
@@ -184,7 +183,7 @@ data class SMPolicy(
     constructor(sin: StreamInput) : this(
         description = sin.readOptionalString(),
         creation = Creation(sin),
-        deletion = Deletion(sin),
+        deletion = sin.readOptionalWriteable { Deletion(it) },
         snapshotConfig = sin.readMap() as Map<String, Any>,
         jobLastUpdateTime = sin.readInstant(),
         jobEnabledTime = sin.readOptionalInstant(),
@@ -198,7 +197,7 @@ data class SMPolicy(
     override fun writeTo(out: StreamOutput) {
         out.writeOptionalString(description)
         creation.writeTo(out)
-        deletion.writeTo(out)
+        out.writeOptionalWriteable(deletion)
         out.writeMap(snapshotConfig)
         out.writeInstant(jobLastUpdateTime)
         out.writeOptionalInstant(jobEnabledTime)
@@ -259,8 +258,9 @@ data class SMPolicy(
 
     data class Deletion(
         val schedule: Schedule,
-        val timeLimit: TimeValue? = null,
+        val scheduleProvided: Boolean = true,
         val condition: DeleteCondition,
+        val timeLimit: TimeValue? = null,
     ) : Writeable, ToXContent {
 
         override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
@@ -275,12 +275,11 @@ data class SMPolicy(
             const val SCHEDULE_FIELD = "schedule"
             const val CONDITION_FIELD = "condition"
 
-            val DEFAULT_DELETE_SCHEDULE = CronSchedule("0 1 * * *", ZoneId.systemDefault())
-
             fun parse(xcp: XContentParser): Deletion {
                 var schedule: Schedule? = null
                 var timeLimit: TimeValue? = null
                 var condition: DeleteCondition? = null
+                var scheduleProvided = true
 
                 ensureExpectedToken(Token.START_OBJECT, xcp.currentToken(), xcp)
                 while (xcp.nextToken() != Token.END_OBJECT) {
@@ -294,9 +293,10 @@ data class SMPolicy(
                     }
                 }
 
-                // If user doesn't provide delete schedule, defaults to every day 1AM
                 if (schedule == null) {
-                    schedule = DEFAULT_DELETE_SCHEDULE
+                    // This schedule is just a placeholder
+                    schedule = CronSchedule("0 1 * * *", ZoneId.systemDefault())
+                    scheduleProvided = false
                 }
 
                 if (condition == null) {
@@ -305,6 +305,7 @@ data class SMPolicy(
 
                 return Deletion(
                     schedule = schedule,
+                    scheduleProvided = scheduleProvided,
                     timeLimit = timeLimit,
                     condition = condition,
                 )
@@ -325,39 +326,36 @@ data class SMPolicy(
     }
 
     data class DeleteCondition(
-        val maxCount: Int,
         val maxAge: TimeValue? = null,
-        val minCount: Int? = null,
+        val minCount: Int,
+        val maxCount: Int? = null,
     ) : Writeable, ToXContent {
 
         init {
-            require(maxCount > 0) { "$MAX_COUNT_FIELD should be bigger than 0." }
-            require(minCount == null || maxCount >= minCount && minCount > 0) {
-                "$MIN_COUNT_FIELD should be bigger than 0 and smaller than $MAX_COUNT_FIELD."
-            }
+            require(minCount > 0) { "$MIN_COUNT_FIELD should be bigger than 0." }
+            require(maxCount == null || maxCount - minCount > 0) { "$MAX_COUNT_FIELD should be bigger than $MIN_COUNT_FIELD." }
         }
 
         override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
             return builder.startObject()
-                .field(MAX_COUNT_FIELD, maxCount)
                 .optionalField(MAX_AGE_FIELD, maxAge)
-                .optionalField(MIN_COUNT_FIELD, minCount)
+                .field(MIN_COUNT_FIELD, minCount)
+                .optionalField(MAX_COUNT_FIELD, maxCount)
                 .endObject()
         }
 
         companion object {
             const val MAX_COUNT_FIELD = "max_count"
-            private const val DEFAULT_MAX_COUNT = 50
             const val MAX_AGE_FIELD = "max_age"
             const val MIN_COUNT_FIELD = "min_count"
-            const val DEFAULT_MIN_COUNT = 5
+            private const val DEFAULT_MIN_COUNT = 1
 
-            val DEFAULT_DELETE_CONDITION = DeleteCondition(maxCount = DEFAULT_MAX_COUNT)
+            val DEFAULT_DELETE_CONDITION = DeleteCondition(minCount = DEFAULT_MIN_COUNT)
 
             fun parse(xcp: XContentParser): DeleteCondition {
-                var maxCount = DEFAULT_MAX_COUNT
                 var maxAge: TimeValue? = null
-                var minCount: Int? = null
+                var minCount: Int = DEFAULT_MIN_COUNT
+                var maxCount: Int? = null
 
                 ensureExpectedToken(Token.START_OBJECT, xcp.currentToken(), xcp)
                 while (xcp.nextToken() != Token.END_OBJECT) {
@@ -371,12 +369,6 @@ data class SMPolicy(
                     }
                 }
 
-                // minCount is used to prevent all managed snapshots got deleted even
-                //  they have been over the maxAge
-                if (maxAge != null && minCount == null) {
-                    minCount = minOf(DEFAULT_MIN_COUNT, maxCount)
-                }
-
                 return DeleteCondition(
                     maxCount = maxCount,
                     maxAge = maxAge,
@@ -386,15 +378,15 @@ data class SMPolicy(
         }
 
         constructor(sin: StreamInput) : this(
-            maxCount = sin.readInt(),
+            maxCount = sin.readOptionalInt(),
             maxAge = sin.readOptionalTimeValue(),
-            minCount = sin.readOptionalInt()
+            minCount = sin.readInt()
         )
 
         override fun writeTo(out: StreamOutput) {
-            out.writeInt(maxCount)
+            out.writeOptionalInt(maxCount)
             out.writeOptionalTimeValue(maxAge)
-            out.writeOptionalInt(minCount)
+            out.writeInt(minCount)
         }
     }
 }

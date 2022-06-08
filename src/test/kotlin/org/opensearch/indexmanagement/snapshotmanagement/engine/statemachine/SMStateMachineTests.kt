@@ -59,7 +59,7 @@ class SMStateMachineTests : ClientMockTestCase() {
         }
     }
 
-    fun `test sm result Fail starts retry in CreatingState`() = runBlocking {
+    fun `test sm result Fail starts retry for creation workflow`() = runBlocking {
         val currentState = SMState.CREATE_CONDITION_MET
         val ex = Exception()
         mockGetSnapshotsCall(response = mockGetSnapshotResponse(0))
@@ -82,7 +82,7 @@ class SMStateMachineTests : ClientMockTestCase() {
         }
     }
 
-    fun `test sm result Fail starts retry in DeletingState`() = runBlocking {
+    fun `test sm result Fail starts retry for deletion workflow`() = runBlocking {
         val currentState = SMState.DELETE_CONDITION_MET
         val ex = Exception()
         mockGetSnapshotsCall(response = mockGetSnapshotResponse(11))
@@ -103,19 +103,20 @@ class SMStateMachineTests : ClientMockTestCase() {
         argumentCaptor<SMMetadata>().apply {
             verify(stateMachineSpy).updateMetadata(capture())
             assertEquals(currentState, firstValue.currentState)
-            assertNull(firstValue.deletion.started)
-            assertEquals(3, firstValue.deletion.retry!!.count)
+            assertNull(firstValue.deletion!!.started)
+            assertEquals(3, firstValue.deletion?.retry!!.count)
         }
     }
 
-    fun `test sm result Retry retry count initialized`() = runBlocking {
-        val currentState = SMState.CREATE_CONDITION_MET
+    fun `test sm result Retry retry count remaining 2`() = runBlocking {
+        val currentState = SMState.DELETE_CONDITION_MET
 
         val ex = Exception()
         mockGetSnapshotsCall(exception = ex)
         val metadata = randomSMMetadata(
             currentState = currentState,
-            creationLatestExecution = randomLatestExecution(
+            deletionRetryCount = 2,
+            deletionLatestExecution = randomLatestExecution(
                 status = SMMetadata.LatestExecution.Status.RETRYING,
             )
         )
@@ -126,7 +127,7 @@ class SMStateMachineTests : ClientMockTestCase() {
         argumentCaptor<SMMetadata>().apply {
             verify(stateMachineSpy).updateMetadata(capture())
             assertEquals(currentState, firstValue.currentState)
-            assertEquals(3, firstValue.creation.retry!!.count)
+            assertEquals(1, firstValue.deletion?.retry!!.count)
         }
     }
 
@@ -150,8 +151,8 @@ class SMStateMachineTests : ClientMockTestCase() {
         argumentCaptor<SMMetadata>().apply {
             verify(stateMachineSpy).updateMetadata(capture())
             assertEquals(resetState, firstValue.currentState)
-            assertNull(firstValue.deletion.retry)
-            assertNull(firstValue.deletion.started)
+            assertNull(firstValue.deletion!!.retry)
+            assertNull(firstValue.deletion!!.started)
         }
     }
 
@@ -159,7 +160,6 @@ class SMStateMachineTests : ClientMockTestCase() {
         val currentState = SMState.CREATING
         val resetState = SMState.DELETING
 
-        // deletion time limit exceed
         val snapshotName = "test_state_machine_deletion_time_exceed"
         val snapshotInfo = mockSnapshotInfo(name = snapshotName)
         mockGetSnapshotsCall(response = mockGetSnapshotResponse(snapshotInfo))
@@ -170,16 +170,20 @@ class SMStateMachineTests : ClientMockTestCase() {
                 startTime = now().minusSeconds(50),
             )
         )
-        val job = randomSMPolicy(policyName = "daily-snapshot", deletionTimeLimit = TimeValue.timeValueSeconds(5))
+        val job = randomSMPolicy(
+            policyName = "daily-snapshot",
+            deletionTimeLimit = TimeValue.timeValueSeconds(5)
+        )
 
         val stateMachineSpy = spy(SMStateMachine(client, job, metadata))
         stateMachineSpy.next(smTransitions)
         argumentCaptor<SMMetadata>().apply {
-            // first try DELETE_CONDITION_MET state and Stay
+            // first execute DELETE_CONDITION_MET state and return Stay
+            // second execute FINISHED state and return Fail because of deletion time_limit_exceed
             verify(stateMachineSpy, times(2)).updateMetadata(capture())
             assertEquals(currentState, firstValue.currentState)
             assertEquals(resetState, secondValue.currentState)
-            assertNull(secondValue.deletion.started)
+            assertNull(secondValue.deletion!!.started)
         }
     }
 

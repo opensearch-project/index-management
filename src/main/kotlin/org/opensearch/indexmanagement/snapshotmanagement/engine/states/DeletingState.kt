@@ -32,6 +32,9 @@ object DeletingState : State {
         var metadataBuilder = SMMetadata.Builder(metadata)
             .workflow(WorkflowType.DELETION)
 
+        if (job.deletion == null || metadata.deletion == null)
+            return SMResult.Fail(metadataBuilder.build(), WorkflowType.DELETION, forceReset = true)
+
         val res: AcknowledgedResponse
         val snapshotsToDelete: List<String>
 
@@ -109,14 +112,16 @@ object DeletingState : State {
             log.info("sm dev: thresholdSnapshot: $thresholdSnapshot")
             thresholdCount = snapshotInfos.indexOf(thresholdSnapshot) + 1
             log.info("sm dev: thresholdCount: $thresholdCount")
-            val minCount = deleteCondition.minCount ?: SMPolicy.DeleteCondition.DEFAULT_MIN_COUNT
+            val minCount = deleteCondition.minCount
             if (snapshotInfos.size - thresholdCount < minCount) {
                 thresholdCount = snapshotInfos.size - minCount
             }
         }
 
-        if (snapshotInfos.size - thresholdCount > deleteCondition.maxCount) {
-            thresholdCount = snapshotInfos.size - deleteCondition.maxCount
+        deleteCondition.maxCount?.let {
+            if (snapshotInfos.size - thresholdCount > deleteCondition.maxCount) {
+                thresholdCount = snapshotInfos.size - deleteCondition.maxCount
+            }
         }
 
         return snapshotInfos.subList(0, thresholdCount).map { it.snapshotId().name }

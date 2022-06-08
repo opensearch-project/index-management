@@ -21,6 +21,7 @@ import org.opensearch.common.xcontent.XContentFactory
 import org.opensearch.indexmanagement.opensearchapi.string
 import org.opensearch.index.seqno.SequenceNumbers
 import org.opensearch.indexmanagement.opensearchapi.toMap
+import org.opensearch.indexmanagement.randomCronSchedule
 import org.opensearch.indexmanagement.randomInstant
 import org.opensearch.indexmanagement.randomIntervalSchedule
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.SMState
@@ -37,7 +38,6 @@ import org.opensearch.test.OpenSearchTestCase.randomIntBetween
 import org.opensearch.test.OpenSearchTestCase.randomNonNegativeLong
 import org.opensearch.test.rest.OpenSearchRestTestCase
 import java.time.Instant
-import java.time.ZoneOffset.UTC
 
 fun randomSMMetadata(
     currentState: SMState = SMState.START,
@@ -87,13 +87,13 @@ fun randomSMPolicy(
     policyName: String = randomAlphaOfLength(10),
     jobEnabled: Boolean = OpenSearchRestTestCase.randomBoolean(),
     jobLastUpdateTime: Instant = randomInstant(),
-    creationSchedule: CronSchedule = CronSchedule("* * * * *", UTC),
+    creationSchedule: CronSchedule = randomCronSchedule(),
     creationTimeLimit: TimeValue? = null,
-    deletionSchedule: CronSchedule = CronSchedule("* * * * *", UTC),
+    deletionSchedule: CronSchedule = randomCronSchedule(),
     deletionTimeLimit: TimeValue? = null,
-    deletionMaxCount: Int = randomIntBetween(5, 10),
+    deletionMaxCount: Int = randomIntBetween(6, 10),
     deletionMaxAge: TimeValue? = null,
-    deletionMinCount: Int? = null,
+    deletionMinCount: Int = randomIntBetween(1, 5),
     snapshotConfig: Map<String, Any> = mapOf(
         "repository" to "repo",
         "date_format" to "yyyy-MM-dd-HH:mm"
@@ -117,7 +117,7 @@ fun randomSMPolicy(
             condition = SMPolicy.DeleteCondition(
                 maxCount = deletionMaxCount,
                 maxAge = deletionMaxAge,
-                minCount = deletionMinCount
+                minCount = deletionMinCount,
             )
         ),
         snapshotConfig = snapshotConfig,
@@ -155,7 +155,7 @@ fun mockGetSnapshotResponse(snapshotInfo: SnapshotInfo): GetSnapshotsResponse {
     return getSnapshotsRes
 }
 
-fun mockGetSnapshotResponse(snapshotInfos: List<SnapshotInfo>): GetSnapshotsResponse {
+fun mockGetSnapshotsResponse(snapshotInfos: List<SnapshotInfo>): GetSnapshotsResponse {
     val getSnapshotsRes: GetSnapshotsResponse = mock()
     whenever(getSnapshotsRes.snapshots).doReturn(snapshotInfos)
     return getSnapshotsRes

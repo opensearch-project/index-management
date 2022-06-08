@@ -17,7 +17,6 @@ import org.opensearch.common.unit.TimeValue
 import org.opensearch.indexmanagement.snapshotmanagement.engine.statemachine.SMStateMachine
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.SMState
 import org.opensearch.indexmanagement.snapshotmanagement.getMetadata
-import org.opensearch.indexmanagement.snapshotmanagement.getNextExecutionTime
 import org.opensearch.indexmanagement.snapshotmanagement.indexMetadata
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata
@@ -93,11 +92,13 @@ object SMRunner :
                     time = job.creation.schedule.getNextExecutionTime(now)
                 )
             ),
-            deletion = SMMetadata.WorkflowMetadata(
-                SMMetadata.Trigger(
-                    time = job.deletion.schedule.getNextExecutionTime(now)
+            deletion = job.deletion?.let {
+                SMMetadata.WorkflowMetadata(
+                    SMMetadata.Trigger(
+                        time = job.deletion.schedule.getNextExecutionTime(now)
+                    )
                 )
-            ),
+            },
         )
         log.info("Initializing metadata [$initMetadata] for job [${job.id}].")
         try {

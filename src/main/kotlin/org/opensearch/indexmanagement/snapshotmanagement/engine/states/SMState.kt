@@ -40,7 +40,7 @@ sealed class SMResult : State.Result() {
     data class Fail(
         val metadataToSave: SMMetadata,
         val workflowType: WorkflowType,
-        val timeLimitExceed: Boolean? = null,
+        val forceReset: Boolean? = null,
     ) : SMResult()
 }
 

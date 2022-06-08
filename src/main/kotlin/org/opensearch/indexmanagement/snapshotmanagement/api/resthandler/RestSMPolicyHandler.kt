@@ -20,6 +20,7 @@ import org.opensearch.indexmanagement.snapshotmanagement.api.transport.index.Ind
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.index.IndexSMPolicyResponse
 import org.opensearch.indexmanagement.snapshotmanagement.smPolicyNameToDocId
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy
+import org.opensearch.indexmanagement.snapshotmanagement.validateSMPolicyName
 import org.opensearch.indexmanagement.util.IF_PRIMARY_TERM
 import org.opensearch.indexmanagement.util.IF_SEQ_NO
 import org.opensearch.indexmanagement.util.REFRESH
@@ -88,10 +89,7 @@ class RestSMPolicyHandler : BaseRestHandler() {
 
     private fun indexRequest(request: RestRequest, client: NodeClient, create: Boolean): RestChannelConsumer {
         val policyName = request.param("policyName", "")
-        if (policyName == "") {
-            throw IllegalArgumentException("Missing policy name")
-        }
-        // TODO validate policy name validateGeneratedSnapshotName
+        validateSMPolicyName(policyName)
 
         val seqNo = request.paramAsLong(IF_SEQ_NO, SequenceNumbers.UNASSIGNED_SEQ_NO)
         val primaryTerm = request.paramAsLong(IF_PRIMARY_TERM, SequenceNumbers.UNASSIGNED_PRIMARY_TERM)

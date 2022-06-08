@@ -27,8 +27,8 @@ class SnapshotManagementException(
 
     constructor(exKey: ExceptionKey, ex: Exception? = null) : this(
         message = exceptionMsgMap[exKey],
-        exKey = exKey,
         cause = ex,
+        exKey = exKey,
     )
 
     companion object {
@@ -39,6 +39,12 @@ class SnapshotManagementException(
             ExceptionKey.REPO_MISSING to "The repository provided is missing.",
         )
 
+        /**
+         * Wrap an exception in SnapshotManagementException
+         *
+         * If you want to define a user facing exception message, you need to define an ExceptionKey
+         *  with customized message. And wrap with the defined exceptionKey.
+         */
         fun wrap(ex: Exception, key: ExceptionKey? = null): SnapshotManagementException {
             var message: String = exceptionMsgMap[ExceptionKey.GENERAL]!!
             if (key != null) return SnapshotManagementException(key, ex)

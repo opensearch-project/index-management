@@ -8,40 +8,42 @@ package org.opensearch.indexmanagement.snapshotmanagement
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.opensearch.OpenSearchStatusException
+import org.opensearch.action.admin.cluster.snapshots.get.GetSnapshotsRequest
+import org.opensearch.action.admin.cluster.snapshots.get.GetSnapshotsResponse
 import org.opensearch.action.get.GetRequest
 import org.opensearch.action.get.GetResponse
+import org.opensearch.action.index.IndexRequest
+import org.opensearch.action.index.IndexResponse
 import org.opensearch.client.Client
+import org.opensearch.common.Strings
+import org.opensearch.common.time.DateFormatter
 import org.opensearch.common.xcontent.LoggingDeprecationHandler
 import org.opensearch.common.xcontent.NamedXContentRegistry
+import org.opensearch.common.xcontent.ToXContent
+import org.opensearch.common.xcontent.XContentFactory
 import org.opensearch.common.xcontent.XContentHelper
 import org.opensearch.common.xcontent.XContentType
 import org.opensearch.index.IndexNotFoundException
+import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
 import org.opensearch.indexmanagement.opensearchapi.parseWithType
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
+import org.opensearch.indexmanagement.snapshotmanagement.engine.states.WorkflowType
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy
+import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy.Companion.DATE_FORMAT_FIELD
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy.Companion.SM_DOC_ID_SUFFIX
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy.Companion.SM_METADATA_ID_SUFFIX
-import org.opensearch.rest.RestStatus
-import org.opensearch.action.admin.cluster.snapshots.get.GetSnapshotsRequest
-import org.opensearch.action.admin.cluster.snapshots.get.GetSnapshotsResponse
-import org.opensearch.action.index.IndexRequest
-import org.opensearch.action.index.IndexResponse
-import org.opensearch.common.time.DateFormatter
-import org.opensearch.common.xcontent.ToXContent
-import org.opensearch.common.xcontent.XContentFactory
-import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
-import org.opensearch.indexmanagement.snapshotmanagement.engine.states.WorkflowType
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy.Companion.SM_TYPE
-import org.opensearch.jobscheduler.spi.schedule.CronSchedule
-import org.opensearch.jobscheduler.spi.schedule.IntervalSchedule
+import org.opensearch.snapshots.SnapshotsService
 import org.opensearch.jobscheduler.spi.schedule.Schedule
+import org.opensearch.rest.RestStatus
 import org.opensearch.snapshots.SnapshotInfo
 import org.opensearch.snapshots.SnapshotMissingException
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
+import java.util.Locale
 
 private val log = LogManager.getLogger("o.i.s.SnapshotManagementHelper")
 
@@ -147,24 +149,10 @@ suspend fun Client.getMetadata(job: SMPolicy): SMMetadata? {
     return null
 }
 
-fun getNextExecutionTime(schedule: Schedule, fromTime: Instant): Instant {
-    return when (schedule) {
-        is CronSchedule -> {
-            log.info("sm dev: next execution time: ${schedule.getNextExecutionTime(fromTime)}")
-            log.info("sm dev: duration until next execution: ${schedule.nextTimeToExecute()}")
-            schedule.getNextExecutionTime(fromTime)
-        }
-        is IntervalSchedule -> {
-            TODO("Not yet implemented")
-        }
-        else -> throw IllegalArgumentException("Schedule type is not in [CronSchedule, IntervalSchedule].")
-    }
-}
-
 fun generateSnapshotName(policy: SMPolicy): String {
     var result: String = smDocIdToPolicyName(policy.id)
-    if (policy.snapshotConfig["date_format"] != null) {
-        val dateFormat = generateFormatTime(policy.snapshotConfig["date_format"] as String)
+    if (policy.snapshotConfig[DATE_FORMAT_FIELD] != null) {
+        val dateFormat = generateFormatTime(policy.snapshotConfig[DATE_FORMAT_FIELD] as String)
         result += "-$dateFormat"
     }
     return result + "-${getRandomString(8)}"
@@ -178,10 +166,14 @@ fun getRandomString(length: Int): String {
 }
 
 fun generateFormatTime(dateFormat: String): String {
-    val timeZone = ZoneId.systemDefault()
-    val dateFormatter = DateFormatter.forPattern(dateFormat).withZone(timeZone)
-    val instant = dateFormatter.toDateMathParser().parse("now/s", System::currentTimeMillis, false, timeZone)
-    return dateFormatter.format(instant)
+    return try {
+        val timeZone = ZoneId.systemDefault()
+        val dateFormatter = DateFormatter.forPattern(dateFormat).withZone(timeZone)
+        val instant = dateFormatter.toDateMathParser().parse("now/s", System::currentTimeMillis, false, timeZone)
+        dateFormatter.format(instant)
+    } catch (e: Exception) {
+        "invalid_date_format"
+    }
 }
 
 fun preFixTimeStamp(msg: String?): String {
@@ -221,6 +213,9 @@ suspend fun Client.getSnapshots(name: String, repo: String): List<SnapshotInfo> 
     return res.snapshots
 }
 
+/**
+ * Used in Snapshot Management States logic
+ */
 suspend fun Client.getSnapshotsWithErrorHandling(
     job: SMPolicy,
     name: String,
@@ -286,3 +281,33 @@ data class UpdateNextExecutionTimeResult(
     val updated: Boolean,
     val metadataBuilder: SMMetadata.Builder,
 )
+
+/**
+ * Snapshot management policy will be used as the prefix to create snapshot,
+ * so it conforms to snapshot name format validated in [SnapshotsService]
+ */
+fun validateSMPolicyName(policyName: String) {
+    if (policyName.isBlank()) {
+        throw SnapshotManagementException(message = "Policy name cannot be empty")
+    }
+    if (policyName.contains(" ")) {
+        throw SnapshotManagementException(message = "Policy name must not contain whitespace")
+    }
+    if (policyName.contains(",")) {
+        throw SnapshotManagementException(message = "Policy name must not contain ','")
+    }
+    if (policyName.contains("#")) {
+        throw SnapshotManagementException(message = "Policy name must not contain '#'")
+    }
+    if (policyName[0] == '_') {
+        throw SnapshotManagementException(message = "Policy name must not start with '_'")
+    }
+    if (policyName.lowercase(Locale.ROOT) != policyName) {
+        throw SnapshotManagementException(message = "Policy name must be lowercase")
+    }
+    if (!Strings.validFileName(policyName)) {
+        throw SnapshotManagementException(
+            message = "Policy name must not contain the following characters " + Strings.INVALID_FILENAME_CHARS
+        )
+    }
+}

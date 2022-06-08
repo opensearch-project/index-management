@@ -67,12 +67,13 @@ object FinishedState : State {
                 SnapshotState.IN_PROGRESS -> {
                     job.creation.timeLimit?.let { timeLimit ->
                         if (timeLimit.isExceed(metadata.creation.latestExecution!!.startTime)) {
+                            log.warn(getTimeLimitExceedMessage(job.creation.timeLimit))
                             metadataBuilder.setLatestExecution(
                                 status = SMMetadata.LatestExecution.Status.TIME_LIMIT_EXCEEDED,
-                                cause = "Creation time limit ${job.creation.timeLimit} exceeded.",
+                                cause = getTimeLimitExceedMessage(job.creation.timeLimit),
                                 endTime = now(),
                             )
-                            return SMResult.Fail(metadataBuilder.build(), WorkflowType.CREATION, timeLimitExceed = true)
+                            return SMResult.Fail(metadataBuilder.build(), WorkflowType.CREATION, forceReset = true)
                         }
                     }
                 }
@@ -94,9 +95,12 @@ object FinishedState : State {
             if (result.updated) metadataBuilder = result.metadataBuilder
         }
 
-        metadata.deletion.started?.let { startedDeleteSnapshots ->
+        metadata.deletion?.started?.let { startedDeleteSnapshots ->
             assert(metadata.deletion.latestExecution != null)
             metadataBuilder.workflow(WorkflowType.DELETION)
+
+            if (job.deletion == null)
+                return SMResult.Fail(metadataBuilder.build(), WorkflowType.DELETION, forceReset = true)
 
             val getSnapshotsRes = client.getSnapshotsWithErrorHandling(
                 job,
@@ -124,12 +128,13 @@ object FinishedState : State {
             } else {
                 job.deletion.timeLimit?.let { timeLimit ->
                     if (timeLimit.isExceed(metadata.deletion.latestExecution!!.startTime)) {
+                        log.warn(getTimeLimitExceedMessage(job.deletion.timeLimit))
                         metadataBuilder.setLatestExecution(
                             status = SMMetadata.LatestExecution.Status.TIME_LIMIT_EXCEEDED,
-                            cause = "Deletion time limit ${job.deletion.timeLimit} exceeded.",
+                            cause = getTimeLimitExceedMessage(job.deletion.timeLimit),
                             endTime = now(),
                         )
-                        return SMResult.Fail(metadataBuilder.build(), WorkflowType.DELETION, timeLimitExceed = true)
+                        return SMResult.Fail(metadataBuilder.build(), WorkflowType.DELETION, forceReset = true)
                     }
                 }
 
@@ -145,7 +150,7 @@ object FinishedState : State {
         }
 
         val metadataToSave = metadataBuilder.build()
-        if (metadataToSave.creation.started != null || metadataToSave.deletion.started != null) {
+        if (metadataToSave.creation.started != null || metadataToSave.deletion?.started != null) {
             return SMResult.Stay(metadataToSave)
         }
         return SMResult.Next(metadataToSave)
@@ -155,6 +160,7 @@ object FinishedState : State {
     private fun getSnapshotExceptionInCreationWorkflow(snapshot: String) = "Caught exception while getting started creation snapshot [$snapshot]."
     private fun getSnapshotMissingMessageInDeletionWorkflow() = "No snapshots found under policy while getting snapshots to decide if snapshots has been deleted."
     private fun getSnapshotExceptionInDeletionWorkflow(startedDeleteSnapshots: List<String>) = "Caught exception while getting snapshots to decide if snapshots [$startedDeleteSnapshots] has been deleted."
+    private fun getTimeLimitExceedMessage(timeLimit: TimeValue) = "Time limit $timeLimit exceeded."
 
     private fun TimeValue.isExceed(startTime: Instant): Boolean {
         return (now().toEpochMilli() - startTime.toEpochMilli()) > this.millis
