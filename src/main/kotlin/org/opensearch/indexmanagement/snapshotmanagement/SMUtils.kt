@@ -185,13 +185,15 @@ fun addSMPolicyInSnapshotMetadata(snapshotConfig: Map<String, Any>, policyName: 
     var snapshotMetadata = snapshotConfig["metadata"]
     if (snapshotMetadata != null) {
         snapshotMetadata as Map<String, String>
-        snapshotMetadata.plus(SM_TYPE to policyName)
+        snapshotMetadata = snapshotMetadata.toMutableMap()
+        snapshotMetadata[SM_TYPE] = policyName
+        log.info("sm dev metadata with sm policy $snapshotMetadata")
     } else {
-        snapshotMetadata = mapOf("snapshot_management_policy" to policyName)
+        snapshotMetadata = mapOf(SM_TYPE to policyName)
     }
-    val markedSnapshotConfig = snapshotConfig.toMutableMap()
-    markedSnapshotConfig["metadata"] = snapshotMetadata
-    return markedSnapshotConfig
+    val snapshotConfigWithSMPolicyMetadata = snapshotConfig.toMutableMap()
+    snapshotConfigWithSMPolicyMetadata["metadata"] = snapshotMetadata
+    return snapshotConfigWithSMPolicyMetadata
 }
 
 fun List<SnapshotInfo>.filterBySMPolicyInSnapshotMetadata(policyName: String): List<SnapshotInfo> {
@@ -209,7 +211,7 @@ suspend fun Client.getSnapshots(name: String, repo: String): List<SnapshotInfo> 
         .snapshots(arrayOf(name))
         .repository(repo)
     val res: GetSnapshotsResponse = admin().cluster().suspendUntil { getSnapshots(req, it) }
-    log.info("sm dev: Get snapshot response: ${res.snapshots}")
+    log.info("sm dev: Get snapshot response: ${res.snapshots.map { it.snapshotId().name }}")
     return res.snapshots
 }
 
@@ -225,11 +227,13 @@ suspend fun Client.getSnapshotsWithErrorHandling(
     exceptionMsg: String,
 ): GetSnapshotsResult {
     val snapshots = try {
+        log.info("sm dev get snapshot of $name")
         getSnapshots(
             name,
             job.snapshotConfig["repository"] as String
         )
     } catch (ex: SnapshotMissingException) {
+        log.info("sm dev get snapshot missing exception")
         snapshotMissingMsg?.let { log.warn(snapshotMissingMsg) }
         emptyList()
     } catch (ex: Exception) {

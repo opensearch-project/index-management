@@ -35,7 +35,7 @@ object CreatingState : State {
 
         // Check if there's already a snapshot created by SM in current execution period
         if (snapshotName == null) {
-            val getSnapshotsRes = client.getSnapshotsWithErrorHandling(
+            val getSnapshotsResult = client.getSnapshotsWithErrorHandling(
                 job,
                 smDocIdToPolicyName(job.id) + "*",
                 metadataBuilder,
@@ -43,11 +43,11 @@ object CreatingState : State {
                 null,
                 getSnapshotsErrorMessage(),
             )
-            metadataBuilder = getSnapshotsRes.metadataBuilder
-            if (getSnapshotsRes.failed)
+            metadataBuilder = getSnapshotsResult.metadataBuilder
+            if (getSnapshotsResult.failed)
                 return SMResult.Fail(metadataBuilder.build(), WorkflowType.CREATION)
             metadataBuilder.resetRetry(creation = true)
-            val getSnapshots = getSnapshotsRes.snapshots
+            val getSnapshots = getSnapshotsResult.snapshots
 
             val lastExecutionTime = job.creation.schedule.getPeriodStartingAt(null).v1()
             snapshotName = checkCreatedSnapshots(lastExecutionTime, getSnapshots)

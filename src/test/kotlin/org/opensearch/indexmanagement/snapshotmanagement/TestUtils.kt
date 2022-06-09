@@ -84,7 +84,7 @@ fun randomLatestExecution(
 )
 
 fun randomSMPolicy(
-    policyName: String = randomAlphaOfLength(10),
+    policyName: String = randomAlphaOfLength(10).lowercase(),
     jobEnabled: Boolean = OpenSearchRestTestCase.randomBoolean(),
     jobLastUpdateTime: Instant = randomInstant(),
     creationSchedule: CronSchedule = randomCronSchedule(),

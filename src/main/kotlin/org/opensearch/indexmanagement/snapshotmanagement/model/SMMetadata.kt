@@ -97,7 +97,7 @@ data class SMMetadata(
                 policyPrimaryTerm = requireNotNull(policyPrimaryTerm) { "policy_primary_term field must not be null" },
                 currentState = requireNotNull(currentState) { "current_state field must not be null" },
                 creation = requireNotNull(creation) { "creation field must not be null" },
-                deletion = requireNotNull(deletion) { "deletion field must not be null" },
+                deletion = deletion,
                 id = id,
                 seqNo = seqNo,
                 primaryTerm = primaryTerm
@@ -498,7 +498,7 @@ data class SMMetadata(
                         )
                     )
                 } else {
-                    // if started is not null, latestExecution shouldn't be null
+                    // if started is not null, latestExecution would never be null
                     assert(workflowMetadata.latestExecution != null)
                     return workflowMetadata.copy(
                         latestExecution = workflowMetadata.latestExecution!!.copy(

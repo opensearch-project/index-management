@@ -31,19 +31,17 @@ object FinishedState : State {
             assert(metadata.creation.latestExecution != null)
             metadataBuilder.workflow(WorkflowType.CREATION)
 
-            val getSnapshotsRes = client.getSnapshotsWithErrorHandling(
-                job,
-                started,
-                metadataBuilder,
-                log,
+            val getSnapshotsResult = client.getSnapshotsWithErrorHandling(
+                job, started, metadataBuilder, log,
                 getSnapshotMissingMessageInCreationWorkflow(started),
                 getSnapshotExceptionInCreationWorkflow(started),
             )
-            metadataBuilder = getSnapshotsRes.metadataBuilder
-            if (getSnapshotsRes.failed)
+            log.info("sm dev get snapshots result $getSnapshotsResult")
+            metadataBuilder = getSnapshotsResult.metadataBuilder
+            if (getSnapshotsResult.failed)
                 return SMResult.Fail(metadataBuilder.build(), WorkflowType.CREATION)
             metadataBuilder.resetRetry(creation = true)
-            val getSnapshots = getSnapshotsRes.snapshots
+            val getSnapshots = getSnapshotsResult.snapshots
 
             if (getSnapshots.isEmpty()) {
                 // probably user deletes the creating snapshot

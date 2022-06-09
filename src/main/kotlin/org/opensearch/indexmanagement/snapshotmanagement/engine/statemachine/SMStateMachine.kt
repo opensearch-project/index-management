@@ -94,34 +94,32 @@ class SMStateMachine(
     }
 
     private fun handleRetry(result: SMResult, prevState: SMState): SMMetadata.Builder {
-        assert(result is SMResult.Fail)
         result as SMResult.Fail
-        val metadataToSave = SMMetadata.Builder(result.metadataToSave)
+        val metadata = result.metadataToSave
+        val metadataBuilder = SMMetadata.Builder(metadata)
             .workflow(result.workflowType)
             .setCurrentState(prevState)
         val retry = when (result.workflowType) {
             WorkflowType.CREATION -> {
-                assert(metadata.creation.latestExecution?.status == SMMetadata.LatestExecution.Status.RETRYING)
                 metadata.creation.retry
             }
             WorkflowType.DELETION -> {
-                assert(metadata.deletion?.latestExecution?.status == SMMetadata.LatestExecution.Status.RETRYING)
                 metadata.deletion?.retry
             }
         }
         val retryCount: Int
         if (retry == null) {
             log.warn("Starting to retry state [$currentState], remaining count 3.")
-            metadataToSave.setRetry(3) // TODO SM 3 retry count could be customizable
+            metadataBuilder.setRetry(3) // TODO SM 3 retry count could be customizable
         } else {
             retryCount = retry.count - 1
             if (retryCount > 0) {
                 log.warn("Retrying state [$currentState], remaining count $retryCount.")
-                metadataToSave.setRetry(retryCount)
+                metadataBuilder.setRetry(retryCount)
             } else {
                 val errorMessage = "Retry count exhausted for state [$currentState], reset workflow ${result.workflowType}."
                 log.warn(errorMessage)
-                metadataToSave.setLatestExecution(
+                metadataBuilder.setLatestExecution(
                     status = SMMetadata.LatestExecution.Status.FAILED,
                     cause = errorMessage,
                     endTime = now()
@@ -129,7 +127,7 @@ class SMStateMachine(
             }
         }
 
-        return metadataToSave
+        return metadataBuilder
     }
 
     /**
