@@ -97,9 +97,6 @@ object FinishedState : State {
             assert(metadata.deletion.latestExecution != null)
             metadataBuilder.workflow(WorkflowType.DELETION)
 
-            if (job.deletion == null)
-                return SMResult.Fail(metadataBuilder.build(), WorkflowType.DELETION, forceReset = true)
-
             val getSnapshotsRes = client.getSnapshotsWithErrorHandling(
                 job,
                 "${smDocIdToPolicyName(job.id)}*",
@@ -124,7 +121,7 @@ object FinishedState : State {
                     endTime = now(),
                 ).setDeletionStarted(null)
             } else {
-                job.deletion.timeLimit?.let { timeLimit ->
+                job.deletion?.timeLimit?.let { timeLimit ->
                     if (timeLimit.isExceed(metadata.deletion.latestExecution!!.startTime)) {
                         log.warn(getTimeLimitExceedMessage(job.deletion.timeLimit))
                         metadataBuilder.setLatestExecution(
@@ -143,8 +140,10 @@ object FinishedState : State {
             }
 
             // TODO SM notification: if now is after next deletion time, we can update nextDeletionTime and try notify user
-            val result = updateNextExecutionTime(metadataBuilder, metadata.deletion.trigger.time, job.deletion.schedule, WorkflowType.DELETION, log)
-            if (result.updated) metadataBuilder = result.metadataBuilder
+            job.deletion?.let {
+                val result = updateNextExecutionTime(metadataBuilder, metadata.deletion.trigger.time, job.deletion.schedule, WorkflowType.DELETION, log)
+                if (result.updated) metadataBuilder = result.metadataBuilder
+            }
         }
 
         val metadataToSave = metadataBuilder.build()

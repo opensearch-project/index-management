@@ -94,6 +94,7 @@ fun randomSMPolicy(
     deletionMaxCount: Int = randomIntBetween(6, 10),
     deletionMaxAge: TimeValue? = null,
     deletionMinCount: Int = randomIntBetween(1, 5),
+    deletionNull: Boolean = false,
     snapshotConfig: Map<String, Any> = mapOf(
         "repository" to "repo",
         "date_format" to "yyyy-MM-dd-HH:mm"
@@ -111,20 +112,39 @@ fun randomSMPolicy(
             schedule = creationSchedule,
             timeLimit = creationTimeLimit,
         ),
-        deletion = SMPolicy.Deletion(
-            schedule = deletionSchedule,
-            timeLimit = deletionTimeLimit,
-            condition = SMPolicy.DeleteCondition(
-                maxCount = deletionMaxCount,
-                maxAge = deletionMaxAge,
-                minCount = deletionMinCount,
-            )
+        deletion = randomPolicyDeletion(
+            deletionSchedule,
+            deletionTimeLimit,
+            deletionMaxCount,
+            deletionMaxAge,
+            deletionMinCount,
+            deletionNull,
         ),
         snapshotConfig = snapshotConfig,
         jobEnabledTime = if (jobEnabled) jobEnabledTime else null,
         jobSchedule = jobSchedule,
         seqNo = seqNo,
         primaryTerm = primaryTerm,
+    )
+}
+
+fun randomPolicyDeletion(
+    deletionSchedule: CronSchedule = randomCronSchedule(),
+    deletionTimeLimit: TimeValue? = null,
+    deletionMaxCount: Int = randomIntBetween(6, 10),
+    deletionMaxAge: TimeValue? = null,
+    deletionMinCount: Int = randomIntBetween(1, 5),
+    deletionNull: Boolean = false,
+): SMPolicy.Deletion? {
+    if (deletionNull) return null
+    return SMPolicy.Deletion(
+        schedule = deletionSchedule,
+        timeLimit = deletionTimeLimit,
+        condition = SMPolicy.DeleteCondition(
+            maxCount = deletionMaxCount,
+            maxAge = deletionMaxAge,
+            minCount = deletionMinCount,
+        )
     )
 }
 

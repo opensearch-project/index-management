@@ -8,6 +8,7 @@ package org.opensearch.indexmanagement.snapshotmanagement.engine.states
 import org.opensearch.indexmanagement.snapshotmanagement.engine.statemachine.SMStateMachine
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata
 import org.opensearch.indexmanagement.snapshotmanagement.updateNextExecutionTime
+import java.time.Instant.now
 
 // check the status of creating, deleting snapshot
 object DeleteConditionMetState : State {
@@ -22,14 +23,13 @@ object DeleteConditionMetState : State {
         var metadataBuilder = SMMetadata.Builder(metadata)
             .workflow(WorkflowType.DELETION)
 
-        if (job.deletion == null || metadata.deletion == null)
-            return SMResult.Fail(metadataBuilder.build(), WorkflowType.DELETION, forceReset = true)
-
-        if (metadata.deletion.started != null) {
+        if (job.deletion == null || metadata.deletion?.started != null) {
             return SMResult.Stay(metadataBuilder.build())
         }
 
-        val nextDeletionTime = metadata.deletion.trigger.time
+        // if job.deletion != null, then metadata.deletion.trigger.time should be init
+        //  or handled during policy change
+        val nextDeletionTime = metadata.deletion?.trigger?.time ?: job.deletion.schedule.getNextExecutionTime(now())
         val result = updateNextExecutionTime(metadataBuilder, nextDeletionTime, job.deletion.schedule, WorkflowType.DELETION, log)
         if (!result.updated) return SMResult.Stay(metadataBuilder.build())
         metadataBuilder = result.metadataBuilder

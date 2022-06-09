@@ -32,8 +32,13 @@ object DeletingState : State {
         var metadataBuilder = SMMetadata.Builder(metadata)
             .workflow(WorkflowType.DELETION)
 
-        if (job.deletion == null || metadata.deletion == null)
-            return SMResult.Fail(metadataBuilder.build(), WorkflowType.DELETION, forceReset = true)
+        if (job.deletion == null) {
+            // If job.deletion config is null, we reset the deletion metadata
+            return SMResult.Fail(
+                metadataBuilder.build().copy(deletion = null),
+                WorkflowType.DELETION, forceReset = true
+            )
+        }
 
         val res: AcknowledgedResponse
         val snapshotsToDelete: List<String>

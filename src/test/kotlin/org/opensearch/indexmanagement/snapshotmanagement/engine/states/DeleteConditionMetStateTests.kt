@@ -56,4 +56,20 @@ class DeleteConditionMetStateTests : ClientMockTestCase() {
         result as SMResult.Stay
         assertEquals("Metadata shouldn't be updated.", metadata, result.metadataToSave)
     }
+
+    fun `test job deletion config is null`() = runBlocking {
+        val metadata = randomSMMetadata(
+            currentState = SMState.START,
+            startedDeletion = listOf(randomSnapshotName()),
+        )
+        val job = randomSMPolicy(
+            deletionNull = true
+        )
+        val context = SMStateMachine(client, job, metadata)
+
+        val result = SMState.DELETE_CONDITION_MET.instance.execute(context)
+        assertTrue("Execution result should be Stay.", result is SMResult.Stay)
+        result as SMResult.Stay
+        assertEquals("Metadata shouldn't be updated.", metadata, result.metadataToSave)
+    }
 }

@@ -17,6 +17,7 @@ import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata
 import org.opensearch.indexmanagement.snapshotmanagement.randomLatestExecution
 import org.opensearch.indexmanagement.snapshotmanagement.randomSMMetadata
 import org.opensearch.indexmanagement.snapshotmanagement.randomSMPolicy
+import org.opensearch.indexmanagement.snapshotmanagement.randomSnapshotName
 import java.time.Instant.now
 
 class DeletingStateTests : ClientMockTestCase() {
@@ -127,5 +128,21 @@ class DeletingStateTests : ClientMockTestCase() {
         assertNull("Deletion started field should not be initialized.", result.metadataToSave.deletion!!.started)
         assertEquals("Latest execution status is retrying", SMMetadata.LatestExecution.Status.RETRYING, result.metadataToSave.deletion!!.latestExecution!!.status)
         assertNotNull("Latest execution info should not be null", result.metadataToSave.deletion!!.latestExecution!!.info)
+    }
+
+    fun `test policy deletion is null`() = runBlocking {
+        val metadata = randomSMMetadata(
+            currentState = SMState.DELETE_CONDITION_MET,
+            startedDeletion = listOf(randomSnapshotName()),
+        )
+        val job = randomSMPolicy(
+            deletionNull = true
+        )
+        val context = SMStateMachine(client, job, metadata)
+
+        val result = SMState.DELETING.instance.execute(context)
+        assertTrue("Execution result should be Fail.", result is SMResult.Fail)
+        result as SMResult.Fail
+        assertNull("Deletion metadata should be null.", result.metadataToSave.deletion)
     }
 }
