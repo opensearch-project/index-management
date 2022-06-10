@@ -63,6 +63,7 @@ class TransportExplainSMAction @Inject constructor(
         return buildExplainResponse(namesToEnabled, namesToMetadata)
     }
 
+    @Suppress("ThrowsCount")
     private suspend fun getPolicyEnabledStatus(policyNames: Set<String>): Map<String, Boolean> {
         // Search the config index for SM policies
         val searchRequest = getPolicyEnabledSearchRequest(policyNames)
@@ -163,7 +164,8 @@ class TransportExplainSMAction @Inject constructor(
                 ENABLED_FIELD -> enabled = xcp.booleanValue()
             }
         }
-        return requireNotNull(name) { "The name field of SMPolicy must not be null." } to requireNotNull(enabled) { "The enabled field of SMPolicy must not be null." }
+        return requireNotNull(name) { "The name field of SMPolicy must not be null." } to
+                requireNotNull(enabled) { "The enabled field of SMPolicy must not be null." }
     }
 
     private fun buildExplainResponse(namesToEnabled: Map<String, Boolean>, namesToMetadata: Map<String, SMMetadata>): ExplainSMPolicyResponse {

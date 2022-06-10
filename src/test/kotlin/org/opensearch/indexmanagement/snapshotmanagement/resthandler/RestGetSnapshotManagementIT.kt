@@ -108,7 +108,6 @@ class RestGetSnapshotManagementIT : SnapshotManagementRestTestCase() {
         val responsePoliciesFrom = mapFrom["policies"] as List<Map<String, Any?>>
         assertEquals("SM Policies response has different size", 9 - searchParamSize, responsePoliciesFrom.size)
         for (testSMPolicy in smPolicies.subList(searchParamSize, 9)) {
-            println(testSMPolicy)
             val foundPolicy = responsePoliciesFrom.find { testSMPolicy.id == it["_id"] as String }
             assertNotNull("Did not find matching SM Policy that should exist", foundPolicy)
             assertNotNull("Matching response did not have policy", foundPolicy?.get(SM_TYPE))
