@@ -165,7 +165,7 @@ class TransportExplainSMAction @Inject constructor(
             }
         }
         return requireNotNull(name) { "The name field of SMPolicy must not be null." } to
-                requireNotNull(enabled) { "The enabled field of SMPolicy must not be null." }
+            requireNotNull(enabled) { "The enabled field of SMPolicy must not be null." }
     }
 
     private fun buildExplainResponse(namesToEnabled: Map<String, Boolean>, namesToMetadata: Map<String, SMMetadata>): ExplainSMPolicyResponse {

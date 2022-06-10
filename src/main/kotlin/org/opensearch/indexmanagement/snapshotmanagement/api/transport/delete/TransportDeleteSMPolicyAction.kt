@@ -18,7 +18,6 @@ import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANA
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.BaseTransportAction
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.SMActions.DELETE_SM_POLICY_ACTION_NAME
-import org.opensearch.indexmanagement.snapshotmanagement.api.transport.start.TransportStartSMAction
 import org.opensearch.indexmanagement.snapshotmanagement.getSMPolicy
 import org.opensearch.rest.RestStatus
 import org.opensearch.transport.TransportService
