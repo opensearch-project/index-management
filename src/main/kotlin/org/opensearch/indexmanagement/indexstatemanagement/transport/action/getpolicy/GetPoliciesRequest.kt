@@ -9,7 +9,7 @@ import org.opensearch.action.ActionRequest
 import org.opensearch.action.ActionRequestValidationException
 import org.opensearch.common.io.stream.StreamInput
 import org.opensearch.common.io.stream.StreamOutput
-import org.opensearch.indexmanagement.indexstatemanagement.model.SearchParams
+import org.opensearch.indexmanagement.common.model.rest.SearchParams
 import java.io.IOException
 
 class GetPoliciesRequest : ActionRequest {

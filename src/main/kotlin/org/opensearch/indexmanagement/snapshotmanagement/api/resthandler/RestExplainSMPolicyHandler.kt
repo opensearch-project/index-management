@@ -12,11 +12,9 @@ import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.SM_POLICIE
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.SMActions
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.explain.ExplainSMPolicyRequest
 import org.opensearch.rest.BaseRestHandler
-import org.opensearch.rest.BytesRestResponse
 import org.opensearch.rest.RestHandler.Route
 import org.opensearch.rest.RestRequest
 import org.opensearch.rest.RestRequest.Method.GET
-import org.opensearch.rest.RestStatus
 import org.opensearch.rest.action.RestToXContentListener
 
 class RestExplainSMPolicyHandler : BaseRestHandler() {
@@ -34,27 +32,13 @@ class RestExplainSMPolicyHandler : BaseRestHandler() {
     }
 
     override fun prepareRequest(request: RestRequest, client: NodeClient): RestChannelConsumer {
-        return when (request.method()) {
-            GET -> getRequest(request, client)
-            else -> RestChannelConsumer {
-                it.sendResponse(
-                    BytesRestResponse(
-                        RestStatus.METHOD_NOT_ALLOWED,
-                        "${request.method()} is not allowed"
-                    )
-                )
-            }
-        }
-    }
-
-    private fun getRequest(request: RestRequest, client: NodeClient): RestChannelConsumer {
         var policyNames: Array<String> = Strings.splitStringByCommaToArray(request.param("policyName", ""))
-        if (policyNames.isEmpty()) policyNames = arrayOf("")
+        if (policyNames.isEmpty()) policyNames = arrayOf("*")
         log.debug("Explain snapshot management policy request received with policy name(s) [$policyNames]")
 
         return RestChannelConsumer {
             client.execute(
-                SMActions.EXPLAIN_SM_ACTION_TYPE,
+                SMActions.EXPLAIN_SM_POLICY_ACTION_TYPE,
                 ExplainSMPolicyRequest(policyNames),
                 RestToXContentListener(it)
             )

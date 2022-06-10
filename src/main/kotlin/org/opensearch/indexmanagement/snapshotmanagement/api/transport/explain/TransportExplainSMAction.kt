@@ -2,7 +2,6 @@
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
  *
- * com.maddyhome.idea.copyright.pattern.CommentInfo@6331d08d
  */
 
 package org.opensearch.indexmanagement.snapshotmanagement.api.transport.explain
@@ -21,6 +20,7 @@ import org.opensearch.commons.authuser.User
 import org.opensearch.index.IndexNotFoundException
 import org.opensearch.index.query.BoolQueryBuilder
 import org.opensearch.index.query.ExistsQueryBuilder
+import org.opensearch.index.query.TermQueryBuilder
 import org.opensearch.index.query.WildcardQueryBuilder
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
 import org.opensearch.indexmanagement.indexstatemanagement.ManagedIndexCoordinator.Companion.MAX_HITS
@@ -46,7 +46,7 @@ class TransportExplainSMAction @Inject constructor(
     transportService: TransportService,
     actionFilters: ActionFilters
 ) : BaseTransportAction<ExplainSMPolicyRequest, ExplainSMPolicyResponse>(
-    SMActions.EXPLAIN_SM_ACTION_NAME, transportService, client, actionFilters, ::ExplainSMPolicyRequest
+    SMActions.EXPLAIN_SM_POLICY_ACTION_NAME, transportService, client, actionFilters, ::ExplainSMPolicyRequest
 ) {
 
     private val log = LogManager.getLogger(javaClass)
@@ -70,6 +70,9 @@ class TransportExplainSMAction @Inject constructor(
             client.suspendUntil { search(searchRequest, it) }
         } catch (e: IndexNotFoundException) {
             throw OpenSearchStatusException("Snapshot management config index not found", RestStatus.NOT_FOUND)
+        } catch (e: Exception) {
+            log.error("Failed to search for snapshot management policy", e)
+            throw OpenSearchStatusException("Failed to search for snapshot management policy", RestStatus.INTERNAL_SERVER_ERROR)
         }
 
         // Parse each returned policy to get the job enabled status
@@ -84,13 +87,7 @@ class TransportExplainSMAction @Inject constructor(
     }
 
     private fun getPolicyEnabledSearchRequest(policyNames: Set<String>): SearchRequest {
-        // Search for all SM Policy documents which match at least one of the given names
-        val queryBuilder = BoolQueryBuilder().filter(ExistsQueryBuilder(SMPolicy.SM_TYPE))
-        queryBuilder.minimumShouldMatch(1).apply {
-            policyNames.forEach {
-                this.should(WildcardQueryBuilder("${SMPolicy.SM_TYPE}.$NAME_FIELD", "*$it*"))
-            }
-        }
+        val queryBuilder = getPolicyQuery(policyNames)
 
         // TODO SM add user filter
 
@@ -102,6 +99,21 @@ class TransportExplainSMAction @Inject constructor(
         val fetchSourceContext = FetchSourceContext(true, includes, arrayOf())
         val searchSourceBuilder = SearchSourceBuilder().size(MAX_HITS).query(queryBuilder).fetchSource(fetchSourceContext)
         return SearchRequest(INDEX_MANAGEMENT_INDEX).source(searchSourceBuilder)
+    }
+
+    private fun getPolicyQuery(policyNames: Set<String>): BoolQueryBuilder {
+        // Search for all SM Policy documents which match at least one of the given names
+        val queryBuilder = BoolQueryBuilder().filter(ExistsQueryBuilder(SMPolicy.SM_TYPE))
+        queryBuilder.minimumShouldMatch(1).apply {
+            policyNames.forEach { policyName ->
+                if (policyName.contains('*') || policyName.contains('?')) {
+                    this.should(WildcardQueryBuilder("${SMPolicy.SM_TYPE}.$NAME_FIELD", policyName))
+                } else {
+                    this.should(TermQueryBuilder("${SMPolicy.SM_TYPE}.$NAME_FIELD", policyName))
+                }
+            }
+        }
+        return queryBuilder
     }
 
     private suspend fun getSMMetadata(policyNames: Set<String>): Map<String, SMMetadata> {

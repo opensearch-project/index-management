@@ -11,8 +11,8 @@ import org.opensearch.common.io.stream.BytesStreamOutput
 import org.opensearch.common.io.stream.StreamInput
 import org.opensearch.index.seqno.SequenceNumbers
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
+import org.opensearch.indexmanagement.common.model.rest.SearchParams
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.delete.DeleteSMPolicyRequest
-import org.opensearch.indexmanagement.snapshotmanagement.api.transport.execute.ExecuteSMRequest
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.explain.ExplainSMPolicyRequest
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.get.GetSMPoliciesRequest
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.get.GetSMPolicyRequest
@@ -45,7 +45,8 @@ class RequestTests : OpenSearchTestCase() {
     }
 
     fun `test get all sm policy request`() {
-        val req = GetSMPoliciesRequest()
+        val searchParams = SearchParams(0, 20, "sort-field", "asc", "*")
+        val req = GetSMPoliciesRequest(searchParams)
 
         val out = BytesStreamOutput().apply { req.writeTo(this) }
         val sin = StreamInput.wrap(out.bytes().toBytesRef().bytes)
@@ -98,16 +99,6 @@ class RequestTests : OpenSearchTestCase() {
         val sin = StreamInput.wrap(out.bytes().toBytesRef().bytes)
         val streamedReq = StopSMRequest(sin)
         assertEquals(id, streamedReq.id())
-    }
-
-    fun `test execute sm policy request`() {
-        val id = "some_id"
-        val req = ExecuteSMRequest(id)
-
-        val out = BytesStreamOutput().apply { req.writeTo(this) }
-        val sin = StreamInput.wrap(out.bytes().toBytesRef().bytes)
-        val streamedReq = ExecuteSMRequest(sin)
-        assertEquals(id, streamedReq.snapshotPolicyID)
     }
 
     fun `test explain sm policy request`() {

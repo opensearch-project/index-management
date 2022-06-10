@@ -111,14 +111,15 @@ import org.opensearch.indexmanagement.rollup.resthandler.RestStopRollupAction
 import org.opensearch.indexmanagement.rollup.settings.LegacyOpenDistroRollupSettings
 import org.opensearch.indexmanagement.rollup.settings.RollupSettings
 import org.opensearch.indexmanagement.settings.IndexManagementSettings
-import org.opensearch.indexmanagement.snapshotmanagement.api.resthandler.RestExecuteSMPolicyHandler
+import org.opensearch.indexmanagement.snapshotmanagement.api.resthandler.RestCreateSMPolicyHandler
+import org.opensearch.indexmanagement.snapshotmanagement.api.resthandler.RestDeleteSMPolicyHandler
 import org.opensearch.indexmanagement.snapshotmanagement.api.resthandler.RestExplainSMPolicyHandler
-import org.opensearch.indexmanagement.snapshotmanagement.api.resthandler.RestSMPolicyHandler
+import org.opensearch.indexmanagement.snapshotmanagement.api.resthandler.RestGetSMPolicyHandler
 import org.opensearch.indexmanagement.snapshotmanagement.api.resthandler.RestStartSMPolicyHandler
 import org.opensearch.indexmanagement.snapshotmanagement.api.resthandler.RestStopSMPolicyHandler
+import org.opensearch.indexmanagement.snapshotmanagement.api.resthandler.RestUpdateSMPolicyHandler
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.SMActions
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.delete.TransportDeleteSMPolicyAction
-import org.opensearch.indexmanagement.snapshotmanagement.api.transport.execute.TransportExecuteSMAction
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.explain.TransportExplainSMAction
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.get.TransportGetSMPoliciesAction
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.get.TransportGetSMPolicyAction
@@ -330,11 +331,13 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
             RestExplainTransformAction(),
             RestStartTransformAction(),
             RestStopTransformAction(),
-            RestSMPolicyHandler(),
+            RestGetSMPolicyHandler(),
             RestStartSMPolicyHandler(),
             RestStopSMPolicyHandler(),
-            RestExecuteSMPolicyHandler(),
-            RestExplainSMPolicyHandler()
+            RestExplainSMPolicyHandler(),
+            RestDeleteSMPolicyHandler(),
+            RestCreateSMPolicyHandler(),
+            RestUpdateSMPolicyHandler()
         )
     }
 
@@ -539,13 +542,12 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
             ActionPlugin.ActionHandler(StartTransformAction.INSTANCE, TransportStartTransformAction::class.java),
             ActionPlugin.ActionHandler(StopTransformAction.INSTANCE, TransportStopTransformAction::class.java),
             ActionPlugin.ActionHandler(ManagedIndexAction.INSTANCE, TransportManagedIndexAction::class.java),
-            ActionPlugin.ActionHandler(SMActions.INDEX_SM_ACTION_TYPE, TransportIndexSMPolicyAction::class.java),
-            ActionPlugin.ActionHandler(SMActions.GET_SM_ACTION_TYPE, TransportGetSMPolicyAction::class.java),
-            ActionPlugin.ActionHandler(SMActions.DELETE_SM_ACTION_TYPE, TransportDeleteSMPolicyAction::class.java),
-            ActionPlugin.ActionHandler(SMActions.START_SM_ACTION_TYPE, TransportStartSMAction::class.java),
-            ActionPlugin.ActionHandler(SMActions.STOP_SM_ACTION_TYPE, TransportStopSMAction::class.java),
-            ActionPlugin.ActionHandler(SMActions.EXECUTE_SM_ACTION_TYPE, TransportExecuteSMAction::class.java),
-            ActionPlugin.ActionHandler(SMActions.EXPLAIN_SM_ACTION_TYPE, TransportExplainSMAction::class.java),
+            ActionPlugin.ActionHandler(SMActions.INDEX_SM_POLICY_ACTION_TYPE, TransportIndexSMPolicyAction::class.java),
+            ActionPlugin.ActionHandler(SMActions.GET_SM_POLICY_ACTION_TYPE, TransportGetSMPolicyAction::class.java),
+            ActionPlugin.ActionHandler(SMActions.DELETE_SM_POLICY_ACTION_TYPE, TransportDeleteSMPolicyAction::class.java),
+            ActionPlugin.ActionHandler(SMActions.START_SM_POLICY_ACTION_TYPE, TransportStartSMAction::class.java),
+            ActionPlugin.ActionHandler(SMActions.STOP_SM_POLICY_ACTION_TYPE, TransportStopSMAction::class.java),
+            ActionPlugin.ActionHandler(SMActions.EXPLAIN_SM_POLICY_ACTION_TYPE, TransportExplainSMAction::class.java),
             ActionPlugin.ActionHandler(SMActions.GET_SM_POLICIES_ACTION_TYPE, TransportGetSMPoliciesAction::class.java)
         )
     }

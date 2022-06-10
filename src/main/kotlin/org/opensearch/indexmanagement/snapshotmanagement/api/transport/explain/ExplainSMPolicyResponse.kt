@@ -50,10 +50,18 @@ class ExplainSMPolicyResponse : ActionResponse, ToXContentObject {
 
     @Throws(IOException::class)
     override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
-        builder.startObject()
-        policiesToExplain.entries.forEach { (name, explain) ->
-            builder.field(name, explain)
-        }
-        return builder.endObject()
+        return builder.startObject()
+            .startObject(SM_POLICIES_FIELD)
+            .also {
+                policiesToExplain.entries.forEach { (name, explain) ->
+                    it.field(name, explain)
+                }
+            }
+            .endObject()
+            .endObject()
+    }
+
+    companion object {
+        const val SM_POLICIES_FIELD = "policies"
     }
 }

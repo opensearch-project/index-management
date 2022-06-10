@@ -11,12 +11,11 @@ import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.SM_POLICIE
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.SMActions
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.stop.StopSMRequest
 import org.opensearch.indexmanagement.snapshotmanagement.smPolicyNameToDocId
+import org.opensearch.indexmanagement.snapshotmanagement.util.getNonEmptySMPolicyName
 import org.opensearch.rest.BaseRestHandler
-import org.opensearch.rest.BytesRestResponse
 import org.opensearch.rest.RestHandler.Route
 import org.opensearch.rest.RestRequest
 import org.opensearch.rest.RestRequest.Method.PUT
-import org.opensearch.rest.RestStatus
 import org.opensearch.rest.action.RestToXContentListener
 
 class RestStopSMPolicyHandler : BaseRestHandler() {
@@ -34,30 +33,13 @@ class RestStopSMPolicyHandler : BaseRestHandler() {
     }
 
     override fun prepareRequest(request: RestRequest, client: NodeClient): RestChannelConsumer {
-        return when (request.method()) {
-            PUT -> putRequest(request, client)
-            else -> RestChannelConsumer {
-                it.sendResponse(
-                    BytesRestResponse(
-                        RestStatus.METHOD_NOT_ALLOWED,
-                        "${request.method()} is not allowed"
-                    )
-                )
-            }
-        }
-    }
-
-    private fun putRequest(request: RestRequest, client: NodeClient): RestChannelConsumer {
-        val policyName = request.param("policyName", "")
-        if (policyName == "") {
-            throw IllegalArgumentException("Missing policy name")
-        }
+        val policyName = request.getNonEmptySMPolicyName()
         log.debug("Stop snapshot management policy request received with policy name [$policyName]")
 
         val indexReq = StopSMRequest(smPolicyNameToDocId(policyName))
         return RestChannelConsumer {
             client.execute(
-                SMActions.STOP_SM_ACTION_TYPE,
+                SMActions.STOP_SM_POLICY_ACTION_TYPE,
                 indexReq, RestToXContentListener(it)
             )
         }

@@ -2,12 +2,12 @@
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
  *
- * com.maddyhome.idea.copyright.pattern.CommentInfo@6331d08d
  */
 
 package org.opensearch.indexmanagement.snapshotmanagement.api.transport.stop
 
 import org.apache.logging.log4j.LogManager
+import org.opensearch.OpenSearchStatusException
 import org.opensearch.action.DocWriteResponse
 import org.opensearch.action.support.ActionFilters
 import org.opensearch.action.support.master.AcknowledgedResponse
@@ -16,12 +16,14 @@ import org.opensearch.client.Client
 import org.opensearch.common.inject.Inject
 import org.opensearch.common.util.concurrent.ThreadContext
 import org.opensearch.commons.authuser.User
+import org.opensearch.index.engine.VersionConflictEngineException
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.BaseTransportAction
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.SMActions
 import org.opensearch.indexmanagement.snapshotmanagement.getSMPolicy
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy
+import org.opensearch.rest.RestStatus
 import org.opensearch.transport.TransportService
 import java.time.Instant
 
@@ -30,7 +32,7 @@ class TransportStopSMAction @Inject constructor(
     transportService: TransportService,
     actionFilters: ActionFilters
 ) : BaseTransportAction<StopSMRequest, AcknowledgedResponse>(
-    SMActions.STOP_SM_ACTION_NAME, transportService, client, actionFilters, ::StopSMRequest
+    SMActions.STOP_SM_POLICY_ACTION_NAME, transportService, client, actionFilters, ::StopSMRequest
 ) {
 
     private val log = LogManager.getLogger(javaClass)
@@ -59,8 +61,20 @@ class TransportStopSMAction @Inject constructor(
                 )
             )
         )
-        val updateResponse: UpdateResponse = client.suspendUntil { update(updateRequest, it) }
+        val updateResponse: UpdateResponse = try {
+            client.suspendUntil { update(updateRequest, it) }
+        } catch (e: VersionConflictEngineException) {
+            log.error("VersionConflictEngineException while trying to disable snapshot management policy id [${updateRequest.id()}]: $e")
+            throw OpenSearchStatusException(conflictExceptionMessage, RestStatus.INTERNAL_SERVER_ERROR)
+        } catch (e: Exception) {
+            log.error("Failed trying to disable snapshot management policy id [${updateRequest.id()}]: $e")
+            throw OpenSearchStatusException("Failed while trying to disable SM Policy", RestStatus.INTERNAL_SERVER_ERROR)
+        }
         // TODO update metadata
         return updateResponse.result == DocWriteResponse.Result.UPDATED
+    }
+
+    companion object {
+        private const val conflictExceptionMessage = "Failed while trying to disable SM Policy due to a concurrent update, please try again"
     }
 }

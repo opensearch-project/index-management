@@ -9,6 +9,7 @@ import org.opensearch.client.ResponseException
 import org.opensearch.common.xcontent.XContentType
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
 import org.opensearch.indexmanagement.snapshotmanagement.SnapshotManagementRestTestCase
+import org.opensearch.indexmanagement.snapshotmanagement.api.transport.explain.ExplainSMPolicyResponse
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.SMState
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata.Creation.Companion.TRIGGER_FIELD
@@ -22,7 +23,6 @@ import java.time.temporal.ChronoUnit
 
 @Suppress("UNCHECKED_CAST")
 class RestExplainSnapshotManagementIT : SnapshotManagementRestTestCase() {
-
     fun `test explaining a snapshot management policy`() {
         val smPolicy = createSMPolicy(
             randomSMPolicy().copy(
@@ -34,9 +34,11 @@ class RestExplainSnapshotManagementIT : SnapshotManagementRestTestCase() {
         updateSMPolicyStartTime(smPolicy)
         waitFor {
             val explainResponse = explainSMPolicy(smPolicy.policyName)
-            val responseMap = createParser(XContentType.JSON.xContent(), explainResponse.entity.content).map() as Map<String, Map<String, Any>>
-            assertTrue(responseMap.containsKey(smPolicy.policyName))
-            val explainPolicyMap = responseMap[smPolicy.policyName] as Map<String, Any>
+            val responseMap = createParser(XContentType.JSON.xContent(), explainResponse.entity.content).map() as Map<String, Any>
+            assertTrue(responseMap.containsKey(ExplainSMPolicyResponse.SM_POLICIES_FIELD))
+            val responseMapPolicies = responseMap[ExplainSMPolicyResponse.SM_POLICIES_FIELD] as Map<String, Map<String, Any>>
+            assertTrue(responseMapPolicies.containsKey(smPolicy.policyName))
+            val explainPolicyMap = responseMapPolicies[smPolicy.policyName] as Map<String, Any>
             assertTrue("Explain response did not contain policy current state", explainPolicyMap.containsKey(SMMetadata.CURRENT_STATE_FIELD))
             assertEquals("Policy state didn't match explain response", SMState.START.name, explainPolicyMap[SMMetadata.CURRENT_STATE_FIELD])
             assertFalse("Explain response should have null info", explainPolicyMap.containsKey(SMMetadata.INFO_FIELD))
@@ -59,8 +61,10 @@ class RestExplainSnapshotManagementIT : SnapshotManagementRestTestCase() {
 
     fun `test explaining a snapshot management policy which doesn't exist`() {
         val explainResponse = explainSMPolicy("nonexistent-policy")
-        val explainResponseMap = createParser(XContentType.JSON.xContent(), explainResponse.entity.content).map()
-        assertTrue("Explain response map should be empty when no policies are present", explainResponseMap.isEmpty())
+        val responseMap = createParser(XContentType.JSON.xContent(), explainResponse.entity.content).map() as Map<String, Any>
+        assertTrue(responseMap.containsKey(ExplainSMPolicyResponse.SM_POLICIES_FIELD))
+        val responseMapPolicies = responseMap[ExplainSMPolicyResponse.SM_POLICIES_FIELD] as Map<String, Map<String, Any>>
+        assertTrue("Explain response map should be empty when no policies are present", responseMapPolicies.isEmpty())
     }
 
     fun `test explain all with list of policy names`() {
@@ -69,11 +73,13 @@ class RestExplainSnapshotManagementIT : SnapshotManagementRestTestCase() {
         smPolicies.forEach { updateSMPolicyStartTime(it) }
         waitFor {
             val explainResponse = explainSMPolicy(smPolicies.joinToString(",") { it.policyName })
-            val responseMap = createParser(XContentType.JSON.xContent(), explainResponse.entity.content).map() as Map<String, Map<String, Any>>
+            val responseMap = createParser(XContentType.JSON.xContent(), explainResponse.entity.content).map() as Map<String, Any>
+            assertTrue(responseMap.containsKey(ExplainSMPolicyResponse.SM_POLICIES_FIELD))
+            val responseMapPolicies = responseMap[ExplainSMPolicyResponse.SM_POLICIES_FIELD] as Map<String, Map<String, Any>>
 
             smPolicies.forEach { actualPolicy ->
-                assertTrue(responseMap.containsKey(actualPolicy.policyName))
-                val foundPolicy = responseMap[actualPolicy.policyName] as Map<String, Any>
+                assertTrue(responseMapPolicies.containsKey(actualPolicy.policyName))
+                val foundPolicy = responseMapPolicies[actualPolicy.policyName] as Map<String, Any>
                 assertTrue(foundPolicy.containsKey(SMPolicy.ENABLED_FIELD))
                 assertEquals(actualPolicy.jobEnabled, foundPolicy[SMPolicy.ENABLED_FIELD])
                 assertTrue(foundPolicy.containsKey(SMMetadata.CREATION_FIELD))
@@ -89,11 +95,13 @@ class RestExplainSnapshotManagementIT : SnapshotManagementRestTestCase() {
         smPolicies.forEach { updateSMPolicyStartTime(it) }
         waitFor {
             val explainResponse = explainSMPolicy("")
-            val responseMap = createParser(XContentType.JSON.xContent(), explainResponse.entity.content).map() as Map<String, Map<String, Any>>
+            val responseMap = createParser(XContentType.JSON.xContent(), explainResponse.entity.content).map() as Map<String, Any>
+            assertTrue(responseMap.containsKey(ExplainSMPolicyResponse.SM_POLICIES_FIELD))
+            val responseMapPolicies = responseMap[ExplainSMPolicyResponse.SM_POLICIES_FIELD] as Map<String, Map<String, Any>>
 
             smPolicies.forEach { actualPolicy ->
-                assertTrue(responseMap.containsKey(actualPolicy.policyName))
-                val foundPolicy = responseMap[actualPolicy.policyName] as Map<String, Any>
+                assertTrue(responseMapPolicies.containsKey(actualPolicy.policyName))
+                val foundPolicy = responseMapPolicies[actualPolicy.policyName] as Map<String, Any>
                 assertTrue(foundPolicy.containsKey(SMPolicy.ENABLED_FIELD))
                 assertEquals(actualPolicy.jobEnabled, foundPolicy[SMPolicy.ENABLED_FIELD])
                 assertTrue(foundPolicy.containsKey(SMMetadata.CREATION_FIELD))
@@ -108,9 +116,11 @@ class RestExplainSnapshotManagementIT : SnapshotManagementRestTestCase() {
         val smPolicy2 = createSMPolicy(randomSMPolicy(policyName = "prefix_name2_suffix"))
         waitFor {
             val explainResponse = explainSMPolicy("prefix_*_suffix")
-            val responseMap = createParser(XContentType.JSON.xContent(), explainResponse.entity.content).map() as Map<String, Map<String, Any>>
-            assertTrue(responseMap.containsKey(smPolicy1.policyName))
-            assertTrue(responseMap.containsKey(smPolicy2.policyName))
+            val responseMap = createParser(XContentType.JSON.xContent(), explainResponse.entity.content).map() as Map<String, Any>
+            assertTrue(responseMap.containsKey(ExplainSMPolicyResponse.SM_POLICIES_FIELD))
+            val responseMapPolicies = responseMap[ExplainSMPolicyResponse.SM_POLICIES_FIELD] as Map<String, Map<String, Any>>
+            assertTrue(responseMapPolicies.containsKey(smPolicy1.policyName))
+            assertTrue(responseMapPolicies.containsKey(smPolicy2.policyName))
         }
     }
 
