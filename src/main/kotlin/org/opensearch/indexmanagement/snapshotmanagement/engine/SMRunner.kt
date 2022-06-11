@@ -20,6 +20,8 @@ import org.opensearch.indexmanagement.snapshotmanagement.getSMMetadata
 import org.opensearch.indexmanagement.snapshotmanagement.indexMetadata
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata
+import org.opensearch.indexmanagement.snapshotmanagement.smDocIdToPolicyName
+import org.opensearch.indexmanagement.snapshotmanagement.smPolicyNameToMetadataId
 import org.opensearch.indexmanagement.util.acquireLockForScheduledJob
 import org.opensearch.indexmanagement.util.releaseLockForScheduledJob
 import org.opensearch.jobscheduler.spi.JobExecutionContext
@@ -97,7 +99,7 @@ object SMRunner :
 
     private fun getInitialMetadata(job: SMPolicy): SMMetadata {
         return SMMetadata(
-            id = job.id,
+            id = smPolicyNameToMetadataId(smDocIdToPolicyName(job.id)),
             policySeqNo = job.seqNo,
             policyPrimaryTerm = job.primaryTerm,
             currentState = SMState.START,

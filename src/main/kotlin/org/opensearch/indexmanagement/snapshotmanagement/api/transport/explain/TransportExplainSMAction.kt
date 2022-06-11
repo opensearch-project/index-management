@@ -141,7 +141,7 @@ class TransportExplainSMAction @Inject constructor(
         val queryBuilder = BoolQueryBuilder().filter(ExistsQueryBuilder(SM_METADATA_TYPE))
         queryBuilder.minimumShouldMatch(1).apply {
             policyNames.forEach {
-                this.should(WildcardQueryBuilder("$SM_METADATA_TYPE.$NAME_FIELD", "*$it*"))
+                this.should(TermQueryBuilder("$SM_METADATA_TYPE.$NAME_FIELD", it))
             }
         }
 

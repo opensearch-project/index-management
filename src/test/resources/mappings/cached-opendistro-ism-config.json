@@ -1466,7 +1466,7 @@
     "sm_metadata": {
       "properties": {
         "name": {
-          "type": "text"
+          "type": "keyword"
         },
         "policy_seq_no": {
           "type": "long"

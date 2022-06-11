@@ -15,7 +15,6 @@ import org.opensearch.indexmanagement.snapshotmanagement.util.getNonEmptySMPolic
 import org.opensearch.rest.BaseRestHandler
 import org.opensearch.rest.RestHandler.Route
 import org.opensearch.rest.RestRequest
-import org.opensearch.rest.RestRequest.Method.PUT
 import org.opensearch.rest.action.RestToXContentListener
 
 class RestStartSMPolicyHandler : BaseRestHandler() {
@@ -28,7 +27,7 @@ class RestStartSMPolicyHandler : BaseRestHandler() {
 
     override fun routes(): List<Route> {
         return listOf(
-            Route(PUT, "$SM_POLICIES_URI/{policyName}/_start")
+            Route(RestRequest.Method.POST, "$SM_POLICIES_URI/{policyName}/_start")
         )
     }
 
