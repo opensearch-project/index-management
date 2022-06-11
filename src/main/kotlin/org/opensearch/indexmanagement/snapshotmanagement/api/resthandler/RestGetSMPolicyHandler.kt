@@ -23,7 +23,7 @@ import org.opensearch.rest.action.RestToXContentListener
 class RestGetSMPolicyHandler : BaseRestHandler() {
 
     override fun getName(): String {
-        return "snapshot_management_get_rest_handler"
+        return "snapshot_management_get_policy_rest_handler"
     }
 
     override fun routes(): List<Route> {

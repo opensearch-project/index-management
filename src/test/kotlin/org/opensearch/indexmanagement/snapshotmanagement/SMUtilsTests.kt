@@ -19,7 +19,7 @@ class SMUtilsTests : OpenSearchTestCase() {
     }
 
     fun `test snapshot name date_format`() {
-        val timeStr = generateFormatTime(randomAlphaOfLength(8))
+        val timeStr = generateFormatTime("")
         assertEquals("Generate time string", "invalid_date_format", timeStr)
     }
 }

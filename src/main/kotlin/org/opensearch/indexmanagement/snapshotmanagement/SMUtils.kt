@@ -272,27 +272,27 @@ data class UpdateNextExecutionTimeResult(
  * so it conforms to snapshot name format validated in [SnapshotsService]
  */
 fun validateSMPolicyName(policyName: String) {
-    if (policyName.isBlank()) {
-        throw SnapshotManagementException(message = "Policy name cannot be empty")
+    if (policyName.isEmpty()) {
+        throw IllegalArgumentException("Policy name cannot be empty")
     }
     if (policyName.contains(" ")) {
-        throw SnapshotManagementException(message = "Policy name must not contain whitespace")
+        throw IllegalArgumentException("Policy name must not contain whitespace")
     }
     if (policyName.contains(",")) {
-        throw SnapshotManagementException(message = "Policy name must not contain ','")
+        throw IllegalArgumentException("Policy name must not contain ','")
     }
     if (policyName.contains("#")) {
-        throw SnapshotManagementException(message = "Policy name must not contain '#'")
+        throw IllegalArgumentException("Policy name must not contain '#'")
     }
     if (policyName[0] == '_') {
-        throw SnapshotManagementException(message = "Policy name must not start with '_'")
+        throw IllegalArgumentException("Policy name must not start with '_'")
     }
     if (policyName.lowercase(Locale.ROOT) != policyName) {
-        throw SnapshotManagementException(message = "Policy name must be lowercase")
+        throw IllegalArgumentException("Policy name must be lowercase")
     }
     if (!Strings.validFileName(policyName)) {
-        throw SnapshotManagementException(
-            message = "Policy name must not contain the following characters " + Strings.INVALID_FILENAME_CHARS
+        throw IllegalArgumentException(
+            "Policy name must not contain the following characters " + Strings.INVALID_FILENAME_CHARS
         )
     }
 }
