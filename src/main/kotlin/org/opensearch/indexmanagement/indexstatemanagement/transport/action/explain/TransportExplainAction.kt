@@ -41,7 +41,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.IndexMetadataProvider
 import org.opensearch.indexmanagement.indexstatemanagement.ManagedIndexCoordinator.Companion.MAX_HITS
 import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexConfig
 import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
-import org.opensearch.indexmanagement.indexstatemanagement.model.SearchParams
+import org.opensearch.indexmanagement.common.model.rest.SearchParams
 import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.getManagedIndexMetadata
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.managedIndex.ManagedIndexAction
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.managedIndex.ManagedIndexRequest
@@ -58,8 +58,6 @@ import org.opensearch.indexmanagement.util.SecurityUtils.Companion.buildUser
 import org.opensearch.search.SearchHit
 import org.opensearch.search.builder.SearchSourceBuilder
 import org.opensearch.search.fetch.subphase.FetchSourceContext.FETCH_SOURCE
-import org.opensearch.search.sort.SortBuilders
-import org.opensearch.search.sort.SortOrder
 import org.opensearch.tasks.Task
 import org.opensearch.transport.TransportService
 
@@ -150,9 +148,7 @@ class TransportExplainAction @Inject constructor(
         }
 
         private fun getSearchMetadataRequest(params: SearchParams, indexUUIDs: List<String>, searchSize: Int): SearchRequest {
-            val sortBuilder = SortBuilders
-                .fieldSort(params.sortField)
-                .order(SortOrder.fromString(params.sortOrder))
+            val sortBuilder = params.getSortBuilder()
 
             val queryBuilder = QueryBuilders.boolQuery()
                 .must(

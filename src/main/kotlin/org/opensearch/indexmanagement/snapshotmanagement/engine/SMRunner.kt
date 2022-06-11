@@ -20,6 +20,17 @@ import org.opensearch.indexmanagement.snapshotmanagement.getMetadata
 import org.opensearch.indexmanagement.snapshotmanagement.indexMetadata
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata
+import org.opensearch.OpenSearchStatusException
+import org.opensearch.action.bulk.BackoffPolicy
+import org.opensearch.client.Client
+import org.opensearch.common.unit.TimeValue
+import org.opensearch.indexmanagement.snapshotmanagement.engine.states.SMState
+import org.opensearch.indexmanagement.snapshotmanagement.getSMMetadata
+import org.opensearch.indexmanagement.snapshotmanagement.indexMetadata
+import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy
+import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata
+import org.opensearch.indexmanagement.snapshotmanagement.smDocIdToPolicyName
+import org.opensearch.indexmanagement.snapshotmanagement.smPolicyNameToMetadataId
 import org.opensearch.indexmanagement.util.acquireLockForScheduledJob
 import org.opensearch.indexmanagement.util.releaseLockForScheduledJob
 import org.opensearch.jobscheduler.spi.JobExecutionContext
@@ -59,10 +70,10 @@ object SMRunner :
                 return@launch
             }
 
-            var metadata = client.getMetadata(job)
-            if (metadata == null) {
-                metadata = initMetadata(job)
-                metadata ?: return@launch
+            var metadata = try {
+                client.getSMMetadata(job.id)
+            } catch (e: OpenSearchStatusException) {
+                initMetadata(job) ?: return@launch
             }
 
             val stateMachineContext = SMStateMachine(client, job, metadata)
@@ -82,26 +93,10 @@ object SMRunner :
      * @return null indicates indexing metadata failed
      */
     private suspend fun initMetadata(job: SMPolicy): SMMetadata? {
-        val now = now()
-        val initMetadata = SMMetadata(
-            policySeqNo = job.seqNo,
-            policyPrimaryTerm = job.primaryTerm,
-            currentState = SMState.START,
-            creation = SMMetadata.WorkflowMetadata(
-                SMMetadata.Trigger(
-                    time = job.creation.schedule.getNextExecutionTime(now)
-                )
-            ),
-            deletion = job.deletion?.let {
-                SMMetadata.WorkflowMetadata(
-                    SMMetadata.Trigger(
-                        time = job.deletion.schedule.getNextExecutionTime(now)
-                    )
-                )
-            },
-        )
+        val initMetadata = getInitialMetadata(job)
         log.info("Initializing metadata [$initMetadata] for job [${job.id}].")
         try {
+            // TODO SM more granular error checking
             val res = client.indexMetadata(initMetadata, job.id, create = true)
             if (res.status() != RestStatus.CREATED) {
                 log.error("Metadata initialization response status is ${res.status()}, expecting CREATED 201.")
@@ -112,5 +107,24 @@ object SMRunner :
             return null
         }
         return initMetadata
+    }
+
+    private fun getInitialMetadata(job: SMPolicy): SMMetadata {
+        return SMMetadata(
+            id = smPolicyNameToMetadataId(smDocIdToPolicyName(job.id)),
+            policySeqNo = job.seqNo,
+            policyPrimaryTerm = job.primaryTerm,
+            currentState = SMState.START,
+            creation = SMMetadata.Creation(
+                SMMetadata.Trigger(
+                    time = job.creation.schedule.getNextExecutionTime(now())
+                )
+            ),
+            deletion = SMMetadata.Deletion(
+                SMMetadata.Trigger(
+                    time = job.deletion.schedule.getNextExecutionTime(now())
+                )
+            ),
+        )
     }
 }

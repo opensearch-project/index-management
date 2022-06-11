@@ -18,9 +18,9 @@ import org.opensearch.index.IndexNotFoundException
 import org.opensearch.indexmanagement.IndexManagementPlugin
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.BaseTransportAction
+import org.opensearch.indexmanagement.snapshotmanagement.api.transport.SMActions.GET_SM_POLICY_ACTION_NAME
 import org.opensearch.indexmanagement.snapshotmanagement.parseSMPolicy
 import org.opensearch.rest.RestStatus
-import org.opensearch.indexmanagement.snapshotmanagement.api.transport.SMActions.GET_SM_POLICY_ACTION_NAME
 import org.opensearch.transport.TransportService
 
 class TransportGetSMPolicyAction @Inject constructor(

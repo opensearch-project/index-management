@@ -11,18 +11,14 @@ import org.opensearch.client.node.NodeClient
 import org.opensearch.common.Strings
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.ISM_BASE_URI
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.LEGACY_ISM_BASE_URI
-import org.opensearch.indexmanagement.indexstatemanagement.model.SearchParams
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.explain.ExplainAction
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.explain.ExplainRequest
 import org.opensearch.indexmanagement.indexstatemanagement.util.DEFAULT_EXPLAIN_SHOW_POLICY
 import org.opensearch.indexmanagement.indexstatemanagement.util.DEFAULT_INDEX_TYPE
 import org.opensearch.indexmanagement.indexstatemanagement.util.DEFAULT_JOB_SORT_FIELD
-import org.opensearch.indexmanagement.indexstatemanagement.util.DEFAULT_PAGINATION_FROM
-import org.opensearch.indexmanagement.indexstatemanagement.util.DEFAULT_PAGINATION_SIZE
-import org.opensearch.indexmanagement.indexstatemanagement.util.DEFAULT_QUERY_STRING
-import org.opensearch.indexmanagement.indexstatemanagement.util.DEFAULT_SORT_ORDER
 import org.opensearch.indexmanagement.indexstatemanagement.util.SHOW_POLICY_QUERY_PARAM
 import org.opensearch.indexmanagement.indexstatemanagement.util.TYPE_PARAM_KEY
+import org.opensearch.indexmanagement.util.getSearchParams
 import org.opensearch.rest.BaseRestHandler
 import org.opensearch.rest.BaseRestHandler.RestChannelConsumer
 import org.opensearch.rest.RestHandler.ReplacedRoute
@@ -66,11 +62,7 @@ class RestExplainAction : BaseRestHandler() {
 
         val indices: Array<String> = Strings.splitStringByCommaToArray(request.param("index"))
 
-        val size = request.paramAsInt("size", DEFAULT_PAGINATION_SIZE)
-        val from = request.paramAsInt("from", DEFAULT_PAGINATION_FROM)
-        val sortField = request.param("sortField", DEFAULT_JOB_SORT_FIELD)
-        val sortOrder = request.param("sortOrder", DEFAULT_SORT_ORDER)
-        val queryString = request.param("queryString", DEFAULT_QUERY_STRING)
+        val searchParams = request.getSearchParams(DEFAULT_JOB_SORT_FIELD)
 
         val indexType = request.param(TYPE_PARAM_KEY, DEFAULT_INDEX_TYPE)
 
@@ -78,7 +70,7 @@ class RestExplainAction : BaseRestHandler() {
             indices.toList(),
             request.paramAsBoolean("local", false),
             request.paramAsTime("master_timeout", MasterNodeRequest.DEFAULT_MASTER_NODE_TIMEOUT),
-            SearchParams(size, from, sortField, sortOrder, queryString),
+            searchParams,
             request.paramAsBoolean(SHOW_POLICY_QUERY_PARAM, DEFAULT_EXPLAIN_SHOW_POLICY),
             indexType
         )
