@@ -145,7 +145,7 @@ class SMStateMachine(
         try {
             // TODO SM retry policy for update metadata call
             log.info("sm dev update metadata $md")
-            val res = client.indexMetadata(md, job.id, metadataSeqNo, metadataPrimaryTerm)
+            val res = client.indexMetadata(md, job.id, seqNo = metadataSeqNo, primaryTerm = metadataPrimaryTerm)
             metadataSeqNo = res.seqNo
             metadataPrimaryTerm = res.primaryTerm
             metadata = md

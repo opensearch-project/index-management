@@ -12,7 +12,7 @@ import org.opensearch.indexmanagement.snapshotmanagement.SnapshotManagementRestT
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.explain.ExplainSMPolicyResponse
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.SMState
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata
-import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata.Creation.Companion.TRIGGER_FIELD
+import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata.WorkflowMetadata.Companion.TRIGGER_FIELD
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy
 import org.opensearch.indexmanagement.snapshotmanagement.randomSMPolicy
 import org.opensearch.indexmanagement.waitFor
@@ -41,7 +41,6 @@ class RestExplainSnapshotManagementIT : SnapshotManagementRestTestCase() {
             val explainPolicyMap = responseMapPolicies[smPolicy.policyName] as Map<String, Any>
             assertTrue("Explain response did not contain policy current state", explainPolicyMap.containsKey(SMMetadata.CURRENT_STATE_FIELD))
             assertEquals("Policy state didn't match explain response", SMState.START.name, explainPolicyMap[SMMetadata.CURRENT_STATE_FIELD])
-            assertFalse("Explain response should have null info", explainPolicyMap.containsKey(SMMetadata.INFO_FIELD))
             val updatedPolicy = getSMPolicy(smPolicy.policyName)
             assertTrue("Explain response did not contain policy creation details", explainPolicyMap.containsKey(SMMetadata.CREATION_FIELD))
             val creationField = explainPolicyMap[SMMetadata.CREATION_FIELD] as Map<String, Any>
@@ -50,7 +49,7 @@ class RestExplainSnapshotManagementIT : SnapshotManagementRestTestCase() {
             assertEquals("Policy creation trigger time didn't match", expectedCreationTime, creationTriggerField[SMMetadata.Trigger.TIME_FIELD])
             val deletionField = explainPolicyMap[SMMetadata.DELETION_FIELD] as Map<String, Any>
             val deletionTriggerField = deletionField[TRIGGER_FIELD] as Map<String, Any>
-            val expectedDeletionTime = smPolicy.deletion.schedule.getNextExecutionTime(now()).toEpochMilli()
+            val expectedDeletionTime = smPolicy.deletion!!.schedule.getNextExecutionTime(now()).toEpochMilli()
             assertEquals("Policy deletion trigger time didn't match", expectedDeletionTime, deletionTriggerField[SMMetadata.Trigger.TIME_FIELD])
             assertTrue("Explain response did not contain policy sequence number", explainPolicyMap.containsKey(SMMetadata.POLICY_SEQ_NO_FIELD))
             assertEquals("Policy sequence numbers didn't match", updatedPolicy.seqNo, (explainPolicyMap[SMMetadata.POLICY_SEQ_NO_FIELD] as Int).toLong())

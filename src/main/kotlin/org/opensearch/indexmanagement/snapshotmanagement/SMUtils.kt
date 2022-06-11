@@ -116,29 +116,9 @@ fun parseSMMetadata(response: GetResponse, xContentRegistry: NamedXContentRegist
 suspend fun Client.indexMetadata(
     metadata: SMMetadata,
     id: String,
-    create: Boolean = false
-): IndexResponse {
-    val indexReq = IndexRequest(INDEX_MANAGEMENT_INDEX).create(create)
-        .id(smPolicyNameToMetadataId(smDocIdToPolicyName(id)))
-        .source(metadata.toXContent(XContentFactory.jsonBuilder(), ToXContent.EMPTY_PARAMS))
-        .setIfSeqNo(metadata.seqNo)
-        .setIfPrimaryTerm(metadata.primaryTerm)
-        .routing(id)
-
-    return suspendUntil { index(indexReq, it) }
-}
-
-/**
- * Save snapshot management job run metadata
- *
- * @param id: snapshot management job doc id
- */
-suspend fun Client.indexMetadata(
-    metadata: SMMetadata,
-    id: String,
-    seqNo: Long = metadata.seqNo,
-    primaryTerm: Long = metadata.primaryTerm,
-    create: Boolean = false
+    seqNo: Long,
+    primaryTerm: Long,
+    create: Boolean = false,
 ): IndexResponse {
     val indexReq = IndexRequest(INDEX_MANAGEMENT_INDEX).create(create)
         .id(smPolicyNameToMetadataId(smDocIdToPolicyName(id)))
@@ -148,27 +128,6 @@ suspend fun Client.indexMetadata(
         .routing(id)
 
     return suspendUntil { index(indexReq, it) }
-}
-
-/**
- * Retrieve snapshot management job run metadata
- *
- * @return null indicate the retrieved metadata doesn't exist
- */
-suspend fun Client.getMetadata(job: SMPolicy): SMMetadata? {
-    val getReq = GetRequest(INDEX_MANAGEMENT_INDEX, smPolicyNameToMetadataId(smDocIdToPolicyName(job.id))).routing(job.id)
-    val getRes: GetResponse = suspendUntil { get(getReq, it) }
-    if (getRes.isExists) {
-        log.info("sm dev: Get metadata response: ${getRes.sourceAsBytesRef.utf8ToString()}")
-        val xcp = XContentHelper.createParser(
-            NamedXContentRegistry.EMPTY, LoggingDeprecationHandler.INSTANCE,
-            getRes.sourceAsBytesRef, XContentType.JSON
-        )
-        val metadata = xcp.parseWithType(getRes.id, getRes.seqNo, getRes.primaryTerm, SMMetadata.Companion::parse)
-        log.info("sm dev: Parse metadata: $metadata")
-        return metadata
-    }
-    return null
 }
 
 fun generateSnapshotName(policy: SMPolicy): String {

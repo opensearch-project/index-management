@@ -11,7 +11,6 @@ import org.opensearch.common.io.stream.Writeable
 import org.opensearch.common.xcontent.ToXContent
 import org.opensearch.common.xcontent.ToXContentObject
 import org.opensearch.common.xcontent.XContentBuilder
-import org.opensearch.indexmanagement.opensearchapi.optionalField
 import java.io.IOException
 
 data class ExplainSMPolicy(
@@ -41,7 +40,6 @@ data class ExplainSMPolicy(
                 .field(SMMetadata.CURRENT_STATE_FIELD, it.currentState.toString())
                 .field(SMMetadata.CREATION_FIELD, it.creation)
                 .field(SMMetadata.DELETION_FIELD, it.deletion)
-                .optionalField(SMMetadata.INFO_FIELD, it.info)
         }
         return builder.field(SMPolicy.ENABLED_FIELD, enabled)
             .endObject()

@@ -150,6 +150,8 @@ fun randomPolicyDeletion(
 
 fun randomSnapshotName(): String = randomAlphaOfLength(10)
 
+fun randomSMState(): SMState = SMState.values()[randomIntBetween(0, SMState.values().size - 1)]
+
 fun ToXContent.toJsonString(params: ToXContent.Params = ToXContent.EMPTY_PARAMS): String = this.toXContent(XContentFactory.jsonBuilder(), params).string()
 
 fun ToXContent.toMap(params: ToXContent.Params = ToXContent.EMPTY_PARAMS): Map<String, Any> = this.toXContent(XContentFactory.jsonBuilder(), params).toMap()
