@@ -16,9 +16,6 @@ const val DEFAULT_SM_POLICY_SORT_FIELD = SM_POLICY_NAME_KEYWORD
 
 fun RestRequest.getValidSMPolicyName(): String {
     val policyName = this.param("policyName", "")
-    // if (policyName.isEmpty()) {
-    //     throw IllegalArgumentException("Missing policy name")
-    // }
     validateSMPolicyName(policyName)
     return policyName
 }
