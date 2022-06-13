@@ -1306,7 +1306,7 @@
         }
       }
     },
-    "sm": {
+    "sm_policy": {
       "properties": {
         "name": {
           "type": "keyword"
@@ -1465,6 +1465,9 @@
     },
     "sm_metadata": {
       "properties": {
+        "name": {
+          "type": "keyword"
+        },
         "policy_seq_no": {
           "type": "long"
         },

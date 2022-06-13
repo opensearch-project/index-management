@@ -99,9 +99,9 @@ class RestIndexSnapshotManagementIT : SnapshotManagementRestTestCase() {
         try {
             val smPolicy = randomSMPolicy()
             client().makeRequest("POST", SM_POLICIES_URI, emptyMap(), smPolicy.toHttpEntity())
-            fail("Expected 400 Method BAD_REQUEST response")
+            fail("Expected METHOD_NOT_ALLOWED response")
         } catch (e: ResponseException) {
-            assertEquals("Unexpected status", RestStatus.BAD_REQUEST, e.response.restStatus())
+            assertEquals("Unexpected status", RestStatus.METHOD_NOT_ALLOWED, e.response.restStatus())
         }
     }
 
@@ -110,9 +110,9 @@ class RestIndexSnapshotManagementIT : SnapshotManagementRestTestCase() {
         try {
             val smPolicy = randomSMPolicy()
             client().makeRequest("PUT", SM_POLICIES_URI, emptyMap(), smPolicy.toHttpEntity())
-            fail("Expected 400 Method BAD_REQUEST response")
+            fail("Expected METHOD_NOT_ALLOWED response")
         } catch (e: ResponseException) {
-            assertEquals("Unexpected status", RestStatus.BAD_REQUEST, e.response.restStatus())
+            assertEquals("Unexpected status", RestStatus.METHOD_NOT_ALLOWED, e.response.restStatus())
         }
     }
 

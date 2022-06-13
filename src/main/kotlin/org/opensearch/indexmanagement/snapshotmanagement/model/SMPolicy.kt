@@ -21,7 +21,7 @@ import org.opensearch.indexmanagement.opensearchapi.instant
 import org.opensearch.indexmanagement.opensearchapi.nullValueHandler
 import org.opensearch.indexmanagement.opensearchapi.optionalField
 import org.opensearch.indexmanagement.opensearchapi.optionalTimeField
-import org.opensearch.indexmanagement.snapshotmanagement.getSMMetadataDocId
+import org.opensearch.indexmanagement.snapshotmanagement.smPolicyNameToMetadataId
 import org.opensearch.indexmanagement.snapshotmanagement.smDocIdToPolicyName
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ActionTimeout
 import org.opensearch.indexmanagement.util.NO_ID
@@ -62,7 +62,7 @@ data class SMPolicy(
     // This is the name which the user provided when creating the policy, and should be used when outputting to the user in REST responses
     val policyName get() = smDocIdToPolicyName(id)
 
-    val metadataID get() = getSMMetadataDocId(smDocIdToPolicyName(id))
+    val metadataID get() = smPolicyNameToMetadataId(smDocIdToPolicyName(id))
 
     override fun getLastUpdateTime() = jobLastUpdateTime
 
@@ -71,6 +71,8 @@ data class SMPolicy(
     override fun getSchedule() = jobSchedule
 
     override fun isEnabled() = jobEnabled
+
+    override fun getLockDurationSeconds() = 1800L // 30 minutes
 
     override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
         builder.startObject()
@@ -89,7 +91,7 @@ data class SMPolicy(
     }
 
     companion object {
-        const val SM_TYPE = "sm"
+        const val SM_TYPE = "sm_policy"
         const val SM_DOC_ID_SUFFIX = "-sm-policy"
         const val SM_METADATA_ID_SUFFIX = "-sm-metadata"
         const val NAME_FIELD = "name"

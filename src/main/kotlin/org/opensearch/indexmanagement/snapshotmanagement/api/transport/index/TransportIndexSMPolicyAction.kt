@@ -18,7 +18,7 @@ import org.opensearch.indexmanagement.IndexManagementIndices
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.BaseTransportAction
-import org.opensearch.indexmanagement.snapshotmanagement.api.transport.SMActions.INDEX_SM_ACTION_NAME
+import org.opensearch.indexmanagement.snapshotmanagement.api.transport.SMActions.INDEX_SM_POLICY_ACTION_NAME
 import org.opensearch.transport.TransportService
 
 class TransportIndexSMPolicyAction @Inject constructor(
@@ -27,7 +27,7 @@ class TransportIndexSMPolicyAction @Inject constructor(
     val indexManagementIndices: IndexManagementIndices,
     actionFilters: ActionFilters,
 ) : BaseTransportAction<IndexSMPolicyRequest, IndexSMPolicyResponse>(
-    INDEX_SM_ACTION_NAME, transportService, client, actionFilters, ::IndexSMPolicyRequest
+    INDEX_SM_POLICY_ACTION_NAME, transportService, client, actionFilters, ::IndexSMPolicyRequest
 ) {
 
     private val log = LogManager.getLogger(javaClass)

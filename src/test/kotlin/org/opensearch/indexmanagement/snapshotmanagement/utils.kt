@@ -19,7 +19,7 @@ import org.opensearch.indexmanagement.opensearchapi.string
 import org.opensearch.indexmanagement.randomCronSchedule
 import org.opensearch.indexmanagement.randomInstant
 import org.opensearch.indexmanagement.randomIntervalSchedule
-import org.opensearch.indexmanagement.snapshotmanagement.engine.statemachine.SMState
+import org.opensearch.indexmanagement.snapshotmanagement.engine.states.SMState
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ActionTimeout
@@ -29,17 +29,20 @@ import org.opensearch.rest.RestStatus
 import org.opensearch.snapshots.SnapshotId
 import org.opensearch.snapshots.SnapshotInfo
 import org.opensearch.test.OpenSearchTestCase.randomAlphaOfLength
+import org.opensearch.test.OpenSearchTestCase.randomIntBetween
 import org.opensearch.test.OpenSearchTestCase.randomNonNegativeLong
 import org.opensearch.test.rest.OpenSearchRestTestCase
 import java.time.Instant
-import java.time.Instant.now
 
 fun randomSMMetadata(
-    currentState: SMState,
-    nextCreationTime: Instant = now(),
-    nextDeletionTime: Instant = now(),
+    currentState: SMState = SMState.START,
+    nextCreationTime: Instant = randomInstant(),
+    nextDeletionTime: Instant = randomInstant(),
     policySeqNo: Long = randomNonNegativeLong(),
-    policyPrimaryTerm: Long = randomNonNegativeLong()
+    policyPrimaryTerm: Long = randomNonNegativeLong(),
+    startedCreation: SMMetadata.SnapshotInfo? = null,
+    startedDeletion: List<SMMetadata.SnapshotInfo>? = null,
+    deleteStartedTime: Instant? = null,
 ): SMMetadata {
     return SMMetadata(
         policySeqNo = policySeqNo,
@@ -48,12 +51,15 @@ fun randomSMMetadata(
         creation = SMMetadata.Creation(
             trigger = SMMetadata.Trigger(
                 time = nextCreationTime
-            )
+            ),
+            started = startedCreation,
         ),
         deletion = SMMetadata.Deletion(
             trigger = SMMetadata.Trigger(
                 time = nextDeletionTime
-            )
+            ),
+            started = startedDeletion,
+            startedTime = deleteStartedTime,
         ),
     )
 }
@@ -99,7 +105,9 @@ fun randomSMPolicy(
     )
 }
 
-fun SMPolicy.toJsonString(params: ToXContent.Params = ToXContent.EMPTY_PARAMS): String = this.toXContent(XContentFactory.jsonBuilder(), params).string()
+fun randomSMState(): SMState = SMState.values()[randomIntBetween(0, SMState.values().size - 1)]
+
+fun ToXContent.toJsonString(params: ToXContent.Params = ToXContent.EMPTY_PARAMS): String = this.toXContent(XContentFactory.jsonBuilder(), params).string()
 
 fun mockIndexResponse(status: RestStatus = RestStatus.OK): IndexResponse {
     val indexResponse: IndexResponse = mock()
