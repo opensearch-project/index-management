@@ -31,7 +31,6 @@ class SMUtilsTests : OpenSearchTestCase() {
         val metadata = randomSMMetadata()
         val policiesToExplain: Map<String, ExplainSMPolicy?> = mapOf("policyName" to ExplainSMPolicy(metadata, true))
         val response = ExplainSMPolicyResponse(policiesToExplain)
-        println("SIN $policiesToExplain")
         val out = BytesStreamOutput().also { response.writeTo(it) }
         val sin = StreamInput.wrap(out.bytes().toBytesRef().bytes)
         // parseSMMetadata(sin)

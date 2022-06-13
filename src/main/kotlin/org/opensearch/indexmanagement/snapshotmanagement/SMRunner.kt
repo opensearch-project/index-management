@@ -14,7 +14,7 @@ import org.apache.logging.log4j.LogManager
 import org.opensearch.action.bulk.BackoffPolicy
 import org.opensearch.client.Client
 import org.opensearch.common.unit.TimeValue
-import org.opensearch.indexmanagement.snapshotmanagement.engine.statemachine.SMStateMachine
+import org.opensearch.indexmanagement.snapshotmanagement.engine.SMStateMachine
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.SMState
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata

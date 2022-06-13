@@ -129,10 +129,10 @@ abstract class SnapshotManagementRestTestCase : IndexManagementRestTestCase() {
         assertEquals("Request failed", RestStatus.OK, response.restStatus())
     }
 
-    fun parseExplainResponse(inputStream: InputStream): ExplainSMMetadata {
+    fun parseExplainResponse(inputStream: InputStream): List<ExplainSMMetadata> {
         val parser = createParser(XContentType.JSON.xContent(), inputStream)
         // val parser = createParser(builder)
-        lateinit var smMetadata: ExplainSMMetadata
+        val smMetadata: MutableList<ExplainSMMetadata> = mutableListOf()
 
         // while (parser.nextToken() != XContentParser.Token.END_ARRAY) {
         //     println("currentToken ${parser.currentToken()} ${parser.currentName()}")
@@ -142,11 +142,10 @@ abstract class SnapshotManagementRestTestCase : IndexManagementRestTestCase() {
         ensureExpectedToken(XContentParser.Token.FIELD_NAME, parser.nextToken(), parser) // policies
         ensureExpectedToken(XContentParser.Token.START_ARRAY, parser.nextToken(), parser)
         while (parser.nextToken() != XContentParser.Token.END_ARRAY) {
-            ensureExpectedToken(XContentParser.Token.START_OBJECT, parser.currentToken(), parser)
-            smMetadata = ExplainSMMetadata.parse(parser)
+            smMetadata.add(ExplainSMMetadata.parse(parser))
         }
 
-        println("${now()}: sm metadata $smMetadata")
+        logger.info("${now()}: sm metadata $smMetadata")
         return smMetadata
     }
 

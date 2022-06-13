@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.indexmanagement.snapshotmanagement.engine.statemachine
+package org.opensearch.indexmanagement.snapshotmanagement.engine
 
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger

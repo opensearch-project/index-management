@@ -12,6 +12,7 @@ import com.nhaarman.mockitokotlin2.verify
 import kotlinx.coroutines.runBlocking
 import org.opensearch.common.unit.TimeValue
 import org.opensearch.indexmanagement.ClientMockTestCase
+import org.opensearch.indexmanagement.snapshotmanagement.engine.SMStateMachine
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.SMState
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.smTransitions
 import org.opensearch.indexmanagement.snapshotmanagement.mockGetSnapshotResponse

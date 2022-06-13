@@ -6,7 +6,7 @@
 package org.opensearch.indexmanagement.snapshotmanagement.engine.states
 
 import org.opensearch.common.unit.TimeValue
-import org.opensearch.indexmanagement.snapshotmanagement.engine.statemachine.SMStateMachine
+import org.opensearch.indexmanagement.snapshotmanagement.engine.SMStateMachine
 import org.opensearch.indexmanagement.snapshotmanagement.getSnapshotsWithErrorHandling
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata
 import org.opensearch.indexmanagement.snapshotmanagement.smDocIdToPolicyName

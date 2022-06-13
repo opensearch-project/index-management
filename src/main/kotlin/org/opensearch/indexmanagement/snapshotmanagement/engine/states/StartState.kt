@@ -5,7 +5,7 @@
 
 package org.opensearch.indexmanagement.snapshotmanagement.engine.states
 
-import org.opensearch.indexmanagement.snapshotmanagement.engine.statemachine.SMStateMachine
+import org.opensearch.indexmanagement.snapshotmanagement.engine.SMStateMachine
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata
 
 object StartState : State {

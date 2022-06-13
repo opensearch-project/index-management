@@ -9,7 +9,7 @@ import kotlinx.coroutines.runBlocking
 import org.opensearch.action.support.master.AcknowledgedResponse
 import org.opensearch.common.unit.TimeValue
 import org.opensearch.indexmanagement.ClientMockTestCase
-import org.opensearch.indexmanagement.snapshotmanagement.engine.statemachine.SMStateMachine
+import org.opensearch.indexmanagement.snapshotmanagement.engine.SMStateMachine
 import org.opensearch.indexmanagement.snapshotmanagement.mockGetSnapshotResponse
 import org.opensearch.indexmanagement.snapshotmanagement.mockGetSnapshotsResponse
 import org.opensearch.indexmanagement.snapshotmanagement.mockSnapshotInfo
