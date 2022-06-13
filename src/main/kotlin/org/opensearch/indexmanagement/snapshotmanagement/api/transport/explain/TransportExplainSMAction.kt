@@ -11,7 +11,9 @@ import org.opensearch.action.search.SearchRequest
 import org.opensearch.action.search.SearchResponse
 import org.opensearch.action.support.ActionFilters
 import org.opensearch.client.Client
+import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.inject.Inject
+import org.opensearch.common.settings.Settings
 import org.opensearch.common.util.concurrent.ThreadContext
 import org.opensearch.common.xcontent.XContentParser
 import org.opensearch.common.xcontent.XContentParserUtils.ensureExpectedToken
@@ -26,6 +28,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.ManagedIndexCoordinat
 import org.opensearch.indexmanagement.opensearchapi.contentParser
 import org.opensearch.indexmanagement.opensearchapi.parseWithType
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
+import org.opensearch.indexmanagement.settings.IndexManagementSettings
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.BaseTransportAction
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.SMActions
 import org.opensearch.indexmanagement.snapshotmanagement.model.ExplainSMPolicy
@@ -35,6 +38,7 @@ import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy.Companion.ENABLED_FIELD
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy.Companion.NAME_FIELD
 import org.opensearch.indexmanagement.snapshotmanagement.smMetadataIdToPolicyName
+import org.opensearch.indexmanagement.util.SecurityUtils
 import org.opensearch.rest.RestStatus
 import org.opensearch.search.builder.SearchSourceBuilder
 import org.opensearch.search.fetch.subphase.FetchSourceContext
@@ -43,12 +47,22 @@ import org.opensearch.transport.TransportService
 class TransportExplainSMAction @Inject constructor(
     client: Client,
     transportService: TransportService,
-    actionFilters: ActionFilters
+    actionFilters: ActionFilters,
+    val clusterService: ClusterService,
+    val settings: Settings,
 ) : BaseTransportAction<ExplainSMPolicyRequest, ExplainSMPolicyResponse>(
     SMActions.EXPLAIN_SM_POLICY_ACTION_NAME, transportService, client, actionFilters, ::ExplainSMPolicyRequest
 ) {
 
     private val log = LogManager.getLogger(javaClass)
+
+    @Volatile private var filterByEnabled = IndexManagementSettings.FILTER_BY_BACKEND_ROLES.get(settings)
+
+    init {
+        clusterService.clusterSettings.addSettingsUpdateConsumer(IndexManagementSettings.FILTER_BY_BACKEND_ROLES) {
+            filterByEnabled = it
+        }
+    }
 
     override suspend fun executeRequest(
         request: ExplainSMPolicyRequest,
@@ -57,15 +71,15 @@ class TransportExplainSMAction @Inject constructor(
     ): ExplainSMPolicyResponse {
         val policyNames = request.policyNames.toSet()
 
-        val namesToEnabled = getPolicyEnabledStatus(policyNames)
+        val namesToEnabled = getPolicyEnabledStatus(policyNames, user)
         val namesToMetadata = getSMMetadata(namesToEnabled.keys)
         return buildExplainResponse(namesToEnabled, namesToMetadata)
     }
 
     @Suppress("ThrowsCount")
-    private suspend fun getPolicyEnabledStatus(policyNames: Set<String>): Map<String, Boolean> {
+    private suspend fun getPolicyEnabledStatus(policyNames: Set<String>, user: User?): Map<String, Boolean> {
         // Search the config index for SM policies
-        val searchRequest = getPolicyEnabledSearchRequest(policyNames)
+        val searchRequest = getPolicyEnabledSearchRequest(policyNames, user)
         val searchResponse: SearchResponse = try {
             client.suspendUntil { search(searchRequest, it) }
         } catch (e: IndexNotFoundException) {
@@ -86,10 +100,11 @@ class TransportExplainSMAction @Inject constructor(
         }
     }
 
-    private fun getPolicyEnabledSearchRequest(policyNames: Set<String>): SearchRequest {
+    private fun getPolicyEnabledSearchRequest(policyNames: Set<String>, user: User?): SearchRequest {
         val queryBuilder = getPolicyQuery(policyNames)
 
-        // TODO SM add user filter
+        // Add user filter if enabled
+        SecurityUtils.addUserFilter(user, queryBuilder, filterByEnabled, "sm_policy.user")
 
         // Only return the name and enabled field
         val includes = arrayOf(

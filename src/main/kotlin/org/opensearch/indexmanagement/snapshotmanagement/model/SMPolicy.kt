@@ -15,15 +15,20 @@ import org.opensearch.common.xcontent.XContentBuilder
 import org.opensearch.common.xcontent.XContentParser
 import org.opensearch.common.xcontent.XContentParser.Token
 import org.opensearch.common.xcontent.XContentParserUtils.ensureExpectedToken
+import org.opensearch.commons.authuser.User
 import org.opensearch.index.seqno.SequenceNumbers
 import org.opensearch.indexmanagement.indexstatemanagement.util.WITH_TYPE
+import org.opensearch.indexmanagement.indexstatemanagement.util.WITH_USER
 import org.opensearch.indexmanagement.opensearchapi.instant
 import org.opensearch.indexmanagement.opensearchapi.nullValueHandler
 import org.opensearch.indexmanagement.opensearchapi.optionalField
 import org.opensearch.indexmanagement.opensearchapi.optionalTimeField
+import org.opensearch.indexmanagement.opensearchapi.optionalUserField
 import org.opensearch.indexmanagement.snapshotmanagement.smPolicyNameToMetadataId
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy.DeleteCondition.Companion.DEFAULT_DELETE_CONDITION
 import org.opensearch.indexmanagement.snapshotmanagement.smDocIdToPolicyName
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ActionTimeout
+import org.opensearch.indexmanagement.util.IndexUtils
 import org.opensearch.jobscheduler.spi.ScheduledJobParameter
 import org.opensearch.jobscheduler.spi.schedule.CronSchedule
 import org.opensearch.jobscheduler.spi.schedule.IntervalSchedule
@@ -38,6 +43,7 @@ private val log = LogManager.getLogger(SMPolicy::class.java)
 data class SMPolicy(
     val id: String,
     val description: String? = null,
+    val schemaVersion: Long,
     val creation: Creation,
     val deletion: Deletion?,
     val snapshotConfig: Map<String, Any>,
@@ -47,6 +53,7 @@ data class SMPolicy(
     val jobSchedule: Schedule,
     val seqNo: Long = SequenceNumbers.UNASSIGNED_SEQ_NO,
     val primaryTerm: Long = SequenceNumbers.UNASSIGNED_PRIMARY_TERM,
+    val user: User? = null
 ) : ScheduledJobParameter, Writeable {
 
     init {
@@ -76,6 +83,7 @@ data class SMPolicy(
         if (params.paramAsBoolean(WITH_TYPE, true)) builder.startObject(SM_TYPE)
         builder.field(NAME_FIELD, smDocIdToPolicyName(id)) // for searching policy by name
             .optionalField(DESCRIPTION_FIELD, description)
+            .field(SCHEMA_VERSION_FIELD, schemaVersion)
             .field(CREATION_FIELD, creation)
             .optionalField(DELETION_FIELD, deletion)
             .field(SNAPSHOT_CONFIG_FIELD, snapshotConfig)
@@ -83,6 +91,7 @@ data class SMPolicy(
             .field(ENABLED_FIELD, jobEnabled)
             .optionalTimeField(LAST_UPDATED_TIME_FIELD, jobLastUpdateTime)
             .optionalTimeField(ENABLED_TIME_FIELD, jobEnabledTime)
+        if (params.paramAsBoolean(WITH_USER, true)) builder.optionalUserField(USER_FIELD, user)
         if (params.paramAsBoolean(WITH_TYPE, true)) builder.endObject()
         return builder.endObject()
     }
@@ -93,6 +102,7 @@ data class SMPolicy(
         const val SM_METADATA_ID_SUFFIX = "-sm-metadata"
         const val NAME_FIELD = "name"
         const val DESCRIPTION_FIELD = "description"
+        const val SCHEMA_VERSION_FIELD = "schema_version"
         const val CREATION_FIELD = "creation"
         const val DELETION_FIELD = "deletion"
         const val SNAPSHOT_CONFIG_FIELD = "snapshot_config"
@@ -101,10 +111,12 @@ data class SMPolicy(
         const val LAST_UPDATED_TIME_FIELD = "last_updated_time"
         const val ENABLED_TIME_FIELD = "enabled_time"
         const val SCHEDULE_FIELD = "schedule"
+        const val USER_FIELD = "user"
 
         // Used by sub models Creation and Deletion
         const val TIME_LIMIT_FIELD = "time_limit"
 
+        @Suppress("ComplexMethod")
         fun parse(
             xcp: XContentParser,
             id: String,
@@ -116,9 +128,11 @@ data class SMPolicy(
             var deletion: Deletion? = null
             var snapshotConfig: Map<String, Any>? = null
             var lastUpdatedTime: Instant? = null
+            var schemaVersion: Long = IndexUtils.DEFAULT_SCHEMA_VERSION
             var enabledTime: Instant? = null
             var schedule: Schedule? = null
             var enabled = true
+            var user: User? = null
 
             if (xcp.currentToken() == null) xcp.nextToken()
             ensureExpectedToken(Token.START_OBJECT, xcp.currentToken(), xcp)
@@ -129,6 +143,7 @@ data class SMPolicy(
                 when (fieldName) {
                     NAME_FIELD -> requireNotNull(xcp.text()) { "The name field of SMPolicy must not be null." }
                     DESCRIPTION_FIELD -> description = xcp.nullValueHandler { text() }
+                    SCHEMA_VERSION_FIELD -> schemaVersion = xcp.longValue()
                     CREATION_FIELD -> creation = Creation.parse(xcp)
                     DELETION_FIELD -> deletion = Deletion.parse(xcp)
                     SNAPSHOT_CONFIG_FIELD -> snapshotConfig = xcp.map()
@@ -136,6 +151,7 @@ data class SMPolicy(
                     ENABLED_TIME_FIELD -> enabledTime = xcp.instant()
                     SCHEDULE_FIELD -> schedule = ScheduleParser.parse(xcp)
                     ENABLED_FIELD -> enabled = xcp.booleanValue()
+                    USER_FIELD -> user = if (xcp.currentToken() == Token.VALUE_NULL) null else User.parse(xcp)
                 }
             }
 
@@ -164,6 +180,7 @@ data class SMPolicy(
 
             return SMPolicy(
                 description = description,
+                schemaVersion = schemaVersion,
                 creation = creation,
                 deletion = deletion,
                 snapshotConfig = requireNotNull(snapshotConfig) { "snapshot_config field must not be null" },
@@ -174,12 +191,14 @@ data class SMPolicy(
                 id = id,
                 seqNo = seqNo,
                 primaryTerm = primaryTerm,
+                user = user
             )
         }
     }
 
     constructor(sin: StreamInput) : this(
         description = sin.readOptionalString(),
+        schemaVersion = sin.readLong(),
         creation = Creation(sin),
         deletion = sin.readOptionalWriteable { Deletion(it) },
         snapshotConfig = sin.readMap() as Map<String, Any>,
@@ -190,10 +209,12 @@ data class SMPolicy(
         id = sin.readString(),
         seqNo = sin.readLong(),
         primaryTerm = sin.readLong(),
+        user = sin.readOptionalWriteable(::User)
     )
 
     override fun writeTo(out: StreamOutput) {
         out.writeOptionalString(description)
+        out.writeLong(schemaVersion)
         creation.writeTo(out)
         out.writeOptionalWriteable(deletion)
         out.writeMap(snapshotConfig)
@@ -204,6 +225,7 @@ data class SMPolicy(
         out.writeString(id)
         out.writeLong(seqNo)
         out.writeLong(primaryTerm)
+        out.writeOptionalWriteable(user)
     }
 
     data class Creation(

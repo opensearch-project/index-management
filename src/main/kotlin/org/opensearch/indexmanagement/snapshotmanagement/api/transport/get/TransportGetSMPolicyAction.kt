@@ -11,15 +11,19 @@ import org.opensearch.action.get.GetRequest
 import org.opensearch.action.get.GetResponse
 import org.opensearch.action.support.ActionFilters
 import org.opensearch.client.Client
+import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.inject.Inject
+import org.opensearch.common.settings.Settings
 import org.opensearch.common.util.concurrent.ThreadContext
 import org.opensearch.commons.authuser.User
 import org.opensearch.index.IndexNotFoundException
 import org.opensearch.indexmanagement.IndexManagementPlugin
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
+import org.opensearch.indexmanagement.settings.IndexManagementSettings
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.BaseTransportAction
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.SMActions.GET_SM_POLICY_ACTION_NAME
 import org.opensearch.indexmanagement.snapshotmanagement.parseSMPolicy
+import org.opensearch.indexmanagement.util.SecurityUtils.Companion.verifyUserHasPermissionForResource
 import org.opensearch.rest.RestStatus
 import org.opensearch.transport.TransportService
 
@@ -27,11 +31,21 @@ class TransportGetSMPolicyAction @Inject constructor(
     client: Client,
     transportService: TransportService,
     actionFilters: ActionFilters,
+    val clusterService: ClusterService,
+    val settings: Settings,
 ) : BaseTransportAction<GetSMPolicyRequest, GetSMPolicyResponse>(
     GET_SM_POLICY_ACTION_NAME, transportService, client, actionFilters, ::GetSMPolicyRequest
 ) {
 
     private val log = LogManager.getLogger(javaClass)
+
+    @Volatile private var filterByEnabled = IndexManagementSettings.FILTER_BY_BACKEND_ROLES.get(settings)
+
+    init {
+        clusterService.clusterSettings.addSettingsUpdateConsumer(IndexManagementSettings.FILTER_BY_BACKEND_ROLES) {
+            filterByEnabled = it
+        }
+    }
 
     override suspend fun executeRequest(
         request: GetSMPolicyRequest,
@@ -53,7 +67,8 @@ class TransportGetSMPolicyAction @Inject constructor(
             log.error("Error while parsing snapshot management policy ${request.policyID}", e)
             throw OpenSearchStatusException("Snapshot management policy not found", RestStatus.INTERNAL_SERVER_ERROR)
         }
-        // TODO SM security integration
+
+        verifyUserHasPermissionForResource(user, smPolicy.user, filterByEnabled, "snapshot management policy", smPolicy.name)
 
         log.info("sm dev: Parsed SM policy: $smPolicy")
         return GetSMPolicyResponse(getResponse.id, getResponse.version, getResponse.seqNo, getResponse.primaryTerm, smPolicy)

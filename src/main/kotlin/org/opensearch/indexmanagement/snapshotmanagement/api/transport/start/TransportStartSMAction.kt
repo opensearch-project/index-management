@@ -13,16 +13,20 @@ import org.opensearch.action.support.ActionFilters
 import org.opensearch.action.support.master.AcknowledgedResponse
 import org.opensearch.action.update.UpdateResponse
 import org.opensearch.client.Client
+import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.inject.Inject
+import org.opensearch.common.settings.Settings
 import org.opensearch.common.util.concurrent.ThreadContext
 import org.opensearch.commons.authuser.User
 import org.opensearch.index.engine.VersionConflictEngineException
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
+import org.opensearch.indexmanagement.settings.IndexManagementSettings
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.BaseTransportAction
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.SMActions
 import org.opensearch.indexmanagement.snapshotmanagement.getSMPolicy
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy
+import org.opensearch.indexmanagement.util.SecurityUtils.Companion.verifyUserHasPermissionForResource
 import org.opensearch.rest.RestStatus
 import org.opensearch.transport.TransportService
 import java.time.Instant
@@ -30,12 +34,22 @@ import java.time.Instant
 class TransportStartSMAction @Inject constructor(
     client: Client,
     transportService: TransportService,
-    actionFilters: ActionFilters
+    actionFilters: ActionFilters,
+    val clusterService: ClusterService,
+    val settings: Settings,
 ) : BaseTransportAction<StartSMRequest, AcknowledgedResponse>(
     SMActions.START_SM_POLICY_ACTION_NAME, transportService, client, actionFilters, ::StartSMRequest
 ) {
 
     private val log = LogManager.getLogger(javaClass)
+
+    @Volatile private var filterByEnabled = IndexManagementSettings.FILTER_BY_BACKEND_ROLES.get(settings)
+
+    init {
+        clusterService.clusterSettings.addSettingsUpdateConsumer(IndexManagementSettings.FILTER_BY_BACKEND_ROLES) {
+            filterByEnabled = it
+        }
+    }
 
     override suspend fun executeRequest(
         request: StartSMRequest,
@@ -43,6 +57,9 @@ class TransportStartSMAction @Inject constructor(
         threadContext: ThreadContext.StoredContext
     ): AcknowledgedResponse {
         val smPolicy = client.getSMPolicy(request.id())
+
+        verifyUserHasPermissionForResource(user, smPolicy.user, filterByEnabled, "snapshot management policy", smPolicy.name)
+
         if (smPolicy.jobEnabled) {
             log.debug("Snapshot management policy is already enabled")
             return AcknowledgedResponse(true)
