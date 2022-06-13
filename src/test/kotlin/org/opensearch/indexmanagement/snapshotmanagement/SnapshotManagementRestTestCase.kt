@@ -20,6 +20,7 @@ import org.opensearch.indexmanagement.IndexManagementPlugin
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
 import org.opensearch.indexmanagement.IndexManagementRestTestCase
 import org.opensearch.indexmanagement.makeRequest
+import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy
 import org.opensearch.indexmanagement.util._ID
 import org.opensearch.indexmanagement.util._PRIMARY_TERM
@@ -30,6 +31,7 @@ import org.opensearch.rest.RestStatus
 import java.io.InputStream
 import java.time.Duration
 import java.time.Instant
+import java.time.Instant.now
 
 abstract class SnapshotManagementRestTestCase : IndexManagementRestTestCase() {
 
@@ -75,7 +77,7 @@ abstract class SnapshotManagementRestTestCase : IndexManagementRestTestCase() {
         return response
     }
 
-    protected fun parseSMPolicy(inputStream: InputStream): SMPolicy {
+    private fun parseSMPolicy(inputStream: InputStream): SMPolicy {
         val parser = createParser(XContentType.JSON.xContent(), inputStream)
         ensureExpectedToken(XContentParser.Token.START_OBJECT, parser.nextToken(), parser)
 
@@ -125,5 +127,83 @@ abstract class SnapshotManagementRestTestCase : IndexManagementRestTestCase() {
         )
 
         assertEquals("Request failed", RestStatus.OK, response.restStatus())
+    }
+
+    fun parseExplainResponse(inputStream: InputStream): ExplainSMMetadata {
+        val parser = createParser(XContentType.JSON.xContent(), inputStream)
+        // val parser = createParser(builder)
+        lateinit var smMetadata: ExplainSMMetadata
+
+        // while (parser.nextToken() != XContentParser.Token.END_ARRAY) {
+        //     println("currentToken ${parser.currentToken()} ${parser.currentName()}")
+        // }
+
+        ensureExpectedToken(XContentParser.Token.START_OBJECT, parser.nextToken(), parser)
+        ensureExpectedToken(XContentParser.Token.FIELD_NAME, parser.nextToken(), parser) // policies
+        ensureExpectedToken(XContentParser.Token.START_ARRAY, parser.nextToken(), parser)
+        while (parser.nextToken() != XContentParser.Token.END_ARRAY) {
+            ensureExpectedToken(XContentParser.Token.START_OBJECT, parser.currentToken(), parser)
+            smMetadata = ExplainSMMetadata.parse(parser)
+        }
+
+        println("${now()}: sm metadata $smMetadata")
+        return smMetadata
+    }
+
+    data class ExplainSMMetadata(
+        val name: String,
+        val creation: SMMetadata.WorkflowMetadata?,
+        val deletion: SMMetadata.WorkflowMetadata?,
+        val policySeqNo: Long?,
+        val policyPrimaryTerm: Long?,
+        val enabled: Boolean,
+    ) {
+        companion object {
+            fun parse(xcp: XContentParser): ExplainSMMetadata {
+                var name: String? = null
+                var policySeqNo: Long? = null
+                var policyPrimaryTerm: Long? = null
+                var creation: SMMetadata.WorkflowMetadata? = null
+                var deletion: SMMetadata.WorkflowMetadata? = null
+                var enabled: Boolean? = null
+
+                ensureExpectedToken(XContentParser.Token.START_OBJECT, xcp.currentToken(), xcp)
+                while (xcp.nextToken() != XContentParser.Token.END_OBJECT) {
+                    val fieldName = xcp.currentName()
+                    xcp.nextToken()
+
+                    when (fieldName) {
+                        SMPolicy.NAME_FIELD -> name = requireNotNull(xcp.text()) { "The name field of SMPolicy must not be null." }
+                        SMMetadata.POLICY_SEQ_NO_FIELD -> policySeqNo = xcp.longValue()
+                        SMMetadata.POLICY_PRIMARY_TERM_FIELD -> policyPrimaryTerm = xcp.longValue()
+                        SMMetadata.CREATION_FIELD -> creation = SMMetadata.WorkflowMetadata.parse(xcp)
+                        SMMetadata.DELETION_FIELD -> deletion = SMMetadata.WorkflowMetadata.parse(xcp)
+                        "enabled" -> enabled = xcp.booleanValue()
+                    }
+                }
+
+                return ExplainSMMetadata(
+                    name = requireNotNull(name),
+                    policySeqNo = policySeqNo,
+                    policyPrimaryTerm = policyPrimaryTerm,
+                    creation = creation,
+                    deletion = deletion,
+                    enabled = requireNotNull(enabled),
+                )
+            }
+        }
+    }
+
+    protected fun createRepository(
+        repository: String
+    ) {
+        val response = client()
+            .makeRequest(
+                "PUT",
+                "_snapshot/$repository",
+                emptyMap(),
+                StringEntity("{\"type\":\"fs\", \"settings\": {\"location\": \"$repository\"}}", APPLICATION_JSON)
+            )
+        assertEquals("Unable to create a new repository", RestStatus.OK, response.restStatus())
     }
 }
