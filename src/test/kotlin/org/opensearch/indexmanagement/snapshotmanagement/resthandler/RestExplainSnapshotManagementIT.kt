@@ -101,10 +101,11 @@ class RestExplainSnapshotManagementIT : SnapshotManagementRestTestCase() {
             smPolicies.forEach { actualPolicy ->
                 assertTrue(responseMapPolicyNames.contains(actualPolicy.policyName))
                 val foundPolicy = responseMapPolicies.find { it["name"] == actualPolicy.policyName } as Map<String, Any>
-                assertTrue(foundPolicy.containsKey(SMPolicy.ENABLED_FIELD))
+                logger.info("Found policy $foundPolicy") // checking flaky, creation field can be missing
+                assertTrue("enabled field exists", foundPolicy.containsKey(SMPolicy.ENABLED_FIELD))
                 assertEquals(actualPolicy.jobEnabled, foundPolicy[SMPolicy.ENABLED_FIELD])
-                assertTrue(foundPolicy.containsKey(SMMetadata.CREATION_FIELD))
-                assertTrue(foundPolicy.containsKey(SMMetadata.DELETION_FIELD))
+                assertTrue("creation field exists", foundPolicy.containsKey(SMMetadata.CREATION_FIELD))
+                assertTrue("deletion field exists", foundPolicy.containsKey(SMMetadata.DELETION_FIELD))
             }
         }
     }

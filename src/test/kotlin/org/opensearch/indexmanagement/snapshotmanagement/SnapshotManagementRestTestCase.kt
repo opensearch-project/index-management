@@ -30,7 +30,6 @@ import org.opensearch.jobscheduler.spi.schedule.IntervalSchedule
 import org.opensearch.rest.RestStatus
 import java.io.InputStream
 import java.time.Duration
-import java.time.Instant
 import java.time.Instant.now
 
 abstract class SnapshotManagementRestTestCase : IndexManagementRestTestCase() {
@@ -116,7 +115,7 @@ abstract class SnapshotManagementRestTestCase : IndexManagementRestTestCase() {
         }
         val intervalSchedule = (update.jobSchedule as IntervalSchedule)
         val millis = Duration.of(intervalSchedule.interval.toLong(), intervalSchedule.unit).minusSeconds(2).toMillis()
-        val startTimeMillis = desiredStartTimeMillis ?: (Instant.now().toEpochMilli() - millis)
+        val startTimeMillis = desiredStartTimeMillis ?: (now().toEpochMilli() - millis)
         val waitForActiveShards = if (isMultiNode) "all" else "1"
         val response = client().makeRequest(
             "POST", "$INDEX_MANAGEMENT_INDEX/_update/${update.id}?wait_for_active_shards=$waitForActiveShards",

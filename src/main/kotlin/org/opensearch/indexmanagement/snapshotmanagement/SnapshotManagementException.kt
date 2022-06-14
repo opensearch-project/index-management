@@ -46,9 +46,10 @@ class SnapshotManagementException(
          *  with customized message. And wrap with the defined exceptionKey.
          */
         fun wrap(ex: Exception, key: ExceptionKey? = null): SnapshotManagementException {
-            var message: String = exceptionMsgMap[ExceptionKey.GENERAL]!!
+            var message = "Caught exception while snapshot management runs. Please check the error log." // exceptionMsgMap[ExceptionKey.GENERAL]!!
             if (key != null) return SnapshotManagementException(key, ex)
-            if (ex.message != null) message = ex.message!!
+            val exMsg = ex.message
+            if (exMsg != null) message = exMsg
             return SnapshotManagementException(cause = ex, message = message)
         }
     }

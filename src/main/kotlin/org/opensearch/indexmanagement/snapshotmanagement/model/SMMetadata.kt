@@ -473,7 +473,7 @@ data class SMMetadata(
         }
 
         // Use this **first** to update metadata, because it depends on started field
-        // TODO SM possible to refactor the builder so no internal dependency
+        // So if you change started first, this could behave wrongly
         fun setLatestExecution(
             status: LatestExecution.Status,
             updateMessage: Boolean = true,
@@ -498,14 +498,13 @@ data class SMMetadata(
                         )
                     )
                 } else {
-                    // if started is not null, latestExecution would never be null
-                    assert(workflowMetadata.latestExecution != null)
+                    // if started is not null, latestExecution should never be null
                     return workflowMetadata.copy(
-                        latestExecution = workflowMetadata.latestExecution!!.copy(
+                        latestExecution = workflowMetadata.latestExecution?.copy(
                             status = status,
                             info = Info(
-                                message = if (updateMessage) messageWithTime else metadata.creation.latestExecution!!.info?.message,
-                                cause = if (updateCause) causeWithTime else metadata.creation.latestExecution!!.info?.cause,
+                                message = if (updateMessage) messageWithTime else metadata.creation.latestExecution?.info?.message,
+                                cause = if (updateCause) causeWithTime else metadata.creation.latestExecution?.info?.cause,
                             ),
                             endTime = endTime,
                         )
@@ -538,7 +537,7 @@ data class SMMetadata(
                 }
                 WorkflowType.DELETION -> {
                     metadata = metadata.copy(
-                        deletion = metadata.deletion!!.copy(
+                        deletion = metadata.deletion?.copy(
                             retry = Retry(count = count)
                         )
                     )
@@ -558,7 +557,7 @@ data class SMMetadata(
             }
             if (deletion && metadata.deletion?.retry != null) {
                 metadata = metadata.copy(
-                    deletion = metadata.deletion!!.copy(
+                    deletion = metadata.deletion?.copy(
                         retry = null
                     )
                 )
@@ -602,10 +601,11 @@ data class SMMetadata(
         }
 
         fun setNextDeletionTime(time: Instant): Builder {
-            if (metadata.deletion != null) {
+            val deletion = metadata.deletion
+            if (deletion != null) {
                 metadata = metadata.copy(
-                    deletion = metadata.deletion!!.copy(
-                        trigger = metadata.deletion!!.trigger.copy(
+                    deletion = deletion.copy(
+                        trigger = deletion.trigger.copy(
                             time = time
                         )
                     )

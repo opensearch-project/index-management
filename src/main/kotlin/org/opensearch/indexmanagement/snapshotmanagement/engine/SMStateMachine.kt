@@ -145,6 +145,10 @@ class SMStateMachine(
         try {
             // TODO SM retry policy for update metadata call
             log.info("sm dev update metadata $md")
+            if (md == metadata) {
+                log.info("sm dev metadata not change, so don't need to update")
+                return
+            }
             val res = client.indexMetadata(md, job.id, seqNo = metadataSeqNo, primaryTerm = metadataPrimaryTerm)
             metadataSeqNo = res.seqNo
             metadataPrimaryTerm = res.primaryTerm
@@ -170,8 +174,9 @@ class SMStateMachine(
                 .setPolicyVersion(job.seqNo, job.primaryTerm)
                 .setNextCreationTime(job.creation.schedule.getNextExecutionTime(now))
 
-            job.deletion?.let {
-                metadataToSave.setNextDeletionTime(job.deletion!!.schedule.getNextExecutionTime(now))
+            val deletion = job.deletion
+            deletion?.let {
+                metadataToSave.setNextDeletionTime(deletion.schedule.getNextExecutionTime(now))
             }
             updateMetadata(metadataToSave.build())
         }

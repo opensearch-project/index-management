@@ -5,6 +5,8 @@
 
 package org.opensearch.indexmanagement.snapshotmanagement.engine.states
 
+import org.apache.logging.log4j.Logger
+import org.opensearch.ExceptionsHelper
 import org.opensearch.action.admin.cluster.snapshots.create.CreateSnapshotRequest
 import org.opensearch.action.admin.cluster.snapshots.create.CreateSnapshotResponse
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
@@ -16,6 +18,7 @@ import org.opensearch.indexmanagement.snapshotmanagement.getSnapshotsWithErrorHa
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata
 import org.opensearch.indexmanagement.snapshotmanagement.smDocIdToPolicyName
 import org.opensearch.snapshots.SnapshotInfo
+import org.opensearch.transport.RemoteTransportException
 import java.time.Instant
 
 object CreatingState : State {
@@ -36,23 +39,20 @@ object CreatingState : State {
         // Check if there's already a snapshot created by SM in current execution period
         if (snapshotName == null) {
             val getSnapshotsResult = client.getSnapshotsWithErrorHandling(
-                job,
-                smDocIdToPolicyName(job.id) + "*",
-                metadataBuilder,
-                log,
-                null,
-                getSnapshotsErrorMessage(),
+                job, smDocIdToPolicyName(job.id) + "*", metadataBuilder,
+                log, null, getSnapshotsErrorMessage(),
             )
             metadataBuilder = getSnapshotsResult.metadataBuilder
-            if (getSnapshotsResult.failed)
+            if (getSnapshotsResult.failed) {
                 return SMResult.Fail(metadataBuilder.build(), WorkflowType.CREATION)
+            }
             metadataBuilder.resetRetry(creation = true)
             val getSnapshots = getSnapshotsResult.snapshots
 
             val lastExecutionTime = job.creation.schedule.getPeriodStartingAt(null).v1()
             snapshotName = checkCreatedSnapshots(lastExecutionTime, getSnapshots)
-            log.info("sm dev already created snapshot $snapshotName")
             if (snapshotName != null) {
+                log.info("sm dev already created snapshot $snapshotName")
                 metadataBuilder.setLatestExecution(
                     status = SMMetadata.LatestExecution.Status.IN_PROGRESS
                 ).setCreationStarted(snapshotName)
@@ -73,19 +73,25 @@ object CreatingState : State {
             metadataBuilder.setLatestExecution(
                 status = SMMetadata.LatestExecution.Status.IN_PROGRESS,
             ).setCreationStarted(snapshotName)
+        } catch (ex: RemoteTransportException) {
+            val unwrappedException = ExceptionsHelper.unwrapCause(ex) as Exception
+            return handleException(unwrappedException, snapshotName, metadataBuilder, log)
         } catch (ex: Exception) {
-            log.error(getCreateSnapshotErrorMessage(snapshotName), ex)
-            metadataBuilder.setLatestExecution(
-                status = SMMetadata.LatestExecution.Status.RETRYING,
-                message = getCreateSnapshotErrorMessage(snapshotName),
-                cause = SnapshotManagementException.wrap(ex).message,
-            )
-
-            return SMResult.Fail(metadataBuilder.build(), WorkflowType.CREATION)
+            return handleException(ex, snapshotName, metadataBuilder, log)
         }
         metadataBuilder.resetRetry(creation = true)
 
         return SMResult.Next(metadataBuilder.build())
+    }
+
+    private fun handleException(ex: Exception, snapshotName: String, metadataBuilder: SMMetadata.Builder, log: Logger): SMResult {
+        log.error(getCreateSnapshotErrorMessage(snapshotName), ex)
+        metadataBuilder.setLatestExecution(
+            status = SMMetadata.LatestExecution.Status.RETRYING,
+            message = getCreateSnapshotErrorMessage(snapshotName),
+            cause = SnapshotManagementException.wrap(ex).message,
+        )
+        return SMResult.Fail(metadataBuilder.build(), WorkflowType.CREATION)
     }
 
     private fun getSnapshotsErrorMessage() = "Caught exception while getting snapshots to decide if snapshot has been created in previous execution schedule."

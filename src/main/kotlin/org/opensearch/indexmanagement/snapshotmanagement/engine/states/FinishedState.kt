@@ -5,6 +5,7 @@
 
 package org.opensearch.indexmanagement.snapshotmanagement.engine.states
 
+import org.apache.logging.log4j.Logger
 import org.opensearch.common.unit.TimeValue
 import org.opensearch.indexmanagement.snapshotmanagement.engine.SMStateMachine
 import org.opensearch.indexmanagement.snapshotmanagement.getSnapshotsWithErrorHandling
@@ -64,14 +65,8 @@ object FinishedState : State {
                 }
                 SnapshotState.IN_PROGRESS -> {
                     job.creation.timeLimit?.let { timeLimit ->
-                        if (timeLimit.isExceed(metadata.creation.latestExecution!!.startTime)) {
-                            log.warn(getTimeLimitExceedMessage(job.creation.timeLimit))
-                            metadataBuilder.setLatestExecution(
-                                status = SMMetadata.LatestExecution.Status.TIME_LIMIT_EXCEEDED,
-                                cause = getTimeLimitExceedMessage(job.creation.timeLimit),
-                                endTime = now(),
-                            )
-                            return SMResult.Fail(metadataBuilder.build(), WorkflowType.CREATION, forceReset = true)
+                        if (timeLimit.isExceed(metadata.creation.latestExecution?.startTime)) {
+                            return timeLimitExceeded(timeLimit, metadataBuilder, WorkflowType.CREATION, log)
                         }
                     }
                 }
@@ -122,14 +117,8 @@ object FinishedState : State {
                 ).setDeletionStarted(null)
             } else {
                 job.deletion?.timeLimit?.let { timeLimit ->
-                    if (timeLimit.isExceed(metadata.deletion.latestExecution!!.startTime)) {
-                        log.warn(getTimeLimitExceedMessage(job.deletion.timeLimit))
-                        metadataBuilder.setLatestExecution(
-                            status = SMMetadata.LatestExecution.Status.TIME_LIMIT_EXCEEDED,
-                            cause = getTimeLimitExceedMessage(job.deletion.timeLimit),
-                            endTime = now(),
-                        )
-                        return SMResult.Fail(metadataBuilder.build(), WorkflowType.DELETION, forceReset = true)
+                    if (timeLimit.isExceed(metadata.deletion.latestExecution?.startTime)) {
+                        return timeLimitExceeded(timeLimit, metadataBuilder, WorkflowType.DELETION, log)
                     }
                 }
 
@@ -153,13 +142,29 @@ object FinishedState : State {
         return SMResult.Next(metadataToSave)
     }
 
+    private fun timeLimitExceeded(
+        timeLimit: TimeValue,
+        metadataBuilder: SMMetadata.Builder,
+        workflow: WorkflowType,
+        log: Logger,
+    ): SMResult {
+        log.warn(getTimeLimitExceedMessage(timeLimit))
+        metadataBuilder.setLatestExecution(
+            status = SMMetadata.LatestExecution.Status.TIME_LIMIT_EXCEEDED,
+            cause = getTimeLimitExceedMessage(timeLimit),
+            endTime = now(),
+        )
+        return SMResult.Fail(metadataBuilder.build(), workflow, forceReset = true)
+    }
+
     private fun getSnapshotMissingMessageInCreationWorkflow(snapshot: String) = "Snapshot $snapshot not found while checking if it has been created."
     private fun getSnapshotExceptionInCreationWorkflow(snapshot: String) = "Caught exception while getting started creation snapshot [$snapshot]."
     private fun getSnapshotMissingMessageInDeletionWorkflow() = "No snapshots found under policy while getting snapshots to decide if snapshots has been deleted."
     private fun getSnapshotExceptionInDeletionWorkflow(startedDeleteSnapshots: List<String>) = "Caught exception while getting snapshots to decide if snapshots [$startedDeleteSnapshots] has been deleted."
     private fun getTimeLimitExceedMessage(timeLimit: TimeValue) = "Time limit $timeLimit exceeded."
 
-    private fun TimeValue.isExceed(startTime: Instant): Boolean {
+    private fun TimeValue.isExceed(startTime: Instant?): Boolean {
+        startTime ?: return false
         return (now().toEpochMilli() - startTime.toEpochMilli()) > this.millis
     }
 }

@@ -7,6 +7,7 @@ package org.opensearch.indexmanagement.snapshotmanagement
 
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
+import org.opensearch.ExceptionsHelper
 import org.opensearch.OpenSearchStatusException
 import org.opensearch.action.admin.cluster.snapshots.get.GetSnapshotsRequest
 import org.opensearch.action.admin.cluster.snapshots.get.GetSnapshotsResponse
@@ -39,6 +40,7 @@ import org.opensearch.jobscheduler.spi.schedule.Schedule
 import org.opensearch.rest.RestStatus
 import org.opensearch.snapshots.SnapshotInfo
 import org.opensearch.snapshots.SnapshotMissingException
+import org.opensearch.transport.RemoteTransportException
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -213,21 +215,35 @@ suspend fun Client.getSnapshotsWithErrorHandling(
             name,
             job.snapshotConfig["repository"] as String
         )
-    } catch (ex: SnapshotMissingException) {
+    } catch (ex: RemoteTransportException) {
+        val unwrappedException = ExceptionsHelper.unwrapCause(ex) as Exception
+        return handleGetSnapshotsException(unwrappedException, metadataBuilder, snapshotMissingMsg, exceptionMsg)
+    } catch (ex: Exception) {
+        return handleGetSnapshotsException(ex, metadataBuilder, snapshotMissingMsg, exceptionMsg)
+    }.filterBySMPolicyInSnapshotMetadata(job.policyName)
+
+    return GetSnapshotsResult(snapshots, metadataBuilder, false)
+}
+
+private fun handleGetSnapshotsException(
+    ex: Exception,
+    metadataBuilder: SMMetadata.Builder,
+    snapshotMissingMsg: String?,
+    exceptionMsg: String,
+): GetSnapshotsResult {
+    return if (ex is SnapshotMissingException) {
         log.info("sm dev get snapshot missing exception")
         snapshotMissingMsg?.let { log.warn(snapshotMissingMsg) }
-        emptyList()
-    } catch (ex: Exception) {
+        GetSnapshotsResult(emptyList(), metadataBuilder, false)
+    } else {
         log.error(exceptionMsg, ex)
         metadataBuilder.setLatestExecution(
             status = SMMetadata.LatestExecution.Status.RETRYING,
             message = exceptionMsg,
             cause = SnapshotManagementException.wrap(ex).message
         )
-        return GetSnapshotsResult(emptyList(), metadataBuilder, true)
-    }.filterBySMPolicyInSnapshotMetadata(job.policyName)
-
-    return GetSnapshotsResult(snapshots, metadataBuilder, false)
+        GetSnapshotsResult(emptyList(), metadataBuilder, true)
+    }
 }
 
 data class GetSnapshotsResult(
