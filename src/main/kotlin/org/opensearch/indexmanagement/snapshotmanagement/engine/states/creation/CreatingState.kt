@@ -39,7 +39,8 @@ object CreatingState : State {
 
         var snapshotName: String? = metadata.creation.started?.first()
 
-        // Check if there's already a snapshot created by SM in current execution period
+        // Check if there's already a snapshot created by SM in current execution period.
+        // So that this State can be idempotent.
         if (snapshotName == null) {
             val getSnapshotsResult = client.getSnapshotsWithErrorHandling(
                 job, smDocIdToPolicyName(job.id) + "*", metadataBuilder,
@@ -55,7 +56,7 @@ object CreatingState : State {
             val lastExecutionTime = job.creation.schedule.getPeriodStartingAt(null).v1()
             snapshotName = checkCreatedSnapshots(lastExecutionTime, getSnapshots)
             if (snapshotName != null) {
-                log.info("sm dev already created snapshot $snapshotName")
+                log.info("Already created snapshot [$snapshotName] during this execution period starting at $lastExecutionTime.")
                 metadataBuilder.setLatestExecution(
                     status = SMMetadata.LatestExecution.Status.IN_PROGRESS
                 ).setCreationStarted(snapshotName)

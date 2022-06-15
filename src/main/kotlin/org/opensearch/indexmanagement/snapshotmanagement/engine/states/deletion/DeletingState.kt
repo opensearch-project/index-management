@@ -36,7 +36,7 @@ object DeletingState : State {
             .workflow(WorkflowType.DELETION)
 
         if (job.deletion == null) {
-            // If job.deletion config is null, we reset the deletion metadata
+            log.warn("Policy deletion config is null before trying to delete old snapshots. Reset.")
             return SMResult.Fail(
                 metadataBuilder.resetDeletion(),
                 WorkflowType.DELETION, forceReset = true
@@ -47,10 +47,7 @@ object DeletingState : State {
         val snapshotsToDelete: List<String>
 
         val getSnapshotsRes = client.getSnapshotsWithErrorHandling(
-            job,
-            smDocIdToPolicyName(job.id) + "*",
-            metadataBuilder,
-            log,
+            job, smDocIdToPolicyName(job.id) + "*", metadataBuilder, log,
             getSnapshotsMissingMessage(),
             getSnapshotsErrorMessage(),
         )
@@ -99,7 +96,7 @@ object DeletingState : State {
     private fun getDeleteSnapshotErrorMessage(snapshotNames: List<String>) = "Caught exception while deleting snapshot $snapshotNames."
 
     /**
-     * Based on the delete condition, find snapshots to be deleted
+     * Based on delete conditions, find snapshots to be deleted
      *
      * Logic:
      *   outdated snapshots: snapshot.startedTime < now - max_age

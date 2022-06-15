@@ -14,7 +14,7 @@ import org.opensearch.indexmanagement.snapshotmanagement.isExceed
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata
 import org.opensearch.indexmanagement.snapshotmanagement.smDocIdToPolicyName
 import org.opensearch.indexmanagement.snapshotmanagement.timeLimitExceeded
-import org.opensearch.indexmanagement.snapshotmanagement.updateNextExecutionTime
+import org.opensearch.indexmanagement.snapshotmanagement.tryUpdatingNextExecutionTime
 import java.time.Instant
 
 object DeletionFinishedState : State {
@@ -30,13 +30,14 @@ object DeletionFinishedState : State {
             .workflow(WorkflowType.DELETION)
 
         metadata.deletion?.started?.let { startedDeleteSnapshots ->
-            assert(metadata.deletion.latestExecution != null)
+            if (metadata.deletion.latestExecution == null) {
+                log.warn("latest_execution is null while checking if snapshots [$startedDeleteSnapshots] deletion has finished. Reset.")
+                metadataBuilder.resetWorkflow()
+                return@let
+            }
 
             val getSnapshotsRes = client.getSnapshotsWithErrorHandling(
-                job,
-                "${smDocIdToPolicyName(job.id)}*",
-                metadataBuilder,
-                log,
+                job, "${smDocIdToPolicyName(job.id)}*", metadataBuilder, log,
                 getSnapshotMissingMessageInDeletionWorkflow(),
                 getSnapshotExceptionInDeletionWorkflow(startedDeleteSnapshots),
             )
@@ -70,7 +71,7 @@ object DeletionFinishedState : State {
 
             // TODO SM notification: if now is after next deletion time, we can update nextDeletionTime and try notify user
             job.deletion?.let {
-                val result = updateNextExecutionTime(
+                val result = tryUpdatingNextExecutionTime(
                     metadataBuilder, metadata.deletion.trigger.time, job.deletion.schedule,
                     WorkflowType.DELETION, log
                 )

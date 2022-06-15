@@ -254,7 +254,7 @@ data class GetSnapshotsResult(
     val failed: Boolean,
 )
 
-fun updateNextExecutionTime(
+fun tryUpdatingNextExecutionTime(
     metadataBuilder: SMMetadata.Builder,
     nextTime: Instant,
     schedule: Schedule,

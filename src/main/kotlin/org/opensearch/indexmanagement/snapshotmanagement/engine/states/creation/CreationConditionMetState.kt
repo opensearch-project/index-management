@@ -10,7 +10,7 @@ import org.opensearch.indexmanagement.snapshotmanagement.engine.states.SMResult
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.State
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.WorkflowType
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata
-import org.opensearch.indexmanagement.snapshotmanagement.updateNextExecutionTime
+import org.opensearch.indexmanagement.snapshotmanagement.tryUpdatingNextExecutionTime
 
 object CreationConditionMetState : State {
 
@@ -24,19 +24,14 @@ object CreationConditionMetState : State {
         var metadataBuilder = SMMetadata.Builder(metadata)
             .workflow(WorkflowType.CREATION)
 
-        if (metadata.creation.started != null) {
-            return SMResult.Stay(metadataBuilder)
-        }
-
         val nextCreationTime = metadata.creation.trigger.time
-        val result = updateNextExecutionTime(
+        val result = tryUpdatingNextExecutionTime(
             metadataBuilder, nextCreationTime, job.creation.schedule,
             WorkflowType.CREATION, log
         )
         if (!result.updated) return SMResult.Stay(metadataBuilder)
         metadataBuilder = result.metadataBuilder
 
-        log.info("sm dev: Save current state as CREATE_CONDITION_MET [$metadataBuilder]")
         return SMResult.Next(metadataBuilder)
     }
 }

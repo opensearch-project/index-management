@@ -13,7 +13,7 @@ import org.opensearch.indexmanagement.snapshotmanagement.getSnapshotsWithErrorHa
 import org.opensearch.indexmanagement.snapshotmanagement.isExceed
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata
 import org.opensearch.indexmanagement.snapshotmanagement.timeLimitExceeded
-import org.opensearch.indexmanagement.snapshotmanagement.updateNextExecutionTime
+import org.opensearch.indexmanagement.snapshotmanagement.tryUpdatingNextExecutionTime
 import org.opensearch.snapshots.SnapshotState
 import java.time.Instant
 
@@ -30,14 +30,17 @@ object CreationFinishedState : State {
             .workflow(WorkflowType.CREATION)
 
         metadata.creation.started?.first()?.let { started ->
-            assert(metadata.creation.latestExecution != null)
+            if (metadata.creation.latestExecution == null) {
+                log.warn("latest_execution is null while checking if snapshot [$started] creation has finished. Reset.")
+                metadataBuilder.resetWorkflow()
+                return@let
+            }
 
             val getSnapshotsResult = client.getSnapshotsWithErrorHandling(
                 job, started, metadataBuilder, log,
                 getSnapshotMissingMessageInCreationWorkflow(started),
                 getSnapshotExceptionInCreationWorkflow(started),
             )
-            log.info("sm dev get snapshots result $getSnapshotsResult")
             metadataBuilder = getSnapshotsResult.metadataBuilder
             if (getSnapshotsResult.failed)
                 return SMResult.Fail(metadataBuilder, WorkflowType.CREATION)
@@ -89,7 +92,7 @@ object CreationFinishedState : State {
             // TODO SM notification: if now is after next creation time, update nextCreationTime to next execution schedule
             //  and try notify user that we skip the execution because snapshot creation time
             //  is longer than execution schedule
-            val result = updateNextExecutionTime(
+            val result = tryUpdatingNextExecutionTime(
                 metadataBuilder, metadata.creation.trigger.time, job.creation.schedule,
                 WorkflowType.CREATION, log
             )
