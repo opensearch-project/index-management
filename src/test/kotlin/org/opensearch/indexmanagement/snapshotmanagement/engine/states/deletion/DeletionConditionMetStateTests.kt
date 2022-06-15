@@ -45,20 +45,6 @@ class DeletionConditionMetStateTests : ClientMockTestCase() {
         assertEquals("Next execution time should not be updated.", metadata, result.metadataToSave.build())
     }
 
-    fun `test already started snapshot deletion`() = runBlocking {
-        val metadata = randomSMMetadata(
-            deletionCurrentState = SMState.DELETION_START,
-            startedDeletion = listOf(randomSnapshotName()),
-        )
-        val job = randomSMPolicy()
-        val context = SMStateMachine(client, job, metadata)
-
-        val result = SMState.DELETION_CONDITION_MET.instance.execute(context)
-        assertTrue("Execution result should be Stay.", result is SMResult.Stay)
-        result as SMResult.Stay
-        assertEquals("Metadata shouldn't be updated.", metadata, result.metadataToSave.build())
-    }
-
     fun `test job deletion config is null`() = runBlocking {
         val metadata = randomSMMetadata(
             deletionCurrentState = SMState.DELETION_START,
@@ -70,8 +56,8 @@ class DeletionConditionMetStateTests : ClientMockTestCase() {
         val context = SMStateMachine(client, job, metadata)
 
         val result = SMState.DELETION_CONDITION_MET.instance.execute(context)
-        assertTrue("Execution result should be Stay.", result is SMResult.Stay)
-        result as SMResult.Stay
-        assertEquals("Metadata shouldn't be updated.", metadata, result.metadataToSave.build())
+        assertTrue("Execution result should be Fail.", result is SMResult.Fail)
+        result as SMResult.Fail
+        assertNull("Deletion metadata should be null.", result.metadataToSave.build().deletion)
     }
 }
