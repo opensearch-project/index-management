@@ -13,7 +13,6 @@ import org.opensearch.indexmanagement.snapshotmanagement.SnapshotManagementExcep
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.SMResult
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.SMState
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.WorkflowType
-import org.opensearch.indexmanagement.snapshotmanagement.engine.states.smTransitions
 import org.opensearch.indexmanagement.snapshotmanagement.indexMetadata
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata
@@ -25,23 +24,26 @@ import java.time.Instant.now
 class SMStateMachine(
     val client: Client,
     val job: SMPolicy,
-    var metadata: SMMetadata
+    var metadata: SMMetadata,
 ) {
 
     val log: Logger = LogManager.getLogger("$javaClass [${smDocIdToPolicyName(job.id)}]")
 
-    var currentState: SMState = metadata.currentState.also {
-        log.info("Current state: [${metadata.currentState}].")
+    lateinit var currentState: SMState
+    fun currentState(currentState: SMState): SMStateMachine {
+        log.info("sm dev: Set current state to $currentState")
+        this.currentState = currentState
+        return this
     }
 
-    suspend fun next(transitions: Map<SMState, List<SMState>> = smTransitions) {
+    suspend fun next(transitions: Map<SMState, List<SMState>>): SMStateMachine {
         try {
             do {
                 val nextStates = transitions[currentState]
                 if (nextStates == null) {
                     // Unlikely to reach unless the currentState field of metadata is tampered
                     log.error("No next states for current state [$currentState].")
-                    return
+                    return this
                 }
 
                 lateinit var result: SMResult
@@ -49,26 +51,22 @@ class SMStateMachine(
                 for (nextState in nextStates) {
                     currentState = nextState
                     log.info("sm dev: Start executing $currentState.")
-                    result = nextState.instance.execute(this) as SMResult
+                    result = currentState.instance.execute(this) as SMResult
                     when (result) {
                         is SMResult.Next -> {
                             log.info("State [$currentState] has finished.")
-                            updateMetadata(result.metadataToSave.copy(currentState = currentState))
+                            updateMetadata(result.metadataToSave.setCurrentState(currentState).build())
                             // break the nextStates loop, to avoid executing other lateral states
                             break
                         }
                         is SMResult.Stay -> {
                             log.info("State [$currentState] has not finished.")
-                            updateMetadata(result.metadataToSave.copy(currentState = prevState))
+                            updateMetadata(result.metadataToSave.setCurrentState(prevState).build())
                             // can still execute other lateral states if exists
                         }
                         is SMResult.Fail -> {
                             if (result.forceReset == true) {
-                                val metadataToSave = SMMetadata.Builder(result.metadataToSave)
-                                    .workflow(result.workflowType)
-                                    .resetWorkflow()
-                                    .build()
-                                updateMetadata(metadataToSave)
+                                updateMetadata(result.metadataToSave.resetWorkflow().build())
                             } else {
                                 updateMetadata(handleRetry(result, prevState).build())
                             }
@@ -87,18 +85,17 @@ class SMStateMachine(
                 ex.exKey == ExceptionKey.METADATA_INDEXING_FAILURE
             ) {
                 // update metadata exception is special, we don't want to retry update metadata here
-                return
+                return this
             }
             log.error("Uncaught snapshot management runtime exception.", ex)
         }
+        return this
     }
 
     private fun handleRetry(result: SMResult, prevState: SMState): SMMetadata.Builder {
         result as SMResult.Fail
-        val metadata = result.metadataToSave
-        val metadataBuilder = SMMetadata.Builder(metadata)
-            .workflow(result.workflowType)
-            .setCurrentState(prevState)
+        val metadataBuilder = result.metadataToSave.setCurrentState(prevState)
+        val metadata = result.metadataToSave.build()
         val retry = when (result.workflowType) {
             WorkflowType.CREATION -> {
                 metadata.creation.retry
@@ -171,7 +168,7 @@ class SMStateMachine(
         if (job.seqNo > metadata.policySeqNo || job.primaryTerm > metadata.policyPrimaryTerm) {
             val now = now()
             val metadataToSave = SMMetadata.Builder(metadata)
-                .setPolicyVersion(job.seqNo, job.primaryTerm)
+                .setSeqNoPrimaryTerm(job.seqNo, job.primaryTerm)
                 .setNextCreationTime(job.creation.schedule.getNextExecutionTime(now))
 
             val deletion = job.deletion

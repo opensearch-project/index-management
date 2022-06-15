@@ -3,11 +3,13 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.indexmanagement.snapshotmanagement.engine.states
+package org.opensearch.indexmanagement.snapshotmanagement.engine.states.creation
 
 import kotlinx.coroutines.runBlocking
 import org.opensearch.indexmanagement.ClientMockTestCase
 import org.opensearch.indexmanagement.snapshotmanagement.engine.SMStateMachine
+import org.opensearch.indexmanagement.snapshotmanagement.engine.states.SMResult
+import org.opensearch.indexmanagement.snapshotmanagement.engine.states.SMState
 import org.opensearch.indexmanagement.snapshotmanagement.randomSMMetadata
 import org.opensearch.indexmanagement.snapshotmanagement.randomSMPolicy
 import org.opensearch.indexmanagement.snapshotmanagement.mockCreateSnapshotResponse
@@ -24,7 +26,7 @@ class CreatingStateTests : ClientMockTestCase() {
         mockCreateSnapshotCall(response = mockCreateSnapshotResponse())
 
         val metadata = randomSMMetadata(
-            currentState = SMState.CREATE_CONDITION_MET,
+            creationCurrentState = SMState.CREATION_CONDITION_MET,
         )
         val job = randomSMPolicy()
         val context = SMStateMachine(client, job, metadata)
@@ -32,8 +34,8 @@ class CreatingStateTests : ClientMockTestCase() {
         val result = SMState.CREATING.instance.execute(context)
         assertTrue("Execution result should be Next.", result is SMResult.Next)
         result as SMResult.Next
-        assertNotNull("Creation started field is initialized.", result.metadataToSave.creation.started)
-        assertEquals("Latest execution status is in_progress", SMMetadata.LatestExecution.Status.IN_PROGRESS, result.metadataToSave.creation.latestExecution!!.status)
+        assertNotNull("Creation started field is initialized.", result.metadataToSave.build().creation.started)
+        assertEquals("Latest execution status is in_progress", SMMetadata.LatestExecution.Status.IN_PROGRESS, result.metadataToSave.build().creation.latestExecution!!.status)
     }
 
     fun `test create snapshot exception`() = runBlocking {
@@ -42,7 +44,7 @@ class CreatingStateTests : ClientMockTestCase() {
         mockCreateSnapshotCall(exception = ex)
 
         val metadata = randomSMMetadata(
-            currentState = SMState.CREATE_CONDITION_MET,
+            creationCurrentState = SMState.CREATION_CONDITION_MET,
         )
         val job = randomSMPolicy()
         val context = SMStateMachine(client, job, metadata)
@@ -50,9 +52,9 @@ class CreatingStateTests : ClientMockTestCase() {
         val result = SMState.CREATING.instance.execute(context)
         assertTrue("Execution result should be Failure.", result is SMResult.Fail)
         result as SMResult.Fail
-        assertNull("Creation started field should not be initialized.", result.metadataToSave.creation.started)
-        assertEquals("Latest execution status is retrying", SMMetadata.LatestExecution.Status.RETRYING, result.metadataToSave.creation.latestExecution!!.status)
-        assertNotNull("Latest execution info should not be null", result.metadataToSave.creation.latestExecution!!.info)
+        assertNull("Creation started field should not be initialized.", result.metadataToSave.build().creation.started)
+        assertEquals("Latest execution status is retrying", SMMetadata.LatestExecution.Status.RETRYING, result.metadataToSave.build().creation.latestExecution!!.status)
+        assertNotNull("Latest execution info should not be null", result.metadataToSave.build().creation.latestExecution!!.info)
     }
 
     fun `test snapshot already created in previous schedule`() = runBlocking {
@@ -62,7 +64,7 @@ class CreatingStateTests : ClientMockTestCase() {
         mockGetSnapshotsCall(response = mockGetSnapshotResponse)
 
         val metadata = randomSMMetadata(
-            currentState = SMState.CREATE_CONDITION_MET,
+            creationCurrentState = SMState.CREATION_CONDITION_MET,
         )
         val job = randomSMPolicy(policyName = "daily-snapshot")
         val context = SMStateMachine(client, job, metadata)
@@ -70,8 +72,8 @@ class CreatingStateTests : ClientMockTestCase() {
         val result = SMState.CREATING.instance.execute(context)
         assertTrue("Execution result should be Next.", result is SMResult.Next)
         result as SMResult.Next
-        assertEquals("Started create snapshot name is $snapshotName.", snapshotName, result.metadataToSave.creation.started!!.first())
-        assertEquals("Latest execution status is in_progress", SMMetadata.LatestExecution.Status.IN_PROGRESS, result.metadataToSave.creation.latestExecution!!.status)
+        assertEquals("Started create snapshot name is $snapshotName.", snapshotName, result.metadataToSave.build().creation.started!!.first())
+        assertEquals("Latest execution status is in_progress", SMMetadata.LatestExecution.Status.IN_PROGRESS, result.metadataToSave.build().creation.latestExecution!!.status)
     }
 
     fun `test snapshot already created but not in previous schedule`() = runBlocking {
@@ -82,7 +84,7 @@ class CreatingStateTests : ClientMockTestCase() {
         mockCreateSnapshotCall(response = mockCreateSnapshotResponse())
 
         val metadata = randomSMMetadata(
-            currentState = SMState.CREATE_CONDITION_MET,
+            creationCurrentState = SMState.CREATION_CONDITION_MET,
         )
         val job = randomSMPolicy(policyName = "daily-snapshot")
         val context = SMStateMachine(client, job, metadata)
@@ -90,7 +92,7 @@ class CreatingStateTests : ClientMockTestCase() {
         val result = SMState.CREATING.instance.execute(context)
         assertTrue("Execution result should be Next.", result is SMResult.Next)
         result as SMResult.Next
-        assertNotEquals("Started create snapshot name should not be $snapshotName.", snapshotName, result.metadataToSave.creation.started!!.first())
+        assertNotEquals("Started create snapshot name should not be $snapshotName.", snapshotName, result.metadataToSave.build().creation.started!!.first())
     }
 
     fun `test get snapshots exception while checking if snapshot already created`() = runBlocking {
@@ -98,7 +100,7 @@ class CreatingStateTests : ClientMockTestCase() {
         mockGetSnapshotsCall(exception = ex)
 
         val metadata = randomSMMetadata(
-            currentState = SMState.CREATE_CONDITION_MET,
+            creationCurrentState = SMState.CREATION_CONDITION_MET,
         )
         val job = randomSMPolicy()
         val context = SMStateMachine(client, job, metadata)
@@ -106,8 +108,8 @@ class CreatingStateTests : ClientMockTestCase() {
         val result = SMState.CREATING.instance.execute(context)
         assertTrue("Execution result should be Failure.", result is SMResult.Fail)
         result as SMResult.Fail
-        assertNull("Creation started field should not be initialized.", result.metadataToSave.creation.started)
-        assertEquals("Latest execution status is retrying", SMMetadata.LatestExecution.Status.RETRYING, result.metadataToSave.creation.latestExecution!!.status)
-        assertNotNull("Latest execution info should not be null", result.metadataToSave.creation.latestExecution!!.info)
+        assertNull("Creation started field should not be initialized.", result.metadataToSave.build().creation.started)
+        assertEquals("Latest execution status is retrying", SMMetadata.LatestExecution.Status.RETRYING, result.metadataToSave.build().creation.latestExecution!!.status)
+        assertNotNull("Latest execution info should not be null", result.metadataToSave.build().creation.latestExecution!!.info)
     }
 }

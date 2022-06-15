@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.indexmanagement.snapshotmanagement.engine.statemachine
+package org.opensearch.indexmanagement.snapshotmanagement.engine
 
 import com.nhaarman.mockitokotlin2.argumentCaptor
 import com.nhaarman.mockitokotlin2.spy
@@ -12,9 +12,9 @@ import com.nhaarman.mockitokotlin2.verify
 import kotlinx.coroutines.runBlocking
 import org.opensearch.common.unit.TimeValue
 import org.opensearch.indexmanagement.ClientMockTestCase
-import org.opensearch.indexmanagement.snapshotmanagement.engine.SMStateMachine
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.SMState
-import org.opensearch.indexmanagement.snapshotmanagement.engine.states.smTransitions
+import org.opensearch.indexmanagement.snapshotmanagement.engine.states.creationTransitions
+import org.opensearch.indexmanagement.snapshotmanagement.engine.states.deletionTransitions
 import org.opensearch.indexmanagement.snapshotmanagement.mockGetSnapshotResponse
 import org.opensearch.indexmanagement.snapshotmanagement.mockSnapshotInfo
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata
@@ -26,71 +26,70 @@ import java.time.Instant.now
 class SMStateMachineTests : ClientMockTestCase() {
 
     fun `test sm result Next save the current state`() = runBlocking {
-        val currentState = SMState.FINISHED
-        val nextStates = smTransitions[currentState]
+        val currentState = SMState.CREATION_FINISHED
+        val nextStates = creationTransitions[currentState]
         val metadata = randomSMMetadata(
-            currentState = currentState
+            creationCurrentState = currentState
         )
         val job = randomSMPolicy()
         val stateMachineSpy = spy(SMStateMachine(client, job, metadata))
 
-        stateMachineSpy.next(smTransitions)
+        stateMachineSpy.currentState(currentState).next(creationTransitions)
         argumentCaptor<SMMetadata>().apply {
             verify(stateMachineSpy).updateMetadata(capture())
-            assertEquals(nextStates!!.first(), firstValue.currentState)
+            assertEquals(nextStates!!.first(), firstValue.creation.currentState)
         }
     }
 
     fun `test sm result Stay save the previous state`() = runBlocking {
-        val currentState = SMState.START
+        val currentState = SMState.DELETION_START
         // both creation and deletion conditions are not met
         val metadata = randomSMMetadata(
-            currentState = currentState,
+            deletionCurrentState = currentState,
             nextCreationTime = now().plusSeconds(60),
             nextDeletionTime = now().plusSeconds(60),
         )
         val job = randomSMPolicy()
         val stateMachineSpy = spy(SMStateMachine(client, job, metadata))
 
-        stateMachineSpy.next(smTransitions)
+        stateMachineSpy.currentState(currentState).next(deletionTransitions)
         argumentCaptor<SMMetadata>().apply {
-            verify(stateMachineSpy, times(2)).updateMetadata(capture())
-            assertEquals(currentState, firstValue.currentState)
-            assertEquals(currentState, secondValue.currentState)
+            verify(stateMachineSpy, times(1)).updateMetadata(capture())
+            assertEquals(currentState, firstValue.deletion!!.currentState)
         }
     }
 
     fun `test sm result Fail starts retry for creation workflow`() = runBlocking {
-        val currentState = SMState.CREATE_CONDITION_MET
+        val currentState = SMState.CREATION_CONDITION_MET
         val ex = Exception()
         mockGetSnapshotsCall(response = mockGetSnapshotResponse(0))
         mockCreateSnapshotCall(exception = ex)
 
         val metadata = randomSMMetadata(
-            currentState = currentState,
+            creationCurrentState = currentState,
             creationLatestExecution = randomLatestExecution(
                 status = SMMetadata.LatestExecution.Status.RETRYING,
             )
         )
         val job = randomSMPolicy()
         val stateMachineSpy = spy(SMStateMachine(client, job, metadata))
-        stateMachineSpy.next(smTransitions)
+        stateMachineSpy.currentState(currentState).next(creationTransitions)
         argumentCaptor<SMMetadata>().apply {
             verify(stateMachineSpy).updateMetadata(capture())
-            assertEquals(currentState, firstValue.currentState)
+            assertEquals(currentState, firstValue.creation.currentState)
             assertNull(firstValue.creation.started)
             assertEquals(3, firstValue.creation.retry!!.count)
         }
     }
 
     fun `test sm result Fail starts retry for deletion workflow`() = runBlocking {
-        val currentState = SMState.DELETE_CONDITION_MET
+        val currentState = SMState.DELETION_CONDITION_MET
         val ex = Exception()
         mockGetSnapshotsCall(response = mockGetSnapshotResponse(11))
         mockDeleteSnapshotCall(exception = ex)
 
         val metadata = randomSMMetadata(
-            currentState = currentState,
+            deletionCurrentState = currentState,
             deletionLatestExecution = randomLatestExecution(
                 status = SMMetadata.LatestExecution.Status.RETRYING,
             ),
@@ -100,22 +99,22 @@ class SMStateMachineTests : ClientMockTestCase() {
             deletionMaxCount = 10,
         )
         val stateMachineSpy = spy(SMStateMachine(client, job, metadata))
-        stateMachineSpy.next(smTransitions)
+        stateMachineSpy.currentState(currentState).next(deletionTransitions)
         argumentCaptor<SMMetadata>().apply {
             verify(stateMachineSpy).updateMetadata(capture())
-            assertEquals(currentState, firstValue.currentState)
+            assertEquals(currentState, firstValue.deletion!!.currentState)
             assertNull(firstValue.deletion!!.started)
-            assertEquals(3, firstValue.deletion?.retry!!.count)
+            assertEquals(3, firstValue.deletion!!.retry!!.count)
         }
     }
 
-    fun `test sm result Retry retry count remaining 2`() = runBlocking {
-        val currentState = SMState.DELETE_CONDITION_MET
+    fun `test sm result Fail retry count remaining 2`() = runBlocking {
+        val currentState = SMState.DELETION_CONDITION_MET
 
         val ex = Exception()
         mockGetSnapshotsCall(exception = ex)
         val metadata = randomSMMetadata(
-            currentState = currentState,
+            deletionCurrentState = currentState,
             deletionRetryCount = 2,
             deletionLatestExecution = randomLatestExecution(
                 status = SMMetadata.LatestExecution.Status.RETRYING,
@@ -124,22 +123,22 @@ class SMStateMachineTests : ClientMockTestCase() {
         val job = randomSMPolicy()
 
         val stateMachineSpy = spy(SMStateMachine(client, job, metadata))
-        stateMachineSpy.next(smTransitions)
+        stateMachineSpy.currentState(currentState).next(deletionTransitions)
         argumentCaptor<SMMetadata>().apply {
             verify(stateMachineSpy).updateMetadata(capture())
-            assertEquals(currentState, firstValue.currentState)
+            assertEquals(currentState, firstValue.deletion!!.currentState)
             assertEquals(1, firstValue.deletion?.retry!!.count)
         }
     }
 
-    fun `test sm result Retry retry count has exhausted and reset workflow`() = runBlocking {
-        val currentState = SMState.DELETE_CONDITION_MET
-        val resetState = SMState.DELETING
+    fun `test sm result Fail retry count has exhausted and reset workflow`() = runBlocking {
+        val currentState = SMState.DELETION_CONDITION_MET
+        val resetState = SMState.DELETION_START
 
         val ex = Exception()
         mockGetSnapshotsCall(exception = ex)
         val metadata = randomSMMetadata(
-            currentState = currentState,
+            deletionCurrentState = currentState,
             deletionRetryCount = 1,
             deletionLatestExecution = randomLatestExecution(
                 status = SMMetadata.LatestExecution.Status.RETRYING,
@@ -148,24 +147,24 @@ class SMStateMachineTests : ClientMockTestCase() {
         val job = randomSMPolicy()
 
         val stateMachineSpy = spy(SMStateMachine(client, job, metadata))
-        stateMachineSpy.next(smTransitions)
+        stateMachineSpy.currentState(currentState).next(deletionTransitions)
         argumentCaptor<SMMetadata>().apply {
             verify(stateMachineSpy).updateMetadata(capture())
-            assertEquals(resetState, firstValue.currentState)
+            assertEquals(resetState, firstValue.deletion!!.currentState)
             assertNull(firstValue.deletion!!.retry)
             assertNull(firstValue.deletion!!.started)
         }
     }
 
-    fun `test sm result TimeLimitExceed reset workflow`() = runBlocking {
-        val currentState = SMState.CREATING
-        val resetState = SMState.DELETING
+    fun `test sm result Fail time limit exceed reset workflow`() = runBlocking {
+        val currentState = SMState.DELETING
+        val resetState = SMState.DELETION_START
 
         val snapshotName = "test_state_machine_deletion_time_exceed"
         val snapshotInfo = mockSnapshotInfo(name = snapshotName)
         mockGetSnapshotsCall(response = mockGetSnapshotResponse(snapshotInfo))
         val metadata = randomSMMetadata(
-            currentState = currentState,
+            deletionCurrentState = currentState,
             startedDeletion = listOf(snapshotName),
             deletionLatestExecution = randomLatestExecution(
                 startTime = now().minusSeconds(50),
@@ -177,14 +176,12 @@ class SMStateMachineTests : ClientMockTestCase() {
         )
 
         val stateMachineSpy = spy(SMStateMachine(client, job, metadata))
-        stateMachineSpy.next(smTransitions)
+        stateMachineSpy.currentState(currentState).next(deletionTransitions)
         argumentCaptor<SMMetadata>().apply {
             // first execute DELETE_CONDITION_MET state and return Stay
             // second execute FINISHED state and return Fail because of deletion time_limit_exceed
-            verify(stateMachineSpy, times(2)).updateMetadata(capture())
-            assertEquals(currentState, firstValue.currentState)
-            assertEquals(resetState, secondValue.currentState)
-            assertNull(secondValue.deletion!!.started)
+            verify(stateMachineSpy, times(1)).updateMetadata(capture())
+            assertEquals(resetState, firstValue.deletion!!.currentState)
         }
     }
 

@@ -20,6 +20,8 @@ import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata
 import org.opensearch.OpenSearchStatusException
 import org.opensearch.index.seqno.SequenceNumbers
+import org.opensearch.indexmanagement.snapshotmanagement.engine.states.creationTransitions
+import org.opensearch.indexmanagement.snapshotmanagement.engine.states.deletionTransitions
 import org.opensearch.indexmanagement.util.acquireLockForScheduledJob
 import org.opensearch.indexmanagement.util.releaseLockForScheduledJob
 import org.opensearch.jobscheduler.spi.JobExecutionContext
@@ -65,10 +67,17 @@ object SMRunner :
                 initMetadata(job) ?: return@launch
             }
 
-            val stateMachineContext = SMStateMachine(client, job, metadata)
-            stateMachineContext
+            SMStateMachine(client, job, metadata)
                 .handlePolicyChange()
-                .next()
+                .currentState(metadata.creation.currentState)
+                .next(creationTransitions)
+                .apply {
+                    val deleteMetadata = metadata.deletion
+                    if (deleteMetadata != null) {
+                        this.currentState(deleteMetadata.currentState)
+                            .next(deletionTransitions)
+                    }
+                }
 
             if (!releaseLockForScheduledJob(context, lock)) {
                 log.debug("Could not release lock [${lock.lockId}] for ${job.id}.")
@@ -104,14 +113,15 @@ object SMRunner :
             id = smPolicyNameToMetadataId(smDocIdToPolicyName(job.id)),
             policySeqNo = job.seqNo,
             policyPrimaryTerm = job.primaryTerm,
-            currentState = SMState.START,
             creation = SMMetadata.WorkflowMetadata(
+                SMState.CREATION_START,
                 SMMetadata.Trigger(
                     time = job.creation.schedule.getNextExecutionTime(now)
                 )
             ),
             deletion = job.deletion?.let {
                 SMMetadata.WorkflowMetadata(
+                    SMState.DELETION_START,
                     SMMetadata.Trigger(
                         time = job.deletion.schedule.getNextExecutionTime(now)
                     )

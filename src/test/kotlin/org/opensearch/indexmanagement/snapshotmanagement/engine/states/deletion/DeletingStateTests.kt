@@ -3,13 +3,15 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.indexmanagement.snapshotmanagement.engine.states
+package org.opensearch.indexmanagement.snapshotmanagement.engine.states.deletion
 
 import kotlinx.coroutines.runBlocking
 import org.opensearch.action.support.master.AcknowledgedResponse
 import org.opensearch.common.unit.TimeValue
 import org.opensearch.indexmanagement.ClientMockTestCase
 import org.opensearch.indexmanagement.snapshotmanagement.engine.SMStateMachine
+import org.opensearch.indexmanagement.snapshotmanagement.engine.states.SMResult
+import org.opensearch.indexmanagement.snapshotmanagement.engine.states.SMState
 import org.opensearch.indexmanagement.snapshotmanagement.mockGetSnapshotResponse
 import org.opensearch.indexmanagement.snapshotmanagement.mockGetSnapshotsResponse
 import org.opensearch.indexmanagement.snapshotmanagement.mockSnapshotInfo
@@ -27,7 +29,7 @@ class DeletingStateTests : ClientMockTestCase() {
         mockDeleteSnapshotCall(response = AcknowledgedResponse(true))
 
         val metadata = randomSMMetadata(
-            currentState = SMState.DELETE_CONDITION_MET,
+            deletionCurrentState = SMState.DELETION_CONDITION_MET,
         )
         val job = randomSMPolicy(
             policyName = "daily-snapshot",
@@ -38,9 +40,10 @@ class DeletingStateTests : ClientMockTestCase() {
         val result = SMState.DELETING.instance.execute(context)
         assertTrue("Execution result should be Next.", result is SMResult.Next)
         result as SMResult.Next
-        assertNotNull("Deletion started field is initialized.", result.metadataToSave.deletion!!.started)
-        assertEquals(1, result.metadataToSave.deletion?.started!!.size)
-        assertEquals("Latest execution status is in_progress", SMMetadata.LatestExecution.Status.IN_PROGRESS, result.metadataToSave.deletion!!.latestExecution!!.status)
+        val metadataToSave = result.metadataToSave.build()
+        assertNotNull("Deletion started field is initialized.", metadataToSave.deletion!!.started)
+        assertEquals(1, metadataToSave.deletion?.started!!.size)
+        assertEquals("Latest execution status is in_progress", SMMetadata.LatestExecution.Status.IN_PROGRESS, metadataToSave.deletion!!.latestExecution!!.status)
     }
 
     fun `test snapshots exceed max age`() = runBlocking {
@@ -50,7 +53,7 @@ class DeletingStateTests : ClientMockTestCase() {
         mockDeleteSnapshotCall(response = AcknowledgedResponse(true))
 
         val metadata = randomSMMetadata(
-            currentState = SMState.DELETE_CONDITION_MET,
+            deletionCurrentState = SMState.DELETION_CONDITION_MET,
         )
         val job = randomSMPolicy(
             policyName = "daily-snapshot",
@@ -62,10 +65,11 @@ class DeletingStateTests : ClientMockTestCase() {
         val result = SMState.DELETING.instance.execute(context)
         assertTrue("Execution result should be Next.", result is SMResult.Next)
         result as SMResult.Next
-        assertNotNull("Deletion started field is initialized.", result.metadataToSave.deletion!!.started)
-        assertEquals(1, result.metadataToSave.deletion?.started!!.size)
-        assertEquals("old_snapshot", result.metadataToSave.deletion!!.started!!.first())
-        assertEquals("Latest execution status is in_progress", SMMetadata.LatestExecution.Status.IN_PROGRESS, result.metadataToSave.deletion!!.latestExecution!!.status)
+        val metadataToSave = result.metadataToSave.build()
+        assertNotNull("Deletion started field is initialized.", metadataToSave.deletion!!.started)
+        assertEquals(1, metadataToSave.deletion?.started!!.size)
+        assertEquals("old_snapshot", metadataToSave.deletion!!.started!!.first())
+        assertEquals("Latest execution status is in_progress", SMMetadata.LatestExecution.Status.IN_PROGRESS, metadataToSave.deletion!!.latestExecution!!.status)
     }
 
     fun `test snapshots exceed max age but need to remain min count`() = runBlocking {
@@ -74,7 +78,7 @@ class DeletingStateTests : ClientMockTestCase() {
         mockGetSnapshotsCall(response = mockGetSnapshotsResponse(listOf(oldSnapshot, newSnapshot)))
 
         val metadata = randomSMMetadata(
-            currentState = SMState.DELETE_CONDITION_MET,
+            deletionCurrentState = SMState.DELETION_CONDITION_MET,
         )
         val job = randomSMPolicy(
             policyName = "daily-snapshot",
@@ -86,8 +90,9 @@ class DeletingStateTests : ClientMockTestCase() {
         val result = SMState.DELETING.instance.execute(context)
         assertTrue("Execution result should be Next.", result is SMResult.Next)
         result as SMResult.Next
-        assertNull("Deletion started field should not be initialized.", result.metadataToSave.deletion!!.started)
-        assertNull("Latest execution should not be initialized", result.metadataToSave.deletion!!.latestExecution)
+        val metadataToSave = result.metadataToSave.build()
+        assertNull("Deletion started field should not be initialized.", metadataToSave.deletion!!.started)
+        assertNull("Latest execution should not be initialized", metadataToSave.deletion!!.latestExecution)
     }
 
     fun `test delete snapshot exception`() = runBlocking {
@@ -96,7 +101,7 @@ class DeletingStateTests : ClientMockTestCase() {
         mockDeleteSnapshotCall(exception = ex)
 
         val metadata = randomSMMetadata(
-            currentState = SMState.DELETE_CONDITION_MET,
+            deletionCurrentState = SMState.DELETION_CONDITION_MET,
         )
         val job = randomSMPolicy(policyName = "daily-snapshot")
         val context = SMStateMachine(client, job, metadata)
@@ -104,9 +109,10 @@ class DeletingStateTests : ClientMockTestCase() {
         val result = SMState.DELETING.instance.execute(context)
         assertTrue("Execution result should be Failure.", result is SMResult.Fail)
         result as SMResult.Fail
-        assertNull("Deletion started field should not be initialized.", result.metadataToSave.deletion!!.started)
-        assertEquals("Latest execution status is retrying", SMMetadata.LatestExecution.Status.RETRYING, result.metadataToSave.deletion!!.latestExecution!!.status)
-        assertNotNull("Latest execution info should not be null", result.metadataToSave.deletion!!.latestExecution!!.info)
+        val metadataToSave = result.metadataToSave.build()
+        assertNull("Deletion started field should not be initialized.", metadataToSave.deletion!!.started)
+        assertEquals("Latest execution status is retrying", SMMetadata.LatestExecution.Status.RETRYING, metadataToSave.deletion!!.latestExecution!!.status)
+        assertNotNull("Latest execution info should not be null", metadataToSave.deletion!!.latestExecution!!.info)
     }
 
     fun `test get snapshots exception`() = runBlocking {
@@ -114,7 +120,7 @@ class DeletingStateTests : ClientMockTestCase() {
         mockGetSnapshotsCall(exception = ex)
 
         val metadata = randomSMMetadata(
-            currentState = SMState.DELETE_CONDITION_MET,
+            deletionCurrentState = SMState.DELETION_CONDITION_MET,
             deletionLatestExecution = randomLatestExecution(
                 startTime = now().minusSeconds(10),
             )
@@ -125,14 +131,15 @@ class DeletingStateTests : ClientMockTestCase() {
         val result = SMState.DELETING.instance.execute(context)
         assertTrue("Execution result should be Fail.", result is SMResult.Fail)
         result as SMResult.Fail
-        assertNull("Deletion started field should not be initialized.", result.metadataToSave.deletion!!.started)
-        assertEquals("Latest execution status is retrying", SMMetadata.LatestExecution.Status.RETRYING, result.metadataToSave.deletion!!.latestExecution!!.status)
-        assertNotNull("Latest execution info should not be null", result.metadataToSave.deletion!!.latestExecution!!.info)
+        val metadataToSave = result.metadataToSave.build()
+        assertNull("Deletion started field should not be initialized.", metadataToSave.deletion!!.started)
+        assertEquals("Latest execution status is retrying", SMMetadata.LatestExecution.Status.RETRYING, metadataToSave.deletion!!.latestExecution!!.status)
+        assertNotNull("Latest execution info should not be null", metadataToSave.deletion!!.latestExecution!!.info)
     }
 
     fun `test policy deletion is null`() = runBlocking {
         val metadata = randomSMMetadata(
-            currentState = SMState.DELETE_CONDITION_MET,
+            deletionCurrentState = SMState.DELETION_CONDITION_MET,
             startedDeletion = listOf(randomSnapshotName()),
         )
         val job = randomSMPolicy(
@@ -143,6 +150,7 @@ class DeletingStateTests : ClientMockTestCase() {
         val result = SMState.DELETING.instance.execute(context)
         assertTrue("Execution result should be Fail.", result is SMResult.Fail)
         result as SMResult.Fail
-        assertNull("Deletion metadata should be null.", result.metadataToSave.deletion)
+        val metadataToSave = result.metadataToSave.build()
+        assertNull("Deletion metadata should be null.", metadataToSave.deletion)
     }
 }

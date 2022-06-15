@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.indexmanagement.snapshotmanagement.engine.states
+package org.opensearch.indexmanagement.snapshotmanagement.engine.states.deletion
 
 import org.apache.logging.log4j.Logger
 import org.opensearch.action.admin.cluster.snapshots.delete.DeleteSnapshotRequest
@@ -11,6 +11,9 @@ import org.opensearch.action.support.master.AcknowledgedResponse
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.snapshotmanagement.SnapshotManagementException
 import org.opensearch.indexmanagement.snapshotmanagement.engine.SMStateMachine
+import org.opensearch.indexmanagement.snapshotmanagement.engine.states.SMResult
+import org.opensearch.indexmanagement.snapshotmanagement.engine.states.State
+import org.opensearch.indexmanagement.snapshotmanagement.engine.states.WorkflowType
 import org.opensearch.indexmanagement.snapshotmanagement.getSnapshotsWithErrorHandling
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy
@@ -35,7 +38,7 @@ object DeletingState : State {
         if (job.deletion == null) {
             // If job.deletion config is null, we reset the deletion metadata
             return SMResult.Fail(
-                metadataBuilder.build().copy(deletion = null),
+                metadataBuilder.resetDeletion(),
                 WorkflowType.DELETION, forceReset = true
             )
         }
@@ -53,7 +56,7 @@ object DeletingState : State {
         )
         metadataBuilder = getSnapshotsRes.metadataBuilder
         if (getSnapshotsRes.failed)
-            return SMResult.Fail(metadataBuilder.build(), WorkflowType.DELETION)
+            return SMResult.Fail(metadataBuilder, WorkflowType.DELETION)
         metadataBuilder.resetRetry(deletion = true)
         val getSnapshots = getSnapshotsRes.snapshots
         log.info("sm dev get snapshots $getSnapshots")
@@ -78,7 +81,7 @@ object DeletingState : State {
                     message = getDeleteSnapshotErrorMessage(snapshotsToDelete),
                     cause = SnapshotManagementException.wrap(ex).message,
                 )
-                return SMResult.Fail(metadataBuilder.build(), WorkflowType.DELETION)
+                return SMResult.Fail(metadataBuilder, WorkflowType.DELETION)
             }
             metadataBuilder.resetRetry(deletion = true)
         }
@@ -88,7 +91,7 @@ object DeletingState : State {
                 status = SMMetadata.LatestExecution.Status.IN_PROGRESS
             ).setDeletionStarted(snapshotsToDelete)
         }
-        return SMResult.Next(metadataBuilder.build())
+        return SMResult.Next(metadataBuilder)
     }
 
     private fun getSnapshotsMissingMessage() = "No snapshots found under policy while getting snapshots to decide which snapshots to delete."

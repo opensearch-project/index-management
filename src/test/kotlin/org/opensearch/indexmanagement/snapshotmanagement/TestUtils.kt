@@ -40,7 +40,8 @@ import org.opensearch.test.rest.OpenSearchRestTestCase
 import java.time.Instant
 
 fun randomSMMetadata(
-    currentState: SMState = SMState.START,
+    creationCurrentState: SMState = SMState.CREATION_START,
+    deletionCurrentState: SMState = SMState.DELETION_START,
     nextCreationTime: Instant = randomInstant(),
     nextDeletionTime: Instant = randomInstant(),
     policySeqNo: Long = randomNonNegativeLong(),
@@ -55,8 +56,8 @@ fun randomSMMetadata(
     return SMMetadata(
         policySeqNo = policySeqNo,
         policyPrimaryTerm = policyPrimaryTerm,
-        currentState = currentState,
         creation = SMMetadata.WorkflowMetadata(
+            currentState = creationCurrentState,
             trigger = SMMetadata.Trigger(
                 time = nextCreationTime
             ),
@@ -65,6 +66,7 @@ fun randomSMMetadata(
             retry = creationRetryCount?.let { SMMetadata.Retry(it) },
         ),
         deletion = SMMetadata.WorkflowMetadata(
+            currentState = deletionCurrentState,
             trigger = SMMetadata.Trigger(
                 time = nextDeletionTime
             ),

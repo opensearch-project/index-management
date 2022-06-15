@@ -36,7 +36,6 @@ typealias InfoType = Map<String, Any>
 data class SMMetadata(
     val policySeqNo: Long,
     val policyPrimaryTerm: Long,
-    val currentState: SMState,
     val creation: WorkflowMetadata,
     val deletion: WorkflowMetadata?,
     val id: String = NO_ID,
@@ -52,7 +51,6 @@ data class SMMetadata(
             .field(POLICY_PRIMARY_TERM_FIELD, policyPrimaryTerm)
             .field(CREATION_FIELD, creation)
             .optionalField(DELETION_FIELD, deletion)
-            .field(CURRENT_STATE_FIELD, currentState.toString())
         if (params.paramAsBoolean(WITH_TYPE, true)) builder.endObject()
         return builder.endObject()
     }
@@ -61,7 +59,6 @@ data class SMMetadata(
         const val SM_METADATA_TYPE = "sm_metadata"
         const val POLICY_SEQ_NO_FIELD = "policy_seq_no"
         const val POLICY_PRIMARY_TERM_FIELD = "policy_primary_term"
-        const val CURRENT_STATE_FIELD = "current_state"
         const val CREATION_FIELD = "creation"
         const val DELETION_FIELD = "deletion"
 
@@ -73,7 +70,6 @@ data class SMMetadata(
         ): SMMetadata {
             var policySeqNo: Long? = null
             var policyPrimaryTerm: Long? = null
-            var currentState: SMState? = null
             var creation: WorkflowMetadata? = null
             var deletion: WorkflowMetadata? = null
 
@@ -86,7 +82,6 @@ data class SMMetadata(
                     NAME_FIELD -> requireNotNull(xcp.text()) { "The name field of SMPolicy must not be null." }
                     POLICY_SEQ_NO_FIELD -> policySeqNo = xcp.longValue()
                     POLICY_PRIMARY_TERM_FIELD -> policyPrimaryTerm = xcp.longValue()
-                    CURRENT_STATE_FIELD -> currentState = SMState.valueOf(xcp.text())
                     CREATION_FIELD -> creation = WorkflowMetadata.parse(xcp)
                     DELETION_FIELD -> deletion = WorkflowMetadata.parse(xcp)
                 }
@@ -95,7 +90,6 @@ data class SMMetadata(
             return SMMetadata(
                 policySeqNo = requireNotNull(policySeqNo) { "policy_seq_no field must not be null" },
                 policyPrimaryTerm = requireNotNull(policyPrimaryTerm) { "policy_primary_term field must not be null" },
-                currentState = requireNotNull(currentState) { "current_state field must not be null" },
                 creation = requireNotNull(creation) { "creation field must not be null" },
                 deletion = deletion,
                 id = id,
@@ -118,7 +112,6 @@ data class SMMetadata(
     constructor(sin: StreamInput) : this(
         policySeqNo = sin.readLong(),
         policyPrimaryTerm = sin.readLong(),
-        currentState = sin.readEnum(SMState::class.java),
         creation = WorkflowMetadata(sin),
         deletion = sin.readOptionalWriteable { WorkflowMetadata(it) },
         id = sin.readString(),
@@ -129,7 +122,6 @@ data class SMMetadata(
     override fun writeTo(out: StreamOutput) {
         out.writeLong(policySeqNo)
         out.writeLong(policyPrimaryTerm)
-        out.writeEnum(currentState)
         creation.writeTo(out)
         out.writeOptionalWriteable(deletion)
         out.writeString(id)
@@ -138,6 +130,7 @@ data class SMMetadata(
     }
 
     data class WorkflowMetadata(
+        val currentState: SMState,
         val trigger: Trigger,
         val started: List<String>? = null,
         val latestExecution: LatestExecution? = null,
@@ -146,6 +139,7 @@ data class SMMetadata(
 
         override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
             return builder.startObject()
+                .field(CURRENT_STATE_FIELD, currentState.toString())
                 .field(TRIGGER_FIELD, trigger)
                 .optionalField(STARTED_FIELD, started)
                 .optionalField(LAST_EXECUTION_FIELD, latestExecution)
@@ -154,11 +148,13 @@ data class SMMetadata(
         }
 
         companion object {
+            const val CURRENT_STATE_FIELD = "current_state"
             const val TRIGGER_FIELD = "trigger"
             const val STARTED_FIELD = "started"
             const val LAST_EXECUTION_FIELD = "latest_execution"
 
             fun parse(xcp: XContentParser): WorkflowMetadata {
+                var currentState: SMState? = null
                 var trigger: Trigger? = null
                 var started: List<String>? = null
                 var latestExecution: LatestExecution? = null
@@ -170,6 +166,7 @@ data class SMMetadata(
                     xcp.nextToken()
 
                     when (fieldName) {
+                        CURRENT_STATE_FIELD -> currentState = SMState.valueOf(xcp.text())
                         TRIGGER_FIELD -> trigger = Trigger.parse(xcp)
                         STARTED_FIELD -> started = xcp.nullValueHandler { parseArray { text() } }
                         LAST_EXECUTION_FIELD -> latestExecution = xcp.nullValueHandler { LatestExecution.parse(xcp) }
@@ -178,6 +175,7 @@ data class SMMetadata(
                 }
 
                 return WorkflowMetadata(
+                    currentState = requireNotNull(currentState) { "current_state field must not be null" },
                     trigger = requireNotNull(trigger) { "trigger field must not be null." },
                     started = started,
                     latestExecution = latestExecution,
@@ -187,6 +185,7 @@ data class SMMetadata(
         }
 
         constructor(sin: StreamInput) : this(
+            currentState = sin.readEnum(SMState::class.java),
             trigger = Trigger(sin),
             started = sin.readOptionalStringList(),
             latestExecution = sin.readOptionalWriteable { LatestExecution(it) },
@@ -194,6 +193,7 @@ data class SMMetadata(
         )
 
         override fun writeTo(out: StreamOutput) {
+            out.writeEnum(currentState)
             trigger.writeTo(out)
             out.writeOptionalStringCollection(started)
             out.writeOptionalWriteable(latestExecution)
@@ -437,37 +437,68 @@ data class SMMetadata(
             return this
         }
 
+        fun setCurrentState(state: SMState): Builder {
+            when (workflowType) {
+                WorkflowType.CREATION -> {
+                    metadata = metadata.copy(
+                        creation = metadata.creation.copy(
+                            currentState = state
+                        )
+                    )
+                }
+                WorkflowType.DELETION -> {
+                    metadata = metadata.copy(
+                        deletion = metadata.deletion?.copy(
+                            currentState = state
+                        )
+                    )
+                }
+            }
+            return this
+        }
+
         // Reset the workflow of this execution period so SM can
         // go to execute the next
         fun resetWorkflow(): Builder {
-            var currentState = metadata.currentState
+            var creationCurrentState = metadata.creation.currentState
             var startedCreation = metadata.creation.started
             var creationRetry = metadata.creation.retry
+            var deletionCurrentState = metadata.deletion?.currentState
             var startedDeletion = metadata.deletion?.started
             var deletionRetry = metadata.deletion?.retry
             when (workflowType) {
                 WorkflowType.CREATION -> {
-                    currentState = SMState.CREATING
+                    creationCurrentState = SMState.CREATION_START
                     startedCreation = null
                     creationRetry = null
                 }
                 WorkflowType.DELETION -> {
-                    currentState = SMState.DELETING
+                    deletionCurrentState = SMState.DELETION_START
                     startedDeletion = null
                     deletionRetry = null
                 }
             }
 
             metadata = metadata.copy(
-                currentState = currentState,
                 creation = metadata.creation.copy(
+                    currentState = creationCurrentState,
                     started = startedCreation,
                     retry = creationRetry,
                 ),
-                deletion = metadata.deletion?.copy(
-                    started = startedDeletion,
-                    retry = deletionRetry,
-                ),
+                deletion = deletionCurrentState?.let {
+                    metadata.deletion?.copy(
+                        currentState = it,
+                        started = startedDeletion,
+                        retry = deletionRetry,
+                    )
+                },
+            )
+            return this
+        }
+
+        fun resetDeletion(): Builder {
+            metadata = metadata.copy(
+                deletion = null
             )
             return this
         }
@@ -565,17 +596,10 @@ data class SMMetadata(
             return this
         }
 
-        fun setPolicyVersion(seqNo: Long, primaryTerm: Long): Builder {
+        fun setSeqNoPrimaryTerm(seqNo: Long, primaryTerm: Long): Builder {
             metadata = metadata.copy(
                 policySeqNo = seqNo,
                 policyPrimaryTerm = primaryTerm,
-            )
-            return this
-        }
-
-        fun setCurrentState(state: SMState): Builder {
-            metadata = metadata.copy(
-                currentState = state
             )
             return this
         }
@@ -613,9 +637,10 @@ data class SMMetadata(
             } else {
                 metadata = metadata.copy(
                     deletion = WorkflowMetadata(
+                        SMState.DELETION_START,
                         Trigger(
                             time = time
-                        )
+                        ),
                     )
                 )
             }

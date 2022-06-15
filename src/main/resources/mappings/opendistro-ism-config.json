@@ -1466,6 +1466,9 @@
         },
         "creation": {
           "properties": {
+            "current_state": {
+              "type": "keyword"
+            },
             "trigger": {
               "properties": {
                 "time": {
@@ -1513,6 +1516,9 @@
         },
         "deletion": {
           "properties": {
+            "current_state": {
+              "type": "keyword"
+            },
             "trigger": {
               "properties": {
                 "time": {

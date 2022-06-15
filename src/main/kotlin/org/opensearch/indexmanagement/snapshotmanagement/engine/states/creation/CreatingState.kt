@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.indexmanagement.snapshotmanagement.engine.states
+package org.opensearch.indexmanagement.snapshotmanagement.engine.states.creation
 
 import org.apache.logging.log4j.Logger
 import org.opensearch.ExceptionsHelper
@@ -14,6 +14,9 @@ import org.opensearch.indexmanagement.snapshotmanagement.SnapshotManagementExcep
 import org.opensearch.indexmanagement.snapshotmanagement.engine.SMStateMachine
 import org.opensearch.indexmanagement.snapshotmanagement.generateSnapshotName
 import org.opensearch.indexmanagement.snapshotmanagement.addSMPolicyInSnapshotMetadata
+import org.opensearch.indexmanagement.snapshotmanagement.engine.states.SMResult
+import org.opensearch.indexmanagement.snapshotmanagement.engine.states.State
+import org.opensearch.indexmanagement.snapshotmanagement.engine.states.WorkflowType
 import org.opensearch.indexmanagement.snapshotmanagement.getSnapshotsWithErrorHandling
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata
 import org.opensearch.indexmanagement.snapshotmanagement.smDocIdToPolicyName
@@ -44,7 +47,7 @@ object CreatingState : State {
             )
             metadataBuilder = getSnapshotsResult.metadataBuilder
             if (getSnapshotsResult.failed) {
-                return SMResult.Fail(metadataBuilder.build(), WorkflowType.CREATION)
+                return SMResult.Fail(metadataBuilder, WorkflowType.CREATION)
             }
             metadataBuilder.resetRetry(creation = true)
             val getSnapshots = getSnapshotsResult.snapshots
@@ -56,7 +59,7 @@ object CreatingState : State {
                 metadataBuilder.setLatestExecution(
                     status = SMMetadata.LatestExecution.Status.IN_PROGRESS
                 ).setCreationStarted(snapshotName)
-                return SMResult.Next(metadataBuilder.build())
+                return SMResult.Next(metadataBuilder)
             }
         }
 
@@ -81,7 +84,7 @@ object CreatingState : State {
         }
         metadataBuilder.resetRetry(creation = true)
 
-        return SMResult.Next(metadataBuilder.build())
+        return SMResult.Next(metadataBuilder)
     }
 
     private fun handleException(ex: Exception, snapshotName: String, metadataBuilder: SMMetadata.Builder, log: Logger): SMResult {
@@ -91,7 +94,7 @@ object CreatingState : State {
             message = getCreateSnapshotErrorMessage(snapshotName),
             cause = SnapshotManagementException.wrap(ex).message,
         )
-        return SMResult.Fail(metadataBuilder.build(), WorkflowType.CREATION)
+        return SMResult.Fail(metadataBuilder, WorkflowType.CREATION)
     }
 
     private fun getSnapshotsErrorMessage() = "Caught exception while getting snapshots to decide if snapshot has been created in previous execution schedule."

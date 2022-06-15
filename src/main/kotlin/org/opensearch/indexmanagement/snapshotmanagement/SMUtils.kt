@@ -18,6 +18,7 @@ import org.opensearch.action.index.IndexResponse
 import org.opensearch.client.Client
 import org.opensearch.common.Strings
 import org.opensearch.common.time.DateFormatter
+import org.opensearch.common.unit.TimeValue
 import org.opensearch.common.xcontent.LoggingDeprecationHandler
 import org.opensearch.common.xcontent.NamedXContentRegistry
 import org.opensearch.common.xcontent.ToXContent
@@ -28,6 +29,7 @@ import org.opensearch.index.IndexNotFoundException
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
 import org.opensearch.indexmanagement.opensearchapi.parseWithType
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
+import org.opensearch.indexmanagement.snapshotmanagement.engine.states.SMResult
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.WorkflowType
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy
@@ -318,3 +320,25 @@ fun validateSMPolicyName(policyName: String) {
         )
     }
 }
+
+fun TimeValue.isExceed(startTime: Instant?): Boolean {
+    startTime ?: return false
+    return (Instant.now().toEpochMilli() - startTime.toEpochMilli()) > this.millis
+}
+
+fun timeLimitExceeded(
+    timeLimit: TimeValue,
+    metadataBuilder: SMMetadata.Builder,
+    workflow: WorkflowType,
+    log: Logger,
+): SMResult {
+    log.warn(getTimeLimitExceedMessage(timeLimit))
+    metadataBuilder.setLatestExecution(
+        status = SMMetadata.LatestExecution.Status.TIME_LIMIT_EXCEEDED,
+        cause = getTimeLimitExceedMessage(timeLimit),
+        endTime = Instant.now(),
+    )
+    return SMResult.Fail(metadataBuilder, workflow, forceReset = true)
+}
+
+fun getTimeLimitExceedMessage(timeLimit: TimeValue) = "Time limit $timeLimit exceeded."

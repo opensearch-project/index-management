@@ -5,15 +5,25 @@
 
 package org.opensearch.indexmanagement.snapshotmanagement.engine.states
 
+import org.opensearch.indexmanagement.snapshotmanagement.engine.states.creation.CreationConditionMetState
+import org.opensearch.indexmanagement.snapshotmanagement.engine.states.creation.CreationFinishedState
+import org.opensearch.indexmanagement.snapshotmanagement.engine.states.creation.CreatingState
+import org.opensearch.indexmanagement.snapshotmanagement.engine.states.creation.CreationStartState
+import org.opensearch.indexmanagement.snapshotmanagement.engine.states.deletion.DeletionConditionMetState
+import org.opensearch.indexmanagement.snapshotmanagement.engine.states.deletion.DeletionFinishedState
+import org.opensearch.indexmanagement.snapshotmanagement.engine.states.deletion.DeletingState
+import org.opensearch.indexmanagement.snapshotmanagement.engine.states.deletion.DeletionStartState
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata
 
 enum class SMState(val instance: State) {
-    START(StartState), // Dummy state
-    CREATE_CONDITION_MET(CreateConditionMetState),
-    DELETE_CONDITION_MET(DeleteConditionMetState),
+    CREATION_START(CreationStartState),
+    CREATION_CONDITION_MET(CreationConditionMetState),
     CREATING(CreatingState),
+    CREATION_FINISHED(CreationFinishedState),
+    DELETION_START(DeletionStartState),
+    DELETION_CONDITION_MET(DeletionConditionMetState),
     DELETING(DeletingState),
-    FINISHED(FinishedState),
+    DELETION_FINISHED(DeletionFinishedState),
 }
 
 /**
@@ -28,17 +38,17 @@ enum class WorkflowType {
 /**
  * Result contains the executed metadata to persist and its special flags
  *
- * For the meaning of vertical, lateral, refer to [smTransitions].
+ * For the meaning of vertical, lateral, refer to [creationTransitions].
  * [Next]: move to the next state in vertical direction. Save this currentState.
  * [Stay]: stay in this level, can execute the next lateral states if exists. Save the prevState.
  * [Fail]: caught exception. Will start to retry. If retry count exhausted, reset this workflow.
- *   TODO SM when being used, remember to use [resetRetry] in metadata builder after passing the retry point.
+ *   When being used, remember to do [resetRetry] metadata after return this result.
  */
 sealed class SMResult : State.Result() {
-    data class Next(val metadataToSave: SMMetadata) : SMResult()
-    data class Stay(val metadataToSave: SMMetadata) : SMResult()
+    data class Next(val metadataToSave: SMMetadata.Builder) : SMResult()
+    data class Stay(val metadataToSave: SMMetadata.Builder) : SMResult()
     data class Fail(
-        val metadataToSave: SMMetadata,
+        val metadataToSave: SMMetadata.Builder,
         val workflowType: WorkflowType,
         val forceReset: Boolean? = null,
     ) : SMResult()
@@ -46,25 +56,19 @@ sealed class SMResult : State.Result() {
 
 // TODO SM enhance transition with predicate
 /**
- * Transitions from current to next state
- *
- * Vertical example: WAITING to CONDITION_MET
- * Lateral example: CREATE_CONDITION_MET and DELETE_CONDITION_MET, order matters
+ * Transitions from current to next state vertically.
+ * If there are multiple next states in lateral, these would be executed in sequence in order.
  */
-val smTransitions: Map<SMState, List<SMState>> = mapOf(
-    SMState.START to listOf(
-        SMState.CREATE_CONDITION_MET,
-        SMState.DELETE_CONDITION_MET,
-    ),
-    SMState.CREATE_CONDITION_MET to listOf(SMState.CREATING),
-    SMState.DELETE_CONDITION_MET to listOf(SMState.DELETING),
-    SMState.CREATING to listOf(
-        SMState.DELETE_CONDITION_MET,
-        SMState.FINISHED,
-    ),
-    SMState.DELETING to listOf(
-        SMState.CREATE_CONDITION_MET,
-        SMState.FINISHED,
-    ),
-    SMState.FINISHED to listOf(SMState.START),
+val creationTransitions: Map<SMState, List<SMState>> = mapOf(
+    SMState.CREATION_START to listOf(SMState.CREATION_CONDITION_MET),
+    SMState.CREATION_CONDITION_MET to listOf(SMState.CREATING),
+    SMState.CREATING to listOf(SMState.CREATION_FINISHED),
+    SMState.CREATION_FINISHED to listOf(SMState.CREATION_START),
+)
+
+val deletionTransitions: Map<SMState, List<SMState>> = mapOf(
+    SMState.DELETION_START to listOf(SMState.DELETION_CONDITION_MET),
+    SMState.DELETION_CONDITION_MET to listOf(SMState.DELETING),
+    SMState.DELETING to listOf(SMState.DELETION_FINISHED),
+    SMState.DELETION_FINISHED to listOf(SMState.DELETION_START),
 )

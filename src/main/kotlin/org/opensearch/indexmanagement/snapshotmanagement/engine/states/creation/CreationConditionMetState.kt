@@ -3,13 +3,16 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.indexmanagement.snapshotmanagement.engine.states
+package org.opensearch.indexmanagement.snapshotmanagement.engine.states.creation
 
 import org.opensearch.indexmanagement.snapshotmanagement.engine.SMStateMachine
+import org.opensearch.indexmanagement.snapshotmanagement.engine.states.SMResult
+import org.opensearch.indexmanagement.snapshotmanagement.engine.states.State
+import org.opensearch.indexmanagement.snapshotmanagement.engine.states.WorkflowType
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata
 import org.opensearch.indexmanagement.snapshotmanagement.updateNextExecutionTime
 
-object CreateConditionMetState : State {
+object CreationConditionMetState : State {
 
     override val continuous = true
 
@@ -22,15 +25,18 @@ object CreateConditionMetState : State {
             .workflow(WorkflowType.CREATION)
 
         if (metadata.creation.started != null) {
-            return SMResult.Stay(metadataBuilder.build())
+            return SMResult.Stay(metadataBuilder)
         }
 
         val nextCreationTime = metadata.creation.trigger.time
-        val result = updateNextExecutionTime(metadataBuilder, nextCreationTime, job.creation.schedule, WorkflowType.CREATION, log)
-        if (!result.updated) return SMResult.Stay(metadataBuilder.build())
+        val result = updateNextExecutionTime(
+            metadataBuilder, nextCreationTime, job.creation.schedule,
+            WorkflowType.CREATION, log
+        )
+        if (!result.updated) return SMResult.Stay(metadataBuilder)
         metadataBuilder = result.metadataBuilder
 
         log.info("sm dev: Save current state as CREATE_CONDITION_MET [$metadataBuilder]")
-        return SMResult.Next(metadataBuilder.build())
+        return SMResult.Next(metadataBuilder)
     }
 }
