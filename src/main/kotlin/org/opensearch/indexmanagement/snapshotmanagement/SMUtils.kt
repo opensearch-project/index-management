@@ -260,7 +260,7 @@ fun tryUpdatingNextExecutionTime(
     return if (!now.isBefore(nextTime)) {
         log.info("Current time [${Instant.now()}] has passed nextExecutionTime [$nextTime].")
         val newNextTime = schedule.getNextExecutionTime(now)
-        // Not sure if this is necessary, but we have seen newNextTime could be null from UT runs
+        // TODO SM Not sure if this is necessary, but we have seen newNextTime could be null from UT runs
         if (newNextTime == null) {
             log.warn("Calculated new next exeuction time is null, we will retry the calculation in the next job run.")
             UpdateNextExecutionTimeResult(false, metadataBuilder)
