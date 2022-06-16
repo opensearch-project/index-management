@@ -27,7 +27,6 @@ import org.opensearch.indexmanagement.opensearchapi.optionalUserField
 import org.opensearch.indexmanagement.snapshotmanagement.smPolicyNameToMetadataId
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy.DeleteCondition.Companion.DEFAULT_DELETE_CONDITION
 import org.opensearch.indexmanagement.snapshotmanagement.smDocIdToPolicyName
-import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ActionTimeout
 import org.opensearch.indexmanagement.util.IndexUtils
 import org.opensearch.jobscheduler.spi.ScheduledJobParameter
 import org.opensearch.jobscheduler.spi.schedule.CronSchedule
