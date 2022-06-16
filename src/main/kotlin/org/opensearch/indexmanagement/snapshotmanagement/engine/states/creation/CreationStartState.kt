@@ -14,7 +14,7 @@ import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata
 
 object CreationStartState : State {
 
-    override val continuous: Boolean = false
+    override val continuous: Boolean = true
 
     override suspend fun execute(context: SMStateMachine): SMResult {
         val metadataToSave = SMMetadata.Builder(context.metadata)

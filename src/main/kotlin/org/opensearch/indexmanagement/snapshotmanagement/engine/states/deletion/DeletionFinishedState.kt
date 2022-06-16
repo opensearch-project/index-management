@@ -18,6 +18,7 @@ import org.opensearch.indexmanagement.snapshotmanagement.tryUpdatingNextExecutio
 import java.time.Instant
 
 object DeletionFinishedState : State {
+
     override val continuous = true
 
     override suspend fun execute(context: SMStateMachine): SMResult {

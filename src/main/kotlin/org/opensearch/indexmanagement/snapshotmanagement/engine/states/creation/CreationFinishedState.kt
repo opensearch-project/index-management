@@ -18,6 +18,7 @@ import org.opensearch.snapshots.SnapshotState
 import java.time.Instant
 
 object CreationFinishedState : State {
+
     override val continuous = true
 
     override suspend fun execute(context: SMStateMachine): SMResult {

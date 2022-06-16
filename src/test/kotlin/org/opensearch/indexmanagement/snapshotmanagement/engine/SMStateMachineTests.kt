@@ -15,6 +15,7 @@ import org.opensearch.indexmanagement.ClientMockTestCase
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.SMState
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.creationTransitions
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.deletionTransitions
+import org.opensearch.indexmanagement.snapshotmanagement.mockCreateSnapshotResponse
 import org.opensearch.indexmanagement.snapshotmanagement.mockGetSnapshotResponse
 import org.opensearch.indexmanagement.snapshotmanagement.mockSnapshotInfo
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata
@@ -26,8 +27,11 @@ import java.time.Instant.now
 class SMStateMachineTests : ClientMockTestCase() {
 
     fun `test sm result Next save the current state`() = runBlocking {
-        val currentState = SMState.CREATION_FINISHED
+        val currentState = SMState.CREATION_CONDITION_MET
         val nextStates = creationTransitions[currentState]
+        mockGetSnapshotsCall(response = mockGetSnapshotResponse(0))
+        mockCreateSnapshotCall(response = mockCreateSnapshotResponse())
+
         val metadata = randomSMMetadata(
             creationCurrentState = currentState
         )

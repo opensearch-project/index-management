@@ -294,7 +294,6 @@ fun validateSMPolicyName(policyName: String) {
     val errorMessages: MutableList<String> = mutableListOf()
     if (policyName.isEmpty()) {
         errorMessages.add("Policy name cannot be empty.")
-        throw IllegalArgumentException()
     }
     if (policyName.contains(" ")) {
         errorMessages.add("Policy name must not contain whitespace.")
@@ -305,7 +304,7 @@ fun validateSMPolicyName(policyName: String) {
     if (policyName.contains("#")) {
         errorMessages.add("Policy name must not contain '#'.")
     }
-    if (policyName[0] == '_') {
+    if (policyName.startsWith("_")) {
         errorMessages.add("Policy name must not start with '_'.")
     }
     if (policyName.lowercase(Locale.ROOT) != policyName) {

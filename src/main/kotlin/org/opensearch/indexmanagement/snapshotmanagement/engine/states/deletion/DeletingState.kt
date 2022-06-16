@@ -24,7 +24,7 @@ import java.time.Instant.now
 
 object DeletingState : State {
 
-    override val continuous: Boolean = true
+    override val continuous: Boolean = false
 
     override suspend fun execute(context: SMStateMachine): SMResult {
         val client = context.client
