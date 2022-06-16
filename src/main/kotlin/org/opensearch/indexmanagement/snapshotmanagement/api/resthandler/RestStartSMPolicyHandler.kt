@@ -11,7 +11,7 @@ import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.SM_POLICIE
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.SMActions
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.start.StartSMRequest
 import org.opensearch.indexmanagement.snapshotmanagement.smPolicyNameToDocId
-import org.opensearch.indexmanagement.snapshotmanagement.util.getNonEmptySMPolicyName
+import org.opensearch.indexmanagement.snapshotmanagement.util.getValidSMPolicyName
 import org.opensearch.rest.BaseRestHandler
 import org.opensearch.rest.RestHandler.Route
 import org.opensearch.rest.RestRequest
@@ -22,7 +22,7 @@ class RestStartSMPolicyHandler : BaseRestHandler() {
     private val log = LogManager.getLogger(RestStartSMPolicyHandler::class.java)
 
     override fun getName(): String {
-        return "snapshot_management_start_rest_handler"
+        return "snapshot_management_start_policy_rest_handler"
     }
 
     override fun routes(): List<Route> {
@@ -32,7 +32,7 @@ class RestStartSMPolicyHandler : BaseRestHandler() {
     }
 
     override fun prepareRequest(request: RestRequest, client: NodeClient): RestChannelConsumer {
-        val policyName = request.getNonEmptySMPolicyName()
+        val policyName = request.getValidSMPolicyName()
         log.debug("Start snapshot management policy request received with policy name [$policyName]")
 
         val indexReq = StartSMRequest(smPolicyNameToDocId(policyName))

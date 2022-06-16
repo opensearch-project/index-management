@@ -126,7 +126,7 @@ import org.opensearch.indexmanagement.snapshotmanagement.api.transport.get.Trans
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.index.TransportIndexSMPolicyAction
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.start.TransportStartSMAction
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.stop.TransportStopSMAction
-import org.opensearch.indexmanagement.snapshotmanagement.engine.SMRunner
+import org.opensearch.indexmanagement.snapshotmanagement.SMRunner
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy
 import org.opensearch.indexmanagement.spi.IndexManagementExtension
@@ -231,7 +231,6 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
     @Suppress("ComplexMethod")
     override fun getJobParser(): ScheduledJobParser {
         return ScheduledJobParser { xcp, id, jobDocVersion ->
-            log.info("sm dev: plugin job parser")
             ensureExpectedToken(Token.START_OBJECT, xcp.nextToken(), xcp)
             while (xcp.nextToken() != Token.END_OBJECT) {
                 val fieldName = xcp.currentName()

@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.indexmanagement.snapshotmanagement.engine
+package org.opensearch.indexmanagement.snapshotmanagement
 
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
@@ -11,17 +11,17 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import org.apache.logging.log4j.LogManager
-import org.opensearch.OpenSearchStatusException
 import org.opensearch.action.bulk.BackoffPolicy
 import org.opensearch.client.Client
 import org.opensearch.common.unit.TimeValue
+import org.opensearch.indexmanagement.snapshotmanagement.engine.SMStateMachine
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.SMState
-import org.opensearch.indexmanagement.snapshotmanagement.getSMMetadata
-import org.opensearch.indexmanagement.snapshotmanagement.indexMetadata
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata
-import org.opensearch.indexmanagement.snapshotmanagement.smDocIdToPolicyName
-import org.opensearch.indexmanagement.snapshotmanagement.smPolicyNameToMetadataId
+import org.opensearch.OpenSearchStatusException
+import org.opensearch.index.seqno.SequenceNumbers
+import org.opensearch.indexmanagement.snapshotmanagement.engine.states.creationTransitions
+import org.opensearch.indexmanagement.snapshotmanagement.engine.states.deletionTransitions
 import org.opensearch.indexmanagement.util.acquireLockForScheduledJob
 import org.opensearch.indexmanagement.util.releaseLockForScheduledJob
 import org.opensearch.jobscheduler.spi.JobExecutionContext
@@ -61,16 +61,28 @@ object SMRunner :
                 return@launch
             }
 
-            var metadata = try {
+            val metadata = try {
                 client.getSMMetadata(job.id)
             } catch (e: OpenSearchStatusException) {
                 initMetadata(job) ?: return@launch
             }
 
-            // TODO SM state machine logic
+            // creation, deletion workflow have to be executed sequentially,
+            // because they are sharing the same metadata document.
+            SMStateMachine(client, job, metadata)
+                .handlePolicyChange()
+                .currentState(metadata.creation.currentState)
+                .next(creationTransitions)
+                .apply {
+                    val deleteMetadata = metadata.deletion
+                    if (deleteMetadata != null) {
+                        this.currentState(deleteMetadata.currentState)
+                            .next(deletionTransitions)
+                    }
+                }
 
             if (!releaseLockForScheduledJob(context, lock)) {
-                log.debug("Could not release lock [${lock.lockId}] for ${job.id}.")
+                log.error("Could not release lock [${lock.lockId}] for ${job.id}.")
             }
         }
     }
@@ -85,7 +97,7 @@ object SMRunner :
         log.info("Initializing metadata [$initMetadata] for job [${job.id}].")
         try {
             // TODO SM more granular error checking
-            val res = client.indexMetadata(initMetadata, job.id, create = true)
+            val res = client.indexMetadata(initMetadata, job.id, create = true, seqNo = SequenceNumbers.UNASSIGNED_SEQ_NO, primaryTerm = SequenceNumbers.UNASSIGNED_PRIMARY_TERM)
             if (res.status() != RestStatus.CREATED) {
                 log.error("Metadata initialization response status is ${res.status()}, expecting CREATED 201.")
                 return null
@@ -98,21 +110,25 @@ object SMRunner :
     }
 
     private fun getInitialMetadata(job: SMPolicy): SMMetadata {
+        val now = now()
         return SMMetadata(
             id = smPolicyNameToMetadataId(smDocIdToPolicyName(job.id)),
             policySeqNo = job.seqNo,
             policyPrimaryTerm = job.primaryTerm,
-            currentState = SMState.START,
-            creation = SMMetadata.Creation(
+            creation = SMMetadata.WorkflowMetadata(
+                SMState.CREATION_START,
                 SMMetadata.Trigger(
-                    time = job.creation.schedule.getNextExecutionTime(now())
+                    time = job.creation.schedule.getNextExecutionTime(now)
                 )
             ),
-            deletion = SMMetadata.Deletion(
-                SMMetadata.Trigger(
-                    time = job.deletion.schedule.getNextExecutionTime(now())
+            deletion = job.deletion?.let {
+                SMMetadata.WorkflowMetadata(
+                    SMState.DELETION_START,
+                    SMMetadata.Trigger(
+                        time = job.deletion.schedule.getNextExecutionTime(now)
+                    )
                 )
-            ),
+            },
         )
     }
 }

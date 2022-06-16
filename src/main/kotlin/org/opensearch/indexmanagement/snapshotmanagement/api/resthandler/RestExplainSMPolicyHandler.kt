@@ -22,7 +22,7 @@ class RestExplainSMPolicyHandler : BaseRestHandler() {
     private val log = LogManager.getLogger(RestExplainSMPolicyHandler::class.java)
 
     override fun getName(): String {
-        return "snapshot_management_explain_rest_handler"
+        return "snapshot_management_explain_policy_rest_handler"
     }
 
     override fun routes(): List<Route> {

@@ -13,6 +13,7 @@ import org.opensearch.common.xcontent.ToXContentObject
 import org.opensearch.common.xcontent.XContentBuilder
 import org.opensearch.indexmanagement.indexstatemanagement.util.XCONTENT_WITHOUT_TYPE_AND_USER
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy
+import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy.Companion.SM_TYPE
 import org.opensearch.indexmanagement.util._ID
 import org.opensearch.indexmanagement.util._PRIMARY_TERM
 import org.opensearch.indexmanagement.util._SEQ_NO
@@ -48,7 +49,7 @@ class GetSMPolicyResponse(
             .field(_VERSION, version)
             .field(_SEQ_NO, seqNo)
             .field(_PRIMARY_TERM, primaryTerm)
-            .field(SMPolicy.SM_TYPE, policy, XCONTENT_WITHOUT_TYPE_AND_USER)
+            .field(SM_TYPE, policy, XCONTENT_WITHOUT_TYPE_AND_USER)
         return builder.endObject()
     }
 }

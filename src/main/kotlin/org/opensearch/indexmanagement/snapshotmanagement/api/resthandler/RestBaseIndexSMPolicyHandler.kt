@@ -15,7 +15,7 @@ import org.opensearch.indexmanagement.snapshotmanagement.api.transport.index.Ind
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.index.IndexSMPolicyResponse
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy
 import org.opensearch.indexmanagement.snapshotmanagement.smPolicyNameToDocId
-import org.opensearch.indexmanagement.snapshotmanagement.util.getNonEmptySMPolicyName
+import org.opensearch.indexmanagement.snapshotmanagement.util.getValidSMPolicyName
 import org.opensearch.indexmanagement.util.IF_PRIMARY_TERM
 import org.opensearch.indexmanagement.util.IF_SEQ_NO
 import org.opensearch.indexmanagement.util.REFRESH
@@ -30,8 +30,7 @@ import java.time.Instant
 abstract class RestBaseIndexSMPolicyHandler : BaseRestHandler() {
 
     protected fun prepareIndexRequest(request: RestRequest, client: NodeClient, create: Boolean): RestChannelConsumer {
-        val policyName = request.getNonEmptySMPolicyName()
-        // TODO validate policy name validateGeneratedSnapshotName
+        val policyName = request.getValidSMPolicyName()
 
         val seqNo = request.paramAsLong(IF_SEQ_NO, SequenceNumbers.UNASSIGNED_SEQ_NO)
         val primaryTerm = request.paramAsLong(IF_PRIMARY_TERM, SequenceNumbers.UNASSIGNED_PRIMARY_TERM)

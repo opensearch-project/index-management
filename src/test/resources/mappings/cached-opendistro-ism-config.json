@@ -1333,7 +1333,7 @@
                 }
               }
             },
-            "timeout": {
+            "time_limit": {
               "type": "keyword"
             }
           }
@@ -1357,7 +1357,7 @@
                 }
               }
             },
-            "timeout": {
+            "time_limit": {
               "type": "keyword"
             },
             "condition": {
@@ -1403,19 +1403,6 @@
                 "start_time": {
                   "type": "date",
                   "format": "strict_date_time||epoch_millis"
-                },
-                "schedule_delay": {
-                  "type": "long"
-                }
-              }
-            },
-            "cron": {
-              "properties": {
-                "expression": {
-                  "type": "keyword"
-                },
-                "timezone": {
-                  "type": "keyword"
                 },
                 "schedule_delay": {
                   "type": "long"
@@ -1477,12 +1464,11 @@
         "current_state": {
           "type": "keyword"
         },
-        "info": {
-          "type": "object",
-          "enabled": false
-        },
         "creation": {
           "properties": {
+            "current_state": {
+              "type": "keyword"
+            },
             "trigger": {
               "properties": {
                 "time": {
@@ -1492,32 +1478,37 @@
               }
             },
             "started": {
+              "type": "keyword"
+            },
+            "latest_execution": {
               "properties": {
-                "name": {
+                "status": {
                   "type": "keyword"
                 },
-                "started_time": {
+                "start_time": {
                   "type": "date",
                   "format": "strict_date_time||epoch_millis"
                 },
                 "end_time": {
                   "type": "date",
                   "format": "strict_date_time||epoch_millis"
+                },
+                "info": {
+                  "properties": {
+                    "message": {
+                      "type": "text"
+                    },
+                    "cause": {
+                      "type": "text"
+                    }
+                  }
                 }
               }
             },
-            "finished": {
+            "retry": {
               "properties": {
-                "name": {
-                  "type": "keyword"
-                },
-                "started_time": {
-                  "type": "date",
-                  "format": "strict_date_time||epoch_millis"
-                },
-                "end_time": {
-                  "type": "date",
-                  "format": "strict_date_time||epoch_millis"
+                "count": {
+                  "type": "integer"
                 }
               }
             }
@@ -1525,6 +1516,9 @@
         },
         "deletion": {
           "properties": {
+            "current_state": {
+              "type": "keyword"
+            },
             "trigger": {
               "properties": {
                 "time": {
@@ -1534,18 +1528,37 @@
               }
             },
             "started": {
-              "type": "nested",
+              "type": "keyword"
+            },
+            "latest_execution": {
               "properties": {
-                "name": {
+                "status": {
                   "type": "keyword"
                 },
-                "started_time": {
+                "start_time": {
                   "type": "date",
                   "format": "strict_date_time||epoch_millis"
                 },
                 "end_time": {
                   "type": "date",
                   "format": "strict_date_time||epoch_millis"
+                },
+                "info": {
+                  "properties": {
+                    "message": {
+                      "type": "text"
+                    },
+                    "cause": {
+                      "type": "text"
+                    }
+                  }
+                }
+              }
+            },
+            "retry": {
+              "properties": {
+                "count": {
+                  "type": "integer"
                 }
               }
             }

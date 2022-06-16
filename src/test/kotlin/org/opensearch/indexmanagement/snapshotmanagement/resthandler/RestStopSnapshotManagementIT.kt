@@ -51,7 +51,7 @@ class RestStopSnapshotManagementIT : SnapshotManagementRestTestCase() {
         }
         // Test with a nonexistent ID
         try {
-            client().makeRequest("POST", "${IndexManagementPlugin.SM_POLICIES_URI}/${randomAlphaOfLength(20)}/_stop")
+            client().makeRequest("POST", "${IndexManagementPlugin.SM_POLICIES_URI}/${randomAlphaOfLength(20).lowercase()}/_stop")
             fail("Expected NOT_FOUND response")
         } catch (e: ResponseException) {
             assertEquals("Unexpected status", RestStatus.NOT_FOUND, e.response.restStatus())

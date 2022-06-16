@@ -13,6 +13,7 @@ import org.opensearch.common.xcontent.ToXContentObject
 import org.opensearch.common.xcontent.XContentBuilder
 import org.opensearch.indexmanagement.opensearchapi.readOptionalValue
 import org.opensearch.indexmanagement.snapshotmanagement.model.ExplainSMPolicy
+import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy
 import java.io.IOException
 
 class ExplainSMPolicyResponse : ActionResponse, ToXContentObject {
@@ -51,13 +52,16 @@ class ExplainSMPolicyResponse : ActionResponse, ToXContentObject {
     @Throws(IOException::class)
     override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
         return builder.startObject()
-            .startObject(SM_POLICIES_FIELD)
+            .startArray(SM_POLICIES_FIELD)
             .also {
                 policiesToExplain.entries.forEach { (name, explain) ->
-                    it.field(name, explain)
+                    it.startObject().apply {
+                        this.field(SMPolicy.NAME_FIELD, name)
+                        explain?.toXContent(this, params)
+                    }.endObject()
                 }
             }
-            .endObject()
+            .endArray()
             .endObject()
     }
 

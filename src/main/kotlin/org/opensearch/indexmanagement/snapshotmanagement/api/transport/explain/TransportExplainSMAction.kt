@@ -1,7 +1,6 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
- *
  */
 
 package org.opensearch.indexmanagement.snapshotmanagement.api.transport.explain
@@ -172,6 +171,7 @@ class TransportExplainSMAction @Inject constructor(
         val policiesToExplain = namesToEnabled.entries.associate { (policyName, enabled) ->
             policyName to ExplainSMPolicy(namesToMetadata[policyName], enabled)
         }
+        log.info("sm dev: explain response $policiesToExplain")
         return ExplainSMPolicyResponse(policiesToExplain)
     }
 }

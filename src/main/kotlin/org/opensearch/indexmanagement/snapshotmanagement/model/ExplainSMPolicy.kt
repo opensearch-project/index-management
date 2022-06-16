@@ -9,7 +9,7 @@ import org.opensearch.common.io.stream.StreamInput
 import org.opensearch.common.io.stream.StreamOutput
 import org.opensearch.common.io.stream.Writeable
 import org.opensearch.common.xcontent.ToXContent
-import org.opensearch.common.xcontent.ToXContentObject
+import org.opensearch.common.xcontent.ToXContentFragment
 import org.opensearch.common.xcontent.XContentBuilder
 import org.opensearch.indexmanagement.opensearchapi.optionalField
 import java.io.IOException
@@ -17,7 +17,7 @@ import java.io.IOException
 data class ExplainSMPolicy(
     val metadata: SMMetadata? = null,
     val enabled: Boolean? = null
-) : ToXContentObject, Writeable {
+) : ToXContentFragment, Writeable {
 
     @Throws(IOException::class)
     constructor(sin: StreamInput) : this(
@@ -34,16 +34,13 @@ data class ExplainSMPolicy(
 
     @Throws(IOException::class)
     override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
-        builder.startObject()
         metadata?.let {
-            builder.field(SMMetadata.POLICY_SEQ_NO_FIELD, it.policySeqNo)
-                .field(SMMetadata.POLICY_PRIMARY_TERM_FIELD, it.policyPrimaryTerm)
-                .field(SMMetadata.CURRENT_STATE_FIELD, it.currentState.toString())
+            builder
                 .field(SMMetadata.CREATION_FIELD, it.creation)
-                .field(SMMetadata.DELETION_FIELD, it.deletion)
-                .optionalField(SMMetadata.INFO_FIELD, it.info)
+                .optionalField(SMMetadata.DELETION_FIELD, it.deletion)
+                .field(SMMetadata.POLICY_SEQ_NO_FIELD, it.policySeqNo)
+                .field(SMMetadata.POLICY_PRIMARY_TERM_FIELD, it.policyPrimaryTerm)
         }
         return builder.field(SMPolicy.ENABLED_FIELD, enabled)
-            .endObject()
     }
 }

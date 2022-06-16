@@ -13,7 +13,7 @@ import org.opensearch.rest.RestRequest
 class RestUpdateSMPolicyHandler : RestBaseIndexSMPolicyHandler() {
 
     override fun getName(): String {
-        return "snapshot_management_update_rest_handler"
+        return "snapshot_management_update_policy_rest_handler"
     }
 
     override fun routes(): List<Route> {

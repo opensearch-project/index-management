@@ -46,8 +46,9 @@ class TransportIndexSMPolicyAction @Inject constructor(
         val indexReq = request.index(INDEX_MANAGEMENT_INDEX)
             .source(policy.toXContent(XContentFactory.jsonBuilder(), ToXContent.EMPTY_PARAMS))
             .id(policy.id)
+            .routing(policy.id)
         val indexRes: IndexResponse = client.suspendUntil { index(indexReq, it) }
-        log.info("Index SM policy response: $indexRes")
+        log.info("sm dev: Index SM policy response: $indexRes")
 
         return IndexSMPolicyResponse(indexRes.id, indexRes.version, indexRes.seqNo, indexRes.primaryTerm, policy, indexRes.status())
     }

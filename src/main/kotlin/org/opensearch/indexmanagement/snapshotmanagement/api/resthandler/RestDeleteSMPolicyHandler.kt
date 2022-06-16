@@ -20,7 +20,7 @@ import org.opensearch.rest.action.RestToXContentListener
 class RestDeleteSMPolicyHandler : BaseRestHandler() {
 
     override fun getName(): String {
-        return "snapshot_management_delete_rest_handler"
+        return "snapshot_management_delete_policy_rest_handler"
     }
 
     override fun routes(): List<Route> {
