@@ -10,6 +10,7 @@ import org.opensearch.common.io.stream.StreamInput
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.explain.ExplainSMPolicyResponse
 import org.opensearch.indexmanagement.snapshotmanagement.model.ExplainSMPolicy
 import org.opensearch.test.OpenSearchTestCase
+import kotlin.test.assertFailsWith
 
 class SMUtilsTests : OpenSearchTestCase() {
     fun `test sm policy name and id conversion`() {
@@ -25,6 +26,13 @@ class SMUtilsTests : OpenSearchTestCase() {
     fun `test snapshot name date_format`() {
         val timeStr = generateFormatTime("")
         assertEquals("Generate time string", "invalid_date_format", timeStr)
+    }
+
+    fun `test valid policy name`() {
+        val policyName = "bowen #"
+        assertFailsWith<IllegalArgumentException> {
+            validateSMPolicyName(policyName)
+        }
     }
 
     fun `test parse metadata in explain response`() {

@@ -135,7 +135,7 @@ suspend fun Client.indexMetadata(
 }
 
 fun generateSnapshotName(policy: SMPolicy): String {
-    var result: String = smDocIdToPolicyName(policy.id)
+    var result: String = policy.policyName
     if (policy.snapshotConfig[DATE_FORMAT_FIELD] != null) {
         val dateFormat = generateFormatTime(policy.snapshotConfig[DATE_FORMAT_FIELD] as String)
         result += "-$dateFormat"
@@ -145,8 +145,7 @@ fun generateSnapshotName(policy: SMPolicy): String {
 
 fun getRandomString(length: Int): String {
     val allowedChars = ('a'..'z') + ('0'..'9')
-    return (1..length)
-        .map { allowedChars.random() }
+    return List(length) { allowedChars.random() }
         .joinToString("")
 }
 
@@ -167,14 +166,11 @@ fun preFixTimeStamp(msg: String?): String {
 }
 
 fun addSMPolicyInSnapshotMetadata(snapshotConfig: Map<String, Any>, policyName: String): Map<String, Any> {
-    var snapshotMetadata = snapshotConfig["metadata"]
+    var snapshotMetadata = snapshotConfig["metadata"] as MutableMap<String, String>?
     if (snapshotMetadata != null) {
-        snapshotMetadata as Map<String, String>
-        snapshotMetadata = snapshotMetadata.toMutableMap()
         snapshotMetadata[SM_TYPE] = policyName
-        log.info("sm dev metadata with sm policy $snapshotMetadata")
     } else {
-        snapshotMetadata = mapOf(SM_TYPE to policyName)
+        snapshotMetadata = mutableMapOf(SM_TYPE to policyName)
     }
     val snapshotConfigWithSMPolicyMetadata = snapshotConfig.toMutableMap()
     snapshotConfigWithSMPolicyMetadata["metadata"] = snapshotMetadata
@@ -234,7 +230,6 @@ private fun handleGetSnapshotsException(
     exceptionMsg: String,
 ): GetSnapshotsResult {
     return if (ex is SnapshotMissingException) {
-        log.info("sm dev get snapshot missing exception")
         snapshotMissingMsg?.let { log.warn(snapshotMissingMsg) }
         GetSnapshotsResult(emptyList(), metadataBuilder, false)
     } else {
@@ -263,7 +258,7 @@ fun tryUpdatingNextExecutionTime(
 ): UpdateNextExecutionTimeResult {
     val now = Instant.now()
     return if (!now.isBefore(nextTime)) {
-        log.info("sm dev: Current time [${Instant.now()}] has passed nextExecutionTime [$nextTime]")
+        log.info("Current time [${Instant.now()}] has passed nextExecutionTime [$nextTime].")
         val newNextTime = schedule.getNextExecutionTime(now)
         // Not sure if this is necessary, but we have seen newNextTime could be null from UT runs
         if (newNextTime == null) {
@@ -280,7 +275,7 @@ fun tryUpdatingNextExecutionTime(
         }
         UpdateNextExecutionTimeResult(true, metadataBuilder)
     } else {
-        log.info("sm dev: Current time [${Instant.now()}] has not passed nextExecutionTime [$nextTime]")
+        log.debug("Current time [${Instant.now()}] has not passed nextExecutionTime [$nextTime]")
         // TODO SM dynamically update job start_time to avoid unnecessary job runs
         UpdateNextExecutionTimeResult(false, metadataBuilder)
     }
@@ -296,28 +291,33 @@ data class UpdateNextExecutionTimeResult(
  * so it conforms to snapshot name format validated in [SnapshotsService]
  */
 fun validateSMPolicyName(policyName: String) {
+    val errorMessages: MutableList<String> = mutableListOf()
     if (policyName.isEmpty()) {
-        throw IllegalArgumentException("Policy name cannot be empty")
+        errorMessages.add("Policy name cannot be empty.")
+        throw IllegalArgumentException()
     }
     if (policyName.contains(" ")) {
-        throw IllegalArgumentException("Policy name must not contain whitespace")
+        errorMessages.add("Policy name must not contain whitespace.")
     }
     if (policyName.contains(",")) {
-        throw IllegalArgumentException("Policy name must not contain ','")
+        errorMessages.add("Policy name must not contain ','.")
     }
     if (policyName.contains("#")) {
-        throw IllegalArgumentException("Policy name must not contain '#'")
+        errorMessages.add("Policy name must not contain '#'.")
     }
     if (policyName[0] == '_') {
-        throw IllegalArgumentException("Policy name must not start with '_'")
+        errorMessages.add("Policy name must not start with '_'.")
     }
     if (policyName.lowercase(Locale.ROOT) != policyName) {
-        throw IllegalArgumentException("Policy name must be lowercase")
+        errorMessages.add("Policy name must be lowercase.")
     }
     if (!Strings.validFileName(policyName)) {
-        throw IllegalArgumentException(
-            "Policy name must not contain the following characters " + Strings.INVALID_FILENAME_CHARS
+        errorMessages.add(
+            "Policy name must not contain the following characters " + Strings.INVALID_FILENAME_CHARS + "."
         )
+    }
+    if (errorMessages.isNotEmpty()) {
+        throw IllegalArgumentException(errorMessages.joinToString(separator = "\n"))
     }
 }
 

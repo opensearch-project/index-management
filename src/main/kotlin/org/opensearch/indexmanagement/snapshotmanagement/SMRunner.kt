@@ -67,6 +67,8 @@ object SMRunner :
                 initMetadata(job) ?: return@launch
             }
 
+            // creation, deletion workflow have to be executed sequentially,
+            // because they are sharing the same metadata document.
             SMStateMachine(client, job, metadata)
                 .handlePolicyChange()
                 .currentState(metadata.creation.currentState)
@@ -80,7 +82,7 @@ object SMRunner :
                 }
 
             if (!releaseLockForScheduledJob(context, lock)) {
-                log.debug("Could not release lock [${lock.lockId}] for ${job.id}.")
+                log.error("Could not release lock [${lock.lockId}] for ${job.id}.")
             }
         }
     }

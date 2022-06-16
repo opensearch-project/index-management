@@ -73,13 +73,7 @@ class SMStateMachine(
                         }
                     }
                 }
-
-                if (result !is SMResult.Next) {
-                    // Only Next result requires checking the continuous flag and
-                    //  continue to execute next vertical state
-                    break
-                }
-            } while (currentState.instance.continuous)
+            } while (currentState.instance.continuous && result is SMResult.Next)
         } catch (ex: Exception) {
             if (ex is SnapshotManagementException &&
                 ex.exKey == ExceptionKey.METADATA_INDEXING_FAILURE
@@ -92,8 +86,7 @@ class SMStateMachine(
         return this
     }
 
-    private fun handleRetry(result: SMResult, prevState: SMState): SMMetadata.Builder {
-        result as SMResult.Fail
+    private fun handleRetry(result: SMResult.Fail, prevState: SMState): SMMetadata.Builder {
         val metadataBuilder = result.metadataToSave.setCurrentState(prevState)
         val metadata = result.metadataToSave.build()
         val retry = when (result.workflowType) {
@@ -118,7 +111,6 @@ class SMStateMachine(
                 log.warn(errorMessage)
                 metadataBuilder.setLatestExecution(
                     status = SMMetadata.LatestExecution.Status.FAILED,
-                    cause = errorMessage,
                     endTime = now()
                 ).resetWorkflow()
             }
