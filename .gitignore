@@ -12,3 +12,5 @@ http
 .settings
 src/test/resources/job-scheduler/
 src/test/resources/bwc/
+bin/
+spi/bin/

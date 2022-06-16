@@ -15,6 +15,7 @@ import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata.Workfl
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy
 import org.opensearch.indexmanagement.snapshotmanagement.randomSMPolicy
 import org.opensearch.indexmanagement.waitFor
+import org.opensearch.jobscheduler.spi.schedule.CronSchedule
 import org.opensearch.jobscheduler.spi.schedule.IntervalSchedule
 import org.opensearch.rest.RestStatus
 import java.time.Instant.now
@@ -66,7 +67,16 @@ class RestExplainSnapshotManagementIT : SnapshotManagementRestTestCase() {
     }
 
     fun `test explain all with list of policy names`() {
-        val smPolicies = randomList(2, 3) { createSMPolicy(randomSMPolicy(jobEnabled = true)) }
+        // TODO flaky there are some type of random cron schedule that will cause nextExecutionTime to return null
+        val smPolicies = randomList(2, 3) {
+            createSMPolicy(
+                randomSMPolicy(
+                    jobEnabled = true,
+                    creationSchedule = CronSchedule("* * * * *", randomZone()),
+                    deletionSchedule = CronSchedule("* * * * *", randomZone()),
+                )
+            )
+        }
         // if this proves to be flaky, just index the metadata directly instead of executing to generate metadata
         smPolicies.forEach { updateSMPolicyStartTime(it) }
         waitFor {
@@ -88,7 +98,16 @@ class RestExplainSnapshotManagementIT : SnapshotManagementRestTestCase() {
     }
 
     fun `test explain all with empty policy name`() {
-        val smPolicies = randomList(2, 3) { createSMPolicy(randomSMPolicy(jobEnabled = true)) }
+        // TODO flaky there are some type of random cron schedule that will cause nextExecutionTime to return null
+        val smPolicies = randomList(2, 3) {
+            createSMPolicy(
+                randomSMPolicy(
+                    jobEnabled = true,
+                    creationSchedule = CronSchedule("* * * * *", randomZone()),
+                    deletionSchedule = CronSchedule("* * * * *", randomZone()),
+                )
+            )
+        }
         // if this proves to be flaky, just index the metadata directly instead of executing to generate metadata
         smPolicies.forEach { updateSMPolicyStartTime(it) }
         waitFor {
