@@ -19,10 +19,10 @@ import org.opensearch.commons.authuser.User
 import org.opensearch.index.IndexNotFoundException
 import org.opensearch.indexmanagement.IndexManagementPlugin
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
-import org.opensearch.indexmanagement.settings.IndexManagementSettings
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.BaseTransportAction
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.SMActions.GET_SM_POLICY_ACTION_NAME
 import org.opensearch.indexmanagement.snapshotmanagement.parseSMPolicy
+import org.opensearch.indexmanagement.snapshotmanagement.settings.SnapshotManagementSettings.Companion.FILTER_BY_BACKEND_ROLES
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.verifyUserHasPermissionForResource
 import org.opensearch.rest.RestStatus
 import org.opensearch.transport.TransportService
@@ -39,10 +39,10 @@ class TransportGetSMPolicyAction @Inject constructor(
 
     private val log = LogManager.getLogger(javaClass)
 
-    @Volatile private var filterByEnabled = IndexManagementSettings.FILTER_BY_BACKEND_ROLES.get(settings)
+    @Volatile private var filterByEnabled = FILTER_BY_BACKEND_ROLES.get(settings)
 
     init {
-        clusterService.clusterSettings.addSettingsUpdateConsumer(IndexManagementSettings.FILTER_BY_BACKEND_ROLES) {
+        clusterService.clusterSettings.addSettingsUpdateConsumer(FILTER_BY_BACKEND_ROLES) {
             filterByEnabled = it
         }
     }

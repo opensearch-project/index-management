@@ -26,10 +26,10 @@ import org.opensearch.indexmanagement.common.model.rest.SearchParams
 import org.opensearch.indexmanagement.opensearchapi.contentParser
 import org.opensearch.indexmanagement.opensearchapi.parseWithType
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
-import org.opensearch.indexmanagement.settings.IndexManagementSettings
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.BaseTransportAction
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.SMActions.GET_SM_POLICIES_ACTION_NAME
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy
+import org.opensearch.indexmanagement.snapshotmanagement.settings.SnapshotManagementSettings.Companion.FILTER_BY_BACKEND_ROLES
 import org.opensearch.indexmanagement.snapshotmanagement.util.SM_POLICY_NAME_KEYWORD
 import org.opensearch.indexmanagement.util.SecurityUtils
 import org.opensearch.rest.RestStatus
@@ -48,10 +48,10 @@ class TransportGetSMPoliciesAction @Inject constructor(
 
     private val log = LogManager.getLogger(javaClass)
 
-    @Volatile private var filterByEnabled = IndexManagementSettings.FILTER_BY_BACKEND_ROLES.get(settings)
+    @Volatile private var filterByEnabled = FILTER_BY_BACKEND_ROLES.get(settings)
 
     init {
-        clusterService.clusterSettings.addSettingsUpdateConsumer(IndexManagementSettings.FILTER_BY_BACKEND_ROLES) {
+        clusterService.clusterSettings.addSettingsUpdateConsumer(FILTER_BY_BACKEND_ROLES) {
             filterByEnabled = it
         }
     }
