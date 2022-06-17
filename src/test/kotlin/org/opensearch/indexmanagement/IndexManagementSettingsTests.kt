@@ -12,6 +12,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.settings.LegacyOpenDi
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings
 import org.opensearch.indexmanagement.rollup.settings.LegacyOpenDistroRollupSettings
 import org.opensearch.indexmanagement.rollup.settings.RollupSettings
+import org.opensearch.indexmanagement.snapshotmanagement.settings.SnapshotManagementSettings
 import org.opensearch.test.OpenSearchTestCase
 
 class IndexManagementSettingsTests : OpenSearchTestCase() {
@@ -91,7 +92,8 @@ class IndexManagementSettingsTests : OpenSearchTestCase() {
                     RollupSettings.ROLLUP_ENABLED,
                     RollupSettings.ROLLUP_SEARCH_ENABLED,
                     RollupSettings.ROLLUP_SEARCH_ALL_JOBS,
-                    RollupSettings.ROLLUP_DASHBOARDS
+                    RollupSettings.ROLLUP_DASHBOARDS,
+                    SnapshotManagementSettings.FILTER_BY_BACKEND_ROLES
                 )
             )
         )

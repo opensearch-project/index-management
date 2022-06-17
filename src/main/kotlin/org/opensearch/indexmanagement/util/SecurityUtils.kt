@@ -127,6 +127,7 @@ class SecurityUtils {
         /**
          * Check if the requested user has permission on the resource
          */
+        @Suppress("ComplexCondition")
         fun userHasPermissionForResource(
             requestedUser: User?,
             resourceUser: User?,
