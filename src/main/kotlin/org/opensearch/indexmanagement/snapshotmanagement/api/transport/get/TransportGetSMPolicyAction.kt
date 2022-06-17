@@ -68,6 +68,7 @@ class TransportGetSMPolicyAction @Inject constructor(
             throw OpenSearchStatusException("Snapshot management policy not found", RestStatus.INTERNAL_SERVER_ERROR)
         }
 
+        // Check if the requested user has permission on the resource, throwing an exception if the user does not
         verifyUserHasPermissionForResource(user, smPolicy.user, filterByEnabled, "snapshot management policy", smPolicy.name)
 
         log.info("sm dev: Parsed SM policy: $smPolicy")

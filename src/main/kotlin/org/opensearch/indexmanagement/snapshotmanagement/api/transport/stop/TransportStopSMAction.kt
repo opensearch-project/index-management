@@ -58,6 +58,7 @@ class TransportStopSMAction @Inject constructor(
     ): AcknowledgedResponse {
         val smPolicy = client.getSMPolicy(request.id())
 
+        // Check if the requested user has permission on the resource, throwing an exception if the user does not
         verifyUserHasPermissionForResource(user, smPolicy.user, filterByEnabled, "snapshot management policy", smPolicy.name)
 
         if (!smPolicy.jobEnabled) {
