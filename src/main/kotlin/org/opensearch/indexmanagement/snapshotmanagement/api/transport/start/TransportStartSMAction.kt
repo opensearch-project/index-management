@@ -59,7 +59,7 @@ class TransportStartSMAction @Inject constructor(
         val smPolicy = client.getSMPolicy(request.id())
 
         // Check if the requested user has permission on the resource, throwing an exception if the user does not
-        verifyUserHasPermissionForResource(user, smPolicy.user, filterByEnabled, "snapshot management policy", smPolicy.name)
+        verifyUserHasPermissionForResource(user, smPolicy.user, filterByEnabled, "snapshot management policy", smPolicy.policyName)
 
         if (smPolicy.jobEnabled) {
             log.debug("Snapshot management policy is already enabled")

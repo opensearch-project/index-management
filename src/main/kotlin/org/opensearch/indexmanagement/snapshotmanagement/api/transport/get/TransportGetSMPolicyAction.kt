@@ -69,7 +69,7 @@ class TransportGetSMPolicyAction @Inject constructor(
         }
 
         // Check if the requested user has permission on the resource, throwing an exception if the user does not
-        verifyUserHasPermissionForResource(user, smPolicy.user, filterByEnabled, "snapshot management policy", smPolicy.name)
+        verifyUserHasPermissionForResource(user, smPolicy.user, filterByEnabled, "snapshot management policy", smPolicy.policyName)
 
         log.info("sm dev: Parsed SM policy: $smPolicy")
         return GetSMPolicyResponse(getResponse.id, getResponse.version, getResponse.seqNo, getResponse.primaryTerm, smPolicy)

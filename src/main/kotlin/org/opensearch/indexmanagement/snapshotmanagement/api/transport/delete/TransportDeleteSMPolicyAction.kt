@@ -54,7 +54,7 @@ class TransportDeleteSMPolicyAction @Inject constructor(
         val smPolicy = client.getSMPolicy(request.id())
 
         // Check if the requested user has permission on the resource, throwing an exception if the user does not
-        verifyUserHasPermissionForResource(user, smPolicy.user, filterByEnabled, "snapshot management policy", smPolicy.name)
+        verifyUserHasPermissionForResource(user, smPolicy.user, filterByEnabled, "snapshot management policy", smPolicy.policyName)
 
         val deleteReq = request.index(INDEX_MANAGEMENT_INDEX)
         try {
