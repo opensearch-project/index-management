@@ -14,10 +14,11 @@ import org.opensearch.common.io.stream.StreamInput
 import org.opensearch.common.io.stream.StreamOutput
 import org.opensearch.index.seqno.SequenceNumbers
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy
+import java.time.Instant.now
 
 class IndexSMPolicyRequest : IndexRequest {
 
-    val policy: SMPolicy
+    var policy: SMPolicy
 
     constructor(
         policy: SMPolicy,
@@ -28,6 +29,7 @@ class IndexSMPolicyRequest : IndexRequest {
         this.create(create)
         if (policy.seqNo != SequenceNumbers.UNASSIGNED_SEQ_NO && policy.primaryTerm != SequenceNumbers.UNASSIGNED_PRIMARY_TERM) {
             this.setIfSeqNo(policy.seqNo).setIfPrimaryTerm(policy.primaryTerm)
+            this.policy = policy.copy(jobLastUpdateTime = now())
         }
         this.refreshPolicy = refreshPolicy
     }

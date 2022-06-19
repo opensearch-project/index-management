@@ -22,7 +22,6 @@ import org.opensearch.indexmanagement.opensearchapi.nullValueHandler
 import org.opensearch.indexmanagement.opensearchapi.optionalField
 import org.opensearch.indexmanagement.opensearchapi.optionalTimeField
 import org.opensearch.indexmanagement.snapshotmanagement.smPolicyNameToMetadataId
-import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy.DeleteCondition.Companion.DEFAULT_DELETE_CONDITION
 import org.opensearch.indexmanagement.snapshotmanagement.smDocIdToPolicyName
 import org.opensearch.jobscheduler.spi.ScheduledJobParameter
 import org.opensearch.jobscheduler.spi.schedule.CronSchedule
@@ -30,6 +29,7 @@ import org.opensearch.jobscheduler.spi.schedule.IntervalSchedule
 import org.opensearch.jobscheduler.spi.schedule.Schedule
 import org.opensearch.jobscheduler.spi.schedule.ScheduleParser
 import java.time.Instant
+import java.time.Instant.now
 import java.time.ZoneId
 import java.time.temporal.ChronoUnit
 
@@ -50,7 +50,7 @@ data class SMPolicy(
 ) : ScheduledJobParameter, Writeable {
 
     init {
-        require(snapshotConfig["repository"] != null) { "Must provide the repository in snapshot config." }
+        require(snapshotConfig["repository"] != null && snapshotConfig["repository"] != "") { "Must provide the repository in snapshot config." }
     }
 
     // This name is used by the job scheduler and needs to match the id to avoid namespace conflicts with ISM policies sharing the same name
@@ -140,18 +140,17 @@ data class SMPolicy(
             }
 
             if (enabled && enabledTime == null) {
-                enabledTime = Instant.now()
+                enabledTime = now()
             } else if (!enabled) {
                 enabledTime = null
             }
 
-            // TODO SM update policy API can update this value
             if (lastUpdatedTime == null) {
-                lastUpdatedTime = Instant.now()
+                lastUpdatedTime = now()
             }
 
             if (schedule == null) {
-                schedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES)
+                schedule = IntervalSchedule(now(), 1, ChronoUnit.MINUTES)
             }
 
             require(creation != null) { "Must provide the schedule for snapshot creation." }
@@ -166,8 +165,8 @@ data class SMPolicy(
                 description = description,
                 creation = creation,
                 deletion = deletion,
-                snapshotConfig = requireNotNull(snapshotConfig) { "snapshot_config field must not be null" },
-                jobLastUpdateTime = requireNotNull(lastUpdatedTime) { "last_updated_at field must not be null" },
+                snapshotConfig = requireNotNull(snapshotConfig) { "$SNAPSHOT_CONFIG_FIELD field must not be null" },
+                jobLastUpdateTime = requireNotNull(lastUpdatedTime) { "$LAST_UPDATED_TIME_FIELD field must not be null" },
                 jobEnabledTime = enabledTime,
                 jobSchedule = schedule,
                 jobEnabled = enabled,
@@ -292,20 +291,16 @@ data class SMPolicy(
                 }
 
                 if (schedule == null) {
+                    scheduleProvided = false
                     // This schedule is just a placeholder
                     schedule = CronSchedule("0 1 * * *", ZoneId.systemDefault())
-                    scheduleProvided = false
-                }
-
-                if (condition == null) {
-                    condition = DEFAULT_DELETE_CONDITION
                 }
 
                 return Deletion(
                     schedule = schedule,
                     scheduleProvided = scheduleProvided,
                     timeLimit = timeLimit,
-                    condition = condition,
+                    condition = requireNotNull(condition) { "$CONDITION_FIELD must not be null." },
                 )
             }
         }
@@ -330,6 +325,7 @@ data class SMPolicy(
     ) : Writeable, ToXContent {
 
         init {
+            require(!(maxAge == null && maxCount == null)) { "Please provide $MAX_AGE_FIELD or $MAX_COUNT_FIELD." }
             require(minCount > 0) { "$MIN_COUNT_FIELD should be bigger than 0." }
             require(maxCount == null || maxCount - minCount > 0) { "$MAX_COUNT_FIELD should be bigger than $MIN_COUNT_FIELD." }
         }
@@ -347,8 +343,6 @@ data class SMPolicy(
             const val MAX_AGE_FIELD = "max_age"
             const val MIN_COUNT_FIELD = "min_count"
             private const val DEFAULT_MIN_COUNT = 1
-
-            val DEFAULT_DELETE_CONDITION = DeleteCondition(minCount = DEFAULT_MIN_COUNT)
 
             fun parse(xcp: XContentParser): DeleteCondition {
                 var maxAge: TimeValue? = null

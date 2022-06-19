@@ -98,7 +98,7 @@ object CreatingState : State {
         return SMResult.Fail(metadataBuilder, WorkflowType.CREATION)
     }
 
-    private fun getSnapshotsErrorMessage() = "Caught exception while getting snapshots to decide if snapshot has been created in previous execution schedule."
+    private fun getSnapshotsErrorMessage() = "Caught exception while getting snapshots to decide if snapshot has been created in previous execution period."
 
     private fun getCreateSnapshotErrorMessage(snapshotName: String) =
         "Caught exception while creating snapshot $snapshotName."

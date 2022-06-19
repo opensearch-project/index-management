@@ -90,9 +90,9 @@ object CreationFinishedState : State {
                 }
             }
 
-            // TODO SM notification: if now is after next creation time, update nextCreationTime to next execution schedule
+            // TODO SM notification: if now is after next creation time, update nextCreationTime to the next
             //  and try notify user that we skip the execution because snapshot creation time
-            //  is longer than execution schedule
+            //  is longer than execution period
             val result = tryUpdatingNextExecutionTime(
                 metadataBuilder, metadata.creation.trigger.time, job.creation.schedule,
                 WorkflowType.CREATION, log

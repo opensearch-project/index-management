@@ -96,15 +96,16 @@ object DeletingState : State {
     private fun getDeleteSnapshotErrorMessage(snapshotNames: List<String>) = "Caught exception while deleting snapshot $snapshotNames."
 
     /**
-     * Based on delete conditions, find snapshots to be deleted
+     * Based on delete conditions, find which snapshots to be deleted
      *
      * Logic:
-     *   outdated snapshots: snapshot.startedTime < now - max_age
+     *   snapshots older than max_age: snapshot.startedTime is before (now - max_age)
      *   keep at least min_count of snapshots even it's outdated
-     *   keep at most max_count of snapshots
+     *   keep at most max_count of snapshots even it's not outdated
      */
     private fun filterByDeleteCondition(snapshots: List<SnapshotInfo>, deleteCondition: SMPolicy.DeleteCondition, log: Logger): List<String> {
         log.info("sm dev: snapshotInfos $snapshots")
+        // sorted in startTime ascending order
         val snapshotInfos = snapshots.sortedBy { it.startTime() } // start_time will always exist along with snapshotId
         log.info("sm dev: snapshotInfos $snapshotInfos")
 
@@ -115,11 +116,12 @@ object DeletingState : State {
             log.info("sm dev: time threshold: $timeThreshold")
             val thresholdSnapshot = snapshotInfos.findLast { Instant.ofEpochMilli(it.startTime()).isBefore(timeThreshold) }
             log.info("sm dev: thresholdSnapshot: $thresholdSnapshot")
+            // how many snapshot from beginning satisfy the deletion condition
             thresholdCount = snapshotInfos.indexOf(thresholdSnapshot) + 1
             log.info("sm dev: thresholdCount: $thresholdCount")
             val minCount = deleteCondition.minCount
             if (snapshotInfos.size - thresholdCount < minCount) {
-                thresholdCount = snapshotInfos.size - minCount
+                thresholdCount = offSetThresholdCount(snapshotInfos.size - minCount)
             }
         }
 
@@ -130,5 +132,10 @@ object DeletingState : State {
         }
 
         return snapshotInfos.subList(0, thresholdCount).map { it.snapshotId().name }
+    }
+
+    private fun offSetThresholdCount(count: Int): Int {
+        if (count < 0) return 0
+        return count
     }
 }

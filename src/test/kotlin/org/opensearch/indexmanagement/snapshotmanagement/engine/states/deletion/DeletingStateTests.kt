@@ -95,6 +95,28 @@ class DeletingStateTests : ClientMockTestCase() {
         assertNull("Latest execution should not be initialized", metadataToSave.deletion!!.latestExecution)
     }
 
+    fun `test snapshots min count check won't get negative deletion count`() = runBlocking {
+        val oldSnapshot = mockSnapshotInfo(name = "old_snapshot", startTime = now().minusSeconds(2 * 60).toEpochMilli())
+        mockGetSnapshotsCall(response = mockGetSnapshotsResponse(listOf(oldSnapshot)))
+
+        val metadata = randomSMMetadata(
+            deletionCurrentState = SMState.DELETION_CONDITION_MET,
+        )
+        val job = randomSMPolicy(
+            policyName = "daily-snapshot",
+            deletionMaxAge = TimeValue.timeValueMinutes(1),
+            deletionMinCount = 2,
+        )
+        val context = SMStateMachine(client, job, metadata)
+
+        val result = SMState.DELETING.instance.execute(context)
+        assertTrue("Execution result should be Next.", result is SMResult.Next)
+        result as SMResult.Next
+        val metadataToSave = result.metadataToSave.build()
+        assertNull("Deletion started field should not be initialized.", metadataToSave.deletion!!.started)
+        assertNull("Latest execution should not be initialized", metadataToSave.deletion!!.latestExecution)
+    }
+
     fun `test delete snapshot exception`() = runBlocking {
         val ex = Exception()
         mockGetSnapshotsCall(response = mockGetSnapshotResponse(11))
