@@ -6,21 +6,21 @@
 package org.opensearch.indexmanagement.snapshotmanagement.engine.states.creation
 
 import kotlinx.coroutines.runBlocking
-import org.opensearch.indexmanagement.ClientMockTestCase
 import org.opensearch.indexmanagement.snapshotmanagement.engine.SMStateMachine
+import org.opensearch.indexmanagement.snapshotmanagement.engine.SMStateMachineTests
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.SMResult
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.SMState
 import org.opensearch.indexmanagement.snapshotmanagement.randomSMMetadata
 import org.opensearch.indexmanagement.snapshotmanagement.randomSMPolicy
 
-class CreationStartStateTests : ClientMockTestCase() {
+class CreationStartStateTests : SMStateMachineTests() {
 
     fun `test start state execution`() = runBlocking {
         val metadata = randomSMMetadata(
             creationCurrentState = SMState.CREATION_FINISHED
         )
         val job = randomSMPolicy()
-        val context = SMStateMachine(client, job, metadata)
+        val context = SMStateMachine(client, job, metadata, settings, threadPool)
 
         val result = SMState.CREATION_START.instance.execute(context)
         assertTrue("Execution result should be Next.", result is SMResult.Next)

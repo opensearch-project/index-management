@@ -6,8 +6,8 @@
 package org.opensearch.indexmanagement.snapshotmanagement.engine.states.deletion
 
 import kotlinx.coroutines.runBlocking
-import org.opensearch.indexmanagement.ClientMockTestCase
 import org.opensearch.indexmanagement.snapshotmanagement.engine.SMStateMachine
+import org.opensearch.indexmanagement.snapshotmanagement.engine.SMStateMachineTests
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.SMResult
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.SMState
 import org.opensearch.indexmanagement.snapshotmanagement.randomSMMetadata
@@ -15,7 +15,7 @@ import org.opensearch.indexmanagement.snapshotmanagement.randomSMPolicy
 import org.opensearch.indexmanagement.snapshotmanagement.randomSnapshotName
 import java.time.Instant
 
-class DeletionConditionMetStateTests : ClientMockTestCase() {
+class DeletionConditionMetStateTests : SMStateMachineTests() {
 
     fun `test next deletion time met`() = runBlocking {
         val metadata = randomSMMetadata(
@@ -23,7 +23,7 @@ class DeletionConditionMetStateTests : ClientMockTestCase() {
             nextDeletionTime = Instant.now().minusSeconds(60),
         )
         val job = randomSMPolicy()
-        val context = SMStateMachine(client, job, metadata)
+        val context = SMStateMachine(client, job, metadata, settings, threadPool)
 
         val result = SMState.DELETION_CONDITION_MET.instance.execute(context)
         assertTrue("Execution result should be Next.", result is SMResult.Next)
@@ -37,7 +37,7 @@ class DeletionConditionMetStateTests : ClientMockTestCase() {
             nextDeletionTime = Instant.now().plusSeconds(60),
         )
         val job = randomSMPolicy()
-        val context = SMStateMachine(client, job, metadata)
+        val context = SMStateMachine(client, job, metadata, settings, threadPool)
 
         val result = SMState.DELETION_CONDITION_MET.instance.execute(context)
         assertTrue("Execution result should be Stay.", result is SMResult.Stay)
@@ -53,7 +53,7 @@ class DeletionConditionMetStateTests : ClientMockTestCase() {
         val job = randomSMPolicy(
             deletionNull = true
         )
-        val context = SMStateMachine(client, job, metadata)
+        val context = SMStateMachine(client, job, metadata, settings, threadPool)
 
         val result = SMState.DELETION_CONDITION_MET.instance.execute(context)
         assertTrue("Execution result should be Fail.", result is SMResult.Fail)

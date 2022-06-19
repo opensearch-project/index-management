@@ -8,8 +8,8 @@ package org.opensearch.indexmanagement.snapshotmanagement.engine.states.deletion
 import kotlinx.coroutines.runBlocking
 import org.opensearch.action.support.master.AcknowledgedResponse
 import org.opensearch.common.unit.TimeValue
-import org.opensearch.indexmanagement.ClientMockTestCase
 import org.opensearch.indexmanagement.snapshotmanagement.engine.SMStateMachine
+import org.opensearch.indexmanagement.snapshotmanagement.engine.SMStateMachineTests
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.SMResult
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.SMState
 import org.opensearch.indexmanagement.snapshotmanagement.mockGetSnapshotResponse
@@ -22,7 +22,7 @@ import org.opensearch.indexmanagement.snapshotmanagement.randomSMPolicy
 import org.opensearch.indexmanagement.snapshotmanagement.randomSnapshotName
 import java.time.Instant.now
 
-class DeletingStateTests : ClientMockTestCase() {
+class DeletingStateTests : SMStateMachineTests() {
 
     fun `test snapshots exceed max count`() = runBlocking {
         mockGetSnapshotsCall(response = mockGetSnapshotResponse(11))
@@ -35,7 +35,7 @@ class DeletingStateTests : ClientMockTestCase() {
             policyName = "daily-snapshot",
             deletionMaxCount = 10,
         )
-        val context = SMStateMachine(client, job, metadata)
+        val context = SMStateMachine(client, job, metadata, settings, threadPool)
 
         val result = SMState.DELETING.instance.execute(context)
         assertTrue("Execution result should be Next.", result is SMResult.Next)
@@ -60,7 +60,7 @@ class DeletingStateTests : ClientMockTestCase() {
             deletionMaxAge = TimeValue.timeValueMinutes(1),
             deletionMinCount = 2,
         )
-        val context = SMStateMachine(client, job, metadata)
+        val context = SMStateMachine(client, job, metadata, settings, threadPool)
 
         val result = SMState.DELETING.instance.execute(context)
         assertTrue("Execution result should be Next.", result is SMResult.Next)
@@ -85,7 +85,7 @@ class DeletingStateTests : ClientMockTestCase() {
             deletionMaxAge = TimeValue.timeValueMinutes(1),
             deletionMinCount = 2,
         )
-        val context = SMStateMachine(client, job, metadata)
+        val context = SMStateMachine(client, job, metadata, settings, threadPool)
 
         val result = SMState.DELETING.instance.execute(context)
         assertTrue("Execution result should be Next.", result is SMResult.Next)
@@ -104,7 +104,7 @@ class DeletingStateTests : ClientMockTestCase() {
             deletionCurrentState = SMState.DELETION_CONDITION_MET,
         )
         val job = randomSMPolicy(policyName = "daily-snapshot")
-        val context = SMStateMachine(client, job, metadata)
+        val context = SMStateMachine(client, job, metadata, settings, threadPool)
 
         val result = SMState.DELETING.instance.execute(context)
         assertTrue("Execution result should be Failure.", result is SMResult.Fail)
@@ -126,7 +126,7 @@ class DeletingStateTests : ClientMockTestCase() {
             )
         )
         val job = randomSMPolicy(policyName = "daily-snapshot")
-        val context = SMStateMachine(client, job, metadata)
+        val context = SMStateMachine(client, job, metadata, settings, threadPool)
 
         val result = SMState.DELETING.instance.execute(context)
         assertTrue("Execution result should be Fail.", result is SMResult.Fail)
@@ -145,7 +145,7 @@ class DeletingStateTests : ClientMockTestCase() {
         val job = randomSMPolicy(
             deletionNull = true
         )
-        val context = SMStateMachine(client, job, metadata)
+        val context = SMStateMachine(client, job, metadata, settings, threadPool)
 
         val result = SMState.DELETING.instance.execute(context)
         assertTrue("Execution result should be Fail.", result is SMResult.Fail)

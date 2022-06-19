@@ -426,7 +426,7 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
             client, clusterService, threadPool, indexManagementIndices, metadataService, templateService, indexMetadataProvider
         )
 
-        SMRunner.init(client)
+        val smRunner = SMRunner.init(client, threadPool, settings)
 
         return listOf(
             managedIndexRunner,
@@ -435,7 +435,8 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
             indexManagementIndices,
             managedIndexCoordinator,
             indexStateManagementHistory,
-            indexMetadataProvider
+            indexMetadataProvider,
+            smRunner
         )
     }
 
