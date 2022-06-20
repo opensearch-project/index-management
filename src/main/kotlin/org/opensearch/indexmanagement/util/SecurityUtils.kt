@@ -38,6 +38,23 @@ class SecurityUtils {
             }
         }
 
+        fun validateUserConfiguration(user: User?, filterEnabled: Boolean) {
+            if (filterEnabled) {
+                if (user == null) {
+                    throw IndexManagementException.wrap(
+                        OpenSearchStatusException(
+                            "Filter by user backend roles in IndexManagement is not supported with security disabled",
+                            RestStatus.FORBIDDEN
+                        )
+                    )
+                } else if (user.backendRoles.isEmpty()) {
+                    throw IndexManagementException.wrap(
+                        OpenSearchStatusException("User doesn't have backend roles configured. Contact administrator", RestStatus.FORBIDDEN)
+                    )
+                }
+            }
+        }
+
         /**
          * If filterBy is enabled and security is disabled or if filter by is enabled and backend role are empty
          * we should prevent users from scheduling new jobs
@@ -91,8 +108,26 @@ class SecurityUtils {
         }
 
         /**
+         * Check if the requested user has permission on the resource, throwing an exception if the user does not.
+         */
+        fun verifyUserHasPermissionForResource(
+            requestedUser: User?,
+            resourceUser: User?,
+            filterEnabled: Boolean = false,
+            resourceName: String,
+            resourceId: String
+        ) {
+            if (!userHasPermissionForResource(requestedUser, resourceUser, filterEnabled)) {
+                throw IndexManagementException.wrap(
+                    OpenSearchStatusException("Do not have permission for $resourceName [$resourceId]", RestStatus.FORBIDDEN)
+                )
+            }
+        }
+
+        /**
          * Check if the requested user has permission on the resource
          */
+        @Suppress("ComplexCondition")
         fun userHasPermissionForResource(
             requestedUser: User?,
             resourceUser: User?,

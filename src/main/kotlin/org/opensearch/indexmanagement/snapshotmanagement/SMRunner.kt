@@ -19,6 +19,7 @@ import org.opensearch.indexmanagement.snapshotmanagement.engine.states.SMState
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata
 import org.opensearch.OpenSearchStatusException
+import org.opensearch.common.settings.Settings
 import org.opensearch.index.seqno.SequenceNumbers
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.creationTransitions
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.deletionTransitions
@@ -28,6 +29,7 @@ import org.opensearch.jobscheduler.spi.JobExecutionContext
 import org.opensearch.jobscheduler.spi.ScheduledJobParameter
 import org.opensearch.jobscheduler.spi.ScheduledJobRunner
 import org.opensearch.rest.RestStatus
+import org.opensearch.threadpool.ThreadPool
 import java.time.Instant.now
 
 object SMRunner :
@@ -37,9 +39,13 @@ object SMRunner :
     private val log = LogManager.getLogger(javaClass)
 
     lateinit var client: Client
+    private lateinit var threadPool: ThreadPool
+    private lateinit var settings: Settings
 
-    fun init(client: Client): SMRunner {
+    fun init(client: Client, threadPool: ThreadPool, settings: Settings): SMRunner {
         SMRunner.client = client
+        this.threadPool = threadPool
+        this.settings = settings
         return this
     }
 
@@ -69,7 +75,7 @@ object SMRunner :
 
             // creation, deletion workflow have to be executed sequentially,
             // because they are sharing the same metadata document.
-            SMStateMachine(client, job, metadata)
+            SMStateMachine(client, job, metadata, settings, threadPool)
                 .handlePolicyChange()
                 .currentState(metadata.creation.currentState)
                 .next(creationTransitions)

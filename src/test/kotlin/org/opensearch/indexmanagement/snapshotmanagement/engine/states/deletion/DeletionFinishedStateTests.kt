@@ -7,8 +7,8 @@ package org.opensearch.indexmanagement.snapshotmanagement.engine.states.deletion
 
 import kotlinx.coroutines.runBlocking
 import org.opensearch.common.unit.TimeValue
-import org.opensearch.indexmanagement.ClientMockTestCase
 import org.opensearch.indexmanagement.snapshotmanagement.engine.SMStateMachine
+import org.opensearch.indexmanagement.snapshotmanagement.engine.SMStateMachineTests
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.SMResult
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.SMState
 import org.opensearch.indexmanagement.snapshotmanagement.mockGetSnapshotResponse
@@ -19,7 +19,7 @@ import org.opensearch.indexmanagement.snapshotmanagement.randomSMMetadata
 import org.opensearch.indexmanagement.snapshotmanagement.randomSMPolicy
 import java.time.Instant
 
-class DeletionFinishedStateTests : ClientMockTestCase() {
+class DeletionFinishedStateTests : SMStateMachineTests() {
     fun `test deletion succeed`() = runBlocking {
         val snapshotName = "test_deletion_success"
         mockGetSnapshotsCall(response = mockGetSnapshotResponse(0))
@@ -32,7 +32,7 @@ class DeletionFinishedStateTests : ClientMockTestCase() {
             ),
         )
         val job = randomSMPolicy(policyName = "daily-snapshot")
-        val context = SMStateMachine(client, job, metadata)
+        val context = SMStateMachine(client, job, metadata, settings, threadPool)
 
         val result = SMState.DELETION_FINISHED.instance.execute(context)
         assertTrue("Execution results should be Next.", result is SMResult.Next)
@@ -57,7 +57,7 @@ class DeletionFinishedStateTests : ClientMockTestCase() {
             ),
         )
         val job = randomSMPolicy(policyName = "daily-snapshot")
-        val context = SMStateMachine(client, job, metadata)
+        val context = SMStateMachine(client, job, metadata, settings, threadPool)
 
         val result = SMState.DELETION_FINISHED.instance.execute(context)
         assertTrue("Execution results should be Stay.", result is SMResult.Stay)
@@ -80,7 +80,7 @@ class DeletionFinishedStateTests : ClientMockTestCase() {
             ),
         )
         val job = randomSMPolicy(policyName = "daily-snapshot")
-        val context = SMStateMachine(client, job, metadata)
+        val context = SMStateMachine(client, job, metadata, settings, threadPool)
 
         val result = SMState.DELETION_FINISHED.instance.execute(context)
         assertTrue("Execution results should be Failure.", result is SMResult.Fail)
@@ -104,7 +104,7 @@ class DeletionFinishedStateTests : ClientMockTestCase() {
             ),
         )
         val job = randomSMPolicy(policyName = "daily-snapshot", deletionTimeLimit = TimeValue.timeValueSeconds(5))
-        val context = SMStateMachine(client, job, metadata)
+        val context = SMStateMachine(client, job, metadata, settings, threadPool)
 
         val result = SMState.DELETION_FINISHED.instance.execute(context)
         assertTrue("Execution results should be Failure.", result is SMResult.Fail)

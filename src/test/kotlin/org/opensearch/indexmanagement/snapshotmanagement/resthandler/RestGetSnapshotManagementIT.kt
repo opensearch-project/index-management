@@ -12,6 +12,7 @@ import org.opensearch.indexmanagement.IndexManagementPlugin
 import org.opensearch.indexmanagement.makeRequest
 import org.opensearch.indexmanagement.opensearchapi.convertToMap
 import org.opensearch.indexmanagement.snapshotmanagement.SnapshotManagementRestTestCase
+import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy.Companion.ENABLED_TIME_FIELD
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy.Companion.SM_TYPE
 import org.opensearch.indexmanagement.snapshotmanagement.randomSMPolicy
@@ -73,7 +74,9 @@ class RestGetSnapshotManagementIT : SnapshotManagementRestTestCase() {
             assertNotNull("Did not find matching SM Policy that should exist", foundPolicy)
             assertNotNull("Matching response did not have policy", foundPolicy?.get(SM_TYPE))
             val policyInResponse = foundPolicy!![SM_TYPE]
-            assertEquals("Policy in get all response differed from actual", testSMPolicy.convertToMap()[SM_TYPE], policyInResponse)
+            val actualPolicyMap = testSMPolicy.convertToMap()[SM_TYPE] as MutableMap<String, Any>
+            actualPolicyMap.remove(SMPolicy.USER_FIELD)
+            assertEquals("Policy in get all response differed from actual", actualPolicyMap, policyInResponse)
         }
     }
 
@@ -96,7 +99,9 @@ class RestGetSnapshotManagementIT : SnapshotManagementRestTestCase() {
             assertNotNull("Did not find matching SM Policy that should exist", foundPolicy)
             assertNotNull("Matching response did not have policy", foundPolicy?.get(SM_TYPE))
             val policyInResponse = foundPolicy!![SM_TYPE]
-            assertEquals("Policy in get all response differed from actual", testSMPolicy.convertToMap()[SM_TYPE], policyInResponse)
+            val actualPolicyMap = testSMPolicy.convertToMap()[SM_TYPE] as MutableMap<String, Any>
+            actualPolicyMap.remove(SMPolicy.USER_FIELD)
+            assertEquals("Policy in get all response differed from actual", actualPolicyMap, policyInResponse)
         }
         // Add the 'from' param
         searchParamQuery["from"] = searchParamSize.toString()
@@ -112,7 +117,9 @@ class RestGetSnapshotManagementIT : SnapshotManagementRestTestCase() {
             assertNotNull("Did not find matching SM Policy that should exist", foundPolicy)
             assertNotNull("Matching response did not have policy", foundPolicy?.get(SM_TYPE))
             val policyInResponse = foundPolicy!![SM_TYPE]
-            assertEquals("Policy in get all response differed from actual", testSMPolicy.convertToMap()[SM_TYPE], policyInResponse)
+            val actualPolicyMap = testSMPolicy.convertToMap()[SM_TYPE] as MutableMap<String, Any>
+            actualPolicyMap.remove(SMPolicy.USER_FIELD)
+            assertEquals("Policy in get all response differed from actual", actualPolicyMap, policyInResponse)
         }
     }
 
@@ -132,7 +139,9 @@ class RestGetSnapshotManagementIT : SnapshotManagementRestTestCase() {
             val actualPolicy = sortedPolicies[policyNumber]
             val foundPolicy = responsePolicies[policyNumber]
             val policyInResponse = foundPolicy[SM_TYPE]
-            assertEquals("Policy in get all response differed from actual", actualPolicy.convertToMap()[SM_TYPE], policyInResponse)
+            val actualPolicyMap = actualPolicy.convertToMap()[SM_TYPE] as MutableMap<String, Any>
+            actualPolicyMap.remove(SMPolicy.USER_FIELD)
+            assertEquals("Policy in get all response differed from actual", actualPolicyMap, policyInResponse)
         }
     }
 }

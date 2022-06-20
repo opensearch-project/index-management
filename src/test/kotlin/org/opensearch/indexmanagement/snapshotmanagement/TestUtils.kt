@@ -87,6 +87,7 @@ fun randomLatestExecution(
 
 fun randomSMPolicy(
     policyName: String = randomAlphaOfLength(10).lowercase(),
+    schemaVersion: Long = OpenSearchRestTestCase.randomLong(),
     jobEnabled: Boolean = OpenSearchRestTestCase.randomBoolean(),
     jobLastUpdateTime: Instant = randomInstant(),
     creationSchedule: CronSchedule = randomCronSchedule(),
@@ -108,6 +109,7 @@ fun randomSMPolicy(
 ): SMPolicy {
     return SMPolicy(
         id = smPolicyNameToDocId(policyName),
+        schemaVersion = schemaVersion,
         jobEnabled = jobEnabled,
         jobLastUpdateTime = jobLastUpdateTime,
         creation = SMPolicy.Creation(

@@ -8,6 +8,10 @@ package org.opensearch.indexmanagement.snapshotmanagement.engine
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.opensearch.client.Client
+import org.opensearch.common.settings.Settings
+import org.opensearch.commons.ConfigConstants
+import org.opensearch.indexmanagement.opensearchapi.IndexManagementSecurityContext
+import org.opensearch.indexmanagement.opensearchapi.withClosableContext
 import org.opensearch.indexmanagement.snapshotmanagement.SnapshotManagementException
 import org.opensearch.indexmanagement.snapshotmanagement.SnapshotManagementException.ExceptionKey
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.SMResult
@@ -18,6 +22,7 @@ import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata
 import org.opensearch.indexmanagement.snapshotmanagement.smDocIdToPolicyName
 import org.opensearch.indexmanagement.util.OpenForTesting
+import org.opensearch.threadpool.ThreadPool
 import java.time.Instant.now
 
 @OpenForTesting
@@ -25,6 +30,8 @@ class SMStateMachine(
     val client: Client,
     val job: SMPolicy,
     var metadata: SMMetadata,
+    val settings: Settings,
+    val threadPool: ThreadPool
 ) {
 
     val log: Logger = LogManager.getLogger("$javaClass [${smDocIdToPolicyName(job.id)}]")
@@ -51,7 +58,24 @@ class SMStateMachine(
                 for (nextState in nextStates) {
                     currentState = nextState
                     log.info("sm dev: Start executing $currentState.")
-                    result = currentState.instance.execute(this) as SMResult
+                    log.info(
+                        "SM dev: User and roles string from thread context: ${threadPool.threadContext.getTransient<String>(
+                            ConfigConstants.OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT
+                        )}"
+                    )
+                    result = withClosableContext(
+                        IndexManagementSecurityContext(
+                            job.id, settings, threadPool.threadContext, job.user
+                        )
+                    ) {
+                        log.info(
+                            "SM dev: User and roles string from thread context: ${threadPool.threadContext.getTransient<String>(
+                                ConfigConstants.OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT
+                            )}"
+                        )
+                        currentState.instance.execute(this@SMStateMachine) as SMResult
+                    }
+
                     when (result) {
                         is SMResult.Next -> {
                             log.info("State [$currentState] has finished.")
