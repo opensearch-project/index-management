@@ -54,9 +54,9 @@ import java.util.Locale
 private val log = LogManager.getLogger("o.i.s.SnapshotManagementHelper")
 
 fun smPolicyNameToDocId(policyName: String) = "$policyName$SM_DOC_ID_SUFFIX"
-fun smDocIdToPolicyName(id: String) = id.substringBeforeLast(SM_DOC_ID_SUFFIX)
-fun smPolicyNameToMetadataId(policyName: String) = "$policyName$SM_METADATA_ID_SUFFIX"
-fun smMetadataIdToPolicyName(id: String) = id.substringBeforeLast(SM_METADATA_ID_SUFFIX)
+fun smDocIdToPolicyName(docId: String) = docId.substringBeforeLast(SM_DOC_ID_SUFFIX)
+fun smPolicyNameToMetadataDocId(policyName: String) = "$policyName$SM_METADATA_ID_SUFFIX"
+fun smMetadataDocIdToPolicyName(docId: String) = docId.substringBeforeLast(SM_METADATA_ID_SUFFIX)
 
 @Suppress("RethrowCaughtException", "ThrowsCount")
 suspend fun Client.getSMPolicy(policyID: String): SMPolicy {
@@ -82,7 +82,7 @@ suspend fun Client.getSMPolicy(policyID: String): SMPolicy {
 
 @Suppress("RethrowCaughtException", "ThrowsCount")
 suspend fun Client.getSMMetadata(jobID: String): SMMetadata {
-    val metadataID = smPolicyNameToMetadataId(smDocIdToPolicyName(jobID))
+    val metadataID = smPolicyNameToMetadataDocId(smDocIdToPolicyName(jobID))
     try {
         val getRequest = GetRequest(INDEX_MANAGEMENT_INDEX, metadataID).routing(jobID)
         val getResponse: GetResponse = this.suspendUntil { get(getRequest, it) }
@@ -127,7 +127,7 @@ suspend fun Client.indexMetadata(
     create: Boolean = false,
 ): IndexResponse {
     val indexReq = IndexRequest(INDEX_MANAGEMENT_INDEX).create(create)
-        .id(smPolicyNameToMetadataId(smDocIdToPolicyName(id)))
+        .id(smPolicyNameToMetadataDocId(smDocIdToPolicyName(id)))
         .source(metadata.toXContent(XContentFactory.jsonBuilder(), ToXContent.EMPTY_PARAMS))
         .setIfSeqNo(seqNo)
         .setIfPrimaryTerm(primaryTerm)
@@ -158,7 +158,7 @@ fun getRandomString(length: Int): String {
         .joinToString("")
 }
 
-fun generateFormatTime(dateFormat: String, timezone: ZoneId = ZoneId.systemDefault()): String {
+fun generateFormatTime(dateFormat: String, timezone: ZoneId = ZoneId.of("UTC")): String {
     val dateFormatter = DateFormatter.forPattern(dateFormat).withZone(timezone)
     val instant = dateFormatter.toDateMathParser().parse("now/s", System::currentTimeMillis, false, timezone)
     return dateFormatter.format(instant)

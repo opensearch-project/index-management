@@ -137,7 +137,7 @@ object SMRunner :
     private fun getInitialMetadata(job: SMPolicy): SMMetadata {
         val now = now()
         return SMMetadata(
-            id = smPolicyNameToMetadataId(smDocIdToPolicyName(job.id)),
+            id = smPolicyNameToMetadataDocId(smDocIdToPolicyName(job.id)),
             policySeqNo = job.seqNo,
             policyPrimaryTerm = job.primaryTerm,
             creation = SMMetadata.WorkflowMetadata(

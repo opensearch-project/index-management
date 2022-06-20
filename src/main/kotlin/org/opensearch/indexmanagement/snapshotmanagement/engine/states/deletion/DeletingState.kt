@@ -17,7 +17,6 @@ import org.opensearch.indexmanagement.snapshotmanagement.engine.states.WorkflowT
 import org.opensearch.indexmanagement.snapshotmanagement.getSnapshots
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy
-import org.opensearch.indexmanagement.snapshotmanagement.smDocIdToPolicyName
 import org.opensearch.snapshots.SnapshotInfo
 import org.opensearch.snapshots.SnapshotState
 import org.opensearch.transport.RemoteTransportException
@@ -47,7 +46,7 @@ object DeletingState : State {
         val snapshotsToDelete: List<String>
 
         val getSnapshotsRes = client.getSnapshots(
-            job, smDocIdToPolicyName(job.id) + "*", metadataBuilder, log,
+            job, job.policyName + "*", metadataBuilder, log,
             getSnapshotsMissingMessage(),
             getSnapshotsErrorMessage(),
         )

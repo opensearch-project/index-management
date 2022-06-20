@@ -24,7 +24,7 @@ import org.opensearch.indexmanagement.opensearchapi.nullValueHandler
 import org.opensearch.indexmanagement.opensearchapi.optionalField
 import org.opensearch.indexmanagement.opensearchapi.optionalTimeField
 import org.opensearch.indexmanagement.opensearchapi.optionalUserField
-import org.opensearch.indexmanagement.snapshotmanagement.smPolicyNameToMetadataId
+import org.opensearch.indexmanagement.snapshotmanagement.smPolicyNameToMetadataDocId
 import org.opensearch.indexmanagement.snapshotmanagement.smDocIdToPolicyName
 import org.opensearch.indexmanagement.util.IndexUtils
 import org.opensearch.indexmanagement.snapshotmanagement.validateDateFormat
@@ -68,7 +68,7 @@ data class SMPolicy(
     // This is the name which the user provided when creating the policy, and should be used when outputting to the user in REST responses
     val policyName get() = smDocIdToPolicyName(id)
 
-    val metadataID get() = smPolicyNameToMetadataId(smDocIdToPolicyName(id))
+    val metadataID get() = smPolicyNameToMetadataDocId(smDocIdToPolicyName(id))
 
     override fun getLastUpdateTime() = jobLastUpdateTime
 

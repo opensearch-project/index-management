@@ -18,7 +18,6 @@ import org.opensearch.indexmanagement.snapshotmanagement.engine.states.State
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.WorkflowType
 import org.opensearch.indexmanagement.snapshotmanagement.getSnapshots
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata
-import org.opensearch.indexmanagement.snapshotmanagement.smDocIdToPolicyName
 import org.opensearch.snapshots.SnapshotInfo
 import org.opensearch.transport.RemoteTransportException
 import java.time.Instant
@@ -42,7 +41,7 @@ object CreatingState : State {
         // So that this State can be executed idempotent.
         if (snapshotName == null) {
             val getSnapshotsResult = client.getSnapshots(
-                job, smDocIdToPolicyName(job.id) + "*", metadataBuilder,
+                job, job.policyName + "*", metadataBuilder,
                 log, null, getSnapshotsErrorMessage(),
             )
             metadataBuilder = getSnapshotsResult.metadataBuilder

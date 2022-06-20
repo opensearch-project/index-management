@@ -28,7 +28,7 @@ import org.opensearch.indexmanagement.snapshotmanagement.engine.states.WorkflowT
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata.Retry.Companion.RETRY_FIELD
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy.Companion.NAME_FIELD
 import org.opensearch.indexmanagement.snapshotmanagement.preFixTimeStamp
-import org.opensearch.indexmanagement.snapshotmanagement.smMetadataIdToPolicyName
+import org.opensearch.indexmanagement.snapshotmanagement.smMetadataDocIdToPolicyName
 import org.opensearch.indexmanagement.util.NO_ID
 import java.time.Instant
 import java.time.Instant.now
@@ -48,7 +48,7 @@ data class SMMetadata(
     override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
         builder.startObject()
         if (params.paramAsBoolean(WITH_TYPE, true)) builder.startObject(SM_METADATA_TYPE)
-        builder.field(NAME_FIELD, smMetadataIdToPolicyName(id))
+        builder.field(NAME_FIELD, smMetadataDocIdToPolicyName(id))
             .field(POLICY_SEQ_NO_FIELD, policySeqNo)
             .field(POLICY_PRIMARY_TERM_FIELD, policyPrimaryTerm)
             .field(CREATION_FIELD, creation)

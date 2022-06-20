@@ -24,7 +24,6 @@ import org.opensearch.indexmanagement.snapshotmanagement.engine.states.WorkflowT
 import org.opensearch.indexmanagement.snapshotmanagement.indexMetadata
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata
-import org.opensearch.indexmanagement.snapshotmanagement.smDocIdToPolicyName
 import org.opensearch.indexmanagement.util.OpenForTesting
 import org.opensearch.threadpool.ThreadPool
 import java.time.Instant.now
@@ -39,7 +38,7 @@ class SMStateMachine(
     val indicesManager: IndexManagementIndices,
 ) {
 
-    val log: Logger = LogManager.getLogger("$javaClass [${smDocIdToPolicyName(job.id)}]")
+    val log: Logger = LogManager.getLogger("$javaClass [${job.policyName}]")
 
     lateinit var currentState: SMState
     fun currentState(currentState: SMState): SMStateMachine {
