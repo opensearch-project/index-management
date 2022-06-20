@@ -49,7 +49,6 @@ object CreatingState : State {
                 return SMResult.Fail(metadataBuilder, WorkflowType.CREATION)
             }
             val getSnapshots = getSnapshotsResult.snapshots
-            metadataBuilder.resetRetry()
 
             val latestExecutionStartTime = job.creation.schedule.getPeriodStartingAt(null).v1()
             snapshotName = checkCreatedSnapshots(latestExecutionStartTime, getSnapshots)

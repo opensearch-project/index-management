@@ -54,7 +54,6 @@ object DeletingState : State {
         if (getSnapshotsRes.failed)
             return SMResult.Fail(metadataBuilder, WorkflowType.DELETION)
         val getSnapshots = getSnapshotsRes.snapshots
-        metadataBuilder.resetRetry()
 
         snapshotsToDelete = filterByDeleteCondition(
             getSnapshots.filter { it.state() != SnapshotState.IN_PROGRESS },
