@@ -24,7 +24,7 @@ import org.opensearch.transport.TransportService
 class TransportIndexSMPolicyAction @Inject constructor(
     client: Client,
     transportService: TransportService,
-    val indexManagementIndices: IndexManagementIndices,
+    private val indexManagementIndices: IndexManagementIndices,
     actionFilters: ActionFilters,
 ) : BaseTransportAction<IndexSMPolicyRequest, IndexSMPolicyResponse>(
     INDEX_SM_POLICY_ACTION_NAME, transportService, client, actionFilters, ::IndexSMPolicyRequest

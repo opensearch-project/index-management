@@ -425,7 +425,7 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
             client, clusterService, threadPool, indexManagementIndices, metadataService, templateService, indexMetadataProvider
         )
 
-        SMRunner.init(client)
+        SMRunner.init(client, indexManagementIndices, clusterService)
 
         return listOf(
             managedIndexRunner,

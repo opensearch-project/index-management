@@ -7,7 +7,11 @@ package org.opensearch.indexmanagement.snapshotmanagement.engine
 
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
+import org.opensearch.action.bulk.BackoffPolicy
 import org.opensearch.client.Client
+import org.opensearch.common.unit.TimeValue
+import org.opensearch.indexmanagement.IndexManagementIndices
+import org.opensearch.indexmanagement.opensearchapi.retry
 import org.opensearch.indexmanagement.snapshotmanagement.SnapshotManagementException
 import org.opensearch.indexmanagement.snapshotmanagement.SnapshotManagementException.ExceptionKey
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.SMResult
@@ -25,6 +29,7 @@ class SMStateMachine(
     val client: Client,
     val job: SMPolicy,
     var metadata: SMMetadata,
+    val indicesManager: IndexManagementIndices,
 ) {
 
     val log: Logger = LogManager.getLogger("$javaClass [${smDocIdToPolicyName(job.id)}]")
@@ -142,17 +147,19 @@ class SMStateMachine(
     private var metadataSeqNo: Long = metadata.seqNo
     private var metadataPrimaryTerm: Long = metadata.primaryTerm
     suspend fun updateMetadata(md: SMMetadata) {
+        indicesManager.checkAndUpdateIMConfigIndex(log)
         try {
-            // TODO SM retry policy for update metadata call
             log.info("sm dev update metadata $md")
             if (md == metadata) {
                 log.info("sm dev metadata not change, so don't need to update")
                 return
             }
-            val res = client.indexMetadata(md, job.id, seqNo = metadataSeqNo, primaryTerm = metadataPrimaryTerm)
-            metadataSeqNo = res.seqNo
-            metadataPrimaryTerm = res.primaryTerm
-            metadata = md
+            updateMetaDataRetryPolicy.retry(log) {
+                val res = client.indexMetadata(md, job.id, seqNo = metadataSeqNo, primaryTerm = metadataPrimaryTerm)
+                metadataSeqNo = res.seqNo
+                metadataPrimaryTerm = res.primaryTerm
+                metadata = md
+            }
         } catch (ex: Exception) {
             val smEx = SnapshotManagementException(ExceptionKey.METADATA_INDEXING_FAILURE, ex)
             log.error(smEx.message, ex)
@@ -161,6 +168,7 @@ class SMStateMachine(
 
         // TODO SM save a copy to history
     }
+    private val updateMetaDataRetryPolicy = BackoffPolicy.exponentialBackoff(TimeValue.timeValueMillis(250), 3)
 
     /**
      * Handle the policy change before job running

@@ -19,7 +19,11 @@ import org.opensearch.indexmanagement.snapshotmanagement.engine.states.SMState
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata
 import org.opensearch.OpenSearchStatusException
+import org.opensearch.cluster.health.ClusterHealthStatus
+import org.opensearch.cluster.health.ClusterStateHealth
+import org.opensearch.cluster.service.ClusterService
 import org.opensearch.index.seqno.SequenceNumbers
+import org.opensearch.indexmanagement.IndexManagementIndices
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.creationTransitions
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.deletionTransitions
 import org.opensearch.indexmanagement.util.acquireLockForScheduledJob
@@ -36,10 +40,14 @@ object SMRunner :
 
     private val log = LogManager.getLogger(javaClass)
 
-    lateinit var client: Client
+    private lateinit var client: Client
+    private lateinit var indicesManager: IndexManagementIndices
+    private lateinit var clusterService: ClusterService
 
-    fun init(client: Client): SMRunner {
+    fun init(client: Client, indicesManager: IndexManagementIndices, clusterService: ClusterService): SMRunner {
         SMRunner.client = client
+        SMRunner.indicesManager = indicesManager
+        SMRunner.clusterService = clusterService
         return this
     }
 
@@ -57,7 +65,12 @@ object SMRunner :
         launch {
             val lock = acquireLockForScheduledJob(job, context, backoffPolicy)
             if (lock == null) {
-                log.warn("Cannot acquire lock for snapshot management job ${job.id}")
+                log.warn("Cannot acquire lock for snapshot management job ${job.policyName}")
+                return@launch
+            }
+
+            if (ClusterStateHealth(clusterService.state()).status == ClusterHealthStatus.RED) {
+                log.warn("Skipping current execution of ${job.policyName} because of red cluster health")
                 return@launch
             }
 
@@ -69,7 +82,7 @@ object SMRunner :
 
             // creation, deletion workflow have to be executed sequentially,
             // because they are sharing the same metadata document.
-            SMStateMachine(client, job, metadata)
+            SMStateMachine(client, job, metadata, indicesManager)
                 .handlePolicyChange()
                 .currentState(metadata.creation.currentState)
                 .next(creationTransitions)

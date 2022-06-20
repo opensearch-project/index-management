@@ -19,6 +19,7 @@ import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy
 import org.opensearch.indexmanagement.snapshotmanagement.smDocIdToPolicyName
 import org.opensearch.snapshots.SnapshotInfo
+import org.opensearch.snapshots.SnapshotState
 import org.opensearch.transport.RemoteTransportException
 import java.time.Instant
 import java.time.Instant.now
@@ -57,7 +58,7 @@ object DeletingState : State {
         metadataBuilder.resetRetry()
 
         snapshotsToDelete = filterByDeleteCondition(
-            getSnapshots, // TODO SM filter to only useful snapshots: like not FAILED
+            getSnapshots.filter { it.state() != SnapshotState.IN_PROGRESS },
             job.deletion.condition, log
         )
         log.info("sm dev: Going to delete: $snapshotsToDelete")
