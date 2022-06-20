@@ -55,7 +55,6 @@ class SMUtilsTests : OpenSearchTestCase() {
         val randomCronSchedule = randomCronSchedule()
         // val randomCronSchedule = CronSchedule("14 13 31 2 *", randomZone())
         val nextTime = randomCronSchedule.getNextExecutionTime(now())
-        println(randomCronSchedule.cronExpression)
         assertNotNull("next time should not be null", nextTime)
     }
 }
