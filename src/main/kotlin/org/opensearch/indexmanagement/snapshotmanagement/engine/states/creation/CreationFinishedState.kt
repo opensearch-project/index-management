@@ -31,18 +31,18 @@ object CreationFinishedState : State {
         var metadataBuilder = SMMetadata.Builder(metadata)
             .workflow(WorkflowType.CREATION)
 
-        metadata.creation.started?.first()?.let { started ->
+        metadata.creation.started?.first()?.let { snapshotName ->
             if (metadata.creation.latestExecution == null) {
                 // This should not happen
-                log.error("latest_execution is null while checking if snapshot [$started] creation has finished. Reset.")
+                log.error("latest_execution is null while checking if snapshot [$snapshotName] creation has finished. Reset.")
                 metadataBuilder.resetWorkflow()
                 return@let
             }
 
             val getSnapshotsResult = client.getSnapshots(
-                job, started, metadataBuilder, log,
-                getSnapshotMissingMessageInCreationWorkflow(started),
-                getSnapshotExceptionInCreationWorkflow(started),
+                job, snapshotName, metadataBuilder, log,
+                getSnapshotMissingMessageInCreationWorkflow(snapshotName),
+                getSnapshotExceptionInCreationWorkflow(snapshotName),
             )
             metadataBuilder = getSnapshotsResult.metadataBuilder
             if (getSnapshotsResult.failed) {
@@ -54,7 +54,7 @@ object CreationFinishedState : State {
                 // probably user manually deletes the creating snapshot
                 metadataBuilder.setLatestExecution(
                     status = SMMetadata.LatestExecution.Status.SUCCESS,
-                    message = getSnapshotMissingMessageInCreationWorkflow(started),
+                    message = getSnapshotMissingMessageInCreationWorkflow(snapshotName),
                     endTime = now(),
                 ).resetWorkflow()
                 return@let
@@ -65,7 +65,7 @@ object CreationFinishedState : State {
                 SnapshotState.SUCCESS -> {
                     metadataBuilder.setLatestExecution(
                         status = SMMetadata.LatestExecution.Status.SUCCESS,
-                        message = "Snapshot ${metadata.creation.started.first()} creation end with state ${snapshot.state()}.",
+                        message = getSnapshotCreationSucceedMessage(snapshotName),
                         endTime = now(),
                     ).setCreationStarted(null)
                     // TODO SM notification snapshot created
@@ -83,7 +83,7 @@ object CreationFinishedState : State {
                     // FAILED, PARTIAL, INCOMPATIBLE
                     metadataBuilder.setLatestExecution(
                         status = SMMetadata.LatestExecution.Status.FAILED,
-                        cause = SnapshotManagementException(message = "Snapshot ${metadata.creation.started.first()} creation end with state ${snapshot.state()}."),
+                        cause = SnapshotManagementException(message = "Snapshot $snapshotName creation end with state ${snapshot.state()}."),
                         endTime = now(),
                     ).setCreationStarted(null)
                     // TODO SM notification snapshot creation has problem
@@ -109,6 +109,7 @@ object CreationFinishedState : State {
         return SMResult.Next(metadataBuilder)
     }
 
-    private fun getSnapshotMissingMessageInCreationWorkflow(snapshot: String) = "Snapshot $snapshot not found while checking if it has been created."
-    private fun getSnapshotExceptionInCreationWorkflow(snapshot: String) = "Caught exception while getting started creation snapshot [$snapshot]."
+    private fun getSnapshotCreationSucceedMessage(snapshotName: String) = "Snapshot $snapshotName creation has finished successfully."
+    private fun getSnapshotMissingMessageInCreationWorkflow(snapshotName: String) = "Snapshot $snapshotName not found while checking if it has been created."
+    private fun getSnapshotExceptionInCreationWorkflow(snapshotName: String) = "Caught exception while getting started creation snapshot [$snapshotName]."
 }

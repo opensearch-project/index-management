@@ -52,10 +52,10 @@ object CreatingState : State {
             val getSnapshots = getSnapshotsResult.snapshots
             metadataBuilder.resetRetry()
 
-            val lastExecutionStartTime = job.creation.schedule.getPeriodStartingAt(null).v1()
-            snapshotName = checkCreatedSnapshots(lastExecutionStartTime, getSnapshots)
+            val latestExecutionStartTime = job.creation.schedule.getPeriodStartingAt(null).v1()
+            snapshotName = checkCreatedSnapshots(latestExecutionStartTime, getSnapshots)
             if (snapshotName != null) {
-                log.info("Already created snapshot [$snapshotName] during this execution period starting at $lastExecutionStartTime.")
+                log.info("Already created snapshot [$snapshotName] during this execution period starting at $latestExecutionStartTime.")
                 metadataBuilder.setLatestExecution(
                     status = SMMetadata.LatestExecution.Status.IN_PROGRESS
                 ).setCreationStarted(snapshotName)
@@ -75,6 +75,7 @@ object CreatingState : State {
             log.info("sm dev: Create snapshot response: $res.")
             metadataBuilder.setLatestExecution(
                 status = SMMetadata.LatestExecution.Status.IN_PROGRESS,
+                message = getSnapshotCreationStartedMessage(snapshotName),
             ).setCreationStarted(snapshotName)
         } catch (ex: RemoteTransportException) {
             val unwrappedException = ExceptionsHelper.unwrapCause(ex) as Exception
@@ -96,6 +97,7 @@ object CreatingState : State {
         return SMResult.Fail(metadataBuilder, WorkflowType.CREATION)
     }
 
+    private fun getSnapshotCreationStartedMessage(snapshotName: String) = "Snapshot $snapshotName creation has been started and waiting for completion."
     private fun getSnapshotsErrorMessage() = "Caught exception while getting snapshots to decide if snapshot has been created in previous execution period."
     private fun getCreateSnapshotErrorMessage(snapshotName: String) =
         "Caught exception while creating snapshot $snapshotName."

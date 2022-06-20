@@ -33,15 +33,22 @@ object DeletionConditionMetState : State {
             )
         }
 
-        // if job.deletion != null, then metadata.deletion.trigger.time should be init
-        //  or handled during policy change
-        val nextDeletionTime = metadata.deletion?.trigger?.time ?: job.deletion.schedule.getNextExecutionTime(now())
-        val result = tryUpdatingNextExecutionTime(
-            metadataBuilder, nextDeletionTime, job.deletion.schedule,
-            WorkflowType.DELETION, log
+        // if job.deletion != null, then metadata.deletion.trigger.time should already be
+        //  initialized or handled in handlePolicyChange before executing this state.
+        val nextDeletionTime = if (metadata.deletion == null) {
+            val nextTime = job.deletion.schedule.getNextExecutionTime(now())
+            metadataBuilder.setNextDeletionTime(nextTime)
+            nextTime
+        } else {
+            metadata.deletion.trigger.time
+        }
+        val updateNextTimeResult = tryUpdatingNextExecutionTime(
+            metadataBuilder, nextDeletionTime, job.deletion.schedule, WorkflowType.DELETION, log
         )
-        if (!result.updated) return SMResult.Stay(metadataBuilder)
-        metadataBuilder = result.metadataBuilder
+        if (!updateNextTimeResult.updated) {
+            return SMResult.Stay(metadataBuilder)
+        }
+        metadataBuilder = updateNextTimeResult.metadataBuilder
 
         return SMResult.Next(metadataBuilder)
     }

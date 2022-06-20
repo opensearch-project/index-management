@@ -70,8 +70,10 @@ object DeletingState : State {
                 )
                 val res: AcknowledgedResponse = client.admin().cluster().suspendUntil { deleteSnapshot(req, it) }
                 log.info("sm dev: Delete snapshot acknowledged: ${res.isAcknowledged}.")
+
                 metadataBuilder.setLatestExecution(
-                    status = SMMetadata.LatestExecution.Status.IN_PROGRESS
+                    status = SMMetadata.LatestExecution.Status.IN_PROGRESS,
+                    message = getSnapshotDeletionStartedMessage(snapshotsToDelete),
                 ).setDeletionStarted(snapshotsToDelete)
             } catch (ex: RemoteTransportException) {
                 val unwrappedException = ExceptionsHelper.unwrapCause(ex) as Exception
@@ -93,6 +95,7 @@ object DeletingState : State {
         return SMResult.Fail(metadataBuilder, WorkflowType.CREATION)
     }
 
+    private fun getSnapshotDeletionStartedMessage(snapshotNames: List<String>) = "Snapshots $snapshotNames deletion has been started and waiting for completion."
     private fun getSnapshotsMissingMessage() = "No snapshots found under policy while getting snapshots to decide which snapshots to delete."
     private fun getSnapshotsErrorMessage() = "Caught exception while getting snapshots to decide which snapshots to delete."
     private fun getDeleteSnapshotErrorMessage(snapshotNames: List<String>) = "Caught exception while deleting snapshot $snapshotNames."

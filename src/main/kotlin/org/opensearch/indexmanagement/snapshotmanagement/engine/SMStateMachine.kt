@@ -173,7 +173,7 @@ class SMStateMachine(
     /**
      * Handle the policy change before job running
      *
-     * Currently, only handle schedule change in policy.
+     * Currently, only need to handle the schedule change in policy.
      */
     suspend fun handlePolicyChange(): SMStateMachine {
         if (job.seqNo > metadata.policySeqNo || job.primaryTerm > metadata.policyPrimaryTerm) {
@@ -186,6 +186,7 @@ class SMStateMachine(
             deletion?.let {
                 metadataToSave.setNextDeletionTime(deletion.schedule.getNextExecutionTime(now))
             }
+
             updateMetadata(metadataToSave.build())
         }
         return this

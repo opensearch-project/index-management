@@ -30,10 +30,10 @@ object DeletionFinishedState : State {
         var metadataBuilder = SMMetadata.Builder(metadata)
             .workflow(WorkflowType.DELETION)
 
-        metadata.deletion?.started?.let { startedDeleteSnapshots ->
+        metadata.deletion?.started?.let { snapshotsStartedDeletion ->
             if (metadata.deletion.latestExecution == null) {
                 // This should not happen
-                log.error("latest_execution is null while checking if snapshots [$startedDeleteSnapshots] deletion has finished. Reset.")
+                log.error("latest_execution is null while checking if snapshots [$snapshotsStartedDeletion] deletion has finished. Reset.")
                 metadataBuilder.resetWorkflow()
                 return@let
             }
@@ -41,7 +41,7 @@ object DeletionFinishedState : State {
             val getSnapshotsRes = client.getSnapshots(
                 job, "${smDocIdToPolicyName(job.id)}*", metadataBuilder, log,
                 getSnapshotMissingMessageInDeletionWorkflow(),
-                getSnapshotExceptionInDeletionWorkflow(startedDeleteSnapshots),
+                getSnapshotExceptionInDeletionWorkflow(snapshotsStartedDeletion),
             )
             metadataBuilder = getSnapshotsRes.metadataBuilder
             if (getSnapshotsRes.failed)
@@ -49,7 +49,7 @@ object DeletionFinishedState : State {
             val getSnapshots = getSnapshotsRes.snapshots
 
             val existingSnapshotsNameSet = getSnapshots.map { it.snapshotId().name }.toSet()
-            val remainingSnapshotsName = existingSnapshotsNameSet intersect startedDeleteSnapshots.toSet()
+            val remainingSnapshotsName = existingSnapshotsNameSet intersect snapshotsStartedDeletion.toSet()
             if (remainingSnapshotsName.isEmpty()) {
                 // TODO SM notification snapshot deleted
                 metadataBuilder.setLatestExecution(
@@ -75,8 +75,7 @@ object DeletionFinishedState : State {
             //  is longer than execution period
             job.deletion?.let {
                 val result = tryUpdatingNextExecutionTime(
-                    metadataBuilder, metadata.deletion.trigger.time, job.deletion.schedule,
-                    WorkflowType.DELETION, log
+                    metadataBuilder, metadata.deletion.trigger.time, job.deletion.schedule, WorkflowType.DELETION, log
                 )
                 if (result.updated) {
                     metadataBuilder = result.metadataBuilder
