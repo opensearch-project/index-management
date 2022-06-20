@@ -86,28 +86,30 @@ object SMRunner :
                 return@launch
             }
 
-            val metadata = try {
-                client.getSMMetadata(job.id)
-            } catch (e: OpenSearchStatusException) {
-                initMetadata(job) ?: return@launch
-            }
-
-            // creation, deletion workflow have to be executed sequentially,
-            // because they are sharing the same metadata document.
-            SMStateMachine(client, job, metadata, settings, threadPool, indicesManager)
-                .handlePolicyChange()
-                .currentState(metadata.creation.currentState)
-                .next(creationTransitions)
-                .apply {
-                    val deleteMetadata = metadata.deletion
-                    if (deleteMetadata != null) {
-                        this.currentState(deleteMetadata.currentState)
-                            .next(deletionTransitions)
-                    }
+            try {
+                val metadata = try {
+                    client.getSMMetadata(job.id)
+                } catch (e: OpenSearchStatusException) {
+                    initMetadata(job) ?: return@launch
                 }
 
-            if (!releaseLockForScheduledJob(context, lock)) {
-                log.error("Could not release lock [${lock.lockId}] for ${job.id}.")
+                // creation, deletion workflow have to be executed sequentially,
+                // because they are sharing the same metadata document.
+                SMStateMachine(client, job, metadata, settings, threadPool, indicesManager)
+                    .handlePolicyChange()
+                    .currentState(metadata.creation.currentState)
+                    .next(creationTransitions)
+                    .apply {
+                        val deleteMetadata = metadata.deletion
+                        if (deleteMetadata != null) {
+                            this.currentState(deleteMetadata.currentState)
+                                .next(deletionTransitions)
+                        }
+                    }
+            } finally {
+                if (!releaseLockForScheduledJob(context, lock)) {
+                    log.error("Could not release lock [${lock.lockId}] for ${job.id}.")
+                }
             }
         }
     }
