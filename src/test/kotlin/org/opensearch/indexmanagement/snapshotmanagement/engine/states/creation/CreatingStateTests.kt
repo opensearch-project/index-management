@@ -6,8 +6,8 @@
 package org.opensearch.indexmanagement.snapshotmanagement.engine.states.creation
 
 import kotlinx.coroutines.runBlocking
+import org.opensearch.indexmanagement.MocksTestCase
 import org.opensearch.indexmanagement.snapshotmanagement.engine.SMStateMachine
-import org.opensearch.indexmanagement.snapshotmanagement.engine.SMStateMachineTests
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.SMResult
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.SMState
 import org.opensearch.indexmanagement.snapshotmanagement.randomSMMetadata
@@ -19,7 +19,7 @@ import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata
 import java.time.Instant.now
 import java.time.temporal.ChronoUnit
 
-class CreatingStateTests : SMStateMachineTests() {
+class CreatingStateTests : MocksTestCase() {
 
     fun `test create snapshot succeed`() = runBlocking {
         mockGetSnapshotsCall(response = mockGetSnapshotResponse(0))
@@ -29,7 +29,7 @@ class CreatingStateTests : SMStateMachineTests() {
             creationCurrentState = SMState.CREATION_CONDITION_MET,
         )
         val job = randomSMPolicy()
-        val context = SMStateMachine(client, job, metadata, settings, threadPool)
+        val context = SMStateMachine(client, job, metadata, settings, threadPool, indicesManager)
 
         val result = SMState.CREATING.instance.execute(context)
         assertTrue("Execution result should be Next.", result is SMResult.Next)
@@ -47,7 +47,7 @@ class CreatingStateTests : SMStateMachineTests() {
             creationCurrentState = SMState.CREATION_CONDITION_MET,
         )
         val job = randomSMPolicy()
-        val context = SMStateMachine(client, job, metadata, settings, threadPool)
+        val context = SMStateMachine(client, job, metadata, settings, threadPool, indicesManager)
 
         val result = SMState.CREATING.instance.execute(context)
         assertTrue("Execution result should be Failure.", result is SMResult.Fail)
@@ -67,7 +67,7 @@ class CreatingStateTests : SMStateMachineTests() {
             creationCurrentState = SMState.CREATION_CONDITION_MET,
         )
         val job = randomSMPolicy(policyName = "daily-snapshot")
-        val context = SMStateMachine(client, job, metadata, settings, threadPool)
+        val context = SMStateMachine(client, job, metadata, settings, threadPool, indicesManager)
 
         val result = SMState.CREATING.instance.execute(context)
         assertTrue("Execution result should be Next.", result is SMResult.Next)
@@ -87,7 +87,7 @@ class CreatingStateTests : SMStateMachineTests() {
             creationCurrentState = SMState.CREATION_CONDITION_MET,
         )
         val job = randomSMPolicy(policyName = "daily-snapshot")
-        val context = SMStateMachine(client, job, metadata, settings, threadPool)
+        val context = SMStateMachine(client, job, metadata, settings, threadPool, indicesManager)
 
         val result = SMState.CREATING.instance.execute(context)
         assertTrue("Execution result should be Next.", result is SMResult.Next)
@@ -103,7 +103,7 @@ class CreatingStateTests : SMStateMachineTests() {
             creationCurrentState = SMState.CREATION_CONDITION_MET,
         )
         val job = randomSMPolicy()
-        val context = SMStateMachine(client, job, metadata, settings, threadPool)
+        val context = SMStateMachine(client, job, metadata, settings, threadPool, indicesManager)
 
         val result = SMState.CREATING.instance.execute(context)
         assertTrue("Execution result should be Failure.", result is SMResult.Fail)

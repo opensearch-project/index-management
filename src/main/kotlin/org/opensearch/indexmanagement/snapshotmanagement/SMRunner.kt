@@ -23,9 +23,7 @@ import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.settings.Settings
 import org.opensearch.cluster.health.ClusterHealthStatus
 import org.opensearch.cluster.health.ClusterStateHealth
-import org.opensearch.cluster.service.ClusterService
 import org.opensearch.index.seqno.SequenceNumbers
-import org.opensearch.indexmanagement.IndexManagementIndices
 import org.opensearch.indexmanagement.IndexManagementIndices
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.creationTransitions
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.deletionTransitions
@@ -56,7 +54,7 @@ object SMRunner :
         settings: Settings,
         indicesManager: IndexManagementIndices,
         clusterService: ClusterService,
-        ): SMRunner {
+    ): SMRunner {
         this.client = client
         this.threadPool = threadPool
         this.settings = settings
@@ -121,7 +119,7 @@ object SMRunner :
      */
     private suspend fun initMetadata(job: SMPolicy): SMMetadata? {
         val initMetadata = getInitialMetadata(job)
-        log.info("Initializing metadata [$initMetadata] for job [${job.id}].")
+        log.info("Initializing metadata [$initMetadata] for [${job.policyName}].")
         try {
             // TODO SM more granular error checking
             val res = client.indexMetadata(initMetadata, job.id, create = true, seqNo = SequenceNumbers.UNASSIGNED_SEQ_NO, primaryTerm = SequenceNumbers.UNASSIGNED_PRIMARY_TERM)

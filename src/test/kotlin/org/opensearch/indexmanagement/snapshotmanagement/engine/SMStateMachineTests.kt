@@ -10,12 +10,8 @@ import com.nhaarman.mockitokotlin2.spy
 import com.nhaarman.mockitokotlin2.times
 import com.nhaarman.mockitokotlin2.verify
 import kotlinx.coroutines.runBlocking
-import org.junit.Before
-import org.mockito.Mockito
-import org.opensearch.common.settings.Settings
 import org.opensearch.common.unit.TimeValue
-import org.opensearch.common.util.concurrent.ThreadContext
-import org.opensearch.indexmanagement.ClientMockTestCase
+import org.opensearch.indexmanagement.MocksTestCase
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.SMState
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.creationTransitions
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.deletionTransitions
@@ -26,21 +22,9 @@ import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata
 import org.opensearch.indexmanagement.snapshotmanagement.randomLatestExecution
 import org.opensearch.indexmanagement.snapshotmanagement.randomSMMetadata
 import org.opensearch.indexmanagement.snapshotmanagement.randomSMPolicy
-import org.opensearch.threadpool.ThreadPool
 import java.time.Instant.now
 
-open class SMStateMachineTests : ClientMockTestCase() {
-
-    lateinit var settings: Settings
-    lateinit var threadPool: ThreadPool
-
-    @Before
-    @Throws(Exception::class)
-    fun setup() {
-        threadPool = Mockito.mock(ThreadPool::class.java)
-        settings = Settings.builder().build()
-        Mockito.`when`(threadPool.threadContext).thenReturn(ThreadContext(settings))
-    }
+open class SMStateMachineTests : MocksTestCase() {
 
     fun `test sm result Next save the current state`() = runBlocking {
         val currentState = SMState.CREATION_CONDITION_MET
@@ -52,7 +36,7 @@ open class SMStateMachineTests : ClientMockTestCase() {
             creationCurrentState = currentState
         )
         val job = randomSMPolicy()
-        val stateMachineSpy = spy(SMStateMachine(client, job, metadata, settings, threadPool))
+        val stateMachineSpy = spy(SMStateMachine(client, job, metadata, settings, threadPool, indicesManager))
 
         stateMachineSpy.currentState(currentState).next(creationTransitions)
         argumentCaptor<SMMetadata>().apply {
@@ -70,7 +54,7 @@ open class SMStateMachineTests : ClientMockTestCase() {
             nextDeletionTime = now().plusSeconds(60),
         )
         val job = randomSMPolicy()
-        val stateMachineSpy = spy(SMStateMachine(client, job, metadata, settings, threadPool))
+        val stateMachineSpy = spy(SMStateMachine(client, job, metadata, settings, threadPool, indicesManager))
 
         stateMachineSpy.currentState(currentState).next(deletionTransitions)
         argumentCaptor<SMMetadata>().apply {
@@ -92,7 +76,7 @@ open class SMStateMachineTests : ClientMockTestCase() {
             )
         )
         val job = randomSMPolicy()
-        val stateMachineSpy = spy(SMStateMachine(client, job, metadata, settings, threadPool))
+        val stateMachineSpy = spy(SMStateMachine(client, job, metadata, settings, threadPool, indicesManager))
         stateMachineSpy.currentState(currentState).next(creationTransitions)
         argumentCaptor<SMMetadata>().apply {
             verify(stateMachineSpy).updateMetadata(capture())
@@ -118,7 +102,7 @@ open class SMStateMachineTests : ClientMockTestCase() {
             policyName = "daily-snapshot",
             deletionMaxCount = 10,
         )
-        val stateMachineSpy = spy(SMStateMachine(client, job, metadata, settings, threadPool))
+        val stateMachineSpy = spy(SMStateMachine(client, job, metadata, settings, threadPool, indicesManager))
         stateMachineSpy.currentState(currentState).next(deletionTransitions)
         argumentCaptor<SMMetadata>().apply {
             verify(stateMachineSpy).updateMetadata(capture())
@@ -142,7 +126,7 @@ open class SMStateMachineTests : ClientMockTestCase() {
         )
         val job = randomSMPolicy()
 
-        val stateMachineSpy = spy(SMStateMachine(client, job, metadata, settings, threadPool))
+        val stateMachineSpy = spy(SMStateMachine(client, job, metadata, settings, threadPool, indicesManager))
         stateMachineSpy.currentState(currentState).next(deletionTransitions)
         argumentCaptor<SMMetadata>().apply {
             verify(stateMachineSpy).updateMetadata(capture())
@@ -166,7 +150,7 @@ open class SMStateMachineTests : ClientMockTestCase() {
         )
         val job = randomSMPolicy()
 
-        val stateMachineSpy = spy(SMStateMachine(client, job, metadata, settings, threadPool))
+        val stateMachineSpy = spy(SMStateMachine(client, job, metadata, settings, threadPool, indicesManager))
         stateMachineSpy.currentState(currentState).next(deletionTransitions)
         argumentCaptor<SMMetadata>().apply {
             verify(stateMachineSpy).updateMetadata(capture())
@@ -195,7 +179,7 @@ open class SMStateMachineTests : ClientMockTestCase() {
             deletionTimeLimit = TimeValue.timeValueSeconds(5)
         )
 
-        val stateMachineSpy = spy(SMStateMachine(client, job, metadata, settings, threadPool))
+        val stateMachineSpy = spy(SMStateMachine(client, job, metadata, settings, threadPool, indicesManager))
         stateMachineSpy.currentState(currentState).next(deletionTransitions)
         argumentCaptor<SMMetadata>().apply {
             // first execute DELETE_CONDITION_MET state and return Stay
@@ -215,7 +199,7 @@ open class SMStateMachineTests : ClientMockTestCase() {
             primaryTerm = 1,
         )
 
-        val stateMachineSpy = spy(SMStateMachine(client, job, metadata, settings, threadPool))
+        val stateMachineSpy = spy(SMStateMachine(client, job, metadata, settings, threadPool, indicesManager))
         stateMachineSpy.handlePolicyChange()
         argumentCaptor<SMMetadata>().apply {
             verify(stateMachineSpy).updateMetadata(capture())

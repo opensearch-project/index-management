@@ -64,7 +64,7 @@ class SMStateMachine(
                     currentState = nextState
                     log.info("sm dev: Start executing $currentState.")
                     log.info(
-                        "SM dev: User and roles string from thread context: ${threadPool.threadContext.getTransient<String>(
+                        "sm dev: User and roles string from thread context: ${threadPool.threadContext.getTransient<String>(
                             ConfigConstants.OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT
                         )}"
                     )
@@ -74,12 +74,17 @@ class SMStateMachine(
                         )
                     ) {
                         log.info(
-                            "SM dev: User and roles string from thread context: ${threadPool.threadContext.getTransient<String>(
+                            "sm dev: User and roles string from thread context: ${threadPool.threadContext.getTransient<String>(
                                 ConfigConstants.OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT
                             )}"
                         )
                         currentState.instance.execute(this@SMStateMachine) as SMResult
                     }
+                    log.info(
+                        "sm dev: User and roles string from thread context: ${threadPool.threadContext.getTransient<String>(
+                            ConfigConstants.OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT
+                        )}"
+                    )
 
                     when (result) {
                         is SMResult.Next -> {

@@ -172,7 +172,7 @@ data class SMPolicy(
                 schedule = IntervalSchedule(now(), 1, ChronoUnit.MINUTES)
             }
 
-            require(creation != null) { "Must provide the schedule for snapshot creation." }
+            require(creation != null) { "Must provide the creation configuration." }
             // If user doesn't provide delete schedule, use the creation schedule
             if (deletion != null && !deletion.scheduleProvided) {
                 deletion = deletion.copy(
