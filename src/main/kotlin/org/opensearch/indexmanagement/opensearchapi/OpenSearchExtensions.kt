@@ -47,6 +47,7 @@ import org.opensearch.index.seqno.SequenceNumbers
 import org.opensearch.indexmanagement.indexstatemanagement.action.ShrinkAction
 import org.opensearch.indexmanagement.indexstatemanagement.model.ISMTemplate
 import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
+import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata
 import org.opensearch.indexmanagement.util.NO_ID
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.DEFAULT_INJECT_ROLES
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.INTERNAL_REQUEST
@@ -312,6 +313,16 @@ suspend fun <T> withClosableContext(
 
 fun XContentBuilder.optionalField(name: String, value: Any?): XContentBuilder {
     return if (value != null) { this.field(name, value) } else this
+}
+
+fun XContentBuilder.optionalInfoField(name: String, info: SMMetadata.Info?): XContentBuilder {
+    return if (info != null) {
+        if (info.message != null || info.cause != null) {
+            this.field(name, info)
+        } else {
+            this
+        }
+    } else this
 }
 
 inline fun <T> XContentParser.nullValueHandler(block: XContentParser.() -> T): T? {

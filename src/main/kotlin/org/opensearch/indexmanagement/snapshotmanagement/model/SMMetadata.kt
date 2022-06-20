@@ -19,6 +19,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.util.WITH_TYPE
 import org.opensearch.indexmanagement.opensearchapi.instant
 import org.opensearch.indexmanagement.opensearchapi.nullValueHandler
 import org.opensearch.indexmanagement.opensearchapi.optionalField
+import org.opensearch.indexmanagement.opensearchapi.optionalInfoField
 import org.opensearch.indexmanagement.opensearchapi.optionalTimeField
 import org.opensearch.indexmanagement.opensearchapi.parseArray
 import org.opensearch.indexmanagement.snapshotmanagement.SnapshotManagementException
@@ -214,7 +215,7 @@ data class SMMetadata(
                 .field(STATUS_FIELD, status.toString())
                 .optionalTimeField(START_TIME_FIELD, startTime)
                 .optionalTimeField(END_TIME_FIELD, endTime)
-                .optionalField(INFO_FIELD, info)
+                .optionalInfoField(INFO_FIELD, info)
                 .endObject()
         }
 
