@@ -1314,6 +1314,9 @@
         "description": {
           "type": "text"
         },
+        "schema_version": {
+          "type": "long"
+        },
         "creation": {
           "properties": {
             "schedule": {

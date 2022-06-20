@@ -19,10 +19,13 @@ import org.opensearch.indexmanagement.snapshotmanagement.engine.states.SMState
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata
 import org.opensearch.OpenSearchStatusException
+import org.opensearch.cluster.service.ClusterService
+import org.opensearch.common.settings.Settings
 import org.opensearch.cluster.health.ClusterHealthStatus
 import org.opensearch.cluster.health.ClusterStateHealth
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.index.seqno.SequenceNumbers
+import org.opensearch.indexmanagement.IndexManagementIndices
 import org.opensearch.indexmanagement.IndexManagementIndices
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.creationTransitions
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.deletionTransitions
@@ -32,6 +35,7 @@ import org.opensearch.jobscheduler.spi.JobExecutionContext
 import org.opensearch.jobscheduler.spi.ScheduledJobParameter
 import org.opensearch.jobscheduler.spi.ScheduledJobRunner
 import org.opensearch.rest.RestStatus
+import org.opensearch.threadpool.ThreadPool
 import java.time.Instant.now
 
 object SMRunner :
@@ -43,11 +47,21 @@ object SMRunner :
     private lateinit var client: Client
     private lateinit var indicesManager: IndexManagementIndices
     private lateinit var clusterService: ClusterService
+    private lateinit var threadPool: ThreadPool
+    private lateinit var settings: Settings
 
-    fun init(client: Client, indicesManager: IndexManagementIndices, clusterService: ClusterService): SMRunner {
-        SMRunner.client = client
-        SMRunner.indicesManager = indicesManager
-        SMRunner.clusterService = clusterService
+    fun init(
+        client: Client,
+        threadPool: ThreadPool,
+        settings: Settings,
+        indicesManager: IndexManagementIndices,
+        clusterService: ClusterService,
+        ): SMRunner {
+        this.client = client
+        this.threadPool = threadPool
+        this.settings = settings
+        this.indicesManager = indicesManager
+        this.clusterService = clusterService
         return this
     }
 
@@ -82,7 +96,7 @@ object SMRunner :
 
             // creation, deletion workflow have to be executed sequentially,
             // because they are sharing the same metadata document.
-            SMStateMachine(client, job, metadata, indicesManager)
+            SMStateMachine(client, job, metadata, settings, threadPool, indicesManager)
                 .handlePolicyChange()
                 .currentState(metadata.creation.currentState)
                 .next(creationTransitions)

@@ -6,15 +6,15 @@
 package org.opensearch.indexmanagement.snapshotmanagement.engine.states.creation
 
 import kotlinx.coroutines.runBlocking
-import org.opensearch.indexmanagement.ClientMockTestCase
 import org.opensearch.indexmanagement.snapshotmanagement.engine.SMStateMachine
+import org.opensearch.indexmanagement.snapshotmanagement.engine.SMStateMachineTests
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.SMResult
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.SMState
 import org.opensearch.indexmanagement.snapshotmanagement.randomSMMetadata
 import org.opensearch.indexmanagement.snapshotmanagement.randomSMPolicy
 import java.time.Instant.now
 
-class CreationConditionMetStateTests : ClientMockTestCase() {
+class CreationConditionMetStateTests : SMStateMachineTests() {
 
     fun `test next creation time met`() = runBlocking {
         val metadata = randomSMMetadata(
@@ -22,7 +22,7 @@ class CreationConditionMetStateTests : ClientMockTestCase() {
             nextCreationTime = now().minusSeconds(60),
         )
         val job = randomSMPolicy()
-        val context = SMStateMachine(client, job, metadata)
+        val context = SMStateMachine(client, job, metadata, settings, threadPool)
 
         val result = SMState.CREATION_CONDITION_MET.instance.execute(context)
         assertTrue("Execution result should be Next.", result is SMResult.Next)
@@ -36,7 +36,7 @@ class CreationConditionMetStateTests : ClientMockTestCase() {
             nextCreationTime = now().plusSeconds(60),
         )
         val job = randomSMPolicy()
-        val context = SMStateMachine(client, job, metadata)
+        val context = SMStateMachine(client, job, metadata, settings, threadPool)
 
         val result = SMState.CREATION_CONDITION_MET.instance.execute(context)
         assertTrue("Execution result should be Stay.", result is SMResult.Stay)
