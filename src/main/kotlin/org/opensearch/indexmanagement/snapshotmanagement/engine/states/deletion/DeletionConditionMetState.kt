@@ -27,10 +27,9 @@ object DeletionConditionMetState : State {
             .workflow(WorkflowType.DELETION)
 
         if (job.deletion == null) {
-            log.warn("Policy deletion config is null before checking if delete schedule met. Reset.")
+            log.warn("Policy deletion config becomes null before checking if delete schedule met. Reset.")
             return SMResult.Fail(
-                metadataBuilder.resetDeletion(),
-                WorkflowType.DELETION, forceReset = true
+                metadataBuilder.resetDeletion(), WorkflowType.DELETION, forceReset = true
             )
         }
 

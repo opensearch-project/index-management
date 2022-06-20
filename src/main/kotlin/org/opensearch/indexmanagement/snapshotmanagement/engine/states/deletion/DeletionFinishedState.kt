@@ -9,13 +9,13 @@ import org.opensearch.indexmanagement.snapshotmanagement.engine.SMStateMachine
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.SMResult
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.State
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.WorkflowType
-import org.opensearch.indexmanagement.snapshotmanagement.getSnapshotsWithErrorHandling
+import org.opensearch.indexmanagement.snapshotmanagement.getSnapshots
 import org.opensearch.indexmanagement.snapshotmanagement.isExceed
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata
 import org.opensearch.indexmanagement.snapshotmanagement.smDocIdToPolicyName
 import org.opensearch.indexmanagement.snapshotmanagement.timeLimitExceeded
 import org.opensearch.indexmanagement.snapshotmanagement.tryUpdatingNextExecutionTime
-import java.time.Instant
+import java.time.Instant.now
 
 object DeletionFinishedState : State {
 
@@ -32,12 +32,13 @@ object DeletionFinishedState : State {
 
         metadata.deletion?.started?.let { startedDeleteSnapshots ->
             if (metadata.deletion.latestExecution == null) {
-                log.warn("latest_execution is null while checking if snapshots [$startedDeleteSnapshots] deletion has finished. Reset.")
+                // This should not happen
+                log.error("latest_execution is null while checking if snapshots [$startedDeleteSnapshots] deletion has finished. Reset.")
                 metadataBuilder.resetWorkflow()
                 return@let
             }
 
-            val getSnapshotsRes = client.getSnapshotsWithErrorHandling(
+            val getSnapshotsRes = client.getSnapshots(
                 job, "${smDocIdToPolicyName(job.id)}*", metadataBuilder, log,
                 getSnapshotMissingMessageInDeletionWorkflow(),
                 getSnapshotExceptionInDeletionWorkflow(startedDeleteSnapshots),
@@ -45,7 +46,6 @@ object DeletionFinishedState : State {
             metadataBuilder = getSnapshotsRes.metadataBuilder
             if (getSnapshotsRes.failed)
                 return SMResult.Fail(metadataBuilder, WorkflowType.DELETION)
-            metadataBuilder.resetRetry(deletion = true)
             val getSnapshots = getSnapshotsRes.snapshots
 
             val existingSnapshotsNameSet = getSnapshots.map { it.snapshotId().name }.toSet()
@@ -55,28 +55,32 @@ object DeletionFinishedState : State {
                 metadataBuilder.setLatestExecution(
                     status = SMMetadata.LatestExecution.Status.SUCCESS,
                     message = "Snapshots ${metadata.deletion.started} deletion has finished.",
-                    endTime = Instant.now(),
+                    endTime = now(),
                 ).setDeletionStarted(null)
             } else {
                 job.deletion?.timeLimit?.let { timeLimit ->
-                    if (timeLimit.isExceed(metadata.deletion.latestExecution?.startTime)) {
+                    if (timeLimit.isExceed(metadata.deletion.latestExecution.startTime)) {
                         return timeLimitExceeded(timeLimit, metadataBuilder, WorkflowType.DELETION, log)
                     }
                 }
 
-                log.info("Snapshots haven't been deleted: $remainingSnapshotsName.")
+                log.info("Retention snapshots haven't been deleted: $remainingSnapshotsName.")
                 metadataBuilder.setDeletionStarted(
                     remainingSnapshotsName.toList(),
                 )
             }
 
-            // TODO SM notification: if now is after next deletion time, we can update nextDeletionTime and try notify user
+            // TODO SM notification: if now is after next creation time, update nextCreationTime to the next
+            //  and try notify user that we skip the execution because snapshot creation time
+            //  is longer than execution period
             job.deletion?.let {
                 val result = tryUpdatingNextExecutionTime(
                     metadataBuilder, metadata.deletion.trigger.time, job.deletion.schedule,
                     WorkflowType.DELETION, log
                 )
-                if (result.updated) metadataBuilder = result.metadataBuilder
+                if (result.updated) {
+                    metadataBuilder = result.metadataBuilder
+                }
             }
         }
 

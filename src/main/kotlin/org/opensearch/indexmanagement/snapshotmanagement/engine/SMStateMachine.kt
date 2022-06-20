@@ -55,16 +55,27 @@ class SMStateMachine(
                     when (result) {
                         is SMResult.Next -> {
                             log.info("State [$currentState] has finished.")
-                            updateMetadata(result.metadataToSave.setCurrentState(currentState).build())
+                            updateMetadata(
+                                result.metadataToSave
+                                    .setCurrentState(currentState)
+                                    .resetRetry()
+                                    .build()
+                            )
                             // break the nextStates loop, to avoid executing other lateral states
                             break
                         }
                         is SMResult.Stay -> {
                             log.info("State [$currentState] has not finished.")
-                            updateMetadata(result.metadataToSave.setCurrentState(prevState).build())
+                            updateMetadata(
+                                result.metadataToSave
+                                    .setCurrentState(prevState)
+                                    .resetRetry()
+                                    .build()
+                            )
                             // can still execute other lateral states if exists
                         }
                         is SMResult.Fail -> {
+                            // any error causing Fail state is logged in place
                             if (result.forceReset == true) {
                                 updateMetadata(result.metadataToSave.resetWorkflow().build())
                             } else {

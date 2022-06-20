@@ -6,19 +6,20 @@
 package org.opensearch.indexmanagement.snapshotmanagement.engine.states.deletion
 
 import org.apache.logging.log4j.Logger
+import org.opensearch.ExceptionsHelper
 import org.opensearch.action.admin.cluster.snapshots.delete.DeleteSnapshotRequest
 import org.opensearch.action.support.master.AcknowledgedResponse
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
-import org.opensearch.indexmanagement.snapshotmanagement.SnapshotManagementException
 import org.opensearch.indexmanagement.snapshotmanagement.engine.SMStateMachine
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.SMResult
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.State
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.WorkflowType
-import org.opensearch.indexmanagement.snapshotmanagement.getSnapshotsWithErrorHandling
+import org.opensearch.indexmanagement.snapshotmanagement.getSnapshots
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy
 import org.opensearch.indexmanagement.snapshotmanagement.smDocIdToPolicyName
 import org.opensearch.snapshots.SnapshotInfo
+import org.opensearch.transport.RemoteTransportException
 import java.time.Instant
 import java.time.Instant.now
 
@@ -36,17 +37,15 @@ object DeletingState : State {
             .workflow(WorkflowType.DELETION)
 
         if (job.deletion == null) {
-            log.warn("Policy deletion config is null before trying to delete old snapshots. Reset.")
+            log.warn("Policy deletion config becomes null before trying to delete old snapshots. Reset.")
             return SMResult.Fail(
-                metadataBuilder.resetDeletion(),
-                WorkflowType.DELETION, forceReset = true
+                metadataBuilder.resetDeletion(), WorkflowType.DELETION, forceReset = true
             )
         }
 
-        val res: AcknowledgedResponse
         val snapshotsToDelete: List<String>
 
-        val getSnapshotsRes = client.getSnapshotsWithErrorHandling(
+        val getSnapshotsRes = client.getSnapshots(
             job, smDocIdToPolicyName(job.id) + "*", metadataBuilder, log,
             getSnapshotsMissingMessage(),
             getSnapshotsErrorMessage(),
@@ -54,9 +53,8 @@ object DeletingState : State {
         metadataBuilder = getSnapshotsRes.metadataBuilder
         if (getSnapshotsRes.failed)
             return SMResult.Fail(metadataBuilder, WorkflowType.DELETION)
-        metadataBuilder.resetRetry(deletion = true)
         val getSnapshots = getSnapshotsRes.snapshots
-        log.info("sm dev get snapshots $getSnapshots")
+        metadataBuilder.resetRetry()
 
         snapshotsToDelete = filterByDeleteCondition(
             getSnapshots, // TODO SM filter to only useful snapshots: like not FAILED
@@ -69,26 +67,29 @@ object DeletingState : State {
                     job.snapshotConfig["repository"] as String,
                     *snapshotsToDelete.toTypedArray()
                 )
-                res = client.admin().cluster().suspendUntil { deleteSnapshot(req, it) }
+                val res: AcknowledgedResponse = client.admin().cluster().suspendUntil { deleteSnapshot(req, it) }
                 log.info("sm dev: Delete snapshot acknowledged: ${res.isAcknowledged}.")
-            } catch (ex: Exception) {
-                log.error(getDeleteSnapshotErrorMessage(snapshotsToDelete), ex)
                 metadataBuilder.setLatestExecution(
-                    status = SMMetadata.LatestExecution.Status.RETRYING,
-                    message = getDeleteSnapshotErrorMessage(snapshotsToDelete),
-                    cause = SnapshotManagementException.wrap(ex).message,
-                )
-                return SMResult.Fail(metadataBuilder, WorkflowType.DELETION)
+                    status = SMMetadata.LatestExecution.Status.IN_PROGRESS
+                ).setDeletionStarted(snapshotsToDelete)
+            } catch (ex: RemoteTransportException) {
+                val unwrappedException = ExceptionsHelper.unwrapCause(ex) as Exception
+                return handleException(unwrappedException, snapshotsToDelete, metadataBuilder, log)
+            } catch (ex: Exception) {
+                return handleException(ex, snapshotsToDelete, metadataBuilder, log)
             }
-            metadataBuilder.resetRetry(deletion = true)
-        }
-
-        if (snapshotsToDelete.isNotEmpty()) {
-            metadataBuilder.setLatestExecution(
-                status = SMMetadata.LatestExecution.Status.IN_PROGRESS
-            ).setDeletionStarted(snapshotsToDelete)
         }
         return SMResult.Next(metadataBuilder)
+    }
+
+    private fun handleException(ex: Exception, snapshotsToDelete: List<String>, metadataBuilder: SMMetadata.Builder, log: Logger): SMResult {
+        log.error(getDeleteSnapshotErrorMessage(snapshotsToDelete), ex)
+        metadataBuilder.setLatestExecution(
+            status = SMMetadata.LatestExecution.Status.RETRYING,
+            message = getDeleteSnapshotErrorMessage(snapshotsToDelete),
+            cause = ex,
+        )
+        return SMResult.Fail(metadataBuilder, WorkflowType.CREATION)
     }
 
     private fun getSnapshotsMissingMessage() = "No snapshots found under policy while getting snapshots to decide which snapshots to delete."

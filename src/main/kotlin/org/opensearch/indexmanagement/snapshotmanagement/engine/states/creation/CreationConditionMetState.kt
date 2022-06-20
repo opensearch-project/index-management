@@ -29,7 +29,9 @@ object CreationConditionMetState : State {
             metadataBuilder, nextCreationTime, job.creation.schedule,
             WorkflowType.CREATION, log
         )
-        if (!result.updated) return SMResult.Stay(metadataBuilder)
+        if (!result.updated) {
+            return SMResult.Stay(metadataBuilder)
+        }
         metadataBuilder = result.metadataBuilder
 
         return SMResult.Next(metadataBuilder)

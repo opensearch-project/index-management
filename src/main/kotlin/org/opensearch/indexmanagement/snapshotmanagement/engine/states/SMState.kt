@@ -42,7 +42,8 @@ enum class WorkflowType {
  * [Next]: move to the next state in vertical direction. Save this currentState.
  * [Stay]: stay in this level, can execute the next lateral states if exists. Save the prevState.
  * [Fail]: caught exception. Will start to retry. If retry count exhausted, reset this workflow.
- *   When being used, remember to do [resetRetry] metadata after return this result.
+ *   if there are more than 1 retryable Fail result return in one State, remember to do resetRetry metadata
+ *   except the last one. Refer to [DeletingState]
  */
 sealed class SMResult : State.Result() {
     data class Next(val metadataToSave: SMMetadata.Builder) : SMResult()
@@ -50,7 +51,7 @@ sealed class SMResult : State.Result() {
     data class Fail(
         val metadataToSave: SMMetadata.Builder,
         val workflowType: WorkflowType,
-        val forceReset: Boolean? = null,
+        val forceReset: Boolean? = null, // situation like time limit exceed, we don't retry
     ) : SMResult()
 }
 
