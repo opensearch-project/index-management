@@ -23,6 +23,7 @@ import org.opensearch.indexmanagement.opensearchapi.optionalField
 import org.opensearch.indexmanagement.opensearchapi.optionalTimeField
 import org.opensearch.indexmanagement.snapshotmanagement.smPolicyNameToMetadataId
 import org.opensearch.indexmanagement.snapshotmanagement.smDocIdToPolicyName
+import org.opensearch.indexmanagement.snapshotmanagement.validateDateFormat
 import org.opensearch.jobscheduler.spi.ScheduledJobParameter
 import org.opensearch.jobscheduler.spi.schedule.CronSchedule
 import org.opensearch.jobscheduler.spi.schedule.IntervalSchedule
@@ -51,6 +52,8 @@ data class SMPolicy(
 
     init {
         require(snapshotConfig["repository"] != null && snapshotConfig["repository"] != "") { "Must provide the repository in snapshot config." }
+        require(creation.schedule.getNextExecutionTime(now()) != null) { "Next execution time from the creation schedule is null, please provide a valid cron expression." }
+        require(deletion == null || (deletion.schedule.getNextExecutionTime(now()) != null)) { "Next execution time from the deletion schedule is null, please provide a valid cron expression." }
     }
 
     // This name is used by the job scheduler and needs to match the id to avoid namespace conflicts with ISM policies sharing the same name
@@ -97,6 +100,7 @@ data class SMPolicy(
         const val DELETION_FIELD = "deletion"
         const val SNAPSHOT_CONFIG_FIELD = "snapshot_config"
         const val DATE_FORMAT_FIELD = "date_format"
+        const val DATE_FORMAT_TIMEZONE_FIELD = "date_format_timezone"
         const val ENABLED_FIELD = "enabled"
         const val LAST_UPDATED_TIME_FIELD = "last_updated_time"
         const val ENABLED_TIME_FIELD = "enabled_time"
@@ -161,11 +165,19 @@ data class SMPolicy(
                 )
             }
 
+            requireNotNull(snapshotConfig) { "$SNAPSHOT_CONFIG_FIELD field must not be null" }
+            if (snapshotConfig[DATE_FORMAT_FIELD] != null) {
+                val validMsg = validateDateFormat(snapshotConfig[DATE_FORMAT_FIELD] as String)
+                if (validMsg != null) {
+                    throw IllegalArgumentException("Please provide a valid date format. $validMsg")
+                }
+            }
+
             return SMPolicy(
                 description = description,
                 creation = creation,
                 deletion = deletion,
-                snapshotConfig = requireNotNull(snapshotConfig) { "$SNAPSHOT_CONFIG_FIELD field must not be null" },
+                snapshotConfig = snapshotConfig,
                 jobLastUpdateTime = requireNotNull(lastUpdatedTime) { "$LAST_UPDATED_TIME_FIELD field must not be null" },
                 jobEnabledTime = enabledTime,
                 jobSchedule = schedule,

@@ -7,9 +7,11 @@ package org.opensearch.indexmanagement.snapshotmanagement
 
 import org.opensearch.common.io.stream.BytesStreamOutput
 import org.opensearch.common.io.stream.StreamInput
+import org.opensearch.indexmanagement.opensearchapi.parseWithType
 import org.opensearch.indexmanagement.randomCronSchedule
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.explain.ExplainSMPolicyResponse
 import org.opensearch.indexmanagement.snapshotmanagement.model.ExplainSMPolicy
+import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy
 import org.opensearch.test.OpenSearchTestCase
 import java.time.Instant.now
 import kotlin.test.assertFailsWith
@@ -26,8 +28,11 @@ class SMUtilsTests : OpenSearchTestCase() {
     }
 
     fun `test snapshot name date_format`() {
-        val timeStr = generateFormatTime("")
-        assertEquals("Generate time string", "invalid_date_format", timeStr)
+        assertFailsWith<IllegalArgumentException> {
+            val smPolicy = randomSMPolicy(dateFormat = "")
+            val smPolicyString = smPolicy.toJsonString()
+            smPolicyString.parser().parseWithType(smPolicy.id, smPolicy.seqNo, smPolicy.primaryTerm, SMPolicy.Companion::parse)
+        }
     }
 
     fun `test valid policy name`() {

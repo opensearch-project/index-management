@@ -34,6 +34,7 @@ import org.opensearch.indexmanagement.snapshotmanagement.engine.states.WorkflowT
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy.Companion.DATE_FORMAT_FIELD
+import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy.Companion.DATE_FORMAT_TIMEZONE_FIELD
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy.Companion.SM_DOC_ID_SUFFIX
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy.Companion.SM_METADATA_ID_SUFFIX
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy.Companion.SM_TYPE
@@ -137,7 +138,14 @@ suspend fun Client.indexMetadata(
 fun generateSnapshotName(policy: SMPolicy): String {
     var result: String = policy.policyName
     if (policy.snapshotConfig[DATE_FORMAT_FIELD] != null) {
-        val dateFormat = generateFormatTime(policy.snapshotConfig[DATE_FORMAT_FIELD] as String)
+        val dateFormat = if (policy.snapshotConfig[DATE_FORMAT_TIMEZONE_FIELD] != null) {
+            generateFormatTime(
+                policy.snapshotConfig[DATE_FORMAT_FIELD] as String,
+                ZoneId.of(policy.snapshotConfig[DATE_FORMAT_TIMEZONE_FIELD] as String),
+            )
+        } else {
+            generateFormatTime(policy.snapshotConfig[DATE_FORMAT_FIELD] as String)
+        }
         result += "-$dateFormat"
     }
     return result + "-${getRandomString(8)}"
@@ -149,14 +157,21 @@ fun getRandomString(length: Int): String {
         .joinToString("")
 }
 
-fun generateFormatTime(dateFormat: String): String {
+fun generateFormatTime(dateFormat: String, timezone: ZoneId = ZoneId.systemDefault()): String {
+    val dateFormatter = DateFormatter.forPattern(dateFormat).withZone(timezone)
+    val instant = dateFormatter.toDateMathParser().parse("now/s", System::currentTimeMillis, false, timezone)
+    return dateFormatter.format(instant)
+}
+
+fun validateDateFormat(dateFormat: String): String? {
     return try {
         val timeZone = ZoneId.systemDefault()
         val dateFormatter = DateFormatter.forPattern(dateFormat).withZone(timeZone)
         val instant = dateFormatter.toDateMathParser().parse("now/s", System::currentTimeMillis, false, timeZone)
         dateFormatter.format(instant)
+        null
     } catch (e: Exception) {
-        "invalid_date_format"
+        e.message ?: "Invalid date format."
     }
 }
 
@@ -260,11 +275,6 @@ fun tryUpdatingNextExecutionTime(
     return if (!now.isBefore(nextTime)) {
         log.info("Current time [${Instant.now()}] has passed nextExecutionTime [$nextTime].")
         val newNextTime = schedule.getNextExecutionTime(now)
-        // TODO SM Not sure if this is necessary, but we have seen newNextTime could be null from UT runs
-        if (newNextTime == null) {
-            log.warn("Calculated new next exeuction time is null, we will retry the calculation in the next job run.")
-            UpdateNextExecutionTimeResult(false, metadataBuilder)
-        }
         when (workflowType) {
             WorkflowType.CREATION -> {
                 metadataBuilder.setNextCreationTime(newNextTime)
