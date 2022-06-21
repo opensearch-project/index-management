@@ -18,7 +18,6 @@ import org.opensearch.indexmanagement.snapshotmanagement.engine.SMStateMachine
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.SMState
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata
-import org.opensearch.OpenSearchStatusException
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.settings.Settings
 import org.opensearch.cluster.health.ClusterHealthStatus
@@ -87,10 +86,15 @@ object SMRunner :
             }
 
             try {
-                val metadata = try {
+                var metadata = try {
                     client.getSMMetadata(job.id)
-                } catch (e: OpenSearchStatusException) {
-                    initMetadata(job) ?: return@launch
+                } catch (e: Exception) {
+                    log.error("Failed to retrieve metadata before running ${job.policyName}", e)
+                    return@launch
+                }
+                if (metadata == null) {
+                    metadata = initMetadata(job)
+                    metadata ?: return@launch
                 }
 
                 // creation, deletion workflow have to be executed sequentially,

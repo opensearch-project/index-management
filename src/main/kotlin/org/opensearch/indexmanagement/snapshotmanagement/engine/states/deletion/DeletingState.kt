@@ -14,9 +14,11 @@ import org.opensearch.indexmanagement.snapshotmanagement.engine.SMStateMachine
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.SMResult
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.State
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.WorkflowType
+import org.opensearch.indexmanagement.snapshotmanagement.engine.states.creation.CreatingState
 import org.opensearch.indexmanagement.snapshotmanagement.getSnapshots
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy
+import org.opensearch.snapshots.ConcurrentSnapshotExecutionException
 import org.opensearch.snapshots.SnapshotInfo
 import org.opensearch.snapshots.SnapshotState
 import org.opensearch.transport.RemoteTransportException
@@ -84,6 +86,14 @@ object DeletingState : State {
     }
 
     private fun handleException(ex: Exception, snapshotsToDelete: List<String>, metadataBuilder: SMMetadata.Builder, log: Logger): SMResult {
+        if (ex is ConcurrentSnapshotExecutionException) {
+            log.error(CreatingState.getConcurrentSnapshotMessage(), ex)
+            metadataBuilder.setLatestExecution(
+                status = SMMetadata.LatestExecution.Status.RETRYING,
+                message = CreatingState.getConcurrentSnapshotMessage(),
+            )
+            return SMResult.Stay(metadataBuilder)
+        }
         log.error(getDeleteSnapshotErrorMessage(snapshotsToDelete), ex)
         metadataBuilder.setLatestExecution(
             status = SMMetadata.LatestExecution.Status.RETRYING,

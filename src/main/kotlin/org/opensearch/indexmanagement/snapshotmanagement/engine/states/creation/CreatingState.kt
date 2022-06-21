@@ -18,6 +18,7 @@ import org.opensearch.indexmanagement.snapshotmanagement.engine.states.State
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.WorkflowType
 import org.opensearch.indexmanagement.snapshotmanagement.getSnapshots
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata
+import org.opensearch.snapshots.ConcurrentSnapshotExecutionException
 import org.opensearch.snapshots.SnapshotInfo
 import org.opensearch.transport.RemoteTransportException
 import java.time.Instant
@@ -86,6 +87,14 @@ object CreatingState : State {
     }
 
     private fun handleException(ex: Exception, snapshotName: String, metadataBuilder: SMMetadata.Builder, log: Logger): SMResult {
+        if (ex is ConcurrentSnapshotExecutionException) {
+            log.error(getConcurrentSnapshotMessage(), ex)
+            metadataBuilder.setLatestExecution(
+                status = SMMetadata.LatestExecution.Status.RETRYING,
+                message = getConcurrentSnapshotMessage(),
+            )
+            return SMResult.Stay(metadataBuilder)
+        }
         log.error(getCreateSnapshotErrorMessage(snapshotName), ex)
         metadataBuilder.setLatestExecution(
             status = SMMetadata.LatestExecution.Status.RETRYING,
@@ -95,6 +104,7 @@ object CreatingState : State {
         return SMResult.Fail(metadataBuilder, WorkflowType.CREATION)
     }
 
+    fun getConcurrentSnapshotMessage() = "Concurrent snapshot exception happened, retrying..."
     private fun getSnapshotCreationStartedMessage(snapshotName: String) = "Snapshot $snapshotName creation has been started and waiting for completion."
     private fun getSnapshotsErrorMessage() = "Caught exception while getting snapshots to decide if snapshot has been created in previous execution period."
     private fun getCreateSnapshotErrorMessage(snapshotName: String) =

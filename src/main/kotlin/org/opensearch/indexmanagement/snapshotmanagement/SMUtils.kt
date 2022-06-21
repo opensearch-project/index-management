@@ -81,13 +81,13 @@ suspend fun Client.getSMPolicy(policyID: String): SMPolicy {
 }
 
 @Suppress("RethrowCaughtException", "ThrowsCount")
-suspend fun Client.getSMMetadata(jobID: String): SMMetadata {
+suspend fun Client.getSMMetadata(jobID: String): SMMetadata? {
     val metadataID = smPolicyNameToMetadataDocId(smDocIdToPolicyName(jobID))
     try {
         val getRequest = GetRequest(INDEX_MANAGEMENT_INDEX, metadataID).routing(jobID)
         val getResponse: GetResponse = this.suspendUntil { get(getRequest, it) }
         if (!getResponse.isExists || getResponse.isSourceEmpty) {
-            throw OpenSearchStatusException("Snapshot management metadata not found", RestStatus.NOT_FOUND)
+            return null
         }
         return parseSMMetadata(getResponse)
     } catch (e: OpenSearchStatusException) {
