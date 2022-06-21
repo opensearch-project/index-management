@@ -21,6 +21,7 @@ import org.opensearch.common.util.concurrent.ThreadContext.StoredContext
 import org.opensearch.commons.ConfigConstants.OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT
 import org.opensearch.commons.authuser.User
 import org.opensearch.index.engine.VersionConflictEngineException
+import org.opensearch.indexmanagement.util.SecurityUtils
 import org.opensearch.rest.RestStatus
 import org.opensearch.tasks.Task
 import org.opensearch.transport.TransportService
@@ -46,7 +47,7 @@ abstract class BaseTransportAction<Request : ActionRequest, Response : ActionRes
         val userStr: String? =
             client.threadPool().threadContext.getTransient<String>(OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT)
         log.info("sm dev: user and roles string from thread context: $userStr")
-        val user: User? = User.parse(userStr)
+        val user: User? = SecurityUtils.buildUser(client.threadPool().threadContext)
         coroutineScope.launch {
             try {
                 client.threadPool().threadContext.stashContext().use { threadContext ->
