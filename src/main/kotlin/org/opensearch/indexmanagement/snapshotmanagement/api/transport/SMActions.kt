@@ -15,6 +15,10 @@ import org.opensearch.indexmanagement.snapshotmanagement.api.transport.get.GetSM
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.get.TransportGetSMPolicyAction
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.index.IndexSMPolicyResponse
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.index.TransportIndexSMPolicyAction
+import org.opensearch.indexmanagement.snapshotmanagement.api.transport.get.TransportGetSMPoliciesAction
+import org.opensearch.indexmanagement.snapshotmanagement.api.transport.explain.TransportExplainSMAction
+import org.opensearch.indexmanagement.snapshotmanagement.api.transport.start.TransportStartSMAction
+import org.opensearch.indexmanagement.snapshotmanagement.api.transport.stop.TransportStopSMAction
 
 object SMActions {
     /**
@@ -32,7 +36,7 @@ object SMActions {
     /**
      * [TransportGetSMPoliciesAction]
      */
-    const val GET_SM_POLICIES_ACTION_NAME = "cluster:admin/opensearch/snapshot_management/policies/get"
+    const val GET_SM_POLICIES_ACTION_NAME = "cluster:admin/opensearch/snapshot_management/policy/search"
     val GET_SM_POLICIES_ACTION_TYPE = ActionType(GET_SM_POLICIES_ACTION_NAME, ::GetSMPoliciesResponse)
 
     /**
@@ -44,18 +48,18 @@ object SMActions {
     /**
      * [TransportExplainSMAction]
      */
-    const val EXPLAIN_SM_POLICY_ACTION_NAME = "cluster:admin/opensearch/snapshot_management/explain"
+    const val EXPLAIN_SM_POLICY_ACTION_NAME = "cluster:admin/opensearch/snapshot_management/policy/explain"
     val EXPLAIN_SM_POLICY_ACTION_TYPE = ActionType(EXPLAIN_SM_POLICY_ACTION_NAME, ::ExplainSMPolicyResponse)
 
     /**
      * [TransportStartSMAction]
      */
-    const val START_SM_POLICY_ACTION_NAME = "cluster:admin/opensearch/snapshot_management/start"
+    const val START_SM_POLICY_ACTION_NAME = "cluster:admin/opensearch/snapshot_management/policy/start"
     val START_SM_POLICY_ACTION_TYPE = ActionType(START_SM_POLICY_ACTION_NAME, ::AcknowledgedResponse)
 
     /**
      * [TransportStopSMAction]
      */
-    const val STOP_SM_POLICY_ACTION_NAME = "cluster:admin/opensearch/snapshot_management/stop"
+    const val STOP_SM_POLICY_ACTION_NAME = "cluster:admin/opensearch/snapshot_management/policy/stop"
     val STOP_SM_POLICY_ACTION_TYPE = ActionType(STOP_SM_POLICY_ACTION_NAME, ::AcknowledgedResponse)
 }
