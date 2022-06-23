@@ -21,6 +21,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.transport.action.inde
 import org.opensearch.indexmanagement.opensearchapi.parseWithType
 import org.opensearch.indexmanagement.util.IF_PRIMARY_TERM
 import org.opensearch.indexmanagement.util.IF_SEQ_NO
+import org.opensearch.indexmanagement.util.NO_ID
 import org.opensearch.indexmanagement.util.REFRESH
 import org.opensearch.rest.BaseRestHandler
 import org.opensearch.rest.BaseRestHandler.RestChannelConsumer
@@ -69,8 +70,8 @@ class RestIndexPolicyAction(
 
     @Throws(IOException::class)
     override fun prepareRequest(request: RestRequest, client: NodeClient): RestChannelConsumer {
-        val id = request.param("policyID", Policy.NO_ID)
-        if (Policy.NO_ID == id) {
+        val id = request.param("policyID", NO_ID)
+        if (NO_ID == id) {
             throw IllegalArgumentException("Missing policy ID")
         }
 

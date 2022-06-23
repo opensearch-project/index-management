@@ -23,6 +23,9 @@ import org.opensearch.action.search.SearchResponse
 import org.opensearch.action.support.DefaultShardOperationFailedException
 import org.opensearch.client.OpenSearchClient
 import org.opensearch.common.bytes.BytesReference
+import org.opensearch.common.io.stream.StreamInput
+import org.opensearch.common.io.stream.StreamOutput
+import org.opensearch.common.io.stream.Writeable
 import org.opensearch.common.settings.Settings
 import org.opensearch.common.unit.TimeValue
 import org.opensearch.common.util.concurrent.ThreadContext
@@ -44,6 +47,7 @@ import org.opensearch.index.seqno.SequenceNumbers
 import org.opensearch.indexmanagement.indexstatemanagement.action.ShrinkAction
 import org.opensearch.indexmanagement.indexstatemanagement.model.ISMTemplate
 import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
+import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata
 import org.opensearch.indexmanagement.util.NO_ID
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.DEFAULT_INJECT_ROLES
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.INTERNAL_REQUEST
@@ -304,5 +308,46 @@ suspend fun <T> withClosableContext(
         return withContext(context) { block() }
     } finally {
         context.injector.close()
+    }
+}
+
+fun XContentBuilder.optionalField(name: String, value: Any?): XContentBuilder {
+    return if (value != null) { this.field(name, value) } else this
+}
+
+fun XContentBuilder.optionalInfoField(name: String, info: SMMetadata.Info?): XContentBuilder {
+    return if (info != null) {
+        if (info.message != null || info.cause != null) {
+            this.field(name, info)
+        } else {
+            this
+        }
+    } else this
+}
+
+inline fun <T> XContentParser.nullValueHandler(block: XContentParser.() -> T): T? {
+    return if (currentToken() == Token.VALUE_NULL) null else block()
+}
+
+inline fun <T> XContentParser.parseArray(block: XContentParser.() -> T): List<T> {
+    val resArr = mutableListOf<T>()
+    ensureExpectedToken(Token.START_ARRAY, currentToken(), this)
+    while (nextToken() != Token.END_ARRAY) {
+        resArr.add(block())
+    }
+    return resArr
+}
+
+// similar to readOptionalWriteable
+fun <T> StreamInput.readOptionalValue(reader: Writeable.Reader<T>): T? {
+    return if (readBoolean()) { reader.read(this) } else null
+}
+
+fun <T> StreamOutput.writeOptionalValue(value: T, writer: Writeable.Writer<T>) {
+    if (value == null) {
+        writeBoolean(false)
+    } else {
+        writeBoolean(true)
+        writer.write(this, value)
     }
 }

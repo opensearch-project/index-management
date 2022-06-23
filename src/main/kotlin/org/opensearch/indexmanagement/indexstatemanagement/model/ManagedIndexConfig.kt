@@ -14,6 +14,7 @@ import org.opensearch.index.seqno.SequenceNumbers
 import org.opensearch.indexmanagement.indexstatemanagement.util.XCONTENT_WITHOUT_TYPE
 import org.opensearch.indexmanagement.opensearchapi.instant
 import org.opensearch.indexmanagement.opensearchapi.optionalTimeField
+import org.opensearch.indexmanagement.util.NO_ID
 import org.opensearch.jobscheduler.spi.ScheduledJobParameter
 import org.opensearch.jobscheduler.spi.schedule.Schedule
 import org.opensearch.jobscheduler.spi.schedule.ScheduleParser
@@ -86,7 +87,6 @@ data class ManagedIndexConfig(
 
     companion object {
         const val MANAGED_INDEX_TYPE = "managed_index"
-        const val NO_ID = ""
         const val NAME_FIELD = "name"
         const val ENABLED_FIELD = "enabled"
         const val SCHEDULE_FIELD = "schedule"

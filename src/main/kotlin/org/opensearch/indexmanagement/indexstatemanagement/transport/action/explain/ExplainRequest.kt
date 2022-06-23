@@ -11,7 +11,7 @@ import org.opensearch.action.ValidateActions
 import org.opensearch.common.io.stream.StreamInput
 import org.opensearch.common.io.stream.StreamOutput
 import org.opensearch.common.unit.TimeValue
-import org.opensearch.indexmanagement.indexstatemanagement.model.SearchParams
+import org.opensearch.indexmanagement.common.model.rest.SearchParams
 import org.opensearch.indexmanagement.indexstatemanagement.util.DEFAULT_INDEX_TYPE
 import java.io.IOException
 

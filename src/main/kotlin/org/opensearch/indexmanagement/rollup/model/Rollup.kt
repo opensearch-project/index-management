@@ -25,6 +25,7 @@ import org.opensearch.indexmanagement.opensearchapi.instant
 import org.opensearch.indexmanagement.opensearchapi.optionalTimeField
 import org.opensearch.indexmanagement.opensearchapi.optionalUserField
 import org.opensearch.indexmanagement.util.IndexUtils
+import org.opensearch.indexmanagement.util.NO_ID
 import org.opensearch.indexmanagement.util._ID
 import org.opensearch.jobscheduler.spi.ScheduledJobParameter
 import org.opensearch.jobscheduler.spi.schedule.CronSchedule
@@ -220,7 +221,6 @@ data class Rollup(
         const val ROLLUP_LOCK_DURATION_SECONDS = 1800L // 30 minutes
         const val ROLLUP_TYPE = "rollup"
         const val ROLLUP_ID_FIELD = "rollup_id"
-        const val NO_ID = ""
         const val ENABLED_FIELD = "enabled"
         const val SCHEMA_VERSION_FIELD = "schema_version"
         const val SCHEDULE_FIELD = "schedule"

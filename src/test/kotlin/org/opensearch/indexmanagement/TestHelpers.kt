@@ -24,7 +24,7 @@ fun randomDayOfWeekCronField(): String = if (OpenSearchRestTestCase.randomBoolea
 
 fun randomMonthCronField(): String = if (OpenSearchRestTestCase.randomBoolean()) "*" else OpenSearchRestTestCase.randomIntBetween(1, 12).toString()
 
-fun randomDayOfMonthCronField(): String = if (OpenSearchRestTestCase.randomBoolean()) "*" else OpenSearchRestTestCase.randomIntBetween(1, 31).toString()
+fun randomDayOfMonthCronField(): String = if (OpenSearchRestTestCase.randomBoolean()) "*" else OpenSearchRestTestCase.randomIntBetween(1, 28).toString()
 
 fun randomHourCronField(): String = if (OpenSearchRestTestCase.randomBoolean()) "*" else OpenSearchRestTestCase.randomIntBetween(0, 23).toString()
 

@@ -33,9 +33,9 @@ import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.rollup.model.ContinuousMetadata
 import org.opensearch.indexmanagement.rollup.model.Rollup
 import org.opensearch.indexmanagement.rollup.model.RollupMetadata
-import org.opensearch.indexmanagement.rollup.model.RollupMetadata.Companion.NO_ID
 import org.opensearch.indexmanagement.rollup.model.RollupStats
 import org.opensearch.indexmanagement.rollup.util.DATE_FIELD_EPOCH_MILLIS_FORMAT
+import org.opensearch.indexmanagement.util.NO_ID
 import org.opensearch.search.aggregations.bucket.composite.InternalComposite
 import org.opensearch.search.aggregations.bucket.histogram.DateHistogramAggregationBuilder
 import org.opensearch.search.builder.SearchSourceBuilder

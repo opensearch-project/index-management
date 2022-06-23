@@ -9,16 +9,12 @@ import org.apache.logging.log4j.LogManager
 import org.opensearch.client.node.NodeClient
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.LEGACY_POLICY_BASE_URI
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.POLICY_BASE_URI
-import org.opensearch.indexmanagement.indexstatemanagement.model.SearchParams
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.getpolicy.GetPoliciesAction
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.getpolicy.GetPoliciesRequest
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.getpolicy.GetPolicyAction
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.getpolicy.GetPolicyRequest
-import org.opensearch.indexmanagement.indexstatemanagement.util.DEFAULT_PAGINATION_FROM
-import org.opensearch.indexmanagement.indexstatemanagement.util.DEFAULT_PAGINATION_SIZE
 import org.opensearch.indexmanagement.indexstatemanagement.util.DEFAULT_POLICY_SORT_FIELD
-import org.opensearch.indexmanagement.indexstatemanagement.util.DEFAULT_QUERY_STRING
-import org.opensearch.indexmanagement.indexstatemanagement.util.DEFAULT_SORT_ORDER
+import org.opensearch.indexmanagement.util.getSearchParams
 import org.opensearch.rest.BaseRestHandler
 import org.opensearch.rest.BaseRestHandler.RestChannelConsumer
 import org.opensearch.rest.RestHandler.ReplacedRoute
@@ -69,15 +65,11 @@ class RestGetPolicyAction : BaseRestHandler() {
             fetchSrcContext = FetchSourceContext.DO_NOT_FETCH_SOURCE
         }
 
-        val size = request.paramAsInt("size", DEFAULT_PAGINATION_SIZE)
-        val from = request.paramAsInt("from", DEFAULT_PAGINATION_FROM)
-        val sortField = request.param("sortField", DEFAULT_POLICY_SORT_FIELD)
-        val sortOrder = request.param("sortOrder", DEFAULT_SORT_ORDER)
-        val queryString = request.param("queryString", DEFAULT_QUERY_STRING)
+        val searchParams = request.getSearchParams(DEFAULT_POLICY_SORT_FIELD)
 
         return RestChannelConsumer { channel ->
             if (policyId == null || policyId.isEmpty()) {
-                val getPoliciesRequest = GetPoliciesRequest(SearchParams(size, from, sortField, sortOrder, queryString))
+                val getPoliciesRequest = GetPoliciesRequest(searchParams)
                 client.execute(GetPoliciesAction.INSTANCE, getPoliciesRequest, RestToXContentListener(channel))
             } else {
                 val getPolicyRequest = GetPolicyRequest(policyId, RestActions.parseVersion(request), fetchSrcContext)

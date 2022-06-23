@@ -18,6 +18,7 @@ import org.opensearch.indexmanagement.rollup.action.index.IndexRollupResponse
 import org.opensearch.indexmanagement.rollup.model.Rollup
 import org.opensearch.indexmanagement.util.IF_PRIMARY_TERM
 import org.opensearch.indexmanagement.util.IF_SEQ_NO
+import org.opensearch.indexmanagement.util.NO_ID
 import org.opensearch.indexmanagement.util.REFRESH
 import org.opensearch.rest.BaseRestHandler
 import org.opensearch.rest.BaseRestHandler.RestChannelConsumer
@@ -58,8 +59,8 @@ class RestIndexRollupAction : BaseRestHandler() {
 
     @Throws(IOException::class)
     override fun prepareRequest(request: RestRequest, client: NodeClient): RestChannelConsumer {
-        val id = request.param("rollupID", Rollup.NO_ID)
-        if (Rollup.NO_ID == id) {
+        val id = request.param("rollupID", NO_ID)
+        if (NO_ID == id) {
             throw IllegalArgumentException("Missing rollup ID")
         }
 

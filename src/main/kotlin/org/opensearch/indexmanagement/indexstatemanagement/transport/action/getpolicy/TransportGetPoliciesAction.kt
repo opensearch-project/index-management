@@ -28,8 +28,6 @@ import org.opensearch.indexmanagement.settings.IndexManagementSettings
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.addUserFilter
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.buildUser
 import org.opensearch.search.builder.SearchSourceBuilder
-import org.opensearch.search.sort.SortBuilders
-import org.opensearch.search.sort.SortOrder
 import org.opensearch.tasks.Task
 import org.opensearch.transport.TransportService
 
@@ -67,9 +65,7 @@ class TransportGetPoliciesAction @Inject constructor(
         val params = getPoliciesRequest.searchParams
         val user = buildUser(client.threadPool().threadContext)
 
-        val sortBuilder = SortBuilders
-            .fieldSort(params.sortField)
-            .order(SortOrder.fromString(params.sortOrder))
+        val sortBuilder = params.getSortBuilder()
 
         val queryBuilder = QueryBuilders.boolQuery()
             .must(QueryBuilders.existsQuery("policy"))

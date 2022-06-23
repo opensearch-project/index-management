@@ -1,7 +1,7 @@
 <component name="CopyrightManager">
-  <settings>
+  <settings default="OpenSearch">
     <module2copyright>
-      <element module="Production" copyright="OpenSearch" />
+      <element module="All" copyright="OpenSearch" />
     </module2copyright>
   </settings>
 </component>

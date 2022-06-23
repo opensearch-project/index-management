@@ -111,6 +111,25 @@ import org.opensearch.indexmanagement.rollup.resthandler.RestStopRollupAction
 import org.opensearch.indexmanagement.rollup.settings.LegacyOpenDistroRollupSettings
 import org.opensearch.indexmanagement.rollup.settings.RollupSettings
 import org.opensearch.indexmanagement.settings.IndexManagementSettings
+import org.opensearch.indexmanagement.snapshotmanagement.api.resthandler.RestCreateSMPolicyHandler
+import org.opensearch.indexmanagement.snapshotmanagement.api.resthandler.RestDeleteSMPolicyHandler
+import org.opensearch.indexmanagement.snapshotmanagement.api.resthandler.RestExplainSMPolicyHandler
+import org.opensearch.indexmanagement.snapshotmanagement.api.resthandler.RestGetSMPolicyHandler
+import org.opensearch.indexmanagement.snapshotmanagement.api.resthandler.RestStartSMPolicyHandler
+import org.opensearch.indexmanagement.snapshotmanagement.api.resthandler.RestStopSMPolicyHandler
+import org.opensearch.indexmanagement.snapshotmanagement.api.resthandler.RestUpdateSMPolicyHandler
+import org.opensearch.indexmanagement.snapshotmanagement.api.transport.SMActions
+import org.opensearch.indexmanagement.snapshotmanagement.api.transport.delete.TransportDeleteSMPolicyAction
+import org.opensearch.indexmanagement.snapshotmanagement.api.transport.explain.TransportExplainSMAction
+import org.opensearch.indexmanagement.snapshotmanagement.api.transport.get.TransportGetSMPoliciesAction
+import org.opensearch.indexmanagement.snapshotmanagement.api.transport.get.TransportGetSMPolicyAction
+import org.opensearch.indexmanagement.snapshotmanagement.api.transport.index.TransportIndexSMPolicyAction
+import org.opensearch.indexmanagement.snapshotmanagement.api.transport.start.TransportStartSMAction
+import org.opensearch.indexmanagement.snapshotmanagement.api.transport.stop.TransportStopSMAction
+import org.opensearch.indexmanagement.snapshotmanagement.SMRunner
+import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata
+import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy
+import org.opensearch.indexmanagement.snapshotmanagement.settings.SnapshotManagementSettings
 import org.opensearch.indexmanagement.spi.IndexManagementExtension
 import org.opensearch.indexmanagement.spi.indexstatemanagement.IndexMetadataService
 import org.opensearch.indexmanagement.spi.indexstatemanagement.StatusChecker
@@ -164,6 +183,8 @@ import java.util.function.Supplier
 @Suppress("TooManyFunctions")
 class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin, ExtensiblePlugin, Plugin() {
 
+    private val log = LogManager.getLogger(javaClass)
+
     private val logger = LogManager.getLogger(javaClass)
     lateinit var indexManagementIndices: IndexManagementIndices
     lateinit var clusterService: ClusterService
@@ -186,6 +207,9 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
         const val INDEX_MANAGEMENT_INDEX = ".opendistro-ism-config"
         const val INDEX_MANAGEMENT_JOB_TYPE = "opendistro-index-management"
         const val INDEX_STATE_MANAGEMENT_HISTORY_TYPE = "managed_index_meta_data"
+
+        const val SM_BASE_URI = "$PLUGINS_BASE_URI/_sm"
+        const val SM_POLICIES_URI = "$SM_BASE_URI/policies"
 
         const val OLD_PLUGIN_NAME = "opendistro-im"
         const val OPEN_DISTRO_BASE_URI = "/_opendistro"
@@ -233,6 +257,12 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
                         return@ScheduledJobParser null
                     }
                     ManagedIndexMetaData.MANAGED_INDEX_METADATA_TYPE -> {
+                        return@ScheduledJobParser null
+                    }
+                    SMPolicy.SM_TYPE -> {
+                        return@ScheduledJobParser SMPolicy.parse(xcp, id, jobDocVersion.seqNo, jobDocVersion.primaryTerm)
+                    }
+                    SMMetadata.SM_METADATA_TYPE -> {
                         return@ScheduledJobParser null
                     }
                     else -> {
@@ -300,7 +330,14 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
             RestDeleteTransformAction(),
             RestExplainTransformAction(),
             RestStartTransformAction(),
-            RestStopTransformAction()
+            RestStopTransformAction(),
+            RestGetSMPolicyHandler(),
+            RestStartSMPolicyHandler(),
+            RestStopSMPolicyHandler(),
+            RestExplainSMPolicyHandler(),
+            RestDeleteSMPolicyHandler(),
+            RestCreateSMPolicyHandler(),
+            RestUpdateSMPolicyHandler()
         )
     }
 
@@ -389,6 +426,8 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
             client, clusterService, threadPool, indexManagementIndices, metadataService, templateService, indexMetadataProvider
         )
 
+        val smRunner = SMRunner.init(client, threadPool, settings, indexManagementIndices, clusterService)
+
         return listOf(
             managedIndexRunner,
             rollupRunner,
@@ -396,7 +435,8 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
             indexManagementIndices,
             managedIndexCoordinator,
             indexStateManagementHistory,
-            indexMetadataProvider
+            indexMetadataProvider,
+            smRunner
         )
     }
 
@@ -471,7 +511,8 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
             LegacyOpenDistroRollupSettings.ROLLUP_INDEX,
             LegacyOpenDistroRollupSettings.ROLLUP_ENABLED,
             LegacyOpenDistroRollupSettings.ROLLUP_SEARCH_ENABLED,
-            LegacyOpenDistroRollupSettings.ROLLUP_DASHBOARDS
+            LegacyOpenDistroRollupSettings.ROLLUP_DASHBOARDS,
+            SnapshotManagementSettings.FILTER_BY_BACKEND_ROLES
         )
     }
 
@@ -504,7 +545,14 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
             ActionPlugin.ActionHandler(ExplainTransformAction.INSTANCE, TransportExplainTransformAction::class.java),
             ActionPlugin.ActionHandler(StartTransformAction.INSTANCE, TransportStartTransformAction::class.java),
             ActionPlugin.ActionHandler(StopTransformAction.INSTANCE, TransportStopTransformAction::class.java),
-            ActionPlugin.ActionHandler(ManagedIndexAction.INSTANCE, TransportManagedIndexAction::class.java)
+            ActionPlugin.ActionHandler(ManagedIndexAction.INSTANCE, TransportManagedIndexAction::class.java),
+            ActionPlugin.ActionHandler(SMActions.INDEX_SM_POLICY_ACTION_TYPE, TransportIndexSMPolicyAction::class.java),
+            ActionPlugin.ActionHandler(SMActions.GET_SM_POLICY_ACTION_TYPE, TransportGetSMPolicyAction::class.java),
+            ActionPlugin.ActionHandler(SMActions.DELETE_SM_POLICY_ACTION_TYPE, TransportDeleteSMPolicyAction::class.java),
+            ActionPlugin.ActionHandler(SMActions.START_SM_POLICY_ACTION_TYPE, TransportStartSMAction::class.java),
+            ActionPlugin.ActionHandler(SMActions.STOP_SM_POLICY_ACTION_TYPE, TransportStopSMAction::class.java),
+            ActionPlugin.ActionHandler(SMActions.EXPLAIN_SM_POLICY_ACTION_TYPE, TransportExplainSMAction::class.java),
+            ActionPlugin.ActionHandler(SMActions.GET_SM_POLICIES_ACTION_TYPE, TransportGetSMPoliciesAction::class.java)
         )
     }
 

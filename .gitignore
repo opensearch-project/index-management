@@ -12,5 +12,6 @@ http
 .settings
 src/test/resources/job-scheduler/
 src/test/resources/bwc/
-src/test/resources/notifications-core/
-src/test/resources/notifications/
+bin/
+spi/bin/
+src/test/resources/notifications*

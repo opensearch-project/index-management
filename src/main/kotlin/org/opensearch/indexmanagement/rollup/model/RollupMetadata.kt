@@ -18,6 +18,7 @@ import org.opensearch.common.xcontent.XContentParserUtils.ensureExpectedToken
 import org.opensearch.index.seqno.SequenceNumbers
 import org.opensearch.indexmanagement.indexstatemanagement.util.WITH_TYPE
 import org.opensearch.indexmanagement.opensearchapi.instant
+import org.opensearch.indexmanagement.util.NO_ID
 import org.opensearch.search.aggregations.bucket.composite.InternalComposite
 import java.io.IOException
 import java.time.Instant
@@ -228,7 +229,6 @@ data class RollupMetadata(
 
     companion object {
         const val ROLLUP_METADATA_TYPE = "rollup_metadata"
-        const val NO_ID = ""
         const val ROLLUP_ID_FIELD = "rollup_id"
         const val AFTER_KEY_FIELD = "after_key"
         const val LAST_UPDATED_FIELD = "last_updated_time"
