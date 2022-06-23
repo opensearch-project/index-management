@@ -161,5 +161,18 @@ class SecurityUtils {
             )
             queryBuilder.filter(filterQuery)
         }
+
+        /**
+         * Generates a user string formed by the username, backend roles, roles and requested tenants separated by '|'. This is the user
+         * string format used internally in the OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT and may be parsed using User.parse(<user string>).
+         */
+        fun generateUserString(user: User?): String {
+            if (user == null) return ""
+            val backendRoles = user.backendRoles.joinToString(",")
+            val roles = user.roles.joinToString(",")
+            val requestedTenant = user.requestedTenant
+            val userName = user.name
+            return "$userName|$backendRoles|$roles|$requestedTenant"
+        }
     }
 }

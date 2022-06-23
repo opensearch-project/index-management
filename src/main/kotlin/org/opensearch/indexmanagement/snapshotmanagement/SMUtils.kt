@@ -331,13 +331,24 @@ fun timeLimitExceeded(
     workflow: WorkflowType,
     log: Logger,
 ): SMResult {
-    log.warn(getTimeLimitExceedMessage(timeLimit))
+    val message = getTimeLimitExceededMessage(timeLimit, workflow)
+    log.warn(message)
     metadataBuilder.setLatestExecution(
         status = SMMetadata.LatestExecution.Status.TIME_LIMIT_EXCEEDED,
-        cause = SnapshotManagementException(message = getTimeLimitExceedMessage(timeLimit)),
+        cause = SnapshotManagementException(message = message),
         endTime = now(),
     )
     return SMResult.Fail(metadataBuilder, workflow, forceReset = true)
 }
 
-fun getTimeLimitExceedMessage(timeLimit: TimeValue) = "Time limit $timeLimit exceeded."
+fun getTimeLimitExceededMessage(timeLimit: TimeValue, workflow: WorkflowType): String {
+    val workflow = when (workflow) {
+        WorkflowType.CREATION -> {
+            "creation"
+        }
+        WorkflowType.DELETION -> {
+            "deletion"
+        }
+    }
+    return "Time limit $timeLimit exceeded during snapshot $workflow step"
+}
