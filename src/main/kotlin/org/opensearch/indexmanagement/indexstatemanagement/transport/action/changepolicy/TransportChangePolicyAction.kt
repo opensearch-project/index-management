@@ -24,7 +24,7 @@ import org.opensearch.action.get.MultiGetResponse
 import org.opensearch.action.support.ActionFilters
 import org.opensearch.action.support.HandledTransportAction
 import org.opensearch.action.support.IndicesOptions
-import org.opensearch.action.support.clustermanager.AcknowledgedResponse
+import org.opensearch.action.support.master.AcknowledgedResponse
 import org.opensearch.client.node.NodeClient
 import org.opensearch.cluster.metadata.IndexMetadata
 import org.opensearch.cluster.service.ClusterService

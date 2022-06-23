@@ -9,7 +9,7 @@ import com.carrotsearch.randomizedtesting.RandomizedTest.sleep
 import org.junit.After
 import org.junit.Assume
 import org.junit.Before
-import org.opensearch.action.support.clustermanager.AcknowledgedResponse
+import org.opensearch.action.support.master.AcknowledgedResponse
 import org.opensearch.cluster.metadata.IndexMetadata
 import org.opensearch.common.settings.Settings
 import org.opensearch.index.Index

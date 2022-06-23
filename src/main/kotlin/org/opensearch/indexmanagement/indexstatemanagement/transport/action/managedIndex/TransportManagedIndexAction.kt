@@ -8,7 +8,7 @@ package org.opensearch.indexmanagement.indexstatemanagement.transport.action.man
 import org.opensearch.action.ActionListener
 import org.opensearch.action.support.ActionFilters
 import org.opensearch.action.support.HandledTransportAction
-import org.opensearch.action.support.clustermanager.AcknowledgedResponse
+import org.opensearch.action.support.master.AcknowledgedResponse
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.inject.Inject
 import org.opensearch.tasks.Task

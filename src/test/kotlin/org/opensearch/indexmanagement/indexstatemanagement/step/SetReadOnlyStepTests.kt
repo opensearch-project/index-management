@@ -12,7 +12,7 @@ import com.nhaarman.mockitokotlin2.mock
 import com.nhaarman.mockitokotlin2.whenever
 import kotlinx.coroutines.runBlocking
 import org.opensearch.action.ActionListener
-import org.opensearch.action.support.clustermanager.AcknowledgedResponse
+import org.opensearch.action.support.master.AcknowledgedResponse
 import org.opensearch.client.AdminClient
 import org.opensearch.client.Client
 import org.opensearch.client.IndicesAdminClient

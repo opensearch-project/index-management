@@ -6,7 +6,7 @@
 package org.opensearch.indexmanagement.indexstatemanagement.transport.action.managedIndex
 
 import org.opensearch.action.ActionType
-import org.opensearch.action.support.clustermanager.AcknowledgedResponse
+import org.opensearch.action.support.master.AcknowledgedResponse
 
 class ManagedIndexAction : ActionType<AcknowledgedResponse>(NAME, ::AcknowledgedResponse) {
     companion object {

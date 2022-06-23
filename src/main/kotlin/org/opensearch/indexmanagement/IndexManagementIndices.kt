@@ -14,7 +14,7 @@ import org.opensearch.action.admin.indices.create.CreateIndexRequest
 import org.opensearch.action.admin.indices.create.CreateIndexResponse
 import org.opensearch.action.admin.indices.exists.indices.IndicesExistsRequest
 import org.opensearch.action.admin.indices.exists.indices.IndicesExistsResponse
-import org.opensearch.action.support.clustermanager.AcknowledgedResponse
+import org.opensearch.action.support.master.AcknowledgedResponse
 import org.opensearch.client.Client
 import org.opensearch.client.IndicesAdminClient
 import org.opensearch.cluster.service.ClusterService

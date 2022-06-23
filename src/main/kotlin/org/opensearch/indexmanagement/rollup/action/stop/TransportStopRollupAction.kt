@@ -14,7 +14,7 @@ import org.opensearch.action.get.GetRequest
 import org.opensearch.action.get.GetResponse
 import org.opensearch.action.support.ActionFilters
 import org.opensearch.action.support.HandledTransportAction
-import org.opensearch.action.support.clustermanager.AcknowledgedResponse
+import org.opensearch.action.support.master.AcknowledgedResponse
 import org.opensearch.action.update.UpdateRequest
 import org.opensearch.action.update.UpdateResponse
 import org.opensearch.client.Client

@@ -9,8 +9,8 @@ import org.apache.logging.log4j.LogManager
 import org.opensearch.action.ActionListener
 import org.opensearch.action.admin.indices.mapping.put.PutMappingRequest
 import org.opensearch.action.support.ActionFilters
-import org.opensearch.action.support.clustermanager.AcknowledgedResponse
-import org.opensearch.action.support.clustermanager.TransportClusterManagerNodeAction
+import org.opensearch.action.support.master.AcknowledgedResponse
+import org.opensearch.action.support.master.TransportMasterNodeAction
 import org.opensearch.client.Client
 import org.opensearch.cluster.ClusterState
 import org.opensearch.cluster.block.ClusterBlockException
@@ -37,7 +37,7 @@ class TransportUpdateRollupMappingAction @Inject constructor(
     actionFilters: ActionFilters,
     indexNameExpressionResolver: IndexNameExpressionResolver,
     val client: Client
-) : TransportClusterManagerNodeAction<UpdateRollupMappingRequest, AcknowledgedResponse>(
+) : TransportMasterNodeAction<UpdateRollupMappingRequest, AcknowledgedResponse>(
     UpdateRollupMappingAction.INSTANCE.name(),
     transportService,
     clusterService,
@@ -54,7 +54,7 @@ class TransportUpdateRollupMappingAction @Inject constructor(
     }
 
     @Suppress("ReturnCount", "LongMethod")
-    override fun clusterManagerOperation(
+    override fun masterOperation(
         request: UpdateRollupMappingRequest,
         state: ClusterState,
         listener: ActionListener<AcknowledgedResponse>

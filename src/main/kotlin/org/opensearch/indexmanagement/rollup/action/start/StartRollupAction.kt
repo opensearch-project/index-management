@@ -6,7 +6,7 @@
 package org.opensearch.indexmanagement.rollup.action.start
 
 import org.opensearch.action.ActionType
-import org.opensearch.action.support.clustermanager.AcknowledgedResponse
+import org.opensearch.action.support.master.AcknowledgedResponse
 
 class StartRollupAction private constructor() : ActionType<AcknowledgedResponse>(NAME, ::AcknowledgedResponse) {
     companion object {

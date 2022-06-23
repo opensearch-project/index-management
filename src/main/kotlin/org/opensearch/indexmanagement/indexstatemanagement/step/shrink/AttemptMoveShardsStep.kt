@@ -12,7 +12,7 @@ import org.opensearch.action.admin.cluster.reroute.ClusterRerouteResponse
 import org.opensearch.action.admin.indices.stats.IndicesStatsRequest
 import org.opensearch.action.admin.indices.stats.IndicesStatsResponse
 import org.opensearch.action.admin.indices.stats.ShardStats
-import org.opensearch.action.support.clustermanager.AcknowledgedResponse
+import org.opensearch.action.support.master.AcknowledgedResponse
 import org.opensearch.client.Client
 import org.opensearch.cluster.metadata.IndexMetadata.SETTING_BLOCKS_WRITE
 import org.opensearch.cluster.metadata.MetadataCreateIndexService.validateIndexOrAliasName
