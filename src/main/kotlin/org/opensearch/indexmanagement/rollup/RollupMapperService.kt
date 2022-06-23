@@ -15,7 +15,7 @@ import org.opensearch.action.admin.indices.create.CreateIndexResponse
 import org.opensearch.action.admin.indices.mapping.get.GetMappingsRequest
 import org.opensearch.action.admin.indices.mapping.get.GetMappingsResponse
 import org.opensearch.action.support.IndicesOptions
-import org.opensearch.action.support.master.AcknowledgedResponse
+import org.opensearch.action.support.clustermanager.AcknowledgedResponse
 import org.opensearch.client.Client
 import org.opensearch.cluster.metadata.IndexNameExpressionResolver
 import org.opensearch.cluster.metadata.MappingMetadata

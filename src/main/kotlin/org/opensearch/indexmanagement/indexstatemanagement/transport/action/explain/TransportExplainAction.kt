@@ -21,7 +21,7 @@ import org.opensearch.action.search.SearchRequest
 import org.opensearch.action.search.SearchResponse
 import org.opensearch.action.support.ActionFilters
 import org.opensearch.action.support.HandledTransportAction
-import org.opensearch.action.support.master.AcknowledgedResponse
+import org.opensearch.action.support.clustermanager.AcknowledgedResponse
 import org.opensearch.client.node.NodeClient
 import org.opensearch.cluster.metadata.IndexMetadata
 import org.opensearch.cluster.service.ClusterService
@@ -251,7 +251,7 @@ class TransportExplainAction @Inject constructor(
                     .indices(*indexNames.toTypedArray())
                     .metadata(true)
                     .local(request.local)
-                    .masterNodeTimeout(request.clusterManagerTimeout)
+                    .clusterManagerNodeTimeout(request.clusterManagerTimeout)
 
                 client.admin().cluster().state(
                     clusterStateRequest,

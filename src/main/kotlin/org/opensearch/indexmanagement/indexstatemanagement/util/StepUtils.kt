@@ -13,7 +13,7 @@ import org.opensearch.action.admin.cluster.health.ClusterHealthResponse
 import org.opensearch.action.admin.cluster.node.stats.NodeStats
 import org.opensearch.action.admin.indices.settings.put.UpdateSettingsRequest
 import org.opensearch.action.admin.indices.stats.ShardStats
-import org.opensearch.action.support.master.AcknowledgedResponse
+import org.opensearch.action.support.clustermanager.AcknowledgedResponse
 import org.opensearch.client.Client
 import org.opensearch.cluster.metadata.IndexMetadata
 import org.opensearch.cluster.node.DiscoveryNodes

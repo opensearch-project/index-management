@@ -7,7 +7,7 @@ package org.opensearch.indexmanagement.indexstatemanagement.transport.action.upd
 
 import org.opensearch.action.ActionRequestValidationException
 import org.opensearch.action.ValidateActions.addValidationError
-import org.opensearch.action.support.master.AcknowledgedRequest
+import org.opensearch.action.support.clustermanager.AcknowledgedRequest
 import org.opensearch.common.io.stream.StreamInput
 import org.opensearch.common.io.stream.StreamOutput
 import org.opensearch.index.Index

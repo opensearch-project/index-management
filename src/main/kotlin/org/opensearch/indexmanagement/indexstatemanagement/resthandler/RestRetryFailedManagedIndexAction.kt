@@ -5,7 +5,7 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.resthandler
 
-import org.opensearch.action.support.master.MasterNodeRequest.DEFAULT_MASTER_NODE_TIMEOUT
+import org.opensearch.action.support.clustermanager.ClusterManagerNodeRequest
 import org.opensearch.client.node.NodeClient
 import org.opensearch.common.Strings
 import org.opensearch.common.xcontent.XContentHelper
@@ -62,7 +62,7 @@ class RestRetryFailedManagedIndexAction : BaseRestHandler() {
 
         val retryFailedRequest = RetryFailedManagedIndexRequest(
             indices.toList(), body["state"] as String?,
-            request.paramAsTime("master_timeout", DEFAULT_MASTER_NODE_TIMEOUT),
+            request.paramAsTime("master_timeout", ClusterManagerNodeRequest.DEFAULT_CLUSTER_MANAGER_NODE_TIMEOUT),
             indexType
         )
 

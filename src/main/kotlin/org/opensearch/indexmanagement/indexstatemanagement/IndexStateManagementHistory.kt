@@ -17,7 +17,7 @@ import org.opensearch.action.bulk.BulkRequest
 import org.opensearch.action.bulk.BulkResponse
 import org.opensearch.action.index.IndexRequest
 import org.opensearch.action.support.IndicesOptions
-import org.opensearch.action.support.master.AcknowledgedResponse
+import org.opensearch.action.support.clustermanager.AcknowledgedResponse
 import org.opensearch.client.Client
 import org.opensearch.cluster.LocalNodeMasterListener
 import org.opensearch.cluster.service.ClusterService
@@ -82,7 +82,7 @@ class IndexStateManagementHistory(
         }
     }
 
-    override fun onMaster() {
+    override fun onClusterManager() {
         try {
             // try to rollover immediately as we might be restarting the cluster
             if (historyEnabled) rolloverHistoryIndex()
@@ -97,7 +97,7 @@ class IndexStateManagementHistory(
         }
     }
 
-    override fun offMaster() {
+    override fun offClusterManager() {
         scheduledRollover?.cancel()
     }
 

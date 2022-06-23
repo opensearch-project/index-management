@@ -6,7 +6,7 @@
 package org.opensearch.indexmanagement.indexstatemanagement.resthandler
 
 import org.apache.logging.log4j.LogManager
-import org.opensearch.action.support.master.MasterNodeRequest
+import org.opensearch.action.support.clustermanager.ClusterManagerNodeRequest
 import org.opensearch.client.node.NodeClient
 import org.opensearch.common.Strings
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.ISM_BASE_URI
@@ -77,7 +77,7 @@ class RestExplainAction : BaseRestHandler() {
         val explainRequest = ExplainRequest(
             indices.toList(),
             request.paramAsBoolean("local", false),
-            request.paramAsTime("master_timeout", MasterNodeRequest.DEFAULT_MASTER_NODE_TIMEOUT),
+            request.paramAsTime("master_timeout", ClusterManagerNodeRequest.DEFAULT_CLUSTER_MANAGER_NODE_TIMEOUT),
             SearchParams(size, from, sortField, sortOrder, queryString),
             request.paramAsBoolean(SHOW_POLICY_QUERY_PARAM, DEFAULT_EXPLAIN_SHOW_POLICY),
             indexType
