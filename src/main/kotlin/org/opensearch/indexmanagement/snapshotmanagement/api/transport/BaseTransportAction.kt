@@ -44,7 +44,10 @@ abstract class BaseTransportAction<Request : ActionRequest, Response : ActionRes
         request: Request,
         listener: ActionListener<Response>
     ) {
-        log.debug("user and roles string from thread context: ${client.threadPool().threadContext.getTransient<String>(OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT)}")
+        log.debug(
+            "user and roles string from thread context: " +
+                client.threadPool().threadContext.getTransient<String>(OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT)
+        )
         val user: User? = SecurityUtils.buildUser(client.threadPool().threadContext)
         coroutineScope.launch {
             try {

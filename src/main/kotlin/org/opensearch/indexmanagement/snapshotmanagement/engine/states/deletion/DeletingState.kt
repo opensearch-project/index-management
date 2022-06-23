@@ -29,6 +29,7 @@ object DeletingState : State {
 
     override val continuous: Boolean = false
 
+    @Suppress("ReturnCount", "SpreadOperator")
     override suspend fun execute(context: SMStateMachine): SMResult {
         val client = context.client
         val job = context.job

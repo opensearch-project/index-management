@@ -5,12 +5,8 @@
 
 package org.opensearch.indexmanagement.snapshotmanagement
 
-import org.opensearch.common.io.stream.BytesStreamOutput
-import org.opensearch.common.io.stream.StreamInput
 import org.opensearch.indexmanagement.opensearchapi.parseWithType
 import org.opensearch.indexmanagement.randomCronSchedule
-import org.opensearch.indexmanagement.snapshotmanagement.api.transport.explain.ExplainSMPolicyResponse
-import org.opensearch.indexmanagement.snapshotmanagement.model.ExplainSMPolicy
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy
 import org.opensearch.test.OpenSearchTestCase
 import java.time.Instant.now
@@ -40,15 +36,6 @@ class SMUtilsTests : OpenSearchTestCase() {
         assertFailsWith<IllegalArgumentException> {
             validateSMPolicyName(policyName)
         }
-    }
-
-    fun `test parse metadata in explain response`() {
-        val metadata = randomSMMetadata()
-        val policiesToExplain: Map<String, ExplainSMPolicy?> = mapOf("policyName" to ExplainSMPolicy(metadata, true))
-        val response = ExplainSMPolicyResponse(policiesToExplain)
-        val out = BytesStreamOutput().also { response.writeTo(it) }
-        val sin = StreamInput.wrap(out.bytes().toBytesRef().bytes)
-        // parseSMMetadata(sin)
     }
 
     fun `test random cron expression`() {

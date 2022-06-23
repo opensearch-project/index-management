@@ -45,6 +45,7 @@ class SnapshotManagementException(
          * If you want to define a user facing exception message, you need to define an ExceptionKey
          *  with customized message. And wrap with the defined exceptionKey.
          */
+        @Suppress("ReturnCount")
         fun getUserErrorMessage(ex: Exception?, key: ExceptionKey? = null): SnapshotManagementException {
             if (ex is SnapshotManagementException) return ex
             var message = "Caught exception while snapshot management runs. Please check the error log." // exceptionMsgMap[ExceptionKey.GENERAL]!!

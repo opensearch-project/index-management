@@ -20,6 +20,7 @@ object DeletionFinishedState : State {
 
     override val continuous = true
 
+    @Suppress("ReturnCount", "NestedBlockDepth")
     override suspend fun execute(context: SMStateMachine): SMResult {
         val client = context.client
         val job = context.job
@@ -89,6 +90,8 @@ object DeletionFinishedState : State {
         return SMResult.Next(metadataBuilder)
     }
 
-    private fun getSnapshotMissingMessageInDeletionWorkflow() = "No snapshots found under policy while getting snapshots to decide if snapshots has been deleted."
-    private fun getSnapshotExceptionInDeletionWorkflow(startedDeleteSnapshots: List<String>) = "Caught exception while getting snapshots to decide if snapshots [$startedDeleteSnapshots] has been deleted."
+    private fun getSnapshotMissingMessageInDeletionWorkflow() =
+        "No snapshots found under policy while getting snapshots to decide if snapshots has been deleted."
+    private fun getSnapshotExceptionInDeletionWorkflow(startedDeleteSnapshots: List<String>) =
+        "Caught exception while getting snapshots to decide if snapshots [$startedDeleteSnapshots] has been deleted."
 }

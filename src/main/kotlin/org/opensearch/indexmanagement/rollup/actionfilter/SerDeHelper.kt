@@ -74,6 +74,7 @@ class ISMFieldCapabilitiesResponse(
     }
 }
 
+@Suppress("LongParameterList")
 class ISMFieldCapabilities(
     private val name: String,
     private val type: String,

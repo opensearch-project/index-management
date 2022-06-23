@@ -22,6 +22,7 @@ object CreationFinishedState : State {
 
     override val continuous = true
 
+    @Suppress("ReturnCount", "LongMethod", "NestedBlockDepth")
     override suspend fun execute(context: SMStateMachine): SMResult {
         val client = context.client
         val job = context.job
@@ -109,7 +110,10 @@ object CreationFinishedState : State {
         return SMResult.Next(metadataBuilder)
     }
 
-    private fun getSnapshotCreationSucceedMessage(snapshotName: String) = "Snapshot $snapshotName creation has finished successfully."
-    private fun getSnapshotMissingMessageInCreationWorkflow(snapshotName: String) = "Snapshot $snapshotName not found while checking if it has been created."
-    private fun getSnapshotExceptionInCreationWorkflow(snapshotName: String) = "Caught exception while getting started creation snapshot [$snapshotName]."
+    private fun getSnapshotCreationSucceedMessage(snapshotName: String) =
+        "Snapshot $snapshotName creation has finished successfully."
+    private fun getSnapshotMissingMessageInCreationWorkflow(snapshotName: String) =
+        "Snapshot $snapshotName not found while checking if it has been created."
+    private fun getSnapshotExceptionInCreationWorkflow(snapshotName: String) =
+        "Caught exception while getting started creation snapshot [$snapshotName]."
 }

@@ -18,6 +18,7 @@ object DeletionConditionMetState : State {
 
     override val continuous = true
 
+    @Suppress("ReturnCount")
     override suspend fun execute(context: SMStateMachine): SMResult {
         val job = context.job
         val metadata = context.metadata

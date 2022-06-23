@@ -5,7 +5,6 @@
 
 package org.opensearch.indexmanagement.snapshotmanagement.model
 
-import org.apache.logging.log4j.LogManager
 import org.opensearch.common.io.stream.StreamInput
 import org.opensearch.common.io.stream.StreamOutput
 import org.opensearch.common.io.stream.Writeable
@@ -37,8 +36,6 @@ import java.time.Instant
 import java.time.Instant.now
 import java.time.ZoneId
 import java.time.temporal.ChronoUnit
-
-private val log = LogManager.getLogger(SMPolicy::class.java)
 
 data class SMPolicy(
     val id: String,
@@ -119,7 +116,7 @@ data class SMPolicy(
         // Used by sub models Creation and Deletion
         const val TIME_LIMIT_FIELD = "time_limit"
 
-        @Suppress("ComplexMethod")
+        @Suppress("ComplexMethod", "LongMethod")
         fun parse(
             xcp: XContentParser,
             id: String,

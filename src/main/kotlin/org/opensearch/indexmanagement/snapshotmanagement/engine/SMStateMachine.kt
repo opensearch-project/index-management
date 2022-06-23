@@ -46,6 +46,7 @@ class SMStateMachine(
         return this
     }
 
+    @Suppress("LongMethod", "ReturnCount", "NestedBlockDepth")
     suspend fun next(transitions: Map<SMState, List<SMState>>): SMStateMachine {
         try {
             do {

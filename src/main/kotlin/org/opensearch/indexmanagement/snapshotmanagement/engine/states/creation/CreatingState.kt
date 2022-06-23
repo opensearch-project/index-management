@@ -27,6 +27,7 @@ object CreatingState : State {
 
     override val continuous: Boolean = false
 
+    @Suppress("ReturnCount")
     override suspend fun execute(context: SMStateMachine): SMResult {
         val client = context.client
         val job = context.job
@@ -103,8 +104,10 @@ object CreatingState : State {
     }
 
     fun getConcurrentSnapshotMessage() = "Concurrent snapshot exception happened, retrying..."
-    private fun getSnapshotCreationStartedMessage(snapshotName: String) = "Snapshot $snapshotName creation has been started and waiting for completion."
-    private fun getSnapshotsErrorMessage() = "Caught exception while getting snapshots to decide if snapshot has been created in previous execution period."
+    private fun getSnapshotCreationStartedMessage(snapshotName: String) =
+        "Snapshot $snapshotName creation has been started and waiting for completion."
+    private fun getSnapshotsErrorMessage() =
+        "Caught exception while getting snapshots to decide if snapshot has been created in previous execution period."
     private fun getCreateSnapshotErrorMessage(snapshotName: String) =
         "Caught exception while creating snapshot $snapshotName."
 
@@ -112,6 +115,7 @@ object CreatingState : State {
      * If there is snapshot already created in this execution period,
      * continue to next state with this snapshot name.
      */
+    @Suppress("ReturnCount")
     private fun checkCreatedSnapshots(lastExecutionTime: Instant, snapshots: List<SnapshotInfo>): String? {
         if (snapshots.isEmpty()) return null
         for (i in snapshots.sortedBy { it.startTime() }.indices.reversed()) {

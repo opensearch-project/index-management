@@ -5,7 +5,6 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.model.destination
 
-import org.apache.logging.log4j.LogManager
 import org.opensearch.common.io.stream.StreamInput
 import org.opensearch.common.io.stream.StreamOutput
 import org.opensearch.common.io.stream.Writeable
@@ -62,8 +61,6 @@ data class Destination(
         const val CHIME = "chime"
         const val SLACK = "slack"
         const val CUSTOMWEBHOOK = "custom_webhook"
-
-        private val logger = LogManager.getLogger(Destination::class.java)
 
         @Suppress("ComplexMethod")
         @JvmStatic

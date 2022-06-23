@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+@file:Suppress("TooManyFunctions")
 package org.opensearch.indexmanagement.snapshotmanagement
 
 import org.apache.logging.log4j.LogManager
@@ -149,8 +150,10 @@ fun generateSnapshotName(policy: SMPolicy): String {
         }
         result += "-$dateFormat"
     }
-    return result + "-${getRandomString(8)}"
+    return result + "-${getRandomString(RANDOM_STRING_LENGTH)}"
 }
+
+const val RANDOM_STRING_LENGTH = 8
 
 fun getRandomString(length: Int): String {
     val allowedChars = ('a'..'z') + ('0'..'9')
@@ -219,6 +222,7 @@ suspend fun Client.getSnapshots(name: String, repo: String): List<SnapshotInfo> 
 /**
  * Used in Snapshot Management States logic
  */
+@Suppress("LongParameterList", "ReturnCount")
 suspend fun Client.getSnapshots(
     job: SMPolicy,
     name: String,

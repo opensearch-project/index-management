@@ -426,6 +426,7 @@ data class SMMetadata(
      * Build the updated metadata in a flattened fashion
      *  based on the existing metadata
      */
+    @Suppress("TooManyFunctions")
     class Builder(
         private var metadata: SMMetadata,
     ) {
@@ -506,6 +507,7 @@ data class SMMetadata(
 
         // Use this **first** to update metadata, because it depends on started field
         // So if you change started first, this could behave wrongly
+        @Suppress("LongParameterList")
         fun setLatestExecution(
             status: LatestExecution.Status,
             updateMessage: Boolean = true,

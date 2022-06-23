@@ -90,7 +90,10 @@ class IndexManagementIndices(
             logger.info("Successfully created or updated $INDEX_MANAGEMENT_INDEX with newest mappings.")
         } else {
             logger.error("Unable to create or update $INDEX_MANAGEMENT_INDEX with newest mapping.")
-            throw OpenSearchStatusException("Unable to create or update $INDEX_MANAGEMENT_INDEX with newest mapping.", RestStatus.INTERNAL_SERVER_ERROR)
+            throw OpenSearchStatusException(
+                "Unable to create or update $INDEX_MANAGEMENT_INDEX with newest mapping.",
+                RestStatus.INTERNAL_SERVER_ERROR
+            )
         }
     }
 

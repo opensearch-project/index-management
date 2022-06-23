@@ -123,12 +123,16 @@ object SMRunner :
      *
      * @return null indicates indexing metadata failed
      */
+    @Suppress("ReturnCount")
     private suspend fun initMetadata(job: SMPolicy): SMMetadata? {
         val initMetadata = getInitialMetadata(job)
         log.info("Initializing metadata [$initMetadata] for [${job.policyName}].")
         try {
             // TODO SM more granular error checking
-            val res = client.indexMetadata(initMetadata, job.id, create = true, seqNo = SequenceNumbers.UNASSIGNED_SEQ_NO, primaryTerm = SequenceNumbers.UNASSIGNED_PRIMARY_TERM)
+            val res = client.indexMetadata(
+                initMetadata, job.id, create = true,
+                seqNo = SequenceNumbers.UNASSIGNED_SEQ_NO, primaryTerm = SequenceNumbers.UNASSIGNED_PRIMARY_TERM
+            )
             if (res.status() != RestStatus.CREATED) {
                 log.error("Metadata initialization response status is ${res.status()}, expecting CREATED 201.")
                 return null
