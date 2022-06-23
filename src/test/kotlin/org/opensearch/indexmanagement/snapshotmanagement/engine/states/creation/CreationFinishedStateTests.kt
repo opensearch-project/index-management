@@ -7,8 +7,8 @@ package org.opensearch.indexmanagement.snapshotmanagement.engine.states.creation
 
 import kotlinx.coroutines.runBlocking
 import org.opensearch.common.unit.TimeValue
+import org.opensearch.indexmanagement.MocksTestCase
 import org.opensearch.indexmanagement.snapshotmanagement.engine.SMStateMachine
-import org.opensearch.indexmanagement.snapshotmanagement.engine.SMStateMachineTests
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.SMResult
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.SMState
 import org.opensearch.indexmanagement.snapshotmanagement.mockGetSnapshotResponse
@@ -20,7 +20,7 @@ import org.opensearch.indexmanagement.snapshotmanagement.randomSMMetadata
 import org.opensearch.indexmanagement.snapshotmanagement.randomSMPolicy
 import java.time.Instant
 
-class CreationFinishedStateTests : SMStateMachineTests() {
+class CreationFinishedStateTests : MocksTestCase() {
     fun `test creation end successful`() = runBlocking {
         val snapshotName = "test_creation_succeed"
         val snapshotInfo = mockSnapshotInfo(name = snapshotName)
@@ -34,7 +34,7 @@ class CreationFinishedStateTests : SMStateMachineTests() {
             ),
         )
         val job = randomSMPolicy(policyName = "daily-snapshot")
-        val context = SMStateMachine(client, job, metadata, settings, threadPool)
+        val context = SMStateMachine(client, job, metadata, settings, threadPool, indicesManager)
 
         val result = SMState.CREATION_FINISHED.instance.execute(context)
         assertTrue("Execution results should be Next.", result is SMResult.Next)
@@ -59,7 +59,7 @@ class CreationFinishedStateTests : SMStateMachineTests() {
             ),
         )
         val job = randomSMPolicy(policyName = "daily-snapshot")
-        val context = SMStateMachine(client, job, metadata, settings, threadPool)
+        val context = SMStateMachine(client, job, metadata, settings, threadPool, indicesManager)
 
         val result = SMState.CREATION_FINISHED.instance.execute(context)
         assertTrue("Execution results should be Stay.", result is SMResult.Stay)
@@ -81,7 +81,7 @@ class CreationFinishedStateTests : SMStateMachineTests() {
             ),
         )
         val job = randomSMPolicy(policyName = "daily-snapshot")
-        val context = SMStateMachine(client, job, metadata, settings, threadPool)
+        val context = SMStateMachine(client, job, metadata, settings, threadPool, indicesManager)
 
         val result = SMState.CREATION_FINISHED.instance.execute(context)
         assertTrue("Execution results should be Next.", result is SMResult.Next)
@@ -105,7 +105,7 @@ class CreationFinishedStateTests : SMStateMachineTests() {
             ),
         )
         val job = randomSMPolicy(policyName = "daily-snapshot")
-        val context = SMStateMachine(client, job, metadata, settings, threadPool)
+        val context = SMStateMachine(client, job, metadata, settings, threadPool, indicesManager)
 
         val result = SMState.CREATION_FINISHED.instance.execute(context)
         assertTrue("Execution results should be Failure.", result is SMResult.Fail)
@@ -128,7 +128,7 @@ class CreationFinishedStateTests : SMStateMachineTests() {
             ),
         )
         val job = randomSMPolicy(policyName = "daily-snapshot")
-        val context = SMStateMachine(client, job, metadata, settings, threadPool)
+        val context = SMStateMachine(client, job, metadata, settings, threadPool, indicesManager)
 
         val result = SMState.CREATION_FINISHED.instance.execute(context)
         assertTrue("Execution results should be Next.", result is SMResult.Next)
@@ -155,7 +155,7 @@ class CreationFinishedStateTests : SMStateMachineTests() {
             policyName = "daily-snapshot",
             creationTimeLimit = TimeValue.timeValueSeconds(5)
         )
-        val context = SMStateMachine(client, job, metadata, settings, threadPool)
+        val context = SMStateMachine(client, job, metadata, settings, threadPool, indicesManager)
 
         val result = SMState.CREATION_FINISHED.instance.execute(context)
         assertTrue("Execution results should be Failure.", result is SMResult.Fail)

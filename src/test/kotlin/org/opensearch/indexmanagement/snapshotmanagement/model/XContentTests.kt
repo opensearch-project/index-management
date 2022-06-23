@@ -5,11 +5,9 @@
 
 package org.opensearch.indexmanagement.snapshotmanagement.model
 
-import org.opensearch.common.xcontent.LoggingDeprecationHandler
-import org.opensearch.common.xcontent.XContentParser
-import org.opensearch.common.xcontent.XContentType
 import org.opensearch.indexmanagement.indexstatemanagement.util.XCONTENT_WITHOUT_TYPE
 import org.opensearch.indexmanagement.opensearchapi.parseWithType
+import org.opensearch.indexmanagement.snapshotmanagement.parser
 import org.opensearch.indexmanagement.snapshotmanagement.randomSMMetadata
 import org.opensearch.indexmanagement.snapshotmanagement.randomSMPolicy
 import org.opensearch.indexmanagement.snapshotmanagement.toJsonString
@@ -39,6 +37,4 @@ class XContentTests : OpenSearchTestCase() {
     }
 
     // TODO SM test object to json string matches expected
-
-    private fun String.parser(): XContentParser = XContentType.JSON.xContent().createParser(xContentRegistry(), LoggingDeprecationHandler.INSTANCE, this)
 }

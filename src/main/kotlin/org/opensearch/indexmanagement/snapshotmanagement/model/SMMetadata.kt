@@ -19,14 +19,16 @@ import org.opensearch.indexmanagement.indexstatemanagement.util.WITH_TYPE
 import org.opensearch.indexmanagement.opensearchapi.instant
 import org.opensearch.indexmanagement.opensearchapi.nullValueHandler
 import org.opensearch.indexmanagement.opensearchapi.optionalField
+import org.opensearch.indexmanagement.opensearchapi.optionalInfoField
 import org.opensearch.indexmanagement.opensearchapi.optionalTimeField
 import org.opensearch.indexmanagement.opensearchapi.parseArray
+import org.opensearch.indexmanagement.snapshotmanagement.SnapshotManagementException
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.SMState
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.WorkflowType
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata.Retry.Companion.RETRY_FIELD
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy.Companion.NAME_FIELD
 import org.opensearch.indexmanagement.snapshotmanagement.preFixTimeStamp
-import org.opensearch.indexmanagement.snapshotmanagement.smMetadataIdToPolicyName
+import org.opensearch.indexmanagement.snapshotmanagement.smMetadataDocIdToPolicyName
 import org.opensearch.indexmanagement.util.NO_ID
 import java.time.Instant
 import java.time.Instant.now
@@ -46,7 +48,7 @@ data class SMMetadata(
     override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
         builder.startObject()
         if (params.paramAsBoolean(WITH_TYPE, true)) builder.startObject(SM_METADATA_TYPE)
-        builder.field(NAME_FIELD, smMetadataIdToPolicyName(id))
+        builder.field(NAME_FIELD, smMetadataDocIdToPolicyName(id))
             .field(POLICY_SEQ_NO_FIELD, policySeqNo)
             .field(POLICY_PRIMARY_TERM_FIELD, policyPrimaryTerm)
             .field(CREATION_FIELD, creation)
@@ -213,7 +215,7 @@ data class SMMetadata(
                 .field(STATUS_FIELD, status.toString())
                 .optionalTimeField(START_TIME_FIELD, startTime)
                 .optionalTimeField(END_TIME_FIELD, endTime)
-                .optionalField(INFO_FIELD, info)
+                .optionalInfoField(INFO_FIELD, info)
                 .endObject()
         }
 
@@ -431,7 +433,6 @@ data class SMMetadata(
         fun build() = metadata
 
         private lateinit var workflowType: WorkflowType
-
         fun workflow(workflowType: WorkflowType): Builder {
             this.workflowType = workflowType
             return this
@@ -510,11 +511,11 @@ data class SMMetadata(
             updateMessage: Boolean = true,
             message: String? = null,
             updateCause: Boolean = true,
-            cause: String? = null,
+            cause: Exception? = null,
             endTime: Instant? = null
         ): Builder {
             val messageWithTime = if (message != null) preFixTimeStamp(message) else null
-            val causeWithTime = if (cause != null) preFixTimeStamp(cause) else null
+            val causeWithTime = if (cause != null) preFixTimeStamp(SnapshotManagementException.getUserErrorMessage(cause).message) else null
             fun getUpdatedWorkflowMetadata(workflowMetadata: WorkflowMetadata): WorkflowMetadata {
                 // if started is null, we need to override the previous latestExecution
                 //  w/ a newly initialized one
@@ -578,20 +579,26 @@ data class SMMetadata(
         }
 
         // This should be used after every [SMResult.Fail]
-        fun resetRetry(creation: Boolean = false, deletion: Boolean = false): Builder {
-            if (creation && metadata.creation.retry != null) {
-                metadata = metadata.copy(
-                    creation = metadata.creation.copy(
-                        retry = null
-                    )
-                )
-            }
-            if (deletion && metadata.deletion?.retry != null) {
-                metadata = metadata.copy(
-                    deletion = metadata.deletion?.copy(
-                        retry = null
-                    )
-                )
+        fun resetRetry(): Builder {
+            when (workflowType) {
+                WorkflowType.CREATION -> {
+                    if (metadata.creation.retry != null) {
+                        metadata = metadata.copy(
+                            creation = metadata.creation.copy(
+                                retry = null
+                            )
+                        )
+                    }
+                }
+                WorkflowType.DELETION -> {
+                    if (metadata.deletion?.retry != null) {
+                        metadata = metadata.copy(
+                            deletion = metadata.deletion?.copy(
+                                retry = null
+                            )
+                        )
+                    }
+                }
             }
             return this
         }

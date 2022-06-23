@@ -56,10 +56,13 @@ class RestIndexSnapshotManagementIT : SnapshotManagementRestTestCase() {
         val responseBody = updateResponse.asMap()
         val updatedId = responseBody[_ID] as String
         val updatedSeqNo = (responseBody[_SEQ_NO] as Int).toLong()
+        val updatedSMPolicy = responseBody["sm_policy"] as Map<String, Any>
+        val lastUpdatedTime = updatedSMPolicy["last_updated_time"]
         assertNotEquals("response is missing Id", NO_ID, updatedId)
         assertEquals("not same id", smPolicy.id, updatedId)
         assertTrue("incorrect seqNo", smPolicy.seqNo < updatedSeqNo)
         assertEquals("Incorrect Location header", "$SM_POLICIES_URI/${smPolicy.policyName}", updateResponse.getHeader("Location"))
+        assertNotEquals("last_updated_time should be updated.", smPolicy.lastUpdateTime, lastUpdatedTime)
     }
 
     fun `test updating a snapshot management policy with incorrect seq_no and primary_term`() {

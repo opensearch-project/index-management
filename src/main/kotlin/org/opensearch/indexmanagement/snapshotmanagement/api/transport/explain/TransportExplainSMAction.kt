@@ -37,7 +37,7 @@ import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy.Companion.ENABLED_FIELD
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy.Companion.NAME_FIELD
 import org.opensearch.indexmanagement.snapshotmanagement.settings.SnapshotManagementSettings.Companion.FILTER_BY_BACKEND_ROLES
-import org.opensearch.indexmanagement.snapshotmanagement.smMetadataIdToPolicyName
+import org.opensearch.indexmanagement.snapshotmanagement.smMetadataDocIdToPolicyName
 import org.opensearch.indexmanagement.util.SecurityUtils
 import org.opensearch.rest.RestStatus
 import org.opensearch.search.builder.SearchSourceBuilder
@@ -142,7 +142,7 @@ class TransportExplainSMAction @Inject constructor(
         return try {
             searchResponse.hits.hits.associate {
                 val smMetadata = contentParser(it.sourceRef).parseWithType(it.id, it.seqNo, it.primaryTerm, SMMetadata.Companion::parse)
-                smMetadataIdToPolicyName(smMetadata.id) to smMetadata
+                smMetadataDocIdToPolicyName(smMetadata.id) to smMetadata
             }
         } catch (e: Exception) {
             log.error("Failed to parse snapshot management metadata in search response", e)
@@ -186,7 +186,7 @@ class TransportExplainSMAction @Inject constructor(
         val policiesToExplain = namesToEnabled.entries.associate { (policyName, enabled) ->
             policyName to ExplainSMPolicy(namesToMetadata[policyName], enabled)
         }
-        log.info("sm dev: explain response $policiesToExplain")
+        log.debug("Explain response: $policiesToExplain")
         return ExplainSMPolicyResponse(policiesToExplain)
     }
 }

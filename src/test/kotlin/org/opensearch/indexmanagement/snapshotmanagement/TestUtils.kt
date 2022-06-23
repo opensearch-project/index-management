@@ -16,8 +16,12 @@ import org.opensearch.cluster.SnapshotsInProgress
 import org.opensearch.common.UUIDs
 import org.opensearch.common.collect.ImmutableOpenMap
 import org.opensearch.common.unit.TimeValue
+import org.opensearch.common.xcontent.LoggingDeprecationHandler
+import org.opensearch.common.xcontent.NamedXContentRegistry
 import org.opensearch.common.xcontent.ToXContent
 import org.opensearch.common.xcontent.XContentFactory
+import org.opensearch.common.xcontent.XContentParser
+import org.opensearch.common.xcontent.XContentType
 import org.opensearch.indexmanagement.opensearchapi.string
 import org.opensearch.index.seqno.SequenceNumbers
 import org.opensearch.indexmanagement.opensearchapi.toMap
@@ -98,15 +102,18 @@ fun randomSMPolicy(
     deletionMaxAge: TimeValue? = null,
     deletionMinCount: Int = randomIntBetween(1, 5),
     deletionNull: Boolean = false,
-    snapshotConfig: Map<String, Any> = mapOf(
+    snapshotConfig: MutableMap<String, Any> = mutableMapOf(
         "repository" to "repo",
-        "date_format" to "yyyy-MM-dd-HH:mm"
     ),
+    dateFormat: String? = null,
     jobEnabledTime: Instant? = randomInstant(),
     jobSchedule: IntervalSchedule = randomIntervalSchedule(),
     seqNo: Long = SequenceNumbers.UNASSIGNED_SEQ_NO,
     primaryTerm: Long = SequenceNumbers.UNASSIGNED_PRIMARY_TERM,
 ): SMPolicy {
+    if (dateFormat != null) {
+        snapshotConfig["date_format"] = dateFormat
+    }
     return SMPolicy(
         id = smPolicyNameToDocId(policyName),
         schemaVersion = schemaVersion,
@@ -251,3 +258,5 @@ fun mockSnapshotInfoList(num: Int, namePrefix: String = randomAlphaOfLength(10))
     }
     return result.toList()
 }
+
+fun String.parser(): XContentParser = XContentType.JSON.xContent().createParser(NamedXContentRegistry.EMPTY, LoggingDeprecationHandler.INSTANCE, this)

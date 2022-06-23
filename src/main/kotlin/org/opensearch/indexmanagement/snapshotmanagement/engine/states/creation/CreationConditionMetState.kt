@@ -25,12 +25,13 @@ object CreationConditionMetState : State {
             .workflow(WorkflowType.CREATION)
 
         val nextCreationTime = metadata.creation.trigger.time
-        val result = tryUpdatingNextExecutionTime(
-            metadataBuilder, nextCreationTime, job.creation.schedule,
-            WorkflowType.CREATION, log
+        val updateNextTimeResult = tryUpdatingNextExecutionTime(
+            metadataBuilder, nextCreationTime, job.creation.schedule, WorkflowType.CREATION, log
         )
-        if (!result.updated) return SMResult.Stay(metadataBuilder)
-        metadataBuilder = result.metadataBuilder
+        if (!updateNextTimeResult.updated) {
+            return SMResult.Stay(metadataBuilder)
+        }
+        metadataBuilder = updateNextTimeResult.metadataBuilder
 
         return SMResult.Next(metadataBuilder)
     }

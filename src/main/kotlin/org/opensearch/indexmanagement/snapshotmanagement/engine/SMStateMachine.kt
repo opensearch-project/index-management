@@ -7,11 +7,15 @@ package org.opensearch.indexmanagement.snapshotmanagement.engine
 
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
+import org.opensearch.action.bulk.BackoffPolicy
 import org.opensearch.client.Client
 import org.opensearch.common.settings.Settings
 import org.opensearch.commons.ConfigConstants
 import org.opensearch.indexmanagement.opensearchapi.IndexManagementSecurityContext
 import org.opensearch.indexmanagement.opensearchapi.withClosableContext
+import org.opensearch.common.unit.TimeValue
+import org.opensearch.indexmanagement.IndexManagementIndices
+import org.opensearch.indexmanagement.opensearchapi.retry
 import org.opensearch.indexmanagement.snapshotmanagement.SnapshotManagementException
 import org.opensearch.indexmanagement.snapshotmanagement.SnapshotManagementException.ExceptionKey
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.SMResult
@@ -20,7 +24,6 @@ import org.opensearch.indexmanagement.snapshotmanagement.engine.states.WorkflowT
 import org.opensearch.indexmanagement.snapshotmanagement.indexMetadata
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata
-import org.opensearch.indexmanagement.snapshotmanagement.smDocIdToPolicyName
 import org.opensearch.indexmanagement.util.OpenForTesting
 import org.opensearch.threadpool.ThreadPool
 import java.time.Instant.now
@@ -31,14 +34,14 @@ class SMStateMachine(
     val job: SMPolicy,
     var metadata: SMMetadata,
     val settings: Settings,
-    val threadPool: ThreadPool
+    val threadPool: ThreadPool,
+    val indicesManager: IndexManagementIndices,
 ) {
 
-    val log: Logger = LogManager.getLogger("$javaClass [${smDocIdToPolicyName(job.id)}]")
+    val log: Logger = LogManager.getLogger("$javaClass [${job.policyName}]")
 
     lateinit var currentState: SMState
     fun currentState(currentState: SMState): SMStateMachine {
-        log.info("sm dev: Set current state to $currentState")
         this.currentState = currentState
         return this
     }
@@ -57,9 +60,9 @@ class SMStateMachine(
                 val prevState = currentState
                 for (nextState in nextStates) {
                     currentState = nextState
-                    log.info("sm dev: Start executing $currentState.")
-                    log.info(
-                        "SM dev: User and roles string from thread context: ${threadPool.threadContext.getTransient<String>(
+                    log.debug("Start executing $currentState.")
+                    log.debug(
+                        "User and roles string from thread context: ${threadPool.threadContext.getTransient<String>(
                             ConfigConstants.OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT
                         )}"
                     )
@@ -68,27 +71,43 @@ class SMStateMachine(
                             job.id, settings, threadPool.threadContext, job.user
                         )
                     ) {
-                        log.info(
-                            "SM dev: User and roles string from thread context: ${threadPool.threadContext.getTransient<String>(
+                        log.debug(
+                            "User and roles string from thread context: ${threadPool.threadContext.getTransient<String>(
                                 ConfigConstants.OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT
                             )}"
                         )
                         currentState.instance.execute(this@SMStateMachine) as SMResult
                     }
+                    log.debug(
+                        "User and roles string from thread context: ${threadPool.threadContext.getTransient<String>(
+                            ConfigConstants.OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT
+                        )}"
+                    )
 
                     when (result) {
                         is SMResult.Next -> {
                             log.info("State [$currentState] has finished.")
-                            updateMetadata(result.metadataToSave.setCurrentState(currentState).build())
+                            updateMetadata(
+                                result.metadataToSave
+                                    .setCurrentState(currentState)
+                                    .resetRetry()
+                                    .build()
+                            )
                             // break the nextStates loop, to avoid executing other lateral states
                             break
                         }
                         is SMResult.Stay -> {
-                            log.info("State [$currentState] has not finished.")
-                            updateMetadata(result.metadataToSave.setCurrentState(prevState).build())
+                            log.debug("State [$currentState] has not finished.")
+                            updateMetadata(
+                                result.metadataToSave
+                                    .setCurrentState(prevState)
+                                    .resetRetry()
+                                    .build()
+                            )
                             // can still execute other lateral states if exists
                         }
                         is SMResult.Fail -> {
+                            // any error causing Fail state is logged in place
                             if (result.forceReset == true) {
                                 updateMetadata(result.metadataToSave.resetWorkflow().build())
                             } else {
@@ -155,17 +174,19 @@ class SMStateMachine(
     private var metadataSeqNo: Long = metadata.seqNo
     private var metadataPrimaryTerm: Long = metadata.primaryTerm
     suspend fun updateMetadata(md: SMMetadata) {
+        indicesManager.checkAndUpdateIMConfigIndex(log)
         try {
-            // TODO SM retry policy for update metadata call
-            log.info("sm dev update metadata $md")
+            log.debug("Update metadata: $md")
             if (md == metadata) {
-                log.info("sm dev metadata not change, so don't need to update")
+                log.debug("Metadata not change, so don't need to update")
                 return
             }
-            val res = client.indexMetadata(md, job.id, seqNo = metadataSeqNo, primaryTerm = metadataPrimaryTerm)
-            metadataSeqNo = res.seqNo
-            metadataPrimaryTerm = res.primaryTerm
-            metadata = md
+            updateMetaDataRetryPolicy.retry(log) {
+                val res = client.indexMetadata(md, job.id, seqNo = metadataSeqNo, primaryTerm = metadataPrimaryTerm)
+                metadataSeqNo = res.seqNo
+                metadataPrimaryTerm = res.primaryTerm
+                metadata = md
+            }
         } catch (ex: Exception) {
             val smEx = SnapshotManagementException(ExceptionKey.METADATA_INDEXING_FAILURE, ex)
             log.error(smEx.message, ex)
@@ -174,11 +195,12 @@ class SMStateMachine(
 
         // TODO SM save a copy to history
     }
+    private val updateMetaDataRetryPolicy = BackoffPolicy.exponentialBackoff(TimeValue.timeValueMillis(250), 3)
 
     /**
      * Handle the policy change before job running
      *
-     * Currently, only handle schedule change in policy.
+     * Currently, only need to handle the schedule change in policy.
      */
     suspend fun handlePolicyChange(): SMStateMachine {
         if (job.seqNo > metadata.policySeqNo || job.primaryTerm > metadata.policyPrimaryTerm) {
@@ -191,6 +213,7 @@ class SMStateMachine(
             deletion?.let {
                 metadataToSave.setNextDeletionTime(deletion.schedule.getNextExecutionTime(now))
             }
+
             updateMetadata(metadataToSave.build())
         }
         return this

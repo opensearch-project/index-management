@@ -34,6 +34,7 @@ import org.opensearch.indexmanagement.snapshotmanagement.engine.states.WorkflowT
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy.Companion.DATE_FORMAT_FIELD
+import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy.Companion.DATE_FORMAT_TIMEZONE_FIELD
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy.Companion.SM_DOC_ID_SUFFIX
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy.Companion.SM_METADATA_ID_SUFFIX
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy.Companion.SM_TYPE
@@ -44,6 +45,7 @@ import org.opensearch.snapshots.SnapshotInfo
 import org.opensearch.snapshots.SnapshotMissingException
 import org.opensearch.transport.RemoteTransportException
 import java.time.Instant
+import java.time.Instant.now
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
@@ -52,9 +54,9 @@ import java.util.Locale
 private val log = LogManager.getLogger("o.i.s.SnapshotManagementHelper")
 
 fun smPolicyNameToDocId(policyName: String) = "$policyName$SM_DOC_ID_SUFFIX"
-fun smDocIdToPolicyName(id: String) = id.substringBeforeLast(SM_DOC_ID_SUFFIX)
-fun smPolicyNameToMetadataId(policyName: String) = "$policyName$SM_METADATA_ID_SUFFIX"
-fun smMetadataIdToPolicyName(id: String) = id.substringBeforeLast(SM_METADATA_ID_SUFFIX)
+fun smDocIdToPolicyName(docId: String) = docId.substringBeforeLast(SM_DOC_ID_SUFFIX)
+fun smPolicyNameToMetadataDocId(policyName: String) = "$policyName$SM_METADATA_ID_SUFFIX"
+fun smMetadataDocIdToPolicyName(docId: String) = docId.substringBeforeLast(SM_METADATA_ID_SUFFIX)
 
 @Suppress("RethrowCaughtException", "ThrowsCount")
 suspend fun Client.getSMPolicy(policyID: String): SMPolicy {
@@ -79,13 +81,13 @@ suspend fun Client.getSMPolicy(policyID: String): SMPolicy {
 }
 
 @Suppress("RethrowCaughtException", "ThrowsCount")
-suspend fun Client.getSMMetadata(jobID: String): SMMetadata {
-    val metadataID = smPolicyNameToMetadataId(smDocIdToPolicyName(jobID))
+suspend fun Client.getSMMetadata(jobID: String): SMMetadata? {
+    val metadataID = smPolicyNameToMetadataDocId(smDocIdToPolicyName(jobID))
     try {
         val getRequest = GetRequest(INDEX_MANAGEMENT_INDEX, metadataID).routing(jobID)
         val getResponse: GetResponse = this.suspendUntil { get(getRequest, it) }
         if (!getResponse.isExists || getResponse.isSourceEmpty) {
-            throw OpenSearchStatusException("Snapshot management metadata not found", RestStatus.NOT_FOUND)
+            return null
         }
         return parseSMMetadata(getResponse)
     } catch (e: OpenSearchStatusException) {
@@ -125,7 +127,7 @@ suspend fun Client.indexMetadata(
     create: Boolean = false,
 ): IndexResponse {
     val indexReq = IndexRequest(INDEX_MANAGEMENT_INDEX).create(create)
-        .id(smPolicyNameToMetadataId(smDocIdToPolicyName(id)))
+        .id(smPolicyNameToMetadataDocId(smDocIdToPolicyName(id)))
         .source(metadata.toXContent(XContentFactory.jsonBuilder(), ToXContent.EMPTY_PARAMS))
         .setIfSeqNo(seqNo)
         .setIfPrimaryTerm(primaryTerm)
@@ -137,7 +139,14 @@ suspend fun Client.indexMetadata(
 fun generateSnapshotName(policy: SMPolicy): String {
     var result: String = policy.policyName
     if (policy.snapshotConfig[DATE_FORMAT_FIELD] != null) {
-        val dateFormat = generateFormatTime(policy.snapshotConfig[DATE_FORMAT_FIELD] as String)
+        val dateFormat = if (policy.snapshotConfig[DATE_FORMAT_TIMEZONE_FIELD] != null) {
+            generateFormatTime(
+                policy.snapshotConfig[DATE_FORMAT_FIELD] as String,
+                ZoneId.of(policy.snapshotConfig[DATE_FORMAT_TIMEZONE_FIELD] as String),
+            )
+        } else {
+            generateFormatTime(policy.snapshotConfig[DATE_FORMAT_FIELD] as String)
+        }
         result += "-$dateFormat"
     }
     return result + "-${getRandomString(8)}"
@@ -149,20 +158,27 @@ fun getRandomString(length: Int): String {
         .joinToString("")
 }
 
-fun generateFormatTime(dateFormat: String): String {
+fun generateFormatTime(dateFormat: String, timezone: ZoneId = ZoneId.of("UTC")): String {
+    val dateFormatter = DateFormatter.forPattern(dateFormat).withZone(timezone)
+    val instant = dateFormatter.toDateMathParser().parse("now/s", System::currentTimeMillis, false, timezone)
+    return dateFormatter.format(instant)
+}
+
+fun validateDateFormat(dateFormat: String): String? {
     return try {
         val timeZone = ZoneId.systemDefault()
         val dateFormatter = DateFormatter.forPattern(dateFormat).withZone(timeZone)
         val instant = dateFormatter.toDateMathParser().parse("now/s", System::currentTimeMillis, false, timeZone)
         dateFormatter.format(instant)
+        null
     } catch (e: Exception) {
-        "invalid_date_format"
+        e.message ?: "Invalid date format."
     }
 }
 
 fun preFixTimeStamp(msg: String?): String {
     val formatter = DateTimeFormatter.ISO_INSTANT
-    return "[${formatter.format(Instant.now().truncatedTo(ChronoUnit.SECONDS))}]: " + msg
+    return "[${formatter.format(now().truncatedTo(ChronoUnit.SECONDS))}]: " + msg
 }
 
 fun addSMPolicyInSnapshotMetadata(snapshotConfig: Map<String, Any>, policyName: String): Map<String, Any> {
@@ -188,18 +204,22 @@ fun List<SnapshotInfo>.filterBySMPolicyInSnapshotMetadata(policyName: String): L
  * @return list of snapshot management snapshot info sorted by start time
  */
 suspend fun Client.getSnapshots(name: String, repo: String): List<SnapshotInfo> {
-    val req = GetSnapshotsRequest()
-        .snapshots(arrayOf(name))
-        .repository(repo)
-    val res: GetSnapshotsResponse = admin().cluster().suspendUntil { getSnapshots(req, it) }
-    log.info("sm dev: Get snapshot response: ${res.snapshots.map { it.snapshotId().name }}")
-    return res.snapshots
+    try {
+        val req = GetSnapshotsRequest()
+            .snapshots(arrayOf(name))
+            .repository(repo)
+        val res: GetSnapshotsResponse = admin().cluster().suspendUntil { getSnapshots(req, it) }
+        return res.snapshots
+    } catch (ex: RemoteTransportException) {
+        val unwrappedException = ExceptionsHelper.unwrapCause(ex) as Exception
+        throw unwrappedException
+    }
 }
 
 /**
  * Used in Snapshot Management States logic
  */
-suspend fun Client.getSnapshotsWithErrorHandling(
+suspend fun Client.getSnapshots(
     job: SMPolicy,
     name: String,
     metadataBuilder: SMMetadata.Builder,
@@ -208,45 +228,30 @@ suspend fun Client.getSnapshotsWithErrorHandling(
     exceptionMsg: String,
 ): GetSnapshotsResult {
     val snapshots = try {
-        log.info("sm dev get snapshot of $name")
         getSnapshots(
             name,
             job.snapshotConfig["repository"] as String
         )
-    } catch (ex: RemoteTransportException) {
-        val unwrappedException = ExceptionsHelper.unwrapCause(ex) as Exception
-        return handleGetSnapshotsException(unwrappedException, metadataBuilder, snapshotMissingMsg, exceptionMsg)
-    } catch (ex: Exception) {
-        return handleGetSnapshotsException(ex, metadataBuilder, snapshotMissingMsg, exceptionMsg)
-    }.filterBySMPolicyInSnapshotMetadata(job.policyName)
-
-    return GetSnapshotsResult(snapshots, metadataBuilder, false)
-}
-
-private fun handleGetSnapshotsException(
-    ex: Exception,
-    metadataBuilder: SMMetadata.Builder,
-    snapshotMissingMsg: String?,
-    exceptionMsg: String,
-): GetSnapshotsResult {
-    return if (ex is SnapshotMissingException) {
+    } catch (ex: SnapshotMissingException) {
         snapshotMissingMsg?.let { log.warn(snapshotMissingMsg) }
-        GetSnapshotsResult(emptyList(), metadataBuilder, false)
-    } else {
+        return GetSnapshotsResult(false, emptyList(), metadataBuilder)
+    } catch (ex: Exception) {
         log.error(exceptionMsg, ex)
         metadataBuilder.setLatestExecution(
             status = SMMetadata.LatestExecution.Status.RETRYING,
             message = exceptionMsg,
-            cause = SnapshotManagementException.wrap(ex).message
+            cause = ex,
         )
-        GetSnapshotsResult(emptyList(), metadataBuilder, true)
-    }
+        return GetSnapshotsResult(true, emptyList(), metadataBuilder)
+    }.filterBySMPolicyInSnapshotMetadata(job.policyName)
+
+    return GetSnapshotsResult(false, snapshots, metadataBuilder)
 }
 
 data class GetSnapshotsResult(
+    val failed: Boolean,
     val snapshots: List<SnapshotInfo>,
     val metadataBuilder: SMMetadata.Builder,
-    val failed: Boolean,
 )
 
 fun tryUpdatingNextExecutionTime(
@@ -256,15 +261,10 @@ fun tryUpdatingNextExecutionTime(
     workflowType: WorkflowType,
     log: Logger
 ): UpdateNextExecutionTimeResult {
-    val now = Instant.now()
+    val now = now()
     return if (!now.isBefore(nextTime)) {
-        log.info("Current time [${Instant.now()}] has passed nextExecutionTime [$nextTime].")
+        log.info("Current time [${now()}] has passed nextExecutionTime [$nextTime].")
         val newNextTime = schedule.getNextExecutionTime(now)
-        // TODO SM Not sure if this is necessary, but we have seen newNextTime could be null from UT runs
-        if (newNextTime == null) {
-            log.warn("Calculated new next exeuction time is null, we will retry the calculation in the next job run.")
-            UpdateNextExecutionTimeResult(false, metadataBuilder)
-        }
         when (workflowType) {
             WorkflowType.CREATION -> {
                 metadataBuilder.setNextCreationTime(newNextTime)
@@ -275,7 +275,7 @@ fun tryUpdatingNextExecutionTime(
         }
         UpdateNextExecutionTimeResult(true, metadataBuilder)
     } else {
-        log.debug("Current time [${Instant.now()}] has not passed nextExecutionTime [$nextTime]")
+        log.debug("Current time [${now()}] has not passed nextExecutionTime [$nextTime]")
         // TODO SM dynamically update job start_time to avoid unnecessary job runs
         UpdateNextExecutionTimeResult(false, metadataBuilder)
     }
@@ -322,7 +322,7 @@ fun validateSMPolicyName(policyName: String) {
 
 fun TimeValue.isExceed(startTime: Instant?): Boolean {
     startTime ?: return false
-    return (Instant.now().toEpochMilli() - startTime.toEpochMilli()) > this.millis
+    return (now().toEpochMilli() - startTime.toEpochMilli()) > this.millis
 }
 
 fun timeLimitExceeded(
@@ -334,8 +334,8 @@ fun timeLimitExceeded(
     log.warn(getTimeLimitExceedMessage(timeLimit))
     metadataBuilder.setLatestExecution(
         status = SMMetadata.LatestExecution.Status.TIME_LIMIT_EXCEEDED,
-        cause = getTimeLimitExceedMessage(timeLimit),
-        endTime = Instant.now(),
+        cause = SnapshotManagementException(message = getTimeLimitExceedMessage(timeLimit)),
+        endTime = now(),
     )
     return SMResult.Fail(metadataBuilder, workflow, forceReset = true)
 }

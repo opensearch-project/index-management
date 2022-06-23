@@ -29,7 +29,7 @@ import org.opensearch.transport.TransportService
 class TransportIndexSMPolicyAction @Inject constructor(
     client: Client,
     transportService: TransportService,
-    val indexManagementIndices: IndexManagementIndices,
+    private val indexManagementIndices: IndexManagementIndices,
     actionFilters: ActionFilters,
     val clusterService: ClusterService,
     val settings: Settings,
@@ -64,9 +64,8 @@ class TransportIndexSMPolicyAction @Inject constructor(
         val indexReq = request.index(INDEX_MANAGEMENT_INDEX)
             .source(policy.toXContent(XContentFactory.jsonBuilder(), ToXContent.EMPTY_PARAMS))
             .id(policy.id)
-            .routing(policy.id)
+            .routing(policy.id) // by default routed by id
         val indexRes: IndexResponse = client.suspendUntil { index(indexReq, it) }
-        log.info("sm dev: Index SM policy response: $indexRes")
 
         return IndexSMPolicyResponse(indexRes.id, indexRes.version, indexRes.seqNo, indexRes.primaryTerm, policy, indexRes.status())
     }
