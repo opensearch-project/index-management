@@ -66,7 +66,6 @@ class TransportIndexSMPolicyAction @Inject constructor(
             .id(policy.id)
             .routing(policy.id) // by default routed by id
         val indexRes: IndexResponse = client.suspendUntil { index(indexReq, it) }
-        log.info("sm dev: Index SM policy response: $indexRes")
 
         return IndexSMPolicyResponse(indexRes.id, indexRes.version, indexRes.seqNo, indexRes.primaryTerm, policy, indexRes.status())
     }

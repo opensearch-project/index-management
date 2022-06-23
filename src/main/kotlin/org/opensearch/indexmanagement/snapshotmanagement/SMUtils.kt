@@ -209,7 +209,6 @@ suspend fun Client.getSnapshots(name: String, repo: String): List<SnapshotInfo> 
             .snapshots(arrayOf(name))
             .repository(repo)
         val res: GetSnapshotsResponse = admin().cluster().suspendUntil { getSnapshots(req, it) }
-        log.info("sm dev: Get snapshot response: ${res.snapshots.map { it.snapshotId().name }}")
         return res.snapshots
     } catch (ex: RemoteTransportException) {
         val unwrappedException = ExceptionsHelper.unwrapCause(ex) as Exception
@@ -229,7 +228,6 @@ suspend fun Client.getSnapshots(
     exceptionMsg: String,
 ): GetSnapshotsResult {
     val snapshots = try {
-        log.info("sm dev get snapshot of $name")
         getSnapshots(
             name,
             job.snapshotConfig["repository"] as String

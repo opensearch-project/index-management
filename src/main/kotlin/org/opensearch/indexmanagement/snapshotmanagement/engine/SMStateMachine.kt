@@ -42,7 +42,6 @@ class SMStateMachine(
 
     lateinit var currentState: SMState
     fun currentState(currentState: SMState): SMStateMachine {
-        log.info("sm dev: Set current state to $currentState")
         this.currentState = currentState
         return this
     }
@@ -61,9 +60,9 @@ class SMStateMachine(
                 val prevState = currentState
                 for (nextState in nextStates) {
                     currentState = nextState
-                    log.info("sm dev: Start executing $currentState.")
-                    log.info(
-                        "sm dev: User and roles string from thread context: ${threadPool.threadContext.getTransient<String>(
+                    log.debug("Start executing $currentState.")
+                    log.debug(
+                        "User and roles string from thread context: ${threadPool.threadContext.getTransient<String>(
                             ConfigConstants.OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT
                         )}"
                     )
@@ -72,15 +71,15 @@ class SMStateMachine(
                             job.id, settings, threadPool.threadContext, job.user
                         )
                     ) {
-                        log.info(
-                            "sm dev: User and roles string from thread context: ${threadPool.threadContext.getTransient<String>(
+                        log.debug(
+                            "User and roles string from thread context: ${threadPool.threadContext.getTransient<String>(
                                 ConfigConstants.OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT
                             )}"
                         )
                         currentState.instance.execute(this@SMStateMachine) as SMResult
                     }
-                    log.info(
-                        "sm dev: User and roles string from thread context: ${threadPool.threadContext.getTransient<String>(
+                    log.debug(
+                        "User and roles string from thread context: ${threadPool.threadContext.getTransient<String>(
                             ConfigConstants.OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT
                         )}"
                     )
@@ -98,7 +97,7 @@ class SMStateMachine(
                             break
                         }
                         is SMResult.Stay -> {
-                            log.info("State [$currentState] has not finished.")
+                            log.debug("State [$currentState] has not finished.")
                             updateMetadata(
                                 result.metadataToSave
                                     .setCurrentState(prevState)
@@ -177,9 +176,9 @@ class SMStateMachine(
     suspend fun updateMetadata(md: SMMetadata) {
         indicesManager.checkAndUpdateIMConfigIndex(log)
         try {
-            log.info("sm dev update metadata $md")
+            log.debug("Update metadata: $md")
             if (md == metadata) {
-                log.info("sm dev metadata not change, so don't need to update")
+                log.debug("Metadata not change, so don't need to update")
                 return
             }
             updateMetaDataRetryPolicy.retry(log) {

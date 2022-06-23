@@ -67,7 +67,7 @@ object SMRunner :
     )
 
     override fun runJob(job: ScheduledJobParameter, context: JobExecutionContext) {
-        log.info("sm dev: Snapshot management running job: $job")
+        log.debug("Snapshot management running job: $job")
 
         if (job !is SMPolicy) {
             throw IllegalArgumentException("Received invalid job type [${job.javaClass.simpleName}] with id [${context.jobId}].")

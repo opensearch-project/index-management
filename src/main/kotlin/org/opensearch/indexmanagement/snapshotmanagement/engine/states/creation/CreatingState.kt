@@ -63,7 +63,6 @@ object CreatingState : State {
         }
 
         snapshotName = generateSnapshotName(job)
-        log.info("sm dev: Snapshot to create: $snapshotName.")
         try {
             val req = CreateSnapshotRequest(job.snapshotConfig["repository"] as String, snapshotName)
                 .source(addSMPolicyInSnapshotMetadata(job.snapshotConfig, job.policyName))
@@ -71,7 +70,6 @@ object CreatingState : State {
             val res: CreateSnapshotResponse = client.admin().cluster().suspendUntil { createSnapshot(req, it) }
             // TODO SM notification that snapshot starts to be created
 
-            log.info("sm dev: Create snapshot response: $res.")
             metadataBuilder.setLatestExecution(
                 status = SMMetadata.LatestExecution.Status.IN_PROGRESS,
                 message = getSnapshotCreationStartedMessage(snapshotName),

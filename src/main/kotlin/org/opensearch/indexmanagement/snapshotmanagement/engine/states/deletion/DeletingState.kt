@@ -61,7 +61,6 @@ object DeletingState : State {
             getSnapshots.filter { it.state() != SnapshotState.IN_PROGRESS },
             job.deletion.condition, log
         )
-        log.info("sm dev: Going to delete: $snapshotsToDelete")
         if (snapshotsToDelete.isNotEmpty()) {
             try {
                 val req = DeleteSnapshotRequest(
@@ -69,7 +68,6 @@ object DeletingState : State {
                     *snapshotsToDelete.toTypedArray()
                 )
                 val res: AcknowledgedResponse = client.admin().cluster().suspendUntil { deleteSnapshot(req, it) }
-                log.info("sm dev: Delete snapshot acknowledged: ${res.isAcknowledged}.")
 
                 metadataBuilder.setLatestExecution(
                     status = SMMetadata.LatestExecution.Status.IN_PROGRESS,
@@ -117,21 +115,21 @@ object DeletingState : State {
      *   keep at most max_count of snapshots even it's not outdated
      */
     private fun filterByDeleteCondition(snapshots: List<SnapshotInfo>, deleteCondition: SMPolicy.DeleteCondition, log: Logger): List<String> {
-        log.info("sm dev: snapshotInfos $snapshots")
+        log.debug("Filter by delete condition: snapshotInfos $snapshots")
         // sorted in startTime ascending order
         val snapshotInfos = snapshots.sortedBy { it.startTime() } // start_time will always exist along with snapshotId
-        log.info("sm dev: snapshotInfos $snapshotInfos")
+        log.debug("snapshotInfos sorted $snapshotInfos")
 
         var thresholdCount = 0
 
         if (deleteCondition.maxAge != null) {
             val timeThreshold = now().minusSeconds(deleteCondition.maxAge.seconds())
-            log.info("sm dev: time threshold: $timeThreshold")
+            log.debug("Time threshold: $timeThreshold")
             val thresholdSnapshot = snapshotInfos.findLast { Instant.ofEpochMilli(it.startTime()).isBefore(timeThreshold) }
-            log.info("sm dev: thresholdSnapshot: $thresholdSnapshot")
+            log.debug("ThresholdSnapshot: $thresholdSnapshot")
             // how many snapshot from beginning satisfy the deletion condition
             thresholdCount = snapshotInfos.indexOf(thresholdSnapshot) + 1
-            log.info("sm dev: thresholdCount: $thresholdCount")
+            log.debug("ThresholdCount: $thresholdCount")
             val minCount = deleteCondition.minCount
             if (snapshotInfos.size - thresholdCount < minCount) {
                 thresholdCount = offSetThresholdCount(snapshotInfos.size - minCount)

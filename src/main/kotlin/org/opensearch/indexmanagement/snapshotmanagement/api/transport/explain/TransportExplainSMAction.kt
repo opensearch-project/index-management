@@ -186,7 +186,7 @@ class TransportExplainSMAction @Inject constructor(
         val policiesToExplain = namesToEnabled.entries.associate { (policyName, enabled) ->
             policyName to ExplainSMPolicy(namesToMetadata[policyName], enabled)
         }
-        log.info("sm dev: explain response $policiesToExplain")
+        log.debug("Explain response: $policiesToExplain")
         return ExplainSMPolicyResponse(policiesToExplain)
     }
 }
