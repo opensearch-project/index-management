@@ -77,7 +77,7 @@ abstract class ODFERestTestCase : OpenSearchRestTestCase() {
         waitFor {
             val response = client().performRequest(Request("GET", "/_cat/thread_pool?format=json"))
 
-            val xContentType = XContentType.fromMediaTypeOrFormat(response.entity.contentType.value)
+            val xContentType = XContentType.fromMediaType(response.entity.contentType.value)
             xContentType.xContent().createParser(
                 NamedXContentRegistry.EMPTY, DeprecationHandler.THROW_UNSUPPORTED_OPERATION,
                 response.entity.content
@@ -108,7 +108,7 @@ abstract class ODFERestTestCase : OpenSearchRestTestCase() {
         // Delete all indices
         val response = client().performRequest(Request("GET", "/_cat/indices?format=json&expand_wildcards=all"))
 
-        val xContentType = XContentType.fromMediaTypeOrFormat(response.entity.contentType.value)
+        val xContentType = XContentType.fromMediaType(response.entity.contentType.value)
         xContentType.xContent().createParser(
             NamedXContentRegistry.EMPTY, DeprecationHandler.THROW_UNSUPPORTED_OPERATION,
             response.entity.content
