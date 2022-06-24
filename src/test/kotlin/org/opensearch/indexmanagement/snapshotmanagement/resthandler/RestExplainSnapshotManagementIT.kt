@@ -22,6 +22,7 @@ import java.time.temporal.ChronoUnit
 
 @Suppress("UNCHECKED_CAST")
 class RestExplainSnapshotManagementIT : SnapshotManagementRestTestCase() {
+
     fun `test explaining a snapshot management policy`() {
         val smPolicy = createSMPolicy(
             randomSMPolicy().copy(

@@ -1414,6 +1414,33 @@
             }
           }
         },
+        "notification": {
+          "properties": {
+            "channel": {
+              "properties": {
+                "id": {
+                  "type": "keyword"
+                }
+              }
+            },
+            "conditions": {
+              "properties": {
+                "creation": {
+                  "type": "boolean"
+                },
+                "deletion": {
+                  "type": "boolean"
+                },
+                "failure": {
+                  "type": "boolean"
+                },
+                "time_limit_exceeded": {
+                  "type": "boolean"
+                }
+              }
+            }
+          }
+        },
         "user": {
           "properties": {
             "name": {

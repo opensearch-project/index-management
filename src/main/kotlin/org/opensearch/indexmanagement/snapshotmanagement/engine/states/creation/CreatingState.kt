@@ -69,7 +69,6 @@ object CreatingState : State {
                 .source(addSMPolicyInSnapshotMetadata(job.snapshotConfig, job.policyName))
                 .waitForCompletion(false)
             val res: CreateSnapshotResponse = client.admin().cluster().suspendUntil { createSnapshot(req, it) }
-            // TODO SM notification that snapshot starts to be created
 
             metadataBuilder.setLatestExecution(
                 status = SMMetadata.LatestExecution.Status.IN_PROGRESS,
