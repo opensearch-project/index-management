@@ -11,8 +11,8 @@ import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANA
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.TRANSFORM_BASE_URI
 import org.opensearch.indexmanagement.makeRequest
 import org.opensearch.indexmanagement.transform.TransformRestTestCase
-import org.opensearch.indexmanagement.transform.model.Transform
 import org.opensearch.indexmanagement.transform.randomTransform
+import org.opensearch.indexmanagement.util.NO_ID
 import org.opensearch.rest.RestStatus
 import org.opensearch.test.junit.annotations.TestLogging
 
@@ -34,7 +34,7 @@ class RestIndexTransformActionIT : TransformRestTestCase() {
         assertEquals("Create transform failed", RestStatus.CREATED, response.restStatus())
         val responseBody = response.asMap()
         val createdId = responseBody["_id"] as String
-        assertNotEquals("Response is missing Id", Transform.NO_ID, createdId)
+        assertNotEquals("Response is missing Id", NO_ID, createdId)
         assertEquals("Not same id", transform.id, createdId)
         assertEquals("Incorrect Location header", "$TRANSFORM_BASE_URI/$createdId", response.getHeader("Location"))
     }

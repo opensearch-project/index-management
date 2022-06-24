@@ -10,7 +10,7 @@ import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.LEGACY_ROL
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.ROLLUP_JOBS_BASE_URI
 import org.opensearch.indexmanagement.rollup.action.start.StartRollupAction
 import org.opensearch.indexmanagement.rollup.action.start.StartRollupRequest
-import org.opensearch.indexmanagement.rollup.model.Rollup
+import org.opensearch.indexmanagement.util.NO_ID
 import org.opensearch.rest.BaseRestHandler
 import org.opensearch.rest.BaseRestHandler.RestChannelConsumer
 import org.opensearch.rest.RestHandler.ReplacedRoute
@@ -41,7 +41,7 @@ class RestStartRollupAction : BaseRestHandler() {
 
     @Throws(IOException::class)
     override fun prepareRequest(request: RestRequest, client: NodeClient): RestChannelConsumer {
-        val id = request.param("rollupID", Rollup.NO_ID)
+        val id = request.param("rollupID", NO_ID)
         val startRequest = StartRollupRequest(id)
         return RestChannelConsumer { channel ->
             client.execute(StartRollupAction.INSTANCE, startRequest, RestToXContentListener(channel))

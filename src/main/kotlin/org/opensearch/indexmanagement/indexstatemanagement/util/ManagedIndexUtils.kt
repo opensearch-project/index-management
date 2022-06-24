@@ -246,7 +246,7 @@ fun Transition.evaluateConditions(
 
 fun Transition.hasStatsConditions(): Boolean = this.conditions?.docCount != null || this.conditions?.size != null
 
-@Suppress("ReturnCount")
+@Suppress("ReturnCount", "ComplexCondition")
 fun RolloverAction.evaluateConditions(
     indexAgeTimeValue: TimeValue,
     numDocs: Long,

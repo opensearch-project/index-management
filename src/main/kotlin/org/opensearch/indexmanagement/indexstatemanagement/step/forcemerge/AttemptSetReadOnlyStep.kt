@@ -25,6 +25,7 @@ class AttemptSetReadOnlyStep(private val action: ForceMergeAction) : Step(name) 
     private var stepStatus = StepStatus.STARTING
     private var info: Map<String, Any>? = null
 
+    @Suppress("ReturnCount")
     override suspend fun execute(): Step {
         val context = this.context ?: return this
         val indexName = context.metadata.index

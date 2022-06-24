@@ -87,6 +87,7 @@ class TransportStopTransformAction @Inject constructor(
             client.get(
                 getRequest,
                 object : ActionListener<GetResponse> {
+                    @Suppress("ReturnCount")
                     override fun onResponse(response: GetResponse) {
                         if (!response.isExists) {
                             actionListener.onFailure(OpenSearchStatusException("Transform not found", RestStatus.NOT_FOUND))

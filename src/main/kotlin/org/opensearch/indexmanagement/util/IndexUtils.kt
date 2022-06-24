@@ -35,6 +35,7 @@ class IndexUtils {
         const val ODFE_MAGIC_NULL = "#ODFE-MAGIC-NULL-MAGIC-ODFE#"
         private const val BYTE_ARRAY_SIZE = 16
         private const val DOCUMENT_ID_SEED = 72390L
+
         val logger = LogManager.getLogger(IndexUtils::class.java)
 
         var indexManagementConfigSchemaVersion: Long
