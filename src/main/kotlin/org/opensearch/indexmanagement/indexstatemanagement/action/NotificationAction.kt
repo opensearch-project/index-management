@@ -8,7 +8,7 @@ package org.opensearch.indexmanagement.indexstatemanagement.action
 import org.opensearch.common.io.stream.StreamOutput
 import org.opensearch.common.xcontent.ToXContent
 import org.opensearch.common.xcontent.XContentBuilder
-import org.opensearch.indexmanagement.indexstatemanagement.model.destination.Channel
+import org.opensearch.indexmanagement.common.model.notification.Channel
 import org.opensearch.indexmanagement.indexstatemanagement.model.destination.Destination
 import org.opensearch.indexmanagement.indexstatemanagement.step.notification.AttemptNotificationStep
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Action

@@ -24,6 +24,7 @@ import org.opensearch.indexmanagement.snapshotmanagement.engine.states.WorkflowT
 import org.opensearch.indexmanagement.snapshotmanagement.indexMetadata
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata
+import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata.LatestExecution.Status.TIME_LIMIT_EXCEEDED
 import org.opensearch.indexmanagement.util.OpenForTesting
 import org.opensearch.threadpool.ThreadPool
 import java.time.Instant.now
@@ -107,6 +108,7 @@ class SMStateMachine(
                             // can still execute other lateral states if exists
                         }
                         is SMResult.Fail -> {
+                            handleFailureNotification(result)
                             // any error causing Fail state is logged in place
                             if (result.forceReset == true) {
                                 updateMetadata(result.metadataToSave.resetWorkflow().build())
@@ -118,6 +120,8 @@ class SMStateMachine(
                 }
             } while (currentState.instance.continuous && result is SMResult.Next)
         } catch (ex: Exception) {
+            val message = "There was an exception at ${now()} while executing Snapshot Management policy ${job.policyName}, please check logs."
+            job.notificationConfig?.sendFailureNotification(client, job.policyName, message, job.user, log)
             if (ex is SnapshotManagementException &&
                 ex.exKey == ExceptionKey.METADATA_INDEXING_FAILURE
             ) {
@@ -127,6 +131,24 @@ class SMStateMachine(
             log.error("Uncaught snapshot management runtime exception.", ex)
         }
         return this
+    }
+
+    private suspend fun handleFailureNotification(result: SMResult.Fail) {
+        val message = result.metadataToSave.getWorkflowMetadata()?.latestExecution?.info?.message
+        if (message != null) {
+            // Time limit exceeded is a special failure case which needs a different notification
+            if (result.metadataToSave.getWorkflowMetadata()?.latestExecution?.status == TIME_LIMIT_EXCEEDED) {
+                job.notificationConfig?.sendTimeLimitExceededNotification(
+                    client,
+                    job.policyName,
+                    message,
+                    job.user,
+                    log
+                )
+            } else {
+                job.notificationConfig?.sendFailureNotification(client, job.policyName, message, job.user, log)
+            }
+        }
     }
 
     private fun handleRetry(result: SMResult.Fail, prevState: SMState): SMMetadata.Builder {

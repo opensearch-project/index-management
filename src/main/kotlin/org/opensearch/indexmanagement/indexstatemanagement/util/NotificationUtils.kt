@@ -6,20 +6,17 @@
 @file:JvmName("NotificationUtils")
 package org.opensearch.indexmanagement.indexstatemanagement.util
 
-import org.opensearch.OpenSearchStatusException
 import org.opensearch.client.Client
 import org.opensearch.client.node.NodeClient
-import org.opensearch.commons.ConfigConstants.OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT
 import org.opensearch.commons.authuser.User
 import org.opensearch.commons.destination.message.LegacyBaseMessage
 import org.opensearch.commons.notifications.NotificationsPluginInterface
 import org.opensearch.commons.notifications.action.LegacyPublishNotificationRequest
 import org.opensearch.commons.notifications.action.LegacyPublishNotificationResponse
-import org.opensearch.commons.notifications.action.SendNotificationResponse
-import org.opensearch.commons.notifications.model.ChannelMessage
 import org.opensearch.commons.notifications.model.EventSource
 import org.opensearch.commons.notifications.model.SeverityType
-import org.opensearch.indexmanagement.indexstatemanagement.model.destination.Channel
+import org.opensearch.indexmanagement.common.model.notification.Channel
+import org.opensearch.indexmanagement.common.model.notification.validateResponseStatus
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.rest.RestStatus
@@ -45,7 +42,8 @@ suspend fun LegacyBaseMessage.publishLegacyNotification(client: Client) {
 }
 
 /**
- * Extension function for publishing a notification to a channel in the Notification plugin.
+ * Extension function for publishing a notification to a channel in the Notification plugin. Builds the event source directly
+ * from the managed index metadata.
  */
 suspend fun Channel.sendNotification(
     client: Client,
@@ -54,49 +52,10 @@ suspend fun Channel.sendNotification(
     compiledMessage: String,
     user: User?
 ) {
-    val channel = this
-    client.threadPool().threadContext.stashContext().use {
-        // We need to set the user context information in the thread context for notification plugin to correctly resolve the user object
-        client.threadPool().threadContext.putTransient(OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT, generateUserString(user))
-        val res: SendNotificationResponse = NotificationsPluginInterface.suspendUntil {
-            this.sendNotification(
-                (client as NodeClient),
-                managedIndexMetaData.getEventSource(title),
-                ChannelMessage(compiledMessage, null, null),
-                listOf(channel.id),
-                it
-            )
-        }
-        validateResponseStatus(res.getStatus(), res.notificationEvent.eventSource.referenceId)
-    }
-}
-
-private fun generateUserString(user: User?): String {
-    if (user == null) return ""
-    val backendRoles = user.backendRoles.joinToString(",")
-    val roles = user.roles.joinToString(",")
-    val requestedTenant = user.requestedTenant
-    val userName = user.name
-    return "$userName|$backendRoles|$roles|$requestedTenant"
+    val eventSource = managedIndexMetaData.getEventSource(title)
+    this.sendNotification(client, eventSource, compiledMessage, user)
 }
 
 fun ManagedIndexMetaData.getEventSource(title: String): EventSource {
     return EventSource(title, indexUuid, SeverityType.INFO)
-}
-
-/**
- * all valid response status
- */
-private val VALID_RESPONSE_STATUS = setOf(
-    RestStatus.OK.status, RestStatus.CREATED.status, RestStatus.ACCEPTED.status,
-    RestStatus.NON_AUTHORITATIVE_INFORMATION.status, RestStatus.NO_CONTENT.status,
-    RestStatus.RESET_CONTENT.status, RestStatus.PARTIAL_CONTENT.status,
-    RestStatus.MULTI_STATUS.status
-)
-
-@Throws(OpenSearchStatusException::class)
-fun validateResponseStatus(restStatus: RestStatus, responseContent: String) {
-    if (!VALID_RESPONSE_STATUS.contains(restStatus.status)) {
-        throw OpenSearchStatusException("Failed: $responseContent", restStatus)
-    }
 }

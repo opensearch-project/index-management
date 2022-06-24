@@ -84,8 +84,8 @@ class CreationFinishedStateTests : MocksTestCase() {
         val context = SMStateMachine(client, job, metadata, settings, threadPool, indicesManager)
 
         val result = SMState.CREATION_FINISHED.instance.execute(context)
-        assertTrue("Execution results should be Next.", result is SMResult.Next)
-        result as SMResult.Next
+        assertTrue("Execution results should be Fail.", result is SMResult.Fail)
+        result as SMResult.Fail
         val metadataToSave = result.metadataToSave.build()
         assertNull("Started creation should be reset to null.", metadataToSave.creation.started)
         assertEquals("Latest execution status is failed", SMMetadata.LatestExecution.Status.FAILED, metadataToSave.creation.latestExecution!!.status)

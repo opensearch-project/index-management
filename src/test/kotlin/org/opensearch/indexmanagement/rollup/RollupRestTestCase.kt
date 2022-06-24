@@ -161,9 +161,10 @@ abstract class RollupRestTestCase : IndexManagementRestTestCase() {
 
     protected fun getRollupMetadata(
         metadataId: String,
+        refresh: Boolean = true,
         header: BasicHeader = BasicHeader(HttpHeaders.CONTENT_TYPE, "application/json"),
     ): RollupMetadata {
-        val response = client().makeRequest("GET", "$INDEX_MANAGEMENT_INDEX/_doc/$metadataId", null, header)
+        val response = client().makeRequest("GET", "$INDEX_MANAGEMENT_INDEX/_doc/$metadataId?refresh=$refresh", null, header)
         assertEquals("Unable to get rollup metadata $metadataId", RestStatus.OK, response.restStatus())
         return parseRollupMetadata(response)
     }
@@ -171,9 +172,10 @@ abstract class RollupRestTestCase : IndexManagementRestTestCase() {
     protected fun getRollupMetadataWithRoutingId(
         routingId: String,
         metadataId: String,
+        refresh: Boolean = true,
         header: BasicHeader = BasicHeader(HttpHeaders.CONTENT_TYPE, "application/json"),
     ): RollupMetadata {
-        val response = client().makeRequest("GET", "$INDEX_MANAGEMENT_INDEX/_doc/$metadataId?routing=$routingId", null, header)
+        val response = client().makeRequest("GET", "$INDEX_MANAGEMENT_INDEX/_doc/$metadataId?routing=$routingId&refresh=$refresh", null, header)
         assertEquals("Unable to get rollup metadata $metadataId", RestStatus.OK, response.restStatus())
 
         return parseRollupMetadata(response)

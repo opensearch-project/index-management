@@ -53,7 +53,8 @@ data class SMPolicy(
     val jobSchedule: Schedule,
     val seqNo: Long = SequenceNumbers.UNASSIGNED_SEQ_NO,
     val primaryTerm: Long = SequenceNumbers.UNASSIGNED_PRIMARY_TERM,
-    val user: User? = null
+    val notificationConfig: NotificationConfig? = null,
+    val user: User? = null,
 ) : ScheduledJobParameter, Writeable {
 
     init {
@@ -93,6 +94,7 @@ data class SMPolicy(
             .field(ENABLED_FIELD, jobEnabled)
             .optionalTimeField(LAST_UPDATED_TIME_FIELD, jobLastUpdateTime)
             .optionalTimeField(ENABLED_TIME_FIELD, jobEnabledTime)
+            .optionalField(NOTIFICATION_FIELD, notificationConfig)
         if (params.paramAsBoolean(WITH_USER, true)) builder.optionalUserField(USER_FIELD, user)
         if (params.paramAsBoolean(WITH_TYPE, true)) builder.endObject()
         return builder.endObject()
@@ -114,6 +116,7 @@ data class SMPolicy(
         const val LAST_UPDATED_TIME_FIELD = "last_updated_time"
         const val ENABLED_TIME_FIELD = "enabled_time"
         const val SCHEDULE_FIELD = "schedule"
+        const val NOTIFICATION_FIELD = "notification"
         const val USER_FIELD = "user"
 
         // Used by sub models Creation and Deletion
@@ -135,6 +138,7 @@ data class SMPolicy(
             var enabledTime: Instant? = null
             var schedule: Schedule? = null
             var enabled = true
+            var notificationConfig: NotificationConfig? = null
             var user: User? = null
 
             if (xcp.currentToken() == null) xcp.nextToken()
@@ -154,6 +158,7 @@ data class SMPolicy(
                     ENABLED_TIME_FIELD -> enabledTime = xcp.instant()
                     SCHEDULE_FIELD -> schedule = ScheduleParser.parse(xcp)
                     ENABLED_FIELD -> enabled = xcp.booleanValue()
+                    NOTIFICATION_FIELD -> notificationConfig = NotificationConfig.parse(xcp)
                     USER_FIELD -> user = if (xcp.currentToken() == Token.VALUE_NULL) null else User.parse(xcp)
                 }
             }
@@ -201,6 +206,7 @@ data class SMPolicy(
                 id = id,
                 seqNo = seqNo,
                 primaryTerm = primaryTerm,
+                notificationConfig = notificationConfig,
                 user = user
             )
         }
@@ -219,6 +225,7 @@ data class SMPolicy(
         id = sin.readString(),
         seqNo = sin.readLong(),
         primaryTerm = sin.readLong(),
+        notificationConfig = sin.readOptionalWriteable { NotificationConfig(it) },
         user = sin.readOptionalWriteable(::User)
     )
 
@@ -235,6 +242,7 @@ data class SMPolicy(
         out.writeString(id)
         out.writeLong(seqNo)
         out.writeLong(primaryTerm)
+        out.writeOptionalWriteable(notificationConfig)
         out.writeOptionalWriteable(user)
     }
 

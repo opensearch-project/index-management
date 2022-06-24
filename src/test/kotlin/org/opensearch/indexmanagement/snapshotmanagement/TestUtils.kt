@@ -24,11 +24,13 @@ import org.opensearch.common.xcontent.XContentParser
 import org.opensearch.common.xcontent.XContentType
 import org.opensearch.indexmanagement.opensearchapi.string
 import org.opensearch.index.seqno.SequenceNumbers
+import org.opensearch.indexmanagement.indexstatemanagement.randomChannel
 import org.opensearch.indexmanagement.opensearchapi.toMap
 import org.opensearch.indexmanagement.randomCronSchedule
 import org.opensearch.indexmanagement.randomInstant
 import org.opensearch.indexmanagement.randomIntervalSchedule
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.SMState
+import org.opensearch.indexmanagement.snapshotmanagement.model.NotificationConfig
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy
 import org.opensearch.jobscheduler.spi.schedule.CronSchedule
@@ -38,6 +40,7 @@ import org.opensearch.snapshots.Snapshot
 import org.opensearch.snapshots.SnapshotId
 import org.opensearch.snapshots.SnapshotInfo
 import org.opensearch.test.OpenSearchTestCase.randomAlphaOfLength
+import org.opensearch.test.OpenSearchTestCase.randomBoolean
 import org.opensearch.test.OpenSearchTestCase.randomIntBetween
 import org.opensearch.test.OpenSearchTestCase.randomNonNegativeLong
 import org.opensearch.test.rest.OpenSearchRestTestCase
@@ -110,6 +113,7 @@ fun randomSMPolicy(
     jobSchedule: IntervalSchedule = randomIntervalSchedule(),
     seqNo: Long = SequenceNumbers.UNASSIGNED_SEQ_NO,
     primaryTerm: Long = SequenceNumbers.UNASSIGNED_PRIMARY_TERM,
+    notificationConfig: NotificationConfig? = null
 ): SMPolicy {
     if (dateFormat != null) {
         snapshotConfig["date_format"] = dateFormat
@@ -136,6 +140,7 @@ fun randomSMPolicy(
         jobSchedule = jobSchedule,
         seqNo = seqNo,
         primaryTerm = primaryTerm,
+        notificationConfig = notificationConfig,
     )
 }
 
@@ -162,6 +167,10 @@ fun randomPolicyDeletion(
 fun randomSnapshotName(): String = randomAlphaOfLength(10)
 
 fun randomSMState(): SMState = SMState.values()[randomIntBetween(0, SMState.values().size - 1)]
+
+fun randomNotificationConfig(): NotificationConfig = NotificationConfig(randomChannel(), randomConditions())
+
+fun randomConditions(): NotificationConfig.Conditions = NotificationConfig.Conditions(randomBoolean(), randomBoolean(), randomBoolean(), randomBoolean())
 
 fun ToXContent.toJsonString(params: ToXContent.Params = ToXContent.EMPTY_PARAMS): String = this.toXContent(XContentFactory.jsonBuilder(), params).string()
 
