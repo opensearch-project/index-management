@@ -87,7 +87,7 @@ object CreationFinishedState : State {
                     metadataBuilder.setLatestExecution(
                         status = SMMetadata.LatestExecution.Status.FAILED,
                         message = "Snapshot $snapshotName creation failed as the snapshot is in the $currentState state.",
-                        cause = SnapshotManagementException(message = "Snapshot $snapshotName creation failed as the snapshot is in the $currentState state."),
+                        cause = snapshot.reason()?.let { SnapshotManagementException(message = it) },
                         endTime = now(),
                     ).setCreationStarted(null)
                     return SMResult.Fail(metadataBuilder, WorkflowType.CREATION, true)

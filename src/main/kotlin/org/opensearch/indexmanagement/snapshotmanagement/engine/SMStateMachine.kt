@@ -120,7 +120,7 @@ class SMStateMachine(
                 }
             } while (currentState.instance.continuous && result is SMResult.Next)
         } catch (ex: Exception) {
-            val message = "There was an exception while executing Snapshot Management policy ${job.policyName}, skipping execution."
+            val message = "There was an exception at ${now()} while executing Snapshot Management policy ${job.policyName}, please check logs."
             job.notificationConfig?.sendFailureNotification(client, job.policyName, message, job.user, log)
             if (ex is SnapshotManagementException &&
                 ex.exKey == ExceptionKey.METADATA_INDEXING_FAILURE
@@ -131,23 +131,6 @@ class SMStateMachine(
             log.error("Uncaught snapshot management runtime exception.", ex)
         }
         return this
-    }
-
-    private suspend fun handleSuccessNotification(result: SMResult.Next) {
-        when (result.metadataToSave.getWorkflowType()) {
-            WorkflowType.CREATION -> {
-                val message = result.metadataToSave.build().creation.latestExecution?.info?.message
-                if (message != null) {
-                    job.notificationConfig?.sendCreationNotification(client, job.policyName, message, job.user, log)
-                }
-            }
-            WorkflowType.DELETION -> {
-                val message = result.metadataToSave.build().deletion?.latestExecution?.info?.message
-                if (message != null) {
-                    job.notificationConfig?.sendDeletionNotification(client, job.policyName, message, job.user, log)
-                }
-            }
-        }
     }
 
     private suspend fun handleFailureNotification(result: SMResult.Fail) {

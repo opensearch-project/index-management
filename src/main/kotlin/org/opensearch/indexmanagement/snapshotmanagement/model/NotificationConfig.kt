@@ -10,7 +10,6 @@ import org.opensearch.client.Client
 import org.opensearch.common.io.stream.StreamInput
 import org.opensearch.common.io.stream.StreamOutput
 import org.opensearch.common.io.stream.Writeable
-import org.opensearch.common.unit.TimeValue
 import org.opensearch.common.xcontent.ToXContent
 import org.opensearch.common.xcontent.ToXContentObject
 import org.opensearch.common.xcontent.XContentBuilder
@@ -21,9 +20,11 @@ import org.opensearch.commons.authuser.User
 import org.opensearch.commons.notifications.model.EventSource
 import org.opensearch.commons.notifications.model.SeverityType
 import org.opensearch.indexmanagement.common.model.notification.Channel
-import org.opensearch.indexmanagement.snapshotmanagement.engine.states.WorkflowType
 import java.io.IOException
 
+/*
+ * The data model for the configuration of notifications within a Snapshot Management policy definition.
+ */
 data class NotificationConfig(
     val channel: Channel,
     val conditions: Conditions,
@@ -104,10 +105,10 @@ data class NotificationConfig(
     companion object {
         const val CHANNEL_FIELD = "channel"
         const val CONDITIONS_FIELD = "conditions"
-        const val CREATION_TITLE = "Snapshot Management-Snapshot Created Notification"
-        const val DELETION_TITLE = "Snapshot Management-Snapshot Deleted Notification"
-        const val FAILURE_TITLE = "Snapshot Management-Snapshot Failed Notification"
-        const val TIME_LIMIT_EXCEEDED_TITLE = "Snapshot Management-Snapshot Time Limit Notification"
+        const val CREATION_TITLE = "Snapshot Management - Snapshot Creation Notification"
+        const val DELETION_TITLE = "Snapshot Management - Snapshot Deletion Notification"
+        const val FAILURE_TITLE = "Snapshot Management - Snapshot Failure Notification"
+        const val TIME_LIMIT_EXCEEDED_TITLE = "Snapshot Management - Snapshot Time Limit Notification"
 
         @JvmStatic
         @Throws(IOException::class)
@@ -131,33 +132,6 @@ data class NotificationConfig(
                 channel = requireNotNull(channel) { "Snapshot Management notification channel must not be null" },
                 conditions = conditions ?: Conditions()
             )
-        }
-
-        private fun getCreationMessage(policyName: String, createdSnapshotName: String) =
-            "Snapshot Management policy [$policyName] successfully created new snapshot [$createdSnapshotName]."
-
-        private fun getDeletionMessage(policyName: String, deletedSnapshots: List<String>) =
-            "Snapshot Management policy [$policyName] successfully deleted snapshot(s) $deletedSnapshots."
-
-        private fun getFailureMessage(policyName: String, snapshotNames: List<String>, workflowType: WorkflowType): String {
-            val workflow = when (workflowType) {
-                WorkflowType.CREATION -> "creating"
-                WorkflowType.DELETION -> "deleting"
-            }
-            return "Snapshot Management policy [$policyName] failed when $workflow snapshot(s) [$snapshotNames]."
-        }
-
-        private fun getTimeLimitExceededMessage(
-            policyName: String,
-            snapshotNames: List<String>,
-            timeLimit: TimeValue,
-            workflowType: WorkflowType
-        ): String {
-            val workflow = when (workflowType) {
-                WorkflowType.CREATION -> "creating"
-                WorkflowType.DELETION -> "deleting"
-            }
-            return "Snapshot Management policy [$policyName] exceeded time limit [$timeLimit] while $workflow snapshot(s) [$snapshotNames]."
         }
     }
 
