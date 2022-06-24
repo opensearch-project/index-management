@@ -21,6 +21,7 @@ import org.opensearch.common.util.concurrent.ThreadContext.StoredContext
 import org.opensearch.commons.ConfigConstants.OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT
 import org.opensearch.commons.authuser.User
 import org.opensearch.index.engine.VersionConflictEngineException
+import org.opensearch.indexmanagement.util.IndexManagementException
 import org.opensearch.indexmanagement.util.SecurityUtils
 import org.opensearch.rest.RestStatus
 import org.opensearch.tasks.Task
@@ -54,6 +55,8 @@ abstract class BaseTransportAction<Request : ActionRequest, Response : ActionRes
                 client.threadPool().threadContext.stashContext().use { threadContext ->
                     listener.onResponse(executeRequest(request, user, threadContext))
                 }
+            } catch (ex: IndexManagementException) {
+                listener.onFailure(ex)
             } catch (ex: VersionConflictEngineException) {
                 listener.onFailure(ex)
             } catch (ex: OpenSearchStatusException) {

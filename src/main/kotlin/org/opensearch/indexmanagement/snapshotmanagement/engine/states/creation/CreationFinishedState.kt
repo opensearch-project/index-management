@@ -64,12 +64,14 @@ object CreationFinishedState : State {
             val snapshot = getSnapshots.first()
             when (snapshot.state()) {
                 SnapshotState.SUCCESS -> {
+                    val creationMessage = getSnapshotCreationSucceedMessage(snapshotName)
                     metadataBuilder.setLatestExecution(
                         status = SMMetadata.LatestExecution.Status.SUCCESS,
-                        message = getSnapshotCreationSucceedMessage(snapshotName),
+                        message = creationMessage,
                         endTime = now(),
                     ).setCreationStarted(null)
-                    // TODO SM notification snapshot created
+                    // If creation notifications are enabled, send one now
+                    job.notificationConfig?.sendCreationNotification(client, job.policyName, creationMessage, job.user, log)
                 }
                 SnapshotState.IN_PROGRESS -> {
                     job.creation.timeLimit?.let { timeLimit ->
@@ -82,18 +84,19 @@ object CreationFinishedState : State {
                 }
                 else -> {
                     // FAILED, PARTIAL, INCOMPATIBLE
+                    val currentState = snapshot.state()?.name
                     metadataBuilder.setLatestExecution(
                         status = SMMetadata.LatestExecution.Status.FAILED,
-                        cause = SnapshotManagementException(message = "Snapshot $snapshotName creation end with state ${snapshot.state()}."),
+                        message = "Snapshot $snapshotName creation failed as the snapshot is in the $currentState state.",
+                        cause = snapshot.reason()?.let { SnapshotManagementException(message = it) },
                         endTime = now(),
                     ).setCreationStarted(null)
-                    // TODO SM notification snapshot creation has problem
+                    return SMResult.Fail(metadataBuilder, WorkflowType.CREATION, true)
                 }
             }
 
-            // TODO SM notification: if now is after next creation time, update nextCreationTime to the next
-            //  and try notify user that we skip the execution because snapshot creation time
-            //  is longer than execution period
+            // if now is after next creation time, update nextCreationTime to next execution schedule
+            // TODO may want to notify user that we skipped the execution because snapshot creation time is longer than execution schedule
             val result = tryUpdatingNextExecutionTime(
                 metadataBuilder, metadata.creation.trigger.time, job.creation.schedule,
                 WorkflowType.CREATION, log

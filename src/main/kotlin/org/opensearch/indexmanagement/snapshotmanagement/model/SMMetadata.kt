@@ -560,6 +560,32 @@ data class SMMetadata(
             return this
         }
 
+        fun getWorkflowMetadata(): WorkflowMetadata? {
+            return when (workflowType) {
+                WorkflowType.CREATION -> {
+                    metadata.creation
+                }
+                WorkflowType.DELETION -> {
+                    metadata.deletion
+                }
+            }
+        }
+
+        fun getWorkflowType(): WorkflowType {
+            return workflowType
+        }
+
+        fun getStartedSnapshots(): List<String>? {
+            return when (workflowType) {
+                WorkflowType.CREATION -> {
+                    metadata.creation.started
+                }
+                WorkflowType.DELETION -> {
+                    metadata.deletion?.started
+                }
+            }
+        }
+
         fun setRetry(count: Int): Builder {
             when (workflowType) {
                 WorkflowType.CREATION -> {

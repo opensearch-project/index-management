@@ -51,10 +51,11 @@ object DeletionFinishedState : State {
             val existingSnapshotsNameSet = getSnapshots.map { it.snapshotId().name }.toSet()
             val remainingSnapshotsName = existingSnapshotsNameSet intersect snapshotsStartedDeletion.toSet()
             if (remainingSnapshotsName.isEmpty()) {
-                // TODO SM notification snapshot deleted
+                val deletionMessage = "Snapshot(s) $snapshotsStartedDeletion deletion has finished."
+                job.notificationConfig?.sendDeletionNotification(client, job.policyName, deletionMessage, job.user, log)
                 metadataBuilder.setLatestExecution(
                     status = SMMetadata.LatestExecution.Status.SUCCESS,
-                    message = "Snapshots ${metadata.deletion.started} deletion has finished.",
+                    message = deletionMessage,
                     endTime = now(),
                 ).setDeletionStarted(null)
             } else {
@@ -65,14 +66,10 @@ object DeletionFinishedState : State {
                 }
 
                 log.info("Retention snapshots haven't been deleted: $remainingSnapshotsName.")
-                metadataBuilder.setDeletionStarted(
-                    remainingSnapshotsName.toList(),
-                )
             }
 
-            // TODO SM notification: if now is after next creation time, update nextCreationTime to the next
-            //  and try notify user that we skip the execution because snapshot creation time
-            //  is longer than execution period
+            // if now is after next deletion time, update next execution schedule
+            // TODO may want to notify user that we skipped the execution because snapshot deletion time is longer than execution schedule
             job.deletion?.let {
                 val result = tryUpdatingNextExecutionTime(
                     metadataBuilder, metadata.deletion.trigger.time, job.deletion.schedule, WorkflowType.DELETION, log

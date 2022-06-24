@@ -37,7 +37,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.model.StateFilter
 import org.opensearch.indexmanagement.indexstatemanagement.model.Transition
 import org.opensearch.indexmanagement.indexstatemanagement.model.coordinator.ClusterStateManagedIndexConfig
 import org.opensearch.indexmanagement.indexstatemanagement.model.coordinator.SweptManagedIndexConfig
-import org.opensearch.indexmanagement.indexstatemanagement.model.destination.Channel
+import org.opensearch.indexmanagement.common.model.notification.Channel
 import org.opensearch.indexmanagement.indexstatemanagement.model.destination.Chime
 import org.opensearch.indexmanagement.indexstatemanagement.model.destination.CustomWebhook
 import org.opensearch.indexmanagement.indexstatemanagement.model.destination.Destination
