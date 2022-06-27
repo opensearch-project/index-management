@@ -51,6 +51,7 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
 import java.util.Locale
+import org.opensearch.common.time.DateFormatters
 
 private val log = LogManager.getLogger("o.i.s.SnapshotManagementHelper")
 
@@ -161,10 +162,12 @@ fun getRandomString(length: Int): String {
         .joinToString("")
 }
 
+/**
+ * For supporting formats, refer to [DateFormatters]
+ */
 fun generateFormatTime(dateFormat: String, timezone: ZoneId = ZoneId.of("UTC")): String {
     val dateFormatter = DateFormatter.forPattern(dateFormat).withZone(timezone)
-    val instant = dateFormatter.toDateMathParser().parse("now/s", System::currentTimeMillis, false, timezone)
-    return dateFormatter.format(instant)
+    return dateFormatter.format(now())
 }
 
 fun validateDateFormat(dateFormat: String): String? {
