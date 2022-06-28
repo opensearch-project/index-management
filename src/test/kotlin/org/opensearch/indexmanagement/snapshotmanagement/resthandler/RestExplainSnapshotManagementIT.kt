@@ -32,7 +32,7 @@ class RestExplainSnapshotManagementIT : SnapshotManagementRestTestCase() {
             )
         )
         updateSMPolicyStartTime(smPolicy)
-        waitFor {
+        waitFor(timeout = timeout) {
             val explainResponse = explainSMPolicy(smPolicy.policyName)
             val responseMap = createParser(XContentType.JSON.xContent(), explainResponse.entity.content).map() as Map<String, Any>
             assertTrue(responseMap.containsKey(ExplainSMPolicyResponse.SM_POLICIES_FIELD))
@@ -76,7 +76,7 @@ class RestExplainSnapshotManagementIT : SnapshotManagementRestTestCase() {
         }
         // if this proves to be flaky, just index the metadata directly instead of executing to generate metadata
         smPolicies.forEach { updateSMPolicyStartTime(it) }
-        waitFor {
+        waitFor(timeout = timeout) {
             val explainResponse = explainSMPolicy(smPolicies.joinToString(",") { it.policyName })
             val responseMap = createParser(XContentType.JSON.xContent(), explainResponse.entity.content).map() as Map<String, Any>
             assertTrue(responseMap.containsKey(ExplainSMPolicyResponse.SM_POLICIES_FIELD))
@@ -104,7 +104,7 @@ class RestExplainSnapshotManagementIT : SnapshotManagementRestTestCase() {
         }
         // if this proves to be flaky, just index the metadata directly instead of executing to generate metadata
         smPolicies.forEach { updateSMPolicyStartTime(it) }
-        waitFor {
+        waitFor(timeout = timeout) {
             val explainResponse = explainSMPolicy("")
             val responseMap = createParser(XContentType.JSON.xContent(), explainResponse.entity.content).map() as Map<String, Any>
             assertTrue(responseMap.containsKey(ExplainSMPolicyResponse.SM_POLICIES_FIELD))

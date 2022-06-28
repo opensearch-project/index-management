@@ -25,7 +25,7 @@ class SMUtilsTests : OpenSearchTestCase() {
 
     fun `test snapshot name date_format`() {
         assertFailsWith<IllegalArgumentException> {
-            val smPolicy = randomSMPolicy(dateFormat = "")
+            val smPolicy = randomSMPolicy(dateFormat = " ")
             val smPolicyString = smPolicy.toJsonString()
             smPolicyString.parser().parseWithType(smPolicy.id, smPolicy.seqNo, smPolicy.primaryTerm, SMPolicy.Companion::parse)
         }
