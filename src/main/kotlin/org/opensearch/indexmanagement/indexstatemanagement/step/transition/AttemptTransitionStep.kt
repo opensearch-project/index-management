@@ -124,6 +124,8 @@ class AttemptTransitionStep(private val action: TransitionsAction) : Step(name) 
                 stepStatus = StepStatus.CONDITION_NOT_MET
                 message = getEvaluatingMessage(indexName)
             }
+
+            // testing !!!!
             // store conditions in a map to add to info
             val conditions = listOfNotNull(
                 "index creation date" to indexCreationDate,
