@@ -140,17 +140,19 @@ suspend fun Client.indexMetadata(
 
 fun generateSnapshotName(policy: SMPolicy): String {
     var result: String = policy.policyName
-    if (policy.snapshotConfig[DATE_FORMAT_FIELD] != null) {
-        val dateFormat = if (policy.snapshotConfig[DATE_FORMAT_TIMEZONE_FIELD] != null) {
-            generateFormatTime(
-                policy.snapshotConfig[DATE_FORMAT_FIELD] as String,
-                ZoneId.of(policy.snapshotConfig[DATE_FORMAT_TIMEZONE_FIELD] as String),
-            )
-        } else {
-            generateFormatTime(policy.snapshotConfig[DATE_FORMAT_FIELD] as String)
-        }
-        result += "-$dateFormat"
+    var dateFormat = policy.snapshotConfig[DATE_FORMAT_FIELD] as String?
+    if (dateFormat == null) {
+        dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
     }
+    val dateValue = if (policy.snapshotConfig[DATE_FORMAT_TIMEZONE_FIELD] != null) {
+        generateFormatTime(
+            dateFormat,
+            ZoneId.of(policy.snapshotConfig[DATE_FORMAT_TIMEZONE_FIELD] as String),
+        )
+    } else {
+        generateFormatTime(dateFormat)
+    }
+    result += "-$dateValue"
     return result + "-${getRandomString(RANDOM_STRING_LENGTH)}"
 }
 
@@ -163,7 +165,7 @@ fun getRandomString(length: Int): String {
 }
 
 /**
- * For supporting formats, refer to [DateFormatters]
+ * For the supporting formats, refer to [DateFormatters]
  */
 fun generateFormatTime(dateFormat: String, timezone: ZoneId = ZoneId.of("UTC")): String {
     val dateFormatter = DateFormatter.forPattern(dateFormat).withZone(timezone)
