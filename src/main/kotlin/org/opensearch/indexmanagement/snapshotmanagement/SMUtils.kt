@@ -51,6 +51,7 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
 import java.util.Locale
+import org.opensearch.common.time.DateFormatters
 
 private val log = LogManager.getLogger("o.i.s.SnapshotManagementHelper")
 
@@ -139,17 +140,19 @@ suspend fun Client.indexMetadata(
 
 fun generateSnapshotName(policy: SMPolicy): String {
     var result: String = policy.policyName
-    if (policy.snapshotConfig[DATE_FORMAT_FIELD] != null) {
-        val dateFormat = if (policy.snapshotConfig[DATE_FORMAT_TIMEZONE_FIELD] != null) {
-            generateFormatTime(
-                policy.snapshotConfig[DATE_FORMAT_FIELD] as String,
-                ZoneId.of(policy.snapshotConfig[DATE_FORMAT_TIMEZONE_FIELD] as String),
-            )
-        } else {
-            generateFormatTime(policy.snapshotConfig[DATE_FORMAT_FIELD] as String)
-        }
-        result += "-$dateFormat"
+    var dateFormat = policy.snapshotConfig[DATE_FORMAT_FIELD] as String?
+    if (dateFormat == null) {
+        dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
     }
+    val dateValue = if (policy.snapshotConfig[DATE_FORMAT_TIMEZONE_FIELD] != null) {
+        generateFormatDate(
+            dateFormat,
+            ZoneId.of(policy.snapshotConfig[DATE_FORMAT_TIMEZONE_FIELD] as String),
+        )
+    } else {
+        generateFormatDate(dateFormat)
+    }.lowercase()
+    result += "-$dateValue"
     return result + "-${getRandomString(RANDOM_STRING_LENGTH)}"
 }
 
@@ -161,10 +164,12 @@ fun getRandomString(length: Int): String {
         .joinToString("")
 }
 
-fun generateFormatTime(dateFormat: String, timezone: ZoneId = ZoneId.of("UTC")): String {
+/**
+ * For the supporting formats, refer to [DateFormatters]
+ */
+fun generateFormatDate(dateFormat: String, timezone: ZoneId = ZoneId.of("UTC")): String {
     val dateFormatter = DateFormatter.forPattern(dateFormat).withZone(timezone)
-    val instant = dateFormatter.toDateMathParser().parse("now/s", System::currentTimeMillis, false, timezone)
-    return dateFormatter.format(instant)
+    return dateFormatter.format(now())
 }
 
 fun validateDateFormat(dateFormat: String): String? {
