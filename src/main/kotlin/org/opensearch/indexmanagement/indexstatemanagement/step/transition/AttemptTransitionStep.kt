@@ -25,6 +25,7 @@ import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepMetaDat
 import org.opensearch.rest.RestStatus
 import org.opensearch.transport.RemoteTransportException
 import java.time.Instant
+import org.opensearch.common.unit.TimeValue
 
 class AttemptTransitionStep(private val action: TransitionsAction) : Step(name) {
 
@@ -57,11 +58,19 @@ class AttemptTransitionStep(private val action: TransitionsAction) : Step(name) 
             if (indexCreationDate == -1L) {
                 logger.warn("$indexName had an indexCreationDate=-1L, cannot use for comparison")
             }
+            val indexAgeTimeValue = if (indexCreationDate == -1L) {
+                logger.warn("$indexName had an indexCreationDate=-1L, cannot use for comparison")
+                // since we cannot use for comparison, we can set it to 0 as minAge will never be <= 0
+                TimeValue.timeValueMillis(0)
+            } else {
+                TimeValue.timeValueMillis(Instant.now().toEpochMilli() - indexCreationDate)
+            }
             val stepStartTime = getStepStartTime(context.metadata)
             var numDocs: Long? = null
             var indexSize: ByteSizeValue? = null
 
             val rolloverDate: Instant? = if (inCluster) indexMetadata.getOldestRolloverTime() else null
+
             if (transitions.any { it.conditions?.rolloverAge !== null }) {
                 // if we have a transition with rollover age condition, then we must have a rollover date
                 // otherwise fail this transition
@@ -115,7 +124,15 @@ class AttemptTransitionStep(private val action: TransitionsAction) : Step(name) 
                 stepStatus = StepStatus.CONDITION_NOT_MET
                 message = getEvaluatingMessage(indexName)
             }
-            info = mapOf("message" to message)
+            // store conditions in a map to add to info
+            val conditions = listOfNotNull(
+                "index creation date" to indexCreationDate,
+                "Number of docs" to numDocs,
+                "Index Size" to indexSize,
+                "Step Start Time" to stepStartTime,
+                "RolloverDate" to rolloverDate
+            ).toMap()
+            info = mapOf("message" to message, "conditions" to conditions)
         } catch (e: RemoteTransportException) {
             handleException(indexName, ExceptionsHelper.unwrapCause(e) as Exception)
         } catch (e: Exception) {
