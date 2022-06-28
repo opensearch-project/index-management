@@ -10,6 +10,7 @@ import org.apache.http.HttpHeaders
 import org.apache.http.entity.ContentType.APPLICATION_JSON
 import org.apache.http.entity.StringEntity
 import org.apache.http.message.BasicHeader
+import org.junit.Before
 import org.opensearch.client.Response
 import org.opensearch.client.ResponseException
 import org.opensearch.common.xcontent.XContentParser
@@ -30,9 +31,23 @@ import org.opensearch.jobscheduler.spi.schedule.IntervalSchedule
 import org.opensearch.rest.RestStatus
 import java.io.InputStream
 import java.time.Duration
+import java.time.Instant
 import java.time.Instant.now
 
 abstract class SnapshotManagementRestTestCase : IndexManagementRestTestCase() {
+
+    var timeout: Instant = Instant.ofEpochSecond(20)
+
+    /**
+     * For multi node test, if the shard of config index is moving, then the job scheduler
+     * could miss the execution after [updateSMPolicyStartTime]
+     * Extending this to be more than 1 minute, so even missed at first place, it could still be
+     * picked up to run in the next scheduled job.
+     */
+    @Before
+    fun timeoutForMultiNode() {
+        if (isMultiNode) timeout = Instant.ofEpochSecond(70)
+    }
 
     protected fun createSMPolicy(
         smPolicy: SMPolicy,

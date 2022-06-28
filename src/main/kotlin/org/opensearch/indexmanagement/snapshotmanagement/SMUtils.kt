@@ -145,13 +145,13 @@ fun generateSnapshotName(policy: SMPolicy): String {
         dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
     }
     val dateValue = if (policy.snapshotConfig[DATE_FORMAT_TIMEZONE_FIELD] != null) {
-        generateFormatTime(
+        generateFormatDate(
             dateFormat,
             ZoneId.of(policy.snapshotConfig[DATE_FORMAT_TIMEZONE_FIELD] as String),
         )
     } else {
-        generateFormatTime(dateFormat)
-    }
+        generateFormatDate(dateFormat)
+    }.lowercase()
     result += "-$dateValue"
     return result + "-${getRandomString(RANDOM_STRING_LENGTH)}"
 }
@@ -167,7 +167,7 @@ fun getRandomString(length: Int): String {
 /**
  * For the supporting formats, refer to [DateFormatters]
  */
-fun generateFormatTime(dateFormat: String, timezone: ZoneId = ZoneId.of("UTC")): String {
+fun generateFormatDate(dateFormat: String, timezone: ZoneId = ZoneId.of("UTC")): String {
     val dateFormatter = DateFormatter.forPattern(dateFormat).withZone(timezone)
     return dateFormatter.format(now())
 }
