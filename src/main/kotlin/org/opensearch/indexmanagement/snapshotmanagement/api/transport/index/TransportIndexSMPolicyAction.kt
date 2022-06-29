@@ -55,7 +55,9 @@ class TransportIndexSMPolicyAction @Inject constructor(
         // If filterBy is enabled and security is disabled or if filter by is enabled and backend role are empty an exception will be thrown
         SecurityUtils.validateUserConfiguration(user, filterByEnabled)
 
-        indexManagementIndices.checkAndUpdateIMConfigIndex(log)
+        if (indexManagementIndices.checkAndUpdateIMConfigIndex(log)) {
+            log.info("Successfully created or updated $INDEX_MANAGEMENT_INDEX with newest mappings.")
+        }
         return indexSMPolicy(request, user)
     }
 

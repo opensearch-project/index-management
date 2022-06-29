@@ -28,7 +28,6 @@ import org.opensearch.indexmanagement.indexstatemanagement.randomChannel
 import org.opensearch.indexmanagement.opensearchapi.toMap
 import org.opensearch.indexmanagement.randomCronSchedule
 import org.opensearch.indexmanagement.randomInstant
-import org.opensearch.indexmanagement.randomIntervalSchedule
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.SMState
 import org.opensearch.indexmanagement.snapshotmanagement.model.NotificationConfig
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata
@@ -45,6 +44,7 @@ import org.opensearch.test.OpenSearchTestCase.randomIntBetween
 import org.opensearch.test.OpenSearchTestCase.randomNonNegativeLong
 import org.opensearch.test.rest.OpenSearchRestTestCase
 import java.time.Instant
+import java.time.temporal.ChronoUnit
 
 fun randomSMMetadata(
     creationCurrentState: SMState = SMState.CREATION_START,
@@ -110,7 +110,7 @@ fun randomSMPolicy(
     ),
     dateFormat: String? = null,
     jobEnabledTime: Instant? = randomInstant(),
-    jobSchedule: IntervalSchedule = randomIntervalSchedule(),
+    jobSchedule: IntervalSchedule = IntervalSchedule(randomInstant(), 1, ChronoUnit.MINUTES),
     seqNo: Long = SequenceNumbers.UNASSIGNED_SEQ_NO,
     primaryTerm: Long = SequenceNumbers.UNASSIGNED_PRIMARY_TERM,
     notificationConfig: NotificationConfig? = null
