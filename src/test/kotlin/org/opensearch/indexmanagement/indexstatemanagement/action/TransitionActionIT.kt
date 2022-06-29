@@ -5,7 +5,6 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.action
 
-import org.junit.Assert
 import org.opensearch.common.unit.TimeValue
 import org.opensearch.indexmanagement.indexstatemanagement.IndexStateManagementRestTestCase
 import org.opensearch.indexmanagement.indexstatemanagement.model.Conditions
@@ -145,7 +144,7 @@ class TransitionActionIT : IndexStateManagementRestTestCase() {
             assertEquals(AttemptTransitionStep.getSuccessMessage(indexName, secondStateName), getExplainManagedIndexMetaData(indexName).info?.get("message"))
 
             // Check that conditions exists
-            Assert.assertNotNull("Missing conditions field", getExplainManagedIndexMetaData(indexName).info?.get("conditions"))
+            assertNotNull("Missing conditions field", getExplainManagedIndexMetaData(indexName).info?.get("conditions"))
         }
     }
 }
