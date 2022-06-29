@@ -5,6 +5,7 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.action
 
+import org.junit.Assert
 import org.opensearch.common.unit.TimeValue
 import org.opensearch.indexmanagement.indexstatemanagement.IndexStateManagementRestTestCase
 import org.opensearch.indexmanagement.indexstatemanagement.model.Conditions
@@ -65,6 +66,8 @@ class TransitionActionIT : IndexStateManagementRestTestCase() {
 
         // Should have evaluated to true
         waitFor { assertEquals(AttemptTransitionStep.getSuccessMessage(indexName, secondStateName), getExplainManagedIndexMetaData(indexName).info?.get("message")) }
+
+
     }
 
     fun `test rollover age transition for index with no rollover fails`() {
@@ -141,5 +144,6 @@ class TransitionActionIT : IndexStateManagementRestTestCase() {
 
         // Should have evaluated to true
         waitFor { assertEquals(AttemptTransitionStep.getSuccessMessage(indexName, secondStateName), getExplainManagedIndexMetaData(indexName).info?.get("message")) }
+
     }
 }
