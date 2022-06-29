@@ -66,8 +66,6 @@ class TransitionActionIT : IndexStateManagementRestTestCase() {
 
         // Should have evaluated to true
         waitFor { assertEquals(AttemptTransitionStep.getSuccessMessage(indexName, secondStateName), getExplainManagedIndexMetaData(indexName).info?.get("message")) }
-
-
     }
 
     fun `test rollover age transition for index with no rollover fails`() {
@@ -142,8 +140,12 @@ class TransitionActionIT : IndexStateManagementRestTestCase() {
         // Evaluating transition conditions for first time
         updateManagedIndexConfigStartTime(managedIndexConfig)
 
-        // Should have evaluated to true
-        waitFor { assertEquals(AttemptTransitionStep.getSuccessMessage(indexName, secondStateName), getExplainManagedIndexMetaData(indexName).info?.get("message")) }
+        waitFor {
+            // Should have evaluated to true
+            assertEquals(AttemptTransitionStep.getSuccessMessage(indexName, secondStateName), getExplainManagedIndexMetaData(indexName).info?.get("message"))
 
+            // Check that conditions exists
+            Assert.assertNotNull("Missing conditions field", getExplainManagedIndexMetaData(indexName).info?.get("conditions"))
+        }
     }
 }
