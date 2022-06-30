@@ -26,6 +26,7 @@ import org.opensearch.rest.RestStatus
 import org.opensearch.transport.RemoteTransportException
 import java.time.Instant
 import org.opensearch.common.unit.TimeValue
+import org.opensearch.indexmanagement.indexstatemanagement.model.Conditions
 
 class AttemptTransitionStep(private val action: TransitionsAction) : Step(name) {
 
@@ -58,13 +59,7 @@ class AttemptTransitionStep(private val action: TransitionsAction) : Step(name) 
             if (indexCreationDate == -1L) {
                 logger.warn("$indexName had an indexCreationDate=-1L, cannot use for comparison")
             }
-            val indexAgeTimeValue = if (indexCreationDate == -1L) {
-                logger.warn("$indexName had an indexCreationDate=-1L, cannot use for comparison")
-                // since we cannot use for comparison, we can set it to 0 as minAge will never be <= 0
-                TimeValue.timeValueMillis(0)
-            } else {
-                TimeValue.timeValueMillis(Instant.now().toEpochMilli() - indexCreationDate)
-            }
+
             val stepStartTime = getStepStartTime(context.metadata)
             var numDocs: Long? = null
             var indexSize: ByteSizeValue? = null
@@ -127,11 +122,11 @@ class AttemptTransitionStep(private val action: TransitionsAction) : Step(name) 
 
             // store conditions in a map to add to info
             val conditions = listOfNotNull(
-                "index creation date" to indexCreationDate,
-                "Number of docs" to numDocs,
-                "Index Size" to indexSize,
-                "Step Start Time" to stepStartTime,
-                "RolloverDate" to rolloverDate
+                Conditions.MIN_INDEX_AGE_FIELD to indexCreationDate,
+                Conditions.MIN_DOC_COUNT_FIELD to numDocs,
+                Conditions.MIN_SIZE_FIELD to indexSize,
+                Conditions.CRON_FIELD to stepStartTime,
+                Conditions.MIN_ROLLOVER_AGE_FIELD to rolloverDate
             ).toMap()
             info = mapOf("message" to message, "conditions" to conditions)
         } catch (e: RemoteTransportException) {

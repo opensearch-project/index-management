@@ -143,8 +143,6 @@ class TransitionActionIT : IndexStateManagementRestTestCase() {
             // Should have evaluated to true
             assertEquals(AttemptTransitionStep.getSuccessMessage(indexName, secondStateName), getExplainManagedIndexMetaData(indexName).info?.get("message"))
 
-            // Check that conditions exists
-            assertNotNull("Missing conditions field", getExplainManagedIndexMetaData(indexName).info?.get("conditions"))
         }
     }
 }
