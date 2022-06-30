@@ -77,7 +77,7 @@ class IndexManagementIndices(
         }
     }
 
-    suspend fun checkAndUpdateIMConfigIndex(logger: Logger) {
+    suspend fun checkAndUpdateIMConfigIndex(logger: Logger): Boolean {
         val response: AcknowledgedResponse = suspendCoroutine { cont ->
             checkAndUpdateIMConfigIndex(
                 object : ActionListener<AcknowledgedResponse> {
@@ -87,7 +87,7 @@ class IndexManagementIndices(
             )
         }
         if (response.isAcknowledged) {
-            logger.info("Successfully created or updated $INDEX_MANAGEMENT_INDEX with newest mappings.")
+            return true
         } else {
             logger.error("Unable to create or update $INDEX_MANAGEMENT_INDEX with newest mapping.")
             throw OpenSearchStatusException(
