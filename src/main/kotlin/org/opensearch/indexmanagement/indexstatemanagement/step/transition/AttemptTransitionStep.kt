@@ -25,7 +25,6 @@ import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepMetaDat
 import org.opensearch.rest.RestStatus
 import org.opensearch.transport.RemoteTransportException
 import java.time.Instant
-import org.opensearch.common.unit.TimeValue
 import org.opensearch.indexmanagement.indexstatemanagement.model.Conditions
 
 class AttemptTransitionStep(private val action: TransitionsAction) : Step(name) {
