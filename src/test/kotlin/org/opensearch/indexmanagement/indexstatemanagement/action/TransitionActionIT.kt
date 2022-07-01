@@ -142,7 +142,6 @@ class TransitionActionIT : IndexStateManagementRestTestCase() {
         waitFor {
             // Should have evaluated to true
             assertEquals(AttemptTransitionStep.getSuccessMessage(indexName, secondStateName), getExplainManagedIndexMetaData(indexName).info?.get("message"))
-
         }
     }
 }
