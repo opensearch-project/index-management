@@ -143,7 +143,7 @@ class TransitionActionIT : IndexStateManagementRestTestCase() {
             // Should have evaluated to true
             assertEquals(AttemptTransitionStep.getSuccessMessage(indexName, secondStateName), getExplainManagedIndexMetaData(indexName).info?.get("message"))
             // evaluate all conditions in infomap
-            val response = cat("indices/$indexName?h=creation.date.string")
+            val response = cat("indices/$indexName?format=json&h=creation.date.string")
             assertEquals("RonSax look here $response", false, true)
         }
     }
