@@ -151,7 +151,7 @@ class TransitionActionIT : IndexStateManagementRestTestCase() {
             // MIN_DOC_COUNT_FIELD
             assertEquals("incorrect min doc count", 0, infoMap?.get("min_doc_count"))
             // MIN_SIZE_FIELD
-            assertTrue("index size is wrong",  (infoMap?.get("min_size") as ByteSizeValue >= 0 as ByteSizeValue))
+            assertTrue("index size is wrong", (infoMap?.get("min_size") as ByteSizeValue >= 0 as ByteSizeValue))
             // CRON_FIELD
 
             // MIN_ROLLOVER_AGE_FIELD
