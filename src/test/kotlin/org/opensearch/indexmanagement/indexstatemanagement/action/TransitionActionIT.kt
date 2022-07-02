@@ -5,6 +5,7 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.action
 
+import org.opensearch.common.unit.ByteSizeValue
 import org.opensearch.common.unit.TimeValue
 import org.opensearch.indexmanagement.indexstatemanagement.IndexStateManagementRestTestCase
 import org.opensearch.indexmanagement.indexstatemanagement.model.Conditions
@@ -143,8 +144,17 @@ class TransitionActionIT : IndexStateManagementRestTestCase() {
             // Should have evaluated to true
             assertEquals(AttemptTransitionStep.getSuccessMessage(indexName, secondStateName), getExplainManagedIndexMetaData(indexName).info?.get("message"))
             // evaluate all conditions in infomap
-            val response = (cat("indices/$indexName?format=json&h=creation.date.string") as List<Map<String, Any>>)[0]["creation.date.string"]
-            assertEquals("Ron Sax look here $response", false, true)
+            val infoMap = getExplainManagedIndexMetaData(indexName).info as Map<String, Any?>
+            // MIN_INDEX_AGE
+            val expectedCreationDate = (cat("indices/$indexName?format=json&h=creation.date.string") as List<Map<String, Any>>)[0]["creation.date.string"]
+            assertEquals("incorrect creation dates", expectedCreationDate, infoMap?.get("min_index_age"))
+            // MIN_DOC_COUNT_FIELD
+            assertEquals("incorrect min doc count", 0, infoMap?.get("min_doc_count"))
+            // MIN_SIZE_FIELD
+            assertTrue("index size is wrong",  (infoMap?.get("min_size") as ByteSizeValue >= 0 as ByteSizeValue))
+            // CRON_FIELD
+
+            // MIN_ROLLOVER_AGE_FIELD
         }
     }
 }
