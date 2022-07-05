@@ -69,7 +69,8 @@ class TransitionActionIT : IndexStateManagementRestTestCase() {
             // check doc count in infomap
             // docCount
             val infoMap = getExplainManagedIndexMetaData(indexName).info as Map<String, Any?>
-            assertEquals("incorrect number of docs", 5L, infoMap?.get("docCount"))
+            val conditions = infoMap?.get("conditions") as Map<String, Any?>
+            assertEquals("incorrect number of docs", 5L, conditions?.get("docCount"))
         }
     }
 
@@ -151,8 +152,8 @@ class TransitionActionIT : IndexStateManagementRestTestCase() {
             // check all current state conditions in infomap align with index
             val infoMap = getExplainManagedIndexMetaData(indexName).info as Map<String, Any?>
             // rolloverAge
-            // assertTrue("RONSAX LOOK HERE BUD $infoMap", false)
-            assertEquals("Rollover age is wrong ${infoMap?.get("rolloverAge")}", TimeValue.timeValueMillis(1), infoMap?.get("rolloverAge"))
+            val conditions = infoMap?.get("conditions") as Map<String, Any?>
+            assertEquals("Rollover age is wrong" , TimeValue.timeValueMillis(1), conditions?.get("rolloverAge"))
         }
     }
 }
