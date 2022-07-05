@@ -125,17 +125,26 @@ class AttemptTransitionStep(private val action: TransitionsAction) : Step(name) 
                 stepStatus = StepStatus.CONDITION_NOT_MET
                 message = getEvaluatingMessage(indexName)
             }
+            val rolloverDateMilli = rolloverDate?.toEpochMilli()
+            val rolloverAge = rolloverDateMilli?.let { Instant.now().toEpochMilli() - it }
 
             // store current state of conditions in a map to add to info
             val conditions = listOfNotNull(
-                "indexAge" to mapOf(
-                    "current" to indexAgeTimeValue,
-                    "creationDate" to indexCreationDate.toString()
-                ),
-                "docCount" to numDocs,
-                "size" to indexSize,
-                "cron" to stepStartTime,
-                "rolloverAge" to rolloverDate as? TimeValue // rolloverDate is of Timevalue type in Conditions class
+                indexAgeTimeValue?.let {
+                    "indexAge" to it
+                },
+                numDocs?.let {
+                    "docCount" to it
+                },
+                indexSize?.let {
+                    "size" to it
+                },
+                stepStartTime?.let {
+                    "cron" to it
+                },
+                rolloverAge?.let {
+                    "rolloverAge" to it
+                }
             ).toMap()
             info = mapOf("message" to message, "conditions" to conditions)
         } catch (e: RemoteTransportException) {

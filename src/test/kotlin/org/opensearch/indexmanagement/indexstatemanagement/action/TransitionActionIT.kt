@@ -5,7 +5,6 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.action
 
-import org.opensearch.common.unit.ByteSizeValue
 import org.opensearch.common.unit.TimeValue
 import org.opensearch.indexmanagement.indexstatemanagement.IndexStateManagementRestTestCase
 import org.opensearch.indexmanagement.indexstatemanagement.model.Conditions
@@ -65,11 +64,12 @@ class TransitionActionIT : IndexStateManagementRestTestCase() {
         updateManagedIndexConfigStartTime(managedIndexConfig)
 
         // Should have evaluated to true
-        waitFor { assertEquals(AttemptTransitionStep.getSuccessMessage(indexName, secondStateName), getExplainManagedIndexMetaData(indexName).info?.get("message"))
-        // check doc count in infomap
-        // docCount
-        val infoMap = getExplainManagedIndexMetaData(indexName).info as Map<String, Any?>
-        assertEquals("incorrect number of docs", 5L, infoMap?.get("docCount"))
+        waitFor {
+            assertEquals(AttemptTransitionStep.getSuccessMessage(indexName, secondStateName), getExplainManagedIndexMetaData(indexName).info?.get("message"))
+            // check doc count in infomap
+            // docCount
+            val infoMap = getExplainManagedIndexMetaData(indexName).info as Map<String, Any?>
+            assertEquals("incorrect number of docs", 5L, infoMap?.get("docCount"))
         }
     }
 
@@ -152,10 +152,9 @@ class TransitionActionIT : IndexStateManagementRestTestCase() {
             val infoMap = getExplainManagedIndexMetaData(indexName).info as Map<String, Any?>
             // indexAge
             val expectedCreationDate = (cat("indices/$indexName?format=json&h=creation.date.string") as List<Map<String, Any>>)[0]["creation.date.string"]
-            val indexAgeMap = infoMap?.get("indexAge") as Map<String, Any?>
-            assertEquals("incorrect index age: ${indexAgeMap?.get("creationDate")}", expectedCreationDate, indexAgeMap?.get("creationDate"))
+            assertEquals("incorrect index age: ${infoMap?.get("indexAge")}", expectedCreationDate, infoMap?.get("indexAge"))
             // rolloverAge
-            assertEquals("Rollover age is wrong", TimeValue.timeValueMillis(1), infoMap?.get("rolloverAge") as? TimeValue)
+            assertEquals("Rollover age is wrong", TimeValue.timeValueMillis(1), infoMap?.get("rolloverAge"))
         }
     }
 }
