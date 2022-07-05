@@ -137,42 +137,8 @@ class AttemptTransitionStep(private val action: TransitionsAction) : Step(name) 
                 Conditions.MIN_DOC_COUNT_FIELD to numDocs,
                 Conditions.MIN_SIZE_FIELD to indexSize,
                 Conditions.CRON_FIELD to stepStartTime,
-                Conditions.MIN_ROLLOVER_AGE_FIELD to rolloverDate
+                Conditions.MIN_ROLLOVER_AGE_FIELD to rolloverDate as? TimeValue //rolloverDate is of Timevalue type in Conditions class
             ).toMap()
-//            val conditions = listOfNotNull(
-//                    transitions[0].indexAge?.let {
-//                        Conditions.MIN_INDEX_AGE_FIELD to mapOf(
-//                                "condition" to it.toString(),
-//                                "current" to indexAgeTimeValue.toString(),
-//                                "creationDate" to indexCreationDate
-//                        )
-//                    },
-//                    Conditions.docCount?.let {
-//                        Conditions.MIN_DOC_COUNT_FIELD to mapOf(
-//                                "condition" to it,
-//                                "current" to numDocs
-//                        )
-//                    },
-//                    Conditions.MIN_SIZE_FIELD?.let {
-//                        Conditions.MIN_SIZE_FIELD to mapOf(
-//                                "condition" to it.toString(),
-//                                "current" to indexSize.toString()
-//                        )
-//                    },
-//                    Conditions.CRON_FIELD?.let {
-//                        Conditions.CRON_FIELD to mapOf(
-//                                "condition" to it.toString(),
-//                                "current" to stepStartTime.toString()
-//                        )
-//                    },
-//                    Conditions.MIN_ROLLOVER_AGE_FIELD?.let {
-//                        Conditions.MIN_ROLLOVER_AGE_FIELD to mapOf(
-//                                "condition" to it.toString(),
-//                                "current" to rolloverDate.toString()
-//                        )
-//                    },
-//
-//            ).toMap()
             info = mapOf("message" to message, "conditions" to conditions)
         } catch (e: RemoteTransportException) {
             handleException(indexName, ExceptionsHelper.unwrapCause(e) as Exception)

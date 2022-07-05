@@ -110,7 +110,7 @@ class TransitionActionIT : IndexStateManagementRestTestCase() {
         val alias = "foo-alias"
         val secondStateName = "second"
         val states = listOf(
-            State("first", listOf(), listOf(Transition(secondStateName, Conditions(rolloverAge = TimeValue.timeValueMillis(1))))),
+            State("first", listOf(), listOf(Transition(secondStateName, Conditions(indexAge = TimeValue.timeValueDays(2), docCount = 3, size = 0 as? ByteSizeValue, cron = null, rolloverAge = TimeValue.timeValueMillis(1))))),
             State(secondStateName, listOf(), listOf())
         )
 
@@ -149,13 +149,13 @@ class TransitionActionIT : IndexStateManagementRestTestCase() {
             val expectedCreationDate = (cat("indices/$indexName?format=json&h=creation.date.string") as List<Map<String, Any>>)[0]["creation.date.string"]
             assertEquals("incorrect creation dates", expectedCreationDate, infoMap?.get("min_index_age"))
             // MIN_DOC_COUNT_FIELD
-            assertEquals("incorrect min doc count", 0, infoMap?.get("min_doc_count"))
+            assertEquals("incorrect min doc count: ${infoMap?.get("min_doc_count")}", 0, infoMap?.get("min_doc_count"))
             // MIN_SIZE_FIELD
-            assertTrue("index size is wrong", (infoMap?.get("min_size") as ByteSizeValue >= 0 as ByteSizeValue))
+            assertTrue("index size is too small", (infoMap?.get("min_size") as ByteSizeValue >= 0 as ByteSizeValue))
             // CRON_FIELD
-            assertEquals("Cron field is wrong", )
+            assertEquals("Cron field is wrong", null, infoMap?.get("cron"))
             // MIN_ROLLOVER_AGE_FIELD
-            assertTrue("Rollover field is too small", getManagedIndexConfig(indexName).)
+            assertTrue("Rollover age is too small", TimeValue.timeValueMillis(1) >= infoMap.get("min_rollover_age") as? TimeValue)
         }
     }
 }
