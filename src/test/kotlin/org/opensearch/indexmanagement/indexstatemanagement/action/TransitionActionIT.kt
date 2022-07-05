@@ -151,6 +151,7 @@ class TransitionActionIT : IndexStateManagementRestTestCase() {
             // check all current state conditions in infomap align with index
             val infoMap = getExplainManagedIndexMetaData(indexName).info as Map<String, Any?>
             // rolloverAge
+            assertTrue("${infoMap}", false)
             assertEquals("Rollover age is wrong", TimeValue.timeValueMillis(1), infoMap?.get("rolloverAge"))
         }
     }
