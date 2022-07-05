@@ -13,7 +13,6 @@ import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.unit.ByteSizeValue
 import org.opensearch.common.unit.TimeValue
 import org.opensearch.indexmanagement.indexstatemanagement.IndexMetadataProvider
-import org.opensearch.indexmanagement.indexstatemanagement.action.RolloverAction
 import org.opensearch.indexmanagement.indexstatemanagement.action.TransitionsAction
 import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.getOldestRolloverTime
 import org.opensearch.indexmanagement.indexstatemanagement.util.DEFAULT_INDEX_TYPE
@@ -27,7 +26,6 @@ import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepMetaDat
 import org.opensearch.rest.RestStatus
 import org.opensearch.transport.RemoteTransportException
 import java.time.Instant
-import org.opensearch.indexmanagement.indexstatemanagement.model.Conditions
 
 class AttemptTransitionStep(private val action: TransitionsAction) : Step(name) {
 
@@ -131,13 +129,13 @@ class AttemptTransitionStep(private val action: TransitionsAction) : Step(name) 
             // store current state of conditions in a map to add to info
             val conditions = listOfNotNull(
                 "indexAge" to mapOf(
-                        "current" to indexAgeTimeValue,
-                        "creationDate" to indexCreationDate.toString()
+                    "current" to indexAgeTimeValue,
+                    "creationDate" to indexCreationDate.toString()
                 ),
                 "docCount" to numDocs,
                 "size" to indexSize,
                 "cron" to stepStartTime,
-                "rolloverAge" to rolloverDate as? TimeValue //rolloverDate is of Timevalue type in Conditions class
+                "rolloverAge" to rolloverDate as? TimeValue // rolloverDate is of Timevalue type in Conditions class
             ).toMap()
             info = mapOf("message" to message, "conditions" to conditions)
         } catch (e: RemoteTransportException) {
