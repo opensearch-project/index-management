@@ -110,7 +110,7 @@ class TransitionActionIT : IndexStateManagementRestTestCase() {
         val alias = "foo-alias"
         val secondStateName = "second"
         val states = listOf(
-            State("first", listOf(), listOf(Transition(secondStateName, Conditions(indexAge = TimeValue.timeValueDays(2), docCount = 3, size = 0 as? ByteSizeValue, cron = null, rolloverAge = TimeValue.timeValueMillis(1))))),
+            State("first", listOf(), listOf(Transition(secondStateName, Conditions(indexAge = TimeValue.timeValueDays(2), docCount = 3, size = 5 as? ByteSizeValue, cron = null, rolloverAge = TimeValue.timeValueMillis(1))))),
             State(secondStateName, listOf(), listOf())
         )
 
@@ -143,19 +143,20 @@ class TransitionActionIT : IndexStateManagementRestTestCase() {
         waitFor {
             // Should have evaluated to true
             assertEquals(AttemptTransitionStep.getSuccessMessage(indexName, secondStateName), getExplainManagedIndexMetaData(indexName).info?.get("message"))
-            // evaluate all conditions in infomap
+            // check all current state conditions in infomap align with index
             val infoMap = getExplainManagedIndexMetaData(indexName).info as Map<String, Any?>
-            // MIN_INDEX_AGE
+            // indexAge
             val expectedCreationDate = (cat("indices/$indexName?format=json&h=creation.date.string") as List<Map<String, Any>>)[0]["creation.date.string"]
-            assertEquals("incorrect creation dates", expectedCreationDate, infoMap?.get("min_index_age"))
-            // MIN_DOC_COUNT_FIELD
-            assertEquals("incorrect min doc count: ${infoMap?.get("min_doc_count")}", 0, infoMap?.get("min_doc_count"))
-            // MIN_SIZE_FIELD
-            assertTrue("index size is too small", (infoMap?.get("min_size") as ByteSizeValue >= 0 as ByteSizeValue))
-            // CRON_FIELD
+            val indexAgeMap = infoMap?.get("min_index_age") as Map<String, Any?>
+            assertEquals("incorrect index age: ${indexAgeMap?.get("creationDate")}", expectedCreationDate, indexAgeMap?.get("creationDate"))
+            // docCount
+            assertEquals("incorrect number of docs", 3, infoMap?.get("docCount"))
+            // size
+            assertEquals("incorrect index size", infoMap?.get("size") as ByteSizeValue, 5 as? ByteSizeValue)
+            // cron
             assertEquals("Cron field is wrong", null, infoMap?.get("cron"))
-            // MIN_ROLLOVER_AGE_FIELD
-            assertTrue("Rollover age is too small", TimeValue.timeValueMillis(1) >= infoMap.get("min_rollover_age") as? TimeValue)
+            // rolloverAge
+            assertEquals("Rollover age is wrong", TimeValue.timeValueMillis(1), infoMap?.get("rolloverAge") as? TimeValue)
         }
     }
 }

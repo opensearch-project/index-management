@@ -128,16 +128,16 @@ class AttemptTransitionStep(private val action: TransitionsAction) : Step(name) 
                 message = getEvaluatingMessage(indexName)
             }
 
-            // store conditions in a map to add to info
+            // store current state of conditions in a map to add to info
             val conditions = listOfNotNull(
-                Conditions.MIN_INDEX_AGE_FIELD to mapOf(
-                        "current" to indexAgeTimeValue.toString(),
-                        "creationDate" to indexCreationDate
+                "indexAge" to mapOf(
+                        "current" to indexAgeTimeValue,
+                        "creationDate" to indexCreationDate.toString()
                 ),
-                Conditions.MIN_DOC_COUNT_FIELD to numDocs,
-                Conditions.MIN_SIZE_FIELD to indexSize,
-                Conditions.CRON_FIELD to stepStartTime,
-                Conditions.MIN_ROLLOVER_AGE_FIELD to rolloverDate as? TimeValue //rolloverDate is of Timevalue type in Conditions class
+                "docCount" to numDocs,
+                "size" to indexSize,
+                "cron" to stepStartTime,
+                "rolloverAge" to rolloverDate as? TimeValue //rolloverDate is of Timevalue type in Conditions class
             ).toMap()
             info = mapOf("message" to message, "conditions" to conditions)
         } catch (e: RemoteTransportException) {
