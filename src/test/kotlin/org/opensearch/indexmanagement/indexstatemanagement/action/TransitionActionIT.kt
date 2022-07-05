@@ -65,7 +65,12 @@ class TransitionActionIT : IndexStateManagementRestTestCase() {
         updateManagedIndexConfigStartTime(managedIndexConfig)
 
         // Should have evaluated to true
-        waitFor { assertEquals(AttemptTransitionStep.getSuccessMessage(indexName, secondStateName), getExplainManagedIndexMetaData(indexName).info?.get("message")) }
+        waitFor { assertEquals(AttemptTransitionStep.getSuccessMessage(indexName, secondStateName), getExplainManagedIndexMetaData(indexName).info?.get("message"))
+        // check doc count in infomap
+        // docCount
+        val infoMap = getExplainManagedIndexMetaData(indexName).info as Map<String, Any?>
+        assertEquals("incorrect number of docs", 5L, infoMap?.get("docCount"))
+        }
     }
 
     fun `test rollover age transition for index with no rollover fails`() {
@@ -110,7 +115,7 @@ class TransitionActionIT : IndexStateManagementRestTestCase() {
         val alias = "foo-alias"
         val secondStateName = "second"
         val states = listOf(
-            State("first", listOf(), listOf(Transition(secondStateName, Conditions(indexAge = TimeValue.timeValueDays(2), docCount = 3, size = 5 as? ByteSizeValue, cron = null, rolloverAge = TimeValue.timeValueMillis(1))))),
+            State("first", listOf(), listOf(Transition(secondStateName, Conditions(rolloverAge = TimeValue.timeValueMillis(1))))),
             State(secondStateName, listOf(), listOf())
         )
 
@@ -149,12 +154,6 @@ class TransitionActionIT : IndexStateManagementRestTestCase() {
             val expectedCreationDate = (cat("indices/$indexName?format=json&h=creation.date.string") as List<Map<String, Any>>)[0]["creation.date.string"]
             val indexAgeMap = infoMap?.get("indexAge") as Map<String, Any?>
             assertEquals("incorrect index age: ${indexAgeMap?.get("creationDate")}", expectedCreationDate, indexAgeMap?.get("creationDate"))
-            // docCount
-            assertEquals("incorrect number of docs", 3, infoMap?.get("docCount"))
-            // size
-            assertEquals("incorrect index size", infoMap?.get("size") as ByteSizeValue, 5 as? ByteSizeValue)
-            // cron
-            assertEquals("Cron field is wrong", null, infoMap?.get("cron"))
             // rolloverAge
             assertEquals("Rollover age is wrong", TimeValue.timeValueMillis(1), infoMap?.get("rolloverAge") as? TimeValue)
         }
