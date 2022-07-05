@@ -11,7 +11,9 @@ import org.opensearch.action.admin.indices.stats.IndicesStatsRequest
 import org.opensearch.action.admin.indices.stats.IndicesStatsResponse
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.unit.ByteSizeValue
+import org.opensearch.common.unit.TimeValue
 import org.opensearch.indexmanagement.indexstatemanagement.IndexMetadataProvider
+import org.opensearch.indexmanagement.indexstatemanagement.action.RolloverAction
 import org.opensearch.indexmanagement.indexstatemanagement.action.TransitionsAction
 import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.getOldestRolloverTime
 import org.opensearch.indexmanagement.indexstatemanagement.util.DEFAULT_INDEX_TYPE
@@ -57,6 +59,13 @@ class AttemptTransitionStep(private val action: TransitionsAction) : Step(name) 
             val indexCreationDateInstant = Instant.ofEpochMilli(indexCreationDate)
             if (indexCreationDate == -1L) {
                 logger.warn("$indexName had an indexCreationDate=-1L, cannot use for comparison")
+            }
+            val indexAgeTimeValue = if (indexCreationDate == -1L) {
+                logger.warn("$indexName had an indexCreationDate=-1L, cannot use for comparison")
+                // since we cannot use for comparison, we can set it to 0 as minAge will never be <= 0
+                TimeValue.timeValueMillis(0)
+            } else {
+                TimeValue.timeValueMillis(Instant.now().toEpochMilli() - indexCreationDate)
             }
 
             val stepStartTime = getStepStartTime(context.metadata)
@@ -121,12 +130,49 @@ class AttemptTransitionStep(private val action: TransitionsAction) : Step(name) 
 
             // store conditions in a map to add to info
             val conditions = listOfNotNull(
-                Conditions.MIN_INDEX_AGE_FIELD to indexCreationDate,
+                Conditions.MIN_INDEX_AGE_FIELD to mapOf(
+                        "current" to indexAgeTimeValue.toString(),
+                        "creationDate" to indexCreationDate
+                ),
                 Conditions.MIN_DOC_COUNT_FIELD to numDocs,
                 Conditions.MIN_SIZE_FIELD to indexSize,
                 Conditions.CRON_FIELD to stepStartTime,
                 Conditions.MIN_ROLLOVER_AGE_FIELD to rolloverDate
             ).toMap()
+//            val conditions = listOfNotNull(
+//                    transitions[0].indexAge?.let {
+//                        Conditions.MIN_INDEX_AGE_FIELD to mapOf(
+//                                "condition" to it.toString(),
+//                                "current" to indexAgeTimeValue.toString(),
+//                                "creationDate" to indexCreationDate
+//                        )
+//                    },
+//                    Conditions.docCount?.let {
+//                        Conditions.MIN_DOC_COUNT_FIELD to mapOf(
+//                                "condition" to it,
+//                                "current" to numDocs
+//                        )
+//                    },
+//                    Conditions.MIN_SIZE_FIELD?.let {
+//                        Conditions.MIN_SIZE_FIELD to mapOf(
+//                                "condition" to it.toString(),
+//                                "current" to indexSize.toString()
+//                        )
+//                    },
+//                    Conditions.CRON_FIELD?.let {
+//                        Conditions.CRON_FIELD to mapOf(
+//                                "condition" to it.toString(),
+//                                "current" to stepStartTime.toString()
+//                        )
+//                    },
+//                    Conditions.MIN_ROLLOVER_AGE_FIELD?.let {
+//                        Conditions.MIN_ROLLOVER_AGE_FIELD to mapOf(
+//                                "condition" to it.toString(),
+//                                "current" to rolloverDate.toString()
+//                        )
+//                    },
+//
+//            ).toMap()
             info = mapOf("message" to message, "conditions" to conditions)
         } catch (e: RemoteTransportException) {
             handleException(indexName, ExceptionsHelper.unwrapCause(e) as Exception)

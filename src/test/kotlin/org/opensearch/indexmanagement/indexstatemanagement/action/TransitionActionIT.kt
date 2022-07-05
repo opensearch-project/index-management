@@ -153,8 +153,9 @@ class TransitionActionIT : IndexStateManagementRestTestCase() {
             // MIN_SIZE_FIELD
             assertTrue("index size is wrong", (infoMap?.get("min_size") as ByteSizeValue >= 0 as ByteSizeValue))
             // CRON_FIELD
-
+            assertEquals("Cron field is wrong", )
             // MIN_ROLLOVER_AGE_FIELD
+            assertTrue("Rollover field is too small", getManagedIndexConfig(indexName).)
         }
     }
 }
