@@ -150,9 +150,6 @@ class TransitionActionIT : IndexStateManagementRestTestCase() {
             assertEquals(AttemptTransitionStep.getSuccessMessage(indexName, secondStateName), getExplainManagedIndexMetaData(indexName).info?.get("message"))
             // check all current state conditions in infomap align with index
             val infoMap = getExplainManagedIndexMetaData(indexName).info as Map<String, Any?>
-            // indexAge
-            val expectedCreationDate = (cat("indices/$indexName?format=json&h=creation.date.string") as List<Map<String, Any>>)[0]["creation.date.string"]
-            assertEquals("incorrect index age: ${infoMap?.get("indexAge")}", expectedCreationDate, infoMap?.get("indexAge"))
             // rolloverAge
             assertEquals("Rollover age is wrong", TimeValue.timeValueMillis(1), infoMap?.get("rolloverAge"))
         }
