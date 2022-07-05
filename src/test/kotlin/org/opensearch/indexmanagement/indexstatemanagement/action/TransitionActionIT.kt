@@ -147,7 +147,7 @@ class TransitionActionIT : IndexStateManagementRestTestCase() {
             val infoMap = getExplainManagedIndexMetaData(indexName).info as Map<String, Any?>
             // indexAge
             val expectedCreationDate = (cat("indices/$indexName?format=json&h=creation.date.string") as List<Map<String, Any>>)[0]["creation.date.string"]
-            val indexAgeMap = infoMap?.get("min_index_age") as Map<String, Any?>
+            val indexAgeMap = infoMap?.get("indexAge") as Map<String, Any?>
             assertEquals("incorrect index age: ${indexAgeMap?.get("creationDate")}", expectedCreationDate, indexAgeMap?.get("creationDate"))
             // docCount
             assertEquals("incorrect number of docs", 3, infoMap?.get("docCount"))
