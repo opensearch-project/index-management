@@ -70,7 +70,7 @@ class TransitionActionIT : IndexStateManagementRestTestCase() {
             // docCount
             val infoMap = getExplainManagedIndexMetaData(indexName).info as Map<String, Any?>
             val conditions = infoMap?.get("conditions") as Map<String, Any?>
-            assertEquals("incorrect number of docs", 5L, conditions?.get("docCount"))
+            assertNotNull("Missing min doc count condition", conditions?.get("docCount"))
         }
     }
 
