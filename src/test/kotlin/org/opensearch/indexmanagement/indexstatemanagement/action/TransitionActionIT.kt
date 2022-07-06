@@ -153,7 +153,7 @@ class TransitionActionIT : IndexStateManagementRestTestCase() {
             val infoMap = getExplainManagedIndexMetaData(indexName).info as Map<String, Any?>
             // rolloverAge
             val conditions = infoMap?.get("conditions") as Map<String, Any?>
-            assertEquals("Rollover age is wrong", TimeValue.timeValueMillis(1), conditions?.get("rolloverAge"))
+            assertNotNull("Rollover age is not there", conditions?.get("rolloverAge"))
         }
     }
 }
