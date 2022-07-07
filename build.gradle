@@ -26,7 +26,6 @@ buildscript {
         job_scheduler_resource_folder = "src/test/resources/job-scheduler"
         job_scheduler_build_download = 'https://ci.opensearch.org/ci/dbc/distribution-build-opensearch/' + opensearch_no_snapshot +
                 '/latest/linux/x64/tar/builds/opensearch/plugins/opensearch-job-scheduler-' + job_scheduler_no_snapshot + '.zip'
-        println(job_scheduler_build_download)
     }
 
     repositories {
@@ -583,7 +582,6 @@ testClusters.mixedCluster {
         } else {
             node.plugin(project.tasks.bundlePlugin.archiveFile)
         }
-        node.plugins.each { println("plugin in the node: ${it.get()}") }
     }
     setting 'path.repo', repo.absolutePath
 }
