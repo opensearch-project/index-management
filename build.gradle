@@ -20,6 +20,12 @@ buildscript {
         common_utils_version = System.getProperty("common_utils.version", opensearch_build)
         job_scheduler_version = System.getProperty("job_scheduler_version.version", opensearch_build)
         kotlin_version = System.getProperty("kotlin.version", "1.4.0")
+
+        opensearch_no_snapshot = opensearch_version.replace("-SNAPSHOT","")
+        job_scheduler_no_snapshot = job_scheduler_version.replace("-SNAPSHOT","")
+        job_scheduler_resource_folder = "src/test/resources/job-scheduler"
+        job_scheduler_build_download = 'https://ci.opensearch.org/ci/dbc/distribution-build-opensearch/' + opensearch_no_snapshot +
+                '/latest/linux/x64/tar/builds/opensearch/plugins/opensearch-job-scheduler-' + job_scheduler_no_snapshot + '.zip'
     }
 
     repositories {
@@ -228,6 +234,14 @@ test {
     systemProperty 'tests.security.manager', 'false'
 }
 
+ext.getPluginResource = { download_to_folder, download_from_src ->
+    project.mkdir download_to_folder
+    ant.get(src: download_from_src,
+            dest: download_to_folder,
+            httpusecaches: false)
+    return fileTree(download_to_folder).getSingleFile()
+}
+
 File repo = file("$buildDir/testclusters/repo")
 def _numNodes = findProperty('numNodes') as Integer ?: 1
 testClusters.integTest {
@@ -245,10 +259,23 @@ testClusters.integTest {
             debugPort += 1
         }
     }
-    plugin(provider({
-        new RegularFile() {
-            @Override
-            File getAsFile() { fileTree("src/test/resources/job-scheduler").getSingleFile() }
+
+    plugin(provider(new Callable<RegularFile>(){
+        @Override
+        RegularFile call() throws Exception {
+            return new RegularFile() {
+                @Override
+                File getAsFile() {
+                    if (new File("$project.rootDir/$job_scheduler_resource_folder").exists()) {
+                        project.delete(files("$project.rootDir/$job_scheduler_resource_folder"))
+                    }
+                    project.mkdir job_scheduler_resource_folder
+                    ant.get(src: job_scheduler_build_download,
+                            dest: job_scheduler_resource_folder,
+                            httpusecaches: false)
+                    return fileTree(job_scheduler_resource_folder).getSingleFile()
+                }
+            }
         }
     }))
 
@@ -346,7 +373,7 @@ String bwcFilePath = "src/test/resources/bwc/"
     testClusters {
         "${baseName}$i" {
             testDistribution = "ARCHIVE"
-            versions = ["7.10.2", "1.3.4-SNAPSHOT"]
+            versions = ["7.10.2", opensearch_version]
             numberOfNodes = 3
             plugin(provider(new Callable<RegularFile>(){
                 @Override
@@ -384,6 +411,8 @@ List<Provider<RegularFile>> plugins = []
 task prepareBwcTests {
     dependsOn bundlePlugin
     doLast {
+        // Download the job scheduler test dependency
+        getPluginResource(job_scheduler_resource_folder, job_scheduler_build_download)
         plugins = [
                 provider(new Callable<RegularFile>(){
                     @Override
@@ -391,7 +420,7 @@ task prepareBwcTests {
                         return new RegularFile() {
                             @Override
                             File getAsFile() {
-                                return fileTree("src/test/resources/job-scheduler").getSingleFile()
+                                return fileTree(job_scheduler_resource_folder).getSingleFile()
                             }
                         }
                     }
@@ -539,7 +568,7 @@ testClusters.mixedCluster {
         node.plugin(provider({
             new RegularFile() {
                 @Override
-                File getAsFile() { fileTree("src/test/resources/job-scheduler").getSingleFile() }
+                File getAsFile() { fileTree(job_scheduler_resource_folder).getSingleFile() }
             }
         }))
 
@@ -553,7 +582,6 @@ testClusters.mixedCluster {
         } else {
             node.plugin(project.tasks.bundlePlugin.archiveFile)
         }
-        node.plugins.each { println("plugin in the node: ${it.get()}") }
     }
     setting 'path.repo', repo.absolutePath
 }
