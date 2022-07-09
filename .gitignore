@@ -10,3 +10,4 @@ out/
 http
 .project
 .settings
+src/test/resources/job-scheduler/
