@@ -14,6 +14,7 @@ import java.util.function.Function
 class ManagedIndexSettings {
     companion object {
         const val DEFAULT_ISM_ENABLED = true
+        const val DEFAULT_VALIDATION_SERVICE_ENABLED = true // added here
         const val DEFAULT_TEMPLATE_MIGRATION_TIMESTAMP = 0L
         const val DEFAULT_JOB_INTERVAL = 5
         const val DEFAULT_JITTER = 0.6
@@ -25,6 +26,14 @@ class ManagedIndexSettings {
         val INDEX_STATE_MANAGEMENT_ENABLED: Setting<Boolean> = Setting.boolSetting(
             "plugins.index_state_management.enabled",
             LegacyOpenDistroManagedIndexSettings.INDEX_STATE_MANAGEMENT_ENABLED,
+            Setting.Property.NodeScope,
+            Setting.Property.Dynamic
+        )
+
+        // added here
+        val VALIDATION_SERVICE_ENABLED: Setting<Boolean> = Setting.boolSetting(
+            "plugins.index_state_management.validation_service.enabled",
+            LegacyOpenDistroManagedIndexSettings.VALIDATION_SERVICE_ENABLED,
             Setting.Property.NodeScope,
             Setting.Property.Dynamic
         )
