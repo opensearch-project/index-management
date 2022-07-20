@@ -15,6 +15,7 @@ import java.util.function.Function
 class LegacyOpenDistroManagedIndexSettings {
     companion object {
         const val DEFAULT_ISM_ENABLED = true
+        const val DEFAULT_VALIDATION_SERVICE_ENABLED = true // added here
         const val DEFAULT_METADATA_SERVICE_STATUS = 0
         const val DEFAULT_METADATA_SERVICE_ENABLED = true
         const val DEFAULT_JOB_INTERVAL = 5
@@ -26,6 +27,15 @@ class LegacyOpenDistroManagedIndexSettings {
         val INDEX_STATE_MANAGEMENT_ENABLED: Setting<Boolean> = Setting.boolSetting(
             "opendistro.index_state_management.enabled",
             DEFAULT_ISM_ENABLED,
+            Setting.Property.NodeScope,
+            Setting.Property.Dynamic,
+            Setting.Property.Deprecated
+        )
+
+        // added here
+        val VALIDATION_SERVICE_ENABLED: Setting<Boolean> = Setting.boolSetting(
+            "opendistro.index_state_management.validation_service.enabled",
+            DEFAULT_VALIDATION_SERVICE_ENABLED,
             Setting.Property.NodeScope,
             Setting.Property.Dynamic,
             Setting.Property.Deprecated

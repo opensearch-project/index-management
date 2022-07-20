@@ -62,6 +62,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndex
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.METADATA_SERVICE_STATUS
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.SWEEP_PERIOD
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.TEMPLATE_MIGRATION_CONTROL
+import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.VALIDATION_SERVICE_ENABLED
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.managedIndex.ManagedIndexAction
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.managedIndex.ManagedIndexRequest
 import org.opensearch.indexmanagement.indexstatemanagement.util.ISM_TEMPLATE_FIELD
@@ -113,6 +114,7 @@ class ManagedIndexCoordinator(
     private val clusterService: ClusterService,
     private val threadPool: ThreadPool,
     indexManagementIndices: IndexManagementIndices,
+    // private val validationService: ValidationService, // added here - might not need this
     private val metadataService: MetadataService,
     private val templateService: ISMTemplateService,
     private val indexMetadataProvider: IndexMetadataProvider
@@ -129,6 +131,7 @@ class ManagedIndexCoordinator(
 
     @Volatile private var lastFullSweepTimeNano = System.nanoTime()
     @Volatile private var indexStateManagementEnabled = INDEX_STATE_MANAGEMENT_ENABLED.get(settings)
+    @Volatile private var validationServiceEnabled = VALIDATION_SERVICE_ENABLED.get(settings) // added here
     @Volatile private var metadataServiceEnabled = METADATA_SERVICE_ENABLED.get(settings)
     @Volatile private var sweepPeriod = SWEEP_PERIOD.get(settings)
     @Volatile private var retryPolicy =
@@ -157,6 +160,10 @@ class ManagedIndexCoordinator(
         clusterService.clusterSettings.addSettingsUpdateConsumer(INDEX_STATE_MANAGEMENT_ENABLED) {
             indexStateManagementEnabled = it
             if (!indexStateManagementEnabled) disable() else enable()
+        }
+        // added here
+        clusterService.clusterSettings.addSettingsUpdateConsumer(VALIDATION_SERVICE_ENABLED) {
+            validationServiceEnabled = it
         }
         clusterService.clusterSettings.addSettingsUpdateConsumer(METADATA_SERVICE_STATUS) {
             metadataServiceEnabled = it == 0
