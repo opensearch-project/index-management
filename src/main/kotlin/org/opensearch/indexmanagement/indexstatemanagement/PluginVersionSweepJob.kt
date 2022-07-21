@@ -15,7 +15,9 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import org.opensearch.indexmanagement.util.OpenForTesting
 
+@OpenForTesting
 class PluginVersionSweepJob constructor(
     private val intervalInMinutes: Int,
 ) : CoroutineScope by CoroutineScope(SupervisorJob() + Dispatchers.IO + CoroutineName("SweepISMCoordinator")) {
