@@ -5,6 +5,7 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement
 
+import com.carrotsearch.randomizedtesting.annotations.ThreadLeakScope
 import org.apache.http.entity.ContentType
 import org.apache.http.entity.StringEntity
 import org.junit.Before
@@ -54,6 +55,7 @@ import java.io.IOException
 import java.time.Duration
 import java.time.Instant
 
+@ThreadLeakScope(ThreadLeakScope.Scope.NONE)
 abstract class IndexStateManagementIntegTestCase : OpenSearchIntegTestCase() {
     @Before
     fun disableIndexStateManagementJitter() {

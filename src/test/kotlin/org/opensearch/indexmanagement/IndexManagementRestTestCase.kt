@@ -5,6 +5,7 @@
 
 package org.opensearch.indexmanagement
 
+import com.carrotsearch.randomizedtesting.annotations.ThreadLeakScope
 import org.apache.http.entity.ContentType
 import org.apache.http.entity.StringEntity
 import org.junit.AfterClass
@@ -25,6 +26,7 @@ import javax.management.ObjectName
 import javax.management.remote.JMXConnectorFactory
 import javax.management.remote.JMXServiceURL
 
+@ThreadLeakScope(ThreadLeakScope.Scope.NONE)
 abstract class IndexManagementRestTestCase : ODFERestTestCase() {
 
     val configSchemaVersion = 16

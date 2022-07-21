@@ -32,6 +32,7 @@ class MetadataServiceTests : OpenSearchTestCase() {
     private val clusterService: ClusterService = mock()
     private val clusterState: ClusterState = mock()
     private val metadata: Metadata = mock()
+    private val pluginVersionSweepJob: PluginVersionSweepJob = mock()
     private val imIndices: IndexManagementIndices = mock()
 
     private val ex = Exception()
@@ -54,7 +55,7 @@ class MetadataServiceTests : OpenSearchTestCase() {
                 )
             )
         )
-        val skipFlag = SkipExecution(client, clusterService)
+        val skipFlag = SkipExecution(client, clusterService, pluginVersionSweepJob)
         val metadataService = MetadataService(client, clusterService, skipFlag, imIndices)
         metadataService.moveMetadata()
 
@@ -75,7 +76,7 @@ class MetadataServiceTests : OpenSearchTestCase() {
             )
         )
 
-        val skipFlag = SkipExecution(client, clusterService)
+        val skipFlag = SkipExecution(client, clusterService, pluginVersionSweepJob)
         val metadataService = MetadataService(client, clusterService, skipFlag, imIndices)
         metadataService.moveMetadata()
         assertEquals(metadataService.runTimeCounter, 2)
@@ -94,11 +95,12 @@ class MetadataServiceTests : OpenSearchTestCase() {
 
     private fun getClient(adminClient: AdminClient): Client = mock { on { admin() } doReturn adminClient }
 
-    private fun getAdminClient(clusterAdminClient: ClusterAdminClient): AdminClient = mock { on { cluster() } doReturn clusterAdminClient }
+    private fun getAdminClient(clusterAdminClient: ClusterAdminClient): AdminClient =
+        mock { on { cluster() } doReturn clusterAdminClient }
 
     private fun getClusterAdminClient(
         updateSettingResponse: ClusterUpdateSettingsResponse?,
-        updateSettingException: Exception?
+        updateSettingException: Exception?,
     ): ClusterAdminClient {
         assertTrue(
             "Must provide either a getMappingsResponse or getMappingsException",

@@ -7,17 +7,18 @@ package org.opensearch.indexmanagement.indexstatemanagement.coordinator
 
 import org.junit.Before
 import org.mockito.Mockito
-import org.opensearch.action.admin.cluster.node.info.NodesInfoAction
 import org.opensearch.client.Client
 import org.opensearch.cluster.ClusterChangedEvent
 import org.opensearch.cluster.OpenSearchAllocationTestCase
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.indexmanagement.indexstatemanagement.SkipExecution
+import org.opensearch.indexmanagement.indexstatemanagement.PluginVersionSweepJob
 
 class SkipExecutionTests : OpenSearchAllocationTestCase() {
 
     private lateinit var client: Client
     private lateinit var clusterService: ClusterService
+    private lateinit var pluginVersionSweepJob: PluginVersionSweepJob
     private lateinit var skip: SkipExecution
 
     @Before
@@ -25,13 +26,14 @@ class SkipExecutionTests : OpenSearchAllocationTestCase() {
     fun setup() {
         client = Mockito.mock(Client::class.java)
         clusterService = Mockito.mock(ClusterService::class.java)
-        skip = SkipExecution(client, clusterService)
+        pluginVersionSweepJob = Mockito.mock(PluginVersionSweepJob::class.java)
+        skip = SkipExecution(client, clusterService, pluginVersionSweepJob)
     }
 
     fun `test cluster change event`() {
         val event = Mockito.mock(ClusterChangedEvent::class.java)
         Mockito.`when`(event.nodesChanged()).thenReturn(true)
         skip.clusterChanged(event)
-        Mockito.verify(client).execute(Mockito.eq(NodesInfoAction.INSTANCE), Mockito.any(), Mockito.any())
+        Mockito.verify(pluginVersionSweepJob).scheduleSweep()
     }
 }

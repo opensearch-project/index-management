@@ -38,6 +38,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.ManagedIndexCoordinat
 import org.opensearch.indexmanagement.indexstatemanagement.ManagedIndexRunner
 import org.opensearch.indexmanagement.indexstatemanagement.MetadataService
 import org.opensearch.indexmanagement.indexstatemanagement.SkipExecution
+import org.opensearch.indexmanagement.indexstatemanagement.PluginVersionSweepJob
 import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexConfig
 import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
 import org.opensearch.indexmanagement.indexstatemanagement.resthandler.RestAddPolicyAction
@@ -215,6 +216,7 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
         const val LEGACY_ROLLUP_BASE_URI = "$OPEN_DISTRO_BASE_URI/_rollup"
         const val LEGACY_POLICY_BASE_URI = "$LEGACY_ISM_BASE_URI/policies"
         const val LEGACY_ROLLUP_JOBS_BASE_URI = "$LEGACY_ROLLUP_BASE_URI/jobs"
+        const val BACKGROUND_SWEEP_INTERVAL_IN_MINS = 5
     }
 
     override fun getJobIndex(): String = INDEX_MANAGEMENT_INDEX
@@ -369,7 +371,7 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
         fieldCapsFilter = FieldCapsFilter(clusterService, settings, indexNameExpressionResolver)
         this.indexNameExpressionResolver = indexNameExpressionResolver
 
-        val skipFlag = SkipExecution(client, clusterService)
+        val skipFlag = SkipExecution(client, clusterService, PluginVersionSweepJob(BACKGROUND_SWEEP_INTERVAL_IN_MINS))
         val rollupRunner = RollupRunner
             .registerClient(client)
             .registerClusterService(clusterService)
