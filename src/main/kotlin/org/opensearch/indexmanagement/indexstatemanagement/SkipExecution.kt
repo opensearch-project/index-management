@@ -40,6 +40,7 @@ class SkipExecution(
 
     init {
         clusterService.addListener(this)
+        clusterService.addLifecycleListener(this)
         // Forward function that will be called when sweeping
         pluginVersionSweepJob.sweep = { this.sweepISMPluginVersion() }
     }
