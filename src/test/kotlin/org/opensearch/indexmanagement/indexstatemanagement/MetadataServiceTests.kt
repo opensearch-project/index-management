@@ -23,13 +23,17 @@ import org.opensearch.cluster.ClusterState
 import org.opensearch.cluster.metadata.Metadata
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.collect.ImmutableOpenMap
+import org.opensearch.common.settings.Settings
 import org.opensearch.indexmanagement.IndexManagementIndices
 import org.opensearch.test.OpenSearchTestCase
+import org.opensearch.threadpool.ThreadPool
 import kotlin.test.assertFailsWith
 
 class MetadataServiceTests : OpenSearchTestCase() {
 
     private val clusterService: ClusterService = mock()
+    private var settings: Settings = mock()
+    private var threadPool: ThreadPool = mock()
     private val clusterState: ClusterState = mock()
     private val metadata: Metadata = mock()
     private val imIndices: IndexManagementIndices = mock()
@@ -54,7 +58,7 @@ class MetadataServiceTests : OpenSearchTestCase() {
                 )
             )
         )
-        val skipFlag = SkipExecution(client, clusterService)
+        val skipFlag = SkipExecution(settings, threadPool, client, clusterService)
         val metadataService = MetadataService(client, clusterService, skipFlag, imIndices)
         metadataService.moveMetadata()
 
@@ -75,7 +79,7 @@ class MetadataServiceTests : OpenSearchTestCase() {
             )
         )
 
-        val skipFlag = SkipExecution(client, clusterService)
+        val skipFlag = SkipExecution(settings, threadPool, client, clusterService)
         val metadataService = MetadataService(client, clusterService, skipFlag, imIndices)
         metadataService.moveMetadata()
         assertEquals(metadataService.runTimeCounter, 2)

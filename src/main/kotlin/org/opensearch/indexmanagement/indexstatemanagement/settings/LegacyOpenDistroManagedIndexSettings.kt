@@ -107,6 +107,15 @@ class LegacyOpenDistroManagedIndexSettings {
             Setting.Property.Deprecated
         )
 
+        val SWEEP_SKIP_PERIOD: Setting<TimeValue> = Setting.timeSetting(
+            "opendistro.index_state_management.coordinator.sweep_skip_period",
+            TimeValue.timeValueMinutes(10),
+            TimeValue.timeValueMinutes(5),
+            Setting.Property.NodeScope,
+            Setting.Property.Dynamic,
+            Setting.Property.Deprecated
+        )
+
         val COORDINATOR_BACKOFF_MILLIS: Setting<TimeValue> = Setting.positiveTimeSetting(
             "opendistro.index_state_management.coordinator.backoff_millis",
             TimeValue.timeValueMillis(50),
