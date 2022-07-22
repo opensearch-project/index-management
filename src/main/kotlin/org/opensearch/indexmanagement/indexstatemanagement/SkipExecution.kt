@@ -5,6 +5,11 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement
 
+import kotlinx.coroutines.CoroutineName
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import org.apache.logging.log4j.LogManager
 import org.opensearch.action.ActionListener
 import org.opensearch.action.admin.cluster.node.info.NodesInfoAction
@@ -15,31 +20,86 @@ import org.opensearch.client.Client
 import org.opensearch.cluster.ClusterChangedEvent
 import org.opensearch.cluster.ClusterStateListener
 import org.opensearch.cluster.service.ClusterService
+import org.opensearch.common.component.LifecycleListener
+import org.opensearch.common.settings.Settings
+import org.opensearch.common.unit.TimeValue
+import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings
 import org.opensearch.indexmanagement.util.OpenForTesting
+import org.opensearch.threadpool.Scheduler
+import org.opensearch.threadpool.ThreadPool
 
 // TODO this can be moved to job scheduler, so that all extended plugin
 //  can avoid running jobs in an upgrading cluster
 @OpenForTesting
 class SkipExecution(
+    private val settings: Settings,
+    private val threadPool: ThreadPool,
     private val client: Client,
-    private val clusterService: ClusterService
-) : ClusterStateListener {
+    private val clusterService: ClusterService,
+) : ClusterStateListener,
+    CoroutineScope by CoroutineScope(SupervisorJob() + Dispatchers.Default + CoroutineName("ISMPluginSweepCoordinator")),
+    LifecycleListener() {
     private val logger = LogManager.getLogger(javaClass)
 
-    @Volatile final var flag: Boolean = false
+    private var scheduledSkipExecution: Scheduler.Cancellable? = null
+
+    @Volatile
+    private var sweepSkipPeriod = ManagedIndexSettings.SWEEP_SKIP_PERIOD.get(settings)
+
+    @Volatile
+    private var indexStateManagementEnabled = ManagedIndexSettings.INDEX_STATE_MANAGEMENT_ENABLED.get(settings)
+
+    @Volatile
+    final var flag: Boolean = false
         private set
+
     // To track if there are any legacy IM plugin nodes part of the cluster
-    @Volatile final var hasLegacyPlugin: Boolean = false
+    @Volatile
+    final var hasLegacyPlugin: Boolean = false
         private set
 
     init {
         clusterService.addListener(this)
+        clusterService.addLifecycleListener(this)
+        clusterService.clusterSettings.addSettingsUpdateConsumer(ManagedIndexSettings.SWEEP_SKIP_PERIOD) {
+            sweepSkipPeriod = it
+            initBackgroundSweepISMPluginVersionExecution()
+        }
     }
 
     override fun clusterChanged(event: ClusterChangedEvent) {
         if (event.nodesChanged() || event.isNewCluster) {
             sweepISMPluginVersion()
         }
+    }
+
+    override fun beforeStop() {
+        scheduledSkipExecution?.cancel()
+    }
+
+    @OpenForTesting
+    fun initBackgroundSweepISMPluginVersionExecution() {
+        logger.info("initing sweep skip execution")
+        // If ISM is disabled return early
+        if (!isIndexStateManagementEnabled()) return
+        // Cancel existing background sweep
+        scheduledSkipExecution?.cancel()
+        val scheduledJob = Runnable {
+            launch {
+                try {
+                    if (!flag) {
+                        logger.info("Canceling sweep ism plugin version")
+                        scheduledSkipExecution?.cancel()
+                        return@launch
+                    }
+                    sweepISMPluginVersion()
+                } catch (e: Exception) {
+                    logger.error("Failed to sweep managed indices", e)
+                }
+            }
+        }
+        scheduledSkipExecution =
+            threadPool.scheduleWithFixedDelay(scheduledJob, TimeValue.timeValueMinutes(5), ThreadPool.Names.MANAGEMENT)
     }
 
     fun sweepISMPluginVersion() {
@@ -87,4 +147,6 @@ class SkipExecution(
             }
         )
     }
+
+    private fun isIndexStateManagementEnabled(): Boolean = indexStateManagementEnabled == true
 }
