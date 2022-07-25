@@ -37,6 +37,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.IndexStateManagementH
 import org.opensearch.indexmanagement.indexstatemanagement.ManagedIndexCoordinator
 import org.opensearch.indexmanagement.indexstatemanagement.ManagedIndexRunner
 import org.opensearch.indexmanagement.indexstatemanagement.MetadataService
+import org.opensearch.indexmanagement.indexstatemanagement.PluginVersionSweepCoordinator
 import org.opensearch.indexmanagement.indexstatemanagement.SkipExecution
 import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexConfig
 import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
@@ -369,7 +370,7 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
         fieldCapsFilter = FieldCapsFilter(clusterService, settings, indexNameExpressionResolver)
         this.indexNameExpressionResolver = indexNameExpressionResolver
 
-        val skipFlag = SkipExecution(settings, threadPool, client, clusterService)
+        val skipFlag = SkipExecution(client, clusterService)
         val rollupRunner = RollupRunner
             .registerClient(client)
             .registerClusterService(clusterService)
@@ -426,6 +427,8 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
 
         val smRunner = SMRunner.init(client, threadPool, settings, indexManagementIndices, clusterService)
 
+        val pluginVersionSweepCoordinator = PluginVersionSweepCoordinator(skipFlag, settings, threadPool, clusterService)
+
         return listOf(
             managedIndexRunner,
             rollupRunner,
@@ -434,7 +437,8 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
             managedIndexCoordinator,
             indexStateManagementHistory,
             indexMetadataProvider,
-            smRunner
+            smRunner,
+            pluginVersionSweepCoordinator
         )
     }
 
