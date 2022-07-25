@@ -55,7 +55,6 @@ class SkipExecution(
         }
     }
 
-    @OpenForTesting
     suspend fun sweepISMPluginVersion(): Boolean {
         // if old version ISM plugin exists (2 versions ISM in one cluster), set skip flag to true
         val request = NodesInfoRequest().clear().addMetric("plugins")

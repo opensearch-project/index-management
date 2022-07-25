@@ -27,7 +27,7 @@ class PluginVersionSweepJob constructor(
     private var waitAndScheduleSweepJob: Job? = null
 
     init {
-        launch { listenForClusterChanged() }
+        listenForClusterChanged()
     }
 
     fun scheduleSweep() {
@@ -40,7 +40,7 @@ class PluginVersionSweepJob constructor(
         this.cancel()
     }
 
-    private suspend fun listenForClusterChanged() {
+    private fun listenForClusterChanged() = launch {
         while (isActive) {
             eventChannel.receive()
             val skipFlag = sweep()
@@ -63,7 +63,8 @@ class PluginVersionSweepJob constructor(
         eventChannel.send(true)
     }
 
-    private fun isActiveWaitAndScheduleSweepJob() = waitAndScheduleSweepJob != null && waitAndScheduleSweepJob!!.isActive
+    private fun isActiveWaitAndScheduleSweepJob() =
+        waitAndScheduleSweepJob != null && waitAndScheduleSweepJob!!.isActive
 
     companion object {
         const val ONE_MINUTE_IN_MILLIS = 60000L
