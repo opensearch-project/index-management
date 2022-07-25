@@ -10,9 +10,7 @@ import org.opensearch.common.io.stream.StreamInput
 import org.opensearch.common.io.stream.StreamOutput
 import org.opensearch.common.io.stream.Writeable
 import org.opensearch.common.settings.Settings
-import org.opensearch.indexmanagement.spi.indexstatemanagement.Action
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
-import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ActionMetaData
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepContext
 import org.opensearch.indexmanagement.util.OpenForTesting
 import java.util.*
@@ -26,7 +24,7 @@ abstract class Validate(
     var validationStatus = ValidationStatus.PASS
     var stepStatus = Step.StepStatus.STARTING
 
-    abstract fun executeValidation(action: Action, currentActionMetaData: ActionMetaData, step: Step, context: StepContext): Validate
+    abstract fun executeValidation(context: StepContext): Validate
 
     abstract fun validatePolicy(): Boolean
 
