@@ -12,16 +12,12 @@ import org.opensearch.client.Client
 import org.opensearch.cluster.ClusterChangedEvent
 import org.opensearch.cluster.OpenSearchAllocationTestCase
 import org.opensearch.cluster.service.ClusterService
-import org.opensearch.common.settings.Settings
 import org.opensearch.indexmanagement.indexstatemanagement.SkipExecution
-import org.opensearch.threadpool.ThreadPool
 
 class SkipExecutionTests : OpenSearchAllocationTestCase() {
 
     private lateinit var client: Client
     private lateinit var clusterService: ClusterService
-    private lateinit var settings: Settings
-    private lateinit var threadPool: ThreadPool
     private lateinit var skip: SkipExecution
 
     @Before
@@ -29,9 +25,7 @@ class SkipExecutionTests : OpenSearchAllocationTestCase() {
     fun setup() {
         client = Mockito.mock(Client::class.java)
         clusterService = Mockito.mock(ClusterService::class.java)
-        settings = Mockito.mock(Settings::class.java)
-        threadPool = Mockito.mock(ThreadPool::class.java)
-        skip = SkipExecution(settings, threadPool, client, clusterService)
+        skip = SkipExecution(client, clusterService)
     }
 
     fun `test cluster change event`() {
