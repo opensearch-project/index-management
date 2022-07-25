@@ -345,7 +345,6 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
     override fun createComponents(
         client: Client,
         clusterService: ClusterService,
-        // validationService: ValidationService, // added here - don't think I should initialize here
         threadPool: ThreadPool,
         resourceWatcherService: ResourceWatcherService,
         scriptService: ScriptService,
@@ -358,7 +357,6 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
     ): Collection<Any> {
         val settings = environment.settings()
         this.clusterService = clusterService
-        // this.validationService = validationService // added here - don't think I should initialize here
         rollupInterceptor = RollupInterceptor(clusterService, settings, indexNameExpressionResolver)
         val jvmService = JvmService(environment.settings())
         val transformRunner = TransformRunner.initialize(

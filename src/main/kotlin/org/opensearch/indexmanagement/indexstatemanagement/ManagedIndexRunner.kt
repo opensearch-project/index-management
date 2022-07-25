@@ -408,15 +408,17 @@ object ManagedIndexRunner :
 
         @Suppress("ComplexCondition")
         if (updateResult.metadataSaved && state != null && action != null && step != null && currentActionMetaData != null) {
-            // added here
             if (validationServiceEnabled) {
-                val actionError = validationService.validate(action, currentActionMetaData, step, stepContext) // might need to pass in the state
+                // added here
+                val actionError = validationService.validate(action, stepContext)
                 if (actionError.validationStatus == Validate.ValidationStatus.REVALIDATE) {
-                    return // stops the job and runs again at next interval
+                    logger.info("Revalidate")
+                    // return // stops the job and runs again at next interval
                 }
                 if (actionError.validationStatus == Validate.ValidationStatus.FAIL) {
+                    logger.info("Fail forever")
                     disableManagedIndexConfig(managedIndexConfig) // disables future jobs from running
-                    return // stops the current job and fails forever
+                    // return // stops the current job and fails forever
                 }
             }
             // Step null check is done in getStartingManagedIndexMetaData
