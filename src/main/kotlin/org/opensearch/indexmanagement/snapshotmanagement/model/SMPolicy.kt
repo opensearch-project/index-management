@@ -36,7 +36,7 @@ import java.time.Instant
 import java.time.Instant.now
 import java.time.ZoneId
 import java.time.temporal.ChronoUnit
-
+@Suppress("MaxLineLength")
 data class SMPolicy(
     val id: String,
     val description: String? = null,
@@ -53,7 +53,6 @@ data class SMPolicy(
     val notificationConfig: NotificationConfig? = null,
     val user: User? = null,
 ) : ScheduledJobParameter, Writeable {
-
     init {
         require(snapshotConfig["repository"] != null && snapshotConfig["repository"] != "") { "Must provide the repository in snapshot config." }
         require(creation.schedule.getNextExecutionTime(now()) != null) { "Next execution time from the creation schedule is null, please provide a valid cron expression." }

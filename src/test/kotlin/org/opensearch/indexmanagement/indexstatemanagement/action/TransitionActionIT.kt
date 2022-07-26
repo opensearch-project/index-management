@@ -66,7 +66,6 @@ class TransitionActionIT : IndexStateManagementRestTestCase() {
         // Should have evaluated to true
         waitFor { assertEquals(AttemptTransitionStep.getSuccessMessage(indexName, secondStateName), getExplainManagedIndexMetaData(indexName).info?.get("message")) }
     }
-
     fun `test rollover age transition for index with no rollover fails`() {
         val indexName = "${testIndexName}_rollover_age_no_rollover"
         val policyID = "${testIndexName}_rollover_age_no_rollover_policy"
@@ -141,5 +140,35 @@ class TransitionActionIT : IndexStateManagementRestTestCase() {
 
         // Should have evaluated to true
         waitFor { assertEquals(AttemptTransitionStep.getSuccessMessage(indexName, secondStateName), getExplainManagedIndexMetaData(indexName).info?.get("message")) }
+    }
+    // Test that continuous index stops when condition is not met
+    fun `test continuous index stops when condition not met`() {
+        val indexName = "${testIndexName}_continuous_condition_check"
+        val policyID = "continuous_condition_check"
+        val states = listOf(
+            State("State1", listOf(), listOf(Transition("State2", null))),
+            // Should stop here
+            State("State2", listOf(), listOf(Transition("State3", Conditions(indexAge = TimeValue.timeValueDays(30L))))),
+            State("State3", listOf(), listOf())
+        )
+
+        val policy = Policy(
+            id = policyID,
+            description = "$testIndexName description",
+            schemaVersion = 1L,
+            lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
+            errorNotification = randomErrorNotification(),
+            defaultState = states[0].name,
+            states = states
+        )
+        createPolicy(policy, policyID)
+        createIndex(indexName, policyID = policy.id, continuous = true)
+        waitFor { assertIndexExists(indexName) }
+
+        val managedIndexConfig = getExistingManagedIndexConfig(indexName)
+        // Change the start time so the job will trigger in 2 seconds.
+        updateManagedIndexConfigStartTime(managedIndexConfig)
+        // confirm index stopped at State2
+        waitFor { assertEquals("State2", getExplainManagedIndexMetaData(indexName).stateMetaData?.name) }
     }
 }

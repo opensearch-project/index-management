@@ -66,7 +66,7 @@ class ManagedIndexUtilsTests : OpenSearchTestCase() {
             index = index, uuid = uuid, policyID = policyID,
             primaryTerm = 1, seqNo = 1, changePolicy = randomChangePolicy(policyID = policyID), policy = null
         )
-        val updateRequest = updateManagedIndexRequest(sweptManagedIndexConfig)
+        val updateRequest = updateManagedIndexRequest(sweptManagedIndexConfig, continuous = false)
 
         assertNotNull("UpdateRequest not created", updateRequest)
         assertEquals("Incorrect ism index used in request", INDEX_MANAGEMENT_INDEX, updateRequest.index())

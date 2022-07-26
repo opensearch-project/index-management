@@ -1,6 +1,6 @@
 {
   "_meta" : {
-    "schema_version": 16
+    "schema_version": 17
   },
   "dynamic": "strict",
   "properties": {
@@ -668,6 +668,9 @@
         },
         "jitter": {
           "type": "double"
+        },
+        "continuous": {
+          "type": "boolean"
         }
       }
     },

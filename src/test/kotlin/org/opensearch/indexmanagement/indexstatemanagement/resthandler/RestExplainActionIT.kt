@@ -35,7 +35,8 @@ class RestExplainActionIT : IndexStateManagementRestTestCase() {
             indexName to mapOf<String, Any?>(
                 explainResponseOpendistroPolicyIdSetting to null,
                 explainResponseOpenSearchPolicyIdSetting to null,
-                ManagedIndexMetaData.ENABLED to null
+                ManagedIndexMetaData.ENABLED to null,
+                "continuous" to null
             )
         )
         assertResponseMap(expected, getExplainMap(indexName))
@@ -55,7 +56,7 @@ class RestExplainActionIT : IndexStateManagementRestTestCase() {
         val indexName1 = "${testIndexName}_managed"
         val indexName2 = "${testIndexName}_not_managed"
         val policy = createRandomPolicy()
-        createIndex(indexName1, policy.id)
+        createIndex(indexName1, policy.id, continuous = false)
         createIndex(indexName2, null)
 
         val expected = mapOf(
@@ -66,12 +67,14 @@ class RestExplainActionIT : IndexStateManagementRestTestCase() {
                 "index" to indexName1,
                 "index_uuid" to getUuid(indexName1),
                 "policy_id" to policy.id,
-                ManagedIndexMetaData.ENABLED to true
+                ManagedIndexMetaData.ENABLED to true,
+                "continuous" to false
             ),
             indexName2 to mapOf<String, Any?>(
                 explainResponseOpendistroPolicyIdSetting to null,
                 explainResponseOpenSearchPolicyIdSetting to null,
-                ManagedIndexMetaData.ENABLED to null
+                ManagedIndexMetaData.ENABLED to null,
+                "continuous" to null
             )
         )
         waitFor {
@@ -94,7 +97,8 @@ class RestExplainActionIT : IndexStateManagementRestTestCase() {
                 "index" to indexName1,
                 "index_uuid" to getUuid(indexName1),
                 "policy_id" to policy.id,
-                "enabled" to true
+                "enabled" to true,
+                "continuous" to false
             ),
             "total_managed_indices" to 1
         )
@@ -119,7 +123,8 @@ class RestExplainActionIT : IndexStateManagementRestTestCase() {
                 "index" to indexName1,
                 "index_uuid" to getUuid(indexName1),
                 "policy_id" to policy.id,
-                ManagedIndexMetaData.ENABLED to true
+                ManagedIndexMetaData.ENABLED to true,
+                "continuous" to false
             ),
             indexName2 to mapOf<String, Any>(
                 explainResponseOpendistroPolicyIdSetting to policy.id,
@@ -127,12 +132,14 @@ class RestExplainActionIT : IndexStateManagementRestTestCase() {
                 "index" to indexName2,
                 "index_uuid" to getUuid(indexName2),
                 "policy_id" to policy.id,
-                ManagedIndexMetaData.ENABLED to true
+                ManagedIndexMetaData.ENABLED to true,
+                "continuous" to false
             ),
             indexName3 to mapOf<String, Any?>(
                 explainResponseOpendistroPolicyIdSetting to null,
                 explainResponseOpenSearchPolicyIdSetting to null,
-                ManagedIndexMetaData.ENABLED to null
+                ManagedIndexMetaData.ENABLED to null,
+                "continuous" to null
             )
         )
         waitFor {
@@ -162,7 +169,8 @@ class RestExplainActionIT : IndexStateManagementRestTestCase() {
             "index" to indexName1,
             "index_uuid" to getUuid(indexName1),
             "policy_id" to policy.id,
-            "enabled" to true
+            "enabled" to true,
+            "continuous" to false
         )
         val indexName2Map = indexName2 to mapOf<String, Any>(
             explainResponseOpendistroPolicyIdSetting to policy.id,
@@ -170,7 +178,8 @@ class RestExplainActionIT : IndexStateManagementRestTestCase() {
             "index" to indexName2,
             "index_uuid" to getUuid(indexName2),
             "policy_id" to policy.id,
-            "enabled" to true
+            "enabled" to true,
+            "continuous" to false
         )
         val indexName4Map = indexName4 to mapOf<String, Any>(
             explainResponseOpendistroPolicyIdSetting to policy.id,
@@ -178,7 +187,8 @@ class RestExplainActionIT : IndexStateManagementRestTestCase() {
             "index" to indexName4,
             "index_uuid" to getUuid(indexName4),
             "policy_id" to policy.id,
-            "enabled" to true
+            "enabled" to true,
+            "continuous" to false
         )
         val indexName5Map = indexName5 to mapOf<String, Any>(
             explainResponseOpendistroPolicyIdSetting to policy.id,
@@ -186,7 +196,8 @@ class RestExplainActionIT : IndexStateManagementRestTestCase() {
             "index" to indexName5,
             "index_uuid" to getUuid(indexName5),
             "policy_id" to policy.id,
-            "enabled" to true
+            "enabled" to true,
+            "continuous" to false
         )
         val datastreamMap = ".ds-$dataStreamName-000001" to mapOf<String, Any>(
             explainResponseOpendistroPolicyIdSetting to policy.id,
@@ -194,7 +205,8 @@ class RestExplainActionIT : IndexStateManagementRestTestCase() {
             "index" to ".ds-$dataStreamName-000001",
             "index_uuid" to getUuid(".ds-$dataStreamName-000001"),
             "policy_id" to policy.id,
-            "enabled" to true
+            "enabled" to true,
+            "continuous" to false
         )
 
         waitFor {
@@ -279,7 +291,8 @@ class RestExplainActionIT : IndexStateManagementRestTestCase() {
                         PolicyRetryInfoMetaData.RETRY_INFO to fun(retryInfoMetaDataMap: Any?): Boolean =
                             assertRetryInfoEquals(PolicyRetryInfoMetaData(false, 0), retryInfoMetaDataMap),
                         ManagedIndexMetaData.INFO to fun(info: Any?): Boolean = expectedInfoString == info.toString(),
-                        ManagedIndexMetaData.ENABLED to true::equals
+                        ManagedIndexMetaData.ENABLED to true::equals,
+                        "continuous" to false::equals
                     )
                 ),
                 getExplainMap(indexName)
@@ -292,7 +305,7 @@ class RestExplainActionIT : IndexStateManagementRestTestCase() {
         val policy = createRandomPolicy()
         createIndex(indexName, policy.id)
         val newPolicy = createRandomPolicy()
-        val changePolicy = ChangePolicy(newPolicy.id, null, emptyList(), false)
+        val changePolicy = ChangePolicy(newPolicy.id, null, emptyList(), false, continuous = false)
         client().makeRequest(
             RestRequest.Method.POST.toString(),
             "${RestChangePolicyAction.CHANGE_POLICY_BASE_URI}/$indexName", emptyMap(), changePolicy.toHttpEntity()
@@ -321,7 +334,8 @@ class RestExplainActionIT : IndexStateManagementRestTestCase() {
                             assertRetryInfoEquals(PolicyRetryInfoMetaData(true, 0), retryInfoMetaDataMap),
                         ManagedIndexMetaData.INFO to fun(info: Any?): Boolean = expectedInfoString == info.toString(),
                         ManagedIndexMetaData.INDEX_CREATION_DATE to fun(indexCreationDate: Any?): Boolean = (indexCreationDate as Long) > 1L,
-                        ManagedIndexMetaData.ENABLED to true::equals
+                        ManagedIndexMetaData.ENABLED to true::equals,
+                        "continuous" to false::equals
                     )
                 ),
                 getExplainMap(indexName)
@@ -343,7 +357,8 @@ class RestExplainActionIT : IndexStateManagementRestTestCase() {
                 "index_uuid" to getUuid(indexName),
                 "policy_id" to policy.id,
                 ManagedIndexMetaData.ENABLED to true,
-                "policy" to expectedPolicy
+                "policy" to expectedPolicy,
+                "continuous" to false
             ),
             TOTAL_MANAGED_INDICES to 1,
         )
@@ -370,6 +385,19 @@ class RestExplainActionIT : IndexStateManagementRestTestCase() {
         assertEquals("MetaDataSize are not the same", expected.size, actual.size)
         for (entry in expected) {
             assertEquals("Expected and actual values does not match", entry.value, actual[entry.key])
+        }
+    }
+    // Want to see if the continuous field shows up as correct value in the explain response
+    fun `test continuous field shown`() {
+        val indexName = "${testIndexName}_continuous_check"
+        val policy = createRandomPolicy()
+        createIndex(indexName, policyID = policy.id, continuous = true)
+        // Need to give time to create index
+        Thread.sleep(1_000)
+        val explainMap = getExplainMap(indexName)
+        val indexMap = explainMap?.get(indexName) as Map<String, Any?>
+        waitFor {
+            assertEquals("Continuous field in explain map is wrong", true, indexMap?.get("continuous"))
         }
     }
 }

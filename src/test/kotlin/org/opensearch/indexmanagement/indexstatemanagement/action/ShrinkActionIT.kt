@@ -688,4 +688,59 @@ class ShrinkActionIT : IndexStateManagementRestTestCase() {
             )
         }
     }
+    // Test that shrink action works on continuous indices
+    fun `test continuous shrink`() {
+        val indexName = "${testIndexName}_index_1"
+        val policyID = "${testIndexName}_testPolicyName_1"
+
+        val shrinkAction = ShrinkAction(
+            numNewShards = 1,
+            maxShardSize = null,
+            percentageOfSourceShards = null,
+            targetIndexTemplate = Script(ScriptType.INLINE, Script.DEFAULT_TEMPLATE_LANG, "{{ctx.index}}$testIndexSuffix", mapOf()),
+            aliases = listOf(Alias("test-alias1"), Alias("test-alias2").filter(QueryBuilders.termQuery("foo", "bar")).writeIndex(true)),
+            forceUnsafe = true,
+            index = 0
+        )
+        val states = listOf(State("ShrinkState", listOf(shrinkAction), listOf()))
+
+        val policy = Policy(
+            id = policyID,
+            description = "$testIndexName description",
+            schemaVersion = 11L,
+            lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
+            errorNotification = randomErrorNotification(),
+            defaultState = states[0].name,
+            states = states
+        )
+
+        createPolicy(policy, policyID)
+        createIndex(indexName, policyID, null, "0", "3", "", continuous = true)
+
+        insertSampleData(indexName, 3)
+
+        // Set the index as readonly to check that the setting is preserved after the shrink finishes
+        updateIndexSetting(indexName, IndexMetadata.SETTING_BLOCKS_WRITE, "true")
+
+        // Will change the startTime each execution so that it triggers in 2 seconds
+        // First execution: Policy is initialized
+        val managedIndexConfig = getExistingManagedIndexConfig(indexName)
+        // Starts and executes entire shrink action
+        updateManagedIndexConfigStartTime(managedIndexConfig)
+
+        val targetIndexName = indexName + testIndexSuffix
+
+        // Check that wait for shrink step executed
+        waitFor(Instant.ofEpochSecond(60)) {
+            // one primary and one replica
+            assertTrue(getIndexShards(targetIndexName).size == 2)
+            assertEquals(
+                WaitForShrinkStep.SUCCESS_MESSAGE,
+                getExplainManagedIndexMetaData(indexName).info?.get("message")
+            )
+            assertEquals("Write block setting was not reset after successful shrink", "true", getIndexBlocksWriteSetting(indexName))
+            val aliases = getAlias(targetIndexName, "")
+            assertTrue("Aliases were not added to shrunken index", aliases.containsKey("test-alias1") && aliases.containsKey("test-alias2"))
+        }
+    }
 }

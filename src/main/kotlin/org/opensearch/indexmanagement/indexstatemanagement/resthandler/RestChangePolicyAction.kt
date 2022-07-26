@@ -58,8 +58,8 @@ class RestChangePolicyAction : BaseRestHandler() {
         val xcp = request.contentParser()
         ensureExpectedToken(Token.START_OBJECT, xcp.nextToken(), xcp)
         val changePolicy = ChangePolicy.parse(xcp)
-
-        val changePolicyRequest = ChangePolicyRequest(indices.toList(), changePolicy, indexType)
+        val continuous = if (changePolicy.continuous != null) changePolicy.continuous as Boolean else false
+        val changePolicyRequest = ChangePolicyRequest(indices.toList(), changePolicy.copy(continuous = null), indexType, continuous = continuous)
 
         return RestChannelConsumer { channel ->
             client.execute(ChangePolicyAction.INSTANCE, changePolicyRequest, RestToXContentListener(channel))

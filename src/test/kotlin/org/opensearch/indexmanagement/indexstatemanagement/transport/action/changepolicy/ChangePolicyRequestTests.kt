@@ -18,7 +18,8 @@ class ChangePolicyRequestTests : OpenSearchTestCase() {
         val indices = listOf("index1", "index2")
         val stateFilter = StateFilter("state1")
         val changePolicy = ChangePolicy("policyID", "state1", listOf(stateFilter), true)
-        val req = ChangePolicyRequest(indices, changePolicy, DEFAULT_INDEX_TYPE)
+        val continuous = false
+        val req = ChangePolicyRequest(indices, changePolicy, DEFAULT_INDEX_TYPE, continuous = continuous)
 
         val out = BytesStreamOutput()
         req.writeTo(out)
@@ -32,7 +33,8 @@ class ChangePolicyRequestTests : OpenSearchTestCase() {
         val indices = listOf("index1", "index2")
         val stateFilter = StateFilter("state1")
         val changePolicy = ChangePolicy("policyID", "state1", listOf(stateFilter), true)
-        val req = ChangePolicyRequest(indices, changePolicy, "non-existent-index-type")
+        val continuous = false
+        val req = ChangePolicyRequest(indices, changePolicy, "non-existent-index-type", continuous = continuous)
         val actualException: String? = req.validate()?.validationErrors()?.firstOrNull()
         val expectedException: String = ChangePolicyRequest.MULTIPLE_INDICES_CUSTOM_INDEX_TYPE_ERROR
         assertEquals("Add policy request should have failed validation with specific exception", actualException, expectedException)

@@ -8,6 +8,7 @@ package org.opensearch.indexmanagement.indexstatemanagement.action
 import org.opensearch.indexmanagement.indexstatemanagement.IndexStateManagementRestTestCase
 import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
 import org.opensearch.indexmanagement.indexstatemanagement.model.State
+import org.opensearch.indexmanagement.indexstatemanagement.model.Transition
 import org.opensearch.indexmanagement.indexstatemanagement.randomErrorNotification
 import org.opensearch.indexmanagement.waitFor
 import java.time.Instant
@@ -77,5 +78,37 @@ class DeleteActionIT : IndexStateManagementRestTestCase() {
         //             }
         //     )
         // }
+    }
+    // Want to test continuos execution occurs on policy
+    fun `test continuous index deletes immediately`() {
+        val indexName = "${testIndexName}_delete_continuous"
+        val policyID = "continuous_delete"
+        val actionConfig = DeleteAction(0)
+        val states = listOf(
+            State("State1", listOf(), listOf(Transition("State2", null))),
+            State("State2", listOf(), listOf(Transition("State3", null))),
+            State("State3", listOf(), listOf(Transition("DeleteState", null))),
+            State("DeleteState", listOf(actionConfig), listOf())
+        )
+
+        val policy = Policy(
+            id = policyID,
+            description = "$testIndexName description",
+            schemaVersion = 1L,
+            lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
+            errorNotification = randomErrorNotification(),
+            defaultState = states[0].name,
+            states = states
+        )
+        createPolicy(policy, policyID)
+        createIndex(indexName, policyID = policy.id, continuous = true)
+        waitFor { assertIndexExists(indexName) }
+
+        val managedIndexConfig = getExistingManagedIndexConfig(indexName)
+        // Change the start time so the job will trigger in 2 seconds.
+        updateManagedIndexConfigStartTime(managedIndexConfig)
+        // confirm index does not exist anymore
+        // should delete in one cycle
+        waitFor { assertIndexDoesNotExist(indexName) }
     }
 }

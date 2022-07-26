@@ -167,7 +167,8 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
         replicas: String? = null,
         shards: String? = null,
         mapping: String = "",
-        settings: Settings? = null
+        settings: Settings? = null,
+        continuous: Boolean = false
     ): Pair<String, String?> {
         val waitForActiveShards = if (isMultiNode) "all" else "1"
         val builtSettings = Settings.builder().let {
@@ -185,7 +186,7 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
         val aliases = if (alias == null) "" else "\"$alias\": { \"is_write_index\": true }"
         createIndex(index, builtSettings, mapping, aliases)
         if (policyID != null) {
-            addPolicyToIndex(index, policyID)
+            addPolicyToIndex(index, policyID, continuous)
         }
         return index to policyID
     }
@@ -244,11 +245,13 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
 
     protected fun addPolicyToIndex(
         index: String,
-        policyID: String
+        policyID: String,
+        continuous: Boolean = false
     ) {
         val body = """
             {
-              "policy_id": "$policyID"
+              "policy_id": "$policyID",
+              "continuous": $continuous
             }
         """.trimIndent()
         val response = client().makeRequest("POST", "/_opendistro/_ism/add/$index", StringEntity(body, APPLICATION_JSON))
@@ -438,8 +441,8 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
         if (state != null) {
             string += "\"${ChangePolicy.STATE_FIELD}\":\"$state\","
         }
-        string += "\"${ChangePolicy.INCLUDE_FIELD}\":${include.map { "{\"${StateFilter.STATE_FIELD}\":\"${it.state}\"}" }}}"
-
+        string += "\"${ChangePolicy.INCLUDE_FIELD}\":${include.map { "{\"${StateFilter.STATE_FIELD}\":\"${it.state}\"}" }}"
+        string += if (continuous != null) ",\"${ChangePolicy.CONTINUOUS_FIELD}\":\"$continuous\"}" else "}"
         return StringEntity(string, APPLICATION_JSON)
     }
 
@@ -615,7 +618,7 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
         }
 
         // make sure metadata is initialised
-        assertTrue(metadata.transitionTo != null || metadata.stateMetaData != null || metadata.info != null || metadata.policyCompleted != null)
+        assertTrue("transitionTo: ${metadata.transitionTo} stateMetaData: ${metadata.stateMetaData}, metadata info: ${metadata.info}, policyCompleted: ${metadata.policyCompleted} ", metadata.transitionTo != null || metadata.stateMetaData != null || metadata.info != null || metadata.policyCompleted != null)
         return metadata
     }
 
