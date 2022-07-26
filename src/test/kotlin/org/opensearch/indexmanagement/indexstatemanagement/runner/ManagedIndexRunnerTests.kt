@@ -26,7 +26,7 @@ import org.opensearch.test.ClusterServiceUtils
 import org.opensearch.test.OpenSearchTestCase
 import org.opensearch.threadpool.ThreadPool
 
-@ThreadLeakScope(ThreadLeakScope.Scope.NONE)
+@ThreadLeakScope(ThreadLeakScope.Scope.SUITE)
 class ManagedIndexRunnerTests : OpenSearchTestCase() {
 
     private lateinit var client: Client
