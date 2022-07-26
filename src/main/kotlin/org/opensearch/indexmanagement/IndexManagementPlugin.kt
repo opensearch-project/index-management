@@ -186,7 +186,7 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
 
     private val logger = LogManager.getLogger(javaClass)
     lateinit var indexManagementIndices: IndexManagementIndices
-    lateinit var validationService: ValidationService // added here
+    lateinit var validationService: ValidationService
     lateinit var clusterService: ClusterService
     lateinit var indexNameExpressionResolver: IndexNameExpressionResolver
     lateinit var rollupInterceptor: RollupInterceptor
@@ -386,7 +386,7 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
             .registerConsumers()
             .registerClusterConfigurationProvider(skipFlag)
         indexManagementIndices = IndexManagementIndices(settings, client.admin().indices(), clusterService)
-        validationService = ValidationService(settings, clusterService) // added here - initialize here
+        validationService = ValidationService(settings, clusterService)
         val indexStateManagementHistory =
             IndexStateManagementHistory(
                 settings,
@@ -408,7 +408,7 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
         val managedIndexRunner = ManagedIndexRunner
             .registerClient(client)
             .registerClusterService(clusterService)
-            .registerValidationService(validationService) // added here
+            .registerValidationService(validationService)
             .registerNamedXContentRegistry(xContentRegistry)
             .registerScriptService(scriptService)
             .registerSettings(settings)
@@ -435,7 +435,7 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
             rollupRunner,
             transformRunner,
             indexManagementIndices,
-            validationService, // added here
+            validationService,
             managedIndexCoordinator,
             indexStateManagementHistory,
             indexMetadataProvider,
@@ -457,7 +457,7 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
             ManagedIndexSettings.ROLLOVER_ALIAS,
             ManagedIndexSettings.ROLLOVER_SKIP,
             ManagedIndexSettings.INDEX_STATE_MANAGEMENT_ENABLED,
-            ManagedIndexSettings.VALIDATION_SERVICE_ENABLED, // added here
+            ManagedIndexSettings.VALIDATION_SERVICE_ENABLED,
             ManagedIndexSettings.METADATA_SERVICE_ENABLED,
             ManagedIndexSettings.AUTO_MANAGE,
             ManagedIndexSettings.METADATA_SERVICE_STATUS,

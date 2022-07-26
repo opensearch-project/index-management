@@ -22,6 +22,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.randomErrorNotificati
 import org.opensearch.indexmanagement.indexstatemanagement.resthandler.RestRetryFailedManagedIndexAction
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings
 import org.opensearch.indexmanagement.indexstatemanagement.step.rollover.AttemptRolloverStep
+import org.opensearch.indexmanagement.indexstatemanagement.validation.ValidateRollover
 import org.opensearch.indexmanagement.makeRequest
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ActionRetry
@@ -416,7 +417,8 @@ class RolloverActionIT : IndexStateManagementRestTestCase() {
             val info = getExplainManagedIndexMetaData(index1).info as Map<String, Any?>
             assertEquals(
                 "Index rollover not stopped by pre-check.",
-                AttemptRolloverStep.getFailedPreCheckMessage(index1), info["message"]
+                ValidateRollover.getFailedWriteIndexMessage(index1), info["message"]
+                // AttemptRolloverStep.getFailedPreCheckMessage(index1), info["message"]
             )
         }
 
@@ -433,7 +435,8 @@ class RolloverActionIT : IndexStateManagementRestTestCase() {
             val info = getExplainManagedIndexMetaData(index1).info as Map<String, Any?>
             assertEquals(
                 "Index rollover not skip.",
-                AttemptRolloverStep.getSkipRolloverMessage(index1), info["message"]
+                ValidateRollover.getSkipRolloverMessage(index1), info["message"]
+                // AttemptRolloverStep.getSkipRolloverMessage(index1), info["message"]
             )
         }
     }
