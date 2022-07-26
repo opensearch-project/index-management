@@ -166,14 +166,14 @@ class IndexManagementIndicesIT : IndexStateManagementRestTestCase() {
         val addPolicyResponse = client().makeRequest(
             RestRequest.Method.POST.toString(),
             "${RestAddPolicyAction.LEGACY_ADD_POLICY_BASE_URI}/$indexName",
-            StringEntity("{ \"policy_id\": \"$policyId\" }", ContentType.APPLICATION_JSON)
+            StringEntity("{ \"policy_id\": \"$policyId\", \"continuous\": false }", ContentType.APPLICATION_JSON)
         )
         assertEquals("Unexpected RestStatus", RestStatus.OK, addPolicyResponse.restStatus())
 
         val changePolicyResponse = client().makeRequest(
             RestRequest.Method.POST.toString(),
             "${RestAddPolicyAction.LEGACY_ADD_POLICY_BASE_URI}/$indexName",
-            StringEntity("{ \"policy_id\": \"$policyId\" }", ContentType.APPLICATION_JSON)
+            StringEntity("{ \"policy_id\": \"$policyId\", \"continuous\": false }", ContentType.APPLICATION_JSON)
         )
         assertEquals("Unexpected RestStatus", RestStatus.OK, changePolicyResponse.restStatus())
 
