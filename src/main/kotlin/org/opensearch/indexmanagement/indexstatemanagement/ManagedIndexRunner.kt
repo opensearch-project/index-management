@@ -119,14 +119,14 @@ object ManagedIndexRunner :
     private lateinit var scriptService: ScriptService
     private lateinit var settings: Settings
     private lateinit var imIndices: IndexManagementIndices
-    private lateinit var validationService: ValidationService // added here
+    private lateinit var validationService: ValidationService
     private lateinit var ismHistory: IndexStateManagementHistory
     private lateinit var skipExecFlag: SkipExecution
     private lateinit var threadPool: ThreadPool
     private lateinit var extensionStatusChecker: ExtensionStatusChecker
     private lateinit var indexMetadataProvider: IndexMetadataProvider
     private var indexStateManagementEnabled: Boolean = DEFAULT_ISM_ENABLED
-    private var validationServiceEnabled: Boolean = DEFAULT_VALIDATION_SERVICE_ENABLED // added here
+    private var validationServiceEnabled: Boolean = DEFAULT_VALIDATION_SERVICE_ENABLED
     @Suppress("MagicNumber")
     private val savePolicyRetryPolicy = BackoffPolicy.exponentialBackoff(TimeValue.timeValueMillis(250), 3)
     @Suppress("MagicNumber")
@@ -174,7 +174,6 @@ object ManagedIndexRunner :
             indexStateManagementEnabled = it
         }
 
-        // added here
         validationServiceEnabled = VALIDATION_SERVICE_ENABLED.get(settings)
         clusterService.clusterSettings.addSettingsUpdateConsumer(VALIDATION_SERVICE_ENABLED) {
             validationServiceEnabled = it
@@ -194,7 +193,6 @@ object ManagedIndexRunner :
         return this
     }
 
-    // added here
     fun registerValidationService(validationService: ValidationService): ManagedIndexRunner {
         this.validationService = validationService
         return this
@@ -406,19 +404,29 @@ object ManagedIndexRunner :
         val startingManagedIndexMetaData = managedIndexMetaData.getStartingManagedIndexMetaData(state, action, step)
         val updateResult = updateManagedIndexMetaData(startingManagedIndexMetaData)
 
-        @Suppress("ComplexCondition")
+        @Suppress("ComplexCondition", "MaxLineLength")
         if (updateResult.metadataSaved && state != null && action != null && step != null && currentActionMetaData != null) {
             if (validationServiceEnabled) {
-                // added here
                 val actionError = validationService.validate(action, stepContext)
                 if (actionError.validationStatus == Validate.ValidationStatus.REVALIDATE) {
                     logger.info("Revalidate")
-                    // return // stops the job and runs again at next interval
+
+                    // update meta data
+                    if (!updateManagedIndexMetaData(actionError.getUpdatedManagedIndexMetadata(managedIndexMetaData, currentActionMetaData), updateResult).metadataSaved) {
+                        logger.error("Failed to update validation meta data : ${step.name}")
+                    }
+
+                    return // stops the job and runs again at next interval
                 }
                 if (actionError.validationStatus == Validate.ValidationStatus.FAIL) {
                     logger.info("Fail forever")
+
+                    // update meta data
+                    if (!updateManagedIndexMetaData(actionError.getUpdatedManagedIndexMetadata(managedIndexMetaData, currentActionMetaData), updateResult).metadataSaved) {
+                        logger.error("Failed to update validation meta data : ${step.name}")
+                    }
                     disableManagedIndexConfig(managedIndexConfig) // disables future jobs from running
-                    // return // stops the current job and fails forever
+                    return // stops the current job and fails forever
                 }
             }
             // Step null check is done in getStartingManagedIndexMetaData

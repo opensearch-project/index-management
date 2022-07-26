@@ -11,6 +11,8 @@ import org.opensearch.common.io.stream.StreamOutput
 import org.opensearch.common.io.stream.Writeable
 import org.opensearch.common.settings.Settings
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ActionMetaData
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepContext
 import org.opensearch.indexmanagement.util.OpenForTesting
 import java.util.*
@@ -18,7 +20,7 @@ import java.util.*
 @OpenForTesting
 abstract class Validate(
     val settings: Settings,
-    val clusterService: ClusterService // what settings do I need, make it private?
+    val clusterService: ClusterService
 ) {
 
     var validationStatus = ValidationStatus.PASS
@@ -28,7 +30,7 @@ abstract class Validate(
 
     abstract fun validatePolicy(): Boolean
 
-    // abstract fun validateGeneric(): Boolean
+    abstract fun getUpdatedManagedIndexMetadata(currentMetadata: ManagedIndexMetaData, actionMetaData: ActionMetaData): ManagedIndexMetaData
 
     enum class ValidationStatus(val status: String) : Writeable {
         PASS("pass"),

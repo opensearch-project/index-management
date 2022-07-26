@@ -24,8 +24,6 @@ abstract class Step(val name: String, val isSafeToDisableOn: Boolean = true) {
         logger.info("Executing $name for ${context.metadata.index}")
         this.context = context
         return this
-        // initialize validation service
-        // get action from step context - added here
     }
 
     abstract suspend fun execute(): Step
@@ -57,7 +55,7 @@ abstract class Step(val name: String, val isSafeToDisableOn: Boolean = true) {
     enum class StepStatus(val status: String) : Writeable {
         STARTING("starting"),
         CONDITION_NOT_MET("condition_not_met"),
-        VALIDATION_FAILED("validation_failed"), // added here
+        VALIDATION_FAILED("validation_failed"),
         FAILED("failed"),
         COMPLETED("completed");
 

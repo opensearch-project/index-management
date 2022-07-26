@@ -14,7 +14,7 @@ import org.opensearch.indexmanagement.util.OpenForTesting
 @OpenForTesting
 class ValidationService(
     val settings: Settings,
-    val clusterService: ClusterService // what settings do I need
+    val clusterService: ClusterService
 ) {
 
     // overarching validate function

@@ -9,8 +9,10 @@ import org.apache.logging.log4j.LogManager
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.settings.Settings
 import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.getRolloverAlias
-import org.opensearch.indexmanagement.indexstatemanagement.step.rollover.AttemptRolloverStep
+import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.getRolloverSkip
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ActionMetaData
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepContext
 import org.opensearch.indexmanagement.util.OpenForTesting
 
@@ -23,16 +25,31 @@ class ValidateRollover(
     private val logger = LogManager.getLogger(javaClass)
     private var info: Map<String, Any>? = null
 
-    // pass in action, action meta data, step, and step context
-    // returns a validate object with updated validation and step status
+    // returns a Validate object with updated validation and step status
+    @Suppress("ReturnSuppressCount", "ReturnCount")
     override fun executeValidation(context: StepContext): Validate {
-
+        val indexName = context.metadata.index
         val (rolloverTarget, isDataStream) = getRolloverTargetOrUpdateInfo(context)
-        // If the rolloverTarget is null, we would've already updated the failed info from getRolloverTargetOrUpdateInfo and can return early
-        // rolloverTarget ?: return this
+        rolloverTarget ?: return this
+
+        val skipRollover = clusterService.state().metadata.index(indexName).getRolloverSkip()
+        if (skipRollover) {
+            stepStatus = Step.StepStatus.COMPLETED
+            validationStatus = ValidationStatus.PASS
+            info = mapOf("message" to getSkipRolloverMessage(indexName))
+            return this
+        }
+
+        if (clusterService.state().metadata.index(indexName).rolloverInfos.containsKey(rolloverTarget)) {
+            stepStatus = Step.StepStatus.COMPLETED
+            validationStatus = ValidationStatus.PASS
+            info = mapOf("message" to getAlreadyRolledOverMessage(indexName, rolloverTarget))
+            return this
+        }
 
         if (!isDataStream) {
-            if (!hasAlias(context, rolloverTarget) || !isWriteIndex(context, rolloverTarget)) {
+            if (!hasAlias(context, rolloverTarget) || !isWriteIndex(context, rolloverTarget)
+            ) {
                 return this
             }
         }
@@ -76,7 +93,6 @@ class ValidateRollover(
         return true
     }
 
-    // write more failure messages
     private fun getRolloverTargetOrUpdateInfo(context: StepContext): Pair<String?, Boolean> {
         val indexName = context.metadata.index
         val metadata = context.clusterService.state().metadata()
@@ -89,33 +105,34 @@ class ValidateRollover(
         }
 
         if (rolloverTarget == null) {
-            val message = AttemptRolloverStep.getFailedNoValidAliasMessage(indexName)
+            val message = getFailedNoValidAliasMessage(indexName)
             logger.warn(message)
             stepStatus = Step.StepStatus.VALIDATION_FAILED
+            validationStatus = ValidationStatus.REVALIDATE
             info = mapOf("message" to message)
         }
 
         return rolloverTarget to isDataStreamIndex
     }
 
-    // TODO: 7/18/22
-    override fun validatePolicy(): Boolean {
-
-        return true
+    override fun getUpdatedManagedIndexMetadata(currentMetadata: ManagedIndexMetaData, actionMetaData: ActionMetaData): ManagedIndexMetaData {
+        return currentMetadata.copy(
+            actionMetaData = actionMetaData,
+            info = info
+        )
     }
 
     // TODO: 7/18/22
-    // validate generic errors like if index exists
-//    override fun validateGeneric(): Boolean {
-//
-//        return true
-//    }
+    override fun validatePolicy(): Boolean {
+        return true
+    }
 
     @Suppress("TooManyFunctions")
     companion object {
+        const val name = "attempt_rollover"
         fun getFailedMessage(index: String) = "Failed to rollover index [index=$index]"
         fun getFailedWriteIndexMessage(index: String) = "Not the write index when rollover [index=$index]"
-        fun getMissingAliasMessage(index: String) = "Missing alias when rollover [index=$index]"
+        fun getMissingAliasMessage(index: String) = "hereee Missing alias when rollover [index=$index]"
         fun getFailedAliasUpdateMessage(index: String, newIndex: String) =
             "New index created, but failed to update alias [index=$index, newIndex=$newIndex]"
         fun getFailedDataStreamRolloverMessage(dataStream: String) = "Failed to rollover data stream [data_stream=$dataStream]"
@@ -124,5 +141,6 @@ class ValidateRollover(
         fun getPendingMessage(index: String) = "Pending rollover of index [index=$index]"
         fun getAlreadyRolledOverMessage(index: String, alias: String) =
             "This index has already been rolled over using this alias, treating as a success [index=$index, alias=$alias]"
+        fun getSkipRolloverMessage(index: String) = "Skipped rollover action for [index=$index]"
     }
 }
