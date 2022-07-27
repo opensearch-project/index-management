@@ -52,6 +52,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.util.MetadataCheck
 import org.opensearch.indexmanagement.indexstatemanagement.util.checkMetadata
 import org.opensearch.indexmanagement.indexstatemanagement.util.managedIndexMetadataID
 import org.opensearch.indexmanagement.opensearchapi.parseWithType
+import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ISMIndexMetadata
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.buildUser
@@ -343,68 +344,29 @@ class TransportExplainAction @Inject constructor(
             val filteredPolicies = mutableListOf<PolicyID?>()
             val enabledStatus = mutableMapOf<String, Boolean>()
             val filteredAppliedPolicies = mutableMapOf<String, Policy>()
-            filter(0, filteredIndices, filteredMetadata, filteredPolicies, enabledStatus, filteredAppliedPolicies)
-        }
 
-        @Suppress("LongParameterList")
-        private fun filter(
-            current: Int,
-            filteredIndices: MutableList<String>,
-            filteredMetadata: MutableList<ManagedIndexMetaData?>,
-            filteredPolicies: MutableList<PolicyID?>,
-            enabledStatus: MutableMap<String, Boolean>,
-            filteredAppliedPolicies: MutableMap<String, Policy>
-        ) {
-            val request = ManagedIndexRequest().indices(indexNames[current])
-            client.execute(
-                ManagedIndexAction.INSTANCE,
-                request,
-                object : ActionListener<AcknowledgedResponse> {
-                    override fun onResponse(response: AcknowledgedResponse) {
-                        filteredIndices.add(indexNames[current])
-                        filteredMetadata.add(indexMetadatas[current])
-                        filteredPolicies.add(indexPolicyIDs[current])
-                        enabledState[indexNames[current]]?.let { enabledStatus[indexNames[current]] = it }
-                        appliedPolicies[indexNames[current]]?.let { filteredAppliedPolicies[indexNames[current]] = it }
-                        if (current < indexNames.count() - 1) {
-                            // do nothing - skip the index and go to next one
-                            filter(current + 1, filteredIndices, filteredMetadata, filteredPolicies, enabledStatus, filteredAppliedPolicies)
-                        } else {
-                            sendResponse(
-                                filteredIndices, filteredMetadata, filteredPolicies, enabledStatus,
-                                totalManagedIndices, filteredAppliedPolicies
-                            )
-                        }
-                    }
-
-                    override fun onFailure(e: Exception) {
-                        when (e is OpenSearchSecurityException) {
-                            true -> {
-                                totalManagedIndices -= 1
-                                if (current < indexNames.count() - 1) {
-                                    // do nothing - skip the index and go to next one
-                                    filter(
-                                        current + 1,
-                                        filteredIndices,
-                                        filteredMetadata,
-                                        filteredPolicies,
-                                        enabledStatus,
-                                        filteredAppliedPolicies
-                                    )
-                                } else {
-                                    sendResponse(
-                                        filteredIndices, filteredMetadata, filteredPolicies, enabledStatus,
-                                        totalManagedIndices, filteredAppliedPolicies
-                                    )
-                                }
-                            }
-                            false -> {
-                                actionListener.onFailure(e)
-                            }
-                        }
+            CoroutineScope(Dispatchers.IO).launch {
+                // filter out indicies for which user doesn't have manage index permissions
+                for (i in 0 until indexNames.count()) {
+                    val request = ManagedIndexRequest().indices(indexNames[i])
+                    try {
+                        client.suspendUntil<NodeClient, AcknowledgedResponse> { execute(ManagedIndexAction.INSTANCE, request, it) }
+                        filteredIndices.add(indexNames[i])
+                        filteredMetadata.add(indexMetadatas[i])
+                        filteredPolicies.add(indexPolicyIDs[i])
+                        enabledState[indexNames[i]]?.let { enabledStatus[indexNames[i]] = it }
+                        appliedPolicies[indexNames[i]]?.let { filteredAppliedPolicies[indexNames[i]] = it }
+                    } catch (e: OpenSearchSecurityException) {
+                        totalManagedIndices -= 1
+                    } catch (e: Exception) {
+                        actionListener.onFailure(e)
                     }
                 }
-            )
+                sendResponse(
+                    filteredIndices, filteredMetadata, filteredPolicies, enabledStatus,
+                    totalManagedIndices, filteredAppliedPolicies
+                )
+            }
         }
 
         @Suppress("LongParameterList")
