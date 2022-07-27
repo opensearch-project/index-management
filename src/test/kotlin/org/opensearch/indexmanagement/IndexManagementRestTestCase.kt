@@ -5,6 +5,7 @@
 
 package org.opensearch.indexmanagement
 
+import com.carrotsearch.randomizedtesting.annotations.ThreadLeakScope
 import org.apache.http.entity.ContentType
 import org.apache.http.entity.StringEntity
 import org.junit.AfterClass
@@ -25,6 +26,9 @@ import javax.management.ObjectName
 import javax.management.remote.JMXConnectorFactory
 import javax.management.remote.JMXServiceURL
 
+// Added in order to bypass ThreadLeak error when running integration tests
+// When running integration tests, test cluster is not shut down and because the coroutines are canceled only when the cluster is down, ThreadLeak error is raised
+@ThreadLeakScope(ThreadLeakScope.Scope.NONE)
 abstract class IndexManagementRestTestCase : ODFERestTestCase() {
 
     val configSchemaVersion = 16
