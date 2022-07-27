@@ -15,12 +15,14 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import org.apache.logging.log4j.LogManager
 import org.opensearch.indexmanagement.util.OpenForTesting
 
 @OpenForTesting
 class PluginVersionSweepJob constructor(
     private val intervalInMinutes: Int,
 ) : CoroutineScope by CoroutineScope(SupervisorJob() + Dispatchers.IO + CoroutineName("SweepISMCoordinator")) {
+    private val logger = LogManager.getLogger(javaClass)
     // Lateinit - in order to do injection of the sweep checker component in visible manner
     lateinit var sweep: suspend () -> Boolean
     private val eventChannel = Channel<Boolean>(CHANNEL_CAPACITY)
@@ -43,24 +45,35 @@ class PluginVersionSweepJob constructor(
     private fun listenForClusterChanged() = launch {
         while (isActive) {
             eventChannel.receive()
-            val skipFlag = sweep()
-            // If the flag is set to true - new coroutine that tries to send event after given interval
-            // will be scheduled on event loop
-            if (skipFlag) {
-                if (!isActiveWaitAndScheduleSweepJob()) {
-                    waitAndScheduleSweepJob = launch { waitAndScheduleSweep() }
+            try {
+                val skipFlag = sweep()
+                // If the flag is set to true - new coroutine that tries to send event after given interval
+                // will be scheduled on event loop
+                if (skipFlag) {
+                    tryScheduleRetrySweepJob()
+                } else {
+                    tryCancelRetrySweepJob()
                 }
-            } else {
-                if (isActiveWaitAndScheduleSweepJob()) {
-                    waitAndScheduleSweepJob?.cancel()
-                }
+            } catch (ex: Exception) {
+                logger.error("Failed sweeping nodes for ISM plugin versions: $ex")
+                tryScheduleRetrySweepJob()
             }
         }
     }
 
-    private suspend fun waitAndScheduleSweep() {
-        delay(ONE_MINUTE_IN_MILLIS * intervalInMinutes)
-        eventChannel.send(true)
+    private fun tryCancelRetrySweepJob() {
+        if (isActiveWaitAndScheduleSweepJob()) {
+            waitAndScheduleSweepJob?.cancel()
+        }
+    }
+
+    private fun tryScheduleRetrySweepJob() {
+        if (!isActiveWaitAndScheduleSweepJob()) {
+            waitAndScheduleSweepJob = launch {
+                delay(ONE_MINUTE_IN_MILLIS * intervalInMinutes)
+                eventChannel.send(true)
+            }
+        }
     }
 
     private fun isActiveWaitAndScheduleSweepJob() =

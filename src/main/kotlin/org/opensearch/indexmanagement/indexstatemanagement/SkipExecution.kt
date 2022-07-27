@@ -59,13 +59,6 @@ class SkipExecution(
         // if old version ISM plugin exists (2 versions ISM in one cluster), set skip flag to true
         val request = NodesInfoRequest().clear().addMetric("plugins")
         val response: NodesInfoResponse = client.suspendUntil { execute(NodesInfoAction.INSTANCE, request, it) }
-
-        if (response.hasFailures()) {
-            logger.error("Failed sweeping nodes for ISM plugin versions: ${response.failures()}")
-            flag = false
-
-            return flag
-        }
         val versionSet = mutableSetOf<String>()
         val legacyVersionSet = mutableSetOf<String>()
 
