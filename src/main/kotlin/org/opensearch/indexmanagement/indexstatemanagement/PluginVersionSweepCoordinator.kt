@@ -9,6 +9,7 @@ import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import org.apache.logging.log4j.LogManager
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.component.LifecycleListener
@@ -23,7 +24,7 @@ class PluginVersionSweepCoordinator(
     private val skipExecution: SkipExecution,
     settings: Settings,
     private val threadPool: ThreadPool,
-    private val clusterService: ClusterService,
+    clusterService: ClusterService,
 ) : CoroutineScope by CoroutineScope(SupervisorJob() + Dispatchers.Default + CoroutineName("ISMPluginSweepCoordinator")),
     LifecycleListener() {
     private val logger = LogManager.getLogger(javaClass)
@@ -59,22 +60,21 @@ class PluginVersionSweepCoordinator(
         // Cancel existing background sweep
         scheduledSkipExecution?.cancel()
         val scheduledJob = Runnable {
-            // Starting job without coroutine - in order to avoid thread leak error
-            try {
-                if (!skipExecution.flag) {
-                    logger.info("Canceling sweep ism plugin version job")
-                    scheduledSkipExecution?.cancel()
-                } else {
-                    skipExecution.sweepISMPluginVersion()
+            launch {
+                try {
+                    if (!skipExecution.flag) {
+                        logger.info("Canceling sweep ism plugin version job")
+                        scheduledSkipExecution?.cancel()
+                    } else {
+                        skipExecution.sweepISMPluginVersion()
+                    }
+                } catch (e: Exception) {
+                    logger.error("Failed to sweep ism plugin version", e)
                 }
-            } catch (e: Exception) {
-                logger.error("Failed to sweep ism plugin version", e)
             }
         }
         scheduledSkipExecution =
-            threadPool.scheduleWithFixedDelay(scheduledJob,
-                TimeValue.timeValueMinutes(RETRY_PERIOD_IN_MINUTES),
-                ThreadPool.Names.MANAGEMENT)
+            threadPool.scheduleWithFixedDelay(scheduledJob, TimeValue.timeValueMinutes(RETRY_PERIOD_IN_MINUTES), ThreadPool.Names.MANAGEMENT)
     }
 
     private fun isIndexStateManagementEnabled(): Boolean = indexStateManagementEnabled == true
