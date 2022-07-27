@@ -371,7 +371,7 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
         fieldCapsFilter = FieldCapsFilter(clusterService, settings, indexNameExpressionResolver)
         this.indexNameExpressionResolver = indexNameExpressionResolver
 
-        val skipFlag = SkipExecution(client, clusterService)
+        val skipFlag = SkipExecution(client)
         RollupFieldValueExpressionResolver.registerScriptService(scriptService)
         val rollupRunner = RollupRunner
             .registerClient(client)
@@ -501,7 +501,6 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
             LegacyOpenDistroManagedIndexSettings.METADATA_SERVICE_ENABLED,
             LegacyOpenDistroManagedIndexSettings.JOB_INTERVAL,
             LegacyOpenDistroManagedIndexSettings.SWEEP_PERIOD,
-            LegacyOpenDistroManagedIndexSettings.SWEEP_SKIP_PERIOD,
             LegacyOpenDistroManagedIndexSettings.COORDINATOR_BACKOFF_COUNT,
             LegacyOpenDistroManagedIndexSettings.COORDINATOR_BACKOFF_MILLIS,
             LegacyOpenDistroManagedIndexSettings.ALLOW_LIST,

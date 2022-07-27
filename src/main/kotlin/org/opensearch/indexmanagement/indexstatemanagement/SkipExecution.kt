@@ -12,18 +12,14 @@ import org.opensearch.action.admin.cluster.node.info.NodesInfoRequest
 import org.opensearch.action.admin.cluster.node.info.NodesInfoResponse
 import org.opensearch.action.admin.cluster.node.info.PluginsAndModules
 import org.opensearch.client.Client
-import org.opensearch.cluster.ClusterChangedEvent
-import org.opensearch.cluster.ClusterStateListener
-import org.opensearch.cluster.service.ClusterService
 import org.opensearch.indexmanagement.util.OpenForTesting
 
 // TODO this can be moved to job scheduler, so that all extended plugin
 //  can avoid running jobs in an upgrading cluster
 @OpenForTesting
 class SkipExecution(
-    private val client: Client,
-    private val clusterService: ClusterService,
-) : ClusterStateListener {
+    private val client: Client
+) {
     private val logger = LogManager.getLogger(javaClass)
 
     @Volatile
@@ -34,16 +30,6 @@ class SkipExecution(
     @Volatile
     final var hasLegacyPlugin: Boolean = false
         private set
-
-    init {
-        clusterService.addListener(this)
-    }
-
-    override fun clusterChanged(event: ClusterChangedEvent) {
-        if (event.nodesChanged() || event.isNewCluster) {
-            sweepISMPluginVersion()
-        }
-    }
 
     fun sweepISMPluginVersion() {
         // if old version ISM plugin exists (2 versions ISM in one cluster), set skip flag to true

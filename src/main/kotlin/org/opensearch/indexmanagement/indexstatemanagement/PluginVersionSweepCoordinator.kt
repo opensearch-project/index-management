@@ -9,11 +9,13 @@ import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import org.apache.logging.log4j.LogManager
+import org.opensearch.cluster.ClusterChangedEvent
+import org.opensearch.cluster.ClusterStateListener
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.component.LifecycleListener
 import org.opensearch.common.settings.Settings
-import org.opensearch.common.unit.TimeValue
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings
 import org.opensearch.indexmanagement.util.OpenForTesting
 import org.opensearch.threadpool.Scheduler
@@ -23,9 +25,10 @@ class PluginVersionSweepCoordinator(
     private val skipExecution: SkipExecution,
     settings: Settings,
     private val threadPool: ThreadPool,
-    private val clusterService: ClusterService,
+    clusterService: ClusterService,
 ) : CoroutineScope by CoroutineScope(SupervisorJob() + Dispatchers.Default + CoroutineName("ISMPluginSweepCoordinator")),
-    LifecycleListener() {
+    LifecycleListener(),
+    ClusterStateListener {
     private val logger = LogManager.getLogger(javaClass)
 
     private var scheduledSkipExecution: Scheduler.Cancellable? = null
@@ -38,6 +41,7 @@ class PluginVersionSweepCoordinator(
 
     init {
         clusterService.addLifecycleListener(this)
+        clusterService.addListener(this)
         clusterService.clusterSettings.addSettingsUpdateConsumer(ManagedIndexSettings.SWEEP_SKIP_PERIOD) {
             sweepSkipPeriod = it
             initBackgroundSweepISMPluginVersionExecution()
@@ -52,6 +56,13 @@ class PluginVersionSweepCoordinator(
         scheduledSkipExecution?.cancel()
     }
 
+    override fun clusterChanged(event: ClusterChangedEvent) {
+        if (event.nodesChanged() || event.isNewCluster) {
+            skipExecution.sweepISMPluginVersion()
+            initBackgroundSweepISMPluginVersionExecution()
+        }
+    }
+
     @OpenForTesting
     fun initBackgroundSweepISMPluginVersionExecution() {
         // If ISM is disabled return early
@@ -59,27 +70,22 @@ class PluginVersionSweepCoordinator(
         // Cancel existing background sweep
         scheduledSkipExecution?.cancel()
         val scheduledJob = Runnable {
-            // Starting job without coroutine - in order to avoid thread leak error
-            try {
-                if (!skipExecution.flag) {
-                    logger.info("Canceling sweep ism plugin version job")
-                    scheduledSkipExecution?.cancel()
-                } else {
-                    skipExecution.sweepISMPluginVersion()
+            launch {
+                try {
+                    if (!skipExecution.flag) {
+                        logger.info("Canceling sweep ism plugin version job")
+                        scheduledSkipExecution?.cancel()
+                    } else {
+                        skipExecution.sweepISMPluginVersion()
+                    }
+                } catch (e: Exception) {
+                    logger.error("Failed to sweep ism plugin version", e)
                 }
-            } catch (e: Exception) {
-                logger.error("Failed to sweep ism plugin version", e)
             }
         }
         scheduledSkipExecution =
-            threadPool.scheduleWithFixedDelay(scheduledJob,
-                TimeValue.timeValueMinutes(RETRY_PERIOD_IN_MINUTES),
-                ThreadPool.Names.MANAGEMENT)
+            threadPool.scheduleWithFixedDelay(scheduledJob, sweepSkipPeriod, ThreadPool.Names.MANAGEMENT)
     }
 
     private fun isIndexStateManagementEnabled(): Boolean = indexStateManagementEnabled == true
-
-    companion object {
-        private const val RETRY_PERIOD_IN_MINUTES = 5L
-    }
 }
