@@ -36,7 +36,7 @@ data class ChangePolicy(
     val include: List<StateFilter>,
     val isSafe: Boolean,
     val user: User? = null,
-    var continuous: Boolean? = null
+    val continuous: Boolean? = null
 
 ) : Writeable, ToXContentObject {
 
@@ -72,7 +72,8 @@ data class ChangePolicy(
         out.writeBoolean(isSafe)
         out.writeBoolean(user != null)
         user?.writeTo(out)
-        if (continuous != null) { out.writeBoolean(continuous as Boolean) }
+        out.writeBoolean(continuous != null)
+        if (continuous != null) out.writeBoolean(continuous)
     }
 
     companion object {

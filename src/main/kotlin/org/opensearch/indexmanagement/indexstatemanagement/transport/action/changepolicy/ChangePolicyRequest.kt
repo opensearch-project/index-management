@@ -18,7 +18,7 @@ class ChangePolicyRequest(
     val indices: List<String>,
     val changePolicy: ChangePolicy,
     val indexType: String,
-    val continuous: Boolean
+    val continuous: Boolean = false
 ) : ActionRequest() {
 
     @Throws(IOException::class)
@@ -47,7 +47,7 @@ class ChangePolicyRequest(
         out.writeStringCollection(indices)
         changePolicy.writeTo(out)
         out.writeString(indexType)
-        out.writeBoolean(continuous)
+        out.writeBoolean(if (continuous != null) continuous else false)
     }
 
     companion object {
