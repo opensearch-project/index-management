@@ -19,7 +19,7 @@ import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ActionMetaD
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ShrinkActionProperties
 import org.opensearch.jobscheduler.spi.LockModel
-import org.opensearch.monitor.os.OsStats
+import org.opensearch.monitor.fs.FsInfo
 import org.opensearch.test.OpenSearchTestCase
 
 class StepUtilsTests : OpenSearchTestCase() {
@@ -112,16 +112,16 @@ class StepUtilsTests : OpenSearchTestCase() {
 
     fun `test free memory after shrink`() {
         val nodeStats: NodeStats = mock()
-        val osStats: OsStats = mock()
-        Mockito.`when`(nodeStats.os).thenReturn(osStats)
-        val memStats: OsStats.Mem = mock()
-        Mockito.`when`(osStats.mem).thenReturn(memStats)
+        val fsInfo: FsInfo = mock()
+        Mockito.`when`(nodeStats.fs).thenReturn(fsInfo)
+        val path: FsInfo.Path = mock()
+        Mockito.`when`(fsInfo.total).thenReturn(path)
         val totalBytes = randomLongBetween(10, 100000000)
         val freeBytes = randomLongBetween(0, totalBytes)
         val indexSize = randomLongBetween(0, totalBytes / 2)
         val threshold = randomLongBetween(0, totalBytes / 2)
-        Mockito.`when`(memStats.free).thenReturn(ByteSizeValue(freeBytes))
-        Mockito.`when`(memStats.total).thenReturn(ByteSizeValue(totalBytes))
+        Mockito.`when`(path.free).thenReturn(ByteSizeValue(freeBytes))
+        Mockito.`when`(path.total).thenReturn(ByteSizeValue(totalBytes))
         val settings = Settings.builder()
             .put(DiskThresholdSettings.CLUSTER_ROUTING_ALLOCATION_HIGH_DISK_WATERMARK_SETTING.key, ByteSizeValue(threshold).stringRep)
             .put(DiskThresholdSettings.CLUSTER_ROUTING_ALLOCATION_LOW_DISK_WATERMARK_SETTING.key, ByteSizeValue(threshold + 1).stringRep)

@@ -60,8 +60,8 @@ class AttemptShrinkStep(private val action: ShrinkAction) : ShrinkStep(name, tru
             return false
         }
         val indexSizeInBytes = statsStore.sizeInBytes
-        // Get the remaining memory in the node
-        val nodesStatsReq = NodesStatsRequest().addMetric(AttemptMoveShardsStep.OS_METRIC)
+        // Get the remaining memory and disk space in the node.
+        val nodesStatsReq = NodesStatsRequest().addMetric(AttemptMoveShardsStep.FS_METRIC)
         val nodeStatsResponse: NodesStatsResponse = context.client.admin().cluster().suspendUntil { nodesStats(nodesStatsReq, it) }
         // If the node has been replaced, this will fail
         val node = nodeStatsResponse.nodes.firstOrNull { it.node.name == nodeName }
