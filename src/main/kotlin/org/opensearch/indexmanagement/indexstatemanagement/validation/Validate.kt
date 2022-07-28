@@ -13,7 +13,6 @@ import org.opensearch.common.settings.Settings
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ActionMetaData
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
-import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepContext
 import org.opensearch.indexmanagement.util.OpenForTesting
 import java.util.*
 
@@ -26,7 +25,7 @@ abstract class Validate(
     var validationStatus = ValidationStatus.PASS
     var stepStatus = Step.StepStatus.STARTING
 
-    abstract fun executeValidation(context: StepContext): Validate
+    abstract fun executeValidation(indexName: String): Validate
 
     abstract fun validatePolicy(): Boolean
 

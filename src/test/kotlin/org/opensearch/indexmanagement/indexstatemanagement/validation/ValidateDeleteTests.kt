@@ -52,7 +52,7 @@ class ValidateDeleteTests : OpenSearchTestCase() {
 
         // null pointer exception
         runBlocking {
-            validate.executeValidation(context)
+            validate.executeValidation(indexName)
         }
 
         validate.getUpdatedManagedIndexMetadata(metadata, actionMetadata)

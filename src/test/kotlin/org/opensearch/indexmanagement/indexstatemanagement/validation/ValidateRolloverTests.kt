@@ -57,13 +57,12 @@ class ValidateRolloverTests : OpenSearchTestCase() {
         whenever(clusterServiceMetadata.indicesLookup).thenReturn(indicesLookup)
         whenever(indicesLookup[indexName]).thenReturn(indexAbstraction)
         whenever(indexAbstraction.indices).thenReturn(listOfMetadata)
-
         whenever(clusterServiceMetadata.index(indexName)).thenReturn(indexMetadata)
         whenever(indexMetadata.settings).thenReturn(settings)
 
         // null pointer exception
         runBlocking {
-            validate.executeValidation(context)
+            validate.executeValidation(indexName)
         }
 
         validate.getUpdatedManagedIndexMetadata(metadata, actionMetadata)
