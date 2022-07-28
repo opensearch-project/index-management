@@ -229,6 +229,7 @@ object ManagedIndexRunner :
                     var keepExecuting: Boolean = true
                     // Need to execute at least once for policy to initialize
                     do {
+                        println("RON SAX LOOK HERE: name: ${job.jobName} continuous: ${job.continuous}, keepExecuting: $keepExecuting, id: ${job.id}")
                         // Need to renew lock for current step execution
                         val renewedLock = renewLockForScheduledJob(context, lock as LockModel, errorNotificationRetryPolicy)
                         // Failed to renew lock
@@ -241,6 +242,7 @@ object ManagedIndexRunner :
                         }
                     } while ((job.continuous && keepExecuting)) // Runs until job is no longer continuous or execution should stop
                 } else { // If job is not continuous run once
+                    println("RON SAX LOOK HERE: name: ${job.jobName} continuous: ${job.continuous}, id: ${job.id}")
                     runManagedIndexConfig(job, context)
                 }
                 // Release lock
@@ -320,6 +322,7 @@ object ManagedIndexRunner :
             if (result.metadataSaved) {
                 disableManagedIndexConfig(managedIndexConfig)
             }
+            println("RON SAX return false in line 324")
             return false
         }
 
@@ -351,6 +354,7 @@ object ManagedIndexRunner :
 
         if (managedIndexConfig.shouldChangePolicy(managedIndexMetaData, action)) {
             initChangePolicy(managedIndexConfig, managedIndexMetaData, action)
+            println("RON SAX: returned true on 357")
             return true
         }
 
@@ -416,9 +420,12 @@ object ManagedIndexRunner :
                     managedIndexConfig.id, settings, threadPool.threadContext, managedIndexConfig.policy.user
                 )
             ) {
+                println("RON SAX STEP: ${step.name}")
                 step.preExecute(logger, stepContext.getUpdatedContext(startingManagedIndexMetaData)).execute().postExecute(logger)
             }
+            println("RON SAX Starting metadata: $startingManagedIndexMetaData")
             var executedManagedIndexMetaData = startingManagedIndexMetaData.getCompletedManagedIndexMetaData(action, step)
+            println("RON SAX executed metadata: $executedManagedIndexMetaData")
 
             if (executedManagedIndexMetaData.isFailed) {
                 try {
@@ -461,6 +468,7 @@ object ManagedIndexRunner :
                 return false
             }
             // Made it to end of successful execution block
+            println("RON SAX: returned true on 471")
             return true
         }
         return false
@@ -564,7 +572,7 @@ object ManagedIndexRunner :
                 logger.error("Failed to update ManagedIndexConfig(${managedIndexConfig.index}) job interval")
             }
         } catch (e: VersionConflictEngineException) {
-            logger.error("Failed to update ManagedIndexConfig(${managedIndexConfig.index}) job interval. ${e.message}")
+            logger.error("RON SAX FAILED HERE: Failed to update ManagedIndexConfig(${managedIndexConfig.index}) job interval. ${e.message}")
         } catch (e: Exception) {
             logger.error("Failed to update ManagedIndexConfig(${managedIndexConfig.index}) job interval", e)
         }
@@ -783,7 +791,10 @@ object ManagedIndexRunner :
         * */
         val updated = updateManagedIndexMetaData(updatedManagedIndexMetaData)
 
-        if (!updated.metadataSaved || policy == null) return
+        if (!updated.metadataSaved || policy == null) {
+            println("RON SAX: coundn't save metadata here")
+            return
+        }
 
         // Change the policy and user stored on the job from changePolicy, this will also set the changePolicy to null on the job
         savePolicyToManagedIndexConfig(managedIndexConfig, policy.copy(user = changePolicy.user))
