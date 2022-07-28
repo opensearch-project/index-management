@@ -39,7 +39,7 @@ class SetReadOnlyStepTests : OpenSearchTestCase() {
         val client = getClient(getAdminClient(getIndicesAdminClient(setReadOnlyResponse, null)))
 
         runBlocking {
-            val managedIndexMetaData = ManagedIndexMetaData("test", "indexUuid", "policy_id", null, null, null, null, null, null, null, null, null, null, null)
+            val managedIndexMetaData = ManagedIndexMetaData("test", "indexUuid", "policy_id", null, null, null, null, null, null, null, null, null, null, null, null)
             val setReadOnlyStep = SetReadOnlyStep()
             val context = StepContext(managedIndexMetaData, clusterService, client, null, null, scriptService, settings, lockService)
             setReadOnlyStep.preExecute(logger, context).execute()
@@ -53,7 +53,7 @@ class SetReadOnlyStepTests : OpenSearchTestCase() {
         val client = getClient(getAdminClient(getIndicesAdminClient(null, exception)))
 
         runBlocking {
-            val managedIndexMetaData = ManagedIndexMetaData("test", "indexUuid", "policy_id", null, null, null, null, null, null, null, null, null, null, null)
+            val managedIndexMetaData = ManagedIndexMetaData("test", "indexUuid", "policy_id", null, null, null, null, null, null, null, null, null, null, null, null)
             val setReadOnlyStep = SetReadOnlyStep()
             val context = StepContext(managedIndexMetaData, clusterService, client, null, null, scriptService, settings, lockService)
             setReadOnlyStep.preExecute(logger, context).execute()
@@ -67,7 +67,7 @@ class SetReadOnlyStepTests : OpenSearchTestCase() {
         val client = getClient(getAdminClient(getIndicesAdminClient(null, exception)))
 
         runBlocking {
-            val managedIndexMetaData = ManagedIndexMetaData("test", "indexUuid", "policy_id", null, null, null, null, null, null, null, null, null, null, null)
+            val managedIndexMetaData = ManagedIndexMetaData("test", "indexUuid", "policy_id", null, null, null, null, null, null, null, null, null, null, null, null)
             val setReadOnlyStep = SetReadOnlyStep()
             val context = StepContext(managedIndexMetaData, clusterService, client, null, null, scriptService, settings, lockService)
             setReadOnlyStep.preExecute(logger, context).execute()
