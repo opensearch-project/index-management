@@ -70,7 +70,7 @@ class RollupMapperService(
     // TODO: error handling
     @Suppress("ReturnCount")
     suspend fun attemptCreateRollupTargetIndex(job: Rollup, hasLegacyPlugin: Boolean): RollupJobValidationResult {
-        var targetIndexResolvedName = RollupFieldValueExpressionResolver.resolve(job, job.targetIndex)
+        val targetIndexResolvedName = RollupFieldValueExpressionResolver.resolve(job, job.targetIndex)
         if (indexExists(targetIndexResolvedName)) {
             return validateAndAttemptToUpdateTargetIndex(job, targetIndexResolvedName)
         } else {

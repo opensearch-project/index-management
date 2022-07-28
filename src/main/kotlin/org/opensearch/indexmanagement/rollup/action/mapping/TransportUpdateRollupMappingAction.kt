@@ -60,7 +60,7 @@ class TransportUpdateRollupMappingAction @Inject constructor(
         state: ClusterState,
         listener: ActionListener<AcknowledgedResponse>
     ) {
-        var targetIndexResolvedName = RollupFieldValueExpressionResolver.resolve(request.rollup, request.rollup.targetIndex)
+        val targetIndexResolvedName = RollupFieldValueExpressionResolver.resolve(request.rollup, request.rollup.targetIndex)
         val index = state.metadata.index(targetIndexResolvedName)
         if (index == null) {
             log.debug("Could not find index [$index]")
@@ -115,7 +115,7 @@ class TransportUpdateRollupMappingAction @Inject constructor(
         }
 
         // TODO: Does schema_version get overwritten?
-        var targetIndexResovledName = RollupFieldValueExpressionResolver.resolve(request.rollup, request.rollup.targetIndex)
+        val targetIndexResovledName = RollupFieldValueExpressionResolver.resolve(request.rollup, request.rollup.targetIndex)
         val putMappingRequest = PutMappingRequest(targetIndexResovledName).source(metaMappings)
         client.admin().indices().putMapping(
             putMappingRequest,

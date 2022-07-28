@@ -124,7 +124,7 @@ class RollupIndexer(
                 }
             }
             mapOfKeyValues.putAll(aggResults)
-            var targetIndexResolvedName = RollupFieldValueExpressionResolver.resolve(job, job.targetIndex)
+            val targetIndexResolvedName = RollupFieldValueExpressionResolver.resolve(job, job.targetIndex)
             val indexRequest = IndexRequest(targetIndexResolvedName)
                 .id(documentId)
                 .source(mapOfKeyValues, XContentType.JSON)
