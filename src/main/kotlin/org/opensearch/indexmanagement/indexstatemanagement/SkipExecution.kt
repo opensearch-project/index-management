@@ -22,14 +22,17 @@ import org.opensearch.indexmanagement.util.OpenForTesting
 @OpenForTesting
 class SkipExecution(
     private val client: Client,
-    private val clusterService: ClusterService
+    private val clusterService: ClusterService,
 ) : ClusterStateListener {
     private val logger = LogManager.getLogger(javaClass)
 
-    @Volatile final var flag: Boolean = false
+    @Volatile
+    final var flag: Boolean = false
         private set
+
     // To track if there are any legacy IM plugin nodes part of the cluster
-    @Volatile final var hasLegacyPlugin: Boolean = false
+    @Volatile
+    final var hasLegacyPlugin: Boolean = false
         private set
 
     init {
