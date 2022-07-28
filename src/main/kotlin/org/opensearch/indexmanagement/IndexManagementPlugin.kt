@@ -73,6 +73,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.transport.action.retr
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.updateindexmetadata.TransportUpdateManagedIndexMetaDataAction
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.updateindexmetadata.UpdateManagedIndexMetaDataAction
 import org.opensearch.indexmanagement.indexstatemanagement.util.DEFAULT_INDEX_TYPE
+import org.opensearch.indexmanagement.indexstatemanagement.validation.ValidationService
 import org.opensearch.indexmanagement.migration.ISMTemplateService
 import org.opensearch.indexmanagement.refreshanalyzer.RefreshSearchAnalyzerAction
 import org.opensearch.indexmanagement.refreshanalyzer.RestRefreshSearchAnalyzerAction
@@ -185,6 +186,7 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
 
     private val logger = LogManager.getLogger(javaClass)
     lateinit var indexManagementIndices: IndexManagementIndices
+    lateinit var validationService: ValidationService
     lateinit var clusterService: ClusterService
     lateinit var indexNameExpressionResolver: IndexNameExpressionResolver
     lateinit var rollupInterceptor: RollupInterceptor
@@ -384,6 +386,7 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
             .registerConsumers()
             .registerClusterConfigurationProvider(skipFlag)
         indexManagementIndices = IndexManagementIndices(settings, client.admin().indices(), clusterService)
+        validationService = ValidationService(settings, clusterService)
         val indexStateManagementHistory =
             IndexStateManagementHistory(
                 settings,
@@ -405,6 +408,7 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
         val managedIndexRunner = ManagedIndexRunner
             .registerClient(client)
             .registerClusterService(clusterService)
+            .registerValidationService(validationService)
             .registerNamedXContentRegistry(xContentRegistry)
             .registerScriptService(scriptService)
             .registerSettings(settings)
@@ -431,6 +435,7 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
             rollupRunner,
             transformRunner,
             indexManagementIndices,
+            validationService,
             managedIndexCoordinator,
             indexStateManagementHistory,
             indexMetadataProvider,
@@ -452,6 +457,7 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
             ManagedIndexSettings.ROLLOVER_ALIAS,
             ManagedIndexSettings.ROLLOVER_SKIP,
             ManagedIndexSettings.INDEX_STATE_MANAGEMENT_ENABLED,
+            ManagedIndexSettings.VALIDATION_SERVICE_ENABLED,
             ManagedIndexSettings.METADATA_SERVICE_ENABLED,
             ManagedIndexSettings.AUTO_MANAGE,
             ManagedIndexSettings.METADATA_SERVICE_STATUS,

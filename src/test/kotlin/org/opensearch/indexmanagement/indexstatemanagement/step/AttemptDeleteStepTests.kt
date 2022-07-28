@@ -39,7 +39,7 @@ class AttemptDeleteStepTests : OpenSearchTestCase() {
         val client = getClient(getAdminClient(getIndicesAdminClient(acknowledgedResponse, null)))
 
         runBlocking {
-            val managedIndexMetaData = ManagedIndexMetaData("test", "indexUuid", "policy_id", null, null, null, null, null, null, null, null, null, null, null)
+            val managedIndexMetaData = ManagedIndexMetaData("test", "indexUuid", "policy_id", null, null, null, null, null, null, null, null, null, null, null, null)
             val attemptDeleteStep = AttemptDeleteStep()
             val context = StepContext(managedIndexMetaData, clusterService, client, null, null, scriptService, settings, lockService)
             attemptDeleteStep.preExecute(logger, context).execute()
@@ -53,7 +53,7 @@ class AttemptDeleteStepTests : OpenSearchTestCase() {
         val client = getClient(getAdminClient(getIndicesAdminClient(acknowledgedResponse, null)))
 
         runBlocking {
-            val managedIndexMetaData = ManagedIndexMetaData("test", "indexUuid", "policy_id", null, null, null, null, null, null, null, null, null, null, null)
+            val managedIndexMetaData = ManagedIndexMetaData("test", "indexUuid", "policy_id", null, null, null, null, null, null, null, null, null, null, null, null)
             val attemptDeleteStep = AttemptDeleteStep()
             val context = StepContext(managedIndexMetaData, clusterService, client, null, null, scriptService, settings, lockService)
             attemptDeleteStep.preExecute(logger, context).execute()
@@ -67,7 +67,7 @@ class AttemptDeleteStepTests : OpenSearchTestCase() {
         val client = getClient(getAdminClient(getIndicesAdminClient(null, exception)))
 
         runBlocking {
-            val managedIndexMetaData = ManagedIndexMetaData("test", "indexUuid", "policy_id", null, null, null, null, null, null, null, null, null, null, null)
+            val managedIndexMetaData = ManagedIndexMetaData("test", "indexUuid", "policy_id", null, null, null, null, null, null, null, null, null, null, null, null)
             val attemptDeleteStep = AttemptDeleteStep()
             val context = StepContext(managedIndexMetaData, clusterService, client, null, null, scriptService, settings, lockService)
             attemptDeleteStep.preExecute(logger, context).execute()
@@ -82,7 +82,7 @@ class AttemptDeleteStepTests : OpenSearchTestCase() {
         val client = getClient(getAdminClient(getIndicesAdminClient(null, exception)))
 
         runBlocking {
-            val managedIndexMetaData = ManagedIndexMetaData("test", "indexUuid", "policy_id", null, null, null, null, null, null, null, null, null, null, null)
+            val managedIndexMetaData = ManagedIndexMetaData("test", "indexUuid", "policy_id", null, null, null, null, null, null, null, null, null, null, null, null)
             val attemptDeleteStep = AttemptDeleteStep()
             val context = StepContext(managedIndexMetaData, clusterService, client, null, null, scriptService, settings, lockService)
             attemptDeleteStep.preExecute(logger, context).execute()

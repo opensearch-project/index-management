@@ -39,7 +39,7 @@ class AttemptOpenStepTests : OpenSearchTestCase() {
         val client = getClient(getAdminClient(getIndicesAdminClient(openIndexResponse, null)))
 
         runBlocking {
-            val managedIndexMetaData = ManagedIndexMetaData("test", "indexUuid", "policy_id", null, null, null, null, null, null, null, null, null, null, null)
+            val managedIndexMetaData = ManagedIndexMetaData("test", "indexUuid", "policy_id", null, null, null, null, null, null, null, null, null, null, null, null)
             val attemptOpenStep = AttemptOpenStep()
             val context = StepContext(managedIndexMetaData, clusterService, client, null, null, scriptService, settings, lockService)
             attemptOpenStep.preExecute(logger, context).execute()
@@ -53,7 +53,7 @@ class AttemptOpenStepTests : OpenSearchTestCase() {
         val client = getClient(getAdminClient(getIndicesAdminClient(null, exception)))
 
         runBlocking {
-            val managedIndexMetaData = ManagedIndexMetaData("test", "indexUuid", "policy_id", null, null, null, null, null, null, null, null, null, null, null)
+            val managedIndexMetaData = ManagedIndexMetaData("test", "indexUuid", "policy_id", null, null, null, null, null, null, null, null, null, null, null, null)
             val attemptOpenStep = AttemptOpenStep()
             val context = StepContext(managedIndexMetaData, clusterService, client, null, null, scriptService, settings, lockService)
             attemptOpenStep.preExecute(logger, context).execute()
@@ -67,7 +67,7 @@ class AttemptOpenStepTests : OpenSearchTestCase() {
         val client = getClient(getAdminClient(getIndicesAdminClient(null, exception)))
 
         runBlocking {
-            val managedIndexMetaData = ManagedIndexMetaData("test", "indexUuid", "policy_id", null, null, null, null, null, null, null, null, null, null, null)
+            val managedIndexMetaData = ManagedIndexMetaData("test", "indexUuid", "policy_id", null, null, null, null, null, null, null, null, null, null, null, null)
             val attemptOpenStep = AttemptOpenStep()
             val context = StepContext(managedIndexMetaData, clusterService, client, null, null, scriptService, settings, lockService)
             attemptOpenStep.preExecute(logger, context).execute()

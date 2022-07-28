@@ -7,12 +7,13 @@ package org.opensearch.indexmanagement.indexstatemanagement.action
 
 import org.opensearch.indexmanagement.indexstatemanagement.IndexStateManagementRestTestCase
 import org.opensearch.indexmanagement.indexstatemanagement.step.rollover.AttemptRolloverStep
+import org.opensearch.indexmanagement.indexstatemanagement.validation.ValidateRollover
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ActionMetaData
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
-import org.opensearch.indexmanagement.spi.indexstatemanagement.model.PolicyRetryInfoMetaData
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StateMetaData
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepMetaData
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.PolicyRetryInfoMetaData
 import org.opensearch.indexmanagement.waitFor
 import java.time.Instant
 import java.util.Locale
@@ -20,7 +21,7 @@ import java.util.Locale
 class ActionRetryIT : IndexStateManagementRestTestCase() {
     private val testIndexName = javaClass.simpleName.toLowerCase(Locale.ROOT)
 
-    /**
+    /**dateNothing
      * We are forcing RollOver to fail in this Integ test.
      */
     fun `test failed action`() {
@@ -34,7 +35,9 @@ class ActionRetryIT : IndexStateManagementRestTestCase() {
         val indexName = "${testIndexName}_index_1"
         val policyID = "${testIndexName}_testPolicyName_1"
         createPolicyJson(testPolicy, policyID)
-        val expectedInfoString = mapOf("message" to AttemptRolloverStep.getFailedNoValidAliasMessage(indexName)).toString()
+        // changed expectedInfoString to use validateRollover message
+        // val expectedInfoString = mapOf("message" to AttemptRolloverStep.getFailedNoValidAliasMessage(indexName)).toString()
+        val expectedInfoString = mapOf("message" to ValidateRollover.getFailedNoValidAliasMessage(indexName)).toString()
 
         createIndex(indexName, policyID)
 
@@ -50,9 +53,10 @@ class ActionRetryIT : IndexStateManagementRestTestCase() {
 
         waitFor {
             val managedIndexMetaData = getExplainManagedIndexMetaData(indexName)
+            // changed number of consumed Retries
             assertEquals(
                 ActionMetaData(
-                    "rollover", managedIndexMetaData.actionMetaData?.startTime, 0, false, 1,
+                    "rollover", managedIndexMetaData.actionMetaData?.startTime, 0, false, 0,
                     managedIndexMetaData.actionMetaData?.lastRetryTime, null
                 ),
                 managedIndexMetaData.actionMetaData
@@ -66,9 +70,10 @@ class ActionRetryIT : IndexStateManagementRestTestCase() {
 
         waitFor {
             val managedIndexMetaData = getExplainManagedIndexMetaData(indexName)
+            // changed number of consumed Retries
             assertEquals(
                 ActionMetaData(
-                    "rollover", managedIndexMetaData.actionMetaData?.startTime, 0, false, 2,
+                    "rollover", managedIndexMetaData.actionMetaData?.startTime, 0, false, 0,
                     managedIndexMetaData.actionMetaData?.lastRetryTime, null
                 ),
                 managedIndexMetaData.actionMetaData
@@ -82,9 +87,10 @@ class ActionRetryIT : IndexStateManagementRestTestCase() {
 
         waitFor {
             val managedIndexMetaData = getExplainManagedIndexMetaData(indexName)
+            // changed number of consumed Retries and set failed to false
             assertEquals(
                 ActionMetaData(
-                    "rollover", managedIndexMetaData.actionMetaData?.startTime, 0, true, 2,
+                    "rollover", managedIndexMetaData.actionMetaData?.startTime, 0, false, 0,
                     managedIndexMetaData.actionMetaData?.lastRetryTime, null
                 ),
                 managedIndexMetaData.actionMetaData

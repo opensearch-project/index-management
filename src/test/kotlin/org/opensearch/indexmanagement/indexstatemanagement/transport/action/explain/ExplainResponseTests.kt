@@ -30,7 +30,8 @@ class ExplainResponseTests : OpenSearchTestCase() {
             actionMetaData = null,
             stepMetaData = null,
             policyRetryInfo = null,
-            info = null
+            info = null,
+            validationInfo = null
         )
         val indexMetadatas = listOf(metadata)
         val totalManagedIndices = 1

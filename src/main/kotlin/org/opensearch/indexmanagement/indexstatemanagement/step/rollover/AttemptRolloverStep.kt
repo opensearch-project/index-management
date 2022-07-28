@@ -278,13 +278,13 @@ class AttemptRolloverStep(private val action: RolloverAction) : Step(name) {
         fun getFailedAliasUpdateMessage(index: String, newIndex: String) =
             "New index created, but failed to update alias [index=$index, newIndex=$newIndex]"
         fun getFailedDataStreamRolloverMessage(dataStream: String) = "Failed to rollover data stream [data_stream=$dataStream]"
-        fun getFailedNoValidAliasMessage(index: String) = "Missing rollover_alias index setting [index=$index]"
+        fun getFailedNoValidAliasMessage(index: String) = "no Missing rollover_alias index setting [index=$index]"
         fun getFailedEvaluateMessage(index: String) = "Failed to evaluate conditions for rollover [index=$index]"
         fun getPendingMessage(index: String) = "Pending rollover of index [index=$index]"
         fun getSuccessMessage(index: String) = "Successfully rolled over index [index=$index]"
         fun getSuccessDataStreamRolloverMessage(dataStream: String, index: String) =
             "Successfully rolled over data stream [data_stream=$dataStream index=$index]"
-        fun getFailedPreCheckMessage(index: String) = "Missing alias or not the write index when rollover [index=$index]"
+        fun getFailedPreCheckMessage(index: String) = "no Missing alias or not the write index when rollover [index=$index]"
         fun getSkipRolloverMessage(index: String) = "Skipped rollover action for [index=$index]"
         fun getAlreadyRolledOverMessage(index: String, alias: String) =
             "This index has already been rolled over using this alias, treating as a success [index=$index, alias=$alias]"

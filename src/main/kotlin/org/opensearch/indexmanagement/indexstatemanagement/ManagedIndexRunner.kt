@@ -52,8 +52,10 @@ import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndex
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.ALLOW_LIST_NONE
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.DEFAULT_ISM_ENABLED
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.DEFAULT_JOB_INTERVAL
+import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.DEFAULT_VALIDATION_SERVICE_ENABLED
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.INDEX_STATE_MANAGEMENT_ENABLED
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.JOB_INTERVAL
+import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.VALIDATION_SERVICE_ENABLED
 import org.opensearch.indexmanagement.indexstatemanagement.util.DEFAULT_INDEX_TYPE
 import org.opensearch.indexmanagement.indexstatemanagement.util.MetadataCheck
 import org.opensearch.indexmanagement.indexstatemanagement.util.checkMetadata
@@ -75,6 +77,8 @@ import org.opensearch.indexmanagement.indexstatemanagement.util.sendNotification
 import org.opensearch.indexmanagement.indexstatemanagement.util.shouldBackoff
 import org.opensearch.indexmanagement.indexstatemanagement.util.shouldChangePolicy
 import org.opensearch.indexmanagement.indexstatemanagement.util.updateDisableManagedIndexRequest
+import org.opensearch.indexmanagement.indexstatemanagement.validation.Validate
+import org.opensearch.indexmanagement.indexstatemanagement.validation.ValidationService
 import org.opensearch.indexmanagement.opensearchapi.IndexManagementSecurityContext
 import org.opensearch.indexmanagement.opensearchapi.convertToMap
 import org.opensearch.indexmanagement.opensearchapi.parseWithType
@@ -115,12 +119,14 @@ object ManagedIndexRunner :
     private lateinit var scriptService: ScriptService
     private lateinit var settings: Settings
     private lateinit var imIndices: IndexManagementIndices
+    private lateinit var validationService: ValidationService
     private lateinit var ismHistory: IndexStateManagementHistory
     private lateinit var skipExecFlag: SkipExecution
     private lateinit var threadPool: ThreadPool
     private lateinit var extensionStatusChecker: ExtensionStatusChecker
     private lateinit var indexMetadataProvider: IndexMetadataProvider
     private var indexStateManagementEnabled: Boolean = DEFAULT_ISM_ENABLED
+    private var validationServiceEnabled: Boolean = DEFAULT_VALIDATION_SERVICE_ENABLED
     @Suppress("MagicNumber")
     private val savePolicyRetryPolicy = BackoffPolicy.exponentialBackoff(TimeValue.timeValueMillis(250), 3)
     @Suppress("MagicNumber")
@@ -168,6 +174,11 @@ object ManagedIndexRunner :
             indexStateManagementEnabled = it
         }
 
+        validationServiceEnabled = VALIDATION_SERVICE_ENABLED.get(settings)
+        clusterService.clusterSettings.addSettingsUpdateConsumer(VALIDATION_SERVICE_ENABLED) {
+            validationServiceEnabled = it
+        }
+
         allowList = ALLOW_LIST.get(settings)
         clusterService.clusterSettings.addSettingsUpdateConsumer(ALLOW_LIST) {
             allowList = it
@@ -179,6 +190,11 @@ object ManagedIndexRunner :
 
     fun registerIMIndex(imIndices: IndexManagementIndices): ManagedIndexRunner {
         this.imIndices = imIndices
+        return this
+    }
+
+    fun registerValidationService(validationService: ValidationService): ManagedIndexRunner {
+        this.validationService = validationService
         return this
     }
 
@@ -388,8 +404,31 @@ object ManagedIndexRunner :
         val startingManagedIndexMetaData = managedIndexMetaData.getStartingManagedIndexMetaData(state, action, step)
         val updateResult = updateManagedIndexMetaData(startingManagedIndexMetaData)
 
-        @Suppress("ComplexCondition")
+        @Suppress("ComplexCondition", "MaxLineLength")
         if (updateResult.metadataSaved && state != null && action != null && step != null && currentActionMetaData != null) {
+            if (validationServiceEnabled) {
+                val actionError = validationService.validate(action, stepContext)
+                if (actionError.validationStatus == Validate.ValidationStatus.REVALIDATE) {
+                    logger.info("Revalidate")
+
+                    // update meta data
+                    if (!updateManagedIndexMetaData(actionError.getUpdatedManagedIndexMetadata(managedIndexMetaData, currentActionMetaData), updateResult).metadataSaved) {
+                        logger.error("Failed to update validation meta data : ${step.name}")
+                    }
+
+                    return // stops the job and runs again at next interval
+                }
+                if (actionError.validationStatus == Validate.ValidationStatus.FAIL) {
+                    logger.info("Fail forever")
+
+                    // update meta data
+                    if (!updateManagedIndexMetaData(actionError.getUpdatedManagedIndexMetadata(managedIndexMetaData, currentActionMetaData), updateResult).metadataSaved) {
+                        logger.error("Failed to update validation meta data : ${step.name}")
+                    }
+                    disableManagedIndexConfig(managedIndexConfig) // disables future jobs from running
+                    return // stops the current job and fails forever
+                }
+            }
             // Step null check is done in getStartingManagedIndexMetaData
             withClosableContext(
                 IndexManagementSecurityContext(
@@ -567,7 +606,8 @@ object ManagedIndexRunner :
             actionMetaData = null,
             stepMetaData = null,
             policyRetryInfo = PolicyRetryInfoMetaData(failed = true, consumedRetries = 0),
-            info = mapOf("message" to "Fail to load policy: $policyID")
+            info = mapOf("message" to "Fail to load policy: $policyID"),
+            validationInfo = null
         )
     }
 
@@ -595,7 +635,8 @@ object ManagedIndexRunner :
                 actionMetaData = null,
                 stepMetaData = null,
                 policyRetryInfo = PolicyRetryInfoMetaData(failed = false, consumedRetries = 0),
-                info = mapOf("message" to "Successfully initialized policy: ${policy.id}")
+                info = mapOf("message" to "Successfully initialized policy: ${policy.id}"),
+                validationInfo = null
             )
             managedIndexMetaData.policySeqNo == null || managedIndexMetaData.policyPrimaryTerm == null ->
                 // If there is seqNo and PrimaryTerm it is first time populating Policy.

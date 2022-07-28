@@ -77,7 +77,8 @@ abstract class IndexStateManagementIntegTestCase : OpenSearchIntegTestCase() {
         actionMetaData = null,
         stepMetaData = null,
         policyRetryInfo = PolicyRetryInfoMetaData(false, 0),
-        info = mapOf("message" to "Happy moving")
+        info = mapOf("message" to "Happy moving"),
+        validationInfo = null
     )
 
     override fun nodePlugins(): Collection<Class<out Plugin>> {

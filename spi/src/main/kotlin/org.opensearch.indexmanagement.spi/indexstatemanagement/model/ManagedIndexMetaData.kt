@@ -36,6 +36,7 @@ data class ManagedIndexMetaData(
     val stepMetaData: StepMetaData?,
     val policyRetryInfo: PolicyRetryInfoMetaData?,
     val info: Map<String, Any>?,
+    val validationInfo: Map<String, Any>?,
     val id: String = NO_ID,
     val seqNo: Long = SequenceNumbers.UNASSIGNED_SEQ_NO,
     val primaryTerm: Long = SequenceNumbers.UNASSIGNED_PRIMARY_TERM
@@ -156,6 +157,13 @@ data class ManagedIndexMetaData(
             streamOutput.writeBoolean(true)
             streamOutput.writeMap(info)
         }
+
+        if (validationInfo == null) {
+            streamOutput.writeBoolean(false)
+        } else {
+            streamOutput.writeBoolean(true)
+            streamOutput.writeMap(validationInfo)
+        }
     }
 
     companion object {
@@ -175,6 +183,7 @@ data class ManagedIndexMetaData(
         const val INDEX_CREATION_DATE = "index_creation_date"
         const val TRANSITION_TO = "transition_to"
         const val INFO = "info"
+        const val VALIDATION_INFO = "validation_info"
         const val ENABLED = "enabled"
 
         fun fromStreamInput(si: StreamInput): ManagedIndexMetaData {
@@ -199,6 +208,12 @@ data class ManagedIndexMetaData(
                 null
             }
 
+            val validationInfo = if (si.readBoolean()) {
+                si.readMap()
+            } else {
+                null
+            }
+
             return ManagedIndexMetaData(
                 index = requireNotNull(index) { "$INDEX is null" },
                 indexUuid = requireNotNull(indexUuid) { "$INDEX_UUID is null" },
@@ -213,7 +228,8 @@ data class ManagedIndexMetaData(
                 actionMetaData = action,
                 stepMetaData = step,
                 policyRetryInfo = retryInfo,
-                info = info
+                info = info,
+                validationInfo = validationInfo
             )
         }
 
@@ -243,6 +259,7 @@ data class ManagedIndexMetaData(
             var retryInfo: PolicyRetryInfoMetaData? = null
 
             var info: Map<String, Any>? = null
+            var validationInfo: Map<String, Any>? = null
 
             XContentParserUtils.ensureExpectedToken(XContentParser.Token.START_OBJECT, xcp.currentToken(), xcp)
             while (xcp.nextToken() != XContentParser.Token.END_OBJECT) {
@@ -292,6 +309,7 @@ data class ManagedIndexMetaData(
                 step,
                 retryInfo,
                 info,
+                validationInfo,
                 id,
                 seqNo,
                 primaryTerm
@@ -330,7 +348,8 @@ data class ManagedIndexMetaData(
                 actionMetaData = ActionMetaData.fromManagedIndexMetaDataMap(map),
                 stepMetaData = StepMetaData.fromManagedIndexMetaDataMap(map),
                 policyRetryInfo = PolicyRetryInfoMetaData.fromManagedIndexMetaDataMap(map),
-                info = map[INFO]?.let { XContentHelper.convertToMap(JsonXContent.jsonXContent, it, false) }
+                info = map[INFO]?.let { XContentHelper.convertToMap(JsonXContent.jsonXContent, it, false) },
+                validationInfo = map[VALIDATION_INFO]?.let { XContentHelper.convertToMap(JsonXContent.jsonXContent, it, false) },
             )
         }
     }
