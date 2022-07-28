@@ -38,7 +38,7 @@ class ValidateRollover(
                 return this
             }
         }
-
+        validationInfo = mapOf("validation message" to getValidationPassedMessage(indexName))
         return this
     }
 
@@ -49,7 +49,7 @@ class ValidateRollover(
         if (skipRollover) {
             stepStatus = Step.StepStatus.COMPLETED
             validationStatus = ValidationStatus.PASS
-            validationInfo = mapOf("message" to getSkipRolloverMessage(indexName))
+            validationInfo = mapOf("validation message" to getSkipRolloverMessage(indexName))
             return true
         }
         return false
@@ -59,7 +59,7 @@ class ValidateRollover(
         if (clusterService.state().metadata.index(indexName).rolloverInfos.containsKey(alias)) {
             stepStatus = Step.StepStatus.COMPLETED
             validationStatus = ValidationStatus.PASS
-            validationInfo = mapOf("message" to getAlreadyRolledOverMessage(indexName, alias))
+            validationInfo = mapOf("validation message" to getAlreadyRolledOverMessage(indexName, alias))
             return true
         }
         return false
@@ -75,7 +75,7 @@ class ValidateRollover(
             logger.warn(message)
             stepStatus = Step.StepStatus.VALIDATION_FAILED
             validationStatus = ValidationStatus.REVALIDATE
-            validationInfo = mapOf("message" to message)
+            validationInfo = mapOf("validation message" to message)
             return false
         }
         return true
@@ -94,7 +94,7 @@ class ValidateRollover(
                 logger.warn(message)
                 stepStatus = Step.StepStatus.VALIDATION_FAILED
                 validationStatus = ValidationStatus.REVALIDATE
-                validationInfo = mapOf("message" to message)
+                validationInfo = mapOf("validation message" to message)
                 return false
             }
         }
@@ -116,7 +116,7 @@ class ValidateRollover(
             logger.warn(message)
             stepStatus = Step.StepStatus.VALIDATION_FAILED
             validationStatus = ValidationStatus.REVALIDATE
-            validationInfo = mapOf("message" to message)
+            validationInfo = mapOf("validation message" to message)
         }
 
         return rolloverTarget to isDataStreamIndex
@@ -159,5 +159,6 @@ class ValidateRollover(
         fun getAlreadyRolledOverMessage(index: String, alias: String?) =
             "This index has already been rolled over using this alias, treating as a success [index=$index, alias=$alias]"
         fun getSkipRolloverMessage(index: String) = "Skipped rollover action for [index=$index]"
+        fun getValidationPassedMessage(index: String) = "Rollover validation passed for [index=$index]"
     }
 }

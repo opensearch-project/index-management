@@ -67,6 +67,6 @@ class ValidateRolloverTests : OpenSearchTestCase() {
 
         validate.getUpdatedManagedIndexMetadata(metadata, actionMetadata)
         assertEquals("Validation status is REVALIDATE", Validate.ValidationStatus.REVALIDATE, validate.validationStatus)
-        assertEquals("Info message is NO VALID ALIAS", mapOf("message" to getFailedNoValidAliasMessage(indexName)), validate.getUpdatedManagedIndexMetadata(metadata, actionMetadata).validationInfo)
+        assertEquals("Info message is NO VALID ALIAS", mapOf("validation message" to getFailedNoValidAliasMessage(indexName)), validate.getUpdatedManagedIndexMetadata(metadata, actionMetadata).validationInfo)
     }
 }
