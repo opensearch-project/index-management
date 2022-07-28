@@ -25,6 +25,7 @@ import org.opensearch.common.xcontent.XContentFactory
 import org.opensearch.common.xcontent.XContentHelper
 import org.opensearch.common.xcontent.XContentType
 import org.opensearch.indexmanagement.indexstatemanagement.util.XCONTENT_WITHOUT_TYPE
+import org.opensearch.indexmanagement.rollup.util.RollupFieldValueExpressionResolver
 import org.opensearch.indexmanagement.util.IndexUtils.Companion._META
 import org.opensearch.threadpool.ThreadPool
 import org.opensearch.transport.TransportService
@@ -59,7 +60,8 @@ class TransportUpdateRollupMappingAction @Inject constructor(
         state: ClusterState,
         listener: ActionListener<AcknowledgedResponse>
     ) {
-        val index = state.metadata.index(request.rollup.targetIndex)
+        var targetIndexResolvedName = RollupFieldValueExpressionResolver.resolve(request.rollup, request.rollup.targetIndex)
+        val index = state.metadata.index(targetIndexResolvedName)
         if (index == null) {
             log.debug("Could not find index [$index]")
             return listener.onFailure(IllegalStateException("Could not find index [$index]"))
@@ -113,7 +115,8 @@ class TransportUpdateRollupMappingAction @Inject constructor(
         }
 
         // TODO: Does schema_version get overwritten?
-        val putMappingRequest = PutMappingRequest(request.rollup.targetIndex).source(metaMappings)
+        var targetIndexResovledName = RollupFieldValueExpressionResolver.resolve(request.rollup, request.rollup.targetIndex)
+        val putMappingRequest = PutMappingRequest(targetIndexResovledName).source(metaMappings)
         client.admin().indices().putMapping(
             putMappingRequest,
             object : ActionListener<AcknowledgedResponse> {

@@ -23,6 +23,7 @@ import org.opensearch.indexmanagement.rollup.model.Rollup
 import org.opensearch.indexmanagement.rollup.model.RollupStats
 import org.opensearch.indexmanagement.rollup.settings.RollupSettings.Companion.ROLLUP_INGEST_BACKOFF_COUNT
 import org.opensearch.indexmanagement.rollup.settings.RollupSettings.Companion.ROLLUP_INGEST_BACKOFF_MILLIS
+import org.opensearch.indexmanagement.rollup.util.RollupFieldValueExpressionResolver
 import org.opensearch.indexmanagement.rollup.util.getInitialDocValues
 import org.opensearch.indexmanagement.util.IndexUtils.Companion.ODFE_MAGIC_NULL
 import org.opensearch.indexmanagement.util.IndexUtils.Companion.hashToFixedSize
@@ -123,7 +124,8 @@ class RollupIndexer(
                 }
             }
             mapOfKeyValues.putAll(aggResults)
-            val indexRequest = IndexRequest(job.targetIndex)
+            var targetIndexResolvedName = RollupFieldValueExpressionResolver.resolve(job, job.targetIndex)
+            val indexRequest = IndexRequest(targetIndexResolvedName)
                 .id(documentId)
                 .source(mapOfKeyValues, XContentType.JSON)
             requests.add(indexRequest)
