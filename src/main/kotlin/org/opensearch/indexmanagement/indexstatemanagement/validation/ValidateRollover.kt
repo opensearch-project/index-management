@@ -13,7 +13,6 @@ import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.getRoll
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ActionMetaData
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
-import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepContext
 import org.opensearch.indexmanagement.util.OpenForTesting
 
 @OpenForTesting
@@ -27,14 +26,14 @@ class ValidateRollover(
 
     // returns a Validate object with updated validation and step status
     @Suppress("ReturnSuppressCount", "ReturnCount")
-    override fun executeValidation(context: StepContext): Validate {
-        val (rolloverTarget, isDataStream) = getRolloverTargetOrUpdateInfo(context)
+    override fun executeValidation(indexName: String): Validate {
+        val (rolloverTarget, isDataStream) = getRolloverTargetOrUpdateInfo(indexName)
         rolloverTarget ?: return this
 
-        if (skipRollover(context, clusterService) || alreadyRolledOver(context, clusterService, rolloverTarget)) return this
+        if (skipRollover(indexName) || alreadyRolledOver(rolloverTarget, indexName)) return this
 
         if (!isDataStream) {
-            if (!hasAlias(context, rolloverTarget) || !isWriteIndex(context, rolloverTarget)
+            if (!hasAlias(rolloverTarget, indexName) || !isWriteIndex(rolloverTarget, indexName)
             ) {
                 return this
             }
@@ -45,8 +44,7 @@ class ValidateRollover(
 
     // validation logic------------------------------------------------------------------------------------------------
 
-    private fun skipRollover(context: StepContext, clusterService: ClusterService): Boolean {
-        val indexName = context.metadata.index
+    private fun skipRollover(indexName: String): Boolean {
         val skipRollover = clusterService.state().metadata.index(indexName).getRolloverSkip()
         if (skipRollover) {
             stepStatus = Step.StepStatus.COMPLETED
@@ -57,8 +55,7 @@ class ValidateRollover(
         return false
     }
 
-    private fun alreadyRolledOver(context: StepContext, clusterService: ClusterService, alias: String?): Boolean {
-        val indexName = context.metadata.index
+    private fun alreadyRolledOver(alias: String?, indexName: String): Boolean {
         if (clusterService.state().metadata.index(indexName).rolloverInfos.containsKey(alias)) {
             stepStatus = Step.StepStatus.COMPLETED
             validationStatus = ValidationStatus.PASS
@@ -68,9 +65,8 @@ class ValidateRollover(
         return false
     }
 
-    private fun hasAlias(context: StepContext, alias: String?): Boolean {
-        val indexName = context.metadata.index
-        val metadata = context.clusterService.state().metadata
+    private fun hasAlias(alias: String?, indexName: String): Boolean {
+        val metadata = clusterService.state().metadata
         val indexAlias = metadata.index(indexName)?.aliases?.get(alias)
 
         logger.debug("Index $indexName has aliases $indexAlias")
@@ -85,9 +81,8 @@ class ValidateRollover(
         return true
     }
 
-    private fun isWriteIndex(context: StepContext, alias: String?): Boolean {
-        val indexName = context.metadata.index
-        val metadata = context.clusterService.state().metadata
+    private fun isWriteIndex(alias: String?, indexName: String): Boolean {
+        val metadata = clusterService.state().metadata
         val indexAlias = metadata.index(indexName)?.aliases?.get(alias)
 
         val isWriteIndex = indexAlias?.writeIndex() // this could be null
@@ -106,9 +101,8 @@ class ValidateRollover(
         return true
     }
 
-    private fun getRolloverTargetOrUpdateInfo(context: StepContext): Pair<String?, Boolean> {
-        val indexName = context.metadata.index
-        val metadata = context.clusterService.state().metadata()
+    private fun getRolloverTargetOrUpdateInfo(indexName: String): Pair<String?, Boolean> {
+        val metadata = clusterService.state().metadata()
         val indexAbstraction = metadata.indicesLookup[indexName]
         val isDataStreamIndex = indexAbstraction?.parentDataStream != null
 

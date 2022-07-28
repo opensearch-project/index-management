@@ -9,7 +9,6 @@ import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.settings.Settings
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ActionMetaData
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
-import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepContext
 import org.opensearch.indexmanagement.util.OpenForTesting
 
 @OpenForTesting
@@ -19,7 +18,7 @@ class ValidateNothing(
 ) : Validate(settings, clusterService) {
 
     // skips validation
-    override fun executeValidation(context: StepContext): Validate {
+    override fun executeValidation(indexName: String): Validate {
         return this
     }
 

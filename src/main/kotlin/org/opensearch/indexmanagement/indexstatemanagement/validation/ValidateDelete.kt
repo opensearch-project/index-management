@@ -25,10 +25,10 @@ class ValidateDelete(
     private val logger = LogManager.getLogger(javaClass)
     private var validationInfo: Map<String, Any>? = null
 
-    override fun executeValidation(context: StepContext): Validate {
+    override fun executeValidation(indexName: String): Validate {
 
         // if these conditions are false, fail validation and do not execute delete action
-        if (!deleteIndexExists(context, clusterService) || !validIndex(context)) {
+        if (!deleteIndexExists(indexName) || !validIndex(indexName)) {
             return this
         }
         return this
@@ -41,8 +41,7 @@ class ValidateDelete(
     }
 
     // checks if index exists
-    private fun deleteIndexExists(context: StepContext, clusterService: ClusterService): Boolean {
-        val indexName = context.metadata.index
+    private fun deleteIndexExists(indexName: String): Boolean {
         val indexExists = clusterService.state().metadata.indices.containsKey(indexName)
         if (!indexExists) {
             stepStatus = Step.StepStatus.VALIDATION_FAILED
@@ -54,8 +53,7 @@ class ValidateDelete(
     }
 
     // checks if index is valid
-    private fun validIndex(context: StepContext): Boolean {
-        val indexName = context.metadata.index
+    private fun validIndex(indexName: String): Boolean {
         val exceptionGenerator: (String, String) -> RuntimeException = { index_name, reason -> InvalidIndexNameException(index_name, reason) }
         // If the index name is invalid for any reason, this will throw an exception giving the reason why in the message.
         // That will be displayed to the user as the cause.

@@ -19,14 +19,14 @@ class ValidationService(
 
     // overarching validate function
     fun validate(action: Action, context: StepContext): Validate {
-
+        val indexName = context.metadata.index
         // map action to validation class
         val validation = when (action.type) {
-            "rollover" -> ValidateRollover(settings, clusterService).executeValidation(context)
-            "delete" -> ValidateDelete(settings, clusterService).executeValidation(context)
+            "rollover" -> ValidateRollover(settings, clusterService).executeValidation(indexName)
+            "delete" -> ValidateDelete(settings, clusterService).executeValidation(indexName)
             else -> {
                 // temporary call until all actions are mapped
-                ValidateNothing(settings, clusterService).executeValidation(context)
+                ValidateNothing(settings, clusterService).executeValidation(indexName)
             }
         }
         return validation
