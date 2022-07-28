@@ -23,29 +23,15 @@ class ValidateRollover(
 ) : Validate(settings, clusterService) {
 
     private val logger = LogManager.getLogger(javaClass)
-    private var info: Map<String, Any>? = null
+    private var validationInfo: Map<String, Any>? = null
 
     // returns a Validate object with updated validation and step status
     @Suppress("ReturnSuppressCount", "ReturnCount")
     override fun executeValidation(context: StepContext): Validate {
-        val indexName = context.metadata.index
         val (rolloverTarget, isDataStream) = getRolloverTargetOrUpdateInfo(context)
         rolloverTarget ?: return this
 
-        val skipRollover = clusterService.state().metadata.index(indexName).getRolloverSkip()
-        if (skipRollover) {
-            stepStatus = Step.StepStatus.COMPLETED
-            validationStatus = ValidationStatus.PASS
-            info = mapOf("message" to getSkipRolloverMessage(indexName))
-            return this
-        }
-
-        if (clusterService.state().metadata.index(indexName).rolloverInfos.containsKey(rolloverTarget)) {
-            stepStatus = Step.StepStatus.COMPLETED
-            validationStatus = ValidationStatus.PASS
-            info = mapOf("message" to getAlreadyRolledOverMessage(indexName, rolloverTarget))
-            return this
-        }
+        if (skipRollover(context, clusterService) || alreadyRolledOver(context, clusterService, rolloverTarget)) return this
 
         if (!isDataStream) {
             if (!hasAlias(context, rolloverTarget) || !isWriteIndex(context, rolloverTarget)
@@ -59,6 +45,29 @@ class ValidateRollover(
 
     // validation logic------------------------------------------------------------------------------------------------
 
+    private fun skipRollover(context: StepContext, clusterService: ClusterService): Boolean {
+        val indexName = context.metadata.index
+        val skipRollover = clusterService.state().metadata.index(indexName).getRolloverSkip()
+        if (skipRollover) {
+            stepStatus = Step.StepStatus.COMPLETED
+            validationStatus = ValidationStatus.PASS
+            validationInfo = mapOf("message" to getSkipRolloverMessage(indexName))
+            return true
+        }
+        return false
+    }
+
+    private fun alreadyRolledOver(context: StepContext, clusterService: ClusterService, alias: String?): Boolean {
+        val indexName = context.metadata.index
+        if (clusterService.state().metadata.index(indexName).rolloverInfos.containsKey(alias)) {
+            stepStatus = Step.StepStatus.COMPLETED
+            validationStatus = ValidationStatus.PASS
+            validationInfo = mapOf("message" to getAlreadyRolledOverMessage(indexName, alias))
+            return true
+        }
+        return false
+    }
+
     private fun hasAlias(context: StepContext, alias: String?): Boolean {
         val indexName = context.metadata.index
         val metadata = context.clusterService.state().metadata
@@ -66,9 +75,11 @@ class ValidateRollover(
 
         logger.debug("Index $indexName has aliases $indexAlias")
         if (indexAlias == null) {
+            val message = getMissingAliasMessage(indexName)
+            logger.warn(message)
             stepStatus = Step.StepStatus.VALIDATION_FAILED
             validationStatus = ValidationStatus.REVALIDATE
-            info = mapOf("message" to getMissingAliasMessage(indexName))
+            validationInfo = mapOf("message" to message)
             return false
         }
         return true
@@ -84,9 +95,11 @@ class ValidateRollover(
             val aliasIndices = metadata.indicesLookup[alias]?.indices?.map { it.index }
             logger.debug("Alias $alias contains indices $aliasIndices")
             if (aliasIndices != null && aliasIndices.size > 1) {
+                val message = getFailedWriteIndexMessage(indexName)
+                logger.warn(message)
                 stepStatus = Step.StepStatus.VALIDATION_FAILED
                 validationStatus = ValidationStatus.REVALIDATE
-                info = mapOf("message" to getFailedWriteIndexMessage(indexName))
+                validationInfo = mapOf("message" to message)
                 return false
             }
         }
@@ -109,7 +122,7 @@ class ValidateRollover(
             logger.warn(message)
             stepStatus = Step.StepStatus.VALIDATION_FAILED
             validationStatus = ValidationStatus.REVALIDATE
-            info = mapOf("message" to message)
+            validationInfo = mapOf("message" to message)
         }
 
         return rolloverTarget to isDataStreamIndex
@@ -118,12 +131,27 @@ class ValidateRollover(
     override fun getUpdatedManagedIndexMetadata(currentMetadata: ManagedIndexMetaData, actionMetaData: ActionMetaData): ManagedIndexMetaData {
         return currentMetadata.copy(
             actionMetaData = actionMetaData,
-            info = info
+            validationInfo = validationInfo,
+            // add a validation error field
         )
     }
 
     // TODO: 7/18/22
     override fun validatePolicy(): Boolean {
+//        val states = request.policy.states
+//        for (state in states) {
+//            for (action in state.actions) {
+//                if (action is ReplicaCountAction) {
+//                    val updatedNumberOfReplicas = action.numOfReplicas
+//                    val error = awarenessReplicaBalance.validate(updatedNumberOfReplicas)
+//                    if (error.isPresent) {
+//                        val ex = ValidationException()
+//                        ex.addValidationError(error.get())
+//                        actionListener.onFailure(ex)
+//                    }
+//                }
+//            }
+//        }
         return true
     }
 
@@ -132,14 +160,9 @@ class ValidateRollover(
         const val name = "attempt_rollover"
         fun getFailedMessage(index: String) = "Failed to rollover index [index=$index]"
         fun getFailedWriteIndexMessage(index: String) = "Not the write index when rollover [index=$index]"
-        fun getMissingAliasMessage(index: String) = "hereee Missing alias when rollover [index=$index]"
-        fun getFailedAliasUpdateMessage(index: String, newIndex: String) =
-            "New index created, but failed to update alias [index=$index, newIndex=$newIndex]"
-        fun getFailedDataStreamRolloverMessage(dataStream: String) = "Failed to rollover data stream [data_stream=$dataStream]"
+        fun getMissingAliasMessage(index: String) = "Missing alias when rollover [index=$index]"
         fun getFailedNoValidAliasMessage(index: String) = "Missing rollover_alias index setting [index=$index]"
-        fun getFailedEvaluateMessage(index: String) = "Failed to evaluate conditions for rollover [index=$index]"
-        fun getPendingMessage(index: String) = "Pending rollover of index [index=$index]"
-        fun getAlreadyRolledOverMessage(index: String, alias: String) =
+        fun getAlreadyRolledOverMessage(index: String, alias: String?) =
             "This index has already been rolled over using this alias, treating as a success [index=$index, alias=$alias]"
         fun getSkipRolloverMessage(index: String) = "Skipped rollover action for [index=$index]"
     }

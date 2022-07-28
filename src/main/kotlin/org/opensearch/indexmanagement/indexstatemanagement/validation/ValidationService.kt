@@ -23,6 +23,7 @@ class ValidationService(
         // map action to validation class
         val validation = when (action.type) {
             "rollover" -> ValidateRollover(settings, clusterService).executeValidation(context)
+            "delete" -> ValidateDelete(settings, clusterService).executeValidation(context)
             else -> {
                 // temporary call until all actions are mapped
                 ValidateNothing(settings, clusterService).executeValidation(context)
