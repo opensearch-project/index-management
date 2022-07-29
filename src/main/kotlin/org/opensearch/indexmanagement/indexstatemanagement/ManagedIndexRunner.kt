@@ -229,7 +229,6 @@ object ManagedIndexRunner :
                     var keepExecuting: Boolean = true
                     // Need to execute at least once for policy to initialize
                     do {
-                        println("RON SAX LOOK HERE: name: ${job.jobName} continuous: ${job.continuous}, keepExecuting: $keepExecuting, id: ${job.id}")
                         // Need to renew lock for current step execution
                         val renewedLock = renewLockForScheduledJob(context, lock as LockModel, errorNotificationRetryPolicy)
                         // Failed to renew lock
@@ -242,7 +241,6 @@ object ManagedIndexRunner :
                         }
                     } while ((job.continuous && keepExecuting)) // Runs until job is no longer continuous or execution should stop
                 } else { // If job is not continuous run once
-                    println("RON SAX LOOK HERE: name: ${job.jobName} continuous: ${job.continuous}, id: ${job.id}")
                     runManagedIndexConfig(job, context)
                 }
                 // Release lock
@@ -322,7 +320,6 @@ object ManagedIndexRunner :
             if (result.metadataSaved) {
                 disableManagedIndexConfig(managedIndexConfig)
             }
-            println("RON SAX return false in line 324")
             return false
         }
 
@@ -355,10 +352,8 @@ object ManagedIndexRunner :
         if (managedIndexConfig.shouldChangePolicy(managedIndexMetaData, action)) {
             return if (initChangePolicy(managedIndexConfig, managedIndexMetaData, action)) {
                 // Don't want to continue execution on old Managed Index Config
-                println("RON SAX: returned false on 357")
                 false
             } else {
-                print("RON SAX returned false on 361")
                 // Managed index config was not updated to safe to continue execution of this job
                 true
             }
@@ -426,12 +421,9 @@ object ManagedIndexRunner :
                     managedIndexConfig.id, settings, threadPool.threadContext, managedIndexConfig.policy.user
                 )
             ) {
-                println("RON SAX STEP: ${step.name}")
                 step.preExecute(logger, stepContext.getUpdatedContext(startingManagedIndexMetaData)).execute().postExecute(logger)
             }
-            println("RON SAX Starting metadata: $startingManagedIndexMetaData")
             var executedManagedIndexMetaData = startingManagedIndexMetaData.getCompletedManagedIndexMetaData(action, step)
-            println("RON SAX executed metadata: $executedManagedIndexMetaData")
 
             if (executedManagedIndexMetaData.isFailed) {
                 try {
@@ -474,7 +466,6 @@ object ManagedIndexRunner :
                 return false
             }
             // Made it to end of successful execution block
-            println("RON SAX: returned true on 478")
             return true
         }
         return false
@@ -560,9 +551,9 @@ object ManagedIndexRunner :
                 savedPolicy = indexResponse.status() == RestStatus.OK
             }
         } catch (e: VersionConflictEngineException) {
-            logger.error("RON SAX VERSION CONFLICT Failed to save policy(${policy.id}) to ManagedIndexConfig(${managedIndexConfig.index}). ${e.message}")
+            logger.error("Failed to save policy(${policy.id}) to ManagedIndexConfig(${managedIndexConfig.index}). ${e.message}")
         } catch (e: Exception) {
-            logger.error("RON SAX OTHER EXCEPTION Failed to save policy(${policy.id}) to ManagedIndexConfig(${managedIndexConfig.index})", e)
+            logger.error("Failed to save policy(${policy.id}) to ManagedIndexConfig(${managedIndexConfig.index})", e)
         }
         return savedPolicy
     }
