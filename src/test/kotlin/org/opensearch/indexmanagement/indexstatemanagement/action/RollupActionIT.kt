@@ -146,6 +146,76 @@ class RollupActionIT : IndexStateManagementRestTestCase() {
         assertIndexRolledUp(indexName, policyID, rollup)
     }
 
+    fun `test data stream rollup action with scripted targetIndex`() {
+        val dataStreamName = "${testIndexName}_data_stream"
+        val policyID = "${testIndexName}_rollup_policy"
+
+        val rollup = ISMRollup(
+            description = "data stream rollup",
+            targetIndex = "rollup_{{ctx.source_index}}",
+            pageSize = 100,
+            dimensions = listOf(
+                DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "1h"),
+                Terms("RatecodeID", "RatecodeID"),
+                Terms("PULocationID", "PULocationID")
+            ),
+            metrics = listOf(
+                RollupMetrics(
+                    sourceField = "passenger_count",
+                    targetField = "passenger_count",
+                    metrics = listOf(Sum(), Min(), Max(), ValueCount(), Average())
+                ),
+                RollupMetrics(
+                    sourceField = "total_amount",
+                    targetField = "total_amount",
+                    metrics = listOf(Max(), Min())
+                )
+            )
+        )
+
+        // Create an ISM policy to rollup backing indices of a data stream.
+        val actionConfig = RollupAction(rollup, 0)
+        val states = listOf(State("rollup", listOf(actionConfig), listOf()))
+        val policy = Policy(
+            id = policyID,
+            description = "data stream rollup policy",
+            schemaVersion = 1L,
+            lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
+            errorNotification = randomErrorNotification(),
+            defaultState = states[0].name,
+            states = states,
+            ismTemplate = listOf(ISMTemplate(listOf(dataStreamName), 100, Instant.now().truncatedTo(ChronoUnit.MILLIS)))
+        )
+        createPolicy(policy, policyID)
+
+        val sourceIndexMappingString = "\"properties\": {\"tpep_pickup_datetime\": { \"type\": \"date\" }, \"RatecodeID\": { \"type\": " +
+            "\"keyword\" }, \"PULocationID\": { \"type\": \"keyword\" }, \"passenger_count\": { \"type\": \"integer\" }, \"total_amount\": " +
+            "{ \"type\": \"double\" }}"
+
+        // Create an index template for a data stream with the given source index mapping.
+        client().makeRequest(
+            "PUT",
+            "/_index_template/rollup-data-stream-template",
+            StringEntity(
+                "{ " +
+                    "\"index_patterns\": [ \"$dataStreamName\" ], " +
+                    "\"data_stream\": { \"timestamp_field\": { \"name\": \"tpep_pickup_datetime\" } }, " +
+                    "\"template\": { \"mappings\": { $sourceIndexMappingString } } }",
+                ContentType.APPLICATION_JSON
+            )
+        )
+        client().makeRequest("PUT", "/_data_stream/$dataStreamName")
+
+        // Ensure rollup works on backing indices of a data stream.
+        val indexName = DataStream.getDefaultBackingIndexName(dataStreamName, 1L)
+        assertIndexRolledUp(indexName, policyID, rollup)
+
+        val catIndex = (cat("indices/rollup_$indexName?format=json&bytes=b") as List<Map<String, Any>>)
+            .find { it["index"] == "rollup_$indexName" }
+
+        assertNotNull(catIndex)
+    }
+
     fun `test rollup action failure`() {
         val indexName = "${testIndexName}_index_failure"
         val policyID = "${testIndexName}_policy_failure"
