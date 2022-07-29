@@ -341,7 +341,6 @@ class TransportExplainAction @Inject constructor(
             val filteredPolicies = mutableListOf<PolicyID?>()
             val enabledStatus = mutableMapOf<String, Boolean>()
             val filteredAppliedPolicies = mutableMapOf<String, Policy>()
-
             filter(0, filteredIndices, filteredMetadata, filteredPolicies, enabledStatus, filteredAppliedPolicies, continuousField)
         }
 
@@ -428,9 +427,7 @@ class TransportExplainAction @Inject constructor(
                                 totalManagedIndices, filteredAppliedPolicies, continuousField
                             )
                         }
-                    }
-                }
-            )
+            }
         }
 
         @Suppress("LongParameterList")
