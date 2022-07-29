@@ -321,4 +321,37 @@ class SnapshotActionIT : IndexStateManagementRestTestCase() {
             assertEquals(AttemptSnapshotStep.getBlockedMessage(denyList, repository, indexName), getExplainManagedIndexMetaData(indexName).info?.get("message"))
         }
     }
+    // Test entire action executes on a continuous index
+    fun `test snapshot on continuous index`() {
+        val indexName = "${testIndexName}_continuous_index"
+        val policyID = "${testIndexName}_policy"
+        val repository = "repository"
+        val snapshot = "snapshot"
+        val actionConfig = SnapshotAction(repository, snapshot, 0)
+        val states = listOf(
+            State("Snapshot", listOf(actionConfig), listOf())
+        )
+
+        waitFor { createRepository(repository) }
+
+        val policy = Policy(
+            id = policyID,
+            description = "$testIndexName description",
+            schemaVersion = 1L,
+            lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
+            errorNotification = randomErrorNotification(),
+            defaultState = states[0].name,
+            states = states
+        )
+        createPolicy(policy, policyID)
+        createIndex(indexName, policyID, continuous = true)
+
+        val managedIndexConfig = getExistingManagedIndexConfig(indexName)
+
+        // Change the start time so the job will trigger in 2 seconds.
+        updateManagedIndexConfigStartTime(managedIndexConfig)
+
+        waitFor { assertSnapshotExists(repository, "snapshot") }
+        waitFor { assertSnapshotFinishedWithSuccess(repository, "snapshot") }
+    }
 }

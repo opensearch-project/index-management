@@ -623,4 +623,27 @@ class RestChangePolicyActionIT : IndexStateManagementRestTestCase() {
             )
         }
     }
+
+    // Check if Continuous field is changed from false to true
+    fun `test changing value of continuous in index`() {
+        val indexName = "${testIndexName}_continuous_check"
+        val policy = createRandomPolicy()
+        createIndex(indexName, policyID = policy.id, continuous = false)
+        Thread.sleep(1_000)
+        var managedIndexConfig = getManagedIndexConfig(indexName)
+        // Check continuous field is false intially
+        assertEquals("Incorrect initial continuous field: ${managedIndexConfig?.continuous}", false, managedIndexConfig?.continuous)
+
+        // Change the policy continuous flag to true
+        val changePolicy = ChangePolicy(policy.id, null, emptyList(), false, continuous = true)
+        // Make Change Policy Request
+        client().makeRequest(
+            RestRequest.Method.POST.toString(),
+            "${RestChangePolicyAction.CHANGE_POLICY_BASE_URI}/$indexName", emptyMap(), changePolicy.toHttpEntity()
+        )
+        Thread.sleep(1_000)
+        managedIndexConfig = getManagedIndexConfig(indexName)
+        // Check continuous flag was changed to true
+        assertEquals("Continuous field did not change: ${managedIndexConfig?.continuous}", true, managedIndexConfig?.continuous)
+    }
 }

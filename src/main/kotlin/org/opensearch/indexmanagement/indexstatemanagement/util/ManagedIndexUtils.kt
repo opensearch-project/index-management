@@ -67,7 +67,8 @@ fun managedIndexConfigIndexRequest(
     policyID: String,
     jobInterval: Int,
     policy: Policy? = null,
-    jobJitter: Double?
+    jobJitter: Double?,
+    continuous: Boolean = false
 ): IndexRequest {
     val managedIndexConfig = ManagedIndexConfig(
         jobName = index,
@@ -82,7 +83,8 @@ fun managedIndexConfigIndexRequest(
         policySeqNo = policy?.seqNo,
         policyPrimaryTerm = policy?.primaryTerm,
         changePolicy = null,
-        jobJitter = jobJitter
+        jobJitter = jobJitter,
+        continuous = continuous
     )
 
     return IndexRequest(INDEX_MANAGEMENT_INDEX)
@@ -164,11 +166,11 @@ fun deleteManagedIndexMetadataRequest(uuid: String): DeleteRequest {
     return DeleteRequest(INDEX_MANAGEMENT_INDEX, managedIndexMetadataID(uuid)).routing(uuid)
 }
 
-fun updateManagedIndexRequest(sweptManagedIndexConfig: SweptManagedIndexConfig): UpdateRequest {
+fun updateManagedIndexRequest(sweptManagedIndexConfig: SweptManagedIndexConfig, continuous: Boolean?): UpdateRequest {
     return UpdateRequest(INDEX_MANAGEMENT_INDEX, sweptManagedIndexConfig.uuid)
         .setIfPrimaryTerm(sweptManagedIndexConfig.primaryTerm)
         .setIfSeqNo(sweptManagedIndexConfig.seqNo)
-        .doc(getPartialChangePolicyBuilder(sweptManagedIndexConfig.changePolicy))
+        .doc(getPartialChangePolicyBuilder(sweptManagedIndexConfig.changePolicy, continuous = continuous))
 }
 
 /**
@@ -377,7 +379,7 @@ fun ManagedIndexMetaData.getCompletedManagedIndexMetaData(
 
 val ManagedIndexMetaData.isSuccessfulDelete: Boolean
     get() = (this.actionMetaData?.name == DeleteAction.name && !this.actionMetaData!!.failed) &&
-        (this.stepMetaData?.name == DeleteAction.name && this.stepMetaData!!.stepStatus == Step.StepStatus.COMPLETED) &&
+        (this.stepMetaData?.name == "attempt_delete" && this.stepMetaData!!.stepStatus == Step.StepStatus.COMPLETED) &&
         (this.policyRetryInfo?.failed != true)
 
 val ManagedIndexMetaData.isFailed: Boolean

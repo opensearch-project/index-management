@@ -370,7 +370,7 @@ class TransportChangePolicyAction @Inject constructor(
                 val currentStateName = indexUuidToCurrentState[sweptConfig.uuid]
                 val updatedChangePolicy = changePolicy
                     .copy(isSafe = sweptConfig.policy?.isSafeToChange(currentStateName, policy, changePolicy) == true, user = this.user)
-                bulkUpdateManagedIndexRequest.add(updateManagedIndexRequest(sweptConfig.copy(changePolicy = updatedChangePolicy)))
+                bulkUpdateManagedIndexRequest.add(updateManagedIndexRequest(sweptConfig.copy(changePolicy = updatedChangePolicy), continuous = request.continuous))
                 mapOfItemIdToIndex[id] = Index(sweptConfig.index, sweptConfig.uuid)
             }
             client.bulk(

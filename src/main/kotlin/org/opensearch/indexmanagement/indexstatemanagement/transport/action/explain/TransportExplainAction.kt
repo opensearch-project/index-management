@@ -83,7 +83,6 @@ class TransportExplainAction @Inject constructor(
 ) : HandledTransportAction<ExplainRequest, ExplainResponse>(
     ExplainAction.NAME, transportService, actionFilters, ::ExplainRequest
 ) {
-
     override fun doExecute(task: Task, request: ExplainRequest, listener: ActionListener<ExplainResponse>) {
         ExplainHandler(client, listener, request).start()
     }
@@ -117,6 +116,7 @@ class TransportExplainAction @Inject constructor(
         private val indexMetadatas = mutableListOf<ManagedIndexMetaData?>()
         private var totalManagedIndices = 0
         private val appliedPolicies: MutableMap<String, Policy> = mutableMapOf()
+        private val continuousField: MutableMap<IndexName, Boolean> = mutableMapOf()
 
         @Suppress("SpreadOperator", "NestedBlockDepth")
         fun start() {
@@ -193,6 +193,7 @@ class TransportExplainAction @Inject constructor(
                                     "policy_id" to managedIndex.policyID,
                                     "enabled" to managedIndex.enabled.toString()
                                 )
+                                continuousField[managedIndex.index] = managedIndex.continuous
                                 if (showPolicy) {
                                     managedIndex.policy?.let { appliedPolicies[managedIndex.index] = it }
                                 }
@@ -204,7 +205,7 @@ class TransportExplainAction @Inject constructor(
                                     // edge case: if specify query param pagination size to be 0
                                     // we still show total managed indices
                                     indexNames.clear()
-                                    sendResponse(indexNames, indexMetadatas, indexPolicyIDs, enabledState, totalManagedIndices, appliedPolicies)
+                                    sendResponse(indexNames, indexMetadatas, indexPolicyIDs, enabledState, totalManagedIndices, appliedPolicies, continuousField)
                                     return
                                 } else {
                                     // Clear and add the managedIndices from the response to preserve the sort order and size
@@ -230,7 +231,7 @@ class TransportExplainAction @Inject constructor(
                                     return
                                 }
                                 indexNames.clear()
-                                sendResponse(indexNames, indexMetadatas, indexPolicyIDs, enabledState, totalManagedIndices, appliedPolicies)
+                                sendResponse(indexNames, indexMetadatas, indexPolicyIDs, enabledState, totalManagedIndices, appliedPolicies, continuousField)
                                 return
                             }
                             actionListener.onFailure(ExceptionsHelper.unwrapCause(t) as Exception)
@@ -327,7 +328,7 @@ class TransportExplainAction @Inject constructor(
             managedIndicesMetaDataMap.clear()
 
             if (user == null || indexNames.isEmpty()) {
-                sendResponse(indexNames, indexMetadatas, indexPolicyIDs, enabledState, totalManagedIndices, appliedPolicies)
+                sendResponse(indexNames, indexMetadatas, indexPolicyIDs, enabledState, totalManagedIndices, appliedPolicies, continuousField)
             } else {
                 filterAndSendResponse(threadContext)
             }
@@ -340,29 +341,95 @@ class TransportExplainAction @Inject constructor(
             val filteredPolicies = mutableListOf<PolicyID?>()
             val enabledStatus = mutableMapOf<String, Boolean>()
             val filteredAppliedPolicies = mutableMapOf<String, Policy>()
+            filter(0, filteredIndices, filteredMetadata, filteredPolicies, enabledStatus, filteredAppliedPolicies, continuousField)
+        }
 
-            CoroutineScope(Dispatchers.IO).launch {
-                // filter out indicies for which user doesn't have manage index permissions
-                for (i in 0 until indexNames.count()) {
-                    val request = ManagedIndexRequest().indices(indexNames[i])
-                    try {
-                        client.suspendUntil<NodeClient, AcknowledgedResponse> { execute(ManagedIndexAction.INSTANCE, request, it) }
-                        filteredIndices.add(indexNames[i])
-                        filteredMetadata.add(indexMetadatas[i])
-                        filteredPolicies.add(indexPolicyIDs[i])
-                        enabledState[indexNames[i]]?.let { enabledStatus[indexNames[i]] = it }
-                        appliedPolicies[indexNames[i]]?.let { filteredAppliedPolicies[indexNames[i]] = it }
-                    } catch (e: OpenSearchSecurityException) {
-                        totalManagedIndices -= 1
-                    } catch (e: Exception) {
-                        actionListener.onFailure(e)
+        @Suppress("LongParameterList")
+        private fun filter(
+            current: Int,
+            filteredIndices: MutableList<String>,
+            filteredMetadata: MutableList<ManagedIndexMetaData?>,
+            filteredPolicies: MutableList<PolicyID?>,
+            enabledStatus: MutableMap<String, Boolean>,
+            filteredAppliedPolicies: MutableMap<String, Policy>,
+            continuousStatus: MutableMap<String, Boolean>
+        ) {
+            val request = ManagedIndexRequest().indices(indexNames[current])
+            client.execute(
+                ManagedIndexAction.INSTANCE,
+                request,
+                object : ActionListener<AcknowledgedResponse> {
+                    override fun onResponse(response: AcknowledgedResponse) {
+                        filteredIndices.add(indexNames[current])
+                        filteredMetadata.add(indexMetadatas[current])
+                        filteredPolicies.add(indexPolicyIDs[current])
+                        enabledState[indexNames[current]]?.let { enabledStatus[indexNames[current]] = it }
+                        appliedPolicies[indexNames[current]]?.let { filteredAppliedPolicies[indexNames[current]] = it }
+                        continuousField[indexNames[current]]?.let { continuousStatus[indexNames[current]] = it }
+                        if (current < indexNames.count() - 1) {
+                            // do nothing - skip the index and go to next one
+                            filter(current + 1, filteredIndices, filteredMetadata, filteredPolicies, enabledStatus, filteredAppliedPolicies, continuousStatus)
+                        } else {
+                            sendResponse(
+                                filteredIndices, filteredMetadata, filteredPolicies, enabledStatus,
+                                totalManagedIndices, filteredAppliedPolicies, continuousStatus
+                            )
+                        }
+                    }
+
+                    override fun onFailure(e: Exception) {
+                        when (e is OpenSearchSecurityException) {
+                            true -> {
+                                totalManagedIndices -= 1
+                                if (current < indexNames.count() - 1) {
+                                    // do nothing - skip the index and go to next one
+                                    filter(
+                                        current + 1,
+                                        filteredIndices,
+                                        filteredMetadata,
+                                        filteredPolicies,
+                                        enabledStatus,
+                                        filteredAppliedPolicies,
+                                        continuousStatus
+                                    )
+                                } else {
+                                    sendResponse(
+                                        filteredIndices, filteredMetadata, filteredPolicies, enabledStatus,
+                                        totalManagedIndices, filteredAppliedPolicies, continuousStatus
+                                    )
+                                }
+                            }
+
+                            false -> {
+                                actionListener.onFailure(e)
+                            }
+                        }
+
+                        CoroutineScope(Dispatchers.IO).launch {
+                            // filter out indicies for which user doesn't have manage index permissions
+                            for (i in 0 until indexNames.count()) {
+                                val request = ManagedIndexRequest().indices(indexNames[i])
+                                try {
+                                    client.suspendUntil<NodeClient, AcknowledgedResponse> { execute(ManagedIndexAction.INSTANCE, request, it) }
+                                    filteredIndices.add(indexNames[i])
+                                    filteredMetadata.add(indexMetadatas[i])
+                                    filteredPolicies.add(indexPolicyIDs[i])
+                                    enabledState[indexNames[i]]?.let { enabledStatus[indexNames[i]] = it }
+                                    appliedPolicies[indexNames[i]]?.let { filteredAppliedPolicies[indexNames[i]] = it }
+                                } catch (e: OpenSearchSecurityException) {
+                                    totalManagedIndices -= 1
+                                } catch (e: Exception) {
+                                    actionListener.onFailure(e)
+                                }
+                            }
+                            sendResponse(
+                                filteredIndices, filteredMetadata, filteredPolicies, enabledStatus,
+                                totalManagedIndices, filteredAppliedPolicies, continuousField
+                            )
+                        }
                     }
                 }
-                sendResponse(
-                    filteredIndices, filteredMetadata, filteredPolicies, enabledStatus,
-                    totalManagedIndices, filteredAppliedPolicies
-                )
-            }
+            )
         }
 
         @Suppress("LongParameterList")
@@ -372,9 +439,10 @@ class TransportExplainAction @Inject constructor(
             policyIDs: List<PolicyID?>,
             enabledStatus: Map<String, Boolean>,
             totalIndices: Int,
-            policies: Map<String, Policy>
+            policies: Map<String, Policy>,
+            continuous: Map<String, Boolean>,
         ) {
-            actionListener.onResponse(ExplainResponse(indices, policyIDs, metadata, totalIndices, enabledStatus, policies))
+            actionListener.onResponse(ExplainResponse(indices, policyIDs, metadata, totalIndices, enabledStatus, policies, continuous))
         }
 
         @Suppress("ReturnCount")

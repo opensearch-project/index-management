@@ -63,7 +63,9 @@ class RestAddPolicyAction : BaseRestHandler() {
 
         val policyID = requireNotNull(body.getOrDefault("policy_id", null)) { "Missing policy_id" }
 
-        val addPolicyRequest = AddPolicyRequest(indices.toList(), policyID as String, indexType)
+        val continuous = body?.get("continuous") as Boolean
+
+        val addPolicyRequest = AddPolicyRequest(indices.toList(), policyID as String, indexType, continuous)
 
         return RestChannelConsumer { channel ->
             client.execute(AddPolicyAction.INSTANCE, addPolicyRequest, RestToXContentListener(channel))

@@ -15,7 +15,8 @@ class AddPolicyRequestTests : OpenSearchTestCase() {
     fun `test add policy request`() {
         val indices = listOf("index1", "index2")
         val policyID = "policyID"
-        val req = AddPolicyRequest(indices, policyID, DEFAULT_INDEX_TYPE)
+        val continuous = false
+        val req = AddPolicyRequest(indices, policyID, DEFAULT_INDEX_TYPE, continuous)
 
         val out = BytesStreamOutput()
         req.writeTo(out)
@@ -28,7 +29,8 @@ class AddPolicyRequestTests : OpenSearchTestCase() {
     fun `test add policy request with non default index type and multiple indices fails`() {
         val indices = listOf("index1", "index2")
         val policyID = "policyID"
-        val req = AddPolicyRequest(indices, policyID, "non-existent-index-type")
+        val continuous = false
+        val req = AddPolicyRequest(indices, policyID, "non-existent-index-type", continuous)
         val actualException: String? = req.validate()?.validationErrors()?.firstOrNull()
         val expectedException: String = AddPolicyRequest.MULTIPLE_INDICES_CUSTOM_INDEX_TYPE_ERROR
         assertEquals("Add policy request should have failed validation with specific exception", actualException, expectedException)

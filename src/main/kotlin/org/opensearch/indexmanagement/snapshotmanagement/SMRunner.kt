@@ -61,7 +61,7 @@ object SMRunner :
         this.clusterService = clusterService
         return this
     }
-
+    @Suppress("MagicNumber")
     private val backoffPolicy: BackoffPolicy = BackoffPolicy.exponentialBackoff(
         TimeValue.timeValueMillis(1000L), 3
     )

@@ -54,7 +54,7 @@ class RestAddPolicyActionIT : IndexStateManagementRestTestCase() {
         val response = client().makeRequest(
             POST.toString(),
             "${RestAddPolicyAction.ADD_POLICY_BASE_URI}/$index",
-            StringEntity("{ \"policy_id\": \"${policy.id}\" }", APPLICATION_JSON)
+            StringEntity("{ \"policy_id\": \"${policy.id}\",\"continuous\": false }", APPLICATION_JSON)
         )
         assertEquals("Unexpected RestStatus", RestStatus.OK, response.restStatus())
         val actualMessage = response.asMap()
@@ -81,7 +81,7 @@ class RestAddPolicyActionIT : IndexStateManagementRestTestCase() {
         val response = client().makeRequest(
             POST.toString(),
             "${RestAddPolicyAction.ADD_POLICY_BASE_URI}/$index",
-            StringEntity("{ \"policy_id\": \"${policy.id}\" }", APPLICATION_JSON)
+            StringEntity("{ \"policy_id\": \"${policy.id}\",\"continuous\": false }", APPLICATION_JSON)
         )
         assertEquals("Unexpected RestStatus", RestStatus.OK, response.restStatus())
         val actualMessage = response.asMap()
@@ -113,7 +113,7 @@ class RestAddPolicyActionIT : IndexStateManagementRestTestCase() {
         val response = client().makeRequest(
             POST.toString(),
             "${RestAddPolicyAction.ADD_POLICY_BASE_URI}/$indexOne,$indexTwo",
-            StringEntity("{ \"policy_id\": \"${newPolicy.id}\" }", APPLICATION_JSON)
+            StringEntity("{ \"policy_id\": \"${newPolicy.id}\",\"continuous\": false }", APPLICATION_JSON)
         )
         assertEquals("Unexpected RestStatus", RestStatus.OK, response.restStatus())
         val actualMessage = response.asMap()
@@ -153,7 +153,7 @@ class RestAddPolicyActionIT : IndexStateManagementRestTestCase() {
         val response = client().makeRequest(
             POST.toString(),
             "${RestAddPolicyAction.ADD_POLICY_BASE_URI}/$indexPattern*",
-            StringEntity("{ \"policy_id\": \"${newPolicy.id}\" }", APPLICATION_JSON)
+            StringEntity("{ \"policy_id\": \"${newPolicy.id}\",\"continuous\": false }", APPLICATION_JSON)
         )
         assertEquals("Unexpected RestStatus", RestStatus.OK, response.restStatus())
         val actualMessage = response.asMap()
@@ -198,7 +198,7 @@ class RestAddPolicyActionIT : IndexStateManagementRestTestCase() {
         val response = client().makeRequest(
             POST.toString(),
             "${RestAddPolicyAction.ADD_POLICY_BASE_URI}/.*",
-            StringEntity("{ \"policy_id\": \"${policy.id}\" }", APPLICATION_JSON)
+            StringEntity("{ \"policy_id\": \"${policy.id}\",\"continuous\": false }", APPLICATION_JSON)
         )
         assertEquals("Unexpected RestStatus", RestStatus.OK, response.restStatus())
         val actualMessage = response.asMap()
@@ -237,7 +237,6 @@ class RestAddPolicyActionIT : IndexStateManagementRestTestCase() {
             assertEquals(policy.id, getPolicyIDOfManagedIndex(indexFour))
         }
     }
-
     /**
      * The util UUID method doesn't work for hidden indices because strict warning check, the following method skips the strict check
      */

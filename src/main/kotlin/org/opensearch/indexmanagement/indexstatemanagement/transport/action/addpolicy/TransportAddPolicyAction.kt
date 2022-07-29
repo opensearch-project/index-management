@@ -345,10 +345,9 @@ class TransportAddPolicyAction @Inject constructor(
                 val bulkReq = BulkRequest().timeout(TimeValue.timeValueMillis(bulkReqTimeout))
                 indicesToAdd.forEach { (uuid, name) ->
                     bulkReq.add(
-                        managedIndexConfigIndexRequest(name, uuid, request.policyID, jobInterval, policy = policy.copy(user = this.user), jobJitter)
+                        managedIndexConfigIndexRequest(name, uuid, request.policyID, jobInterval, policy = policy.copy(user = this.user), jobJitter, continuous = request.continuous)
                     )
                 }
-
                 client.bulk(
                     bulkReq,
                     object : ActionListener<BulkResponse> {
