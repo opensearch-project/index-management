@@ -225,7 +225,7 @@ object ManagedIndexRunner :
             if (lock == null) {
                 logger.debug("Could not acquire lock [${lock?.lockId}] for ${job.index}")
             } else {
-                if (job?.continuous) {
+                if (job.continuous) {
                     var keepExecuting: Boolean = true
                     // Need to execute at least once for policy to initialize
                     do {
@@ -234,10 +234,10 @@ object ManagedIndexRunner :
                         val renewedLock = renewLockForScheduledJob(context, lock as LockModel, errorNotificationRetryPolicy)
                         // Failed to renew lock
                         if (renewedLock == null) {
-                            logger.error("Could not renew lock [${lock?.lockId}] for ${job.index}")
+                            logger.error("Could not renew lock [${lock.lockId}] for ${job.index}")
                             break
                         } else {
-                            lock = renewedLock as LockModel
+                            lock = renewedLock
                             keepExecuting = runManagedIndexConfig(job, context)
                         }
                     } while ((job.continuous && keepExecuting)) // Runs until job is no longer continuous or execution should stop
@@ -246,7 +246,7 @@ object ManagedIndexRunner :
                     runManagedIndexConfig(job, context)
                 }
                 // Release lock
-                if (lock == null || !releaseLockForScheduledJob(context, lock as LockModel)) {
+                if (lock == null || !releaseLockForScheduledJob(context, lock)) {
                     logger.debug("Could not release lock [${lock?.lockId}] for ${job.index}")
                 }
             }
@@ -353,9 +353,15 @@ object ManagedIndexRunner :
         }
 
         if (managedIndexConfig.shouldChangePolicy(managedIndexMetaData, action)) {
-            initChangePolicy(managedIndexConfig, managedIndexMetaData, action)
-            println("RON SAX: returned true on 357")
-            return true
+            return if (initChangePolicy(managedIndexConfig, managedIndexMetaData, action)) {
+                // Don't want to continue execution on old Managed Index Config
+                println("RON SAX: returned false on 357")
+                false
+            } else {
+                print("RON SAX returned false on 361")
+                // Managed index config was not updated to safe to continue execution of this job
+                true
+            }
         }
 
         val shouldBackOff = action?.shouldBackoff(currentActionMetaData, action.configRetry)
@@ -398,7 +404,7 @@ object ManagedIndexRunner :
         // If this action is not allowed and the step to be executed is the first step in the action then we will fail
         // as this action has been removed from the AllowList, but if its not the first step we will let it finish as it's already inflight
         if (action?.isAllowed(allowList) == false && step != null && action.isFirstStep(step.name) && action.type != TransitionsAction.name) {
-            val info = mapOf("message" to "Attempted to execute action=${action?.type} which is not allowed.")
+            val info = mapOf("message" to "Attempted to execute action=${action.type} which is not allowed.")
             val updated = updateManagedIndexMetaData(
                 managedIndexMetaData.copy(
                     policyRetryInfo = PolicyRetryInfoMetaData(true, 0), info = info
@@ -468,7 +474,7 @@ object ManagedIndexRunner :
                 return false
             }
             // Made it to end of successful execution block
-            println("RON SAX: returned true on 471")
+            println("RON SAX: returned true on 478")
             return true
         }
         return false
@@ -554,9 +560,9 @@ object ManagedIndexRunner :
                 savedPolicy = indexResponse.status() == RestStatus.OK
             }
         } catch (e: VersionConflictEngineException) {
-            logger.error("Failed to save policy(${policy.id}) to ManagedIndexConfig(${managedIndexConfig.index}). ${e.message}")
+            logger.error("RON SAX VERSION CONFLICT Failed to save policy(${policy.id}) to ManagedIndexConfig(${managedIndexConfig.index}). ${e.message}")
         } catch (e: Exception) {
-            logger.error("Failed to save policy(${policy.id}) to ManagedIndexConfig(${managedIndexConfig.index})", e)
+            logger.error("RON SAX OTHER EXCEPTION Failed to save policy(${policy.id}) to ManagedIndexConfig(${managedIndexConfig.index})", e)
         }
         return savedPolicy
     }
@@ -572,7 +578,7 @@ object ManagedIndexRunner :
                 logger.error("Failed to update ManagedIndexConfig(${managedIndexConfig.index}) job interval")
             }
         } catch (e: VersionConflictEngineException) {
-            logger.error("RON SAX FAILED HERE: Failed to update ManagedIndexConfig(${managedIndexConfig.index}) job interval. ${e.message}")
+            logger.error("Failed to update ManagedIndexConfig(${managedIndexConfig.index}) job interval. ${e.message}")
         } catch (e: Exception) {
             logger.error("Failed to update ManagedIndexConfig(${managedIndexConfig.index}) job interval", e)
         }
@@ -722,18 +728,19 @@ object ManagedIndexRunner :
      * Initializes the change policy process where we will get the policy using the change policy's policyID, update the [ManagedIndexMetaData]
      * to reflect the new policy, and save the new policy to the [ManagedIndexConfig] while resetting the change policy to null
      */
+    // Returning true if Managed Index Config was updated to avoid continuous execution on outdated Managed Index Config
     @Suppress("ReturnCount", "ComplexMethod")
     private suspend fun initChangePolicy(
         managedIndexConfig: ManagedIndexConfig,
         managedIndexMetaData: ManagedIndexMetaData,
         actionToExecute: Action?
-    ) {
+    ): Boolean {
 
         // should never happen since we only call this if there is a changePolicy, but we'll do it to make changePolicy non null
         val changePolicy = managedIndexConfig.changePolicy
         if (changePolicy == null) {
             logger.debug("initChangePolicy was called with a null ChangePolicy, ManagedIndexConfig: $managedIndexConfig")
-            return
+            return false
         }
 
         // get the policy we'll attempt to change to
@@ -778,7 +785,7 @@ object ManagedIndexRunner :
                 // if it is unsafe to change then we set safe back to false so we don't keep doing this check every execution
                 if (managedIndexConfig.policy?.isSafeToChange(managedIndexMetaData.stateMetaData?.name, policy, changePolicy) != true) {
                     updateManagedIndexConfig(managedIndexConfig.copy(changePolicy = managedIndexConfig.changePolicy.copy(isSafe = false)))
-                    return
+                    return true
                 }
             }
         }
@@ -792,12 +799,12 @@ object ManagedIndexRunner :
         val updated = updateManagedIndexMetaData(updatedManagedIndexMetaData)
 
         if (!updated.metadataSaved || policy == null) {
-            println("RON SAX: coundn't save metadata here")
-            return
+            return false
         }
 
         // Change the policy and user stored on the job from changePolicy, this will also set the changePolicy to null on the job
-        savePolicyToManagedIndexConfig(managedIndexConfig, policy.copy(user = changePolicy.user))
+        // Return a flag to make sure saving correct
+        return savePolicyToManagedIndexConfig(managedIndexConfig, policy.copy(user = changePolicy.user))
     }
 
     @Suppress("TooGenericExceptionCaught")
