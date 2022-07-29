@@ -21,7 +21,7 @@ import java.util.Locale
 class ActionRetryIT : IndexStateManagementRestTestCase() {
     private val testIndexName = javaClass.simpleName.toLowerCase(Locale.ROOT)
 
-    /**dateNothing
+    /**
      * We are forcing RollOver to fail in this Integ test.
      */
     fun `test failed action`() {
@@ -35,8 +35,6 @@ class ActionRetryIT : IndexStateManagementRestTestCase() {
         val indexName = "${testIndexName}_index_1"
         val policyID = "${testIndexName}_testPolicyName_1"
         createPolicyJson(testPolicy, policyID)
-        // changed expectedInfoString to use validateRollover message
-        // val expectedInfoString = mapOf("message" to AttemptRolloverStep.getFailedNoValidAliasMessage(indexName)).toString()
         val expectedInfoString = mapOf("message" to ValidateRollover.getFailedNoValidAliasMessage(indexName)).toString()
 
         createIndex(indexName, policyID)
@@ -53,10 +51,9 @@ class ActionRetryIT : IndexStateManagementRestTestCase() {
 
         waitFor {
             val managedIndexMetaData = getExplainManagedIndexMetaData(indexName)
-            // changed number of consumed Retries
             assertEquals(
                 ActionMetaData(
-                    "rollover", managedIndexMetaData.actionMetaData?.startTime, 0, false, 0,
+                    "rollover", managedIndexMetaData.actionMetaData?.startTime, 0, false, 1,
                     managedIndexMetaData.actionMetaData?.lastRetryTime, null
                 ),
                 managedIndexMetaData.actionMetaData
@@ -70,10 +67,9 @@ class ActionRetryIT : IndexStateManagementRestTestCase() {
 
         waitFor {
             val managedIndexMetaData = getExplainManagedIndexMetaData(indexName)
-            // changed number of consumed Retries
             assertEquals(
                 ActionMetaData(
-                    "rollover", managedIndexMetaData.actionMetaData?.startTime, 0, false, 0,
+                    "rollover", managedIndexMetaData.actionMetaData?.startTime, 0, false, 2,
                     managedIndexMetaData.actionMetaData?.lastRetryTime, null
                 ),
                 managedIndexMetaData.actionMetaData
@@ -87,10 +83,9 @@ class ActionRetryIT : IndexStateManagementRestTestCase() {
 
         waitFor {
             val managedIndexMetaData = getExplainManagedIndexMetaData(indexName)
-            // changed number of consumed Retries and set failed to false
             assertEquals(
                 ActionMetaData(
-                    "rollover", managedIndexMetaData.actionMetaData?.startTime, 0, false, 0,
+                    "rollover", managedIndexMetaData.actionMetaData?.startTime, 0, true, 2,
                     managedIndexMetaData.actionMetaData?.lastRetryTime, null
                 ),
                 managedIndexMetaData.actionMetaData

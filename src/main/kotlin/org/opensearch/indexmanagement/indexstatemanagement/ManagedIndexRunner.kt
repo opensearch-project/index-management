@@ -412,9 +412,9 @@ object ManagedIndexRunner :
                     logger.info("Revalidate")
 
                     // update meta data
-                    if (!updateManagedIndexMetaData(actionError.getUpdatedManagedIndexMetadata(managedIndexMetaData, currentActionMetaData), updateResult).metadataSaved) {
-                        logger.error("Failed to update validation meta data : ${step.name}")
-                    }
+//                    if (!updateManagedIndexMetaData(actionError.getUpdatedManagedIndexMetadata(managedIndexMetaData, currentActionMetaData), updateResult).metadataSaved) {
+//                        logger.error("Failed to update validation meta data : ${step.name}")
+//                    }
 
                     return // stops the job and runs again at next interval
                 }
@@ -422,9 +422,9 @@ object ManagedIndexRunner :
                     logger.info("Fail forever")
 
                     // update meta data
-                    if (!updateManagedIndexMetaData(actionError.getUpdatedManagedIndexMetadata(managedIndexMetaData, currentActionMetaData), updateResult).metadataSaved) {
-                        logger.error("Failed to update validation meta data : ${step.name}")
-                    }
+//                    if (!updateManagedIndexMetaData(actionError.getUpdatedManagedIndexMetadata(managedIndexMetaData, currentActionMetaData), updateResult).metadataSaved) {
+//                        logger.error("Failed to update validation meta data : ${step.name}")
+//                    }
                     disableManagedIndexConfig(managedIndexConfig) // disables future jobs from running
                     return // stops the current job and fails forever
                 }

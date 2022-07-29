@@ -18,7 +18,7 @@ class ValidationService(
 ) {
 
     // overarching validate function
-    fun validate(action: Action, context: StepContext): Validate {
+    fun validate(action: Action, context: StepContext): ValidationMetaData {
         val indexName = context.metadata.index
         // map action to validation class
         val validation = when (action.type) {
@@ -29,6 +29,7 @@ class ValidationService(
                 ValidateNothing(settings, clusterService).executeValidation(indexName)
             }
         }
-        return validation
+
+        return ValidationMetaData(validation.validationInfo.toString(), validation.validationStatus)
     }
 }

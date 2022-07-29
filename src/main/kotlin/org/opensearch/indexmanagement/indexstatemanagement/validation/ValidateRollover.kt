@@ -22,7 +22,6 @@ class ValidateRollover(
 ) : Validate(settings, clusterService) {
 
     private val logger = LogManager.getLogger(javaClass)
-    private var validationInfo: Map<String, Any>? = null
 
     // returns a Validate object with updated validation and step status
     @Suppress("ReturnSuppressCount", "ReturnCount")
