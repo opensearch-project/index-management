@@ -427,7 +427,9 @@ class TransportExplainAction @Inject constructor(
                                 totalManagedIndices, filteredAppliedPolicies, continuousField
                             )
                         }
-            }
+                    }
+                }
+            )
         }
 
         @Suppress("LongParameterList")
