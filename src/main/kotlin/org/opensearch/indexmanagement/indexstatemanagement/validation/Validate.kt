@@ -24,7 +24,7 @@ abstract class Validate(
 
     var validationStatus = ValidationStatus.PASS
     var stepStatus = Step.StepStatus.STARTING
-    var validationInfo: Map<String, Any>? = null
+    var validationInfo: String? = "Starting Validation"
 
     abstract fun executeValidation(indexName: String): Validate
 

@@ -37,7 +37,7 @@ class ValidateRollover(
                 return this
             }
         }
-        validationInfo = mapOf("validation message" to getValidationPassedMessage(indexName))
+        validationInfo = getValidationPassedMessage(indexName)
         return this
     }
 
@@ -48,7 +48,7 @@ class ValidateRollover(
         if (skipRollover) {
             stepStatus = Step.StepStatus.COMPLETED
             validationStatus = ValidationStatus.PASS
-            validationInfo = mapOf("validation message" to getSkipRolloverMessage(indexName))
+            validationInfo = getSkipRolloverMessage(indexName)
             return true
         }
         return false
@@ -58,7 +58,7 @@ class ValidateRollover(
         if (clusterService.state().metadata.index(indexName).rolloverInfos.containsKey(alias)) {
             stepStatus = Step.StepStatus.COMPLETED
             validationStatus = ValidationStatus.PASS
-            validationInfo = mapOf("validation message" to getAlreadyRolledOverMessage(indexName, alias))
+            validationInfo = getAlreadyRolledOverMessage(indexName, alias)
             return true
         }
         return false
@@ -74,7 +74,7 @@ class ValidateRollover(
             logger.warn(message)
             stepStatus = Step.StepStatus.VALIDATION_FAILED
             validationStatus = ValidationStatus.REVALIDATE
-            validationInfo = mapOf("validation message" to message)
+            validationInfo = message
             return false
         }
         return true
@@ -93,7 +93,7 @@ class ValidateRollover(
                 logger.warn(message)
                 stepStatus = Step.StepStatus.VALIDATION_FAILED
                 validationStatus = ValidationStatus.REVALIDATE
-                validationInfo = mapOf("validation message" to message)
+                validationInfo = message
                 return false
             }
         }
@@ -115,7 +115,7 @@ class ValidateRollover(
             logger.warn(message)
             stepStatus = Step.StepStatus.VALIDATION_FAILED
             validationStatus = ValidationStatus.REVALIDATE
-            validationInfo = mapOf("validation message" to message)
+            validationInfo = message
         }
 
         return rolloverTarget to isDataStreamIndex
@@ -124,8 +124,6 @@ class ValidateRollover(
     override fun getUpdatedManagedIndexMetadata(currentMetadata: ManagedIndexMetaData, actionMetaData: ActionMetaData): ManagedIndexMetaData {
         return currentMetadata.copy(
             actionMetaData = actionMetaData,
-            validationInfo = validationInfo,
-            // add a validation error field
         )
     }
 

@@ -8,7 +8,6 @@ package org.opensearch.indexmanagement.indexstatemanagement.validation
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.settings.Settings
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Action
-import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepContext
 import org.opensearch.indexmanagement.util.OpenForTesting
 
 @OpenForTesting
@@ -18,8 +17,7 @@ class ValidationService(
 ) {
 
     // overarching validate function
-    fun validate(action: Action, context: StepContext): ValidationMetaData {
-        val indexName = context.metadata.index
+    fun validate(action: Action, indexName: String): ValidationMetaData {
         // map action to validation class
         val validation = when (action.type) {
             "rollover" -> ValidateRollover(settings, clusterService).executeValidation(indexName)

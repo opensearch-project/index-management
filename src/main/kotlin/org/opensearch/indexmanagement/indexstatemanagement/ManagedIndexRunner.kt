@@ -407,20 +407,27 @@ object ManagedIndexRunner :
         @Suppress("ComplexCondition", "MaxLineLength")
         if (updateResult.metadataSaved && state != null && action != null && step != null && currentActionMetaData != null) {
             if (validationServiceEnabled) {
-                val actionError = validationService.validate(action, stepContext)
+                val actionError = validationService.validate(action, stepContext.metadata.index)
+                logger.warn("Information Here")
+                logger.warn(actionError.validationMessage)
+                logger.warn(actionError.validationStatus)
                 if (actionError.validationStatus == Validate.ValidationStatus.REVALIDATE) {
                     logger.info("Revalidate")
-
-                    // update meta data
-//                    if (!updateManagedIndexMetaData(actionError.getUpdatedManagedIndexMetadata(managedIndexMetaData, currentActionMetaData), updateResult).metadataSaved) {
-//                        logger.error("Failed to update validation meta data : ${step.name}")
-//                    }
-
-                    return // stops the job and runs again at next interval
+                    val newMetaData = managedIndexMetaData.copy(
+                        info = mapOf("message" to "I AM TESTING"), // this is just not updating
+                        validationInfo = mapOf("validation message" to actionError.validationMessage)
+                    )
+                    if (!updateManagedIndexMetaData(newMetaData).metadataSaved) {
+                        logger.error("Failed to update validation meta data : ${step.name}")
+                    }
+                    logger.info(managedIndexMetaData)
+                    return
                 }
                 if (actionError.validationStatus == Validate.ValidationStatus.FAIL) {
                     logger.info("Fail forever")
-
+                    if (!updateManagedIndexMetaData(managedIndexMetaData.copy(validationInfo = mapOf("validation message" to actionError.validationMessage)), updateResult).metadataSaved) {
+                        logger.error("Failed to update validation meta data : ${step.name}")
+                    }
                     // update meta data
 //                    if (!updateManagedIndexMetaData(actionError.getUpdatedManagedIndexMetadata(managedIndexMetaData, currentActionMetaData), updateResult).metadataSaved) {
 //                        logger.error("Failed to update validation meta data : ${step.name}")
@@ -429,6 +436,7 @@ object ManagedIndexRunner :
                     return // stops the current job and fails forever
                 }
             }
+
             // Step null check is done in getStartingManagedIndexMetaData
             withClosableContext(
                 IndexManagementSecurityContext(
@@ -715,7 +723,6 @@ object ManagedIndexRunner :
         } catch (e: Exception) {
             logger.error("Failed to save ManagedIndexMetaData for [index=${managedIndexMetaData.index}]", e)
         }
-
         return result
     }
 

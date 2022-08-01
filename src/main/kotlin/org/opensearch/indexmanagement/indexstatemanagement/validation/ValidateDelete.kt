@@ -45,7 +45,7 @@ class ValidateDelete(
         if (!indexExists) {
             stepStatus = Step.StepStatus.VALIDATION_FAILED
             validationStatus = ValidationStatus.REVALIDATE
-            validationInfo = mapOf("message" to getNoIndexMessage(indexName))
+            validationInfo = getNoIndexMessage(indexName)
             return false
         }
         return true
@@ -61,15 +61,14 @@ class ValidateDelete(
         } catch (e: Exception) {
             stepStatus = Step.StepStatus.VALIDATION_FAILED
             validationStatus = ValidationStatus.REVALIDATE
-            validationInfo = mapOf("message" to getIndexNotValidMessage(indexName))
+            validationInfo = getIndexNotValidMessage(indexName)
         }
         return true
     }
 
     override fun getUpdatedManagedIndexMetadata(currentMetadata: ManagedIndexMetaData, actionMetaData: ActionMetaData): ManagedIndexMetaData {
         return currentMetadata.copy(
-            actionMetaData = actionMetaData,
-            info = validationInfo
+            actionMetaData = actionMetaData
         )
     }
 
