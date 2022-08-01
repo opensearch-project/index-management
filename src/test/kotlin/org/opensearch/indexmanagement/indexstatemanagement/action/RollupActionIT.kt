@@ -209,11 +209,7 @@ class RollupActionIT : IndexStateManagementRestTestCase() {
         // Ensure rollup works on backing indices of a data stream.
         val indexName = DataStream.getDefaultBackingIndexName(dataStreamName, 1L)
         assertIndexRolledUp(indexName, policyID, rollup)
-
-        val catIndex = (cat("indices/rollup_$indexName?format=json&bytes=b") as List<Map<String, Any>>)
-            .find { it["index"] == "rollup_$indexName" }
-
-        assertNotNull(catIndex)
+        assertIndexExists("rollup_$indexName")
     }
 
     fun `test rollup action failure`() {

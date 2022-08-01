@@ -18,7 +18,7 @@ import org.opensearch.script.TemplateScript
 
 object RollupFieldValueExpressionResolver {
 
-    private val validTopContextFields = setOf("source_index")
+    private val validTopContextFields = setOf(Rollup.SOURCE_INDEX_FIELD)
 
     private lateinit var scriptService: ScriptService
 

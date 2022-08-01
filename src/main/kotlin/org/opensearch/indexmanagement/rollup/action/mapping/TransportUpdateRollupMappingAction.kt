@@ -51,7 +51,8 @@ class TransportUpdateRollupMappingAction @Inject constructor(
     private val log = LogManager.getLogger(javaClass)
 
     override fun checkBlock(request: UpdateRollupMappingRequest, state: ClusterState): ClusterBlockException? {
-        return state.blocks.indicesBlockedException(ClusterBlockLevel.METADATA_WRITE, arrayOf(request.rollup.targetIndex))
+        val targetIndexResolvedName = RollupFieldValueExpressionResolver.resolve(request.rollup, request.rollup.targetIndex)
+        return state.blocks.indicesBlockedException(ClusterBlockLevel.METADATA_WRITE, arrayOf(targetIndexResolvedName))
     }
 
     @Suppress("ReturnCount", "LongMethod")
@@ -115,8 +116,7 @@ class TransportUpdateRollupMappingAction @Inject constructor(
         }
 
         // TODO: Does schema_version get overwritten?
-        val targetIndexResovledName = RollupFieldValueExpressionResolver.resolve(request.rollup, request.rollup.targetIndex)
-        val putMappingRequest = PutMappingRequest(targetIndexResovledName).source(metaMappings)
+        val putMappingRequest = PutMappingRequest(targetIndexResolvedName).source(metaMappings)
         client.admin().indices().putMapping(
             putMappingRequest,
             object : ActionListener<AcknowledgedResponse> {
