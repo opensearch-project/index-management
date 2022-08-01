@@ -14,10 +14,10 @@ import org.opensearch.indexmanagement.indexstatemanagement.randomErrorNotificati
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings
 import org.opensearch.indexmanagement.indexstatemanagement.step.readonly.SetReadOnlyStep
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StateMetaData
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ActionMetaData
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.PolicyRetryInfoMetaData
-import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StateMetaData
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepMetaData
 import org.opensearch.indexmanagement.waitFor
 import java.time.Instant
@@ -81,9 +81,9 @@ class IndexStateManagementHistoryIT : IndexStateManagementRestTestCase() {
             stateMetaData = StateMetaData("ReadOnlyState", actualHistory.stateMetaData!!.startTime),
             actionMetaData = ActionMetaData(ReadOnlyAction.name, actualHistory.actionMetaData!!.startTime, 0, false, 0, 0, null),
             stepMetaData = StepMetaData("set_read_only", actualHistory.stepMetaData!!.startTime, Step.StepStatus.COMPLETED),
+            validationMetaData = null,
             policyRetryInfo = PolicyRetryInfoMetaData(false, 0),
-            info = mapOf("message" to SetReadOnlyStep.getSuccessMessage(indexName)),
-            validationInfo = null
+            info = mapOf("message" to SetReadOnlyStep.getSuccessMessage(indexName))
         )
 
         assertEquals(expectedHistory, actualHistory)
@@ -149,9 +149,9 @@ class IndexStateManagementHistoryIT : IndexStateManagementRestTestCase() {
             stateMetaData = StateMetaData("ReadOnlyState", actualHistory.stateMetaData!!.startTime),
             actionMetaData = ActionMetaData(ReadOnlyAction.name, actualHistory.actionMetaData!!.startTime, 0, false, 0, 0, null),
             stepMetaData = StepMetaData("set_read_only", actualHistory.stepMetaData!!.startTime, Step.StepStatus.COMPLETED),
+            validationMetaData = null,
             policyRetryInfo = PolicyRetryInfoMetaData(false, 0),
-            info = mapOf("message" to SetReadOnlyStep.getSuccessMessage(indexName)),
-            validationInfo = null
+            info = mapOf("message" to SetReadOnlyStep.getSuccessMessage(indexName))
         )
 
         assertEquals(expectedHistory, actualHistory)
@@ -217,9 +217,9 @@ class IndexStateManagementHistoryIT : IndexStateManagementRestTestCase() {
             stateMetaData = StateMetaData("ReadOnlyState", actualHistory.stateMetaData!!.startTime),
             actionMetaData = ActionMetaData(ReadOnlyAction.name, actualHistory.actionMetaData!!.startTime, 0, false, 0, 0, null),
             stepMetaData = StepMetaData("set_read_only", actualHistory.stepMetaData!!.startTime, Step.StepStatus.COMPLETED),
+            validationMetaData = null,
             policyRetryInfo = PolicyRetryInfoMetaData(false, 0),
-            info = mapOf("message" to SetReadOnlyStep.getSuccessMessage(indexName)),
-            validationInfo = null
+            info = mapOf("message" to SetReadOnlyStep.getSuccessMessage(indexName))
         )
 
         assertEquals(expectedHistory, actualHistory)
@@ -279,9 +279,9 @@ class IndexStateManagementHistoryIT : IndexStateManagementRestTestCase() {
             stateMetaData = StateMetaData("ReadOnlyState", actualHistory.stateMetaData!!.startTime),
             actionMetaData = null,
             stepMetaData = null,
+            validationMetaData = null,
             policyRetryInfo = PolicyRetryInfoMetaData(false, 0),
-            info = mapOf("message" to "Successfully initialized policy: $policyID"),
-            validationInfo = null
+            info = mapOf("message" to "Successfully initialized policy: $policyID")
         )
 
         assertEquals(expectedHistory, actualHistory)
@@ -311,9 +311,9 @@ class IndexStateManagementHistoryIT : IndexStateManagementRestTestCase() {
             stateMetaData = StateMetaData(states[0].name, actualHistory1.stateMetaData!!.startTime),
             actionMetaData = ActionMetaData(ReadOnlyAction.name, actualHistory1.actionMetaData!!.startTime, 0, false, 0, 0, null),
             stepMetaData = StepMetaData("set_read_only", actualHistory1.stepMetaData!!.startTime, Step.StepStatus.COMPLETED),
+            validationMetaData = null,
             policyRetryInfo = PolicyRetryInfoMetaData(false, 0),
-            info = mapOf("message" to SetReadOnlyStep.getSuccessMessage(indexName)),
-            validationInfo = null
+            info = mapOf("message" to SetReadOnlyStep.getSuccessMessage(indexName))
         )
 
         assertEquals(expectedHistory1, actualHistory1)
@@ -381,9 +381,9 @@ class IndexStateManagementHistoryIT : IndexStateManagementRestTestCase() {
             stateMetaData = StateMetaData(name = states[0].name, startTime = actualHistory.stateMetaData!!.startTime),
             actionMetaData = null,
             stepMetaData = null,
+            validationMetaData = null,
             policyRetryInfo = PolicyRetryInfoMetaData(false, 0),
-            info = mapOf("message" to "Successfully initialized policy: $policyID"),
-            validationInfo = null
+            info = mapOf("message" to "Successfully initialized policy: $policyID")
         )
 
         assertEquals(expectedHistory, actualHistory)

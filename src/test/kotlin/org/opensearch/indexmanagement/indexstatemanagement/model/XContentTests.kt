@@ -248,9 +248,9 @@ class XContentTests : OpenSearchTestCase() {
             stateMetaData = null,
             actionMetaData = null,
             stepMetaData = null,
+            validationMetaData = null,
             policyRetryInfo = null,
-            info = null,
-            validationInfo = null
+            info = null
         )
         val metadataString = metadata.toJsonString()
         val parsedMetaData = ManagedIndexMetaData.parse(parser(metadataString))

@@ -77,7 +77,6 @@ import org.opensearch.indexmanagement.indexstatemanagement.util.sendNotification
 import org.opensearch.indexmanagement.indexstatemanagement.util.shouldBackoff
 import org.opensearch.indexmanagement.indexstatemanagement.util.shouldChangePolicy
 import org.opensearch.indexmanagement.indexstatemanagement.util.updateDisableManagedIndexRequest
-import org.opensearch.indexmanagement.indexstatemanagement.validation.Validate
 import org.opensearch.indexmanagement.indexstatemanagement.validation.ValidationService
 import org.opensearch.indexmanagement.opensearchapi.IndexManagementSecurityContext
 import org.opensearch.indexmanagement.opensearchapi.convertToMap
@@ -88,6 +87,7 @@ import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.opensearchapi.withClosableContext
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Action
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
+import org.opensearch.indexmanagement.spi.indexstatemanagement.Validate
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ActionMetaData
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.PolicyRetryInfoMetaData
@@ -407,29 +407,30 @@ object ManagedIndexRunner :
         @Suppress("ComplexCondition", "MaxLineLength")
         if (updateResult.metadataSaved && state != null && action != null && step != null && currentActionMetaData != null) {
             if (validationServiceEnabled) {
-                val actionError = validationService.validate(action, stepContext.metadata.index)
+                val validationMetaData = validationService.validate(action, stepContext.metadata.index)
                 logger.warn("Information Here")
-                logger.warn(actionError.validationMessage)
-                logger.warn(actionError.validationStatus)
-                if (actionError.validationStatus == Validate.ValidationStatus.REVALIDATE) {
+                logger.warn(validationMetaData.validationMessage)
+                logger.warn(validationMetaData.validationStatus)
+                if (validationMetaData.validationStatus == Validate.ValidationStatus.REVALIDATE) {
                     logger.info("Revalidate")
                     val newMetaData = managedIndexMetaData.copy(
                         info = mapOf("message" to "I AM TESTING"), // this is just not updating
-                        validationInfo = mapOf("validation message" to actionError.validationMessage)
+                        validationMetaData = validationMetaData
                     )
+                    logger.info(newMetaData)
                     if (!updateManagedIndexMetaData(newMetaData).metadataSaved) {
                         logger.error("Failed to update validation meta data : ${step.name}")
                     }
                     logger.info(managedIndexMetaData)
                     return
                 }
-                if (actionError.validationStatus == Validate.ValidationStatus.FAIL) {
+                if (validationMetaData.validationStatus == Validate.ValidationStatus.FAIL) {
                     logger.info("Fail forever")
-                    if (!updateManagedIndexMetaData(managedIndexMetaData.copy(validationInfo = mapOf("validation message" to actionError.validationMessage)), updateResult).metadataSaved) {
-                        logger.error("Failed to update validation meta data : ${step.name}")
-                    }
+//                    if (!updateManagedIndexMetaData(managedIndexMetaData.copy(validationInfo = mapOf("validation message" to validationMetaData.validationMessage)), updateResult).metadataSaved) {
+//                        logger.error("Failed to update validation meta data : ${step.name}")
+//                    }
                     // update meta data
-//                    if (!updateManagedIndexMetaData(actionError.getUpdatedManagedIndexMetadata(managedIndexMetaData, currentActionMetaData), updateResult).metadataSaved) {
+//                    if (!updateManagedIndexMetaData(validationMetaData.getUpdatedManagedIndexMetadata(managedIndexMetaData, currentActionMetaData), updateResult).metadataSaved) {
 //                        logger.error("Failed to update validation meta data : ${step.name}")
 //                    }
                     disableManagedIndexConfig(managedIndexConfig) // disables future jobs from running
@@ -613,9 +614,9 @@ object ManagedIndexRunner :
             stateMetaData = null,
             actionMetaData = null,
             stepMetaData = null,
+            validationMetaData = null,
             policyRetryInfo = PolicyRetryInfoMetaData(failed = true, consumedRetries = 0),
-            info = mapOf("message" to "Fail to load policy: $policyID"),
-            validationInfo = null
+            info = mapOf("message" to "Fail to load policy: $policyID")
         )
     }
 
@@ -642,9 +643,9 @@ object ManagedIndexRunner :
                 stateMetaData = stateMetaData,
                 actionMetaData = null,
                 stepMetaData = null,
+                validationMetaData = null,
                 policyRetryInfo = PolicyRetryInfoMetaData(failed = false, consumedRetries = 0),
-                info = mapOf("message" to "Successfully initialized policy: ${policy.id}"),
-                validationInfo = null
+                info = mapOf("message" to "Successfully initialized policy: ${policy.id}")
             )
             managedIndexMetaData.policySeqNo == null || managedIndexMetaData.policyPrimaryTerm == null ->
                 // If there is seqNo and PrimaryTerm it is first time populating Policy.

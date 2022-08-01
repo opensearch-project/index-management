@@ -14,6 +14,7 @@ import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ActionMetaData
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.util.OpenForTesting
+import org.opensearch.indexmanagement.spi.indexstatemanagement.Validate
 
 @OpenForTesting
 class ValidateRollover(
@@ -149,7 +150,6 @@ class ValidateRollover(
     @Suppress("TooManyFunctions")
     companion object {
         const val name = "attempt_rollover"
-        fun getFailedMessage(index: String) = "Failed to rollover index [index=$index]"
         fun getFailedWriteIndexMessage(index: String) = "Not the write index when rollover [index=$index]"
         fun getMissingAliasMessage(index: String) = "Missing alias when rollover [index=$index]"
         fun getFailedNoValidAliasMessage(index: String) = "Missing rollover_alias index setting [index=$index]"

@@ -9,6 +9,7 @@ import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.settings.Settings
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Action
 import org.opensearch.indexmanagement.util.OpenForTesting
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ValidationMetaData
 
 @OpenForTesting
 class ValidationService(

@@ -10,6 +10,7 @@ import org.opensearch.common.settings.Settings
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ActionMetaData
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.util.OpenForTesting
+import org.opensearch.indexmanagement.spi.indexstatemanagement.Validate
 
 @OpenForTesting
 class ValidateNothing(

@@ -76,9 +76,9 @@ abstract class IndexStateManagementIntegTestCase : OpenSearchIntegTestCase() {
         stateMetaData = StateMetaData("ReplicaCountState", 1234),
         actionMetaData = null,
         stepMetaData = null,
+        validationMetaData = null,
         policyRetryInfo = PolicyRetryInfoMetaData(false, 0),
-        info = mapOf("message" to "Happy moving"),
-        validationInfo = null
+        info = mapOf("message" to "Happy moving")
     )
 
     override fun nodePlugins(): Collection<Class<out Plugin>> {

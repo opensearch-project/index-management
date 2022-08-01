@@ -21,6 +21,7 @@ import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedInde
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepContext
 import org.opensearch.jobscheduler.spi.utils.LockService
 import org.opensearch.script.ScriptService
+import org.opensearch.indexmanagement.spi.indexstatemanagement.Validate
 
 class ValidateDeleteTests : OpenSearchTestCase() {
     private val scriptService: ScriptService = mock()
