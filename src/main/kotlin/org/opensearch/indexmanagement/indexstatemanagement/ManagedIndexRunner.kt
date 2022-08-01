@@ -413,12 +413,7 @@ object ManagedIndexRunner :
                 logger.warn(validationMetaData.validationStatus)
                 if (validationMetaData.validationStatus == Validate.ValidationStatus.REVALIDATE) {
                     logger.info("Revalidate")
-                    val newMetaData = managedIndexMetaData.copy(
-                        info = mapOf("message" to "I AM TESTING"), // this is just not updating
-                        validationMetaData = validationMetaData
-                    )
-                    logger.info(newMetaData)
-                    if (!updateManagedIndexMetaData(newMetaData).metadataSaved) {
+                    if (!updateManagedIndexMetaData(managedIndexMetaData.copy(validationMetaData = validationMetaData), updateResult).metadataSaved) {
                         logger.error("Failed to update validation meta data : ${step.name}")
                     }
                     logger.info(managedIndexMetaData)
@@ -433,8 +428,8 @@ object ManagedIndexRunner :
 //                    if (!updateManagedIndexMetaData(validationMetaData.getUpdatedManagedIndexMetadata(managedIndexMetaData, currentActionMetaData), updateResult).metadataSaved) {
 //                        logger.error("Failed to update validation meta data : ${step.name}")
 //                    }
-                    disableManagedIndexConfig(managedIndexConfig) // disables future jobs from running
-                    return // stops the current job and fails forever
+                    disableManagedIndexConfig(managedIndexConfig)
+                    return
                 }
             }
 

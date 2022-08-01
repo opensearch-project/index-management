@@ -180,7 +180,6 @@ data class ManagedIndexMetaData(
         const val INDEX_CREATION_DATE = "index_creation_date"
         const val TRANSITION_TO = "transition_to"
         const val INFO = "info"
-        const val VALIDATION_INFO = "validation_info"
         const val ENABLED = "enabled"
 
         fun fromStreamInput(si: StreamInput): ManagedIndexMetaData {

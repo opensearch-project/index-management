@@ -8,6 +8,8 @@ package org.opensearch.indexmanagement.indexstatemanagement.validation
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.settings.Settings
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Action
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ActionMetaData
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.util.OpenForTesting
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ValidationMetaData
 
@@ -30,5 +32,12 @@ class ValidationService(
         }
 
         return ValidationMetaData(validation.validationInfo.toString(), validation.validationStatus)
+    }
+
+    fun getUpdatedManagedIndexMetadata(currentMetadata: ManagedIndexMetaData, actionMetaData: ActionMetaData, validationMetaData: ValidationMetaData): ManagedIndexMetaData {
+        return currentMetadata.copy(
+            actionMetaData = actionMetaData,
+            validationMetaData = validationMetaData
+        )
     }
 }
