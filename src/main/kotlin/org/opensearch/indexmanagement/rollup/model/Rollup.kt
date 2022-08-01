@@ -24,7 +24,6 @@ import org.opensearch.indexmanagement.indexstatemanagement.util.WITH_USER
 import org.opensearch.indexmanagement.opensearchapi.instant
 import org.opensearch.indexmanagement.opensearchapi.optionalTimeField
 import org.opensearch.indexmanagement.opensearchapi.optionalUserField
-import org.opensearch.indexmanagement.rollup.util.RollupFieldValueExpressionResolver
 import org.opensearch.indexmanagement.util.IndexUtils
 import org.opensearch.indexmanagement.util.NO_ID
 import org.opensearch.indexmanagement.util._ID
@@ -96,9 +95,6 @@ data class Rollup(
             require(delay >= MINIMUM_DELAY) { "Delay must be non-negative if set" }
             require(delay <= Instant.now().toEpochMilli()) { "Delay must be less than the current unix time" }
         }
-
-        val targetIndexResolvedName = RollupFieldValueExpressionResolver.resolve(this, targetIndex)
-        require(targetIndexResolvedName.contains("*") == false)
     }
 
     override fun isEnabled() = enabled

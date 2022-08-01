@@ -28,6 +28,7 @@ import org.opensearch.commons.authuser.User
 import org.opensearch.indexmanagement.IndexManagementIndices
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
 import org.opensearch.indexmanagement.rollup.model.Rollup
+import org.opensearch.indexmanagement.rollup.util.RollupFieldValueExpressionResolver
 import org.opensearch.indexmanagement.rollup.util.parseRollup
 import org.opensearch.indexmanagement.settings.IndexManagementSettings
 import org.opensearch.indexmanagement.util.IndexUtils
@@ -143,6 +144,12 @@ class TransportIndexRollupAction @Inject constructor(
         }
 
         private fun putRollup() {
+            if (!validateTargetIndexName()) {
+                return actionListener.onFailure(OpenSearchStatusException(
+                    "target_index value is invalid: ${request.rollup.targetIndex}",
+                    RestStatus.BAD_REQUEST)
+                )
+            }
             val rollup = request.rollup.copy(schemaVersion = IndexUtils.indexManagementConfigSchemaVersion, user = this.user)
             request.index(INDEX_MANAGEMENT_INDEX)
                 .id(request.rollup.id)
@@ -171,6 +178,11 @@ class TransportIndexRollupAction @Inject constructor(
                     }
                 }
             )
+        }
+
+        private fun validateTargetIndexName(): Boolean {
+            val targetIndexResolvedName = RollupFieldValueExpressionResolver.resolve(request.rollup, request.rollup.targetIndex)
+            return targetIndexResolvedName.contains("*") == false && targetIndexResolvedName.contains("?") == false
         }
     }
 }
