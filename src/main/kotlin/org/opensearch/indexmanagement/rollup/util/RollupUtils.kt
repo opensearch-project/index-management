@@ -24,6 +24,7 @@ import org.opensearch.index.query.DisMaxQueryBuilder
 import org.opensearch.index.query.MatchAllQueryBuilder
 import org.opensearch.index.query.MatchPhraseQueryBuilder
 import org.opensearch.index.query.QueryBuilder
+import org.opensearch.index.query.QueryStringQueryBuilder
 import org.opensearch.index.query.RangeQueryBuilder
 import org.opensearch.index.query.TermQueryBuilder
 import org.opensearch.index.query.TermsQueryBuilder
@@ -358,6 +359,11 @@ fun Rollup.rewriteQueryBuilder(queryBuilder: QueryBuilder, fieldNameMappingTypeM
             newMatchPhraseQueryBuilder.queryName(queryBuilder.queryName())
             newMatchPhraseQueryBuilder.boost(queryBuilder.boost())
         }
+        is QueryStringQueryBuilder -> {
+            queryBuilder
+            // For future specification
+        }
+
         // We do nothing otherwise, the validation logic should have already verified so not throwing an exception
         else -> queryBuilder
     }

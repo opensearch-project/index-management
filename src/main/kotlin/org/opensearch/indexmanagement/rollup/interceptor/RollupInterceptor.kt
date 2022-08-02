@@ -16,6 +16,7 @@ import org.opensearch.index.query.DisMaxQueryBuilder
 import org.opensearch.index.query.MatchAllQueryBuilder
 import org.opensearch.index.query.MatchPhraseQueryBuilder
 import org.opensearch.index.query.QueryBuilder
+import org.opensearch.index.query.QueryStringQueryBuilder
 import org.opensearch.index.query.RangeQueryBuilder
 import org.opensearch.index.query.TermQueryBuilder
 import org.opensearch.index.query.TermsQueryBuilder
@@ -209,8 +210,11 @@ class RollupInterceptor(
                 }
                 fieldMappings.add(RollupFieldMapping(RollupFieldMapping.Companion.FieldType.DIMENSION, query.fieldName(), Dimension.Type.TERMS.type))
             }
+            is QueryStringQueryBuilder -> {
+                // parse the query
+            }
             else -> {
-                throw IllegalArgumentException("The ${query.name} query is currently not supported in rollups")
+                throw IllegalArgumentException("The ${query.name} query is currently not supported for rollup search.")
             }
         }
 
