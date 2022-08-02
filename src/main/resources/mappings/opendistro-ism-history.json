@@ -131,6 +131,16 @@
             }
           }
         },
+        "validate": {
+          "properties": {
+            "validation_message": {
+              "type": "keyword"
+            },
+            "validation_status": {
+              "type": "keyword"
+            }
+          }
+        },
         "retry_info": {
           "properties": {
             "failed": {

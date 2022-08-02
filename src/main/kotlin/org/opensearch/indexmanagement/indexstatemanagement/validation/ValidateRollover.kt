@@ -38,7 +38,7 @@ class ValidateRollover(
                 return this
             }
         }
-        validationInfo = getValidationPassedMessage(indexName)
+        validationMessage = getValidationPassedMessage(indexName)
         return this
     }
 
@@ -49,7 +49,7 @@ class ValidateRollover(
         if (skipRollover) {
             stepStatus = Step.StepStatus.COMPLETED
             validationStatus = ValidationStatus.PASS
-            validationInfo = getSkipRolloverMessage(indexName)
+            validationMessage = getSkipRolloverMessage(indexName)
             return true
         }
         return false
@@ -59,7 +59,7 @@ class ValidateRollover(
         if (clusterService.state().metadata.index(indexName).rolloverInfos.containsKey(alias)) {
             stepStatus = Step.StepStatus.COMPLETED
             validationStatus = ValidationStatus.PASS
-            validationInfo = getAlreadyRolledOverMessage(indexName, alias)
+            validationMessage = getAlreadyRolledOverMessage(indexName, alias)
             return true
         }
         return false
@@ -75,7 +75,7 @@ class ValidateRollover(
             logger.warn(message)
             stepStatus = Step.StepStatus.VALIDATION_FAILED
             validationStatus = ValidationStatus.REVALIDATE
-            validationInfo = message
+            validationMessage = message
             return false
         }
         return true
@@ -94,7 +94,7 @@ class ValidateRollover(
                 logger.warn(message)
                 stepStatus = Step.StepStatus.VALIDATION_FAILED
                 validationStatus = ValidationStatus.REVALIDATE
-                validationInfo = message
+                validationMessage = message
                 return false
             }
         }
@@ -116,7 +116,7 @@ class ValidateRollover(
             logger.warn(message)
             stepStatus = Step.StepStatus.VALIDATION_FAILED
             validationStatus = ValidationStatus.REVALIDATE
-            validationInfo = message
+            validationMessage = message
         }
 
         return rolloverTarget to isDataStreamIndex

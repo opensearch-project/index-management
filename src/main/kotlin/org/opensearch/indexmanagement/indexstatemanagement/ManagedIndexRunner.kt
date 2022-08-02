@@ -408,14 +408,15 @@ object ManagedIndexRunner :
         if (updateResult.metadataSaved && state != null && action != null && step != null && currentActionMetaData != null) {
             if (validationServiceEnabled) {
                 val validationMetaData = validationService.validate(action, stepContext.metadata.index)
-                logger.warn("Information Here")
-                logger.warn(validationMetaData.validationMessage)
-                logger.warn(validationMetaData.validationStatus)
                 if (validationMetaData.validationStatus == Validate.ValidationStatus.REVALIDATE) {
                     logger.info("Revalidate")
-                    if (!updateManagedIndexMetaData(managedIndexMetaData.copy(validationMetaData = validationMetaData), updateResult).metadataSaved) {
+                    val newMetaData = managedIndexMetaData.copy(info = mapOf("TESTING" to "HELLO"), validationMetaData = validationMetaData)
+                    if (!updateManagedIndexMetaData(newMetaData, updateResult).metadataSaved) {
                         logger.error("Failed to update validation meta data : ${step.name}")
                     }
+//                    if (!updateManagedIndexMetaData(managedIndexMetaData.copy(validationMetaData = validationMetaData)).metadataSaved) {
+//                        logger.error("Failed to update validation meta data : ${step.name}")
+//                    }
                     logger.info(managedIndexMetaData)
                     return
                 }

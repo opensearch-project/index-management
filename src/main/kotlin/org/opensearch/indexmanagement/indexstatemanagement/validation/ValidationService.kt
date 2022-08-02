@@ -31,7 +31,7 @@ class ValidationService(
             }
         }
 
-        return ValidationMetaData(validation.validationInfo.toString(), validation.validationStatus)
+        return ValidationMetaData(validation.validationMessage.toString(), validation.validationStatus)
     }
 
     fun getUpdatedManagedIndexMetadata(currentMetadata: ManagedIndexMetaData, actionMetaData: ActionMetaData, validationMetaData: ValidationMetaData): ManagedIndexMetaData {

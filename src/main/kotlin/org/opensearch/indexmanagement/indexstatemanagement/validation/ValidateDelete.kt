@@ -46,7 +46,7 @@ class ValidateDelete(
         if (!indexExists) {
             stepStatus = Step.StepStatus.VALIDATION_FAILED
             validationStatus = ValidationStatus.REVALIDATE
-            validationInfo = getNoIndexMessage(indexName)
+            validationMessage = getNoIndexMessage(indexName)
             return false
         }
         return true
@@ -62,7 +62,7 @@ class ValidateDelete(
         } catch (e: Exception) {
             stepStatus = Step.StepStatus.VALIDATION_FAILED
             validationStatus = ValidationStatus.REVALIDATE
-            validationInfo = getIndexNotValidMessage(indexName)
+            validationMessage = getIndexNotValidMessage(indexName)
         }
         return true
     }
