@@ -145,9 +145,11 @@ class TransportIndexRollupAction @Inject constructor(
 
         private fun putRollup() {
             if (!validateTargetIndexName()) {
-                return actionListener.onFailure(OpenSearchStatusException(
-                    "target_index value is invalid: ${request.rollup.targetIndex}",
-                    RestStatus.BAD_REQUEST)
+                return actionListener.onFailure(
+                    OpenSearchStatusException(
+                        "target_index value is invalid: ${request.rollup.targetIndex}",
+                        RestStatus.BAD_REQUEST
+                    )
                 )
             }
             val rollup = request.rollup.copy(schemaVersion = IndexUtils.indexManagementConfigSchemaVersion, user = this.user)
