@@ -119,7 +119,7 @@ object ManagedIndexRunner :
     private lateinit var scriptService: ScriptService
     private lateinit var settings: Settings
     private lateinit var imIndices: IndexManagementIndices
-    private lateinit var validationService: ValidationService
+    lateinit var validationService: ValidationService
     private lateinit var ismHistory: IndexStateManagementHistory
     private lateinit var skipExecFlag: SkipExecution
     private lateinit var threadPool: ThreadPool
@@ -410,25 +410,18 @@ object ManagedIndexRunner :
                 val validationMetaData = validationService.validate(action, stepContext.metadata.index)
                 if (validationMetaData.validationStatus == Validate.ValidationStatus.REVALIDATE) {
                     logger.info("Revalidate")
-                    val newMetaData = managedIndexMetaData.copy(info = mapOf("TESTING" to "HELLO"), validationMetaData = validationMetaData)
+                    var newMetaData = managedIndexMetaData.copy(validationMetaData = validationMetaData)
                     if (!updateManagedIndexMetaData(newMetaData, updateResult).metadataSaved) {
                         logger.error("Failed to update validation meta data : ${step.name}")
                     }
-//                    if (!updateManagedIndexMetaData(managedIndexMetaData.copy(validationMetaData = validationMetaData)).metadataSaved) {
-//                        logger.error("Failed to update validation meta data : ${step.name}")
-//                    }
-                    logger.info(managedIndexMetaData)
                     return
                 }
                 if (validationMetaData.validationStatus == Validate.ValidationStatus.FAIL) {
                     logger.info("Fail forever")
-//                    if (!updateManagedIndexMetaData(managedIndexMetaData.copy(validationInfo = mapOf("validation message" to validationMetaData.validationMessage)), updateResult).metadataSaved) {
-//                        logger.error("Failed to update validation meta data : ${step.name}")
-//                    }
-                    // update meta data
-//                    if (!updateManagedIndexMetaData(validationMetaData.getUpdatedManagedIndexMetadata(managedIndexMetaData, currentActionMetaData), updateResult).metadataSaved) {
-//                        logger.error("Failed to update validation meta data : ${step.name}")
-//                    }
+                    var newMetaData = managedIndexMetaData.copy(validationMetaData = validationMetaData)
+                    if (!updateManagedIndexMetaData(newMetaData, updateResult).metadataSaved) {
+                        logger.error("Failed to update validation meta data : ${step.name}")
+                    }
                     disableManagedIndexConfig(managedIndexConfig)
                     return
                 }

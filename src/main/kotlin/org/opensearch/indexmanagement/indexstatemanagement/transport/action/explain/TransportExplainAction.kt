@@ -42,6 +42,8 @@ import org.opensearch.indexmanagement.indexstatemanagement.ManagedIndexCoordinat
 import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexConfig
 import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
 import org.opensearch.indexmanagement.common.model.rest.SearchParams
+import org.opensearch.indexmanagement.indexstatemanagement.ManagedIndexRunner.validationService
+import org.opensearch.indexmanagement.indexstatemanagement.action.RolloverAction
 import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.getManagedIndexMetadata
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.managedIndex.ManagedIndexAction
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.managedIndex.ManagedIndexRequest
@@ -302,6 +304,8 @@ class TransportExplainAction @Inject constructor(
                 var metadataMapFromManagedIndex = managedIndicesMetaDataMap[indexName]
                 indexPolicyIDs.add(metadataMapFromManagedIndex?.get("policy_id"))
 
+                // hard coded rollover action as next action
+                var validationMetaData = validationService.validate(RolloverAction(null, null, null, null, 1), indexName)
                 var managedIndexMetadata: ManagedIndexMetaData? = null
                 val managedIndexMetadataDocUUID = indices[indexName]?.let { managedIndexMetadataID(it) }
                 val configIndexMetadataMap = metadataMap[managedIndexMetadataDocUUID]
@@ -322,6 +326,7 @@ class TransportExplainAction @Inject constructor(
                         info?.let { managedIndexMetadata = clusterStateMetadata?.copy(info = it) }
                     }
                 }
+                managedIndexMetadata = managedIndexMetadata?.copy(validationMetaData = validationMetaData)
                 indexMetadatas.add(managedIndexMetadata)
             }
             managedIndicesMetaDataMap.clear()
