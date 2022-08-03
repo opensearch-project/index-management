@@ -92,6 +92,14 @@ class TransportIndexRollupAction @Inject constructor(
             if (response.isAcknowledged) {
                 log.info("Successfully created or updated $INDEX_MANAGEMENT_INDEX with newest mappings.")
                 if (request.opType() == DocWriteRequest.OpType.CREATE) {
+                    if (!validateTargetIndexName()) {
+                        return actionListener.onFailure(
+                            OpenSearchStatusException(
+                                "target_index value is invalid: ${request.rollup.targetIndex}",
+                                RestStatus.BAD_REQUEST
+                            )
+                        )
+                    }
                     putRollup()
                 } else {
                     getRollup()

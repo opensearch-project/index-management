@@ -7,6 +7,7 @@ package org.opensearch.indexmanagement.indexstatemanagement.step.rollup
 
 import org.apache.logging.log4j.LogManager
 import org.opensearch.ExceptionsHelper
+import org.opensearch.OpenSearchException
 import org.opensearch.action.support.WriteRequest
 import org.opensearch.action.support.master.AcknowledgedResponse
 import org.opensearch.index.engine.VersionConflictEngineException
@@ -62,7 +63,7 @@ class AttemptCreateRollupJobStep(private val action: RollupAction) : Step(name) 
             }
         } catch (e: RemoteTransportException) {
             processFailure(rollup.id, indexName, ExceptionsHelper.unwrapCause(e) as Exception)
-        } catch (e: Exception) {
+        } catch (e: OpenSearchException) {
             processFailure(rollup.id, indexName, e)
         }
 
