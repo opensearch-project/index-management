@@ -63,7 +63,7 @@ class AttemptCreateRollupJobStep(private val action: RollupAction) : Step(name) 
             }
         } catch (e: RemoteTransportException) {
             processFailure(rollup.id, indexName, ExceptionsHelper.unwrapCause(e) as Exception)
-        } catch (e: OpenSearchStatusException) {
+        } catch (e: Exception) {
             processFailure(rollup.id, indexName, e)
         }
 
