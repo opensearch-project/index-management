@@ -19,7 +19,7 @@ class ValidateNothing(
 ) : Validate(settings, clusterService) {
 
     // skips validation
-    override fun executeValidation(indexName: String): Validate {
+    override fun execute(indexName: String): Validate {
         return this
     }
 

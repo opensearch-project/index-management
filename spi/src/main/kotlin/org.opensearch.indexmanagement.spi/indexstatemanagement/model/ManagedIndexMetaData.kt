@@ -36,7 +36,7 @@ data class ManagedIndexMetaData(
     val stepMetaData: StepMetaData?,
     val policyRetryInfo: PolicyRetryInfoMetaData?,
     val info: Map<String, Any>?,
-    val validationMetaData: ValidationMetaData?,
+    val validationResult: ValidationResult?,
     val id: String = NO_ID,
     val seqNo: Long = SequenceNumbers.UNASSIGNED_SEQ_NO,
     val primaryTerm: Long = SequenceNumbers.UNASSIGNED_PRIMARY_TERM
@@ -58,7 +58,7 @@ data class ManagedIndexMetaData(
         if (actionMetaData != null) resultMap[ActionMetaData.ACTION] = actionMetaData.getMapValueString()
         if (stepMetaData != null) resultMap[StepMetaData.STEP] = stepMetaData.getMapValueString()
         if (policyRetryInfo != null) resultMap[PolicyRetryInfoMetaData.RETRY_INFO] = policyRetryInfo.getMapValueString()
-        if (validationMetaData != null) resultMap[ValidationMetaData.VALIDATE] = validationMetaData.getMapValueString()
+        if (validationResult != null) resultMap[ValidationResult.VALIDATE] = validationResult.getMapValueString()
         if (info != null) resultMap[INFO] = Strings.toString(XContentFactory.jsonBuilder().map(info))
 
         return resultMap
@@ -84,7 +84,7 @@ data class ManagedIndexMetaData(
             .addObject(ActionMetaData.ACTION, actionMetaData, params, true)
             .addObject(StepMetaData.STEP, stepMetaData, params, true)
             .addObject(PolicyRetryInfoMetaData.RETRY_INFO, policyRetryInfo, params, true)
-            .addObject(ValidationMetaData.VALIDATE, validationMetaData, params, true)
+            .addObject(ValidationResult.VALIDATE, validationResult, params, true)
             .field(INFO, info)
             .endObject()
             .endObject()
@@ -129,7 +129,7 @@ data class ManagedIndexMetaData(
             builder.addObject(StateMetaData.STATE, stateMetaData, params)
                 .addObject(ActionMetaData.ACTION, actionMetaData, params)
                 .addObject(StepMetaData.STEP, stepMetaData, params)
-                .addObject(ValidationMetaData.VALIDATE, validationMetaData, params)
+                .addObject(ValidationResult.VALIDATE, validationResult, params)
         }
         builder.addObject(PolicyRetryInfoMetaData.RETRY_INFO, policyRetryInfo, params)
 
@@ -153,7 +153,7 @@ data class ManagedIndexMetaData(
         streamOutput.writeOptionalWriteable(actionMetaData)
         streamOutput.writeOptionalWriteable(stepMetaData)
         streamOutput.writeOptionalWriteable(policyRetryInfo)
-        streamOutput.writeOptionalWriteable(validationMetaData)
+        streamOutput.writeOptionalWriteable(validationResult)
 
         if (info == null) {
             streamOutput.writeBoolean(false)
@@ -197,7 +197,7 @@ data class ManagedIndexMetaData(
             val action: ActionMetaData? = si.readOptionalWriteable { ActionMetaData.fromStreamInput(it) }
             val step: StepMetaData? = si.readOptionalWriteable { StepMetaData.fromStreamInput(it) }
             val retryInfo: PolicyRetryInfoMetaData? = si.readOptionalWriteable { PolicyRetryInfoMetaData.fromStreamInput(it) }
-            val validate: ValidationMetaData? = si.readOptionalWriteable { ValidationMetaData.fromStreamInput(it) }
+            val validate: ValidationResult? = si.readOptionalWriteable { ValidationResult.fromStreamInput(it) }
 
             val info = if (si.readBoolean()) {
                 si.readMap()
@@ -218,7 +218,7 @@ data class ManagedIndexMetaData(
                 stateMetaData = state,
                 actionMetaData = action,
                 stepMetaData = step,
-                validationMetaData = validate,
+                validationResult = validate,
                 policyRetryInfo = retryInfo,
                 info = info
             )
@@ -248,7 +248,7 @@ data class ManagedIndexMetaData(
             var action: ActionMetaData? = null
             var step: StepMetaData? = null
             var retryInfo: PolicyRetryInfoMetaData? = null
-            var validate: ValidationMetaData? = null
+            var validate: ValidationResult? = null
             var info: Map<String, Any>? = null
 
             XContentParserUtils.ensureExpectedToken(XContentParser.Token.START_OBJECT, xcp.currentToken(), xcp)
@@ -275,8 +275,8 @@ data class ManagedIndexMetaData(
                     StepMetaData.STEP -> {
                         step = if (xcp.currentToken() == XContentParser.Token.VALUE_NULL) null else StepMetaData.parse(xcp)
                     }
-                    ValidationMetaData.VALIDATE -> {
-                        validate = if (xcp.currentToken() == XContentParser.Token.VALUE_NULL) null else ValidationMetaData.parse(xcp)
+                    ValidationResult.VALIDATE -> {
+                        validate = if (xcp.currentToken() == XContentParser.Token.VALUE_NULL) null else ValidationResult.parse(xcp)
                     }
                     PolicyRetryInfoMetaData.RETRY_INFO -> {
                         retryInfo = PolicyRetryInfoMetaData.parse(xcp)
@@ -340,7 +340,7 @@ data class ManagedIndexMetaData(
                 stateMetaData = StateMetaData.fromManagedIndexMetaDataMap(map),
                 actionMetaData = ActionMetaData.fromManagedIndexMetaDataMap(map),
                 stepMetaData = StepMetaData.fromManagedIndexMetaDataMap(map),
-                validationMetaData = ValidationMetaData.fromManagedIndexMetaDataMap(map),
+                validationResult = ValidationResult.fromManagedIndexMetaDataMap(map),
                 policyRetryInfo = PolicyRetryInfoMetaData.fromManagedIndexMetaDataMap(map),
                 info = map[INFO]?.let { XContentHelper.convertToMap(JsonXContent.jsonXContent, it, false) }
             )

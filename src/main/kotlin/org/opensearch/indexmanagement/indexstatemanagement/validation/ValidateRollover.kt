@@ -26,7 +26,7 @@ class ValidateRollover(
 
     // returns a Validate object with updated validation and step status
     @Suppress("ReturnSuppressCount", "ReturnCount")
-    override fun executeValidation(indexName: String): Validate {
+    override fun execute(indexName: String): Validate {
         val (rolloverTarget, isDataStream) = getRolloverTargetOrUpdateInfo(indexName)
         rolloverTarget ?: return this
 
@@ -48,7 +48,7 @@ class ValidateRollover(
         val skipRollover = clusterService.state().metadata.index(indexName).getRolloverSkip()
         if (skipRollover) {
             stepStatus = Step.StepStatus.COMPLETED
-            validationStatus = ValidationStatus.PASS
+            validationStatus = ValidationStatus.PASSED
             validationMessage = getSkipRolloverMessage(indexName)
             return true
         }
@@ -58,7 +58,7 @@ class ValidateRollover(
     private fun alreadyRolledOver(alias: String?, indexName: String): Boolean {
         if (clusterService.state().metadata.index(indexName).rolloverInfos.containsKey(alias)) {
             stepStatus = Step.StepStatus.COMPLETED
-            validationStatus = ValidationStatus.PASS
+            validationStatus = ValidationStatus.PASSED
             validationMessage = getAlreadyRolledOverMessage(indexName, alias)
             return true
         }
@@ -74,7 +74,7 @@ class ValidateRollover(
             val message = getMissingAliasMessage(indexName)
             logger.warn(message)
             stepStatus = Step.StepStatus.VALIDATION_FAILED
-            validationStatus = ValidationStatus.REVALIDATE
+            validationStatus = ValidationStatus.RE_VALIDATING
             validationMessage = message
             return false
         }
@@ -93,7 +93,7 @@ class ValidateRollover(
                 val message = getFailedWriteIndexMessage(indexName)
                 logger.warn(message)
                 stepStatus = Step.StepStatus.VALIDATION_FAILED
-                validationStatus = ValidationStatus.REVALIDATE
+                validationStatus = ValidationStatus.RE_VALIDATING
                 validationMessage = message
                 return false
             }
@@ -115,7 +115,7 @@ class ValidateRollover(
             val message = getFailedNoValidAliasMessage(indexName)
             logger.warn(message)
             stepStatus = Step.StepStatus.VALIDATION_FAILED
-            validationStatus = ValidationStatus.REVALIDATE
+            validationStatus = ValidationStatus.RE_VALIDATING
             validationMessage = message
         }
 
@@ -124,26 +124,12 @@ class ValidateRollover(
 
     override fun getUpdatedManagedIndexMetadata(currentMetadata: ManagedIndexMetaData, actionMetaData: ActionMetaData): ManagedIndexMetaData {
         return currentMetadata.copy(
-            actionMetaData = actionMetaData,
+            actionMetaData = actionMetaData
         )
     }
 
     // TODO: 7/18/22
     override fun validatePolicy(): Boolean {
-//        val states = request.policy.states
-//        for (state in states) {
-//            for (action in state.actions) {
-//                if (action is ReplicaCountAction) {
-//                    val updatedNumberOfReplicas = action.numOfReplicas
-//                    val error = awarenessReplicaBalance.validate(updatedNumberOfReplicas)
-//                    if (error.isPresent) {
-//                        val ex = ValidationException()
-//                        ex.addValidationError(error.get())
-//                        actionListener.onFailure(ex)
-//                    }
-//                }
-//            }
-//        }
         return true
     }
 

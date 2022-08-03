@@ -305,7 +305,7 @@ class TransportExplainAction @Inject constructor(
                 indexPolicyIDs.add(metadataMapFromManagedIndex?.get("policy_id"))
 
                 // hard coded rollover action as next action
-                var validationMetaData = validationService.validate(RolloverAction(null, null, null, null, 1), indexName)
+                var validationResult = validationService.validate(RolloverAction(null, null, null, null, 1), indexName)
                 var managedIndexMetadata: ManagedIndexMetaData? = null
                 val managedIndexMetadataDocUUID = indices[indexName]?.let { managedIndexMetadataID(it) }
                 val configIndexMetadataMap = metadataMap[managedIndexMetadataDocUUID]
@@ -326,7 +326,7 @@ class TransportExplainAction @Inject constructor(
                         info?.let { managedIndexMetadata = clusterStateMetadata?.copy(info = it) }
                     }
                 }
-                managedIndexMetadata = managedIndexMetadata?.copy(validationMetaData = validationMetaData)
+                managedIndexMetadata = managedIndexMetadata?.copy(validationResult = validationResult)
                 indexMetadatas.add(managedIndexMetadata)
             }
             managedIndicesMetaDataMap.clear()

@@ -28,7 +28,7 @@ class ValidateRolloverIT : IndexStateManagementRestTestCase() {
 
     private val testIndexName = javaClass.simpleName.lowercase(Locale.ROOT)
 
-    // status: pass
+    // status: PASSED
     fun `test skip rollover`() {
         val index1 = "index-1"
         val alias1 = "x"
@@ -66,10 +66,10 @@ class ValidateRolloverIT : IndexStateManagementRestTestCase() {
 
         updateManagedIndexConfigStartTime(managedIndexConfig)
         waitFor {
-            val data = getExplainManagedIndexMetaData(index1).validationMetaData
+            val data = getExplainManagedIndexMetaData(index1).validationResult
             assertEquals(
-                "Index rollover validation status is pass.",
-                Validate.ValidationStatus.PASS, data?.validationStatus
+                "Index rollover validation status is PASSED.",
+                Validate.ValidationStatus.PASSED, data?.validationStatus
             )
             assertEquals(
                 "Index rollover valiation message is skipped rollover",
@@ -78,7 +78,7 @@ class ValidateRolloverIT : IndexStateManagementRestTestCase() {
         }
     }
 
-    // status: pass
+    // status: PASSED
     fun `test rollover has already been rolled over`() {
         val aliasName = "${testIndexName}_alias"
         val indexNameBase = "${testIndexName}_index"
@@ -112,10 +112,10 @@ class ValidateRolloverIT : IndexStateManagementRestTestCase() {
         // Need to speed up to second execution where it will trigger the first execution of the action
         updateManagedIndexConfigStartTime(managedIndexConfig)
         waitFor {
-            val data = getExplainManagedIndexMetaData(firstIndex).validationMetaData
+            val data = getExplainManagedIndexMetaData(firstIndex).validationResult
             assertEquals(
-                "Index rollover validation status is pass.",
-                Validate.ValidationStatus.PASS, data?.validationStatus
+                "Index rollover validation status is PASSED.",
+                Validate.ValidationStatus.PASSED, data?.validationStatus
             )
             assertEquals(
                 "Index rollover validation message is already rolled over",
@@ -125,7 +125,7 @@ class ValidateRolloverIT : IndexStateManagementRestTestCase() {
         assertTrue("New rollover index does not exist.", indexExists("$indexNameBase-000002"))
     }
 
-    // status: revalidate
+    // status: RE_VALIDATING
     fun `test rollover does not have rollover alias index setting`() {
         val index1 = "index-1"
         val index2 = "index-2"
@@ -155,10 +155,10 @@ class ValidateRolloverIT : IndexStateManagementRestTestCase() {
         // Need to speed up to second execution where it will trigger the first execution of the action
         updateManagedIndexConfigStartTime(managedIndexConfig)
         waitFor {
-            val data = getExplainManagedIndexMetaData(index1).validationMetaData
+            val data = getExplainManagedIndexMetaData(index1).validationResult
             assertEquals(
-                "Index rollover validation status is revalidate",
-                Validate.ValidationStatus.REVALIDATE, data?.validationStatus
+                "Index rollover validation status is RE_VALIDATING",
+                Validate.ValidationStatus.RE_VALIDATING, data?.validationStatus
             )
             assertEquals(
                 "Index rollover validation message is no alias index setting",
@@ -167,7 +167,7 @@ class ValidateRolloverIT : IndexStateManagementRestTestCase() {
         }
     }
 
-    // status: revalidate
+    // status: RE_VALIDATING
     fun `test rollover not write index`() {
         val index1 = "index-1"
         val index2 = "index-2"
@@ -202,10 +202,10 @@ class ValidateRolloverIT : IndexStateManagementRestTestCase() {
         // Need to speed up to second execution where it will trigger the first execution of the action
         updateManagedIndexConfigStartTime(managedIndexConfig)
         waitFor {
-            val data = getExplainManagedIndexMetaData(index1).validationMetaData
+            val data = getExplainManagedIndexMetaData(index1).validationResult
             assertEquals(
-                "Index rollover validation status is revalidate.",
-                Validate.ValidationStatus.REVALIDATE, data?.validationStatus
+                "Index rollover validation status is RE_VALIDATING.",
+                Validate.ValidationStatus.RE_VALIDATING, data?.validationStatus
             )
             assertEquals(
                 "Index rollover validation message is not write index",

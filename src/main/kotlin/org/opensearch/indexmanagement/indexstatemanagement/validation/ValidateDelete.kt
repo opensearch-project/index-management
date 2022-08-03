@@ -25,7 +25,7 @@ class ValidateDelete(
 
     private val logger = LogManager.getLogger(javaClass)
 
-    override fun executeValidation(indexName: String): Validate {
+    override fun execute(indexName: String): Validate {
 
         // if these conditions are false, fail validation and do not execute delete action
         if (!deleteIndexExists(indexName) || !validIndex(indexName)) {
@@ -44,9 +44,11 @@ class ValidateDelete(
     private fun deleteIndexExists(indexName: String): Boolean {
         val indexExists = clusterService.state().metadata.indices.containsKey(indexName)
         if (!indexExists) {
+            val message = getNoIndexMessage(indexName)
+            logger.warn(message)
             stepStatus = Step.StepStatus.VALIDATION_FAILED
-            validationStatus = ValidationStatus.REVALIDATE
-            validationMessage = getNoIndexMessage(indexName)
+            validationStatus = ValidationStatus.RE_VALIDATING
+            validationMessage = message
             return false
         }
         return true
@@ -60,9 +62,11 @@ class ValidateDelete(
         try {
             validateIndexOrAliasName(indexName, exceptionGenerator)
         } catch (e: Exception) {
+            val message = getIndexNotValidMessage(indexName)
+            logger.warn(message)
             stepStatus = Step.StepStatus.VALIDATION_FAILED
-            validationStatus = ValidationStatus.REVALIDATE
-            validationMessage = getIndexNotValidMessage(indexName)
+            validationStatus = ValidationStatus.RE_VALIDATING
+            validationMessage = message
         }
         return true
     }

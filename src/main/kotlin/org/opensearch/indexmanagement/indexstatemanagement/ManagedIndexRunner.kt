@@ -407,18 +407,18 @@ object ManagedIndexRunner :
         @Suppress("ComplexCondition", "MaxLineLength")
         if (updateResult.metadataSaved && state != null && action != null && step != null && currentActionMetaData != null) {
             if (validationServiceEnabled) {
-                val validationMetaData = validationService.validate(action, stepContext.metadata.index)
-                if (validationMetaData.validationStatus == Validate.ValidationStatus.REVALIDATE) {
+                val validationResult = validationService.validate(action, stepContext.metadata.index)
+                if (validationResult.validationStatus == Validate.ValidationStatus.RE_VALIDATING) {
                     logger.info("Revalidate")
-                    var newMetaData = managedIndexMetaData.copy(validationMetaData = validationMetaData)
+                    var newMetaData = managedIndexMetaData.copy(validationResult = validationResult)
                     if (!updateManagedIndexMetaData(newMetaData, updateResult).metadataSaved) {
                         logger.error("Failed to update validation meta data : ${step.name}")
                     }
                     return
                 }
-                if (validationMetaData.validationStatus == Validate.ValidationStatus.FAIL) {
+                if (validationResult.validationStatus == Validate.ValidationStatus.FAILED) {
                     logger.info("Fail forever")
-                    var newMetaData = managedIndexMetaData.copy(validationMetaData = validationMetaData)
+                    var newMetaData = managedIndexMetaData.copy(validationResult = validationResult)
                     if (!updateManagedIndexMetaData(newMetaData, updateResult).metadataSaved) {
                         logger.error("Failed to update validation meta data : ${step.name}")
                     }
@@ -603,7 +603,7 @@ object ManagedIndexRunner :
             stateMetaData = null,
             actionMetaData = null,
             stepMetaData = null,
-            validationMetaData = null,
+            validationResult = null,
             policyRetryInfo = PolicyRetryInfoMetaData(failed = true, consumedRetries = 0),
             info = mapOf("message" to "Fail to load policy: $policyID")
         )
@@ -632,7 +632,7 @@ object ManagedIndexRunner :
                 stateMetaData = stateMetaData,
                 actionMetaData = null,
                 stepMetaData = null,
-                validationMetaData = null,
+                validationResult = null,
                 policyRetryInfo = PolicyRetryInfoMetaData(failed = false, consumedRetries = 0),
                 info = mapOf("message" to "Successfully initialized policy: ${policy.id}")
             )

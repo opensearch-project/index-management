@@ -35,7 +35,7 @@ class ManagedIndexMetaDataTests : OpenSearchTestCase() {
             stateMetaData = StateMetaData("close-index", 1234),
             actionMetaData = null,
             stepMetaData = null,
-            validationMetaData = null,
+            validationResult = null,
             policyRetryInfo = PolicyRetryInfoMetaData(false, 0),
             info = mapOf("message" to "Successfully initialized policy: close_policy")
         )
@@ -57,7 +57,7 @@ class ManagedIndexMetaDataTests : OpenSearchTestCase() {
             stateMetaData = StateMetaData("close-index", 1234),
             actionMetaData = ActionMetaData("close", 4321, 0, false, 0, 0, null),
             stepMetaData = null,
-            validationMetaData = null,
+            validationResult = null,
             policyRetryInfo = PolicyRetryInfoMetaData(false, 0),
             info = mapOf("message" to "Successfully closed index")
         )
@@ -79,7 +79,7 @@ class ManagedIndexMetaDataTests : OpenSearchTestCase() {
             stateMetaData = StateMetaData("close-index", 1234),
             actionMetaData = ActionMetaData("close", 4321, 0, false, 0, 0, ActionProperties(3)),
             stepMetaData = null,
-            validationMetaData = null,
+            validationResult = null,
             policyRetryInfo = PolicyRetryInfoMetaData(false, 0),
             info = mapOf("message" to "Successfully closed index")
         )
@@ -101,7 +101,7 @@ class ManagedIndexMetaDataTests : OpenSearchTestCase() {
             stateMetaData = StateMetaData("rollover-index", 1234),
             actionMetaData = ActionMetaData("rollover", 4321, 0, false, 0, 0, null),
             stepMetaData = StepMetaData("attempt_rollover", 6789, Step.StepStatus.FAILED),
-            validationMetaData = null,
+            validationResult = null,
             policyRetryInfo = PolicyRetryInfoMetaData(false, 0),
             info = mapOf("message" to "There is no valid rollover_alias=null set on movies")
         )

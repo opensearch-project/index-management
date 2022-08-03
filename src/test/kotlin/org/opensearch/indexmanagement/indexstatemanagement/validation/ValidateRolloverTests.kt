@@ -17,6 +17,7 @@ import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.settings.Settings
 import org.opensearch.common.unit.TimeValue
 import org.opensearch.indexmanagement.indexstatemanagement.action.RolloverAction
+import org.opensearch.indexmanagement.indexstatemanagement.validation.ValidateRollover.Companion.getFailedNoValidAliasMessage
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ActionMetaData
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepContext
@@ -49,7 +50,6 @@ class ValidateRolloverTests : OpenSearchTestCase() {
     private val indexMetadata: IndexMetadata = mock()
 
     fun `test rollover when missing rollover alias`() {
-        val actionMetadata = metadata.actionMetaData!!.copy()
         val metadata = metadata.copy()
         val context = StepContext(metadata, clusterService, client, null, null, scriptService, settings, lockService)
         whenever(context.clusterService.state()).thenReturn(clusterState)
@@ -62,11 +62,9 @@ class ValidateRolloverTests : OpenSearchTestCase() {
 
         // null pointer exception
         runBlocking {
-            validate.executeValidation(indexName)
+            validate.execute(indexName)
         }
-
-        validate.getUpdatedManagedIndexMetadata(metadata, actionMetadata)
-        assertEquals("Validation status is REVALIDATE", Validate.ValidationStatus.REVALIDATE, validate.validationStatus)
-        // assertEquals("Info message is NO VALID ALIAS", mapOf("validation message" to getFailedNoValidAliasMessage(indexName)), validate.getUpdatedManagedIndexMetadata(metadata, actionMetadata).validationInfo)
+        assertEquals("Validation status is RE_VALIDATING", Validate.ValidationStatus.RE_VALIDATING, validate.validationStatus)
+        assertEquals("Info message is NO VALID ALIAS", getFailedNoValidAliasMessage(indexName), validate.validationMessage)
     }
 }

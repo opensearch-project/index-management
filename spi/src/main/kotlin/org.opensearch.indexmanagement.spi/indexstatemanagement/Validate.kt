@@ -19,20 +19,21 @@ abstract class Validate(
     val clusterService: ClusterService
 ) {
 
-    var validationStatus = ValidationStatus.PASS
+    var validationStatus = ValidationStatus.PASSED
     var stepStatus = Step.StepStatus.STARTING
     var validationMessage: String? = "Starting Validation"
 
-    abstract fun executeValidation(indexName: String): Validate
+    abstract fun execute(indexName: String): Validate
 
+    // function to be executed at policy creation to validate user created policy
     abstract fun validatePolicy(): Boolean
 
     abstract fun getUpdatedManagedIndexMetadata(currentMetadata: ManagedIndexMetaData, actionMetaData: ActionMetaData): ManagedIndexMetaData
 
     enum class ValidationStatus(val status: String) : Writeable {
-        PASS("pass"),
-        REVALIDATE("revalidate"),
-        FAIL("fail");
+        PASSED("passed"),
+        RE_VALIDATING("re_validating"),
+        FAILED("failed");
 
         override fun toString(): String {
             return status

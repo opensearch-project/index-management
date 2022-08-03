@@ -22,7 +22,7 @@ import java.io.ByteArrayInputStream
 import java.nio.charset.StandardCharsets
 import java.util.Locale
 
-data class ValidationMetaData(
+data class ValidationResult(
     val validationMessage: String,
     val validationStatus: Validate.ValidationStatus
 ) : Writeable, ToXContentFragment {
@@ -48,17 +48,17 @@ data class ValidationMetaData(
         const val VALIDATION_MESSAGE = "validation_message"
         const val VALIDATION_STATUS = "validation_status"
 
-        fun fromStreamInput(si: StreamInput): ValidationMetaData {
+        fun fromStreamInput(si: StreamInput): ValidationResult {
             val validationMessage: String? = si.readString()
             val validationStatus: Validate.ValidationStatus? = Validate.ValidationStatus.read(si)
 
-            return ValidationMetaData(
+            return ValidationResult(
                 requireNotNull(validationMessage) { "$VALIDATION_MESSAGE is null" },
                 requireNotNull(validationStatus) { "$VALIDATION_STATUS is null" }
             )
         }
 
-        fun fromManagedIndexMetaDataMap(map: Map<String, String?>): ValidationMetaData? {
+        fun fromManagedIndexMetaDataMap(map: Map<String, String?>): ValidationResult? {
             val stepJsonString = map[VALIDATE]
             return if (stepJsonString != null) {
                 val inputStream = ByteArrayInputStream(stepJsonString.toByteArray(StandardCharsets.UTF_8))
@@ -70,7 +70,7 @@ data class ValidationMetaData(
             }
         }
 
-        fun parse(xcp: XContentParser): ValidationMetaData {
+        fun parse(xcp: XContentParser): ValidationResult {
             var validationMessage: String? = null
             var validationStatus: Validate.ValidationStatus? = null
 
@@ -85,7 +85,7 @@ data class ValidationMetaData(
                 }
             }
 
-            return ValidationMetaData(
+            return ValidationResult(
                 requireNotNull(validationMessage) { "$VALIDATION_MESSAGE is null" },
                 requireNotNull(validationStatus) { "$VALIDATION_STATUS is null" }
             )

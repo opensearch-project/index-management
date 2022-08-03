@@ -248,7 +248,7 @@ class XContentTests : OpenSearchTestCase() {
             stateMetaData = null,
             actionMetaData = null,
             stepMetaData = null,
-            validationMetaData = null,
+            validationResult = null,
             policyRetryInfo = null,
             info = null
         )

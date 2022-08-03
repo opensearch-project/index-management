@@ -43,7 +43,6 @@ class ValidateDeleteTests : OpenSearchTestCase() {
     private val indices: ImmutableOpenMap<String, IndexMetadata> = mock()
 
     fun `test delete index exists`() {
-        val actionMetadata = metadata.actionMetaData!!.copy()
         val metadata = metadata.copy()
         val context = StepContext(metadata, clusterService, client, null, null, scriptService, settings, lockService)
         whenever(context.clusterService.state()).thenReturn(clusterState)
@@ -53,10 +52,8 @@ class ValidateDeleteTests : OpenSearchTestCase() {
 
         // null pointer exception
         runBlocking {
-            validate.executeValidation(indexName)
+            validate.execute(indexName)
         }
-
-        validate.getUpdatedManagedIndexMetadata(metadata, actionMetadata)
-        assertEquals("Validation status is REVALIDATE", Validate.ValidationStatus.REVALIDATE, validate.validationStatus)
+        assertEquals("Validation status is RE_VALIDATING", Validate.ValidationStatus.RE_VALIDATING, validate.validationStatus)
     }
 }
