@@ -5,11 +5,9 @@
 
 package org.opensearch.indexmanagement.rollup.util
 
-import org.opensearch.common.bytes.BytesReference
 import org.opensearch.common.xcontent.XContentFactory
-import org.opensearch.common.xcontent.XContentHelper
-import org.opensearch.common.xcontent.XContentType
 import org.opensearch.indexmanagement.indexstatemanagement.util.XCONTENT_WITHOUT_TYPE
+import org.opensearch.indexmanagement.opensearchapi.toMap
 import org.opensearch.indexmanagement.rollup.model.Rollup
 import org.opensearch.script.Script
 import org.opensearch.script.ScriptService
@@ -25,13 +23,9 @@ object RollupFieldValueExpressionResolver {
     fun resolve(rollup: Rollup, fieldValue: String): String {
         val script = Script(ScriptType.INLINE, Script.DEFAULT_TEMPLATE_LANG, fieldValue, mapOf())
 
-        val contextMap = XContentHelper.convertToMap(
-            BytesReference.bytes(rollup.toXContent(XContentFactory.jsonBuilder(), XCONTENT_WITHOUT_TYPE)),
-            false,
-            XContentType.JSON
-        ).v2().filterKeys { key ->
-            key in validTopContextFields
-        }
+        val contextMap = rollup.toXContent(XContentFactory.jsonBuilder(), XCONTENT_WITHOUT_TYPE)
+            .toMap()
+            .filterKeys { key -> key in validTopContextFields }
 
         val compiledValue = scriptService.compile(script, TemplateScript.CONTEXT)
             .newInstance(script.params + mapOf("ctx" to contextMap))
