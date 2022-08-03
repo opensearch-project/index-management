@@ -113,7 +113,7 @@ class RollupInterceptor(
             for (rollupJob in rollupJobs) {
                 val (matchingRollupJobs, issues) = findMatchingRollupJobs(fieldMappings, listOf(rollupJob))
                 if (issues.isNotEmpty() || matchingRollupJobs.isEmpty()) {
-                    throw IllegalArgumentException("Not all indices have matching rollup job")
+                    throw IllegalArgumentException("Could not find a rollup job that can answer this query because $issues")
                 }
                 allMatchingRollupJobs += matchingRollupJobs
             }

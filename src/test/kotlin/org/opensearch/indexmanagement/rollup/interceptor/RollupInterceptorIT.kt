@@ -379,7 +379,8 @@ class RollupInterceptorIT : RollupRestTestCase() {
         } catch (e: ResponseException) {
             assertEquals(
                 "Wrong error message",
-                "Not all indices have matching rollup job",
+                "Could not find a rollup job that can answer this query because [missing field RateCodeID, missing field timestamp, " +
+                    "missing sum aggregation on total_amount]",
                 (e.response.asMap() as Map<String, Map<String, Map<String, String>>>)["error"]!!["caused_by"]!!["reason"]
             )
             assertEquals("Unexpected status", RestStatus.BAD_REQUEST, e.response.restStatus())
