@@ -129,6 +129,14 @@ class TransportIndexRollupAction @Inject constructor(
             if (modified.isNotEmpty()) {
                 return actionListener.onFailure(OpenSearchStatusException("Not allowed to modify $modified", RestStatus.BAD_REQUEST))
             }
+            if (!validateTargetIndexName()) {
+                return actionListener.onFailure(
+                    OpenSearchStatusException(
+                        "target_index value is invalid: ${request.rollup.targetIndex}",
+                        RestStatus.BAD_REQUEST
+                    )
+                )
+            }
             putRollup()
         }
 
@@ -144,14 +152,6 @@ class TransportIndexRollupAction @Inject constructor(
         }
 
         private fun putRollup() {
-            if (!validateTargetIndexName()) {
-                return actionListener.onFailure(
-                    OpenSearchStatusException(
-                        "target_index value is invalid: ${request.rollup.targetIndex}",
-                        RestStatus.BAD_REQUEST
-                    )
-                )
-            }
             val rollup = request.rollup.copy(schemaVersion = IndexUtils.indexManagementConfigSchemaVersion, user = this.user)
             request.index(INDEX_MANAGEMENT_INDEX)
                 .id(request.rollup.id)
