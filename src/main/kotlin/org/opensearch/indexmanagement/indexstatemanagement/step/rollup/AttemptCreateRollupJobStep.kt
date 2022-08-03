@@ -7,7 +7,6 @@ package org.opensearch.indexmanagement.indexstatemanagement.step.rollup
 
 import org.apache.logging.log4j.LogManager
 import org.opensearch.ExceptionsHelper
-import org.opensearch.OpenSearchStatusException
 import org.opensearch.action.support.WriteRequest
 import org.opensearch.action.support.master.AcknowledgedResponse
 import org.opensearch.index.engine.VersionConflictEngineException
