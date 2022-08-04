@@ -65,6 +65,8 @@ class AttemptCreateRollupJobStep(private val action: RollupAction) : Step(name) 
             processFailure(rollup.id, indexName, ExceptionsHelper.unwrapCause(e) as Exception)
         } catch (e: OpenSearchException) {
             processFailure(rollup.id, indexName, e)
+        } catch (e: Exception) {
+            processFailure(rollup.id, indexName, e)
         }
 
         return this
