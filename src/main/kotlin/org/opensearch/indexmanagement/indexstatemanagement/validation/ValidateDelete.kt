@@ -26,7 +26,6 @@ class ValidateDelete(
     private val logger = LogManager.getLogger(javaClass)
 
     override fun execute(indexName: String): Validate {
-
         // if these conditions are false, fail validation and do not execute delete action
         if (!deleteIndexExists(indexName) || !validIndex(indexName)) {
             return this

@@ -72,7 +72,7 @@ class ValidateRolloverIT : IndexStateManagementRestTestCase() {
                 Validate.ValidationStatus.PASSED, data?.validationStatus
             )
             assertEquals(
-                "Index rollover valiation message is skipped rollover",
+                "Index rollover validation message is skipped rollover",
                 ValidateRollover.getSkipRolloverMessage(index1), data?.validationMessage
             )
         }
