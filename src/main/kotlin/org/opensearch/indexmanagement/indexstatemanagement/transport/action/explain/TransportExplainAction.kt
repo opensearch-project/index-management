@@ -57,6 +57,7 @@ import org.opensearch.indexmanagement.opensearchapi.parseWithType
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ISMIndexMetadata
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ValidationResult
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.buildUser
 import org.opensearch.search.SearchHit
 import org.opensearch.search.builder.SearchSourceBuilder
@@ -117,6 +118,7 @@ class TransportExplainAction @Inject constructor(
         private val enabledState: MutableMap<IndexName, Boolean> = mutableMapOf()
         private val indexPolicyIDs = mutableListOf<PolicyID?>()
         private val indexMetadatas = mutableListOf<ManagedIndexMetaData?>()
+        private val validationResults = mutableListOf<ValidationResult?>()
         private var totalManagedIndices = 0
         private val appliedPolicies: MutableMap<String, Policy> = mutableMapOf()
 
@@ -206,7 +208,7 @@ class TransportExplainAction @Inject constructor(
                                     // edge case: if specify query param pagination size to be 0
                                     // we still show total managed indices
                                     indexNames.clear()
-                                    sendResponse(indexNames, indexMetadatas, indexPolicyIDs, enabledState, totalManagedIndices, appliedPolicies)
+                                    sendResponse(indexNames, indexMetadatas, indexPolicyIDs, enabledState, totalManagedIndices, appliedPolicies, validationResults)
                                     return
                                 } else {
                                     // Clear and add the managedIndices from the response to preserve the sort order and size
@@ -232,7 +234,7 @@ class TransportExplainAction @Inject constructor(
                                     return
                                 }
                                 indexNames.clear()
-                                sendResponse(indexNames, indexMetadatas, indexPolicyIDs, enabledState, totalManagedIndices, appliedPolicies)
+                                sendResponse(indexNames, indexMetadatas, indexPolicyIDs, enabledState, totalManagedIndices, appliedPolicies, validationResults)
                                 return
                             }
                             actionListener.onFailure(ExceptionsHelper.unwrapCause(t) as Exception)
@@ -326,13 +328,13 @@ class TransportExplainAction @Inject constructor(
                         info?.let { managedIndexMetadata = clusterStateMetadata?.copy(info = it) }
                     }
                 }
-                managedIndexMetadata = managedIndexMetadata?.copy(validationResult = validationResult)
                 indexMetadatas.add(managedIndexMetadata)
+                validationResults.add(validationResult)
             }
             managedIndicesMetaDataMap.clear()
 
             if (user == null || indexNames.isEmpty()) {
-                sendResponse(indexNames, indexMetadatas, indexPolicyIDs, enabledState, totalManagedIndices, appliedPolicies)
+                sendResponse(indexNames, indexMetadatas, indexPolicyIDs, enabledState, totalManagedIndices, appliedPolicies, validationResults)
             } else {
                 filterAndSendResponse(threadContext)
             }
@@ -342,6 +344,7 @@ class TransportExplainAction @Inject constructor(
             threadContext.restore()
             val filteredIndices = mutableListOf<String>()
             val filteredMetadata = mutableListOf<ManagedIndexMetaData?>()
+            val filteredValidationResult = mutableListOf<ValidationResult?>()
             val filteredPolicies = mutableListOf<PolicyID?>()
             val enabledStatus = mutableMapOf<String, Boolean>()
             val filteredAppliedPolicies = mutableMapOf<String, Policy>()
@@ -355,6 +358,7 @@ class TransportExplainAction @Inject constructor(
                         filteredIndices.add(indexNames[i])
                         filteredMetadata.add(indexMetadatas[i])
                         filteredPolicies.add(indexPolicyIDs[i])
+                        filteredValidationResult.add(validationResults[i])
                         enabledState[indexNames[i]]?.let { enabledStatus[indexNames[i]] = it }
                         appliedPolicies[indexNames[i]]?.let { filteredAppliedPolicies[indexNames[i]] = it }
                     } catch (e: OpenSearchSecurityException) {
@@ -365,7 +369,7 @@ class TransportExplainAction @Inject constructor(
                 }
                 sendResponse(
                     filteredIndices, filteredMetadata, filteredPolicies, enabledStatus,
-                    totalManagedIndices, filteredAppliedPolicies
+                    totalManagedIndices, filteredAppliedPolicies, filteredValidationResult
                 )
             }
         }
@@ -377,9 +381,10 @@ class TransportExplainAction @Inject constructor(
             policyIDs: List<PolicyID?>,
             enabledStatus: Map<String, Boolean>,
             totalIndices: Int,
-            policies: Map<String, Policy>
+            policies: Map<String, Policy>,
+            validationResult: List<ValidationResult?>,
         ) {
-            actionListener.onResponse(ExplainResponse(indices, policyIDs, metadata, totalIndices, enabledStatus, policies))
+            actionListener.onResponse(ExplainResponse(indices, policyIDs, metadata, totalIndices, enabledStatus, policies, validationResult))
         }
 
         @Suppress("ReturnCount")
