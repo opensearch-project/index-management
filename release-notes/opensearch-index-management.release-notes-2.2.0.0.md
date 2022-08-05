@@ -10,4 +10,4 @@ Compatible with OpenSearch 2.2.0
 * Support searching multiple rollup indices with same mapping  ([#440](https://github.com/opensearch-project/index-management/pull/440))
 
 ### Maintenance
-* version upgrade to 2.2.0 ([#443](https://github.com/opensearch-project/index-management/pull/443))
+* version upgrade to 2.2.0 ([#446](https://github.com/opensearch-project/index-management/pull/446))
