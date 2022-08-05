@@ -110,13 +110,12 @@ class RollupInterceptor(
         for (concreteIndex in concreteIndices) {
             val rollupJobs = clusterService.state().metadata.index(concreteIndex).getRollupJobs()
                 ?: throw IllegalArgumentException("Not all indices have rollup job")
-            for (rollupJob in rollupJobs) {
-                val (matchingRollupJobs, issues) = findMatchingRollupJobs(fieldMappings, listOf(rollupJob))
-                if (issues.isNotEmpty() || matchingRollupJobs.isEmpty()) {
-                    throw IllegalArgumentException("Could not find a rollup job that can answer this query because $issues")
-                }
-                allMatchingRollupJobs += matchingRollupJobs
+
+            val (matchingRollupJobs, issues) = findMatchingRollupJobs(fieldMappings, rollupJobs)
+            if (issues.isNotEmpty() || matchingRollupJobs.isEmpty()) {
+                throw IllegalArgumentException("Could not find a rollup job that can answer this query because $issues")
             }
+            allMatchingRollupJobs += matchingRollupJobs
         }
         return allMatchingRollupJobs
     }
@@ -264,6 +263,8 @@ class RollupInterceptor(
         if (rollups.size == 1) {
             return rollups.first()
         }
+        // Make selection deterministic
+        rollups.sortedBy { it.id }
 
         // Picking the job with largest rollup window for now
         return rollups.reduce { matched, new ->
