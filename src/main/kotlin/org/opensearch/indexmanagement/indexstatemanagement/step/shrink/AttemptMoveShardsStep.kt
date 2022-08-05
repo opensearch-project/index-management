@@ -267,7 +267,7 @@ class AttemptMoveShardsStep(private val action: ShrinkAction) : ShrinkStep(name,
         shardStats: Array<ShardStats>,
         indexSizeInBytes: Long
     ): List<String> {
-        val nodesStatsReq = NodesStatsRequest().addMetric(OS_METRIC)
+        val nodesStatsReq = NodesStatsRequest().addMetric(FS_METRIC)
         val nodeStatsResponse: NodesStatsResponse = stepContext.client.admin().cluster().suspendUntil { nodesStats(nodesStatsReq, it) }
         val nodesList = nodeStatsResponse.nodes.filter { it.node.isDataNode }
         // Sort in increasing order of keys, in our case this is memory remaining
@@ -393,7 +393,7 @@ class AttemptMoveShardsStep(private val action: ShrinkAction) : ShrinkStep(name,
     override fun isIdempotent() = true
 
     companion object {
-        const val OS_METRIC = "os"
+        const val FS_METRIC = "fs"
         const val ROUTING_SETTING = "index.routing.allocation.require._name"
         const val DEFAULT_TARGET_SUFFIX = "_shrunken"
         const val name = "attempt_move_shards_step"
