@@ -39,7 +39,7 @@ class RollupSettings {
             "index.plugins.rollup_index",
             LegacyOpenDistroRollupSettings.ROLLUP_INDEX,
             Setting.Property.IndexScope,
-            Setting.Property.InternalIndex
+            Setting.Property.Dynamic
         )
 
         val ROLLUP_INGEST_BACKOFF_MILLIS: Setting<TimeValue> = Setting.positiveTimeSetting(
