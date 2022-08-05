@@ -23,10 +23,10 @@ class RollupFieldValueExpressionResolverTests : OpenSearchTestCase() {
     private val scriptService: ScriptService = mock()
     private val clusterService: ClusterService = mock()
     private val indexAliasUtils: RollupFieldValueExpressionResolver.IndexAliasUtils = mock()
+
     @Before
     fun settings() {
         RollupFieldValueExpressionResolver.registerServices(scriptService, clusterService)
-        clusterService.state()
     }
 
     fun `test resolving no alias successfully`() {
