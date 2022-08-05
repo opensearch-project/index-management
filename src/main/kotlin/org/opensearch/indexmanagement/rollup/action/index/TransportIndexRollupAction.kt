@@ -28,6 +28,7 @@ import org.opensearch.commons.authuser.User
 import org.opensearch.indexmanagement.IndexManagementIndices
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
 import org.opensearch.indexmanagement.rollup.model.Rollup
+import org.opensearch.indexmanagement.rollup.util.RollupFieldValueExpressionResolver
 import org.opensearch.indexmanagement.rollup.util.parseRollup
 import org.opensearch.indexmanagement.settings.IndexManagementSettings
 import org.opensearch.indexmanagement.util.IndexUtils
@@ -91,6 +92,14 @@ class TransportIndexRollupAction @Inject constructor(
             if (response.isAcknowledged) {
                 log.info("Successfully created or updated $INDEX_MANAGEMENT_INDEX with newest mappings.")
                 if (request.opType() == DocWriteRequest.OpType.CREATE) {
+                    if (!validateTargetIndexName()) {
+                        return actionListener.onFailure(
+                            OpenSearchStatusException(
+                                "target_index value is invalid: ${request.rollup.targetIndex}",
+                                RestStatus.BAD_REQUEST
+                            )
+                        )
+                    }
                     putRollup()
                 } else {
                     getRollup()
@@ -127,6 +136,14 @@ class TransportIndexRollupAction @Inject constructor(
             val modified = modifiedImmutableProperties(rollup, request.rollup)
             if (modified.isNotEmpty()) {
                 return actionListener.onFailure(OpenSearchStatusException("Not allowed to modify $modified", RestStatus.BAD_REQUEST))
+            }
+            if (!validateTargetIndexName()) {
+                return actionListener.onFailure(
+                    OpenSearchStatusException(
+                        "target_index value is invalid: ${request.rollup.targetIndex}",
+                        RestStatus.BAD_REQUEST
+                    )
+                )
             }
             putRollup()
         }
@@ -171,6 +188,11 @@ class TransportIndexRollupAction @Inject constructor(
                     }
                 }
             )
+        }
+
+        private fun validateTargetIndexName(): Boolean {
+            val targetIndexResolvedName = RollupFieldValueExpressionResolver.resolve(request.rollup, request.rollup.targetIndex)
+            return targetIndexResolvedName.contains("*") == false && targetIndexResolvedName.contains("?") == false
         }
     }
 }
