@@ -56,7 +56,9 @@ class RollupMapperService(
     // If the index already exists we need to verify it's a rollup index,
     // confirm it does not conflict with existing jobs and is a valid job
     @Suppress("ReturnCount")
-    private suspend fun validateAndAttemptToUpdateTargetIndex(rollup: Rollup, targetIndexResolvedName: String, hasLegacyPlugin: Boolean): RollupJobValidationResult {
+    private suspend fun validateAndAttemptToUpdateTargetIndex(
+        rollup: Rollup, targetIndexResolvedName: String, hasLegacyPlugin: Boolean): RollupJobValidationResult {
+
         if (!isRollupIndex(targetIndexResolvedName, clusterService.state()) &&
             RollupFieldValueExpressionResolver.hasAlias(targetIndexResolvedName)) {
 
@@ -71,7 +73,8 @@ class RollupMapperService(
             val mappings = getMappings(targetIndexResolvedName)
             if (mappings is GetMappingsResult.Failure) {
                 return RollupJobValidationResult.Failure("Failed to get mappings for target index: $targetIndexResolvedName")
-            } else if (mappings is GetMappingsResult.Success && mappings.response.mappings()?.get(targetIndexResolvedName)?.sourceAsMap().isNullOrEmpty() == false) {
+            } else if (mappings is GetMappingsResult.Success &&
+                mappings.response.mappings()?.get(targetIndexResolvedName)?.sourceAsMap().isNullOrEmpty() == false) {
                 return RollupJobValidationResult.Failure("If target_index is alias, backing index must be empty: $targetIndexResolvedName")
             }
             return prepareTargetIndex(rollup, targetIndexResolvedName, hasLegacyPlugin)
@@ -118,32 +121,33 @@ class RollupMapperService(
         }
     }
 
+    suspend fun addRollupSettingToIndex(targetIndexResolvedName: String, hasLegacyPlugin: Boolean): Boolean {
+        val settings = if (hasLegacyPlugin) {
+            Settings.builder().put(LegacyOpenDistroRollupSettings.ROLLUP_INDEX.key, true).build()
+        } else {
+            Settings.builder().put(RollupSettings.ROLLUP_INDEX.key, true).build()
+        }
+        val resp: AcknowledgedResponse = client.admin().indices().suspendUntil {
+            updateSettings(UpdateSettingsRequest(settings, targetIndexResolvedName), it)
+        }
+        return !resp.isAcknowledged
+    }
     suspend fun prepareTargetIndex(rollup: Rollup, targetIndexResolvedName: String, hasLegacyPlugin: Boolean): RollupJobValidationResult {
         var errorMessage = ""
         try {
             // 1. First we need to add index.plugins.rollup_index setting to index
-            val settings = if (hasLegacyPlugin) {
-                Settings.builder().put(LegacyOpenDistroRollupSettings.ROLLUP_INDEX.key, true).build()
-            } else {
-                Settings.builder().put(RollupSettings.ROLLUP_INDEX.key, true).build()
-            }
-            errorMessage = "Failed to update settings for target index [$targetIndexResolvedName]"
-            val resp: AcknowledgedResponse = client.admin().indices().suspendUntil {
-                updateSettings(UpdateSettingsRequest(settings, targetIndexResolvedName), it)
-            }
-            if (!resp.isAcknowledged) {
+            if (addRollupSettingToIndex(targetIndexResolvedName, hasLegacyPlugin) == false) {
                 return RollupJobValidationResult.Invalid("Failed to update rollup settings for target index: [$targetIndexResolvedName]")
             }
 
             // 2. Put rollup mappings
             val putMappingRequest: PutMappingRequest =
                 PutMappingRequest(targetIndexResolvedName).source(IndexManagementIndices.rollupTargetMappings, XContentType.JSON)
-            errorMessage = "Failed to put initial rollup mappings for target index [$targetIndexResolvedName]"
             val respMappings: AcknowledgedResponse = client.admin().indices().suspendUntil {
                 putMapping(putMappingRequest, it)
             }
             if (!respMappings.isAcknowledged) {
-                return RollupJobValidationResult.Invalid("Failed to update rollup settings for target index: [$targetIndexResolvedName]")
+                return RollupJobValidationResult.Invalid("Failed to put initial rollup mappings for target index [$targetIndexResolvedName]")
             }
             // 3.
             errorMessage = "Failed to update mappings for target index [$targetIndexResolvedName]"
