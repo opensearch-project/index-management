@@ -264,10 +264,10 @@ class RollupInterceptor(
             return rollups.first()
         }
         // Make selection deterministic
-        rollups.sortedBy { it.id }
+        val sortedRollups = rollups.sortedBy { it.id }
 
         // Picking the job with largest rollup window for now
-        return rollups.reduce { matched, new ->
+        return sortedRollups.reduce { matched, new ->
             if (getEstimateRollupInterval(matched) > getEstimateRollupInterval(new)) matched
             else new
         }
