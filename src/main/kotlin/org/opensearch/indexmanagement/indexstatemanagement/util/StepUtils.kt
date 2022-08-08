@@ -164,15 +164,15 @@ fun getDiskSettings(clusterSettings: ClusterSettings): Settings {
  * if adding 2*indexSizeInBytes goes over the high watermark threshold, or if nodeStats does not contain OsStats.
 */
 fun getNodeFreeMemoryAfterShrink(node: NodeStats, indexSizeInBytes: Long, clusterSettings: ClusterSettings): Long {
-    val osStats = node.os
-    if (osStats != null) {
-        val memLeftInNode = osStats.mem.free.bytes
-        val totalNodeMem = osStats.mem.total.bytes
-        val freeBytesThresholdHigh = getFreeBytesThresholdHigh(clusterSettings, totalNodeMem)
+    val fsStats = node.fs
+    if (fsStats != null) {
+        val diskSpaceLeftInNode = fsStats.total.free.bytes
+        val totalNodeDisk = fsStats.total.total.bytes
+        val freeBytesThresholdHigh = getFreeBytesThresholdHigh(clusterSettings, totalNodeDisk)
         // We require that a node has enough space to be below the high watermark disk level with an additional 2 * the index size free
         val requiredBytes = (2 * indexSizeInBytes) + freeBytesThresholdHigh
-        if (memLeftInNode > requiredBytes) {
-            return memLeftInNode - requiredBytes
+        if (diskSpaceLeftInNode > requiredBytes) {
+            return diskSpaceLeftInNode - requiredBytes
         }
     }
     return -1L
