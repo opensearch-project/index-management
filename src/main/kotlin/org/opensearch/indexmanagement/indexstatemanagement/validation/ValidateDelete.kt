@@ -27,18 +27,21 @@ class ValidateDelete(
 
     override fun execute(indexName: String): Validate {
         // if these conditions are false, fail validation and do not execute delete action
+        logger.warn("i am in delete")
         if (!deleteIndexExists(indexName) || !validIndex(indexName)) {
             return this
         }
 
         val (rolloverTarget, isDataStream) = getRolloverTargetOrUpdateInfo(indexName)
         rolloverTarget ?: return this
-
-        if (isDataStream) {
+        logger.info("before checking sttuff")
+        if (!isDataStream) {
+            logger.info("is data stream")
             if (!notWriteIndexForDataStream(rolloverTarget, indexName)) {
                 return this
             }
         }
+        validationMessage = getValidationPassedMessage(indexName)
         return this
     }
 
@@ -73,7 +76,7 @@ class ValidateDelete(
             val aliasIndices = metadata.indicesLookup[alias]?.indices?.map { it.index }
             logger.debug("Alias $alias contains indices $aliasIndices")
             if (aliasIndices != null && aliasIndices.size > 1) {
-                val message = getFailedIsWriteIndexMessage(indexName, "testdatastream")
+                val message = getFailedIsWriteIndexMessage(indexName)
                 logger.warn(message)
                 stepStatus = Step.StepStatus.VALIDATION_FAILED
                 validationStatus = ValidationStatus.RE_VALIDATING
@@ -127,9 +130,11 @@ class ValidateDelete(
 
     @Suppress("TooManyFunctions")
     companion object {
+        const val name = "validate_delete"
         fun getNoIndexMessage(index: String) = "no such index [index=$index]"
         fun getIndexNotValidMessage(index: String) = "delete index [index=$index] not valid"
-        fun getFailedIsWriteIndexMessage(index: String, dataStream: String) = "Index [index=$index] is the write index for data stream [$dataStream] and cannot be deleted"
+        fun getFailedIsWriteIndexMessage(index: String) = "Index [index=$index] is the write index for data stream and cannot be deleted"
         fun getFailedNoValidAliasMessage(index: String) = "Missing rollover_alias index setting [index=$index]"
+        fun getValidationPassedMessage(index: String) = "Delete validation passed for [index=$index]"
     }
 }

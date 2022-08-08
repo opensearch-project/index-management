@@ -32,40 +32,6 @@ Content-Type: application/json
 DELETE localhost:9200/_opendistro/_ism/policies/example
 
 ###
-PUT localhost:9200/_opendistro/_ism/policies/example
-Content-Type: application/json
-
-{
-  "policy": {
-    "description": "Example delete policy.",
-    "default_state": "delete",
-    "states": [
-      {
-        "name": "delete",
-        "actions": [
-          {
-            "delete": {}
-          }
-        ],
-        "transitions": []
-      }
-    ],
-    "ism_template": {
-      "index_patterns": ["testdelete"],
-      "priority": 100
-    }
-  }
-}
-
-###
-PUT http://localhost:9200/testdelete
-Content-Type: application/json
-
-###
-GET localhost:9200/_plugins/_ism/explain/testdelete?pretty
-Accept: application/json
-
-###
 <!--Index 1 missing alias-->
 
 ###
@@ -73,8 +39,37 @@ PUT http://localhost:9200/testnoalias
 Content-Type: application/json
 
 ###
+<!--EXPLAIN API-->
+
+###
 GET localhost:9200/_plugins/_ism/explain/testnoalias?pretty
 Accept: application/json
+
+###
+PUT http://localhost:9200/testnoalias/_alias/testalias
+Content-Type: application/json
+
+###
+GET localhost:9200/_cat/aliases?v
+Accept: application/json
+
+###
+PUT http://localhost:9200/_index_template/ism_rollover
+Content-Type: application/json
+
+{
+  "index_patterns": ["testnoalias*"],
+  "template": {
+   "settings": {
+    "plugins.index_state_management.rollover_alias": "testnoalias*"
+   }
+ }
+}
+
+###
+GET localhost:9200/testnoalias/_settings
+Accept: application/json
+
 
 ###
 DELETE http://localhost:9200/testnoalias

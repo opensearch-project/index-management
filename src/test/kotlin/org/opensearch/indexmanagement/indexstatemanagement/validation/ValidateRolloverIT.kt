@@ -66,9 +66,9 @@ class ValidateRolloverIT : IndexStateManagementRestTestCase() {
 
         updateManagedIndexConfigStartTime(managedIndexConfig)
         waitFor {
-            val data = getExplainValidationResult(index1)
+            val data = getExplainManagedIndexMetaData(index1).validationResult
             assertEquals(
-                "Index rollover validation status is PASSED.",
+                "Index rollover validation status is pass.",
                 Validate.ValidationStatus.PASSED, data?.validationStatus
             )
             assertEquals(
@@ -82,7 +82,7 @@ class ValidateRolloverIT : IndexStateManagementRestTestCase() {
     fun `test rollover has already been rolled over`() {
         val aliasName = "${testIndexName}_alias"
         val indexNameBase = "${testIndexName}_index"
-        val firstIndex = "$indexNameBase-1"
+        val index1 = "$indexNameBase-1"
         val policyID = "${testIndexName}_testPolicyName_1"
         val actionConfig = RolloverAction(null, null, null, null, 0)
         val states = listOf(State(name = "RolloverAction", actions = listOf(actionConfig), transitions = listOf()))
@@ -98,13 +98,13 @@ class ValidateRolloverIT : IndexStateManagementRestTestCase() {
 
         createPolicy(policy, policyID)
         // create index defaults
-        createIndex(firstIndex, policyID, aliasName)
+        createIndex(index1, policyID, aliasName)
 
-        val managedIndexConfig = getExistingManagedIndexConfig(firstIndex)
+        val managedIndexConfig = getExistingManagedIndexConfig(index1)
 
         // Change the start time so the job will trigger in 2 seconds, this will trigger the first initialization of the policy
         updateManagedIndexConfigStartTime(managedIndexConfig)
-        waitFor { assertEquals(policyID, getExplainManagedIndexMetaData(firstIndex).policyID) }
+        waitFor { assertEquals(policyID, getExplainManagedIndexMetaData(index1).policyID) }
 
         // Rollover the alias manually before ISM tries to roll it over
         rolloverIndex(aliasName)
@@ -112,14 +112,14 @@ class ValidateRolloverIT : IndexStateManagementRestTestCase() {
         // Need to speed up to second execution where it will trigger the first execution of the action
         updateManagedIndexConfigStartTime(managedIndexConfig)
         waitFor {
-            val data = getExplainValidationResult(firstIndex)
+            val data = getExplainManagedIndexMetaData(index1).validationResult
             assertEquals(
                 "Index rollover validation status is PASSED.",
                 Validate.ValidationStatus.PASSED, data?.validationStatus
             )
             assertEquals(
                 "Index rollover validation message is already rolled over",
-                ValidateRollover.getAlreadyRolledOverMessage(firstIndex, aliasName), data?.validationMessage
+                ValidateRollover.getAlreadyRolledOverMessage(index1, aliasName), data?.validationMessage
             )
         }
         assertTrue("New rollover index does not exist.", indexExists("$indexNameBase-000002"))
@@ -155,7 +155,7 @@ class ValidateRolloverIT : IndexStateManagementRestTestCase() {
         // Need to speed up to second execution where it will trigger the first execution of the action
         updateManagedIndexConfigStartTime(managedIndexConfig)
         waitFor {
-            val data = getExplainValidationResult(index1)
+            val data = getExplainManagedIndexMetaData(index1).validationResult
             assertEquals(
                 "Index rollover validation status is RE_VALIDATING",
                 Validate.ValidationStatus.RE_VALIDATING, data?.validationStatus

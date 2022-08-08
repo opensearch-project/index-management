@@ -408,6 +408,8 @@ object ManagedIndexRunner :
         if (updateResult.metadataSaved && state != null && action != null && step != null && currentActionMetaData != null) {
             if (validationServiceEnabled) {
                 val validationResult = validationService.validate(action, stepContext.metadata.index)
+                logger.info("inside runner")
+                logger.info(validationResult)
                 if (validationResult.validationStatus == Validate.ValidationStatus.RE_VALIDATING) {
                     logger.info("Revalidate")
                     var newMetaData = managedIndexMetaData.copy(validationResult = validationResult)

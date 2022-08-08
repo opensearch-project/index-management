@@ -27,6 +27,7 @@ class ValidateRollover(
     // returns a Validate object with updated validation and step status
     @Suppress("ReturnSuppressCount", "ReturnCount")
     override fun execute(indexName: String): Validate {
+        logger.info("inside rollover")
         val (rolloverTarget, isDataStream) = getRolloverTargetOrUpdateInfo(indexName)
         rolloverTarget ?: return this
 
@@ -135,7 +136,7 @@ class ValidateRollover(
 
     @Suppress("TooManyFunctions")
     companion object {
-        const val name = "attempt_rollover"
+        const val name = "validate_rollover"
         fun getFailedWriteIndexMessage(index: String) = "Not the write index when rollover [index=$index]"
         fun getMissingAliasMessage(index: String) = "Missing alias when rollover [index=$index]"
         fun getFailedNoValidAliasMessage(index: String) = "Missing rollover_alias index setting [index=$index]"
