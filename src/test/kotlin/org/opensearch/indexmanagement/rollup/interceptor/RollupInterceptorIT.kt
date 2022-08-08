@@ -1043,7 +1043,7 @@ class RollupInterceptorIT : RollupRestTestCase() {
         // Search 1 non-rollup index and 1 rollup
         val searchResult1 = client().makeRequest("POST", "/source_rollup_search_all_jobs_2,$targetIndex2/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
         assertTrue(searchResult1.restStatus() == RestStatus.OK)
-        var failures = extractFailuresFromSearchResponse(searchResult1)
+        val failures = extractFailuresFromSearchResponse(searchResult1)
         assertNotNull(failures)
         assertEquals(1, failures?.size)
         assertEquals(
