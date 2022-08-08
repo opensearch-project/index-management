@@ -9,10 +9,10 @@ import org.apache.logging.log4j.LogManager
 import org.opensearch.cluster.metadata.MetadataCreateIndexService.validateIndexOrAliasName
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.settings.Settings
+import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.getRolloverAlias
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ActionMetaData
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
-import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepContext
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Validate
 import org.opensearch.indexmanagement.util.OpenForTesting
 import org.opensearch.indices.InvalidIndexNameException
@@ -30,12 +30,57 @@ class ValidateDelete(
         if (!deleteIndexExists(indexName) || !validIndex(indexName)) {
             return this
         }
+
+        val (rolloverTarget, isDataStream) = getRolloverTargetOrUpdateInfo(indexName)
+        rolloverTarget ?: return this
+
+        if (isDataStream) {
+            if (!notWriteIndexForDataStream(rolloverTarget, indexName)) {
+                return this
+            }
+        }
         return this
     }
 
+    private fun getRolloverTargetOrUpdateInfo(indexName: String): Pair<String?, Boolean> {
+        val metadata = clusterService.state().metadata()
+        val indexAbstraction = metadata.indicesLookup[indexName]
+        val isDataStreamIndex = indexAbstraction?.parentDataStream != null
+
+        val rolloverTarget = when {
+            isDataStreamIndex -> indexAbstraction?.parentDataStream?.name
+            else -> metadata.index(indexName).getRolloverAlias()
+        }
+
+        if (rolloverTarget == null) {
+            val message = getFailedNoValidAliasMessage(indexName)
+            logger.warn(message)
+            stepStatus = Step.StepStatus.VALIDATION_FAILED
+            validationStatus = ValidationStatus.RE_VALIDATING
+            validationMessage = message
+        }
+
+        return rolloverTarget to isDataStreamIndex
+    }
+
     // validation logic
-    private fun notWriteIndexForDataStream(context: StepContext): Boolean {
-        val indexName = context.metadata.index
+    private fun notWriteIndexForDataStream(alias: String?, indexName: String): Boolean {
+        val metadata = clusterService.state().metadata
+        val indexAlias = metadata.index(indexName)?.aliases?.get(alias)
+
+        val isWriteIndex = indexAlias?.writeIndex() // this could be null
+        if (isWriteIndex == true) {
+            val aliasIndices = metadata.indicesLookup[alias]?.indices?.map { it.index }
+            logger.debug("Alias $alias contains indices $aliasIndices")
+            if (aliasIndices != null && aliasIndices.size > 1) {
+                val message = getFailedIsWriteIndexMessage(indexName, "testdatastream")
+                logger.warn(message)
+                stepStatus = Step.StepStatus.VALIDATION_FAILED
+                validationStatus = ValidationStatus.RE_VALIDATING
+                validationMessage = message
+                return false
+            }
+        }
         return true
     }
 
@@ -85,5 +130,6 @@ class ValidateDelete(
         fun getNoIndexMessage(index: String) = "no such index [index=$index]"
         fun getIndexNotValidMessage(index: String) = "delete index [index=$index] not valid"
         fun getFailedIsWriteIndexMessage(index: String, dataStream: String) = "Index [index=$index] is the write index for data stream [$dataStream] and cannot be deleted"
+        fun getFailedNoValidAliasMessage(index: String) = "Missing rollover_alias index setting [index=$index]"
     }
 }

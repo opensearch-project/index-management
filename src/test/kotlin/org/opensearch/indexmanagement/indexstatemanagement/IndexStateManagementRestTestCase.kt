@@ -57,6 +57,7 @@ import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedInde
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.PolicyRetryInfoMetaData
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StateMetaData
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepMetaData
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ValidationResult
 import org.opensearch.indexmanagement.util._ID
 import org.opensearch.indexmanagement.util._PRIMARY_TERM
 import org.opensearch.indexmanagement.util._SEQ_NO
@@ -617,6 +618,32 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
         // make sure metadata is initialised
         assertTrue(metadata.transitionTo != null || metadata.stateMetaData != null || metadata.info != null || metadata.policyCompleted != null)
         return metadata
+    }
+
+    // Calls explain API for a single concrete index and converts the response into a ValidationResponse
+    // This only works for indices with a ManagedIndexMetaData that has been initialized
+    @Suppress("LoopWithTooManyJumpStatements")
+    protected fun getExplainValidationResult(indexName: String): ValidationResult {
+        if (indexName.contains("*") || indexName.contains(",")) {
+            throw IllegalArgumentException("This method is only for a single concrete index")
+        }
+
+        val response = client().makeRequest(RestRequest.Method.GET.toString(), "${RestExplainAction.EXPLAIN_BASE_URI}/$indexName")
+        assertEquals("Unexpected RestStatus", RestStatus.OK, response.restStatus())
+        lateinit var validationResult: ValidationResult
+        val xcp = createParser(XContentType.JSON.xContent(), response.entity.content)
+        ensureExpectedToken(Token.START_OBJECT, xcp.nextToken(), xcp)
+        while (xcp.nextToken() != Token.END_OBJECT) {
+            val cn = xcp.currentName()
+            xcp.nextToken()
+            if (cn == "total_managed_indices") continue
+
+            validationResult = ValidationResult.parse(xcp)
+            break // bypass roles field
+        }
+        // make sure validation is initialized
+        assertTrue(validationResult.validationMessage != null || validationResult.validationStatus != null)
+        return validationResult
     }
 
     protected fun rolloverIndex(alias: String) {
