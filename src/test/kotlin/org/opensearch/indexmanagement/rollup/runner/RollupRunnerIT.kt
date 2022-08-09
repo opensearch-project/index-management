@@ -7,9 +7,12 @@ package org.opensearch.indexmanagement.rollup.runner
 
 import org.apache.http.entity.ContentType
 import org.apache.http.entity.StringEntity
+import org.opensearch.common.settings.Settings
 import org.opensearch.indexmanagement.IndexManagementPlugin
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.ROLLUP_JOBS_BASE_URI
 import org.opensearch.indexmanagement.common.model.dimension.DateHistogram
+import org.opensearch.indexmanagement.indexstatemanagement.util.INDEX_NUMBER_OF_REPLICAS
+import org.opensearch.indexmanagement.indexstatemanagement.util.INDEX_NUMBER_OF_SHARDS
 import org.opensearch.indexmanagement.makeRequest
 import org.opensearch.indexmanagement.rollup.RollupRestTestCase
 import org.opensearch.indexmanagement.rollup.model.Rollup
@@ -728,6 +731,81 @@ class RollupRunnerIT : RollupRestTestCase() {
         // These are hard to test.. just assert they are more than 0
         assertTrue("Did not spend time indexing", rollupMetadata.stats.indexTimeInMillis > 0L)
         assertTrue("Did not spend time searching", rollupMetadata.stats.searchTimeInMillis > 0L)
+    }
+
+    fun `test rollup action with alias as target_index successfully`() {
+        generateNYCTaxiData("source_runner_sixth")
+
+        // Create index with alias, without mappings
+        val indexAlias = "alias_as_target_index"
+        val backingIndex = "backing_target_index"
+        val builtSettings = Settings.builder().let {
+            it.put(INDEX_NUMBER_OF_REPLICAS, "1")
+            it.put(INDEX_NUMBER_OF_SHARDS, "1")
+            it
+        }.build()
+        val aliases = "\"$indexAlias\": { \"is_write_index\": true }"
+        createIndex(backingIndex, builtSettings, null, aliases)
+
+        refreshAllIndices()
+
+        val rollup = Rollup(
+            id = "page_size_runner_sixth",
+            schemaVersion = 1L,
+            enabled = true,
+            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+            jobLastUpdatedTime = Instant.now(),
+            jobEnabledTime = Instant.now(),
+            description = "basic change of page size",
+            sourceIndex = "source_runner_sixth",
+            targetIndex = indexAlias,
+            metadataID = null,
+            roles = emptyList(),
+            pageSize = 1,
+            delay = 0,
+            continuous = false,
+            dimensions = listOf(DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "1s")),
+            metrics = listOf(
+                RollupMetrics(
+                    sourceField = "passenger_count",
+                    targetField = "passenger_count",
+                    metrics = listOf(Sum(), Min(), Max(), ValueCount(), Average())
+                )
+            )
+        ).let { createRollup(it, it.id) }
+
+        updateRollupStartTime(rollup)
+
+        waitFor { assertTrue("Target rollup index was not created", indexExists(backingIndex)) }
+
+        var startedRollup = waitFor {
+            val rollupJob = getRollup(rollupId = rollup.id)
+            assertNotNull("Rollup job doesn't have metadata set", rollupJob.metadataID)
+            val rollupMetadata = getRollupMetadata(rollupJob.metadataID!!)
+            assertEquals("Rollup is not finished", RollupMetadata.Status.FINISHED, rollupMetadata.status)
+            rollupJob
+        }
+
+        // restart job
+        client().makeRequest(
+            "PUT",
+            "$ROLLUP_JOBS_BASE_URI/${startedRollup.id}?if_seq_no=${startedRollup.seqNo}&if_primary_term=${startedRollup.primaryTerm}",
+            emptyMap(), rollup.copy(enabled = true).toHttpEntity()
+        )
+
+        startedRollup = waitFor {
+            val rollupJob = getRollup(rollupId = rollup.id)
+            assertNotNull("Rollup job doesn't have metadata set", rollupJob.metadataID)
+            val rollupMetadata = getRollupMetadata(rollupJob.metadataID!!)
+            assertEquals("Rollup is not finished", RollupMetadata.Status.FINISHED, rollupMetadata.status)
+            rollupJob
+        }
+
+        val rollupMetadataID = startedRollup.metadataID!!
+        val rollupMetadata = getRollupMetadata(rollupMetadataID)
+
+        // Randomly choosing 100.. if it didn't work we'd either fail hitting the timeout in waitFor or we'd have thousands of pages processed
+        assertTrue("Did not have less than 100 pages processed", rollupMetadata.stats.documentsProcessed > 0)
     }
 
     // TODO: Test scenarios:
