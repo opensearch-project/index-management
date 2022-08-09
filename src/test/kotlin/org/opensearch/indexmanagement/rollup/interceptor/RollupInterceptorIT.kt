@@ -791,19 +791,21 @@ class RollupInterceptorIT : RollupRestTestCase() {
     }
 
     fun `test rollup search multiple target indices successfully`() {
-        generateNYCTaxiData("source_rollup_search_all_jobs_1")
-        generateNYCTaxiData("source_rollup_search_all_jobs_2")
-        val targetIndex1 = "target_rollup_search_all_jobs1"
-        val targetIndex2 = "target_rollup_search_all_jobs2"
+        var sourceIndex1 = "source_rollup_search_multi_jobs_1"
+        var sourceIndex2 = "source_rollup_search_multi_jobs_2"
+        generateNYCTaxiData(sourceIndex1)
+        generateNYCTaxiData(sourceIndex2)
+        val targetIndex1 = "target_rollup_search_multi_jobs1"
+        val targetIndex2 = "target_rollup_search_multi_jobs2"
         val rollupHourly1 = Rollup(
-            id = "hourly_basic_term_query_rollup_search_all_1",
+            id = "hourly_basic_term_query_rollup_search_multi_1",
             enabled = true,
             schemaVersion = 1L,
             jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
             jobLastUpdatedTime = Instant.now(),
             jobEnabledTime = Instant.now(),
             description = "basic search test",
-            sourceIndex = "source_rollup_search_all_jobs_1",
+            sourceIndex = sourceIndex1,
             targetIndex = targetIndex1,
             metadataID = null,
             roles = emptyList(),
@@ -837,14 +839,14 @@ class RollupInterceptorIT : RollupRestTestCase() {
         }
 
         val rollupHourly2 = Rollup(
-            id = "hourly_basic_term_query_rollup_search_all_2",
+            id = "hourly_basic_term_query_rollup_search_multi_2",
             enabled = true,
             schemaVersion = 1L,
             jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
             jobLastUpdatedTime = Instant.now(),
             jobEnabledTime = Instant.now(),
             description = "basic search test",
-            sourceIndex = "source_rollup_search_all_jobs_2",
+            sourceIndex = sourceIndex2,
             targetIndex = targetIndex2,
             metadataID = null,
             roles = emptyList(),
@@ -892,9 +894,9 @@ class RollupInterceptorIT : RollupRestTestCase() {
                 }
             }
         """.trimIndent()
-        val rawRes1 = client().makeRequest("POST", "/source_rollup_search_all_jobs_1/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
+        val rawRes1 = client().makeRequest("POST", "/$sourceIndex1/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
         assertTrue(rawRes1.restStatus() == RestStatus.OK)
-        val rawRes2 = client().makeRequest("POST", "/source_rollup_search_all_jobs_2/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
+        val rawRes2 = client().makeRequest("POST", "/$sourceIndex2/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
         assertTrue(rawRes2.restStatus() == RestStatus.OK)
         val rollupResMulti = client().makeRequest("POST", "/$targetIndex1,$targetIndex2/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
         assertTrue(rollupResMulti.restStatus() == RestStatus.OK)
@@ -940,19 +942,21 @@ class RollupInterceptorIT : RollupRestTestCase() {
     }
 
     fun `test rollup search multiple target indices failed`() {
-        generateNYCTaxiData("source_rollup_search_all_jobs_1")
-        generateNYCTaxiData("source_rollup_search_all_jobs_2")
-        val targetIndex1 = "target_rollup_search_all_jobs1"
-        val targetIndex2 = "target_rollup_search_all_jobs2"
+        var sourceIndex1 = "source_rollup_search_multi_failed_1"
+        var sourceIndex2 = "source_rollup_search_multi_failed_2"
+        generateNYCTaxiData(sourceIndex1)
+        generateNYCTaxiData(sourceIndex2)
+        val targetIndex1 = "target_rollup_search_multi_failed_jobs1"
+        val targetIndex2 = "target_rollup_search_multi_failed_jobs2"
         val rollupJob1 = Rollup(
-            id = "hourly_basic_term_query_rollup_search_all1",
+            id = "hourly_basic_term_query_rollup_search_failed_1",
             enabled = true,
             schemaVersion = 1L,
             jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
             jobLastUpdatedTime = Instant.now(),
             jobEnabledTime = Instant.now(),
             description = "basic search test",
-            sourceIndex = "source_rollup_search_all_jobs_1",
+            sourceIndex = sourceIndex1,
             targetIndex = targetIndex1,
             metadataID = null,
             roles = emptyList(),
@@ -985,14 +989,14 @@ class RollupInterceptorIT : RollupRestTestCase() {
         }
 
         val rollupJob2 = Rollup(
-            id = "hourly_basic_term_query_rollup_search_all2",
+            id = "hourly_basic_term_query_rollup_search_failed_2",
             enabled = true,
             schemaVersion = 1L,
             jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
             jobLastUpdatedTime = Instant.now(),
             jobEnabledTime = Instant.now(),
             description = "basic search test",
-            sourceIndex = "source_rollup_search_all_jobs_2",
+            sourceIndex = sourceIndex2,
             targetIndex = targetIndex2,
             metadataID = null,
             roles = emptyList(),
@@ -1041,7 +1045,7 @@ class RollupInterceptorIT : RollupRestTestCase() {
             }
         """.trimIndent()
         // Search 1 non-rollup index and 1 rollup
-        val searchResult1 = client().makeRequest("POST", "/source_rollup_search_all_jobs_2,$targetIndex2/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
+        val searchResult1 = client().makeRequest("POST", "/$sourceIndex2,$targetIndex2/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
         assertTrue(searchResult1.restStatus() == RestStatus.OK)
         val failures = extractFailuresFromSearchResponse(searchResult1)
         assertNotNull(failures)
