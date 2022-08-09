@@ -57,6 +57,8 @@ import org.opensearch.indexmanagement.indexstatemanagement.transport.action.chan
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.changepolicy.TransportChangePolicyAction
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.deletepolicy.DeletePolicyAction
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.deletepolicy.TransportDeletePolicyAction
+import org.opensearch.indexmanagement.indexstatemanagement.transport.action.executepolicy.ExecutePolicyAction
+import org.opensearch.indexmanagement.indexstatemanagement.transport.action.executepolicy.TransportExecutePolicyAction
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.explain.ExplainAction
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.explain.TransportExplainAction
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.getpolicy.GetPoliciesAction
@@ -522,6 +524,7 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
             ActionPlugin.ActionHandler(RemovePolicyAction.INSTANCE, TransportRemovePolicyAction::class.java),
             ActionPlugin.ActionHandler(RefreshSearchAnalyzerAction.INSTANCE, TransportRefreshSearchAnalyzerAction::class.java),
             ActionPlugin.ActionHandler(AddPolicyAction.INSTANCE, TransportAddPolicyAction::class.java),
+            ActionPlugin.ActionHandler(ExecutePolicyAction.INSTANCE, TransportExecutePolicyAction::class.java),
             ActionPlugin.ActionHandler(RetryFailedManagedIndexAction.INSTANCE, TransportRetryFailedManagedIndexAction::class.java),
             ActionPlugin.ActionHandler(ChangePolicyAction.INSTANCE, TransportChangePolicyAction::class.java),
             ActionPlugin.ActionHandler(IndexPolicyAction.INSTANCE, TransportIndexPolicyAction::class.java),
