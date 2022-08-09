@@ -791,8 +791,8 @@ class RollupInterceptorIT : RollupRestTestCase() {
     }
 
     fun `test rollup search multiple target indices successfully`() {
-        var sourceIndex1 = "source_rollup_search_multi_jobs_1"
-        var sourceIndex2 = "source_rollup_search_multi_jobs_2"
+        val sourceIndex1 = "source_rollup_search_multi_jobs_1"
+        val sourceIndex2 = "source_rollup_search_multi_jobs_2"
         generateNYCTaxiData(sourceIndex1)
         generateNYCTaxiData(sourceIndex2)
         val targetIndex1 = "target_rollup_search_multi_jobs1"
@@ -942,8 +942,8 @@ class RollupInterceptorIT : RollupRestTestCase() {
     }
 
     fun `test rollup search multiple target indices failed`() {
-        var sourceIndex1 = "source_rollup_search_multi_failed_1"
-        var sourceIndex2 = "source_rollup_search_multi_failed_2"
+        val sourceIndex1 = "source_rollup_search_multi_failed_1"
+        val sourceIndex2 = "source_rollup_search_multi_failed_2"
         generateNYCTaxiData(sourceIndex1)
         generateNYCTaxiData(sourceIndex2)
         val targetIndex1 = "target_rollup_search_multi_failed_jobs1"
