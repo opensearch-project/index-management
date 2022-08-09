@@ -40,6 +40,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.MetadataService
 import org.opensearch.indexmanagement.indexstatemanagement.SkipExecution
 import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexConfig
 import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
+import org.opensearch.indexmanagement.indexstatemanagement.resthandler.RestExecutePolicyAction
 import org.opensearch.indexmanagement.indexstatemanagement.resthandler.RestAddPolicyAction
 import org.opensearch.indexmanagement.indexstatemanagement.resthandler.RestChangePolicyAction
 import org.opensearch.indexmanagement.indexstatemanagement.resthandler.RestDeletePolicyAction
@@ -329,13 +330,14 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
             RestExplainTransformAction(),
             RestStartTransformAction(),
             RestStopTransformAction(),
+            RestExecutePolicyAction(),
             RestGetSMPolicyHandler(),
             RestStartSMPolicyHandler(),
             RestStopSMPolicyHandler(),
             RestExplainSMPolicyHandler(),
             RestDeleteSMPolicyHandler(),
             RestCreateSMPolicyHandler(),
-            RestUpdateSMPolicyHandler()
+            RestUpdateSMPolicyHandler(),
         )
     }
 
