@@ -53,7 +53,7 @@ class TransportExecutePolicyAction @Inject constructor(
         runner.launch {
             try {
                 val lock = LockService(client, clusterService)
-                // fake context in order to pass into runJob
+                // temp context in order to pass into runJob
                 val newContext = JobExecutionContext(Instant.now(), JobDocVersion(0L,0L,0L), lock,
                         "", "")
                 runner.runJob(None, newContext)
