@@ -138,6 +138,20 @@ abstract class IndexManagementRestTestCase : ODFERestTestCase() {
         insertSampleBulkData(index, javaClass.classLoader.getResource("data/nyc_5000.ndjson").readText())
     }
 
+    protected fun extractFailuresFromSearchResponse(searchResponse: Response): List<Map<String, String>?>? {
+        val shards = searchResponse.asMap()["_shards"] as Map<String, ArrayList<Map<String, Any>>>
+        assertNotNull(shards)
+        val failures = shards["failures"]
+        assertNotNull(failures)
+        return failures?.let {
+            val result: ArrayList<Map<String, String>?>? = ArrayList()
+            for (failure in it) {
+                result?.add((failure as Map<String, Map<String, String>>)["reason"])
+            }
+            return result
+        }
+    }
+
     companion object {
         internal interface IProxy {
             val version: String?
