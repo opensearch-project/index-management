@@ -48,9 +48,15 @@ object RollupFieldValueExpressionResolver {
         this.indexAliasUtils = IndexAliasUtils(clusterService)
     }
 
-    class IndexAliasUtils(val clusterService: ClusterService) {
+    fun registerServices(scriptService: ScriptService, clusterService: ClusterService, indexAliasUtils: IndexAliasUtils) {
+        this.scriptService = scriptService
+        this.clusterService = clusterService
+        this.indexAliasUtils = indexAliasUtils
+    }
 
-        fun hasAlias(index: String): Boolean {
+    open class IndexAliasUtils(val clusterService: ClusterService) {
+
+        open fun hasAlias(index: String): Boolean {
             val aliases = this.clusterService.state().metadata().indices.get(index)?.aliases
             if (aliases != null) {
                 return aliases.size() > 0
@@ -58,15 +64,15 @@ object RollupFieldValueExpressionResolver {
             return false
         }
 
-        fun isAlias(index: String): Boolean {
+        open fun isAlias(index: String): Boolean {
             return this.clusterService.state().metadata().indicesLookup?.get(index) is IndexAbstraction.Alias
         }
 
-        fun getWriteIndexNameForAlias(alias: String): String? {
+        open fun getWriteIndexNameForAlias(alias: String): String? {
             return this.clusterService.state().metadata().indicesLookup?.get(alias)?.writeIndex?.index?.name
         }
 
-        fun getBackingIndicesForAlias(alias: String): MutableList<IndexMetadata>? {
+        open fun getBackingIndicesForAlias(alias: String): MutableList<IndexMetadata>? {
             return this.clusterService.state().metadata().indicesLookup?.get(alias)?.indices
         }
     }

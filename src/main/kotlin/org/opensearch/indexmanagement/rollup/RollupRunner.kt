@@ -255,7 +255,7 @@ object RollupRunner :
                 }
                 else -> {}
             }
-
+            logger.info("ABOUT TO RUN SEARCH on source_index")
             while (rollupSearchService.shouldProcessRollup(updatableJob, metadata)) {
                 do {
                     try {
@@ -271,6 +271,7 @@ object RollupRunner :
                                 val rollupIndexResult = withClosableContext(
                                     IndexManagementSecurityContext(job.id, settings, threadPool.threadContext, job.user)
                                 ) {
+                                    logger.info("ABOUT TO INDEX SEARCH RESULTS on source_index")
                                     rollupIndexer.indexRollups(updatableJob, compositeRes)
                                 }
                                 when (rollupIndexResult) {
@@ -284,10 +285,12 @@ object RollupRunner :
                         }
                         when (rollupResult) {
                             is RollupResult.Success -> {
+                                logger.info("ABOUT TO UPDATE METADATA on source_index")
                                 metadata = rollupMetadataService.updateMetadata(
                                     updatableJob,
                                     metadata.mergeStats(rollupResult.stats), rollupResult.internalComposite
                                 )
+                                logger.info("METADATA STATUS ${metadata.status} total docs: ${metadata.stats.documentsProcessed} seqNo:${metadata.seqNo} primaryTerm:${metadata.primaryTerm} ")
                                 updatableJob = withClosableContext(
                                     IndexManagementSecurityContext(job.id, settings, threadPool.threadContext, null)
                                 ) {
