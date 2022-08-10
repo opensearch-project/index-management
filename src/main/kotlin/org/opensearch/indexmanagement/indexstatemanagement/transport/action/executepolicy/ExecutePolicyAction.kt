@@ -7,9 +7,9 @@ package org.opensearch.indexmanagement.indexstatemanagement.transport.action.exe
 
 
 import org.opensearch.action.ActionType
-import org.opensearch.indexmanagement.indexstatemanagement.transport.action.ISMStatusResponse
+import org.opensearch.action.support.master.AcknowledgedResponse
 
-class ExecutePolicyAction private constructor() : ActionType<ISMStatusResponse>(NAME, ::ISMStatusResponse) {
+class ExecutePolicyAction private constructor() : ActionType<AcknowledgedResponse>(NAME, ::AcknowledgedResponse) {
     companion object {
         val INSTANCE = ExecutePolicyAction()
         const val NAME = "cluster:admin/opendistro/ism/managedindex/execute"

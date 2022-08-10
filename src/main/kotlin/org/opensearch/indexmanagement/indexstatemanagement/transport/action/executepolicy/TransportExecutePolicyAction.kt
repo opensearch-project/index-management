@@ -10,32 +10,26 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.apache.logging.log4j.LogManager
-import org.opensearch.OpenSearchStatusException
 import org.opensearch.action.ActionListener
-import org.opensearch.action.get.GetRequest
-import org.opensearch.action.get.GetResponse
 import org.opensearch.action.support.ActionFilters
 import org.opensearch.action.support.HandledTransportAction
-import org.opensearch.action.support.WriteRequest
-import org.opensearch.client.Client
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.inject.Inject
 import org.opensearch.common.settings.Settings
-import org.opensearch.common.xcontent.LoggingDeprecationHandler
 import org.opensearch.common.xcontent.NamedXContentRegistry
-import org.opensearch.common.xcontent.XContentHelper
-import org.opensearch.common.xcontent.XContentType
 import org.opensearch.commons.ConfigConstants
 import org.opensearch.commons.authuser.User
 import org.opensearch.indexmanagement.indexstatemanagement.ManagedIndexRunner
-import org.opensearch.rest.RestStatus
 import org.opensearch.tasks.Task
 import org.opensearch.transport.TransportService
-import java.time.Instant
 import org.opensearch.action.support.master.AcknowledgedResponse
 import org.opensearch.client.node.NodeClient
 import org.opensearch.jobscheduler.spi.utils.LockService
 import org.opensearch.ExceptionsHelper
+import org.opensearch.index.fielddata.IndexFieldDataCache.None
+import org.opensearch.jobscheduler.spi.JobDocVersion
+import org.opensearch.jobscheduler.spi.JobExecutionContext
+import java.time.Instant
 
 private val log = LogManager.getLogger(TransportExecutePolicyAction::class.java)
 private val scope: CoroutineScope = CoroutineScope(Dispatchers.IO)
@@ -59,7 +53,10 @@ class TransportExecutePolicyAction @Inject constructor(
         runner.launch {
             try {
                 val lock = LockService(client, clusterService)
-//                runner.runJob(, lock)
+                // fake context in order to pass into runJob
+                val newContext = JobExecutionContext(Instant.now(), JobDocVersion(0L,0L,0L), lock,
+                        "", "")
+                runner.runJob(None, newContext)
             } catch (e: Exception) {
                 log.error("Unexpected error trying to execute policy")
                 withContext(Dispatchers.IO) {

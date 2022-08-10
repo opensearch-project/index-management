@@ -96,6 +96,7 @@ import org.opensearch.jobscheduler.spi.LockModel
 import org.opensearch.jobscheduler.spi.ScheduledJobParameter
 import org.opensearch.jobscheduler.spi.ScheduledJobRunner
 import org.opensearch.jobscheduler.spi.schedule.IntervalSchedule
+import org.opensearch.jobscheduler.spi.utils.LockService
 import org.opensearch.rest.RestStatus
 import org.opensearch.script.Script
 import org.opensearch.script.ScriptService
@@ -237,11 +238,11 @@ object ManagedIndexRunner :
                             break
                         } else {
                             lock = renewedLock
-                            keepExecuting = runManagedIndexConfig(job, context)
+                            keepExecuting = runManagedIndexConfig(job, context.lockService)
                         }
                     } while ((job.continuous && keepExecuting)) // Runs until job is no longer continuous or execution should stop
                 } else { // If job is not continuous run once
-                    runManagedIndexConfig(job, context)
+                    runManagedIndexConfig(job, context.lockService)
                 }
                 // Release lock
                 if (lock == null || !releaseLockForScheduledJob(context, lock)) {
@@ -252,7 +253,7 @@ object ManagedIndexRunner :
     }
 
     @Suppress("ReturnCount", "ComplexMethod", "LongMethod", "ComplexCondition", "NestedBlockDepth")
-    private suspend fun runManagedIndexConfig(managedIndexConfig: ManagedIndexConfig, jobContext: JobExecutionContext): Boolean {
+    private suspend fun runManagedIndexConfig(managedIndexConfig: ManagedIndexConfig, lock: LockService): Boolean {
         logger.debug("Run job for index ${managedIndexConfig.index}")
         // doing a check of local cluster health as we do not want to overload cluster manager node with potentially a lot of calls
         if (clusterIsRed()) {
@@ -326,7 +327,7 @@ object ManagedIndexRunner :
         val state = policy.getStateToExecute(managedIndexMetaData)
         val action: Action? = state?.getActionToExecute(managedIndexMetaData, indexMetadataProvider)
         val stepContext = StepContext(
-            managedIndexMetaData, clusterService, client, threadPool.threadContext, policy.user, scriptService, settings, jobContext.lockService
+            managedIndexMetaData, clusterService, client, threadPool.threadContext, policy.user, scriptService, settings, lock
         )
         val step: Step? = action?.getStepToExecute(stepContext)
         val currentActionMetaData = action?.getUpdatedActionMetadata(managedIndexMetaData, state.name)
