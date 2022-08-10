@@ -84,7 +84,7 @@ class TransformRunnerIT : TransformRestTestCase() {
             sourceIndex = "transform-source-index",
             targetIndex = "transform-target-index",
             roles = emptyList(),
-            pageSize = 100,
+            pageSize = 10,
             groups = listOf(
                 Terms(sourceField = "store_and_fwd_flag", targetField = "flag")
             ),
@@ -350,7 +350,7 @@ class TransformRunnerIT : TransformRestTestCase() {
             sourceIndex = dataStreamName,
             targetIndex = "transform-target-index",
             roles = emptyList(),
-            pageSize = 100,
+            pageSize = 10,
             groups = listOf(
                 Terms(sourceField = "store_and_fwd_flag", targetField = "flag")
             )
@@ -390,7 +390,7 @@ class TransformRunnerIT : TransformRestTestCase() {
             sourceIndex = "transform-no-op-source-index",
             targetIndex = "transform-no-op-target-index",
             roles = emptyList(),
-            pageSize = 100,
+            pageSize = 10,
             groups = listOf(
                 Terms(sourceField = "store_and_fwd_flag", targetField = "flag"),
                 Histogram(sourceField = "trip_distance", targetField = "distance", interval = 0.1)
@@ -459,7 +459,7 @@ class TransformRunnerIT : TransformRestTestCase() {
             sourceIndex = "continuous-transform-source-index",
             targetIndex = "continuous-transform-target-index",
             roles = emptyList(),
-            pageSize = 100,
+            pageSize = 10,
             groups = listOf(
                 Terms(sourceField = "store_and_fwd_flag", targetField = "flag")
             ),
@@ -587,7 +587,7 @@ class TransformRunnerIT : TransformRestTestCase() {
             sourceIndex = sourceIndex,
             targetIndex = "modified-bucket-target-index",
             roles = emptyList(),
-            pageSize = 100,
+            pageSize = 10,
             groups = listOf(
                 Histogram(sourceField = "iterating_id", targetField = "id_group", interval = 5.0)
             ),
@@ -717,7 +717,7 @@ class TransformRunnerIT : TransformRestTestCase() {
             sourceIndex = "wildcard-s*e-*",
             targetIndex = "wildcard-target-index",
             roles = emptyList(),
-            pageSize = 100,
+            pageSize = 10,
             groups = listOf(
                 Terms(sourceField = "store_and_fwd_flag", targetField = "flag")
             ),
@@ -806,7 +806,7 @@ class TransformRunnerIT : TransformRestTestCase() {
             sourceIndex = sourceIndex,
             targetIndex = "null-bucket-target-index",
             roles = emptyList(),
-            pageSize = 100,
+            pageSize = 10,
             groups = listOf(
                 Histogram(sourceField = "iterating_id", targetField = "id_group", interval = 5.0),
                 Terms(sourceField = "term_id", targetField = "id_term")
