@@ -636,9 +636,14 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
         while (xcp.nextToken() != Token.END_OBJECT) {
             val cn = xcp.currentName()
             xcp.nextToken()
-            if (cn == "total_managed_indices") continue
-
-            validationResult = ValidationResult.parse(xcp)
+            // if (cn == "total_managed_indices") continue
+            if (cn == "validation") {
+                ensureExpectedToken(Token.START_OBJECT, xcp.nextToken(), xcp)
+                while (xcp.nextToken() != Token.END_OBJECT) {
+                    validationResult = ValidationResult.parse(xcp)
+                    break
+                }
+            }
             break // bypass roles field
         }
         // make sure validation is initialized

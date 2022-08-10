@@ -35,7 +35,7 @@ class ExplainResponseTests : OpenSearchTestCase() {
             policyRetryInfo = null,
             info = null
         )
-        val validationResult = ValidationResult("test", Validate.ValidationStatus.RE_VALIDATING)
+        val validationResult = ValidationResult("test", Validate.ValidationStatus.FAILED)
         val validationResults = listOf(validationResult)
         val indexMetadatas = listOf(metadata)
         val totalManagedIndices = 1
@@ -54,5 +54,7 @@ class ExplainResponseTests : OpenSearchTestCase() {
         assertEquals(enabledState, newRes.enabledState)
         assertEquals(appliedPolicies, newRes.policies)
         assertEquals(validationResults, newRes.validationResults)
+        logger.info("explain test")
+        logger.info(newRes)
     }
 }

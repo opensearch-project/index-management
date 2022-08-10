@@ -46,6 +46,9 @@ GET localhost:9200/_plugins/_ism/explain/testnoalias?pretty
 Accept: application/json
 
 ###
+<!--Add Alias-->
+
+###
 PUT http://localhost:9200/testnoalias/_alias/testalias
 Content-Type: application/json
 
@@ -63,7 +66,7 @@ Content-Type: application/json
    "settings": {
     "plugins.index_state_management.rollover_alias": "testnoalias*"
    }
- }
+  }
 }
 
 ###

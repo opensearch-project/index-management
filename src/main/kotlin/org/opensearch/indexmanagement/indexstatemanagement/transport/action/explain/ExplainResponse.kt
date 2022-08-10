@@ -12,6 +12,7 @@ import org.opensearch.common.xcontent.ToXContent
 import org.opensearch.common.xcontent.ToXContentObject
 import org.opensearch.common.xcontent.XContentBuilder
 import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
+import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.addObject
 import org.opensearch.indexmanagement.indexstatemanagement.settings.LegacyOpenDistroManagedIndexSettings
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings
 import org.opensearch.indexmanagement.indexstatemanagement.util.TOTAL_MANAGED_INDICES
@@ -84,7 +85,7 @@ open class ExplainResponse : ActionResponse, ToXContentObject {
             indexMetadatas[ind]?.toXContent(builder, ToXContent.EMPTY_PARAMS)
             builder.field("enabled", enabledState[name])
             policies[name]?.let { builder.field(Policy.POLICY_TYPE, it, XCONTENT_WITHOUT_TYPE_AND_USER) }
-            validationResults[ind]?.toXContent(builder, ToXContent.EMPTY_PARAMS)
+            builder.addObject(ValidationResult.VALIDATE, validationResults[ind], params, true)
             builder.endObject()
         }
         builder.field(TOTAL_MANAGED_INDICES, totalManagedIndices)

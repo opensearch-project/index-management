@@ -43,7 +43,6 @@ import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexCon
 import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
 import org.opensearch.indexmanagement.common.model.rest.SearchParams
 import org.opensearch.indexmanagement.indexstatemanagement.ManagedIndexRunner.validationService
-import org.opensearch.indexmanagement.indexstatemanagement.action.RolloverAction
 import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.getManagedIndexMetadata
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.managedIndex.ManagedIndexAction
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.managedIndex.ManagedIndexRequest
@@ -106,6 +105,7 @@ class TransportExplainAction @Inject constructor(
         private val indices: List<String> = request.indices
         private val explainAll: Boolean = indices.isEmpty()
         private val showPolicy: Boolean = request.showPolicy
+        private val validateAction: Boolean = true
 
         // Map of indexName to index metadata got from config index job which is fake/not a real full metadata document
         private val managedIndicesMetaDataMap: MutableMap<IndexName, ManagedIndexMetadataMap> = mutableMapOf()
@@ -197,7 +197,7 @@ class TransportExplainAction @Inject constructor(
                                     "policy_id" to managedIndex.policyID,
                                     "enabled" to managedIndex.enabled.toString()
                                 )
-                                if (showPolicy) {
+                                if (showPolicy || validateAction) {
                                     managedIndex.policy?.let { appliedPolicies[managedIndex.index] = it }
                                 }
                             }
@@ -306,11 +306,6 @@ class TransportExplainAction @Inject constructor(
                 var metadataMapFromManagedIndex = managedIndicesMetaDataMap[indexName]
                 indexPolicyIDs.add(metadataMapFromManagedIndex?.get("policy_id"))
 
-                // hard coded rollover action as next action
-                var validationResult = validationService.validate(RolloverAction(null, null, null, null, 1), indexName)
-                // var validationResult = validationService.validate(DeleteAction(0), indexName)
-                log.info("inside explain")
-                log.info(validationResult)
                 var managedIndexMetadata: ManagedIndexMetaData? = null
                 val managedIndexMetadataDocUUID = indices[indexName]?.let { managedIndexMetadataID(it) }
                 val configIndexMetadataMap = metadataMap[managedIndexMetadataDocUUID]
@@ -331,7 +326,36 @@ class TransportExplainAction @Inject constructor(
                         info?.let { managedIndexMetadata = clusterStateMetadata?.copy(info = it) }
                     }
                 }
-                managedIndexMetadata = managedIndexMetadata?.copy(validationResult = validationResult)
+
+                // figure out which action to take
+                var validationResult = validationService.validate("nothing", indexName)
+                log.info("show policy")
+                log.info(appliedPolicies)
+                val policy = appliedPolicies[indexName]
+                if (policy != null && managedIndexMetadata != null) {
+                    log.info("inside here")
+                    val state = policy.getStateToExecute(managedIndexMetadata!!)
+                    log.info(state)
+                    val action = state?.getActionToExecute(managedIndexMetadata!!, indexMetadataProvider)
+                    log.info(action)
+                    var actionName = action?.type
+                    log.info("action name")
+                    log.info(actionName)
+                    if (actionName == null) {
+                        actionName = "nothing"
+                    }
+                    validationResult = validationService.validate(actionName, indexName)
+                    validationResults.add(validationResult)
+                }
+                // var validationResult = validationService.validate("rollover", indexName)
+//                val actionName = managedIndexMetadata?.actionMetaData?.name
+//                if (actionName != null) {
+//                    validationResult = validationService.validate(actionName, indexName)
+//                }
+                log.info(managedIndexMetadata)
+                log.info("inside explain")
+                log.info(validationResult)
+                // managedIndexMetadata = managedIndexMetadata?.copy(validationResult = validationResult)
                 indexMetadatas.add(managedIndexMetadata)
                 validationResults.add(validationResult)
             }

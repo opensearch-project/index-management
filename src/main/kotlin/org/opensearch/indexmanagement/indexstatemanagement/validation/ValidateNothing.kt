@@ -11,12 +11,14 @@ import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ActionMetaD
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.util.OpenForTesting
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Validate
+import org.opensearch.monitor.jvm.JvmService
 
 @OpenForTesting
 class ValidateNothing(
     settings: Settings,
-    clusterService: ClusterService
-) : Validate(settings, clusterService) {
+    clusterService: ClusterService,
+    jvmService: JvmService
+) : Validate(settings, clusterService, jvmService) {
 
     // skips validation
     override fun execute(indexName: String): Validate {

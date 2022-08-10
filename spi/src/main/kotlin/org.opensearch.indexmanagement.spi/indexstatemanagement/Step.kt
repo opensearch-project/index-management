@@ -55,7 +55,6 @@ abstract class Step(val name: String, val isSafeToDisableOn: Boolean = true) {
     enum class StepStatus(val status: String) : Writeable {
         STARTING("starting"),
         CONDITION_NOT_MET("condition_not_met"),
-        VALIDATION_FAILED("validation_failed"),
         FAILED("failed"),
         COMPLETED("completed");
 

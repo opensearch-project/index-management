@@ -12,11 +12,13 @@ import org.opensearch.common.io.stream.Writeable
 import org.opensearch.common.settings.Settings
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ActionMetaData
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
+import org.opensearch.monitor.jvm.JvmService
 import java.util.Locale
 
 abstract class Validate(
     val settings: Settings,
-    val clusterService: ClusterService
+    val clusterService: ClusterService,
+    val jvmService: JvmService
 ) {
 
     var validationStatus = ValidationStatus.PASSED

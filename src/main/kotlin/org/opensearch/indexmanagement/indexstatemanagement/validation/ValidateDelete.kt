@@ -10,18 +10,19 @@ import org.opensearch.cluster.metadata.MetadataCreateIndexService.validateIndexO
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.settings.Settings
 import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.getRolloverAlias
-import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ActionMetaData
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Validate
 import org.opensearch.indexmanagement.util.OpenForTesting
 import org.opensearch.indices.InvalidIndexNameException
+import org.opensearch.monitor.jvm.JvmService
 
 @OpenForTesting
 class ValidateDelete(
     settings: Settings,
-    clusterService: ClusterService
-) : Validate(settings, clusterService) {
+    clusterService: ClusterService,
+    jvmService: JvmService
+) : Validate(settings, clusterService, jvmService) {
 
     private val logger = LogManager.getLogger(javaClass)
 
@@ -34,12 +35,10 @@ class ValidateDelete(
 
         val (rolloverTarget, isDataStream) = getRolloverTargetOrUpdateInfo(indexName)
         rolloverTarget ?: return this
-        logger.info("before checking sttuff")
-        if (!isDataStream) {
-            logger.info("is data stream")
-            if (!notWriteIndexForDataStream(rolloverTarget, indexName)) {
-                return this
-            }
+        logger.info("before checking stuff")
+        logger.info("is data stream")
+        if (!notWriteIndexForDataStream(rolloverTarget, indexName)) {
+            return this // can't be deleted if it's write index
         }
         validationMessage = getValidationPassedMessage(indexName)
         return this
@@ -58,7 +57,6 @@ class ValidateDelete(
         if (rolloverTarget == null) {
             val message = getFailedNoValidAliasMessage(indexName)
             logger.warn(message)
-            stepStatus = Step.StepStatus.VALIDATION_FAILED
             validationStatus = ValidationStatus.RE_VALIDATING
             validationMessage = message
         }
@@ -75,10 +73,9 @@ class ValidateDelete(
         if (isWriteIndex == true) {
             val aliasIndices = metadata.indicesLookup[alias]?.indices?.map { it.index }
             logger.debug("Alias $alias contains indices $aliasIndices")
-            if (aliasIndices != null && aliasIndices.size > 1) {
+            if (aliasIndices != null) {
                 val message = getFailedIsWriteIndexMessage(indexName)
                 logger.warn(message)
-                stepStatus = Step.StepStatus.VALIDATION_FAILED
                 validationStatus = ValidationStatus.RE_VALIDATING
                 validationMessage = message
                 return false
@@ -93,7 +90,6 @@ class ValidateDelete(
         if (!indexExists) {
             val message = getNoIndexMessage(indexName)
             logger.warn(message)
-            stepStatus = Step.StepStatus.VALIDATION_FAILED
             validationStatus = ValidationStatus.RE_VALIDATING
             validationMessage = message
             return false
@@ -111,7 +107,6 @@ class ValidateDelete(
         } catch (e: Exception) {
             val message = getIndexNotValidMessage(indexName)
             logger.warn(message)
-            stepStatus = Step.StepStatus.VALIDATION_FAILED
             validationStatus = ValidationStatus.RE_VALIDATING
             validationMessage = message
         }

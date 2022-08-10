@@ -407,7 +407,7 @@ object ManagedIndexRunner :
         @Suppress("ComplexCondition", "MaxLineLength")
         if (updateResult.metadataSaved && state != null && action != null && step != null && currentActionMetaData != null) {
             if (validationServiceEnabled) {
-                val validationResult = validationService.validate(action, stepContext.metadata.index)
+                val validationResult = validationService.validate(action.type, stepContext.metadata.index)
                 logger.info("inside runner")
                 logger.info(validationResult)
                 if (validationResult.validationStatus == Validate.ValidationStatus.RE_VALIDATING) {

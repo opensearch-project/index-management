@@ -22,13 +22,12 @@ class ValidateDeleteIT : IndexStateManagementRestTestCase() {
     private val testIndexName = javaClass.simpleName.toLowerCase(Locale.ROOT)
 
     fun `test delete index is write index`() {
-        val index1 = "firstindex"
-        val index2 = "secondindex"
-        val alias1 = "alias"
+        val index1 = "index-1"
+        val alias1 = "x"
         val policyID = "${testIndexName}_precheck"
         val actionConfig = DeleteAction(0)
         actionConfig.configRetry = ActionRetry(0)
-        val states = listOf(State(name = "DeleteState", actions = listOf(actionConfig), transitions = listOf()))
+        val states = listOf(State(name = "DeleteAction", actions = listOf(actionConfig), transitions = listOf()))
 
         val policy = Policy(
             id = policyID,
@@ -44,18 +43,16 @@ class ValidateDeleteIT : IndexStateManagementRestTestCase() {
         createIndex(index1, policyID)
         changeAlias(index1, alias1, "add", true)
         updateIndexSetting(index1, ManagedIndexSettings.ROLLOVER_ALIAS.key, alias1)
-        createIndex(index2, policyID)
-        changeAlias(index2, alias1, "add",)
-        updateIndexSetting(index2, ManagedIndexSettings.ROLLOVER_ALIAS.key, alias1)
 
         val managedIndexConfig = getExistingManagedIndexConfig(index1)
 
         // Change the start time so the job will trigger in 2 seconds, this will trigger the first initialization of the policy
         updateManagedIndexConfigStartTime(managedIndexConfig)
         waitFor { assertEquals(policyID, getExplainManagedIndexMetaData(index1).policyID) }
-        waitFor { assertIndexExists(index1) }
+        // waitFor { assertIndexExists(index1) }
 
         // Need to speed up to second execution where it will trigger the first execution of the action
+        updateManagedIndexConfigStartTime(managedIndexConfig)
         waitFor {
             val data = getExplainManagedIndexMetaData(index1).validationResult
             assertEquals(

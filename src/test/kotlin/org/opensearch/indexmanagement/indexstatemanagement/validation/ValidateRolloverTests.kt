@@ -23,6 +23,7 @@ import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedInde
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepContext
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Validate
 import org.opensearch.jobscheduler.spi.utils.LockService
+import org.opensearch.monitor.jvm.JvmService
 import org.opensearch.script.ScriptService
 import org.opensearch.test.OpenSearchTestCase
 import java.util.*
@@ -31,6 +32,7 @@ class ValidateRolloverTests : OpenSearchTestCase() {
     private val scriptService: ScriptService = mock()
     private val settings: Settings = Settings.EMPTY
     private val clusterService: ClusterService = mock()
+    private val jvmService: JvmService = mock()
     private val indexName: String = "test"
     private val metadata = ManagedIndexMetaData(
         indexName, "indexUuid", "policy_id", null, null, null, null, null, null, null,
@@ -41,7 +43,7 @@ class ValidateRolloverTests : OpenSearchTestCase() {
     val actionConfig = RolloverAction(null, 3, TimeValue.timeValueDays(2), null, 0)
     private val client: Client = mock()
     private val lockService: LockService = LockService(mock(), clusterService)
-    private val validate = ValidateRollover(settings, clusterService)
+    private val validate = ValidateRollover(settings, clusterService, jvmService)
     private val clusterState: ClusterState = mock()
     private val clusterServiceMetadata: Metadata = mock()
     private val indexAbstraction: IndexAbstraction = mock()

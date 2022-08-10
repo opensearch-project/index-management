@@ -365,7 +365,7 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
             xContentRegistry,
             settings,
             indexNameExpressionResolver,
-            jvmService,
+            jvmService, // put jvm
             threadPool
         )
         fieldCapsFilter = FieldCapsFilter(clusterService, settings, indexNameExpressionResolver)
@@ -386,7 +386,7 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
             .registerConsumers()
             .registerClusterConfigurationProvider(skipFlag)
         indexManagementIndices = IndexManagementIndices(settings, client.admin().indices(), clusterService)
-        validationService = ValidationService(settings, clusterService)
+        validationService = ValidationService(settings, clusterService, jvmService)
         val indexStateManagementHistory =
             IndexStateManagementHistory(
                 settings,

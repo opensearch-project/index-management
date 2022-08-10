@@ -15,12 +15,14 @@ import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ActionMetaD
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.util.OpenForTesting
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Validate
+import org.opensearch.monitor.jvm.JvmService
 
 @OpenForTesting
 class ValidateRollover(
     settings: Settings,
-    clusterService: ClusterService
-) : Validate(settings, clusterService) {
+    clusterService: ClusterService,
+    jvmService: JvmService
+) : Validate(settings, clusterService, jvmService) {
 
     private val logger = LogManager.getLogger(javaClass)
 
@@ -74,7 +76,6 @@ class ValidateRollover(
         if (indexAlias == null) {
             val message = getMissingAliasMessage(indexName)
             logger.warn(message)
-            stepStatus = Step.StepStatus.VALIDATION_FAILED
             validationStatus = ValidationStatus.RE_VALIDATING
             validationMessage = message
             return false
@@ -93,7 +94,6 @@ class ValidateRollover(
             if (aliasIndices != null && aliasIndices.size > 1) {
                 val message = getFailedWriteIndexMessage(indexName)
                 logger.warn(message)
-                stepStatus = Step.StepStatus.VALIDATION_FAILED
                 validationStatus = ValidationStatus.RE_VALIDATING
                 validationMessage = message
                 return false
@@ -115,7 +115,6 @@ class ValidateRollover(
         if (rolloverTarget == null) {
             val message = getFailedNoValidAliasMessage(indexName)
             logger.warn(message)
-            stepStatus = Step.StepStatus.VALIDATION_FAILED
             validationStatus = ValidationStatus.RE_VALIDATING
             validationMessage = message
         }
