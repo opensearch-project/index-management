@@ -26,7 +26,15 @@ import org.opensearch.action.support.master.AcknowledgedResponse
 import org.opensearch.client.node.NodeClient
 import org.opensearch.jobscheduler.spi.utils.LockService
 import org.opensearch.ExceptionsHelper
+import org.opensearch.action.admin.cluster.state.ClusterStateRequest
+import org.opensearch.action.admin.cluster.state.ClusterStateResponse
+import org.opensearch.action.get.MultiGetRequest
+import org.opensearch.action.get.MultiGetResponse
+import org.opensearch.action.support.IndicesOptions
+import org.opensearch.index.IndexNotFoundException
 import org.opensearch.index.fielddata.IndexFieldDataCache.None
+import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings
+import org.opensearch.indexmanagement.indexstatemanagement.transport.action.ISMStatusResponse
 import org.opensearch.jobscheduler.spi.JobDocVersion
 import org.opensearch.jobscheduler.spi.JobExecutionContext
 import java.time.Instant
@@ -41,14 +49,16 @@ class TransportExecutePolicyAction @Inject constructor(
         private val runner: ManagedIndexRunner,
         actionFilters: ActionFilters,
         val xContentRegistry: NamedXContentRegistry,
-        private val settings: Settings
+        val request: ExecutePolicyRequest
 ) : HandledTransportAction<ExecutePolicyRequest, AcknowledgedResponse> (
     ExecutePolicyAction.NAME, transportService, actionFilters, ::ExecutePolicyRequest
 ) {
+
     override fun doExecute(task: Task, execPolicyRequest: ExecutePolicyRequest, actionListener: ActionListener<AcknowledgedResponse>) {
         val userStr = client.threadPool().threadContext.getTransient<String>(ConfigConstants.OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT)
         log.debug("User and roles string from thread context: $userStr")
         val user: User? = User.parse(userStr)
+        val indices = mutableSetOf<String>()
 
         runner.launch {
             try {
@@ -62,6 +72,58 @@ class TransportExecutePolicyAction @Inject constructor(
                 withContext(Dispatchers.IO) {
                     actionListener.onFailure(ExceptionsHelper.unwrapCause(e) as Exception)
                 }
+            }
+        }
+        fun getExistingManagedIndices() {
+
+            val multiGetReq = MultiGetRequest()
+
+            client.multiGet(
+                    multiGetReq,
+                object : ActionListener<MultiGetResponse> {
+                    override fun onResponse(response: MultiGetResponse) {
+
+                        response.forEach {
+                            // get managed index configs
+                        }
+
+                        fun onFailure(t: Exception) {
+                            actionListener.onFailure(ExceptionsHelper.unwrapCause(t) as Exception)
+                        }
+                    }
+                }
+            )
+        }
+        fun getClusterState() {
+            val strictExpandOptions = IndicesOptions.strictExpand()
+
+            val clusterStateRequest = ClusterStateRequest()
+                .clear()
+                .indices(*request.indices.toTypedArray())
+                .metadata(true)
+                .local(false)
+                .indicesOptions(strictExpandOptions)
+
+            client.threadPool().threadContext.stashContext().use {
+                client.admin()
+                    .cluster()
+                    .state(
+                        clusterStateRequest,
+                        object : ActionListener<ClusterStateResponse> {
+                            override fun onResponse(response: ClusterStateResponse) {
+                                val indexMetadatas = response.state.metadata.indices
+                                indexMetadatas.forEach {
+                                    indices.add(it.value.indexUUID)
+                                }
+
+                                getExistingManagedIndices()
+                            }
+
+                            override fun onFailure(t: Exception) {
+                                actionListener.onFailure(ExceptionsHelper.unwrapCause(t) as Exception)
+                            }
+                        }
+                    )
             }
         }
     }
