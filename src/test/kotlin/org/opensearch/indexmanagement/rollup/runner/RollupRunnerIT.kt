@@ -734,7 +734,7 @@ class RollupRunnerIT : RollupRestTestCase() {
     }
 
     fun `test rollup action with alias as target_index successfully`() {
-        generateNYCTaxiData("source_runner_sixth")
+        generateNYCTaxiData("source_runner_sixth_eleventh")
 
         // Create index with alias, without mappings
         val indexAlias = "alias_as_target_index"
@@ -750,14 +750,14 @@ class RollupRunnerIT : RollupRestTestCase() {
         refreshAllIndices()
 
         val rollup = Rollup(
-            id = "page_size_runner_sixth",
+            id = "runner_with_alias_as_target",
             schemaVersion = 1L,
             enabled = true,
             jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
             jobLastUpdatedTime = Instant.now(),
             jobEnabledTime = Instant.now(),
             description = "basic change of page size",
-            sourceIndex = "source_runner_sixth",
+            sourceIndex = "source_runner_sixth_eleventh",
             targetIndex = indexAlias,
             metadataID = null,
             roles = emptyList(),
@@ -774,6 +774,7 @@ class RollupRunnerIT : RollupRestTestCase() {
             )
         ).let { createRollup(it, it.id) }
 
+        // First run, backing index is empty: no mappings, no rollup_index setting, no rollupjobs in _META
         updateRollupStartTime(rollup)
 
         waitFor { assertTrue("Target rollup index was not created", indexExists(backingIndex)) }
@@ -785,6 +786,9 @@ class RollupRunnerIT : RollupRestTestCase() {
             assertEquals("Rollup is not finished", RollupMetadata.Status.FINISHED, rollupMetadata.status)
             rollupJob
         }
+        var rollupMetadataID = startedRollup.metadataID!!
+        var rollupMetadata = getRollupMetadata(rollupMetadataID)
+        assertEquals("Did not process any doc during rollup", rollupMetadata.stats.documentsProcessed > 0)
 
         // restart job
         client().makeRequest(
@@ -792,6 +796,8 @@ class RollupRunnerIT : RollupRestTestCase() {
             "$ROLLUP_JOBS_BASE_URI/${startedRollup.id}?if_seq_no=${startedRollup.seqNo}&if_primary_term=${startedRollup.primaryTerm}",
             emptyMap(), rollup.copy(enabled = true).toHttpEntity()
         )
+        // Second run, backing index is setup just like any other rollup index
+        updateRollupStartTime(rollup)
 
         startedRollup = waitFor {
             val rollupJob = getRollup(rollupId = rollup.id)
@@ -801,11 +807,10 @@ class RollupRunnerIT : RollupRestTestCase() {
             rollupJob
         }
 
-        val rollupMetadataID = startedRollup.metadataID!!
-        val rollupMetadata = getRollupMetadata(rollupMetadataID)
+        rollupMetadataID = startedRollup.metadataID!!
+        rollupMetadata = getRollupMetadata(rollupMetadataID)
 
-        // Randomly choosing 100.. if it didn't work we'd either fail hitting the timeout in waitFor or we'd have thousands of pages processed
-        assertTrue("Did not have less than 100 pages processed", rollupMetadata.stats.documentsProcessed > 0)
+        assertEquals("Did not process any doc during rollup", rollupMetadata.stats.documentsProcessed > 0)
     }
 
     // TODO: Test scenarios:

@@ -23,6 +23,7 @@ object RollupFieldValueExpressionResolver {
 
     private lateinit var scriptService: ScriptService
     private lateinit var clusterService: ClusterService
+    lateinit var indexAliasUtils: IndexAliasUtils
     fun resolve(rollup: Rollup, fieldValue: String): String {
         val script = Script(ScriptType.INLINE, Script.DEFAULT_TEMPLATE_LANG, fieldValue, mapOf())
 
@@ -34,36 +35,39 @@ object RollupFieldValueExpressionResolver {
             .newInstance(script.params + mapOf("ctx" to contextMap))
             .execute()
 
-        if (isAlias(compiledValue)) {
-            compiledValue = getWriteIndexNameForAlias(compiledValue)
+        if (indexAliasUtils.isAlias(compiledValue)) {
+            compiledValue = indexAliasUtils.getWriteIndexNameForAlias(compiledValue)
         }
 
         return if (compiledValue.isNullOrBlank()) fieldValue else compiledValue
     }
 
-    fun registerScriptService(scriptService: ScriptService) {
-        this.scriptService = scriptService
-    }
-    fun hasAlias(index: String): Boolean {
-        val aliases = clusterService.state().metadata().indices.get(index)?.aliases
-        if (aliases != null) {
-            return aliases.size() > 0
-        }
-        return false
-    }
-    fun isAlias(index: String): Boolean {
-        return clusterService.state().metadata().indicesLookup?.get(index) is IndexAbstraction.Alias
-    }
-    fun getWriteIndexNameForAlias(alias: String): String? {
-        return clusterService.state().metadata().indicesLookup?.get(alias)?.writeIndex?.index?.name
-    }
-
-    fun getBackingIndicesForAlias(alias: String): MutableList<IndexMetadata>? {
-        return clusterService.state().metadata().indicesLookup?.get(alias)?.indices
-    }
-
     fun registerServices(scriptService: ScriptService, clusterService: ClusterService) {
         this.scriptService = scriptService
         this.clusterService = clusterService
+        this.indexAliasUtils = IndexAliasUtils(clusterService)
+    }
+
+    class IndexAliasUtils(val clusterService: ClusterService) {
+
+        fun hasAlias(index: String): Boolean {
+            val aliases = this.clusterService.state().metadata().indices.get(index)?.aliases
+            if (aliases != null) {
+                return aliases.size() > 0
+            }
+            return false
+        }
+
+        fun isAlias(index: String): Boolean {
+            return this.clusterService.state().metadata().indicesLookup?.get(index) is IndexAbstraction.Alias
+        }
+
+        fun getWriteIndexNameForAlias(alias: String): String? {
+            return this.clusterService.state().metadata().indicesLookup?.get(alias)?.writeIndex?.index?.name
+        }
+
+        fun getBackingIndicesForAlias(alias: String): MutableList<IndexMetadata>? {
+            return this.clusterService.state().metadata().indicesLookup?.get(alias)?.indices
+        }
     }
 }

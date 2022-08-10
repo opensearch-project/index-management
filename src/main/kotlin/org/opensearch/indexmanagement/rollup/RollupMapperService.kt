@@ -78,15 +78,16 @@ class RollupMapperService(
     @Suppress("ReturnCount")
     suspend fun targetIndexIsValidAlias(rollup: Rollup, targetIndexResolvedName: String): Boolean {
 
-        if (!RollupFieldValueExpressionResolver.hasAlias(targetIndexResolvedName)) {
+        if (!RollupFieldValueExpressionResolver.indexAliasUtils.hasAlias(targetIndexResolvedName)) {
             return false
         }
         // All other backing indices have to have this rollup job in _META field
-        val backingIndices = RollupFieldValueExpressionResolver.getBackingIndicesForAlias(targetIndexResolvedName)
+        val backingIndices = RollupFieldValueExpressionResolver.indexAliasUtils.getBackingIndicesForAlias(targetIndexResolvedName)
         backingIndices?.forEach {
             if (it.index.name != targetIndexResolvedName) {
                 when (jobExistsInRollupIndex(rollup, it.index.name)) {
                     is RollupJobValidationResult.Invalid, is RollupJobValidationResult.Failure -> return false
+                    else -> {}
                 }
             }
         }
