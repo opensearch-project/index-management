@@ -5,12 +5,14 @@
 
 package org.opensearch.indexmanagement.rollup.runner
 
+import com.carrotsearch.randomizedtesting.RandomizedTest.sleep
 import org.apache.http.entity.ContentType
 import org.apache.http.entity.StringEntity
 import org.opensearch.common.settings.Settings
 import org.opensearch.indexmanagement.IndexManagementPlugin
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.ROLLUP_JOBS_BASE_URI
 import org.opensearch.indexmanagement.common.model.dimension.DateHistogram
+import org.opensearch.indexmanagement.common.model.dimension.Terms
 import org.opensearch.indexmanagement.indexstatemanagement.util.INDEX_NUMBER_OF_REPLICAS
 import org.opensearch.indexmanagement.indexstatemanagement.util.INDEX_NUMBER_OF_SHARDS
 import org.opensearch.indexmanagement.makeRequest
@@ -734,7 +736,7 @@ class RollupRunnerIT : RollupRestTestCase() {
     }
 
     fun `test rollup action with alias as target_index successfully`() {
-        generateNYCTaxiData("source_runner_sixth_eleventh")
+        generateNYCTaxiData("source_runner_sixth_eleventh_1")
 
         // Create index with alias, without mappings
         val indexAlias = "alias_as_target_index"
@@ -757,14 +759,18 @@ class RollupRunnerIT : RollupRestTestCase() {
             jobLastUpdatedTime = Instant.now(),
             jobEnabledTime = Instant.now(),
             description = "basic change of page size",
-            sourceIndex = "source_runner_sixth_eleventh",
+            sourceIndex = "source_runner_sixth_eleventh_1",
             targetIndex = indexAlias,
             metadataID = null,
             roles = emptyList(),
-            pageSize = 1,
+            pageSize = 1000,
             delay = 0,
             continuous = false,
-            dimensions = listOf(DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "1s")),
+            dimensions = listOf(
+                DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "1s"),
+                Terms("RatecodeID", "RatecodeID"),
+                Terms("PULocationID", "PULocationID")
+            ),
             metrics = listOf(
                 RollupMetrics(
                     sourceField = "passenger_count",
@@ -788,7 +794,7 @@ class RollupRunnerIT : RollupRestTestCase() {
         }
         var rollupMetadataID = startedRollup.metadataID!!
         var rollupMetadata = getRollupMetadata(rollupMetadataID)
-        assertEquals("Did not process any doc during rollup", rollupMetadata.stats.documentsProcessed > 0)
+        assertTrue("Did not process any doc during rollup", rollupMetadata.stats.documentsProcessed > 0)
 
         // restart job
         client().makeRequest(
@@ -810,7 +816,98 @@ class RollupRunnerIT : RollupRestTestCase() {
         rollupMetadataID = startedRollup.metadataID!!
         rollupMetadata = getRollupMetadata(rollupMetadataID)
 
-        assertEquals("Did not process any doc during rollup", rollupMetadata.stats.documentsProcessed > 0)
+        assertTrue("Did not process any doc during rollup", rollupMetadata.stats.documentsProcessed > 0)
+    }
+
+    fun `test rollup action with alias as target_index with multiple backing indices successfully`() {
+        generateNYCTaxiData("source_runner_sixth_2")
+
+        // Create index with alias, without mappings
+        val indexAlias = "alias_as_target_index_2"
+        val backingIndex1 = "backing_target_index1-000001"
+        val backingIndex2 = "backing_target_index1-000002"
+        val builtSettings = Settings.builder().let {
+            it.put(INDEX_NUMBER_OF_REPLICAS, "1")
+            it.put(INDEX_NUMBER_OF_SHARDS, "1")
+            it
+        }.build()
+        val aliases = "\"$indexAlias\": { \"is_write_index\": true }"
+        createIndex(backingIndex1, builtSettings, null, aliases)
+
+        refreshAllIndices()
+
+        val rollup = Rollup(
+            id = "page_size_runner_sixth_2",
+            schemaVersion = 1L,
+            enabled = true,
+            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+            jobLastUpdatedTime = Instant.now(),
+            jobEnabledTime = Instant.now(),
+            description = "basic change of page size",
+            sourceIndex = "source_runner_sixth_2",
+            targetIndex = indexAlias,
+            metadataID = null,
+            roles = emptyList(),
+            pageSize = 1000,
+            delay = 0,
+            continuous = false,
+            dimensions = listOf(
+                DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "1s"),
+                Terms("RatecodeID", "RatecodeID"),
+                Terms("PULocationID", "PULocationID")
+            ),
+            metrics = listOf(
+                RollupMetrics(
+                    sourceField = "passenger_count",
+                    targetField = "passenger_count",
+                    metrics = listOf(Sum(), Min(), Max(), ValueCount(), Average())
+                )
+            )
+        ).let { createRollup(it, it.id) }
+
+        // First run, backing index is empty: no mappings, no rollup_index setting, no rollupjobs in _META
+        updateRollupStartTime(rollup)
+
+        waitFor { assertTrue("Target rollup index was not created", indexExists(backingIndex1)) }
+
+        var startedRollup = waitFor {
+            val rollupJob = getRollup(rollupId = rollup.id)
+            assertNotNull("Rollup job doesn't have metadata set", rollupJob.metadataID)
+            val rollupMetadata = getRollupMetadata(rollupJob.metadataID!!)
+            assertEquals("Rollup is not finished", RollupMetadata.Status.FINISHED, rollupMetadata.status)
+            assertTrue("Rollup is not disabled", !rollupJob.enabled)
+            rollupJob
+        }
+        var rollupMetadataID = startedRollup.metadataID!!
+        var rollupMetadata = getRollupMetadata(rollupMetadataID)
+        assertTrue("Did not process any doc during rollup", rollupMetadata.stats.documentsProcessed > 0)
+
+        // do rollover on alias
+        val rolloverResponse = client().makeRequest("POST", "/$indexAlias/_rollover")
+        assertEquals(RestStatus.OK, rolloverResponse.restStatus())
+        waitFor { assertTrue("index was not created after rollover", indexExists(backingIndex2)) }
+
+        // restart job
+        client().makeRequest(
+            "PUT",
+            "$ROLLUP_JOBS_BASE_URI/${startedRollup.id}?if_seq_no=${startedRollup.seqNo}&if_primary_term=${startedRollup.primaryTerm}",
+            emptyMap(), rollup.copy(enabled = true).toHttpEntity()
+        )
+        // Second run, backing index is setup just like any other rollup index
+        updateRollupStartTime(rollup)
+
+        startedRollup = waitFor {
+            val rollupJob = getRollup(rollupId = rollup.id)
+            assertNotNull("Rollup job doesn't have metadata set", rollupJob.metadataID)
+            val rollupMetadata = getRollupMetadata(rollupJob.metadataID!!)
+            assertEquals("Rollup is not finished", RollupMetadata.Status.FINISHED, rollupMetadata.status)
+            rollupJob
+        }
+
+        rollupMetadataID = startedRollup.metadataID!!
+        rollupMetadata = getRollupMetadata(rollupMetadataID)
+
+        assertTrue("Did not process any doc during rollup", rollupMetadata.stats.documentsProcessed > 0)
     }
 
     // TODO: Test scenarios:
