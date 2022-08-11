@@ -15,7 +15,6 @@ import org.opensearch.action.support.ActionFilters
 import org.opensearch.action.support.HandledTransportAction
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.inject.Inject
-import org.opensearch.common.settings.Settings
 import org.opensearch.common.xcontent.NamedXContentRegistry
 import org.opensearch.commons.ConfigConstants
 import org.opensearch.commons.authuser.User
@@ -31,10 +30,6 @@ import org.opensearch.action.admin.cluster.state.ClusterStateResponse
 import org.opensearch.action.get.MultiGetRequest
 import org.opensearch.action.get.MultiGetResponse
 import org.opensearch.action.support.IndicesOptions
-import org.opensearch.index.IndexNotFoundException
-import org.opensearch.index.fielddata.IndexFieldDataCache.None
-import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings
-import org.opensearch.indexmanagement.indexstatemanagement.transport.action.ISMStatusResponse
 import org.opensearch.jobscheduler.spi.JobDocVersion
 import org.opensearch.jobscheduler.spi.JobExecutionContext
 import java.time.Instant
@@ -43,13 +38,13 @@ private val log = LogManager.getLogger(TransportExecutePolicyAction::class.java)
 private val scope: CoroutineScope = CoroutineScope(Dispatchers.IO)
 
 class TransportExecutePolicyAction @Inject constructor(
-        transportService: TransportService,
-        val client: NodeClient,
-        private val clusterService: ClusterService,
-        private val runner: ManagedIndexRunner,
-        actionFilters: ActionFilters,
-        val xContentRegistry: NamedXContentRegistry,
-        val request: ExecutePolicyRequest
+    transportService: TransportService,
+    val client: NodeClient,
+    private val clusterService: ClusterService,
+    private val runner: ManagedIndexRunner,
+    actionFilters: ActionFilters,
+    val xContentRegistry: NamedXContentRegistry,
+    val request: ExecutePolicyRequest
 ) : HandledTransportAction<ExecutePolicyRequest, AcknowledgedResponse> (
     ExecutePolicyAction.NAME, transportService, actionFilters, ::ExecutePolicyRequest
 ) {
@@ -63,9 +58,8 @@ class TransportExecutePolicyAction @Inject constructor(
         runner.launch {
             try {
                 val lock = LockService(client, clusterService)
-                // temp context in order to pass into runJob
-                val newContext = JobExecutionContext(Instant.now(), JobDocVersion(0L,0L,0L), lock,
-                        "", "")
+                // Temp context in order to pass into runJob
+                val newContext = JobExecutionContext(Instant.now(), JobDocVersion(0L, 0L, 0L), lock, "", "")
                 // Need to get managed index metadata to pass into runJob
                 // runner.runJob(None, newContext)
             } catch (e: Exception) {
@@ -80,17 +74,17 @@ class TransportExecutePolicyAction @Inject constructor(
             val multiGetReq = MultiGetRequest()
 
             client.multiGet(
-                    multiGetReq,
+                multiGetReq,
                 object : ActionListener<MultiGetResponse> {
                     override fun onResponse(response: MultiGetResponse) {
 
                         response.forEach {
                             // get managed index configs
                         }
+                    }
 
-                        fun onFailure(t: Exception) {
-                            actionListener.onFailure(ExceptionsHelper.unwrapCause(t) as Exception)
-                        }
+                    override fun onFailure(e: java.lang.Exception?) {
+                        actionListener.onFailure(ExceptionsHelper.unwrapCause(e) as Exception)
                     }
                 }
             )

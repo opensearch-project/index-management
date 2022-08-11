@@ -5,7 +5,6 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.transport.action.executepolicy
 
-
 import org.opensearch.action.ActionType
 import org.opensearch.action.support.master.AcknowledgedResponse
 

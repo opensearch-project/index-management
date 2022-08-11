@@ -30,14 +30,14 @@ class RestExecutePolicyAction : BaseRestHandler() {
 
     override fun replacedRoutes(): List<ReplacedRoute> {
         return listOf(
-                ReplacedRoute(
-                        POST, "$ISM_BASE_URI/execute",
-                        POST, "$LEGACY_ISM_BASE_URI/execute"
-                ),
-                ReplacedRoute(
-                        POST, "$ISM_BASE_URI/execute/{index}",
-                        POST, "$LEGACY_ISM_BASE_URI/{index}"
-                )
+            ReplacedRoute(
+                POST, "$ISM_BASE_URI/execute",
+                POST, "$LEGACY_ISM_BASE_URI/execute"
+            ),
+            ReplacedRoute(
+                POST, "$ISM_BASE_URI/execute/{index}",
+                POST, "$LEGACY_ISM_BASE_URI/{index}"
+            )
         )
     }
 

@@ -31,6 +31,4 @@ class ExecutePolicyRequest(
     override fun writeTo(out: StreamOutput) {
         out.writeStringCollection(indices)
     }
-
-
 }
