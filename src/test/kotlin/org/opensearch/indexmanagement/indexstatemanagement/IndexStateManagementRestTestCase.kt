@@ -640,17 +640,11 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
             val cn = xcp.currentName()
             if (cn == "total_managed_indices") continue
 
-            logger.info("cn")
-            logger.info(cn)
-
             xcp.nextToken() // going into start object
             // loop next token until you find currentName == validate
             while (true) {
                 val cn2 = xcp.currentName()
-                logger.info("cn2")
-                logger.info(cn2)
                 if (cn2 == "validate") {
-                    logger.info("here")
                     ensureExpectedToken(Token.START_OBJECT, xcp.nextToken(), xcp)
                     validationResult = ValidationResult.parse(xcp)
                     break
@@ -659,8 +653,6 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
             }
             break // bypass roles field
         }
-        // make sure validation is initialized
-        assertTrue(validationResult.validationMessage != null || validationResult.validationStatus != null)
         return validationResult
     }
 

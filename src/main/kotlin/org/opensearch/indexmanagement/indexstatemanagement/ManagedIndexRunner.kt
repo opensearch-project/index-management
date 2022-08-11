@@ -412,19 +412,11 @@ object ManagedIndexRunner :
                 logger.info(validationResult)
                 if (validationResult.validationStatus == Validate.ValidationStatus.RE_VALIDATING) {
                     logger.info("Revalidate")
-                    publishErrorNotification(policy, managedIndexMetaData)
-                    var newMetaData = managedIndexMetaData.copy(validationResult = validationResult)
-                    if (!updateManagedIndexMetaData(newMetaData, updateResult).metadataSaved) {
-                        logger.error("Failed to update validation meta data : ${step.name}")
-                    }
+                    // publishErrorNotification(policy, managedIndexMetaData)
                     return
                 }
                 if (validationResult.validationStatus == Validate.ValidationStatus.FAILED) {
                     logger.info("Fail forever")
-                    var newMetaData = managedIndexMetaData.copy(validationResult = validationResult)
-                    if (!updateManagedIndexMetaData(newMetaData, updateResult).metadataSaved) {
-                        logger.error("Failed to update validation meta data : ${step.name}")
-                    }
                     disableManagedIndexConfig(managedIndexConfig)
                     return
                 }

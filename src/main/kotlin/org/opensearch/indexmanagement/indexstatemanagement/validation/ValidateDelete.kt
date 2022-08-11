@@ -26,7 +26,7 @@ class ValidateDelete(
 
     override fun execute(indexName: String): Validate {
         // if these conditions are false, fail validation and do not execute delete action
-        logger.warn("i am in delete")
+        // logger.warn("i am in delete")
         if (!deleteIndexExists(indexName) || !validIndex(indexName)) {
             return this
         }
