@@ -90,6 +90,7 @@ class TransportExplainTransformAction @Inject constructor(
             client.search(
                 searchRequest,
                 object : ActionListener<SearchResponse> {
+                    @Suppress("LongMethod")
                     override fun onResponse(response: SearchResponse) {
                         val metadataIdToTransform: MutableMap<String, Transform> = HashMap()
                         try {

@@ -35,7 +35,9 @@ data class ChangePolicy(
     val state: String?,
     val include: List<StateFilter>,
     val isSafe: Boolean,
-    val user: User? = null
+    val user: User? = null,
+    val continuous: Boolean? = null
+
 ) : Writeable, ToXContentObject {
 
     @Throws(IOException::class)
@@ -46,16 +48,19 @@ data class ChangePolicy(
         isSafe = sin.readBoolean(),
         user = if (sin.readBoolean()) {
             User(sin)
-        } else null
+        } else null,
+        continuous = if (sin.readBoolean()) { sin.readBoolean() } else null
     )
 
     override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
-        builder
-            .startObject()
+        builder.startObject()
             .field(ManagedIndexConfig.POLICY_ID_FIELD, policyID)
             .field(StateMetaData.STATE, state)
             .field(IS_SAFE_FIELD, isSafe)
         if (params.paramAsBoolean(WITH_USER, true)) builder.optionalUserField(USER_FIELD, user)
+        if (continuous != null) {
+            builder.field(ManagedIndexConfig.CONTINUOUS, continuous)
+        }
         return builder.endObject()
     }
 
@@ -67,6 +72,8 @@ data class ChangePolicy(
         out.writeBoolean(isSafe)
         out.writeBoolean(user != null)
         user?.writeTo(out)
+        out.writeBoolean(continuous != null)
+        if (continuous != null) out.writeBoolean(continuous)
     }
 
     companion object {
@@ -75,6 +82,7 @@ data class ChangePolicy(
         const val INCLUDE_FIELD = "include"
         const val IS_SAFE_FIELD = "is_safe"
         const val USER_FIELD = "user"
+        const val CONTINUOUS_FIELD = "continuous"
 
         @JvmStatic
         @Throws(IOException::class)
@@ -83,6 +91,7 @@ data class ChangePolicy(
             var state: String? = null
             var isSafe: Boolean = false
             var user: User? = null
+            var continuous: Boolean? = null
             val include = mutableListOf<StateFilter>()
 
             ensureExpectedToken(Token.START_OBJECT, xcp.currentToken(), xcp)
@@ -103,6 +112,7 @@ data class ChangePolicy(
                     USER_FIELD -> {
                         user = if (xcp.currentToken() == Token.VALUE_NULL) null else User.parse(xcp)
                     }
+                    CONTINUOUS_FIELD -> continuous = xcp.booleanValue()
                     else -> throw IllegalArgumentException("Invalid field: [$fieldName] found in ChangePolicy.")
                 }
             }
@@ -112,7 +122,8 @@ data class ChangePolicy(
                 state,
                 include.toList(),
                 isSafe,
-                user
+                user,
+                continuous
             )
         }
     }

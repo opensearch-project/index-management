@@ -37,7 +37,8 @@ data class ManagedIndexConfig(
     val policyPrimaryTerm: Long?,
     val policy: Policy?,
     val changePolicy: ChangePolicy?,
-    val jobJitter: Double?
+    val jobJitter: Double?,
+    val continuous: Boolean
 ) : ScheduledJobParameter {
 
     init {
@@ -81,6 +82,7 @@ data class ManagedIndexConfig(
             .field(POLICY_FIELD, policy, XCONTENT_WITHOUT_TYPE)
             .field(CHANGE_POLICY_FIELD, changePolicy)
             .field(JITTER, jobJitter)
+            .field(CONTINUOUS, continuous)
         builder.endObject()
         return builder.endObject()
     }
@@ -100,6 +102,7 @@ data class ManagedIndexConfig(
         const val POLICY_PRIMARY_TERM_FIELD = "policy_primary_term"
         const val CHANGE_POLICY_FIELD = "change_policy"
         const val JITTER = "jitter"
+        const val CONTINUOUS = "continuous"
 
         @Suppress("ComplexMethod", "LongMethod")
         @JvmStatic
@@ -124,6 +127,7 @@ data class ManagedIndexConfig(
             var policyPrimaryTerm: Long? = SequenceNumbers.UNASSIGNED_PRIMARY_TERM
             var policySeqNo: Long? = SequenceNumbers.UNASSIGNED_SEQ_NO
             var jitter: Double? = null
+            var continuous: Boolean = false
 
             ensureExpectedToken(Token.START_OBJECT, xcp.currentToken(), xcp)
             while (xcp.nextToken() != Token.END_OBJECT) {
@@ -154,6 +158,7 @@ data class ManagedIndexConfig(
                     JITTER -> {
                         jitter = if (xcp.currentToken() == Token.VALUE_NULL) null else xcp.doubleValue()
                     }
+                    CONTINUOUS -> continuous = xcp.booleanValue()
                     else -> throw IllegalArgumentException("Invalid field: [$fieldName] found in ManagedIndexConfig.")
                 }
             }
@@ -183,7 +188,8 @@ data class ManagedIndexConfig(
                     primaryTerm = policyPrimaryTerm ?: SequenceNumbers.UNASSIGNED_PRIMARY_TERM
                 ),
                 changePolicy = changePolicy,
-                jobJitter = jitter
+                jobJitter = jitter,
+                continuous = continuous
             )
         }
     }

@@ -302,7 +302,8 @@ fun randomManagedIndexConfig(
     policyID: String = OpenSearchRestTestCase.randomAlphaOfLength(10),
     policy: Policy? = randomPolicy(),
     changePolicy: ChangePolicy? = randomChangePolicy(),
-    jitter: Double? = 0.0
+    jitter: Double? = 0.0,
+    continuous: Boolean = false
 ): ManagedIndexConfig {
     return ManagedIndexConfig(
         jobName = name,
@@ -317,7 +318,8 @@ fun randomManagedIndexConfig(
         policyPrimaryTerm = policy?.primaryTerm,
         policy = policy?.copy(seqNo = SequenceNumbers.UNASSIGNED_SEQ_NO, primaryTerm = SequenceNumbers.UNASSIGNED_PRIMARY_TERM),
         changePolicy = changePolicy,
-        jobJitter = jitter
+        jobJitter = jitter,
+        continuous = continuous
     )
 }
 

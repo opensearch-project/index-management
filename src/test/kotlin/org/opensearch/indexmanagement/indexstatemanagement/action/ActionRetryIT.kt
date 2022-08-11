@@ -42,12 +42,10 @@ class ActionRetryIT : IndexStateManagementRestTestCase() {
         // Change the start time so the job will trigger in 2 seconds.
         // First execution. We need to initialize the policy.
         updateManagedIndexConfigStartTime(managedIndexConfig)
-
         waitFor { assertEquals(policyID, getExplainManagedIndexMetaData(indexName).policyID) }
 
         // Second execution is to fail the step once.
         updateManagedIndexConfigStartTime(managedIndexConfig)
-
         waitFor {
             val managedIndexMetaData = getExplainManagedIndexMetaData(indexName)
             assertEquals(
@@ -57,13 +55,11 @@ class ActionRetryIT : IndexStateManagementRestTestCase() {
                 ),
                 managedIndexMetaData.actionMetaData
             )
-
             assertEquals(expectedInfoString, managedIndexMetaData.info.toString())
         }
 
         // Third execution is to fail the step second time.
         updateManagedIndexConfigStartTime(managedIndexConfig)
-
         waitFor {
             val managedIndexMetaData = getExplainManagedIndexMetaData(indexName)
             assertEquals(
@@ -79,10 +75,10 @@ class ActionRetryIT : IndexStateManagementRestTestCase() {
 
         // Fourth execution is to fail the step third time and finally fail the action.
         updateManagedIndexConfigStartTime(managedIndexConfig)
-
         waitFor {
             val managedIndexMetaData = getExplainManagedIndexMetaData(indexName)
             assertEquals(
+                "failing this one: ",
                 ActionMetaData(
                     "rollover", managedIndexMetaData.actionMetaData?.startTime, 0, true, 2,
                     managedIndexMetaData.actionMetaData?.lastRetryTime, null
@@ -161,7 +157,8 @@ class ActionRetryIT : IndexStateManagementRestTestCase() {
                         PolicyRetryInfoMetaData.RETRY_INFO to fun(retryInfoMetaDataMap: Any?): Boolean =
                             assertRetryInfoEquals(PolicyRetryInfoMetaData(false, 0), retryInfoMetaDataMap),
                         ManagedIndexMetaData.INFO to fun(info: Any?): Boolean = expectedInfoString == info.toString(),
-                        ManagedIndexMetaData.ENABLED to true::equals
+                        ManagedIndexMetaData.ENABLED to true::equals,
+                        "continuous" to false::equals
                     )
                 ),
                 getExplainMap(indexName)

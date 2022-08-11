@@ -17,14 +17,16 @@ import java.io.IOException
 class ChangePolicyRequest(
     val indices: List<String>,
     val changePolicy: ChangePolicy,
-    val indexType: String
+    val indexType: String,
+    val continuous: Boolean = false
 ) : ActionRequest() {
 
     @Throws(IOException::class)
     constructor(sin: StreamInput) : this(
         indices = sin.readStringList(),
         changePolicy = ChangePolicy(sin),
-        indexType = sin.readString()
+        indexType = sin.readString(),
+        continuous = sin.readBoolean()
     )
 
     override fun validate(): ActionRequestValidationException? {
@@ -45,6 +47,7 @@ class ChangePolicyRequest(
         out.writeStringCollection(indices)
         changePolicy.writeTo(out)
         out.writeString(indexType)
+        out.writeBoolean(if (continuous != null) continuous else false)
     }
 
     companion object {

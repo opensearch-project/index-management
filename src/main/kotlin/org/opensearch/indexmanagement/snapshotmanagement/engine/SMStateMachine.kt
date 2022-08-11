@@ -30,6 +30,7 @@ import org.opensearch.threadpool.ThreadPool
 import java.time.Instant.now
 
 @OpenForTesting
+@Suppress("MagicNumber")
 class SMStateMachine(
     val client: Client,
     val job: SMPolicy,
