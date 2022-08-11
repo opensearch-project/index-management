@@ -54,7 +54,5 @@ class ExplainResponseTests : OpenSearchTestCase() {
         assertEquals(enabledState, newRes.enabledState)
         assertEquals(appliedPolicies, newRes.policies)
         assertEquals(validationResults, newRes.validationResults)
-        logger.info("explain test")
-        logger.info(newRes)
     }
 }

@@ -17,7 +17,7 @@ class LegacyOpenDistroManagedIndexSettings {
         const val DEFAULT_ISM_ENABLED = true
         const val DEFAULT_METADATA_SERVICE_STATUS = 0
         const val DEFAULT_METADATA_SERVICE_ENABLED = true
-        const val DEFAULT_JOB_INTERVAL = 5
+        const val DEFAULT_JOB_INTERVAL = 1 // 5
         private val ALLOW_LIST_ALL = ISMActionsParser.instance.parsers.map { it.getActionType() }.toList()
         val ALLOW_LIST_NONE = emptyList<String>()
         val SNAPSHOT_DENY_LIST_NONE = emptyList<String>()

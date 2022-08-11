@@ -121,6 +121,7 @@ class TransportExplainAction @Inject constructor(
         private val validationResults = mutableListOf<ValidationResult?>()
         private var totalManagedIndices = 0
         private val appliedPolicies: MutableMap<String, Policy> = mutableMapOf()
+        private val policiesforValidation: MutableMap<String, Policy> = mutableMapOf()
 
         @Suppress("SpreadOperator", "NestedBlockDepth")
         fun start() {
@@ -197,9 +198,12 @@ class TransportExplainAction @Inject constructor(
                                     "policy_id" to managedIndex.policyID,
                                     "enabled" to managedIndex.enabled.toString()
                                 )
-//                                if (showPolicy || validateAction) {
-//                                managedIndex.policy?.let { appliedPolicies[managedIndex.index] = it }
-//                                }
+                                if (showPolicy) {
+                                    managedIndex.policy?.let { appliedPolicies[managedIndex.index] = it }
+                                }
+                                if (validateAction) {
+                                    managedIndex.policy?.let { policiesforValidation[managedIndex.index] = it }
+                                }
                             }
 
                             // explain all only return managed indices
@@ -327,35 +331,19 @@ class TransportExplainAction @Inject constructor(
                     }
                 }
 
-                // figure out which action to take
-//                var validationResult = validationService.validate("nothing", indexName)
-//                log.info("show policy")
-//                log.info(appliedPolicies)
-//                val policy = appliedPolicies[indexName]
-//                if (policy != null && managedIndexMetadata != null) {
-//                    log.info("inside here")
-//                    val state = policy.getStateToExecute(managedIndexMetadata!!)
-//                    log.info(state)
-//                    val action = state?.getActionToExecute(managedIndexMetadata!!, indexMetadataProvider)
-//                    log.info(action)
-//                    var actionName = action?.type
-//                    log.info("action name")
-//                    log.info(actionName)
-//                    if (actionName == null) {
-//                        actionName = "nothing"
-//                    }
-//                    validationResult = validationService.validate(actionName, indexName)
-//                    validationResults.add(validationResult)
-//                }
-                var validationResult = validationService.validate("rollover", indexName)
-//                val actionName = managedIndexMetadata?.actionMetaData?.name
-//                if (actionName != null) {
-//                    validationResult = validationService.validate(actionName, indexName)
-//                }
-                log.info(managedIndexMetadata)
-                log.info("inside explain")
-                log.info(validationResult)
-                // managedIndexMetadata = managedIndexMetadata?.copy(validationResult = validationResult)
+                // find next action and validate it
+                var validationResult = validationService.validate("nothing", indexName)
+                val policy = policiesforValidation[indexName]
+                if (policy != null && managedIndexMetadata != null) {
+                    val state = policy.getStateToExecute(managedIndexMetadata!!)
+                    val action = state?.getActionToExecute(managedIndexMetadata!!, indexMetadataProvider)
+                    var actionName = action?.type
+                    if (actionName == null) {
+                        actionName = "nothing"
+                    }
+                    validationResult = validationService.validate(actionName, indexName)
+                    validationResults.add(validationResult)
+                }
                 indexMetadatas.add(managedIndexMetadata)
                 validationResults.add(validationResult)
             }

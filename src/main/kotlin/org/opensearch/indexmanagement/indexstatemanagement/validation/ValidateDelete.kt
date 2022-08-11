@@ -30,12 +30,10 @@ class ValidateDelete(
         if (!deleteIndexExists(indexName) || !validIndex(indexName)) {
             return this
         }
-
         val (rolloverTarget, isDataStream) = getRolloverTargetOrUpdateInfo(indexName)
-        rolloverTarget ?: return this
-        logger.info("before checking stuff")
-        logger.info("is data stream")
-        if (!notWriteIndexForDataStream(rolloverTarget, indexName)) {
+//        logger.info("before checking stuff")
+//        logger.info("is data stream")
+        if (rolloverTarget != null && !notWriteIndexForDataStream(rolloverTarget, indexName)) {
             return this // can't be deleted if it's write index
         }
         validationMessage = getValidationPassedMessage(indexName)
@@ -46,19 +44,10 @@ class ValidateDelete(
         val metadata = clusterService.state().metadata()
         val indexAbstraction = metadata.indicesLookup[indexName]
         val isDataStreamIndex = indexAbstraction?.parentDataStream != null
-
         val rolloverTarget = when {
             isDataStreamIndex -> indexAbstraction?.parentDataStream?.name
             else -> metadata.index(indexName).getRolloverAlias()
         }
-
-        if (rolloverTarget == null) {
-            val message = getFailedNoValidAliasMessage(indexName)
-            logger.warn(message)
-            validationStatus = ValidationStatus.RE_VALIDATING
-            validationMessage = message
-        }
-
         return rolloverTarget to isDataStreamIndex
     }
 
@@ -117,7 +106,6 @@ class ValidateDelete(
         fun getNoIndexMessage(index: String) = "no such index [index=$index]"
         fun getIndexNotValidMessage(index: String) = "delete index [index=$index] not valid"
         fun getFailedIsWriteIndexMessage(index: String) = "Index [index=$index] is the write index for data stream and cannot be deleted"
-        fun getFailedNoValidAliasMessage(index: String) = "Missing rollover_alias index setting [index=$index]"
         fun getValidationPassedMessage(index: String) = "Delete validation passed for [index=$index]"
     }
 }
