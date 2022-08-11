@@ -36,7 +36,8 @@ class ExplainResponseTests : OpenSearchTestCase() {
         val totalManagedIndices = 1
         val enabledState = mapOf("index1" to true)
         val appliedPolicies = mapOf("policy" to randomPolicy())
-        val res = ExplainResponse(indexNames, indexPolicyIDs, indexMetadatas, totalManagedIndices, enabledState, appliedPolicies)
+        val continuous = mapOf("continuous" to false)
+        val res = ExplainResponse(indexNames, indexPolicyIDs, indexMetadatas, totalManagedIndices, enabledState, appliedPolicies, continuous)
 
         val out = BytesStreamOutput()
         res.writeTo(out)

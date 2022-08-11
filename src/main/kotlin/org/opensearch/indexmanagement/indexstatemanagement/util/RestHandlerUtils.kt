@@ -103,13 +103,15 @@ data class FailedIndex(val name: String, val uuid: String, val reason: String) :
  * Gets the XContentBuilder for partially updating a [ManagedIndexConfig]'s ChangePolicy
  */
 fun getPartialChangePolicyBuilder(
-    changePolicy: ChangePolicy?
+    changePolicy: ChangePolicy?,
+    continuous: Boolean?
 ): XContentBuilder {
     val builder = XContentFactory.jsonBuilder()
         .startObject()
         .startObject(ManagedIndexConfig.MANAGED_INDEX_TYPE)
         .optionalTimeField(ManagedIndexConfig.LAST_UPDATED_TIME_FIELD, Instant.now())
         .field(ManagedIndexConfig.CHANGE_POLICY_FIELD, changePolicy)
+    if (continuous != null) { builder.field(ManagedIndexConfig.CONTINUOUS, continuous) }
     return builder.endObject().endObject()
 }
 

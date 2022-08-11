@@ -139,4 +139,43 @@ class ForceMergeActionIT : IndexStateManagementRestTestCase() {
         assertTrue("Segment count for [$indexName] after force merge is incorrect", validateSegmentCount(indexName, min = 1, max = 1))
         assertEquals("true", getIndexBlocksWriteSetting(indexName))
     }
+    // Test Force Merge works on continuous indices
+    fun `test continuous force merge`() {
+        val indexName = "${testIndexName}_continuous_index"
+        val policyID = "${testIndexName}_testPolicyName_1"
+
+        // Create a Policy with one State that only preforms a force_merge Action
+        val forceMergeActionConfig = ForceMergeAction(maxNumSegments = 1, index = 0)
+        val states = listOf(State("ForceMergeState", listOf(forceMergeActionConfig), listOf()))
+
+        val policy = Policy(
+            id = policyID,
+            description = "$indexName description",
+            schemaVersion = 1L,
+            lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
+            errorNotification = randomErrorNotification(),
+            defaultState = states[0].name,
+            states = states
+        )
+
+        waitFor { createPolicy(policy, policyID) }
+        waitFor { createIndex(indexName, policyID, continuous = true) }
+        val managedIndexConfig = getExistingManagedIndexConfig(indexName)
+
+        // Add sample data to increase segment count, passing in a delay to ensure multiple segments get created
+        insertSampleData(indexName, 3, 0)
+
+        waitFor { assertTrue("Segment count for [$indexName] was less than expected", validateSegmentCount(indexName, min = 2)) }
+
+        // Will change the startTime each execution so that it triggers in 2 seconds
+        // 1. Initialize, 2. Set to read only, 3. Merge shards into 1 segment
+        updateManagedIndexConfigStartTime(managedIndexConfig)
+
+        // Check force merge executed correctly
+        waitFor { assertTrue("Segment count for [$indexName] after force merge is incorrect", validateSegmentCount(indexName, min = 1, max = 1)) }
+        // verify we reset actionproperties at end of forcemerge
+        waitFor { assertNull("maxNumSegments was not reset", getExplainManagedIndexMetaData(indexName).actionMetaData?.actionProperties) }
+        // index should still be readonly after force merge finishes
+        waitFor { assertEquals("true", getIndexBlocksWriteSetting(indexName)) }
+    }
 }

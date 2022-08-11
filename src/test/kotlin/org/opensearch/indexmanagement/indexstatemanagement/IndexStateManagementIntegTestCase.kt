@@ -151,11 +151,13 @@ abstract class IndexStateManagementIntegTestCase : OpenSearchIntegTestCase() {
 
     protected fun addPolicyToIndex(
         index: String,
-        policyID: String
+        policyID: String,
+        continuous: Boolean = false
     ) {
         val body = """
             {
-              "policy_id": "$policyID"
+              "policy_id": "$policyID",
+              "continuous": $continuous
             }
         """.trimIndent()
         val response = getRestClient()

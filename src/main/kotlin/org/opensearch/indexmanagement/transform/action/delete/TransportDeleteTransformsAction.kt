@@ -108,7 +108,7 @@ class TransportDeleteTransformsAction @Inject constructor(
             }
         }
 
-        @Suppress("LongMethod")
+        @Suppress("LongMethod", "NestedBlockDepth")
         private fun bulkDelete(response: MultiGetResponse, ids: List<String>, forceDelete: Boolean, actionListener: ActionListener<BulkResponse>) {
             val enabledIDs = mutableListOf<String>()
             val notTransform = mutableListOf<String>()
