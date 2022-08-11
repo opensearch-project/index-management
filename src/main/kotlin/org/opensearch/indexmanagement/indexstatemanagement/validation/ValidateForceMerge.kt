@@ -8,8 +8,6 @@ package org.opensearch.indexmanagement.indexstatemanagement.validation
 import org.apache.logging.log4j.LogManager
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.settings.Settings
-import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ActionMetaData
-import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.util.OpenForTesting
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Validate
 import org.opensearch.indexmanagement.transform.settings.TransformSettings
@@ -43,17 +41,6 @@ class ValidateForceMerge(
             validationStatus = ValidationStatus.RE_VALIDATING
             return false
         }
-        return true
-    }
-
-    override fun getUpdatedManagedIndexMetadata(currentMetadata: ManagedIndexMetaData, actionMetaData: ActionMetaData): ManagedIndexMetaData {
-        return currentMetadata.copy(
-            actionMetaData = actionMetaData
-        )
-    }
-
-    // TODO: 7/18/22
-    override fun validatePolicy(): Boolean {
         return true
     }
 

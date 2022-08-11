@@ -10,9 +10,6 @@ import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.settings.Settings
 import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.getRolloverAlias
 import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.getRolloverSkip
-import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
-import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ActionMetaData
-import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.util.OpenForTesting
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Validate
 import org.opensearch.monitor.jvm.JvmService
@@ -50,7 +47,6 @@ class ValidateRollover(
     private fun skipRollover(indexName: String): Boolean {
         val skipRollover = clusterService.state().metadata.index(indexName).getRolloverSkip()
         if (skipRollover) {
-            stepStatus = Step.StepStatus.COMPLETED
             validationStatus = ValidationStatus.PASSED
             validationMessage = getSkipRolloverMessage(indexName)
             return true
@@ -60,7 +56,6 @@ class ValidateRollover(
 
     private fun alreadyRolledOver(alias: String?, indexName: String): Boolean {
         if (clusterService.state().metadata.index(indexName).rolloverInfos.containsKey(alias)) {
-            stepStatus = Step.StepStatus.COMPLETED
             validationStatus = ValidationStatus.PASSED
             validationMessage = getAlreadyRolledOverMessage(indexName, alias)
             return true
@@ -120,17 +115,6 @@ class ValidateRollover(
         }
 
         return rolloverTarget to isDataStreamIndex
-    }
-
-    override fun getUpdatedManagedIndexMetadata(currentMetadata: ManagedIndexMetaData, actionMetaData: ActionMetaData): ManagedIndexMetaData {
-        return currentMetadata.copy(
-            actionMetaData = actionMetaData
-        )
-    }
-
-    // TODO: 7/18/22
-    override fun validatePolicy(): Boolean {
-        return true
     }
 
     @Suppress("TooManyFunctions")

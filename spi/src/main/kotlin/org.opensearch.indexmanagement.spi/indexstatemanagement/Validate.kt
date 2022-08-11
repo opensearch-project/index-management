@@ -10,8 +10,6 @@ import org.opensearch.common.io.stream.StreamInput
 import org.opensearch.common.io.stream.StreamOutput
 import org.opensearch.common.io.stream.Writeable
 import org.opensearch.common.settings.Settings
-import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ActionMetaData
-import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.monitor.jvm.JvmService
 import java.util.Locale
 
@@ -22,15 +20,9 @@ abstract class Validate(
 ) {
 
     var validationStatus = ValidationStatus.PASSED
-    var stepStatus = Step.StepStatus.STARTING
     var validationMessage: String? = "Starting Validation"
 
     abstract fun execute(indexName: String): Validate
-
-    // function to be executed at policy creation to validate user created policy
-    abstract fun validatePolicy(): Boolean
-
-    abstract fun getUpdatedManagedIndexMetadata(currentMetadata: ManagedIndexMetaData, actionMetaData: ActionMetaData): ManagedIndexMetaData
 
     enum class ValidationStatus(val status: String) : Writeable {
         PASSED("passed"),

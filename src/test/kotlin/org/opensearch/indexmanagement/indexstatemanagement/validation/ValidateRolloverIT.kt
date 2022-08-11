@@ -66,8 +66,7 @@ class ValidateRolloverIT : IndexStateManagementRestTestCase() {
 
         updateManagedIndexConfigStartTime(managedIndexConfig)
         waitFor {
-            // val data = getExplainValidationResult(index1)
-            val data = getExplainManagedIndexMetaData(index1).validationResult
+            val data = getExplainValidationResult(index1)
             logger.info("testing")
             logger.info(data)
             assertEquals(
@@ -115,8 +114,7 @@ class ValidateRolloverIT : IndexStateManagementRestTestCase() {
         // Need to speed up to second execution where it will trigger the first execution of the action
         updateManagedIndexConfigStartTime(managedIndexConfig)
         waitFor {
-            // val data = getExplainValidationResult(index1)
-            val data = getExplainManagedIndexMetaData(index1).validationResult
+            val data = getExplainValidationResult(index1)
             assertEquals(
                 "Index rollover validation status is PASSED.",
                 Validate.ValidationStatus.PASSED, data?.validationStatus
@@ -159,8 +157,7 @@ class ValidateRolloverIT : IndexStateManagementRestTestCase() {
         // Need to speed up to second execution where it will trigger the first execution of the action
         updateManagedIndexConfigStartTime(managedIndexConfig)
         waitFor {
-            // val data = getExplainValidationResult(index1)
-            val data = getExplainManagedIndexMetaData(index1).validationResult
+            val data = getExplainValidationResult(index1)
             assertEquals(
                 "Index rollover validation status is RE_VALIDATING",
                 Validate.ValidationStatus.RE_VALIDATING, data?.validationStatus
@@ -207,8 +204,7 @@ class ValidateRolloverIT : IndexStateManagementRestTestCase() {
         // Need to speed up to second execution where it will trigger the first execution of the action
         updateManagedIndexConfigStartTime(managedIndexConfig)
         waitFor {
-            val data = getExplainManagedIndexMetaData(index1).validationResult
-            // val data = getExplainValidationResult(index1)
+            val data = getExplainValidationResult(index1)
             assertEquals(
                 "Index rollover validation status is RE_VALIDATING.",
                 Validate.ValidationStatus.RE_VALIDATING, data?.validationStatus

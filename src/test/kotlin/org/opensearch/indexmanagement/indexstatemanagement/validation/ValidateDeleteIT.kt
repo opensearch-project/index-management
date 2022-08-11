@@ -54,7 +54,7 @@ class ValidateDeleteIT : IndexStateManagementRestTestCase() {
         // Need to speed up to second execution where it will trigger the first execution of the action
         updateManagedIndexConfigStartTime(managedIndexConfig)
         waitFor {
-            val data = getExplainManagedIndexMetaData(index1).validationResult
+            val data = getExplainValidationResult(index1)
             assertEquals(
                 "Index rollover validation status is RE_VALIDATING.",
                 Validate.ValidationStatus.RE_VALIDATING, data?.validationStatus

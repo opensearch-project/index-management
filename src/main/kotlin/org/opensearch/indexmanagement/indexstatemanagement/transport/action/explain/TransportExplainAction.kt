@@ -197,9 +197,9 @@ class TransportExplainAction @Inject constructor(
                                     "policy_id" to managedIndex.policyID,
                                     "enabled" to managedIndex.enabled.toString()
                                 )
-                                if (showPolicy || validateAction) {
-                                    managedIndex.policy?.let { appliedPolicies[managedIndex.index] = it }
-                                }
+//                                if (showPolicy || validateAction) {
+//                                managedIndex.policy?.let { appliedPolicies[managedIndex.index] = it }
+//                                }
                             }
 
                             // explain all only return managed indices
@@ -328,26 +328,26 @@ class TransportExplainAction @Inject constructor(
                 }
 
                 // figure out which action to take
-                var validationResult = validationService.validate("nothing", indexName)
-                log.info("show policy")
-                log.info(appliedPolicies)
-                val policy = appliedPolicies[indexName]
-                if (policy != null && managedIndexMetadata != null) {
-                    log.info("inside here")
-                    val state = policy.getStateToExecute(managedIndexMetadata!!)
-                    log.info(state)
-                    val action = state?.getActionToExecute(managedIndexMetadata!!, indexMetadataProvider)
-                    log.info(action)
-                    var actionName = action?.type
-                    log.info("action name")
-                    log.info(actionName)
-                    if (actionName == null) {
-                        actionName = "nothing"
-                    }
-                    validationResult = validationService.validate(actionName, indexName)
-                    validationResults.add(validationResult)
-                }
-                // var validationResult = validationService.validate("rollover", indexName)
+//                var validationResult = validationService.validate("nothing", indexName)
+//                log.info("show policy")
+//                log.info(appliedPolicies)
+//                val policy = appliedPolicies[indexName]
+//                if (policy != null && managedIndexMetadata != null) {
+//                    log.info("inside here")
+//                    val state = policy.getStateToExecute(managedIndexMetadata!!)
+//                    log.info(state)
+//                    val action = state?.getActionToExecute(managedIndexMetadata!!, indexMetadataProvider)
+//                    log.info(action)
+//                    var actionName = action?.type
+//                    log.info("action name")
+//                    log.info(actionName)
+//                    if (actionName == null) {
+//                        actionName = "nothing"
+//                    }
+//                    validationResult = validationService.validate(actionName, indexName)
+//                    validationResults.add(validationResult)
+//                }
+                var validationResult = validationService.validate("rollover", indexName)
 //                val actionName = managedIndexMetadata?.actionMetaData?.name
 //                if (actionName != null) {
 //                    validationResult = validationService.validate(actionName, indexName)

@@ -10,8 +10,6 @@ import org.opensearch.cluster.metadata.MetadataCreateIndexService.validateIndexO
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.settings.Settings
 import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.getRolloverAlias
-import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ActionMetaData
-import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Validate
 import org.opensearch.indexmanagement.util.OpenForTesting
 import org.opensearch.indices.InvalidIndexNameException
@@ -110,16 +108,6 @@ class ValidateDelete(
             validationStatus = ValidationStatus.RE_VALIDATING
             validationMessage = message
         }
-        return true
-    }
-
-    override fun getUpdatedManagedIndexMetadata(currentMetadata: ManagedIndexMetaData, actionMetaData: ActionMetaData): ManagedIndexMetaData {
-        return currentMetadata.copy(
-            actionMetaData = actionMetaData
-        )
-    }
-
-    override fun validatePolicy(): Boolean {
         return true
     }
 

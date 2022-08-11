@@ -629,20 +629,33 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
         }
 
         val response = client().makeRequest(RestRequest.Method.GET.toString(), "${RestExplainAction.EXPLAIN_BASE_URI}/$indexName")
+//        logger.info("response content")
+//        logger.info(response.entity.content.bufferedReader().use { it.readText() })
+
         assertEquals("Unexpected RestStatus", RestStatus.OK, response.restStatus())
         lateinit var validationResult: ValidationResult
         val xcp = createParser(XContentType.JSON.xContent(), response.entity.content)
         ensureExpectedToken(Token.START_OBJECT, xcp.nextToken(), xcp)
         while (xcp.nextToken() != Token.END_OBJECT) {
             val cn = xcp.currentName()
-            xcp.nextToken()
-            // if (cn == "total_managed_indices") continue
-            if (cn == "validation") {
-                ensureExpectedToken(Token.START_OBJECT, xcp.nextToken(), xcp)
-                while (xcp.nextToken() != Token.END_OBJECT) {
+            if (cn == "total_managed_indices") continue
+
+            logger.info("cn")
+            logger.info(cn)
+
+            xcp.nextToken() // going into start object
+            // loop next token until you find currentName == validate
+            while (true) {
+                val cn2 = xcp.currentName()
+                logger.info("cn2")
+                logger.info(cn2)
+                if (cn2 == "validate") {
+                    logger.info("here")
+                    ensureExpectedToken(Token.START_OBJECT, xcp.nextToken(), xcp)
                     validationResult = ValidationResult.parse(xcp)
                     break
                 }
+                xcp.nextToken()
             }
             break // bypass roles field
         }
