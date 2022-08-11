@@ -66,7 +66,8 @@ class TransportExecutePolicyAction @Inject constructor(
                 // temp context in order to pass into runJob
                 val newContext = JobExecutionContext(Instant.now(), JobDocVersion(0L,0L,0L), lock,
                         "", "")
-                runner.runJob(None, newContext)
+                // Need to get managed index metadata to pass into runJob
+                // runner.runJob(None, newContext)
             } catch (e: Exception) {
                 log.error("Unexpected error trying to execute policy")
                 withContext(Dispatchers.IO) {
