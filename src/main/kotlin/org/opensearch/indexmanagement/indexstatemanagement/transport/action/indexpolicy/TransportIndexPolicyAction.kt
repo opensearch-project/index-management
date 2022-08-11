@@ -111,9 +111,8 @@ class TransportIndexPolicyAction @Inject constructor(
 
         @Suppress("ComplexMethod", "LongMethod", "NestedBlockDepth")
         private fun validate() {
-            val states = request.policy.states
-            for (state in states) {
-                for (action in state.actions) {
+            request.policy.states.forEach { state ->
+                state.actions.forEach { action ->
                     if (action is ReplicaCountAction) {
                         val error = awarenessReplicaBalance.validate(action.numOfReplicas)
                         if (error.isPresent) {
