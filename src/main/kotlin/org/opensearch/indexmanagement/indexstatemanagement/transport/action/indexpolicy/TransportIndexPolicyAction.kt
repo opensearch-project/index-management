@@ -18,7 +18,9 @@ import org.opensearch.action.support.ActionFilters
 import org.opensearch.action.support.HandledTransportAction
 import org.opensearch.action.support.master.AcknowledgedResponse
 import org.opensearch.client.node.NodeClient
+import org.opensearch.cluster.routing.allocation.AwarenessReplicaBalance
 import org.opensearch.cluster.service.ClusterService
+import org.opensearch.common.ValidationException
 import org.opensearch.common.inject.Inject
 import org.opensearch.common.settings.Settings
 import org.opensearch.common.xcontent.NamedXContentRegistry
@@ -30,6 +32,7 @@ import org.opensearch.index.seqno.SequenceNumbers
 import org.opensearch.indexmanagement.IndexManagementIndices
 import org.opensearch.indexmanagement.IndexManagementPlugin
 import org.opensearch.indexmanagement.indexstatemanagement.ManagedIndexCoordinator.Companion.MAX_HITS
+import org.opensearch.indexmanagement.indexstatemanagement.action.ReplicaCountAction
 import org.opensearch.indexmanagement.indexstatemanagement.findConflictingPolicyTemplates
 import org.opensearch.indexmanagement.indexstatemanagement.findSelfConflictingTemplates
 import org.opensearch.indexmanagement.indexstatemanagement.model.ISMTemplate
@@ -58,12 +61,14 @@ class TransportIndexPolicyAction @Inject constructor(
     val ismIndices: IndexManagementIndices,
     val clusterService: ClusterService,
     val settings: Settings,
-    val xContentRegistry: NamedXContentRegistry
+    val xContentRegistry: NamedXContentRegistry,
+    var awarenessReplicaBalance: AwarenessReplicaBalance,
 ) : HandledTransportAction<IndexPolicyRequest, IndexPolicyResponse>(
     IndexPolicyAction.NAME, transportService, actionFilters, ::IndexPolicyRequest
 ) {
 
-    @Volatile private var filterByEnabled = IndexManagementSettings.FILTER_BY_BACKEND_ROLES.get(settings)
+    @Volatile
+    private var filterByEnabled = IndexManagementSettings.FILTER_BY_BACKEND_ROLES.get(settings)
 
     init {
         clusterService.clusterSettings.addSettingsUpdateConsumer(IndexManagementSettings.FILTER_BY_BACKEND_ROLES) {
@@ -82,6 +87,7 @@ class TransportIndexPolicyAction @Inject constructor(
         private val user: User? = buildUser(client.threadPool().threadContext)
     ) {
         fun start() {
+            validate()
             log.debug(
                 "User and roles string from thread context: ${client.threadPool().threadContext.getTransient<String>(
                     ConfigConstants.OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT
@@ -100,6 +106,22 @@ class TransportIndexPolicyAction @Inject constructor(
                         actionListener.onFailure(ExceptionsHelper.unwrapCause(t) as Exception)
                     }
                 })
+            }
+        }
+
+        @Suppress("ComplexMethod", "LongMethod", "NestedBlockDepth")
+        private fun validate() {
+            request.policy.states.forEach { state ->
+                state.actions.forEach { action ->
+                    if (action is ReplicaCountAction) {
+                        val error = awarenessReplicaBalance.validate(action.numOfReplicas)
+                        if (error.isPresent) {
+                            val ex = ValidationException()
+                            ex.addValidationError(error.get())
+                            actionListener.onFailure(ex)
+                        }
+                    }
+                }
             }
         }
 
@@ -134,9 +156,10 @@ class TransportIndexPolicyAction @Inject constructor(
             // check self overlapping
             val selfOverlap = ismTemplateList.findSelfConflictingTemplates()
             if (selfOverlap != null) {
-                val errorMessage = "New policy ${request.policyID} has an ISM template with index pattern ${selfOverlap.first} " +
-                    "matching this policy's other ISM templates with index patterns ${selfOverlap.second}," +
-                    " please use different priority"
+                val errorMessage =
+                    "New policy ${request.policyID} has an ISM template with index pattern ${selfOverlap.first} " +
+                        "matching this policy's other ISM templates with index patterns ${selfOverlap.second}," +
+                        " please use different priority"
                 actionListener.onFailure(IndexManagementException.wrap(IllegalArgumentException(errorMessage)))
                 return
             }
@@ -209,7 +232,12 @@ class TransportIndexPolicyAction @Inject constructor(
                     override fun onResponse(response: IndexResponse) {
                         val failureReasons = checkShardsFailure(response)
                         if (failureReasons != null) {
-                            actionListener.onFailure(OpenSearchStatusException(failureReasons.toString(), response.status()))
+                            actionListener.onFailure(
+                                OpenSearchStatusException(
+                                    failureReasons.toString(),
+                                    response.status()
+                                )
+                            )
                             return
                         }
                         actionListener.onResponse(
