@@ -81,7 +81,7 @@ class StepUtilsTests : OpenSearchTestCase() {
     fun `test get action start time`() {
         val metadata = ManagedIndexMetaData(
             "indexName", "indexUuid", "policy_id", null, null, null, null, null, null, null,
-            ActionMetaData("name", randomInstant().toEpochMilli(), 0, false, 0, null, null), null, null, null, null
+            ActionMetaData("name", randomInstant().toEpochMilli(), 0, false, 0, null, null), null, null, null
         )
         assertEquals("Action start time was not extracted correctly", metadata.actionMetaData?.startTime, getActionStartTime(metadata).toEpochMilli())
     }

@@ -598,7 +598,6 @@ object ManagedIndexRunner :
             stateMetaData = null,
             actionMetaData = null,
             stepMetaData = null,
-            validationResult = null,
             policyRetryInfo = PolicyRetryInfoMetaData(failed = true, consumedRetries = 0),
             info = mapOf("message" to "Fail to load policy: $policyID")
         )
@@ -627,7 +626,6 @@ object ManagedIndexRunner :
                 stateMetaData = stateMetaData,
                 actionMetaData = null,
                 stepMetaData = null,
-                validationResult = null,
                 policyRetryInfo = PolicyRetryInfoMetaData(failed = false, consumedRetries = 0),
                 info = mapOf("message" to "Successfully initialized policy: ${policy.id}")
             )

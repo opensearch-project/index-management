@@ -76,7 +76,6 @@ abstract class IndexStateManagementIntegTestCase : OpenSearchIntegTestCase() {
         stateMetaData = StateMetaData("ReplicaCountState", 1234),
         actionMetaData = null,
         stepMetaData = null,
-        validationResult = null,
         policyRetryInfo = PolicyRetryInfoMetaData(false, 0),
         info = mapOf("message" to "Happy moving")
     )

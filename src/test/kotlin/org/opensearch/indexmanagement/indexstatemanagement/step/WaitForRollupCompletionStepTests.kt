@@ -34,7 +34,7 @@ class WaitForRollupCompletionStepTests : OpenSearchTestCase() {
         indexName, "indexUuid", "policy_id", null, null, null, null, null, null, null,
         ActionMetaData
         (WaitForRollupCompletionStep.name, 1, 0, false, 0, null, ActionProperties(rollupId = rollupId)),
-        null, null, null, null
+        null, null, null
     )
     private val rollupMetadata = RollupMetadata(
         rollupID = rollupId, lastUpdatedTime = Instant.now(), status = RollupMetadata.Status.FINISHED,

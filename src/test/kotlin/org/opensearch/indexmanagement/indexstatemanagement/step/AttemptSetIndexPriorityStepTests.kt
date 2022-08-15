@@ -41,7 +41,7 @@ class AttemptSetIndexPriorityStepTests : OpenSearchTestCase() {
 
         runBlocking {
             val indexPriorityAction = IndexPriorityAction(50, 0)
-            val managedIndexMetaData = ManagedIndexMetaData("test", "indexUuid", "policy_id", null, null, null, null, null, null, null, null, null, null, null, null)
+            val managedIndexMetaData = ManagedIndexMetaData("test", "indexUuid", "policy_id", null, null, null, null, null, null, null, null, null, null, null)
             val attemptSetPriorityStep = AttemptSetIndexPriorityStep(indexPriorityAction)
             val context = StepContext(managedIndexMetaData, clusterService, client, null, null, scriptService, settings, lockService)
             attemptSetPriorityStep.preExecute(logger, context).execute()
@@ -56,7 +56,7 @@ class AttemptSetIndexPriorityStepTests : OpenSearchTestCase() {
 
         runBlocking {
             val indexPriorityAction = IndexPriorityAction(50, 0)
-            val managedIndexMetaData = ManagedIndexMetaData("test", "indexUuid", "policy_id", null, null, null, null, null, null, null, null, null, null, null, null)
+            val managedIndexMetaData = ManagedIndexMetaData("test", "indexUuid", "policy_id", null, null, null, null, null, null, null, null, null, null, null)
             val attemptSetPriorityStep = AttemptSetIndexPriorityStep(indexPriorityAction)
             val context = StepContext(managedIndexMetaData, clusterService, client, null, null, scriptService, settings, lockService)
             attemptSetPriorityStep.preExecute(logger, context).execute()
@@ -71,7 +71,7 @@ class AttemptSetIndexPriorityStepTests : OpenSearchTestCase() {
 
         runBlocking {
             val indexPriorityAction = IndexPriorityAction(50, 0)
-            val managedIndexMetaData = ManagedIndexMetaData("test", "indexUuid", "policy_id", null, null, null, null, null, null, null, null, null, null, null, null)
+            val managedIndexMetaData = ManagedIndexMetaData("test", "indexUuid", "policy_id", null, null, null, null, null, null, null, null, null, null, null)
             val attemptSetPriorityStep = AttemptSetIndexPriorityStep(indexPriorityAction)
             val context = StepContext(managedIndexMetaData, clusterService, client, null, null, scriptService, settings, lockService)
             attemptSetPriorityStep.preExecute(logger, context).execute()
@@ -87,7 +87,7 @@ class AttemptSetIndexPriorityStepTests : OpenSearchTestCase() {
 
         runBlocking {
             val indexPriorityAction = IndexPriorityAction(50, 0)
-            val managedIndexMetaData = ManagedIndexMetaData("test", "indexUuid", "policy_id", null, null, null, null, null, null, null, null, null, null, null, null)
+            val managedIndexMetaData = ManagedIndexMetaData("test", "indexUuid", "policy_id", null, null, null, null, null, null, null, null, null, null, null)
             val attemptSetPriorityStep = AttemptSetIndexPriorityStep(indexPriorityAction)
             val context = StepContext(managedIndexMetaData, clusterService, client, null, null, scriptService, settings, lockService)
             attemptSetPriorityStep.preExecute(logger, context).execute()

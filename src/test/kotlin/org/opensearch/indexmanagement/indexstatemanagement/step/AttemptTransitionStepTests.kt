@@ -82,7 +82,7 @@ class AttemptTransitionStepTests : OpenSearchTestCase() {
         val indexMetadataProvider = IndexMetadataProvider(settings, client, clusterService, mutableMapOf())
 
         runBlocking {
-            val managedIndexMetadata = ManagedIndexMetaData(indexName, indexUUID, "policy_id", null, null, null, null, null, null, null, null, null, null, null, null)
+            val managedIndexMetadata = ManagedIndexMetaData(indexName, indexUUID, "policy_id", null, null, null, null, null, null, null, null, null, null, null)
             val transitionsAction = TransitionsAction(listOf(Transition("some_state", Conditions(docCount = 5L))), indexMetadataProvider)
             val attemptTransitionStep = AttemptTransitionStep(transitionsAction)
             val context = StepContext(managedIndexMetadata, clusterService, client, null, null, scriptService, settings, lockService)
@@ -100,7 +100,7 @@ class AttemptTransitionStepTests : OpenSearchTestCase() {
         val indexMetadataProvider = IndexMetadataProvider(settings, client, clusterService, mutableMapOf())
 
         runBlocking {
-            val managedIndexMetadata = ManagedIndexMetaData(indexName, indexUUID, "policy_id", null, null, null, null, null, null, null, null, null, null, null, null)
+            val managedIndexMetadata = ManagedIndexMetaData(indexName, indexUUID, "policy_id", null, null, null, null, null, null, null, null, null, null, null)
             val transitionsAction = TransitionsAction(listOf(Transition("some_state", Conditions(docCount = 5L))), indexMetadataProvider)
             val attemptTransitionStep = AttemptTransitionStep(transitionsAction)
             val context = StepContext(managedIndexMetadata, clusterService, client, null, null, scriptService, settings, lockService)
@@ -118,7 +118,7 @@ class AttemptTransitionStepTests : OpenSearchTestCase() {
         val indexMetadataProvider = IndexMetadataProvider(settings, client, clusterService, mutableMapOf())
 
         runBlocking {
-            val managedIndexMetadata = ManagedIndexMetaData(indexName, indexUUID, "policy_id", null, null, null, null, null, null, null, null, null, null, null, null)
+            val managedIndexMetadata = ManagedIndexMetaData(indexName, indexUUID, "policy_id", null, null, null, null, null, null, null, null, null, null, null)
             val transitionsAction = TransitionsAction(listOf(Transition("some_state", Conditions(docCount = 5L))), indexMetadataProvider)
             val attemptTransitionStep = AttemptTransitionStep(transitionsAction)
             val context = StepContext(managedIndexMetadata, clusterService, client, null, null, scriptService, settings, lockService)
@@ -133,7 +133,7 @@ class AttemptTransitionStepTests : OpenSearchTestCase() {
         val indexMetadataProvider = IndexMetadataProvider(settings, mock(), clusterService, mutableMapOf())
         runBlocking {
             val completedStartTime = Instant.now()
-            val managedIndexMetadata = ManagedIndexMetaData(indexName, indexUUID, "policy_id", null, null, null, null, null, null, null, null, StepMetaData("attempt_transition", completedStartTime.toEpochMilli(), Step.StepStatus.COMPLETED), null, null, null)
+            val managedIndexMetadata = ManagedIndexMetaData(indexName, indexUUID, "policy_id", null, null, null, null, null, null, null, null, StepMetaData("attempt_transition", completedStartTime.toEpochMilli(), Step.StepStatus.COMPLETED), null, null)
             val transitionsAction = TransitionsAction(listOf(Transition("some_state", null)), indexMetadataProvider)
             val attemptTransitionStep = AttemptTransitionStep(transitionsAction)
             Thread.sleep(50) // Make sure we give enough time for the instants to be different

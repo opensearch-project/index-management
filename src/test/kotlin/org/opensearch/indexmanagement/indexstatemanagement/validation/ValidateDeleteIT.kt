@@ -61,7 +61,7 @@ class ValidateDeleteIT : IndexStateManagementRestTestCase() {
             )
         }
         waitFor {
-            val data = getExplainManagedIndexMetaData(index1).validationResult
+            val data = getExplainValidationResult(index1)
             assertEquals(
                 "Index rollover validation message is index is write index.",
                 ValidateDelete.getFailedIsWriteIndexMessage(index1), data?.validationMessage

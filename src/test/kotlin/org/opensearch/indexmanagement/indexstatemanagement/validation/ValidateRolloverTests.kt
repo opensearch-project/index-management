@@ -38,7 +38,7 @@ class ValidateRolloverTests : OpenSearchTestCase() {
         indexName, "indexUuid", "policy_id", null, null, null, null, null, null, null,
         ActionMetaData
         ("rollover", 1, 0, false, 0, null, null),
-        null, null, null, null
+        null, null, null
     )
     val actionConfig = RolloverAction(null, 3, TimeValue.timeValueDays(2), null, 0)
     private val client: Client = mock()

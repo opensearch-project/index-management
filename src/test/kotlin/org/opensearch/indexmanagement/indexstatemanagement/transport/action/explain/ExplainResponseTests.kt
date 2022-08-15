@@ -31,7 +31,6 @@ class ExplainResponseTests : OpenSearchTestCase() {
             stateMetaData = null,
             actionMetaData = null,
             stepMetaData = null,
-            validationResult = null,
             policyRetryInfo = null,
             info = null
         )
