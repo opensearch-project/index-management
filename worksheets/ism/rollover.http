@@ -46,38 +46,7 @@ GET localhost:9200/_plugins/_ism/explain/testnoalias?pretty
 Accept: application/json
 
 ###
-<!--Add Alias-->
-
-###
-PUT http://localhost:9200/testnoalias/_alias/testalias
-Content-Type: application/json
-
-###
-GET localhost:9200/_cat/aliases?v
-Accept: application/json
-
-###
-PUT http://localhost:9200/_index_template/ism_rollover
-Content-Type: application/json
-
-{
-  "index_patterns": ["testnoalias*"],
-  "template": {
-   "settings": {
-    "plugins.index_state_management.rollover_alias": "testnoalias*"
-   }
-  }
-}
-
-###
-GET localhost:9200/testnoalias/_settings
-Accept: application/json
-
-
-###
 DELETE http://localhost:9200/testnoalias
-
-
 
 <!--Index 2 not write index-->
 

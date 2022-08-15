@@ -1,5 +1,5 @@
 ###
-PUT localhost:9200/_opendistro/_ism/policies/example
+PUT localhost:9200/_opendistro/_ism/policies/exampledelete
 Content-Type: application/json
 
 {
