@@ -24,15 +24,13 @@ class ValidateDelete(
 
     private val logger = LogManager.getLogger(javaClass)
 
+    @Suppress("ReturnSuppressCount", "ReturnCount")
     override fun execute(indexName: String): Validate {
         // if these conditions are false, fail validation and do not execute delete action
-        // logger.warn("i am in delete")
         if (!deleteIndexExists(indexName) || !validIndex(indexName)) {
             return this
         }
         val (rolloverTarget, isDataStream) = getRolloverTargetOrUpdateInfo(indexName)
-//        logger.info("before checking stuff")
-//        logger.info("is data stream")
         if (rolloverTarget != null && !notWriteIndexForDataStream(rolloverTarget, indexName)) {
             return this // can't be deleted if it's write index
         }
@@ -51,7 +49,6 @@ class ValidateDelete(
         return rolloverTarget to isDataStreamIndex
     }
 
-    // validation logic
     private fun notWriteIndexForDataStream(alias: String?, indexName: String): Boolean {
         val metadata = clusterService.state().metadata
         val indexAlias = metadata.index(indexName)?.aliases?.get(alias)

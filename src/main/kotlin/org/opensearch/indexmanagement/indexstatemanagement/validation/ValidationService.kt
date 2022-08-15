@@ -18,7 +18,6 @@ class ValidationService(
     val jvmService: JvmService
 ) {
 
-    // overarching validate function
     fun validate(actionName: String, indexName: String): ValidationResult {
         // map action to validation class
         val validation = when (actionName) {

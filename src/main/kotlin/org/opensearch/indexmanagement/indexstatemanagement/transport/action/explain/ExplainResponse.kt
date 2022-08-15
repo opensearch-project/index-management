@@ -32,6 +32,7 @@ open class ExplainResponse : ActionResponse, ToXContentObject {
     val policies: Map<String, Policy>
     val validationResults: List<ValidationResult?>
 
+    @Suppress("LongParameterList")
     constructor(
         indexNames: List<String>,
         indexPolicyIDs: List<String?>,

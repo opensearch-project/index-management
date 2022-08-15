@@ -96,6 +96,7 @@ class TransportExplainAction @Inject constructor(
      * special case: when user explicitly query for an un-managed index
      * return this index with its policy id shown 'null' meaning it's not managed
      */
+    @Suppress("LongMethod")
     inner class ExplainHandler(
         private val client: NodeClient,
         private val actionListener: ActionListener<ExplainResponse>,
@@ -212,7 +213,10 @@ class TransportExplainAction @Inject constructor(
                                     // edge case: if specify query param pagination size to be 0
                                     // we still show total managed indices
                                     indexNames.clear()
-                                    sendResponse(indexNames, indexMetadatas, indexPolicyIDs, enabledState, totalManagedIndices, appliedPolicies, validationResults)
+                                    sendResponse(
+                                        indexNames, indexMetadatas, indexPolicyIDs, enabledState,
+                                        totalManagedIndices, appliedPolicies, validationResults
+                                    )
                                     return
                                 } else {
                                     // Clear and add the managedIndices from the response to preserve the sort order and size
@@ -238,7 +242,10 @@ class TransportExplainAction @Inject constructor(
                                     return
                                 }
                                 indexNames.clear()
-                                sendResponse(indexNames, indexMetadatas, indexPolicyIDs, enabledState, totalManagedIndices, appliedPolicies, validationResults)
+                                sendResponse(
+                                    indexNames, indexMetadatas, indexPolicyIDs,
+                                    enabledState, totalManagedIndices, appliedPolicies, validationResults
+                                )
                                 return
                             }
                             actionListener.onFailure(ExceptionsHelper.unwrapCause(t) as Exception)

@@ -47,7 +47,7 @@ class ValidateForceMerge(
     @Suppress("TooManyFunctions")
     companion object {
         const val name = "validate_force_merge"
-        fun getFailedDataTooLargeMessage(index: String) = "Data too large and is over the allowed limit"
+        fun getFailedDataTooLargeMessage(index: String) = "Data too large and is over the allowed limit for index [index=$index]"
         fun getValidationPassedMessage(index: String) = "Force merge validation passed for [index=$index]"
     }
 }

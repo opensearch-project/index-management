@@ -42,8 +42,6 @@ class ValidateRollover(
         return this
     }
 
-    // validation logic------------------------------------------------------------------------------------------------
-
     private fun skipRollover(indexName: String): Boolean {
         val skipRollover = clusterService.state().metadata.index(indexName).getRolloverSkip()
         if (skipRollover) {
@@ -82,7 +80,7 @@ class ValidateRollover(
         val metadata = clusterService.state().metadata
         val indexAlias = metadata.index(indexName)?.aliases?.get(alias)
 
-        val isWriteIndex = indexAlias?.writeIndex() // this could be null
+        val isWriteIndex = indexAlias?.writeIndex()
         if (isWriteIndex != true) {
             val aliasIndices = metadata.indicesLookup[alias]?.indices?.map { it.index }
             logger.debug("Alias $alias contains indices $aliasIndices")
