@@ -11,25 +11,45 @@
 
 package org.opensearch.indexmanagement
 
-import org.apache.http.entity.ContentType
-import org.apache.http.entity.StringEntity
 import org.junit.After
-import org.junit.Assert
 import org.junit.Before
-import org.opensearch.client.Request
-import org.opensearch.client.Response
 import org.opensearch.client.RestClient
 import org.opensearch.commons.rest.SecureRestClientBuilder
+import org.opensearch.indexmanagement.common.model.dimension.DateHistogram
+import org.opensearch.indexmanagement.common.model.dimension.Terms
+import org.opensearch.indexmanagement.indexstatemanagement.action.RollupAction
+import org.opensearch.indexmanagement.indexstatemanagement.model.ISMTemplate
+import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
+import org.opensearch.indexmanagement.indexstatemanagement.model.State
+import org.opensearch.indexmanagement.indexstatemanagement.randomErrorNotification
+import org.opensearch.indexmanagement.rollup.model.ISMRollup
+import org.opensearch.indexmanagement.rollup.model.RollupMetrics
+import org.opensearch.indexmanagement.rollup.model.metric.Average
+import org.opensearch.indexmanagement.rollup.model.metric.Max
+import org.opensearch.indexmanagement.rollup.model.metric.Min
+import org.opensearch.indexmanagement.rollup.model.metric.Sum
+import org.opensearch.indexmanagement.rollup.model.metric.ValueCount
+import org.opensearch.indexmanagement.rollup.randomRollup
 import org.opensearch.rest.RestStatus
 import org.opensearch.test.junit.annotations.TestLogging
+import java.time.Instant
+import java.time.temporal.ChronoUnit
+import java.util.Locale
 
 @TestLogging("level:DEBUG", reason = "Debug for tests.")
-class SecurityBehaviorIT : IndexManagementRestTestCase() {
+class SecurityBehaviorIT : SecurityRestTestCase() {
+    private val testIndexName = javaClass.simpleName.lowercase(Locale.ROOT)
 
-    var financeUserClient: RestClient? = null
-    var hrUserClient: RestClient? = null
-    var adminUserClient: RestClient? = null
-    var noAuthUserClient: RestClient? = null
+    private val john = "john"
+    private var johnClient: RestClient? = null
+
+    private val jill = "jill"
+    private var jillClient: RestClient? = null
+
+    private val jane = "jane"
+    private var janeClient: RestClient? = null
+
+    private val password = "Test123!"
 
     override fun preserveIndicesUponCompletion(): Boolean {
         return true
@@ -37,127 +57,282 @@ class SecurityBehaviorIT : IndexManagementRestTestCase() {
 
     @Before
     fun setupUsersAndRoles() {
-        // Create user jane with backend roles - ["finance", "general"]
-        createUser("jane", backendRoles = listOf("finance", "hr"))
-
-        // Create user jack with backend roles - ["hr"]
-        createUser("jack", backendRoles = listOf("hr"))
-
-        // Create user sam with backend roles - ["general"]
-        createUser("sam", backendRoles = listOf("general"))
-
-        // Create user auth with no backend roles
-        createUser("noauth")
-
-        val clusterPermissions = listOf(
-            "cluster:admin/opendistro/ism/*",
-            "cluster:admin/opendistro/rollup/*",
-            "cluster:admin/opendistro/transform/*",
+        val helpdeskClusterPermissions = listOf(
+            WRITE_POLICY,
+            GET_POLICY,
+            GET_POLICIES,
+            EXPLAIN_INDEX,
+            ROLLUP_ALL
         )
+
         val indexPermissions = listOf(
-            "indices:admin/opensearch/ism/*",
-            "indices:admin/mappings/get",
-            "indices:data/read/search"
+            MANAGED_INDEX,
+            GET_INDEX,
+            SEARCH_INDEX
         )
-        // Create role - "finance_im_role"
-        addRole("finance_im_role", clusterPermissions, listOf("finance-*"), indexPermissions)
 
-        // Create role - "hr_im_role"
-        addRole("hr_im_role", clusterPermissions, listOf("hr-*"), indexPermissions)
+        val phoneOperatorClusterPermissions = listOf(
+            EXPLAIN_INDEX,
+            GET_POLICY,
+            WRITE_POLICY,
+            GET_POLICIES
+        )
 
-        // add roles to all the users
-        addUsersToRole("finance_im_role", listOf("jane"))
-        addUsersToRole("hr_im_role", listOf("jack"))
-        addUsersToRole("all_access", listOf("sam", "admin"))
+        createUser(john, password, listOf(HELPDESK))
+        createUser(jill, password, listOf(HELPDESK))
+        createRole(HELPDESK_ROLE, helpdeskClusterPermissions, indexPermissions, listOf(AIRLINE_INDEX_PATTERN))
+        assignRoleToUsers(HELPDESK_ROLE, listOf(john))
 
-        financeUserClient = SecureRestClientBuilder(clusterHosts.toTypedArray(), isHttps(), "jane", "Test123!").setSocketTimeout(60000).build()
-        hrUserClient = SecureRestClientBuilder(clusterHosts.toTypedArray(), isHttps(), "jack", "Test123!").setSocketTimeout(60000).build()
-        adminUserClient = SecureRestClientBuilder(clusterHosts.toTypedArray(), isHttps(), "sam", "Test123!").setSocketTimeout(60000).build()
-        noAuthUserClient = SecureRestClientBuilder(clusterHosts.toTypedArray(), isHttps(), "noauth", "Test123!").setSocketTimeout(60000).build()
+        // Jane is phone operator; Phone operators can search availability indexes
+        createUserWithCustomRole(
+            jane,
+            password,
+            PHONE_OPERATOR_ROLE,
+            phoneOperatorClusterPermissions,
+            indexPermissions,
+            listOf(PHONE_OPERATOR),
+            listOf(AVAILABILITY_INDEX_PATTERN)
+        )
+
+        johnClient =
+            SecureRestClientBuilder(clusterHosts.toTypedArray(), isHttps(), john, password).setSocketTimeout(60000)
+                .build()
+        jillClient =
+            SecureRestClientBuilder(clusterHosts.toTypedArray(), isHttps(), jill, password).setSocketTimeout(60000)
+                .build()
+        janeClient =
+            SecureRestClientBuilder(clusterHosts.toTypedArray(), isHttps(), jane, password).setSocketTimeout(60000)
+                .build()
     }
 
     @After
     fun cleanup() {
-        financeUserClient?.close()
-        hrUserClient?.close()
-        adminUserClient?.close()
-        noAuthUserClient?.close()
+        johnClient?.close()
+        jillClient?.close()
+        janeClient?.close()
 
-        deleteUser("jack")
-        deleteUser("jane")
-        deleteUser("sam")
-        deleteUser("noauth")
+        deleteUser(john)
+        deleteUser(jill)
+        deleteUser(jane)
 
-        deleteRole("finance_im_role")
-        deleteRole("hr_im_role")
+        deleteRole(HELPDESK_ROLE)
+        deleteRole(PHONE_OPERATOR_ROLE)
 
         deleteIndex(".opendistro-ism-config")
-        deleteIndex("finance-1")
-        deleteIndex("marketing-1")
-        deleteIndex("hr-1")
-
-        disableFilterBy()
     }
 
-    fun `test security behavior`() {
-        disableFilterBy()
+    fun `test security integral`() {
+        setFilterByBackendRole(false)
 
-        var financeResponse = createPolicy("finance-policy", 10, financeUserClient)
-        var hrResponse = createPolicy("hr-policy", 15, hrUserClient)
-        var adminResponse = createPolicy("admin-policy", 0, adminUserClient)
-        // var noAuthResponse = createPolicy("noauth-policy", 100, noAuthUserClient)
+        try {
+            val airlinePolicyJson = createReplicaCountTestPolicyRequest(10, AIRLINE_INDEX_PATTERN)
+            createPolicyJson(airlinePolicyJson, AIRLINE_POLICY, true, johnClient!!)
 
-        assertEquals("User jane failed to create policy", RestStatus.CREATED, financeResponse?.restStatus())
-        assertEquals("User jack failed to create policy", RestStatus.CREATED, hrResponse?.restStatus())
-        assertEquals("User sam failed to create policy", RestStatus.CREATED, adminResponse?.restStatus())
-        // assertEquals("User noauth didn't fail to create policy", RestStatus.FORBIDDEN, noAuthResponse?.restStatus())
+            val availabilityPolicyJson = createReplicaCountTestPolicyRequest(15, AVAILABILITY_INDEX_PATTERN)
+            createPolicyJson(availabilityPolicyJson, AVAILABILITY_POLICY, true, janeClient!!)
 
-        financeResponse = getPolicies(financeUserClient)
-        hrResponse = getPolicies(hrUserClient)
-        adminResponse = getPolicies(adminUserClient)
-        // noAuthResponse = getPolicies(noAuthUserClient)
+            checkPolicies(johnClient!!, john, 2)
+            // Confirm that jill can't see the policy because of missing privilege
+            checkPolicies(jillClient!!, jill, null, RestStatus.FORBIDDEN)
+            checkPolicies(janeClient!!, jane, 2)
 
-        assertEquals("User jane cannot get policies", RestStatus.OK, financeResponse?.restStatus())
-        assertEquals("User jack cannot get policies", RestStatus.OK, hrResponse?.restStatus())
-        assertEquals("User sam cannot get policies", RestStatus.OK, adminResponse?.restStatus())
-        // assertEquals("User noauth can get policies", RestStatus.FORBIDDEN, noAuthResponse?.restStatus())
+            // Assign jill to airline role
+            assignRoleToUsers(HELPDESK_ROLE, listOf(john, jill))
+            checkPolicies(jillClient!!, jill, 2)
+            // Confirm that jill can see the policy
+            checkPolicyAccess(AIRLINE_POLICY, jillClient!!, RestStatus.OK)
 
-        // Ensure all users can see each other policies
-        assertEquals("User jane not able to see all policies", 3, financeResponse?.asMap()?.get("total_policies"))
-        assertEquals("User jack not able to see all policies", 3, hrResponse?.asMap()?.get("total_policies"))
-        assertEquals("User sam not able to see all policies", 3, adminResponse?.asMap()?.get("total_policies"))
+            // Create two index - one for helpdesk service and one for phone operators
+            client().makeRequest("PUT", "/$AIRLINE_INDEX")
+            client().makeRequest("PUT", "/$AVAILABILITY_INDEX")
 
-        client().makeRequest("PUT", "/finance-1")
-        client().makeRequest("PUT", "/hr-1")
-        client().makeRequest("PUT", "/marketing-1")
+            waitFor {
+                var airlineIndex = getExplainManagedIndexMetaData(AIRLINE_INDEX, johnClient!!)
+                assertEquals(AIRLINE_POLICY, airlineIndex.policyID)
+                assertEquals(AIRLINE_INDEX, airlineIndex.index)
 
-        waitFor {
-            financeResponse = explainManagedIndices(financeUserClient)
-            hrResponse = explainManagedIndices(hrUserClient)
-            adminResponse = explainManagedIndices(adminUserClient)
-            assertEquals("User jane cannot get managed indices", RestStatus.OK, financeResponse?.restStatus())
-            assertEquals("User jack cannot get managed indices", RestStatus.OK, hrResponse?.restStatus())
-            assertEquals("User sam cannot get managed indices", RestStatus.OK, adminResponse?.restStatus())
-            assertEquals("User jane seeing more managed indices than allowed", 1, financeResponse?.asMap()?.get("total_managed_indices"))
-            assertEquals("User jack seeing more managed indices than allowed", 1, hrResponse?.asMap()?.get("total_managed_indices"))
-            assertEquals("User sam seeing more managed indices than allowed", 3, adminResponse?.asMap()?.get("total_managed_indices"))
+                airlineIndex = getExplainManagedIndexMetaData(AIRLINE_INDEX, janeClient!!)
+                assertEquals(AIRLINE_POLICY, airlineIndex.policyID)
+                assertEquals(AIRLINE_INDEX, airlineIndex.index)
+
+                val availabilityIndex = getExplainManagedIndexMetaData(AVAILABILITY_INDEX, janeClient!!)
+                assertEquals(AVAILABILITY_POLICY, availabilityIndex.policyID)
+                assertEquals(AVAILABILITY_INDEX, availabilityIndex.index)
+
+                // Check the privileges on the indexes - users shouldn't see each other indexes
+                checkIndexAccess(AVAILABILITY_INDEX, johnClient!!, RestStatus.FORBIDDEN)
+                checkIndexAccess(AVAILABILITY_INDEX, jillClient!!, RestStatus.FORBIDDEN)
+                checkIndexAccess(AIRLINE_INDEX, janeClient!!, RestStatus.FORBIDDEN)
+            }
+            setFilterByBackendRole(true)
+
+            // Check if users can access only to policies belonging to exact backend group
+            checkPolicies(johnClient!!, john, 1)
+            checkPolicies(jillClient!!, jill, 1)
+            checkPolicies(janeClient!!, jane, 1)
+
+            // Confirm that users belonging to different roles can't see each other policies
+            checkPolicyAccess(AVAILABILITY_POLICY, johnClient!!, RestStatus.FORBIDDEN)
+            checkPolicyAccess(AVAILABILITY_POLICY, jillClient!!, RestStatus.FORBIDDEN)
+            checkPolicyAccess(AIRLINE_POLICY, janeClient!!, RestStatus.FORBIDDEN)
+        } finally {
+            deleteIndex(AIRLINE_INDEX)
+            deleteIndex(AVAILABILITY_INDEX)
+            setFilterByBackendRole(false)
         }
-
-        // Enabling backend role filtering
-        enableFilterBy()
-        financeResponse = getPolicies(financeUserClient)
-        hrResponse = getPolicies(hrUserClient)
-        adminResponse = getPolicies(adminUserClient)
-
-        // Only admin can all policies other users only can see intersecting policies
-        assertEquals("User jane not able to see all policies", 2, financeResponse?.asMap()?.get("total_policies"))
-        assertEquals("User jack not able to see all policies", 2, hrResponse?.asMap()?.get("total_policies"))
-        assertEquals("User sam not able to see all policies", 3, adminResponse?.asMap()?.get("total_policies"))
     }
 
-    private fun createPolicy(name: String, priority: Int, userClient: RestClient?): Response? {
-        val request = Request("PUT", "_plugins/_ism/policies/$name")
-        val json = """
+    fun `test create policy with rollup step against user with privileges`() {
+        val user = "testUser"
+        val testUserRole = "test_role"
+        createUserWithCustomRole(user, password, testUserRole, emptyList(), emptyList(), emptyList(), emptyList())
+        val testClient =
+            SecureRestClientBuilder(clusterHosts.toTypedArray(), isHttps(), user, password).setSocketTimeout(60000)
+                .build()
+        val indexName = "${AIRLINE_INDEX}_index_basic"
+        val policyID = "${AIRLINE_POLICY}_policy_basic"
+
+        try {
+            val rollup = ISMRollup(
+                description = "basic search test",
+                targetIndex = "target_rollup_index",
+                pageSize = 100,
+                dimensions = listOf(
+                    DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "1h"),
+                    Terms("RatecodeID", "RatecodeID"),
+                    Terms("PULocationID", "PULocationID")
+                ),
+                metrics = listOf(
+                    RollupMetrics(
+                        sourceField = "passenger_count", targetField = "passenger_count",
+                        metrics = listOf(
+                            Sum(), Min(), Max(),
+                            ValueCount(), Average()
+                        )
+                    ),
+                    RollupMetrics(
+                        sourceField = "total_amount",
+                        targetField = "total_amount",
+                        metrics = listOf(Max(), Min())
+                    )
+                )
+            )
+            val actionConfig = RollupAction(rollup, 0)
+            val states = listOf(
+                State("rollup", listOf(actionConfig), listOf())
+            )
+            val sourceIndexMappingString =
+                "\"properties\": {\"tpep_pickup_datetime\": { \"type\": \"date\" }, \"RatecodeID\": { \"type\": " + "\"keyword\" }, \"PULocationID\": { \"type\": \"keyword\" }, \"passenger_count\": { \"type\": \"integer\" }, \"total_amount\": " + "{ \"type\": \"double\" }}"
+
+            val policy = Policy(
+                id = policyID,
+                description = "$testIndexName description",
+                schemaVersion = 1L,
+                lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
+                errorNotification = randomErrorNotification(),
+                defaultState = states[0].name,
+                states = states,
+                ismTemplate = listOf(
+                    ISMTemplate(listOf("$indexName*"), 100, Instant.now().truncatedTo(ChronoUnit.MILLIS))
+                )
+            )
+
+            createPolicy(policy = policy, policyId = policyID, client = johnClient!!)
+            createIndex(indexName, sourceIndexMappingString, client())
+
+            waitFor {
+                val managedIndex = getExplainManagedIndexMetaData(indexName, johnClient!!)
+                assertEquals(policyID, managedIndex.policyID)
+                assertEquals(indexName, managedIndex.index)
+
+                checkIndexAccess(indexName, testClient, RestStatus.FORBIDDEN)
+                checkPolicyAccess(indexName, testClient, RestStatus.FORBIDDEN)
+            }
+        } finally {
+            testClient.close()
+            deleteUser(user)
+            deleteRole(testUserRole)
+            deleteIndex(indexName)
+        }
+    }
+
+    fun `test create rollup against user with privileges and user without privileges`() {
+        val rollupUser = "rollupUser"
+        val rollupRole = "rollup_role"
+
+        val rollupClusterPrivileges = listOf(
+            INDEX_ROLLUP,
+            GET_ROLLUP,
+            EXPLAIN_ROLLUP
+        )
+
+        val indexPermissions = listOf(
+            MANAGED_INDEX,
+            GET_INDEX,
+            SEARCH_INDEX
+        )
+
+        // Create user with rollup roles
+        createUserWithCustomRole(
+            rollupUser,
+            password,
+            rollupRole,
+            rollupClusterPrivileges,
+            indexPermissions,
+            emptyList(),
+            listOf("testIdxTemplate*")
+        )
+
+        val rollupUserClient =
+            SecureRestClientBuilder(
+                clusterHosts.toTypedArray(),
+                isHttps(),
+                rollupUser,
+                password
+            ).setSocketTimeout(60000)
+                .build()
+
+        // Create client without rollup roles assigned
+        val user = "testUser"
+        val testUserRole = "test_role"
+
+        createUserWithCustomRole(
+            user,
+            password,
+            testUserRole,
+            emptyList(),
+            emptyList()
+        )
+
+        val testClient =
+            SecureRestClientBuilder(clusterHosts.toTypedArray(), isHttps(), user, password).setSocketTimeout(60000)
+                .build()
+        try {
+            val rollup = randomRollup()
+
+            createRollup(rollup, rollupUserClient)
+            waitFor {
+                // Rollup user can access rollup job
+                checkRollupAccess(rollup.id, rollupUserClient, RestStatus.OK)
+                // Non rollup user can't access rollup job
+                checkRollupAccess(rollup.id, testClient, RestStatus.FORBIDDEN)
+            }
+
+            // Assign rollup privilege to non rollup user and check if he can access the rollup job
+            assignRoleToUsers(rollupRole, listOf(user, rollupUser))
+            checkRollupAccess(rollup.id, testClient, RestStatus.OK)
+        } finally {
+            rollupUserClient.close()
+            testClient.close()
+            deleteUser(rollupUser)
+            deleteUser(user)
+            deleteRole(rollupRole)
+            deleteRole(testUserRole)
+        }
+    }
+
+    private fun createReplicaCountTestPolicyRequest(priority: Int, indexPattern: String): String {
+        return """
             {
                 "policy": {
                     "description": "test policy",
@@ -176,110 +351,27 @@ class SecurityBehaviorIT : IndexManagementRestTestCase() {
                         }
                     ],
                     "ism_template": {
-                        "index_patterns": ["*"],
+                        "index_patterns": ["$indexPattern"],
                         "priority": $priority
                     }
                 }
             }
         """.trimIndent()
-        request.setJsonEntity(json)
-        return userClient?.performRequest(request)
-    }
-
-    private fun getPolicies(userClient: RestClient?): Response? {
-        return userClient?.makeRequest("GET", "_plugins/_ism/policies")
-    }
-
-    private fun explainManagedIndices(userClient: RestClient?): Response? {
-        return userClient?.makeRequest("GET", "_plugins/_ism/explain")
-    }
-
-    private fun createUser(name: String, pwd: String = "Test123!", backendRoles: List<String> = listOf()) {
-        val request = Request("PUT", "_plugins/_security/api/internalusers/$name")
-        val backendRolesStr = backendRoles.joinToString { "\"$it\"" }
-        val json = """
-            {
-                "password": "$pwd",
-                "backend_roles": [$backendRolesStr],
-                "attributes":{}
-            }
-        """.trimIndent()
-        request.setJsonEntity(json)
-        client().performRequest(request)
-    }
-
-    private fun enableFilterBy() {
-        val setting = """
-            {
-                "persistent": {
-                    "plugins.index_management.filter_by_backend_roles": "true"
-                } 
-            }
-        """.trimIndent()
-        val updateResponse = client().makeRequest("PUT", "_cluster/settings", emptyMap(), StringEntity(setting, ContentType.APPLICATION_JSON))
-        assertEquals(updateResponse.statusLine.toString(), 200, updateResponse.statusLine.statusCode)
-    }
-
-    private fun disableFilterBy() {
-        val setting = """
-            {
-                "persistent": {
-                    "plugins.index_management.filter_by_backend_roles": "false"
-                }
-            }
-        """.trimIndent()
-        val updateResponse = client().makeRequest("PUT", "_cluster/settings", emptyMap(), StringEntity(setting, ContentType.APPLICATION_JSON))
-        Assert.assertEquals(updateResponse.statusLine.toString(), 200, updateResponse.statusLine.statusCode)
-    }
-
-    private fun addUsersToRole(role: String, users: List<String>) {
-        val request = Request("PUT", "/_plugins/_security/api/rolesmapping/$role")
-        val usersStr = users.joinToString { "\"$it\"" }
-        var entity = """
-            {
-                "backend_roles": [],
-                "hosts": [],
-                "users": [$usersStr]
-            }
-        """.trimIndent()
-        request.setJsonEntity(entity)
-        client().performRequest(request)
-    }
-
-    private fun addRole(name: String, clusterPermissions: List<String>, indexPatterns: List<String>, indexPermissions: List<String>) {
-        val request = Request("PUT", "/_plugins/_security/api/roles/$name")
-        val indexPatternsStr = indexPatterns.joinToString { "\"$it\"" }
-        val clusterPermissionsStr = clusterPermissions.joinToString { "\"$it\"" }
-        val indexPermissionsStr = indexPermissions.joinToString { "\"$it\"" }
-        val entity = """
-            {
-                "cluster_permissions": [$clusterPermissionsStr],
-                "index_permissions": [
-                {
-                    "fls": [],
-                    "masked_fields": [],
-                    "allowed_actions": [$indexPermissionsStr],
-                    "index_patterns": [$indexPatternsStr]
-                }
-                ],
-                "tenant_permissions": []
-            }
-        """.trimIndent()
-
-        request.setJsonEntity(entity)
-        client().performRequest(request)
-    }
-
-    private fun deleteUser(name: String) {
-        client().makeRequest("DELETE", "/_plugins/_security/api/internalusers/$name")
-    }
-
-    private fun deleteRole(name: String) {
-        client().makeRequest("DELETE", "/_plugins/_security/api/roles/$name")
     }
 
     companion object {
-        private const val PHONE_OPERATOR_ROLE = "phone_operator"
-        private const val AIRLINE_DATA_ROLE = "airline_data"
+        private const val AIRLINE_POLICY = "airline-policy"
+        private const val AVAILABILITY_POLICY = "availability-policy"
+
+        private const val AIRLINE_INDEX = "airline-1"
+        private const val AVAILABILITY_INDEX = "availability-1"
+
+        private const val PHONE_OPERATOR = "phone_operator"
+        private const val HELPDESK = "helpdesk_stuff"
+        private const val HELPDESK_ROLE = "helpdesk_role"
+        private const val PHONE_OPERATOR_ROLE = "phone_operator_role"
+
+        private const val AIRLINE_INDEX_PATTERN = "airline-*"
+        private const val AVAILABILITY_INDEX_PATTERN = "availability-*"
     }
 }

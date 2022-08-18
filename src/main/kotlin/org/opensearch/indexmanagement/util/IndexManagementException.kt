@@ -6,6 +6,7 @@
 package org.opensearch.indexmanagement.util
 
 import org.opensearch.OpenSearchException
+import org.opensearch.OpenSearchStatusException
 import org.opensearch.common.Strings
 import org.opensearch.common.ValidationException
 import org.opensearch.index.IndexNotFoundException
@@ -35,6 +36,10 @@ class IndexManagementException(message: String, val status: RestStatus, ex: Exce
                 }
                 is ValidationException -> {
                     status = RestStatus.BAD_REQUEST
+                    friendlyMsg = ex.message as String
+                }
+                is OpenSearchStatusException -> {
+                    status = ex.status()
                     friendlyMsg = ex.message as String
                 }
                 else -> {
