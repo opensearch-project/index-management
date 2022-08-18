@@ -75,7 +75,7 @@ PUT http://localhost:9200/testnoalias
 Content-Type: application/json
 
 ### explain API
-GET localhost:9200/_plugins/_ism/explain/testnoalias?validate_action=false
+GET localhost:9200/_plugins/_ism/explain/testnoalias?validate_action=true
 Accept: application/json
 
 ### delete index
@@ -119,11 +119,11 @@ Content-Type: application/json
 }
 
 ### call explain API
-GET localhost:9200/_plugins/_ism/explain/log-000002?pretty
+GET localhost:9200/_plugins/_ism/explain/log-000002?validate_action=true
 Accept: application/json
 
 ### call explain API
-GET localhost:9200/_plugins/_ism/explain/log-000003?pretty
+GET localhost:9200/_plugins/_ism/explain/log-000003?validate_action=true
 Accept: application/json
 
 ### delete index

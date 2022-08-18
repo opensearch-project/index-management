@@ -1,4 +1,4 @@
-###
+### delete policy
 PUT localhost:9200/_opendistro/_ism/policies/exampledelete
 Content-Type: application/json
 
@@ -24,10 +24,10 @@ Content-Type: application/json
   }
 }
 
-###
+### delete index
 PUT http://localhost:9200/testdelete
 Content-Type: application/json
 
-###
-GET localhost:9200/_plugins/_ism/explain/testdelete?pretty
+### explain api call
+GET localhost:9200/_plugins/_ism/explain/testdelete?validate_action=true
 Accept: application/json

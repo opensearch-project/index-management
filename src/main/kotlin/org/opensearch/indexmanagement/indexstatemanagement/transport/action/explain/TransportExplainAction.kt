@@ -344,9 +344,6 @@ class TransportExplainAction @Inject constructor(
                         val state = policy.getStateToExecute(managedIndexMetadata!!)
                         val action = state?.getActionToExecute(managedIndexMetadata!!, indexMetadataProvider)
                         var actionName = action?.type
-                        log.info("Inside Explain API")
-                        log.info("Next Action")
-                        log.info(actionName)
                         if (actionName == null) {
                             actionName = "nothing"
                         }

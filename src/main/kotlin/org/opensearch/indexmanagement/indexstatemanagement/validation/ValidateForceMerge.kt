@@ -24,7 +24,6 @@ class ValidateForceMerge(
 
     @Suppress("ReturnSuppressCount", "ReturnCount")
     override fun execute(indexName: String): Validate {
-        logger.info("inside force merge")
         if (!dataSizeNotLarge(indexName)) {
             return this
         }

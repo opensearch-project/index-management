@@ -26,7 +26,6 @@ class ValidateRollover(
     // returns a Validate object with updated validation and step status
     @Suppress("ReturnSuppressCount", "ReturnCount")
     override fun execute(indexName: String): Validate {
-        logger.info("inside rollover")
         val (rolloverTarget, isDataStream) = getRolloverTargetOrUpdateInfo(indexName)
         rolloverTarget ?: return this
 

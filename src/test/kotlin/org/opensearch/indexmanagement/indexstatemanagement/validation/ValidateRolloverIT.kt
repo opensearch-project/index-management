@@ -24,8 +24,6 @@ import java.time.temporal.ChronoUnit
 import java.util.Locale
 
 class ValidateRolloverIT : IndexStateManagementRestTestCase() {
-    // check test case for no rollover alias (without datastream)
-
     private val testIndexName = javaClass.simpleName.lowercase(Locale.ROOT)
 
     // status: PASSED
