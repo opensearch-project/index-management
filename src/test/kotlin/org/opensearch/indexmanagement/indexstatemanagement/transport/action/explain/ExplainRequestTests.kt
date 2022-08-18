@@ -20,7 +20,8 @@ class ExplainRequestTests : OpenSearchTestCase() {
         val clusterManagerTimeout = TimeValue.timeValueSeconds(30)
         val params = SearchParams(0, 20, "sort-field", "asc", "*")
         val showPolicy = false
-        val req = ExplainRequest(indices, local, clusterManagerTimeout, params, showPolicy, DEFAULT_INDEX_TYPE)
+        val showValidationResult = false
+        val req = ExplainRequest(indices, local, clusterManagerTimeout, params, showPolicy, showValidationResult, DEFAULT_INDEX_TYPE)
 
         val out = BytesStreamOutput()
         req.writeTo(out)
@@ -36,7 +37,8 @@ class ExplainRequestTests : OpenSearchTestCase() {
         val clusterManagerTimeout = TimeValue.timeValueSeconds(30)
         val params = SearchParams(0, 20, "sort-field", "asc", "*")
         val showPolicy = false
-        val req = ExplainRequest(indices, local, clusterManagerTimeout, params, showPolicy, "non-existent-index-type")
+        val showValidationResult = false
+        val req = ExplainRequest(indices, local, clusterManagerTimeout, params, showPolicy, showValidationResult, "non-existent-index-type")
 
         val actualException: String? = req.validate()?.validationErrors()?.firstOrNull()
         val expectedException: String = ExplainRequest.MULTIPLE_INDICES_CUSTOM_INDEX_TYPE_ERROR

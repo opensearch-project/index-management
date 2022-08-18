@@ -22,6 +22,7 @@ class ValidateDeleteIT : IndexStateManagementRestTestCase() {
     private val testIndexName = javaClass.simpleName.toLowerCase(Locale.ROOT)
 
     fun `test delete index is write index`() {
+        enableValidationService()
         val index1 = "index-1"
         val alias1 = "x"
         val policyID = "${testIndexName}_precheck"

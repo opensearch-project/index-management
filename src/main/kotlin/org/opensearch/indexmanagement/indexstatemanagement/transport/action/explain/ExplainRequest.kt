@@ -22,14 +22,17 @@ class ExplainRequest : ActionRequest {
     val clusterManagerTimeout: TimeValue
     val searchParams: SearchParams
     val showPolicy: Boolean
+    val validateAction: Boolean
     val indexType: String
 
+    @Suppress("LongParameterList")
     constructor(
         indices: List<String>,
         local: Boolean,
         clusterManagerTimeout: TimeValue,
         searchParams: SearchParams,
         showPolicy: Boolean,
+        validateAction: Boolean,
         indexType: String
     ) : super() {
         this.indices = indices
@@ -37,6 +40,7 @@ class ExplainRequest : ActionRequest {
         this.clusterManagerTimeout = clusterManagerTimeout
         this.searchParams = searchParams
         this.showPolicy = showPolicy
+        this.validateAction = validateAction
         this.indexType = indexType
     }
 
@@ -47,6 +51,7 @@ class ExplainRequest : ActionRequest {
         clusterManagerTimeout = sin.readTimeValue(),
         searchParams = SearchParams(sin),
         showPolicy = sin.readBoolean(),
+        validateAction = sin.readBoolean(),
         indexType = sin.readString()
     )
 
@@ -68,6 +73,7 @@ class ExplainRequest : ActionRequest {
         out.writeTimeValue(clusterManagerTimeout)
         searchParams.writeTo(out)
         out.writeBoolean(showPolicy)
+        out.writeBoolean(validateAction)
         out.writeString(indexType)
     }
 

@@ -410,11 +410,12 @@ object ManagedIndexRunner :
                 val validationResult = validationService.validate(action.type, stepContext.metadata.index)
                 if (validationResult.validationStatus == Validate.ValidationStatus.RE_VALIDATING) {
                     logger.info("Revalidate")
-                    // publishErrorNotification(policy, managedIndexMetaData)
+                    publishErrorNotification(policy, managedIndexMetaData)
                     return
                 }
                 if (validationResult.validationStatus == Validate.ValidationStatus.FAILED) {
                     logger.info("Fail forever")
+                    publishErrorNotification(policy, managedIndexMetaData)
                     disableManagedIndexConfig(managedIndexConfig)
                     return
                 }

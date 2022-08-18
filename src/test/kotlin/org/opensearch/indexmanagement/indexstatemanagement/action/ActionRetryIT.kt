@@ -24,6 +24,7 @@ class ActionRetryIT : IndexStateManagementRestTestCase() {
      * We are forcing RollOver to fail in this Integ test.
      */
     fun `test failed action`() {
+        disableValidationService()
         val testPolicy = """
         {"policy":{"description":"Default policy","default_state":"Ingest","states":[
         {"name":"Ingest","actions":[{"retry":{"count":2,"backoff":"constant","delay":"1s"},"rollover":{"min_doc_count":100}}],"transitions":[{"state_name":"Search"}]},
@@ -51,11 +52,11 @@ class ActionRetryIT : IndexStateManagementRestTestCase() {
         waitFor {
             val managedIndexMetaData = getExplainManagedIndexMetaData(indexName)
             assertEquals(
-                    ActionMetaData(
-                            "rollover", managedIndexMetaData.actionMetaData?.startTime, 0, false, 1,
-                            managedIndexMetaData.actionMetaData?.lastRetryTime, null
-                    ),
-                    managedIndexMetaData.actionMetaData
+                ActionMetaData(
+                    "rollover", managedIndexMetaData.actionMetaData?.startTime, 0, false, 1,
+                    managedIndexMetaData.actionMetaData?.lastRetryTime, null
+                ),
+                managedIndexMetaData.actionMetaData
             )
 
             assertEquals(expectedInfoString, managedIndexMetaData.info.toString())
@@ -67,11 +68,11 @@ class ActionRetryIT : IndexStateManagementRestTestCase() {
         waitFor {
             val managedIndexMetaData = getExplainManagedIndexMetaData(indexName)
             assertEquals(
-                    ActionMetaData(
-                            "rollover", managedIndexMetaData.actionMetaData?.startTime, 0, false, 2,
-                            managedIndexMetaData.actionMetaData?.lastRetryTime, null
-                    ),
-                    managedIndexMetaData.actionMetaData
+                ActionMetaData(
+                    "rollover", managedIndexMetaData.actionMetaData?.startTime, 0, false, 2,
+                    managedIndexMetaData.actionMetaData?.lastRetryTime, null
+                ),
+                managedIndexMetaData.actionMetaData
             )
 
             assertEquals(expectedInfoString, managedIndexMetaData.info.toString())
@@ -83,11 +84,11 @@ class ActionRetryIT : IndexStateManagementRestTestCase() {
         waitFor {
             val managedIndexMetaData = getExplainManagedIndexMetaData(indexName)
             assertEquals(
-                    ActionMetaData(
-                            "rollover", managedIndexMetaData.actionMetaData?.startTime, 0, true, 2,
-                            managedIndexMetaData.actionMetaData?.lastRetryTime, null
-                    ),
-                    managedIndexMetaData.actionMetaData
+                ActionMetaData(
+                    "rollover", managedIndexMetaData.actionMetaData?.startTime, 0, true, 2,
+                    managedIndexMetaData.actionMetaData?.lastRetryTime, null
+                ),
+                managedIndexMetaData.actionMetaData
             )
 
             assertEquals(expectedInfoString, managedIndexMetaData.info.toString())
@@ -95,6 +96,7 @@ class ActionRetryIT : IndexStateManagementRestTestCase() {
     }
 
     fun `test exponential backoff`() {
+        disableValidationService()
         val testPolicy = """
         {"policy":{"description":"Default policy","default_state":"Ingest","states":[
         {"name":"Ingest","actions":[{"retry":{"count":2,"backoff":"exponential","delay":"1m"},"rollover":{"min_doc_count":100}}],"transitions":[{"state_name":"Search"}]},
@@ -118,7 +120,6 @@ class ActionRetryIT : IndexStateManagementRestTestCase() {
         // First execution. We need to initialize the policy.
 
         waitFor { assertEquals(policyID, getExplainManagedIndexMetaData(indexName).policyID) }
-
         // Second execution is to fail the step once.
         updateManagedIndexConfigStartTime(managedIndexConfig)
 
@@ -127,7 +128,6 @@ class ActionRetryIT : IndexStateManagementRestTestCase() {
         // Third execution should not run job since we have the retry backoff.
         updateManagedIndexConfigStartTime(managedIndexConfig)
         Thread.sleep(5000) // currently there is nothing to compare when backing off so we have to sleep
-
         // Fourth execution should not run job since we have the retry backoff.
         updateManagedIndexConfigStartTime(managedIndexConfig)
 
@@ -135,36 +135,36 @@ class ActionRetryIT : IndexStateManagementRestTestCase() {
         waitFor {
             val expectedInfoString = mapOf("message" to AttemptRolloverStep.getFailedNoValidAliasMessage(indexName)).toString()
             assertPredicatesOnMetaData(
-                    listOf(
-                            indexName to listOf(
-                                    explainResponseOpendistroPolicyIdSetting to policyID::equals,
-                                    explainResponseOpenSearchPolicyIdSetting to policyID::equals,
-                                    ManagedIndexMetaData.INDEX to managedIndexConfig.index::equals,
-                                    ManagedIndexMetaData.INDEX_UUID to managedIndexConfig.indexUuid::equals,
-                                    ManagedIndexMetaData.POLICY_ID to managedIndexConfig.policyID::equals,
-                                    ManagedIndexMetaData.POLICY_SEQ_NO to policySeq::equals,
-                                    ManagedIndexMetaData.POLICY_PRIMARY_TERM to policyPrimaryTerm::equals,
-                                    ManagedIndexMetaData.ROLLED_OVER to false::equals,
-                                    ManagedIndexMetaData.INDEX_CREATION_DATE to fun(indexCreationDate: Any?): Boolean = (indexCreationDate as Long) > 1L,
-                                    StateMetaData.STATE to fun(stateMetaDataMap: Any?): Boolean =
-                                            assertStateEquals(StateMetaData("Ingest", Instant.now().toEpochMilli()), stateMetaDataMap),
-                                    ActionMetaData.ACTION to fun(actionMetaDataMap: Any?): Boolean =
-                                            assertActionEquals(
-                                                    ActionMetaData("rollover", Instant.now().toEpochMilli(), 0, false, 1, null, null),
-                                                    actionMetaDataMap
-                                            ),
-                                    StepMetaData.STEP to fun(stepMetaDataMap: Any?): Boolean =
-                                            assertStepEquals(
-                                                    StepMetaData("attempt_rollover", Instant.now().toEpochMilli(), Step.StepStatus.FAILED),
-                                                    stepMetaDataMap
-                                            ),
-                                    PolicyRetryInfoMetaData.RETRY_INFO to fun(retryInfoMetaDataMap: Any?): Boolean =
-                                            assertRetryInfoEquals(PolicyRetryInfoMetaData(false, 0), retryInfoMetaDataMap),
-                                    ManagedIndexMetaData.INFO to fun(info: Any?): Boolean = expectedInfoString == info.toString(),
-                                    ManagedIndexMetaData.ENABLED to true::equals
-                            )
-                    ),
-                    getExplainMap(indexName)
+                listOf(
+                    indexName to listOf(
+                        explainResponseOpendistroPolicyIdSetting to policyID::equals,
+                        explainResponseOpenSearchPolicyIdSetting to policyID::equals,
+                        ManagedIndexMetaData.INDEX to managedIndexConfig.index::equals,
+                        ManagedIndexMetaData.INDEX_UUID to managedIndexConfig.indexUuid::equals,
+                        ManagedIndexMetaData.POLICY_ID to managedIndexConfig.policyID::equals,
+                        ManagedIndexMetaData.POLICY_SEQ_NO to policySeq::equals,
+                        ManagedIndexMetaData.POLICY_PRIMARY_TERM to policyPrimaryTerm::equals,
+                        ManagedIndexMetaData.ROLLED_OVER to false::equals,
+                        ManagedIndexMetaData.INDEX_CREATION_DATE to fun(indexCreationDate: Any?): Boolean = (indexCreationDate as Long) > 1L,
+                        StateMetaData.STATE to fun(stateMetaDataMap: Any?): Boolean =
+                            assertStateEquals(StateMetaData("Ingest", Instant.now().toEpochMilli()), stateMetaDataMap),
+                        ActionMetaData.ACTION to fun(actionMetaDataMap: Any?): Boolean =
+                            assertActionEquals(
+                                ActionMetaData("rollover", Instant.now().toEpochMilli(), 0, false, 1, null, null),
+                                actionMetaDataMap
+                            ),
+                        StepMetaData.STEP to fun(stepMetaDataMap: Any?): Boolean =
+                            assertStepEquals(
+                                StepMetaData("attempt_rollover", Instant.now().toEpochMilli(), Step.StepStatus.FAILED),
+                                stepMetaDataMap
+                            ),
+                        PolicyRetryInfoMetaData.RETRY_INFO to fun(retryInfoMetaDataMap: Any?): Boolean =
+                            assertRetryInfoEquals(PolicyRetryInfoMetaData(false, 0), retryInfoMetaDataMap),
+                        ManagedIndexMetaData.INFO to fun(info: Any?): Boolean = expectedInfoString == info.toString(),
+                        ManagedIndexMetaData.ENABLED to true::equals
+                    )
+                ),
+                getExplainMap(indexName)
             )
         }
     }

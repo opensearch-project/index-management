@@ -86,7 +86,9 @@ open class ExplainResponse : ActionResponse, ToXContentObject {
             indexMetadatas[ind]?.toXContent(builder, ToXContent.EMPTY_PARAMS)
             builder.field("enabled", enabledState[name])
             policies[name]?.let { builder.field(Policy.POLICY_TYPE, it, XCONTENT_WITHOUT_TYPE_AND_USER) }
-            builder.addObject(ValidationResult.VALIDATE, validationResults[ind], params, true)
+            if (validationResults[ind] != null) {
+                builder.addObject(ValidationResult.VALIDATE, validationResults[ind], params, true)
+            }
             builder.endObject()
         }
         builder.field(TOTAL_MANAGED_INDICES, totalManagedIndices)

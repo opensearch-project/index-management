@@ -800,22 +800,6 @@
             }
           }
         },
-        "validate": {
-          "properties": {
-            "validation_message": {
-              "type": "text",
-              "fields": {
-                "keyword": {
-                  "type": "keyword",
-                  "ignore_above": 256
-                }
-              }
-            },
-            "validation_status": {
-              "type": "keyword"
-            }
-          }
-        },
         "retry_info": {
           "properties": {
             "failed": {

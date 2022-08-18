@@ -32,7 +32,7 @@ class ManagedIndexSettings {
 
         val VALIDATION_SERVICE_ENABLED: Setting<Boolean> = Setting.boolSetting(
             "plugins.index_state_management.validation_service.enabled",
-            true,
+            DEFAULT_VALIDATION_SERVICE_ENABLED,
             Setting.Property.NodeScope,
             Setting.Property.Dynamic
         )

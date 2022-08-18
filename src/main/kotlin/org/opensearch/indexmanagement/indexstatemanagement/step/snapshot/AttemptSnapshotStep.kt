@@ -93,7 +93,7 @@ class AttemptSnapshotStep(private val action: SnapshotAction) : Step(name) {
             info = mutableInfo.toMap()
         } catch (e: RemoteTransportException) {
             val cause = ExceptionsHelper.unwrapCause(e)
-            if (cause is ConcurrentSnapshotExecutionException) { // retry
+            if (cause is ConcurrentSnapshotExecutionException) {
                 handleSnapshotException(indexName, cause)
             } else {
                 handleException(indexName, cause as Exception)

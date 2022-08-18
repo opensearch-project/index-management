@@ -106,7 +106,7 @@ class TransportExplainAction @Inject constructor(
         private val indices: List<String> = request.indices
         private val explainAll: Boolean = indices.isEmpty()
         private val showPolicy: Boolean = request.showPolicy
-        private val validateAction: Boolean = true
+        private val validateAction: Boolean = request.validateAction
 
         // Map of indexName to index metadata got from config index job which is fake/not a real full metadata document
         private val managedIndicesMetaDataMap: MutableMap<IndexName, ManagedIndexMetadataMap> = mutableMapOf()
@@ -337,25 +337,27 @@ class TransportExplainAction @Inject constructor(
                         info?.let { managedIndexMetadata = clusterStateMetadata?.copy(info = it) }
                     }
                 }
-
-                // find next action and validate it
-                var validationResult = validationService.validate("nothing", indexName)
-                val policy = policiesforValidation[indexName]
-                if (policy != null && managedIndexMetadata != null) {
-                    val state = policy.getStateToExecute(managedIndexMetadata!!)
-                    val action = state?.getActionToExecute(managedIndexMetadata!!, indexMetadataProvider)
-                    var actionName = action?.type
-                    log.info("Inside Explain API")
-                    log.info("Next Action")
-                    log.info(actionName)
-                    if (actionName == null) {
-                        actionName = "nothing"
+                if (validateAction) {
+                    var validationResult = validationService.validate("nothing", indexName)
+                    val policy = policiesforValidation[indexName]
+                    if (policy != null && managedIndexMetadata != null) {
+                        val state = policy.getStateToExecute(managedIndexMetadata!!)
+                        val action = state?.getActionToExecute(managedIndexMetadata!!, indexMetadataProvider)
+                        var actionName = action?.type
+                        log.info("Inside Explain API")
+                        log.info("Next Action")
+                        log.info(actionName)
+                        if (actionName == null) {
+                            actionName = "nothing"
+                        }
+                        validationResult = validationService.validate(actionName, indexName)
                     }
-                    validationResult = validationService.validate(actionName, indexName)
                     validationResults.add(validationResult)
+                } else {
+                    validationResults.add(null)
                 }
+
                 indexMetadatas.add(managedIndexMetadata)
-                validationResults.add(validationResult)
             }
             managedIndicesMetaDataMap.clear()
 
@@ -384,7 +386,7 @@ class TransportExplainAction @Inject constructor(
                         filteredIndices.add(indexNames[i])
                         filteredMetadata.add(indexMetadatas[i])
                         filteredPolicies.add(indexPolicyIDs[i])
-                        filteredValidationResult.add(validationResults[i])
+                        validationResults[i]?.let { filteredValidationResult.add(it) }
                         enabledState[indexNames[i]]?.let { enabledStatus[indexNames[i]] = it }
                         appliedPolicies[indexNames[i]]?.let { filteredAppliedPolicies[indexNames[i]] = it }
                     } catch (e: OpenSearchSecurityException) {

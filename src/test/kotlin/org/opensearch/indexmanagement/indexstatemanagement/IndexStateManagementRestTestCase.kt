@@ -82,6 +82,16 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
         updateIndexStateManagementJitterSetting(0.0)
     }
 
+    @Before
+    protected fun disableValidationService() {
+        updateValidationServiceSetting(false)
+    }
+
+    @Before
+    protected fun enableValidationService() {
+        updateValidationServiceSetting(true)
+    }
+
     protected fun createPolicy(
         policy: Policy,
         policyId: String = OpenSearchTestCase.randomAlphaOfLength(10),
@@ -283,6 +293,10 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
 
     protected fun updateIndexStateManagementJitterSetting(value: Double) {
         updateClusterSetting(ManagedIndexSettings.JITTER.key, value.toString(), false)
+    }
+
+    protected fun updateValidationServiceSetting(value: Boolean) {
+        updateClusterSetting(ManagedIndexSettings.VALIDATION_SERVICE_ENABLED.key, value.toString(), false)
     }
 
     protected fun updateIndexSetting(
@@ -628,7 +642,7 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
             throw IllegalArgumentException("This method is only for a single concrete index")
         }
 
-        val response = client().makeRequest(RestRequest.Method.GET.toString(), "${RestExplainAction.EXPLAIN_BASE_URI}/$indexName")
+        val response = client().makeRequest(RestRequest.Method.GET.toString(), "${RestExplainAction.EXPLAIN_BASE_URI}/$indexName?validate_action=true")
 //        logger.info("response content")
 //        logger.info(response.entity.content.bufferedReader().use { it.readText() })
 

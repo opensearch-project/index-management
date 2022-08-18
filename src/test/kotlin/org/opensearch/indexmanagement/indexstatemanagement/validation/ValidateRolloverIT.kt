@@ -30,6 +30,7 @@ class ValidateRolloverIT : IndexStateManagementRestTestCase() {
 
     // status: PASSED
     fun `test skip rollover`() {
+        enableValidationService()
         val index1 = "index-1"
         val alias1 = "x"
         val policyID = "${testIndexName}_precheck"
@@ -67,8 +68,6 @@ class ValidateRolloverIT : IndexStateManagementRestTestCase() {
         updateManagedIndexConfigStartTime(managedIndexConfig)
         waitFor {
             val data = getExplainValidationResult(index1)
-            logger.info("testing")
-            logger.info(data)
             assertEquals(
                 "Index rollover validation status is pass.",
                 Validate.ValidationStatus.PASSED, data?.validationStatus
@@ -82,6 +81,7 @@ class ValidateRolloverIT : IndexStateManagementRestTestCase() {
 
     // status: PASSED
     fun `test rollover has already been rolled over`() {
+        enableValidationService()
         val aliasName = "${testIndexName}_alias"
         val indexNameBase = "${testIndexName}_index"
         val index1 = "$indexNameBase-1"
@@ -129,6 +129,7 @@ class ValidateRolloverIT : IndexStateManagementRestTestCase() {
 
     // status: RE_VALIDATING
     fun `test rollover does not have rollover alias index setting`() {
+        enableValidationService()
         val index1 = "index-1"
         val index2 = "index-2"
         val policyID = "${testIndexName}_precheck"
@@ -171,6 +172,7 @@ class ValidateRolloverIT : IndexStateManagementRestTestCase() {
 
     // status: RE_VALIDATING
     fun `test rollover not write index`() {
+        enableValidationService()
         val index1 = "index-1"
         val index2 = "index-2"
         val alias1 = "x"
