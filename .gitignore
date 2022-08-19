@@ -15,4 +15,3 @@ src/test/resources/bwc/
 bin/
 spi/bin/
 src/test/resources/notifications*
-src/test/resources/security/opensearch-security*

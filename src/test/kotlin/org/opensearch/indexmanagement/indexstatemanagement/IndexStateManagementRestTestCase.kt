@@ -17,6 +17,7 @@ import org.opensearch.action.search.SearchResponse
 import org.opensearch.client.Request
 import org.opensearch.client.Response
 import org.opensearch.client.ResponseException
+import org.opensearch.client.RestClient
 import org.opensearch.cluster.metadata.IndexMetadata
 import org.opensearch.common.settings.Settings
 import org.opensearch.common.unit.TimeValue
@@ -84,9 +85,10 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
     protected fun createPolicy(
         policy: Policy,
         policyId: String = OpenSearchTestCase.randomAlphaOfLength(10),
-        refresh: Boolean = true
+        refresh: Boolean = true,
+        userClient: RestClient? = null
     ): Policy {
-        val response = createPolicyJson(policy.toJsonString(), policyId, refresh)
+        val response = createPolicyJson(policy.toJsonString(), policyId, refresh, userClient)
 
         val policyJson = jsonXContent
             .createParser(
@@ -106,9 +108,11 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
     protected fun createPolicyJson(
         policyString: String,
         policyId: String,
-        refresh: Boolean = true
+        refresh: Boolean = true,
+        userClient: RestClient? = null
     ): Response {
-        val response = client()
+        val client = userClient ?: client()
+        val response = client
             .makeRequest(
                 "PUT",
                 "$POLICY_BASE_URI/$policyId?refresh=$refresh",
@@ -167,7 +171,7 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
         replicas: String? = null,
         shards: String? = null,
         mapping: String = "",
-        settings: Settings? = null
+        settings: Settings? = null,
     ): Pair<String, String?> {
         val waitForActiveShards = if (isMultiNode) "all" else "1"
         val builtSettings = Settings.builder().let {
@@ -595,12 +599,12 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
     // Calls explain API for a single concrete index and converts the response into a ManagedIndexMetaData
     // This only works for indices with a ManagedIndexMetaData that has been initialized
     @Suppress("LoopWithTooManyJumpStatements")
-    protected fun getExplainManagedIndexMetaData(indexName: String): ManagedIndexMetaData {
+    protected fun getExplainManagedIndexMetaData(indexName: String, userClient: RestClient? = null): ManagedIndexMetaData {
         if (indexName.contains("*") || indexName.contains(",")) {
             throw IllegalArgumentException("This method is only for a single concrete index")
         }
-
-        val response = client().makeRequest(RestRequest.Method.GET.toString(), "${RestExplainAction.EXPLAIN_BASE_URI}/$indexName")
+        val client = userClient ?: client()
+        val response = client.makeRequest(RestRequest.Method.GET.toString(), "${RestExplainAction.EXPLAIN_BASE_URI}/$indexName")
         assertEquals("Unexpected RestStatus", RestStatus.OK, response.restStatus())
         lateinit var metadata: ManagedIndexMetaData
         val xcp = createParser(XContentType.JSON.xContent(), response.entity.content)
