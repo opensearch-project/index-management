@@ -40,6 +40,7 @@ import org.opensearch.indexmanagement.transform.model.TransformSearchResult
 import org.opensearch.indexmanagement.transform.model.TransformStats
 import org.opensearch.indexmanagement.transform.settings.TransformSettings.Companion.TRANSFORM_JOB_SEARCH_BACKOFF_COUNT
 import org.opensearch.indexmanagement.transform.settings.TransformSettings.Companion.TRANSFORM_JOB_SEARCH_BACKOFF_MILLIS
+import org.opensearch.indexmanagement.util.IndexUtils.Companion.LUCENE_MAX_CLAUSES
 import org.opensearch.indexmanagement.util.IndexUtils.Companion.ODFE_MAGIC_NULL
 import org.opensearch.indexmanagement.util.IndexUtils.Companion.hashToFixedSize
 import org.opensearch.rest.RestStatus
@@ -112,10 +113,11 @@ class TransformSearchService(
     suspend fun getShardLevelModifiedBuckets(transform: Transform, afterKey: Map<String, Any>?, currentShard: ShardNewDocuments): BucketSearchResult {
         try {
             var retryAttempt = 0
+            val pageSize = calculateMaxPageSize(transform)
             val searchResponse = backoffPolicy.retry(logger) {
                 val pageSizeDecay = 2f.pow(retryAttempt++)
                 client.suspendUntil { listener: ActionListener<SearchResponse> ->
-                    val pageSize = max(1, transform.pageSize.div(pageSizeDecay.toInt()))
+                    val pageSize = max(1, pageSize.div(pageSizeDecay.toInt()))
                     if (retryAttempt > 1) {
                         logger.debug(
                             "Attempt [${retryAttempt - 1}] to get modified buckets for transform [${transform.id}]. Attempting " +
@@ -137,6 +139,14 @@ class TransformSearchService(
         } catch (e: Exception) {
             throw TransformSearchServiceException(modifiedBucketsErrorMessage, e)
         }
+    }
+
+    /**
+     *   Apache Lucene has maxClauses limit which we could trip during recomputing of modified buckets
+     *   due to matching too many bucket fields. To avoid this, we control how many buckets we recompute at a time(pageSize)
+     */
+    private fun calculateMaxPageSize(transform: Transform): Int {
+        return minOf(transform.pageSize, LUCENE_MAX_CLAUSES / (transform.groups.size + 1))
     }
 
     @Suppress("RethrowCaughtException")

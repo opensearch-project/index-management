@@ -134,7 +134,7 @@ object TransformRunner :
                             currentMetadata = validatedMetadata
                             return
                         }
-                        if (transform.continuous && (bucketsToTransform.shardsToSearch == null || bucketsToTransform.currentShard != null)) {
+                        if (transform.continuous) {
                             // If we have not populated the list of shards to search, do so now
                             if (bucketsToTransform.shardsToSearch == null) {
                                 // Note the timestamp when we got the shard global checkpoints to the user may know what data is included
@@ -145,10 +145,22 @@ object TransformRunner :
                                     newGlobalCheckpoints
                                 )
                             }
-                            bucketsToTransform = getBucketsToTransformIteration(transform, bucketsToTransform)
-                            currentMetadata = bucketsToTransform.metadata
+                            // If there are shards to search do it here
+                            if (bucketsToTransform.currentShard != null) {
+                                // Computes aggregation on modified documents for current shard to get modified buckets
+                                getBucketsToTransformIteration(transform, bucketsToTransform).let {
+                                        (first, second) ->
+                                    bucketsToTransform = first
+                                    currentMetadata = second
+                                }
+                                currentMetadata = recomputeModifiedBuckets(transform, currentMetadata, bucketsToTransform.modifiedBuckets)
+                                currentMetadata = transformMetadataService.writeMetadata(currentMetadata, true)
+                                bucketsToTransform = bucketsToTransform.copy(metadata = currentMetadata)
+                                attemptedToIndex = true
+                            }
                         } else {
                             currentMetadata = executeTransformIteration(transform, currentMetadata, bucketsToTransform.modifiedBuckets)
+                            currentMetadata = transformMetadataService.writeMetadata(currentMetadata, true)
                             attemptedToIndex = true
                         }
                         // we attempt to renew lock for every loop of transform
@@ -176,6 +188,7 @@ object TransformRunner :
                         continuousStats = ContinuousTransformStats(newGlobalCheckpointTime, null)
                     )
                 }
+                logger.info("executeJob: writting metadata seqNo:${currentMetadata.seqNo}, primaryTerm:${currentMetadata.primaryTerm}")
                 transformMetadataService.writeMetadata(currentMetadata, true)
                 if (!transform.continuous || currentMetadata.status == TransformMetadata.Status.FAILED) {
                     logger.info("Disabling the transform job ${transform.id}")
@@ -186,9 +199,11 @@ object TransformRunner :
         }
     }
 
-    private suspend fun getBucketsToTransformIteration(transform: Transform, bucketsToTransform: BucketsToTransform): BucketsToTransform {
+    private suspend fun getBucketsToTransformIteration(transform: Transform, bucketsToTransform: BucketsToTransform): Pair<BucketsToTransform, TransformMetadata> {
         var currentBucketsToTransform = bucketsToTransform
         val currentShard = bucketsToTransform.currentShard
+        // Clear modified buckets from previous iteration
+        currentBucketsToTransform.modifiedBuckets.clear()
 
         if (currentShard != null) {
             val shardLevelModifiedBuckets = withTransformSecurityContext(transform) {
@@ -217,7 +232,7 @@ object TransformRunner :
                 currentBucketsToTransform.copy(currentShard = null)
             }
         }
-        return currentBucketsToTransform
+        return Pair(currentBucketsToTransform, currentBucketsToTransform.metadata)
     }
 
     private suspend fun validateTransform(transform: Transform, transformMetadata: TransformMetadata): TransformMetadata {
@@ -227,6 +242,7 @@ object TransformRunner :
         return if (!validationResult.isValid) {
             val failureMessage = "Failed validation - ${validationResult.issues}"
             val failureMetadata = transformMetadata.copy(status = TransformMetadata.Status.FAILED, failureReason = failureMessage)
+            logger.info("validateFailed: writting metadata seqNo:${failureMetadata.seqNo}, primaryTerm:${failureMetadata.primaryTerm}")
             transformMetadataService.writeMetadata(failureMetadata, true)
         } else transformMetadata
     }
@@ -241,14 +257,43 @@ object TransformRunner :
         metadata: TransformMetadata,
         modifiedBuckets: MutableSet<Map<String, Any>>
     ): TransformMetadata {
-        val updatedMetadata = if (!transform.continuous || modifiedBuckets.isNotEmpty()) {
+
+        val transformSearchResult = withTransformSecurityContext(transform) {
+            transformSearchService.executeCompositeSearch(
+                transform,
+                if (transform.continuous) null else metadata.afterKey,
+                if (transform.continuous) modifiedBuckets else null
+            )
+        }
+        val indexTimeInMillis = withTransformSecurityContext(transform) {
+            transformIndexer.index(transformSearchResult.docsToIndex)
+        }
+        val afterKey = transformSearchResult.afterKey
+        val stats = transformSearchResult.stats
+        val updatedStats = stats.copy(
+            pagesProcessed = if (transform.continuous) 0 else stats.pagesProcessed,
+            indexTimeInMillis = stats.indexTimeInMillis + indexTimeInMillis,
+            documentsIndexed = transformSearchResult.docsToIndex.size.toLong()
+        )
+        return metadata.mergeStats(updatedStats).copy(
+            afterKey = afterKey,
+            lastUpdatedAt = Instant.now(),
+            status = if (afterKey == null) TransformMetadata.Status.FINISHED else TransformMetadata.Status.STARTED
+        )
+    }
+
+    private suspend fun recomputeModifiedBuckets(
+        transform: Transform,
+        metadata: TransformMetadata,
+        modifiedBuckets: MutableSet<Map<String, Any>>
+    ): TransformMetadata {
+        val updatedMetadata = if (modifiedBuckets.isNotEmpty()) {
             val transformSearchResult = withTransformSecurityContext(transform) {
-                transformSearchService.executeCompositeSearch(transform, metadata.afterKey, if (transform.continuous) modifiedBuckets else null)
+                transformSearchService.executeCompositeSearch(transform, null, modifiedBuckets)
             }
             val indexTimeInMillis = withTransformSecurityContext(transform) {
                 transformIndexer.index(transformSearchResult.docsToIndex)
             }
-            val afterKey = transformSearchResult.afterKey
             val stats = transformSearchResult.stats
             val updatedStats = stats.copy(
                 pagesProcessed = if (transform.continuous) 0 else stats.pagesProcessed,
@@ -256,12 +301,12 @@ object TransformRunner :
                 documentsIndexed = transformSearchResult.docsToIndex.size.toLong()
             )
             metadata.mergeStats(updatedStats).copy(
-                afterKey = afterKey,
                 lastUpdatedAt = Instant.now(),
-                status = if (afterKey == null && !transform.continuous) TransformMetadata.Status.FINISHED else TransformMetadata.Status.STARTED
+                status = TransformMetadata.Status.STARTED
             )
         } else metadata.copy(lastUpdatedAt = Instant.now(), status = TransformMetadata.Status.STARTED)
-        return transformMetadataService.writeMetadata(updatedMetadata, true)
+        logger.info("recomputeModifiedBuckets: writting metadata seqNo:${updatedMetadata.seqNo}, primaryTerm:${updatedMetadata.primaryTerm}")
+        return updatedMetadata
     }
 
     private suspend fun <T> withTransformSecurityContext(transform: Transform, block: suspend CoroutineScope.() -> T): T {
