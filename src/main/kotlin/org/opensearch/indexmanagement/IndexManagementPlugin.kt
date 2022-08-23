@@ -110,6 +110,7 @@ import org.opensearch.indexmanagement.rollup.resthandler.RestStartRollupAction
 import org.opensearch.indexmanagement.rollup.resthandler.RestStopRollupAction
 import org.opensearch.indexmanagement.rollup.settings.LegacyOpenDistroRollupSettings
 import org.opensearch.indexmanagement.rollup.settings.RollupSettings
+import org.opensearch.indexmanagement.rollup.util.RollupFieldValueExpressionResolver
 import org.opensearch.indexmanagement.settings.IndexManagementSettings
 import org.opensearch.indexmanagement.snapshotmanagement.api.resthandler.RestCreateSMPolicyHandler
 import org.opensearch.indexmanagement.snapshotmanagement.api.resthandler.RestDeleteSMPolicyHandler
@@ -370,6 +371,7 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
         this.indexNameExpressionResolver = indexNameExpressionResolver
 
         val skipFlag = SkipExecution(client, clusterService)
+        RollupFieldValueExpressionResolver.registerScriptService(scriptService)
         val rollupRunner = RollupRunner
             .registerClient(client)
             .registerClusterService(clusterService)
