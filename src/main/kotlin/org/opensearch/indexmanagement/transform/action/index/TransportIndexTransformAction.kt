@@ -150,9 +150,13 @@ class TransportIndexTransformAction @Inject constructor(
             if (transform.continuous != newTransform.continuous) modified.add(Transform.CONTINUOUS_FIELD)
             return modified.toList()
         }
-
+// (groups + 1) * buckets = 1024
         private fun putTransform() {
-            val transform = request.transform.copy(schemaVersion = IndexUtils.indexManagementConfigSchemaVersion, user = this.user)
+            val transform = request.transform.copy(
+                pageSize = minOf(request.transform.pageSize, 1024 / (request.transform.groups.size + 1)),
+                schemaVersion = IndexUtils.indexManagementConfigSchemaVersion,
+                user = this.user
+            )
             request.index(INDEX_MANAGEMENT_INDEX)
                 .id(request.transform.id)
                 .source(transform.toXContent(jsonBuilder(), ToXContent.EMPTY_PARAMS))

@@ -112,8 +112,7 @@ object TransformRunner :
             TimeValue.timeValueMillis(TransformSettings.DEFAULT_RENEW_LOCK_RETRY_DELAY),
             TransformSettings.DEFAULT_RENEW_LOCK_RETRY_COUNT
         )
-
-        var attemptedToIndex = false
+        var transformBucketLog = TransformBucketLog()
         var bucketsToTransform = BucketsToTransform(HashSet(), metadata)
         var lock = acquireLockForScheduledJob(transform, context, backoffPolicy)
         try {
@@ -153,15 +152,18 @@ object TransformRunner :
                                     bucketsToTransform = first
                                     currentMetadata = second
                                 }
-                                currentMetadata = recomputeModifiedBuckets(transform, currentMetadata, bucketsToTransform.modifiedBuckets)
+
+                                val modifiedBuckets = bucketsToTransform.modifiedBuckets.filter { transformBucketLog.isNotProcessed(it) }.toMutableSet()
+
+                                transformBucketLog.addBuckets(modifiedBuckets.toList())
+
+                                currentMetadata = recomputeModifiedBuckets(transform, currentMetadata, modifiedBuckets)
                                 currentMetadata = transformMetadataService.writeMetadata(currentMetadata, true)
                                 bucketsToTransform = bucketsToTransform.copy(metadata = currentMetadata)
-                                attemptedToIndex = true
                             }
                         } else {
                             currentMetadata = executeTransformIteration(transform, currentMetadata, bucketsToTransform.modifiedBuckets)
                             currentMetadata = transformMetadataService.writeMetadata(currentMetadata, true)
-                            attemptedToIndex = true
                         }
                         // we attempt to renew lock for every loop of transform
                         val renewedLock = renewLockForScheduledJob(context, lock, backoffPolicy)
@@ -171,7 +173,7 @@ object TransformRunner :
                         lock = renewedLock
                     }
                 }
-            } while (bucketsToTransform.currentShard != null || currentMetadata.afterKey != null || !attemptedToIndex)
+            } while (bucketsToTransform.currentShard != null || currentMetadata.afterKey != null)
         } catch (e: Exception) {
             logger.error("Failed to execute the transform job [${transform.id}] because of exception [${e.localizedMessage}]", e)
             currentMetadata = currentMetadata.copy(
