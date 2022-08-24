@@ -29,13 +29,16 @@ class TransformProcessedBucketLog {
         return processedBuckets.contains(computeBucketHash(bucket))
     }
 
-    suspend fun isNotProcessed(bucket: Map<String, Any>) = !isProcessed(bucket)
+    fun isNotProcessed(bucket: Map<String, Any>) = !isProcessed(bucket)
 
     fun computeBucketHash(bucket: Map<String, Any>): String {
         val md5Crypt = MessageDigest.getInstance("MD5")
         bucket.entries.sortedBy { it.key }.also {
             it.forEach { entry ->
-                md5Crypt.update(entry.value.toString().toByteArray())
+                md5Crypt.update(
+                    if (entry.value == null) "null".toByteArray()
+                    else entry.value.toString().toByteArray()
+                )
             }
         }
         return BigInteger(1, md5Crypt.digest()).toString(16)
