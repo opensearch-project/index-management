@@ -956,9 +956,9 @@ class TransformRunnerIT : TransformRestTestCase() {
 
         val sourceIndex = "index_with_lots_of_buckets"
 
-        var requestBody: StringBuilder = StringBuilder(100000)
+        val requestBody: StringBuilder = StringBuilder(100000)
         for (i in 1..2000) {
-            var docPayload: String = """
+            val docPayload: String = """
             {
               "id1": "$i",
               "id2": "${i + 1}"
@@ -1033,8 +1033,11 @@ class TransformRunnerIT : TransformRestTestCase() {
         }
     }
 
-    fun createIndexAndBulkInsert(name: String, settings: Settings, mapping: String?, aliases: String?, bulkData: String) {
-        // createIndex(name, settings, mapping, aliases)
+    private fun createIndexAndBulkInsert(name: String, settings: Settings, mapping: String?, aliases: String?, bulkData: String) {
+
+        if (settings != null || mapping != null || aliases != null) {
+            createIndex(name, settings, mapping, aliases)
+        }
 
         val request = Request("POST", "/$name/_bulk/?refresh=true")
         request.setJsonEntity(bulkData)

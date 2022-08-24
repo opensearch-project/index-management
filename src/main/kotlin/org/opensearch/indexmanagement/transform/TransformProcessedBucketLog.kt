@@ -10,7 +10,10 @@ import java.security.MessageDigest
 
 class TransformProcessedBucketLog {
 
-    private val maxSize: Int = 100_000_000
+    companion object {
+        const val MAX_SIZE = 100_000_000
+        const val HEX_RADIX = 16
+    }
 
     private var processedBuckets: MutableSet<String> = HashSet()
 
@@ -21,7 +24,7 @@ class TransformProcessedBucketLog {
     }
 
     fun addBucket(bucket: Map<String, Any>) {
-        if (processedBuckets.size >= maxSize) return
+        if (processedBuckets.size >= MAX_SIZE) return
         processedBuckets.add(computeBucketHash(bucket))
     }
 
@@ -41,6 +44,6 @@ class TransformProcessedBucketLog {
                 )
             }
         }
-        return BigInteger(1, md5Crypt.digest()).toString(16)
+        return BigInteger(1, md5Crypt.digest()).toString(HEX_RADIX)
     }
 }

@@ -112,7 +112,7 @@ object TransformRunner :
             TimeValue.timeValueMillis(TransformSettings.DEFAULT_RENEW_LOCK_RETRY_DELAY),
             TransformSettings.DEFAULT_RENEW_LOCK_RETRY_COUNT
         )
-        var transformProcessedBucketLog = TransformProcessedBucketLog()
+        val transformProcessedBucketLog = TransformProcessedBucketLog()
         var bucketsToTransform = BucketsToTransform(HashSet(), metadata)
         var lock = acquireLockForScheduledJob(transform, context, backoffPolicy)
         try {
@@ -151,7 +151,9 @@ object TransformRunner :
                                     currentMetadata = it.metadata
                                 }
                                 // Filter out already processed buckets
-                                val modifiedBuckets = bucketsToTransform.modifiedBuckets.filter { transformProcessedBucketLog.isNotProcessed(it) }.toMutableSet()
+                                val modifiedBuckets = bucketsToTransform.modifiedBuckets.filter {
+                                    transformProcessedBucketLog.isNotProcessed(it)
+                                }.toMutableSet()
                                 // Recompute modified buckets and update them in targetIndex
                                 currentMetadata = recomputeModifiedBuckets(transform, currentMetadata, modifiedBuckets)
                                 // Add processed buckets to 'processed set' so that we don't try to reprocess them again
