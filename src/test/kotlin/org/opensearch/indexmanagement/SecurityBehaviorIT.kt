@@ -38,17 +38,7 @@ class SecurityBehaviorIT : SecurityRestTestCase() {
             WRITE_POLICY,
             GET_POLICY,
             GET_POLICIES,
-            EXPLAIN_INDEX,
-            ROLLUP_ALL,
-            INDEX_ROLLUP,
-            GET_ROLLUP,
-            EXPLAIN_ROLLUP,
-            UPDATE_ROLLUP,
-            TRANSFORM_ACTION,
-            GET_TRANSFORM,
-            EXPLAIN_TRANSFORM,
-            START_TRANSFORM,
-            HEALTH
+            EXPLAIN_INDEX
         )
 
         val indexPermissions = listOf(
@@ -176,11 +166,11 @@ class SecurityBehaviorIT : SecurityRestTestCase() {
             checkPolicies(janeClient, jane, 1)
 
             // Confirm that users belonging to different roles can't see each other policies
-            checkPolicyGet(AVAILABILITY_POLICY, johnClient!!, RestStatus.INTERNAL_SERVER_ERROR)
+            checkPolicyGet(AVAILABILITY_POLICY, johnClient!!, RestStatus.FORBIDDEN)
 
-            checkPolicyGet(AVAILABILITY_POLICY, jillClient, RestStatus.INTERNAL_SERVER_ERROR)
+            checkPolicyGet(AVAILABILITY_POLICY, jillClient, RestStatus.FORBIDDEN)
 
-            checkPolicyGet(AIRLINE_POLICY, janeClient, RestStatus.INTERNAL_SERVER_ERROR)
+            checkPolicyGet(AIRLINE_POLICY, janeClient, RestStatus.FORBIDDEN)
         } finally {
             jillClient?.close()
             janeClient?.close()
