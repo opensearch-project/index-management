@@ -954,6 +954,7 @@ class TransformRunnerIT : TransformRestTestCase() {
 
     fun `test continuous transform with a lot of buckets`() {
 
+        // Create index with high cardinality fields
         val sourceIndex = "index_with_lots_of_buckets"
 
         val requestBody: StringBuilder = StringBuilder(100000)
@@ -969,9 +970,9 @@ class TransformRunnerIT : TransformRestTestCase() {
         }
 
         createIndexAndBulkInsert(sourceIndex, Settings.EMPTY, null, null, requestBody.toString())
-
+        // Source index will have total of 2000 buckets
         val transform = Transform(
-            id = "id_111",
+            id = "transform_index_with_lots_of_buckets",
             schemaVersion = 1L,
             enabled = true,
             enabledAt = Instant.now(),
