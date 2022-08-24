@@ -112,7 +112,7 @@ object TransformRunner :
             TimeValue.timeValueMillis(TransformSettings.DEFAULT_RENEW_LOCK_RETRY_DELAY),
             TransformSettings.DEFAULT_RENEW_LOCK_RETRY_COUNT
         )
-        var transformBucketLog = TransformBucketLog()
+        var transformProcessedBucketLog = TransformProcessedBucketLog()
         var bucketsToTransform = BucketsToTransform(HashSet(), metadata)
         var lock = acquireLockForScheduledJob(transform, context, backoffPolicy)
         try {
@@ -147,22 +147,23 @@ object TransformRunner :
                             // If there are shards to search do it here
                             if (bucketsToTransform.currentShard != null) {
                                 // Computes aggregation on modified documents for current shard to get modified buckets
-                                getBucketsToTransformIteration(transform, bucketsToTransform).let {
-                                        (first, second) ->
-                                    bucketsToTransform = first
-                                    currentMetadata = second
+                                bucketsToTransform = getBucketsToTransformIteration(transform, bucketsToTransform).also {
+                                    currentMetadata = it.metadata
                                 }
-
-                                val modifiedBuckets = bucketsToTransform.modifiedBuckets.filter { transformBucketLog.isNotProcessed(it) }.toMutableSet()
-
-                                transformBucketLog.addBuckets(modifiedBuckets.toList())
-
+                                // Filter out already processed buckets
+                                val modifiedBuckets = bucketsToTransform.modifiedBuckets.filter { transformProcessedBucketLog.isNotProcessed(it) }.toMutableSet()
+                                // Recompute modified buckets and update them in targetIndex
                                 currentMetadata = recomputeModifiedBuckets(transform, currentMetadata, modifiedBuckets)
+                                // Add processed buckets to 'processed set' so that we don't try to reprocess them again
+                                transformProcessedBucketLog.addBuckets(modifiedBuckets.toList())
+                                // Update TransformMetadata
                                 currentMetadata = transformMetadataService.writeMetadata(currentMetadata, true)
                                 bucketsToTransform = bucketsToTransform.copy(metadata = currentMetadata)
                             }
                         } else {
-                            currentMetadata = executeTransformIteration(transform, currentMetadata, bucketsToTransform.modifiedBuckets)
+                            // Computes buckets from source index and stores them in targetIndex as transform docs
+                            currentMetadata = computeBucketsIteration(transform, currentMetadata)
+                            // Update TransformMetadata
                             currentMetadata = transformMetadataService.writeMetadata(currentMetadata, true)
                         }
                         // we attempt to renew lock for every loop of transform
@@ -201,7 +202,7 @@ object TransformRunner :
         }
     }
 
-    private suspend fun getBucketsToTransformIteration(transform: Transform, bucketsToTransform: BucketsToTransform): Pair<BucketsToTransform, TransformMetadata> {
+    private suspend fun getBucketsToTransformIteration(transform: Transform, bucketsToTransform: BucketsToTransform): BucketsToTransform {
         var currentBucketsToTransform = bucketsToTransform
         val currentShard = bucketsToTransform.currentShard
         // Clear modified buckets from previous iteration
@@ -234,7 +235,7 @@ object TransformRunner :
                 currentBucketsToTransform.copy(currentShard = null)
             }
         }
-        return Pair(currentBucketsToTransform, currentBucketsToTransform.metadata)
+        return currentBucketsToTransform
     }
 
     private suspend fun validateTransform(transform: Transform, transformMetadata: TransformMetadata): TransformMetadata {
@@ -254,17 +255,16 @@ object TransformRunner :
      * the range query will not precisely specify the modified buckets. As a result, we increase the range for the query and then filter out
      * the unintended buckets as part of the composite search step.
      */
-    private suspend fun executeTransformIteration(
+    private suspend fun computeBucketsIteration(
         transform: Transform,
         metadata: TransformMetadata,
-        modifiedBuckets: MutableSet<Map<String, Any>>
     ): TransformMetadata {
 
         val transformSearchResult = withTransformSecurityContext(transform) {
             transformSearchService.executeCompositeSearch(
                 transform,
-                if (transform.continuous) null else metadata.afterKey,
-                if (transform.continuous) modifiedBuckets else null
+                metadata.afterKey,
+                null
             )
         }
         val indexTimeInMillis = withTransformSecurityContext(transform) {
@@ -273,7 +273,7 @@ object TransformRunner :
         val afterKey = transformSearchResult.afterKey
         val stats = transformSearchResult.stats
         val updatedStats = stats.copy(
-            pagesProcessed = if (transform.continuous) 0 else stats.pagesProcessed,
+            pagesProcessed = stats.pagesProcessed,
             indexTimeInMillis = stats.indexTimeInMillis + indexTimeInMillis,
             documentsIndexed = transformSearchResult.docsToIndex.size.toLong()
         )

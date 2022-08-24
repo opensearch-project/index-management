@@ -113,11 +113,11 @@ class TransformSearchService(
     suspend fun getShardLevelModifiedBuckets(transform: Transform, afterKey: Map<String, Any>?, currentShard: ShardNewDocuments): BucketSearchResult {
         try {
             var retryAttempt = 0
-            val pageSize = calculateMaxPageSize(transform)
+            var pageSize = calculateMaxPageSize(transform)
             val searchResponse = backoffPolicy.retry(logger) {
                 val pageSizeDecay = 2f.pow(retryAttempt++)
                 client.suspendUntil { listener: ActionListener<SearchResponse> ->
-                    val pageSize = max(1, pageSize.div(pageSizeDecay.toInt()))
+                    pageSize = max(1, pageSize.div(pageSizeDecay.toInt()))
                     if (retryAttempt > 1) {
                         logger.debug(
                             "Attempt [${retryAttempt - 1}] to get modified buckets for transform [${transform.id}]. Attempting " +
@@ -142,8 +142,8 @@ class TransformSearchService(
     }
 
     /**
-     *   Apache Lucene has maxClauses limit which we could trip during recomputing of modified buckets
-     *   due to matching too many bucket fields. To avoid this, we control how many buckets we recompute at a time(pageSize)
+     *   Apache Lucene has maxClauses limit which we could trip during recomputing of modified buckets(continuous transform)
+     *   due to trying to match too many bucket fields. To avoid this, we control how many buckets we recompute at a time(pageSize)
      */
     private fun calculateMaxPageSize(transform: Transform): Int {
         return minOf(transform.pageSize, LUCENE_MAX_CLAUSES / (transform.groups.size + 1))
@@ -156,12 +156,18 @@ class TransformSearchService(
         modifiedBuckets: MutableSet<Map<String, Any>>? = null
     ): TransformSearchResult {
         try {
+            var pageSize: Int =
+                if (modifiedBuckets.isNullOrEmpty())
+                    transform.pageSize
+                else
+                    modifiedBuckets.size
+
             var retryAttempt = 0
             val searchResponse = backoffPolicy.retry(logger) {
                 // TODO: Should we store the value of the past successful page size (?)
                 val pageSizeDecay = 2f.pow(retryAttempt++)
                 client.suspendUntil { listener: ActionListener<SearchResponse> ->
-                    val pageSize = max(1, transform.pageSize.div(pageSizeDecay.toInt()))
+                    pageSize = max(1, pageSize.div(pageSizeDecay.toInt()))
                     if (retryAttempt > 1) {
                         logger.debug(
                             "Attempt [${retryAttempt - 1}] of composite search failed for transform [${transform.id}]. Attempting " +
