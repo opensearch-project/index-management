@@ -193,7 +193,6 @@ object TransformRunner :
                         continuousStats = ContinuousTransformStats(newGlobalCheckpointTime, null)
                     )
                 }
-                logger.info("executeJob: writting metadata seqNo:${currentMetadata.seqNo}, primaryTerm:${currentMetadata.primaryTerm}")
                 transformMetadataService.writeMetadata(currentMetadata, true)
                 if (!transform.continuous || currentMetadata.status == TransformMetadata.Status.FAILED) {
                     logger.info("Disabling the transform job ${transform.id}")
@@ -247,7 +246,6 @@ object TransformRunner :
         return if (!validationResult.isValid) {
             val failureMessage = "Failed validation - ${validationResult.issues}"
             val failureMetadata = transformMetadata.copy(status = TransformMetadata.Status.FAILED, failureReason = failureMessage)
-            logger.info("validateFailed: writting metadata seqNo:${failureMetadata.seqNo}, primaryTerm:${failureMetadata.primaryTerm}")
             transformMetadataService.writeMetadata(failureMetadata, true)
         } else transformMetadata
     }
@@ -309,7 +307,6 @@ object TransformRunner :
                 status = TransformMetadata.Status.STARTED
             )
         } else metadata.copy(lastUpdatedAt = Instant.now(), status = TransformMetadata.Status.STARTED)
-        logger.info("recomputeModifiedBuckets: writting metadata seqNo:${updatedMetadata.seqNo}, primaryTerm:${updatedMetadata.primaryTerm}")
         return updatedMetadata
     }
 
