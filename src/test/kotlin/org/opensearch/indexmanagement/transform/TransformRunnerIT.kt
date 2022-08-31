@@ -7,6 +7,8 @@ package org.opensearch.indexmanagement.transform
 
 import org.apache.http.entity.ContentType
 import org.apache.http.entity.StringEntity
+import org.opensearch.client.Request
+import org.opensearch.client.RequestOptions
 import org.opensearch.common.settings.Settings
 import org.opensearch.index.query.TermQueryBuilder
 import org.opensearch.indexmanagement.common.model.dimension.DateHistogram
@@ -44,7 +46,7 @@ class TransformRunnerIT : TransformRestTestCase() {
             sourceIndex = "transform-source-index",
             targetIndex = "transform-target-index",
             roles = emptyList(),
-            pageSize = 10,
+            pageSize = 1,
             groups = listOf(
                 Terms(sourceField = "store_and_fwd_flag", targetField = "flag")
             )
@@ -62,7 +64,7 @@ class TransformRunnerIT : TransformRestTestCase() {
             transformMetadata
         }
 
-        assertEquals("More than expected pages processed", 2L, metadata.stats.pagesProcessed)
+        assertEquals("More than expected pages processed", 3L, metadata.stats.pagesProcessed)
         assertEquals("More than expected documents indexed", 2L, metadata.stats.documentsIndexed)
         assertEquals("More than expected documents processed", 5000L, metadata.stats.documentsProcessed)
         assertTrue("Doesn't capture indexed time", metadata.stats.indexTimeInMillis > 0)
@@ -84,7 +86,7 @@ class TransformRunnerIT : TransformRestTestCase() {
             sourceIndex = "transform-source-index",
             targetIndex = "transform-target-index",
             roles = emptyList(),
-            pageSize = 10,
+            pageSize = 1,
             groups = listOf(
                 Terms(sourceField = "store_and_fwd_flag", targetField = "flag")
             ),
@@ -948,6 +950,70 @@ class TransformRunnerIT : TransformRestTestCase() {
         }
     }
 
+    fun `test continuous transform with a lot of buckets`() {
+
+        // Create index with high cardinality fields
+        val sourceIndex = "index_with_lots_of_buckets"
+
+        val requestBody: StringBuilder = StringBuilder(100000)
+        for (i in 1..2000) {
+            val docPayload: String = """
+            {
+              "id1": "$i",
+              "id2": "${i + 1}"
+            }
+            """.trimIndent().replace(Regex("[\n\r\\s]"), "")
+
+            requestBody.append("{\"create\":{}}\n").append(docPayload).append('\n')
+        }
+
+        createIndexAndBulkInsert(sourceIndex, Settings.EMPTY, null, null, requestBody.toString())
+        // Source index will have total of 2000 buckets
+        val transform = Transform(
+            id = "transform_index_with_lots_of_buckets",
+            schemaVersion = 1L,
+            enabled = true,
+            enabledAt = Instant.now(),
+            updatedAt = Instant.now(),
+            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+            description = "test transform",
+            metadataId = null,
+            sourceIndex = "index_with_lots_of_buckets",
+            targetIndex = "index_with_lots_of_buckets_transformed",
+            roles = emptyList(),
+            pageSize = 1000,
+            groups = listOf(
+                Terms(sourceField = "id1.keyword", targetField = "id1"),
+                Terms(sourceField = "id2.keyword", targetField = "id2")
+            ),
+            continuous = true
+        ).let { createTransform(it, it.id) }
+
+        updateTransformStartTime(transform)
+
+        waitFor { assertTrue("Target transform index was not created", indexExists(transform.targetIndex)) }
+
+        val firstIterationMetadata = waitFor {
+            val job = getTransform(transformId = transform.id)
+            assertNotNull("Transform job doesn't have metadata set", job.metadataId)
+            val transformMetadata = getTransformMetadata(job.metadataId!!)
+            assertEquals("Transform did not complete iteration or had incorrect number of documents processed", 2000, transformMetadata.stats.documentsProcessed)
+            assertEquals("Transform did not complete iteration", null, transformMetadata.afterKey)
+            assertNotNull("Continuous stats were not updated", transformMetadata.continuousStats)
+            assertNotNull("Continuous stats were set, but lastTimestamp was not", transformMetadata.continuousStats!!.lastTimestamp)
+            transformMetadata
+        }
+
+        assertEquals("Not the expected transform status", TransformMetadata.Status.STARTED, firstIterationMetadata.status)
+        assertEquals("Not the expected pages processed", 7, firstIterationMetadata.stats.pagesProcessed)
+        assertEquals("Not the expected documents indexed", 2000L, firstIterationMetadata.stats.documentsIndexed)
+        assertEquals("Not the expected documents processed", 2000L, firstIterationMetadata.stats.documentsProcessed)
+        assertTrue("Doesn't capture indexed time", firstIterationMetadata.stats.indexTimeInMillis > 0)
+        assertTrue("Didn't capture search time", firstIterationMetadata.stats.searchTimeInMillis > 0)
+
+        disableTransform(transform.id)
+    }
+
     private fun getStrictMappings(): String {
         return """
             "dynamic": "strict",
@@ -964,5 +1030,22 @@ class TransformRunnerIT : TransformRestTestCase() {
             generateNYCTaxiData(indexName)
             assertIndexExists(indexName)
         }
+    }
+
+    private fun createIndexAndBulkInsert(name: String, settings: Settings?, mapping: String?, aliases: String?, bulkData: String) {
+
+        if (settings != null || mapping != null || aliases != null) {
+            createIndex(name, settings, mapping, aliases)
+        }
+
+        val request = Request("POST", "/$name/_bulk/?refresh=true")
+        request.setJsonEntity(bulkData)
+        request.options = RequestOptions.DEFAULT.toBuilder().addHeader("content-type", "application/x-ndjson").build()
+        var res = client().performRequest(request)
+        assertEquals(RestStatus.OK, res.restStatus())
+
+        val refreshRequest = Request("POST", "/$name/_refresh")
+        res = client().performRequest(refreshRequest)
+        assertEquals(RestStatus.OK, res.restStatus())
     }
 }
