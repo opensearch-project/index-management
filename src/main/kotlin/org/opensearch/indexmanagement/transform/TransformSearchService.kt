@@ -287,7 +287,7 @@ class TransformSearchService(
             val aggs = searchResponse.aggregations.get(transform.id) as CompositeAggregation
             val buckets = if (modifiedBuckets != null) aggs.buckets.filter { modifiedBuckets.contains(it.key) } else aggs.buckets
             val documentsProcessed = buckets.fold(0L) { sum, it -> sum + it.docCount }
-            val pagesProcessed = 1L
+            val pagesProcessed = if (buckets.isNotEmpty()) 1L else 0L
             val searchTime = searchResponse.took.millis
             val stats = TransformStats(pagesProcessed, documentsProcessed, 0, 0, searchTime)
             val afterKey = aggs.afterKey()

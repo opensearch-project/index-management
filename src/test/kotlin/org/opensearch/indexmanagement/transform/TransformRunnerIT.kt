@@ -46,7 +46,7 @@ class TransformRunnerIT : TransformRestTestCase() {
             sourceIndex = "transform-source-index",
             targetIndex = "transform-target-index",
             roles = emptyList(),
-            pageSize = 100,
+            pageSize = 1,
             groups = listOf(
                 Terms(sourceField = "store_and_fwd_flag", targetField = "flag")
             )
@@ -86,7 +86,7 @@ class TransformRunnerIT : TransformRestTestCase() {
             sourceIndex = "transform-source-index",
             targetIndex = "transform-target-index",
             roles = emptyList(),
-            pageSize = 100,
+            pageSize = 1,
             groups = listOf(
                 Terms(sourceField = "store_and_fwd_flag", targetField = "flag")
             ),
