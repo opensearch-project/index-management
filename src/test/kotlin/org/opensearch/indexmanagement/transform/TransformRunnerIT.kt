@@ -64,7 +64,7 @@ class TransformRunnerIT : TransformRestTestCase() {
             transformMetadata
         }
 
-        assertEquals("More than expected pages processed", 2L, metadata.stats.pagesProcessed)
+        assertEquals("More than expected pages processed", 3L, metadata.stats.pagesProcessed)
         assertEquals("More than expected documents indexed", 2L, metadata.stats.documentsIndexed)
         assertEquals("More than expected documents processed", 5000L, metadata.stats.documentsProcessed)
         assertTrue("Doesn't capture indexed time", metadata.stats.indexTimeInMillis > 0)
@@ -1034,7 +1034,7 @@ class TransformRunnerIT : TransformRestTestCase() {
         }
     }
 
-    private fun createIndexAndBulkInsert(name: String, settings: Settings, mapping: String?, aliases: String?, bulkData: String) {
+    private fun createIndexAndBulkInsert(name: String, settings: Settings?, mapping: String?, aliases: String?, bulkData: String) {
 
         if (settings != null || mapping != null || aliases != null) {
             createIndex(name, settings, mapping, aliases)
