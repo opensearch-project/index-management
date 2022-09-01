@@ -166,7 +166,7 @@ class SMStateMachine(
         val retryCount: Int
         if (retry == null) {
             log.warn("Starting to retry state [$currentState], remaining count 3.")
-            metadataBuilder.setRetry(3) // TODO SM 3 retry count could be customizable
+            metadataBuilder.setRetry(MAX_NUMBER_OF_RETRIES) // TODO SM 3 retry count could be customizable
         } else {
             retryCount = retry.count - 1
             if (retryCount > 0) {
@@ -218,7 +218,8 @@ class SMStateMachine(
 
         // TODO SM save a copy to history
     }
-    private val updateMetaDataRetryPolicy = BackoffPolicy.exponentialBackoff(TimeValue.timeValueMillis(250), 3)
+
+    private val updateMetaDataRetryPolicy = BackoffPolicy.exponentialBackoff(TimeValue.timeValueMillis(EXPONENTIAL_BACKOFF_MILLIS), MAX_NUMBER_OF_RETRIES)
 
     /**
      * Handle the policy change before job running
@@ -240,5 +241,10 @@ class SMStateMachine(
             updateMetadata(metadataToSave.build())
         }
         return this
+    }
+
+    companion object {
+        private const val MAX_NUMBER_OF_RETRIES = 3
+        private const val EXPONENTIAL_BACKOFF_MILLIS = 250L
     }
 }
