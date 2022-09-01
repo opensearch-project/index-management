@@ -46,11 +46,7 @@ class TransformRunnerIT : TransformRestTestCase() {
             sourceIndex = "transform-source-index",
             targetIndex = "transform-target-index",
             roles = emptyList(),
-<<<<<<< HEAD
-            pageSize = 100,
-=======
             pageSize = 1,
->>>>>>> 7475cfd5 (Transform maxclauses fix (#477))
             groups = listOf(
                 Terms(sourceField = "store_and_fwd_flag", targetField = "flag")
             )
@@ -90,11 +86,7 @@ class TransformRunnerIT : TransformRestTestCase() {
             sourceIndex = "transform-source-index",
             targetIndex = "transform-target-index",
             roles = emptyList(),
-<<<<<<< HEAD
-            pageSize = 100,
-=======
             pageSize = 1,
->>>>>>> 7475cfd5 (Transform maxclauses fix (#477))
             groups = listOf(
                 Terms(sourceField = "store_and_fwd_flag", targetField = "flag")
             ),
