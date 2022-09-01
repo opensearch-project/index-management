@@ -15,7 +15,6 @@ import org.opensearch.common.xcontent.XContentParser
 import org.opensearch.common.xcontent.XContentParser.Token
 import org.opensearch.common.xcontent.XContentParserUtils.ensureExpectedToken
 import java.io.IOException
-import java.lang.IllegalStateException
 
 /**
  * A value object that represents a Custom webhook message. Webhook message will be
@@ -121,7 +120,7 @@ data class CustomWebhook(
                     USERNAME_FIELD -> username = xcp.textOrNull()
                     PASSWORD_FIELD -> password = xcp.textOrNull()
                     else -> {
-                        throw IllegalStateException("Unexpected field: $fieldName, while parsing custom webhook destination")
+                        error("Unexpected field: $fieldName, while parsing custom webhook destination")
                     }
                 }
             }
