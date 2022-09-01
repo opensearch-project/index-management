@@ -15,7 +15,6 @@ import org.opensearch.common.xcontent.XContentParser
 import org.opensearch.common.xcontent.XContentParser.Token
 import org.opensearch.common.xcontent.XContentParserUtils.ensureExpectedToken
 import java.io.IOException
-import java.lang.IllegalStateException
 
 /**
  * A value object that represents a Slack message. Slack message will be
@@ -58,7 +57,7 @@ data class Slack(val url: String) : ToXContent, Writeable {
                 when (fieldName) {
                     URL -> url = xcp.text()
                     else -> {
-                        throw IllegalStateException("Unexpected field: $fieldName, while parsing Slack destination")
+                        error("Unexpected field: $fieldName, while parsing Slack destination")
                     }
                 }
             }

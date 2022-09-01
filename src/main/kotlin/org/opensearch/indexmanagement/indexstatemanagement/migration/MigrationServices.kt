@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.indexmanagement.migration
+package org.opensearch.indexmanagement.indexstatemanagement.migration
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
