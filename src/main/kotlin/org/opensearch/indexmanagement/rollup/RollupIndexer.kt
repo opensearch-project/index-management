@@ -120,7 +120,7 @@ class RollupIndexer(
                     is InternalMin -> aggResults[it.name] = it.value
                     is InternalValueCount -> aggResults[it.name] = it.value
                     is InternalAvg -> aggResults[it.name] = it.value
-                    else -> throw IllegalStateException("Found aggregation in composite result that is not supported [${it.type} - ${it.name}]")
+                    else -> error("Found aggregation in composite result that is not supported [${it.type} - ${it.name}]")
                 }
             }
             mapOfKeyValues.putAll(aggResults)

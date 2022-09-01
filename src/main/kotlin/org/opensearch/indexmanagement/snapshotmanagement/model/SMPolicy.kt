@@ -55,9 +55,15 @@ data class SMPolicy(
 ) : ScheduledJobParameter, Writeable {
 
     init {
-        require(snapshotConfig["repository"] != null && snapshotConfig["repository"] != "") { "Must provide the repository in snapshot config." }
-        require(creation.schedule.getNextExecutionTime(now()) != null) { "Next execution time from the creation schedule is null, please provide a valid cron expression." }
-        require(deletion == null || (deletion.schedule.getNextExecutionTime(now()) != null)) { "Next execution time from the deletion schedule is null, please provide a valid cron expression." }
+        require(snapshotConfig["repository"] != null && snapshotConfig["repository"] != "") {
+            "Must provide the repository in snapshot config."
+        }
+        require(creation.schedule.getNextExecutionTime(now()) != null) {
+            "Next execution time from the creation schedule is null, please provide a valid cron expression."
+        }
+        require(deletion == null || (deletion.schedule.getNextExecutionTime(now()) != null)) {
+            "Next execution time from the deletion schedule is null, please provide a valid cron expression."
+        }
     }
 
     // This name is used by the job scheduler and needs to match the id to avoid namespace conflicts with ISM policies sharing the same name
