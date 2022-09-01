@@ -62,8 +62,11 @@ object SMRunner :
         return this
     }
 
+    private const val MAX_NUMBER_OF_RETRIES = 3
+    private const val EXPONENTIAL_BACKOFF_MILLIS = 1000L
+
     private val backoffPolicy: BackoffPolicy = BackoffPolicy.exponentialBackoff(
-        TimeValue.timeValueMillis(1000L), 3
+        TimeValue.timeValueMillis(EXPONENTIAL_BACKOFF_MILLIS), MAX_NUMBER_OF_RETRIES
     )
 
     override fun runJob(job: ScheduledJobParameter, context: JobExecutionContext) {

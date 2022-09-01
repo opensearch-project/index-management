@@ -86,10 +86,10 @@ object DeletingState : State {
 
     private fun handleException(ex: Exception, snapshotsToDelete: List<String>, metadataBuilder: SMMetadata.Builder, log: Logger): SMResult {
         if (ex is ConcurrentSnapshotExecutionException) {
-            log.error(CreatingState.getConcurrentSnapshotMessage(), ex)
+            log.error(CreatingState.CONCURRENT_SNAPSHOT_MESSAGE, ex)
             metadataBuilder.setLatestExecution(
                 status = SMMetadata.LatestExecution.Status.RETRYING,
-                message = CreatingState.getConcurrentSnapshotMessage(),
+                message = CreatingState.CONCURRENT_SNAPSHOT_MESSAGE,
             )
             return SMResult.Stay(metadataBuilder)
         }

@@ -24,7 +24,6 @@ import org.opensearch.indexmanagement.transform.model.TransformValidationResult
 import org.opensearch.indexmanagement.transform.settings.TransformSettings
 import org.opensearch.monitor.jvm.JvmService
 import org.opensearch.transport.RemoteTransportException
-import java.lang.IllegalStateException
 
 @Suppress("SpreadOperator", "ReturnCount", "ThrowsCount")
 class TransformValidator(
@@ -93,9 +92,7 @@ class TransformValidator(
     private suspend fun validateIndex(index: String, transform: Transform): List<String> {
         val request = GetMappingsRequest().indices(index)
         val result: GetMappingsResponse =
-            client.admin().indices().suspendUntil { getMappings(request, it) } ?: throw IllegalStateException(
-                "GetMappingResponse for [$index] was null"
-            )
+            client.admin().indices().suspendUntil { getMappings(request, it) } ?: error("GetMappingResponse for [$index] was null")
         return validateMappingsResponse(index, result, transform)
     }
 
