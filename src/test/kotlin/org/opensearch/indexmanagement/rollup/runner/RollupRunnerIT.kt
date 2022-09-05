@@ -25,6 +25,7 @@ import org.opensearch.indexmanagement.rollup.randomRollup
 import org.opensearch.indexmanagement.rollup.settings.RollupSettings.Companion.ROLLUP_SEARCH_BACKOFF_COUNT
 import org.opensearch.indexmanagement.waitFor
 import org.opensearch.jobscheduler.spi.schedule.IntervalSchedule
+import org.opensearch.rest.RestRequest
 import org.opensearch.rest.RestStatus
 import java.time.Instant
 import java.time.temporal.ChronoUnit
@@ -64,6 +65,75 @@ class RollupRunnerIT : RollupRestTestCase() {
             assertNotNull("Rollup metadata not found", rollupMetadata)
             // Non-continuous job will finish in a single execution
             assertEquals("Unexpected metadata state", RollupMetadata.Status.FINISHED, rollupMetadata.status)
+        }
+    }
+
+    fun `test rollup with avg metric`() {
+        val sourceIdxTestName = "source_idx_test"
+        val targetIdxTestName = "target_idx_test"
+        val propertyName = "passenger_count"
+        val avgMetricName = "avg_passenger_count"
+
+        generateNYCTaxiData(sourceIdxTestName)
+
+        val rollup = Rollup(
+            id = "basic_stats_check_runner_fifth",
+            schemaVersion = 1L,
+            enabled = true,
+            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+            jobLastUpdatedTime = Instant.now(),
+            jobEnabledTime = Instant.now(),
+            description = "basic stats test",
+            sourceIndex = sourceIdxTestName,
+            targetIndex = targetIdxTestName,
+            metadataID = null,
+            roles = emptyList(),
+            pageSize = 100,
+            delay = 0,
+            continuous = false,
+            dimensions = listOf(DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "1h")),
+            metrics = listOf(
+                RollupMetrics(sourceField = propertyName, targetField = propertyName, metrics = listOf(Sum(), Min(), Max(), ValueCount(), Average()))
+            )
+        ).let { createRollup(it, it.id) }
+
+        updateRollupStartTime(rollup)
+
+        waitFor { assertTrue("Target rollup index was not created", indexExists(rollup.targetIndex)) }
+
+        waitFor {
+            val rollupJob = getRollup(rollupId = rollup.id)
+            assertNotNull("Rollup job doesn't have metadata set", rollupJob.metadataID)
+            val rollupMetadata = getRollupMetadata(rollupJob.metadataID!!)
+            assertEquals("Rollup is not finished", RollupMetadata.Status.FINISHED, rollupMetadata.status)
+
+            // Term query
+            var req = """
+            {
+                "size": 0,
+                "query": {
+                  "match_all": {}
+                },
+                "aggs": {
+                    "$avgMetricName": {
+                        "avg": {
+                            "field": "$propertyName"
+                        }
+                    }
+                }
+            }
+            """.trimIndent()
+            var rawRes = client().makeRequest(RestRequest.Method.POST.name, "/$sourceIdxTestName/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
+            assertTrue(rawRes.restStatus() == RestStatus.OK)
+            var rollupRes = client().makeRequest(RestRequest.Method.POST.name, "/$targetIdxTestName/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
+            assertTrue(rollupRes.restStatus() == RestStatus.OK)
+            var rawAggRes = rawRes.asMap()["aggregations"] as Map<String, Map<String, Any>>
+            var rollupAggRes = rollupRes.asMap()["aggregations"] as Map<String, Map<String, Any>>
+            assertEquals(
+                "Source and rollup index did not return same avg results",
+                rawAggRes.getValue(avgMetricName)["value"],
+                rollupAggRes.getValue(avgMetricName)["value"]
+            )
         }
     }
 
