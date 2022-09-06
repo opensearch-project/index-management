@@ -93,7 +93,7 @@ class RollupRunnerIT : RollupRestTestCase() {
             continuous = false,
             dimensions = listOf(DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "1h")),
             metrics = listOf(
-                RollupMetrics(sourceField = propertyName, targetField = propertyName, metrics = listOf(Sum(), Min(), Max(), ValueCount(), Average()))
+                RollupMetrics(sourceField = propertyName, targetField = propertyName, metrics = listOf(Average()))
             )
         ).let { createRollup(it, it.id) }
 
