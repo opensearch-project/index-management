@@ -77,7 +77,7 @@ class RollupRunnerIT : RollupRestTestCase() {
         generateNYCTaxiData(sourceIdxTestName)
 
         val rollup = Rollup(
-            id = "basic_stats_check_runner_fifth",
+            id = "rollup_test",
             schemaVersion = 1L,
             enabled = true,
             jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
