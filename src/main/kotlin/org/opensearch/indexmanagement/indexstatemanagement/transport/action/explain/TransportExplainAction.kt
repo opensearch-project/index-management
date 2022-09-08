@@ -248,7 +248,7 @@ class TransportExplainAction @Inject constructor(
                     .indices(*indexNames.toTypedArray())
                     .metadata(true)
                     .local(request.local)
-                    .masterNodeTimeout(request.clusterManagerTimeout)
+                    .clusterManagerNodeTimeout(request.clusterManagerTimeout)
 
                 client.admin().cluster().state(
                     clusterStateRequest,

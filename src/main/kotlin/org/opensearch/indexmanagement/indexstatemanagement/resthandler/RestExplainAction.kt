@@ -6,9 +6,9 @@
 package org.opensearch.indexmanagement.indexstatemanagement.resthandler
 
 import org.apache.logging.log4j.LogManager
-import org.opensearch.action.support.master.MasterNodeRequest
 import org.opensearch.client.node.NodeClient
 import org.opensearch.common.Strings
+import org.opensearch.common.logging.DeprecationLogger
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.ISM_BASE_URI
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.LEGACY_ISM_BASE_URI
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.explain.ExplainAction
@@ -18,6 +18,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.util.DEFAULT_INDEX_TY
 import org.opensearch.indexmanagement.indexstatemanagement.util.DEFAULT_JOB_SORT_FIELD
 import org.opensearch.indexmanagement.indexstatemanagement.util.SHOW_POLICY_QUERY_PARAM
 import org.opensearch.indexmanagement.indexstatemanagement.util.TYPE_PARAM_KEY
+import org.opensearch.indexmanagement.indexstatemanagement.util.parseClusterManagerTimeout
 import org.opensearch.indexmanagement.util.getSearchParams
 import org.opensearch.rest.BaseRestHandler
 import org.opensearch.rest.BaseRestHandler.RestChannelConsumer
@@ -66,10 +67,14 @@ class RestExplainAction : BaseRestHandler() {
 
         val indexType = request.param(TYPE_PARAM_KEY, DEFAULT_INDEX_TYPE)
 
+        val clusterManagerTimeout = parseClusterManagerTimeout(
+            request, DeprecationLogger.getLogger(RestExplainAction::class.java), name
+        )
+
         val explainRequest = ExplainRequest(
             indices.toList(),
             request.paramAsBoolean("local", false),
-            request.paramAsTime("master_timeout", MasterNodeRequest.DEFAULT_MASTER_NODE_TIMEOUT),
+            clusterManagerTimeout,
             searchParams,
             request.paramAsBoolean(SHOW_POLICY_QUERY_PARAM, DEFAULT_EXPLAIN_SHOW_POLICY),
             indexType
