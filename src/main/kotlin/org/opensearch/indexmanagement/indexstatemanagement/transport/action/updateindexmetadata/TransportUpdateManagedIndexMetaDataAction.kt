@@ -8,8 +8,8 @@ package org.opensearch.indexmanagement.indexstatemanagement.transport.action.upd
 import org.apache.logging.log4j.LogManager
 import org.opensearch.action.ActionListener
 import org.opensearch.action.support.ActionFilters
+import org.opensearch.action.support.clustermanager.TransportClusterManagerNodeAction
 import org.opensearch.action.support.master.AcknowledgedResponse
-import org.opensearch.action.support.master.TransportMasterNodeAction
 import org.opensearch.cluster.ClusterState
 import org.opensearch.cluster.ClusterStateTaskConfig
 import org.opensearch.cluster.ClusterStateTaskExecutor
@@ -39,7 +39,7 @@ class TransportUpdateManagedIndexMetaDataAction @Inject constructor(
     actionFilters: ActionFilters,
     val indexMetadataProvider: IndexMetadataProvider,
     indexNameExpressionResolver: IndexNameExpressionResolver
-) : TransportMasterNodeAction<UpdateManagedIndexMetaDataRequest, AcknowledgedResponse>(
+) : TransportClusterManagerNodeAction<UpdateManagedIndexMetaDataRequest, AcknowledgedResponse>(
     UpdateManagedIndexMetaDataAction.INSTANCE.name(),
     transportService,
     clusterService,
