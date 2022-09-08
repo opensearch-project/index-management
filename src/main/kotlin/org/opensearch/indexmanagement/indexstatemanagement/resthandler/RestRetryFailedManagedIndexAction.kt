@@ -5,9 +5,9 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.resthandler
 
-import org.opensearch.action.support.master.MasterNodeRequest.DEFAULT_MASTER_NODE_TIMEOUT
 import org.opensearch.client.node.NodeClient
 import org.opensearch.common.Strings
+import org.opensearch.common.logging.DeprecationLogger
 import org.opensearch.common.xcontent.XContentHelper
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.ISM_BASE_URI
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.LEGACY_ISM_BASE_URI
@@ -15,6 +15,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.transport.action.retr
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.retryfailedmanagedindex.RetryFailedManagedIndexRequest
 import org.opensearch.indexmanagement.indexstatemanagement.util.DEFAULT_INDEX_TYPE
 import org.opensearch.indexmanagement.indexstatemanagement.util.TYPE_PARAM_KEY
+import org.opensearch.indexmanagement.indexstatemanagement.util.parseClusterManagerTimeout
 import org.opensearch.rest.BaseRestHandler
 import org.opensearch.rest.BaseRestHandler.RestChannelConsumer
 import org.opensearch.rest.RestHandler.ReplacedRoute
@@ -60,9 +61,13 @@ class RestRetryFailedManagedIndexAction : BaseRestHandler() {
 
         val indexType = request.param(TYPE_PARAM_KEY, DEFAULT_INDEX_TYPE)
 
+        val clusterManagerTimeout = parseClusterManagerTimeout(
+            request, DeprecationLogger.getLogger(RestRetryFailedManagedIndexAction::class.java), name
+        )
+
         val retryFailedRequest = RetryFailedManagedIndexRequest(
             indices.toList(), body["state"] as String?,
-            request.paramAsTime("master_timeout", DEFAULT_MASTER_NODE_TIMEOUT),
+            clusterManagerTimeout,
             indexType
         )
 
