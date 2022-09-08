@@ -156,7 +156,7 @@ class TransportRetryFailedManagedIndexAction @Inject constructor(
                 .indices(*request.indices.toTypedArray())
                 .metadata(true)
                 .local(false)
-                .masterNodeTimeout(request.clusterManagerTimeout)
+                .clusterManagerNodeTimeout(request.clusterManagerTimeout)
                 .indicesOptions(strictExpandIndicesOptions)
 
             client.threadPool().threadContext.stashContext().use {
