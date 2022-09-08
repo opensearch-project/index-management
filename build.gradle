@@ -14,7 +14,7 @@ import java.util.function.Predicate
 buildscript {
     ext {
         isSnapshot = "true" == System.getProperty("build.snapshot", "true")
-        opensearch_version = System.getProperty("opensearch.version", "2.2.0-SNAPSHOT")
+        opensearch_version = System.getProperty("opensearch.version", "2.3.0-SNAPSHOT")
         buildVersionQualifier = System.getProperty("build.version_qualifier", "")
         // 2.2.0-SNAPSHOT -> 2.2.0.0-SNAPSHOT
         version_tokens = opensearch_version.tokenize('-')
@@ -181,12 +181,12 @@ dependencies {
     implementation "com.github.seancfoley:ipaddress:5.3.3"
     implementation "commons-codec:commons-codec:${versions.commonscodec}"
     implementation "org.apache.httpcomponents:httpclient:4.5.13"
-    implementation "org.apache.httpcomponents:httpcore:4.4.12"
+    implementation "org.apache.httpcomponents:httpcore:4.4.15"
 
     testImplementation "org.opensearch.test:framework:${opensearch_version}"
     testImplementation "org.jetbrains.kotlin:kotlin-test:${kotlin_version}"
     testImplementation "com.nhaarman.mockitokotlin2:mockito-kotlin:2.2.0"
-    testImplementation "org.mockito:mockito-core:4.6.1"
+    testImplementation "org.mockito:mockito-core:4.7.0"
 
     add("ktlint", "com.pinterest:ktlint:0.45.1") {
         attributes {
