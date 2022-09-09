@@ -11,7 +11,7 @@ Compatible with OpenSearch 2.3.0
 
 ### Bug Fixes
 * Failed concurrent creates of ISM policies should return http 409 ([#464](https://github.com/opensearch-project/index-management/pull/464))
-* Disable detekt because to avoid the CVE issues ([#500](https://github.com/opensearch-project/index-management/pull/500))
+* Disable detekt to avoid the CVE issues ([#500](https://github.com/opensearch-project/index-management/pull/500))
 
 ### Infrastructure
 * Staging for version increment automation ([#409](https://github.com/opensearch-project/index-management/pull/409))
