@@ -2,9 +2,6 @@
 
 Compatible with OpenSearch 2.3.0
 
-### Features
-* Ability to count the number of documents from source index ([#439](https://github.com/opensearch-project/index-management/pull/439)) and ([#3985](https://github.com/opensearch-project/OpenSearch/pull/3985))
-
 ### Enhancements
 * Updated detekt plugin and snakeyaml dependency. Updated a code to reduce the number of issues after static analysis ([#483](https://github.com/opensearch-project/index-management/pull/483))
 * Transform max_clauses optimization: limit amount of modified buckets being processed at a time and added capping of pageSize to avoid maxClause exception.  ([#477](https://github.com/opensearch-project/index-management/pull/477))
