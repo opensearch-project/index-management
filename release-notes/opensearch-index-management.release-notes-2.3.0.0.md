@@ -1,0 +1,19 @@
+## Version 2.3.0.0 2022-09-09
+
+Compatible with OpenSearch 2.3.0
+
+### Features
+* Ability to count the number of documents from source index ([#439](https://github.com/opensearch-project/index-management/pull/439)) and ([#3985](https://github.com/opensearch-project/OpenSearch/pull/3985))
+
+### Enhancements
+* Updated detekt plugin and snakeyaml dependency. Updated a code to reduce the number of issues after static analysis ([#483](https://github.com/opensearch-project/index-management/pull/483))
+* Transform max_clauses optimization: limit amount of modified buckets being processed at a time and added capping of pageSize to avoid maxClause exception.  ([#477](https://github.com/opensearch-project/index-management/pull/477))
+* Remove HOST_DENY_LIST usage as Notification plugin will own it ([#488](https://github.com/opensearch-project/index-management/pull/488))
+* Deprecate Master nonmenclature ([#502](https://github.com/opensearch-project/index-management/pull/502))
+
+### Bug Fixes
+* Failed concurrent creates of ISM policies should return http 409 ([#464](https://github.com/opensearch-project/index-management/pull/464))
+* Disable detekt because of the CVE issues ([#500](https://github.com/opensearch-project/index-management/pull/500))
+
+### Maintenance
+* version upgrade to 2.3.0 ([#484](https://github.com/opensearch-project/index-management/pull/484))
