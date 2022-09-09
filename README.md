@@ -2,7 +2,7 @@
 [![codecov](https://codecov.io/gh/opensearch-project/index-management/branch/main/graph/badge.svg)](https://codecov.io/gh/opensearch-project/index-management)
 [![Roadmap](https://img.shields.io/badge/roadmap-checkout-ff69b4)](https://github.com/opensearch-project/index-management/projects/1)
 [![Documentation](https://img.shields.io/badge/api-reference-blue.svg)](https://opensearch.org/docs/im-plugin/index/)
-[![Chat](https://img.shields.io/badge/chat-on%20forums-blue)](https://discuss.opendistrocommunity.dev/c/index-management/)
+[![Chat](https://img.shields.io/badge/chat-on%20forums-blue)](https://forum.opensearch.org/c/plugins/index-management/47)
 ![PRs welcome!](https://img.shields.io/badge/PRs-welcome!-success)
 
 <img src="https://opensearch.org/assets/brand/SVG/Logo/opensearch_logo_default.svg" height="64px"/>
@@ -59,7 +59,7 @@ See [developer guide](DEVELOPER_GUIDE.md) and [how to contribute to this project
 
 If you find a bug, or have a feature request, please don't hesitate to open an issue in this repository.
 
-For more information, see [project website](https://opensearch.org/) and [documentation](https://opensearch.org/docs/). If you need help and are unsure where to open an issue, try [forums](https://discuss.opendistrocommunity.dev/).
+For more information, see [project website](https://opensearch.org/) and [documentation](https://opensearch.org/docs/latest/im-plugin/index/). If you need help and are unsure where to open an issue, try [Forum](https://forum.opensearch.org/c/plugins/index-management/47).
 
 ## Code of Conduct
 
