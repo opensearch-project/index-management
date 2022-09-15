@@ -271,7 +271,7 @@ object TransformRunner :
             )
         }
         val indexTimeInMillis = withTransformSecurityContext(transform) {
-            transformIndexer.index(transformSearchResult.docsToIndex)
+            transformIndexer.index(transform, transformSearchResult.docsToIndex)
         }
         val afterKey = transformSearchResult.afterKey
         val stats = transformSearchResult.stats
@@ -298,7 +298,7 @@ object TransformRunner :
                 transformSearchService.executeCompositeSearch(transform, null, modifiedBuckets, transformContext)
             }
             val indexTimeInMillis = withTransformSecurityContext(transform) {
-                transformIndexer.index(transformSearchResult.docsToIndex)
+                transformIndexer.index(transform, transformSearchResult.docsToIndex)
             }
             val stats = transformSearchResult.stats
             val updatedStats = stats.copy(
