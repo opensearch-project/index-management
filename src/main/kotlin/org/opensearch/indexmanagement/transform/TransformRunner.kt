@@ -109,11 +109,8 @@ object TransformRunner :
         val transformProcessedBucketLog = TransformProcessedBucketLog()
         var bucketsToTransform = BucketsToTransform(HashSet(), metadata)
 
-        // If date was used in term query generate target date field mapping and store it in transform context
-        val targetIndexDateFieldMappings = TargetIndexMappingService.getTargetMappingsForDates(transform)
         val transformContext = TransformContext(
-            TransformLockManager(transform, context),
-            targetIndexDateFieldMappings
+            TransformLockManager(transform, context)
         )
 
         // Acquires the lock if there is no running job execution for the given transform; Lock is acquired per transform
@@ -136,6 +133,10 @@ object TransformRunner :
                             currentMetadata = validatedMetadata
                             return
                         }
+                        // If date was used in term query generate target date field mapping and store it in transform context
+                        val targetIndexDateFieldMappings = TargetIndexMappingService.getTargetMappingsForDates(transform)
+                        transformContext.setTargetDateFieldMappings(targetIndexDateFieldMappings)
+
                         if (transform.continuous) {
                             // If we have not populated the list of shards to search, do so now
                             if (bucketsToTransform.shardsToSearch == null) {

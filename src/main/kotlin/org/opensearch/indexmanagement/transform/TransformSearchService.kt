@@ -5,7 +5,6 @@
 
 package org.opensearch.indexmanagement.transform
 
-import org.opensearch.indexmanagement.transform.util.formatMillis
 import org.apache.logging.log4j.LogManager
 import org.opensearch.ExceptionsHelper
 import org.opensearch.OpenSearchSecurityException
@@ -356,14 +355,7 @@ class TransformSearchService(
 
                 val document = transform.convertToDoc(aggregatedBucket.docCount, waterMarkDocuments)
                 aggregatedBucket.key.entries.forEach { bucket ->
-                    // Check if the date is used as a term (exists in conversion list) - if it is,
-                    // convert the date (which is in epoch time millis format to ISO 8601)
-//                    document[bucket.key] = bucket.value
-                    if (targetIndexDateFieldMappings.isNullOrEmpty() || !targetIndexDateFieldMappings.containsKey(bucket.key)) {
-                        document[bucket.key] = bucket.value
-                    } else {
-                        document[bucket.key] = formatMillis(bucket.value as Long)
-                    }
+                    document[bucket.key] = bucket.value
                 }
                 aggregatedBucket.aggregations.forEach { aggregation ->
                     document[aggregation.name] = getAggregationValue(aggregation, targetIndexDateFieldMappings)
@@ -392,10 +384,15 @@ class TransformSearchService(
             return when (aggregation) {
                 is InternalSum, is InternalMin, is InternalMax, is InternalAvg, is InternalValueCount -> {
                     val agg = aggregation as NumericMetricsAggregation.SingleValue
+                    /**
+                     * When date filed is used in transform aggregation (min, max avg), the value of the field is in exponential format
+                     * which is not allowed since the target index mapping for date field is strict_date_optional_time||epoch_millis
+                     * That's why the exponential value is transformed to long: agg.value().toLong()
+                     */
                     if (aggregation is InternalValueCount || aggregation is InternalSum || !targetIndexDateFieldMappings.containsKey(agg.name)) {
                         agg.value()
                     } else {
-                        formatMillis(agg.value().toLong())
+                        agg.value().toLong()
                     }
                 }
                 is Percentiles -> {

@@ -18,7 +18,8 @@ class TransformContextTests : OpenSearchTestCase() {
     @Throws(Exception::class)
     fun setup() {
         transformLockManager = Mockito.mock(TransformLockManager::class.java)
-        transformContext = TransformContext(transformLockManager, emptyMap())
+        transformContext = TransformContext(transformLockManager)
+        transformContext.setTargetDateFieldMappings(emptyMap())
     }
 
     fun `test getMaxRequestTimeoutInSeconds`() {

@@ -8,6 +8,7 @@ package org.opensearch.indexmanagement.transform.resthandler
 import org.junit.AfterClass
 import org.junit.Before
 import org.opensearch.client.ResponseException
+import org.opensearch.common.time.DateFormatter
 import org.opensearch.index.IndexNotFoundException
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.TRANSFORM_BASE_URI
 import org.opensearch.indexmanagement.common.model.dimension.Terms
@@ -20,12 +21,9 @@ import org.opensearch.rest.RestStatus
 import org.opensearch.search.aggregations.AggregationBuilders
 import org.opensearch.search.aggregations.AggregatorFactories
 import java.time.Instant
-import java.time.LocalDate
 import java.time.ZoneId
-import java.time.format.DateTimeFormatter
 import java.time.format.DateTimeParseException
 import java.time.temporal.ChronoUnit
-import java.util.Locale
 
 @Suppress("UNCHECKED_CAST")
 class RestPreviewTransformActionIT : TransformRestTestCase() {
@@ -111,9 +109,9 @@ class RestPreviewTransformActionIT : TransformRestTestCase() {
         assertEquals("Preview transform failed", RestStatus.OK, response.restStatus())
         val transformedDocs = response.asMap()["documents"] as List<Map<String, Any>>
         assertEquals("Transformed docs have unexpected schema", expectedKeys, transformedDocs.first().keys)
-        val dateFormatter = DateTimeFormatter.ofPattern("uuuu-MM-dd'T'HH:mm:ss.SSSZZ", Locale.ROOT).withZone(ZoneId.of("UTC"))
+        val dateFormatter = DateFormatter.forPattern("uuuu-MM-dd'T'HH:mm:ss.SSSZZ").withZone(ZoneId.of("UTC"))
         for (doc in transformedDocs) {
-            assertTrue(isValid(doc["tpep_pickup_datetime"] as? String, dateFormatter))
+            assertTrue(isValid(doc["tpep_pickup_datetime"].toString().toLong(), dateFormatter))
         }
     }
 
@@ -152,9 +150,9 @@ class RestPreviewTransformActionIT : TransformRestTestCase() {
         }
     }
 
-    private fun isValid(dateStr: String?, dateFormatter: DateTimeFormatter): Boolean {
+    private fun isValid(date: Long, dateFormatter: DateFormatter): Boolean {
         try {
-            LocalDate.parse(dateStr, dateFormatter)
+            dateFormatter.formatMillis(date)
         } catch (e: DateTimeParseException) {
             return false
         }

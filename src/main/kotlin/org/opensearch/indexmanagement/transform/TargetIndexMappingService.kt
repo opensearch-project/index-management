@@ -9,9 +9,16 @@ import org.apache.logging.log4j.LogManager
 import org.opensearch.action.admin.indices.mapping.get.GetMappingsRequest
 import org.opensearch.action.admin.indices.mapping.get.GetMappingsResponse
 import org.opensearch.client.Client
+import org.opensearch.common.bytes.BytesReference
+import org.opensearch.common.xcontent.LoggingDeprecationHandler
 import org.opensearch.common.xcontent.XContentFactory
+import org.opensearch.common.xcontent.XContentHelper
+import org.opensearch.common.xcontent.XContentType
+import org.opensearch.core.xcontent.NamedXContentRegistry
 import org.opensearch.core.xcontent.XContentBuilder
+import org.opensearch.core.xcontent.XContentParser
 import org.opensearch.index.IndexNotFoundException
+import org.opensearch.indexmanagement.IndexManagementIndices
 import org.opensearch.indexmanagement.common.model.dimension.DateHistogram
 import org.opensearch.indexmanagement.opensearchapi.string
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
@@ -21,6 +28,8 @@ import org.opensearch.indexmanagement.transform.util.DEFAULT_DATE_FORMAT
 import org.opensearch.indexmanagement.util.IndexUtils
 import org.opensearch.search.aggregations.AggregationBuilder
 import org.opensearch.search.aggregations.support.ValuesSourceAggregationBuilder
+import java.nio.ByteBuffer
+import java.nio.charset.StandardCharsets
 
 /**
  * Service designed for creating dynamic target index mapping based on the date field types of the source index.
@@ -33,11 +42,7 @@ object TargetIndexMappingService {
 
     private const val TYPE = "type"
     private const val PROPERTIES = "properties"
-    private const val METADATA = "_meta"
-    private const val SCHEMA_VERSION = "schema_version"
-    private const val DYNAMIC_TEMPLATE = "dynamic_templates"
-    private const val MATCH_MAPPING_TYPE = "match_mapping_type"
-    private const val MAPPING = "mapping"
+    private val DATE_FIELD_TYPES = setOf("date", "date_nanos")
 
     fun initialize(client: Client) {
         this.client = client
@@ -97,35 +102,58 @@ object TargetIndexMappingService {
     }
 
     private fun isSourceFieldDate(sourceFieldType: Map<*, *>?) =
-        sourceFieldType?.get(TYPE) != null && (sourceFieldType[TYPE] == "date" || sourceFieldType[TYPE] == "date_nanos")
+        sourceFieldType?.get(TYPE) != null && DATE_FIELD_TYPES.contains(sourceFieldType[TYPE])
 
+    /**
+     * Loads transform target index mappings from json and adds date properties mapping
+     *
+     * @param dateFieldMappings target index date fields mappings
+     */
     fun createTargetIndexMapping(dateFieldMappings: Map<String, Any>): String {
-        /** TODO - Check if the mappings from file can be loaded into the XContentBuilder
-         * val dynamicMappings = IndexManagementIndices.transformTargetMappings
-         * val mappings = createTargetIndexMappingsAsString(dateFieldMappings, dynamicMappings)
-         */
-        // Build static properties
-        val builder = XContentFactory.jsonBuilder().startObject()
-            .startObject(METADATA)
-            .field(SCHEMA_VERSION, 1)
-            .endObject()
-            .startArray(DYNAMIC_TEMPLATE)
-            .startObject()
-            .startObject("strings")
-            .field(MATCH_MAPPING_TYPE, "string")
-            .startObject(MAPPING)
-            .field(TYPE, "keyword")
-            .endObject()
-            .endObject()
-            .endObject()
-            .endArray()
-            .startObject(PROPERTIES)
+        val builder = XContentFactory.jsonBuilder()
+        val dynamicMappings = IndexManagementIndices.transformTargetMappings
+        val byteBuffer = ByteBuffer.wrap(dynamicMappings.toByteArray(StandardCharsets.UTF_8))
+        val bytesReference = BytesReference.fromByteBuffer(byteBuffer)
 
-        // Dynamically build composite aggregation mapping
-        mapCompositeAggregation(dateFieldMappings, builder)
-        return builder.endObject()
-            .endObject()
-            .string()
+        val xcp = XContentHelper.createParser(
+            NamedXContentRegistry.EMPTY,
+            LoggingDeprecationHandler.INSTANCE,
+            bytesReference,
+            XContentType.JSON
+        )
+        loop@while (!xcp.isClosed) {
+            val token = xcp.currentToken()
+            val fieldName = xcp.currentName()
+
+            when (token) {
+                XContentParser.Token.VALUE_NUMBER -> builder.field(fieldName, xcp.intValue())
+                XContentParser.Token.VALUE_STRING -> builder.field(fieldName, xcp.text())
+                XContentParser.Token.START_OBJECT -> {
+                    if (fieldName != null) {
+                        builder.startObject(fieldName)
+                    } else {
+                        builder.startObject()
+                    }
+                }
+                XContentParser.Token.END_OBJECT -> builder.endObject()
+                XContentParser.Token.START_ARRAY -> builder.startArray(fieldName)
+                XContentParser.Token.END_ARRAY -> {
+                    builder.endArray()
+                    // Add target index date fields mappings only if the date field mappings are present
+                    if (dateFieldMappings.isNotEmpty()) {
+                        builder.startObject(PROPERTIES)
+                        mapCompositeAggregation(dateFieldMappings, builder)
+                        builder.endObject()
+                    }
+                }
+                else -> {
+                    xcp.nextToken()
+                    continue@loop
+                }
+            }
+            xcp.nextToken()
+        }
+        return builder.string()
     }
 
     @Suppress("UNCHECKED_CAST")
@@ -142,7 +170,9 @@ object TargetIndexMappingService {
                 mapCompositeAggregation(it.value as Map<String, Any>, builder)
                 builder.endObject()
             } else {
-                builder.field(it.key, it.value.toString())
+                if (DATE_FIELD_TYPES.contains(it.value)) {
+                    builder.field(it.key, it.value.toString())
+                }
             }
         }
     }

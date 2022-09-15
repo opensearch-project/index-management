@@ -286,7 +286,7 @@ class TransformRunnerIT : TransformRestTestCase() {
     }
 
     @Suppress("UNCHECKED_CAST")
-    fun `test transform term aggregation on date field generate target mapping same as source mapping date field`() {
+    fun `test transform term aggregation on date field generate target mapping same as source mapping for date field`() {
         val sourceIdxTestName = "source_idx_test_14"
         val targetIdxTestName = "target_idx_test_14"
 
@@ -411,7 +411,7 @@ class TransformRunnerIT : TransformRestTestCase() {
             assertTrue("Target transform index was not created", indexExists(transform.targetIndex))
         }
 
-        waitFor {
+        waitFor(timeout = Instant.ofEpochSecond(30)) {
             val transformJob = getTransform(transformId = transform.id)
             assertNotNull("Transform job doesn't have metadata set", transformJob.metadataId)
             val transformMetadata = getTransformMetadata(transformJob.metadataId!!)
