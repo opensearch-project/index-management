@@ -31,6 +31,7 @@ import org.opensearch.index.query.RangeQueryBuilder
 import org.opensearch.index.seqno.SequenceNumbers
 import org.opensearch.index.shard.ShardId
 import org.opensearch.indexmanagement.common.model.dimension.Dimension
+import org.opensearch.indexmanagement.opensearchapi.convertToMap
 import org.opensearch.indexmanagement.opensearchapi.retry
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.transform.exceptions.TransformSearchServiceException
@@ -374,7 +375,8 @@ class TransformSearchService(
             return when (aggregation) {
                 is InternalSum, is InternalMin, is InternalMax, is InternalAvg, is InternalValueCount -> {
                     val agg = aggregation as NumericMetricsAggregation.SingleValue
-                    agg.value()
+                    if (agg.value().toString() == agg.valueAsString) agg.value()
+                    else agg.convertToMap()[agg.name]!! // Alternative -> 1. agg.valueAsString 2. mapOf("value" to agg.value, "value_as_string" to agg.valueAsString)
                 }
                 is Percentiles -> {
                     val percentiles = mutableMapOf<String, Double>()

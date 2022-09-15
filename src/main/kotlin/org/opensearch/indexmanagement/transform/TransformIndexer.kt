@@ -11,6 +11,8 @@ import org.opensearch.OpenSearchSecurityException
 import org.opensearch.action.DocWriteRequest
 import org.opensearch.action.admin.indices.create.CreateIndexRequest
 import org.opensearch.action.admin.indices.create.CreateIndexResponse
+import org.opensearch.action.admin.indices.mapping.get.GetMappingsRequest
+import org.opensearch.action.admin.indices.mapping.get.GetMappingsResponse
 import org.opensearch.action.bulk.BackoffPolicy
 import org.opensearch.action.bulk.BulkItemResponse
 import org.opensearch.action.bulk.BulkRequest
@@ -20,10 +22,15 @@ import org.opensearch.client.Client
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.settings.Settings
 import org.opensearch.indexmanagement.IndexManagementIndices
+import org.opensearch.indexmanagement.common.model.dimension.DateHistogram
+import org.opensearch.indexmanagement.common.model.dimension.Histogram
+import org.opensearch.indexmanagement.common.model.dimension.Terms
 import org.opensearch.indexmanagement.opensearchapi.retry
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.transform.exceptions.TransformIndexException
+import org.opensearch.indexmanagement.transform.model.Transform
 import org.opensearch.indexmanagement.transform.settings.TransformSettings
+import org.opensearch.indexmanagement.util.IndexUtils
 import org.opensearch.rest.RestStatus
 import org.opensearch.transport.RemoteTransportException
 
@@ -51,7 +58,38 @@ class TransformIndexer(
         }
     }
 
-    private suspend fun createTargetIndex(index: String) {
+    private suspend fun createTargetIndex(transform: Transform) {
+        val request = GetMappingsRequest().indices(transform.sourceIndex)
+        val result: GetMappingsResponse =
+            client.admin().indices().suspendUntil { getMappings(request, it) } ?: error("GetMappingResponse for [$transform.sourceIndex] was null")
+        val indexTypeMappings = result.mappings[transform.sourceIndex]
+
+        val indexMappingSource = indexTypeMappings.sourceAsMap
+
+        val issues = mutableSetOf<String>()
+        // Validate source fields in dimensions
+        transform.groups.forEach { dimension ->
+            if (!isFieldInMappings(dimension.sourceField, indexMappingSource))
+                issues.add("missing field ${dimension.sourceField}")
+
+            when (dimension) {
+                is DateHistogram -> {
+                    // TODO: Validate if field is date type: date, date_nanos?
+                    println("date histogram")
+                }
+                is Histogram -> {
+                    println("histogram")
+                    // TODO: Validate field types for histograms
+                }
+                is Terms -> {
+                    println("terms")
+                    // TODO: Validate field types for terms
+                }
+            }
+        }
+        print(result.toString())
+
+        val index = transform.targetIndex
         if (!clusterService.state().routingTable.hasIndex(index)) {
             val request = CreateIndexRequest(index)
                 .mapping(IndexManagementIndices.transformTargetMappings)
@@ -65,7 +103,7 @@ class TransformIndexer(
     }
 
     @Suppress("ThrowsCount", "RethrowCaughtException")
-    suspend fun index(docsToIndex: List<DocWriteRequest<*>>): Long {
+    suspend fun index(transform: Transform, docsToIndex: List<DocWriteRequest<*>>): Long {
         var updatableDocsToIndex = docsToIndex
         var indexTimeInMillis = 0L
         val nonRetryableFailures = mutableListOf<BulkItemResponse>()
@@ -73,7 +111,7 @@ class TransformIndexer(
             if (updatableDocsToIndex.isNotEmpty()) {
                 val targetIndex = updatableDocsToIndex.first().index()
                 logger.debug("Attempting to index ${updatableDocsToIndex.size} documents to $targetIndex")
-                createTargetIndex(targetIndex)
+                createTargetIndex(transform)
                 backoffPolicy.retry(logger, listOf(RestStatus.TOO_MANY_REQUESTS)) {
                     val bulkRequest = BulkRequest().add(updatableDocsToIndex)
                     val bulkResponse: BulkResponse = client.suspendUntil { bulk(bulkRequest, it) }
@@ -109,5 +147,10 @@ class TransformIndexer(
         } catch (e: Exception) {
             throw TransformIndexException("Failed to index the documents", e)
         }
+    }
+
+    private fun isFieldInMappings(fieldName: String, mappings: Map<*, *>): Boolean {
+        val field = IndexUtils.getFieldFromMappings(fieldName, mappings)
+        return field != null
     }
 }
