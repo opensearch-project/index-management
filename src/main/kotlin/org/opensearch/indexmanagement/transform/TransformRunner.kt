@@ -70,7 +70,7 @@ object TransformRunner :
         this.settings = settings
         this.transformSearchService = TransformSearchService(settings, clusterService, client)
         this.transformMetadataService = TransformMetadataService(client, xContentRegistry)
-        this.transformIndexer = TransformIndexer(settings, clusterService, client)
+        this.transformIndexer = TransformIndexer(settings, clusterService, client, TargetIndexMappingService(client))
         this.transformValidator = TransformValidator(indexNameExpressionResolver, clusterService, client, settings, jvmService)
         this.threadPool = threadPool
         return this

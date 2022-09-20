@@ -15,4 +15,4 @@ src/test/resources/job-scheduler/
 src/test/resources/bwc/
 bin/
 spi/bin/
-src/test/resources/notifications*t
+src/test/resources/notifications*

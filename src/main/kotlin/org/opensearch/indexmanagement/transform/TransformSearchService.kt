@@ -375,8 +375,13 @@ class TransformSearchService(
             return when (aggregation) {
                 is InternalSum, is InternalMin, is InternalMax, is InternalAvg, is InternalValueCount -> {
                     val agg = aggregation as NumericMetricsAggregation.SingleValue
-                    if (agg.value().toString() == agg.valueAsString) agg.value()
-                    else agg.convertToMap()[agg.name]!! // Alternative -> 1. agg.valueAsString 2. mapOf("value" to agg.value, "value_as_string" to agg.valueAsString)
+                    // If value and value_as_string differs (ie. for date fields), transform should be aware of
+                    if (agg.value().toString() == agg.valueAsString) {
+                        agg.value()
+                    } else {
+                        // example of agg - {"min_timestamp":{"value":1.662856742912E12,"value_as_string":"2022-09-11T00:39:02.912Z"}}
+                        agg.convertToMap()[agg.name] ?: agg.value()
+                    }
                 }
                 is Percentiles -> {
                     val percentiles = mutableMapOf<String, Double>()
