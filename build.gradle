@@ -98,6 +98,8 @@ configurations.all {
         force 'com.fasterxml.jackson.core:jackson-databind:2.10.4'
         force 'org.yaml:snakeyaml:1.31'
         force 'org.codehaus.plexus:plexus-utils:3.0.24'
+        // TODO - Can be removed once OpenSearch core uses a non-vulnerable SnakeYaml version
+        force "org.yaml:snakeyaml:1.32"
     }
 }
 
