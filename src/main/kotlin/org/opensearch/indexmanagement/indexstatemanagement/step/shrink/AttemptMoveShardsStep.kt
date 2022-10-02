@@ -135,8 +135,8 @@ class AttemptMoveShardsStep(private val action: ShrinkAction) : ShrinkStep(name,
     private fun getOriginalSettings(indexName: String, clusterService: ClusterService): Map<String, String> {
         val indexSettings = clusterService.state().metadata.index(indexName).settings
         val originalSettings = mutableMapOf<String, String>()
-        indexSettings.get(ROUTING_SETTING)?.let { it -> originalSettings.put(ROUTING_SETTING, it) }
-        indexSettings.get(SETTING_BLOCKS_WRITE)?.let { it -> originalSettings.put(SETTING_BLOCKS_WRITE, it) }
+        indexSettings.get(ROUTING_SETTING)?.let { originalSettings.put(ROUTING_SETTING, it) }
+        indexSettings.get(SETTING_BLOCKS_WRITE)?.let { originalSettings.put(SETTING_BLOCKS_WRITE, it) }
         return originalSettings
     }
 

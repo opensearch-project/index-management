@@ -61,7 +61,7 @@ data class Channel(val id: String) : ToXContent, Writeable {
                 when (fieldName) {
                     ID -> id = xcp.text()
                     else -> {
-                        throw IllegalStateException("Unexpected field: $fieldName, while parsing Channel destination")
+                        error("Unexpected field: $fieldName, while parsing Channel destination")
                     }
                 }
             }

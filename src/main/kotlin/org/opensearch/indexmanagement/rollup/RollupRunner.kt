@@ -293,7 +293,7 @@ object RollupRunner :
                                 ) {
                                     client.suspendUntil { listener: ActionListener<GetRollupResponse> ->
                                         execute(GetRollupAction.INSTANCE, GetRollupRequest(updatableJob.id, null, "_local"), listener)
-                                    }.rollup ?: throw IllegalStateException("Unable to get rollup job")
+                                    }.rollup ?: error("Unable to get rollup job")
                                 }
                             }
                             is RollupResult.Failure -> {
