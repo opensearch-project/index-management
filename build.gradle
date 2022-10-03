@@ -13,13 +13,13 @@ import java.util.function.Predicate
 
 buildscript {
     ext {
-        opensearch_version = System.getProperty("opensearch.version", "1.3.5-SNAPSHOT")
+        opensearch_version = System.getProperty("opensearch.version", "1.3.6-SNAPSHOT")
         // 1.1.0 -> 1.1.0.0, and 1.1.0-SNAPSHOT -> 1.1.0.0-SNAPSHOT
         opensearch_build = opensearch_version.replaceAll(/(\.\d)([^\d]*)$/, '$1.0$2')
         notification_version = System.getProperty("notification.version", opensearch_build)
         common_utils_version = System.getProperty("common_utils.version", opensearch_build)
         job_scheduler_version = System.getProperty("job_scheduler_version.version", opensearch_build)
-        kotlin_version = System.getProperty("kotlin.version", "1.4.0")
+        kotlin_version = System.getProperty("kotlin.version", "1.6.10")
 
         opensearch_no_snapshot = opensearch_version.replace("-SNAPSHOT","")
         job_scheduler_no_snapshot = job_scheduler_version.replace("-SNAPSHOT","")
@@ -39,8 +39,8 @@ buildscript {
         classpath "org.opensearch.gradle:build-tools:${opensearch_version}"
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:${kotlin_version}"
         classpath "org.jetbrains.kotlin:kotlin-allopen:${kotlin_version}"
-        classpath "io.gitlab.arturbosch.detekt:detekt-gradle-plugin:1.21.0"
-        classpath "org.jacoco:org.jacoco.agent:0.8.7"
+        classpath "io.gitlab.arturbosch.detekt:detekt-gradle-plugin:1.17.0"
+        classpath "org.jacoco:org.jacoco.agent:0.8.5"
     }
 }
 
@@ -73,7 +73,7 @@ configurations.all {
         force 'org.apache.httpcomponents:httpclient-osgi:4.5.13'
         force 'org.apache.httpcomponents.client5:httpclient5:5.0.3'
         force 'org.apache.httpcomponents.client5:httpclient5-osgi:5.0.3'
-        force 'com.fasterxml.jackson.core:jackson-databind:2.10.4'
+        force 'com.fasterxml.jackson.core:jackson-databind:2.13.4'
         force 'org.yaml:snakeyaml:1.32'
         force 'org.codehaus.plexus:plexus-utils:3.0.24'
     }
