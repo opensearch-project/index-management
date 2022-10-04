@@ -34,6 +34,7 @@ class IndexUtils {
         const val SCHEMA_VERSION = "schema_version"
         const val DEFAULT_SCHEMA_VERSION = 1L
         const val ODFE_MAGIC_NULL = "#ODFE-MAGIC-NULL-MAGIC-ODFE#"
+        const val LUCENE_MAX_CLAUSES = 1024
         private const val BYTE_ARRAY_SIZE = 16
         private const val DOCUMENT_ID_SEED = 72390L
         val logger = LogManager.getLogger(IndexUtils::class.java)
