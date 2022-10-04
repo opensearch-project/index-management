@@ -68,7 +68,7 @@ abstract class Step(val name: String, val isSafeToDisableOn: Boolean = true) {
 
         companion object {
             fun read(streamInput: StreamInput): StepStatus {
-                return valueOf(streamInput.readString().toUpperCase(Locale.ROOT))
+                return valueOf(streamInput.readString().uppercase(Locale.ROOT))
             }
         }
     }

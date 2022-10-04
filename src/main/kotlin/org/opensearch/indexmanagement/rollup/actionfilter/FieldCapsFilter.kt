@@ -41,8 +41,7 @@ class FieldCapsFilter(
     @Volatile private var shouldIntercept = RollupSettings.ROLLUP_DASHBOARDS.get(settings)
 
     init {
-        clusterService.clusterSettings.addSettingsUpdateConsumer(RollupSettings.ROLLUP_DASHBOARDS) {
-            flag ->
+        clusterService.clusterSettings.addSettingsUpdateConsumer(RollupSettings.ROLLUP_DASHBOARDS) { flag ->
             shouldIntercept = flag
         }
     }
@@ -59,7 +58,7 @@ class FieldCapsFilter(
             val rollupIndices = mutableSetOf<String>()
             val nonRollupIndices = mutableSetOf<String>()
             val remoteClusterIndices = GuiceHolder.remoteClusterService.groupIndices(request.indicesOptions(), indices) {
-                idx: String? ->
+                    idx: String? ->
                 indexNameExpressionResolver.hasIndexAbstraction(idx, clusterService.state())
             }
             val localIndices = remoteClusterIndices.remove(RemoteClusterAware.LOCAL_CLUSTER_GROUP_KEY)
@@ -102,7 +101,9 @@ class FieldCapsFilter(
             }
 
             chain.proceed(
-                task, action, request,
+                task,
+                action,
+                request,
                 object : ActionListener<Response> {
                     override fun onResponse(response: Response) {
                         logger.info("Has rollup indices will rewrite field caps response")
@@ -192,10 +193,15 @@ class FieldCapsFilter(
             }
             val isSearchable = fieldMapping.fieldType == RollupFieldMapping.Companion.FieldType.DIMENSION
             response[fieldName]!![type] = FieldCapabilities(
-                fieldName, type, isSearchable, true,
+                fieldName,
+                type,
+                isSearchable,
+                true,
                 fieldMappingIndexMap.getValue(fieldMapping)
                     .toTypedArray(),
-                null, null, mapOf<String, Set<String>>()
+                null,
+                null,
+                mapOf<String, Set<String>>()
             )
         }
 
@@ -267,10 +273,15 @@ class FieldCapsFilter(
                 val fieldCaps = fields.getValue(field).getValue(type)
                 val rewrittenIndices = if (fieldCaps.indices() != null && fieldCaps.indices().isNotEmpty()) fieldCaps.indices() else indices
                 expandedResponse[field]!![type] = FieldCapabilities(
-                    fieldCaps.name, fieldCaps.type, fieldCaps.isSearchable,
+                    fieldCaps.name,
+                    fieldCaps.type,
+                    fieldCaps.isSearchable,
                     fieldCaps
                         .isAggregatable,
-                    rewrittenIndices, fieldCaps.nonSearchableIndices(), fieldCaps.nonAggregatableIndices(), fieldCaps.meta()
+                    rewrittenIndices,
+                    fieldCaps.nonSearchableIndices(),
+                    fieldCaps.nonAggregatableIndices(),
+                    fieldCaps.meta()
                 )
             }
         }

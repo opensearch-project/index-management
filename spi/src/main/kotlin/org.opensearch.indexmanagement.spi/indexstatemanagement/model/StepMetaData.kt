@@ -90,7 +90,7 @@ data class StepMetaData(
                 when (fieldName) {
                     NAME -> name = xcp.text()
                     START_TIME -> startTime = xcp.longValue()
-                    STEP_STATUS -> stepStatus = Step.StepStatus.valueOf(xcp.text().toUpperCase(Locale.ROOT))
+                    STEP_STATUS -> stepStatus = Step.StepStatus.valueOf(xcp.text().uppercase(Locale.ROOT))
                 }
             }
 
