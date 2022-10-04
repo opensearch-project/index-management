@@ -148,7 +148,7 @@ data class TransformMetadata(
                     TRANSFORM_ID_FIELD -> transformId = xcp.text()
                     AFTER_KEY_FIELD -> afterkey = xcp.map()
                     LAST_UPDATED_AT_FIELD -> lastUpdatedAt = xcp.instant()
-                    STATUS_FIELD -> status = Status.valueOf(xcp.text().toUpperCase(Locale.ROOT))
+                    STATUS_FIELD -> status = Status.valueOf(xcp.text().uppercase(Locale.ROOT))
                     FAILURE_REASON -> failureReason = xcp.textOrNull()
                     STATS_FIELD -> stats = TransformStats.parse(xcp)
                     SHARD_ID_TO_GLOBAL_CHECKPOINT_FIELD ->

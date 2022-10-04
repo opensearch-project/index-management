@@ -47,6 +47,7 @@ import org.opensearch.index.query.QueryBuilders
 import org.opensearch.indexmanagement.IndexManagementIndices
 import org.opensearch.indexmanagement.IndexManagementPlugin
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
+import org.opensearch.indexmanagement.indexstatemanagement.migration.ISMTemplateService
 import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexConfig
 import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
 import org.opensearch.indexmanagement.indexstatemanagement.model.coordinator.ClusterStateManagedIndexConfig
@@ -73,7 +74,6 @@ import org.opensearch.indexmanagement.indexstatemanagement.util.isFailed
 import org.opensearch.indexmanagement.indexstatemanagement.util.isPolicyCompleted
 import org.opensearch.indexmanagement.indexstatemanagement.util.managedIndexConfigIndexRequest
 import org.opensearch.indexmanagement.indexstatemanagement.util.updateEnableManagedIndexRequest
-import org.opensearch.indexmanagement.migration.ISMTemplateService
 import org.opensearch.indexmanagement.opensearchapi.IndexManagementSecurityContext
 import org.opensearch.indexmanagement.opensearchapi.contentParser
 import org.opensearch.indexmanagement.opensearchapi.parseFromSearchResponse
@@ -128,17 +128,26 @@ class ManagedIndexCoordinator(
     private var scheduledTemplateMigration: Scheduler.Cancellable? = null
 
     @Volatile private var lastFullSweepTimeNano = System.nanoTime()
+
     @Volatile private var indexStateManagementEnabled = INDEX_STATE_MANAGEMENT_ENABLED.get(settings)
+
     @Volatile private var metadataServiceEnabled = METADATA_SERVICE_ENABLED.get(settings)
+
     @Volatile private var sweepPeriod = SWEEP_PERIOD.get(settings)
+
     @Volatile private var retryPolicy =
         BackoffPolicy.constantBackoff(COORDINATOR_BACKOFF_MILLIS.get(settings), COORDINATOR_BACKOFF_COUNT.get(settings))
+
     @Volatile private var templateMigrationEnabled: Boolean = true
+
     @Volatile private var templateMigrationEnabledSetting = TEMPLATE_MIGRATION_CONTROL.get(settings)
+
     @Volatile private var jobInterval = JOB_INTERVAL.get(settings)
+
     @Volatile private var jobJitter = JITTER.get(settings)
 
     @Volatile private var isMaster = false
+
     @Volatile private var onMasterTimeStamp: Long = 0L
 
     init {
@@ -168,8 +177,7 @@ class ManagedIndexCoordinator(
             if (!templateMigrationEnabled) scheduledTemplateMigration?.cancel()
             else initTemplateMigration(it)
         }
-        clusterService.clusterSettings.addSettingsUpdateConsumer(COORDINATOR_BACKOFF_MILLIS, COORDINATOR_BACKOFF_COUNT) {
-            millis, count ->
+        clusterService.clusterSettings.addSettingsUpdateConsumer(COORDINATOR_BACKOFF_MILLIS, COORDINATOR_BACKOFF_COUNT) { millis, count ->
             retryPolicy = BackoffPolicy.constantBackoff(millis, count)
         }
     }
@@ -556,14 +564,15 @@ class ManagedIndexCoordinator(
 
                     logger.info("Performing ISM template migration.")
                     if (enableSetting == 0L) {
-                        if (onMasterTimeStamp != 0L)
+                        if (onMasterTimeStamp != 0L) {
                             templateService.doMigration(Instant.ofEpochMilli(onMasterTimeStamp))
-                        else {
+                        } else {
                             logger.error("No valid onMaster time cached, cancel ISM template migration job.")
                             scheduledTemplateMigration?.cancel()
                         }
-                    } else
+                    } else {
                         templateService.doMigration(Instant.ofEpochMilli(enableSetting))
+                    }
                 } catch (e: Exception) {
                     logger.error("Failed to migrate ISM template", e)
                 }
@@ -596,7 +605,8 @@ class ManagedIndexCoordinator(
 
         // Get the matching policyIds for applicable indices
         val updateMatchingIndicesReqs = createManagedIndexRequests(
-            clusterService.state(), unManagedIndices.map { (indexName, _) -> indexName }
+            clusterService.state(),
+            unManagedIndices.map { (indexName, _) -> indexName }
         )
 
         // check all managed indices, if the index has already been deleted
@@ -701,7 +711,10 @@ class ManagedIndexCoordinator(
         mRes.forEach {
             if (it.response.isExists) {
                 result[it.id] = contentParser(it.response.sourceAsBytesRef).parseWithType(
-                    it.response.id, it.response.seqNo, it.response.primaryTerm, ManagedIndexConfig.Companion::parse
+                    it.response.id,
+                    it.response.seqNo,
+                    it.response.primaryTerm,
+                    ManagedIndexConfig.Companion::parse
                 )
             }
         }
