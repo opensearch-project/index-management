@@ -40,14 +40,17 @@ buildscript {
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:${kotlin_version}"
         classpath "org.jetbrains.kotlin:kotlin-allopen:${kotlin_version}"
         classpath "io.gitlab.arturbosch.detekt:detekt-gradle-plugin:1.21.0"
-        classpath "org.jacoco:org.jacoco.agent:0.8.5"
+        classpath "org.jacoco:org.jacoco.agent:0.8.7"
     }
 }
+
+
 
 plugins {
     id 'nebula.ospackage' version "8.3.0"
     id "com.dorongold.task-tree" version "1.5"
 }
+
 
 apply plugin: 'java'
 apply plugin: 'jacoco'
@@ -144,6 +147,7 @@ allprojects {
     if (isSnapshot) {
         version += "-SNAPSHOT"
     }
+    jacoco.toolVersion = "0.8.7"
 }
 
 dependencies {
