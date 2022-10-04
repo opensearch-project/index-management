@@ -44,10 +44,13 @@ buildscript {
     }
 }
 
+
+
 plugins {
     id 'nebula.ospackage' version "8.3.0"
     id "com.dorongold.task-tree" version "1.5"
 }
+
 
 apply plugin: 'java'
 apply plugin: 'jacoco'
@@ -127,7 +130,7 @@ detekt {
     buildUponDefaultConfig = true
 }
 
-configurations.testCompile {
+configurations.testImplementation {
     exclude module: "securemock"
 }
 
@@ -144,6 +147,7 @@ allprojects {
     if (isSnapshot) {
         version += "-SNAPSHOT"
     }
+    jacoco.toolVersion = "0.8.7"
 }
 
 dependencies {
@@ -164,7 +168,7 @@ dependencies {
     testImplementation "com.nhaarman.mockitokotlin2:mockito-kotlin:2.2.0"
     testCompile "org.mockito:mockito-core:3.12.4"
 
-    add("ktlint", "com.pinterest:ktlint:0.41.0") {
+    add("ktlint", "com.pinterest:ktlint:0.45.1") {
         attributes {
             attribute(Bundling.BUNDLING_ATTRIBUTE, objects.named(Bundling, Bundling.EXTERNAL))
         }

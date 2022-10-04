@@ -48,7 +48,7 @@ class RollupIndexer(
 
     init {
         clusterService.clusterSettings.addSettingsUpdateConsumer(ROLLUP_INGEST_BACKOFF_MILLIS, ROLLUP_INGEST_BACKOFF_COUNT) {
-            millis, count ->
+                millis, count ->
             retryIngestPolicy = BackoffPolicy.constantBackoff(millis, count)
         }
     }

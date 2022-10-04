@@ -46,7 +46,7 @@ class RollupSearchService(
 
     init {
         clusterService.clusterSettings.addSettingsUpdateConsumer(ROLLUP_SEARCH_BACKOFF_MILLIS, ROLLUP_SEARCH_BACKOFF_COUNT) {
-            millis, count ->
+                millis, count ->
             retrySearchPolicy = BackoffPolicy.constantBackoff(millis, count)
         }
     }

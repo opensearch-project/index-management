@@ -60,7 +60,10 @@ class TransportIndexPolicyAction @Inject constructor(
     val settings: Settings,
     val xContentRegistry: NamedXContentRegistry
 ) : HandledTransportAction<IndexPolicyRequest, IndexPolicyResponse>(
-    IndexPolicyAction.NAME, transportService, actionFilters, ::IndexPolicyRequest
+    IndexPolicyAction.NAME,
+    transportService,
+    actionFilters,
+    ::IndexPolicyRequest
 ) {
 
     @Volatile private var filterByEnabled = IndexManagementSettings.FILTER_BY_BACKEND_ROLES.get(settings)
@@ -187,7 +190,8 @@ class TransportIndexPolicyAction @Inject constructor(
 
         private fun putPolicy() {
             val policy = request.policy.copy(
-                schemaVersion = IndexUtils.indexManagementConfigSchemaVersion, user = this.user
+                schemaVersion = IndexUtils.indexManagementConfigSchemaVersion,
+                user = this.user
             )
 
             val indexRequest = IndexRequest(IndexManagementPlugin.INDEX_MANAGEMENT_INDEX)
@@ -237,7 +241,7 @@ class TransportIndexPolicyAction @Inject constructor(
             val failureReasons = StringBuilder()
             if (response.shardInfo.failed > 0) {
                 response.shardInfo.failures.forEach {
-                    entry ->
+                        entry ->
                     failureReasons.append(entry.reason())
                 }
                 return failureReasons.toString()
