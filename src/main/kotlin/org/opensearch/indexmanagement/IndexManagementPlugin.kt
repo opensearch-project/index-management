@@ -4,7 +4,6 @@
  */
 
 package org.opensearch.indexmanagement
-
 import org.apache.logging.log4j.LogManager
 import org.opensearch.action.ActionRequest
 import org.opensearch.action.ActionResponse
@@ -38,6 +37,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.ManagedIndexCoordinat
 import org.opensearch.indexmanagement.indexstatemanagement.ManagedIndexRunner
 import org.opensearch.indexmanagement.indexstatemanagement.MetadataService
 import org.opensearch.indexmanagement.indexstatemanagement.SkipExecution
+import org.opensearch.indexmanagement.indexstatemanagement.migration.ISMTemplateService
 import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexConfig
 import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
 import org.opensearch.indexmanagement.indexstatemanagement.resthandler.RestAddPolicyAction
@@ -73,7 +73,6 @@ import org.opensearch.indexmanagement.indexstatemanagement.transport.action.retr
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.updateindexmetadata.TransportUpdateManagedIndexMetaDataAction
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.updateindexmetadata.UpdateManagedIndexMetaDataAction
 import org.opensearch.indexmanagement.indexstatemanagement.util.DEFAULT_INDEX_TYPE
-import org.opensearch.indexmanagement.migration.ISMTemplateService
 import org.opensearch.indexmanagement.refreshanalyzer.RefreshSearchAnalyzerAction
 import org.opensearch.indexmanagement.refreshanalyzer.RestRefreshSearchAnalyzerAction
 import org.opensearch.indexmanagement.refreshanalyzer.TransportRefreshSearchAnalyzerAction
@@ -251,7 +250,7 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
         indexManagementExtensions.forEach { extension ->
             val extensionName = extension.getExtensionName()
             if (extensionName in extensions) {
-                throw IllegalStateException("Multiple extensions of IndexManagement have same name $extensionName - not supported")
+                error("Multiple extensions of IndexManagement have same name $extensionName - not supported")
             }
             extension.getISMActionParsers().forEach { parser ->
                 ISMActionsParser.instance.addParser(parser, extensionName)
@@ -259,7 +258,7 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
             indexMetadataServices.add(extension.getIndexMetadataService())
             extension.overrideClusterStateIndexUuidSetting()?.let {
                 if (customIndexUUIDSetting != null) {
-                    throw IllegalStateException(
+                    error(
                         "Multiple extensions of IndexManagement plugin overriding ClusterStateIndexUUIDSetting - not supported"
                     )
                 }
@@ -359,7 +358,9 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
             )
 
         indexMetadataProvider = IndexMetadataProvider(
-            settings, client, clusterService,
+            settings,
+            client,
+            clusterService,
             hashMapOf(
                 DEFAULT_INDEX_TYPE to DefaultIndexMetadataService(customIndexUUIDSetting)
             )
@@ -386,7 +387,13 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
 
         val managedIndexCoordinator = ManagedIndexCoordinator(
             environment.settings(),
-            client, clusterService, threadPool, indexManagementIndices, metadataService, templateService, indexMetadataProvider
+            client,
+            clusterService,
+            threadPool,
+            indexManagementIndices,
+            metadataService,
+            templateService,
+            indexMetadataProvider
         )
 
         return listOf(

@@ -49,7 +49,7 @@ class TransformIndexer(
             TransformSettings.TRANSFORM_JOB_INDEX_BACKOFF_MILLIS,
             TransformSettings.TRANSFORM_JOB_INDEX_BACKOFF_COUNT
         ) {
-            millis, count ->
+                millis, count ->
             backoffPolicy = BackoffPolicy.constantBackoff(millis, count)
         }
     }

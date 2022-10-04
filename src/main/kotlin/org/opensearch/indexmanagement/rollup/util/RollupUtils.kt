@@ -143,7 +143,7 @@ inline fun <reified T> Rollup.findMatchingMetricField(field: String): String {
             }
         }
     }
-    throw IllegalStateException("Did not find matching rollup metric")
+    error("Did not find matching rollup metric")
 }
 
 @Suppress("NestedBlockDepth", "ComplexMethod")

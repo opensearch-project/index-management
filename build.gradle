@@ -19,7 +19,7 @@ buildscript {
         notification_version = System.getProperty("notification.version", opensearch_build)
         common_utils_version = System.getProperty("common_utils.version", opensearch_build)
         job_scheduler_version = System.getProperty("job_scheduler_version.version", opensearch_build)
-        kotlin_version = System.getProperty("kotlin.version", "1.4.32")
+        kotlin_version = System.getProperty("kotlin.version", "1.6.10")
 
         opensearch_no_snapshot = opensearch_version.replace("-SNAPSHOT","")
         job_scheduler_no_snapshot = job_scheduler_version.replace("-SNAPSHOT","")
@@ -39,15 +39,18 @@ buildscript {
         classpath "org.opensearch.gradle:build-tools:${opensearch_version}"
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:${kotlin_version}"
         classpath "org.jetbrains.kotlin:kotlin-allopen:${kotlin_version}"
-        classpath "io.gitlab.arturbosch.detekt:detekt-gradle-plugin:1.17.1"
-        classpath "org.jacoco:org.jacoco.agent:0.8.5"
+        classpath "io.gitlab.arturbosch.detekt:detekt-gradle-plugin:1.21.0"
+        classpath "org.jacoco:org.jacoco.agent:0.8.7"
     }
 }
+
+
 
 plugins {
     id 'nebula.ospackage' version "8.3.0"
     id "com.dorongold.task-tree" version "1.5"
 }
+
 
 apply plugin: 'java'
 apply plugin: 'jacoco'
@@ -73,8 +76,8 @@ configurations.all {
         force 'org.apache.httpcomponents:httpclient-osgi:4.5.13'
         force 'org.apache.httpcomponents.client5:httpclient5:5.0.3'
         force 'org.apache.httpcomponents.client5:httpclient5-osgi:5.0.3'
-        force 'com.fasterxml.jackson.core:jackson-databind:2.10.4'
-        force 'org.yaml:snakeyaml:1.26'
+        force 'com.fasterxml.jackson.core:jackson-databind:2.13.4'
+        force 'org.yaml:snakeyaml:1.32'
         force 'org.codehaus.plexus:plexus-utils:3.0.24'
     }
 }
@@ -127,7 +130,7 @@ detekt {
     buildUponDefaultConfig = true
 }
 
-configurations.testCompile {
+configurations.testImplementation {
     exclude module: "securemock"
 }
 
@@ -144,6 +147,7 @@ allprojects {
     if (isSnapshot) {
         version += "-SNAPSHOT"
     }
+    jacoco.toolVersion = "0.8.7"
 }
 
 dependencies {
@@ -164,7 +168,7 @@ dependencies {
     testImplementation "com.nhaarman.mockitokotlin2:mockito-kotlin:2.2.0"
     testCompile "org.mockito:mockito-core:3.12.4"
 
-    add("ktlint", "com.pinterest:ktlint:0.41.0") {
+    add("ktlint", "com.pinterest:ktlint:0.45.1") {
         attributes {
             attribute(Bundling.BUNDLING_ATTRIBUTE, objects.named(Bundling, Bundling.EXTERNAL))
         }

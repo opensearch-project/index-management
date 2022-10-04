@@ -118,10 +118,13 @@ object ManagedIndexRunner :
     private lateinit var extensionStatusChecker: ExtensionStatusChecker
     private lateinit var indexMetadataProvider: IndexMetadataProvider
     private var indexStateManagementEnabled: Boolean = DEFAULT_ISM_ENABLED
+
     @Suppress("MagicNumber")
     private val savePolicyRetryPolicy = BackoffPolicy.exponentialBackoff(TimeValue.timeValueMillis(250), 3)
+
     @Suppress("MagicNumber")
     private val updateMetaDataRetryPolicy = BackoffPolicy.exponentialBackoff(TimeValue.timeValueMillis(250), 3)
+
     @Suppress("MagicNumber")
     private val errorNotificationRetryPolicy = BackoffPolicy.exponentialBackoff(TimeValue.timeValueMillis(250), 3)
     private var jobInterval: Int = DEFAULT_JOB_INTERVAL
@@ -345,7 +348,8 @@ object ManagedIndexRunner :
                 val info = mapOf("message" to "Previous action was not able to update IndexMetaData.")
                 val updated = updateManagedIndexMetaData(
                     managedIndexMetaData.copy(
-                        policyRetryInfo = PolicyRetryInfoMetaData(true, 0), info = info
+                        policyRetryInfo = PolicyRetryInfoMetaData(true, 0),
+                        info = info
                     )
                 )
                 if (updated.metadataSaved) disableManagedIndexConfig(managedIndexConfig)
@@ -359,7 +363,8 @@ object ManagedIndexRunner :
             val info = mapOf("message" to "Failed to execute action=${action?.type} as extension [$actionExtensionName] is not enabled.")
             val updated = updateManagedIndexMetaData(
                 managedIndexMetaData.copy(
-                    policyRetryInfo = PolicyRetryInfoMetaData(true, 0), info = info
+                    policyRetryInfo = PolicyRetryInfoMetaData(true, 0),
+                    info = info
                 )
             )
             if (updated.metadataSaved) disableManagedIndexConfig(managedIndexConfig)
@@ -372,7 +377,8 @@ object ManagedIndexRunner :
             val info = mapOf("message" to "Attempted to execute action=${action?.type} which is not allowed.")
             val updated = updateManagedIndexMetaData(
                 managedIndexMetaData.copy(
-                    policyRetryInfo = PolicyRetryInfoMetaData(true, 0), info = info
+                    policyRetryInfo = PolicyRetryInfoMetaData(true, 0),
+                    info = info
                 )
             )
             if (updated.metadataSaved) disableManagedIndexConfig(managedIndexConfig)
@@ -388,7 +394,10 @@ object ManagedIndexRunner :
             // Step null check is done in getStartingManagedIndexMetaData
             withClosableContext(
                 IndexManagementSecurityContext(
-                    managedIndexConfig.id, settings, threadPool.threadContext, managedIndexConfig.policy.user
+                    managedIndexConfig.id,
+                    settings,
+                    threadPool.threadContext,
+                    managedIndexConfig.policy.user
                 )
             ) {
                 step.preExecute(logger, stepContext.getUpdatedContext(startingManagedIndexMetaData)).execute().postExecute(logger)
@@ -476,8 +485,10 @@ object ManagedIndexRunner :
             // Intellij complains about createParser/parseWithType blocking because it sees they throw IOExceptions
             return withContext(Dispatchers.IO) {
                 val xcp = XContentHelper.createParser(
-                    xContentRegistry, LoggingDeprecationHandler.INSTANCE,
-                    policySource, XContentType.JSON
+                    xContentRegistry,
+                    LoggingDeprecationHandler.INSTANCE,
+                    policySource,
+                    XContentType.JSON
                 )
                 xcp.parseWithType(getResponse.id, getResponse.seqNo, getResponse.primaryTerm, Policy.Companion::parse)
             }
@@ -504,8 +515,11 @@ object ManagedIndexRunner :
     @Suppress("TooGenericExceptionCaught")
     private suspend fun savePolicyToManagedIndexConfig(managedIndexConfig: ManagedIndexConfig, policy: Policy): Boolean {
         val updatedManagedIndexConfig = managedIndexConfig.copy(
-            policyID = policy.id, policy = policy,
-            policySeqNo = policy.seqNo, policyPrimaryTerm = policy.primaryTerm, changePolicy = null
+            policyID = policy.id,
+            policy = policy,
+            policySeqNo = policy.seqNo,
+            policyPrimaryTerm = policy.primaryTerm,
+            changePolicy = null
         )
         val indexRequest = managedIndexConfigIndexRequest(updatedManagedIndexConfig)
         var savedPolicy = false
@@ -605,8 +619,8 @@ object ManagedIndexRunner :
             // this is an edge case where a user deletes the job config or index and we already have a policySeqNo/primaryTerm
             // in the metadata, in this case we just want to say we successfully initialized the policy again but we will not
             // modify the state, action, etc. so it can resume where it left off
-            managedIndexMetaData.policySeqNo == policy.seqNo && managedIndexMetaData.policyPrimaryTerm == policy.primaryTerm
-                && managedIndexMetaData.policyID == policy.id ->
+            managedIndexMetaData.policySeqNo == policy.seqNo && managedIndexMetaData.policyPrimaryTerm == policy.primaryTerm &&
+                managedIndexMetaData.policyID == policy.id ->
                 // If existing PolicySeqNo and PolicyPrimaryTerm is equal to cached Policy then no issue.
                 managedIndexMetaData.copy(
                     policyRetryInfo = PolicyRetryInfoMetaData(failed = false, consumedRetries = 0),
@@ -688,7 +702,6 @@ object ManagedIndexRunner :
         managedIndexMetaData: ManagedIndexMetaData,
         actionToExecute: Action?
     ) {
-
         // should never happen since we only call this if there is a changePolicy, but we'll do it to make changePolicy non null
         val changePolicy = managedIndexConfig.changePolicy
         if (changePolicy == null) {
@@ -709,8 +722,13 @@ object ManagedIndexRunner :
             // if the action to execute is transition then set the actionMetaData to a new transition metadata to reflect we are
             // in transition (in case we triggered change policy from entering transition) or to reflect this is a new policy transition phase
             val newTransitionMetaData = ActionMetaData(
-                TransitionsAction.name, Instant.now().toEpochMilli(), -1,
-                false, 0, 0, null
+                TransitionsAction.name,
+                Instant.now().toEpochMilli(),
+                -1,
+                false,
+                0,
+                0,
+                null
             )
             val actionMetaData = if (actionToExecute?.type == TransitionsAction.name) {
                 newTransitionMetaData
