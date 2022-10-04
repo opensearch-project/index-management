@@ -59,8 +59,7 @@ buildscript {
         classpath "org.opensearch.gradle:build-tools:${opensearch_version}"
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:${kotlin_version}"
         classpath "org.jetbrains.kotlin:kotlin-allopen:${kotlin_version}"
-        // TODO because snakeyaml CVE issue is on the latest version, have to disable detekt for now
-//        classpath "io.gitlab.arturbosch.detekt:detekt-gradle-plugin:1.21.0"
+        classpath "io.gitlab.arturbosch.detekt:detekt-gradle-plugin:1.21.0"
         classpath "org.jacoco:org.jacoco.agent:0.8.7"
     }
 }
@@ -76,7 +75,7 @@ apply plugin: 'idea'
 apply plugin: 'opensearch.opensearchplugin'
 apply plugin: 'opensearch.testclusters'
 apply plugin: 'opensearch.rest-test'
-//apply plugin: 'io.gitlab.arturbosch.detekt'
+apply plugin: 'io.gitlab.arturbosch.detekt'
 apply plugin: 'org.jetbrains.kotlin.jvm'
 apply plugin: 'org.jetbrains.kotlin.plugin.allopen'
 apply plugin: 'opensearch.pluginzip'
@@ -96,7 +95,7 @@ configurations.all {
         force 'org.apache.httpcomponents.client5:httpclient5:5.0.3'
         force 'org.apache.httpcomponents.client5:httpclient5-osgi:5.0.3'
         force 'com.fasterxml.jackson.core:jackson-databind:2.13.4'
-        force 'org.yaml:snakeyaml:1.31'
+        force 'org.yaml:snakeyaml:1.32'
         force 'org.codehaus.plexus:plexus-utils:3.0.24'
     }
 }
@@ -148,10 +147,10 @@ task ktlintFormat(type: JavaExec, group: "formatting") {
     args "-F", "src/**/*.kt", "spi/src/main/**/*.kt"
 }
 
-//detekt {
-//    config = files("detekt.yml")
-//    buildUponDefaultConfig = true
-//}
+detekt {
+    config = files("detekt.yml")
+    buildUponDefaultConfig = true
+}
 
 configurations.testImplementation {
     exclude module: "securemock"
