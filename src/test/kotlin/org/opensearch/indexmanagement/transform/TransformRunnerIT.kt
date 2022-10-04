@@ -736,15 +736,15 @@ class TransformRunnerIT : TransformRestTestCase() {
             assertEquals("Transform did not complete iteration or had incorrect number of documents processed", 15000, transformMetadata.stats.documentsProcessed)
             assertEquals("Transform did not complete iteration", null, transformMetadata.afterKey)
             assertNotNull("Continuous stats were not updated", transformMetadata.continuousStats)
+            assertNotNull("Continuous stats were set, but lastTimestamp was not", transformMetadata.continuousStats!!.lastTimestamp)
+            assertEquals("Not the expected transform status", TransformMetadata.Status.STARTED, transformMetadata.status)
+            assertEquals("Not the expected pages processed", 6L, transformMetadata.stats.pagesProcessed)
+            assertEquals("Not the expected documents indexed", 2L, transformMetadata.stats.documentsIndexed)
+            assertEquals("Not the expected documents processed", 15000L, transformMetadata.stats.documentsProcessed)
+            assertTrue("Doesn't capture indexed time", transformMetadata.stats.indexTimeInMillis > 0)
+            assertTrue("Didn't capture search time", transformMetadata.stats.searchTimeInMillis > 0)
             transformMetadata
         }
-
-        assertEquals("Not the expected transform status", TransformMetadata.Status.STARTED, firstIterationMetadata.status)
-        assertEquals("Not the expected pages processed", 6L, firstIterationMetadata.stats.pagesProcessed)
-        assertEquals("Not the expected documents indexed", 2L, firstIterationMetadata.stats.documentsIndexed)
-        assertEquals("Not the expected documents processed", 15000L, firstIterationMetadata.stats.documentsProcessed)
-        assertTrue("Doesn't capture indexed time", firstIterationMetadata.stats.indexTimeInMillis > 0)
-        assertTrue("Didn't capture search time", firstIterationMetadata.stats.searchTimeInMillis > 0)
 
         waitFor {
             val documentsBehind = getTransformDocumentsBehind(transform.id)
@@ -757,22 +757,20 @@ class TransformRunnerIT : TransformRestTestCase() {
 
         Thread.sleep(5000)
 
-        val secondIterationMetadata = waitFor {
+        waitFor {
             val job = getTransform(transformId = transform.id)
             assertNotNull("Transform job doesn't have metadata set", job.metadataId)
             val transformMetadata = getTransformMetadata(job.metadataId!!)
             assertEquals("Transform did not complete iteration or had incorrect number of documents processed", 15000, transformMetadata.stats.documentsProcessed)
             assertEquals("Transform did not have null afterKey after iteration", null, transformMetadata.afterKey)
             assertTrue("Timestamp was not updated", transformMetadata.continuousStats!!.lastTimestamp!!.isAfter(firstIterationMetadata.continuousStats!!.lastTimestamp))
-            transformMetadata
+            assertEquals("Not the expected transform status", TransformMetadata.Status.STARTED, transformMetadata.status)
+            assertEquals("More than expected pages processed", 6, transformMetadata.stats.pagesProcessed)
+            assertEquals("More than expected documents indexed", 2L, transformMetadata.stats.documentsIndexed)
+            assertEquals("Not the expected documents processed", 15000L, transformMetadata.stats.documentsProcessed)
+            assertEquals("Not the expected indexed time", transformMetadata.stats.indexTimeInMillis, firstIterationMetadata.stats.indexTimeInMillis)
+            assertEquals("Not the expected search time", transformMetadata.stats.searchTimeInMillis, firstIterationMetadata.stats.searchTimeInMillis)
         }
-
-        assertEquals("Not the expected transform status", TransformMetadata.Status.STARTED, secondIterationMetadata.status)
-        assertEquals("More than expected pages processed", 6, secondIterationMetadata.stats.pagesProcessed)
-        assertEquals("More than expected documents indexed", 2L, secondIterationMetadata.stats.documentsIndexed)
-        assertEquals("Not the expected documents processed", 15000L, secondIterationMetadata.stats.documentsProcessed)
-        assertEquals("Not the expected indexed time", secondIterationMetadata.stats.indexTimeInMillis, firstIterationMetadata.stats.indexTimeInMillis)
-        assertEquals("Not the expected search time", secondIterationMetadata.stats.searchTimeInMillis, firstIterationMetadata.stats.searchTimeInMillis)
 
         disableTransform(transform.id)
     }
