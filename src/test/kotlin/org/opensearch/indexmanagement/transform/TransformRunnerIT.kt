@@ -1000,12 +1000,6 @@ class TransformRunnerIT : TransformRestTestCase() {
             assertEquals("Transform did not complete iteration", null, transformMetadata.afterKey)
             assertNotNull("Continuous stats were not updated", transformMetadata.continuousStats)
             assertNotNull("Continuous stats were set, but lastTimestamp was not", transformMetadata.continuousStats!!.lastTimestamp)
-            assertEquals("Not the expected transform status", TransformMetadata.Status.STARTED, transformMetadata.status)
-            assertEquals("Not the expected pages processed", 6L, transformMetadata.stats.pagesProcessed)
-            assertEquals("Not the expected documents indexed", 2L, transformMetadata.stats.documentsIndexed)
-            assertEquals("Not the expected documents processed", 15000L, transformMetadata.stats.documentsProcessed)
-            assertTrue("Doesn't capture indexed time", transformMetadata.stats.indexTimeInMillis > 0)
-            assertTrue("Didn't capture search time", transformMetadata.stats.searchTimeInMillis > 0)
             transformMetadata
         }
 
