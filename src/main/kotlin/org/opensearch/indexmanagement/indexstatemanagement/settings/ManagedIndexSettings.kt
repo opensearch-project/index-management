@@ -101,6 +101,13 @@ class ManagedIndexSettings {
             Setting.Property.Dynamic
         )
 
+        val SWEEP_SKIP_PERIOD: Setting<TimeValue> = Setting.timeSetting(
+            "plugins.index_state_management.coordinator.sweep_skip_period",
+            TimeValue.timeValueMinutes(5),
+            Setting.Property.NodeScope,
+            Setting.Property.Dynamic
+        )
+
         val COORDINATOR_BACKOFF_MILLIS: Setting<TimeValue> = Setting.positiveTimeSetting(
             "plugins.index_state_management.coordinator.backoff_millis",
             LegacyOpenDistroManagedIndexSettings.COORDINATOR_BACKOFF_MILLIS,
