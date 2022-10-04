@@ -49,7 +49,7 @@ class RefreshSearchAnalyzerResponseTests : OpenSearchTestCase() {
         // Case 3: Some shards of an index fail, while some others succeed
         aggregateResponse = listOf(responseI1s1, responseI2s0, responseI2s1)
         aggregateFailures = listOf(failureI1s0)
-        refreshSearchAnalyzerResponse = RefreshSearchAnalyzerResponse(4, 3, 1, aggregateFailures, aggregate_response)
+        refreshSearchAnalyzerResponse = RefreshSearchAnalyzerResponse(4, 3, 1, aggregateFailures, aggregateResponse)
         successfulIndices = refreshSearchAnalyzerResponse.getSuccessfulRefreshDetails()
         Assert.assertTrue(successfulIndices.containsKey(index2))
         Assert.assertFalse(successfulIndices.containsKey(index1))
