@@ -39,7 +39,8 @@ class TransformProcessedBucketLog {
         bucket.entries.sortedBy { it.key }.also {
             it.forEach { entry ->
                 md5Crypt.update(
-                    entry.value.toString().toByteArray()
+                    if (entry.value == null) "null".toByteArray()
+                    else entry.value.toString().toByteArray()
                 )
             }
         }
