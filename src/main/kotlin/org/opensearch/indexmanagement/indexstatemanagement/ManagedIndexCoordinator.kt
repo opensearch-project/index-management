@@ -202,8 +202,8 @@ class ManagedIndexCoordinator(
         // Instead of using a LocalNodeMasterListener to track cluster manager changes, this service will
         // track them here to avoid conditions where cluster manager listener events run after other
         // listeners that depend on what happened in the cluster manager listener
-        if (this.isClusterManager != event.localNodeMaster()) {
-            this.isClusterManager = event.localNodeMaster()
+        if (this.isClusterManager != event.localNodeClusterManager()) {
+            this.isClusterManager = event.localNodeClusterManager()
             if (this.isClusterManager) {
                 onClusterManager()
             } else {
@@ -215,7 +215,7 @@ class ManagedIndexCoordinator(
 
         if (event.isNewCluster) return
 
-        if (!event.localNodeMaster()) return
+        if (!event.localNodeClusterManager()) return
 
         if (!event.metadataChanged()) return
 
@@ -474,7 +474,7 @@ class ManagedIndexCoordinator(
         if (!isIndexStateManagementEnabled()) return
 
         // Do not setup background sweep if we're not the elected cluster manager node
-        if (!clusterService.state().nodes().isLocalNodeElectedMaster) return
+        if (!clusterService.state().nodes().isLocalNodeElectedClusterManager) return
 
         // Cancel existing background sweep
         scheduledFullSweep?.cancel()
@@ -505,7 +505,7 @@ class ManagedIndexCoordinator(
     fun initMoveMetadata() {
         if (!metadataServiceEnabled) return
         if (!isIndexStateManagementEnabled()) return
-        if (!clusterService.state().nodes().isLocalNodeElectedMaster) return
+        if (!clusterService.state().nodes().isLocalNodeElectedClusterManager) return
         scheduledMoveMetadata?.cancel()
 
         if (metadataService.finishFlag) {
@@ -535,7 +535,7 @@ class ManagedIndexCoordinator(
     fun initTemplateMigration(enableSetting: Long) {
         if (!templateMigrationEnabled) return
         if (!isIndexStateManagementEnabled()) return
-        if (!clusterService.state().nodes().isLocalNodeElectedMaster) return
+        if (!clusterService.state().nodes().isLocalNodeElectedClusterManager) return
         scheduledTemplateMigration?.cancel()
 
         // if service has finished, re-enable it
