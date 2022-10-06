@@ -269,7 +269,6 @@ object ManagedIndexRunner :
         // the cluster state index uuid differs from the one in the managed index config then the config is referring
         // to a different index which does not exist in the cluster. We need to check all of the extensions to confirm an index exists
         if (clusterStateIndexMetadata == null || clusterStateIndexUUID != managedIndexConfig.indexUuid) {
-            clusterStateIndexMetadata = null
             // If the cluster state/default index type didn't have an index with a matching name and uuid combination, try all other index types
             val nonDefaultIndexTypes = indexMetadataProvider.services.keys.filter { it != DEFAULT_INDEX_TYPE }
             val multiTypeIndexNameToMetaData =
