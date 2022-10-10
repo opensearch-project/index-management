@@ -266,7 +266,7 @@ data class Transform(
         }
 
         val supportedAggregations = listOf("sum", "max", "min", "value_count", "avg", "scripted_metric", "percentiles")
-        const val LOCK_DURATION_SECONDS = 1800L
+        const val LOCK_DURATION_SECONDS = 60L
         const val TRANSFORM_TYPE = "transform"
         const val TRANSFORM_ID_FIELD = "transform_id"
         const val ENABLED_FIELD = "enabled"

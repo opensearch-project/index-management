@@ -20,6 +20,7 @@ import org.opensearch.client.Client
 import org.opensearch.cluster.metadata.IndexMetadata
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.settings.Settings
+import org.opensearch.common.unit.TimeValue
 import org.opensearch.common.xcontent.XContentType
 import org.opensearch.index.Index
 import org.opensearch.index.query.BoolQueryBuilder
@@ -40,6 +41,8 @@ import org.opensearch.indexmanagement.transform.model.TransformSearchResult
 import org.opensearch.indexmanagement.transform.model.TransformStats
 import org.opensearch.indexmanagement.transform.settings.TransformSettings.Companion.TRANSFORM_JOB_SEARCH_BACKOFF_COUNT
 import org.opensearch.indexmanagement.transform.settings.TransformSettings.Companion.TRANSFORM_JOB_SEARCH_BACKOFF_MILLIS
+import org.opensearch.indexmanagement.transform.util.TransformContext
+import org.opensearch.indexmanagement.transform.util.TransformLockManager
 import org.opensearch.indexmanagement.util.IndexUtils.Companion.LUCENE_MAX_CLAUSES
 import org.opensearch.indexmanagement.util.IndexUtils.Companion.ODFE_MAGIC_NULL
 import org.opensearch.indexmanagement.util.IndexUtils.Companion.hashToFixedSize
@@ -58,6 +61,7 @@ import org.opensearch.search.aggregations.metrics.Percentiles
 import org.opensearch.search.aggregations.metrics.ScriptedMetric
 import org.opensearch.search.builder.SearchSourceBuilder
 import org.opensearch.transport.RemoteTransportException
+import java.util.concurrent.TimeUnit
 import kotlin.math.max
 import kotlin.math.pow
 
@@ -110,24 +114,25 @@ class TransformSearchService(
     }
 
     @Suppress("RethrowCaughtException")
-    suspend fun getShardLevelModifiedBuckets(transform: Transform, afterKey: Map<String, Any>?, currentShard: ShardNewDocuments): BucketSearchResult {
+    suspend fun getShardLevelModifiedBuckets(transform: Transform, afterKey: Map<String, Any>?, currentShard: ShardNewDocuments, transformContext: TransformContext): BucketSearchResult {
         try {
             var retryAttempt = 0
             var pageSize = calculateMaxPageSize(transform)
-            val searchResponse = backoffPolicy.retry(logger) {
+            val searchResponse = backoffPolicy.retry(logger, transformContext.transformLockManager) {
                 val pageSizeDecay = 2f.pow(retryAttempt++)
                 client.suspendUntil { listener: ActionListener<SearchResponse> ->
-                    pageSize = max(1, pageSize.div(pageSizeDecay.toInt()))
+                    pageSize = transformContext.pageSize ?: max(1, pageSize.div(pageSizeDecay.toInt()))
                     if (retryAttempt > 1) {
                         logger.debug(
                             "Attempt [${retryAttempt - 1}] to get modified buckets for transform [${transform.id}]. Attempting " +
                                 "again with reduced page size [$pageSize]"
                         )
                     }
-                    val request = getShardLevelBucketsSearchRequest(transform, afterKey, pageSize, currentShard)
+                    val request = getShardLevelBucketsSearchRequest(transform, afterKey, pageSize, currentShard, transformContext.getMaxRequestTimeout())
                     search(request, listener)
                 }
             }
+            transformContext.pageSize = pageSize
             return convertBucketSearchResponse(transform, searchResponse)
         } catch (e: TransformSearchServiceException) {
             throw e
@@ -153,7 +158,8 @@ class TransformSearchService(
     suspend fun executeCompositeSearch(
         transform: Transform,
         afterKey: Map<String, Any>? = null,
-        modifiedBuckets: MutableSet<Map<String, Any>>? = null
+        modifiedBuckets: MutableSet<Map<String, Any>>? = null,
+        transformContext: TransformContext
     ): TransformSearchResult {
         try {
             var pageSize: Int =
@@ -163,21 +169,22 @@ class TransformSearchService(
                     modifiedBuckets.size
 
             var retryAttempt = 0
-            val searchResponse = backoffPolicy.retry(logger) {
+            val searchResponse = backoffPolicy.retry(logger, transformContext.transformLockManager) {
                 // TODO: Should we store the value of the past successful page size (?)
-                val pageSizeDecay = 2f.pow(retryAttempt++)
+                val pageSizeDecay =  2f.pow(retryAttempt++)
                 client.suspendUntil { listener: ActionListener<SearchResponse> ->
-                    pageSize = max(1, pageSize.div(pageSizeDecay.toInt()))
+                    pageSize = transformContext.pageSize ?: max(1, pageSize.div(pageSizeDecay.toInt()))
                     if (retryAttempt > 1) {
                         logger.debug(
                             "Attempt [${retryAttempt - 1}] of composite search failed for transform [${transform.id}]. Attempting " +
                                 "again with reduced page size [$pageSize]"
                         )
                     }
-                    val request = getSearchServiceRequest(transform, afterKey, pageSize, modifiedBuckets)
+                    val request = getSearchServiceRequest(transform, afterKey, pageSize, modifiedBuckets, transformContext.getMaxRequestTimeout())
                     search(request, listener)
                 }
             }
+            transformContext.pageSize = pageSize
             return convertResponse(transform, searchResponse, modifiedBuckets = modifiedBuckets)
         } catch (e: TransformSearchServiceException) {
             throw e
@@ -202,7 +209,8 @@ class TransformSearchService(
             transform: Transform,
             afterKey: Map<String, Any>? = null,
             pageSize: Int,
-            modifiedBuckets: MutableSet<Map<String, Any>>? = null
+            modifiedBuckets: MutableSet<Map<String, Any>>? = null,
+            timeout: Long? = null
         ): SearchRequest {
             val sources = mutableListOf<CompositeValuesSourceBuilder<*>>()
             transform.groups.forEach { group -> sources.add(group.toSourceBuilder().missingBucket(true)) }
@@ -215,7 +223,7 @@ class TransformSearchService(
             } else {
                 getQueryWithModifiedBuckets(transform.dataSelectionQuery, modifiedBuckets, transform.groups)
             }
-            return getSearchServiceRequest(transform.sourceIndex, query, aggregationBuilder)
+            return getSearchServiceRequest(transform.sourceIndex, query, aggregationBuilder, timeout)
         }
 
         private fun getQueryWithModifiedBuckets(
@@ -243,22 +251,28 @@ class TransformSearchService(
             return query
         }
 
-        private fun getSearchServiceRequest(index: String, query: QueryBuilder, aggregationBuilder: CompositeAggregationBuilder): SearchRequest {
+        private fun getSearchServiceRequest(index: String, query: QueryBuilder, aggregationBuilder: CompositeAggregationBuilder, timeout: Long? = null): SearchRequest {
             val searchSourceBuilder = SearchSourceBuilder()
                 .trackTotalHits(false)
                 .size(0)
                 .aggregation(aggregationBuilder)
                 .query(query)
-            return SearchRequest(index)
+            val request = SearchRequest(index)
                 .source(searchSourceBuilder)
                 .allowPartialSearchResults(false)
+
+            if(timeout != null){
+                request.cancelAfterTimeInterval = TimeValue(timeout, TimeUnit.SECONDS)
+            }
+            return request
         }
 
-        fun getShardLevelBucketsSearchRequest(
+        private fun getShardLevelBucketsSearchRequest(
             transform: Transform,
             afterKey: Map<String, Any>? = null,
             pageSize: Int,
-            currentShard: ShardNewDocuments
+            currentShard: ShardNewDocuments,
+            timeout: Long?
         ): SearchRequest {
             val rangeQuery = getSeqNoRangeQuery(currentShard.from, currentShard.to)
             val query = QueryBuilders.boolQuery().filter(rangeQuery).must(transform.dataSelectionQuery)
@@ -266,7 +280,7 @@ class TransformSearchService(
             val aggregationBuilder = CompositeAggregationBuilder(transform.id, sources)
                 .size(pageSize)
                 .apply { afterKey?.let { this.aggregateAfter(it) } }
-            return getSearchServiceRequest(currentShard.shardId.indexName, query, aggregationBuilder)
+            return getSearchServiceRequest(currentShard.shardId.indexName, query, aggregationBuilder, timeout)
                 .preference("_shards:" + currentShard.shardId.id.toString())
         }
 

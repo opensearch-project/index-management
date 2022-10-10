@@ -48,9 +48,11 @@ import org.opensearch.indexmanagement.indexstatemanagement.action.ShrinkAction
 import org.opensearch.indexmanagement.indexstatemanagement.model.ISMTemplate
 import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata
+import org.opensearch.indexmanagement.transform.util.TransformLockManager
 import org.opensearch.indexmanagement.util.NO_ID
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.DEFAULT_INJECT_ROLES
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.INTERNAL_REQUEST
+import org.opensearch.jobscheduler.spi.LockModel
 import org.opensearch.jobscheduler.spi.utils.LockService
 import org.opensearch.rest.RestStatus
 import org.opensearch.transport.RemoteTransportException
@@ -62,6 +64,7 @@ import kotlin.coroutines.resumeWithException
 import kotlin.coroutines.suspendCoroutine
 
 const val OPENDISTRO_SECURITY_PROTECTED_INDICES_CONF_REQUEST = "_opendistro_security_protected_indices_conf_request"
+private const val TIME_EXCEED_MESSAGE = "Time exceeded"
 
 fun contentParser(bytesReference: BytesReference): XContentParser {
     return XContentHelper.createParser(
@@ -185,11 +188,61 @@ suspend fun <T> BackoffPolicy.retry(
 }
 
 /**
+ * Retries the given [block] of code as specified by the receiver [BackoffPolicy],
+ * if [block] throws an [OpenSearchException] that is retriable (502, 503, 504 or 500 with message Time exceeded).
+ *
+ * If all retries fail the final exception will be rethrown. Exceptions caught during intermediate retries are
+ * logged as warnings to [logger]. Similar to [org.opensearch.action.bulk.Retry], except these retries on
+ * 502, 503, 504, 429 error codes as well as 500 with Time exceeded. If the request is timeout, lock will be renewed
+ *
+ * @param logger - logger used to log intermediate failures
+ * @param transformLockManager - lock manager that stores current lock used in order to renew the lock if the request timed out
+ * @param retryOn - any additional [RestStatus] values that should be retried
+ * @param block - the block of code to retry. This should be a suspend function.
+ */
+suspend fun <T> BackoffPolicy.retry(
+    logger: Logger,
+    transformLockManager: TransformLockManager,
+    retryOn: List<RestStatus> = emptyList(),
+    block: suspend (backoff: TimeValue) -> T
+): T {
+    val iter = iterator()
+    var backoff: TimeValue = TimeValue.ZERO
+    do {
+        try {
+            return block(backoff)
+        } catch (e: OpenSearchException) {
+            if (iter.hasNext() && (e.isRetryable() || e.isTimedOut() || retryOn.contains(e.status()))) {
+                backoff = iter.next()
+                logger.warn("Operation failed. Retrying in $backoff.", e)
+                delay(backoff.millis)
+                // In the case of time out, renew the lock
+                if(e.isTimedOut()) {
+                    transformLockManager.renewLockForScheduledJob()
+                }
+            } else {
+                throw e
+            }
+        }
+    } while (true)
+}
+
+fun LockModel.lockExpirationInSeconds() = lockTime.epochSecond + lockDurationSeconds -  Instant.now().epochSecond
+
+/**
  * Retries on 502, 503 and 504 per elastic client's behavior: https://github.com/elastic/elasticsearch-net/issues/2061
  * 429 must be retried manually as it's not clear if it's ok to retry for requests other than Bulk requests.
  */
 fun OpenSearchException.isRetryable(): Boolean {
     return (status() in listOf(RestStatus.BAD_GATEWAY, RestStatus.SERVICE_UNAVAILABLE, RestStatus.GATEWAY_TIMEOUT))
+}
+
+/**
+ * Retries on 500 and Time exceeded message which means that the timeout occurred. In that case
+ * retry request with reduced size param and timeout param set based on the lock expiration
+ */
+fun OpenSearchException.isTimedOut(): Boolean {
+    return status()  == RestStatus.INTERNAL_SERVER_ERROR && TIME_EXCEED_MESSAGE == message
 }
 
 /**
