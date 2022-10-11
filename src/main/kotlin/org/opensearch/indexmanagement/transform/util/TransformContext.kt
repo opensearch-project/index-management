@@ -5,26 +5,28 @@
 
 package org.opensearch.indexmanagement.transform.util
 
-import org.opensearch.indexmanagement.opensearchapi.lockExpirationInSeconds
-import org.opensearch.indexmanagement.transform.model.Transform
-import org.opensearch.jobscheduler.spi.JobExecutionContext
-
+/**
+ * Context initialized on each transform execution
+ */
 class TransformContext(
     val transformLockManager: TransformLockManager,
-    var pageSize: Int?
+    var lastSuccessfulPageSize: Int? = null
 ) {
-    fun getMaxRequestTimeout(): Long {
-        val maxRequestTimeout = transformLockManager.getLock()?.lockExpirationInSeconds()?.minus(60)
-        // TODO - add log
-        if (maxRequestTimeout == null || maxRequestTimeout < 0L) {
-            throw IllegalArgumentException("asdased")
+    fun getMaxRequestTimeoutInSeconds(): Long? {
+        // Lock timeout must be greater than LOCK_BUFFER
+        var maxRequestTimeout = transformLockManager.lockExpirationInSeconds()?.minus(LOCK_BUFFER_SECONDS)
+        // Do not set invalid timeout
+        if (maxRequestTimeout != null && maxRequestTimeout < 0) {
+            return null
         }
         return maxRequestTimeout
     }
 
+    suspend fun renewLockForLongSearch(timeSpentOnSearch: Long) {
+        transformLockManager.renewLockForLongSearch(timeSpentOnSearch)
+    }
+
     companion object {
-        suspend fun initTransformContext(transform: Transform, context: JobExecutionContext): TransformContext {
-            return TransformContext(TransformLockManager.initTransformLockManager(transform, context), null)
-        }
+        private const val LOCK_BUFFER_SECONDS = 60
     }
 }

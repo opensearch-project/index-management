@@ -108,15 +108,15 @@ object TransformRunner :
         val transformProcessedBucketLog = TransformProcessedBucketLog()
         var bucketsToTransform = BucketsToTransform(HashSet(), metadata)
 
-        val transformContext = TransformContext.initTransformContext(transform, context)
+        val transformContext = TransformContext(TransformLockManager(transform, context))
+        // Acquires the lock if there is no running job execution for the given transform; Lock is acquired per transform
         val transformLockManager = transformContext.transformLockManager
+        transformLockManager.acquireLockForScheduledJob()
         try {
             do {
                 when {
-                    transformLockManager.getLock() == null -> {
-                        val thread = Thread.currentThread().id
-                        logger.warn("Cannot acquire lock for transform job ${transform.id} and thread $thread")
-                        // If we fail to get the lock we won't fail the job, instead we return early
+                    transformLockManager.lock == null -> {
+                        logger.warn("Cannot acquire lock for transform job ${transform.id}")
                         return
                     }
                     listOf(TransformMetadata.Status.STOPPED, TransformMetadata.Status.FINISHED).contains(metadata.status) -> {
@@ -124,9 +124,6 @@ object TransformRunner :
                         return
                     }
                     else -> {
-                        val thread = Thread.currentThread().id
-                        logger.warn("Thread $thread acquired a lock")
-
                         val validatedMetadata = validateTransform(transform, currentMetadata)
                         if (validatedMetadata.status == TransformMetadata.Status.FAILED) {
                             currentMetadata = validatedMetadata
@@ -168,7 +165,7 @@ object TransformRunner :
                             currentMetadata = transformMetadataService.writeMetadata(currentMetadata, true)
                         }
                         // we attempt to renew lock for every loop of transform
-                       transformLockManager.renewLockForScheduledJob()
+                        transformLockManager.renewLockForScheduledJob()
                     }
                 }
             } while (bucketsToTransform.currentShard != null || currentMetadata.afterKey != null)
@@ -180,7 +177,7 @@ object TransformRunner :
                 failureReason = e.localizedMessage
             )
         } finally {
-            if(transformLockManager.getLock() != null){
+            transformLockManager.lock?.let {
                 // Update the global checkpoints only after execution finishes successfully
                 if (transform.continuous && currentMetadata.status != TransformMetadata.Status.FAILED) {
                     currentMetadata = currentMetadata.copy(
@@ -198,7 +195,11 @@ object TransformRunner :
         }
     }
 
-    private suspend fun getBucketsToTransformIteration(transform: Transform, bucketsToTransform: BucketsToTransform, transformContext: TransformContext): BucketsToTransform {
+    private suspend fun getBucketsToTransformIteration(
+        transform: Transform,
+        bucketsToTransform: BucketsToTransform,
+        transformContext: TransformContext
+    ): BucketsToTransform {
         var currentBucketsToTransform = bucketsToTransform
         val currentShard = bucketsToTransform.currentShard
         // Clear modified buckets from previous iteration
@@ -206,7 +207,12 @@ object TransformRunner :
 
         if (currentShard != null) {
             val shardLevelModifiedBuckets = withTransformSecurityContext(transform) {
-                transformSearchService.getShardLevelModifiedBuckets(transform, currentBucketsToTransform.metadata.afterKey, currentShard, transformContext)
+                transformSearchService.getShardLevelModifiedBuckets(
+                    transform,
+                    currentBucketsToTransform.metadata.afterKey,
+                    currentShard,
+                    transformContext
+                )
             }
             currentBucketsToTransform.modifiedBuckets.addAll(shardLevelModifiedBuckets.modifiedBuckets)
             val mergedSearchTime = currentBucketsToTransform.metadata.stats.searchTimeInMillis +
@@ -288,9 +294,6 @@ object TransformRunner :
         transformContext: TransformContext
     ): TransformMetadata {
         val updatedMetadata = if (modifiedBuckets.isNotEmpty()) {
-
-            Thread.sleep(61000)
-
             val transformSearchResult = withTransformSecurityContext(transform) {
                 transformSearchService.executeCompositeSearch(transform, null, modifiedBuckets, transformContext)
             }
