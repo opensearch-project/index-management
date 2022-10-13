@@ -237,11 +237,11 @@ class RolloverActionIT : IndexStateManagementRestTestCase() {
 
         // assuming our ingestion is randomly split between the 20 primary shards
         // then 250kb/20 gives around 12.5kb per primary shard which is below our 100kb condition
-        val KB_250 = 250_000
+        val kb250 = 250_000
         var primaryStoreSizeBytes = 0
         var count = 0
         // Ingest data into the test index until the total size of the index is greater than our min primary size condition
-        while (primaryStoreSizeBytes < KB_250) {
+        while (primaryStoreSizeBytes < kb250) {
             // this count should never get as high as 10... if it does just fail the test
             if (count++ > 10) fail("Something is wrong with the data ingestion for testing rollover condition")
             insertSampleData(index = firstIndex, docCount = 20, jsonString = "{ \"test_field\": \"${OpenSearchTestCase.randomAlphaOfLength(7000)}\" }", delay = 0)
@@ -271,12 +271,12 @@ class RolloverActionIT : IndexStateManagementRestTestCase() {
             assertThat("Did not have min size current", minPrimarySize["current"], isA(String::class.java))
         }
 
-        val KB_150 = 150_000
+        val kb150 = 150_000
         var primaryShardSizeBytes = 0
         count = 0
         // Ingest data into the test index using custom routing so it always goes to a single shard until the size of the
         // primary shard is over 150kb
-        while (primaryShardSizeBytes < KB_150) {
+        while (primaryShardSizeBytes < kb150) {
             // this count should never get as high as 10... if it does just fail the test
             if (count++ > 10) fail("Something is wrong with the data ingestion for testing rollover condition")
             insertSampleData(index = firstIndex, docCount = 20, delay = 0, jsonString = "{ \"test_field\": \"${OpenSearchTestCase.randomAlphaOfLength(7000)}\" }", routing = "custom_routing")

@@ -21,7 +21,6 @@ class ManagedIndexSettings {
         const val DEFAULT_RESTRICTED_PATTERN = "\\.opendistro_security|\\.kibana.*|\\$INDEX_MANAGEMENT_INDEX"
         val ALLOW_LIST_NONE = emptyList<String>()
         val SNAPSHOT_DENY_LIST_NONE = emptyList<String>()
-        const val HOST_DENY_LIST = "opendistro.destination.host.deny_list"
 
         val INDEX_STATE_MANAGEMENT_ENABLED: Setting<Boolean> = Setting.boolSetting(
             "plugins.index_state_management.enabled",
@@ -105,6 +104,13 @@ class ManagedIndexSettings {
         val SWEEP_PERIOD: Setting<TimeValue> = Setting.timeSetting(
             "plugins.index_state_management.coordinator.sweep_period",
             LegacyOpenDistroManagedIndexSettings.SWEEP_PERIOD,
+            TimeValue.timeValueMinutes(5),
+            Setting.Property.NodeScope,
+            Setting.Property.Dynamic
+        )
+
+        val SWEEP_SKIP_PERIOD: Setting<TimeValue> = Setting.timeSetting(
+            "plugins.index_state_management.coordinator.sweep_skip_period",
             TimeValue.timeValueMinutes(5),
             Setting.Property.NodeScope,
             Setting.Property.Dynamic
