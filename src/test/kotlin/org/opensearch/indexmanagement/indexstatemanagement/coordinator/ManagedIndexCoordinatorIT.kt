@@ -61,6 +61,7 @@ class ManagedIndexCoordinatorIT : IndexStateManagementRestTestCase() {
     }
 
     fun `test managed index metadata is cleaned up after removing policy`() {
+        disableValidationService()
         val policy = createRandomPolicy()
         val (index) = createIndex(policyID = policy.id)
 

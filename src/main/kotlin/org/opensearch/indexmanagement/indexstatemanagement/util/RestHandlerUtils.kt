@@ -23,6 +23,7 @@ import org.opensearch.common.xcontent.XContentFactory
 import org.opensearch.index.Index
 import org.opensearch.indexmanagement.indexstatemanagement.model.ChangePolicy
 import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexConfig
+// import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.DEFAULT_VALIDATION_SERVICE_ENABLED
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.updateindexmetadata.UpdateManagedIndexMetaDataAction
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.updateindexmetadata.UpdateManagedIndexMetaDataRequest
 import org.opensearch.indexmanagement.opensearchapi.optionalTimeField
@@ -53,6 +54,9 @@ const val DEFAULT_POLICY_SORT_FIELD = "policy.policy_id.keyword"
 
 const val SHOW_POLICY_QUERY_PARAM = "show_policy"
 const val DEFAULT_EXPLAIN_SHOW_POLICY = false
+
+const val SHOW_VALIDATE_ACTION = "validate_action"
+const val DEFAULT_EXPLAIN_VALIDATE_ACTION = false
 
 const val INDEX_HIDDEN = "index.hidden"
 const val INDEX_NUMBER_OF_SHARDS = "index.number_of_shards"

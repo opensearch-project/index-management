@@ -79,6 +79,7 @@ class ISMTemplateRestAPIIT : IndexStateManagementRestTestCase() {
     }
 
     fun `test ism template managing index`() {
+        disableValidationService()
         val indexName1 = "log-000001"
         val indexName2 = "log-000002"
         val indexName3 = "log-000003"
