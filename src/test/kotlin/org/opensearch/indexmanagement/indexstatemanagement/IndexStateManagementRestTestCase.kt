@@ -57,6 +57,7 @@ import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedInde
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.PolicyRetryInfoMetaData
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StateMetaData
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepMetaData
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ValidationResult
 import org.opensearch.indexmanagement.util._ID
 import org.opensearch.indexmanagement.util._PRIMARY_TERM
 import org.opensearch.indexmanagement.util._SEQ_NO
@@ -79,6 +80,16 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
     protected fun disableIndexStateManagementJitter() {
         // jitter would add a test-breaking delay to the integration tests
         updateIndexStateManagementJitterSetting(0.0)
+    }
+
+    @Before
+    protected fun disableValidationService() {
+        updateValidationServiceSetting(false)
+    }
+
+    @Before
+    protected fun enableValidationService() {
+        updateValidationServiceSetting(true)
     }
 
     protected fun createPolicy(
@@ -282,6 +293,10 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
 
     protected fun updateIndexStateManagementJitterSetting(value: Double) {
         updateClusterSetting(ManagedIndexSettings.JITTER.key, value.toString(), false)
+    }
+
+    protected fun updateValidationServiceSetting(value: Boolean) {
+        updateClusterSetting(ManagedIndexSettings.VALIDATION_SERVICE_ENABLED.key, value.toString(), false)
     }
 
     protected fun updateIndexSetting(
@@ -617,6 +632,42 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
         // make sure metadata is initialised
         assertTrue(metadata.transitionTo != null || metadata.stateMetaData != null || metadata.info != null || metadata.policyCompleted != null)
         return metadata
+    }
+
+    // Calls explain API for a single concrete index and converts the response into a ValidationResponse
+    // This only works for indices with a ManagedIndexMetaData that has been initialized
+    @Suppress("LoopWithTooManyJumpStatements")
+    protected fun getExplainValidationResult(indexName: String): ValidationResult {
+        if (indexName.contains("*") || indexName.contains(",")) {
+            throw IllegalArgumentException("This method is only for a single concrete index")
+        }
+
+        val response = client().makeRequest(RestRequest.Method.GET.toString(), "${RestExplainAction.EXPLAIN_BASE_URI}/$indexName?validate_action=true")
+//        logger.info("response content")
+//        logger.info(response.entity.content.bufferedReader().use { it.readText() })
+
+        assertEquals("Unexpected RestStatus", RestStatus.OK, response.restStatus())
+        lateinit var validationResult: ValidationResult
+        val xcp = createParser(XContentType.JSON.xContent(), response.entity.content)
+        ensureExpectedToken(Token.START_OBJECT, xcp.nextToken(), xcp)
+        while (xcp.nextToken() != Token.END_OBJECT) {
+            val cn = xcp.currentName()
+            if (cn == "total_managed_indices") continue
+
+            xcp.nextToken() // going into start object
+            // loop next token until you find currentName == validate
+            while (true) {
+                val cn2 = xcp.currentName()
+                if (cn2 == "validate") {
+                    ensureExpectedToken(Token.START_OBJECT, xcp.nextToken(), xcp)
+                    validationResult = ValidationResult.parse(xcp)
+                    break
+                }
+                xcp.nextToken()
+            }
+            break // bypass roles field
+        }
+        return validationResult
     }
 
     protected fun rolloverIndex(alias: String) {

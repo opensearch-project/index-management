@@ -7,11 +7,15 @@
 package org.opensearch.indexmanagement.indexstatemanagement.util
 
 import org.apache.logging.log4j.Logger
+import org.opensearch.OpenSearchParseException
+import org.opensearch.action.support.clustermanager.ClusterManagerNodeRequest
 import org.opensearch.action.support.master.AcknowledgedResponse
 import org.opensearch.client.Client
 import org.opensearch.common.io.stream.StreamInput
 import org.opensearch.common.io.stream.StreamOutput
 import org.opensearch.common.io.stream.Writeable
+import org.opensearch.common.logging.DeprecationLogger
+import org.opensearch.common.unit.TimeValue
 import org.opensearch.common.xcontent.ToXContent
 import org.opensearch.common.xcontent.ToXContentFragment
 import org.opensearch.common.xcontent.XContentBuilder
@@ -19,10 +23,12 @@ import org.opensearch.common.xcontent.XContentFactory
 import org.opensearch.index.Index
 import org.opensearch.indexmanagement.indexstatemanagement.model.ChangePolicy
 import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexConfig
+// import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.DEFAULT_VALIDATION_SERVICE_ENABLED
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.updateindexmetadata.UpdateManagedIndexMetaDataAction
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.updateindexmetadata.UpdateManagedIndexMetaDataRequest
 import org.opensearch.indexmanagement.opensearchapi.optionalTimeField
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
+import org.opensearch.rest.RestRequest
 import java.lang.Exception
 import java.time.Instant
 
@@ -48,6 +54,9 @@ const val DEFAULT_POLICY_SORT_FIELD = "policy.policy_id.keyword"
 
 const val SHOW_POLICY_QUERY_PARAM = "show_policy"
 const val DEFAULT_EXPLAIN_SHOW_POLICY = false
+
+const val SHOW_VALIDATE_ACTION = "validate_action"
+const val DEFAULT_EXPLAIN_VALIDATE_ACTION = false
 
 const val INDEX_HIDDEN = "index.hidden"
 const val INDEX_NUMBER_OF_SHARDS = "index.number_of_shards"
@@ -125,4 +134,21 @@ suspend fun removeClusterStateMetadatas(client: Client, logger: Logger, indices:
     } catch (e: Exception) {
         logger.error("Failed to clean cluster state metadata for $indices")
     }
+}
+
+const val MASTER_TIMEOUT_DEPRECATED_MESSAGE =
+    "Parameter [master_timeout] is deprecated and will be removed in 3.0. To support inclusive language, please use [cluster_manager_timeout] instead."
+const val DUPLICATE_PARAMETER_ERROR_MESSAGE =
+    "Please only use one of the request parameters [master_timeout, cluster_manager_timeout]."
+fun parseClusterManagerTimeout(request: RestRequest, deprecationLogger: DeprecationLogger, restActionName: String): TimeValue {
+    var timeout = request.paramAsTime("cluster_manager_timeout", ClusterManagerNodeRequest.DEFAULT_CLUSTER_MANAGER_NODE_TIMEOUT)
+
+    if (request.hasParam("master_timeout")) {
+        deprecationLogger.deprecate(restActionName + "_master_timeout_parameter", MASTER_TIMEOUT_DEPRECATED_MESSAGE)
+        if (request.hasParam("cluster_manager_timeout")) {
+            throw OpenSearchParseException(DUPLICATE_PARAMETER_ERROR_MESSAGE)
+        }
+        timeout = request.paramAsTime("master_timeout", timeout)
+    }
+    return timeout
 }

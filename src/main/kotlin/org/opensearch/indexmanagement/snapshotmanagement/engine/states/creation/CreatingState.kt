@@ -44,7 +44,7 @@ object CreatingState : State {
         if (snapshotName == null) {
             val getSnapshotsResult = client.getSnapshots(
                 job, job.policyName + "*", metadataBuilder,
-                log, null, getSnapshotsErrorMessage(),
+                log, null, SNAPSHOT_ERROR_MESSAGE,
             )
             metadataBuilder = getSnapshotsResult.metadataBuilder
             if (getSnapshotsResult.failed) {
@@ -86,10 +86,10 @@ object CreatingState : State {
 
     private fun handleException(ex: Exception, snapshotName: String, metadataBuilder: SMMetadata.Builder, log: Logger): SMResult {
         if (ex is ConcurrentSnapshotExecutionException) {
-            log.error(getConcurrentSnapshotMessage(), ex)
+            log.error(CONCURRENT_SNAPSHOT_MESSAGE, ex)
             metadataBuilder.setLatestExecution(
                 status = SMMetadata.LatestExecution.Status.RETRYING,
-                message = getConcurrentSnapshotMessage(),
+                message = CONCURRENT_SNAPSHOT_MESSAGE,
             )
             return SMResult.Stay(metadataBuilder)
         }
@@ -102,10 +102,10 @@ object CreatingState : State {
         return SMResult.Fail(metadataBuilder, WorkflowType.CREATION)
     }
 
-    fun getConcurrentSnapshotMessage() = "Concurrent snapshot exception happened, retrying..."
+    const val CONCURRENT_SNAPSHOT_MESSAGE = "Concurrent snapshot exception happened, retrying..."
     private fun getSnapshotCreationStartedMessage(snapshotName: String) =
         "Snapshot $snapshotName creation has been started and waiting for completion."
-    private fun getSnapshotsErrorMessage() =
+    private const val SNAPSHOT_ERROR_MESSAGE =
         "Caught exception while getting snapshots to decide if snapshot has been created in previous execution period."
     private fun getCreateSnapshotErrorMessage(snapshotName: String) =
         "Caught exception while creating snapshot $snapshotName."

@@ -37,6 +37,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.IndexStateManagementH
 import org.opensearch.indexmanagement.indexstatemanagement.ManagedIndexCoordinator
 import org.opensearch.indexmanagement.indexstatemanagement.ManagedIndexRunner
 import org.opensearch.indexmanagement.indexstatemanagement.MetadataService
+import org.opensearch.indexmanagement.indexstatemanagement.PluginVersionSweepCoordinator
 import org.opensearch.indexmanagement.indexstatemanagement.SkipExecution
 import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexConfig
 import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
@@ -73,7 +74,8 @@ import org.opensearch.indexmanagement.indexstatemanagement.transport.action.retr
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.updateindexmetadata.TransportUpdateManagedIndexMetaDataAction
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.updateindexmetadata.UpdateManagedIndexMetaDataAction
 import org.opensearch.indexmanagement.indexstatemanagement.util.DEFAULT_INDEX_TYPE
-import org.opensearch.indexmanagement.migration.ISMTemplateService
+import org.opensearch.indexmanagement.indexstatemanagement.validation.ValidationService
+import org.opensearch.indexmanagement.indexstatemanagement.migration.ISMTemplateService
 import org.opensearch.indexmanagement.refreshanalyzer.RefreshSearchAnalyzerAction
 import org.opensearch.indexmanagement.refreshanalyzer.RestRefreshSearchAnalyzerAction
 import org.opensearch.indexmanagement.refreshanalyzer.TransportRefreshSearchAnalyzerAction
@@ -186,6 +188,7 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
 
     private val logger = LogManager.getLogger(javaClass)
     lateinit var indexManagementIndices: IndexManagementIndices
+    lateinit var validationService: ValidationService
     lateinit var clusterService: ClusterService
     lateinit var indexNameExpressionResolver: IndexNameExpressionResolver
     lateinit var rollupInterceptor: RollupInterceptor
@@ -280,7 +283,7 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
         indexManagementExtensions.forEach { extension ->
             val extensionName = extension.getExtensionName()
             if (extensionName in extensions) {
-                throw IllegalStateException("Multiple extensions of IndexManagement have same name $extensionName - not supported")
+                error("Multiple extensions of IndexManagement have same name $extensionName - not supported")
             }
             extension.getISMActionParsers().forEach { parser ->
                 ISMActionsParser.instance.addParser(parser, extensionName)
@@ -288,7 +291,7 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
             indexMetadataServices.add(extension.getIndexMetadataService())
             extension.overrideClusterStateIndexUuidSetting()?.let {
                 if (customIndexUUIDSetting != null) {
-                    throw IllegalStateException(
+                    error(
                         "Multiple extensions of IndexManagement plugin overriding ClusterStateIndexUUIDSetting - not supported"
                     )
                 }
@@ -364,13 +367,13 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
             xContentRegistry,
             settings,
             indexNameExpressionResolver,
-            jvmService,
+            jvmService, // put jvm
             threadPool
         )
         fieldCapsFilter = FieldCapsFilter(clusterService, settings, indexNameExpressionResolver)
         this.indexNameExpressionResolver = indexNameExpressionResolver
 
-        val skipFlag = SkipExecution(client, clusterService)
+        val skipFlag = SkipExecution(client)
         RollupFieldValueExpressionResolver.registerScriptService(scriptService)
         val rollupRunner = RollupRunner
             .registerClient(client)
@@ -386,6 +389,7 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
             .registerConsumers()
             .registerClusterConfigurationProvider(skipFlag)
         indexManagementIndices = IndexManagementIndices(settings, client.admin().indices(), clusterService)
+        validationService = ValidationService(settings, clusterService, jvmService)
         val indexStateManagementHistory =
             IndexStateManagementHistory(
                 settings,
@@ -407,6 +411,7 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
         val managedIndexRunner = ManagedIndexRunner
             .registerClient(client)
             .registerClusterService(clusterService)
+            .registerValidationService(validationService)
             .registerNamedXContentRegistry(xContentRegistry)
             .registerScriptService(scriptService)
             .registerSettings(settings)
@@ -428,15 +433,19 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
 
         val smRunner = SMRunner.init(client, threadPool, settings, indexManagementIndices, clusterService)
 
+        val pluginVersionSweepCoordinator = PluginVersionSweepCoordinator(skipFlag, settings, threadPool, clusterService)
+
         return listOf(
             managedIndexRunner,
             rollupRunner,
             transformRunner,
             indexManagementIndices,
+            validationService,
             managedIndexCoordinator,
             indexStateManagementHistory,
             indexMetadataProvider,
-            smRunner
+            smRunner,
+            pluginVersionSweepCoordinator
         )
     }
 
@@ -454,6 +463,7 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
             ManagedIndexSettings.ROLLOVER_ALIAS,
             ManagedIndexSettings.ROLLOVER_SKIP,
             ManagedIndexSettings.INDEX_STATE_MANAGEMENT_ENABLED,
+            ManagedIndexSettings.VALIDATION_SERVICE_ENABLED,
             ManagedIndexSettings.METADATA_SERVICE_ENABLED,
             ManagedIndexSettings.AUTO_MANAGE,
             ManagedIndexSettings.METADATA_SERVICE_STATUS,
@@ -461,6 +471,7 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
             ManagedIndexSettings.JITTER,
             ManagedIndexSettings.JOB_INTERVAL,
             ManagedIndexSettings.SWEEP_PERIOD,
+            ManagedIndexSettings.SWEEP_SKIP_PERIOD,
             ManagedIndexSettings.COORDINATOR_BACKOFF_COUNT,
             ManagedIndexSettings.COORDINATOR_BACKOFF_MILLIS,
             ManagedIndexSettings.ALLOW_LIST,

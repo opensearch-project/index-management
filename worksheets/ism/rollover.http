@@ -1,0 +1,133 @@
+<!--General Policy-->
+
+### policy with notification
+PUT localhost:9200/_opendistro/_ism/policies/example
+Content-Type: application/json
+
+{
+  "policy": {
+    "description": "Example rollover policy.",
+    "default_state": "rollover",
+    "states": [
+      {
+        "name": "rollover",
+        "actions": [
+          {
+            "rollover": {
+              "min_doc_count": 1
+            }
+          }
+        ],
+        "transitions": []
+      }
+    ],
+    "ism_template": {
+      "index_patterns": ["log*", "testnoalias"],
+      "priority": 100
+    },
+  "error_notification": {
+    "destination": {
+      "chime": {
+        "url": "https://hooks.chime.aws/incomingwebhooks/90edf596-a8f0-4451-9003-97a44e6c6105?token=WXRzWm1VVWt8MXxwMzJjUENNWVpJTXZXTXg5NUdDYWdtaUY4ZHlvTzR6bW5rS0ZJLWxQX2dN"
+      }
+    },
+    "message_template": {
+      "source": "The index {{ctx.index}} failed during validation."
+    }
+  }
+  }
+}
+
+### policy without notification
+PUT localhost:9200/_opendistro/_ism/policies/example
+Content-Type: application/json
+
+{
+  "policy": {
+    "description": "Example rollover policy.",
+    "default_state": "rollover",
+    "states": [
+      {
+        "name": "rollover",
+        "actions": [
+          {
+            "rollover": {
+              "min_doc_count": 1
+            }
+          }
+        ],
+        "transitions": []
+      }
+    ],
+    "ism_template": {
+      "index_patterns": ["log*", "testnoalias"],
+      "priority": 100
+    }
+  }
+}
+
+### delete policy
+DELETE localhost:9200/_opendistro/_ism/policies/example
+
+
+### index missing alias
+PUT http://localhost:9200/testnoalias
+Content-Type: application/json
+
+### explain API
+GET localhost:9200/_plugins/_ism/explain/testnoalias?validate_action=true
+Accept: application/json
+
+### delete index
+DELETE http://localhost:9200/testnoalias
+
+### index not write index
+PUT localhost:9200/_index_template/ism_rollover
+Content-Type: application/json
+
+{
+  "index_patterns": ["log*"],
+  "template": {
+    "settings": {
+      "plugins.index_state_management.rollover_alias": "log"
+    }
+  }
+}
+
+### set is write index to false
+PUT localhost:9200/log-000002
+Content-Type: application/json
+
+{
+  "aliases": {
+    "log": {
+      "is_write_index": false
+    }
+  }
+}
+
+### set is write index to true
+PUT localhost:9200/log-000003
+Content-Type: application/json
+
+{
+  "aliases": {
+    "log": {
+      "is_write_index": true
+    }
+  }
+}
+
+### call explain API
+GET localhost:9200/_plugins/_ism/explain/log-000002?validate_action=true
+Accept: application/json
+
+### call explain API
+GET localhost:9200/_plugins/_ism/explain/log-000003?validate_action=true
+Accept: application/json
+
+### delete index
+DELETE http://localhost:9200/log-000002
+
+### delete index
+DELETE http://localhost:9200/log-000003

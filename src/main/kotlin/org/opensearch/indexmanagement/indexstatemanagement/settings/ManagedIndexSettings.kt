@@ -14,17 +14,24 @@ import java.util.function.Function
 class ManagedIndexSettings {
     companion object {
         const val DEFAULT_ISM_ENABLED = true
+        const val DEFAULT_VALIDATION_SERVICE_ENABLED = true
         const val DEFAULT_TEMPLATE_MIGRATION_TIMESTAMP = 0L
         const val DEFAULT_JOB_INTERVAL = 5
         const val DEFAULT_JITTER = 0.6
         const val DEFAULT_RESTRICTED_PATTERN = "\\.opendistro_security|\\.kibana.*|\\$INDEX_MANAGEMENT_INDEX"
         val ALLOW_LIST_NONE = emptyList<String>()
         val SNAPSHOT_DENY_LIST_NONE = emptyList<String>()
-        const val HOST_DENY_LIST = "opendistro.destination.host.deny_list"
 
         val INDEX_STATE_MANAGEMENT_ENABLED: Setting<Boolean> = Setting.boolSetting(
             "plugins.index_state_management.enabled",
             LegacyOpenDistroManagedIndexSettings.INDEX_STATE_MANAGEMENT_ENABLED,
+            Setting.Property.NodeScope,
+            Setting.Property.Dynamic
+        )
+
+        val VALIDATION_SERVICE_ENABLED: Setting<Boolean> = Setting.boolSetting(
+            "plugins.index_state_management.validation_service.enabled",
+            DEFAULT_VALIDATION_SERVICE_ENABLED,
             Setting.Property.NodeScope,
             Setting.Property.Dynamic
         )
@@ -97,6 +104,13 @@ class ManagedIndexSettings {
         val SWEEP_PERIOD: Setting<TimeValue> = Setting.timeSetting(
             "plugins.index_state_management.coordinator.sweep_period",
             LegacyOpenDistroManagedIndexSettings.SWEEP_PERIOD,
+            TimeValue.timeValueMinutes(5),
+            Setting.Property.NodeScope,
+            Setting.Property.Dynamic
+        )
+
+        val SWEEP_SKIP_PERIOD: Setting<TimeValue> = Setting.timeSetting(
+            "plugins.index_state_management.coordinator.sweep_skip_period",
             TimeValue.timeValueMinutes(5),
             Setting.Property.NodeScope,
             Setting.Property.Dynamic
