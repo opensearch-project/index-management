@@ -407,6 +407,12 @@ integTest {
             excludeTestsMatching "org.opensearch.indexmanagement.bwc.*IT"
         }
     }
+    // Exclude security test
+    if (System.getProperty("https") == null || System.getProperty("https") == "false") {
+        filter {
+            excludeTestsMatching "org.opensearch.*Security*IT"
+        }
+    }
 
     // TODO: Fix running notification test against remote cluster with security plugin installed
     if (System.getProperty("https") != null) {
@@ -446,6 +452,11 @@ task integTestRemote(type: RestIntegTestTask)  {
             excludeTestsMatching "org.opensearch.indexmanagement.indexstatemanagement.action.NotificationActionIT"
         }
     }
+
+    if (System.getProperty("test.debug") != null) {
+        jvmArgs '-agentlib:jdwp=transport=dt_socket,server=n,suspend=y,address=8000'
+    }
+
     // Snapshot action integration tests rely on node level setting path.repo which we can't set remotely
     exclude 'org/opensearch/indexmanagement/indexstatemanagement/action/SnapshotActionIT.class'
 }
