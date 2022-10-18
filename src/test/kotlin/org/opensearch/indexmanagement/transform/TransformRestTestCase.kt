@@ -13,6 +13,7 @@ import org.apache.http.message.BasicHeader
 import org.junit.AfterClass
 import org.opensearch.client.Response
 import org.opensearch.client.ResponseException
+import org.opensearch.client.RestClient
 import org.opensearch.common.settings.Settings
 import org.opensearch.common.xcontent.NamedXContentRegistry
 import org.opensearch.common.xcontent.XContentParser
@@ -50,11 +51,12 @@ abstract class TransformRestTestCase : IndexManagementRestTestCase() {
         transform: Transform,
         transformId: String = randomAlphaOfLength(10),
         refresh: Boolean = true,
+        client: RestClient? = null
     ): Transform {
         if (!indexExists(transform.sourceIndex)) {
             createTransformSourceIndex(transform)
         }
-        val response = createTransformJson(transform.toJsonString(), transformId, refresh)
+        val response = createTransformJson(transform.toJsonString(), transformId, refresh, client)
 
         val transformJson = createParser(XContentType.JSON.xContent(), response.entity.content)
             .map()
@@ -71,8 +73,10 @@ abstract class TransformRestTestCase : IndexManagementRestTestCase() {
         transformString: String,
         transformId: String,
         refresh: Boolean = true,
+        userClient: RestClient? = null
     ): Response {
-        val response = client()
+        val client = userClient ?: client()
+        val response = client
             .makeRequest(
                 "PUT",
                 "$TRANSFORM_BASE_URI/$transformId?refresh=$refresh",
@@ -147,8 +151,10 @@ abstract class TransformRestTestCase : IndexManagementRestTestCase() {
     protected fun getTransform(
         transformId: String,
         header: BasicHeader = BasicHeader(HttpHeaders.CONTENT_TYPE, "application/json"),
+        userClient: RestClient? = null
     ): Transform {
-        val response = client().makeRequest("GET", "$TRANSFORM_BASE_URI/$transformId", null, header)
+        val client = userClient ?: client()
+        val response = client.makeRequest("GET", "$TRANSFORM_BASE_URI/$transformId", null, header)
         assertEquals("Unable to get transform $transformId", RestStatus.OK, response.restStatus())
 
         val parser = createParser(XContentType.JSON.xContent(), response.entity.content)

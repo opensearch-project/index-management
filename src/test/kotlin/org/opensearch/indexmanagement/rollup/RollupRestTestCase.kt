@@ -13,6 +13,7 @@ import org.apache.http.message.BasicHeader
 import org.junit.AfterClass
 import org.opensearch.client.Response
 import org.opensearch.client.ResponseException
+import org.opensearch.client.RestClient
 import org.opensearch.common.settings.Settings
 import org.opensearch.common.xcontent.LoggingDeprecationHandler
 import org.opensearch.common.xcontent.NamedXContentRegistry
@@ -53,8 +54,9 @@ abstract class RollupRestTestCase : IndexManagementRestTestCase() {
         rollup: Rollup,
         rollupId: String = OpenSearchTestCase.randomAlphaOfLength(10),
         refresh: Boolean = true,
+        client: RestClient? = null
     ): Rollup {
-        val response = createRollupJson(rollup.toJsonString(), rollupId, refresh)
+        val response = createRollupJson(rollup.toJsonString(), rollupId, refresh, client)
 
         val rollupJson = JsonXContent.jsonXContent
             .createParser(NamedXContentRegistry.EMPTY, LoggingDeprecationHandler.INSTANCE, response.entity.content)
@@ -72,8 +74,10 @@ abstract class RollupRestTestCase : IndexManagementRestTestCase() {
         rollupString: String,
         rollupId: String,
         refresh: Boolean = true,
+        userClient: RestClient? = null
     ): Response {
-        val response = client()
+        val client = userClient ?: client()
+        val response = client
             .makeRequest(
                 "PUT",
                 "$ROLLUP_JOBS_BASE_URI/$rollupId?refresh=$refresh",
