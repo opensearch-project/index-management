@@ -6,12 +6,14 @@
 package org.opensearch.indexmanagement.indexstatemanagement
 
 import org.opensearch.action.admin.indices.alias.Alias
+import org.opensearch.action.admin.indices.alias.IndicesAliasesRequest
 import org.opensearch.common.unit.ByteSizeValue
 import org.opensearch.common.unit.TimeValue
 import org.opensearch.common.xcontent.ToXContent
 import org.opensearch.common.xcontent.XContentFactory
 import org.opensearch.index.RandomCreateIndexGenerator.randomAlias
 import org.opensearch.index.seqno.SequenceNumbers
+import org.opensearch.indexmanagement.indexstatemanagement.action.AliasAction
 import org.opensearch.indexmanagement.indexstatemanagement.action.AllocationAction
 import org.opensearch.indexmanagement.indexstatemanagement.action.CloseAction
 import org.opensearch.indexmanagement.indexstatemanagement.action.DeleteAction
@@ -204,6 +206,18 @@ fun randomCloseActionConfig(): CloseAction {
 
 fun randomOpenActionConfig(): OpenAction {
     return OpenAction(index = 0)
+}
+
+fun randomAliasAction(): AliasAction {
+    val actions = List(OpenSearchRestTestCase.randomIntBetween(1, 10)) { randomAliasActions() }
+    return AliasAction(actions = actions, index = 0)
+}
+
+fun randomAliasActions(): IndicesAliasesRequest.AliasActions {
+    val types = listOf(IndicesAliasesRequest.AliasActions.Type.ADD, IndicesAliasesRequest.AliasActions.Type.REMOVE)
+    return IndicesAliasesRequest.AliasActions(OpenSearchRestTestCase.randomSubsetOf(1, types).first())
+        .alias(OpenSearchRestTestCase.randomAlphaOfLength(10))
+        .index(OpenSearchRestTestCase.randomAlphaOfLength(10))
 }
 
 fun randomDestination(type: DestinationType = randomDestinationType()): Destination {
@@ -474,6 +488,11 @@ fun CloseAction.toJsonString(): String {
 }
 
 fun OpenAction.toJsonString(): String {
+    val builder = XContentFactory.jsonBuilder()
+    return this.toXContent(builder, ToXContent.EMPTY_PARAMS).string()
+}
+
+fun AliasAction.toJsonString(): String {
     val builder = XContentFactory.jsonBuilder()
     return this.toXContent(builder, ToXContent.EMPTY_PARAMS).string()
 }
