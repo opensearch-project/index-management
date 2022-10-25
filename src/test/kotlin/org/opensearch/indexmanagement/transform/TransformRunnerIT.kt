@@ -19,6 +19,7 @@ import org.opensearch.indexmanagement.transform.model.Transform
 import org.opensearch.indexmanagement.transform.model.TransformMetadata
 import org.opensearch.indexmanagement.waitFor
 import org.opensearch.jobscheduler.spi.schedule.IntervalSchedule
+import org.opensearch.rest.RestRequest
 import org.opensearch.rest.RestStatus
 import org.opensearch.script.Script
 import org.opensearch.script.ScriptType
@@ -202,6 +203,82 @@ class TransformRunnerIT : TransformRestTestCase() {
         assertEquals("More than expected documents processed", 5000L, metadata.stats.documentsProcessed)
         assertTrue("Doesn't capture indexed time", metadata.stats.indexTimeInMillis > 0)
         assertTrue("Didn't capture search time", metadata.stats.searchTimeInMillis > 0)
+    }
+
+    fun `test transform target index _doc_count against the source index _doc_count`() {
+        val sourceIdxTestName = "source_idx_test"
+        val targetIdxTestName = "target_idx_test"
+
+        val storeAndForwardTerm = "store_and_fwd_flag"
+        val fareAmount = "fare_amount"
+        val avgAmountPerFlag = "avg_amount_per_store_flag"
+
+        validateSourceIndex(sourceIdxTestName)
+
+        val transform = Transform(
+            id = "id_13",
+            schemaVersion = 1L,
+            enabled = true,
+            enabledAt = Instant.now(),
+            updatedAt = Instant.now(),
+            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+            description = "test transform doc values must be the same",
+            metadataId = null,
+            sourceIndex = sourceIdxTestName,
+            targetIndex = targetIdxTestName,
+            roles = emptyList(),
+            pageSize = 1,
+            groups = listOf(
+                Terms(sourceField = storeAndForwardTerm, targetField = storeAndForwardTerm)
+            ),
+            aggregations = AggregatorFactories.builder().addAggregator(AggregationBuilders.avg(fareAmount).field(fareAmount))
+        ).let { createTransform(it, it.id) }
+
+        updateTransformStartTime(transform)
+
+        waitFor {
+            assertTrue("Target transform index was not created", indexExists(transform.targetIndex))
+        }
+
+        waitFor {
+            val transformJob = getTransform(transformId = transform.id)
+            assertNotNull("Transform job doesn't have metadata set", transformJob.metadataId)
+            val transformMetadata = getTransformMetadata(transformJob.metadataId!!)
+            assertEquals("Transform is not finished", TransformMetadata.Status.FINISHED, transformMetadata.status)
+
+            var req = """
+            {
+                "size": 0,
+                "aggs": {
+                    "$avgAmountPerFlag": {
+                        "terms": {
+                            "field": "$storeAndForwardTerm", "order": { "_key": "asc" }
+                        },
+                        "aggs": {
+                          "avg": { "avg": { "field": "$fareAmount" } } }
+                    }
+                }
+            }
+            """.trimIndent()
+
+            var rawRes = client().makeRequest(RestRequest.Method.POST.name, "/$sourceIdxTestName/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
+            assertTrue(rawRes.restStatus() == RestStatus.OK)
+
+            var transformRes = client().makeRequest(RestRequest.Method.POST.name, "/$targetIdxTestName/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
+            assertTrue(transformRes.restStatus() == RestStatus.OK)
+
+            val rawAggBuckets = (rawRes.asMap()["aggregations"] as Map<String, Map<String, List<Map<String, Map<String, Any>>>>>)[avgAmountPerFlag]!!["buckets"]!!
+            val transformAggBuckets = (transformRes.asMap()["aggregations"] as Map<String, Map<String, List<Map<String, Map<String, Any>>>>>)[avgAmountPerFlag]!!["buckets"]!!
+
+            assertEquals("Different bucket sizes", rawAggBuckets.size, transformAggBuckets.size)
+            rawAggBuckets.forEachIndexed { idx, rawAggBucket ->
+                val transformAggBucket = transformAggBuckets[idx]
+                assertEquals(
+                    "The doc_count had a different value raw[$rawAggBucket] transform[$transformAggBucket]",
+                    rawAggBucket["doc_count"]!!, transformAggBucket["doc_count"]!!
+                )
+            }
+        }
     }
 
     fun `test transform with failure during indexing`() {
@@ -497,7 +574,7 @@ class TransformRunnerIT : TransformRestTestCase() {
             assertEquals("Request failed", RestStatus.OK, response.restStatus())
             val responseHits = response.asMap().getValue("hits") as Map<*, *>
             val totalDocs = (responseHits["hits"] as ArrayList<*>).fold(0) { sum, bucket ->
-                val docCount = ((bucket as Map<*, *>)["_source"] as Map<*, *>)["transform._doc_count"] as Int
+                val docCount = ((bucket as Map<*, *>)["_source"] as Map<*, *>)["_doc_count"] as Int
                 sum + docCount
             }
             assertEquals("Not all documents included in the transform target index", 5000, totalDocs)
@@ -548,7 +625,7 @@ class TransformRunnerIT : TransformRestTestCase() {
             assertEquals("Request failed", RestStatus.OK, response.restStatus())
             val responseHits = response.asMap().getValue("hits") as Map<*, *>
             val totalDocs = (responseHits["hits"] as ArrayList<*>).fold(0) { sum, bucket ->
-                val docCount = ((bucket as Map<*, *>)["_source"] as Map<*, *>)["transform._doc_count"] as Int
+                val docCount = ((bucket as Map<*, *>)["_source"] as Map<*, *>)["_doc_count"] as Int
                 sum + docCount
             }
             assertEquals("Not all documents included in the transform target index", 10000, totalDocs)
@@ -626,7 +703,7 @@ class TransformRunnerIT : TransformRestTestCase() {
             assertEquals("Request failed", RestStatus.OK, response.restStatus())
             val responseHits = response.asMap().getValue("hits") as Map<*, *>
             val totalDocs = (responseHits["hits"] as ArrayList<*>).fold(0) { sum, bucket ->
-                val docCount = ((bucket as Map<*, *>)["_source"] as Map<*, *>)["transform._doc_count"] as Int
+                val docCount = ((bucket as Map<*, *>)["_source"] as Map<*, *>)["_doc_count"] as Int
                 sum + docCount
             }
             assertEquals("Not all documents included in the transform target index", 48, totalDocs)
@@ -686,7 +763,7 @@ class TransformRunnerIT : TransformRestTestCase() {
             assertEquals("Request failed", RestStatus.OK, response.restStatus())
             val responseHits = response.asMap().getValue("hits") as Map<*, *>
             val totalDocs = (responseHits["hits"] as ArrayList<*>).fold(0) { sum, bucket ->
-                val docCount = ((bucket as Map<*, *>)["_source"] as Map<*, *>)["transform._doc_count"] as Int
+                val docCount = ((bucket as Map<*, *>)["_source"] as Map<*, *>)["_doc_count"] as Int
                 sum + docCount
             }
             assertEquals("Not all documents included in the transform target index", 100, totalDocs)
@@ -738,15 +815,14 @@ class TransformRunnerIT : TransformRestTestCase() {
             assertEquals("Transform did not complete iteration", null, transformMetadata.afterKey)
             assertNotNull("Continuous stats were not updated", transformMetadata.continuousStats)
             assertNotNull("Continuous stats were set, but lastTimestamp was not", transformMetadata.continuousStats!!.lastTimestamp)
+            assertEquals("Not the expected transform status", TransformMetadata.Status.STARTED, transformMetadata.status)
+            assertEquals("Not the expected pages processed", 6L, transformMetadata.stats.pagesProcessed)
+            assertEquals("Not the expected documents indexed", 2L, transformMetadata.stats.documentsIndexed)
+            assertEquals("Not the expected documents processed", 15000L, transformMetadata.stats.documentsProcessed)
+            assertTrue("Doesn't capture indexed time", transformMetadata.stats.indexTimeInMillis > 0)
+            assertTrue("Didn't capture search time", transformMetadata.stats.searchTimeInMillis > 0)
             transformMetadata
         }
-
-        assertEquals("Not the expected transform status", TransformMetadata.Status.STARTED, firstIterationMetadata.status)
-        assertEquals("Not the expected pages processed", 6L, firstIterationMetadata.stats.pagesProcessed)
-        assertEquals("Not the expected documents indexed", 2L, firstIterationMetadata.stats.documentsIndexed)
-        assertEquals("Not the expected documents processed", 15000L, firstIterationMetadata.stats.documentsProcessed)
-        assertTrue("Doesn't capture indexed time", firstIterationMetadata.stats.indexTimeInMillis > 0)
-        assertTrue("Didn't capture search time", firstIterationMetadata.stats.searchTimeInMillis > 0)
 
         waitFor {
             val documentsBehind = getTransformDocumentsBehind(transform.id)
@@ -759,22 +835,20 @@ class TransformRunnerIT : TransformRestTestCase() {
 
         Thread.sleep(5000)
 
-        val secondIterationMetadata = waitFor {
+        waitFor {
             val job = getTransform(transformId = transform.id)
             assertNotNull("Transform job doesn't have metadata set", job.metadataId)
             val transformMetadata = getTransformMetadata(job.metadataId!!)
             assertEquals("Transform did not complete iteration or had incorrect number of documents processed", 15000, transformMetadata.stats.documentsProcessed)
             assertEquals("Transform did not have null afterKey after iteration", null, transformMetadata.afterKey)
             assertTrue("Timestamp was not updated", transformMetadata.continuousStats!!.lastTimestamp!!.isAfter(firstIterationMetadata.continuousStats!!.lastTimestamp))
-            transformMetadata
+            assertEquals("Not the expected transform status", TransformMetadata.Status.STARTED, transformMetadata.status)
+            assertEquals("More than expected pages processed", 6, transformMetadata.stats.pagesProcessed)
+            assertEquals("More than expected documents indexed", 2L, transformMetadata.stats.documentsIndexed)
+            assertEquals("Not the expected documents processed", 15000L, transformMetadata.stats.documentsProcessed)
+            assertEquals("Not the expected indexed time", transformMetadata.stats.indexTimeInMillis, firstIterationMetadata.stats.indexTimeInMillis)
+            assertEquals("Not the expected search time", transformMetadata.stats.searchTimeInMillis, firstIterationMetadata.stats.searchTimeInMillis)
         }
-
-        assertEquals("Not the expected transform status", TransformMetadata.Status.STARTED, secondIterationMetadata.status)
-        assertEquals("More than expected pages processed", 6, secondIterationMetadata.stats.pagesProcessed)
-        assertEquals("More than expected documents indexed", 2L, secondIterationMetadata.stats.documentsIndexed)
-        assertEquals("Not the expected documents processed", 15000L, secondIterationMetadata.stats.documentsProcessed)
-        assertEquals("Not the expected indexed time", secondIterationMetadata.stats.indexTimeInMillis, firstIterationMetadata.stats.indexTimeInMillis)
-        assertEquals("Not the expected search time", secondIterationMetadata.stats.searchTimeInMillis, firstIterationMetadata.stats.searchTimeInMillis)
 
         disableTransform(transform.id)
     }
@@ -846,7 +920,7 @@ class TransformRunnerIT : TransformRestTestCase() {
             assertEquals("Request failed", RestStatus.OK, response.restStatus())
             val responseHits = response.asMap().getValue("hits") as Map<*, *>
             val totalDocs = (responseHits["hits"] as ArrayList<*>).fold(0) { sum, bucket ->
-                val docCount = ((bucket as Map<*, *>)["_source"] as Map<*, *>)["transform._doc_count"] as Int
+                val docCount = ((bucket as Map<*, *>)["_source"] as Map<*, *>)["_doc_count"] as Int
                 sum + docCount
             }
             assertEquals("Not all documents included in the transform target index", 52, totalDocs)
@@ -920,7 +994,7 @@ class TransformRunnerIT : TransformRestTestCase() {
             assertEquals("Request failed", RestStatus.OK, response.restStatus())
             val responseHits = response.asMap().getValue("hits") as Map<*, *>
             val totalDocs = (responseHits["hits"] as ArrayList<*>).fold(0) { sum, bucket ->
-                val docCount = ((bucket as Map<*, *>)["_source"] as Map<*, *>)["transform._doc_count"] as Int
+                val docCount = ((bucket as Map<*, *>)["_source"] as Map<*, *>)["_doc_count"] as Int
                 sum + docCount
             }
             assertEquals("Not all documents included in the transform target index", 88, totalDocs)
