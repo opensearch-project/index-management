@@ -36,7 +36,9 @@ import org.opensearch.indexmanagement.rollup.model.RollupJobValidationResult
 import org.opensearch.indexmanagement.rollup.settings.LegacyOpenDistroRollupSettings
 import org.opensearch.indexmanagement.rollup.settings.RollupSettings
 import org.opensearch.indexmanagement.rollup.util.RollupFieldValueExpressionResolver
+import org.opensearch.indexmanagement.rollup.util.getRollupJobs
 import org.opensearch.indexmanagement.rollup.util.isRollupIndex
+import org.opensearch.indexmanagement.rollup.util.isTargetIndexAlias
 import org.opensearch.indexmanagement.util.IndexUtils.Companion._META
 import org.opensearch.indexmanagement.util.IndexUtils.Companion.getFieldFromMappings
 import org.opensearch.transport.RemoteTransportException
@@ -61,12 +63,20 @@ class RollupMapperService(
         targetIndexResolvedName: String,
         hasLegacyPlugin: Boolean
     ): RollupJobValidationResult {
-        if (!isRollupIndex(targetIndexResolvedName, clusterService.state())) {
-            return if (targetIndexIsValidAlias(rollup, targetIndexResolvedName)) {
-                prepareTargetIndex(rollup, targetIndexResolvedName, hasLegacyPlugin)
-            } else {
-                RollupJobValidationResult.Invalid("Target index [$targetIndexResolvedName] is a non rollup index")
+        /**
+         * Target Index is valid alias if either all backing indices have this job in _meta
+         * or there isn't any rollup job present in _meta
+         */
+        var isValidAlias = isTargetIndexValidAlias(rollup, targetIndexResolvedName)
+        if (rollup.isTargetIndexAlias() && isValidAlias) {
+            // During first run on alias, backing index is not prepared. We should set it up here. (settings, mappings, _meta)
+            if (!isRollupIndex(targetIndexResolvedName, clusterService.state())) {
+                return prepareTargetIndex(rollup, targetIndexResolvedName, hasLegacyPlugin)
             }
+        } else if (rollup.isTargetIndexAlias() && !isValidAlias) {
+            return RollupJobValidationResult.Failure("Target index alias [${rollup.targetIndex}] validation failed")
+        } else if (!isRollupIndex(targetIndexResolvedName, clusterService.state())) {
+            return RollupJobValidationResult.Invalid("Target index [$targetIndexResolvedName] is a non rollup index")
         }
         return when (val jobExistsResult = jobExistsInRollupIndex(rollup, targetIndexResolvedName)) {
             is RollupJobValidationResult.Valid -> jobExistsResult
@@ -76,30 +86,30 @@ class RollupMapperService(
     }
 
     @Suppress("ReturnCount")
-    suspend fun targetIndexIsValidAlias(rollup: Rollup, targetIndexResolvedName: String): Boolean {
+    suspend fun isTargetIndexValidAlias(rollup: Rollup, targetIndexResolvedName: String): Boolean {
 
         if (!RollupFieldValueExpressionResolver.indexAliasUtils.hasAlias(targetIndexResolvedName)) {
             return false
         }
-        // All other backing indices have to have this rollup job in _META field
-        val backingIndices = RollupFieldValueExpressionResolver.indexAliasUtils.getBackingIndicesForAlias(targetIndexResolvedName)
-        backingIndices?.forEach {
-            if (it.index.name != targetIndexResolvedName) {
-                when (jobExistsInRollupIndex(rollup, it.index.name)) {
-                    is RollupJobValidationResult.Invalid, is RollupJobValidationResult.Failure -> return false
-                    else -> {}
-                }
-            }
-        }
-        val mappings = getMappings(targetIndexResolvedName)
-        if (mappings is GetMappingsResult.Failure) {
-            logger.error("Failed to get mappings for target index: $targetIndexResolvedName")
-            return false
-        } else if (mappings is GetMappingsResult.Success &&
-            mappings.response.mappings()?.get(targetIndexResolvedName)?.sourceAsMap()?.isNotEmpty() == true
+
+        val rollupJobs = clusterService.state().metadata.index(targetIndexResolvedName).getRollupJobs()
+        if (rollupJobs != null &&
+            (rollupJobs.size > 1 || rollupJobs[0].id != rollup.id)
         ) {
             logger.error("If target_index is alias, backing index must be empty: $targetIndexResolvedName")
             return false
+        }
+
+        // All other backing indices have to have this rollup job in _META field and it has to be the only one!
+        val backingIndices = RollupFieldValueExpressionResolver.indexAliasUtils.getBackingIndicesForAlias(rollup.targetIndex)
+        backingIndices?.forEach {
+            if (it.index.name != targetIndexResolvedName) {
+                val rollupJobs = clusterService.state().metadata.index(it.index.name).getRollupJobs()
+                if (rollupJobs == null || rollupJobs.size > 1 || rollupJobs[0].id != rollup.id) {
+                    logger.error("If target_index is alias, all backing indicies must have only this rollup job present in _meta!")
+                    return false
+                }
+            }
         }
         return true
     }
