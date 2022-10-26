@@ -1093,7 +1093,7 @@ class RollupRunnerIT : RollupRestTestCase() {
         rollupMetadataID = startedRollup1.metadataID!!
         rollupMetadata = getRollupMetadata(rollupMetadataID)
 
-        assertEquals("Target index alias [${startedRollup1.targetIndex}] validation failed", rollupMetadata.failureReason)
+        assertEquals("Backing index [$backingIndex1] has multiple rollup job owners", rollupMetadata.failureReason)
     }
 
     fun `test rollup action with alias as target_index reuse failed`() {
@@ -1102,7 +1102,6 @@ class RollupRunnerIT : RollupRestTestCase() {
         // Create index with alias, without mappings
         val indexAlias = "alias_as_target_index_failed_1"
         val backingIndex1 = "backing-000001"
-        val backingIndex2 = "backing-000002"
         val builtSettings = Settings.builder().let {
             it.put(INDEX_NUMBER_OF_REPLICAS, "1")
             it.put(INDEX_NUMBER_OF_SHARDS, "1")
@@ -1176,7 +1175,73 @@ class RollupRunnerIT : RollupRestTestCase() {
         }
         rollupMetadataID = startedRollup2.metadataID!!
         rollupMetadata = getRollupMetadata(rollupMetadataID)
-        assertEquals("Target index alias [${startedRollup1.targetIndex}] validation failed", rollupMetadata.failureReason)
+        assertEquals("If target_index is alias, write backing index must be used only by this rollup job: [$backingIndex1]", rollupMetadata.failureReason)
+    }
+
+    fun `test rollup action with alias as target_index multiple empty backing indices`() {
+        generateNYCTaxiData("source_runner_sixth_1532209")
+
+        // Create index with alias, without mappings
+        val indexAlias = "alias_as_target_index_failed_19941"
+        val backingIndex1 = "backing-99000001"
+        val backingIndex2 = "backing-99000002"
+        val builtSettings = Settings.builder().let {
+            it.put(INDEX_NUMBER_OF_REPLICAS, "1")
+            it.put(INDEX_NUMBER_OF_SHARDS, "1")
+            it
+        }.build()
+        var aliases = "\"$indexAlias\": { \"is_write_index\": true }"
+        createIndex(backingIndex1, builtSettings, null, aliases)
+        aliases = "\"$indexAlias\": {}"
+        createIndex(backingIndex2, builtSettings, null, aliases)
+
+        refreshAllIndices()
+
+        val job1 = Rollup(
+            id = "rollup_with_alias_99243411",
+            schemaVersion = 1L,
+            enabled = true,
+            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+            jobLastUpdatedTime = Instant.now(),
+            jobEnabledTime = Instant.now(),
+            description = "basic change of page size",
+            sourceIndex = "source_runner_sixth_1532209",
+            targetIndex = indexAlias,
+            metadataID = null,
+            roles = emptyList(),
+            pageSize = 1000,
+            delay = 0,
+            continuous = false,
+            dimensions = listOf(
+                DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "1s"),
+                Terms("RatecodeID", "RatecodeID"),
+                Terms("PULocationID", "PULocationID")
+            ),
+            metrics = listOf(
+                RollupMetrics(
+                    sourceField = "passenger_count",
+                    targetField = "passenger_count",
+                    metrics = listOf(Sum(), Min(), Max(), ValueCount(), Average())
+                )
+            )
+        ).let { createRollup(it, it.id) }
+
+        // First run, backing index is empty: no mappings, no rollup_index setting, no rollupjobs in _META
+        updateRollupStartTime(job1)
+
+        waitFor { assertTrue("Target rollup index was not created", indexExists(backingIndex1)) }
+
+        var startedRollup1 = waitFor {
+            val rollupJob = getRollup(rollupId = job1.id)
+            assertNotNull("Rollup job doesn't have metadata set", rollupJob.metadataID)
+            val rollupMetadata = getRollupMetadata(rollupJob.metadataID!!)
+            assertEquals("Rollup is not finished", RollupMetadata.Status.FAILED, rollupMetadata.status)
+            assertTrue("Rollup is not disabled", !rollupJob.enabled)
+            rollupJob
+        }
+        var rollupMetadataID = startedRollup1.metadataID!!
+        var rollupMetadata = getRollupMetadata(rollupMetadataID)
+        assertEquals("If target_index is alias, backing indices must be unused by any other rollup jobs: [$backingIndex1]", rollupMetadata.failureReason)
     }
 
     // TODO: Test scenarios:

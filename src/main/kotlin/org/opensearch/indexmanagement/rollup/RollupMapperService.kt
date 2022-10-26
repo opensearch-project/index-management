@@ -67,14 +67,13 @@ class RollupMapperService(
          * Target Index is valid alias if either all backing indices have this job in _meta
          * or there isn't any rollup job present in _meta
          */
-        var isValidAlias = isTargetIndexValidAlias(rollup, targetIndexResolvedName)
-        if (rollup.isTargetIndexAlias() && isValidAlias) {
-            // During first run on alias, backing index is not prepared. We should set it up here. (settings, mappings, _meta)
-            if (!isRollupIndex(targetIndexResolvedName, clusterService.state())) {
+        val aliasValidationResult = isTargetIndexValidAlias(rollup, targetIndexResolvedName)
+        if (rollup.isTargetIndexAlias()) {
+            if (aliasValidationResult !is RollupJobValidationResult.Valid) {
+                return aliasValidationResult
+            } else if (!isRollupIndex(targetIndexResolvedName, clusterService.state())) {
                 return prepareTargetIndex(rollup, targetIndexResolvedName, hasLegacyPlugin)
             }
-        } else if (rollup.isTargetIndexAlias() && !isValidAlias) {
-            return RollupJobValidationResult.Failure("Target index alias [${rollup.targetIndex}] validation failed")
         } else if (!isRollupIndex(targetIndexResolvedName, clusterService.state())) {
             return RollupJobValidationResult.Invalid("Target index [$targetIndexResolvedName] is a non rollup index")
         }
@@ -86,18 +85,21 @@ class RollupMapperService(
     }
 
     @Suppress("ReturnCount")
-    suspend fun isTargetIndexValidAlias(rollup: Rollup, targetIndexResolvedName: String): Boolean {
+    suspend fun isTargetIndexValidAlias(rollup: Rollup, targetIndexResolvedName: String): RollupJobValidationResult {
+
+        var errorMessage: String
 
         if (!RollupFieldValueExpressionResolver.indexAliasUtils.hasAlias(targetIndexResolvedName)) {
-            return false
+            return RollupJobValidationResult.Failure("[${rollup.targetIndex}] is not an alias!")
         }
 
         val rollupJobs = clusterService.state().metadata.index(targetIndexResolvedName).getRollupJobs()
         if (rollupJobs != null &&
             (rollupJobs.size > 1 || rollupJobs[0].id != rollup.id)
         ) {
-            logger.error("If target_index is alias, backing index must be empty: $targetIndexResolvedName")
-            return false
+            errorMessage = "If target_index is alias, write backing index must be used only by this rollup job: [$targetIndexResolvedName]"
+            logger.error(errorMessage)
+            return RollupJobValidationResult.Failure(errorMessage)
         }
 
         // All other backing indices have to have this rollup job in _META field and it has to be the only one!
@@ -105,13 +107,29 @@ class RollupMapperService(
         backingIndices?.forEach {
             if (it.index.name != targetIndexResolvedName) {
                 val rollupJobs = clusterService.state().metadata.index(it.index.name).getRollupJobs()
-                if (rollupJobs == null || rollupJobs.size > 1 || rollupJobs[0].id != rollup.id) {
-                    logger.error("If target_index is alias, all backing indicies must have only this rollup job present in _meta!")
-                    return false
+                val validationResult = validateNonWriteBackingIndex(it.index.name, rollup, rollupJobs)
+                if (validationResult !is RollupJobValidationResult.Valid) {
+                    return validationResult
                 }
             }
         }
-        return true
+        return RollupJobValidationResult.Valid
+    }
+
+    suspend fun validateNonWriteBackingIndex(backingIndex: String, currentRollupJob: Rollup, rollupJobs: List<Rollup>?): RollupJobValidationResult {
+        var errorMessage = ""
+        if (rollupJobs == null) {
+            errorMessage = "Backing index [$backingIndex] has to have owner rollup job with id:[${currentRollupJob.id}]"
+        } else if (rollupJobs.size == 1 && rollupJobs[0].id != currentRollupJob.id) {
+            errorMessage = "Backing index [$backingIndex] has to have owner rollup job with id:[${currentRollupJob.id}]"
+        } else if (rollupJobs.size > 1) {
+            errorMessage = "Backing index [$backingIndex] has multiple rollup job owners"
+        }
+        if (errorMessage.isNotEmpty()) {
+            logger.error(errorMessage)
+            return RollupJobValidationResult.Failure(errorMessage)
+        }
+        return RollupJobValidationResult.Valid
     }
 
     // This creates the target index if it doesn't already else validate the target index is rollup index
