@@ -67,7 +67,7 @@ class RollupMapperService(
          * Target Index is valid alias if either all backing indices have this job in _meta
          * or there isn't any rollup job present in _meta
          */
-        val aliasValidationResult = isTargetIndexValidAlias(rollup, targetIndexResolvedName)
+        val aliasValidationResult = validateTargetIndexAlias(rollup, targetIndexResolvedName)
         if (rollup.isTargetIndexAlias()) {
             if (aliasValidationResult !is RollupJobValidationResult.Valid) {
                 return aliasValidationResult
@@ -85,7 +85,7 @@ class RollupMapperService(
     }
 
     @Suppress("ReturnCount")
-    suspend fun isTargetIndexValidAlias(rollup: Rollup, targetIndexResolvedName: String): RollupJobValidationResult {
+    suspend fun validateTargetIndexAlias(rollup: Rollup, targetIndexResolvedName: String): RollupJobValidationResult {
 
         var errorMessage: String
 

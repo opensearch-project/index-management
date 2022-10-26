@@ -1241,7 +1241,7 @@ class RollupRunnerIT : RollupRestTestCase() {
         }
         var rollupMetadataID = startedRollup1.metadataID!!
         var rollupMetadata = getRollupMetadata(rollupMetadataID)
-        assertEquals("If target_index is alias, backing indices must be unused by any other rollup jobs: [$backingIndex1]", rollupMetadata.failureReason)
+        assertEquals("If target_index is alias, backing indices must be unused by any other rollup jobs: [$backingIndex2]", rollupMetadata.failureReason)
     }
 
     // TODO: Test scenarios:
