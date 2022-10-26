@@ -17,7 +17,7 @@ import java.util.Locale
 
 class ValidateForceMergeIT : IndexStateManagementRestTestCase() {
 
-    private val testIndexName = javaClass.simpleName.toLowerCase(Locale.ROOT)
+    private val testIndexName = javaClass.simpleName.lowercase(Locale.ROOT)
 
     fun `test basic workflow`() {
         enableValidationService()
@@ -67,11 +67,13 @@ class ValidateForceMergeIT : IndexStateManagementRestTestCase() {
             val data = getExplainValidationResult(indexName)
             assertEquals(
                 "Index rollover validation status is RE_VALIDATING.",
-                Validate.ValidationStatus.PASSED, data?.validationStatus
+                Validate.ValidationStatus.PASSED,
+                data?.validationStatus
             )
             assertEquals(
                 "Index rollover validation status is RE_VALIDATING.",
-                ValidateForceMerge.getValidationPassedMessage(indexName), data?.validationMessage
+                ValidateForceMerge.getValidationPassedMessage(indexName),
+                data?.validationMessage
             )
         }
         waitFor {

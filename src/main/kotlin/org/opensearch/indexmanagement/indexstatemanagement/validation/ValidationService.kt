@@ -24,6 +24,10 @@ class ValidationService(
             "rollover" -> ValidateRollover(settings, clusterService, jvmService).execute(indexName)
             "delete" -> ValidateDelete(settings, clusterService, jvmService).execute(indexName)
             "force_merge" -> ValidateForceMerge(settings, clusterService, jvmService).execute(indexName)
+            "open" -> ValidateOpen(settings, clusterService, jvmService).execute(indexName)
+            "read_only" -> ValidateReadOnly(settings, clusterService, jvmService).execute(indexName)
+            "read_write" -> ValidateReadWrite(settings, clusterService, jvmService).execute(indexName)
+            "replica_count" -> ValidateReplicaCount(settings, clusterService, jvmService).execute(indexName)
             else -> {
                 // temporary call until all actions are mapped
                 ValidateNothing(settings, clusterService, jvmService).execute(indexName)

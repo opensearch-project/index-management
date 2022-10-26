@@ -39,7 +39,7 @@ import java.util.Locale
 
 class RestChangePolicyActionIT : IndexStateManagementRestTestCase() {
 
-    private val testIndexName = javaClass.simpleName.toLowerCase(Locale.ROOT)
+    private val testIndexName = javaClass.simpleName.lowercase(Locale.ROOT)
 
     @Before
     fun setup() {
