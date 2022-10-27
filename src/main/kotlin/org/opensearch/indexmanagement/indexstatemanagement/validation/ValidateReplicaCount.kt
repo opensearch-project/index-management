@@ -30,7 +30,7 @@ class ValidateReplicaCount(
     @Suppress("ReturnSuppressCount", "ReturnCount")
     override fun execute(indexName: String): Validate {
         // if these conditions are false, fail validation and do not set replica count to the index
-        if (dataSizeTooLarge(indexName) || maxNumberOfShardsExceeded(indexName)) {
+        if (dataSizeTooLarge(indexName)) {
             return this
         }
         validationMessage = getValidationPassedMessage(indexName)

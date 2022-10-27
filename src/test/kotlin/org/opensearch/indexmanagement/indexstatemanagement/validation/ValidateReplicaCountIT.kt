@@ -61,7 +61,7 @@ class ValidateReplicaCountIT : IndexStateManagementRestTestCase() {
         waitFor {
             val data = getExplainValidationResult(indexName)
             assertEquals(
-                "Index rollover validation status is RE_VALIDATING.",
+                "Index replica_count validation status is PASSED.",
                 Validate.ValidationStatus.PASSED,
                 data?.validationStatus
             )
