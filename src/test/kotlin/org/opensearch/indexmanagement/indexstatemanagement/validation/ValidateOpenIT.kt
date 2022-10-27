@@ -15,6 +15,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.action.OpenAction
 import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
 import org.opensearch.indexmanagement.indexstatemanagement.model.State
 import org.opensearch.indexmanagement.indexstatemanagement.randomErrorNotification
+import org.opensearch.indexmanagement.spi.indexstatemanagement.Validate
 import org.opensearch.indexmanagement.waitFor
 import java.time.Instant
 import java.time.temporal.ChronoUnit
@@ -63,8 +64,9 @@ class ValidateOpenIT : IndexStateManagementRestTestCase() {
         waitFor {
             val data = getExplainValidationResult(indexName)
             assertEquals(
-                "Index rollover validation message is index is write index.",
-                ValidateDelete.getFailedIsWriteIndexMessage(indexName), data?.validationMessage
+                "Index rollover validation status is RE_VALIDATING.",
+                Validate.ValidationStatus.PASSED,
+                data?.validationStatus
             )
         }
     }
