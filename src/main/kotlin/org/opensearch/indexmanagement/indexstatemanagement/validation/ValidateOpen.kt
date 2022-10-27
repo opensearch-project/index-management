@@ -29,7 +29,7 @@ class ValidateOpen(
     @Suppress("ReturnSuppressCount", "ReturnCount")
     override fun execute(indexName: String): Validate {
         // if these conditions are false, fail validation and do not execute open action
-        if (maxNumberOfShardsExceeded(indexName) || hasReadOnlyAllowDeleteBlock(indexName)) {
+        if (hasReadOnlyAllowDeleteBlock(indexName)) {
             return this
         }
         validationMessage = getValidationPassedMessage(indexName)
@@ -47,6 +47,7 @@ class ValidateOpen(
         return false
     }
 
+    // TODO: evaluate incoming shard number changes dynamically
     fun maxNumberOfShardsExceeded(indexName: String): Boolean {
         val totalShards = clusterService.state().metadata.totalNumberOfShards
         val openShards = clusterService.state().metadata.totalOpenIndexShards

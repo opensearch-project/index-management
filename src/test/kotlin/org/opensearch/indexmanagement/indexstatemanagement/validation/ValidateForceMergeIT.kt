@@ -66,12 +66,12 @@ class ValidateForceMergeIT : IndexStateManagementRestTestCase() {
         waitFor {
             val data = getExplainValidationResult(indexName)
             assertEquals(
-                "Index rollover validation status is RE_VALIDATING.",
+                "Index force_merge action validation status is RE_VALIDATING.",
                 Validate.ValidationStatus.PASSED,
                 data?.validationStatus
             )
             assertEquals(
-                "Index rollover validation status is RE_VALIDATING.",
+                "Index force_merge action validation status is RE_VALIDATING.",
                 ValidateForceMerge.getValidationPassedMessage(indexName),
                 data?.validationMessage
             )

@@ -37,6 +37,7 @@ class ValidateReplicaCount(
         return this
     }
 
+    // TODO: evaluate incoming shard number changes dynamically
     fun dataSizeTooLarge(indexName: String): Boolean {
         val circuitBreakerEnabled = TransformSettings.TRANSFORM_CIRCUIT_BREAKER_ENABLED.get(settings)
         val circuitBreakerJvmThreshold = TransformSettings.TRANSFORM_CIRCUIT_BREAKER_JVM_THRESHOLD.get(settings)

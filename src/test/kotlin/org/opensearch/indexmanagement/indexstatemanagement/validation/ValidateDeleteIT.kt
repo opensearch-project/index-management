@@ -57,7 +57,7 @@ class ValidateDeleteIT : IndexStateManagementRestTestCase() {
         waitFor {
             val data = getExplainValidationResult(index1)
             assertEquals(
-                "Index rollover validation status is RE_VALIDATING.",
+                "Index delete action validation status is RE_VALIDATING.",
                 Validate.ValidationStatus.RE_VALIDATING,
                 data?.validationStatus
             )
@@ -65,7 +65,7 @@ class ValidateDeleteIT : IndexStateManagementRestTestCase() {
         waitFor {
             val data = getExplainValidationResult(index1)
             assertEquals(
-                "Index rollover validation message is index is write index.",
+                "Index delete action validation message is index is write index.",
                 ValidateDelete.getFailedIsWriteIndexMessage(index1),
                 data?.validationMessage
             )

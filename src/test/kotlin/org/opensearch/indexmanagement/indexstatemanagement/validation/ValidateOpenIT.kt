@@ -64,7 +64,7 @@ class ValidateOpenIT : IndexStateManagementRestTestCase() {
         waitFor {
             val data = getExplainValidationResult(indexName)
             assertEquals(
-                "Index rollover validation status is RE_VALIDATING.",
+                "Index open action validation status is PASSED.",
                 Validate.ValidationStatus.PASSED,
                 data?.validationStatus
             )

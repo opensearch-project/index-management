@@ -61,7 +61,7 @@ class ValidateReplicaCountIT : IndexStateManagementRestTestCase() {
         waitFor {
             val data = getExplainValidationResult(indexName)
             assertEquals(
-                "Index replica_count validation status is PASSED.",
+                "Index replica_count action validation status is PASSED.",
                 Validate.ValidationStatus.PASSED,
                 data?.validationStatus
             )

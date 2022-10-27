@@ -71,7 +71,7 @@ class ValidateReadWriteIT : IndexStateManagementRestTestCase() {
         waitFor {
             val data = getExplainValidationResult(indexName)
             assertEquals(
-                "Index rollover validation status is RE_VALIDATING.",
+                "Index read_write action validation status is PASSED.",
                 Validate.ValidationStatus.PASSED,
                 data?.validationStatus
             )
