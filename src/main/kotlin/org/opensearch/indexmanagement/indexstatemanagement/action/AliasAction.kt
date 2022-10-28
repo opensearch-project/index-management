@@ -21,6 +21,8 @@ class AliasAction(
 
     init {
         require(actions.isNotEmpty()) { "At least one alias action needs to be specified." }
+        require(!actions.any { it.actionType() == IndicesAliasesRequest.AliasActions.Type.REMOVE_INDEX }) { "Remove_index is not allowed here." }
+        require(actions.all { it.indices().isNullOrEmpty() }) { "Alias actions are only allowed on managed indices." }
     }
 
     private val attemptAliasStep = AttemptAliasStep(this)

@@ -208,8 +208,8 @@ fun randomOpenActionConfig(): OpenAction {
     return OpenAction(index = 0)
 }
 
-fun randomAliasAction(): AliasAction {
-    val actions = List(OpenSearchRestTestCase.randomIntBetween(1, 10)) { randomAliasActions() }
+fun randomAliasAction(includeIndices: Boolean = false): AliasAction {
+    val actions = List(OpenSearchRestTestCase.randomIntBetween(1, 10)) { if (includeIndices) randomAliasActionWithIndices() else randomAliasActions() }
     return AliasAction(actions = actions, index = 0)
 }
 
@@ -217,7 +217,13 @@ fun randomAliasActions(): IndicesAliasesRequest.AliasActions {
     val types = listOf(IndicesAliasesRequest.AliasActions.Type.ADD, IndicesAliasesRequest.AliasActions.Type.REMOVE)
     return IndicesAliasesRequest.AliasActions(OpenSearchRestTestCase.randomSubsetOf(1, types).first())
         .alias(OpenSearchRestTestCase.randomAlphaOfLength(10))
-        .index(OpenSearchRestTestCase.randomAlphaOfLength(10))
+}
+
+fun randomAliasActionWithIndices(): IndicesAliasesRequest.AliasActions {
+    val types = listOf(IndicesAliasesRequest.AliasActions.Type.ADD, IndicesAliasesRequest.AliasActions.Type.REMOVE)
+    return IndicesAliasesRequest.AliasActions(OpenSearchRestTestCase.randomSubsetOf(1, types).first())
+        .alias(OpenSearchRestTestCase.randomAlphaOfLength(10))
+        .indices(OpenSearchRestTestCase.randomAlphaOfLength(10))
 }
 
 fun randomDestination(type: DestinationType = randomDestinationType()): Destination {

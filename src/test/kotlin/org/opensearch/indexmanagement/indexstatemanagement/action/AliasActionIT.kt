@@ -17,13 +17,13 @@ import java.time.temporal.ChronoUnit
 import java.util.Locale
 
 class AliasActionIT : IndexStateManagementRestTestCase() {
-    private val testIndexName = javaClass.simpleName.toLowerCase(Locale.ROOT)
+    private val testIndexName = javaClass.simpleName.lowercase(Locale.ROOT)
 
     fun `test adding alias to index`() {
         val indexName = "${testIndexName}_index_1"
         val policyID = "${testIndexName}_testPolicyName_1"
         val aliasName = "some_alias_to_add"
-        val actions = listOf(IndicesAliasesRequest.AliasActions.add().alias(aliasName).index(indexName))
+        val actions = listOf(IndicesAliasesRequest.AliasActions.add().alias(aliasName))
         val actionConfig = AliasAction(actions = actions, index = 0)
         val states = listOf(State("alias", listOf(actionConfig), listOf()))
 
@@ -66,7 +66,7 @@ class AliasActionIT : IndexStateManagementRestTestCase() {
         val indexName = "${testIndexName}_index_2"
         val policyID = "${testIndexName}_testPolicyName_2"
         val aliasName = "some_alias_to_add"
-        val actions = listOf(IndicesAliasesRequest.AliasActions.add().alias(aliasName).index("{{ctx.index}}"))
+        val actions = listOf(IndicesAliasesRequest.AliasActions.add().alias(aliasName))
         val actionConfig = AliasAction(actions = actions, index = 0)
         val states = listOf(State("alias", listOf(actionConfig), listOf()))
 
@@ -109,7 +109,7 @@ class AliasActionIT : IndexStateManagementRestTestCase() {
         val indexName = "${testIndexName}_index_3"
         val policyID = "${testIndexName}_testPolicyName_3"
         val aliasName = "some_alias_to_remove"
-        val actions = listOf(IndicesAliasesRequest.AliasActions.remove().alias(aliasName).index(indexName))
+        val actions = listOf(IndicesAliasesRequest.AliasActions.remove().alias(aliasName))
         val actionConfig = AliasAction(actions = actions, index = 0)
         val states = listOf(State("alias", listOf(actionConfig), listOf()))
 

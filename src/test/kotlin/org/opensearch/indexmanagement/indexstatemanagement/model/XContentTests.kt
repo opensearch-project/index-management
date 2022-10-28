@@ -40,6 +40,7 @@ import org.opensearch.indexmanagement.opensearchapi.convertToMap
 import org.opensearch.indexmanagement.opensearchapi.parseWithType
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.test.OpenSearchTestCase
+import kotlin.test.assertFailsWith
 
 class XContentTests : OpenSearchTestCase() {
 
@@ -274,11 +275,21 @@ class XContentTests : OpenSearchTestCase() {
     }
 
     fun `test alias action parsing`() {
-        val aliasAction = randomAliasAction()
-
+        val aliasAction = randomAliasAction(false)
         val aliasActionString = aliasAction.toJsonString()
         val parsedAliasAction = ISMActionsParser.instance.parse(parser(aliasActionString), 0)
         assertEquals("Round tripping AliasAction doesn't work", aliasAction.convertToMap(), parsedAliasAction.convertToMap())
+    }
+
+    fun `test alias action parsing with index`() {
+        assertFailsWith<IllegalArgumentException>(
+            message = "Alias actions are only allowed on managed indices.",
+            block = {
+                val aliasAction = randomAliasAction(true)
+                val aliasActionString = aliasAction.toJsonString()
+                ISMActionsParser.instance.parse(parser(aliasActionString), 0)
+            }
+        )
     }
 
     private fun parser(xc: String): XContentParser {
