@@ -64,7 +64,7 @@ class TransportExplainTransformAction @Inject constructor(
 
     private val log = LogManager.getLogger(javaClass)
 
-    @Suppress("SpreadOperator", "NestedBlockDepth")
+    @Suppress("SpreadOperator", "NestedBlockDepth", "LongMethod")
     override fun doExecute(task: Task, request: ExplainTransformRequest, actionListener: ActionListener<ExplainTransformResponse>) {
         log.debug(
             "User and roles string from thread context: ${client.threadPool().threadContext.getTransient<String>(
