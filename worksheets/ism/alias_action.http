@@ -1,0 +1,159 @@
+1. Rollover index policy with deletion of indices when the doc count exceeds a certain value.
+1.1. Create an ISM policy
+
+curl -X PUT "localhost:9200/_plugins/_ism/policies/rollover_policy?pretty" -H 'Content-Type: application/json' -d'
+{
+  "policy": {
+    "description": "Example rollover policy.",
+    "default_state": "rollover",
+    "states": [
+      {
+        "name": "rollover",
+        "actions": [
+          {
+            "rollover": {
+              "min_doc_count": 1
+            }
+          }
+        ],
+        "transitions": [{
+            "state_name": "alias",
+            "conditions": {
+              "min_doc_count": "2"
+            }
+          }]
+      },
+      {
+        "name": "alias",
+        "actions": [
+          {
+            "alias": {
+              "actions": [
+                {
+                  "remove": {
+                      "alias": "log"
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      }
+    ],
+    "ism_template": {
+      "index_patterns": ["log*"],
+      "priority": 100
+    }
+  }
+}
+'
+
+1.2 Create an index template to enable the policy on:
+
+curl -X PUT "localhost:9200/_index_template/ism_rollover1?" -H 'Content-Type: application/json' -d'
+{
+  "index_patterns": ["1log*"],
+  "template": {
+   "settings": {
+    "plugins.index_state_management.rollover_alias": "1log"
+   }
+ }
+}
+'
+
+1.3 Change the cluster settings to trigger jobs every minute:
+
+curl -X PUT "localhost:9200/_cluster/settings?pretty=true" -H 'Content-Type: application/json' -d'
+{
+  "persistent" : {
+    "plugins.index_state_management.job_interval" : 1
+  }
+}
+'
+
+1.4 Create a new index:
+
+curl -X PUT "localhost:9200/log-000001" -H 'Content-Type: application/json' -d'
+{
+  "aliases": {
+    "log": {
+      "is_write_index": true
+    }
+  }
+}
+'
+
+1.5 Add a document to the index to trigger the job:
+
+curl -X POST "localhost:9200/log-000001/_doc" -H 'Content-Type: application/json' -d'
+{
+  "message": "dummy"
+}
+'
+
+1.6 The first job will trigger the rollover action and a new index will be created. 
+1.7 Add another document to the two indices like step 1.5.
+1.8 The new job will cause the second index to point to the log alias and the older one will be removed due to alias action.
+1.9. Verify these steps using alias and index API:
+
+curl -X GET "localhost:9200/_cat/indices?pretty"
+
+curl -X GET "localhost:9200/_cat/aliases?pretty"
+
+
+2. Fail the case if a user tries to remove index using alias action.
+2.1 Create the following policy:
+
+curl -X PUT "localhost:9200/_plugins/_ism/policies/remove_index_policy12345?pretty" -H 'Content-Type: application/json' -d'
+{
+  "policy": {
+    "description": "Example rollover policy.",
+    "default_state": "rollover",
+    "states": [
+      {
+        "name": "rollover",
+        "actions": [
+          {
+            "rollover": {
+              "min_doc_count": 1
+            }
+          }
+        ],
+        "transitions": [{
+            "state_name": "alias",
+            "conditions": {
+              "min_doc_count": "2"
+            }
+          }]
+      },
+      {
+        "name": "alias",
+        "actions": [
+          {
+            "alias": {
+              "actions": [
+                {
+                  "add": {
+                      "alias": "log"
+                  }
+                },
+                {
+                  "remove": {
+                      "index": "log-00001"
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      }
+    ],
+    "ism_template": {
+      "index_patterns": ["MMMMMMMMttestlog*"],
+      "priority": 100
+    }
+  }
+}
+'
+
+2.2 This will create an Illegal argument exception with the error: "Remove_index is not allowed here."
