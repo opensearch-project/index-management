@@ -5,8 +5,8 @@
 
 package org.opensearch.indexmanagement
 
-import org.apache.http.Header
-import org.apache.http.HttpEntity
+import org.apache.hc.core5.http.Header
+import org.apache.hc.core5.http.HttpEntity
 import org.opensearch.client.Request
 import org.opensearch.client.RequestOptions
 import org.opensearch.client.Response

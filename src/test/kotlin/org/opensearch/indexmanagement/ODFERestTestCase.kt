@@ -5,7 +5,7 @@
 
 package org.opensearch.indexmanagement
 
-import org.apache.http.HttpHost
+import org.apache.hc.core5.http.HttpHost
 import org.opensearch.client.RestClient
 import org.opensearch.common.io.PathUtils
 import org.opensearch.common.settings.Settings

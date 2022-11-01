@@ -11,10 +11,10 @@
 
 package org.opensearch.indexmanagement
 
-import org.apache.http.HttpHeaders
-import org.apache.http.entity.ContentType
-import org.apache.http.entity.StringEntity
-import org.apache.http.message.BasicHeader
+import org.apache.hc.core5.http.HttpHeaders
+import org.apache.hc.core5.http.ContentType
+import org.apache.hc.core5.http.io.entity.StringEntity
+import org.apache.hc.core5.http.message.BasicHeader
 import org.opensearch.client.Request
 import org.opensearch.client.Response
 import org.opensearch.client.ResponseException

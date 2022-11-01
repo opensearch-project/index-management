@@ -5,11 +5,11 @@
 
 package org.opensearch.indexmanagement.transform
 
-import org.apache.http.HttpEntity
-import org.apache.http.HttpHeaders
-import org.apache.http.entity.ContentType.APPLICATION_JSON
-import org.apache.http.entity.StringEntity
-import org.apache.http.message.BasicHeader
+import org.apache.hc.core5.http.HttpEntity
+import org.apache.hc.core5.http.HttpHeaders
+import org.apache.hc.core5.http.ContentType
+import org.apache.hc.core5.http.io.entity.StringEntity
+import org.apache.hc.core5.http.message.BasicHeader
 import org.junit.AfterClass
 import org.opensearch.client.Response
 import org.opensearch.client.ResponseException
@@ -80,7 +80,7 @@ abstract class TransformRestTestCase : IndexManagementRestTestCase() {
                 "PUT",
                 "$TRANSFORM_BASE_URI/$transformId?refresh=$refresh",
                 emptyMap(),
-                StringEntity(transformString, APPLICATION_JSON)
+                StringEntity(transformString, ContentType.APPLICATION_JSON)
             )
         assertEquals("Unable to create a new transform", RestStatus.CREATED, response.restStatus())
         return response
@@ -243,14 +243,14 @@ abstract class TransformRestTestCase : IndexManagementRestTestCase() {
             StringEntity(
                 "{\"doc\":{\"transform\":{\"schedule\":{\"interval\":{\"start_time\":" +
                     "\"$startTimeMillis\"}}}}}",
-                APPLICATION_JSON
+                ContentType.APPLICATION_JSON
             )
         )
 
         assertEquals("Request failed", RestStatus.OK, response.restStatus())
     }
 
-    protected fun Transform.toHttpEntity(): HttpEntity = StringEntity(toJsonString(), APPLICATION_JSON)
+    protected fun Transform.toHttpEntity(): HttpEntity = StringEntity(toJsonString(), ContentType.APPLICATION_JSON)
 
     override fun xContentRegistry(): NamedXContentRegistry {
         return NamedXContentRegistry(SearchModule(Settings.EMPTY, emptyList()).namedXContents)

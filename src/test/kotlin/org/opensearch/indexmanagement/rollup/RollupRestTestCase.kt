@@ -5,11 +5,11 @@
 
 package org.opensearch.indexmanagement.rollup
 
-import org.apache.http.HttpEntity
-import org.apache.http.HttpHeaders
-import org.apache.http.entity.ContentType.APPLICATION_JSON
-import org.apache.http.entity.StringEntity
-import org.apache.http.message.BasicHeader
+import org.apache.hc.core5.http.HttpEntity
+import org.apache.hc.core5.http.HttpHeaders
+import org.apache.hc.core5.http.ContentType
+import org.apache.hc.core5.http.io.entity.StringEntity
+import org.apache.hc.core5.http.message.BasicHeader
 import org.junit.AfterClass
 import org.junit.Before
 import org.opensearch.client.Response
@@ -63,7 +63,7 @@ abstract class RollupRestTestCase : IndexManagementRestTestCase() {
                     }
                 }
                 """.trimIndent(),
-                APPLICATION_JSON
+                ContentType.APPLICATION_JSON
             )
         )
     }
@@ -100,7 +100,7 @@ abstract class RollupRestTestCase : IndexManagementRestTestCase() {
                 "PUT",
                 "$ROLLUP_JOBS_BASE_URI/$rollupId?refresh=$refresh",
                 emptyMap(),
-                StringEntity(rollupString, APPLICATION_JSON)
+                StringEntity(rollupString, ContentType.APPLICATION_JSON)
             )
         assertEquals("Unable to create a new rollup", RestStatus.CREATED, response.restStatus())
         return response
@@ -148,7 +148,7 @@ abstract class RollupRestTestCase : IndexManagementRestTestCase() {
         """.trimIndent()
         val response = client().makeRequest(
             "POST", "${rollup.sourceIndex}/_doc?refresh=true",
-            emptyMap(), StringEntity(request, APPLICATION_JSON)
+            emptyMap(), StringEntity(request, ContentType.APPLICATION_JSON)
         )
         assertEquals("Request failed", RestStatus.CREATED, response.restStatus())
     }
@@ -226,7 +226,7 @@ abstract class RollupRestTestCase : IndexManagementRestTestCase() {
         return metadata
     }
 
-    protected fun Rollup.toHttpEntity(): HttpEntity = StringEntity(toJsonString(), APPLICATION_JSON)
+    protected fun Rollup.toHttpEntity(): HttpEntity = StringEntity(toJsonString(), ContentType.APPLICATION_JSON)
 
     protected fun updateRollupStartTime(update: Rollup, desiredStartTimeMillis: Long? = null) {
         // Before updating start time of a job always make sure there are no unassigned shards that could cause the config
@@ -256,7 +256,7 @@ abstract class RollupRestTestCase : IndexManagementRestTestCase() {
             StringEntity(
                 "{\"doc\":{\"rollup\":{\"schedule\":{\"interval\":{\"start_time\":" +
                     "\"$startTimeMillis\"}}}}}",
-                APPLICATION_JSON
+                ContentType.APPLICATION_JSON
             )
         )
 
@@ -274,7 +274,7 @@ abstract class RollupRestTestCase : IndexManagementRestTestCase() {
         """.trimIndent()
         val res = client().makeRequest(
             "PUT", "_cluster/settings", emptyMap(),
-            StringEntity(request, APPLICATION_JSON)
+            StringEntity(request, ContentType.APPLICATION_JSON)
         )
         assertEquals("Request failed", RestStatus.OK, res.restStatus())
     }
