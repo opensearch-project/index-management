@@ -356,7 +356,6 @@ class RestExplainActionIT : IndexStateManagementRestTestCase() {
             TOTAL_MANAGED_INDICES to 1,
         )
         waitFor {
-            logger.info("here")
             logger.info(getExplainMap(indexName, queryParams = SHOW_POLICY_QUERY_PARAM))
             assertResponseMap(expected, getExplainMap(indexName, queryParams = SHOW_POLICY_QUERY_PARAM))
         }

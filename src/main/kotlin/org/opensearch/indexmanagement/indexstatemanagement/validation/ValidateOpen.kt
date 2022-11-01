@@ -67,6 +67,6 @@ class ValidateOpen(
         const val name = "validate_open"
         fun getReadOnlyAllowDeleteBlockMessage(index: String) = "read_only_allow_delete block is not null for index [index=$index]"
         fun getMaxNumberOfShardsExceededMessage(index: String) = "Maximum number of shards exceeded for index [index=$index]"
-        fun getValidationPassedMessage(index: String) = "Delete validation passed for [index=$index]"
+        fun getValidationPassedMessage(index: String) = "Open action validation passed for [index=$index]"
     }
 }

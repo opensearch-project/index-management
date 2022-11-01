@@ -52,6 +52,6 @@ class ValidateReadWrite(
         const val name = "validate_read_write"
         const val settingKey = "read_only_allow_delete"
         fun getReadOnlyAllowDeleteBlockMessage(index: String) = "read_only_allow_delete block is not null for index [index=$index]"
-        fun getValidationPassedMessage(index: String) = "Delete validation passed for [index=$index]"
+        fun getValidationPassedMessage(index: String) = "read_write validation passed for [index=$index]"
     }
 }

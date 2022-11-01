@@ -647,8 +647,6 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
         }
 
         val response = client().makeRequest(RestRequest.Method.GET.toString(), "${RestExplainAction.EXPLAIN_BASE_URI}/$indexName?validate_action=true")
-//        logger.info("response content")
-//        logger.info(response.entity.content.bufferedReader().use { it.readText() })
 
         assertEquals("Unexpected RestStatus", RestStatus.OK, response.restStatus())
         lateinit var validationResult: ValidationResult
