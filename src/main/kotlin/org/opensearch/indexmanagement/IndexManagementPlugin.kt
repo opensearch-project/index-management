@@ -367,7 +367,7 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
             xContentRegistry,
             settings,
             indexNameExpressionResolver,
-            jvmService, // put jvm
+            jvmService,
             threadPool
         )
         fieldCapsFilter = FieldCapsFilter(clusterService, settings, indexNameExpressionResolver)

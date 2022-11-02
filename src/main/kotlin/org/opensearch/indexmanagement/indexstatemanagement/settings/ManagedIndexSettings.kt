@@ -14,7 +14,7 @@ import java.util.function.Function
 class ManagedIndexSettings {
     companion object {
         const val DEFAULT_ISM_ENABLED = true
-        const val DEFAULT_VALIDATION_SERVICE_ENABLED = true
+        const val DEFAULT_VALIDATION_SERVICE_ENABLED = false
         const val DEFAULT_TEMPLATE_MIGRATION_TIMESTAMP = 0L
         const val DEFAULT_JOB_INTERVAL = 5
         const val DEFAULT_JITTER = 0.6
