@@ -73,6 +73,10 @@ fun isRollupIndex(index: String, clusterState: ClusterState): Boolean {
     return false
 }
 
+fun Rollup.isTargetIndexAlias(): Boolean {
+    return RollupFieldValueExpressionResolver.indexAliasUtils.isAlias(targetIndex)
+}
+
 fun Rollup.getRollupSearchRequest(metadata: RollupMetadata): SearchRequest {
     val query = if (metadata.continuous != null) {
         RangeQueryBuilder(this.getDateHistogram().sourceField)
