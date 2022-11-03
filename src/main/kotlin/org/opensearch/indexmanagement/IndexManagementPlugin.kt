@@ -372,7 +372,7 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
         this.indexNameExpressionResolver = indexNameExpressionResolver
 
         val skipFlag = SkipExecution(client)
-        RollupFieldValueExpressionResolver.registerScriptService(scriptService)
+        RollupFieldValueExpressionResolver.registerServices(scriptService, clusterService)
         val rollupRunner = RollupRunner
             .registerClient(client)
             .registerClusterService(clusterService)
