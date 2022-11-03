@@ -19,6 +19,7 @@ import org.opensearch.action.support.ActionFilters
 import org.opensearch.action.support.HandledTransportAction
 import org.opensearch.action.support.master.AcknowledgedResponse
 import org.opensearch.client.node.NodeClient
+import org.opensearch.cluster.metadata.AutoExpandReplicas
 import org.opensearch.cluster.routing.allocation.AwarenessReplicaBalance
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.ValidationException
@@ -116,10 +117,13 @@ class TransportIndexPolicyAction @Inject constructor(
 
         @Suppress("ComplexMethod", "LongMethod", "NestedBlockDepth")
         private fun validate() {
+            // ISM doesn't support update auto expand replica setting, so initiate this as false
+            val autoExpandReplica = AutoExpandReplicas.SETTING[Settings.EMPTY]
+
             request.policy.states.forEach { state ->
                 state.actions.forEach { action ->
                     if (action is ReplicaCountAction) {
-                        val error = awarenessReplicaBalance.validate(action.numOfReplicas)
+                        val error = awarenessReplicaBalance.validate(action.numOfReplicas, autoExpandReplica)
                         if (error.isPresent) {
                             val ex = ValidationException()
                             ex.addValidationError(error.get())
