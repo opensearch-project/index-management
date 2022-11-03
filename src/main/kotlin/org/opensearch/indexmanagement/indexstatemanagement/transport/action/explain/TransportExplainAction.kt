@@ -42,7 +42,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.ManagedIndexCoordinat
 import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexConfig
 import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
 import org.opensearch.indexmanagement.common.model.rest.SearchParams
-import org.opensearch.indexmanagement.indexstatemanagement.ManagedIndexRunner.validationService
+import org.opensearch.indexmanagement.indexstatemanagement.ManagedIndexRunner.actionValidation
 import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.getManagedIndexMetadata
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.managedIndex.ManagedIndexAction
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.managedIndex.ManagedIndexRequest
@@ -338,7 +338,7 @@ class TransportExplainAction @Inject constructor(
                     }
                 }
                 if (validateAction) {
-                    var validationResult = validationService.validate("nothing", indexName)
+                    var validationResult = actionValidation.validate("nothing", indexName)
                     val policy = policiesforValidation[indexName]
                     if (policy != null && managedIndexMetadata != null) {
                         val state = policy.getStateToExecute(managedIndexMetadata!!)
@@ -347,7 +347,7 @@ class TransportExplainAction @Inject constructor(
                         if (actionName == null) {
                             actionName = "nothing"
                         }
-                        validationResult = validationService.validate(actionName, indexName)
+                        validationResult = actionValidation.validate(actionName, indexName)
                     }
                     validationResults.add(validationResult)
                 } else {

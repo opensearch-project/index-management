@@ -16,7 +16,7 @@ import java.util.Locale
 
 class ReplicaCountActionIT : IndexStateManagementRestTestCase() {
 
-    private val testIndexName = javaClass.simpleName.toLowerCase(Locale.ROOT)
+    private val testIndexName = javaClass.simpleName.lowercase(Locale.ROOT)
 
     fun `test basic replica count`() {
         val indexName = "${testIndexName}_index_1"

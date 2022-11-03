@@ -176,7 +176,7 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
     }
 
     protected fun createIndex(
-        index: String = randomAlphaOfLength(10).toLowerCase(Locale.ROOT),
+        index: String = randomAlphaOfLength(10).lowercase(Locale.ROOT),
         policyID: String? = randomAlphaOfLength(10),
         alias: String? = null,
         replicas: String? = null,
@@ -300,7 +300,7 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
     }
 
     protected fun updateValidationServiceSetting(value: Boolean) {
-        updateClusterSetting(ManagedIndexSettings.VALIDATION_SERVICE_ENABLED.key, value.toString(), false)
+        updateClusterSetting(ManagedIndexSettings.ACTION_VALIDATION_ENABLED.key, value.toString(), false)
     }
 
     protected fun updateIndexSetting(

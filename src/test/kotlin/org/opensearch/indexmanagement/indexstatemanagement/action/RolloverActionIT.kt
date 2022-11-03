@@ -35,7 +35,7 @@ import java.util.Locale
 
 class RolloverActionIT : IndexStateManagementRestTestCase() {
 
-    private val testIndexName = javaClass.simpleName.toLowerCase(Locale.ROOT)
+    private val testIndexName = javaClass.simpleName.lowercase(Locale.ROOT)
 
     @Suppress("UNCHECKED_CAST")
     fun `test rollover no condition`() {

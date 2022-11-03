@@ -18,7 +18,7 @@ import java.time.Instant
 import java.util.Locale
 
 class ActionRetryIT : IndexStateManagementRestTestCase() {
-    private val testIndexName = javaClass.simpleName.toLowerCase(Locale.ROOT)
+    private val testIndexName = javaClass.simpleName.lowercase(Locale.ROOT)
 
     /**
      * We are forcing RollOver to fail in this Integ test.

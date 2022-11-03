@@ -51,10 +51,10 @@ import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndex
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.ALLOW_LIST_NONE
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.DEFAULT_ISM_ENABLED
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.DEFAULT_JOB_INTERVAL
-import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.DEFAULT_VALIDATION_SERVICE_ENABLED
+import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.DEFAULT_ACTION_VALIDATION_ENABLED
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.INDEX_STATE_MANAGEMENT_ENABLED
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.JOB_INTERVAL
-import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.VALIDATION_SERVICE_ENABLED
+import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.ACTION_VALIDATION_ENABLED
 import org.opensearch.indexmanagement.indexstatemanagement.util.DEFAULT_INDEX_TYPE
 import org.opensearch.indexmanagement.indexstatemanagement.util.MetadataCheck
 import org.opensearch.indexmanagement.indexstatemanagement.util.checkMetadata
@@ -76,7 +76,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.util.sendNotification
 import org.opensearch.indexmanagement.indexstatemanagement.util.shouldBackoff
 import org.opensearch.indexmanagement.indexstatemanagement.util.shouldChangePolicy
 import org.opensearch.indexmanagement.indexstatemanagement.util.updateDisableManagedIndexRequest
-import org.opensearch.indexmanagement.indexstatemanagement.validation.ValidationService
+import org.opensearch.indexmanagement.indexstatemanagement.validation.ActionValidation
 import org.opensearch.indexmanagement.opensearchapi.IndexManagementSecurityContext
 import org.opensearch.indexmanagement.opensearchapi.convertToMap
 import org.opensearch.indexmanagement.opensearchapi.parseWithType
@@ -118,14 +118,14 @@ object ManagedIndexRunner :
     private lateinit var scriptService: ScriptService
     private lateinit var settings: Settings
     private lateinit var imIndices: IndexManagementIndices
-    lateinit var validationService: ValidationService
+    lateinit var actionValidation: ActionValidation
     private lateinit var ismHistory: IndexStateManagementHistory
     private lateinit var skipExecFlag: SkipExecution
     private lateinit var threadPool: ThreadPool
     private lateinit var extensionStatusChecker: ExtensionStatusChecker
     private lateinit var indexMetadataProvider: IndexMetadataProvider
     private var indexStateManagementEnabled: Boolean = DEFAULT_ISM_ENABLED
-    private var validationServiceEnabled: Boolean = DEFAULT_VALIDATION_SERVICE_ENABLED
+    private var validationServiceEnabled: Boolean = DEFAULT_ACTION_VALIDATION_ENABLED
     @Suppress("MagicNumber")
     private val savePolicyRetryPolicy = BackoffPolicy.exponentialBackoff(TimeValue.timeValueMillis(250), 3)
     @Suppress("MagicNumber")
@@ -172,8 +172,8 @@ object ManagedIndexRunner :
             indexStateManagementEnabled = it
         }
 
-        validationServiceEnabled = VALIDATION_SERVICE_ENABLED.get(settings)
-        clusterService.clusterSettings.addSettingsUpdateConsumer(VALIDATION_SERVICE_ENABLED) {
+        validationServiceEnabled = ACTION_VALIDATION_ENABLED.get(settings)
+        clusterService.clusterSettings.addSettingsUpdateConsumer(ACTION_VALIDATION_ENABLED) {
             validationServiceEnabled = it
         }
 
@@ -190,8 +190,8 @@ object ManagedIndexRunner :
         return this
     }
 
-    fun registerValidationService(validationService: ValidationService): ManagedIndexRunner {
-        this.validationService = validationService
+    fun registerValidationService(actionValidation: ActionValidation): ManagedIndexRunner {
+        this.actionValidation = actionValidation
         return this
     }
 
@@ -403,7 +403,7 @@ object ManagedIndexRunner :
         @Suppress("ComplexCondition", "MaxLineLength")
         if (updateResult.metadataSaved && state != null && action != null && step != null && currentActionMetaData != null) {
             if (validationServiceEnabled) {
-                val validationResult = validationService.validate(action.type, stepContext.metadata.index)
+                val validationResult = actionValidation.validate(action.type, stepContext.metadata.index)
                 if (validationResult.validationStatus == Validate.ValidationStatus.RE_VALIDATING) {
                     logger.warn("Validation Status is: RE_VALIDATING. The action is {}, state is {}, step is {}.\", action.type, state.name, step.name")
                     publishErrorNotification(policy, managedIndexMetaData)

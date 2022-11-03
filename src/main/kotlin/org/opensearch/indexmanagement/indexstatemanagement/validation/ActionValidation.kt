@@ -12,7 +12,7 @@ import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ValidationR
 import org.opensearch.monitor.jvm.JvmService
 
 @OpenForTesting
-class ValidationService(
+class ActionValidation(
     val settings: Settings,
     val clusterService: ClusterService,
     val jvmService: JvmService

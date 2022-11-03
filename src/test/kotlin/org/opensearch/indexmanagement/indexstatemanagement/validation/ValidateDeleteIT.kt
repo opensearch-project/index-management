@@ -19,7 +19,7 @@ import java.time.temporal.ChronoUnit
 import java.util.Locale
 
 class ValidateDeleteIT : IndexStateManagementRestTestCase() {
-    private val testIndexName = javaClass.simpleName.toLowerCase(Locale.ROOT)
+    private val testIndexName = javaClass.simpleName.lowercase(Locale.ROOT)
 
     fun `test delete index is write index`() {
         enableValidationService()
