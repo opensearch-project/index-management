@@ -25,7 +25,7 @@ import java.util.Locale
 
 class ISMTemplateRestAPIIT : IndexStateManagementRestTestCase() {
 
-    private val testIndexName = javaClass.simpleName.toLowerCase(Locale.ROOT)
+    private val testIndexName = javaClass.simpleName.lowercase(Locale.ROOT)
 
     private val policyID1 = "t1"
     private val policyID2 = "t2"
@@ -79,6 +79,7 @@ class ISMTemplateRestAPIIT : IndexStateManagementRestTestCase() {
     }
 
     fun `test ism template managing index`() {
+        disableValidationService()
         val indexName1 = "log-000001"
         val indexName2 = "log-000002"
         val indexName3 = "log-000003"

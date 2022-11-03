@@ -35,7 +35,7 @@ import java.util.Locale
 
 class RolloverActionIT : IndexStateManagementRestTestCase() {
 
-    private val testIndexName = javaClass.simpleName.toLowerCase(Locale.ROOT)
+    private val testIndexName = javaClass.simpleName.lowercase(Locale.ROOT)
 
     @Suppress("UNCHECKED_CAST")
     fun `test rollover no condition`() {
@@ -377,6 +377,7 @@ class RolloverActionIT : IndexStateManagementRestTestCase() {
     }
 
     fun `test rollover pre check`() {
+        disableValidationService()
         // index-1 alias x
         // index-2 alias x is_write_index
         // manage index-1, expect it fail to rollover

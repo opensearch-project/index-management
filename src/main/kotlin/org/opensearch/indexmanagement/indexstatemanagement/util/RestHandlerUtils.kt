@@ -54,6 +54,9 @@ const val DEFAULT_POLICY_SORT_FIELD = "policy.policy_id.keyword"
 const val SHOW_POLICY_QUERY_PARAM = "show_policy"
 const val DEFAULT_EXPLAIN_SHOW_POLICY = false
 
+const val SHOW_VALIDATE_ACTION = "validate_action"
+const val DEFAULT_EXPLAIN_VALIDATE_ACTION = false
+
 const val INDEX_HIDDEN = "index.hidden"
 const val INDEX_NUMBER_OF_SHARDS = "index.number_of_shards"
 const val INDEX_NUMBER_OF_REPLICAS = "index.number_of_replicas"
