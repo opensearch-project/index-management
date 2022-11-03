@@ -27,7 +27,7 @@ import java.util.Locale
 
 class RestRetryFailedManagedIndexActionIT : IndexStateManagementRestTestCase() {
 
-    private val testIndexName = javaClass.simpleName.toLowerCase(Locale.ROOT)
+    private val testIndexName = javaClass.simpleName.lowercase(Locale.ROOT)
 
     fun `test missing indices`() {
         try {

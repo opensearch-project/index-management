@@ -84,8 +84,8 @@ fun randomTransform(): Transform {
         enabled = enabled,
         enabledAt = if (enabled) randomInstant() else null,
         description = OpenSearchRestTestCase.randomAlphaOfLength(10),
-        sourceIndex = OpenSearchRestTestCase.randomAlphaOfLength(10).toLowerCase(Locale.ROOT),
-        targetIndex = OpenSearchRestTestCase.randomAlphaOfLength(10).toLowerCase(Locale.ROOT),
+        sourceIndex = OpenSearchRestTestCase.randomAlphaOfLength(10).lowercase(Locale.ROOT),
+        targetIndex = OpenSearchRestTestCase.randomAlphaOfLength(10).lowercase(Locale.ROOT),
         roles = OpenSearchRestTestCase.randomList(10) { OpenSearchRestTestCase.randomAlphaOfLength(10) },
         pageSize = if (isContinuous) OpenSearchRestTestCase.randomIntBetween(1, 1000) else OpenSearchRestTestCase.randomIntBetween(1, 10000),
         groups = randomGroups(),
@@ -130,7 +130,7 @@ fun randomShardIDToGlobalCheckpoint(): Map<ShardId, Long> {
 }
 
 fun randomShardID(): ShardId {
-    val indexName: String = OpenSearchRestTestCase.randomAlphaOfLength(10).toLowerCase(Locale.ROOT)
+    val indexName: String = OpenSearchRestTestCase.randomAlphaOfLength(10).lowercase(Locale.ROOT)
     // We lose the index uuid in an XContent round trip, but we don't use it anyways
     val testIndex = Index(indexName, IndexMetadata.INDEX_UUID_NA_VALUE)
     val shardNumber: Int = OpenSearchRestTestCase.randomIntBetween(0, 100)
@@ -146,7 +146,7 @@ fun randomContinuousStats(): ContinuousTransformStats {
 
 fun randomDocumentsBehind(): Map<String, Long> {
     val numIndices = OpenSearchRestTestCase.randomIntBetween(1, 10)
-    val randomIndices = (1..numIndices).map { OpenSearchRestTestCase.randomAlphaOfLength(10).toLowerCase(Locale.ROOT) }
+    val randomIndices = (1..numIndices).map { OpenSearchRestTestCase.randomAlphaOfLength(10).lowercase(Locale.ROOT) }
     return randomIndices.associateWith { OpenSearchRestTestCase.randomNonNegativeLong() }
 }
 

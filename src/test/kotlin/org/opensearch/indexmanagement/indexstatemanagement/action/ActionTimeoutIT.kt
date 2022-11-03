@@ -16,7 +16,7 @@ import java.time.Instant
 import java.util.Locale
 
 class ActionTimeoutIT : IndexStateManagementRestTestCase() {
-    private val testIndexName = javaClass.simpleName.toLowerCase(Locale.ROOT)
+    private val testIndexName = javaClass.simpleName.lowercase(Locale.ROOT)
 
     fun `test failed action`() {
         val indexName = "${testIndexName}_index_1"

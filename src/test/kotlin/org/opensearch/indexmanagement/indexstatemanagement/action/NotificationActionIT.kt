@@ -21,7 +21,7 @@ import java.time.temporal.ChronoUnit
 import java.util.Locale
 
 class NotificationActionIT : IndexStateManagementRestTestCase() {
-    private val testIndexName = javaClass.simpleName.toLowerCase(Locale.ROOT)
+    private val testIndexName = javaClass.simpleName.lowercase(Locale.ROOT)
 
     // TODO: this seems to have broken with the notification plugin
     // cannot test chime/slack in integ tests, but can test a custom webhook by

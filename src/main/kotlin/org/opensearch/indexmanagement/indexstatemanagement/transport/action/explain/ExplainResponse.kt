@@ -12,11 +12,13 @@ import org.opensearch.common.xcontent.ToXContent
 import org.opensearch.common.xcontent.ToXContentObject
 import org.opensearch.common.xcontent.XContentBuilder
 import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
+import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.addObject
 import org.opensearch.indexmanagement.indexstatemanagement.settings.LegacyOpenDistroManagedIndexSettings
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings
 import org.opensearch.indexmanagement.indexstatemanagement.util.TOTAL_MANAGED_INDICES
 import org.opensearch.indexmanagement.indexstatemanagement.util.XCONTENT_WITHOUT_TYPE_AND_USER
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ValidationResult
 import java.io.IOException
 
 open class ExplainResponse : ActionResponse, ToXContentObject {
@@ -28,14 +30,17 @@ open class ExplainResponse : ActionResponse, ToXContentObject {
     val totalManagedIndices: Int
     val enabledState: Map<String, Boolean>
     val policies: Map<String, Policy>
+    val validationResults: List<ValidationResult?>
 
+    @Suppress("LongParameterList")
     constructor(
         indexNames: List<String>,
         indexPolicyIDs: List<String?>,
         indexMetadatas: List<ManagedIndexMetaData?>,
         totalManagedIndices: Int,
         enabledState: Map<String, Boolean>,
-        policies: Map<String, Policy>
+        policies: Map<String, Policy>,
+        validationResults: List<ValidationResult?>
     ) : super() {
         this.indexNames = indexNames
         this.indexPolicyIDs = indexPolicyIDs
@@ -43,6 +48,7 @@ open class ExplainResponse : ActionResponse, ToXContentObject {
         this.totalManagedIndices = totalManagedIndices
         this.enabledState = enabledState
         this.policies = policies
+        this.validationResults = validationResults
     }
 
     @Throws(IOException::class)
@@ -52,7 +58,8 @@ open class ExplainResponse : ActionResponse, ToXContentObject {
         indexMetadatas = sin.readList { ManagedIndexMetaData.fromStreamInput(it) },
         totalManagedIndices = sin.readInt(),
         enabledState = sin.readMap() as Map<String, Boolean>,
-        policies = sin.readMap(StreamInput::readString, ::Policy)
+        policies = sin.readMap(StreamInput::readString, ::Policy),
+        validationResults = sin.readList { ValidationResult.fromStreamInput(it) }
     )
 
     @Throws(IOException::class)
@@ -67,6 +74,7 @@ open class ExplainResponse : ActionResponse, ToXContentObject {
             { _out, key -> _out.writeString(key) },
             { _out, policy -> policy.writeTo(_out) }
         )
+        out.writeCollection(validationResults)
     }
 
     override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
@@ -78,6 +86,9 @@ open class ExplainResponse : ActionResponse, ToXContentObject {
             indexMetadatas[ind]?.toXContent(builder, ToXContent.EMPTY_PARAMS)
             builder.field("enabled", enabledState[name])
             policies[name]?.let { builder.field(Policy.POLICY_TYPE, it, XCONTENT_WITHOUT_TYPE_AND_USER) }
+            if (validationResults[ind] != null) {
+                builder.addObject(ValidationResult.VALIDATE, validationResults[ind], params, true)
+            }
             builder.endObject()
         }
         builder.field(TOTAL_MANAGED_INDICES, totalManagedIndices)

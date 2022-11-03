@@ -1,0 +1,33 @@
+### delete policy
+PUT localhost:9200/_opendistro/_ism/policies/exampledelete
+Content-Type: application/json
+
+{
+  "policy": {
+    "description": "Example delete policy.",
+    "default_state": "delete",
+    "states": [
+      {
+        "name": "delete",
+        "actions": [
+          {
+            "delete": {}
+          }
+        ],
+        "transitions": []
+      }
+    ],
+    "ism_template": {
+      "index_patterns": ["testdelete"],
+      "priority": 100
+    }
+  }
+}
+
+### delete index
+PUT http://localhost:9200/testdelete
+Content-Type: application/json
+
+### explain api call
+GET localhost:9200/_plugins/_ism/explain/testdelete?validate_action=true
+Accept: application/json
