@@ -42,6 +42,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.ManagedIndexCoordinat
 import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexConfig
 import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
 import org.opensearch.indexmanagement.common.model.rest.SearchParams
+import org.opensearch.indexmanagement.indexstatemanagement.ManagedIndexRunner.actionValidation
 import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.getManagedIndexMetadata
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.managedIndex.ManagedIndexAction
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.managedIndex.ManagedIndexRequest
@@ -55,6 +56,7 @@ import org.opensearch.indexmanagement.opensearchapi.parseWithType
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ISMIndexMetadata
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ValidationResult
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.buildUser
 import org.opensearch.search.SearchHit
 import org.opensearch.search.builder.SearchSourceBuilder
@@ -94,6 +96,7 @@ class TransportExplainAction @Inject constructor(
      * special case: when user explicitly query for an un-managed index
      * return this index with its policy id shown 'null' meaning it's not managed
      */
+    @Suppress("LongMethod")
     inner class ExplainHandler(
         private val client: NodeClient,
         private val actionListener: ActionListener<ExplainResponse>,
@@ -103,6 +106,7 @@ class TransportExplainAction @Inject constructor(
         private val indices: List<String> = request.indices
         private val explainAll: Boolean = indices.isEmpty()
         private val showPolicy: Boolean = request.showPolicy
+        private val validateAction: Boolean = request.validateAction
 
         // Map of indexName to index metadata got from config index job which is fake/not a real full metadata document
         private val managedIndicesMetaDataMap: MutableMap<IndexName, ManagedIndexMetadataMap> = mutableMapOf()
@@ -115,8 +119,10 @@ class TransportExplainAction @Inject constructor(
         private val enabledState: MutableMap<IndexName, Boolean> = mutableMapOf()
         private val indexPolicyIDs = mutableListOf<PolicyID?>()
         private val indexMetadatas = mutableListOf<ManagedIndexMetaData?>()
+        private val validationResults = mutableListOf<ValidationResult?>()
         private var totalManagedIndices = 0
         private val appliedPolicies: MutableMap<String, Policy> = mutableMapOf()
+        private val policiesforValidation: MutableMap<String, Policy> = mutableMapOf()
 
         @Suppress("SpreadOperator", "NestedBlockDepth")
         fun start() {
@@ -196,6 +202,9 @@ class TransportExplainAction @Inject constructor(
                                 if (showPolicy) {
                                     managedIndex.policy?.let { appliedPolicies[managedIndex.index] = it }
                                 }
+                                if (validateAction) {
+                                    managedIndex.policy?.let { policiesforValidation[managedIndex.index] = it }
+                                }
                             }
 
                             // explain all only return managed indices
@@ -204,7 +213,10 @@ class TransportExplainAction @Inject constructor(
                                     // edge case: if specify query param pagination size to be 0
                                     // we still show total managed indices
                                     indexNames.clear()
-                                    sendResponse(indexNames, indexMetadatas, indexPolicyIDs, enabledState, totalManagedIndices, appliedPolicies)
+                                    sendResponse(
+                                        indexNames, indexMetadatas, indexPolicyIDs, enabledState,
+                                        totalManagedIndices, appliedPolicies, validationResults
+                                    )
                                     return
                                 } else {
                                     // Clear and add the managedIndices from the response to preserve the sort order and size
@@ -230,7 +242,10 @@ class TransportExplainAction @Inject constructor(
                                     return
                                 }
                                 indexNames.clear()
-                                sendResponse(indexNames, indexMetadatas, indexPolicyIDs, enabledState, totalManagedIndices, appliedPolicies)
+                                sendResponse(
+                                    indexNames, indexMetadatas, indexPolicyIDs,
+                                    enabledState, totalManagedIndices, appliedPolicies, validationResults
+                                )
                                 return
                             }
                             actionListener.onFailure(ExceptionsHelper.unwrapCause(t) as Exception)
@@ -322,12 +337,29 @@ class TransportExplainAction @Inject constructor(
                         info?.let { managedIndexMetadata = clusterStateMetadata?.copy(info = it) }
                     }
                 }
+                if (validateAction) {
+                    var validationResult = actionValidation.validate("nothing", indexName)
+                    val policy = policiesforValidation[indexName]
+                    if (policy != null && managedIndexMetadata != null) {
+                        val state = policy.getStateToExecute(managedIndexMetadata!!)
+                        val action = state?.getActionToExecute(managedIndexMetadata!!, indexMetadataProvider)
+                        var actionName = action?.type
+                        if (actionName == null) {
+                            actionName = "nothing"
+                        }
+                        validationResult = actionValidation.validate(actionName, indexName)
+                    }
+                    validationResults.add(validationResult)
+                } else {
+                    validationResults.add(null)
+                }
+
                 indexMetadatas.add(managedIndexMetadata)
             }
             managedIndicesMetaDataMap.clear()
 
             if (user == null || indexNames.isEmpty()) {
-                sendResponse(indexNames, indexMetadatas, indexPolicyIDs, enabledState, totalManagedIndices, appliedPolicies)
+                sendResponse(indexNames, indexMetadatas, indexPolicyIDs, enabledState, totalManagedIndices, appliedPolicies, validationResults)
             } else {
                 filterAndSendResponse(threadContext)
             }
@@ -337,6 +369,7 @@ class TransportExplainAction @Inject constructor(
             threadContext.restore()
             val filteredIndices = mutableListOf<String>()
             val filteredMetadata = mutableListOf<ManagedIndexMetaData?>()
+            val filteredValidationResult = mutableListOf<ValidationResult?>()
             val filteredPolicies = mutableListOf<PolicyID?>()
             val enabledStatus = mutableMapOf<String, Boolean>()
             val filteredAppliedPolicies = mutableMapOf<String, Policy>()
@@ -350,6 +383,7 @@ class TransportExplainAction @Inject constructor(
                         filteredIndices.add(indexNames[i])
                         filteredMetadata.add(indexMetadatas[i])
                         filteredPolicies.add(indexPolicyIDs[i])
+                        validationResults[i]?.let { filteredValidationResult.add(it) }
                         enabledState[indexNames[i]]?.let { enabledStatus[indexNames[i]] = it }
                         appliedPolicies[indexNames[i]]?.let { filteredAppliedPolicies[indexNames[i]] = it }
                     } catch (e: OpenSearchSecurityException) {
@@ -360,7 +394,7 @@ class TransportExplainAction @Inject constructor(
                 }
                 sendResponse(
                     filteredIndices, filteredMetadata, filteredPolicies, enabledStatus,
-                    totalManagedIndices, filteredAppliedPolicies
+                    totalManagedIndices, filteredAppliedPolicies, filteredValidationResult
                 )
             }
         }
@@ -372,9 +406,10 @@ class TransportExplainAction @Inject constructor(
             policyIDs: List<PolicyID?>,
             enabledStatus: Map<String, Boolean>,
             totalIndices: Int,
-            policies: Map<String, Policy>
+            policies: Map<String, Policy>,
+            validationResult: List<ValidationResult?>,
         ) {
-            actionListener.onResponse(ExplainResponse(indices, policyIDs, metadata, totalIndices, enabledStatus, policies))
+            actionListener.onResponse(ExplainResponse(indices, policyIDs, metadata, totalIndices, enabledStatus, policies, validationResult))
         }
 
         @Suppress("ReturnCount")

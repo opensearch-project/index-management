@@ -23,7 +23,7 @@ import java.time.temporal.ChronoUnit
 import java.util.Locale
 
 class IndexPolicyActionIT : IndexStateManagementRestTestCase() {
-    private val testIndexName = javaClass.simpleName.toLowerCase(Locale.ROOT)
+    private val testIndexName = javaClass.simpleName.lowercase(Locale.ROOT)
 
     fun `test allocation aware replica count`() {
         val policyID = "${testIndexName}_testPolicyName_replica"

@@ -17,7 +17,7 @@ import java.util.Locale
 
 class ReadWriteActionIT : IndexStateManagementRestTestCase() {
 
-    private val testIndexName = javaClass.simpleName.toLowerCase(Locale.ROOT)
+    private val testIndexName = javaClass.simpleName.lowercase(Locale.ROOT)
 
     fun `test basic workflow`() {
         val indexName = "${testIndexName}_index_1"

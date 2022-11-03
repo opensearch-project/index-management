@@ -3,21 +3,29 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.indexmanagement.indexstatemanagement.action
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+package org.opensearch.indexmanagement.indexstatemanagement.validation
 
 import org.opensearch.indexmanagement.indexstatemanagement.IndexStateManagementRestTestCase
+import org.opensearch.indexmanagement.indexstatemanagement.action.ReadOnlyAction
 import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
 import org.opensearch.indexmanagement.indexstatemanagement.model.State
 import org.opensearch.indexmanagement.indexstatemanagement.randomErrorNotification
+import org.opensearch.indexmanagement.spi.indexstatemanagement.Validate
 import org.opensearch.indexmanagement.waitFor
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 import java.util.Locale
 
-class ReadOnlyActionIT : IndexStateManagementRestTestCase() {
+class ValidateReadOnlyIT : IndexStateManagementRestTestCase() {
     private val testIndexName = javaClass.simpleName.lowercase(Locale.ROOT)
 
-    fun `test basic workflow`() {
+    fun `test read_only validation`() {
+        enableValidationService()
         val indexName = "${testIndexName}_index_1"
         val policyID = "${testIndexName}_testPolicyName_1"
         val actionConfig = ReadOnlyAction(0)
@@ -50,5 +58,14 @@ class ReadOnlyActionIT : IndexStateManagementRestTestCase() {
         updateManagedIndexConfigStartTime(managedIndexConfig)
 
         waitFor { assertEquals("true", getIndexBlocksWriteSetting(indexName)) }
+
+        waitFor {
+            val data = getExplainValidationResult(indexName)
+            assertEquals(
+                "Index read cation validation status is PASSED.",
+                Validate.ValidationStatus.PASSED,
+                data?.validationStatus
+            )
+        }
     }
 }
