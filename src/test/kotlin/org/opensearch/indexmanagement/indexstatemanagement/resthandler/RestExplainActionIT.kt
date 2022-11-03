@@ -25,9 +25,10 @@ import java.util.Locale
 
 class RestExplainActionIT : IndexStateManagementRestTestCase() {
 
-    private val testIndexName = javaClass.simpleName.toLowerCase(Locale.ROOT)
+    private val testIndexName = javaClass.simpleName.lowercase(Locale.ROOT)
 
     fun `test single index`() {
+        disableValidationService()
         val indexName = "${testIndexName}_movies"
         createIndex(indexName, null)
         val expected = mapOf(
@@ -51,6 +52,7 @@ class RestExplainActionIT : IndexStateManagementRestTestCase() {
     }
 
     fun `test two indices, one managed one not managed`() {
+        disableValidationService()
         // explicitly asks for un-managed index, will return policy_id as null
         val indexName1 = "${testIndexName}_managed"
         val indexName2 = "${testIndexName}_not_managed"
@@ -80,6 +82,7 @@ class RestExplainActionIT : IndexStateManagementRestTestCase() {
     }
 
     fun `test two indices, one managed one not managed explain all`() {
+        disableValidationService()
         // explain all returns only managed indices
         val indexName1 = "${testIndexName}_managed"
         val indexName2 = "${testIndexName}_not_managed"
@@ -104,6 +107,7 @@ class RestExplainActionIT : IndexStateManagementRestTestCase() {
     }
 
     fun `test index pattern`() {
+        disableValidationService()
         val indexName1 = "${testIndexName}_pattern"
         val indexName2 = "${indexName1}_2"
         val indexName3 = "${indexName1}_3"
@@ -141,6 +145,7 @@ class RestExplainActionIT : IndexStateManagementRestTestCase() {
     }
 
     fun `test search query string`() {
+        disableValidationService()
         val indexName1 = "$testIndexName-search-query-string"
         val indexName2 = "$indexName1-testing-2"
         val indexName3 = "$indexName1-testing-3"
@@ -249,6 +254,7 @@ class RestExplainActionIT : IndexStateManagementRestTestCase() {
     }
 
     fun `test attached policy`() {
+        disableValidationService()
         val indexName = "${testIndexName}_watermelon"
         val policy = createRandomPolicy()
         createIndex(indexName, policy.id)
@@ -288,6 +294,7 @@ class RestExplainActionIT : IndexStateManagementRestTestCase() {
     }
 
     fun `test failed policy`() {
+        disableValidationService()
         val indexName = "${testIndexName}_melon"
         val policy = createRandomPolicy()
         createIndex(indexName, policy.id)
@@ -330,6 +337,7 @@ class RestExplainActionIT : IndexStateManagementRestTestCase() {
     }
 
     fun `test show_applied_policy query parameter`() {
+        disableValidationService()
         val indexName = "${testIndexName}_show_applied_policy"
         val policy = createRandomPolicy()
         createIndex(indexName, policy.id)
@@ -343,11 +351,12 @@ class RestExplainActionIT : IndexStateManagementRestTestCase() {
                 "index_uuid" to getUuid(indexName),
                 "policy_id" to policy.id,
                 ManagedIndexMetaData.ENABLED to true,
-                "policy" to expectedPolicy
+                "policy" to expectedPolicy,
             ),
             TOTAL_MANAGED_INDICES to 1,
         )
         waitFor {
+            logger.info(getExplainMap(indexName, queryParams = SHOW_POLICY_QUERY_PARAM))
             assertResponseMap(expected, getExplainMap(indexName, queryParams = SHOW_POLICY_QUERY_PARAM))
         }
     }

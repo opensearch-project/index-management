@@ -241,7 +241,6 @@ data class ManagedIndexMetaData(
             var action: ActionMetaData? = null
             var step: StepMetaData? = null
             var retryInfo: PolicyRetryInfoMetaData? = null
-
             var info: Map<String, Any>? = null
 
             XContentParserUtils.ensureExpectedToken(XContentParser.Token.START_OBJECT, xcp.currentToken(), xcp)
