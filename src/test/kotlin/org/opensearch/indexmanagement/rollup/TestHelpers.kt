@@ -105,8 +105,8 @@ fun randomRollup(): Rollup {
         jobLastUpdatedTime = randomInstant(),
         jobEnabledTime = if (enabled) randomInstant() else null,
         description = OpenSearchRestTestCase.randomAlphaOfLength(10),
-        sourceIndex = OpenSearchRestTestCase.randomAlphaOfLength(10).toLowerCase(Locale.ROOT),
-        targetIndex = OpenSearchRestTestCase.randomAlphaOfLength(10).toLowerCase(Locale.ROOT),
+        sourceIndex = OpenSearchRestTestCase.randomAlphaOfLength(10).lowercase(Locale.ROOT),
+        targetIndex = OpenSearchRestTestCase.randomAlphaOfLength(10).lowercase(Locale.ROOT),
         metadataID = if (OpenSearchRestTestCase.randomBoolean()) null else OpenSearchRestTestCase.randomAlphaOfLength(10),
         roles = OpenSearchRestTestCase.randomList(10) { OpenSearchRestTestCase.randomAlphaOfLength(10) },
         pageSize = OpenSearchRestTestCase.randomIntBetween(1, 10000),
@@ -173,7 +173,7 @@ fun randomExplainRollup(): ExplainRollup {
 fun randomISMRollup(): ISMRollup {
     return ISMRollup(
         description = OpenSearchRestTestCase.randomAlphaOfLength(10),
-        targetIndex = OpenSearchRestTestCase.randomAlphaOfLength(10).toLowerCase(Locale.ROOT),
+        targetIndex = OpenSearchRestTestCase.randomAlphaOfLength(10).lowercase(Locale.ROOT),
         pageSize = OpenSearchRestTestCase.randomIntBetween(1, 10000),
         dimensions = randomRollupDimensions(),
         metrics = OpenSearchRestTestCase.randomList(20, ::randomRollupMetrics).distinctBy { it.targetField }

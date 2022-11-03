@@ -20,7 +20,7 @@ import java.util.Locale
 
 class TransitionActionIT : IndexStateManagementRestTestCase() {
 
-    private val testIndexName = javaClass.simpleName.toLowerCase(Locale.ROOT)
+    private val testIndexName = javaClass.simpleName.lowercase(Locale.ROOT)
 
     fun `test doc count condition`() {
         val indexName = "${testIndexName}_index_1"

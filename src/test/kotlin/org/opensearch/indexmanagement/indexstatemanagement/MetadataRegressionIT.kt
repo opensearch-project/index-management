@@ -30,7 +30,7 @@ import kotlin.collections.HashMap
 
 class MetadataRegressionIT : IndexStateManagementIntegTestCase() {
 
-    private val testIndexName = javaClass.simpleName.toLowerCase(Locale.ROOT)
+    private val testIndexName = javaClass.simpleName.lowercase(Locale.ROOT)
 
     @Before
     fun startMetadataService() {
