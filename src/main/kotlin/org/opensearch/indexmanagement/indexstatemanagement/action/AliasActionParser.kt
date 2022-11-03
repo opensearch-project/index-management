@@ -5,6 +5,7 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.action
 
+import org.apache.logging.log4j.LogManager
 import org.opensearch.action.admin.indices.alias.IndicesAliasesRequest
 import org.opensearch.common.io.stream.StreamInput
 import org.opensearch.common.xcontent.XContentParser
@@ -15,6 +16,8 @@ import org.opensearch.indexmanagement.spi.indexstatemanagement.Action
 import org.opensearch.indexmanagement.spi.indexstatemanagement.ActionParser
 
 class AliasActionParser : ActionParser() {
+
+    private val logger = LogManager.getLogger(javaClass)
     override fun fromStreamInput(sin: StreamInput): Action {
         val actions = sin.readList(IndicesAliasesRequest::AliasActions)
         val index = sin.readInt()
@@ -35,7 +38,10 @@ class AliasActionParser : ActionParser() {
                         actions.add(IndicesAliasesRequest.AliasActions.fromXContent(xcp))
                     }
                 }
-                else -> throw IllegalArgumentException("Invalid field: [$fieldName] found in AliasAction.")
+                else -> {
+                    logger.error("Invalid field: [$fieldName] found in AliasAction.")
+                    throw IllegalArgumentException("Invalid field: [$fieldName] found in AliasAction.")
+                }
             }
         }
         return AliasAction(actions, index)

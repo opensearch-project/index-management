@@ -10,7 +10,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.IndexStateManagementR
 import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
 import org.opensearch.indexmanagement.indexstatemanagement.model.State
 import org.opensearch.indexmanagement.indexstatemanagement.randomErrorNotification
-import org.opensearch.indexmanagement.indexstatemanagement.step.alias.AttemptAliasStep
+import org.opensearch.indexmanagement.indexstatemanagement.step.alias.AttemptAliasActionsStep
 import org.opensearch.indexmanagement.waitFor
 import java.time.Instant
 import java.time.temporal.ChronoUnit
@@ -56,7 +56,7 @@ class AliasActionIT : IndexStateManagementRestTestCase() {
 
         waitFor {
             val info = getExplainManagedIndexMetaData(indexName).info as Map<String, Any?>
-            assertEquals("Alias was not successfully updated", AttemptAliasStep.getSuccessMessage(indexName), info["message"])
+            assertEquals("Alias was not successfully updated", AttemptAliasActionsStep.getSuccessMessage(indexName), info["message"])
             val alias = getAlias(indexName, "")
             assertTrue("Alias was not added to index", alias.containsKey(aliasName))
         }
@@ -99,7 +99,7 @@ class AliasActionIT : IndexStateManagementRestTestCase() {
 
         waitFor {
             val info = getExplainManagedIndexMetaData(indexName).info as Map<String, Any?>
-            assertEquals("Alias was not successfully updated", AttemptAliasStep.getSuccessMessage(indexName), info["message"])
+            assertEquals("Alias was not successfully updated", AttemptAliasActionsStep.getSuccessMessage(indexName), info["message"])
             val alias = getAlias(indexName, "")
             assertTrue("Alias was not added to index", alias.containsKey(aliasName))
         }
@@ -142,7 +142,7 @@ class AliasActionIT : IndexStateManagementRestTestCase() {
 
         waitFor {
             val info = getExplainManagedIndexMetaData(indexName).info as Map<String, Any?>
-            assertEquals("Alias was not successfully updated", AttemptAliasStep.getSuccessMessage(indexName), info["message"])
+            assertEquals("Alias was not successfully updated", AttemptAliasActionsStep.getSuccessMessage(indexName), info["message"])
             val alias = getAlias(indexName, "")
             assertTrue("Alias was not removed from index", !alias.containsKey(aliasName))
         }

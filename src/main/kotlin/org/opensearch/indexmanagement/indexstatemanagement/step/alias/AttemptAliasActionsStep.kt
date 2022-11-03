@@ -14,7 +14,7 @@ import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepMetaData
 
-class AttemptAliasStep(private val action: AliasAction) : Step(name) {
+class AttemptAliasActionsStep(private val action: AliasAction) : Step(name) {
 
     private val logger = LogManager.getLogger(javaClass)
     private var stepStatus = StepStatus.STARTING
@@ -31,15 +31,15 @@ class AttemptAliasStep(private val action: AliasAction) : Step(name) {
                 request.addAliasAction(it)
             }
             val response: AcknowledgedResponse = context.client.admin().indices().suspendUntil { aliases(request, it) }
-            handleResponse(response, indexName)
+            handleResponse(response, indexName, action.actions)
         } catch (e: Exception) {
-            handleException(e, indexName)
+            handleException(e, indexName, action.actions)
         }
         return this
     }
 
-    private fun handleException(e: Exception, indexName: String) {
-        val message = getFailedMessage(indexName)
+    private fun handleException(e: Exception, indexName: String, actions: List<IndicesAliasesRequest.AliasActions>) {
+        val message = getFailedMessage(indexName, actions)
         logger.error(message, e)
         stepStatus = StepStatus.FAILED
         val mutableInfo = mutableMapOf("message" to message)
@@ -48,13 +48,17 @@ class AttemptAliasStep(private val action: AliasAction) : Step(name) {
         info = mutableInfo.toMap()
     }
 
-    private fun handleResponse(response: AcknowledgedResponse, indexName: String) {
+    private fun handleResponse(
+        response: AcknowledgedResponse,
+        indexName: String,
+        actions: List<IndicesAliasesRequest.AliasActions>
+    ) {
         if (response.isAcknowledged) {
             stepStatus = StepStatus.COMPLETED
             info = mapOf("message" to getSuccessMessage(indexName))
         } else {
             stepStatus = StepStatus.FAILED
-            info = mapOf("message" to getFailedMessage(indexName))
+            info = mapOf("message" to getFailedMessage(indexName, actions))
         }
     }
 
@@ -71,7 +75,11 @@ class AttemptAliasStep(private val action: AliasAction) : Step(name) {
     companion object {
         val validTopContextFields = setOf("index")
         const val name = "attempt_alias"
-        fun getFailedMessage(index: String) = "Failed to update alias [index=$index]"
+        fun getFailedMessage(
+            index: String,
+            actions: List<IndicesAliasesRequest.AliasActions>
+        ) = "Failed to update alias [index=$index] for actions: [actions=$actions]"
+
         fun getSuccessMessage(index: String) = "Successfully updated alias [index=$index]"
     }
 }

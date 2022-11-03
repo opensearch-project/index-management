@@ -9,7 +9,7 @@ import org.opensearch.action.admin.indices.alias.IndicesAliasesRequest
 import org.opensearch.common.io.stream.StreamOutput
 import org.opensearch.common.xcontent.ToXContent
 import org.opensearch.common.xcontent.XContentBuilder
-import org.opensearch.indexmanagement.indexstatemanagement.step.alias.AttemptAliasStep
+import org.opensearch.indexmanagement.indexstatemanagement.step.alias.AttemptAliasActionsStep
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Action
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepContext
@@ -19,18 +19,28 @@ class AliasAction(
     index: Int
 ) : Action(name, index) {
 
+    /**
+     * Allowing the alias action to be only applicable on the managed index for ADD and REMOVE actions only.
+     * https://github.com/opensearch-project/OpenSearch/blob/4d045a164e12a382881140e32f9285a3224fecc7/server/src/main/java/org/opensearch/action/admin/indices/alias/IndicesAliasesRequest.java#L105
+     */
     init {
         require(actions.isNotEmpty()) { "At least one alias action needs to be specified." }
-        require(!actions.any { it.actionType() == IndicesAliasesRequest.AliasActions.Type.REMOVE_INDEX }) { "Remove_index is not allowed here." }
-        require(actions.all { it.indices().isNullOrEmpty() }) { "Alias actions are only allowed on managed indices." }
+        val allowedActionTypes = listOf(IndicesAliasesRequest.AliasActions.Type.ADD, IndicesAliasesRequest.AliasActions.Type.REMOVE)
+        require(actions.all { it.actionType() in allowedActionTypes }) { "Only ADD and REMOVE actions are allowed." }
+        require(
+            actions.all { it.indices().isNullOrEmpty() }
+        ) { "Alias action can only work on its applied index so don't accept index/indices parameter." }
+        require(
+            actions.all { it.aliases().isNotEmpty() }
+        ) { "At least one alias needs to be specified." }
     }
 
-    private val attemptAliasStep = AttemptAliasStep(this)
+    private val attemptAliasActionsStep = AttemptAliasActionsStep(this)
 
-    private val steps = listOf(attemptAliasStep)
+    private val steps = listOf(attemptAliasActionsStep)
 
     override fun getStepToExecute(context: StepContext): Step {
-        return attemptAliasStep
+        return attemptAliasActionsStep
     }
 
     override fun getSteps(): List<Step> = steps
