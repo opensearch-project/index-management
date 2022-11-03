@@ -13,6 +13,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.action.RollupAction
 import org.opensearch.indexmanagement.common.model.notification.Channel
 import org.opensearch.indexmanagement.indexstatemanagement.model.destination.DestinationType
 import org.opensearch.indexmanagement.indexstatemanagement.nonNullRandomConditions
+import org.opensearch.indexmanagement.indexstatemanagement.randomAliasAction
 import org.opensearch.indexmanagement.indexstatemanagement.randomAllocationActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomChangePolicy
 import org.opensearch.indexmanagement.indexstatemanagement.randomChannel
@@ -39,6 +40,7 @@ import org.opensearch.indexmanagement.opensearchapi.convertToMap
 import org.opensearch.indexmanagement.opensearchapi.parseWithType
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.test.OpenSearchTestCase
+import kotlin.test.assertFailsWith
 
 class XContentTests : OpenSearchTestCase() {
 
@@ -270,6 +272,24 @@ class XContentTests : OpenSearchTestCase() {
         val channelString = channel.toJsonString()
         val parsedChannel = Channel.parse(parser(channelString))
         assertEquals("Round tripping Channel doesn't work", channel, parsedChannel)
+    }
+
+    fun `test alias action parsing`() {
+        val aliasAction = randomAliasAction(false)
+        val aliasActionString = aliasAction.toJsonString()
+        val parsedAliasAction = ISMActionsParser.instance.parse(parser(aliasActionString), 0)
+        assertEquals("Round tripping AliasAction doesn't work", aliasAction.convertToMap(), parsedAliasAction.convertToMap())
+    }
+
+    fun `test alias action parsing with index`() {
+        assertFailsWith<IllegalArgumentException>(
+            message = "Alias actions are only allowed on managed indices.",
+            block = {
+                val aliasAction = randomAliasAction(true)
+                val aliasActionString = aliasAction.toJsonString()
+                ISMActionsParser.instance.parse(parser(aliasActionString), 0)
+            }
+        )
     }
 
     private fun parser(xc: String): XContentParser {

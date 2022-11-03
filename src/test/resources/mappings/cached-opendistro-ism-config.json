@@ -1,6 +1,6 @@
 {
   "_meta" : {
-    "schema_version": 16
+    "schema_version": 17
   },
   "dynamic": "strict",
   "properties": {
@@ -156,6 +156,14 @@
                     },
                     "delay": {
                       "type": "keyword"
+                    }
+                  }
+                },
+                "alias": {
+                  "properties": {
+                    "actions": {
+                      "type": "object",
+                      "enabled": false
                     }
                   }
                 },
