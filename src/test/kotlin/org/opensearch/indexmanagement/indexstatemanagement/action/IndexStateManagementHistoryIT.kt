@@ -14,10 +14,10 @@ import org.opensearch.indexmanagement.indexstatemanagement.randomErrorNotificati
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings
 import org.opensearch.indexmanagement.indexstatemanagement.step.readonly.SetReadOnlyStep
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StateMetaData
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ActionMetaData
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.PolicyRetryInfoMetaData
-import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StateMetaData
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepMetaData
 import org.opensearch.indexmanagement.waitFor
 import java.time.Instant
@@ -25,7 +25,7 @@ import java.time.temporal.ChronoUnit
 import java.util.Locale
 
 class IndexStateManagementHistoryIT : IndexStateManagementRestTestCase() {
-    private val testIndexName = javaClass.simpleName.toLowerCase(Locale.ROOT)
+    private val testIndexName = javaClass.simpleName.lowercase(Locale.ROOT)
 
     fun `test basic workflow`() {
         val indexName = "${testIndexName}_index_1"

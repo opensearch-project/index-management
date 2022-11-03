@@ -38,7 +38,7 @@ import java.util.Locale
 
 class IndexManagementIndicesIT : IndexStateManagementRestTestCase() {
 
-    private val testIndexName = javaClass.simpleName.toLowerCase(Locale.ROOT)
+    private val testIndexName = javaClass.simpleName.lowercase(Locale.ROOT)
 
     /*
     * If this test fails it means you changed the config mappings

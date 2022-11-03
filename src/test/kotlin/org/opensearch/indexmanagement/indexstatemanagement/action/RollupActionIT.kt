@@ -35,7 +35,7 @@ import java.util.Locale
 
 class RollupActionIT : IndexStateManagementRestTestCase() {
 
-    private val testIndexName = javaClass.simpleName.toLowerCase(Locale.ROOT)
+    private val testIndexName = javaClass.simpleName.lowercase(Locale.ROOT)
 
     fun `test rollup action`() {
         val indexName = "${testIndexName}_index_basic"

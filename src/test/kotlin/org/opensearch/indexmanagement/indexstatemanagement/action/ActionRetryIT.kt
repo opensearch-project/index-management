@@ -18,12 +18,13 @@ import java.time.Instant
 import java.util.Locale
 
 class ActionRetryIT : IndexStateManagementRestTestCase() {
-    private val testIndexName = javaClass.simpleName.toLowerCase(Locale.ROOT)
+    private val testIndexName = javaClass.simpleName.lowercase(Locale.ROOT)
 
     /**
      * We are forcing RollOver to fail in this Integ test.
      */
     fun `test failed action`() {
+        disableValidationService()
         val testPolicy = """
         {"policy":{"description":"Default policy","default_state":"Ingest","states":[
         {"name":"Ingest","actions":[{"retry":{"count":2,"backoff":"constant","delay":"1s"},"rollover":{"min_doc_count":100}}],"transitions":[{"state_name":"Search"}]},
@@ -95,6 +96,7 @@ class ActionRetryIT : IndexStateManagementRestTestCase() {
     }
 
     fun `test exponential backoff`() {
+        disableValidationService()
         val testPolicy = """
         {"policy":{"description":"Default policy","default_state":"Ingest","states":[
         {"name":"Ingest","actions":[{"retry":{"count":2,"backoff":"exponential","delay":"1m"},"rollover":{"min_doc_count":100}}],"transitions":[{"state_name":"Search"}]},
@@ -118,7 +120,6 @@ class ActionRetryIT : IndexStateManagementRestTestCase() {
         // First execution. We need to initialize the policy.
 
         waitFor { assertEquals(policyID, getExplainManagedIndexMetaData(indexName).policyID) }
-
         // Second execution is to fail the step once.
         updateManagedIndexConfigStartTime(managedIndexConfig)
 
@@ -127,7 +128,6 @@ class ActionRetryIT : IndexStateManagementRestTestCase() {
         // Third execution should not run job since we have the retry backoff.
         updateManagedIndexConfigStartTime(managedIndexConfig)
         Thread.sleep(5000) // currently there is nothing to compare when backing off so we have to sleep
-
         // Fourth execution should not run job since we have the retry backoff.
         updateManagedIndexConfigStartTime(managedIndexConfig)
 
