@@ -95,7 +95,7 @@ class RollupMapperService(
     @Suppress("ReturnCount")
     suspend fun validateTargetIndexAlias(rollup: Rollup, targetIndexResolvedName: String): RollupJobValidationResult {
 
-        var errorMessage: String
+        val errorMessage: String
 
         if (!RollupFieldValueExpressionResolver.indexAliasUtils.hasAlias(targetIndexResolvedName)) {
             logger.error("[${rollup.targetIndex}] is not an alias!")
@@ -106,7 +106,7 @@ class RollupMapperService(
         if (rollupJobs != null &&
             (rollupJobs.size > 1 || rollupJobs[0].id != rollup.id)
         ) {
-            errorMessage = "More than one rollup job present on the backing index, cannot add alias for target index: [$targetIndexResolvedName]"
+            errorMessage = "More than one rollup jobs present on the backing index of the target alias, cannot perform rollup to this target alias [${rollup.targetIndex}]."
             logger.error(errorMessage)
             return RollupJobValidationResult.Failure(errorMessage)
         }
