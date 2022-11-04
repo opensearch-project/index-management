@@ -5,7 +5,6 @@
 
 package org.opensearch.indexmanagement.rollup.runner
 
-import com.carrotsearch.randomizedtesting.RandomizedTest.sleep
 import org.apache.http.entity.ContentType
 import org.apache.http.entity.StringEntity
 import org.opensearch.common.settings.Settings
@@ -1146,7 +1145,7 @@ class RollupRunnerIT : RollupRestTestCase() {
 
         waitFor { assertTrue("Target rollup index was not created", indexExists(backingIndex1)) }
 
-        var startedRollup1 = waitFor {
+        val startedRollup1 = waitFor {
             val rollupJob = getRollup(rollupId = job1.id)
             assertNotNull("Rollup job doesn't have metadata set", rollupJob.metadataID)
             val rollupMetadata = getRollupMetadata(rollupJob.metadataID!!)
@@ -1165,7 +1164,7 @@ class RollupRunnerIT : RollupRestTestCase() {
         // Job2 First run, it should fail because job1 already wrote to backing index
         updateRollupStartTime(job2)
 
-        var startedRollup2 = waitFor {
+        val startedRollup2 = waitFor {
             val rollupJob = getRollup(rollupId = job2.id)
             assertNotNull("Rollup job doesn't have metadata set", rollupJob.metadataID)
             val rollupMetadata = getRollupMetadata(rollupJob.metadataID!!)
@@ -1175,7 +1174,7 @@ class RollupRunnerIT : RollupRestTestCase() {
         }
         rollupMetadataID = startedRollup2.metadataID!!
         rollupMetadata = getRollupMetadata(rollupMetadataID)
-        assertEquals("If target_index is alias, write backing index must be used only by this rollup job: [$backingIndex1]", rollupMetadata.failureReason)
+        assertEquals("More than one rollup jobs present on the backing index of the target alias, cannot perform rollup to this target alias [$indexAlias].", rollupMetadata.failureReason)
     }
 
     fun `test rollup action with alias as target_index multiple empty backing indices`() {
