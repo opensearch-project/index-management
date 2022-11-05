@@ -72,6 +72,7 @@ class RollupRunnerIT : RollupRestTestCase() {
         }
     }
 
+    @Suppress("UNCHECKED_CAST")
     fun `test rollup with avg metric`() {
         val sourceIdxTestName = "source_idx_test"
         val targetIdxTestName = "target_idx_test"
@@ -112,7 +113,7 @@ class RollupRunnerIT : RollupRestTestCase() {
             assertEquals("Rollup is not finished", RollupMetadata.Status.FINISHED, rollupMetadata.status)
 
             // Term query
-            var req = """
+            val req = """
             {
                 "size": 0,
                 "query": {
@@ -877,8 +878,8 @@ class RollupRunnerIT : RollupRestTestCase() {
         startedRollup = waitFor {
             val rollupJob = getRollup(rollupId = rollup.id)
             assertNotNull("Rollup job doesn't have metadata set", rollupJob.metadataID)
-            val rollupMetadata = getRollupMetadata(rollupJob.metadataID!!)
-            assertEquals("Rollup is not finished", RollupMetadata.Status.FINISHED, rollupMetadata.status)
+            val rollupMetadata1 = getRollupMetadata(rollupJob.metadataID!!)
+            assertEquals("Rollup is not finished", RollupMetadata.Status.FINISHED, rollupMetadata1.status)
             rollupJob
         }
 
@@ -968,8 +969,8 @@ class RollupRunnerIT : RollupRestTestCase() {
         startedRollup = waitFor {
             val rollupJob = getRollup(rollupId = rollup.id)
             assertNotNull("Rollup job doesn't have metadata set", rollupJob.metadataID)
-            val rollupMetadata = getRollupMetadata(rollupJob.metadataID!!)
-            assertEquals("Rollup is not finished", RollupMetadata.Status.FINISHED, rollupMetadata.status)
+            val rollupMetadata1 = getRollupMetadata(rollupJob.metadataID!!)
+            assertEquals("Rollup is not finished", RollupMetadata.Status.FINISHED, rollupMetadata1.status)
             rollupJob
         }
 
@@ -1056,8 +1057,8 @@ class RollupRunnerIT : RollupRestTestCase() {
         var startedRollup2 = waitFor {
             val rollupJob = getRollup(rollupId = job2.id)
             assertNotNull("Rollup job doesn't have metadata set", rollupJob.metadataID)
-            val rollupMetadata = getRollupMetadata(rollupJob.metadataID!!)
-            assertEquals("Rollup is not finished", RollupMetadata.Status.FINISHED, rollupMetadata.status)
+            val rollupMetadata1 = getRollupMetadata(rollupJob.metadataID!!)
+            assertEquals("Rollup is not finished", RollupMetadata.Status.FINISHED, rollupMetadata1.status)
             assertTrue("Rollup is not disabled", !rollupJob.enabled)
             rollupJob
         }
@@ -1084,8 +1085,8 @@ class RollupRunnerIT : RollupRestTestCase() {
         startedRollup1 = waitFor {
             val rollupJob = getRollup(rollupId = job1.id)
             assertNotNull("Rollup job doesn't have metadata set", rollupJob.metadataID)
-            val rollupMetadata = getRollupMetadata(rollupJob.metadataID!!)
-            assertEquals("Rollup is not finished", RollupMetadata.Status.FAILED, rollupMetadata.status)
+            val rollupMetadata1 = getRollupMetadata(rollupJob.metadataID!!)
+            assertEquals("Rollup is not finished", RollupMetadata.Status.FAILED, rollupMetadata1.status)
             rollupJob
         }
 
@@ -1167,8 +1168,8 @@ class RollupRunnerIT : RollupRestTestCase() {
         val startedRollup2 = waitFor {
             val rollupJob = getRollup(rollupId = job2.id)
             assertNotNull("Rollup job doesn't have metadata set", rollupJob.metadataID)
-            val rollupMetadata = getRollupMetadata(rollupJob.metadataID!!)
-            assertEquals("Rollup is not finished", RollupMetadata.Status.FAILED, rollupMetadata.status)
+            val rollupMetadata1 = getRollupMetadata(rollupJob.metadataID!!)
+            assertEquals("Rollup is not finished", RollupMetadata.Status.FAILED, rollupMetadata1.status)
             assertTrue("Rollup is not disabled", !rollupJob.enabled)
             rollupJob
         }

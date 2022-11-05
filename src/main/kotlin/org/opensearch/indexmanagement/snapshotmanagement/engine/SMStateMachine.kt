@@ -123,10 +123,11 @@ class SMStateMachine(
         } catch (ex: Exception) {
             val message = "There was an exception at ${now()} while executing Snapshot Management policy ${job.policyName}, please check logs."
             job.notificationConfig?.sendFailureNotification(client, job.policyName, message, job.user, log)
+            @Suppress("InstanceOfCheckForException")
             if (ex is SnapshotManagementException &&
                 ex.exKey == ExceptionKey.METADATA_INDEXING_FAILURE
             ) {
-                // update metadata exception is special, we don't want to retry update metadata here
+                // update metadata exception is special, we have logged out the error in updateMetadata
                 return this
             }
             log.error("Uncaught snapshot management runtime exception.", ex)
@@ -219,7 +220,9 @@ class SMStateMachine(
         // TODO SM save a copy to history
     }
 
-    private val updateMetaDataRetryPolicy = BackoffPolicy.exponentialBackoff(TimeValue.timeValueMillis(EXPONENTIAL_BACKOFF_MILLIS), MAX_NUMBER_OF_RETRIES)
+    private val updateMetaDataRetryPolicy = BackoffPolicy.exponentialBackoff(
+        TimeValue.timeValueMillis(EXPONENTIAL_BACKOFF_MILLIS), MAX_NUMBER_OF_RETRIES
+    )
 
     /**
      * Handle the policy change before job running

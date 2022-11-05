@@ -131,6 +131,7 @@ class MigrationServicesIT : IndexStateManagementRestTestCase() {
         }
     }
 
+    @Suppress("UNCHECKED_CAST")
     private fun getTemplatesOrder(): List<String?> {
         val order = catIndexTemplates().map {
             val row = it as Map<String, String>

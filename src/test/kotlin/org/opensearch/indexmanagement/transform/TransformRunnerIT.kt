@@ -206,6 +206,7 @@ class TransformRunnerIT : TransformRestTestCase() {
         assertTrue("Didn't capture search time", metadata.stats.searchTimeInMillis > 0)
     }
 
+    @Suppress("UNCHECKED_CAST")
     fun `test transform target index _doc_count against the source index _doc_count`() {
         val sourceIdxTestName = "source_idx_test"
         val targetIdxTestName = "target_idx_test"
@@ -247,7 +248,7 @@ class TransformRunnerIT : TransformRestTestCase() {
             val transformMetadata = getTransformMetadata(transformJob.metadataId!!)
             assertEquals("Transform is not finished", TransformMetadata.Status.FINISHED, transformMetadata.status)
 
-            var req = """
+            val req = """
             {
                 "size": 0,
                 "aggs": {
@@ -912,7 +913,7 @@ class TransformRunnerIT : TransformRestTestCase() {
         assertTrue("Doesn't capture indexed time", firstIterationMetadata.stats.indexTimeInMillis > 0)
         assertTrue("Didn't capture search time", firstIterationMetadata.stats.searchTimeInMillis > 0)
 
-        // Get all of the buckets
+        // Get all the buckets
         var hits = waitFor {
             val response = client().makeRequest(
                 "GET", "${transform.targetIndex}/_search",

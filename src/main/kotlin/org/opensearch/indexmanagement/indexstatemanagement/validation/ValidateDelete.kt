@@ -30,7 +30,7 @@ class ValidateDelete(
         if (!deleteIndexExists(indexName) || !validIndex(indexName)) {
             return this
         }
-        val (rolloverTarget, isDataStream) = getRolloverTargetOrUpdateInfo(indexName)
+        val (rolloverTarget, _) = getRolloverTargetOrUpdateInfo(indexName)
         if (rolloverTarget != null && !notWriteIndexForDataStream(rolloverTarget, indexName)) {
             return this // can't be deleted if it's write index
         }
