@@ -9,9 +9,7 @@ on:
       - "*"
 
 jobs:
-  build:
-    # Job name
-    name: Multi node test
+  test:
     # This job runs on Linux
     runs-on: ubuntu-latest
     steps:

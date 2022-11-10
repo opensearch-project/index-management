@@ -8,8 +8,7 @@ on:
       - "*"
 
 jobs:
-  bwc:
-    name: Backwards compatibility tests
+  test:
     # This job runs on Linux
     runs-on: ubuntu-latest
     steps:

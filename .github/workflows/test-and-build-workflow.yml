@@ -9,8 +9,6 @@ on:
 
 jobs:
   build:
-    # Job name
-    name: Test and Build
     env:
       BUILD_ARGS: ${{ matrix.os_build_args }}
       WORKING_DIR: ${{ matrix.working_directory }}.

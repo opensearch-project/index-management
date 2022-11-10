@@ -802,7 +802,8 @@ class RollupRunnerIT : RollupRestTestCase() {
         assertEquals("Did not have 2 rollups indexed", 2, rollupMetadata.stats.rollupsIndexed)
         // These are hard to test.. just assert they are more than 0
         assertTrue("Did not spend time indexing", rollupMetadata.stats.indexTimeInMillis > 0L)
-        assertTrue("Did not spend time searching", rollupMetadata.stats.searchTimeInMillis > 0L)
+        // In some cases it seems that these times are less than 1ms - which causes fails on ubuntu instances (at least that was detected)
+        assertTrue("Did not spend time searching", rollupMetadata.stats.searchTimeInMillis >= 0L)
     }
 
     fun `test rollup action with alias as target_index successfully`() {

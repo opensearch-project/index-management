@@ -147,7 +147,6 @@ task ktlintFormat(type: JavaExec, group: "formatting") {
     // https://github.com/pinterest/ktlint/issues/1391
     jvmArgs "--add-opens=java.base/java.lang=ALL-UNNAMED"
 }
-ktlint.dependsOn ktlintFormat
 
 detekt {
     config = files("detekt.yml")

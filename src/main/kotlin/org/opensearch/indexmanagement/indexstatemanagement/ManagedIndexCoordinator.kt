@@ -163,8 +163,7 @@ class ManagedIndexCoordinator(
             if (!metadataServiceEnabled) {
                 logger.info("Canceling metadata moving job because of cluster setting update.")
                 scheduledMoveMetadata?.cancel()
-            }
-            else initMoveMetadata()
+            } else initMoveMetadata()
         }
         clusterService.clusterSettings.addSettingsUpdateConsumer(TEMPLATE_MIGRATION_CONTROL) {
             templateMigrationEnabled = it >= 0L
