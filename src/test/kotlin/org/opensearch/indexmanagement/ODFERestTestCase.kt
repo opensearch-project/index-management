@@ -26,6 +26,7 @@ import org.opensearch.commons.ConfigConstants.OPENSEARCH_SECURITY_SSL_HTTP_PEMCE
 import org.opensearch.commons.rest.SecureRestClientBuilder
 import org.opensearch.test.rest.OpenSearchRestTestCase
 import java.io.IOException
+import java.time.Instant
 
 abstract class ODFERestTestCase : OpenSearchRestTestCase() {
 
@@ -62,15 +63,17 @@ abstract class ODFERestTestCase : OpenSearchRestTestCase() {
 
     @Throws(IOException::class)
     private fun waitForRunningTasks() {
-        val runningTasks: MutableSet<String> = runningTasks(adminClient().performRequest(Request("GET", "/_tasks")))
-        // Ignore the task list API - it doesn't count against us
-        runningTasks.remove(ListTasksAction.NAME)
-        runningTasks.remove(ListTasksAction.NAME + "[n]")
-        if (runningTasks.isEmpty()) {
-            return
+        waitFor(timeout = Instant.ofEpochSecond(5)) {
+            val runningTasks: MutableSet<String> = runningTasks(adminClient().performRequest(Request("GET", "/_tasks")))
+            // Ignore the task list API - it doesn't count against us
+            runningTasks.remove(ListTasksAction.NAME)
+            runningTasks.remove(ListTasksAction.NAME + "[n]")
+            if (runningTasks.isEmpty()) {
+                return@waitFor
+            }
+            val stillRunning = ArrayList<String>(runningTasks)
+            fail("There are still tasks running after this test that might break subsequent tests $stillRunning.")
         }
-        val stillRunning = ArrayList<String>(runningTasks)
-        fail("There are still tasks running after this test that might break subsequent tests $stillRunning.")
     }
 
     private fun waitForThreadPools() {

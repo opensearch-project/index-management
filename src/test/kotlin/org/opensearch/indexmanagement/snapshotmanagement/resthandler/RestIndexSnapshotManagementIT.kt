@@ -44,6 +44,7 @@ class RestIndexSnapshotManagementIT : SnapshotManagementRestTestCase() {
         assertEquals("Created and returned snapshot management policies differ", smPolicy.toMap(XCONTENT_WITHOUT_TYPE_AND_USER), responseSMPolicy)
     }
 
+    @Suppress("UNCHECKED_CAST")
     fun `test updating a snapshot management policy with correct seq_no and primary_term`() {
         val smPolicy = createSMPolicy(randomSMPolicy())
         val updateResponse = client().makeRequest(

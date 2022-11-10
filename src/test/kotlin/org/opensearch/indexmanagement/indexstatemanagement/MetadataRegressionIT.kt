@@ -88,7 +88,9 @@ class MetadataRegressionIT : IndexStateManagementIntegTestCase() {
         indexMetadata = getIndexMetadata(indexName)
         logger.info("check if metadata is saved in cluster state: ${indexMetadata.getCustomData("managed_index_metadata")}")
 
-        waitFor {
+        // TODO increase wait time since flaky seeing here. After looking through the log
+        //  it's more likely a test framework execution lag.
+        waitFor(Instant.ofEpochSecond(60)) {
             assertEquals(
                 METADATA_MOVING_WARNING,
                 getExplainManagedIndexMetaData(indexName).info?.get("message")

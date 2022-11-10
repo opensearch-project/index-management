@@ -66,7 +66,7 @@ class ValidateOpenIT : IndexStateManagementRestTestCase() {
             assertEquals(
                 "Index open action validation status is PASSED.",
                 Validate.ValidationStatus.PASSED,
-                data?.validationStatus
+                data.validationStatus
             )
         }
     }

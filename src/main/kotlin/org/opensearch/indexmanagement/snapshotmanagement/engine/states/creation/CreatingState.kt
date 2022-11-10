@@ -9,6 +9,7 @@ import org.apache.logging.log4j.Logger
 import org.opensearch.ExceptionsHelper
 import org.opensearch.action.admin.cluster.snapshots.create.CreateSnapshotRequest
 import org.opensearch.action.admin.cluster.snapshots.create.CreateSnapshotResponse
+import org.opensearch.client.ClusterAdminClient
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.snapshotmanagement.engine.SMStateMachine
 import org.opensearch.indexmanagement.snapshotmanagement.generateSnapshotName
@@ -68,7 +69,7 @@ object CreatingState : State {
             val req = CreateSnapshotRequest(job.snapshotConfig["repository"] as String, snapshotName)
                 .source(addSMPolicyInSnapshotMetadata(job.snapshotConfig, job.policyName))
                 .waitForCompletion(false)
-            val res: CreateSnapshotResponse = client.admin().cluster().suspendUntil { createSnapshot(req, it) }
+            client.admin().cluster().suspendUntil<ClusterAdminClient, CreateSnapshotResponse> { createSnapshot(req, it) }
 
             metadataBuilder.setLatestExecution(
                 status = SMMetadata.LatestExecution.Status.IN_PROGRESS,

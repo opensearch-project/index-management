@@ -73,7 +73,7 @@ class ValidateReadWriteIT : IndexStateManagementRestTestCase() {
             assertEquals(
                 "Index read_write action validation status is PASSED.",
                 Validate.ValidationStatus.PASSED,
-                data?.validationStatus
+                data.validationStatus
             )
         }
     }

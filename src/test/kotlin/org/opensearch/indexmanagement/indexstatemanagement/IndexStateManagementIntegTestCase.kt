@@ -275,11 +275,10 @@ abstract class IndexStateManagementIntegTestCase : OpenSearchIntegTestCase() {
             xcp.nextToken(),
             xcp
         )
-        var totalManagedIndices = 0
         while (xcp.nextToken() != XContentParser.Token.END_OBJECT) {
             xcp.currentName()
             xcp.nextToken()
-            if (xcp.currentName() == TOTAL_MANAGED_INDICES) totalManagedIndices = xcp.intValue()
+            if (xcp.currentName() == TOTAL_MANAGED_INDICES) xcp.intValue()
             else metadata = ManagedIndexMetaData.parse(xcp)
         }
         return metadata

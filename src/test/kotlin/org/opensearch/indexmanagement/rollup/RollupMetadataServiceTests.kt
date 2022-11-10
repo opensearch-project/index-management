@@ -150,7 +150,7 @@ class RollupMetadataServiceTests : OpenSearchTestCase() {
         val metadataService = RollupMetadataService(client, xContentRegistry)
 
         val expectedWindowStartTime = localDateAtTimezone("2020-03-08T01:00:00", ZoneId.of("America/Los_Angeles"))
-        // Should jump to March 3, 2020 at 3AM PST for end time due to DST
+        // Should jump to March 3, 2020, at 3AM PST for end time due to DST
         val expectedWindowEndTime = localDateAtTimezone("2020-03-08T03:00:00", ZoneId.of("America/Los_Angeles"))
 
         runBlocking {
@@ -255,7 +255,7 @@ class RollupMetadataServiceTests : OpenSearchTestCase() {
             dimensions = dimensions
         )
 
-        val firstDocTimestamp = "2020-03-22T08:40:15Z" // March 22, 2020 Sunday
+        val firstDocTimestamp = "2020-03-22T08:40:15Z" // March 22, 2020, Sunday
         val client = getClient(
             searchResponse = getSearchResponseForTimestamp(rollup, firstDocTimestamp),
             searchException = null,
@@ -664,7 +664,7 @@ class RollupMetadataServiceTests : OpenSearchTestCase() {
                 listener.onResponse(getResponse)
             }.whenever(this.mock).get(any(), any())
         }
-        val metadataService = RollupMetadataService(client, xContentRegistry)
+        RollupMetadataService(client, xContentRegistry)
 
 //        runBlocking {
 //            val getExistingMetadataResult = metadataService.getExistingMetadata(metadata.id)

@@ -15,7 +15,7 @@ import org.opensearch.common.xcontent.XContentParserUtils.ensureExpectedToken
 
 class Average() : Metric(Type.AVERAGE) {
 
-    @Suppress("UnusedPrivateMember")
+    @Suppress("UNUSED_PARAMETER")
     constructor(sin: StreamInput) : this()
 
     override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
