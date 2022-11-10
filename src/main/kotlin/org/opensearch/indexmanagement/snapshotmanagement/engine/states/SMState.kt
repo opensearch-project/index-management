@@ -45,7 +45,7 @@ enum class WorkflowType {
  *   resetRetry is performed in Next and Stay.
  *   except the last one. Refer to [DeletingState]
  */
-sealed class SMResult : State.Result() {
+sealed class SMResult : State.Result {
     data class Next(val metadataToSave: SMMetadata.Builder) : SMResult()
     data class Stay(val metadataToSave: SMMetadata.Builder) : SMResult()
     data class Fail(

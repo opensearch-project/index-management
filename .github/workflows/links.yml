@@ -6,7 +6,7 @@ on:
     branches: [ main ]
 
 jobs:
-  linkchecker:
+  check:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2

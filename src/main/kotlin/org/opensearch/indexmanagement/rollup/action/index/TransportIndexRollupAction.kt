@@ -155,7 +155,6 @@ class TransportIndexRollupAction @Inject constructor(
             if (rollup.metrics != newRollup.metrics) modified.add(Rollup.METRICS_FIELD)
             if (rollup.sourceIndex != newRollup.sourceIndex) modified.add(Rollup.SOURCE_INDEX_FIELD)
             if (rollup.targetIndex != newRollup.targetIndex) modified.add(Rollup.TARGET_INDEX_FIELD)
-            if (rollup.roles != newRollup.roles) modified.add(Rollup.ROLES_FIELD)
             return modified.toList()
         }
 

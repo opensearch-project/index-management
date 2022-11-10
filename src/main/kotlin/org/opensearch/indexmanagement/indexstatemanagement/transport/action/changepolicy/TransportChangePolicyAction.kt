@@ -288,7 +288,7 @@ class TransportChangePolicyAction @Inject constructor(
                             )
                         )
                     // if there exists a transitionTo on the ManagedIndexMetaData then we will
-                    // fail as they might not of meant to add a ChangePolicy when its on the next state
+                    // fail as they might not of meant to add a ChangePolicy when it's on the next state
                     managedIndexMetadata?.transitionTo != null ->
                         failedIndices.add(
                             FailedIndex(
