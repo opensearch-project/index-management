@@ -50,15 +50,13 @@ abstract class ODFERestTestCase : OpenSearchRestTestCase() {
                     // create adminDN (super-admin) client
                     val uri = javaClass.classLoader.getResource("security/sample.pem").toURI()
                     val configPath = PathUtils.get(uri).parent.toAbsolutePath()
-                    // TODO once common utils is updated in maven, we can use this method to define hosts
-                    // SecureRestClientBuilder(settings, configPath, hosts).setSocketTimeout(5000).build()
-                    SecureRestClientBuilder(settings, configPath).setSocketTimeout(5000).build()
+                    SecureRestClientBuilder(settings, configPath).setSocketTimeout(60000).build()
                 }
                 false -> {
                     // create client with passed user
                     val userName = System.getProperty("user")
                     val password = System.getProperty("password")
-                    SecureRestClientBuilder(hosts, isHttps(), userName, password).setSocketTimeout(5000).build()
+                    SecureRestClientBuilder(hosts, isHttps(), userName, password).setSocketTimeout(60000).build()
                 }
             }
         } else {
