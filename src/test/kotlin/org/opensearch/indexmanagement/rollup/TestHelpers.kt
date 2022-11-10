@@ -108,7 +108,7 @@ fun randomRollup(): Rollup {
         sourceIndex = OpenSearchRestTestCase.randomAlphaOfLength(10).lowercase(Locale.ROOT),
         targetIndex = OpenSearchRestTestCase.randomAlphaOfLength(10).lowercase(Locale.ROOT),
         metadataID = if (OpenSearchRestTestCase.randomBoolean()) null else OpenSearchRestTestCase.randomAlphaOfLength(10),
-        roles = OpenSearchRestTestCase.randomList(10) { OpenSearchRestTestCase.randomAlphaOfLength(10) },
+        roles = emptyList(),
         pageSize = OpenSearchRestTestCase.randomIntBetween(1, 10000),
         delay = 0,
         continuous = OpenSearchRestTestCase.randomBoolean(),

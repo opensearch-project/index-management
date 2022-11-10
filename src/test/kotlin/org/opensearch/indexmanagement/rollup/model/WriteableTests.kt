@@ -114,6 +114,18 @@ class WriteableTests : OpenSearchTestCase() {
         assertEquals("Round tripping Rollup stream doesn't work", rollup, streamedRollup)
     }
 
+    fun `test rollup roles field deprecation`() {
+        val rollup = randomRollup().copy(
+            delay = randomLongBetween(0, 60000000),
+            roles = listOf("I am deprecated")
+        )
+        val out = BytesStreamOutput().also { rollup.writeTo(it) }
+        val sin = StreamInput.wrap(out.bytes().toBytesRef().bytes)
+        val streamedRollup = Rollup(sin)
+        @Suppress("DEPRECATION")
+        assertTrue("roles field in rollup model is deprecated and should be parsed to empty list.", streamedRollup.roles.isEmpty())
+    }
+
     fun `test explain rollup as stream`() {
         val explainRollup = randomExplainRollup()
         val out = BytesStreamOutput().also { explainRollup.writeTo(it) }

@@ -70,6 +70,7 @@ fun isRetryable(
  * Retries on 408 or on TaskCancelledException once the message matches the given pattern.
  * In that case, retry request with reduced size param and timeout param is set based on the lock expiration
  */
+@Suppress("ReturnCount")
 fun isTransformOperationTimedOut(ex: OpenSearchException): Boolean {
     if (RestStatus.REQUEST_TIMEOUT == ex.status()) {
         return true
