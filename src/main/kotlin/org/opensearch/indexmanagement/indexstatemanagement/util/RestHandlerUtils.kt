@@ -136,7 +136,8 @@ suspend fun removeClusterStateMetadatas(client: Client, logger: Logger, indices:
 }
 
 const val MASTER_TIMEOUT_DEPRECATED_MESSAGE =
-    "Parameter [master_timeout] is deprecated and will be removed in 3.0. To support inclusive language, please use [cluster_manager_timeout] instead."
+    "Parameter [master_timeout] is deprecated and will be removed in 3.0. " +
+        "To support inclusive language, please use [cluster_manager_timeout] instead."
 const val DUPLICATE_PARAMETER_ERROR_MESSAGE =
     "Please only use one of the request parameters [master_timeout, cluster_manager_timeout]."
 fun parseClusterManagerTimeout(request: RestRequest, deprecationLogger: DeprecationLogger, restActionName: String): TimeValue {

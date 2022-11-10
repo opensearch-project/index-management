@@ -5,7 +5,6 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.action
 
-import org.hamcrest.collection.IsMapContaining
 import org.opensearch.indexmanagement.indexstatemanagement.IndexStateManagementRestTestCase
 import org.opensearch.indexmanagement.indexstatemanagement.step.open.AttemptOpenStep
 import org.opensearch.indexmanagement.indexstatemanagement.step.rollover.AttemptRolloverStep
@@ -41,10 +40,10 @@ class ActionTimeoutIT : IndexStateManagementRestTestCase() {
         // the second execution we move into rollover action, we won't hit the timeout as this is the execution that sets the startTime
         updateManagedIndexConfigStartTime(managedIndexConfig)
         waitFor {
-            assertThat(
+            assertEquals(
                 "Should be attempting to rollover",
-                getExplainManagedIndexMetaData(indexName).info,
-                IsMapContaining.hasEntry("message", AttemptRolloverStep.getPendingMessage(indexName) as Any?)
+                getExplainManagedIndexMetaData(indexName).info?.get("message"),
+                AttemptRolloverStep.getPendingMessage(indexName)
             )
         }
 
@@ -110,10 +109,10 @@ class ActionTimeoutIT : IndexStateManagementRestTestCase() {
         // but there was a bug before where it would use the startTime from the previous actions metadata and immediately fail
         updateManagedIndexConfigStartTime(managedIndexConfig)
         waitFor {
-            assertThat(
+            assertEquals(
                 "Should be attempting to rollover",
-                getExplainManagedIndexMetaData(indexName).info,
-                IsMapContaining.hasEntry("message", AttemptRolloverStep.getPendingMessage(indexName) as Any?)
+                getExplainManagedIndexMetaData(indexName).info?.get("message"),
+                AttemptRolloverStep.getPendingMessage(indexName)
             )
         }
     }

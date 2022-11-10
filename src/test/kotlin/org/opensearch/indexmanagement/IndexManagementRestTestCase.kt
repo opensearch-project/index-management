@@ -148,6 +148,7 @@ abstract class IndexManagementRestTestCase : ODFERestTestCase() {
         insertSampleBulkData(index, javaClass.classLoader.getResource("data/nyc_5000.ndjson").readText())
     }
 
+    @Suppress("UNCHECKED_CAST")
     protected fun extractFailuresFromSearchResponse(searchResponse: Response): List<Map<String, String>?>? {
         val shards = searchResponse.asMap()["_shards"] as Map<String, ArrayList<Map<String, Any>>>
         assertNotNull(shards)

@@ -191,12 +191,12 @@ class MetadataService(
 
             override fun onResponse(response: ClusterUpdateSettingsResponse) {
                 if (!response.isAcknowledged) {
-                    logger.error("Update template migration setting to $status is not acknowledged")
+                    logger.error("Update metadata migration setting to $status is not acknowledged")
                     throw IndexManagementException.wrap(
-                        Exception("Update template migration setting to $status is not acknowledged")
+                        Exception("Update metadata migration setting to $status is not acknowledged")
                     )
                 } else {
-                    logger.info("Successfully update template migration setting to $status")
+                    logger.info("Successfully metadata template migration setting to $status")
                 }
             }
         }

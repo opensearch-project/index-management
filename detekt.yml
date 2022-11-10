@@ -1,6 +1,5 @@
-# TODO: Remove this before initial release, only for developmental purposes
 build:
-  maxIssues: 20
+  maxIssues: 0
 
 exceptions:
   TooGenericExceptionCaught:
@@ -14,6 +13,8 @@ style:
   MaxLineLength:
     maxLineLength: 150
     excludes: ['**/test/**']
+  FunctionOnlyReturningConstant:
+    active: false
 
 complexity:
   LargeClass:

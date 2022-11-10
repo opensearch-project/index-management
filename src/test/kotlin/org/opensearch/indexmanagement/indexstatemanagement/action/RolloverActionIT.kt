@@ -7,7 +7,6 @@ package org.opensearch.indexmanagement.indexstatemanagement.action
 
 import org.apache.http.entity.ContentType
 import org.apache.http.entity.StringEntity
-import org.hamcrest.core.Is.isA
 import org.junit.Assert
 import org.opensearch.cluster.metadata.DataStream
 import org.opensearch.common.settings.Settings
@@ -172,7 +171,7 @@ class RolloverActionIT : IndexStateManagementRestTestCase() {
             val minSize = conditions[RolloverAction.MIN_SIZE_FIELD] as Map<String, Any?>
             val minDocCount = conditions[RolloverAction.MIN_DOC_COUNT_FIELD] as Map<String, Any?>
             assertEquals("Did not have min size condition", "10b", minSize["condition"])
-            assertThat("Did not have min size current", minSize["current"], isA(String::class.java))
+            assertTrue("Did not have min size current", minSize["current"] is String)
             assertEquals("Did not have min doc count condition", 1000000, minDocCount["condition"])
             assertEquals("Did not have min doc count current", 0, minDocCount["current"])
         }
@@ -192,7 +191,7 @@ class RolloverActionIT : IndexStateManagementRestTestCase() {
             val minSize = conditions[RolloverAction.MIN_SIZE_FIELD] as Map<String, Any?>
             val minDocCount = conditions[RolloverAction.MIN_DOC_COUNT_FIELD] as Map<String, Any?>
             assertEquals("Did not have min size condition", "10b", minSize["condition"])
-            assertThat("Did not have min size current", minSize["current"], isA(String::class.java))
+            assertTrue("Did not have min size current", minSize["current"] is String)
             assertEquals("Did not have min doc count condition", 1000000, minDocCount["condition"])
             assertEquals("Did not have min doc count current", 5, minDocCount["current"])
         }
@@ -268,7 +267,7 @@ class RolloverActionIT : IndexStateManagementRestTestCase() {
             )
             val minPrimarySize = conditions[RolloverAction.MIN_PRIMARY_SHARD_SIZE_FIELD] as Map<String, Any?>
             assertEquals("Did not have min size condition", "100kb", minPrimarySize["condition"])
-            assertThat("Did not have min size current", minPrimarySize["current"], isA(String::class.java))
+            assertTrue("Did not have min size current", minPrimarySize["current"] is String)
         }
 
         val kb150 = 150_000
@@ -283,6 +282,8 @@ class RolloverActionIT : IndexStateManagementRestTestCase() {
             flush(firstIndex, true)
             forceMerge(firstIndex, "1")
             val primaryShards = (cat("shards/$firstIndex?format=json&bytes=b") as List<Map<String, Any>>).filter { it["prirep"] == "p" }
+            // TODO seeing flakyness of multiple shards over 100kb, log out shards to further debug
+            logger.info("cat shards result: $primaryShards")
             val primaryShardsOver100KB = primaryShards.filter { (it["store"] as String).toInt() > 100000 }
             assertTrue("Found multiple shards over 100kb", primaryShardsOver100KB.size == 1)
             primaryShardSizeBytes = primaryShards.maxOf { (it["store"] as String).toInt() }
@@ -300,7 +301,7 @@ class RolloverActionIT : IndexStateManagementRestTestCase() {
             )
             val minPrimaryShardSize = conditions[RolloverAction.MIN_PRIMARY_SHARD_SIZE_FIELD] as Map<String, Any?>
             assertEquals("Did not have min primary shard size condition", "100kb", minPrimaryShardSize["condition"])
-            assertThat("Did not have min primary shard size current", minPrimaryShardSize["current"], isA(String::class.java))
+            assertTrue("Did not have min primary shard size current", minPrimaryShardSize["current"] is String)
         }
         assertTrue("New rollover index does not exist.", indexExists("$indexNameBase-000002"))
     }
@@ -349,7 +350,7 @@ class RolloverActionIT : IndexStateManagementRestTestCase() {
             val minAge = conditions[RolloverAction.MIN_INDEX_AGE_FIELD] as Map<String, Any?>
             val minDocCount = conditions[RolloverAction.MIN_DOC_COUNT_FIELD] as Map<String, Any?>
             assertEquals("Did not have min age condition", "2d", minAge["condition"])
-            assertThat("Did not have min age current", minAge["current"], isA(String::class.java))
+            assertTrue("Did not have min age current", minAge["current"] is String)
             assertEquals("Did not have min doc count condition", 3, minDocCount["condition"])
             assertEquals("Did not have min doc count current", 0, minDocCount["current"])
         }
@@ -369,7 +370,7 @@ class RolloverActionIT : IndexStateManagementRestTestCase() {
             val minAge = conditions[RolloverAction.MIN_INDEX_AGE_FIELD] as Map<String, Any?>
             val minDocCount = conditions[RolloverAction.MIN_DOC_COUNT_FIELD] as Map<String, Any?>
             assertEquals("Did not have min age condition", "2d", minAge["condition"])
-            assertThat("Did not have min age current", minAge["current"], isA(String::class.java))
+            assertTrue("Did not have min age current", minAge["current"] is String)
             assertEquals("Did not have min doc count condition", 3, minDocCount["condition"])
             assertEquals("Did not have min doc count current", 5, minDocCount["current"])
         }
@@ -551,7 +552,7 @@ class RolloverActionIT : IndexStateManagementRestTestCase() {
             val minDocCount = conditions[RolloverAction.MIN_DOC_COUNT_FIELD] as Map<String, Any?>
             assertEquals("Incorrect min age condition", "2d", minAge["condition"])
             assertEquals("Incorrect min docs condition", 3, minDocCount["condition"])
-            assertThat("Missing min age current", minAge["current"], isA(String::class.java))
+            assertTrue("Missing min age current", minAge["current"] is String)
             assertEquals("Incorrect min docs current", 0, minDocCount["current"])
         }
 
@@ -579,7 +580,7 @@ class RolloverActionIT : IndexStateManagementRestTestCase() {
             val minDocCount = conditions[RolloverAction.MIN_DOC_COUNT_FIELD] as Map<String, Any?>
             assertEquals("Incorrect min age condition", "2d", minAge["condition"])
             assertEquals("Incorrect min docs condition", 3, minDocCount["condition"])
-            assertThat("Missing min age current", minAge["current"], isA(String::class.java))
+            assertTrue("Missing min age current", minAge["current"] is String)
             assertEquals("Incorrect min docs current", 5, minDocCount["current"])
         }
 

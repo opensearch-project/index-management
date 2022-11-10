@@ -14,7 +14,7 @@ import org.opensearch.common.xcontent.XContentParser.Token
 import org.opensearch.common.xcontent.XContentParserUtils.ensureExpectedToken
 
 class ValueCount() : Metric(Type.VALUE_COUNT) {
-    @Suppress("UnusedPrivateMember")
+    @Suppress("UNUSED_PARAMETER")
     constructor(sin: StreamInput) : this()
 
     override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
