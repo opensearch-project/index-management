@@ -145,6 +145,8 @@ task ktlintFormat(type: JavaExec, group: "formatting") {
     main = "com.pinterest.ktlint.Main"
     classpath = configurations.ktlint
     args "-F", "src/**/*.kt", "spi/src/main/**/*.kt"
+    // https://github.com/pinterest/ktlint/issues/1391
+    jvmArgs "--add-opens=java.base/java.lang=ALL-UNNAMED"
 }
 
 detekt {

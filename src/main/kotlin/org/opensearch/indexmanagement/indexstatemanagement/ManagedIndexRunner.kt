@@ -404,7 +404,13 @@ object ManagedIndexRunner :
         @Suppress("ComplexCondition", "MaxLineLength")
         if (updateResult.metadataSaved && state != null && action != null && step != null && currentActionMetaData != null) {
             if (validationServiceEnabled) {
-                val validationResult = actionValidation.validate(action.type, stepContext.metadata.index)
+                val validationResult = withClosableContext(
+                    IndexManagementSecurityContext(
+                        managedIndexConfig.id, settings, threadPool.threadContext, managedIndexConfig.policy.user
+                    )
+                ) {
+                    actionValidation.validate(action.type, stepContext.metadata.index)
+                }
                 if (validationResult.validationStatus == Validate.ValidationStatus.RE_VALIDATING) {
                     logger.warn("Validation Status is: RE_VALIDATING. The action is {}, state is {}, step is {}.\", action.type, state.name, step.name")
                     publishErrorNotification(policy, managedIndexMetaData)
