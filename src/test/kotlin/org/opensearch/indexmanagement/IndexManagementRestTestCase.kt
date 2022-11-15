@@ -11,12 +11,18 @@ import org.junit.AfterClass
 import org.junit.Before
 import org.junit.rules.DisableOnDebug
 import org.opensearch.client.Request
-import org.opensearch.client.RequestOptions
 import org.opensearch.client.Response
 import org.opensearch.client.RestClient
+import org.opensearch.client.RequestOptions
+import org.opensearch.client.WarningsHandler
+import org.opensearch.client.ResponseException
 import org.opensearch.common.Strings
+import org.opensearch.common.collect.Set
 import org.opensearch.common.io.PathUtils
 import org.opensearch.common.settings.Settings
+import org.opensearch.common.xcontent.DeprecationHandler
+import org.opensearch.common.xcontent.NamedXContentRegistry
+import org.opensearch.common.xcontent.XContentType
 import org.opensearch.indexmanagement.indexstatemanagement.util.INDEX_HIDDEN
 import org.opensearch.rest.RestStatus
 import java.nio.file.Files
@@ -153,7 +159,49 @@ abstract class IndexManagementRestTestCase : ODFERestTestCase() {
         }
     }
 
+    override fun preserveIndicesUponCompletion(): Boolean = true
+
     companion object {
+        fun wipeAllIndices(client: RestClient = adminClient()) {
+            waitFor {
+                waitForRunningTasks(client)
+            }
+            // Delete all data stream indices
+            try {
+                client.performRequest(Request("DELETE", "_data_stream/*"))
+            } catch (e: ResponseException) {
+                // We hit a version of ES that doesn't serialize DeleteDataStreamAction.Request#wildcardExpressionsOriginallySpecified field or
+                // that doesn't support data streams so it's safe to ignore
+                val statusCode = e.response.statusLine.statusCode
+                if (!Set.of(404, 405, 500).contains(statusCode)) {
+                    throw e
+                }
+            }
+
+            // Delete all indices
+            val response = client.performRequest(Request("GET", "/_cat/indices?format=json&expand_wildcards=all"))
+
+            val xContentType = XContentType.fromMediaType(response.entity.contentType.value)
+            xContentType.xContent().createParser(
+                NamedXContentRegistry.EMPTY, DeprecationHandler.THROW_UNSUPPORTED_OPERATION,
+                response.entity.content
+            ).use { parser ->
+                for (index in parser.list()) {
+                    val jsonObject: Map<*, *> = index as java.util.HashMap<*, *>
+                    val indexName: String = jsonObject["index"] as String
+                    // .opendistro_security isn't allowed to delete from cluster
+                    if (".opendistro_security" != indexName) {
+                        val request = Request("DELETE", "/$indexName")
+                        // TODO: remove PERMISSIVE option after moving system index access to REST API call
+                        val options = RequestOptions.DEFAULT.toBuilder()
+                        options.setWarningsHandler(WarningsHandler.PERMISSIVE)
+                        request.options = options.build()
+                        client.performRequest(request)
+                    }
+                }
+            }
+        }
+
         internal interface IProxy {
             val version: String?
             var sessionId: String?

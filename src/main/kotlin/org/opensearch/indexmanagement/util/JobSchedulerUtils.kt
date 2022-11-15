@@ -13,7 +13,7 @@ import org.opensearch.jobscheduler.spi.JobExecutionContext
 import org.opensearch.jobscheduler.spi.LockModel
 import org.opensearch.jobscheduler.spi.ScheduledJobParameter
 
-private val logger = LogManager.getLogger("JobSchedulerUtils")
+private val logger = LogManager.getLogger("o.o.i.u.JobSchedulerUtils")
 
 /**
  * Util method to attempt to get the lock on the requested scheduled job using the backoff policy.
