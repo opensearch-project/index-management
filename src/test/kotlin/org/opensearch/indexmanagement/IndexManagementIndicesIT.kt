@@ -71,9 +71,8 @@ class IndexManagementIndicesIT : IndexStateManagementRestTestCase() {
     }
 
     fun `test update management index mapping with new schema version`() {
-        waitFor {
-            assertIndexDoesNotExist(INDEX_MANAGEMENT_INDEX)
-        }
+        wipeAllIndices()
+        assertIndexDoesNotExist(INDEX_MANAGEMENT_INDEX)
 
         val mapping = indexManagementMappings.trim().trimStart('{').trimEnd('}')
             .replace("\"schema_version\": $configSchemaVersion", "\"schema_version\": 0")

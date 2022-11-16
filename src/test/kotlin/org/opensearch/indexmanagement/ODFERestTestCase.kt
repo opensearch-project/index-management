@@ -6,7 +6,6 @@
 package org.opensearch.indexmanagement
 
 import org.apache.http.HttpHost
-import org.junit.After
 import org.opensearch.action.admin.cluster.node.tasks.list.ListTasksAction
 import org.opensearch.client.Request
 import org.opensearch.client.Response
@@ -33,14 +32,6 @@ abstract class ODFERestTestCase : OpenSearchRestTestCase() {
     fun securityEnabled(): Boolean = System.getProperty("security", "false")!!.toBoolean()
 
     override fun getProtocol(): String = if (isHttps()) "https" else "http"
-
-    @After
-    fun waitForCleanup() {
-        waitFor {
-            waitForThreadPools()
-            waitForPendingTasks(adminClient())
-        }
-    }
 
     companion object {
         @JvmStatic
@@ -72,24 +63,25 @@ abstract class ODFERestTestCase : OpenSearchRestTestCase() {
             }
             return runningTasks
         }
-    }
 
-    private fun waitForThreadPools() {
-        val response = client().performRequest(Request("GET", "/_cat/thread_pool?format=json"))
+        @JvmStatic
+        protected fun waitForThreadPools(client: RestClient) {
+            val response = client.performRequest(Request("GET", "/_cat/thread_pool?format=json"))
 
-        val xContentType = XContentType.fromMediaType(response.entity.contentType.value)
-        xContentType.xContent().createParser(
-            NamedXContentRegistry.EMPTY, DeprecationHandler.THROW_UNSUPPORTED_OPERATION,
-            response.entity.content
-        ).use { parser ->
-            for (index in parser.list()) {
-                val jsonObject: Map<*, *> = index as java.util.HashMap<*, *>
-                val active = (jsonObject["active"] as String).toInt()
-                val queue = (jsonObject["queue"] as String).toInt()
-                val name = jsonObject["name"]
-                val trueActive = if (name == "management") active - 1 else active
-                if (trueActive > 0 || queue > 0) {
-                    fail("Still active threadpools in cluster: $jsonObject")
+            val xContentType = XContentType.fromMediaType(response.entity.contentType.value)
+            xContentType.xContent().createParser(
+                NamedXContentRegistry.EMPTY, DeprecationHandler.THROW_UNSUPPORTED_OPERATION,
+                response.entity.content
+            ).use { parser ->
+                for (index in parser.list()) {
+                    val jsonObject: Map<*, *> = index as java.util.HashMap<*, *>
+                    val active = (jsonObject["active"] as String).toInt()
+                    val queue = (jsonObject["queue"] as String).toInt()
+                    val name = jsonObject["name"]
+                    val trueActive = if (name == "management") active - 1 else active
+                    if (trueActive > 0 || queue > 0) {
+                        fail("Still active threadpools in cluster: $jsonObject")
+                    }
                 }
             }
         }

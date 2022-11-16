@@ -162,9 +162,17 @@ abstract class IndexManagementRestTestCase : ODFERestTestCase() {
     override fun preserveIndicesUponCompletion(): Boolean = true
 
     companion object {
-        fun wipeAllIndices(client: RestClient = adminClient()) {
+
+        protected val defaultKeepIndexSet = setOf(".opendistro_security")
+        /**
+         * This clean up function can be use in @After or @AfterClass in the base test file
+         * of your feature test suite
+         */
+        fun wipeAllIndices(client: RestClient = adminClient(), keepIndex: kotlin.collections.Set<String> = defaultKeepIndexSet) {
             waitFor {
                 waitForRunningTasks(client)
+                waitForPendingTasks(client)
+                waitForThreadPools(client)
             }
             // Delete all data stream indices
             try {
@@ -190,7 +198,7 @@ abstract class IndexManagementRestTestCase : ODFERestTestCase() {
                     val jsonObject: Map<*, *> = index as java.util.HashMap<*, *>
                     val indexName: String = jsonObject["index"] as String
                     // .opendistro_security isn't allowed to delete from cluster
-                    if (".opendistro_security" != indexName) {
+                    if (!keepIndex.contains(indexName)) {
                         val request = Request("DELETE", "/$indexName")
                         // TODO: remove PERMISSIVE option after moving system index access to REST API call
                         val options = RequestOptions.DEFAULT.toBuilder()
