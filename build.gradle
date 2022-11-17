@@ -3,9 +3,13 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+
+import org.opensearch.gradle.testclusters.OpenSearchCluster
 import org.opensearch.gradle.testclusters.TestClusterConfiguration
 import org.opensearch.gradle.testclusters.StandaloneRestIntegTestTask
 
+import java.nio.charset.StandardCharsets
+import java.nio.file.Files
 import java.util.concurrent.Callable
 import java.util.concurrent.TimeUnit
 import java.util.function.Predicate
@@ -395,11 +399,42 @@ testClusters.integTest {
     setting 'path.repo', repo.absolutePath
 }
 
+def configureCluster(OpenSearchCluster cluster, Boolean securityEnabled) {
+    // clear existing health checks as we will need custom handling based on
+    // security plugin installation
+    cluster.@waitConditions.clear()
+    String unicastUris = cluster.nodes.stream().flatMap { node ->
+        node.getAllTransportPortURI().stream()
+    }.collect(Collectors.joining("\n"))
+    cluster.nodes.forEach {node ->
+        try {
+            // Manually write the unicast hosts as we are not depending on the internal method
+            Files.write(node.getConfigDir().resolve("unicast_hosts.txt"), unicastUris.getBytes(StandardCharsets.UTF_8));
+        } catch (IOException e) {
+            throw new java.io.UncheckedIOException("Failed to write configuation files for " + this, e);
+        }
+    }
+
+    // Health check based on security plugin installation
+    // Predicate pred = { OpenSearchCluster c ->
+    //     String protocol = "http"
+    //     if(securityEnabled && !c.name.equalsIgnoreCase("integTest")) {
+    //         protocol = "https"
+    //     }
+    //     CrossClusterWaitForHttpResource wait = new CrossClusterWaitForHttpResource(protocol, cluster.getFirstNode().getHttpSocketURI(), cluster.nodes.size())
+    //     wait.setUsername("admin")
+    //     wait.setPassword("admin")
+    //     return wait.wait(500)
+    // }
+    //
+    // cluster.@waitConditions.put("cluster health yellow", pred)
+    // cluster.waitForAllConditions()
+}
+
 integTest {
     systemProperty 'tests.security.manager', 'false'
     systemProperty 'java.io.tmpdir', opensearch_tmp_dir.absolutePath
     systemProperty 'buildDir', buildDir.path
-    systemProperty "java.security.policy", "file://${projectDir}/src/test/resources/test-security.policy"
     systemProperty "https", System.getProperty("https")
     systemProperty "security", System.getProperty("security")
     systemProperty "user", System.getProperty("user", "admin")
@@ -413,7 +448,20 @@ integTest {
         // There seems to be an issue when running multi node run or integ tasks with unicast_hosts
         // not being written, the waitForAllConditions ensures it's written
         getClusters().forEach { cluster ->
-            cluster.waitForAllConditions()
+            String alltransportSocketURI = cluster.nodes.stream().flatMap { node ->
+                node.getAllTransportPortURI().stream()
+            }.collect(Collectors.joining(","))
+            String allHttpSocketURI = cluster.nodes.stream().flatMap { node ->
+                node.getAllHttpSocketURI().stream()
+            }.collect(Collectors.joining(","))
+
+            println("transport socket uri: ${alltransportSocketURI}")
+            println("http socket uri: ${allHttpSocketURI}")
+
+            systemProperty "tests.cluster.http_hosts", "${-> allHttpSocketURI}"
+
+            // cluster.waitForAllConditions()
+            configureCluster(cluster, securityEnabled)
         }
     }
 
@@ -691,6 +739,8 @@ apply from: 'build-tools/pkgbuild.gradle'
 // when there are old version (without metadata change)
 // and new version mixed in one cluster
 import org.opensearch.gradle.test.RestIntegTestTask
+
+import java.util.stream.Collectors
 
 def mixedClusterTest = project.tasks.create('mixedCluster', RestIntegTestTask.class)
 def mixedClusterFlag = findProperty('mixed') as Boolean ?: false

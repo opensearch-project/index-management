@@ -108,16 +108,32 @@ abstract class ODFERestTestCase : OpenSearchRestTestCase() {
             val keystore = settings.get(OPENSEARCH_SECURITY_SSL_HTTP_KEYSTORE_FILEPATH)
             return when (keystore != null) {
                 true -> {
+                    println("Build super admin client")
                     // create adminDN (super-admin) client
-                    val uri = javaClass.classLoader.getResource("security/sample.pem").toURI()
-                    val configPath = PathUtils.get(uri).parent.toAbsolutePath()
-                    SecureRestClientBuilder(settings, configPath).setSocketTimeout(60000).build()
+                    // val uri = javaClass.classLoader.getResource("security/sample.pem")?.toURI()
+                    // val configPath = PathUtils.get(uri).parent.toAbsolutePath()
+                    // SecureRestClientBuilder(settings, configPath).setSocketTimeout(60000).build()
+
+                    val userName = System.getProperty("user")
+                    val password = System.getProperty("password")
+                    println("Build client with user:password $userName:$password")
+                    val httpsHosts = hosts.map {
+                        println("Host uri ${it.toURI()}")
+                        HttpHost.create("https://${it.toURI()}")
+                    }
+                    SecureRestClientBuilder(httpsHosts.toTypedArray(), isHttps(), userName, password).setSocketTimeout(60000).build()
                 }
                 false -> {
                     // create client with passed user
+                    println("Build admin client")
                     val userName = System.getProperty("user")
                     val password = System.getProperty("password")
-                    SecureRestClientBuilder(hosts, isHttps(), userName, password).setSocketTimeout(60000).build()
+                    println("Build client with user:password $userName:$password")
+                    val httpsHosts = hosts.map {
+                        println("Host uri ${it.toURI()}")
+                        HttpHost.create("https://${it.toURI()}")
+                    }
+                    SecureRestClientBuilder(httpsHosts.toTypedArray(), isHttps(), userName, password).setSocketTimeout(60000).build()
                 }
             }
         } else {
@@ -126,5 +142,11 @@ abstract class ODFERestTestCase : OpenSearchRestTestCase() {
             builder.setStrictDeprecationMode(true)
             return builder.build()
         }
+    }
+
+    override fun getTestRestCluster(): String {
+        val httpHostsProp = System.getProperty("tests.cluster.http_hosts")
+        println("http prop: $httpHostsProp")
+        return httpHostsProp
     }
 }
