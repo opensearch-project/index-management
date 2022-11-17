@@ -46,6 +46,8 @@ buildscript {
                 '/latest/linux/x64/tar/builds/opensearch/plugins/opensearch-notifications-core-' + notifications_no_snapshot + '.zip'
 
         kotlin_version = System.getProperty("kotlin.version", "1.6.10")
+
+        security_plugin_version = opensearch_build.replace("-SNAPSHOT","")
     }
 
     repositories {
@@ -171,6 +173,10 @@ allprojects {
     version = "${opensearch_build}"
 }
 
+configurations {
+    opensearchPlugin
+}
+
 dependencies {
     compileOnly "org.opensearch:opensearch:${opensearch_version}"
     compileOnly "org.opensearch:opensearch-job-scheduler-spi:${job_scheduler_version}"
@@ -196,6 +202,8 @@ dependencies {
             attribute(Bundling.BUNDLING_ATTRIBUTE, objects.named(Bundling, Bundling.EXTERNAL))
         }
     }
+
+    opensearchPlugin "org.opensearch.plugin:opensearch-security:${security_plugin_version}@zip"
 }
 
 repositories {
@@ -246,6 +254,19 @@ validateNebulaPom.enabled = false
 def opensearch_tmp_dir = rootProject.file('build/private/opensearch_tmp').absoluteFile
 opensearch_tmp_dir.mkdirs()
 
+def securityPluginFile = new Callable<RegularFile>() {
+    @Override
+    RegularFile call() throws Exception {
+        return new RegularFile() {
+            @Override
+            File getAsFile() {
+                return configurations.opensearchPlugin.resolvedConfiguration.resolvedArtifacts
+                        .find { ResolvedArtifact f -> f.name.contains('opensearch-security') }
+                        .file
+            }
+        }
+    }
+}
 def securityEnabled = System.getProperty("security", "false") == "true"
 afterEvaluate {
     testClusters.integTest.nodes.each { node ->
@@ -271,7 +292,7 @@ afterEvaluate {
             node.setting("plugins.security.allow_unsafe_democertificates", "true")
             node.setting("plugins.security.allow_default_init_securityindex", "true")
             node.setting("plugins.security.authcz.admin_dn", "CN=kirk,OU=client,O=client,L=test,C=de")
-            node.setting("plugins.security.audit.type", "internal_elasticsearch")
+            // node.setting("plugins.security.audit.type", "internal_elasticsearch")
             node.setting("plugins.security.enable_snapshot_restore_privilege", "true")
             node.setting("plugins.security.check_snapshot_restore_write_privileges", "true")
             node.setting("plugins.security.restapi.roles_enabled", "[\"all_access\", \"security_rest_api_access\"]")
@@ -292,7 +313,6 @@ ext.getPluginResource = { download_to_folder, download_from_src ->
             httpusecaches: false)
     return fileTree(download_to_folder).getSingleFile()
 }
-
 
 File repo = file("$buildDir/testclusters/repo")
 def _numNodes = findProperty('numNodes') as Integer ?: 1
@@ -370,12 +390,7 @@ testClusters.integTest {
     }))
 
     if (securityEnabled) {
-        plugin(provider({
-            new RegularFile() {
-                @Override
-                File getAsFile() { fileTree("src/test/resources/security") { include "opensearch-security*" }.getSingleFile() }
-            }
-        }))
+        plugin(provider(securityPluginFile))
     }
     setting 'path.repo', repo.absolutePath
 }
@@ -384,6 +399,7 @@ integTest {
     systemProperty 'tests.security.manager', 'false'
     systemProperty 'java.io.tmpdir', opensearch_tmp_dir.absolutePath
     systemProperty 'buildDir', buildDir.path
+    systemProperty "java.security.policy", "file://${projectDir}/src/test/resources/test-security.policy"
     systemProperty "https", System.getProperty("https")
     systemProperty "security", System.getProperty("security")
     systemProperty "user", System.getProperty("user", "admin")
