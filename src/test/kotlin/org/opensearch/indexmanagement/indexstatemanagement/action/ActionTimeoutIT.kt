@@ -71,8 +71,8 @@ class ActionTimeoutIT : IndexStateManagementRestTestCase() {
 
     // https://github.com/opendistro-for-elasticsearch/index-management/issues/130
     fun `test action timeout doesn't bleed over into next action`() {
-        val indexName = "${testIndexName}_index_1"
-        val policyID = "${testIndexName}_testPolicyName_1"
+        val indexName = "${testIndexName}_index_2"
+        val policyID = "${testIndexName}_testPolicyName_2"
         val testPolicy = """
         {"policy":{"description":"Default policy","default_state":"rolloverstate","states":[
         {"name":"rolloverstate","actions":[{"timeout": "5s","open":{}},{"timeout":"1s","rollover":{"min_doc_count":100}}],

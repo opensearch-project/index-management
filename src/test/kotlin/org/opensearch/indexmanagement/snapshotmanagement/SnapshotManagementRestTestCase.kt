@@ -10,6 +10,7 @@ import org.apache.http.HttpHeaders
 import org.apache.http.entity.ContentType.APPLICATION_JSON
 import org.apache.http.entity.StringEntity
 import org.apache.http.message.BasicHeader
+import org.junit.After
 import org.junit.Before
 import org.opensearch.client.Response
 import org.opensearch.client.ResponseException
@@ -35,6 +36,11 @@ import java.time.Instant
 import java.time.Instant.now
 
 abstract class SnapshotManagementRestTestCase : IndexManagementRestTestCase() {
+
+    @After
+    fun clearIndicesAfterEachTest() {
+        wipeAllIndices()
+    }
 
     var timeout: Instant = Instant.ofEpochSecond(20)
 
