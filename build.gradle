@@ -197,6 +197,7 @@ dependencies {
     implementation "org.apache.httpcomponents:httpcore:4.4.15"
 
     testImplementation "org.opensearch.test:framework:${opensearch_version}"
+    testImplementation "org.opensearch.client:opensearch-rest-high-level-client:${opensearch_version}"
     testImplementation "org.jetbrains.kotlin:kotlin-test:${kotlin_version}"
     testImplementation "com.nhaarman.mockitokotlin2:mockito-kotlin:2.2.0"
     testImplementation "org.mockito:mockito-core:4.7.0"
@@ -271,6 +272,7 @@ def securityPluginFile = new Callable<RegularFile>() {
         }
     }
 }
+// This flag indicates the existence of security plugin
 def securityEnabled = System.getProperty("security", "false") == "true"
 afterEvaluate {
     testClusters.integTest.nodes.each { node ->
@@ -448,18 +450,6 @@ integTest {
         // There seems to be an issue when running multi node run or integ tasks with unicast_hosts
         // not being written, the waitForAllConditions ensures it's written
         getClusters().forEach { cluster ->
-            String alltransportSocketURI = cluster.nodes.stream().flatMap { node ->
-                node.getAllTransportPortURI().stream()
-            }.collect(Collectors.joining(","))
-            String allHttpSocketURI = cluster.nodes.stream().flatMap { node ->
-                node.getAllHttpSocketURI().stream()
-            }.collect(Collectors.joining(","))
-
-            println("transport socket uri: ${alltransportSocketURI}")
-            println("http socket uri: ${allHttpSocketURI}")
-
-            systemProperty "tests.cluster.http_hosts", "${-> allHttpSocketURI}"
-
             // cluster.waitForAllConditions()
             configureCluster(cluster, securityEnabled)
         }
@@ -726,11 +716,11 @@ run {
 
 compileKotlin {
     kotlinOptions.freeCompilerArgs = ['-Xjsr305=strict']
-    kotlinOptions.allWarningsAsErrors = true
+    // kotlinOptions.allWarningsAsErrors = true
 }
 
 compileTestKotlin {
-    kotlinOptions.allWarningsAsErrors = true
+    // kotlinOptions.allWarningsAsErrors = true
 }
 
 apply from: 'build-tools/pkgbuild.gradle'
