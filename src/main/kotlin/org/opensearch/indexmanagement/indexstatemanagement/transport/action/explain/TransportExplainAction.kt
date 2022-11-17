@@ -383,7 +383,7 @@ class TransportExplainAction @Inject constructor(
                         filteredIndices.add(indexNames[i])
                         filteredMetadata.add(indexMetadatas[i])
                         filteredPolicies.add(indexPolicyIDs[i])
-                        validationResults[i]?.let { filteredValidationResult.add(it) }
+                        validationResults[i].let { filteredValidationResult.add(it) }
                         enabledState[indexNames[i]]?.let { enabledStatus[indexNames[i]] = it }
                         appliedPolicies[indexNames[i]]?.let { filteredAppliedPolicies[indexNames[i]] = it }
                     } catch (e: OpenSearchSecurityException) {
