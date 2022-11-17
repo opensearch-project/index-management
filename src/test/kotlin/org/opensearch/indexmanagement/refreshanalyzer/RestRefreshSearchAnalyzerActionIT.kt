@@ -5,6 +5,7 @@
 
 package org.opensearch.indexmanagement.refreshanalyzer
 
+import org.junit.AfterClass
 import org.opensearch.client.ResponseException
 import org.opensearch.common.settings.Settings
 import org.opensearch.indexmanagement.IndexManagementRestTestCase
@@ -14,6 +15,13 @@ import org.opensearch.rest.RestRequest.Method.POST
 import org.opensearch.rest.RestStatus
 
 class RestRefreshSearchAnalyzerActionIT : IndexManagementRestTestCase() {
+
+    companion object {
+        @AfterClass
+        @JvmStatic fun clearIndicesAfterClass() {
+            wipeAllIndices()
+        }
+    }
 
     fun `test missing indices`() {
         try {

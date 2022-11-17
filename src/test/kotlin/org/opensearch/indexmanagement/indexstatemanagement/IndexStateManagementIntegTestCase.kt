@@ -7,6 +7,7 @@ package org.opensearch.indexmanagement.indexstatemanagement
 
 import org.apache.http.entity.ContentType
 import org.apache.http.entity.StringEntity
+import org.junit.After
 import org.junit.Before
 import org.opensearch.OpenSearchParseException
 import org.opensearch.action.ActionRequest
@@ -28,6 +29,7 @@ import org.opensearch.common.xcontent.XContentParserUtils
 import org.opensearch.common.xcontent.XContentType
 import org.opensearch.common.xcontent.json.JsonXContent
 import org.opensearch.indexmanagement.IndexManagementPlugin
+import org.opensearch.indexmanagement.IndexManagementRestTestCase.Companion.wipeAllIndices
 import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexConfig
 import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
 import org.opensearch.indexmanagement.indexstatemanagement.resthandler.RestExplainAction
@@ -55,6 +57,12 @@ import java.time.Duration
 import java.time.Instant
 
 abstract class IndexStateManagementIntegTestCase : OpenSearchIntegTestCase() {
+
+    @After
+    fun clearIndicesAfterEachTest() {
+        wipeAllIndices(getRestClient())
+    }
+
     @Before
     fun disableIndexStateManagementJitter() {
         // jitter would add a test-breaking delay to the integration tests

@@ -865,6 +865,10 @@ class RollupRunnerIT : RollupRestTestCase() {
         var rollupMetadata = getRollupMetadata(rollupMetadataID)
         assertTrue("Did not process any doc during rollup", rollupMetadata.stats.documentsProcessed > 0)
 
+        // TODO Flaky: version conflict could happen here
+        //  From log diving, it seems to be a race condition coming from RollupRunner
+        //  (need more dive to understand rollup business logic)
+        //  There are indexRollup happened between get and enable
         // restart job
         client().makeRequest(
             "PUT",

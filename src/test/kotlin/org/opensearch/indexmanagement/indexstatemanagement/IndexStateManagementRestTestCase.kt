@@ -10,6 +10,7 @@ import org.apache.http.HttpHeaders
 import org.apache.http.entity.ContentType.APPLICATION_JSON
 import org.apache.http.entity.StringEntity
 import org.apache.http.message.BasicHeader
+import org.junit.After
 import org.junit.Before
 import org.opensearch.OpenSearchParseException
 import org.opensearch.action.get.GetResponse
@@ -73,6 +74,11 @@ import java.time.Instant
 import java.util.Locale
 
 abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() {
+
+    @After
+    fun clearIndicesAfterEachTest() {
+        wipeAllIndices()
+    }
 
     val explainResponseOpendistroPolicyIdSetting = "index.opendistro.index_state_management.policy_id"
     val explainResponseOpenSearchPolicyIdSetting = "index.plugins.index_state_management.policy_id"
