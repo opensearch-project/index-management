@@ -13,6 +13,7 @@ import java.nio.file.Files
 import java.util.concurrent.Callable
 import java.util.concurrent.TimeUnit
 import java.util.function.Predicate
+import org.opensearch.gradle.http.WaitForHttpResource
 
 
 buildscript {
@@ -25,6 +26,7 @@ buildscript {
         opensearch_build = version_tokens[0] + '.0'
         job_scheduler_no_snapshot = opensearch_build
         notifications_no_snapshot = opensearch_build
+        security_no_snapshot = opensearch_build
         if (buildVersionQualifier) {
             opensearch_build += "-${buildVersionQualifier}"
             job_scheduler_no_snapshot += "-${buildVersionQualifier}"
@@ -38,7 +40,6 @@ buildscript {
 
         notifications_resource_folder = "src/test/resources/notifications"
         notifications_core_resource_folder = "src/test/resources/notifications-core"
-        // notification_version = System.getProperty("notification.version", opensearch_build)
         common_utils_version = System.getProperty("common_utils.version", opensearch_build)
         job_scheduler_version = System.getProperty("job_scheduler_version.version", opensearch_build)
         job_scheduler_build_download = 'https://ci.opensearch.org/ci/dbc/distribution-build-opensearch/' + opensearch_no_snapshot +
@@ -51,7 +52,7 @@ buildscript {
 
         kotlin_version = System.getProperty("kotlin.version", "1.6.10")
 
-        security_plugin_version = opensearch_build.replace("-SNAPSHOT","")
+        security_plugin_version = System.getProperty("security.version", security_no_snapshot)
     }
 
     repositories {
@@ -180,7 +181,6 @@ allprojects {
 configurations {
     opensearchPlugin
 }
-
 dependencies {
     compileOnly "org.opensearch:opensearch:${opensearch_version}"
     compileOnly "org.opensearch:opensearch-job-scheduler-spi:${job_scheduler_version}"
@@ -197,7 +197,6 @@ dependencies {
     implementation "org.apache.httpcomponents:httpcore:4.4.15"
 
     testImplementation "org.opensearch.test:framework:${opensearch_version}"
-    testImplementation "org.opensearch.client:opensearch-rest-high-level-client:${opensearch_version}"
     testImplementation "org.jetbrains.kotlin:kotlin-test:${kotlin_version}"
     testImplementation "com.nhaarman.mockitokotlin2:mockito-kotlin:2.2.0"
     testImplementation "org.mockito:mockito-core:4.7.0"
@@ -208,6 +207,7 @@ dependencies {
         }
     }
 
+    // https://aws.oss.sonatype.org/content/repositories/snapshots/org/opensearch/plugin/
     opensearchPlugin "org.opensearch.plugin:opensearch-security:${security_plugin_version}@zip"
 }
 
@@ -259,19 +259,23 @@ validateNebulaPom.enabled = false
 def opensearch_tmp_dir = rootProject.file('build/private/opensearch_tmp').absoluteFile
 opensearch_tmp_dir.mkdirs()
 
-def securityPluginFile = new Callable<RegularFile>() {
-    @Override
-    RegularFile call() throws Exception {
-        return new RegularFile() {
-            @Override
-            File getAsFile() {
-                return configurations.opensearchPlugin.resolvedConfiguration.resolvedArtifacts
-                        .find { ResolvedArtifact f -> f.name.contains('opensearch-security') }
-                        .file
+// === Setup security test ===
+ext.resolvePluginFile = { pluginId ->
+    return new Callable<RegularFile>() {
+        @Override
+        RegularFile call() throws Exception {
+            return new RegularFile() {
+                @Override
+                File getAsFile() {
+                    return configurations.opensearchPlugin.resolvedConfiguration.resolvedArtifacts
+                            .find { ResolvedArtifact f -> f.name.contains(pluginId) }
+                            .file
+                }
             }
         }
     }
 }
+def securityPluginFile = resolvePluginFile("opensearch-security")
 // This flag indicates the existence of security plugin
 def securityEnabled = System.getProperty("security", "false") == "true"
 afterEvaluate {
@@ -297,8 +301,8 @@ afterEvaluate {
             node.setting("plugins.security.ssl.http.pemtrustedcas_filepath", "root-ca.pem")
             node.setting("plugins.security.allow_unsafe_democertificates", "true")
             node.setting("plugins.security.allow_default_init_securityindex", "true")
-            node.setting("plugins.security.authcz.admin_dn", "CN=kirk,OU=client,O=client,L=test,C=de")
-            // node.setting("plugins.security.audit.type", "internal_elasticsearch")
+            node.setting("plugins.security.authcz.admin_dn", "\n - CN=kirk,OU=client,O=client,L=test, C=de")
+            node.setting("plugins.security.audit.type", "internal_elasticsearch")
             node.setting("plugins.security.enable_snapshot_restore_privilege", "true")
             node.setting("plugins.security.check_snapshot_restore_write_privileges", "true")
             node.setting("plugins.security.restapi.roles_enabled", "[\"all_access\", \"security_rest_api_access\"]")
@@ -401,36 +405,29 @@ testClusters.integTest {
     setting 'path.repo', repo.absolutePath
 }
 
-def configureCluster(OpenSearchCluster cluster, Boolean securityEnabled) {
-    // clear existing health checks as we will need custom handling based on
-    // security plugin installation
+def waitForClusterSetup(OpenSearchCluster cluster, Boolean securityEnabled) {
     cluster.@waitConditions.clear()
     String unicastUris = cluster.nodes.stream().flatMap { node ->
         node.getAllTransportPortURI().stream()
     }.collect(Collectors.joining("\n"))
     cluster.nodes.forEach {node ->
         try {
-            // Manually write the unicast hosts as we are not depending on the internal method
             Files.write(node.getConfigDir().resolve("unicast_hosts.txt"), unicastUris.getBytes(StandardCharsets.UTF_8));
         } catch (IOException e) {
             throw new java.io.UncheckedIOException("Failed to write configuation files for " + this, e);
         }
     }
 
-    // Health check based on security plugin installation
-    // Predicate pred = { OpenSearchCluster c ->
-    //     String protocol = "http"
-    //     if(securityEnabled && !c.name.equalsIgnoreCase("integTest")) {
-    //         protocol = "https"
-    //     }
-    //     CrossClusterWaitForHttpResource wait = new CrossClusterWaitForHttpResource(protocol, cluster.getFirstNode().getHttpSocketURI(), cluster.nodes.size())
-    //     wait.setUsername("admin")
-    //     wait.setPassword("admin")
-    //     return wait.wait(500)
-    // }
-    //
-    // cluster.@waitConditions.put("cluster health yellow", pred)
-    // cluster.waitForAllConditions()
+    Predicate pred = {
+        String protocol = securityEnabled ? "https" : "http"
+        WaitForHttpResource wait = new WaitForHttpResource(protocol, cluster.getFirstNode().getHttpSocketURI(), cluster.nodes.size())
+        wait.setUsername(System.getProperty("user", "admin"))
+        wait.setPassword(System.getProperty("password", "admin"))
+        return wait.wait(500)
+    }
+
+    cluster.@waitConditions.put("cluster health yellow", pred)
+    cluster.waitForAllConditions()
 }
 
 integTest {
@@ -450,8 +447,7 @@ integTest {
         // There seems to be an issue when running multi node run or integ tasks with unicast_hosts
         // not being written, the waitForAllConditions ensures it's written
         getClusters().forEach { cluster ->
-            // cluster.waitForAllConditions()
-            configureCluster(cluster, securityEnabled)
+            waitForClusterSetup(cluster, securityEnabled)
         }
     }
 
@@ -477,6 +473,7 @@ integTest {
         filter {
             excludeTestsMatching "org.opensearch.indexmanagement.indexstatemanagement.action.NotificationActionIT"
         }
+        exclude 'org/opensearch/indexmanagement/indexstatemanagement/MetadataRegressionIT.class'
     }
 
     // TODO: raise issue in Core, this is because of the test framework
@@ -703,24 +700,18 @@ run {
         // There seems to be an issue when running multi node run or integ tasks with unicast_hosts
         // not being written, the waitForAllConditions ensures it's written
         getClusters().forEach { cluster ->
-            if (securityEnabled) {
-                // TODO: This is a bit of a hack
-                LinkedHashMap<String, Predicate<TestClusterConfiguration>> waitConditions = new LinkedHashMap<>()
-                cluster.waitForConditions(waitConditions, System.currentTimeMillis(), 40, TimeUnit.SECONDS, cluster)
-            } else {
-                cluster.waitForAllConditions()
-            }
+            waitForClusterSetup(cluster, securityEnabled)
         }
     }
 }
 
 compileKotlin {
     kotlinOptions.freeCompilerArgs = ['-Xjsr305=strict']
-    // kotlinOptions.allWarningsAsErrors = true
+    kotlinOptions.allWarningsAsErrors = true
 }
 
 compileTestKotlin {
-    // kotlinOptions.allWarningsAsErrors = true
+    kotlinOptions.allWarningsAsErrors = true
 }
 
 apply from: 'build-tools/pkgbuild.gradle'
@@ -730,11 +721,8 @@ apply from: 'build-tools/pkgbuild.gradle'
 // and new version mixed in one cluster
 import org.opensearch.gradle.test.RestIntegTestTask
 
-import java.util.stream.Collectors
-
 def mixedClusterTest = project.tasks.create('mixedCluster', RestIntegTestTask.class)
 def mixedClusterFlag = findProperty('mixed') as Boolean ?: false
-println("mixed cluster flag: $mixedClusterFlag")
 mixedClusterTest.dependsOn(bundlePlugin)
 
 testClusters.mixedCluster {
