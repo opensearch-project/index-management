@@ -5,15 +5,22 @@
 
 
 import org.opensearch.gradle.testclusters.OpenSearchCluster
-import org.opensearch.gradle.testclusters.TestClusterConfiguration
 import org.opensearch.gradle.testclusters.StandaloneRestIntegTestTask
 
+import javax.net.ssl.HostnameVerifier
+import javax.net.ssl.HttpsURLConnection
+import javax.net.ssl.SSLContext
+import javax.net.ssl.SSLSession
+import javax.net.ssl.TrustManager
+import javax.net.ssl.X509TrustManager
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
+import java.security.GeneralSecurityException
+import java.security.cert.X509Certificate
 import java.util.concurrent.Callable
-import java.util.concurrent.TimeUnit
 import java.util.function.Predicate
-import org.opensearch.gradle.http.WaitForHttpResource
+import java.util.stream.Collectors
+import java.util.concurrent.TimeUnit
 
 
 buildscript {
@@ -301,7 +308,7 @@ afterEvaluate {
             node.setting("plugins.security.ssl.http.pemtrustedcas_filepath", "root-ca.pem")
             node.setting("plugins.security.allow_unsafe_democertificates", "true")
             node.setting("plugins.security.allow_default_init_securityindex", "true")
-            node.setting("plugins.security.authcz.admin_dn", "\n - CN=kirk,OU=client,O=client,L=test, C=de")
+            node.setting("plugins.security.authcz.admin_dn", "\n - CN=kirk,OU=client,O=client,L=test,C=de")
             node.setting("plugins.security.audit.type", "internal_elasticsearch")
             node.setting("plugins.security.enable_snapshot_restore_privilege", "true")
             node.setting("plugins.security.check_snapshot_restore_write_privileges", "true")
@@ -405,6 +412,109 @@ testClusters.integTest {
     setting 'path.repo', repo.absolutePath
 }
 
+// Re-write WaitForHttpResource with updated code to support security plugin use case
+class WaitForClusterYellow {
+
+    private URL url
+    private String username
+    private String password
+    Set<Integer> validResponseCodes = Collections.singleton(200)
+
+    WaitForClusterYellow(String protocol, String host, int numberOfNodes) throws MalformedURLException {
+        this(new URL(protocol + "://" + host + "/_cluster/health?wait_for_nodes=>=" + numberOfNodes + "&wait_for_status=yellow"))
+    }
+
+    WaitForClusterYellow(URL url) {
+        this.url = url
+    }
+
+    boolean wait(int durationInMs) throws GeneralSecurityException, InterruptedException, IOException {
+        final long waitUntil = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(durationInMs)
+        final long sleep = 100
+
+        IOException failure = null
+        while (true) {
+            try {
+                checkResource()
+                return true
+            } catch (IOException e) {
+                failure = e
+            }
+            if (System.nanoTime() < waitUntil) {
+                Thread.sleep(sleep)
+            } else {
+                throw failure
+            }
+        }
+    }
+
+    void setUsername(String username) {
+        this.username = username
+    }
+
+    void setPassword(String password) {
+        this.password = password
+    }
+
+    void checkResource() throws IOException {
+        final HttpURLConnection connection = buildConnection()
+        connection.connect()
+        final Integer response = connection.getResponseCode()
+        if (validResponseCodes.contains(response)) {
+            return
+        } else {
+            throw new IOException(response + " " + connection.getResponseMessage())
+        }
+    }
+
+    HttpURLConnection buildConnection() throws IOException {
+        final HttpURLConnection connection = (HttpURLConnection) this.@url.openConnection()
+
+        if (connection instanceof HttpsURLConnection) {
+            TrustManager[] trustAllCerts = [new X509TrustManager() {
+                X509Certificate[] getAcceptedIssuers() {
+                    return null
+                }
+
+                void checkClientTrusted(X509Certificate[] certs, String authType) {
+                }
+
+                void checkServerTrusted(X509Certificate[] certs, String authType) {
+                }
+            }
+            ] as TrustManager[]
+            SSLContext sc = SSLContext.getInstance("SSL")
+            sc.init(null, trustAllCerts, new java.security.SecureRandom())
+            connection.setSSLSocketFactory(sc.getSocketFactory())
+            // Create all-trusting host name verifier
+            HostnameVerifier allHostsValid = new HostnameVerifier() {
+                boolean verify(String hostname, SSLSession session) {
+                    return true
+                }
+            }
+            // Install the all-trusting host verifier
+            connection.setHostnameVerifier(allHostsValid)
+        }
+
+        configureBasicAuth(connection)
+        connection.setRequestMethod("GET")
+        return connection
+    }
+
+    void configureBasicAuth(HttpURLConnection connection) {
+        if (username != null) {
+            if (password == null) {
+                throw new IllegalStateException("Basic Auth user [" + username + "] has been set, but no password has been configured")
+            }
+            connection.setRequestProperty(
+                    "Authorization",
+                    "Basic " + Base64.getEncoder().encodeToString((username + ":" + password).getBytes(StandardCharsets.UTF_8))
+            )
+        }
+    }
+
+}
+
 def waitForClusterSetup(OpenSearchCluster cluster, Boolean securityEnabled) {
     cluster.@waitConditions.clear()
     String unicastUris = cluster.nodes.stream().flatMap { node ->
@@ -412,15 +522,15 @@ def waitForClusterSetup(OpenSearchCluster cluster, Boolean securityEnabled) {
     }.collect(Collectors.joining("\n"))
     cluster.nodes.forEach {node ->
         try {
-            Files.write(node.getConfigDir().resolve("unicast_hosts.txt"), unicastUris.getBytes(StandardCharsets.UTF_8));
+            Files.write(node.getConfigDir().resolve("unicast_hosts.txt"), unicastUris.getBytes(StandardCharsets.UTF_8))
         } catch (IOException e) {
-            throw new java.io.UncheckedIOException("Failed to write configuation files for " + this, e);
+            throw new java.io.UncheckedIOException("Failed to write configuation files for " + this, e)
         }
     }
 
     Predicate pred = {
         String protocol = securityEnabled ? "https" : "http"
-        WaitForHttpResource wait = new WaitForHttpResource(protocol, cluster.getFirstNode().getHttpSocketURI(), cluster.nodes.size())
+        WaitForClusterYellow wait = new WaitForClusterYellow(protocol, cluster.getFirstNode().getHttpSocketURI(), cluster.nodes.size())
         wait.setUsername(System.getProperty("user", "admin"))
         wait.setPassword(System.getProperty("password", "admin"))
         return wait.wait(500)
@@ -451,7 +561,7 @@ integTest {
         }
     }
 
-    // The -Dcluster.debug option makes the cluster debuggable; this makes the tests debuggable
+    // The -Dcluster.debug option makes the cluster debuggable, this makes the tests debuggable
     if (System.getProperty("test.debug") != null) {
         jvmArgs '-agentlib:jdwp=transport=dt_socket,server=n,suspend=y,address=8000'
     }
@@ -490,6 +600,7 @@ task integTestRemote(type: RestIntegTestTask)  {
     systemProperty "https", System.getProperty("https")
     systemProperty "user", System.getProperty("user")
     systemProperty "password", System.getProperty("password")
+    systemProperty 'buildDir', buildDir.path
 
     if (System.getProperty("tests.rest.bwcsuite") == null) {
         filter {
