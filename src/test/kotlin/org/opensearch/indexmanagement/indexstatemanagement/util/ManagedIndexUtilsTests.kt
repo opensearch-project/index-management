@@ -5,7 +5,6 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.util
 
-import org.opensearch.action.delete.DeleteRequest
 import org.opensearch.common.bytes.BytesReference
 import org.opensearch.common.unit.ByteSizeValue
 import org.opensearch.common.unit.TimeValue
@@ -28,6 +27,7 @@ import org.opensearch.indexmanagement.opensearchapi.parseWithType
 import org.opensearch.test.OpenSearchTestCase
 import java.time.Instant
 
+@Suppress("UnusedPrivateMember")
 class ManagedIndexUtilsTests : OpenSearchTestCase() {
 
     fun `test create managed index request`() {
@@ -112,7 +112,6 @@ class ManagedIndexUtilsTests : OpenSearchTestCase() {
         assertEquals("Too many requests", 1, requests.size)
         val request = requests.first()
         assertEquals("Incorrect uuid used as document id on request", sweptConfigToDelete.uuid, request.id())
-        assertTrue("Incorrect request type", request is DeleteRequest)
     }
 
     fun `test get swept managed index search request`() {

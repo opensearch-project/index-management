@@ -28,4 +28,12 @@ class WriteableTests : OpenSearchTestCase() {
         val streamedTransform = Transform(buildStreamInputForTransforms(out))
         assertEquals("Round tripping Transform stream doesn't work", transform, streamedTransform)
     }
+
+    fun `test transform roles field deprecation`() {
+        val transform = randomTransform().copy(roles = listOf("I am deprecated"))
+        val out = BytesStreamOutput().also { transform.writeTo(it) }
+        val streamedTransform = Transform(buildStreamInputForTransforms(out))
+        @Suppress("DEPRECATION")
+        assertTrue("roles field in transform model is deprecated and should be parsed to empty list.", streamedTransform.roles.isEmpty())
+    }
 }

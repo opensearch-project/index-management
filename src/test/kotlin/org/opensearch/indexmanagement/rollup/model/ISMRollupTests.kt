@@ -86,6 +86,7 @@ class ISMRollupTests : OpenSearchTestCase() {
         assertNotNull(rollup.jobEnabledTime)
         assertFalse(rollup.continuous)
         assertTrue(rollup.enabled)
+        @Suppress("DEPRECATION")
         assertTrue(rollup.roles.isEmpty())
         assertTrue(rollup.isEnabled)
     }

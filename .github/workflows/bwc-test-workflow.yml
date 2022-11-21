@@ -1,5 +1,4 @@
-name: Multi node test workflow
-# This workflow is triggered on pull requests to main
+name: Backward compatibility test workflow
 on:
   pull_request:
     branches:
@@ -21,11 +20,13 @@ jobs:
       # index-management
       - name: Checkout Branch
         uses: actions/checkout@v2
-      - name: Run integration tests with multi node config
-        run: ./gradlew integTest -PnumNodes=3
+      - name: Run IM Backwards Compatibility Tests
+        run: |
+          echo "Running backwards compatibility tests..."
+          ./gradlew bwcTestSuite
       - name: Upload failed logs
         uses: actions/upload-artifact@v2
         if: failure()
         with:
           name: logs
-          path: build/testclusters/integTest-*/logs/*
+          path: build/testclusters/indexmanagementBwcCluster*/logs/*

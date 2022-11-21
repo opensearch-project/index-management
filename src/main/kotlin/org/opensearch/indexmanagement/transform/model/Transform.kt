@@ -149,7 +149,7 @@ data class Transform(
         out.writeString(sourceIndex)
         out.writeOptionalNamedWriteable(dataSelectionQuery)
         out.writeString(targetIndex)
-        out.writeStringArray(roles.toTypedArray())
+        out.writeStringArray(emptyList<String>().toTypedArray())
         out.writeInt(pageSize)
         out.writeVInt(groups.size)
         for (group in groups) {
@@ -170,12 +170,12 @@ data class Transform(
         return if (includeId) {
             mutableMapOf(
                 TRANSFORM_DOC_ID_FIELD to this.id,
-                _DOC_COUNT to docCount,
+                DOC_COUNT to docCount,
                 TRANSFORM_DOC_COUNT_FIELD to docCount
             )
         } else {
             mutableMapOf(
-                _DOC_COUNT to docCount,
+                DOC_COUNT to docCount,
                 TRANSFORM_DOC_COUNT_FIELD to docCount
             )
         }
@@ -288,7 +288,7 @@ data class Transform(
         const val MAXIMUM_PAGE_SIZE_CONTINUOUS = 1_000
         const val MINIMUM_JOB_INTERVAL = 1
         const val TRANSFORM_DOC_ID_FIELD = "$TRANSFORM_TYPE._id"
-        const val _DOC_COUNT = "_doc_count"
+        const val DOC_COUNT = "_doc_count"
         // Keeping the field in order to be backward compatible
         const val TRANSFORM_DOC_COUNT_FIELD = "$TRANSFORM_TYPE._doc_count"
         const val CONTINUOUS_FIELD = "continuous"

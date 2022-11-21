@@ -59,7 +59,7 @@ class ValidateDeleteIT : IndexStateManagementRestTestCase() {
             assertEquals(
                 "Index delete action validation status is RE_VALIDATING.",
                 Validate.ValidationStatus.RE_VALIDATING,
-                data?.validationStatus
+                data.validationStatus
             )
         }
         waitFor {
@@ -67,7 +67,7 @@ class ValidateDeleteIT : IndexStateManagementRestTestCase() {
             assertEquals(
                 "Index delete action validation message is index is write index.",
                 ValidateDelete.getFailedIsWriteIndexMessage(index1),
-                data?.validationMessage
+                data.validationMessage
             )
         }
     }

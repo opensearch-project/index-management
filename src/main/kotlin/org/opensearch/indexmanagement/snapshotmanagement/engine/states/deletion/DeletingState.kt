@@ -9,6 +9,7 @@ import org.apache.logging.log4j.Logger
 import org.opensearch.ExceptionsHelper
 import org.opensearch.action.admin.cluster.snapshots.delete.DeleteSnapshotRequest
 import org.opensearch.action.support.master.AcknowledgedResponse
+import org.opensearch.client.ClusterAdminClient
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.snapshotmanagement.engine.SMStateMachine
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.SMResult
@@ -68,7 +69,7 @@ object DeletingState : State {
                     job.snapshotConfig["repository"] as String,
                     *snapshotsToDelete.toTypedArray()
                 )
-                val res: AcknowledgedResponse = client.admin().cluster().suspendUntil { deleteSnapshot(req, it) }
+                client.admin().cluster().suspendUntil<ClusterAdminClient, AcknowledgedResponse> { deleteSnapshot(req, it) }
 
                 metadataBuilder.setLatestExecution(
                     status = SMMetadata.LatestExecution.Status.IN_PROGRESS,
@@ -102,7 +103,8 @@ object DeletingState : State {
         return SMResult.Fail(metadataBuilder, WorkflowType.CREATION)
     }
 
-    private fun getSnapshotDeletionStartedMessage(snapshotNames: List<String>) = "Snapshots $snapshotNames deletion has been started and waiting for completion."
+    private fun getSnapshotDeletionStartedMessage(snapshotNames: List<String>) =
+        "Snapshots $snapshotNames deletion has been started and waiting for completion."
     private fun getSnapshotsMissingMessage() = "No snapshots found under policy while getting snapshots to decide which snapshots to delete."
     private fun getSnapshotsErrorMessage() = "Caught exception while getting snapshots to decide which snapshots to delete."
     private fun getDeleteSnapshotErrorMessage(snapshotNames: List<String>) = "Caught exception while deleting snapshot $snapshotNames."
