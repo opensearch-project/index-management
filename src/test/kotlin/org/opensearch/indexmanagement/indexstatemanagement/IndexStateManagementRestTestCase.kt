@@ -10,6 +10,7 @@ import org.apache.http.HttpHeaders
 import org.apache.http.entity.ContentType.APPLICATION_JSON
 import org.apache.http.entity.StringEntity
 import org.apache.http.message.BasicHeader
+import org.junit.After
 import org.junit.Before
 import org.opensearch.OpenSearchParseException
 import org.opensearch.action.get.GetResponse
@@ -73,6 +74,11 @@ import java.time.Instant
 import java.util.Locale
 
 abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() {
+
+    @After
+    fun clearIndicesAfterEachTest() {
+        wipeAllIndices()
+    }
 
     val explainResponseOpendistroPolicyIdSetting = "index.opendistro.index_state_management.policy_id"
     val explainResponseOpenSearchPolicyIdSetting = "index.plugins.index_state_management.policy_id"
@@ -476,7 +482,7 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
     // Validate segment count per shard by specifying the min and max it should be
     @Suppress("UNCHECKED_CAST", "ReturnCount")
     protected fun validateSegmentCount(index: String, min: Int? = null, max: Int? = null): Boolean {
-        if (min == null && max == null) throw IllegalArgumentException("Must provide at least a min or max")
+        require(min != null || max != null) { "Must provide at least a min or max" }
         val statsResponse: Map<String, Any> = getShardSegmentStats(index)
 
         val indicesStats = statsResponse["indices"] as Map<String, Map<String, Map<String, List<Map<String, Map<String, Any?>>>>>>
@@ -942,6 +948,7 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
         return true
     }
 
+    @Suppress("UNCHECKED_CAST")
     protected fun assertPredicatesOnISMTemplatesMap(
         templatePredicates: List<Pair<String, List<Pair<String, (Any?) -> Boolean>>>>, // response map name: predicate
         response: Map<String, Any?>
@@ -957,6 +964,7 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
         }
     }
 
+    @Suppress("UNCHECKED_CAST")
     protected fun assertISMTemplateEquals(expected: ISMTemplate, actualISMTemplateMap: Any?): Boolean {
         actualISMTemplateMap as Map<String, Any>
         assertEquals(expected.indexPatterns, actualISMTemplateMap[ISMTemplate.INDEX_PATTERN])

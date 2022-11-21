@@ -40,12 +40,11 @@ import java.time.Instant
 abstract class TransformRestTestCase : IndexManagementRestTestCase() {
 
     companion object {
-        @AfterClass @JvmStatic fun clearIndicesAfterClassCompletion() {
+        @AfterClass
+        @JvmStatic fun clearIndicesAfterClass() {
             wipeAllIndices()
         }
     }
-
-    override fun preserveIndicesUponCompletion(): Boolean = true
 
     protected fun createTransform(
         transform: Transform,

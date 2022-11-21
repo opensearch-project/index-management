@@ -517,6 +517,7 @@ fun checkMetadata(
         val t2 = when (configIndexMetadata) {
             is ManagedIndexMetaData -> configIndexMetadata.stepMetaData?.startTime
             is Map<*, *> -> {
+                @Suppress("UNCHECKED_CAST")
                 val stepMetadata = configIndexMetadata["step"] as Map<String, Any>?
                 stepMetadata?.get("start_time")
             }

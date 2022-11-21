@@ -146,7 +146,6 @@ class TransportIndexTransformAction @Inject constructor(
             if (transform.dataSelectionQuery != newTransform.dataSelectionQuery) modified.add(Transform.DATA_SELECTION_QUERY_FIELD)
             if (transform.groups != newTransform.groups) modified.add(Transform.GROUPS_FIELD)
             if (transform.aggregations != newTransform.aggregations) modified.add(Transform.AGGREGATIONS_FIELD)
-            if (transform.roles != newTransform.roles) modified.add(Transform.ROLES_FIELD)
             if (transform.continuous != newTransform.continuous) modified.add(Transform.CONTINUOUS_FIELD)
             return modified.toList()
         }

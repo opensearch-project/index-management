@@ -31,7 +31,7 @@ data class SweptManagedIndexConfig(
 ) {
 
     companion object {
-        @Suppress("ComplexMethod", "UnusedPrivateMember")
+        @Suppress("ComplexMethod", "UNUSED_PARAMETER")
         @JvmStatic
         @Throws(IOException::class)
         fun parse(xcp: XContentParser, id: String = NO_ID, seqNo: Long, primaryTerm: Long): SweptManagedIndexConfig {
@@ -60,11 +60,11 @@ data class SweptManagedIndexConfig(
             }
 
             return SweptManagedIndexConfig(
-                requireNotNull(index) { "SweptManagedIndexConfig index is null" },
+                index,
                 seqNo,
                 primaryTerm,
-                requireNotNull(uuid) { "SweptManagedIndexConfig uuid is null" },
-                requireNotNull(policyID) { "SweptManagedIndexConfig policy id is null" },
+                uuid,
+                policyID,
                 policy,
                 changePolicy
             )

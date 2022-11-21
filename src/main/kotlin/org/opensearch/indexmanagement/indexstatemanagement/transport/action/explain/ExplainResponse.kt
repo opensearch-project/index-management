@@ -57,7 +57,7 @@ open class ExplainResponse : ActionResponse, ToXContentObject {
         indexPolicyIDs = sin.readStringList(),
         indexMetadatas = sin.readList { ManagedIndexMetaData.fromStreamInput(it) },
         totalManagedIndices = sin.readInt(),
-        enabledState = sin.readMap() as Map<String, Boolean>,
+        enabledState = sin.readMap(StreamInput::readString, StreamInput::readBoolean),
         policies = sin.readMap(StreamInput::readString, ::Policy),
         validationResults = sin.readList { ValidationResult.fromStreamInput(it) }
     )
@@ -68,7 +68,11 @@ open class ExplainResponse : ActionResponse, ToXContentObject {
         out.writeStringCollection(indexPolicyIDs)
         out.writeCollection(indexMetadatas)
         out.writeInt(totalManagedIndices)
-        out.writeMap(enabledState)
+        out.writeMap(
+            enabledState,
+            { _out, key -> _out.writeString(key) },
+            { _out, enable -> _out.writeBoolean(enable) }
+        )
         out.writeMap(
             policies,
             { _out, key -> _out.writeString(key) },
