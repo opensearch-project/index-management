@@ -106,7 +106,8 @@ class RollupMapperService(
         if (rollupJobs != null &&
             (rollupJobs.size > 1 || rollupJobs[0].id != rollup.id)
         ) {
-            errorMessage = "More than one rollup jobs present on the backing index of the target alias, cannot perform rollup to this target alias [${rollup.targetIndex}]."
+            errorMessage = "More than one rollup jobs present on the backing index of the target alias, " +
+                "cannot perform rollup to this target alias [${rollup.targetIndex}]."
             logger.error(errorMessage)
             return RollupJobValidationResult.Failure(errorMessage)
         }
@@ -152,6 +153,7 @@ class RollupMapperService(
             when (validationResult) {
                 is RollupJobValidationResult.Failure -> logger.error(validationResult.message)
                 is RollupJobValidationResult.Invalid -> logger.error(validationResult.reason)
+                else -> {}
             }
             return validationResult
         } else {

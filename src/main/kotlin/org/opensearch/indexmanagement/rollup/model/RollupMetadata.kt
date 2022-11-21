@@ -295,7 +295,8 @@ fun RollupMetadata.incrementStats(response: SearchResponse, internalComposite: I
     return this.copy(
         stats = this.stats.copy(
             pagesProcessed = stats.pagesProcessed + 1L,
-            documentsProcessed = stats.documentsProcessed + internalComposite.buckets.fold(0L) { acc, it -> acc + it.docCount },
+            documentsProcessed = stats.documentsProcessed +
+                internalComposite.buckets.fold(0L) { acc, internalBucket -> acc + internalBucket.docCount },
             searchTimeInMillis = stats.searchTimeInMillis + response.took.millis
         )
     )

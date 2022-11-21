@@ -86,7 +86,7 @@ fun randomTransform(): Transform {
         description = OpenSearchRestTestCase.randomAlphaOfLength(10),
         sourceIndex = OpenSearchRestTestCase.randomAlphaOfLength(10).lowercase(Locale.ROOT),
         targetIndex = OpenSearchRestTestCase.randomAlphaOfLength(10).lowercase(Locale.ROOT),
-        roles = OpenSearchRestTestCase.randomList(10) { OpenSearchRestTestCase.randomAlphaOfLength(10) },
+        roles = emptyList(),
         pageSize = if (isContinuous) OpenSearchRestTestCase.randomIntBetween(1, 1000) else OpenSearchRestTestCase.randomIntBetween(1, 10000),
         groups = randomGroups(),
         aggregations = randomAggregationFactories(),

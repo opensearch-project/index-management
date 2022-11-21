@@ -19,7 +19,7 @@ import org.opensearch.action.index.IndexRequest
 import org.opensearch.action.support.IndicesOptions
 import org.opensearch.action.support.master.AcknowledgedResponse
 import org.opensearch.client.Client
-import org.opensearch.cluster.LocalNodeMasterListener
+import org.opensearch.cluster.LocalNodeClusterManagerListener
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.settings.Settings
 import org.opensearch.common.xcontent.ToXContent
@@ -47,7 +47,7 @@ class IndexStateManagementHistory(
     private val threadPool: ThreadPool,
     private val clusterService: ClusterService,
     private val indexManagementIndices: IndexManagementIndices
-) : LocalNodeMasterListener {
+) : LocalNodeClusterManagerListener {
 
     private val logger = LogManager.getLogger(javaClass)
     private var scheduledRollover: Scheduler.Cancellable? = null
@@ -61,7 +61,7 @@ class IndexStateManagementHistory(
     @Volatile private var historyNumberOfReplicas = ManagedIndexSettings.HISTORY_NUMBER_OF_REPLICAS.get(settings)
 
     init {
-        clusterService.addLocalNodeMasterListener(this)
+        clusterService.addLocalNodeClusterManagerListener(this)
         clusterService.clusterSettings.addSettingsUpdateConsumer(ManagedIndexSettings.HISTORY_ENABLED) {
             historyEnabled = it
         }
@@ -82,7 +82,7 @@ class IndexStateManagementHistory(
         }
     }
 
-    override fun onMaster() {
+    override fun onClusterManager() {
         try {
             // try to rollover immediately as we might be restarting the cluster
             if (historyEnabled) rolloverHistoryIndex()
@@ -97,12 +97,12 @@ class IndexStateManagementHistory(
         }
     }
 
-    override fun offMaster() {
+    override fun offClusterManager() {
         scheduledRollover?.cancel()
     }
 
     private fun rescheduleRollover() {
-        if (clusterService.state().nodes.isLocalNodeElectedMaster) {
+        if (clusterService.state().nodes.isLocalNodeElectedClusterManager) {
             scheduledRollover?.cancel()
             scheduledRollover = threadPool.scheduleWithFixedDelay(
                 { rolloverAndDeleteHistoryIndex() },

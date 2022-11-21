@@ -195,7 +195,7 @@ data class Rollup(
         out.writeString(sourceIndex)
         out.writeString(targetIndex)
         out.writeOptionalString(metadataID)
-        out.writeStringArray(roles.toTypedArray())
+        out.writeStringArray(emptyList<String>().toTypedArray())
         out.writeInt(pageSize)
         out.writeOptionalLong(delay)
         out.writeBoolean(continuous)

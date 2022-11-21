@@ -190,6 +190,7 @@ fun preFixTimeStamp(msg: String?): String {
 }
 
 fun addSMPolicyInSnapshotMetadata(snapshotConfig: Map<String, Any>, policyName: String): Map<String, Any> {
+    @Suppress("UNCHECKED_CAST")
     var snapshotMetadata = snapshotConfig["metadata"] as MutableMap<String, String>?
     if (snapshotMetadata != null) {
         snapshotMetadata[SM_TYPE] = policyName
@@ -351,7 +352,7 @@ fun timeLimitExceeded(
 }
 
 fun getTimeLimitExceededMessage(timeLimit: TimeValue, workflow: WorkflowType): String {
-    val workflow = when (workflow) {
+    val workflowStr = when (workflow) {
         WorkflowType.CREATION -> {
             "creation"
         }
@@ -359,5 +360,5 @@ fun getTimeLimitExceededMessage(timeLimit: TimeValue, workflow: WorkflowType): S
             "deletion"
         }
     }
-    return "Time limit $timeLimit exceeded during snapshot $workflow step"
+    return "Time limit $timeLimit exceeded during snapshot $workflowStr step"
 }

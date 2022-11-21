@@ -269,7 +269,6 @@ object ManagedIndexRunner :
         // the cluster state index uuid differs from the one in the managed index config then the config is referring
         // to a different index which does not exist in the cluster. We need to check all of the extensions to confirm an index exists
         if (clusterStateIndexMetadata == null || clusterStateIndexUUID != managedIndexConfig.indexUuid) {
-            clusterStateIndexMetadata = null
             // If the cluster state/default index type didn't have an index with a matching name and uuid combination, try all other index types
             val nonDefaultIndexTypes = indexMetadataProvider.services.keys.filter { it != DEFAULT_INDEX_TYPE }
             val multiTypeIndexNameToMetaData =
@@ -387,7 +386,7 @@ object ManagedIndexRunner :
         // If this action is not allowed and the step to be executed is the first step in the action then we will fail
         // as this action has been removed from the AllowList, but if its not the first step we will let it finish as it's already inflight
         if (action?.isAllowed(allowList) == false && step != null && action.isFirstStep(step.name) && action.type != TransitionsAction.name) {
-            val info = mapOf("message" to "Attempted to execute action=${action?.type} which is not allowed.")
+            val info = mapOf("message" to "Attempted to execute action=${action.type} which is not allowed.")
             val updated = updateManagedIndexMetaData(
                 managedIndexMetaData.copy(
                     policyRetryInfo = PolicyRetryInfoMetaData(true, 0), info = info

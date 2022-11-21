@@ -23,26 +23,24 @@ class TransformProcessedBucketLog {
         }
     }
 
-    fun addBucket(bucket: Map<String, Any>) {
+    private fun addBucket(bucket: Map<String, Any>) {
         if (processedBuckets.size >= MAX_SIZE) return
         processedBuckets.add(computeBucketHash(bucket))
     }
 
-    fun isProcessed(bucket: Map<String, Any>): Boolean {
+    private fun isProcessed(bucket: Map<String, Any>): Boolean {
         return processedBuckets.contains(computeBucketHash(bucket))
     }
 
     fun isNotProcessed(bucket: Map<String, Any>) = !isProcessed(bucket)
 
-    fun computeBucketHash(bucket: Map<String, Any>): String {
+    private fun computeBucketHash(bucket: Map<String, Any?>): String {
         val md5Crypt = MessageDigest.getInstance("MD5")
-        bucket.entries.sortedBy { it.key }.also {
-            it.forEach { entry ->
-                md5Crypt.update(
-                    if (entry.value == null) "null".toByteArray()
-                    else entry.value.toString().toByteArray()
-                )
-            }
+        bucket.entries.sortedBy { it.key }.onEach { entry ->
+            md5Crypt.update(
+                if (entry.value == null) "null".toByteArray()
+                else entry.value.toString().toByteArray()
+            )
         }
         return BigInteger(1, md5Crypt.digest()).toString(HEX_RADIX)
     }
