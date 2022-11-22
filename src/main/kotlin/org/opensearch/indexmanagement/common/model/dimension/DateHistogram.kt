@@ -28,7 +28,8 @@ data class DateHistogram(
     override val targetField: String = sourceField,
     val fixedInterval: String? = null,
     val calendarInterval: String? = null,
-    val timezone: ZoneId = ZoneId.of(UTC)
+    val timezone: ZoneId = ZoneId.of(UTC),
+    val format: String? = null
 ) : Dimension(Type.DATE_HISTOGRAM, sourceField, targetField) {
 
     init {
@@ -54,6 +55,7 @@ data class DateHistogram(
         return builder.field(DIMENSION_SOURCE_FIELD_FIELD, sourceField)
             .field(DIMENSION_TARGET_FIELD_FIELD, targetField)
             .field(DATE_HISTOGRAM_TIMEZONE_FIELD, timezone.id)
+            .field(FORMAT, format)
             .endObject()
             .endObject()
     }
@@ -69,6 +71,7 @@ data class DateHistogram(
     override fun toSourceBuilder(appendType: Boolean): CompositeValuesSourceBuilder<*> {
         val calendarInterval = this.calendarInterval
         val fixedInterval = this.fixedInterval
+        val format = this.format
         val name = if (appendType) "${this.targetField}.${Type.DATE_HISTOGRAM.type}" else this.targetField
 
         return DateHistogramValuesSourceBuilder(name)
@@ -81,6 +84,9 @@ data class DateHistogram(
                 }
                 fixedInterval?.let {
                     this.fixedInterval(DateHistogramInterval(it))
+                }
+                format?.let {
+                    this.format(it)
                 }
             }
     }
@@ -128,6 +134,7 @@ data class DateHistogram(
         const val FIXED_INTERVAL_FIELD = "fixed_interval"
         const val CALENDAR_INTERVAL_FIELD = "calendar_interval"
         const val DATE_HISTOGRAM_TIMEZONE_FIELD = "timezone"
+        const val FORMAT = "format"
 
         @Suppress("ComplexMethod", "LongMethod")
         @JvmStatic
@@ -138,6 +145,7 @@ data class DateHistogram(
             var fixedInterval: String? = null
             var calendarInterval: String? = null
             var timezone = ZoneId.of(UTC)
+            var format: String? = null
 
             ensureExpectedToken(Token.START_OBJECT, xcp.currentToken(), xcp)
             while (xcp.nextToken() != Token.END_OBJECT) {
@@ -150,6 +158,7 @@ data class DateHistogram(
                     DATE_HISTOGRAM_TIMEZONE_FIELD -> timezone = ZoneId.of(xcp.text())
                     DIMENSION_SOURCE_FIELD_FIELD -> sourceField = xcp.text()
                     DIMENSION_TARGET_FIELD_FIELD -> targetField = xcp.text()
+                    FORMAT -> format = xcp.textOrNull()
                     else -> throw IllegalArgumentException("Invalid field [$fieldName] found in date histogram")
                 }
             }
@@ -159,7 +168,8 @@ data class DateHistogram(
                 targetField = requireNotNull(targetField) { "Target field must not be null" },
                 fixedInterval = fixedInterval,
                 calendarInterval = calendarInterval,
-                timezone = timezone
+                timezone = timezone,
+                format = format
             )
         }
 
