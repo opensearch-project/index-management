@@ -1130,7 +1130,7 @@ class RollupInterceptorIT : RollupRestTestCase() {
                 "size": 0,
                 "query": {
                     "query_string": {
-                        "query": "RatecodeID: 1"
+                        "query": "RatecodeID:>=1 AND RatecodeID:<=10"
                     }
                 },
                 "aggs": {

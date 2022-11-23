@@ -367,33 +367,37 @@ fun Rollup.rewriteQueryBuilder(queryBuilder: QueryBuilder, fieldNameMappingTypeM
             newMatchPhraseQueryBuilder.boost(queryBuilder.boost())
         }
         is QueryStringQueryBuilder -> {
-            val luceneQuery = queryBuilder.toQuery(QueryShardContextFactory.createShardContext(concreteIndexName))
-            var parser = object : QueryParser(null, StandardAnalyzer()) {
-                override fun getFuzzyQuery(field: String?, termStr: String?, minSimilarity: Float): Query? {
-                    return super.getFuzzyQuery(field + "." + Dimension.Type.TERMS.type, termStr, minSimilarity)
-                }
-                override fun getPrefixQuery(field: String?, termStr: String?): Query {
-                    return super.getPrefixQuery(field + "." + Dimension.Type.TERMS.type, termStr)
-                }
-                override fun getFieldQuery(field: String?, queryText: String?, quoted: Boolean): Query {
-                    return super.getFieldQuery(field + "." + Dimension.Type.TERMS.type, queryText, quoted)
-                }
-                override fun getWildcardQuery(field: String?, termStr: String?): Query {
-                    return super.getWildcardQuery(field + "." + Dimension.Type.TERMS.type, termStr)
-                }
-                override fun getFieldQuery(field: String?, queryText: String?, slop: Int): Query {
-                    return super.getFieldQuery(field + "." + Dimension.Type.TERMS.type, queryText, slop)
-                }
-                override fun getRangeQuery(field: String?, part1: String?, part2: String?, startInclusive: Boolean, endInclusive: Boolean): Query {
-                    return super.getRangeQuery(field + "." + Dimension.Type.TERMS.type, part1, part2, startInclusive, endInclusive)
-                }
-            }
-            val newLuceneQuery = parser.parse(luceneQuery.toString())
-            QueryStringQueryBuilder(newLuceneQuery.toString())
+            rewriteQueryStringQueryBuilder(queryBuilder, concreteIndexName) { it + "." + Dimension.Type.TERMS.type }
         }
         // We do nothing otherwise, the validation logic should have already verified so not throwing an exception
         else -> queryBuilder
     }
+}
+
+fun rewriteQueryStringQueryBuilder(queryBuilder: QueryBuilder, concreteIndexName: String, fieldRewriteFn: (String?) -> String?): QueryStringQueryBuilder {
+    val luceneQuery = queryBuilder.toQuery(QueryShardContextFactory.createShardContext(concreteIndexName))
+    var parser = object : QueryParser(null, StandardAnalyzer()) {
+        override fun getFuzzyQuery(field: String?, termStr: String?, minSimilarity: Float): Query? {
+            return super.getFuzzyQuery(fieldRewriteFn(field), termStr, minSimilarity)
+        }
+        override fun getPrefixQuery(field: String?, termStr: String?): Query {
+            return super.getPrefixQuery(fieldRewriteFn(field), termStr)
+        }
+        override fun getFieldQuery(field: String?, queryText: String?, quoted: Boolean): Query {
+            return super.getFieldQuery(fieldRewriteFn(field), queryText, quoted)
+        }
+        override fun getWildcardQuery(field: String?, termStr: String?): Query {
+            return super.getWildcardQuery(fieldRewriteFn(field), termStr)
+        }
+        override fun getFieldQuery(field: String?, queryText: String?, slop: Int): Query {
+            return super.getFieldQuery(fieldRewriteFn(field), queryText, slop)
+        }
+        override fun getRangeQuery(field: String?, part1: String?, part2: String?, startInclusive: Boolean, endInclusive: Boolean): Query {
+            return super.getRangeQuery(fieldRewriteFn(field), part1, part2, startInclusive, endInclusive)
+        }
+    }
+    val newLuceneQuery = parser.parse(luceneQuery.toString())
+    return QueryStringQueryBuilder(newLuceneQuery.toString())
 }
 
 fun Set<Rollup>.buildRollupQuery(fieldNameMappingTypeMap: Map<String, String>, oldQuery: QueryBuilder, concreteIndexName: String = ""): QueryBuilder {
