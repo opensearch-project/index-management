@@ -5,6 +5,9 @@
 
 package org.opensearch.indexmanagement.rollup.interceptor
 
+import org.apache.lucene.analysis.standard.StandardAnalyzer
+import org.apache.lucene.queryparser.classic.QueryParser
+import org.apache.lucene.search.Query
 import org.opensearch.cluster.metadata.IndexNameExpressionResolver
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.settings.Settings
@@ -15,6 +18,7 @@ import org.opensearch.index.query.DisMaxQueryBuilder
 import org.opensearch.index.query.MatchAllQueryBuilder
 import org.opensearch.index.query.MatchPhraseQueryBuilder
 import org.opensearch.index.query.QueryBuilder
+import org.opensearch.index.query.QueryStringQueryBuilder
 import org.opensearch.index.query.RangeQueryBuilder
 import org.opensearch.index.query.TermQueryBuilder
 import org.opensearch.index.query.TermsQueryBuilder
@@ -24,6 +28,7 @@ import org.opensearch.indexmanagement.rollup.model.Rollup
 import org.opensearch.indexmanagement.rollup.model.RollupFieldMapping
 import org.opensearch.indexmanagement.rollup.model.RollupFieldMapping.Companion.UNKNOWN_MAPPING
 import org.opensearch.indexmanagement.rollup.settings.RollupSettings
+import org.opensearch.indexmanagement.rollup.util.QueryShardContextFactory
 import org.opensearch.indexmanagement.rollup.util.getDateHistogram
 import org.opensearch.indexmanagement.rollup.util.getRollupJobs
 import org.opensearch.indexmanagement.rollup.util.isRollupIndex
@@ -84,8 +89,9 @@ class RollupInterceptor(
                         val indices = request.indices().map { it.toString() }.toTypedArray()
                         val concreteIndices = indexNameExpressionResolver
                             .concreteIndexNames(clusterService.state(), request.indicesOptions(), *indices)
-
-                        val queryFieldMappings = getQueryMetadata(request.source().query())
+                        val rollupJob = clusterService.state().metadata.index(index).getRollupJobs()?.get(0)
+                            ?: throw IllegalArgumentException("No rollup job associated with target_index")
+                        val queryFieldMappings = getQueryMetadata(request.source().query(), rollupJob.sourceIndex)
                         val aggregationFieldMappings = getAggregationMetadata(request.source().aggregations()?.aggregatorFactories)
                         val fieldMappings = queryFieldMappings + aggregationFieldMappings
 
@@ -163,6 +169,7 @@ class RollupInterceptor(
     @Suppress("ComplexMethod")
     private fun getQueryMetadata(
         query: QueryBuilder?,
+        concreteSourceIndexName: String,
         fieldMappings: MutableSet<RollupFieldMapping> = mutableSetOf()
     ): Set<RollupFieldMapping> {
         if (query == null) {
@@ -183,20 +190,20 @@ class RollupInterceptor(
                 // do nothing
             }
             is BoolQueryBuilder -> {
-                query.must()?.forEach { this.getQueryMetadata(it, fieldMappings) }
-                query.mustNot()?.forEach { this.getQueryMetadata(it, fieldMappings) }
-                query.should()?.forEach { this.getQueryMetadata(it, fieldMappings) }
-                query.filter()?.forEach { this.getQueryMetadata(it, fieldMappings) }
+                query.must()?.forEach { this.getQueryMetadata(it, concreteSourceIndexName, fieldMappings) }
+                query.mustNot()?.forEach { this.getQueryMetadata(it, concreteSourceIndexName, fieldMappings) }
+                query.should()?.forEach { this.getQueryMetadata(it, concreteSourceIndexName, fieldMappings) }
+                query.filter()?.forEach { this.getQueryMetadata(it, concreteSourceIndexName, fieldMappings) }
             }
             is BoostingQueryBuilder -> {
-                this.getQueryMetadata(query.positiveQuery(), fieldMappings)
-                this.getQueryMetadata(query.negativeQuery(), fieldMappings)
+                this.getQueryMetadata(query.positiveQuery(), concreteSourceIndexName, fieldMappings)
+                this.getQueryMetadata(query.negativeQuery(), concreteSourceIndexName, fieldMappings)
             }
             is ConstantScoreQueryBuilder -> {
-                this.getQueryMetadata(query.innerQuery(), fieldMappings)
+                this.getQueryMetadata(query.innerQuery(), concreteSourceIndexName, fieldMappings)
             }
             is DisMaxQueryBuilder -> {
-                query.innerQueries().forEach { this.getQueryMetadata(it, fieldMappings) }
+                query.innerQueries().forEach { this.getQueryMetadata(it, concreteSourceIndexName, fieldMappings) }
             }
             is MatchPhraseQueryBuilder -> {
                 if (!query.analyzer().isNullOrEmpty() || query.slop() != MatchQuery.DEFAULT_PHRASE_SLOP ||
@@ -208,6 +215,37 @@ class RollupInterceptor(
                     )
                 }
                 fieldMappings.add(RollupFieldMapping(RollupFieldMapping.Companion.FieldType.DIMENSION, query.fieldName(), Dimension.Type.TERMS.type))
+            }
+            is QueryStringQueryBuilder -> {
+                val luceneQuery = query.toQuery(QueryShardContextFactory.createShardContext(concreteSourceIndexName))
+                var parser = object : QueryParser(null, StandardAnalyzer()) {
+                    override fun getFuzzyQuery(field: String?, termStr: String?, minSimilarity: Float): Query? {
+                        fieldMappings.add(RollupFieldMapping(RollupFieldMapping.Companion.FieldType.DIMENSION, field.toString(), Dimension.Type.TERMS.type))
+                        return super.getFuzzyQuery(field + "_11", termStr, minSimilarity)
+                    }
+                    override fun getPrefixQuery(field: String?, termStr: String?): Query {
+                        fieldMappings.add(RollupFieldMapping(RollupFieldMapping.Companion.FieldType.DIMENSION, field.toString(), Dimension.Type.TERMS.type))
+                        return super.getPrefixQuery(field + "_11", termStr)
+                    }
+                    override fun getFieldQuery(field: String?, queryText: String?, quoted: Boolean): Query {
+                        fieldMappings.add(RollupFieldMapping(RollupFieldMapping.Companion.FieldType.DIMENSION, field.toString(), Dimension.Type.TERMS.type))
+                        return super.getFieldQuery(field + "_11", queryText, quoted)
+                    }
+                    override fun getWildcardQuery(field: String?, termStr: String?): Query {
+                        fieldMappings.add(RollupFieldMapping(RollupFieldMapping.Companion.FieldType.DIMENSION, field.toString(), Dimension.Type.TERMS.type))
+                        return super.getWildcardQuery(field + "_11", termStr)
+                    }
+                    override fun getFieldQuery(field: String?, queryText: String?, slop: Int): Query {
+                        fieldMappings.add(RollupFieldMapping(RollupFieldMapping.Companion.FieldType.DIMENSION, field.toString(), Dimension.Type.TERMS.type))
+                        return super.getFieldQuery(field + "_11", queryText, slop)
+                    }
+
+                    override fun getRangeQuery(field: String?, part1: String?, part2: String?, startInclusive: Boolean, endInclusive: Boolean): Query {
+                        fieldMappings.add(RollupFieldMapping(RollupFieldMapping.Companion.FieldType.DIMENSION, field.toString(), Dimension.Type.TERMS.type))
+                        return super.getRangeQuery(field, part1, part2, startInclusive, endInclusive)
+                    }
+                }
+                parser.parse(luceneQuery.toString())
             }
             else -> {
                 throw IllegalArgumentException("The ${query.name} query is currently not supported in rollups")
@@ -285,9 +323,9 @@ class RollupInterceptor(
         val matchedRollup = pickRollupJob(matchingRollupJobs.keys)
         val fieldNameMappingTypeMap = matchingRollupJobs.getValue(matchedRollup).associateBy({ it.fieldName }, { it.mappingType })
         if (searchAllJobs) {
-            request.source(request.source().rewriteSearchSourceBuilder(matchingRollupJobs.keys, fieldNameMappingTypeMap))
+            request.source(request.source().rewriteSearchSourceBuilder(matchingRollupJobs.keys, fieldNameMappingTypeMap, matchedRollup.sourceIndex))
         } else {
-            request.source(request.source().rewriteSearchSourceBuilder(matchedRollup, fieldNameMappingTypeMap))
+            request.source(request.source().rewriteSearchSourceBuilder(matchedRollup, fieldNameMappingTypeMap, matchedRollup.sourceIndex))
         }
     }
 }
