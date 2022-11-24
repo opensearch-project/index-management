@@ -289,7 +289,11 @@ fun Rollup.rewriteAggregationBuilder(aggregationBuilder: AggregationBuilder): Ag
 }
 
 @Suppress("ComplexMethod", "LongMethod")
-fun Rollup.rewriteQueryBuilder(queryBuilder: QueryBuilder, fieldNameMappingTypeMap: Map<String, String>, concreteIndexName: String = ""): QueryBuilder {
+fun Rollup.rewriteQueryBuilder(
+    queryBuilder: QueryBuilder,
+    fieldNameMappingTypeMap: Map<String, String>,
+    concreteIndexName: String = ""
+): QueryBuilder {
     return when (queryBuilder) {
         is TermQueryBuilder -> {
             val updatedFieldName = queryBuilder.fieldName() + "." + Dimension.Type.TERMS.type
@@ -355,7 +359,9 @@ fun Rollup.rewriteQueryBuilder(queryBuilder: QueryBuilder, fieldNameMappingTypeM
         }
         is DisMaxQueryBuilder -> {
             val newDisMaxQueryBuilder = DisMaxQueryBuilder()
-            queryBuilder.innerQueries().forEach { newDisMaxQueryBuilder.add(this.rewriteQueryBuilder(it, fieldNameMappingTypeMap, concreteIndexName)) }
+            queryBuilder.innerQueries().forEach {
+                newDisMaxQueryBuilder.add(this.rewriteQueryBuilder(it, fieldNameMappingTypeMap, concreteIndexName))
+            }
             newDisMaxQueryBuilder.tieBreaker(queryBuilder.tieBreaker())
             newDisMaxQueryBuilder.queryName(queryBuilder.queryName())
             newDisMaxQueryBuilder.boost(queryBuilder.boost())
@@ -374,7 +380,11 @@ fun Rollup.rewriteQueryBuilder(queryBuilder: QueryBuilder, fieldNameMappingTypeM
     }
 }
 
-fun rewriteQueryStringQueryBuilder(queryBuilder: QueryBuilder, concreteIndexName: String, fieldRewriteFn: (String?) -> String?): QueryStringQueryBuilder {
+fun rewriteQueryStringQueryBuilder(
+    queryBuilder: QueryBuilder,
+    concreteIndexName: String,
+    fieldRewriteFn: (String?) -> String?
+): QueryStringQueryBuilder {
     val luceneQuery = queryBuilder.toQuery(QueryShardContextFactory.createShardContext(concreteIndexName))
     var parser = object : QueryParser(null, StandardAnalyzer()) {
         override fun getFuzzyQuery(field: String?, termStr: String?, minSimilarity: Float): Query? {
@@ -424,7 +434,11 @@ fun Rollup.populateFieldMappings(): Set<RollupFieldMapping> {
 // TODO: Not a fan of this.. but I can't find a way to overwrite the aggregations on the shallow copy or original
 //  so we need to instantiate a new one so we can add the rewritten aggregation builders
 @Suppress("ComplexMethod")
-fun SearchSourceBuilder.rewriteSearchSourceBuilder(jobs: Set<Rollup>, fieldNameMappingTypeMap: Map<String, String>, concreteIndexName: String): SearchSourceBuilder {
+fun SearchSourceBuilder.rewriteSearchSourceBuilder(
+    jobs: Set<Rollup>,
+    fieldNameMappingTypeMap: Map<String, String>,
+    concreteIndexName: String
+): SearchSourceBuilder {
     val ssb = SearchSourceBuilder()
     // can use first() here as all jobs in the set will have a superset of the query's terms
     this.aggregations()?.aggregatorFactories?.forEach { ssb.aggregation(jobs.first().rewriteAggregationBuilder(it)) }
@@ -458,7 +472,11 @@ fun SearchSourceBuilder.rewriteSearchSourceBuilder(jobs: Set<Rollup>, fieldNameM
     return ssb
 }
 
-fun SearchSourceBuilder.rewriteSearchSourceBuilder(job: Rollup, fieldNameMappingTypeMap: Map<String, String>, concreteIndexName: String): SearchSourceBuilder {
+fun SearchSourceBuilder.rewriteSearchSourceBuilder(
+    job: Rollup,
+    fieldNameMappingTypeMap: Map<String, String>,
+    concreteIndexName: String
+): SearchSourceBuilder {
     return this.rewriteSearchSourceBuilder(setOf(job), fieldNameMappingTypeMap, concreteIndexName)
 }
 

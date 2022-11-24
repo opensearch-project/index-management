@@ -365,10 +365,8 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
             clusterService,
             scriptService,
             xContentRegistry,
-            environment,
-            nodeEnvironment,
             namedWriteableRegistry,
-            indexNameExpressionResolver
+            environment
         )
         rollupInterceptor = RollupInterceptor(clusterService, settings, indexNameExpressionResolver)
         val jvmService = JvmService(environment.settings())

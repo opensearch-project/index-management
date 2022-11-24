@@ -8,7 +8,6 @@ package org.opensearch.indexmanagement.rollup.util
 import org.opensearch.Version
 import org.opensearch.client.Client
 import org.opensearch.cluster.metadata.IndexMetadata
-import org.opensearch.cluster.metadata.IndexNameExpressionResolver
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.io.stream.NamedWriteableRegistry
 import org.opensearch.common.regex.Regex
@@ -18,7 +17,6 @@ import org.opensearch.common.settings.SettingsModule
 import org.opensearch.common.util.BigArrays
 import org.opensearch.common.xcontent.NamedXContentRegistry
 import org.opensearch.env.Environment
-import org.opensearch.env.NodeEnvironment
 import org.opensearch.index.Index
 import org.opensearch.index.IndexSettings
 import org.opensearch.index.mapper.MapperService
@@ -36,33 +34,25 @@ object QueryShardContextFactory {
     lateinit var clusterService: ClusterService
     lateinit var scriptService: ScriptService
     lateinit var xContentRegistry: NamedXContentRegistry
-    lateinit var environment: Environment
-    lateinit var nodeEnvironment: NodeEnvironment
     lateinit var namedWriteableRegistry: NamedWriteableRegistry
-    lateinit var indexNameExpressionResolver: IndexNameExpressionResolver
-
+    lateinit var environment: Environment
     fun init(
         client: Client,
         clusterService: ClusterService,
         scriptService: ScriptService,
         xContentRegistry: NamedXContentRegistry,
-        environment: Environment,
-        nodeEnvironment: NodeEnvironment,
         namedWriteableRegistry: NamedWriteableRegistry,
-        indexNameExpressionResolver: IndexNameExpressionResolver
+        environment: Environment
     ) {
         this.client = client
         this.clusterService = clusterService
         this.scriptService = scriptService
         this.xContentRegistry = xContentRegistry
-        this.environment = environment
-        this.nodeEnvironment = nodeEnvironment
         this.namedWriteableRegistry = namedWriteableRegistry
-        this.indexNameExpressionResolver = indexNameExpressionResolver
+        this.environment = environment
     }
 
-    fun createShardContext(indexName: String?): QueryShardContext {
-
+    fun getIndexSettingsAndMetadata(indexName: String?): Triple<Index?, Settings?, IndexMetadata?> {
         var index: Index?
         var indexSettings: Settings?
         val indexMetadata = clusterService.state().metadata.index(indexName)
@@ -73,6 +63,11 @@ object QueryShardContextFactory {
             index = Index("dummyIndexName", "randomindexuuid123456")
             indexSettings = Settings.EMPTY
         }
+        return Triple(index, indexSettings, indexMetadata)
+    }
+
+    fun createShardContext(indexName: String?): QueryShardContext {
+        val (index, indexSettings, indexMetadata) = getIndexSettingsAndMetadata(indexName)
         val nodeSettings = Settings.builder()
             .put("node.name", "dummyNodeName")
             .put(Environment.PATH_HOME_SETTING.key, environment.tmpFile())
@@ -102,8 +97,8 @@ object QueryShardContextFactory {
             { false },
             scriptService
         )
-
-        mapperService.merge("_doc", indexMetadata.mapping()?.source(), MapperService.MergeReason.MAPPING_UPDATE)
+        // In order to be able to call toQuery method on QueryBuilder, we need to setup mappings in MapperService
+        mapperService.merge("_doc", indexMetadata?.mapping()?.source(), MapperService.MergeReason.MAPPING_UPDATE)
 
         return QueryShardContext(
             0,
