@@ -1079,8 +1079,9 @@ class RollupInterceptorIT : RollupRestTestCase() {
     }
 
     fun `test roll up search query_string query`() {
-        val indexName = "source_rollup_search_qsq"
-        generateNYCTaxiData(indexName)
+        val sourceIndex = "source_rollup_search_qsq"
+        val targetIndex = "target_rollup_qsq_search"
+        generateNYCTaxiData(sourceIndex)
         val rollup = Rollup(
             id = "basic_query_string_query_rollup_search",
             enabled = true,
@@ -1089,8 +1090,8 @@ class RollupInterceptorIT : RollupRestTestCase() {
             jobLastUpdatedTime = Instant.now(),
             jobEnabledTime = Instant.now(),
             description = "basic search test",
-            sourceIndex = indexName,
-            targetIndex = "target_rollup_search",
+            sourceIndex = sourceIndex,
+            targetIndex = targetIndex,
             metadataID = null,
             roles = emptyList(),
             pageSize = 10,
@@ -1142,9 +1143,9 @@ class RollupInterceptorIT : RollupRestTestCase() {
                 }
             }
         """.trimIndent()
-        var rawRes = client().makeRequest("POST", "/$indexName/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
+        var rawRes = client().makeRequest("POST", "/$sourceIndex/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
         assertTrue(rawRes.restStatus() == RestStatus.OK)
-        var rollupRes = client().makeRequest("POST", "/target_rollup_search/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
+        var rollupRes = client().makeRequest("POST", "/$targetIndex/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
         assertTrue(rollupRes.restStatus() == RestStatus.OK)
         var rawAggRes = rawRes.asMap()["aggregations"] as Map<String, Map<String, Any>>
         var rollupAggRes = rollupRes.asMap()["aggregations"] as Map<String, Map<String, Any>>
