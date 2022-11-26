@@ -36,6 +36,8 @@ object QueryShardContextFactory {
     lateinit var xContentRegistry: NamedXContentRegistry
     lateinit var namedWriteableRegistry: NamedWriteableRegistry
     lateinit var environment: Environment
+
+    @Suppress("LongParameterList")
     fun init(
         client: Client,
         clusterService: ClusterService,
