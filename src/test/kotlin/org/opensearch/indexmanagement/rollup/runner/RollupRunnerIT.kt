@@ -861,16 +861,13 @@ class RollupRunnerIT : RollupRestTestCase() {
             assertNotNull("Rollup job doesn't have metadata set", rollupJob.metadataID)
             val rollupMetadata = getRollupMetadata(rollupJob.metadataID!!)
             assertEquals("Rollup is not finished", RollupMetadata.Status.FINISHED, rollupMetadata.status)
+            assertTrue("Rollup is not disabled", !rollupJob.enabled)
             rollupJob
         }
         var rollupMetadataID = startedRollup.metadataID!!
         var rollupMetadata = getRollupMetadata(rollupMetadataID)
         assertTrue("Did not process any doc during rollup", rollupMetadata.stats.documentsProcessed > 0)
 
-        // TODO Flaky: version conflict could happen here
-        //  From log diving, it seems to be a race condition coming from RollupRunner
-        //  (need more dive to understand rollup business logic)
-        //  There are indexRollup happened between get and enable
         // restart job
         client().makeRequest(
             "PUT",
