@@ -10,6 +10,7 @@ import org.apache.http.HttpHeaders
 import org.apache.http.entity.ContentType.APPLICATION_JSON
 import org.apache.http.entity.StringEntity
 import org.apache.http.message.BasicHeader
+import org.junit.After
 import org.junit.AfterClass
 import org.junit.Before
 import org.opensearch.client.Response
@@ -47,6 +48,26 @@ abstract class RollupRestTestCase : IndexManagementRestTestCase() {
         @AfterClass
         @JvmStatic fun clearIndicesAfterClass() {
             wipeAllIndices()
+        }
+    }
+
+    @After
+    @Suppress("UNCHECKED_CAST")
+    fun killAllRunningTasks() {
+        client().makeRequest("POST", "_tasks/_cancel?actions=*")
+        waitFor {
+            val response = client().makeRequest("GET", "_tasks")
+            val nodes = response.asMap()["nodes"] as Map<String, Any?>
+            var hasCancallableRunningTasks = false
+            nodes.forEach {
+                val tasks = (it.value as Map<String, Any?>)["tasks"] as Map<String, Any?>
+                tasks.forEach { e ->
+                    if ((e.value as Map<String, Any?>)["cancellable"] as Boolean) {
+                        hasCancallableRunningTasks = true
+                    }
+                }
+            }
+            assertFalse(hasCancallableRunningTasks)
         }
     }
 
