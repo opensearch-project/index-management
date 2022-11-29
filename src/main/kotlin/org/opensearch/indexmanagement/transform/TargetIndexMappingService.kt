@@ -11,6 +11,7 @@ import org.opensearch.client.Client
 import org.opensearch.common.xcontent.XContentBuilder
 import org.opensearch.common.xcontent.XContentFactory
 import org.opensearch.indexmanagement.IndexManagementIndices
+import org.opensearch.indexmanagement.common.model.dimension.DateHistogram
 import org.opensearch.indexmanagement.opensearchapi.string
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.transform.exceptions.TransformIndexException
@@ -19,7 +20,8 @@ import org.opensearch.indexmanagement.util.IndexUtils
 
 /**
  * Service designed for creating dynamic target index mapping based on the date field types of the source index.
- * Creates target index date properties based on the date properties of the source index (ie. if the term grouping is applied on a date field of source index, target index field will have date type also)
+ * Creates target index date properties based on the date properties of the source index
+ * (ie. if the term grouping is applied on a date field of source index, target index field will have date type also)
  */
 class TargetIndexMappingService(private val client: Client) {
     companion object {
@@ -51,7 +53,7 @@ class TargetIndexMappingService(private val client: Client) {
             }
             val sourceFieldType = IndexUtils.getFieldFromMappings(dimension.sourceField, sourceIndexMapping)
             // Consider only date fields as relevant for building the target index mapping
-            if (sourceFieldType?.get(TYPE) != null && sourceFieldType[TYPE] == "date") {
+            if (dimension !is DateHistogram && sourceFieldType?.get(TYPE) != null && sourceFieldType[TYPE] == "date") {
                 dateCompositeAggregations[dimension.targetField] = sourceFieldType[TYPE]!!
             }
         }
