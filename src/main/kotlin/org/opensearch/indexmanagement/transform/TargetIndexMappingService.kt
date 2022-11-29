@@ -11,6 +11,7 @@ import org.opensearch.client.Client
 import org.opensearch.common.xcontent.XContentBuilder
 import org.opensearch.common.xcontent.XContentFactory
 import org.opensearch.indexmanagement.IndexManagementIndices
+import org.opensearch.indexmanagement.common.model.dimension.DateHistogram
 import org.opensearch.indexmanagement.opensearchapi.string
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.transform.exceptions.TransformIndexException
@@ -19,7 +20,8 @@ import org.opensearch.indexmanagement.util.IndexUtils
 
 /**
  * Service designed for creating dynamic target index mapping based on the date field types of the source index.
- * Creates target index date properties based on the date properties of the source index (ie. if the term grouping is applied on a date field of source index, target index field will have date type also)
+ * Creates target index date properties based on the date properties of the source index
+ * (ie. if the term grouping is applied on a date field of source index, target index field will have date type also)
  */
 class TargetIndexMappingService(private val client: Client) {
     companion object {
@@ -32,31 +34,37 @@ class TargetIndexMappingService(private val client: Client) {
         private const val MAPPING = "mapping"
     }
 
-    suspend fun buildTargetIndexMapping(transform: Transform): String {
+    suspend fun buildTargetIndexMapping(transform: Transform): Pair<String, Set<String>?> {
         val request = GetMappingsRequest().indices(transform.sourceIndex)
 
         val result: GetMappingsResponse = client.admin().indices().suspendUntil { getMappings(request, it) }
             ?: error("GetMappingResponse for [$transform.sourceIndex] was null")
 
         if (result.mappings[transform.sourceIndex] == null) {
-            return IndexManagementIndices.transformTargetMappings
+            return Pair(IndexManagementIndices.transformTargetMappings, null)
         }
 
         val sourceIndexMapping = result.mappings[transform.sourceIndex].sourceAsMap
 
         val dateCompositeAggregations = mutableMapOf<String, Any>()
+        val mappedDateFields = mutableSetOf<String>()
         transform.groups.forEach { dimension ->
             if (!isFieldInMappings(dimension.sourceField, sourceIndexMapping)) {
                 throw TransformIndexException("Missing field ${dimension.sourceField} in source index")
             }
             val sourceFieldType = IndexUtils.getFieldFromMappings(dimension.sourceField, sourceIndexMapping)
             // Consider only date fields as relevant for building the target index mapping
-            if (sourceFieldType?.get(TYPE) != null && sourceFieldType[TYPE] == "date") {
-                dateCompositeAggregations[dimension.targetField] = sourceFieldType[TYPE]!!
+            if (dimension !is DateHistogram && sourceFieldType?.get(TYPE) != null && sourceFieldType[TYPE] == "date") {
+                // Taking the source field settings (type, format etc.)
+                // 1213213213213
+                val dateTypeTargetMapping = mapOf("type" to "date", "format" to "strict_date_optional_time||epoch_millis")
+                // sourceIndex.dateField.format[0] -->
+                dateCompositeAggregations[dimension.targetField] = dateTypeTargetMapping
+                mappedDateFields.add(dimension.targetField)
             }
         }
 
-        return mapTargetIndex(dateCompositeAggregations)
+        return Pair(mapTargetIndex(dateCompositeAggregations), mappedDateFields)
     }
 
     private fun mapTargetIndex(dateCompositeAggregations: MutableMap<String, Any>): String {
@@ -105,8 +113,5 @@ class TargetIndexMappingService(private val client: Client) {
         }
     }
 
-    private fun isFieldInMappings(fieldName: String, mappings: Map<*, *>): Boolean {
-        val field = IndexUtils.getFieldFromMappings(fieldName, mappings)
-        return field != null
-    }
+    private fun isFieldInMappings(fieldName: String, mappings: Map<*, *>) = IndexUtils.getFieldFromMappings(fieldName, mappings) != null
 }
