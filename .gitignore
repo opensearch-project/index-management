@@ -3,6 +3,7 @@ build/
 out/
 .idea/*
 !.idea/copyright
+.vscode
 *.ipr
 *.iws
 .DS_Store
