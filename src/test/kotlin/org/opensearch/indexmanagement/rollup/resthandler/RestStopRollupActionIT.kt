@@ -5,6 +5,7 @@
 
 package org.opensearch.indexmanagement.rollup.resthandler
 
+import org.junit.After
 import org.opensearch.client.ResponseException
 import org.opensearch.common.settings.Settings
 import org.opensearch.indexmanagement.IndexManagementIndices
@@ -23,13 +24,18 @@ import org.opensearch.indexmanagement.rollup.randomRollup
 import org.opensearch.indexmanagement.waitFor
 import org.opensearch.jobscheduler.spi.schedule.IntervalSchedule
 import org.opensearch.rest.RestStatus
-import org.opensearch.test.junit.annotations.TestLogging
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 
-@TestLogging(value = "level:DEBUG", reason = "Debugging tests")
-@Suppress("UNCHECKED_CAST")
 class RestStopRollupActionIT : RollupRestTestCase() {
+
+    @After
+    fun clearIndicesAfterEachTest() {
+        // Flaky could happen if config index not deleted
+        // metadata creation could cause the mapping to be auto set to
+        //  a wrong type, namely, [rollup_metadata.continuous.next_window_end_time] to long
+        wipeAllIndices()
+    }
 
     @Throws(Exception::class)
     fun `test stopping a started rollup`() {

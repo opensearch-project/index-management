@@ -48,7 +48,24 @@ abstract class RollupRestTestCase : IndexManagementRestTestCase() {
         }
     }
 
-    override fun preserveIndicesUponCompletion(): Boolean = true
+    @Before
+    fun setDebugLogLevel() {
+        client().makeRequest(
+            "PUT", "_cluster/settings",
+            StringEntity(
+                """
+                {
+                    "transient": {
+                        "logger.org.opensearch.indexmanagement.rollup":"DEBUG",
+                        "logger.org.opensearch.jobscheduler":"DEBUG"
+                    }
+                }
+                """.trimIndent(),
+                APPLICATION_JSON
+            )
+        )
+    }
+>>>>>>> f2a9fa6 (Security Workflow (#611))
 
     protected fun createRollup(
         rollup: Rollup,
@@ -225,10 +242,16 @@ abstract class RollupRestTestCase : IndexManagementRestTestCase() {
         }
         val intervalSchedule = (update.jobSchedule as IntervalSchedule)
         val millis = Duration.of(intervalSchedule.interval.toLong(), intervalSchedule.unit).minusSeconds(2).toMillis()
-        val startTimeMillis = desiredStartTimeMillis ?: Instant.now().toEpochMilli() - millis
+        val startTimeMillis = desiredStartTimeMillis ?: (Instant.now().toEpochMilli() - millis)
         val waitForActiveShards = if (isMultiNode) "all" else "1"
+        // TODO flaky: Add this log to confirm this update is missed by job scheduler
+        // This miss is because shard remove, job scheduler deschedule on the original node and reschedule on another node
+        // However the shard comes back, and job scheduler deschedule on the another node and reschedule on the original node
+        // During this period, this update got missed
+        // Since from the log, this happens very fast (within 0.1~0.2s), the above cluster explain may not have the granularity to catch this.
+        logger.info("Update rollup start time to $startTimeMillis")
         val response = client().makeRequest(
-            "POST", "$INDEX_MANAGEMENT_INDEX/_update/${update.id}?wait_for_active_shards=$waitForActiveShards",
+            "POST", "$INDEX_MANAGEMENT_INDEX/_update/${update.id}?wait_for_active_shards=$waitForActiveShards&refresh=true",
             StringEntity(
                 "{\"doc\":{\"rollup\":{\"schedule\":{\"interval\":{\"start_time\":" +
                     "\"$startTimeMillis\"}}}}}",

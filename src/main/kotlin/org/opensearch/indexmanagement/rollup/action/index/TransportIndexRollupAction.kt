@@ -192,7 +192,7 @@ class TransportIndexRollupAction @Inject constructor(
 
         private fun validateTargetIndexName(): Boolean {
             val targetIndexResolvedName = RollupFieldValueExpressionResolver.resolve(request.rollup, request.rollup.targetIndex)
-            return targetIndexResolvedName.contains("*") == false && targetIndexResolvedName.contains("?") == false
+            return !targetIndexResolvedName.contains("*") && !targetIndexResolvedName.contains("?")
         }
     }
 }
