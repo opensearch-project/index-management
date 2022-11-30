@@ -281,11 +281,14 @@ class RolloverActionIT : IndexStateManagementRestTestCase() {
             insertSampleData(index = firstIndex, docCount = 20, delay = 0, jsonString = "{ \"test_field\": \"${OpenSearchTestCase.randomAlphaOfLength(7000)}\" }", routing = "custom_routing")
             flush(firstIndex, true)
             forceMerge(firstIndex, "1")
-            val primaryShards = (cat("shards/$firstIndex?format=json&bytes=b") as List<Map<String, Any>>).filter { it["prirep"] == "p" }
-            // TODO seeing flakyness of multiple shards over 100kb, log out shards to further debug
-            logger.info("cat shards result: $primaryShards")
-            val primaryShardsOver100KB = primaryShards.filter { (it["store"] as String).toInt() > 100000 }
-            assertTrue("Found multiple shards over 100kb", primaryShardsOver100KB.size == 1)
+            val primaryShards = waitFor {
+                val primaryShards = (cat("shards/$firstIndex?format=json&bytes=b") as List<Map<String, Any>>).filter { it["prirep"] == "p" }
+                // TODO seeing flakyness of multiple shards over 100kb, log out shards to further debug
+                logger.info("cat shards result: $primaryShards")
+                val primaryShardsOver100KB = primaryShards.filter { (it["store"] as String).toInt() > 100000 }
+                assertTrue("Shard over 100kb is not exactly 1", primaryShardsOver100KB.size == 1)
+                primaryShards
+            }
             primaryShardSizeBytes = primaryShards.maxOf { (it["store"] as String).toInt() }
         }
 

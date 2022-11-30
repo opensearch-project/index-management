@@ -21,12 +21,9 @@ import org.opensearch.indexmanagement.rollup.randomRollup
 import org.opensearch.indexmanagement.waitFor
 import org.opensearch.jobscheduler.spi.schedule.IntervalSchedule
 import org.opensearch.rest.RestStatus
-import org.opensearch.test.junit.annotations.TestLogging
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 
-@TestLogging(value = "level:DEBUG", reason = "Debugging tests")
-@Suppress("UNCHECKED_CAST")
 class RestStartRollupActionIT : RollupRestTestCase() {
 
     @Throws(Exception::class)
