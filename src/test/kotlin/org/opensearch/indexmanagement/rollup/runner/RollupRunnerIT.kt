@@ -204,7 +204,7 @@ class RollupRunnerIT : RollupRestTestCase() {
             sourceIndex = indexName,
             targetIndex = "${indexName}_target",
             metadataID = null,
-            continuous = true
+            continuous = false
         )
 
         // Create source index
@@ -222,24 +222,30 @@ class RollupRunnerIT : RollupRestTestCase() {
         updateRollupStartTime(rollup)
 
         var previousRollupMetadata: RollupMetadata? = null
-        waitFor {
+        rollup = waitFor {
             val rollupJob = getRollup(rollupId = rollup.id)
             assertNotNull("Rollup job not found", rollupJob)
             assertNotNull("Rollup job doesn't have metadata set", rollupJob.metadataID)
 
             previousRollupMetadata = getRollupMetadata(rollupJob.metadataID!!)
             assertNotNull("Rollup metadata not found", previousRollupMetadata)
-            assertEquals("Unexpected metadata status", RollupMetadata.Status.INIT, previousRollupMetadata!!.status)
+            assertEquals("Unexpected metadata status", RollupMetadata.Status.FINISHED, previousRollupMetadata!!.status)
+            rollupJob
         }
-
         // Delete rollup metadata
         assertNotNull("Previous rollup metadata was not saved", previousRollupMetadata)
         deleteRollupMetadata(previousRollupMetadata!!.id)
 
-        // Update rollup start time to run second execution
+        // Enable rollup and Update start time to run second execution
+        client().makeRequest(
+            "PUT",
+            "$ROLLUP_JOBS_BASE_URI/${rollup.id}?if_seq_no=${rollup.seqNo}&if_primary_term=${rollup.primaryTerm}",
+            emptyMap(), rollup.copy(enabled = true).toHttpEntity()
+        )
+
         updateRollupStartTime(rollup)
 
-        waitFor() {
+        waitFor {
             val rollupJob = getRollup(rollupId = rollup.id)
             assertNotNull("Rollup job not found", rollupJob)
             assertNotNull("Rollup job doesn't have metadata set", rollupJob.metadataID)
