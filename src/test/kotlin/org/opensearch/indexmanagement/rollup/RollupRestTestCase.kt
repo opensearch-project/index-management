@@ -53,7 +53,7 @@ abstract class RollupRestTestCase : IndexManagementRestTestCase() {
 
     @After
     @Suppress("UNCHECKED_CAST")
-    fun killAllRunningTasks() {
+    fun KillAllCancallableRunningTasks() {
         client().makeRequest("POST", "_tasks/_cancel?actions=*")
         waitFor {
             val response = client().makeRequest("GET", "_tasks")
@@ -71,6 +71,25 @@ abstract class RollupRestTestCase : IndexManagementRestTestCase() {
         }
     }
 
+    @Suppress("UNCHECKED_CAST")
+    fun waitForCancallableTasksToFinish() {
+        waitFor {
+            val response = client().makeRequest("GET", "_tasks")
+            val nodes = response.asMap()["nodes"] as Map<String, Any?>
+            var hasCancallableRunningTasks = false
+            nodes.forEach {
+                val tasks = (it.value as Map<String, Any?>)["tasks"] as Map<String, Any?>
+                tasks.forEach { e ->
+                    if ((e.value as Map<String, Any?>)["cancellable"] as Boolean) {
+                        hasCancallableRunningTasks = true
+                        logger.info("cancellable task running: ${e.key}")
+                    }
+                }
+            }
+            assertFalse(hasCancallableRunningTasks)
+        }
+    }
+
     @Before
     fun setDebugLogLevel() {
         client().makeRequest(
@@ -80,7 +99,7 @@ abstract class RollupRestTestCase : IndexManagementRestTestCase() {
                 {
                     "transient": {
                         "logger.org.opensearch.indexmanagement.rollup":"DEBUG",
-                        "logger.org.opensearch.jobscheduler":"DEBUG"
+                        "logger.org.opensearch.jobscheduler.sweeper":"DEBUG"
                     }
                 }
                 """.trimIndent(),

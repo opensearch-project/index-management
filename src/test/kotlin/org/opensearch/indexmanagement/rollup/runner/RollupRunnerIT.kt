@@ -226,6 +226,7 @@ class RollupRunnerIT : RollupRestTestCase() {
             val rollupJob = getRollup(rollupId = rollup.id)
             assertNotNull("Rollup job not found", rollupJob)
             assertNotNull("Rollup job doesn't have metadata set", rollupJob.metadataID)
+            assertFalse("Rollup job is still enabled", rollupJob.enabled)
 
             previousRollupMetadata = getRollupMetadata(rollupJob.metadataID!!)
             assertNotNull("Rollup metadata not found", previousRollupMetadata)
@@ -240,7 +241,7 @@ class RollupRunnerIT : RollupRestTestCase() {
         client().makeRequest(
             "PUT",
             "$ROLLUP_JOBS_BASE_URI/${rollup.id}?if_seq_no=${rollup.seqNo}&if_primary_term=${rollup.primaryTerm}",
-            emptyMap(), rollup.copy(enabled = true).toHttpEntity()
+            emptyMap(), rollup.copy(enabled = true, jobEnabledTime = Instant.now()).toHttpEntity()
         )
 
         updateRollupStartTime(rollup)
