@@ -214,9 +214,13 @@ class RollupInterceptor(
                 fieldMappings.add(RollupFieldMapping(RollupFieldMapping.Companion.FieldType.DIMENSION, query.fieldName(), Dimension.Type.TERMS.type))
             }
             is QueryStringQueryBuilder -> {
-                rewriteQueryStringQueryBuilder(query, concreteSourceIndexName) {
-                    fieldMappings.add(RollupFieldMapping(RollupFieldMapping.Companion.FieldType.DIMENSION, it.toString(), Dimension.Type.TERMS.type))
-                    it
+                try {
+                    rewriteQueryStringQueryBuilder(query, concreteSourceIndexName) {
+                        fieldMappings.add(RollupFieldMapping(RollupFieldMapping.Companion.FieldType.DIMENSION, it.toString(), Dimension.Type.TERMS.type))
+                        it
+                    }
+                } catch (e: Exception) {
+                    throw IllegalArgumentException("The ${query.name} query is invalid")
                 }
             }
             else -> {
