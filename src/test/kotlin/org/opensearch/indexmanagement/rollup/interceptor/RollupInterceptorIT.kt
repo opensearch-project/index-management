@@ -1079,8 +1079,8 @@ class RollupInterceptorIT : RollupRestTestCase() {
     }
 
     fun `test roll up search query_string query`() {
-        val sourceIndex = "source_rollup_search_qsq"
-        val targetIndex = "target_rollup_qsq_search"
+        val sourceIndex = "source_rollup_search_qsq_1"
+        val targetIndex = "target_rollup_qsq_search_1"
         generateNYCTaxiData(sourceIndex)
         val rollup = Rollup(
             id = "basic_query_string_query_rollup_search",
@@ -1157,8 +1157,8 @@ class RollupInterceptorIT : RollupRestTestCase() {
     }
 
     fun `test roll up search query_string query invalid query`() {
-        val sourceIndex = "source_rollup_search_qsq"
-        val targetIndex = "target_rollup_qsq_search"
+        val sourceIndex = "source_rollup_search_qsq_2"
+        val targetIndex = "target_rollup_qsq_search_2"
         generateNYCTaxiData(sourceIndex)
         val rollup = Rollup(
             id = "basic_query_string_query_rollup_search",
@@ -1230,11 +1230,11 @@ class RollupInterceptorIT : RollupRestTestCase() {
     }
 
     fun `test roll up search query_string query unknown field`() {
-        val sourceIndex = "source_rollup_search_qsq"
-        val targetIndex = "target_rollup_qsq_search"
+        val sourceIndex = "source_rollup_search_qsq_3"
+        val targetIndex = "target_rollup_qsq_search_3"
         generateNYCTaxiData(sourceIndex)
         val rollup = Rollup(
-            id = "basic_query_string_query_rollup_search",
+            id = "basic_query_string_query_rollup_search_3",
             enabled = true,
             schemaVersion = 1L,
             jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
