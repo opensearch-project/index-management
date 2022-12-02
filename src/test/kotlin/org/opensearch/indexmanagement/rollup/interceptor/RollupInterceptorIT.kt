@@ -1161,7 +1161,7 @@ class RollupInterceptorIT : RollupRestTestCase() {
         val targetIndex = "target_rollup_qsq_search_2"
         generateNYCTaxiData(sourceIndex)
         val rollup = Rollup(
-            id = "basic_query_string_query_rollup_search",
+            id = "basic_query_string_query_rollup_search_2",
             enabled = true,
             schemaVersion = 1L,
             jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
