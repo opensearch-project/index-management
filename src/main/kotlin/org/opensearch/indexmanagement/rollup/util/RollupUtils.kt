@@ -406,7 +406,7 @@ fun rewriteQueryStringQueryBuilder(
             return super.getRangeQuery(fieldRewriteFn(field), part1, part2, startInclusive, endInclusive)
         }
     }
-    var newLuceneQuery: Query? = null
+    var newLuceneQuery: Query?
     try {
         newLuceneQuery = parser.parse(luceneQuery.toString())
     } catch (e: Exception) {
