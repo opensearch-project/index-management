@@ -207,27 +207,24 @@ class RollupInterceptor(
                     query.zeroTermsQuery() != MatchQuery.DEFAULT_ZERO_TERMS_QUERY
                 ) {
                     throw IllegalArgumentException(
-                        "The ${query.name} query is currently not supported with analyzer/slop/zero_terms_query in " +
-                            "rollups"
+                        "The ${query.name} query is currently not supported with analyzer/slop/zero_terms_query in rollups"
                     )
                 }
                 fieldMappings.add(RollupFieldMapping(RollupFieldMapping.Companion.FieldType.DIMENSION, query.fieldName(), Dimension.Type.TERMS.type))
             }
             is QueryStringQueryBuilder -> {
-                try {
-                    rewriteQueryStringQueryBuilder(query, concreteSourceIndexName) {
-                        fieldMappings.add(RollupFieldMapping(RollupFieldMapping.Companion.FieldType.DIMENSION, it.toString(), Dimension.Type.TERMS.type))
-                        it
-                    }
-                } catch (e: Exception) {
-                    throw IllegalArgumentException("The ${query.name} query is invalid")
+                // Throws IllegalArgumentException if unable to parse query
+                rewriteQueryStringQueryBuilder(query, concreteSourceIndexName) {
+                    fieldMappings.add(
+                        RollupFieldMapping(RollupFieldMapping.Companion.FieldType.DIMENSION, it.toString(), Dimension.Type.TERMS.type)
+                    )
+                    it
                 }
             }
             else -> {
                 throw IllegalArgumentException("The ${query.name} query is currently not supported in rollups")
             }
         }
-
         return fieldMappings
     }
 

@@ -406,7 +406,12 @@ fun rewriteQueryStringQueryBuilder(
             return super.getRangeQuery(fieldRewriteFn(field), part1, part2, startInclusive, endInclusive)
         }
     }
-    val newLuceneQuery = parser.parse(luceneQuery.toString())
+    var newLuceneQuery: Query? = null
+    try {
+        newLuceneQuery = parser.parse(luceneQuery.toString())
+    } catch (e: Exception) {
+        throw IllegalArgumentException("The ${queryBuilder.name} query is invalid")
+    }
     return QueryStringQueryBuilder(newLuceneQuery.toString())
 }
 
