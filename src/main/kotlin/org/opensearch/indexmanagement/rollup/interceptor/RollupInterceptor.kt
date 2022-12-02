@@ -163,7 +163,7 @@ class RollupInterceptor(
         return fieldMappings
     }
 
-    @Suppress("ComplexMethod")
+    @Suppress("ComplexMethod","ThrowsCount")
     private fun getQueryMetadata(
         query: QueryBuilder?,
         concreteSourceIndexName: String,
