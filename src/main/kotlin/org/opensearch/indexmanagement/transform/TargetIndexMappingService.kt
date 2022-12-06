@@ -54,7 +54,8 @@ class TargetIndexMappingService(private val client: Client) {
             val sourceFieldType = IndexUtils.getFieldFromMappings(dimension.sourceField, sourceIndexMapping)
             // Consider only date fields as relevant for building the target index mapping
             if (dimension !is DateHistogram && sourceFieldType?.get(TYPE) != null && sourceFieldType[TYPE] == "date") {
-                dateCompositeAggregations[dimension.targetField] = sourceFieldType[TYPE]!!
+                val dateTypeTargetMapping = mapOf("type" to "date", "format" to "strict_date_optional_time||epoch_millis")
+                dateCompositeAggregations[dimension.targetField] = dateTypeTargetMapping
             }
         }
 

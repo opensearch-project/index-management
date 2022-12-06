@@ -369,8 +369,8 @@ class TransformRunnerIT : TransformRestTestCase() {
 
             // Verify the values of keys and metrics in all buckets
             for (i in rawAggBuckets.indices) {
-                assertEquals(rawAggBuckets[i]["key"], transformAggBuckets[i]["key"])
-                assertEquals(rawAggBuckets[i]["avgFareAmount"], transformAggBuckets[i]["avgFareAmount"])
+                assertEquals("Transform bucket keys are not the same", rawAggBuckets[i]["key"], transformAggBuckets[i]["key"])
+                assertEquals("AvgFareAmount is not the same", rawAggBuckets[i]["avgFareAmount"], transformAggBuckets[i]["avgFareAmount"])
             }
         }
     }
