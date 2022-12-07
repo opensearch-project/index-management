@@ -149,11 +149,11 @@ object TransformRunner :
                                 // Filter out already processed buckets
                                 val modifiedBuckets = bucketsToTransform.modifiedBuckets.filter {
                                     transformProcessedBucketLog.isNotProcessed(it)
-                                }.toMutableSet()
+                                }
                                 // Recompute modified buckets and update them in targetIndex
                                 currentMetadata = recomputeModifiedBuckets(transform, currentMetadata, modifiedBuckets, transformContext)
                                 // Add processed buckets to 'processed set' so that we don't try to reprocess them again
-                                transformProcessedBucketLog.addBuckets(modifiedBuckets.toList())
+                                transformProcessedBucketLog.addBuckets(modifiedBuckets)
                                 // Update TransformMetadata
                                 currentMetadata = transformMetadataService.writeMetadata(currentMetadata, true)
                                 bucketsToTransform = bucketsToTransform.copy(metadata = currentMetadata)
@@ -290,26 +290,40 @@ object TransformRunner :
     private suspend fun recomputeModifiedBuckets(
         transform: Transform,
         metadata: TransformMetadata,
-        modifiedBuckets: MutableSet<Map<String, Any>>,
+        modifiedBuckets: List<Map<String, Any>>,
         transformContext: TransformContext
     ): TransformMetadata {
         val updatedMetadata = if (modifiedBuckets.isNotEmpty()) {
-            val transformSearchResult = withTransformSecurityContext(transform) {
-                transformSearchService.executeCompositeSearch(transform, null, modifiedBuckets, transformContext)
+            val maxPageSize = transformSearchService.calculateMaxPageSize(transform)
+            var currentMetadata = metadata
+            for (i in modifiedBuckets.indices step maxPageSize) {
+                val end =
+                    if (i + maxPageSize <= modifiedBuckets.size) i + maxPageSize
+                    else modifiedBuckets.size
+                val iterBuckets = modifiedBuckets.subList(
+                    i,
+                    end
+                )
+
+                val transformSearchResult = withTransformSecurityContext(transform) {
+                    transformSearchService.executeCompositeSearch(transform, null, iterBuckets, transformContext)
+                }
+                val indexTimeInMillis = withTransformSecurityContext(transform) {
+                    transformIndexer.index(transformSearchResult.docsToIndex)
+                }
+                val stats = transformSearchResult.stats
+                val updatedStats = stats.copy(
+                    pagesProcessed = if (transform.continuous) 0 else stats.pagesProcessed,
+                    indexTimeInMillis = stats.indexTimeInMillis + indexTimeInMillis,
+                    documentsIndexed = transformSearchResult.docsToIndex.size.toLong()
+                )
+                currentMetadata = currentMetadata.mergeStats(updatedStats).copy(
+                    lastUpdatedAt = Instant.now(),
+                    status = TransformMetadata.Status.STARTED
+                )
+                currentMetadata = transformMetadataService.writeMetadata(currentMetadata, true)
             }
-            val indexTimeInMillis = withTransformSecurityContext(transform) {
-                transformIndexer.index(transformSearchResult.docsToIndex)
-            }
-            val stats = transformSearchResult.stats
-            val updatedStats = stats.copy(
-                pagesProcessed = if (transform.continuous) 0 else stats.pagesProcessed,
-                indexTimeInMillis = stats.indexTimeInMillis + indexTimeInMillis,
-                documentsIndexed = transformSearchResult.docsToIndex.size.toLong()
-            )
-            metadata.mergeStats(updatedStats).copy(
-                lastUpdatedAt = Instant.now(),
-                status = TransformMetadata.Status.STARTED
-            )
+            currentMetadata
         } else metadata.copy(lastUpdatedAt = Instant.now(), status = TransformMetadata.Status.STARTED)
         return updatedMetadata
     }

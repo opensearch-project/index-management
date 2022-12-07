@@ -123,7 +123,7 @@ class TransformSearchService(
     ): BucketSearchResult {
         try {
             var retryAttempt = 0
-            var pageSize = calculateMaxPageSize(transform)
+            var pageSize = transform.pageSize
             val searchStart = Instant.now().epochSecond
             val searchResponse = backoffPolicy.retryTransformSearch(logger, transformContext.transformLockManager) {
                 val pageSizeDecay = 2f.pow(retryAttempt++)
@@ -165,7 +165,7 @@ class TransformSearchService(
      *   Apache Lucene has maxClauses limit which we could trip during recomputing of modified buckets(continuous transform)
      *   due to trying to match too many bucket fields. To avoid this, we control how many buckets we recompute at a time(pageSize)
      */
-    private fun calculateMaxPageSize(transform: Transform): Int {
+    public fun calculateMaxPageSize(transform: Transform): Int {
         return minOf(transform.pageSize, LUCENE_MAX_CLAUSES / (transform.groups.size + 1))
     }
 
@@ -173,7 +173,7 @@ class TransformSearchService(
     suspend fun executeCompositeSearch(
         transform: Transform,
         afterKey: Map<String, Any>? = null,
-        modifiedBuckets: MutableSet<Map<String, Any>>? = null,
+        modifiedBuckets: List<Map<String, Any>>? = null,
         transformContext: TransformContext
     ): TransformSearchResult {
         try {
@@ -230,7 +230,7 @@ class TransformSearchService(
             transform: Transform,
             afterKey: Map<String, Any>? = null,
             pageSize: Int,
-            modifiedBuckets: MutableSet<Map<String, Any>>? = null,
+            modifiedBuckets: List<Map<String, Any>>? = null,
             timeoutInSeconds: Long? = null
         ): SearchRequest {
             val sources = mutableListOf<CompositeValuesSourceBuilder<*>>()
@@ -249,7 +249,7 @@ class TransformSearchService(
 
         private fun getQueryWithModifiedBuckets(
             originalQuery: QueryBuilder,
-            modifiedBuckets: MutableSet<Map<String, Any>>,
+            modifiedBuckets: List<Map<String, Any>>,
             groups: List<Dimension>
         ): QueryBuilder {
             val query: BoolQueryBuilder = QueryBuilders.boolQuery().must(originalQuery).minimumShouldMatch(1)
@@ -333,7 +333,7 @@ class TransformSearchService(
             transform: Transform,
             searchResponse: SearchResponse,
             waterMarkDocuments: Boolean = true,
-            modifiedBuckets: MutableSet<Map<String, Any>>? = null
+            modifiedBuckets: List<Map<String, Any>>? = null
         ): TransformSearchResult {
             val aggs = searchResponse.aggregations.get(transform.id) as CompositeAggregation
             val buckets = if (modifiedBuckets != null) aggs.buckets.filter { modifiedBuckets.contains(it.key) } else aggs.buckets

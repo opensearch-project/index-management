@@ -1085,7 +1085,7 @@ class TransformRunnerIT : TransformRestTestCase() {
         }
 
         assertEquals("Not the expected transform status", TransformMetadata.Status.STARTED, firstIterationMetadata.status)
-        assertEquals("Not the expected pages processed", 7, firstIterationMetadata.stats.pagesProcessed)
+        assertEquals("Not the expected pages processed", 3, firstIterationMetadata.stats.pagesProcessed)
         assertEquals("Not the expected documents indexed", 2000L, firstIterationMetadata.stats.documentsIndexed)
         assertEquals("Not the expected documents processed", 2000L, firstIterationMetadata.stats.documentsProcessed)
         assertTrue("Doesn't capture indexed time", firstIterationMetadata.stats.indexTimeInMillis > 0)
