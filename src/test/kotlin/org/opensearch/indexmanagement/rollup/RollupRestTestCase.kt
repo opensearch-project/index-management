@@ -65,7 +65,6 @@ abstract class RollupRestTestCase : IndexManagementRestTestCase() {
             )
         )
     }
->>>>>>> f2a9fa6 (Security Workflow (#611))
 
     protected fun createRollup(
         rollup: Rollup,
