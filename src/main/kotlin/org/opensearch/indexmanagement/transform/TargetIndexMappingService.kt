@@ -5,18 +5,21 @@
 
 package org.opensearch.indexmanagement.transform
 
+import org.apache.logging.log4j.LogManager
 import org.opensearch.action.admin.indices.mapping.get.GetMappingsRequest
 import org.opensearch.action.admin.indices.mapping.get.GetMappingsResponse
 import org.opensearch.client.Client
 import org.opensearch.common.xcontent.XContentBuilder
 import org.opensearch.common.xcontent.XContentFactory
-import org.opensearch.indexmanagement.IndexManagementIndices
+import org.opensearch.index.IndexNotFoundException
 import org.opensearch.indexmanagement.common.model.dimension.DateHistogram
 import org.opensearch.indexmanagement.opensearchapi.string
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.transform.exceptions.TransformIndexException
 import org.opensearch.indexmanagement.transform.model.Transform
 import org.opensearch.indexmanagement.util.IndexUtils
+import org.opensearch.search.aggregations.AggregationBuilder
+import org.opensearch.search.aggregations.support.ValuesSourceAggregationBuilder
 
 /**
  * Service designed for creating dynamic target index mapping based on the date field types of the source index.
@@ -24,6 +27,7 @@ import org.opensearch.indexmanagement.util.IndexUtils
  * (ie. if the term grouping is applied on a date field of source index, target index field will have date type also)
  */
 class TargetIndexMappingService(private val client: Client) {
+    private val logger = LogManager.getLogger(javaClass)
     companion object {
         private const val TYPE = "type"
         private const val PROPERTIES = "properties"
@@ -32,22 +36,34 @@ class TargetIndexMappingService(private val client: Client) {
         private const val DYNAMIC_TEMPLATE = "dynamic_templates"
         private const val MATCH_MAPPING_TYPE = "match_mapping_type"
         private const val MAPPING = "mapping"
+        private const val DEFAULT_DATE_FORMAT = "strict_date_optional_time||epoch_millis"
+    }
+    suspend fun getTargetMappingsForDates(transform: Transform): Map<String, Any> {
+        val sourceIndex = transform.sourceIndex
+        try {
+            val result: GetMappingsResponse = client.admin().indices().suspendUntil {
+                getMappings(GetMappingsRequest().indices(sourceIndex), it)
+            } ?: error("GetMappingResponse for [$transform.sourceIndex] was null")
+
+            val sourceIndexMapping = result.mappings[sourceIndex]?.sourceAsMap
+
+            val dateFieldMappings = mutableMapOf<String, Any>()
+            if (!sourceIndexMapping.isNullOrEmpty()) {
+                mapDateTermAggregation(transform, sourceIndexMapping, dateFieldMappings)
+                mapDateAggregation(transform.aggregations.aggregatorFactories, sourceIndexMapping, dateFieldMappings, null)
+            }
+            return dateFieldMappings
+        } catch (ex: IndexNotFoundException) {
+            logger.error("Index $sourceIndex doesn't exist")
+            return emptyMap()
+        }
     }
 
-    suspend fun buildTargetIndexMapping(transform: Transform): Pair<String, Set<String>?> {
-        val request = GetMappingsRequest().indices(transform.sourceIndex)
-
-        val result: GetMappingsResponse = client.admin().indices().suspendUntil { getMappings(request, it) }
-            ?: error("GetMappingResponse for [$transform.sourceIndex] was null")
-
-        if (result.mappings[transform.sourceIndex] == null) {
-            return Pair(IndexManagementIndices.transformTargetMappings, null)
-        }
-
-        val sourceIndexMapping = result.mappings[transform.sourceIndex].sourceAsMap
-
-        val dateCompositeAggregations = mutableMapOf<String, Any>()
-        val mappedDateFields = mutableSetOf<String>()
+    private fun mapDateTermAggregation(
+        transform: Transform,
+        sourceIndexMapping: MutableMap<String, Any>,
+        dateFieldMappings: MutableMap<String, Any>,
+    ) {
         transform.groups.forEach { dimension ->
             if (!isFieldInMappings(dimension.sourceField, sourceIndexMapping)) {
                 throw TransformIndexException("Missing field ${dimension.sourceField} in source index")
@@ -56,18 +72,13 @@ class TargetIndexMappingService(private val client: Client) {
             // Consider only date fields as relevant for building the target index mapping
             if (dimension !is DateHistogram && sourceFieldType?.get(TYPE) != null && sourceFieldType[TYPE] == "date") {
                 // Taking the source field settings (type, format etc.)
-                // 1213213213213
-                val dateTypeTargetMapping = mapOf("type" to "date", "format" to "strict_date_optional_time||epoch_millis")
-                // sourceIndex.dateField.format[0] -->
-                dateCompositeAggregations[dimension.targetField] = dateTypeTargetMapping
-                mappedDateFields.add(dimension.targetField)
+                val dateTypeTargetMapping = mapOf("type" to "date", "format" to DEFAULT_DATE_FORMAT)
+                dateFieldMappings[dimension.targetField] = dateTypeTargetMapping
             }
         }
-
-        return Pair(mapTargetIndex(dateCompositeAggregations), mappedDateFields)
     }
 
-    private fun mapTargetIndex(dateCompositeAggregations: MutableMap<String, Any>): String {
+    fun createTargetIndexMapping(dateCompositeAggregations: Map<String, Any>): String {
         // Build static properties
         val builder = XContentFactory.jsonBuilder().startObject()
             .startObject(METADATA)
@@ -113,5 +124,37 @@ class TargetIndexMappingService(private val client: Client) {
         }
     }
 
+    @Suppress("UNCHECKED_CAST")
+    private fun mapDateAggregation(
+        aggBuilders: Collection<AggregationBuilder>,
+        sourceIndexMapping: Map<String, Any>,
+        targetIndexMapping: MutableMap<String, Any>,
+        parentPath: String?
+    ) {
+        val iterator = aggBuilders.iterator()
+        while (iterator.hasNext()) {
+
+            val aggBuilder = iterator.next()
+            val targetIdxFieldName = aggBuilder.name
+            // In the case of a date field used in aggregation - MIN, MAX or COUNT
+            if (aggBuilder is ValuesSourceAggregationBuilder<*>) {
+                val sourceIdxFieldName = aggBuilder.field()
+
+                val sourceFieldType = IndexUtils.getFieldFromMappings(sourceIdxFieldName, sourceIndexMapping)
+                // Consider only aggregations on date field type
+                if (!sourceFieldType.isNullOrEmpty() && sourceFieldType[TYPE] == "date") {
+                    val dateTypeTargetMapping = mapOf("type" to "date", "format" to DEFAULT_DATE_FORMAT)
+                    // In the case if sub-aggregation exist
+                    val fullPath = parentPath?.plus(".")?.plus(targetIndexMapping) ?: targetIdxFieldName
+                    targetIndexMapping[fullPath] = dateTypeTargetMapping
+                }
+            }
+            if (aggBuilder.subAggregations.isNullOrEmpty()) {
+                continue
+            }
+            // Do the same for all sub-aggregations
+            mapDateAggregation(aggBuilder.subAggregations, sourceIndexMapping, targetIndexMapping, targetIdxFieldName)
+        }
+    }
     private fun isFieldInMappings(fieldName: String, mappings: Map<*, *>) = IndexUtils.getFieldFromMappings(fieldName, mappings) != null
 }

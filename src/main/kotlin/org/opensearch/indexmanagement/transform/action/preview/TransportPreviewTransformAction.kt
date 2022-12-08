@@ -87,7 +87,6 @@ class TransportPreviewTransformAction @Inject constructor(
 
         return issues
     }
-
     fun executeSearch(searchRequest: SearchRequest, transform: Transform, listener: ActionListener<PreviewTransformResponse>) {
         client.search(
             searchRequest,
@@ -95,7 +94,8 @@ class TransportPreviewTransformAction @Inject constructor(
                 override fun onResponse(response: SearchResponse) {
                     try {
                         val transformSearchResult = TransformSearchService.convertResponse(
-                            transform = transform, searchResponse = response, waterMarkDocuments = false
+                            transform = transform, searchResponse = response, waterMarkDocuments = false,
+                            mappedTargetDateFields = emptyMap()
                         )
                         val formattedResult = transformSearchResult.docsToIndex.map {
                             it.sourceAsMap()

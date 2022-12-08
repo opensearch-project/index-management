@@ -286,9 +286,9 @@ class TransformRunnerIT : TransformRestTestCase() {
     }
 
     @Suppress("UNCHECKED_CAST")
-    fun `test transform target mapping date field same as source mapping date field`() {
-        val sourceIdxTestName = "source_idx_test"
-        val targetIdxTestName = "target_idx_test"
+    fun `test transform term aggregation on date field generate target mapping same as source mapping date field`() {
+        val sourceIdxTestName = "source_idx_test_14"
+        val targetIdxTestName = "target_idx_test_14"
 
         val pickupDateTime = "tpep_pickup_datetime"
 
@@ -297,7 +297,7 @@ class TransformRunnerIT : TransformRestTestCase() {
         validateSourceIndex(sourceIdxTestName)
 
         val transform = Transform(
-            id = "id_13",
+            id = "id_14",
             schemaVersion = 1L,
             enabled = true,
             enabledAt = Instant.now(),
@@ -334,12 +334,12 @@ class TransformRunnerIT : TransformRestTestCase() {
             val targetIndexMapping = client().makeRequest("GET", "/$targetIdxTestName/_mapping")
             val targetIndexParserMap = createParser(XContentType.JSON.xContent(), targetIndexMapping.entity.content).map() as Map<String, Map<String, Any>>
 
-            val sourcePickupType = (((sourceIndexParserMap[sourceIdxTestName]?.get("mappings") as Map<String, Any>)["properties"] as Map<String, Any>)["tpep_pickup_datetime"] as Map<String, Any>)["type"]
-            val targetPickupType = (((targetIndexParserMap[targetIdxTestName]?.get("mappings") as Map<String, Any>)["properties"] as Map<String, Any>)["tpep_pickup_datetime"] as Map<String, Any>)["type"]
+            val sourcePickupDate = (((sourceIndexParserMap[sourceIdxTestName]?.get("mappings") as Map<String, Any>)["properties"] as Map<String, Any>)["tpep_pickup_datetime"] as Map<String, Any>)["type"]
+            val targetPickupDate = (((targetIndexParserMap[targetIdxTestName]?.get("mappings") as Map<String, Any>)["properties"] as Map<String, Any>)["tpep_pickup_datetime"] as Map<String, Any>)["type"]
 
-            assertEquals(sourcePickupType, targetPickupType)
+            assertEquals(sourcePickupDate, targetPickupDate)
 
-            val pickupDateTimeTerm = "pickupDateTerm"
+            val pickupDateTimeTerm = "pickupDateTerm14"
 
             val request = """
             {
@@ -369,8 +369,218 @@ class TransformRunnerIT : TransformRestTestCase() {
 
             // Verify the values of keys and metrics in all buckets
             for (i in rawAggBuckets.indices) {
-                assertEquals(rawAggBuckets[i]["key"], transformAggBuckets[i]["key"])
-                assertEquals(rawAggBuckets[i]["avgFareAmount"], transformAggBuckets[i]["avgFareAmount"])
+                assertEquals("Term pickup date bucket keys are not the same", rawAggBuckets[i]["key"], transformAggBuckets[i]["key"])
+                assertEquals("Avg fare amounts are not the same", rawAggBuckets[i]["avgFareAmount"], transformAggBuckets[i]["avgFareAmount"])
+            }
+        }
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    fun `test transform aggregation on date field`() {
+        val sourceIdxTestName = "source_idx_test_15"
+        val targetIdxTestName = "target_idx_test_15"
+
+        val storeAndForward = "store_and_fwd_flag"
+        val pickupDateTime = "tpep_pickup_datetime"
+        val fareAmount = "fare_amount"
+
+        validateSourceIndex(sourceIdxTestName)
+
+        val avgFareAmountAgg = AggregationBuilders.avg(fareAmount).field(fareAmount)
+        val maxDateAggBuilder = AggregationBuilders.max(pickupDateTime).field(pickupDateTime)
+
+        val transform = Transform(
+            id = "id_15",
+            schemaVersion = 1L,
+            enabled = true,
+            enabledAt = Instant.now(),
+            updatedAt = Instant.now(),
+            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+            description = "test transform doc values must be the same",
+            metadataId = null,
+            sourceIndex = sourceIdxTestName,
+            targetIndex = targetIdxTestName,
+            roles = emptyList(),
+            pageSize = 1,
+            groups = listOf(
+                Terms(sourceField = storeAndForward, targetField = storeAndForward)
+            ),
+            aggregations = AggregatorFactories.builder().addAggregator(avgFareAmountAgg).addAggregator(maxDateAggBuilder)
+        ).let { createTransform(it, it.id) }
+        updateTransformStartTime(transform)
+
+        waitFor {
+            assertTrue("Target transform index was not created", indexExists(transform.targetIndex))
+        }
+
+        waitFor {
+            val transformJob = getTransform(transformId = transform.id)
+            assertNotNull("Transform job doesn't have metadata set", transformJob.metadataId)
+            val transformMetadata = getTransformMetadata(transformJob.metadataId!!)
+            assertEquals("Transform is not finished", TransformMetadata.Status.FINISHED, transformMetadata.status)
+
+            val sourceIndexMapping = client().makeRequest("GET", "/$sourceIdxTestName/_mapping")
+            val sourceIndexParserMap = createParser(XContentType.JSON.xContent(), sourceIndexMapping.entity.content).map() as Map<String, Map<String, Any>>
+            val targetIndexMapping = client().makeRequest("GET", "/$targetIdxTestName/_mapping")
+            val targetIndexParserMap = createParser(XContentType.JSON.xContent(), targetIndexMapping.entity.content).map() as Map<String, Map<String, Any>>
+
+            val sourcePickupDate = (((sourceIndexParserMap[sourceIdxTestName]?.get("mappings") as Map<String, Any>)["properties"] as Map<String, Any>)[pickupDateTime] as Map<String, Any>)["type"]
+            val targetPickupDate = (((targetIndexParserMap[targetIdxTestName]?.get("mappings") as Map<String, Any>)["properties"] as Map<String, Any>)[pickupDateTime] as Map<String, Any>)["type"]
+
+            assertEquals("date", targetPickupDate)
+            assertEquals(sourcePickupDate, targetPickupDate)
+
+            val storeAndForwardTerm = "storeAndForwardTerm"
+
+            val request = """
+            {
+                "size": 0,
+                "aggs": {
+                    "$storeAndForwardTerm": {
+                        "terms": {
+                            "field": "$storeAndForward", "order": { "_key": "asc" }
+                        },
+                        "aggs": {
+                           "$fareAmount": { "avg": { "field": "$fareAmount" } },
+                           "$pickupDateTime": {"max": {"field": "$pickupDateTime"}}
+                        }
+                    }
+                }
+            }
+            """.trimIndent()
+
+            var rawRes = client().makeRequest(RestRequest.Method.POST.name, "/$sourceIdxTestName/_search", emptyMap(), StringEntity(request, ContentType.APPLICATION_JSON))
+            assertTrue(rawRes.restStatus() == RestStatus.OK)
+
+            var transformRes = client().makeRequest(RestRequest.Method.POST.name, "/$targetIdxTestName/_search", emptyMap(), StringEntity(request, ContentType.APPLICATION_JSON))
+            assertTrue(transformRes.restStatus() == RestStatus.OK)
+
+            val rawAggBuckets = (rawRes.asMap()["aggregations"] as Map<String, Map<String, List<Map<String, Map<String, Any>>>>>)[storeAndForwardTerm]!!["buckets"]!!
+            val transformAggBuckets = (transformRes.asMap()["aggregations"] as Map<String, Map<String, List<Map<String, Map<String, Any>>>>>)[storeAndForwardTerm]!!["buckets"]!!
+
+            assertEquals("Different bucket sizes", rawAggBuckets.size, transformAggBuckets.size)
+
+            for (i in rawAggBuckets.indices) {
+                assertEquals("Avg Fare amounts are not the same", rawAggBuckets[i]["fareAmount"], transformAggBuckets[i]["fareAmount"])
+                assertEquals("Max pickup date times are not the same", rawAggBuckets[i][pickupDateTime]!!["value"], transformAggBuckets[i][pickupDateTime]!!["value"])
+            }
+        }
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    fun `test transform term on date field and aggregation on date field`() {
+        val sourceIdxTestName = "source_idx_test_16"
+        val targetIdxTestName = "target_idx_test_16"
+
+        val pickupDateTime = "tpep_pickup_datetime"
+        val pickupDateTimeTerm = pickupDateTime.plus("_term")
+        val fareAmount = "fare_amount"
+
+        validateSourceIndex(sourceIdxTestName)
+
+        val avgFareAmountAgg = AggregationBuilders.avg(fareAmount).field(fareAmount)
+        val countDateAggBuilder = AggregationBuilders.count(pickupDateTime).field(pickupDateTime)
+
+        val transform = Transform(
+            id = "id_16",
+            schemaVersion = 1L,
+            enabled = true,
+            enabledAt = Instant.now(),
+            updatedAt = Instant.now(),
+            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+            description = "test transform doc values must be the same",
+            metadataId = null,
+            sourceIndex = sourceIdxTestName,
+            targetIndex = targetIdxTestName,
+            roles = emptyList(),
+            pageSize = 1,
+            groups = listOf(
+                Terms(sourceField = pickupDateTime, targetField = pickupDateTimeTerm)
+            ),
+            aggregations = AggregatorFactories.builder().addAggregator(avgFareAmountAgg).addAggregator(countDateAggBuilder)
+        ).let { createTransform(it, it.id) }
+        updateTransformStartTime(transform)
+
+        waitFor {
+            assertTrue("Target transform index was not created", indexExists(transform.targetIndex))
+        }
+
+        Thread.sleep(30000)
+
+        waitFor {
+            val transformJob = getTransform(transformId = transform.id)
+            assertNotNull("Transform job doesn't have metadata set", transformJob.metadataId)
+            val transformMetadata = getTransformMetadata(transformJob.metadataId!!)
+            assertEquals("Transform is not finished", TransformMetadata.Status.FINISHED, transformMetadata.status)
+
+            val sourceIndexMapping = client().makeRequest("GET", "/$sourceIdxTestName/_mapping")
+            val sourceIndexParserMap = createParser(XContentType.JSON.xContent(), sourceIndexMapping.entity.content).map() as Map<String, Map<String, Any>>
+            val targetIndexMapping = client().makeRequest("GET", "/$targetIdxTestName/_mapping")
+            val targetIndexParserMap = createParser(XContentType.JSON.xContent(), targetIndexMapping.entity.content).map() as Map<String, Map<String, Any>>
+
+            val sourceProperties = ((sourceIndexParserMap[sourceIdxTestName]?.get("mappings") as Map<String, Any>)["properties"] as Map<String, Any>)
+            val targetProperties = ((targetIndexParserMap[targetIdxTestName]?.get("mappings") as Map<String, Any>)["properties"] as Map<String, Any>)
+
+            val sourcePickupDate = (sourceProperties [pickupDateTime] as Map<String, Any>)["type"]
+            val targetPickupDateTerm = (targetProperties [pickupDateTimeTerm] as Map<String, Any>)["type"]
+
+            assertEquals("date", targetPickupDateTerm)
+            assertEquals(sourcePickupDate, targetPickupDateTerm)
+
+            val targetPickupDate = (targetProperties [pickupDateTime] as Map<String, Any>)["type"]
+
+            assertEquals("date", targetPickupDate)
+            assertEquals(sourcePickupDate, targetPickupDate)
+
+            val sourceRequest = """
+            {
+                "size": 0,
+                "aggs": {
+                    "$pickupDateTimeTerm": {
+                        "terms": {
+                            "field": "$pickupDateTime", "order": { "_key": "asc" }
+                        },
+                        "aggs": {
+                           "$fareAmount": { "avg": { "field": "$fareAmount" } },
+                           "$pickupDateTime": {"value_count": {"field": "$pickupDateTime"}}
+                        }
+                    }
+                }
+            }
+            """.trimIndent()
+
+            val targetRequest = """
+            {
+                "size": 0,
+                "aggs": {
+                    "$pickupDateTimeTerm": {
+                        "terms": {
+                            "field": "$pickupDateTimeTerm", "order": { "_key": "asc" }
+                        },
+                        "aggs": {
+                           "$fareAmount": { "avg": { "field": "$fareAmount" } },
+                           "$pickupDateTime": {"value_count": {"field": "$pickupDateTime"}}
+                        }
+                    }
+                }
+            }
+            """.trimIndent()
+
+            var rawRes = client().makeRequest(RestRequest.Method.POST.name, "/$sourceIdxTestName/_search", emptyMap(), StringEntity(sourceRequest, ContentType.APPLICATION_JSON))
+            assertTrue(rawRes.restStatus() == RestStatus.OK)
+
+            var transformRes = client().makeRequest(RestRequest.Method.POST.name, "/$targetIdxTestName/_search", emptyMap(), StringEntity(targetRequest, ContentType.APPLICATION_JSON))
+            assertTrue(transformRes.restStatus() == RestStatus.OK)
+
+            val rawAggBuckets = (rawRes.asMap()["aggregations"] as Map<String, Map<String, List<Map<String, Map<String, Any>>>>>)[pickupDateTimeTerm]!!["buckets"]!!
+            val transformAggBuckets = (transformRes.asMap()["aggregations"] as Map<String, Map<String, List<Map<String, Map<String, Any>>>>>)[pickupDateTimeTerm]!!["buckets"]!!
+
+            assertEquals("Different bucket sizes", rawAggBuckets.size, transformAggBuckets.size)
+
+            for (i in rawAggBuckets.indices) {
+                assertEquals("Term pickup date bucket keys are not the same", rawAggBuckets[i]["key"], transformAggBuckets[i]["key"])
+                assertEquals("Avg fare amounts are not the same", rawAggBuckets[i]["fareAmount"], transformAggBuckets[i]["fareAmount"])
+                assertEquals("Count pickup dates are not the same", rawAggBuckets[i][pickupDateTime]!!["value"], transformAggBuckets[i][pickupDateTime]!!["value"])
             }
         }
     }

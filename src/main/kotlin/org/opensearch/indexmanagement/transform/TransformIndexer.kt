@@ -5,7 +5,6 @@
 
 package org.opensearch.indexmanagement.transform
 
-import formatMillis
 import org.apache.logging.log4j.LogManager
 import org.opensearch.ExceptionsHelper
 import org.opensearch.OpenSearchSecurityException
@@ -55,13 +54,10 @@ class TransformIndexer(
         }
     }
 
-    private suspend fun createTargetIndex(transform: Transform): Set<String>? {
+    private suspend fun createTargetIndex(transform: Transform, targetFieldMappings: Map<String, Any>) {
         val index = transform.targetIndex
-        var transformDateMappedFields: Set<String>? = null
-
         if (!clusterService.state().routingTable.hasIndex(index)) {
-            val transformMappings = targetIndexMappingService.buildTargetIndexMapping(transform)
-            val transformTargetIndexMapping = transformMappings.first
+            val transformTargetIndexMapping = targetIndexMappingService.createTargetIndexMapping(targetFieldMappings)
             val request = CreateIndexRequest(index).mapping(transformTargetIndexMapping)
             // TODO: Read in the actual mappings from the source index and use that
             val response: CreateIndexResponse = client.admin().indices().suspendUntil { create(request, it) }
@@ -69,9 +65,7 @@ class TransformIndexer(
                 logger.error("Failed to create the target index $index")
                 throw TransformIndexException("Failed to create the target index")
             }
-            transformDateMappedFields = transformMappings.second
         }
-        return transformDateMappedFields
     }
 
     @Suppress("ThrowsCount", "RethrowCaughtException")
@@ -84,11 +78,7 @@ class TransformIndexer(
                 val targetIndex = updatableDocsToIndex.first().index()
                 logger.debug("Attempting to index ${updatableDocsToIndex.size} documents to $targetIndex")
 
-                val dateMappedFields = createTargetIndex(transform)
-                dateMappedFields?.let { transformContext.updateMappedDateFields(it) }
-
-                updateTargetDateFieldValues(updatableDocsToIndex, transformContext.getMappedTargetDateFields())
-
+                createTargetIndex(transform, transformContext.getMappedTargetDateFields())
                 backoffPolicy.retry(logger, listOf(RestStatus.TOO_MANY_REQUESTS)) {
                     val bulkRequest = BulkRequest().add(updatableDocsToIndex)
                     val bulkResponse: BulkResponse = client.suspendUntil { bulk(bulkRequest, it) }
@@ -123,23 +113,6 @@ class TransformIndexer(
             throw TransformIndexException("Failed to index the documents - missing required index permissions: ${e.localizedMessage}", e)
         } catch (e: Exception) {
             throw TransformIndexException("Failed to index the documents", e)
-        }
-    }
-
-    private fun updateTargetDateFieldValues(updatableDocsToIndex: List<DocWriteRequest<*>>, mappedTargetDateFields: Set<String>?) {
-        if (mappedTargetDateFields.isNullOrEmpty()) {
-            return
-        }
-
-        for (docToBeWritten in updatableDocsToIndex) {
-            val targetValueMap = (docToBeWritten as IndexRequest).sourceAsMap()
-            for (mappedDateField in mappedTargetDateFields) {
-                if (targetValueMap[mappedDateField] == null) {
-                    throw TransformIndexException("Missing field $mappedDateField in target index")
-                }
-                targetValueMap[mappedDateField] = formatMillis(targetValueMap, mappedDateField)
-                docToBeWritten.source(targetValueMap)
-            }
         }
     }
 }

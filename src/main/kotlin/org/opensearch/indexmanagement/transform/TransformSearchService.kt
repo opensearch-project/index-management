@@ -5,6 +5,7 @@
 
 package org.opensearch.indexmanagement.transform
 
+import formatMillis
 import org.apache.logging.log4j.LogManager
 import org.opensearch.ExceptionsHelper
 import org.opensearch.OpenSearchSecurityException
@@ -31,7 +32,6 @@ import org.opensearch.index.query.RangeQueryBuilder
 import org.opensearch.index.seqno.SequenceNumbers
 import org.opensearch.index.shard.ShardId
 import org.opensearch.indexmanagement.common.model.dimension.Dimension
-import org.opensearch.indexmanagement.opensearchapi.convertToMap
 import org.opensearch.indexmanagement.opensearchapi.retry
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.transform.exceptions.TransformSearchServiceException
@@ -207,7 +207,12 @@ class TransformSearchService(
             // If the request was successful, update page size
             transformContext.lastSuccessfulPageSize = pageSize
             transformContext.renewLockForLongSearch(Instant.now().epochSecond - searchStart)
-            return convertResponse(transform, searchResponse, modifiedBuckets = modifiedBuckets)
+            return convertResponse(
+                transform,
+                searchResponse,
+                modifiedBuckets = modifiedBuckets,
+                mappedTargetDateFields = transformContext.getMappedTargetDateFields()
+            )
         } catch (e: TransformSearchServiceException) {
             throw e
         } catch (e: RemoteTransportException) {
@@ -334,7 +339,8 @@ class TransformSearchService(
             transform: Transform,
             searchResponse: SearchResponse,
             waterMarkDocuments: Boolean = true,
-            modifiedBuckets: MutableSet<Map<String, Any>>? = null
+            modifiedBuckets: MutableSet<Map<String, Any>>? = null,
+            mappedTargetDateFields: Map<String, Any>,
         ): TransformSearchResult {
             val aggs = searchResponse.aggregations.get(transform.id) as CompositeAggregation
             val buckets = if (modifiedBuckets != null) aggs.buckets.filter { modifiedBuckets.contains(it.key) } else aggs.buckets
@@ -349,8 +355,18 @@ class TransformSearchService(
                 val hashedId = hashToFixedSize(id)
 
                 val document = transform.convertToDoc(aggregatedBucket.docCount, waterMarkDocuments)
-                aggregatedBucket.key.entries.forEach { bucket -> document[bucket.key] = bucket.value }
-                aggregatedBucket.aggregations.forEach { aggregation -> document[aggregation.name] = getAggregationValue(aggregation) }
+                aggregatedBucket.key.entries.forEach { bucket ->
+                    // Check if the date is used as a term (exists in conversion list) - if it is,
+                    // convert the date (which is in epoch time millis format to ISO 8601)
+                    if (mappedTargetDateFields.isNullOrEmpty() || !mappedTargetDateFields.containsKey(bucket.key)) {
+                        document[bucket.key] = bucket.value
+                    } else {
+                        document[bucket.key] = formatMillis(bucket.value as Long)
+                    }
+                }
+                aggregatedBucket.aggregations.forEach { aggregation ->
+                    document[aggregation.name] = getAggregationValue(aggregation, mappedTargetDateFields)
+                }
 
                 val indexRequest = IndexRequest(transform.targetIndex)
                     .id(hashedId)
@@ -371,16 +387,14 @@ class TransformSearchService(
             return BucketSearchResult(modifiedBuckets, aggs.afterKey(), searchResponse.took.millis)
         }
 
-        private fun getAggregationValue(aggregation: Aggregation): Any {
+        private fun getAggregationValue(aggregation: Aggregation, mappedTargetDateFields: Map<String, Any>): Any {
             return when (aggregation) {
                 is InternalSum, is InternalMin, is InternalMax, is InternalAvg, is InternalValueCount -> {
                     val agg = aggregation as NumericMetricsAggregation.SingleValue
-                    // If value and value_as_string differs (ie. for date fields), transform should be aware of
-                    if (agg.value().toString() == agg.valueAsString) {
+                    if (mappedTargetDateFields.isEmpty() || !mappedTargetDateFields.containsKey(agg.name)) {
                         agg.value()
                     } else {
-                        // example of agg - {"min_timestamp":{"value":1.662856742912E12,"value_as_string":"2022-09-11T00:39:02.912Z"}}
-                        agg.convertToMap()[agg.name] ?: agg.value()
+                        formatMillis(agg.value().toLong())
                     }
                 }
                 is Percentiles -> {

@@ -53,6 +53,7 @@ object TransformRunner :
     private lateinit var transformSearchService: TransformSearchService
     private lateinit var transformIndexer: TransformIndexer
     private lateinit var transformValidator: TransformValidator
+    private lateinit var targetIndexMappingService: TargetIndexMappingService
     private lateinit var threadPool: ThreadPool
 
     fun initialize(
@@ -66,12 +67,14 @@ object TransformRunner :
     ): TransformRunner {
         this.clusterService = clusterService
         this.client = client
+        this.targetIndexMappingService = TargetIndexMappingService(client)
         this.xContentRegistry = xContentRegistry
         this.settings = settings
         this.transformSearchService = TransformSearchService(settings, clusterService, client)
         this.transformMetadataService = TransformMetadataService(client, xContentRegistry)
-        this.transformIndexer = TransformIndexer(settings, clusterService, client, TargetIndexMappingService(client))
+        this.transformIndexer = TransformIndexer(settings, clusterService, client, targetIndexMappingService)
         this.transformValidator = TransformValidator(indexNameExpressionResolver, clusterService, client, settings, jvmService)
+
         this.threadPool = threadPool
         return this
     }
@@ -108,7 +111,13 @@ object TransformRunner :
         val transformProcessedBucketLog = TransformProcessedBucketLog()
         var bucketsToTransform = BucketsToTransform(HashSet(), metadata)
 
-        val transformContext = TransformContext(TransformLockManager(transform, context))
+        // If date was used in term query generate target date field mapping and store it in transform context
+        val targetDateFieldMapping = targetIndexMappingService.getTargetMappingsForDates(transform)
+        val transformContext = TransformContext(
+            TransformLockManager(transform, context),
+            targetDateFieldMapping
+        )
+
         // Acquires the lock if there is no running job execution for the given transform; Lock is acquired per transform
         val transformLockManager = transformContext.transformLockManager
         transformLockManager.acquireLockForScheduledJob()
