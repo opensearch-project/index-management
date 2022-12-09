@@ -68,11 +68,11 @@ class ValidateRolloverIT : IndexStateManagementRestTestCase() {
             val data = getExplainValidationResult(index1)
             assertEquals(
                 "Index rollover validation status is pass.",
-                Validate.ValidationStatus.PASSED, data?.validationStatus
+                Validate.ValidationStatus.PASSED, data.validationStatus
             )
             assertEquals(
                 "Index rollover validation message is skipped rollover",
-                ValidateRollover.getSkipRolloverMessage(index1), data?.validationMessage
+                ValidateRollover.getSkipRolloverMessage(index1), data.validationMessage
             )
         }
     }
@@ -115,11 +115,11 @@ class ValidateRolloverIT : IndexStateManagementRestTestCase() {
             val data = getExplainValidationResult(index1)
             assertEquals(
                 "Index rollover validation status is PASSED.",
-                Validate.ValidationStatus.PASSED, data?.validationStatus
+                Validate.ValidationStatus.PASSED, data.validationStatus
             )
             assertEquals(
                 "Index rollover validation message is already rolled over",
-                ValidateRollover.getAlreadyRolledOverMessage(index1, aliasName), data?.validationMessage
+                ValidateRollover.getAlreadyRolledOverMessage(index1, aliasName), data.validationMessage
             )
         }
         assertTrue("New rollover index does not exist.", indexExists("$indexNameBase-000002"))
@@ -159,11 +159,11 @@ class ValidateRolloverIT : IndexStateManagementRestTestCase() {
             val data = getExplainValidationResult(index1)
             assertEquals(
                 "Index rollover validation status is RE_VALIDATING",
-                Validate.ValidationStatus.RE_VALIDATING, data?.validationStatus
+                Validate.ValidationStatus.RE_VALIDATING, data.validationStatus
             )
             assertEquals(
                 "Index rollover validation message is no alias index setting",
-                ValidateRollover.getFailedNoValidAliasMessage(index1), data?.validationMessage
+                ValidateRollover.getFailedNoValidAliasMessage(index1), data.validationMessage
             )
         }
     }
@@ -207,11 +207,11 @@ class ValidateRolloverIT : IndexStateManagementRestTestCase() {
             val data = getExplainValidationResult(index1)
             assertEquals(
                 "Index rollover validation status is RE_VALIDATING.",
-                Validate.ValidationStatus.RE_VALIDATING, data?.validationStatus
+                Validate.ValidationStatus.RE_VALIDATING, data.validationStatus
             )
             assertEquals(
                 "Index rollover validation message is not write index",
-                ValidateRollover.getFailedWriteIndexMessage(index1), data?.validationMessage
+                ValidateRollover.getFailedWriteIndexMessage(index1), data.validationMessage
             )
         }
     }

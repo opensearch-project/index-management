@@ -63,7 +63,7 @@ class ValidateReplicaCountIT : IndexStateManagementRestTestCase() {
             assertEquals(
                 "Index replica_count action validation status is PASSED.",
                 Validate.ValidationStatus.PASSED,
-                data?.validationStatus
+                data.validationStatus
             )
         }
     }

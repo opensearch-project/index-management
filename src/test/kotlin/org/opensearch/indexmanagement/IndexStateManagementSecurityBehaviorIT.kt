@@ -52,10 +52,6 @@ class IndexStateManagementSecurityBehaviorIT : SecurityRestTestCase() {
     private val testRole = "test_role"
     var testClient: RestClient? = null
 
-    override fun preserveIndicesUponCompletion(): Boolean {
-        return true
-    }
-
     @Before
     fun setupUsersAndRoles() {
         updateClusterSetting(ManagedIndexSettings.JITTER.key, "0.0", false)

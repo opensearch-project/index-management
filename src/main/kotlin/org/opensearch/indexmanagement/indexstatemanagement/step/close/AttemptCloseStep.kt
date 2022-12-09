@@ -44,7 +44,7 @@ class AttemptCloseStep : Step(name) {
         } catch (e: RemoteTransportException) {
             val cause = ExceptionsHelper.unwrapCause(e)
             if (cause is SnapshotInProgressException) {
-                handleSnapshotException(indexName, cause as SnapshotInProgressException)
+                handleSnapshotException(indexName, cause)
             } else {
                 handleException(indexName, cause as Exception)
             }

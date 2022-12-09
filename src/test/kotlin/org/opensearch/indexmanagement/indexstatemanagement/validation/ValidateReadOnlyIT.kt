@@ -64,7 +64,7 @@ class ValidateReadOnlyIT : IndexStateManagementRestTestCase() {
             assertEquals(
                 "Index read cation validation status is PASSED.",
                 Validate.ValidationStatus.PASSED,
-                data?.validationStatus
+                data.validationStatus
             )
         }
     }

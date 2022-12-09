@@ -137,7 +137,6 @@ task ktlint(type: JavaExec, group: "verification") {
     classpath = configurations.ktlint
     args "src/**/*.kt", "spi/src/main/**/*.kt"
 }
-
 check.dependsOn ktlint
 
 task ktlintFormat(type: JavaExec, group: "formatting") {
@@ -153,6 +152,9 @@ detekt {
     config = files("detekt.yml")
     buildUponDefaultConfig = true
 }
+// When writing detekt Gradle first finds the extension with this name,
+// but with a string it should look for a task with that name instead
+check.dependsOn "detekt"
 
 configurations.testImplementation {
     exclude module: "securemock"
@@ -658,7 +660,14 @@ run {
     }
 }
 
-compileKotlin { kotlinOptions.freeCompilerArgs = ['-Xjsr305=strict'] }
+compileKotlin {
+    kotlinOptions.freeCompilerArgs = ['-Xjsr305=strict']
+    kotlinOptions.allWarningsAsErrors = true
+}
+
+compileTestKotlin {
+    kotlinOptions.allWarningsAsErrors = true
+}
 
 apply from: 'build-tools/pkgbuild.gradle'
 

@@ -22,5 +22,5 @@ interface State {
 
     suspend fun execute(context: SMStateMachine): Result
 
-    abstract class Result
+    interface Result
 }

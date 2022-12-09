@@ -178,7 +178,7 @@ data class ManagedIndexConfig(
                 policySeqNo = policySeqNo,
                 policyPrimaryTerm = policyPrimaryTerm,
                 policy = policy?.copy(
-                    id = policyID ?: NO_ID,
+                    id = policyID,
                     seqNo = policySeqNo ?: SequenceNumbers.UNASSIGNED_SEQ_NO,
                     primaryTerm = policyPrimaryTerm ?: SequenceNumbers.UNASSIGNED_PRIMARY_TERM
                 ),

@@ -5,7 +5,6 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.action
 
-import org.hamcrest.collection.IsMapContaining
 import org.opensearch.indexmanagement.indexstatemanagement.IndexStateManagementRestTestCase
 import org.opensearch.indexmanagement.indexstatemanagement.step.open.AttemptOpenStep
 import org.opensearch.indexmanagement.indexstatemanagement.step.rollover.AttemptRolloverStep
@@ -41,10 +40,10 @@ class ActionTimeoutIT : IndexStateManagementRestTestCase() {
         // the second execution we move into rollover action, we won't hit the timeout as this is the execution that sets the startTime
         updateManagedIndexConfigStartTime(managedIndexConfig)
         waitFor {
-            assertThat(
+            assertEquals(
                 "Should be attempting to rollover",
-                getExplainManagedIndexMetaData(indexName).info,
-                IsMapContaining.hasEntry("message", AttemptRolloverStep.getPendingMessage(indexName) as Any?)
+                getExplainManagedIndexMetaData(indexName).info?.get("message"),
+                AttemptRolloverStep.getPendingMessage(indexName)
             )
         }
 
@@ -72,8 +71,8 @@ class ActionTimeoutIT : IndexStateManagementRestTestCase() {
 
     // https://github.com/opendistro-for-elasticsearch/index-management/issues/130
     fun `test action timeout doesn't bleed over into next action`() {
-        val indexName = "${testIndexName}_index_1"
-        val policyID = "${testIndexName}_testPolicyName_1"
+        val indexName = "${testIndexName}_index_2"
+        val policyID = "${testIndexName}_testPolicyName_2"
         val testPolicy = """
         {"policy":{"description":"Default policy","default_state":"rolloverstate","states":[
         {"name":"rolloverstate","actions":[{"timeout": "5s","open":{}},{"timeout":"1s","rollover":{"min_doc_count":100}}],
@@ -110,10 +109,10 @@ class ActionTimeoutIT : IndexStateManagementRestTestCase() {
         // but there was a bug before where it would use the startTime from the previous actions metadata and immediately fail
         updateManagedIndexConfigStartTime(managedIndexConfig)
         waitFor {
-            assertThat(
+            assertEquals(
                 "Should be attempting to rollover",
-                getExplainManagedIndexMetaData(indexName).info,
-                IsMapContaining.hasEntry("message", AttemptRolloverStep.getPendingMessage(indexName) as Any?)
+                getExplainManagedIndexMetaData(indexName).info?.get("message"),
+                AttemptRolloverStep.getPendingMessage(indexName)
             )
         }
     }
