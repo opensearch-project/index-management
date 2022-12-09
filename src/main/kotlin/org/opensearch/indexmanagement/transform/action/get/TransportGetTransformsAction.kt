@@ -76,6 +76,7 @@ class TransportGetTransformsAction @Inject constructor(
             .sort(sortField, SortOrder.fromString(sortDirection))
 
         client.threadPool().threadContext.stashContext().use {
+            @Suppress("UNCHECKED_CAST")
             getJobs(
                 client,
                 searchSourceBuilder,

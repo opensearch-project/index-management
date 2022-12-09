@@ -68,12 +68,12 @@ class ValidateForceMergeIT : IndexStateManagementRestTestCase() {
             assertEquals(
                 "Index force_merge action validation status is RE_VALIDATING.",
                 Validate.ValidationStatus.PASSED,
-                data?.validationStatus
+                data.validationStatus
             )
             assertEquals(
                 "Index force_merge action validation status is RE_VALIDATING.",
                 ValidateForceMerge.getValidationPassedMessage(indexName),
-                data?.validationMessage
+                data.validationMessage
             )
         }
         waitFor {

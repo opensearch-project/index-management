@@ -10,6 +10,7 @@ import org.opensearch.ExceptionsHelper
 import org.opensearch.OpenSearchException
 import org.opensearch.action.support.WriteRequest
 import org.opensearch.action.support.master.AcknowledgedResponse
+import org.opensearch.client.Client
 import org.opensearch.index.engine.VersionConflictEngineException
 import org.opensearch.indexmanagement.indexstatemanagement.action.RollupAction
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
@@ -85,7 +86,7 @@ class AttemptCreateRollupJobStep(private val action: RollupAction) : Step(name) 
         logger.info("Attempting to re-start the job $rollupId")
         try {
             val startRollupRequest = StartRollupRequest(rollupId)
-            val response: AcknowledgedResponse = client.suspendUntil { execute(StartRollupAction.INSTANCE, startRollupRequest, it) }
+            client.suspendUntil<Client, AcknowledgedResponse> { execute(StartRollupAction.INSTANCE, startRollupRequest, it) }
             stepStatus = StepStatus.COMPLETED
             info = mapOf("message" to getSuccessRestartMessage(rollupId, indexName))
         } catch (e: Exception) {

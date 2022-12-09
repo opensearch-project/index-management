@@ -26,7 +26,7 @@ import java.util.concurrent.TimeUnit
 buildscript {
     ext {
         isSnapshot = "true" == System.getProperty("build.snapshot", "true")
-        opensearch_version = System.getProperty("opensearch.version", "2.4.0-SNAPSHOT")
+        opensearch_version = System.getProperty("opensearch.version", "2.4.1-SNAPSHOT")
         buildVersionQualifier = System.getProperty("build.version_qualifier", "")
         // 2.2.0-SNAPSHOT -> 2.2.0.0-SNAPSHOT
         version_tokens = opensearch_version.tokenize('-')
@@ -151,7 +151,6 @@ task ktlint(type: JavaExec, group: "verification") {
     classpath = configurations.ktlint
     args "src/**/*.kt", "spi/src/main/**/*.kt"
 }
-
 check.dependsOn ktlint
 
 task ktlintFormat(type: JavaExec, group: "formatting") {
@@ -159,12 +158,17 @@ task ktlintFormat(type: JavaExec, group: "formatting") {
     main = "com.pinterest.ktlint.Main"
     classpath = configurations.ktlint
     args "-F", "src/**/*.kt", "spi/src/main/**/*.kt"
+    // https://github.com/pinterest/ktlint/issues/1391
+    jvmArgs "--add-opens=java.base/java.lang=ALL-UNNAMED"
 }
 
 detekt {
     config = files("detekt.yml")
     buildUponDefaultConfig = true
 }
+// When writing detekt Gradle first finds the extension with this name,
+// but with a string it should look for a task with that name instead
+check.dependsOn "detekt"
 
 configurations.testImplementation {
     exclude module: "securemock"
@@ -812,7 +816,14 @@ run {
     }
 }
 
-compileKotlin { kotlinOptions.freeCompilerArgs = ['-Xjsr305=strict'] }
+compileKotlin {
+    kotlinOptions.freeCompilerArgs = ['-Xjsr305=strict']
+    kotlinOptions.allWarningsAsErrors = true
+}
+
+compileTestKotlin {
+    kotlinOptions.allWarningsAsErrors = true
+}
 
 apply from: 'build-tools/pkgbuild.gradle'
 

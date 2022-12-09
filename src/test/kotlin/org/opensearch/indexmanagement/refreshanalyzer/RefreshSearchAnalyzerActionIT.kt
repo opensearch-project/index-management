@@ -5,6 +5,7 @@
 
 package org.opensearch.indexmanagement.refreshanalyzer
 
+import org.junit.After
 import org.junit.Assume
 import org.junit.Before
 import org.opensearch.client.Request
@@ -21,6 +22,11 @@ import java.util.Locale
 
 class RefreshSearchAnalyzerActionIT : IndexManagementRestTestCase() {
     private val testIndexName = javaClass.simpleName.lowercase(Locale.ROOT)
+
+    @After
+    fun clearIndicesAfterEachTest() {
+        wipeAllIndices()
+    }
 
     @Before
     fun checkIfLocalCluster() {
@@ -167,7 +173,6 @@ class RefreshSearchAnalyzerActionIT : IndexManagementRestTestCase() {
     }
 
     companion object {
-
         fun writeToFile(filePath: String, contents: String) {
             val path = org.opensearch.common.io.PathUtils.get(filePath)
             Files.newBufferedWriter(path, Charset.forName("UTF-8")).use { writer -> writer.write(contents) }

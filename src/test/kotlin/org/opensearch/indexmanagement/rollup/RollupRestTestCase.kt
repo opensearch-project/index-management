@@ -11,6 +11,7 @@ import org.apache.http.entity.ContentType.APPLICATION_JSON
 import org.apache.http.entity.StringEntity
 import org.apache.http.message.BasicHeader
 import org.junit.AfterClass
+import org.junit.Before
 import org.opensearch.client.Response
 import org.opensearch.client.ResponseException
 import org.opensearch.client.RestClient
@@ -43,7 +44,8 @@ import java.time.Instant
 abstract class RollupRestTestCase : IndexManagementRestTestCase() {
 
     companion object {
-        @AfterClass @JvmStatic fun clearIndicesAfterClassCompletion() {
+        @AfterClass
+        @JvmStatic fun clearIndicesAfterClass() {
             wipeAllIndices()
         }
     }

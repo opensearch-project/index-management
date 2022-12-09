@@ -26,10 +26,6 @@ class SecurityBehaviorIT : SecurityRestTestCase() {
     private val john = "john"
     private var johnClient: RestClient? = null
 
-    override fun preserveIndicesUponCompletion(): Boolean {
-        return true
-    }
-
     @Before
     fun setupUsersAndRoles() {
         updateClusterSetting(ManagedIndexSettings.JITTER.key, "0.0", false)

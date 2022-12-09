@@ -66,6 +66,7 @@ fun getJobs(
     )
 }
 
+@Suppress("UNCHECKED_CAST")
 private fun populateResponse(
     jobType: String,
     jobs: List<Any>,

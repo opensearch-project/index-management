@@ -160,8 +160,10 @@ class ManagedIndexCoordinator(
         }
         clusterService.clusterSettings.addSettingsUpdateConsumer(METADATA_SERVICE_STATUS) {
             metadataServiceEnabled = it == 0
-            if (!metadataServiceEnabled) scheduledMoveMetadata?.cancel()
-            else initMoveMetadata()
+            if (!metadataServiceEnabled) {
+                logger.info("Canceling metadata moving job because of cluster setting update.")
+                scheduledMoveMetadata?.cancel()
+            } else initMoveMetadata()
         }
         clusterService.clusterSettings.addSettingsUpdateConsumer(TEMPLATE_MIGRATION_CONTROL) {
             templateMigrationEnabled = it >= 0L
@@ -202,8 +204,8 @@ class ManagedIndexCoordinator(
         // Instead of using a LocalNodeMasterListener to track cluster manager changes, this service will
         // track them here to avoid conditions where cluster manager listener events run after other
         // listeners that depend on what happened in the cluster manager listener
-        if (this.isClusterManager != event.localNodeMaster()) {
-            this.isClusterManager = event.localNodeMaster()
+        if (this.isClusterManager != event.localNodeClusterManager()) {
+            this.isClusterManager = event.localNodeClusterManager()
             if (this.isClusterManager) {
                 onClusterManager()
             } else {
@@ -215,7 +217,7 @@ class ManagedIndexCoordinator(
 
         if (event.isNewCluster) return
 
-        if (!event.localNodeMaster()) return
+        if (!event.localNodeClusterManager()) return
 
         if (!event.metadataChanged()) return
 
@@ -380,7 +382,7 @@ class ManagedIndexCoordinator(
     }
 
     /**
-     * Find a policy that has highest priority ism template with matching index pattern to the index and is created before index creation date. If
+     * Find a policy that has the highest priority ism template with matching index pattern to the index and is created before index creation date. If
      * the policy has user, ensure that the user can manage the index if not find the one that can.
      * */
     private suspend fun findMatchingPolicy(indexName: String, creationDate: Long, policies: List<Policy>): Policy? {
@@ -422,7 +424,7 @@ class ManagedIndexCoordinator(
             try {
                 val request = ManagedIndexRequest().indices(indexName)
                 withClosableContext(IndexManagementSecurityContext("ApplyPolicyOnIndexCreation", settings, threadPool.threadContext, policy.user)) {
-                    val response: AcknowledgedResponse = client.suspendUntil { execute(ManagedIndexAction.INSTANCE, request, it) }
+                    client.suspendUntil<Client, AcknowledgedResponse> { execute(ManagedIndexAction.INSTANCE, request, it) }
                 }
             } catch (e: OpenSearchSecurityException) {
                 logger.debug("Skipping applying policy ${policy.id} on $indexName as the policy user is missing permissions", e)
@@ -473,13 +475,13 @@ class ManagedIndexCoordinator(
         // If ISM is disabled return early
         if (!isIndexStateManagementEnabled()) return
 
-        // Do not setup background sweep if we're not the elected cluster manager node
-        if (!clusterService.state().nodes().isLocalNodeElectedMaster) return
+        // Do not set up background sweep if we're not the elected cluster manager node
+        if (!clusterService.state().nodes().isLocalNodeElectedClusterManager) return
 
         // Cancel existing background sweep
         scheduledFullSweep?.cancel()
 
-        // Setup an anti-entropy/self-healing background sweep, in case we fail to create a ManagedIndexConfig job
+        // Set up an anti-entropy/self-healing background sweep, in case we fail to create a ManagedIndexConfig job
         val scheduledSweep = Runnable {
             val elapsedTime = getFullSweepElapsedTime()
 
@@ -505,7 +507,7 @@ class ManagedIndexCoordinator(
     fun initMoveMetadata() {
         if (!metadataServiceEnabled) return
         if (!isIndexStateManagementEnabled()) return
-        if (!clusterService.state().nodes().isLocalNodeElectedMaster) return
+        if (!clusterService.state().nodes().isLocalNodeElectedClusterManager) return
         scheduledMoveMetadata?.cancel()
 
         if (metadataService.finishFlag) {
@@ -535,7 +537,7 @@ class ManagedIndexCoordinator(
     fun initTemplateMigration(enableSetting: Long) {
         if (!templateMigrationEnabled) return
         if (!isIndexStateManagementEnabled()) return
-        if (!clusterService.state().nodes().isLocalNodeElectedMaster) return
+        if (!clusterService.state().nodes().isLocalNodeElectedClusterManager) return
         scheduledTemplateMigration?.cancel()
 
         // if service has finished, re-enable it
@@ -657,8 +659,7 @@ class ManagedIndexCoordinator(
                 if (scrollIDsToClear.isNotEmpty()) {
                     val clearScrollRequest = ClearScrollRequest()
                     clearScrollRequest.scrollIds(scrollIDsToClear.toList())
-                    val clearScrollResponse: ClearScrollResponse =
-                        client.suspendUntil { execute(ClearScrollAction.INSTANCE, clearScrollRequest, it) }
+                    client.suspendUntil<Client, ClearScrollResponse> { execute(ClearScrollAction.INSTANCE, clearScrollRequest, it) }
                 }
             }
             return managedIndexUuids
@@ -693,7 +694,7 @@ class ManagedIndexCoordinator(
         val mRes: MultiGetResponse = client.suspendUntil { multiGet(mReq, it) }
         val responses = mRes.responses
         if (responses.first().isFailed) {
-            // config index may not initialised yet
+            // config index may not initialise yet
             logger.error("get managed-index failed: ${responses.first().failure.failure}")
             return result
         }
