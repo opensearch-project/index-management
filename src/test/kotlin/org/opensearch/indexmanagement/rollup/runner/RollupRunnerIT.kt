@@ -204,7 +204,7 @@ class RollupRunnerIT : RollupRestTestCase() {
             sourceIndex = indexName,
             targetIndex = "${indexName}_target",
             metadataID = null,
-            continuous = true
+            continuous = false
         )
 
         // Create source index
@@ -222,24 +222,31 @@ class RollupRunnerIT : RollupRestTestCase() {
         updateRollupStartTime(rollup)
 
         var previousRollupMetadata: RollupMetadata? = null
-        waitFor {
+        rollup = waitFor {
             val rollupJob = getRollup(rollupId = rollup.id)
             assertNotNull("Rollup job not found", rollupJob)
             assertNotNull("Rollup job doesn't have metadata set", rollupJob.metadataID)
+            assertFalse("Rollup job is still enabled", rollupJob.enabled)
 
             previousRollupMetadata = getRollupMetadata(rollupJob.metadataID!!)
             assertNotNull("Rollup metadata not found", previousRollupMetadata)
-            assertEquals("Unexpected metadata status", RollupMetadata.Status.INIT, previousRollupMetadata!!.status)
+            assertEquals("Unexpected metadata status", RollupMetadata.Status.FINISHED, previousRollupMetadata!!.status)
+            rollupJob
         }
-
         // Delete rollup metadata
         assertNotNull("Previous rollup metadata was not saved", previousRollupMetadata)
         deleteRollupMetadata(previousRollupMetadata!!.id)
 
-        // Update rollup start time to run second execution
+        // Enable rollup and Update start time to run second execution
+        client().makeRequest(
+            "PUT",
+            "$ROLLUP_JOBS_BASE_URI/${rollup.id}?if_seq_no=${rollup.seqNo}&if_primary_term=${rollup.primaryTerm}",
+            emptyMap(), rollup.copy(enabled = true, jobEnabledTime = Instant.now()).toHttpEntity()
+        )
+
         updateRollupStartTime(rollup)
 
-        waitFor() {
+        waitFor {
             val rollupJob = getRollup(rollupId = rollup.id)
             assertNotNull("Rollup job not found", rollupJob)
             assertNotNull("Rollup job doesn't have metadata set", rollupJob.metadataID)
@@ -861,16 +868,13 @@ class RollupRunnerIT : RollupRestTestCase() {
             assertNotNull("Rollup job doesn't have metadata set", rollupJob.metadataID)
             val rollupMetadata = getRollupMetadata(rollupJob.metadataID!!)
             assertEquals("Rollup is not finished", RollupMetadata.Status.FINISHED, rollupMetadata.status)
+            assertTrue("Rollup is not disabled", !rollupJob.enabled)
             rollupJob
         }
         var rollupMetadataID = startedRollup.metadataID!!
         var rollupMetadata = getRollupMetadata(rollupMetadataID)
         assertTrue("Did not process any doc during rollup", rollupMetadata.stats.documentsProcessed > 0)
 
-        // TODO Flaky: version conflict could happen here
-        //  From log diving, it seems to be a race condition coming from RollupRunner
-        //  (need more dive to understand rollup business logic)
-        //  There are indexRollup happened between get and enable
         // restart job
         client().makeRequest(
             "PUT",

@@ -26,6 +26,7 @@ import org.opensearch.indexmanagement.transform.action.index.IndexTransformReque
 import org.opensearch.indexmanagement.transform.action.index.IndexTransformResponse
 import org.opensearch.indexmanagement.transform.model.BucketsToTransform
 import org.opensearch.indexmanagement.transform.model.ContinuousTransformStats
+import org.opensearch.indexmanagement.transform.model.ShardNewDocuments
 import org.opensearch.indexmanagement.transform.model.Transform
 import org.opensearch.indexmanagement.transform.model.TransformMetadata
 import org.opensearch.indexmanagement.transform.model.initializeShardsToSearch
@@ -89,7 +90,11 @@ object TransformRunner :
                     if (job.metadataId == null) {
                         transform = updateTransform(job.copy(metadataId = metadata.id))
                     }
-                    executeJob(transform, metadata, context)
+                    if (job.continuous) {
+                        executeContinuousJob(transform, metadata, context)
+                    } else {
+                        executeSingleShotJob(transform, metadata, context)
+                    }
                 }
             } catch (e: Exception) {
                 logger.error("Failed to run job [${job.id}] because ${e.localizedMessage}", e)
@@ -97,15 +102,21 @@ object TransformRunner :
             }
         }
     }
-
+    /*
+    * 1. index stats request -> extract list of ShardNewDocuments: shardId, oldSeqNo, newSeqNo
+    * 2. Send N search requests to N shards. Maintain N running coroutines sending requests
+    * 3. Merge search results to bucket log and send message to recompute channelhistory
+    * 4. Recompute Engine - maintain M coroutines executing bucket recompute
+    * 5. on new ch msg: fetch maxPageSize buckets from bucket log and execute recompute
+    * */
     // TODO: Add circuit breaker checks - [cluster healthy, utilization within limit]
-    @Suppress("NestedBlockDepth", "ComplexMethod", "LongMethod", "ReturnCount")
+/*    @Suppress("NestedBlockDepth", "ComplexMethod", "LongMethod", "ReturnCount")
     private suspend fun executeJob(transform: Transform, metadata: TransformMetadata, context: JobExecutionContext) {
         var newGlobalCheckpoints: Map<ShardId, Long>? = null
         var newGlobalCheckpointTime: Instant? = null
         var currentMetadata = metadata
 
-        val transformProcessedBucketLog = TransformProcessedBucketLog()
+        val transformProcessedBucketLog = TransformBucketsStore()
         var bucketsToTransform = BucketsToTransform(HashSet(), metadata)
 
         val transformContext = TransformContext(TransformLockManager(transform, context))
@@ -149,11 +160,11 @@ object TransformRunner :
                                 // Filter out already processed buckets
                                 val modifiedBuckets = bucketsToTransform.modifiedBuckets.filter {
                                     transformProcessedBucketLog.isNotProcessed(it)
-                                }.toMutableSet()
+                                }
                                 // Recompute modified buckets and update them in targetIndex
                                 currentMetadata = recomputeModifiedBuckets(transform, currentMetadata, modifiedBuckets, transformContext)
                                 // Add processed buckets to 'processed set' so that we don't try to reprocess them again
-                                transformProcessedBucketLog.addBuckets(modifiedBuckets.toList())
+                                transformProcessedBucketLog.addBuckets(modifiedBuckets)
                                 // Update TransformMetadata
                                 currentMetadata = transformMetadataService.writeMetadata(currentMetadata, true)
                                 bucketsToTransform = bucketsToTransform.copy(metadata = currentMetadata)
@@ -190,6 +201,136 @@ object TransformRunner :
                     logger.info("Disabling the transform job ${transform.id}")
                     updateTransform(transform.copy(enabled = false, enabledAt = null))
                 }
+                transformLockManager.releaseLockForScheduledJob()
+            }
+        }
+    }
+*/
+    private suspend fun executeContinuousJob(transform: Transform, metadata: TransformMetadata, context: JobExecutionContext) {
+        var newGlobalCheckpoints: MutableMap<ShardId, Long>? = null
+        var newGlobalCheckpointTime: Instant? = null
+        var currentMetadata = metadata
+
+        var bucketsToTransform = BucketsToTransform(HashSet(), metadata)
+
+        val transformContext = TransformContext(TransformLockManager(transform, context))
+        // Acquires the lock if there is no running job execution for the given transform; Lock is acquired per transform
+        val transformLockManager = transformContext.transformLockManager
+        transformLockManager.acquireLockForScheduledJob()
+        try {
+            when {
+                transformLockManager.lock == null -> {
+                    logger.warn("Cannot acquire lock for transform job ${transform.id}")
+                    return
+                }
+                listOf(TransformMetadata.Status.STOPPED, TransformMetadata.Status.FINISHED).contains(metadata.status) -> {
+                    logger.warn("Transform job ${transform.id} is in ${metadata.status} status. Skipping execution")
+                    return
+                }
+                else -> {
+                    val validatedMetadata = validateTransform(transform, currentMetadata)
+                    if (validatedMetadata.status == TransformMetadata.Status.FAILED) {
+                        currentMetadata = validatedMetadata
+                        return
+                    }
+                    // Note the timestamp when we got the shard global checkpoints to the user may know what data is included
+                    newGlobalCheckpointTime = Instant.now()
+                    newGlobalCheckpoints = transformSearchService.getShardsGlobalCheckpoint(transform.sourceIndex)
+                    val shardsToSearch = bucketsToTransform.initializeShardsToSearch(
+                        metadata.shardIDToGlobalCheckpoint,
+                        newGlobalCheckpoints
+                    )
+                    val transformModifiedBucketsFetcher = TransformModifiedBucketsFetcher(
+                        client = client,
+                        shardNewDocumentsList = shardsToSearch as MutableList<ShardNewDocuments>,
+                        transform = transform,
+                        transformMetadata = currentMetadata,
+                        transformContext = transformContext,
+                        transformSearchService = transformSearchService,
+                        transformMetadataService = transformMetadataService
+                    )
+                    val (modifiedBuckets, failedShards, updatedMetadata) = transformModifiedBucketsFetcher.fetchAllModifiedBuckets()
+
+                    currentMetadata = updatedMetadata
+                    // remove all failed shards from checkpoint
+                    failedShards.forEach { newGlobalCheckpoints.remove(it) }
+                    // recompute modified buckets from scratch
+                    currentMetadata = recomputeModifiedBuckets(transform, currentMetadata, modifiedBuckets, transformContext)
+                    // we attempt to renew lock for every loop of transform
+                    transformLockManager.renewLockForScheduledJob()
+                }
+            }
+        } catch (e: Exception) {
+            logger.error("Failed to execute the transform job [${transform.id}] because of exception [${e.localizedMessage}]", e)
+            currentMetadata = currentMetadata.copy(
+                lastUpdatedAt = Instant.now(),
+                status = TransformMetadata.Status.FAILED,
+                failureReason = e.localizedMessage
+            )
+        } finally {
+            transformLockManager.lock?.let {
+                // Update the global checkpoints only after execution finishes successfully
+                if (currentMetadata.status != TransformMetadata.Status.FAILED) {
+                    currentMetadata = currentMetadata.copy(
+                        shardIDToGlobalCheckpoint = newGlobalCheckpoints,
+                        continuousStats = ContinuousTransformStats(newGlobalCheckpointTime, null)
+                    )
+                }
+                transformMetadataService.writeMetadata(currentMetadata, true)
+                if (currentMetadata.status == TransformMetadata.Status.FAILED) {
+                    logger.info("Disabling the transform job ${transform.id}")
+                    updateTransform(transform.copy(enabled = false, enabledAt = null))
+                }
+                transformLockManager.releaseLockForScheduledJob()
+            }
+        }
+    }
+
+    private suspend fun executeSingleShotJob(transform: Transform, metadata: TransformMetadata, context: JobExecutionContext) {
+        var currentMetadata = metadata
+
+        val transformContext = TransformContext(TransformLockManager(transform, context))
+        // Acquires the lock if there is no running job execution for the given transform; Lock is acquired per transform
+        val transformLockManager = transformContext.transformLockManager
+        transformLockManager.acquireLockForScheduledJob()
+        try {
+            do {
+                when {
+                    transformLockManager.lock == null -> {
+                        logger.warn("Cannot acquire lock for transform job ${transform.id}")
+                        return
+                    }
+                    listOf(TransformMetadata.Status.STOPPED, TransformMetadata.Status.FINISHED).contains(metadata.status) -> {
+                        logger.warn("Transform job ${transform.id} is in ${metadata.status} status. Skipping execution")
+                        return
+                    }
+                    else -> {
+                        val validatedMetadata = validateTransform(transform, currentMetadata)
+                        if (validatedMetadata.status == TransformMetadata.Status.FAILED) {
+                            currentMetadata = validatedMetadata
+                            return
+                        }
+                        // Computes buckets from source index and stores them in targetIndex as transform docs
+                        currentMetadata = computeBucketsIteration(transform, currentMetadata, transformContext)
+                        // Update TransformMetadata
+                        currentMetadata = transformMetadataService.writeMetadata(currentMetadata, true)
+                        // we attempt to renew lock for every loop of transform
+                        transformLockManager.renewLockForScheduledJob()
+                    }
+                }
+            } while (currentMetadata.afterKey != null)
+        } catch (e: Exception) {
+            logger.error("Failed to execute the transform job [${transform.id}] because of exception [${e.localizedMessage}]", e)
+            currentMetadata = currentMetadata.copy(
+                lastUpdatedAt = Instant.now(),
+                status = TransformMetadata.Status.FAILED,
+                failureReason = e.localizedMessage
+            )
+        } finally {
+            transformLockManager.lock?.let {
+                transformMetadataService.writeMetadata(currentMetadata, true)
+                logger.info("Disabling the transform job ${transform.id}")
+                updateTransform(transform.copy(enabled = false, enabledAt = null))
                 transformLockManager.releaseLockForScheduledJob()
             }
         }
@@ -290,26 +431,39 @@ object TransformRunner :
     private suspend fun recomputeModifiedBuckets(
         transform: Transform,
         metadata: TransformMetadata,
-        modifiedBuckets: MutableSet<Map<String, Any>>,
+        modifiedBuckets: List<Map<String, Any>>,
         transformContext: TransformContext
     ): TransformMetadata {
         val updatedMetadata = if (modifiedBuckets.isNotEmpty()) {
-            val transformSearchResult = withTransformSecurityContext(transform) {
-                transformSearchService.executeCompositeSearch(transform, null, modifiedBuckets, transformContext)
+            val maxPageSize = transformSearchService.getMaxRecomputePageSize(transform)
+            var currentMetadata = metadata
+            for (i in modifiedBuckets.indices step maxPageSize) {
+                val end =
+                    if (i + maxPageSize <= modifiedBuckets.size) i + maxPageSize
+                    else modifiedBuckets.size
+                val iterBuckets = modifiedBuckets.subList(
+                    i,
+                    end
+                )
+                val transformSearchResult = withTransformSecurityContext(transform) {
+                    transformSearchService.executeCompositeSearch(transform, null, iterBuckets, transformContext)
+                }
+                val indexTimeInMillis = withTransformSecurityContext(transform) {
+                    transformIndexer.index(transformSearchResult.docsToIndex)
+                }
+                val stats = transformSearchResult.stats
+                val updatedStats = stats.copy(
+                    pagesProcessed = if (transform.continuous) 0 else stats.pagesProcessed,
+                    indexTimeInMillis = stats.indexTimeInMillis + indexTimeInMillis,
+                    documentsIndexed = transformSearchResult.docsToIndex.size.toLong()
+                )
+                currentMetadata = currentMetadata.mergeStats(updatedStats).copy(
+                    lastUpdatedAt = Instant.now(),
+                    status = TransformMetadata.Status.STARTED
+                )
+                currentMetadata = transformMetadataService.writeMetadata(currentMetadata, true)
             }
-            val indexTimeInMillis = withTransformSecurityContext(transform) {
-                transformIndexer.index(transformSearchResult.docsToIndex)
-            }
-            val stats = transformSearchResult.stats
-            val updatedStats = stats.copy(
-                pagesProcessed = if (transform.continuous) 0 else stats.pagesProcessed,
-                indexTimeInMillis = stats.indexTimeInMillis + indexTimeInMillis,
-                documentsIndexed = transformSearchResult.docsToIndex.size.toLong()
-            )
-            metadata.mergeStats(updatedStats).copy(
-                lastUpdatedAt = Instant.now(),
-                status = TransformMetadata.Status.STARTED
-            )
+            currentMetadata
         } else metadata.copy(lastUpdatedAt = Instant.now(), status = TransformMetadata.Status.STARTED)
         return updatedMetadata
     }

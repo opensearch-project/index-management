@@ -14,6 +14,7 @@ import org.opensearch.action.admin.indices.stats.IndicesStatsRequest
 import org.opensearch.action.admin.indices.stats.IndicesStatsResponse
 import org.opensearch.action.bulk.BackoffPolicy
 import org.opensearch.action.index.IndexRequest
+import org.opensearch.action.search.MultiSearchRequestBuilder
 import org.opensearch.action.search.SearchRequest
 import org.opensearch.action.search.SearchResponse
 import org.opensearch.client.Client
@@ -43,10 +44,10 @@ import org.opensearch.indexmanagement.transform.opensearchapi.retryTransformSear
 import org.opensearch.indexmanagement.transform.settings.TransformSettings.Companion.TRANSFORM_JOB_SEARCH_BACKOFF_COUNT
 import org.opensearch.indexmanagement.transform.settings.TransformSettings.Companion.TRANSFORM_JOB_SEARCH_BACKOFF_MILLIS
 import org.opensearch.indexmanagement.transform.util.TransformContext
-import org.opensearch.indexmanagement.util.IndexUtils.Companion.LUCENE_MAX_CLAUSES
 import org.opensearch.indexmanagement.util.IndexUtils.Companion.ODFE_MAGIC_NULL
 import org.opensearch.indexmanagement.util.IndexUtils.Companion.hashToFixedSize
 import org.opensearch.rest.RestStatus
+import org.opensearch.search.SearchModule.INDICES_MAX_CLAUSE_COUNT_SETTING
 import org.opensearch.search.aggregations.Aggregation
 import org.opensearch.search.aggregations.bucket.composite.CompositeAggregation
 import org.opensearch.search.aggregations.bucket.composite.CompositeAggregationBuilder
@@ -78,15 +79,18 @@ class TransformSearchService(
     @Volatile private var backoffPolicy =
         BackoffPolicy.constantBackoff(TRANSFORM_JOB_SEARCH_BACKOFF_MILLIS.get(settings), TRANSFORM_JOB_SEARCH_BACKOFF_COUNT.get(settings))
 
+    @Volatile private var maxClauseCount = INDICES_MAX_CLAUSE_COUNT_SETTING.get(settings)
+
     init {
         clusterService.clusterSettings.addSettingsUpdateConsumer(TRANSFORM_JOB_SEARCH_BACKOFF_MILLIS, TRANSFORM_JOB_SEARCH_BACKOFF_COUNT) {
                 millis, count ->
             backoffPolicy = BackoffPolicy.constantBackoff(millis, count)
         }
+        maxClauseCount = INDICES_MAX_CLAUSE_COUNT_SETTING.get(settings)
     }
 
     @Suppress("RethrowCaughtException")
-    suspend fun getShardsGlobalCheckpoint(index: String): Map<ShardId, Long> {
+    suspend fun getShardsGlobalCheckpoint(index: String): MutableMap<ShardId, Long> {
         try {
             var retryAttempt = 1
             // Retry on standard retry fail statuses plus NOT_FOUND in case a shard routing entry isn't ready yet
@@ -123,7 +127,7 @@ class TransformSearchService(
     ): BucketSearchResult {
         try {
             var retryAttempt = 0
-            var pageSize = calculateMaxPageSize(transform)
+            var pageSize = transform.pageSize
             val searchStart = Instant.now().epochSecond
             val searchResponse = backoffPolicy.retryTransformSearch(logger, transformContext.transformLockManager) {
                 val pageSizeDecay = 2f.pow(retryAttempt++)
@@ -165,15 +169,15 @@ class TransformSearchService(
      *   Apache Lucene has maxClauses limit which we could trip during recomputing of modified buckets(continuous transform)
      *   due to trying to match too many bucket fields. To avoid this, we control how many buckets we recompute at a time(pageSize)
      */
-    private fun calculateMaxPageSize(transform: Transform): Int {
-        return minOf(transform.pageSize, LUCENE_MAX_CLAUSES / (transform.groups.size + 1))
+    fun getMaxRecomputePageSize(transform: Transform): Int {
+        return minOf(transform.pageSize, maxClauseCount / (transform.groups.size + 1))
     }
 
     @Suppress("RethrowCaughtException")
     suspend fun executeCompositeSearch(
         transform: Transform,
         afterKey: Map<String, Any>? = null,
-        modifiedBuckets: MutableSet<Map<String, Any>>? = null,
+        modifiedBuckets: List<Map<String, Any>>? = null,
         transformContext: TransformContext
     ): TransformSearchResult {
         try {
@@ -219,6 +223,22 @@ class TransformSearchService(
         }
     }
 
+    fun createMultiSearchRequestBuilder(
+        transform: Transform,
+        shardNewDocumentsList: List<ShardNewDocuments>,
+        transformContext: TransformContext,
+        afterKeyList: List<Map<String, Any>?>
+    ): MultiSearchRequestBuilder {
+        val searchRequestTimeoutInSeconds = transformContext.getMaxRequestTimeoutInSeconds()
+        val multiSearchRequestBuilder = client.prepareMultiSearch()
+        shardNewDocumentsList.forEachIndexed { index, currentShard ->
+            multiSearchRequestBuilder.add(
+                getShardLevelBucketsSearchRequest(transform, afterKeyList[index], transform.pageSize, currentShard, searchRequestTimeoutInSeconds)
+            )
+        }
+        return multiSearchRequestBuilder
+    }
+
     companion object {
         const val failedSearchErrorMessage = "Failed to search data in source indices"
         const val modifiedBucketsErrorMessage = "Failed to get the modified buckets in source indices"
@@ -230,7 +250,7 @@ class TransformSearchService(
             transform: Transform,
             afterKey: Map<String, Any>? = null,
             pageSize: Int,
-            modifiedBuckets: MutableSet<Map<String, Any>>? = null,
+            modifiedBuckets: List<Map<String, Any>>? = null,
             timeoutInSeconds: Long? = null
         ): SearchRequest {
             val sources = mutableListOf<CompositeValuesSourceBuilder<*>>()
@@ -249,7 +269,7 @@ class TransformSearchService(
 
         private fun getQueryWithModifiedBuckets(
             originalQuery: QueryBuilder,
-            modifiedBuckets: MutableSet<Map<String, Any>>,
+            modifiedBuckets: List<Map<String, Any>>,
             groups: List<Dimension>
         ): QueryBuilder {
             val query: BoolQueryBuilder = QueryBuilders.boolQuery().must(originalQuery).minimumShouldMatch(1)
@@ -304,7 +324,7 @@ class TransformSearchService(
             return request
         }
 
-        private fun getShardLevelBucketsSearchRequest(
+        fun getShardLevelBucketsSearchRequest(
             transform: Transform,
             afterKey: Map<String, Any>? = null,
             pageSize: Int,
@@ -333,7 +353,7 @@ class TransformSearchService(
             transform: Transform,
             searchResponse: SearchResponse,
             waterMarkDocuments: Boolean = true,
-            modifiedBuckets: MutableSet<Map<String, Any>>? = null
+            modifiedBuckets: List<Map<String, Any>>? = null
         ): TransformSearchResult {
             val aggs = searchResponse.aggregations.get(transform.id) as CompositeAggregation
             val buckets = if (modifiedBuckets != null) aggs.buckets.filter { modifiedBuckets.contains(it.key) } else aggs.buckets
@@ -361,7 +381,7 @@ class TransformSearchService(
         }
 
         // Gathers and returns from the bucket search response the modified buckets from the query, the afterkey, and the search time
-        private fun convertBucketSearchResponse(
+        fun convertBucketSearchResponse(
             transform: Transform,
             searchResponse: SearchResponse
         ): BucketSearchResult {
@@ -392,7 +412,7 @@ class TransformSearchService(
             }
         }
 
-        fun convertIndicesStatsResponse(response: IndicesStatsResponse): Map<ShardId, Long> {
+        fun convertIndicesStatsResponse(response: IndicesStatsResponse): MutableMap<ShardId, Long> {
             val shardStats = HashMap<ShardId, Long>()
             val shardsToSearch = response.shards.filter { it.shardRouting.primary() && it.shardRouting.active() }
             for (shard in shardsToSearch) {

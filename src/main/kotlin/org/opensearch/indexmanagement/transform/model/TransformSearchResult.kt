@@ -20,12 +20,8 @@ data class BucketsToTransform(
 fun BucketsToTransform.initializeShardsToSearch(
     originalGlobalCheckpoints: Map<ShardId, Long>?,
     currentShardIdToGlobalCheckpoint: Map<ShardId, Long>
-): BucketsToTransform {
-    val shardsToSearch = getShardsToSearch(originalGlobalCheckpoints, currentShardIdToGlobalCheckpoint).iterator()
-    return this.copy(
-        shardsToSearch = shardsToSearch,
-        currentShard = if (shardsToSearch.hasNext()) shardsToSearch.next() else null
-    )
+): List<ShardNewDocuments> {
+    return getShardsToSearch(originalGlobalCheckpoints, currentShardIdToGlobalCheckpoint)
 }
 
 // Processes through the old and new maps of sequence numbers to generate a list of objects with the shardId and the seq numbers to search
