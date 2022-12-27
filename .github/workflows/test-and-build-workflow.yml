@@ -30,8 +30,9 @@ jobs:
     steps:
       # This step uses the setup-java Github action: https://github.com/actions/setup-java
       - name: Set Up JDK ${{ matrix.java }}
-        uses: actions/setup-java@v1
+        uses: actions/setup-java@v2
         with:
+          distribution: temurin # Temurin is a distribution of adoptium
           java-version: ${{ matrix.java }}
       # build index management
       - name: Checkout Branch

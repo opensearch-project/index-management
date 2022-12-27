@@ -627,7 +627,10 @@ task integTestRemote(type: RestIntegTestTask)  {
     exclude 'org/opensearch/indexmanagement/indexstatemanagement/action/SnapshotActionIT.class'
 }
 
-String bwcVersion = "1.13.2.0"
+// === Set up BWC tests ===
+
+String bwcVersionShort = "2.4.0"
+String bwcVersion = bwcVersionShort + ".0"
 String bwcJobSchedulerVersion = "1.13.0.0"
 String baseName = "indexmanagementBwcCluster"
 String bwcFilePath = "src/test/resources/bwc/"
@@ -635,20 +638,20 @@ String bwc_js_resource_location = bwcFilePath + "job-scheduler/" + bwcJobSchedul
 String bwc_im_resource_location = bwcFilePath + "indexmanagement/" + bwcVersion
 
 // Downloads the bwc job scheduler version
-String bwc_js_download_url = "https://github.com/opendistro-for-elasticsearch/job-scheduler/releases/download/v" +
-        bwcJobSchedulerVersion + "/job-scheduler-artifacts.zip"
+String bwc_js_download_url = 'https://ci.opensearch.org/ci/dbc/distribution-build-opensearch/' + bwcVersionShort + '/latest/linux/x64/tar/builds/' +
+        'opensearch/plugins/opensearch-job-scheduler-' + bwcVersion + '.zip'
 getPluginResource(bwc_js_resource_location, bwc_js_download_url)
 
 // Downloads the bwc index management version
-String bwc_im_download_url = "https://github.com/opendistro-for-elasticsearch/index-management/releases/download/v" +
-        bwcVersion + "/index-management-artifacts.zip"
+String bwc_im_download_url = 'https://ci.opensearch.org/ci/dbc/distribution-build-opensearch/' + bwcVersionShort + '/latest/linux/x64/tar/builds/' +
+        'opensearch/plugins/opensearch-index-management-' + bwcVersion + '.zip'
 getPluginResource(bwc_im_resource_location, bwc_im_download_url)
 
 2.times {i ->
     testClusters {
         "${baseName}$i" {
             testDistribution = "ARCHIVE"
-            versions = ["7.10.2", opensearch_version]
+            versions = [bwcVersionShort, opensearch_version]
             numberOfNodes = 3
             plugin(provider(new Callable<RegularFile>(){
                 @Override
@@ -804,6 +807,8 @@ task bwcTestSuite(type: StandaloneRestIntegTestTask) {
     dependsOn tasks.named("${baseName}#rollingUpgradeClusterTask")
     dependsOn tasks.named("${baseName}#fullRestartClusterTask")
 }
+
+// === End of BWC tests ===
 
 run {
     useCluster project.testClusters.integTest
