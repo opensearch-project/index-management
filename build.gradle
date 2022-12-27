@@ -31,6 +31,7 @@ buildscript {
         // 2.2.0-SNAPSHOT -> 2.2.0.0-SNAPSHOT
         version_tokens = opensearch_version.tokenize('-')
         opensearch_build = version_tokens[0] + '.0'
+
         job_scheduler_no_snapshot = opensearch_build
         notifications_no_snapshot = opensearch_build
         security_no_snapshot = opensearch_build
@@ -43,14 +44,16 @@ buildscript {
             opensearch_build += "-SNAPSHOT"
         }
         opensearch_no_snapshot = opensearch_version.replace("-SNAPSHOT","")
-        job_scheduler_resource_folder = "src/test/resources/job-scheduler"
 
-        notifications_resource_folder = "src/test/resources/notifications"
-        notifications_core_resource_folder = "src/test/resources/notifications-core"
         common_utils_version = System.getProperty("common_utils.version", opensearch_build)
+
+        job_scheduler_resource_folder = "src/test/resources/job-scheduler"
         job_scheduler_version = System.getProperty("job_scheduler_version.version", opensearch_build)
         job_scheduler_build_download = 'https://ci.opensearch.org/ci/dbc/distribution-build-opensearch/' + opensearch_no_snapshot +
                 '/latest/linux/x64/tar/builds/opensearch/plugins/opensearch-job-scheduler-' + job_scheduler_no_snapshot + '.zip'
+
+        notifications_resource_folder = "src/test/resources/notifications"
+        notifications_core_resource_folder = "src/test/resources/notifications-core"
         notifications_version = System.getProperty("notifications.version", opensearch_build)
         notifications_build_download = 'https://ci.opensearch.org/ci/dbc/distribution-build-opensearch/' + opensearch_no_snapshot +
                 '/latest/linux/x64/tar/builds/opensearch/plugins/opensearch-notifications-' + notifications_no_snapshot + '.zip'
@@ -324,6 +327,9 @@ test {
 }
 
 ext.getPluginResource = { download_to_folder, download_from_src ->
+    if (new File("$project.rootDir/$download_to_folder").exists()) {
+        project.delete(files("$project.rootDir/$download_to_folder"))
+    }
     project.mkdir download_to_folder
     ant.get(src: download_from_src,
             dest: download_to_folder,
@@ -355,14 +361,15 @@ testClusters.integTest {
             return new RegularFile() {
                 @Override
                 File getAsFile() {
-                    if (new File("$project.rootDir/$job_scheduler_resource_folder").exists()) {
-                        project.delete(files("$project.rootDir/$job_scheduler_resource_folder"))
-                    }
-                    project.mkdir job_scheduler_resource_folder
-                    ant.get(src: job_scheduler_build_download,
-                            dest: job_scheduler_resource_folder,
-                            httpusecaches: false)
-                    return fileTree(job_scheduler_resource_folder).getSingleFile()
+                    return getPluginResource(job_scheduler_resource_folder, job_scheduler_build_download)
+                    // if (new File("$project.rootDir/$job_scheduler_resource_folder").exists()) {
+                    //     project.delete(files("$project.rootDir/$job_scheduler_resource_folder"))
+                    // }
+                    // project.mkdir job_scheduler_resource_folder
+                    // ant.get(src: job_scheduler_build_download,
+                    //         dest: job_scheduler_resource_folder,
+                    //         httpusecaches: false)
+                    // return fileTree(job_scheduler_resource_folder).getSingleFile()
                 }
             }
         }
@@ -374,14 +381,15 @@ testClusters.integTest {
             return new RegularFile() {
                 @Override
                 File getAsFile() {
-                    if (new File("$project.rootDir/$notifications_core_resource_folder").exists()) {
-                        project.delete(files("$project.rootDir/$notifications_core_resource_folder"))
-                    }
-                    project.mkdir notifications_core_resource_folder
-                    ant.get(src: notifications_core_build_download,
-                            dest: notifications_core_resource_folder,
-                            httpusecaches: false)
-                    return fileTree(notifications_core_resource_folder).getSingleFile()
+                    return getPluginResource(notifications_core_resource_folder, notifications_core_build_download)
+                    // if (new File("$project.rootDir/$notifications_core_resource_folder").exists()) {
+                    //     project.delete(files("$project.rootDir/$notifications_core_resource_folder"))
+                    // }
+                    // project.mkdir notifications_core_resource_folder
+                    // ant.get(src: notifications_core_build_download,
+                    //         dest: notifications_core_resource_folder,
+                    //         httpusecaches: false)
+                    // return fileTree(notifications_core_resource_folder).getSingleFile()
                 }
             }
         }
@@ -393,14 +401,15 @@ testClusters.integTest {
             return new RegularFile() {
                 @Override
                 File getAsFile() {
-                    if (new File("$project.rootDir/$notifications_resource_folder").exists()) {
-                        project.delete(files("$project.rootDir/$notifications_resource_folder"))
-                    }
-                    project.mkdir notifications_resource_folder
-                    ant.get(src: notifications_build_download,
-                            dest: notifications_resource_folder,
-                            httpusecaches: false)
-                    return fileTree(notifications_resource_folder).getSingleFile()
+                    return getPluginResource(notifications_resource_folder, notifications_build_download)
+                    // if (new File("$project.rootDir/$notifications_resource_folder").exists()) {
+                    //     project.delete(files("$project.rootDir/$notifications_resource_folder"))
+                    // }
+                    // project.mkdir notifications_resource_folder
+                    // ant.get(src: notifications_build_download,
+                    //         dest: notifications_resource_folder,
+                    //         httpusecaches: false)
+                    // return fileTree(notifications_resource_folder).getSingleFile()
                 }
             }
         }
