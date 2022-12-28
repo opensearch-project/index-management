@@ -59,7 +59,7 @@ buildscript {
 
         kotlin_version = System.getProperty("kotlin.version", "1.6.10")
 
-        security_plugin_version = System.getProperty("security.version", security_no_snapshot)
+        security_plugin_version = System.getProperty("security.version", opensearch_build)
     }
 
     repositories {
