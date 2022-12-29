@@ -21,13 +21,9 @@ jobs:
       # index-management
       - name: Checkout Branch
         uses: actions/checkout@v2
-      - name: Start cluster with security plugin
-        run: |
-          ./gradlew run -Dsecurity=true &
-          sleep 120
       - name: Run integration tests
         run: | 
-          ./gradlew integTestRemote -Dsecurity=true -Dhttps=true -Dtests.rest.cluster="localhost:9200" -Dtests.cluster="localhost:9200" -Dtests.clustername="integTest" -Duser=admin -Dpassword=admin
+          ./gradlew integTest -Dsecurity=true -Dhttps=true
       - name: Upload failed logs
         uses: actions/upload-artifact@v2
         if: failure()
