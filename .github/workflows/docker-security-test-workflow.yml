@@ -19,7 +19,7 @@ jobs:
       - name: Checkout Branch
         uses: actions/checkout@v2
       - name: Build Index Management
-        run: ./gradlew assemble -Dbuild.snapshot=false
+        run: ./gradlew assemble
       - name: Pull and Run Docker
         run: |
           plugin=`basename $(ls build/distributions/*.zip)`
