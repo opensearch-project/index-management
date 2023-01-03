@@ -18,8 +18,10 @@ import java.io.InputStreamReader
 import java.nio.charset.Charset
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
+import java.util.Locale
 
 class RefreshSearchAnalyzerActionIT : IndexManagementRestTestCase() {
+    private val testIndexName = javaClass.simpleName.lowercase(Locale.ROOT)
 
     @After
     fun clearIndicesAfterEachTest() {
@@ -34,7 +36,7 @@ class RefreshSearchAnalyzerActionIT : IndexManagementRestTestCase() {
     fun `test index time analyzer`() {
         val buildDir = System.getProperty("buildDir")
         val numNodes = System.getProperty("cluster.number_of_nodes", "1").toInt()
-        val indexName = "testindex"
+        val indexName = "${testIndexName}_index_1"
 
         for (i in 0 until numNodes) {
             writeToFile("$buildDir/testclusters/integTest-$i/config/pacman_synonyms.txt", "hello, hola")
@@ -80,7 +82,7 @@ class RefreshSearchAnalyzerActionIT : IndexManagementRestTestCase() {
     fun `test search time analyzer`() {
         val buildDir = System.getProperty("buildDir")
         val numNodes = System.getProperty("cluster.number_of_nodes", "1").toInt()
-        val indexName = "testindex"
+        val indexName = "${testIndexName}_index_2"
 
         for (i in 0 until numNodes) {
             writeToFile("$buildDir/testclusters/integTest-$i/config/pacman_synonyms.txt", "hello, hola")
@@ -124,7 +126,7 @@ class RefreshSearchAnalyzerActionIT : IndexManagementRestTestCase() {
     }
 
     fun `test alias`() {
-        val indexName = "testindex"
+        val indexName = "${testIndexName}_index_3"
         val numNodes = System.getProperty("cluster.number_of_nodes", "1").toInt()
         val buildDir = System.getProperty("buildDir")
         val aliasName = "test"
