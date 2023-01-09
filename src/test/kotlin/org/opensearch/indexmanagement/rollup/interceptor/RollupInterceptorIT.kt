@@ -1707,7 +1707,7 @@ class RollupInterceptorIT : RollupRestTestCase() {
             client().makeRequest("POST", "/$targetIndex/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
             fail("search should've failed due to incorrect query")
         } catch (e: ResponseException) {
-            assertTrue("The query_string query wasn't invalid", e.message!!.contains("The query_string query is invalid"))
+            assertTrue("The query_string query field check failed!", e.message!!.contains("Could not find a rollup job that can answer this query because [missing field unknown_field]"))
         }
     }
 }
