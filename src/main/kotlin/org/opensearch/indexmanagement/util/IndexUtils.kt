@@ -193,5 +193,65 @@ class IndexUtils {
             val byteArray = ByteBuffer.allocate(BYTE_ARRAY_SIZE).putLong(hash.h1).putLong(hash.h2).array()
             return Base64.getUrlEncoder().withoutPadding().encodeToString(byteArray)
         }
+
+        fun isDataStream(name: String?, clusterState: ClusterState): Boolean {
+            return clusterState.metadata.dataStreams().containsKey(name)
+        }
+
+        fun isAlias(indexName: String?, clusterState: ClusterState): Boolean {
+            return clusterState.metadata.hasAlias(indexName)
+        }
+
+        fun getWriteIndex(indexName: String?, clusterState: ClusterState): String? {
+            if (isAlias(indexName, clusterState) || isDataStream(indexName, clusterState)) {
+                val writeIndexMetadata = clusterState.metadata
+                    .indicesLookup[indexName]!!.writeIndex
+                if (writeIndexMetadata != null) {
+                    return writeIndexMetadata.index.name
+                }
+            }
+            return null
+        }
+
+        fun getNewestIndexByCreationDate(concreteIndices: Array<String>, clusterState: ClusterState): String {
+            val lookup = clusterState.metadata.indicesLookup
+            var maxCreationDate = Long.MIN_VALUE
+            var newestIndex: String = concreteIndices[0]
+            for (indexName in concreteIndices) {
+                val index = lookup[indexName]
+                val indexMetadata = clusterState.metadata.index(indexName)
+                if (index != null && index.type == IndexAbstraction.Type.CONCRETE_INDEX) {
+                    if (indexMetadata.creationDate > maxCreationDate) {
+                        maxCreationDate = indexMetadata.creationDate
+                        newestIndex = indexName
+                    }
+                }
+            }
+            return newestIndex
+        }
+
+        fun isConcreteIndex(indexName: String?, clusterState: ClusterState): Boolean {
+            return clusterState.metadata
+                .indicesLookup[indexName]!!.type == IndexAbstraction.Type.CONCRETE_INDEX
+        }
+
+        fun getConcreteIndex(indexName: String, concreteIndices: Array<String>, clusterState: ClusterState): String {
+
+            if (concreteIndices.isEmpty()) {
+                throw IllegalArgumentException("ConcreteIndices list can't be empty!")
+            }
+
+            var concreteIndexName: String
+            if (concreteIndices.size == 1 && isConcreteIndex(indexName, clusterState)) {
+                concreteIndexName = indexName
+            } else if (isAlias(indexName, clusterState) || isDataStream(indexName, clusterState)) {
+                concreteIndexName = getWriteIndex(indexName, clusterState)
+                    ?: getNewestIndexByCreationDate(concreteIndices, clusterState) //
+            } else {
+                concreteIndexName = getNewestIndexByCreationDate(concreteIndices, clusterState)
+            }
+
+            return concreteIndexName
+        }
     }
 }

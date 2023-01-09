@@ -1077,4 +1077,783 @@ class RollupInterceptorIT : RollupRestTestCase() {
             assertEquals("Unexpected status", RestStatus.BAD_REQUEST, e.response.restStatus())
         }
     }
+
+    fun `test roll up search query_string query`() {
+        val sourceIndex = "source_rollup_search_qsq_1"
+        val targetIndex = "target_rollup_qsq_search_1"
+
+        createSampleIndexForQSQTest(sourceIndex)
+
+        val rollup = Rollup(
+            id = "basic_query_string_query_rollup_search111",
+            enabled = true,
+            schemaVersion = 1L,
+            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+            jobLastUpdatedTime = Instant.now(),
+            jobEnabledTime = Instant.now(),
+            description = "basic search test",
+            sourceIndex = sourceIndex,
+            targetIndex = targetIndex,
+            metadataID = null,
+            roles = emptyList(),
+            pageSize = 10,
+            delay = 0,
+            continuous = false,
+            dimensions = listOf(
+                DateHistogram(sourceField = "event_ts", fixedInterval = "1h"),
+                Terms("state", "state"),
+                Terms("state_ext", "state_ext"),
+                Terms("state_ext2", "state_ext2"),
+                Terms("state_ordinal", "state_ordinal"),
+                Terms("abc test", "abc test"),
+            ),
+            metrics = listOf(
+                RollupMetrics(
+                    sourceField = "earnings", targetField = "earnings",
+                    metrics = listOf(
+                        Sum(), Min(), Max(),
+                        ValueCount(), Average()
+                    )
+                )
+            )
+        ).let { createRollup(it, it.id) }
+
+        updateRollupStartTime(rollup)
+
+        waitFor {
+            val rollupJob = getRollup(rollupId = rollup.id)
+            assertNotNull("Rollup job doesn't have metadata set", rollupJob.metadataID)
+            val rollupMetadata = getRollupMetadata(rollupJob.metadataID!!)
+            assertEquals("Rollup is not finished", RollupMetadata.Status.FINISHED, rollupMetadata.status)
+        }
+
+        refreshAllIndices()
+
+        // Term query
+        var req = """
+            {
+                "size": 0,
+                "query": {
+                    "query_string": {
+                        "query": "state:TX AND state_ext:CA AND 0",
+                        "default_field": "state_ordinal"
+                    }
+                    
+                },
+                "aggs": {
+                    "earnings_total": {
+                        "sum": {
+                            "field": "earnings"
+                        }
+                    }
+                }
+            }
+        """.trimIndent()
+        var rawRes = client().makeRequest("POST", "/$sourceIndex/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
+        assertTrue(rawRes.restStatus() == RestStatus.OK)
+        var rollupRes = client().makeRequest("POST", "/$targetIndex/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
+        assertTrue(rollupRes.restStatus() == RestStatus.OK)
+        var rawAggRes = rawRes.asMap()["aggregations"] as Map<String, Map<String, Any>>
+        var rollupAggRes = rollupRes.asMap()["aggregations"] as Map<String, Map<String, Any>>
+        assertEquals(
+            "Source and rollup index did not return same min results",
+            rawAggRes.getValue("earnings_total")["value"],
+            rollupAggRes.getValue("earnings_total")["value"]
+        )
+
+        // Fuzzy query
+        req = """
+            {
+                "size": 0,
+                "query": {
+                    "query_string": {
+                        "query": "state:TX~2"
+                    }
+                },
+                "aggs": {
+                    "earnings_total": {
+                        "sum": {
+                            "field": "earnings"
+                        }
+                    }
+                }
+            }
+        """.trimIndent()
+        rawRes = client().makeRequest("POST", "/$sourceIndex/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
+        assertTrue(rawRes.restStatus() == RestStatus.OK)
+        rollupRes = client().makeRequest("POST", "/$targetIndex/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
+        assertTrue(rollupRes.restStatus() == RestStatus.OK)
+        rawAggRes = rawRes.asMap()["aggregations"] as Map<String, Map<String, Any>>
+        rollupAggRes = rollupRes.asMap()["aggregations"] as Map<String, Map<String, Any>>
+        assertEquals(
+            "Source and rollup index did not return same min results",
+            rawAggRes.getValue("earnings_total")["value"],
+            rollupAggRes.getValue("earnings_total")["value"]
+        )
+        // Prefix query
+        req = """
+            {
+                "size": 0,
+                "query": {
+                    "query_string": {
+                        "query": "state:T*"
+                    }
+                },
+                "aggs": {
+                    "earnings_total": {
+                        "sum": {
+                            "field": "earnings"
+                        }
+                    }
+                }
+            }
+        """.trimIndent()
+        rawRes = client().makeRequest("POST", "/$sourceIndex/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
+        assertTrue(rawRes.restStatus() == RestStatus.OK)
+        rollupRes = client().makeRequest("POST", "/$targetIndex/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
+        assertTrue(rollupRes.restStatus() == RestStatus.OK)
+        rawAggRes = rawRes.asMap()["aggregations"] as Map<String, Map<String, Any>>
+        rollupAggRes = rollupRes.asMap()["aggregations"] as Map<String, Map<String, Any>>
+        assertEquals(
+            "Source and rollup index did not return same min results",
+            rawAggRes.getValue("earnings_total")["value"],
+            rollupAggRes.getValue("earnings_total")["value"]
+        )
+        // Regex query
+        req = """
+            {
+                "size": 0,
+                "query": {
+                    "query_string": {
+                        "query": "state:/[A-Z]T/"
+                    }
+                },
+                "aggs": {
+                    "earnings_total": {
+                        "sum": {
+                            "field": "earnings"
+                        }
+                    }
+                }
+            }
+        """.trimIndent()
+        rawRes = client().makeRequest("POST", "/$sourceIndex/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
+        assertTrue(rawRes.restStatus() == RestStatus.OK)
+        rollupRes = client().makeRequest("POST", "/$targetIndex/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
+        assertTrue(rollupRes.restStatus() == RestStatus.OK)
+        rawAggRes = rawRes.asMap()["aggregations"] as Map<String, Map<String, Any>>
+        rollupAggRes = rollupRes.asMap()["aggregations"] as Map<String, Map<String, Any>>
+        assertEquals(
+            "Source and rollup index did not return same min results",
+            rawAggRes.getValue("earnings_total")["value"],
+            rollupAggRes.getValue("earnings_total")["value"]
+        )
+        // Range query
+        req = """
+            {
+                "size": 0,
+                "query": {
+                    "query_string": {
+                        "query": "state_ordinal:[0 TO 10]"
+                    }
+                },
+                "aggs": {
+                    "earnings_total": {
+                        "sum": {
+                            "field": "earnings"
+                        }
+                    }
+                }
+            }
+        """.trimIndent()
+        rawRes = client().makeRequest("POST", "/$sourceIndex/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
+        assertTrue(rawRes.restStatus() == RestStatus.OK)
+        rollupRes = client().makeRequest("POST", "/$targetIndex/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
+        assertTrue(rollupRes.restStatus() == RestStatus.OK)
+        rawAggRes = rawRes.asMap()["aggregations"] as Map<String, Map<String, Any>>
+        rollupAggRes = rollupRes.asMap()["aggregations"] as Map<String, Map<String, Any>>
+        assertEquals(
+            "Source and rollup index did not return same min results",
+            rawAggRes.getValue("earnings_total")["value"],
+            rollupAggRes.getValue("earnings_total")["value"]
+        )
+        // Query with field prefix
+        req = """
+            {
+                "size": 0,
+                "query": {
+                    "query_string": {
+                        "query": "123",
+                        "default_field":"abc*"
+                    }
+                },
+                "aggs": {
+                    "earnings_total": {
+                        "sum": {
+                            "field": "earnings"
+                        }
+                    }
+                }
+            }
+        """.trimIndent()
+        rawRes = client().makeRequest("POST", "/$sourceIndex/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
+        assertTrue(rawRes.restStatus() == RestStatus.OK)
+        rollupRes = client().makeRequest("POST", "/$targetIndex/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
+        assertTrue(rollupRes.restStatus() == RestStatus.OK)
+        rawAggRes = rawRes.asMap()["aggregations"] as Map<String, Map<String, Any>>
+        rollupAggRes = rollupRes.asMap()["aggregations"] as Map<String, Map<String, Any>>
+        assertEquals(
+            "Source and rollup index did not return same min results",
+            rawAggRes.getValue("earnings_total")["value"],
+            rollupAggRes.getValue("earnings_total")["value"]
+        )
+
+        // Using ALL_MATCH_PATTERN for default_field but rollup job didn't include all fields
+        req = """
+            {
+                "size": 0,
+                "query": {
+                    "query_string": {
+                        "query": "state:TX AND state_ext:CA AND 12345",
+                        "default_field": "*"
+                    }
+                    
+                },
+                "aggs": {
+                    "earnings_total": {
+                        "sum": {
+                            "field": "earnings"
+                        }
+                    }
+                }
+            }
+        """.trimIndent()
+        try {
+            client().makeRequest("POST", "/$targetIndex/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
+        } catch (e: ResponseException) {
+            assertTrue(
+                e.message?.contains(
+                    "[missing terms grouping on earnings, missing terms grouping on event_ts, missing field test.vvv, missing field test.fff]"
+                ) ?: false
+            )
+        }
+
+        // Using ALL_MATCH_PATTERN in one of fields in "fields" array but rollup job didn't include all fields
+        req = """
+            {
+                "size": 0,
+                "query": {
+                    "query_string": {
+                        "query": "state:TX AND state_ext:CA AND 12345",
+                        "fields": ["state", "*"]
+                    }
+                    
+                },
+                "aggs": {
+                    "earnings_total": {
+                        "sum": {
+                            "field": "earnings"
+                        }
+                    }
+                }
+            }
+        """.trimIndent()
+        try {
+            client().makeRequest("POST", "/$targetIndex/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
+        } catch (e: ResponseException) {
+            assertTrue(
+                e.message?.contains(
+                    "[missing terms grouping on earnings, missing terms grouping on event_ts, missing field test.vvv, missing field test.fff]"
+                ) ?: false
+            )
+        }
+
+        // field from "fields" list is missing in rollup
+        req = """
+            {
+                "size": 0,
+                "query": {
+                    "query_string": {
+                        "query": "state:TX AND state_ext:CA AND 12345",
+                        "fields": ["test.fff"]
+                    }
+                    
+                },
+                "aggs": {
+                    "earnings_total": {
+                        "sum": {
+                            "field": "earnings"
+                        }
+                    }
+                }
+            }
+        """.trimIndent()
+        try {
+            client().makeRequest("POST", "/$targetIndex/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
+        } catch (e: ResponseException) {
+            assertTrue(e.message?.contains("[missing field test.fff]") ?: false)
+        }
+
+        // no fields or default_field present. Fallback on index setting [index.query.default_field] default value: "*"
+        req = """
+            {
+                "size": 0,
+                "query": {
+                    "query_string": {
+                        "query": "state:TX AND state_ext:CA AND 12345"
+                    }
+                    
+                },
+                "aggs": {
+                    "earnings_total": {
+                        "sum": {
+                            "field": "earnings"
+                        }
+                    }
+                }
+            }
+        """.trimIndent()
+        try {
+            client().makeRequest("POST", "/$targetIndex/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
+        } catch (e: ResponseException) {
+            assertTrue(
+                e.message?.contains(
+                    "[missing terms grouping on earnings, missing terms grouping on event_ts, missing field test.vvv, missing field test.fff]"
+                ) ?: false
+            )
+        }
+
+        // fallback on index settings index.query.default_field:state_ordinal
+        client().makeRequest(
+            "PUT", "$sourceIndex/_settings",
+            StringEntity(
+                """
+                {
+                    "index": {
+                        "query": {
+                            "default_field":"state_ordinal"
+                        }
+                    }
+                }
+                """.trimIndent(),
+                ContentType.APPLICATION_JSON
+            )
+        )
+        //
+        req = """
+            {
+                "size": 0,
+                "query": {
+                    "query_string": {
+                        "query": "state:TX AND state_ext:CA AND 7"
+                    }
+                    
+                },
+                "aggs": {
+                    "earnings_total": {
+                        "sum": {
+                            "field": "earnings"
+                        }
+                    }
+                }
+            }
+        """.trimIndent()
+        rawRes = client().makeRequest("POST", "/$sourceIndex/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
+        assertTrue(rawRes.restStatus() == RestStatus.OK)
+        rollupRes = client().makeRequest("POST", "/$targetIndex/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
+        assertTrue(rollupRes.restStatus() == RestStatus.OK)
+        rawAggRes = rawRes.asMap()["aggregations"] as Map<String, Map<String, Any>>
+        rollupAggRes = rollupRes.asMap()["aggregations"] as Map<String, Map<String, Any>>
+        assertEquals(
+            "Source and rollup index did not return same min results",
+            rawAggRes.getValue("earnings_total")["value"],
+            rollupAggRes.getValue("earnings_total")["value"]
+        )
+
+        // prefix pattern in "default_field" field
+        req = """
+            {
+                "size": 0,
+                "query": {
+                    "query_string": {
+                        "query": "TX AND CA",
+                        "default_field": "state_e*"
+                    }
+                    
+                },
+                "aggs": {
+                    "earnings_total": {
+                        "sum": {
+                            "field": "earnings"
+                        }
+                    }
+                }
+            }
+        """.trimIndent()
+        rawRes = client().makeRequest("POST", "/$sourceIndex/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
+        assertTrue(rawRes.restStatus() == RestStatus.OK)
+        rollupRes = client().makeRequest("POST", "/$targetIndex/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
+        assertTrue(rollupRes.restStatus() == RestStatus.OK)
+        rawAggRes = rawRes.asMap()["aggregations"] as Map<String, Map<String, Any>>
+        rollupAggRes = rollupRes.asMap()["aggregations"] as Map<String, Map<String, Any>>
+        assertEquals(
+            "Source and rollup index did not return same min results",
+            rawAggRes.getValue("earnings_total")["value"],
+            rollupAggRes.getValue("earnings_total")["value"]
+        )
+
+        // field with space in query:
+        req = """
+            {
+                "size": 0,
+                "query": {
+                    "query_string": {
+                        "query": "abc\\ test:123"
+                    }
+                    
+                },
+                "aggs": {
+                    "earnings_total": {
+                        "sum": {
+                            "field": "earnings"
+                        }
+                    }
+                }
+            }
+        """.trimIndent()
+        rawRes = client().makeRequest("POST", "/$sourceIndex/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
+        assertTrue(rawRes.restStatus() == RestStatus.OK)
+        rollupRes = client().makeRequest("POST", "/$targetIndex/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
+        assertTrue(rollupRes.restStatus() == RestStatus.OK)
+        rawAggRes = rawRes.asMap()["aggregations"] as Map<String, Map<String, Any>>
+        rollupAggRes = rollupRes.asMap()["aggregations"] as Map<String, Map<String, Any>>
+        assertEquals(
+            "Source and rollup index did not return same min results",
+            rawAggRes.getValue("earnings_total")["value"],
+            rollupAggRes.getValue("earnings_total")["value"]
+        )
+
+        // _exists_:field
+        req = """
+            {
+                "size": 0,
+                "query": {
+                    "query_string": {
+                        "query": "_exists_:abc\\ test"
+                    }
+                    
+                },
+                "aggs": {
+                    "earnings_total": {
+                        "sum": {
+                            "field": "earnings"
+                        }
+                    }
+                }
+            }
+        """.trimIndent()
+        rawRes = client().makeRequest("POST", "/$sourceIndex/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
+        assertTrue(rawRes.restStatus() == RestStatus.OK)
+        rollupRes = client().makeRequest("POST", "/$targetIndex/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
+        assertTrue(rollupRes.restStatus() == RestStatus.OK)
+        rawAggRes = rawRes.asMap()["aggregations"] as Map<String, Map<String, Any>>
+        rollupAggRes = rollupRes.asMap()["aggregations"] as Map<String, Map<String, Any>>
+        assertEquals(
+            "Source and rollup index did not return same min results",
+            rawAggRes.getValue("earnings_total")["value"],
+            rollupAggRes.getValue("earnings_total")["value"]
+        )
+    }
+
+    fun `test roll up search query_string query invalid query`() {
+        val sourceIndex = "source_rollup_search_qsq_2"
+        val targetIndex = "target_rollup_qsq_search_2"
+        generateNYCTaxiData(sourceIndex)
+        val rollup = Rollup(
+            id = "basic_query_string_query_rollup_search_2",
+            enabled = true,
+            schemaVersion = 1L,
+            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+            jobLastUpdatedTime = Instant.now(),
+            jobEnabledTime = Instant.now(),
+            description = "basic search test",
+            sourceIndex = sourceIndex,
+            targetIndex = targetIndex,
+            metadataID = null,
+            roles = emptyList(),
+            pageSize = 10,
+            delay = 0,
+            continuous = false,
+            dimensions = listOf(
+                DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "1h"),
+                Terms("RatecodeID", "RatecodeID"),
+                Terms("PULocationID", "PULocationID")
+            ),
+            metrics = listOf(
+                RollupMetrics(
+                    sourceField = "passenger_count", targetField = "passenger_count",
+                    metrics = listOf(
+                        Sum(), Min(), Max(),
+                        ValueCount(), Average()
+                    )
+                ),
+                RollupMetrics(sourceField = "total_amount", targetField = "total_amount", metrics = listOf(Max(), Min()))
+            )
+        ).let { createRollup(it, it.id) }
+
+        updateRollupStartTime(rollup)
+
+        waitFor {
+            val rollupJob = getRollup(rollupId = rollup.id)
+            assertNotNull("Rollup job doesn't have metadata set", rollupJob.metadataID)
+            val rollupMetadata = getRollupMetadata(rollupJob.metadataID!!)
+            assertEquals("Rollup is not finished", RollupMetadata.Status.FINISHED, rollupMetadata.status)
+        }
+
+        refreshAllIndices()
+
+        // Invalid query
+        var req = """
+            {
+                "size": 0,
+                "query": {
+                    "query_string": {
+                        "query": "::!invalid+-+-::query:::"
+                    }
+                },
+                "aggs": {
+                    "min_passenger_count": {
+                        "sum": {
+                            "field": "passenger_count"
+                        }
+                    }
+                }
+            }
+        """.trimIndent()
+        try {
+            client().makeRequest("POST", "/$targetIndex/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
+            fail("search should've failed due to incorrect query")
+        } catch (e: ResponseException) {
+            assertTrue("The query_string query wasn't invalid", e.message!!.contains("Failed to parse query"))
+        }
+    }
+
+    fun `test roll up search query_string query unknown field`() {
+        val sourceIndex = "source_rollup_search_qsq_3"
+        val targetIndex = "target_rollup_qsq_search_3"
+        generateNYCTaxiData(sourceIndex)
+        val rollup = Rollup(
+            id = "basic_query_string_query_rollup_search_3",
+            enabled = true,
+            schemaVersion = 1L,
+            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+            jobLastUpdatedTime = Instant.now(),
+            jobEnabledTime = Instant.now(),
+            description = "basic search test",
+            sourceIndex = sourceIndex,
+            targetIndex = targetIndex,
+            metadataID = null,
+            roles = emptyList(),
+            pageSize = 10,
+            delay = 0,
+            continuous = false,
+            dimensions = listOf(
+                DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "1h"),
+                Terms("RatecodeID", "RatecodeID"),
+                Terms("PULocationID", "PULocationID")
+            ),
+            metrics = listOf(
+                RollupMetrics(
+                    sourceField = "passenger_count", targetField = "passenger_count",
+                    metrics = listOf(
+                        Sum(), Min(), Max(),
+                        ValueCount(), Average()
+                    )
+                ),
+                RollupMetrics(sourceField = "total_amount", targetField = "total_amount", metrics = listOf(Max(), Min()))
+            )
+        ).let { createRollup(it, it.id) }
+
+        updateRollupStartTime(rollup)
+
+        waitFor {
+            val rollupJob = getRollup(rollupId = rollup.id)
+            assertNotNull("Rollup job doesn't have metadata set", rollupJob.metadataID)
+            val rollupMetadata = getRollupMetadata(rollupJob.metadataID!!)
+            assertEquals("Rollup is not finished", RollupMetadata.Status.FINISHED, rollupMetadata.status)
+        }
+
+        refreshAllIndices()
+
+        // Term query
+        var req = """
+            {
+                "size": 0,
+                "query": {
+                    "query_string": {
+                        "query": "RatecodeID:>=1 AND unknown_field:<=10"
+                    }
+                },
+                "aggs": {
+                    "min_passenger_count": {
+                        "sum": {
+                            "field": "passenger_count"
+                        }
+                    }
+                }
+            }
+        """.trimIndent()
+        try {
+            client().makeRequest("POST", "/$targetIndex/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
+            fail("search should've failed due to incorrect query")
+        } catch (e: ResponseException) {
+            assertTrue("The query_string query wasn't invalid", e.message!!.contains("[missing field unknown_field]"))
+        }
+    }
+
+    fun `test roll up search query_string query invalid query`() {
+        val sourceIndex = "source_rollup_search_qsq"
+        val targetIndex = "target_rollup_qsq_search"
+        generateNYCTaxiData(sourceIndex)
+        val rollup = Rollup(
+            id = "basic_query_string_query_rollup_search",
+            enabled = true,
+            schemaVersion = 1L,
+            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+            jobLastUpdatedTime = Instant.now(),
+            jobEnabledTime = Instant.now(),
+            description = "basic search test",
+            sourceIndex = sourceIndex,
+            targetIndex = targetIndex,
+            metadataID = null,
+            roles = emptyList(),
+            pageSize = 10,
+            delay = 0,
+            continuous = false,
+            dimensions = listOf(
+                DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "1h"),
+                Terms("RatecodeID", "RatecodeID"),
+                Terms("PULocationID", "PULocationID")
+            ),
+            metrics = listOf(
+                RollupMetrics(
+                    sourceField = "passenger_count", targetField = "passenger_count",
+                    metrics = listOf(
+                        Sum(), Min(), Max(),
+                        ValueCount(), Average()
+                    )
+                ),
+                RollupMetrics(sourceField = "total_amount", targetField = "total_amount", metrics = listOf(Max(), Min()))
+            )
+        ).let { createRollup(it, it.id) }
+
+        updateRollupStartTime(rollup)
+
+        waitFor {
+            val rollupJob = getRollup(rollupId = rollup.id)
+            assertNotNull("Rollup job doesn't have metadata set", rollupJob.metadataID)
+            val rollupMetadata = getRollupMetadata(rollupJob.metadataID!!)
+            assertEquals("Rollup is not finished", RollupMetadata.Status.FINISHED, rollupMetadata.status)
+        }
+
+        refreshAllIndices()
+
+        // Term query
+        var req = """
+            {
+                "size": 0,
+                "query": {
+                    "query_string": {
+                        "query": "invalid query"
+                    }
+                },
+                "aggs": {
+                    "min_passenger_count": {
+                        "sum": {
+                            "field": "passenger_count"
+                        }
+                    }
+                }
+            }
+        """.trimIndent()
+        try {
+            client().makeRequest("POST", "/$targetIndex/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
+            fail("search should've failed due to incorrect query")
+        } catch (e: ResponseException) {
+            assertTrue("The query_string query wasn't invalid", e.message!!.contains("The query_string query is invalid"))
+        }
+    }
+
+    fun `test roll up search query_string query unknown field`() {
+        val sourceIndex = "source_rollup_search_qsq"
+        val targetIndex = "target_rollup_qsq_search"
+        generateNYCTaxiData(sourceIndex)
+        val rollup = Rollup(
+            id = "basic_query_string_query_rollup_search",
+            enabled = true,
+            schemaVersion = 1L,
+            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+            jobLastUpdatedTime = Instant.now(),
+            jobEnabledTime = Instant.now(),
+            description = "basic search test",
+            sourceIndex = sourceIndex,
+            targetIndex = targetIndex,
+            metadataID = null,
+            roles = emptyList(),
+            pageSize = 10,
+            delay = 0,
+            continuous = false,
+            dimensions = listOf(
+                DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "1h"),
+                Terms("RatecodeID", "RatecodeID"),
+                Terms("PULocationID", "PULocationID")
+            ),
+            metrics = listOf(
+                RollupMetrics(
+                    sourceField = "passenger_count", targetField = "passenger_count",
+                    metrics = listOf(
+                        Sum(), Min(), Max(),
+                        ValueCount(), Average()
+                    )
+                ),
+                RollupMetrics(sourceField = "total_amount", targetField = "total_amount", metrics = listOf(Max(), Min()))
+            )
+        ).let { createRollup(it, it.id) }
+
+        updateRollupStartTime(rollup)
+
+        waitFor {
+            val rollupJob = getRollup(rollupId = rollup.id)
+            assertNotNull("Rollup job doesn't have metadata set", rollupJob.metadataID)
+            val rollupMetadata = getRollupMetadata(rollupJob.metadataID!!)
+            assertEquals("Rollup is not finished", RollupMetadata.Status.FINISHED, rollupMetadata.status)
+        }
+
+        refreshAllIndices()
+
+        // Term query
+        var req = """
+            {
+                "size": 0,
+                "query": {
+                    "query_string": {
+                        "query": "RatecodeID:>=1 AND unknown_field:<=10"
+                    }
+                },
+                "aggs": {
+                    "min_passenger_count": {
+                        "sum": {
+                            "field": "passenger_count"
+                        }
+                    }
+                }
+            }
+        """.trimIndent()
+        try {
+            client().makeRequest("POST", "/$targetIndex/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
+            fail("search should've failed due to incorrect query")
+        } catch (e: ResponseException) {
+            assertTrue("The query_string query wasn't invalid", e.message!!.contains("The query_string query is invalid"))
+        }
+    }
 }
