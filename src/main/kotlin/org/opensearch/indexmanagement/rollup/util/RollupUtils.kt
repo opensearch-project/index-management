@@ -24,6 +24,7 @@ import org.opensearch.index.query.DisMaxQueryBuilder
 import org.opensearch.index.query.MatchAllQueryBuilder
 import org.opensearch.index.query.MatchPhraseQueryBuilder
 import org.opensearch.index.query.QueryBuilder
+import org.opensearch.index.query.QueryStringQueryBuilder
 import org.opensearch.index.query.RangeQueryBuilder
 import org.opensearch.index.query.TermQueryBuilder
 import org.opensearch.index.query.TermsQueryBuilder
@@ -41,6 +42,7 @@ import org.opensearch.indexmanagement.rollup.model.metric.Max
 import org.opensearch.indexmanagement.rollup.model.metric.Min
 import org.opensearch.indexmanagement.rollup.model.metric.Sum
 import org.opensearch.indexmanagement.rollup.model.metric.ValueCount
+import org.opensearch.indexmanagement.rollup.query.QueryStringQueryUtil
 import org.opensearch.indexmanagement.rollup.settings.LegacyOpenDistroRollupSettings
 import org.opensearch.indexmanagement.rollup.settings.RollupSettings
 import org.opensearch.indexmanagement.util.IndexUtils
@@ -285,7 +287,11 @@ fun Rollup.rewriteAggregationBuilder(aggregationBuilder: AggregationBuilder): Ag
 }
 
 @Suppress("ComplexMethod", "LongMethod")
-fun Rollup.rewriteQueryBuilder(queryBuilder: QueryBuilder, fieldNameMappingTypeMap: Map<String, String>): QueryBuilder {
+fun Rollup.rewriteQueryBuilder(
+    queryBuilder: QueryBuilder,
+    fieldNameMappingTypeMap: Map<String, String>,
+    concreteIndexName: String = ""
+): QueryBuilder {
     return when (queryBuilder) {
         is TermQueryBuilder -> {
             val updatedFieldName = queryBuilder.fieldName() + "." + Dimension.Type.TERMS.type
@@ -315,19 +321,19 @@ fun Rollup.rewriteQueryBuilder(queryBuilder: QueryBuilder, fieldNameMappingTypeM
         is BoolQueryBuilder -> {
             val newBoolQueryBuilder = BoolQueryBuilder()
             queryBuilder.must()?.forEach {
-                val newMustQueryBuilder = this.rewriteQueryBuilder(it, fieldNameMappingTypeMap)
+                val newMustQueryBuilder = this.rewriteQueryBuilder(it, fieldNameMappingTypeMap, concreteIndexName)
                 newBoolQueryBuilder.must(newMustQueryBuilder)
             }
             queryBuilder.mustNot()?.forEach {
-                val newMustNotQueryBuilder = this.rewriteQueryBuilder(it, fieldNameMappingTypeMap)
+                val newMustNotQueryBuilder = this.rewriteQueryBuilder(it, fieldNameMappingTypeMap, concreteIndexName)
                 newBoolQueryBuilder.mustNot(newMustNotQueryBuilder)
             }
             queryBuilder.should()?.forEach {
-                val newShouldQueryBuilder = this.rewriteQueryBuilder(it, fieldNameMappingTypeMap)
+                val newShouldQueryBuilder = this.rewriteQueryBuilder(it, fieldNameMappingTypeMap, concreteIndexName)
                 newBoolQueryBuilder.should(newShouldQueryBuilder)
             }
             queryBuilder.filter()?.forEach {
-                val newFilterQueryBuilder = this.rewriteQueryBuilder(it, fieldNameMappingTypeMap)
+                val newFilterQueryBuilder = this.rewriteQueryBuilder(it, fieldNameMappingTypeMap, concreteIndexName)
                 newBoolQueryBuilder.filter(newFilterQueryBuilder)
             }
             newBoolQueryBuilder.minimumShouldMatch(queryBuilder.minimumShouldMatch())
@@ -336,22 +342,24 @@ fun Rollup.rewriteQueryBuilder(queryBuilder: QueryBuilder, fieldNameMappingTypeM
             newBoolQueryBuilder.boost(queryBuilder.boost())
         }
         is BoostingQueryBuilder -> {
-            val newPositiveQueryBuilder = this.rewriteQueryBuilder(queryBuilder.positiveQuery(), fieldNameMappingTypeMap)
-            val newNegativeQueryBuilder = this.rewriteQueryBuilder(queryBuilder.negativeQuery(), fieldNameMappingTypeMap)
+            val newPositiveQueryBuilder = this.rewriteQueryBuilder(queryBuilder.positiveQuery(), fieldNameMappingTypeMap, concreteIndexName)
+            val newNegativeQueryBuilder = this.rewriteQueryBuilder(queryBuilder.negativeQuery(), fieldNameMappingTypeMap, concreteIndexName)
             val newBoostingQueryBuilder = BoostingQueryBuilder(newPositiveQueryBuilder, newNegativeQueryBuilder)
             if (queryBuilder.negativeBoost() >= 0) newBoostingQueryBuilder.negativeBoost(queryBuilder.negativeBoost())
             newBoostingQueryBuilder.queryName(queryBuilder.queryName())
             newBoostingQueryBuilder.boost(queryBuilder.boost())
         }
         is ConstantScoreQueryBuilder -> {
-            val newInnerQueryBuilder = this.rewriteQueryBuilder(queryBuilder.innerQuery(), fieldNameMappingTypeMap)
+            val newInnerQueryBuilder = this.rewriteQueryBuilder(queryBuilder.innerQuery(), fieldNameMappingTypeMap, concreteIndexName)
             val newConstantScoreQueryBuilder = ConstantScoreQueryBuilder(newInnerQueryBuilder)
             newConstantScoreQueryBuilder.boost(queryBuilder.boost())
             newConstantScoreQueryBuilder.queryName(queryBuilder.queryName())
         }
         is DisMaxQueryBuilder -> {
             val newDisMaxQueryBuilder = DisMaxQueryBuilder()
-            queryBuilder.innerQueries().forEach { newDisMaxQueryBuilder.add(this.rewriteQueryBuilder(it, fieldNameMappingTypeMap)) }
+            queryBuilder.innerQueries().forEach {
+                newDisMaxQueryBuilder.add(this.rewriteQueryBuilder(it, fieldNameMappingTypeMap, concreteIndexName))
+            }
             newDisMaxQueryBuilder.tieBreaker(queryBuilder.tieBreaker())
             newDisMaxQueryBuilder.queryName(queryBuilder.queryName())
             newDisMaxQueryBuilder.boost(queryBuilder.boost())
@@ -362,14 +370,17 @@ fun Rollup.rewriteQueryBuilder(queryBuilder: QueryBuilder, fieldNameMappingTypeM
             newMatchPhraseQueryBuilder.queryName(queryBuilder.queryName())
             newMatchPhraseQueryBuilder.boost(queryBuilder.boost())
         }
+        is QueryStringQueryBuilder -> {
+            QueryStringQueryUtil.rewriteQueryStringQuery(queryBuilder, concreteIndexName)
+        }
         // We do nothing otherwise, the validation logic should have already verified so not throwing an exception
         else -> queryBuilder
     }
 }
 
-fun Set<Rollup>.buildRollupQuery(fieldNameMappingTypeMap: Map<String, String>, oldQuery: QueryBuilder): QueryBuilder {
+fun Set<Rollup>.buildRollupQuery(fieldNameMappingTypeMap: Map<String, String>, oldQuery: QueryBuilder, targetIndexName: String = ""): QueryBuilder {
     val wrappedQueryBuilder = BoolQueryBuilder()
-    wrappedQueryBuilder.must(this.first().rewriteQueryBuilder(oldQuery, fieldNameMappingTypeMap))
+    wrappedQueryBuilder.must(this.first().rewriteQueryBuilder(oldQuery, fieldNameMappingTypeMap, targetIndexName))
     wrappedQueryBuilder.should(TermsQueryBuilder("rollup._id", this.map { it.id }))
     wrappedQueryBuilder.minimumShouldMatch(1)
     return wrappedQueryBuilder
@@ -391,7 +402,11 @@ fun Rollup.populateFieldMappings(): Set<RollupFieldMapping> {
 // TODO: Not a fan of this.. but I can't find a way to overwrite the aggregations on the shallow copy or original
 //  so we need to instantiate a new one so we can add the rewritten aggregation builders
 @Suppress("ComplexMethod")
-fun SearchSourceBuilder.rewriteSearchSourceBuilder(jobs: Set<Rollup>, fieldNameMappingTypeMap: Map<String, String>): SearchSourceBuilder {
+fun SearchSourceBuilder.rewriteSearchSourceBuilder(
+    jobs: Set<Rollup>,
+    fieldNameMappingTypeMap: Map<String, String>,
+    concreteIndexName: String
+): SearchSourceBuilder {
     val ssb = SearchSourceBuilder()
     // can use first() here as all jobs in the set will have a superset of the query's terms
     this.aggregations()?.aggregatorFactories?.forEach { ssb.aggregation(jobs.first().rewriteAggregationBuilder(it)) }
@@ -406,7 +421,7 @@ fun SearchSourceBuilder.rewriteSearchSourceBuilder(jobs: Set<Rollup>, fieldNameM
     if (this.minScore() != null) ssb.minScore(this.minScore())
     if (this.postFilter() != null) ssb.postFilter(this.postFilter())
     ssb.profile(this.profile())
-    if (this.query() != null) ssb.query(jobs.buildRollupQuery(fieldNameMappingTypeMap, this.query()))
+    if (this.query() != null) ssb.query(jobs.buildRollupQuery(fieldNameMappingTypeMap, this.query(), concreteIndexName))
     this.rescores()?.forEach { ssb.addRescorer(it) }
     this.scriptFields()?.forEach { ssb.scriptField(it.fieldName(), it.script(), it.ignoreFailure()) }
     if (this.searchAfter() != null) ssb.searchAfter(this.searchAfter())
@@ -425,8 +440,12 @@ fun SearchSourceBuilder.rewriteSearchSourceBuilder(jobs: Set<Rollup>, fieldNameM
     return ssb
 }
 
-fun SearchSourceBuilder.rewriteSearchSourceBuilder(job: Rollup, fieldNameMappingTypeMap: Map<String, String>): SearchSourceBuilder {
-    return this.rewriteSearchSourceBuilder(setOf(job), fieldNameMappingTypeMap)
+fun SearchSourceBuilder.rewriteSearchSourceBuilder(
+    job: Rollup,
+    fieldNameMappingTypeMap: Map<String, String>,
+    concreteIndexName: String
+): SearchSourceBuilder {
+    return this.rewriteSearchSourceBuilder(setOf(job), fieldNameMappingTypeMap, concreteIndexName)
 }
 
 fun Rollup.getInitialDocValues(docCount: Long): MutableMap<String, Any?> =
