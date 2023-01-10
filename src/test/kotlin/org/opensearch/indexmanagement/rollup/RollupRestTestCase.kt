@@ -7,11 +7,14 @@ package org.opensearch.indexmanagement.rollup
 
 import org.apache.http.HttpEntity
 import org.apache.http.HttpHeaders
+import org.apache.http.HttpStatus
 import org.apache.http.entity.ContentType.APPLICATION_JSON
 import org.apache.http.entity.StringEntity
 import org.apache.http.message.BasicHeader
+import org.junit.After
 import org.junit.AfterClass
 import org.junit.Before
+import org.opensearch.client.Request
 import org.opensearch.client.Response
 import org.opensearch.client.ResponseException
 import org.opensearch.client.RestClient
@@ -47,6 +50,45 @@ abstract class RollupRestTestCase : IndexManagementRestTestCase() {
         @AfterClass
         @JvmStatic fun clearIndicesAfterClass() {
             wipeAllIndices()
+        }
+    }
+
+    @After
+    @Suppress("UNCHECKED_CAST")
+    fun KillAllCancallableRunningTasks() {
+        client().makeRequest("POST", "_tasks/_cancel?actions=*")
+        waitFor {
+            val response = client().makeRequest("GET", "_tasks")
+            val nodes = response.asMap()["nodes"] as Map<String, Any?>
+            var hasCancallableRunningTasks = false
+            nodes.forEach {
+                val tasks = (it.value as Map<String, Any?>)["tasks"] as Map<String, Any?>
+                tasks.forEach { e ->
+                    if ((e.value as Map<String, Any?>)["cancellable"] as Boolean) {
+                        hasCancallableRunningTasks = true
+                    }
+                }
+            }
+            assertFalse(hasCancallableRunningTasks)
+        }
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    fun waitForCancallableTasksToFinish() {
+        waitFor {
+            val response = client().makeRequest("GET", "_tasks")
+            val nodes = response.asMap()["nodes"] as Map<String, Any?>
+            var hasCancallableRunningTasks = false
+            nodes.forEach {
+                val tasks = (it.value as Map<String, Any?>)["tasks"] as Map<String, Any?>
+                tasks.forEach { e ->
+                    if ((e.value as Map<String, Any?>)["cancellable"] as Boolean) {
+                        hasCancallableRunningTasks = true
+                        logger.info("cancellable task running: ${e.key}")
+                    }
+                }
+            }
+            assertFalse(hasCancallableRunningTasks)
         }
     }
 
@@ -277,5 +319,97 @@ abstract class RollupRestTestCase : IndexManagementRestTestCase() {
             StringEntity(request, APPLICATION_JSON)
         )
         assertEquals("Request failed", RestStatus.OK, res.restStatus())
+    }
+
+    protected fun createSampleIndexForQSQTest(index: String) {
+        val mapping = """
+            "properties": {
+                "event_ts": {
+                    "type": "date"
+                },
+                "test": {
+                    "properties": {
+                        "fff": {
+                            "type": "keyword"
+                        },
+                        "vvv": {
+                            "type": "keyword"
+                        }
+                    }
+                },
+                "state": {
+                    "type": "keyword"
+                },
+                "state_ext": {
+                    "type": "keyword"
+                },
+                "state_ext2": {
+                    "type": "keyword"
+                },
+                "state_ordinal": {
+                    "type": "long"
+                },
+                "abc test": {
+                    "type": "long"
+                },
+                "earnings": {
+                    "type": "long"
+                }
+                        
+            }
+        """.trimIndent()
+        createIndex(index, Settings.EMPTY, mapping)
+
+        for (i in 1..5) {
+            val doc = """
+                {
+                    "event_ts": "2019-01-01T12:10:30Z",
+                    "test.fff": "12345",
+                    "test.vvv": "54321",
+                    "state": "TX",
+                    "state_ext": "CA",
+                    "state_ext2": "TX",
+                    "abc test": 123,
+                    "state_ordinal": ${i % 3},
+                    "earnings": $i
+                }
+            """.trimIndent()
+            indexDoc(index, "$i", doc)
+        }
+        for (i in 6..8) {
+            val doc = """
+                {
+                    "event_ts": "2019-01-01T12:10:30Z",
+                    "state": "TA",
+                    "state_ext": "SE",
+                    "state_ext2": "CA",
+                    "state_ordinal": ${i % 3},   
+                    "abc test": 123,
+                    "earnings": $i
+                }
+            """.trimIndent()
+            indexDoc(index, "$i", doc)
+        }
+        for (i in 9..11) {
+            val doc = """
+                {
+                    "event_ts": "2019-01-02T12:10:30Z",
+                    "state": "CA",
+                    "state_ext": "MA",
+                    "state_ext2": "CA",
+                    "state_ordinal": ${i % 3},       
+                    "abc test": 123,                                 
+                    "earnings": $i
+                }
+            """.trimIndent()
+            indexDoc(index, "$i", doc)
+        }
+    }
+
+    protected fun indexDoc(index: String, id: String, doc: String) {
+        val request = Request("POST", "$index/_doc/$id/?refresh=true")
+        request.setJsonEntity(doc)
+        val resp = client().performRequest(request)
+        assertEquals(HttpStatus.SC_CREATED, resp.restStatus().status)
     }
 }
