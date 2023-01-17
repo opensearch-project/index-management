@@ -6,9 +6,11 @@
 package org.opensearch.indexmanagement
 
 import org.apache.logging.log4j.LogManager
+import org.opensearch.action.ActionListener
 import org.opensearch.action.ActionRequest
 import org.opensearch.action.ActionResponse
 import org.opensearch.action.support.ActionFilter
+import org.opensearch.action.support.ActionFilterChain
 import org.opensearch.client.Client
 import org.opensearch.cluster.metadata.IndexNameExpressionResolver
 import org.opensearch.cluster.node.DiscoveryNodes
@@ -176,12 +178,16 @@ import org.opensearch.repositories.RepositoriesService
 import org.opensearch.rest.RestController
 import org.opensearch.rest.RestHandler
 import org.opensearch.script.ScriptService
+import org.opensearch.tasks.Task
 import org.opensearch.threadpool.ThreadPool
 import org.opensearch.transport.RemoteClusterService
 import org.opensearch.transport.TransportInterceptor
 import org.opensearch.transport.TransportService
 import org.opensearch.watcher.ResourceWatcherService
 import java.util.function.Supplier
+import org.opensearch.action.admin.indices.open.OpenIndexRequest
+import org.opensearch.index.reindex.ReindexRequest
+import org.opensearch.action.admin.indices.shrink.ResizeRequest
 
 @Suppress("TooManyFunctions")
 class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin, ExtensiblePlugin, Plugin() {
@@ -572,7 +578,33 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
     }
 
     override fun getActionFilters(): List<ActionFilter> {
-        return listOf(fieldCapsFilter)
+        return listOf(
+            fieldCapsFilter,
+            NoOpFilter()
+        )
+    }
+}
+
+class NoOpFilter : ActionFilter {
+    init {
+        println("a new NoOpFilter")
+    }
+    override fun <Request : ActionRequest?, Response : ActionResponse?> apply(
+        task: Task,
+        action: String,
+        request: Request,
+        listener: ActionListener<Response>,
+        chain: ActionFilterChain<Request, Response>
+    ) {
+        if (request is OpenIndexRequest || request is ResizeRequest || request is ReindexRequest) {
+//            no op
+            1 + 1
+        }
+        chain.proceed(task, action, request, listener)
+    }
+
+    override fun order(): Int {
+        return Integer.MAX_VALUE
     }
 }
 
