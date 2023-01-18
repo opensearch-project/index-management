@@ -126,10 +126,13 @@ object ManagedIndexRunner :
     private lateinit var indexMetadataProvider: IndexMetadataProvider
     private var indexStateManagementEnabled: Boolean = DEFAULT_ISM_ENABLED
     private var validationServiceEnabled: Boolean = DEFAULT_ACTION_VALIDATION_ENABLED
+
     @Suppress("MagicNumber")
     private val savePolicyRetryPolicy = BackoffPolicy.exponentialBackoff(TimeValue.timeValueMillis(250), 3)
+
     @Suppress("MagicNumber")
     private val updateMetaDataRetryPolicy = BackoffPolicy.exponentialBackoff(TimeValue.timeValueMillis(250), 3)
+
     @Suppress("MagicNumber")
     private val errorNotificationRetryPolicy = BackoffPolicy.exponentialBackoff(TimeValue.timeValueMillis(250), 3)
     private var jobInterval: Int = DEFAULT_JOB_INTERVAL
@@ -249,15 +252,29 @@ object ManagedIndexRunner :
     @Suppress("ReturnCount", "ComplexMethod", "LongMethod", "ComplexCondition", "NestedBlockDepth")
     private suspend fun runManagedIndexConfig(managedIndexConfig: ManagedIndexConfig, jobContext: JobExecutionContext) {
         logger.debug("Run job for index ${managedIndexConfig.index}")
-        // doing a check of local cluster health as we do not want to overload cluster manager node with potentially a lot of calls
-        if (clusterIsRed()) {
-            logger.debug("Skipping current execution of ${managedIndexConfig.index} because of red cluster health")
+        val (managedIndexMetaData, getMetadataSuccess) = client.getManagedIndexMetadata(managedIndexConfig.indexUuid)
+        val policy = managedIndexConfig.policy
+
+        if (!getMetadataSuccess) {
+            val message =
+                "Failed to retrieve managed index metadata of index [${managedIndexConfig.index}] from config index, abort this run."
+            publishErrorNotification(policy, managedIndexConfig, message)
+            logger.info(message)
             return
         }
 
-        val (managedIndexMetaData, getMetadataSuccess) = client.getManagedIndexMetadata(managedIndexConfig.indexUuid)
-        if (!getMetadataSuccess) {
-            logger.info("Failed to retrieve managed index metadata of index [${managedIndexConfig.index}] from config index, abort this run.")
+        // If policy or managedIndexMetaData is null then initialize
+        if (policy == null || managedIndexMetaData == null) {
+            logger.info("Policy or Managed Index Meta Data is null. Initializing...")
+            initManagedIndex(managedIndexConfig, managedIndexMetaData)
+            return
+        }
+
+        // doing a check of local cluster health as we do not want to overload cluster manager node with potentially a lot of calls
+        if (clusterIsRed()) {
+            val message = "Skipping current execution of ${managedIndexConfig.index} because of red cluster health."
+            logger.debug(message)
+            publishErrorNotification(policy, managedIndexConfig, message)
             return
         }
 
@@ -278,7 +295,9 @@ object ManagedIndexRunner :
             }
             // If no index types had an index with a matching name and uuid combination, return
             if (!someTypeMatchedUuid) {
-                logger.warn("Failed to find IndexMetadata for ${managedIndexConfig.index}.")
+                val message = "Failed to find IndexMetadata for ${managedIndexConfig.index}."
+                logger.warn(message)
+                publishErrorNotification(policy, managedIndexConfig, message)
                 return
             }
         } else {
@@ -290,13 +309,6 @@ object ManagedIndexRunner :
             }
         }
 
-        // If policy or managedIndexMetaData is null then initialize
-        val policy = managedIndexConfig.policy
-        if (policy == null || managedIndexMetaData == null) {
-            initManagedIndex(managedIndexConfig, managedIndexMetaData)
-            return
-        }
-
         // If the policy was completed or failed then return early and disable job so it stops scheduling work
         if (managedIndexMetaData.policyCompleted == true || managedIndexMetaData.isFailed) {
             disableManagedIndexConfig(managedIndexConfig)
@@ -304,7 +316,8 @@ object ManagedIndexRunner :
         }
 
         if (managedIndexMetaData.hasVersionConflict(managedIndexConfig)) {
-            val info = mapOf("message" to "There is a version conflict between your previous execution and your managed index")
+            val message = "There is a version conflict between your previous execution and your managed index"
+            val info = mapOf("message" to message)
             val result = updateManagedIndexMetaData(
                 managedIndexMetaData.copy(
                     policyRetryInfo = PolicyRetryInfoMetaData(true, 0),
@@ -320,7 +333,14 @@ object ManagedIndexRunner :
         val state = policy.getStateToExecute(managedIndexMetaData)
         val action: Action? = state?.getActionToExecute(managedIndexMetaData, indexMetadataProvider)
         val stepContext = StepContext(
-            managedIndexMetaData, clusterService, client, threadPool.threadContext, policy.user, scriptService, settings, jobContext.lockService
+            managedIndexMetaData,
+            clusterService,
+            client,
+            threadPool.threadContext,
+            policy.user,
+            scriptService,
+            settings,
+            jobContext.lockService
         )
         val step: Step? = action?.getStepToExecute(stepContext)
         val currentActionMetaData = action?.getUpdatedActionMetadata(managedIndexMetaData, state.name)
@@ -333,8 +353,10 @@ object ManagedIndexRunner :
         }
 
         if (action?.hasTimedOut(currentActionMetaData) == true) {
-            val info = mapOf("message" to "Action timed out")
-            logger.error("Action=${action.type} has timed out")
+            val message = "Action=${action.type} has timed out"
+            val info = mapOf("message" to message)
+            logger.error(message)
+            publishErrorNotification(policy, managedIndexConfig, message)
             val updated = updateManagedIndexMetaData(
                 managedIndexMetaData
                     .copy(actionMetaData = currentActionMetaData?.copy(failed = true), info = info)
@@ -362,7 +384,8 @@ object ManagedIndexRunner :
                 val info = mapOf("message" to "Previous action was not able to update IndexMetaData.")
                 val updated = updateManagedIndexMetaData(
                     managedIndexMetaData.copy(
-                        policyRetryInfo = PolicyRetryInfoMetaData(true, 0), info = info
+                        policyRetryInfo = PolicyRetryInfoMetaData(true, 0),
+                        info = info
                     )
                 )
                 if (updated.metadataSaved) disableManagedIndexConfig(managedIndexConfig)
@@ -376,7 +399,8 @@ object ManagedIndexRunner :
             val info = mapOf("message" to "Failed to execute action=${action?.type} as extension [$actionExtensionName] is not enabled.")
             val updated = updateManagedIndexMetaData(
                 managedIndexMetaData.copy(
-                    policyRetryInfo = PolicyRetryInfoMetaData(true, 0), info = info
+                    policyRetryInfo = PolicyRetryInfoMetaData(true, 0),
+                    info = info
                 )
             )
             if (updated.metadataSaved) disableManagedIndexConfig(managedIndexConfig)
@@ -389,7 +413,8 @@ object ManagedIndexRunner :
             val info = mapOf("message" to "Attempted to execute action=${action.type} which is not allowed.")
             val updated = updateManagedIndexMetaData(
                 managedIndexMetaData.copy(
-                    policyRetryInfo = PolicyRetryInfoMetaData(true, 0), info = info
+                    policyRetryInfo = PolicyRetryInfoMetaData(true, 0),
+                    info = info
                 )
             )
             if (updated.metadataSaved) disableManagedIndexConfig(managedIndexConfig)
@@ -405,7 +430,10 @@ object ManagedIndexRunner :
             if (validationServiceEnabled) {
                 val validationResult = withClosableContext(
                     IndexManagementSecurityContext(
-                        managedIndexConfig.id, settings, threadPool.threadContext, managedIndexConfig.policy.user
+                        managedIndexConfig.id,
+                        settings,
+                        threadPool.threadContext,
+                        managedIndexConfig.policy.user
                     )
                 ) {
                     actionValidation.validate(action.type, stepContext.metadata.index)
@@ -426,7 +454,10 @@ object ManagedIndexRunner :
             // Step null check is done in getStartingManagedIndexMetaData
             withClosableContext(
                 IndexManagementSecurityContext(
-                    managedIndexConfig.id, settings, threadPool.threadContext, managedIndexConfig.policy.user
+                    managedIndexConfig.id,
+                    settings,
+                    threadPool.threadContext,
+                    managedIndexConfig.policy.user
                 )
             ) {
                 step.preExecute(logger, stepContext.getUpdatedContext(startingManagedIndexMetaData)).execute().postExecute(logger)
@@ -514,8 +545,10 @@ object ManagedIndexRunner :
             // Intellij complains about createParser/parseWithType blocking because it sees they throw IOExceptions
             return withContext(Dispatchers.IO) {
                 val xcp = XContentHelper.createParser(
-                    xContentRegistry, LoggingDeprecationHandler.INSTANCE,
-                    policySource, XContentType.JSON
+                    xContentRegistry,
+                    LoggingDeprecationHandler.INSTANCE,
+                    policySource,
+                    XContentType.JSON
                 )
                 xcp.parseWithType(getResponse.id, getResponse.seqNo, getResponse.primaryTerm, Policy.Companion::parse)
             }
@@ -527,6 +560,7 @@ object ManagedIndexRunner :
 
     @Suppress("TooGenericExceptionCaught")
     private suspend fun disableManagedIndexConfig(managedIndexConfig: ManagedIndexConfig) {
+        logger.info("Start to disable ManagedIndexConfig")
         val updatedManagedIndexConfig = managedIndexConfig.copy(enabled = false, jobEnabledTime = null)
         val indexRequest = updateDisableManagedIndexRequest(updatedManagedIndexConfig.indexUuid)
         try {
@@ -542,8 +576,11 @@ object ManagedIndexRunner :
     @Suppress("TooGenericExceptionCaught")
     private suspend fun savePolicyToManagedIndexConfig(managedIndexConfig: ManagedIndexConfig, policy: Policy): Boolean {
         val updatedManagedIndexConfig = managedIndexConfig.copy(
-            policyID = policy.id, policy = policy,
-            policySeqNo = policy.seqNo, policyPrimaryTerm = policy.primaryTerm, changePolicy = null
+            policyID = policy.id,
+            policy = policy,
+            policySeqNo = policy.seqNo,
+            policyPrimaryTerm = policy.primaryTerm,
+            changePolicy = null
         )
         val indexRequest = managedIndexConfigIndexRequest(updatedManagedIndexConfig)
         var savedPolicy = false
@@ -726,7 +763,6 @@ object ManagedIndexRunner :
         managedIndexMetaData: ManagedIndexMetaData,
         actionToExecute: Action?
     ) {
-
         // should never happen since we only call this if there is a changePolicy, but we'll do it to make changePolicy non null
         val changePolicy = managedIndexConfig.changePolicy
         if (changePolicy == null) {
@@ -747,8 +783,13 @@ object ManagedIndexRunner :
             // if the action to execute is transition then set the actionMetaData to a new transition metadata to reflect we are
             // in transition (in case we triggered change policy from entering transition) or to reflect this is a new policy transition phase
             val newTransitionMetaData = ActionMetaData(
-                TransitionsAction.name, Instant.now().toEpochMilli(), -1,
-                false, 0, 0, null
+                TransitionsAction.name,
+                Instant.now().toEpochMilli(),
+                -1,
+                false,
+                0,
+                0,
+                null
             )
             val actionMetaData = if (actionToExecute?.type == TransitionsAction.name) {
                 newTransitionMetaData
@@ -817,6 +858,33 @@ object ManagedIndexRunner :
                 destination?.buildLegacyBaseMessage(null, compiledMessage)?.publishLegacyNotification(client)
                 channel?.sendNotification(client, ErrorNotification.CHANNEL_TITLE, managedIndexMetaData, compiledMessage, policy.user)
             }
+        }
+    }
+
+    private suspend fun publishErrorNotification(policy: Policy?, managedIndexConfig: ManagedIndexConfig, additionalMessage: String) {
+        if (policy == null) {
+            logger.error("Policy for index ${managedIndexConfig.index} is not available to obtain. Notifications for this policy is aborted.")
+            return
+        }
+        policy.errorNotification?.run {
+            errorNotificationRetryPolicy.retry(logger) {
+                val compiledMessage = compileTemplate(messageTemplate, managedIndexConfig)
+                val finalMessage = "$additionalMessage $compiledMessage"
+                destination?.buildLegacyBaseMessage(null, finalMessage)?.publishLegacyNotification(client)
+                channel?.sendNotification(client, ErrorNotification.CHANNEL_TITLE, managedIndexConfig, compiledMessage, policy.user)
+            }
+        }
+    }
+
+    private fun compileTemplate(template: Script, managedIndexConfig: ManagedIndexConfig): String {
+        return try {
+            scriptService.compile(template, TemplateScript.CONTEXT)
+                .newInstance(template.params + mapOf("ctx" to managedIndexConfig.convertToMap()))
+                .execute()
+        } catch (e: Exception) {
+            val message = "There was an error compiling mustache template"
+            logger.error(message, e)
+            e.message ?: message
         }
     }
 

@@ -4,6 +4,7 @@
  */
 
 @file:JvmName("NotificationUtils")
+
 package org.opensearch.indexmanagement.indexstatemanagement.util
 
 import org.opensearch.client.Client
@@ -17,6 +18,7 @@ import org.opensearch.commons.notifications.model.EventSource
 import org.opensearch.commons.notifications.model.SeverityType
 import org.opensearch.indexmanagement.common.model.notification.Channel
 import org.opensearch.indexmanagement.common.model.notification.validateResponseStatus
+import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexConfig
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.rest.RestStatus
@@ -57,5 +59,20 @@ suspend fun Channel.sendNotification(
 }
 
 fun ManagedIndexMetaData.getEventSource(title: String): EventSource {
+    return EventSource(title, indexUuid, SeverityType.INFO)
+}
+
+suspend fun Channel.sendNotification(
+    client: Client,
+    title: String,
+    managedIndexConfig: ManagedIndexConfig,
+    compiledMessage: String,
+    user: User?
+) {
+    val eventSource = managedIndexConfig.getEventSource(title)
+    this.sendNotification(client, eventSource, compiledMessage, user)
+}
+
+fun ManagedIndexConfig.getEventSource(title: String): EventSource {
     return EventSource(title, indexUuid, SeverityType.INFO)
 }
