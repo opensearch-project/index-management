@@ -243,7 +243,9 @@ object ManagedIndexRunner :
                 // Release lock
                 val released: Boolean = context.lockService.suspendUntil { release(lock, it) }
                 if (!released) {
-                    logger.debug("Could not release lock [${lock.lockId}] for ${job.index}")
+                    val message = "Could not release lock [${lock.lockId}] for ${job.index}"
+                    logger.debug(message)
+                    publishErrorNotification(job.policy, job, message)
                 }
             }
         }
