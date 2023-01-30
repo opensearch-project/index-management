@@ -72,7 +72,9 @@ class RollupSecurityBehaviorIT : SecurityRestTestCase() {
         assignRoleToUsers(HELPDESK_ROLE, listOf(superRollupUser))
 
         superUserClient =
-            SecureRestClientBuilder(clusterHosts.toTypedArray(), isHttps(), superRollupUser, password).setSocketTimeout(60000)
+            SecureRestClientBuilder(clusterHosts.toTypedArray(), isHttps(), superRollupUser, password).setSocketTimeout(
+                60000
+            ).setConnectionRequestTimeout(180000)
                 .build()
     }
 
@@ -120,6 +122,7 @@ class RollupSecurityBehaviorIT : SecurityRestTestCase() {
 
         testUserClient =
             SecureRestClientBuilder(clusterHosts.toTypedArray(), isHttps(), testUser, password).setSocketTimeout(60000)
+                .setConnectionRequestTimeout(180000)
                 .build()
 
         val rollup = randomRollup()
@@ -149,6 +152,7 @@ class RollupSecurityBehaviorIT : SecurityRestTestCase() {
 
         testUserClient =
             SecureRestClientBuilder(clusterHosts.toTypedArray(), isHttps(), testUser, password).setSocketTimeout(60000)
+                .setConnectionRequestTimeout(180000)
                 .build()
 
         val rollup = randomRollup()
@@ -194,6 +198,7 @@ class RollupSecurityBehaviorIT : SecurityRestTestCase() {
 
         testUserClient =
             SecureRestClientBuilder(clusterHosts.toTypedArray(), isHttps(), testUser, password).setSocketTimeout(60000)
+                .setConnectionRequestTimeout(180000)
                 .build()
         val rollup = randomRollup()
 

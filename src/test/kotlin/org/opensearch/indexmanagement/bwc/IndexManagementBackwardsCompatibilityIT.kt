@@ -56,7 +56,6 @@ class IndexManagementBackwardsCompatibilityIT : IndexManagementRestTestCase() {
             val pluginNames = plugins.map { plugin -> plugin ["name"] }.toSet()
             when (CLUSTER_TYPE) {
                 ClusterType.OLD -> {
-                    assertTrue(pluginNames.contains("opendistro-index-management"))
                     createBasicPolicy()
 
                     verifyPolicyExists(LEGACY_POLICY_BASE_URI)

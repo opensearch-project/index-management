@@ -27,7 +27,7 @@ class FieldCapsFilterIT : RollupRestTestCase() {
         assertTrue(indices.containsAll(listOf("raw-data", "rollup-data")))
 
         // Request for all indices
-        response = client().makeRequest("GET", "//_field_caps?fields=*")
+        response = client().makeRequest("GET", "/_field_caps?fields=*")
         assertTrue(response.restStatus() == RestStatus.OK)
         data = response.asMap()
         indices = data["indices"] as List<String>

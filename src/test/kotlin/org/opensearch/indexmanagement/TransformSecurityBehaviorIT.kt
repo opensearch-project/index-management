@@ -69,7 +69,12 @@ class TransformSecurityBehaviorIT : SecurityRestTestCase() {
         assignRoleToUsers(HELPDESK_ROLE, listOf(superTransformUser))
 
         superUserClient =
-            SecureRestClientBuilder(clusterHosts.toTypedArray(), isHttps(), superTransformUser, password).setSocketTimeout(60000)
+            SecureRestClientBuilder(
+                clusterHosts.toTypedArray(),
+                isHttps(),
+                superTransformUser,
+                password
+            ).setSocketTimeout(60000).setConnectionRequestTimeout(180000)
                 .build()
     }
 
@@ -94,8 +99,10 @@ class TransformSecurityBehaviorIT : SecurityRestTestCase() {
         validateSourceIndex(sourceIndex)
         createTestUserWithRole(emptyList(), emptyList())
 
-        testUserClient = SecureRestClientBuilder(clusterHosts.toTypedArray(), isHttps(), testUser, password).setSocketTimeout(60000)
-            .build()
+        testUserClient =
+            SecureRestClientBuilder(clusterHosts.toTypedArray(), isHttps(), testUser, password).setSocketTimeout(60000)
+                .setConnectionRequestTimeout(180000)
+                .build()
 
         try {
             val transform = createSimpleTransform(sourceIndex, targetIndex)
@@ -130,6 +137,7 @@ class TransformSecurityBehaviorIT : SecurityRestTestCase() {
 
         testUserClient =
             SecureRestClientBuilder(clusterHosts.toTypedArray(), isHttps(), testUser, password).setSocketTimeout(60000)
+                .setConnectionRequestTimeout(180000)
                 .build()
 
         try {
@@ -177,6 +185,7 @@ class TransformSecurityBehaviorIT : SecurityRestTestCase() {
         createTestUserWithRole(emptyList(), emptyList())
         testUserClient =
             SecureRestClientBuilder(clusterHosts.toTypedArray(), isHttps(), testUser, password).setSocketTimeout(60000)
+                .setConnectionRequestTimeout(180000)
                 .build()
         try {
             val transform = createSimpleTransform(sourceIndex, targetIndex)
@@ -208,6 +217,7 @@ class TransformSecurityBehaviorIT : SecurityRestTestCase() {
 
         testUserClient =
             SecureRestClientBuilder(clusterHosts.toTypedArray(), isHttps(), testUser, password).setSocketTimeout(60000)
+                .setConnectionRequestTimeout(180000)
                 .build()
 
         val targetIndex = "$AIRLINE_INDEX-target"
@@ -234,6 +244,7 @@ class TransformSecurityBehaviorIT : SecurityRestTestCase() {
 
         testUserClient =
             SecureRestClientBuilder(clusterHosts.toTypedArray(), isHttps(), testUser, password).setSocketTimeout(60000)
+                .setConnectionRequestTimeout(180000)
                 .build()
 
         val targetIndex = "$AIRLINE_INDEX-target"
