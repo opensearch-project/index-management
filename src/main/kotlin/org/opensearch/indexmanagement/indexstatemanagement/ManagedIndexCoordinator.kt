@@ -64,6 +64,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndex
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.TEMPLATE_MIGRATION_CONTROL
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.managedIndex.ManagedIndexAction
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.managedIndex.ManagedIndexRequest
+import org.opensearch.indexmanagement.indexstatemanagement.util.DEFAULT_INDEX_TYPE
 import org.opensearch.indexmanagement.indexstatemanagement.util.ISM_TEMPLATE_FIELD
 import org.opensearch.indexmanagement.indexstatemanagement.util.deleteManagedIndexMetadataRequest
 import org.opensearch.indexmanagement.indexstatemanagement.util.deleteManagedIndexRequest
@@ -313,7 +314,7 @@ class ManagedIndexCoordinator(
     /**
      * build requests to create jobs for indices matching ISM templates
      */
-    @Suppress("NestedBlockDepth")
+    @Suppress("NestedBlockDepth", "ComplexCondition")
     private suspend fun createManagedIndexRequests(
         clusterState: ClusterState,
         indexNames: List<String>
@@ -326,10 +327,15 @@ class ManagedIndexCoordinator(
         val ismIndicesMetadata: Map<String, ISMIndexMetadata> = indexMetadataProvider.getISMIndexMetadataByType(indexNames = indexNames)
         // Iterate over each unmanaged hot/warm index and if it matches an ISM template add a managed index config index request
         indexNames.forEach { indexName ->
+            val defaultIndexMetadataService = indexMetadataProvider.services[DEFAULT_INDEX_TYPE] as DefaultIndexMetadataService
+            // If there is a custom index uuid associated with the index, we do not auto manage it
+            // This is because cold index uses custom uuid, and we do not auto manage cold-to-warm index
+            val indexMetadata = clusterState.metadata.index(indexName)
+            val wasOffCluster = defaultIndexMetadataService.getCustomIndexUUID(indexMetadata) != indexMetadata.indexUUID
             val ismIndexMetadata = ismIndicesMetadata[indexName]
             // We try to find lookup name instead of using index name as datastream indices need the alias to match policy
             val lookupName = findIndexLookupName(indexName, clusterState)
-            if (lookupName != null && !indexMetadataProvider.isUnManageableIndex(lookupName) && ismIndexMetadata != null) {
+            if (lookupName != null && !indexMetadataProvider.isUnManageableIndex(lookupName) && ismIndexMetadata != null && !wasOffCluster) {
                 val creationDate = ismIndexMetadata.indexCreationDate
                 val indexUuid = ismIndexMetadata.indexUuid
                 findMatchingPolicy(lookupName, creationDate, policiesWithTemplates)
