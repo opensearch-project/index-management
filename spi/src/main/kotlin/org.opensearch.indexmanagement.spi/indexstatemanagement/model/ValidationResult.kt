@@ -40,7 +40,7 @@ data class ValidationResult(
     }
 
     fun getMapValueString(): String {
-        return Strings.toString(this, false, false)
+        return Strings.toString(XContentType.JSON, this)
     }
 
     companion object {

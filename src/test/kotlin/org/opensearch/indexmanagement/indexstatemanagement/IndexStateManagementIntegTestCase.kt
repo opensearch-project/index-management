@@ -335,7 +335,7 @@ abstract class IndexStateManagementIntegTestCase : OpenSearchIntegTestCase() {
 
     fun updateIndexSettings(index: String, settings: Settings) {
         val request = Request("PUT", "/$index/_settings")
-        request.setJsonEntity(Strings.toString(settings))
+        request.setJsonEntity(Strings.toString(XContentType.JSON, settings))
         getRestClient().performRequest(request)
     }
 

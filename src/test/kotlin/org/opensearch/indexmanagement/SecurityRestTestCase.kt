@@ -21,6 +21,7 @@ import org.opensearch.client.ResponseException
 import org.opensearch.client.RestClient
 import org.opensearch.common.Strings
 import org.opensearch.common.settings.Settings
+import org.opensearch.common.xcontent.XContentType
 import org.opensearch.indexmanagement.indexstatemanagement.IndexStateManagementRestTestCase
 import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexConfig
 import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
@@ -254,7 +255,7 @@ abstract class SecurityRestTestCase : IndexManagementRestTestCase() {
         }.build()
 
         val request = Request("PUT", "/$indexName")
-        var entity = "{\"settings\": " + Strings.toString(builtSettings)
+        var entity = "{\"settings\": " + Strings.toString(XContentType.JSON, builtSettings)
         if (sourceIndexMappingString != null) {
             entity = "$entity,\"mappings\" : {$sourceIndexMappingString}"
         }

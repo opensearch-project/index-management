@@ -59,7 +59,7 @@ abstract class IndexManagementRestTestCase : ODFERestTestCase() {
     fun initializeManagedIndex() {
         if (!indexExists(IndexManagementPlugin.INDEX_MANAGEMENT_INDEX)) {
             val request = Request("PUT", "/${IndexManagementPlugin.INDEX_MANAGEMENT_INDEX}")
-            var entity = "{\"settings\": " + Strings.toString(Settings.builder().put(INDEX_HIDDEN, true).build())
+            var entity = "{\"settings\": " + Strings.toString(XContentType.JSON, Settings.builder().put(INDEX_HIDDEN, true).build())
             entity += ",\"mappings\" : ${IndexManagementIndices.indexManagementMappings}}"
             request.setJsonEntity(entity)
             client().performRequest(request)
