@@ -221,6 +221,9 @@ dependencies {
     }
 
     // https://aws.oss.sonatype.org/content/repositories/snapshots/org/opensearch/plugin/
+    opensearchPlugin "org.opensearch.plugin:opensearch-job-scheduler:${job_scheduler_version}@zip"
+    opensearchPlugin "org.opensearch.plugin:notifications:${notifications_version}@zip"
+    opensearchPlugin "org.opensearch.plugin:opensearch-notifications-core:${notifications_version}@zip"
     opensearchPlugin "org.opensearch.plugin:opensearch-security:${security_plugin_version}@zip"
 }
 
@@ -272,7 +275,6 @@ validateNebulaPom.enabled = false
 def opensearch_tmp_dir = rootProject.file('build/private/opensearch_tmp').absoluteFile
 opensearch_tmp_dir.mkdirs()
 
-// === Setup security test ===
 ext.resolvePluginFile = { pluginId ->
     return new Callable<RegularFile>() {
         @Override
@@ -280,15 +282,37 @@ ext.resolvePluginFile = { pluginId ->
             return new RegularFile() {
                 @Override
                 File getAsFile() {
+                    println("Resolving ${pluginId}")
                     return configurations.opensearchPlugin.resolvedConfiguration.resolvedArtifacts
-                            .find { ResolvedArtifact f -> f.name.contains(pluginId) }
+                            .find { ResolvedArtifact f ->
+                                f.name.startsWith(pluginId)
+                            }
                             .file
                 }
             }
         }
     }
 }
+def jobSchedulerFile = resolvePluginFile("opensearch-job-scheduler")
+def notificationsFile = resolvePluginFile("notifications")
+def notificationsCoreFile = resolvePluginFile("opensearch-notifications-core")
 def securityPluginFile = resolvePluginFile("opensearch-security")
+
+ext.getPluginResource = { download_to_folder, download_from_src ->
+    def src_split = download_from_src.split("/")
+    def download_file = src_split[src_split.length-1]
+    if (!fileTree(download_to_folder).contains(new File("$project.rootDir/$download_to_folder/$download_file"))) {
+        println("Downloading ${download_file}")
+        project.delete download_to_folder
+        project.mkdir download_to_folder
+        ant.get(src: download_from_src,
+                dest: download_to_folder,
+                httpusecaches: false)
+    }
+    return fileTree(download_to_folder).getSingleFile()
+}
+
+// === Setup security test ===
 // This flag indicates the existence of security plugin
 def securityEnabled = System.getProperty("security", "false") == "true"
 afterEvaluate {
@@ -329,20 +353,6 @@ test {
     systemProperty 'tests.security.manager', 'false'
 }
 
-ext.getPluginResource = { download_to_folder, download_from_src ->
-    def src_split = download_from_src.split("/")
-    def download_file = src_split[src_split.length-1]
-    if (!fileTree(download_to_folder).contains(new File("$project.rootDir/$download_to_folder/$download_file"))) {
-        println("Downloading ${download_file}")
-        project.delete download_to_folder
-        project.mkdir download_to_folder
-        ant.get(src: download_from_src,
-                dest: download_to_folder,
-                httpusecaches: false)
-    }
-    return fileTree(download_to_folder).getSingleFile()
-}
-
 File repo = file("$buildDir/testclusters/repo")
 def _numNodes = findProperty('numNodes') as Integer ?: 1
 testClusters.integTest {
@@ -361,66 +371,9 @@ testClusters.integTest {
         }
     }
 
-    plugin(provider(new Callable<RegularFile>(){
-        @Override
-        RegularFile call() throws Exception {
-            return new RegularFile() {
-                @Override
-                File getAsFile() {
-                    return getPluginResource(job_scheduler_resource_folder, job_scheduler_build_download)
-                    // if (new File("$project.rootDir/$job_scheduler_resource_folder").exists()) {
-                    //     project.delete(files("$project.rootDir/$job_scheduler_resource_folder"))
-                    // }
-                    // project.mkdir job_scheduler_resource_folder
-                    // ant.get(src: job_scheduler_build_download,
-                    //         dest: job_scheduler_resource_folder,
-                    //         httpusecaches: false)
-                    // return fileTree(job_scheduler_resource_folder).getSingleFile()
-                }
-            }
-        }
-    }))
-
-    plugin(provider(new Callable<RegularFile>(){
-        @Override
-        RegularFile call() throws Exception {
-            return new RegularFile() {
-                @Override
-                File getAsFile() {
-                    return getPluginResource(notifications_core_resource_folder, notifications_core_build_download)
-                    // if (new File("$project.rootDir/$notifications_core_resource_folder").exists()) {
-                    //     project.delete(files("$project.rootDir/$notifications_core_resource_folder"))
-                    // }
-                    // project.mkdir notifications_core_resource_folder
-                    // ant.get(src: notifications_core_build_download,
-                    //         dest: notifications_core_resource_folder,
-                    //         httpusecaches: false)
-                    // return fileTree(notifications_core_resource_folder).getSingleFile()
-                }
-            }
-        }
-    }))
-
-    plugin(provider(new Callable<RegularFile>(){
-        @Override
-        RegularFile call() throws Exception {
-            return new RegularFile() {
-                @Override
-                File getAsFile() {
-                    return getPluginResource(notifications_resource_folder, notifications_build_download)
-                    // if (new File("$project.rootDir/$notifications_resource_folder").exists()) {
-                    //     project.delete(files("$project.rootDir/$notifications_resource_folder"))
-                    // }
-                    // project.mkdir notifications_resource_folder
-                    // ant.get(src: notifications_build_download,
-                    //         dest: notifications_resource_folder,
-                    //         httpusecaches: false)
-                    // return fileTree(notifications_resource_folder).getSingleFile()
-                }
-            }
-        }
-    }))
-
+    plugin(provider(jobSchedulerFile))
+    plugin(provider(notificationsFile))
+    plugin(provider(notificationsCoreFile))
     if (securityEnabled) {
         plugin(provider(securityPluginFile))
     }
@@ -702,21 +655,9 @@ List<Provider<RegularFile>> plugins = []
 task prepareBwcTests {
     dependsOn bundlePlugin
     doLast {
-        // Download the job scheduler test dependency
-        getPluginResource(job_scheduler_resource_folder, job_scheduler_build_download)
         plugins = [
-                provider(new Callable<RegularFile>(){
-                    @Override
-                    RegularFile call() throws Exception {
-                        return new RegularFile() {
-                            @Override
-                            File getAsFile() {
-                                return fileTree(job_scheduler_resource_folder).getSingleFile()
-                            }
-                        }
-                    }
-                }),
-                project.getObjects().fileProperty().value(project.tasks.bundlePlugin.archiveFile)
+            provider(jobSchedulerFile),
+            project.getObjects().fileProperty().value(project.tasks.bundlePlugin.archiveFile)
         ]
     }
 }
