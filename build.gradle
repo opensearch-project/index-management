@@ -43,6 +43,9 @@ buildscript {
         if (isSnapshot) {
             opensearch_build += "-SNAPSHOT"
         }
+        if (!isSnapshot) {
+            opensearch_version = opensearch_version.replace("-SNAPSHOT","")
+        }
         opensearch_no_snapshot = opensearch_version.replace("-SNAPSHOT","")
 
         common_utils_version = System.getProperty("common_utils.version", opensearch_build)
@@ -83,7 +86,7 @@ buildscript {
 
 plugins {
     id 'nebula.ospackage' version "8.3.0"
-    id "com.dorongold.task-tree" version "1.5"
+    id "com.dorongold.task-tree" version "2.1.1"
 }
 
 apply plugin: 'java'
@@ -327,13 +330,16 @@ test {
 }
 
 ext.getPluginResource = { download_to_folder, download_from_src ->
-    if (new File("$project.rootDir/$download_to_folder").exists()) {
-        project.delete(files("$project.rootDir/$download_to_folder"))
+    def src_split = download_from_src.split("/")
+    def download_file = src_split[src_split.length-1]
+    if (!fileTree(download_to_folder).contains(new File("$project.rootDir/$download_to_folder/$download_file"))) {
+        println("Downloading ${download_file}")
+        project.delete download_to_folder
+        project.mkdir download_to_folder
+        ant.get(src: download_from_src,
+                dest: download_to_folder,
+                httpusecaches: false)
     }
-    project.mkdir download_to_folder
-    ant.get(src: download_from_src,
-            dest: download_to_folder,
-            httpusecaches: false)
     return fileTree(download_to_folder).getSingleFile()
 }
 
@@ -649,12 +655,10 @@ String bwc_im_resource_location = bwcFilePath + "indexmanagement/" + bwcVersion
 // Downloads the bwc job scheduler version
 String bwc_js_download_url = 'https://ci.opensearch.org/ci/dbc/distribution-build-opensearch/' + bwcVersionShort + '/latest/linux/x64/tar/builds/' +
         'opensearch/plugins/opensearch-job-scheduler-' + bwcVersion + '.zip'
-getPluginResource(bwc_js_resource_location, bwc_js_download_url)
 
 // Downloads the bwc index management version
 String bwc_im_download_url = 'https://ci.opensearch.org/ci/dbc/distribution-build-opensearch/' + bwcVersionShort + '/latest/linux/x64/tar/builds/' +
         'opensearch/plugins/opensearch-index-management-' + bwcVersion + '.zip'
-getPluginResource(bwc_im_resource_location, bwc_im_download_url)
 
 2.times {i ->
     testClusters {
@@ -668,7 +672,7 @@ getPluginResource(bwc_im_resource_location, bwc_im_download_url)
                     return new RegularFile() {
                         @Override
                         File getAsFile() {
-                            return fileTree(bwc_js_resource_location).getSingleFile()
+                            return getPluginResource(bwc_js_resource_location, bwc_js_download_url)
                         }
                     }
                 }
@@ -680,7 +684,7 @@ getPluginResource(bwc_im_resource_location, bwc_im_download_url)
                     return new RegularFile() {
                         @Override
                         File getAsFile() {
-                            return fileTree(bwc_im_resource_location).getSingleFile()
+                            return getPluginResource(bwc_im_resource_location, bwc_im_download_url)
                         }
                     }
                 }
