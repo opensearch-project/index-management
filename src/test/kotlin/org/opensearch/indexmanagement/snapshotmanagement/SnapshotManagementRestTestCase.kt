@@ -5,11 +5,11 @@
 
 package org.opensearch.indexmanagement.snapshotmanagement
 
-import org.apache.http.HttpEntity
-import org.apache.http.HttpHeaders
-import org.apache.http.entity.ContentType.APPLICATION_JSON
-import org.apache.http.entity.StringEntity
-import org.apache.http.message.BasicHeader
+import org.apache.hc.core5.http.HttpEntity
+import org.apache.hc.core5.http.HttpHeaders
+import org.apache.hc.core5.http.ContentType
+import org.apache.hc.core5.http.io.entity.StringEntity
+import org.apache.hc.core5.http.message.BasicHeader
 import org.junit.After
 import org.junit.Before
 import org.opensearch.client.Response
@@ -73,7 +73,7 @@ abstract class SnapshotManagementRestTestCase : IndexManagementRestTestCase() {
                 "POST",
                 "${IndexManagementPlugin.SM_POLICIES_URI}/$smPolicyName?refresh=$refresh",
                 emptyMap(),
-                StringEntity(smPolicyString, APPLICATION_JSON)
+                StringEntity(smPolicyString, ContentType.APPLICATION_JSON)
             )
         assertEquals("Unable to create a new snapshot management policy", RestStatus.CREATED, response.restStatus())
         return response
@@ -119,7 +119,7 @@ abstract class SnapshotManagementRestTestCase : IndexManagementRestTestCase() {
         return smPolicy
     }
 
-    protected fun SMPolicy.toHttpEntity(): HttpEntity = StringEntity(toJsonString(), APPLICATION_JSON)
+    protected fun SMPolicy.toHttpEntity(): HttpEntity = StringEntity(toJsonString(), ContentType.APPLICATION_JSON)
 
     protected fun updateSMPolicyStartTime(update: SMPolicy, desiredStartTimeMillis: Long? = null) {
         // Before updating start time of a job always make sure there are no unassigned shards that could cause the config
@@ -142,7 +142,7 @@ abstract class SnapshotManagementRestTestCase : IndexManagementRestTestCase() {
             "POST", "$INDEX_MANAGEMENT_INDEX/_update/${update.id}?wait_for_active_shards=$waitForActiveShards",
             StringEntity(
                 "{\"doc\":{\"sm_policy\":{\"schedule\":{\"interval\":{\"start_time\":\"$startTimeMillis\"}}}}}",
-                APPLICATION_JSON
+                ContentType.APPLICATION_JSON
             )
         )
 
@@ -221,7 +221,7 @@ abstract class SnapshotManagementRestTestCase : IndexManagementRestTestCase() {
                 "PUT",
                 "_snapshot/$repository",
                 emptyMap(),
-                StringEntity("{\"type\":\"fs\", \"settings\": {\"location\": \"$repository\"}}", APPLICATION_JSON)
+                StringEntity("{\"type\":\"fs\", \"settings\": {\"location\": \"$repository\"}}", ContentType.APPLICATION_JSON)
             )
         assertEquals("Unable to create a new repository", RestStatus.OK, response.restStatus())
     }

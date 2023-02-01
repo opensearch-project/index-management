@@ -5,8 +5,8 @@
 
 package org.opensearch.indexmanagement
 
-import org.apache.http.entity.ContentType
-import org.apache.http.entity.StringEntity
+import org.apache.hc.core5.http.ContentType
+import org.apache.hc.core5.http.io.entity.StringEntity
 import org.junit.AfterClass
 import org.junit.Before
 import org.junit.rules.DisableOnDebug
@@ -59,7 +59,7 @@ abstract class IndexManagementRestTestCase : ODFERestTestCase() {
     fun initializeManagedIndex() {
         if (!indexExists(IndexManagementPlugin.INDEX_MANAGEMENT_INDEX)) {
             val request = Request("PUT", "/${IndexManagementPlugin.INDEX_MANAGEMENT_INDEX}")
-            var entity = "{\"settings\": " + Strings.toString(Settings.builder().put(INDEX_HIDDEN, true).build())
+            var entity = "{\"settings\": " + Strings.toString(XContentType.JSON, Settings.builder().put(INDEX_HIDDEN, true).build())
             entity += ",\"mappings\" : ${IndexManagementIndices.indexManagementMappings}}"
             request.setJsonEntity(entity)
             client().performRequest(request)
@@ -185,7 +185,7 @@ abstract class IndexManagementRestTestCase : ODFERestTestCase() {
             }
 
             val response = client.performRequest(Request("GET", "/_cat/indices?format=json&expand_wildcards=all"))
-            val xContentType = XContentType.fromMediaType(response.entity.contentType.value)
+            val xContentType = XContentType.fromMediaType(response.entity.contentType)
             xContentType.xContent().createParser(
                 NamedXContentRegistry.EMPTY, DeprecationHandler.THROW_UNSUPPORTED_OPERATION,
                 response.entity.content
@@ -254,7 +254,7 @@ abstract class IndexManagementRestTestCase : ODFERestTestCase() {
         protected fun waitForThreadPools(client: RestClient) {
             val response = client.performRequest(Request("GET", "/_cat/thread_pool?format=json"))
 
-            val xContentType = XContentType.fromMediaType(response.entity.contentType.value)
+            val xContentType = XContentType.fromMediaType(response.entity.contentType)
             xContentType.xContent().createParser(
                 NamedXContentRegistry.EMPTY, DeprecationHandler.THROW_UNSUPPORTED_OPERATION,
                 response.entity.content

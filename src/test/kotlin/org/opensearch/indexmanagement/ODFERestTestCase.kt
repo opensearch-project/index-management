@@ -5,7 +5,7 @@
 
 package org.opensearch.indexmanagement
 
-import org.apache.http.HttpHost
+import org.apache.hc.core5.http.HttpHost
 import org.opensearch.client.RestClient
 import org.opensearch.common.io.PathUtils
 import org.opensearch.common.settings.Settings
@@ -50,13 +50,16 @@ abstract class ODFERestTestCase : OpenSearchRestTestCase() {
                     // create adminDN (super-admin) client
                     val uri = javaClass.classLoader.getResource("security/sample.pem")?.toURI()
                     val configPath = PathUtils.get(uri).parent.toAbsolutePath()
-                    SecureRestClientBuilder(settings, configPath, hosts).setSocketTimeout(5000).build()
+                    SecureRestClientBuilder(settings, configPath, hosts).setSocketTimeout(60000)
+                        .setConnectionRequestTimeout(180000).build()
                 }
+
                 false -> {
                     // create client with passed user
                     val userName = System.getProperty("user")
                     val password = System.getProperty("password")
-                    SecureRestClientBuilder(hosts, isHttps(), userName, password).setSocketTimeout(5000).build()
+                    SecureRestClientBuilder(hosts, isHttps(), userName, password).setSocketTimeout(60000)
+                        .setConnectionRequestTimeout(180000).build()
                 }
             }
         } else {

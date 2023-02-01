@@ -36,7 +36,7 @@ data class PolicyRetryInfoMetaData(
             .field(CONSUMED_RETRIES, consumedRetries)
     }
 
-    fun getMapValueString(): String = Strings.toString(this, false, false)
+    fun getMapValueString(): String = Strings.toString(XContentType.JSON, this)
 
     companion object {
         const val RETRY_INFO = "retry_info"

@@ -26,11 +26,12 @@ import java.util.concurrent.TimeUnit
 buildscript {
     ext {
         isSnapshot = "true" == System.getProperty("build.snapshot", "true")
-        opensearch_version = System.getProperty("opensearch.version", "2.5.0-SNAPSHOT")
+        opensearch_version = System.getProperty("opensearch.version", "3.0.0-SNAPSHOT")
         buildVersionQualifier = System.getProperty("build.version_qualifier", "")
         // 2.2.0-SNAPSHOT -> 2.2.0.0-SNAPSHOT
         version_tokens = opensearch_version.tokenize('-')
         opensearch_build = version_tokens[0] + '.0'
+
         job_scheduler_no_snapshot = opensearch_build
         notifications_no_snapshot = opensearch_build
         security_no_snapshot = opensearch_build
@@ -43,17 +44,19 @@ buildscript {
             opensearch_build += "-SNAPSHOT"
         }
         if (!isSnapshot) {
-            opensearch_version = opensearch_version.replace("-SNAPSHOT","")
+            opensearch_version = opensearch_version.replace("-SNAPSHOT", "")
         }
-        opensearch_no_snapshot = opensearch_version.replace("-SNAPSHOT","")
-        job_scheduler_resource_folder = "src/test/resources/job-scheduler"
+        opensearch_no_snapshot = opensearch_version.replace("-SNAPSHOT", "")
 
-        notifications_resource_folder = "src/test/resources/notifications"
-        notifications_core_resource_folder = "src/test/resources/notifications-core"
         common_utils_version = System.getProperty("common_utils.version", opensearch_build)
+
+        job_scheduler_resource_folder = "src/test/resources/job-scheduler"
         job_scheduler_version = System.getProperty("job_scheduler_version.version", opensearch_build)
         job_scheduler_build_download = 'https://ci.opensearch.org/ci/dbc/distribution-build-opensearch/' + opensearch_no_snapshot +
                 '/latest/linux/x64/tar/builds/opensearch/plugins/opensearch-job-scheduler-' + job_scheduler_no_snapshot + '.zip'
+
+        notifications_resource_folder = "src/test/resources/notifications"
+        notifications_core_resource_folder = "src/test/resources/notifications-core"
         notifications_version = System.getProperty("notifications.version", opensearch_build)
         notifications_build_download = 'https://ci.opensearch.org/ci/dbc/distribution-build-opensearch/' + opensearch_no_snapshot +
                 '/latest/linux/x64/tar/builds/opensearch/plugins/opensearch-notifications-' + notifications_no_snapshot + '.zip'
@@ -209,7 +212,7 @@ dependencies {
     testImplementation "org.opensearch.test:framework:${opensearch_version}"
     testImplementation "org.jetbrains.kotlin:kotlin-test:${kotlin_version}"
     testImplementation "com.nhaarman.mockitokotlin2:mockito-kotlin:2.2.0"
-    testImplementation "org.mockito:mockito-core:4.7.0"
+    testImplementation "org.mockito:mockito-core:${versions.mockito}"
 
     add("ktlint", "com.pinterest:ktlint:0.45.1") {
         attributes {
@@ -218,6 +221,9 @@ dependencies {
     }
 
     // https://aws.oss.sonatype.org/content/repositories/snapshots/org/opensearch/plugin/
+    opensearchPlugin "org.opensearch.plugin:opensearch-job-scheduler:${job_scheduler_version}@zip"
+    opensearchPlugin "org.opensearch.plugin:opensearch-notifications-core:${notifications_version}@zip"
+    opensearchPlugin "org.opensearch.plugin:notifications:${notifications_version}@zip"
     opensearchPlugin "org.opensearch.plugin:opensearch-security:${security_plugin_version}@zip"
 }
 
@@ -269,7 +275,6 @@ validateNebulaPom.enabled = false
 def opensearch_tmp_dir = rootProject.file('build/private/opensearch_tmp').absoluteFile
 opensearch_tmp_dir.mkdirs()
 
-// === Setup security test ===
 ext.resolvePluginFile = { pluginId ->
     return new Callable<RegularFile>() {
         @Override
@@ -278,14 +283,35 @@ ext.resolvePluginFile = { pluginId ->
                 @Override
                 File getAsFile() {
                     return configurations.opensearchPlugin.resolvedConfiguration.resolvedArtifacts
-                            .find { ResolvedArtifact f -> f.name.contains(pluginId) }
+                            .find { ResolvedArtifact f ->
+                                f.name.startsWith(pluginId)
+                            }
                             .file
                 }
             }
         }
     }
 }
+def jobSchedulerFile = resolvePluginFile("opensearch-job-scheduler")
+def notificationsCoreFile = resolvePluginFile("opensearch-notifications-core")
+def notificationsFile = resolvePluginFile("notifications")
 def securityPluginFile = resolvePluginFile("opensearch-security")
+
+ext.getPluginResource = { download_to_folder, download_from_src ->
+    def src_split = download_from_src.split("/")
+    def download_file = src_split[src_split.length - 1]
+    if (!fileTree(download_to_folder).contains(new File("$project.rootDir/$download_to_folder/$download_file"))) {
+        println("Downloading ${download_file}")
+        project.delete download_to_folder
+        project.mkdir download_to_folder
+        ant.get(src: download_from_src,
+                dest: download_to_folder,
+                httpusecaches: false)
+    }
+    return fileTree(download_to_folder).getSingleFile()
+}
+
+// === Setup security test ===
 // This flag indicates the existence of security plugin
 def securityEnabled = System.getProperty("security", "false") == "true"
 afterEvaluate {
@@ -326,20 +352,6 @@ test {
     systemProperty 'tests.security.manager', 'false'
 }
 
-ext.getPluginResource = { download_to_folder, download_from_src ->
-    def src_split = download_from_src.split("/")
-    def download_file = src_split[src_split.length-1]
-    if (!fileTree(download_to_folder).contains(new File("$project.rootDir/$download_to_folder/$download_file"))) {
-        println("Downloading ${download_file}")
-        project.delete download_to_folder
-        project.mkdir download_to_folder
-        ant.get(src: download_from_src,
-                dest: download_to_folder,
-                httpusecaches: false)
-    }
-    return fileTree(download_to_folder).getSingleFile()
-}
-
 File repo = file("$buildDir/testclusters/repo")
 def _numNodes = findProperty('numNodes') as Integer ?: 1
 testClusters.integTest {
@@ -358,63 +370,9 @@ testClusters.integTest {
         }
     }
 
-    plugin(provider(new Callable<RegularFile>(){
-        @Override
-        RegularFile call() throws Exception {
-            return new RegularFile() {
-                @Override
-                File getAsFile() {
-                    if (new File("$project.rootDir/$job_scheduler_resource_folder").exists()) {
-                        project.delete(files("$project.rootDir/$job_scheduler_resource_folder"))
-                    }
-                    project.mkdir job_scheduler_resource_folder
-                    ant.get(src: job_scheduler_build_download,
-                            dest: job_scheduler_resource_folder,
-                            httpusecaches: false)
-                    return fileTree(job_scheduler_resource_folder).getSingleFile()
-                }
-            }
-        }
-    }))
-
-    plugin(provider(new Callable<RegularFile>(){
-        @Override
-        RegularFile call() throws Exception {
-            return new RegularFile() {
-                @Override
-                File getAsFile() {
-                    if (new File("$project.rootDir/$notifications_core_resource_folder").exists()) {
-                        project.delete(files("$project.rootDir/$notifications_core_resource_folder"))
-                    }
-                    project.mkdir notifications_core_resource_folder
-                    ant.get(src: notifications_core_build_download,
-                            dest: notifications_core_resource_folder,
-                            httpusecaches: false)
-                    return fileTree(notifications_core_resource_folder).getSingleFile()
-                }
-            }
-        }
-    }))
-
-    plugin(provider(new Callable<RegularFile>(){
-        @Override
-        RegularFile call() throws Exception {
-            return new RegularFile() {
-                @Override
-                File getAsFile() {
-                    if (new File("$project.rootDir/$notifications_resource_folder").exists()) {
-                        project.delete(files("$project.rootDir/$notifications_resource_folder"))
-                    }
-                    project.mkdir notifications_resource_folder
-                    ant.get(src: notifications_build_download,
-                            dest: notifications_resource_folder,
-                            httpusecaches: false)
-                    return fileTree(notifications_resource_folder).getSingleFile()
-                }
-            }
-        }
-    }))
-
+    plugin(provider(jobSchedulerFile))
+    plugin(provider(notificationsCoreFile))
+    plugin(provider(notificationsFile))
     if (securityEnabled) {
         plugin(provider(securityPluginFile))
     }
@@ -529,7 +487,7 @@ def waitForClusterSetup(OpenSearchCluster cluster, Boolean securityEnabled) {
     String unicastUris = cluster.nodes.stream().flatMap { node ->
         node.getAllTransportPortURI().stream()
     }.collect(Collectors.joining("\n"))
-    cluster.nodes.forEach {node ->
+    cluster.nodes.forEach { node ->
         try {
             Files.write(node.getConfigDir().resolve("unicast_hosts.txt"), unicastUris.getBytes(StandardCharsets.UTF_8))
         } catch (IOException e) {
@@ -542,7 +500,7 @@ def waitForClusterSetup(OpenSearchCluster cluster, Boolean securityEnabled) {
         WaitForClusterYellow wait = new WaitForClusterYellow(protocol, cluster.getFirstNode().getHttpSocketURI(), cluster.nodes.size())
         wait.setUsername(System.getProperty("user", "admin"))
         wait.setPassword(System.getProperty("password", "admin"))
-        return wait.wait(500)
+        return wait.wait(180000)
     }
 
     cluster.@waitConditions.put("cluster health yellow", pred)
@@ -601,7 +559,7 @@ integTest {
     }
 }
 
-task integTestRemote(type: RestIntegTestTask)  {
+task integTestRemote(type: RestIntegTestTask) {
     testClassesDirs = sourceSets.test.output.classesDirs
     classpath = sourceSets.test.runtimeClasspath
     systemProperty 'tests.security.manager', 'false'
@@ -636,28 +594,30 @@ task integTestRemote(type: RestIntegTestTask)  {
     exclude 'org/opensearch/indexmanagement/indexstatemanagement/action/SnapshotActionIT.class'
 }
 
-String bwcVersion = "1.13.2.0"
-String bwcJobSchedulerVersion = "1.13.0.0"
+// === Set up BWC tests ===
+
+String bwcVersionShort = "2.5.0"
+String bwcVersion = bwcVersionShort + ".0"
 String baseName = "indexmanagementBwcCluster"
 String bwcFilePath = "src/test/resources/bwc/"
-String bwc_js_resource_location = bwcFilePath + "job-scheduler/" + bwcJobSchedulerVersion
+String bwc_js_resource_location = bwcFilePath + "job-scheduler/" + bwcVersion
 String bwc_im_resource_location = bwcFilePath + "indexmanagement/" + bwcVersion
 
 // Downloads the bwc job scheduler version
-String bwc_js_download_url = "https://github.com/opendistro-for-elasticsearch/job-scheduler/releases/download/v" +
-        bwcJobSchedulerVersion + "/job-scheduler-artifacts.zip"
+String bwc_js_download_url = 'https://ci.opensearch.org/ci/dbc/distribution-build-opensearch/' + bwcVersionShort + '/latest/linux/x64/tar/builds/' +
+        'opensearch/plugins/opensearch-job-scheduler-' + bwcVersion + '.zip'
 
 // Downloads the bwc index management version
-String bwc_im_download_url = "https://github.com/opendistro-for-elasticsearch/index-management/releases/download/v" +
-        bwcVersion + "/index-management-artifacts.zip"
+String bwc_im_download_url = 'https://ci.opensearch.org/ci/dbc/distribution-build-opensearch/' + bwcVersionShort + '/latest/linux/x64/tar/builds/' +
+        'opensearch/plugins/opensearch-index-management-' + bwcVersion + '.zip'
 
-2.times {i ->
+2.times { i ->
     testClusters {
         "${baseName}$i" {
             testDistribution = "ARCHIVE"
-            versions = ["7.10.2", opensearch_version]
+            versions = [bwcVersionShort, opensearch_version]
             numberOfNodes = 3
-            plugin(provider(new Callable<RegularFile>(){
+            plugin(provider(new Callable<RegularFile>() {
                 @Override
                 RegularFile call() throws Exception {
                     return new RegularFile() {
@@ -668,8 +628,7 @@ String bwc_im_download_url = "https://github.com/opendistro-for-elasticsearch/in
                     }
                 }
             }))
-
-            plugin(provider(new Callable<RegularFile>(){
+            plugin(provider(new Callable<RegularFile>() {
                 @Override
                 RegularFile call() throws Exception {
                     return new RegularFile() {
@@ -693,27 +652,15 @@ List<Provider<RegularFile>> plugins = []
 task prepareBwcTests {
     dependsOn bundlePlugin
     doLast {
-        // Download the job scheduler test dependency
-        getPluginResource(job_scheduler_resource_folder, job_scheduler_build_download)
         plugins = [
-                provider(new Callable<RegularFile>(){
-                    @Override
-                    RegularFile call() throws Exception {
-                        return new RegularFile() {
-                            @Override
-                            File getAsFile() {
-                                return fileTree(job_scheduler_resource_folder).getSingleFile()
-                            }
-                        }
-                    }
-                }),
+                provider(jobSchedulerFile),
                 project.getObjects().fileProperty().value(project.tasks.bundlePlugin.archiveFile)
         ]
     }
 }
 
 // Create two test clusters with 3 nodes of the old version
-2.times {i ->
+2.times { i ->
     task "${baseName}#oldVersionClusterTask$i"(type: StandaloneRestIntegTestTask) {
         dependsOn 'prepareBwcTests'
         useCluster testClusters."${baseName}$i"
@@ -725,17 +672,21 @@ task prepareBwcTests {
         systemProperty 'tests.plugin_bwc_version', bwcVersion
         nonInputProperties.systemProperty('tests.rest.cluster', "${-> testClusters."${baseName}$i".allHttpSocketURI.join(",")}")
         nonInputProperties.systemProperty('tests.clustername', "${-> testClusters."${baseName}$i".getName()}")
+        systemProperty 'tests.security.manager', 'false'
     }
 }
 
 // Upgrade one node of the old cluster to new OpenSearch version with upgraded plugin version.
 // This results in a mixed cluster with 2 nodes on the old version and 1 upgraded node.
 // This is also used as a one third upgraded cluster for a rolling upgrade.
-task "${baseName}#mixedClusterTask"(type: StandaloneRestIntegTestTask) {
-    useCluster testClusters."${baseName}0"
+task "${baseName}#oneThirdsUpgradeCluster"(type: StandaloneRestIntegTestTask) {
     dependsOn "${baseName}#oldVersionClusterTask0"
+    useCluster testClusters."${baseName}0"
     doFirst {
         testClusters."${baseName}0".upgradeNodeAndPluginToNextVersion(plugins)
+        getClusters().forEach { cluster ->
+            waitForClusterSetup(cluster, securityEnabled)
+        }
     }
     filter {
         includeTestsMatching "org.opensearch.indexmanagement.bwc.*IT"
@@ -745,13 +696,14 @@ task "${baseName}#mixedClusterTask"(type: StandaloneRestIntegTestTask) {
     systemProperty 'tests.plugin_bwc_version', bwcVersion
     nonInputProperties.systemProperty('tests.rest.cluster', "${-> testClusters."${baseName}0".allHttpSocketURI.join(",")}")
     nonInputProperties.systemProperty('tests.clustername', "${-> testClusters."${baseName}0".getName()}")
+    systemProperty 'tests.security.manager', 'false'
 }
 
 // Upgrade the second node to new OpenSearch version with upgraded plugin version after the first node is upgraded.
 // This results in a mixed cluster with 1 node on the old version and 2 upgraded nodes.
 // This is used for rolling upgrade.
 task "${baseName}#twoThirdsUpgradedClusterTask"(type: StandaloneRestIntegTestTask) {
-    dependsOn "${baseName}#mixedClusterTask"
+    dependsOn "${baseName}#oneThirdsUpgradeCluster"
     useCluster testClusters."${baseName}0"
     doFirst {
         testClusters."${baseName}0".upgradeNodeAndPluginToNextVersion(plugins)
@@ -764,6 +716,7 @@ task "${baseName}#twoThirdsUpgradedClusterTask"(type: StandaloneRestIntegTestTas
     systemProperty 'tests.plugin_bwc_version', bwcVersion
     nonInputProperties.systemProperty('tests.rest.cluster', "${-> testClusters."${baseName}0".allHttpSocketURI.join(",")}")
     nonInputProperties.systemProperty('tests.clustername', "${-> testClusters."${baseName}0".getName()}")
+    systemProperty 'tests.security.manager', 'false'
 }
 
 // Upgrade the third node to new OpenSearch version with upgraded plugin version after the second node is upgraded.
@@ -778,12 +731,12 @@ task "${baseName}#rollingUpgradeClusterTask"(type: StandaloneRestIntegTestTask) 
     filter {
         includeTestsMatching "org.opensearch.indexmanagement.bwc.*IT"
     }
-    mustRunAfter "${baseName}#mixedClusterTask"
-    systemProperty 'tests.rest.bwcsuite', 'mixed_cluster'
+    systemProperty 'tests.rest.bwcsuite', 'upgraded_cluster'
     systemProperty 'tests.rest.bwcsuite_round', 'third'
     systemProperty 'tests.plugin_bwc_version', bwcVersion
     nonInputProperties.systemProperty('tests.rest.cluster', "${-> testClusters."${baseName}0".allHttpSocketURI.join(",")}")
     nonInputProperties.systemProperty('tests.clustername', "${-> testClusters."${baseName}0".getName()}")
+    systemProperty 'tests.security.manager', 'false'
 }
 
 // Upgrade all the nodes of the old cluster to new OpenSearch version with upgraded plugin version
@@ -801,16 +754,19 @@ task "${baseName}#fullRestartClusterTask"(type: StandaloneRestIntegTestTask) {
     systemProperty 'tests.plugin_bwc_version', bwcVersion
     nonInputProperties.systemProperty('tests.rest.cluster', "${-> testClusters."${baseName}1".allHttpSocketURI.join(",")}")
     nonInputProperties.systemProperty('tests.clustername', "${-> testClusters."${baseName}1".getName()}")
+    systemProperty 'tests.security.manager', 'false'
 }
 
 // A bwc test suite which runs all the bwc tasks combined
 task bwcTestSuite(type: StandaloneRestIntegTestTask) {
     exclude '**/*Test*'
     exclude '**/*IT*'
-    dependsOn tasks.named("${baseName}#mixedClusterTask")
-    dependsOn tasks.named("${baseName}#rollingUpgradeClusterTask")
+    // TODO refactor bwc test #677
+    // dependsOn tasks.named("${baseName}#rollingUpgradeClusterTask")
     dependsOn tasks.named("${baseName}#fullRestartClusterTask")
 }
+
+// === End of BWC tests ===
 
 run {
     useCluster project.testClusters.integTest
@@ -896,6 +852,6 @@ task updateVersion {
         ext.newVersion = System.getProperty('newVersion')
         println "Setting version to ${newVersion}."
         // String tokenization to support -SNAPSHOT
-        ant.replaceregexp(file:'build.gradle', match: '"opensearch.version", "\\d.*"', replace: '"opensearch.version", "' + newVersion.tokenize('-')[0] + '-SNAPSHOT"', flags:'g', byline:true)
+        ant.replaceregexp(file: 'build.gradle', match: '"opensearch.version", "\\d.*"', replace: '"opensearch.version", "' + newVersion.tokenize('-')[0] + '-SNAPSHOT"', flags: 'g', byline: true)
     }
 }

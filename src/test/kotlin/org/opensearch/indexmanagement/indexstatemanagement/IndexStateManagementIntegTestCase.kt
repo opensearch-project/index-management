@@ -5,8 +5,8 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement
 
-import org.apache.http.entity.ContentType
-import org.apache.http.entity.StringEntity
+import org.apache.hc.core5.http.ContentType
+import org.apache.hc.core5.http.io.entity.StringEntity
 import org.junit.After
 import org.junit.Before
 import org.opensearch.OpenSearchParseException
@@ -335,7 +335,7 @@ abstract class IndexStateManagementIntegTestCase : OpenSearchIntegTestCase() {
 
     fun updateIndexSettings(index: String, settings: Settings) {
         val request = Request("PUT", "/$index/_settings")
-        request.setJsonEntity(Strings.toString(settings))
+        request.setJsonEntity(Strings.toString(XContentType.JSON, settings))
         getRestClient().performRequest(request)
     }
 

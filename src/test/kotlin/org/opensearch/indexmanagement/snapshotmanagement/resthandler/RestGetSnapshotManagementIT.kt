@@ -5,8 +5,8 @@
 
 package org.opensearch.indexmanagement.snapshotmanagement.resthandler
 
-import org.apache.http.HttpHeaders
-import org.apache.http.message.BasicHeader
+import org.apache.hc.core5.http.HttpHeaders
+import org.apache.hc.core5.http.message.BasicHeader
 import org.opensearch.client.ResponseException
 import org.opensearch.indexmanagement.IndexManagementPlugin
 import org.opensearch.indexmanagement.makeRequest

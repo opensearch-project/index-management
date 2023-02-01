@@ -5,11 +5,11 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement
 
-import org.apache.http.HttpEntity
-import org.apache.http.HttpHeaders
-import org.apache.http.entity.ContentType.APPLICATION_JSON
-import org.apache.http.entity.StringEntity
-import org.apache.http.message.BasicHeader
+import org.apache.hc.core5.http.HttpEntity
+import org.apache.hc.core5.http.HttpHeaders
+import org.apache.hc.core5.http.ContentType
+import org.apache.hc.core5.http.io.entity.StringEntity
+import org.apache.hc.core5.http.message.BasicHeader
 import org.junit.After
 import org.junit.Before
 import org.opensearch.OpenSearchParseException
@@ -134,7 +134,7 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
                 "PUT",
                 "$POLICY_BASE_URI/$policyId?refresh=$refresh",
                 emptyMap(),
-                StringEntity(policyString, APPLICATION_JSON)
+                StringEntity(policyString, ContentType.APPLICATION_JSON)
             )
         assertEquals("Unable to create a new policy", RestStatus.CREATED, response.restStatus())
         return response
@@ -222,7 +222,7 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
                 "index_patterns": ["$dataStream"]
             }
             """.trimIndent(),
-            APPLICATION_JSON
+            ContentType.APPLICATION_JSON
         )
         val res = client().makeRequest(
             "PUT",
@@ -253,7 +253,7 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
               ]
             }
         """.trimIndent()
-        val response = client().makeRequest("POST", "_aliases", StringEntity(body, APPLICATION_JSON))
+        val response = client().makeRequest("POST", "_aliases", StringEntity(body, ContentType.APPLICATION_JSON))
         assertEquals("Unexpected RestStatus", RestStatus.OK, response.restStatus())
     }
 
@@ -272,7 +272,7 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
               "policy_id": "$policyID"
             }
         """.trimIndent()
-        val response = client().makeRequest("POST", "/_opendistro/_ism/add/$index", StringEntity(body, APPLICATION_JSON))
+        val response = client().makeRequest("POST", "/_opendistro/_ism/add/$index", StringEntity(body, ContentType.APPLICATION_JSON))
         assertEquals("Unexpected RestStatus", RestStatus.OK, response.restStatus())
     }
 
@@ -296,7 +296,7 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
         """.trimIndent()
         val res = client().makeRequest(
             "PUT", "_cluster/settings", emptyMap(),
-            StringEntity(request, APPLICATION_JSON)
+            StringEntity(request, ContentType.APPLICATION_JSON)
         )
         assertEquals("Request failed", RestStatus.OK, res.restStatus())
     }
@@ -321,7 +321,7 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
         """.trimIndent()
         val res = client().makeRequest(
             "PUT", "$index/_settings", emptyMap(),
-            StringEntity(body, APPLICATION_JSON)
+            StringEntity(body, ContentType.APPLICATION_JSON)
         )
         assertEquals("Update index setting failed", RestStatus.OK, res.restStatus())
     }
@@ -346,7 +346,7 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
         """.trimIndent()
         val response = client().makeRequest(
             "POST", "$INDEX_MANAGEMENT_INDEX/_search", emptyMap(),
-            StringEntity(request, APPLICATION_JSON)
+            StringEntity(request, ContentType.APPLICATION_JSON)
         )
         assertEquals("Request failed", RestStatus.OK, response.restStatus())
         val searchResponse = SearchResponse.fromXContent(createParser(jsonXContent, response.entity.content))
@@ -386,7 +386,7 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
         """.trimIndent()
         val response = client().makeRequest(
             "POST", "${IndexManagementIndices.HISTORY_ALL}/_search", emptyMap(),
-            StringEntity(request, APPLICATION_JSON)
+            StringEntity(request, ContentType.APPLICATION_JSON)
         )
         assertEquals("Request failed", RestStatus.OK, response.restStatus())
         return SearchResponse.fromXContent(createParser(jsonXContent, response.entity.content))
@@ -418,7 +418,7 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
                     client().makeRequest(
                         "GET",
                         "_cluster/allocation/explain",
-                        StringEntity("{ \"index\": \"$INDEX_MANAGEMENT_INDEX\" }", APPLICATION_JSON)
+                        StringEntity("{ \"index\": \"$INDEX_MANAGEMENT_INDEX\" }", ContentType.APPLICATION_JSON)
                     )
                     fail("Expected 400 Bad Request when there are no unassigned shards to explain")
                 } catch (e: ResponseException) {
@@ -436,7 +436,7 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
             StringEntity(
                 "{\"doc\":{\"managed_index\":{\"schedule\":{\"interval\":{\"start_time\":" +
                     "\"$startTimeMillis\"}}}}}",
-                APPLICATION_JSON
+                ContentType.APPLICATION_JSON
             )
         )
 
@@ -448,15 +448,15 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
             "POST", "$INDEX_MANAGEMENT_INDEX/_update/${update.id}",
             StringEntity(
                 "{\"doc\":{\"managed_index\":{\"policy_seq_no\":\"${update.policySeqNo}\"}}}",
-                APPLICATION_JSON
+                ContentType.APPLICATION_JSON
             )
         )
         assertEquals("Request failed", RestStatus.OK, response.restStatus())
     }
 
-    protected fun Policy.toHttpEntity(): HttpEntity = StringEntity(toJsonString(), APPLICATION_JSON)
+    protected fun Policy.toHttpEntity(): HttpEntity = StringEntity(toJsonString(), ContentType.APPLICATION_JSON)
 
-    protected fun ManagedIndexConfig.toHttpEntity(): HttpEntity = StringEntity(toJsonString(), APPLICATION_JSON)
+    protected fun ManagedIndexConfig.toHttpEntity(): HttpEntity = StringEntity(toJsonString(), ContentType.APPLICATION_JSON)
 
     protected fun ChangePolicy.toHttpEntity(): HttpEntity {
         var string = "{\"${ChangePolicy.POLICY_ID_FIELD}\":\"$policyID\","
@@ -465,7 +465,7 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
         }
         string += "\"${ChangePolicy.INCLUDE_FIELD}\":${include.map { "{\"${StateFilter.STATE_FIELD}\":\"${it.state}\"}" }}}"
 
-        return StringEntity(string, APPLICATION_JSON)
+        return StringEntity(string, ContentType.APPLICATION_JSON)
     }
 
     // Useful settings when debugging to prevent timeouts
@@ -696,7 +696,7 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
                 "PUT",
                 "_snapshot/$repository",
                 emptyMap(),
-                StringEntity("{\"type\":\"fs\", \"settings\": {\"location\": \"$repository\"}}", APPLICATION_JSON)
+                StringEntity("{\"type\":\"fs\", \"settings\": {\"location\": \"$repository\"}}", ContentType.APPLICATION_JSON)
             )
         assertEquals("Unable to create a new repository", RestStatus.OK, response.restStatus())
     }
@@ -992,7 +992,7 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
                     "  }, \n" +
                     "  \"order\": $order\n" +
                     "}",
-                APPLICATION_JSON
+                ContentType.APPLICATION_JSON
             )
         )
         assertEquals("Request failed", RestStatus.OK, response.restStatus())
@@ -1006,7 +1006,7 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
                     "  \"index_patterns\": [\"$indexPatterns\"],\n" +
                     "  \"order\": $order\n" +
                     "}",
-                APPLICATION_JSON
+                ContentType.APPLICATION_JSON
             )
         )
         assertEquals("Request failed", RestStatus.OK, response.restStatus())
@@ -1029,7 +1029,7 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
                     "    }\n" +
                     "  }\n" +
                     "}",
-                APPLICATION_JSON
+                ContentType.APPLICATION_JSON
             )
         )
         assertEquals("Request failed", RestStatus.OK, response.restStatus())

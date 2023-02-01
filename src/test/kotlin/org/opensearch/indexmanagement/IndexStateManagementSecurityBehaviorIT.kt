@@ -84,7 +84,9 @@ class IndexStateManagementSecurityBehaviorIT : SecurityRestTestCase() {
         assignRoleToUsers(HELPDESK_ROLE, listOf(superIsmUser))
 
         superUserClient =
-            SecureRestClientBuilder(clusterHosts.toTypedArray(), isHttps(), superIsmUser, password).setSocketTimeout(60000)
+            SecureRestClientBuilder(clusterHosts.toTypedArray(), isHttps(), superIsmUser, password).setSocketTimeout(
+                60000
+            ).setConnectionRequestTimeout(180000)
                 .build()
     }
 
@@ -105,6 +107,7 @@ class IndexStateManagementSecurityBehaviorIT : SecurityRestTestCase() {
 
         testClient =
             SecureRestClientBuilder(clusterHosts.toTypedArray(), isHttps(), testUser, password).setSocketTimeout(60000)
+                .setConnectionRequestTimeout(180000)
                 .build()
 
         val indexName = "${AIRLINE_INDEX}_index_basic"
@@ -157,6 +160,7 @@ class IndexStateManagementSecurityBehaviorIT : SecurityRestTestCase() {
 
         testClient =
             SecureRestClientBuilder(clusterHosts.toTypedArray(), isHttps(), testUser, password).setSocketTimeout(60000)
+                .setConnectionRequestTimeout(180000)
                 .build()
         try {
             val testPolicyJson = createReplicaCountTestPolicyRequest(10, "")
@@ -178,6 +182,7 @@ class IndexStateManagementSecurityBehaviorIT : SecurityRestTestCase() {
 
         testClient =
             SecureRestClientBuilder(clusterHosts.toTypedArray(), isHttps(), testUser, password).setSocketTimeout(60000)
+                .setConnectionRequestTimeout(180000)
                 .build()
         try {
             val testPolicyJson = createReplicaCountTestPolicyRequest(10, AIRLINE_INDEX_PATTERN)
@@ -197,10 +202,14 @@ class IndexStateManagementSecurityBehaviorIT : SecurityRestTestCase() {
     }
 
     fun `test delete policy`() {
-        createTestUserWithRole(listOf(EXPLAIN_INDEX, GET_POLICY, EXPLAIN_INDEX), listOf(GET_INDEX_MAPPING, SEARCH_INDEX))
+        createTestUserWithRole(
+            listOf(EXPLAIN_INDEX, GET_POLICY, EXPLAIN_INDEX),
+            listOf(GET_INDEX_MAPPING, SEARCH_INDEX)
+        )
 
         testClient =
             SecureRestClientBuilder(clusterHosts.toTypedArray(), isHttps(), testUser, password).setSocketTimeout(60000)
+                .setConnectionRequestTimeout(180000)
                 .build()
 
         try {

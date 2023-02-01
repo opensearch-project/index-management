@@ -72,7 +72,7 @@ object QueryShardContextFactory {
         val (index, indexSettings, indexMetadata) = getIndexSettingsAndMetadata(indexName)
         val nodeSettings = Settings.builder()
             .put("node.name", "dummyNodeName")
-            .put(Environment.PATH_HOME_SETTING.key, environment.tmpFile())
+            .put(Environment.PATH_HOME_SETTING.key, environment.tmpDir())
             .build()
         val pluginsService =
             PluginsService(nodeSettings, null, null, null, listOf())

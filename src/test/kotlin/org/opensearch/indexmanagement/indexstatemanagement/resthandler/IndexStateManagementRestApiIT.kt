@@ -5,8 +5,8 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.resthandler
 
-import org.apache.http.entity.ContentType.APPLICATION_JSON
-import org.apache.http.entity.StringEntity
+import org.apache.hc.core5.http.ContentType
+import org.apache.hc.core5.http.io.entity.StringEntity
 import org.opensearch.action.search.SearchResponse
 import org.opensearch.client.ResponseException
 import org.opensearch.common.xcontent.XContentType
@@ -115,7 +115,7 @@ class IndexStateManagementRestApiIT : IndexStateManagementRestTestCase() {
                 .filter { actionType -> actionType != ReadOnlyAction.name }
                 .joinToString(prefix = "[", postfix = "]") { string -> "\"$string\"" }
             updateClusterSetting(ManagedIndexSettings.ALLOW_LIST.key, allowedActions, escapeValue = false)
-            // createRandomPolicy currently does not create a random list of actions so it won't accidentally create one with read_only
+            // createRandomPolicy currently does not create a random list of actions, so it won't accidentally create one with read_only
             val policy = createRandomPolicy()
             // update the policy to have read_only action which is not allowed
             val updatedPolicy = policy.copy(
@@ -267,7 +267,7 @@ class IndexStateManagementRestApiIT : IndexStateManagementRestTestCase() {
         """.trimIndent()
         val response = client().makeRequest(
             "POST", "$INDEX_MANAGEMENT_INDEX/_search", emptyMap(),
-            StringEntity(request, APPLICATION_JSON)
+            StringEntity(request, ContentType.APPLICATION_JSON)
         )
         assertEquals("Request failed", RestStatus.OK, response.restStatus())
         val searchResponse = SearchResponse.fromXContent(createParser(jsonXContent, response.entity.content))

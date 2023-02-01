@@ -53,6 +53,7 @@ class SecurityBehaviorIT : SecurityRestTestCase() {
 
         johnClient =
             SecureRestClientBuilder(clusterHosts.toTypedArray(), isHttps(), john, password).setSocketTimeout(60000)
+                .setConnectionRequestTimeout(180000)
                 .build()
     }
 
@@ -97,9 +98,11 @@ class SecurityBehaviorIT : SecurityRestTestCase() {
 
         val jillClient =
             SecureRestClientBuilder(clusterHosts.toTypedArray(), isHttps(), jill, password).setSocketTimeout(60000)
+                .setConnectionRequestTimeout(180000)
                 .build()
         val janeClient =
             SecureRestClientBuilder(clusterHosts.toTypedArray(), isHttps(), jane, password).setSocketTimeout(60000)
+                .setConnectionRequestTimeout(180000)
                 .build()
 
         setFilterByBackendRole(false)
