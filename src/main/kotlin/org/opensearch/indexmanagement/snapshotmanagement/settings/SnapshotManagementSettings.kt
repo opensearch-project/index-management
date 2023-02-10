@@ -14,6 +14,7 @@ class SnapshotManagementSettings {
         private const val defaultMaxPoliciesPerRepo = 1
         const val defaultMaxSnapshotsPerPolicy = 400
         val defaultRepositoryDenyList = listOf("cs-", "_all", "\\*", "c\\*", "cs\\*")
+        const val minJvmThread = 0
 
         val FILTER_BY_BACKEND_ROLES: Setting<Boolean> = Setting.boolSetting(
             "plugins.snapshot_management.filter_by_backend_roles",
@@ -44,6 +45,15 @@ class SnapshotManagementSettings {
             "plugins.snapshot_management.repository_deny_list",
             defaultRepositoryDenyList,
             Function.identity(),
+            Setting.Property.NodeScope,
+            Setting.Property.Dynamic
+        )
+
+        val CIRCUIT_BREAKER_JVM_THRESHOLD: Setting<Int> = Setting.intSetting(
+            "plugins.snapshot_management.circuit_breaker.jvm.threshold",
+            85,
+            minJvmThread,
+            100,
             Setting.Property.NodeScope,
             Setting.Property.Dynamic
         )
