@@ -105,19 +105,19 @@ fun randomSMPolicy(
     deletionMaxAge: TimeValue? = null,
     deletionMinCount: Int = randomIntBetween(1, 5),
     deletionNull: Boolean = false,
-    snapshotConfig: MutableMap<String, Any> = mutableMapOf(
-        "repository" to "repo",
-    ),
+    snapshotConfig: MutableMap<String, Any> = mutableMapOf(),
     dateFormat: String? = null,
     jobEnabledTime: Instant? = randomInstant(),
     jobSchedule: IntervalSchedule = IntervalSchedule(randomInstant(), 1, ChronoUnit.MINUTES),
     seqNo: Long = SequenceNumbers.UNASSIGNED_SEQ_NO,
     primaryTerm: Long = SequenceNumbers.UNASSIGNED_PRIMARY_TERM,
-    notificationConfig: NotificationConfig? = null
+    notificationConfig: NotificationConfig? = null,
+    repository: String = "repo",
 ): SMPolicy {
     if (dateFormat != null) {
         snapshotConfig["date_format"] = dateFormat
     }
+    snapshotConfig["repository"] = repository
     return SMPolicy(
         id = smPolicyNameToDocId(policyName),
         schemaVersion = schemaVersion,

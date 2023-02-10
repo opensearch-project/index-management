@@ -13,6 +13,7 @@ import org.opensearch.rest.RestRequest
 
 const val SM_POLICY_NAME_KEYWORD = "$SM_TYPE.$NAME_FIELD"
 const val DEFAULT_SM_POLICY_SORT_FIELD = SM_POLICY_NAME_KEYWORD
+const val SEARCH_MAX_HITS = 10000
 
 fun RestRequest.getValidSMPolicyName(): String {
     val policyName = this.param("policyName", "")

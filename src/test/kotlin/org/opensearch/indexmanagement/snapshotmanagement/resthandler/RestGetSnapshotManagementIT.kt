@@ -7,6 +7,8 @@ package org.opensearch.indexmanagement.snapshotmanagement.resthandler
 
 import org.apache.http.HttpHeaders
 import org.apache.http.message.BasicHeader
+import org.junit.After
+import org.junit.Before
 import org.opensearch.client.ResponseException
 import org.opensearch.indexmanagement.IndexManagementPlugin
 import org.opensearch.indexmanagement.makeRequest
@@ -16,9 +18,20 @@ import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy.Companion.ENABLED_TIME_FIELD
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy.Companion.SM_TYPE
 import org.opensearch.indexmanagement.snapshotmanagement.randomSMPolicy
+import org.opensearch.indexmanagement.snapshotmanagement.settings.SnapshotManagementSettings
 import org.opensearch.rest.RestStatus
 
 class RestGetSnapshotManagementIT : SnapshotManagementRestTestCase() {
+
+    @Before
+    fun allowMultiplePolicies() {
+        updateClusterSetting(SnapshotManagementSettings.MAXIMUM_POLICIES_PER_REPOSITORY.key, "10")
+    }
+
+    @After
+    fun clearUp() {
+        updateClusterSetting(SnapshotManagementSettings.MAXIMUM_POLICIES_PER_REPOSITORY.key, "1")
+    }
 
     fun `test getting a snapshot management policy`() {
         var smPolicy = createSMPolicy(randomSMPolicy().copy(jobEnabled = false, jobEnabledTime = null))

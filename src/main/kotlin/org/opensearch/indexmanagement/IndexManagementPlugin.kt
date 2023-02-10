@@ -532,7 +532,10 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
             LegacyOpenDistroRollupSettings.ROLLUP_ENABLED,
             LegacyOpenDistroRollupSettings.ROLLUP_SEARCH_ENABLED,
             LegacyOpenDistroRollupSettings.ROLLUP_DASHBOARDS,
-            SnapshotManagementSettings.FILTER_BY_BACKEND_ROLES
+            SnapshotManagementSettings.FILTER_BY_BACKEND_ROLES,
+            SnapshotManagementSettings.MAXIMUM_SNAPSHOTS_PER_POLICY,
+            SnapshotManagementSettings.MAXIMUM_POLICIES_PER_REPOSITORY,
+            SnapshotManagementSettings.REPOSITORY_DENY_LIST
         )
     }
 

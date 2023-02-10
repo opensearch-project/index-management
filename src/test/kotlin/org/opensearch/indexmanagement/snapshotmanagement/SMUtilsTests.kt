@@ -5,9 +5,11 @@
 
 package org.opensearch.indexmanagement.snapshotmanagement
 
+import org.opensearch.OpenSearchStatusException
 import org.opensearch.indexmanagement.opensearchapi.parseWithType
 import org.opensearch.indexmanagement.randomCronSchedule
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy
+import org.opensearch.indexmanagement.snapshotmanagement.settings.SnapshotManagementSettings
 import org.opensearch.test.OpenSearchTestCase
 import java.time.Instant.now
 import kotlin.test.assertFailsWith
@@ -43,5 +45,14 @@ class SMUtilsTests : OpenSearchTestCase() {
         // val randomCronSchedule = CronSchedule("14 13 31 2 *", randomZone())
         val nextTime = randomCronSchedule.getNextExecutionTime(now())
         assertNotNull("next time should not be null", nextTime)
+    }
+
+    fun `test repository deny list check`() {
+        val repository = listOf("cs-repo", "_all", "*", "*any", "c*", "c*any", "cs*", "cs*any")
+        repository.map {
+            assertFailsWith<OpenSearchStatusException> {
+                checkRepositoryDenyList(SnapshotManagementSettings.defaultRepositoryDenyList, it)
+            }
+        }
     }
 }

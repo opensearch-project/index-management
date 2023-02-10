@@ -52,6 +52,7 @@ import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
 import java.util.Locale
 import org.opensearch.common.time.DateFormatters
+import org.opensearch.indexmanagement.snapshotmanagement.settings.SnapshotManagementSettings.Companion.REPOSITORY_DENY_LIST
 
 private val log = LogManager.getLogger("o.i.s.SnapshotManagementHelper")
 
@@ -361,4 +362,16 @@ fun getTimeLimitExceededMessage(timeLimit: TimeValue, workflow: WorkflowType): S
         }
     }
     return "Time limit $timeLimit exceeded during snapshot $workflowStr step"
+}
+
+fun checkRepositoryDenyList(denylist: List<String>, policyRepository: String) {
+    val match = denylist.stream().anyMatch { pattern: String ->
+        Regex("^$pattern.*").matches(policyRepository)
+    }
+    if (match) {
+        throw OpenSearchStatusException(
+            "Policy repository $policyRepository is blocked. Please ask admin to update cluster setting ${REPOSITORY_DENY_LIST.key}.",
+            RestStatus.BAD_REQUEST
+        )
+    }
 }

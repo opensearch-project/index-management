@@ -5,6 +5,7 @@
 
 package org.opensearch.indexmanagement.snapshotmanagement.resthandler
 
+import org.opensearch.client.Response
 import org.opensearch.client.ResponseException
 import org.opensearch.common.xcontent.XContentType
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
@@ -15,6 +16,7 @@ import org.opensearch.indexmanagement.snapshotmanagement.SnapshotManagementRestT
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy.Companion.SM_TYPE
 import org.opensearch.indexmanagement.snapshotmanagement.randomSMPolicy
+import org.opensearch.indexmanagement.snapshotmanagement.settings.SnapshotManagementSettings
 import org.opensearch.indexmanagement.snapshotmanagement.toMap
 import org.opensearch.indexmanagement.util.IndexUtils
 import org.opensearch.indexmanagement.util.NO_ID
@@ -142,5 +144,94 @@ class RestIndexSnapshotManagementIT : SnapshotManagementRestTestCase() {
         val expectedMap = expected.map()
 
         assertEquals("Mappings are different", expectedMap, mappingsMap)
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    fun `test snapshot management policy create restrictions`() {
+        val smPolicy = randomSMPolicy()
+
+        // repository block
+        val toBeBlockedRepositoryConfig = smPolicy.snapshotConfig.toMutableMap()
+        toBeBlockedRepositoryConfig["repository"] = "cs-automated"
+        val smPolicyRepositoryBlock = smPolicy.copy(
+            snapshotConfig = toBeBlockedRepositoryConfig
+        )
+        try {
+            client().makeRequest(
+                "POST", "$SM_POLICIES_URI/${smPolicyRepositoryBlock.policyName}", emptyMap(),
+                smPolicyRepositoryBlock.toHttpEntity()
+            )
+            fail("expected 400 ResponseException")
+        } catch (e: ResponseException) {
+            assertEquals(RestStatus.BAD_REQUEST, e.response.restStatus())
+        }
+
+        // deletion condition not set
+        var smPolicyDeleteCondition = smPolicy.copy(
+            deletion = null
+        )
+        var response = client().makeRequest("POST", "$SM_POLICIES_URI/${smPolicyDeleteCondition.policyName}", emptyMap(), smPolicyDeleteCondition.toHttpEntity())
+        assertMaxCountInResponse(response, SnapshotManagementSettings.defaultMaxSnapshotsPerPolicy)
+        client().makeRequest("DELETE", "$SM_POLICIES_URI/${smPolicyDeleteCondition.policyName}")
+
+        // deletion condition set but max is beyond
+        smPolicyDeleteCondition = smPolicy.copy(
+            deletion = smPolicy.deletion!!.copy(
+                condition = smPolicy.deletion!!.condition.copy(
+                    maxCount = 500
+                )
+            )
+        )
+        response = client().makeRequest("POST", "$SM_POLICIES_URI/${smPolicyDeleteCondition.policyName}", emptyMap(), smPolicyDeleteCondition.toHttpEntity())
+        assertMaxCountInResponse(response, SnapshotManagementSettings.defaultMaxSnapshotsPerPolicy)
+
+        // too many policies for one repository
+        val smPolicy2 = randomSMPolicy()
+        try {
+            client().makeRequest(
+                "POST", "$SM_POLICIES_URI/${smPolicy2.policyName}", emptyMap(),
+                smPolicy2.toHttpEntity()
+            )
+            fail("expected 400 ResponseException")
+        } catch (e: ResponseException) {
+            assertEquals(RestStatus.BAD_REQUEST, e.response.restStatus())
+        }
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    fun `test snapshot management policy update restrictions`() {
+        val smPolicy = randomSMPolicy()
+        client().makeRequest("POST", "$SM_POLICIES_URI/${smPolicy.policyName}", emptyMap(), smPolicy.toHttpEntity())
+
+        // create another policy with different repo
+        var smPolicy2 = randomSMPolicy(repository = "repo2")
+        smPolicy2 = createSMPolicy(smPolicy2)
+
+        // update the policy repo to the same with first, this should be blocked
+        val mutableSnapshotConfig = smPolicy2.snapshotConfig.toMutableMap()
+        mutableSnapshotConfig["repository"] = "repo"
+        smPolicy2 = smPolicy2.copy(
+            snapshotConfig = mutableSnapshotConfig
+        )
+        try {
+            client().makeRequest(
+                "PUT",
+                "$SM_POLICIES_URI/${smPolicy2.policyName}?refresh=true&if_seq_no=${smPolicy2.seqNo}&if_primary_term=${smPolicy2.primaryTerm}",
+                emptyMap(), smPolicy2.toHttpEntity()
+            )
+            fail("expected 400 ResponseException")
+        } catch (e: ResponseException) {
+            assertEquals(RestStatus.BAD_REQUEST, e.response.restStatus())
+        }
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    private fun assertMaxCountInResponse(response: Response, expected: Int) {
+        val responseBody = response.asMap()
+        val policyInResponse = responseBody["sm_policy"] as Map<String, Any>
+        val deleteInResponse = policyInResponse["deletion"] as Map<String, Any>
+        val deleteConditionResponse = deleteInResponse["condition"] as Map<String, Any>
+        val maxCountInResponse = deleteConditionResponse["max_count"] as Int
+        assertEquals(expected, maxCountInResponse)
     }
 }
