@@ -4,14 +4,9 @@ This document contains a list of maintainers in this repo. See [opensearch-proje
 
 ## Current Maintainers
 
-| Maintainer       | GitHub ID                                             | Affiliation |
-| ---------------- | ----------------------------------------------------- | ----------- |
-| Ashish Agrawal   | [lezzago](https://github.com/lezzago)                 | Amazon      |
-| Bowen Lan        | [bowenlan-amzn](https://github.com/bowenlan-amzn)     | Amazon      |
-| Charlotte        | [CEHENKLE](https://github.com/CEHENKLE)               | Amazon      |
-| Drew Baugher     | [dbbaughe](https://github.com/dbbaughe)               | Amazon      |
-| Mohammad Qureshi | [qreshi](https://github.com/qreshi)                   | Amazon      |
-| Nick Knize       | [nknize](https://github.com/nknize)                   | Amazon      |
+| Maintainer | GitHub ID            | Affiliation |
+| -------------  | -------------------- | ----------- |
+| Bowen Lan | [bowenlan-amzn](https://github.com/bowenlan-amzn) | Amazon      |
+| Angie Zhang | [Angie-Zhang](https://github.com/Angie-Zhang/) | Amazon      |
+| Saurabh Singh   | [getsaurabh02](https://https://github.com/getsaurabh02/)        | Amazon      |
 | Praveen Sameneni | [praveensameneni](https://github.com/praveensameneni) | Amazon      |
-| Ravi             | [thalurur](https://github.com/thalurur)               | Amazon      |
-| Sriram           | [skkosuri-amzn](https://github.com/skkosuri-amzn)     | Amazon      |
