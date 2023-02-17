@@ -8,11 +8,13 @@ package org.opensearch.indexmanagement
 import org.apache.hc.core5.http.HttpHost
 import org.opensearch.client.RestClient
 import org.opensearch.common.io.PathUtils
+import org.opensearch.common.settings.MockSecureSettings
+import org.opensearch.common.settings.SecureSettings
 import org.opensearch.common.settings.Settings
 import org.opensearch.commons.ConfigConstants.OPENSEARCH_SECURITY_SSL_HTTP_ENABLED
 import org.opensearch.commons.ConfigConstants.OPENSEARCH_SECURITY_SSL_HTTP_KEYSTORE_FILEPATH
-import org.opensearch.commons.ConfigConstants.OPENSEARCH_SECURITY_SSL_HTTP_KEYSTORE_KEYPASSWORD
-import org.opensearch.commons.ConfigConstants.OPENSEARCH_SECURITY_SSL_HTTP_KEYSTORE_PASSWORD
+import org.opensearch.commons.ConfigConstants.OPENSEARCH_SECURITY_SSL_HTTP_KEYSTORE_KEYPASSWORD_SETTING
+import org.opensearch.commons.ConfigConstants.OPENSEARCH_SECURITY_SSL_HTTP_KEYSTORE_PASSWORD_SETTING
 import org.opensearch.commons.ConfigConstants.OPENSEARCH_SECURITY_SSL_HTTP_PEMCERT_FILEPATH
 import org.opensearch.commons.rest.SecureRestClientBuilder
 import org.opensearch.test.rest.OpenSearchRestTestCase
@@ -29,6 +31,13 @@ abstract class ODFERestTestCase : OpenSearchRestTestCase() {
     /**
      * Returns the REST client settings used for super-admin actions like cleaning up after the test has completed.
      */
+    protected open fun createSecureSettings(): SecureSettings? {
+        val mockSecureSettings = MockSecureSettings()
+        mockSecureSettings.setString(OPENSEARCH_SECURITY_SSL_HTTP_KEYSTORE_PASSWORD_SETTING.key, "changeit")
+        mockSecureSettings.setString(OPENSEARCH_SECURITY_SSL_HTTP_KEYSTORE_KEYPASSWORD_SETTING.key, "changeit")
+        return mockSecureSettings
+    }
+
     override fun restAdminSettings(): Settings {
         return Settings
             .builder()
@@ -36,8 +45,7 @@ abstract class ODFERestTestCase : OpenSearchRestTestCase() {
             .put(OPENSEARCH_SECURITY_SSL_HTTP_ENABLED, isHttps())
             .put(OPENSEARCH_SECURITY_SSL_HTTP_PEMCERT_FILEPATH, "sample.pem")
             .put(OPENSEARCH_SECURITY_SSL_HTTP_KEYSTORE_FILEPATH, "test-kirk.jks")
-            .put(OPENSEARCH_SECURITY_SSL_HTTP_KEYSTORE_PASSWORD, "changeit")
-            .put(OPENSEARCH_SECURITY_SSL_HTTP_KEYSTORE_KEYPASSWORD, "changeit")
+            .setSecureSettings(createSecureSettings())
             .build()
     }
 

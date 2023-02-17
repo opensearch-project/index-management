@@ -30,6 +30,7 @@ import org.opensearch.common.settings.Settings
 import org.opensearch.common.unit.TimeValue
 import org.opensearch.common.util.concurrent.ThreadContext
 import org.opensearch.common.xcontent.LoggingDeprecationHandler
+import org.opensearch.common.xcontent.MediaType
 import org.opensearch.common.xcontent.NamedXContentRegistry
 import org.opensearch.common.xcontent.ToXContent
 import org.opensearch.common.xcontent.XContentBuilder
@@ -66,14 +67,16 @@ const val OPENDISTRO_SECURITY_PROTECTED_INDICES_CONF_REQUEST = "_opendistro_secu
 fun contentParser(bytesReference: BytesReference): XContentParser {
     return XContentHelper.createParser(
         NamedXContentRegistry.EMPTY,
-        LoggingDeprecationHandler.INSTANCE, bytesReference, XContentType.JSON
+        LoggingDeprecationHandler.INSTANCE,
+        bytesReference,
+        XContentType.JSON
     )
 }
 
 /** Convert an object to maps and lists representation */
 fun ToXContent.convertToMap(): Map<String, Any> {
     val bytesReference = XContentHelper.toXContent(this, XContentType.JSON, false)
-    return XContentHelper.convertToMap(bytesReference, false, XContentType.JSON).v2()
+    return XContentHelper.convertToMap(bytesReference, false, XContentType.JSON as? (MediaType)).v2()
 }
 
 fun XContentParser.instant(): Instant? {
@@ -197,7 +200,7 @@ fun OpenSearchException.isRetryable(): Boolean {
  */
 fun XContentBuilder.string(): String = BytesReference.bytes(this).utf8ToString()
 
-fun XContentBuilder.toMap(): Map<String, Any> = XContentHelper.convertToMap(BytesReference.bytes(this), false, XContentType.JSON).v2()
+fun XContentBuilder.toMap(): Map<String, Any> = XContentHelper.convertToMap(BytesReference.bytes(this), false, XContentType.JSON as? (MediaType)).v2()
 
 /**
  * Converts [OpenSearchClient] methods that take a callback into a kotlin suspending function.
