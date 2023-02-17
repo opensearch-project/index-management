@@ -76,7 +76,7 @@ fun contentParser(bytesReference: BytesReference): XContentParser {
 /** Convert an object to maps and lists representation */
 fun ToXContent.convertToMap(): Map<String, Any> {
     val bytesReference = XContentHelper.toXContent(this, XContentType.JSON, false)
-    return XContentHelper.convertToMap(bytesReference, false, XContentType.JSON as? (MediaType)).v2()
+    return XContentHelper.convertToMap(bytesReference, false, XContentType.JSON as (MediaType)).v2()
 }
 
 fun XContentParser.instant(): Instant? {
@@ -200,7 +200,7 @@ fun OpenSearchException.isRetryable(): Boolean {
  */
 fun XContentBuilder.string(): String = BytesReference.bytes(this).utf8ToString()
 
-fun XContentBuilder.toMap(): Map<String, Any> = XContentHelper.convertToMap(BytesReference.bytes(this), false, XContentType.JSON as? (MediaType)).v2()
+fun XContentBuilder.toMap(): Map<String, Any> = XContentHelper.convertToMap(BytesReference.bytes(this), false, XContentType.JSON as (MediaType)).v2()
 
 /**
  * Converts [OpenSearchClient] methods that take a callback into a kotlin suspending function.
