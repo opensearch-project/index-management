@@ -214,7 +214,7 @@ class RestStopRollupActionIT : RollupRestTestCase() {
             roles = emptyList(),
             pageSize = 10,
             delay = 0,
-            continuous = false,
+            continuous = true,
             dimensions = listOf(
                 DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "1h"),
                 Terms("RatecodeID", "RatecodeID"),

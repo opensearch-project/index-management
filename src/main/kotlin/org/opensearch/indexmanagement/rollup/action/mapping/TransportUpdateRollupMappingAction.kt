@@ -21,6 +21,7 @@ import org.opensearch.common.bytes.BytesReference
 import org.opensearch.common.inject.Inject
 import org.opensearch.common.io.stream.StreamInput
 import org.opensearch.common.io.stream.Writeable
+import org.opensearch.common.xcontent.MediaType
 import org.opensearch.common.xcontent.XContentFactory
 import org.opensearch.common.xcontent.XContentHelper
 import org.opensearch.common.xcontent.XContentType
@@ -81,7 +82,7 @@ class TransportUpdateRollupMappingAction @Inject constructor(
         val rollup = XContentHelper.convertToMap(
             BytesReference.bytes(request.rollup.toXContent(XContentFactory.jsonBuilder(), XCONTENT_WITHOUT_TYPE)),
             false,
-            XContentType.JSON
+            XContentType.JSON as (MediaType)
         ).v2()
         val metaMappings = mutableMapOf<String, Any>()
         // TODO: Clean this up
