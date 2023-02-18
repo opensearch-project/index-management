@@ -1,21 +1,29 @@
-name: Link Checker
+name: Releases
+
 on:
   push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
+    tags:
+      - '*'
 
 jobs:
-  check:
+
+  build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
-      - uses: actions/checkout@v2
-      - name: lychee Link Checker
-        id: lychee
-        uses: lycheeverse/lychee-action@master
+      - name: GitHub App token
+        id: github_app_token
+        uses: tibdex/github-app-token@v1.5.0
         with:
-          args: --accept=200,403,429  **/*.html **/*.md **/*.txt **/*.json
-        env:
-          GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
-      - name: Fail if there were link errors
-        run: exit ${{ steps.lychee.outputs.exit_code }}
+          app_id: ${{ secrets.APP_ID }}
+          private_key: ${{ secrets.APP_PRIVATE_KEY }}
+          installation_id: 22958780
+      - name: Get tag
+        id: tag
+        uses: dawidd6/action-get-tag@v1
+      - uses: actions/checkout@v2
+      - uses: ncipollo/release-action@v1
+        with:
+          github_token: ${{ steps.github_app_token.outputs.token }}
+          bodyFile: release-notes/opensearch.release-notes-${{steps.tag.outputs.tag}}.md
