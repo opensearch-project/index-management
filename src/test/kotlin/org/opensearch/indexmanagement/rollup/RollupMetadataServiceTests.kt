@@ -22,7 +22,7 @@ import org.opensearch.common.bytes.BytesArray
 import org.opensearch.common.bytes.BytesReference
 import org.opensearch.common.document.DocumentField
 import org.opensearch.common.xcontent.NamedXContentRegistry
-import org.opensearch.common.xcontent.ToXContent
+import org.opensearch.core.xcontent.ToXContent
 import org.opensearch.indexmanagement.common.model.dimension.DateHistogram
 import org.opensearch.indexmanagement.indexstatemanagement.util.WITH_TYPE
 import org.opensearch.indexmanagement.rollup.model.Rollup

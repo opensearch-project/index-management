@@ -28,7 +28,7 @@ import org.opensearch.client.node.NodeClient
 import org.opensearch.cluster.block.ClusterBlockException
 import org.opensearch.cluster.metadata.IndexMetadata
 import org.opensearch.common.inject.Inject
-import org.opensearch.common.xcontent.ToXContent
+import org.opensearch.core.xcontent.ToXContent
 import org.opensearch.common.xcontent.XContentFactory
 import org.opensearch.commons.ConfigConstants
 import org.opensearch.commons.authuser.User
