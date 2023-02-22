@@ -7,7 +7,7 @@ package org.opensearch.indexmanagement.spi.indexstatemanagement
 
 import org.opensearch.core.xcontent.ToXContent
 import org.opensearch.core.xcontent.ToXContentFragment
-import org.opensearch.common.xcontent.XContentBuilder
+import org.opensearch.core.xcontent.XContentBuilder
 
 // forIndex means saving to config index, distinguish from Explain and History,
 // which only show meaningful partial metadata

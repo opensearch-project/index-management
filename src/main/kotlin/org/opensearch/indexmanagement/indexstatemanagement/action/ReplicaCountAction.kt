@@ -7,7 +7,7 @@ package org.opensearch.indexmanagement.indexstatemanagement.action
 
 import org.opensearch.common.io.stream.StreamOutput
 import org.opensearch.core.xcontent.ToXContent
-import org.opensearch.common.xcontent.XContentBuilder
+import org.opensearch.core.xcontent.XContentBuilder
 import org.opensearch.indexmanagement.indexstatemanagement.step.replicacount.AttemptReplicaCountStep
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Action
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Step

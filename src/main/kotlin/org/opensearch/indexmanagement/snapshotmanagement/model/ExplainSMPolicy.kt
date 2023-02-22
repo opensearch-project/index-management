@@ -10,7 +10,7 @@ import org.opensearch.common.io.stream.StreamOutput
 import org.opensearch.common.io.stream.Writeable
 import org.opensearch.core.xcontent.ToXContent
 import org.opensearch.core.xcontent.ToXContentFragment
-import org.opensearch.common.xcontent.XContentBuilder
+import org.opensearch.core.xcontent.XContentBuilder
 import org.opensearch.indexmanagement.opensearchapi.optionalField
 import java.io.IOException
 

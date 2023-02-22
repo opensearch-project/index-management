@@ -9,7 +9,7 @@ import org.opensearch.action.admin.indices.alias.Alias
 import org.opensearch.common.io.stream.StreamOutput
 import org.opensearch.common.unit.ByteSizeValue
 import org.opensearch.core.xcontent.ToXContent
-import org.opensearch.common.xcontent.XContentBuilder
+import org.opensearch.core.xcontent.XContentBuilder
 import org.opensearch.indexmanagement.indexstatemanagement.action.NotificationAction.Companion.MUSTACHE
 import org.opensearch.indexmanagement.indexstatemanagement.step.shrink.AttemptMoveShardsStep
 import org.opensearch.indexmanagement.indexstatemanagement.step.shrink.AttemptShrinkStep

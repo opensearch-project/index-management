@@ -18,7 +18,7 @@ import org.opensearch.common.logging.DeprecationLogger
 import org.opensearch.common.unit.TimeValue
 import org.opensearch.core.xcontent.ToXContent
 import org.opensearch.core.xcontent.ToXContentFragment
-import org.opensearch.common.xcontent.XContentBuilder
+import org.opensearch.core.xcontent.XContentBuilder
 import org.opensearch.common.xcontent.XContentFactory
 import org.opensearch.index.Index
 import org.opensearch.indexmanagement.indexstatemanagement.model.ChangePolicy
