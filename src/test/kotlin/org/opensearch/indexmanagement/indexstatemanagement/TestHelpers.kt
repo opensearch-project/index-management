@@ -9,7 +9,7 @@ import org.opensearch.action.admin.indices.alias.Alias
 import org.opensearch.action.admin.indices.alias.IndicesAliasesRequest
 import org.opensearch.common.unit.ByteSizeValue
 import org.opensearch.common.unit.TimeValue
-import org.opensearch.common.xcontent.ToXContent
+import org.opensearch.core.xcontent.ToXContent
 import org.opensearch.common.xcontent.XContentFactory
 import org.opensearch.index.RandomCreateIndexGenerator.randomAlias
 import org.opensearch.index.seqno.SequenceNumbers

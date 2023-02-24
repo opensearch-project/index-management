@@ -20,11 +20,11 @@ import org.opensearch.cluster.metadata.IndexMetadata
 import org.opensearch.cluster.routing.allocation.command.MoveAllocationCommand
 import org.opensearch.common.Strings
 import org.opensearch.common.settings.Settings
-import org.opensearch.common.xcontent.DeprecationHandler
+import org.opensearch.core.xcontent.DeprecationHandler
 import org.opensearch.common.xcontent.LoggingDeprecationHandler
-import org.opensearch.common.xcontent.NamedXContentRegistry
+import org.opensearch.core.xcontent.NamedXContentRegistry
 import org.opensearch.common.xcontent.XContentHelper
-import org.opensearch.common.xcontent.XContentParser
+import org.opensearch.core.xcontent.XContentParser
 import org.opensearch.common.xcontent.XContentParserUtils
 import org.opensearch.common.xcontent.XContentType
 import org.opensearch.common.xcontent.json.JsonXContent

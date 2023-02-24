@@ -15,7 +15,7 @@ import org.opensearch.common.settings.IndexScopedSettings
 import org.opensearch.common.settings.Settings
 import org.opensearch.common.settings.SettingsModule
 import org.opensearch.common.util.BigArrays
-import org.opensearch.common.xcontent.NamedXContentRegistry
+import org.opensearch.core.xcontent.NamedXContentRegistry
 import org.opensearch.env.Environment
 import org.opensearch.index.Index
 import org.opensearch.index.IndexSettings
