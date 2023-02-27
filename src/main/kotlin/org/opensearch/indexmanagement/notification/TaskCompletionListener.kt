@@ -17,6 +17,7 @@ import org.opensearch.client.Client
 import org.opensearch.cluster.routing.IndexShardRoutingTable
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.xcontent.LoggingDeprecationHandler
+import org.opensearch.common.xcontent.XContentFactory
 import org.opensearch.core.xcontent.NamedXContentRegistry
 import org.opensearch.common.xcontent.XContentHelper
 import org.opensearch.common.xcontent.XContentType
@@ -27,6 +28,11 @@ import org.opensearch.index.reindex.ReindexAction
 import org.opensearch.index.shard.IndexingOperationListener
 import org.opensearch.index.shard.ShardId
 import org.opensearch.indexmanagement.common.model.notification.Channel
+import org.opensearch.indexmanagement.indexstatemanagement.util.XCONTENT_WITHOUT_TYPE
+import org.opensearch.indexmanagement.notification.model.NotificationConf
+import org.opensearch.indexmanagement.opensearchapi.toMap
+import org.opensearch.script.ScriptService
+import org.opensearch.script.TemplateScript
 import org.opensearch.tasks.TaskResult
 import java.lang.Exception
 import java.lang.IllegalArgumentException
@@ -36,6 +42,7 @@ class TaskCompletionListener(
     val clusterService: ClusterService,
     val xContentRegistry: NamedXContentRegistry,
     val notificationService: NotificationService,
+    val scriptService: ScriptService,
     val client: Client,
 ) : IndexingOperationListener,
     CoroutineScope by CoroutineScope(SupervisorJob() + Dispatchers.Default + CoroutineName("TaskCompletionListener")) {
@@ -57,6 +64,7 @@ class TaskCompletionListener(
         var shardNodeId: String? = null
 
         for (shardRouting in routingTable) {
+            // TODO relocating may cause duplicate?
             if (shardRouting.active() && shardRouting.primary()) {
                 shardNodeId = shardRouting.currentNodeId()
             }
@@ -90,25 +98,25 @@ class TaskCompletionListener(
         val taskInfo = taskResult.task
 
         try {
-            // TODO get notification config for specific task id, action or default configuration
-            val channelConf = notificationService.getNotificationConfByAction(taskInfo.action)
-            if (channelConf == null) {
-                logger.info("Notification channel is not found for task {}", taskInfo.id)
-                return
-            }
-
-            var title = "${taskInfo.description} has completed"
-            if (taskResult.errorAsMap.isNotEmpty() || taskResult.responseAsMap["failures"] != null) {
-                title += " with errors"
-            }
-
-            val eventSource = EventSource(title, index.id(), SeverityType.INFO)
-
             launch {
+                // TODO get notification config for specific task id, action or default configuration
+                val channelConf = notificationService.getNotificationConfByAction(index.id(), taskInfo.action)
+                if (channelConf == null) {
+                    logger.info("Notification channel is not found for task {}, action {}", taskInfo.id, taskInfo.action)
+                    return@launch
+                }
+
+                var title = "${taskInfo.description} has completed"
+                if (taskResult.errorAsMap.isNotEmpty() || (taskResult.responseAsMap["failures"] as List<*>).isNotEmpty()) {
+                    title += " with failures"
+                }
+
+                val eventSource = EventSource(title, index.id(), SeverityType.INFO)
+
                 Channel(channelConf.channelId).sendNotification(
                     client,
                     eventSource,
-                    buildNotificationMessage(taskResult),
+                    buildNotificationMessage(taskResult, channelConf),
                     null,
                 )
 
@@ -121,21 +129,31 @@ class TaskCompletionListener(
         }
     }
 
-    private fun buildNotificationMessage(taskResult: TaskResult): String {
+    private fun buildNotificationMessage(taskResult: TaskResult, channelConf: NotificationConf?): String {
         val task = taskResult.task
-        return when (task.action) {
-            ReindexAction.NAME -> {
-                return StringJoiner(" | ")
-                    .add(taskResult.response?.utf8ToString())
-                    .add(taskResult.error?.utf8ToString())
-                    .toString()
-            }
+        val script = channelConf?.template
+        if (script != null) {
+            val contextMap = taskResult.task.toXContent(XContentFactory.jsonBuilder(), XCONTENT_WITHOUT_TYPE)
+                .toMap()
 
-            ResizeAction.NAME -> ""
-            org.opensearch.action.admin.indices.forcemerge.ForceMergeAction.NAME -> ""
-            OpenIndexAction.NAME -> ""
-            else -> {
-                throw IllegalArgumentException("${task.action} is not support for sending out notification")
+            return scriptService.compile(script, TemplateScript.CONTEXT)
+                .newInstance(script.params + mapOf("ctx" to contextMap))
+                .execute()
+        } else {
+            return when (task.action) {
+                ReindexAction.NAME -> {
+                    return StringJoiner(" | ")
+                        .add(taskResult.response?.utf8ToString())
+                        .add(taskResult.error?.utf8ToString())
+                        .toString()
+                }
+
+                ResizeAction.NAME -> ""
+                org.opensearch.action.admin.indices.forcemerge.ForceMergeAction.NAME -> ""
+                OpenIndexAction.NAME -> ""
+                else -> {
+                    throw IllegalArgumentException("${task.action} is not support for sending out notification")
+                }
             }
         }
     }

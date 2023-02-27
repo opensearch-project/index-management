@@ -5,12 +5,32 @@
 
 package org.opensearch.indexmanagement.notification
 
+import org.apache.logging.log4j.LogManager
+import org.opensearch.action.get.MultiGetRequest
+import org.opensearch.action.get.MultiGetResponse
+import org.opensearch.client.Client
 import org.opensearch.indexmanagement.notification.model.NotificationConf
+import org.opensearch.indexmanagement.opensearchapi.suspendUntil
+import kotlin.math.log
 
-class NotificationService {
+class NotificationService(val client: Client) {
 
-    public fun getNotificationConfByAction(action: String): NotificationConf? {
-        // TODO check notification channel existence
+    private val logger = LogManager.getLogger(NotificationService::class.java)
+
+    public suspend fun getNotificationConfByAction(taskId: String?, action: String): NotificationConf? {
+        logger.info("Get notification channel for task {} and action {}", taskId, action)
+        var getRequest = MultiGetRequest()
+            .add("", taskId)
+            .add("", action)
+            .add("", "default_id")
+
+        val multiGetResponse: MultiGetResponse = client.suspendUntil {
+            multiGet(getRequest, it)
+        }
+
+        val c1 = multiGetResponse.filter { it.id == taskId }.singleOrNull()
+        logger.info(c1)
+
         return NotificationConf("SsPLbYYBwCDAm0J8Rfsr", action)
     }
 }
