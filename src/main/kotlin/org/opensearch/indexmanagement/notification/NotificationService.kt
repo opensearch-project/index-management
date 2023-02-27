@@ -11,7 +11,6 @@ import org.opensearch.action.get.MultiGetResponse
 import org.opensearch.client.Client
 import org.opensearch.indexmanagement.notification.model.NotificationConf
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
-import kotlin.math.log
 
 class NotificationService(val client: Client) {
 
