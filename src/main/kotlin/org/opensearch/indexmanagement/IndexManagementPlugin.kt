@@ -30,13 +30,13 @@ import org.opensearch.common.xcontent.XContentParserUtils.ensureExpectedToken
 import org.opensearch.env.Environment
 import org.opensearch.env.NodeEnvironment
 import org.opensearch.index.IndexModule
-import org.opensearch.indexmanagement.adminpanel.longrunningoperationnotification.AdminPanelIndices
-import org.opensearch.indexmanagement.adminpanel.longrunningoperationnotification.action.get.GetLRONConfigAction
-import org.opensearch.indexmanagement.adminpanel.longrunningoperationnotification.action.get.TransportGetLRONConfigAction
-import org.opensearch.indexmanagement.adminpanel.longrunningoperationnotification.action.index.IndexLRONConfigAction
-import org.opensearch.indexmanagement.adminpanel.longrunningoperationnotification.action.index.TransportIndexLRONConfigAction
-import org.opensearch.indexmanagement.adminpanel.longrunningoperationnotification.resthandler.RestGetLRONConfigAction
-import org.opensearch.indexmanagement.adminpanel.longrunningoperationnotification.resthandler.RestIndexLRONConfigAction
+import org.opensearch.indexmanagement.adminpanel.notification.AdminPanelIndices
+import org.opensearch.indexmanagement.adminpanel.notification.action.get.GetLRONConfigAction
+import org.opensearch.indexmanagement.adminpanel.notification.action.get.TransportGetLRONConfigAction
+import org.opensearch.indexmanagement.adminpanel.notification.action.index.IndexLRONConfigAction
+import org.opensearch.indexmanagement.adminpanel.notification.action.index.TransportIndexLRONConfigAction
+import org.opensearch.indexmanagement.adminpanel.notification.resthandler.RestGetLRONConfigAction
+import org.opensearch.indexmanagement.adminpanel.notification.resthandler.RestIndexLRONConfigAction
 import org.opensearch.indexmanagement.indexstatemanagement.DefaultIndexMetadataService
 import org.opensearch.indexmanagement.indexstatemanagement.ExtensionStatusChecker
 import org.opensearch.indexmanagement.indexstatemanagement.ISMActionsParser
@@ -215,9 +215,10 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
     companion object {
         const val PLUGINS_BASE_URI = "/_plugins"
         const val ISM_BASE_URI = "$PLUGINS_BASE_URI/_ism"
+        const val IM_BASE_URI = "$PLUGINS_BASE_URI/_im"
         const val ROLLUP_BASE_URI = "$PLUGINS_BASE_URI/_rollup"
         const val TRANSFORM_BASE_URI = "$PLUGINS_BASE_URI/_transform"
-        const val LRON_BASE_URI = "$PLUGINS_BASE_URI/_lron"
+        const val LRON_BASE_URI = "$IM_BASE_URI/_lron"
         const val POLICY_BASE_URI = "$ISM_BASE_URI/policies"
         const val ROLLUP_JOBS_BASE_URI = "$ROLLUP_BASE_URI/jobs"
         const val INDEX_MANAGEMENT_INDEX = ".opendistro-ism-config"

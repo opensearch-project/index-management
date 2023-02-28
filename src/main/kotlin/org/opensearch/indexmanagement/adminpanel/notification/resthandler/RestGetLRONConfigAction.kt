@@ -3,11 +3,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.indexmanagement.adminpanel.longrunningoperationnotification.resthandler
+package org.opensearch.indexmanagement.adminpanel.notification.resthandler
 import org.opensearch.client.node.NodeClient
 import org.opensearch.indexmanagement.IndexManagementPlugin
-import org.opensearch.indexmanagement.adminpanel.longrunningoperationnotification.action.get.GetLRONConfigAction
-import org.opensearch.indexmanagement.adminpanel.longrunningoperationnotification.action.get.GetLRONConfigRequest
+import org.opensearch.indexmanagement.adminpanel.notification.action.get.GetLRONConfigAction
+import org.opensearch.indexmanagement.adminpanel.notification.action.get.GetLRONConfigRequest
 import org.opensearch.rest.BaseRestHandler
 import org.opensearch.rest.BaseRestHandler.RestChannelConsumer
 import org.opensearch.rest.RestRequest

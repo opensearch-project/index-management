@@ -4,7 +4,7 @@
  */
 
 @file:JvmName("LRONUtils")
-package org.opensearch.indexmanagement.adminpanel.longrunningoperationnotification.util
+package org.opensearch.indexmanagement.adminpanel.notification.util
 
 const val LRON_CONFIG_TYPE = "lron_config_type"
 const val LRON_DEFAULT_ID = "default"

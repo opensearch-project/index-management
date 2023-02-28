@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.indexmanagement.adminpanel.longrunningoperationnotification.action.get
+package org.opensearch.indexmanagement.adminpanel.notification.action.get
 
 import org.apache.logging.log4j.LogManager
 import org.opensearch.OpenSearchStatusException
@@ -21,11 +21,11 @@ import org.opensearch.core.xcontent.NamedXContentRegistry
 import org.opensearch.commons.ConfigConstants
 import org.opensearch.commons.authuser.User
 import org.opensearch.indexmanagement.IndexManagementPlugin
-import org.opensearch.indexmanagement.adminpanel.longrunningoperationnotification.model.LRONConfig
-import org.opensearch.indexmanagement.adminpanel.longrunningoperationnotification.util.LRON_DEFAULT_ID
-import org.opensearch.indexmanagement.adminpanel.longrunningoperationnotification.util.LRON_DOC_ID_PREFIX
-import org.opensearch.indexmanagement.adminpanel.longrunningoperationnotification.util.TYPE_DEFAULT
-import org.opensearch.indexmanagement.adminpanel.longrunningoperationnotification.util.TYPE_TASK_ID
+import org.opensearch.indexmanagement.adminpanel.notification.model.LRONConfig
+import org.opensearch.indexmanagement.adminpanel.notification.util.LRON_DEFAULT_ID
+import org.opensearch.indexmanagement.adminpanel.notification.util.LRON_DOC_ID_PREFIX
+import org.opensearch.indexmanagement.adminpanel.notification.util.TYPE_DEFAULT
+import org.opensearch.indexmanagement.adminpanel.notification.util.TYPE_TASK_ID
 import org.opensearch.indexmanagement.opensearchapi.parseFromGetResponse
 import org.opensearch.indexmanagement.settings.IndexManagementSettings
 import org.opensearch.indexmanagement.util.NO_ID

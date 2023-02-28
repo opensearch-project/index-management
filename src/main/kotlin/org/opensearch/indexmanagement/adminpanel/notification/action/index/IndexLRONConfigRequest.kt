@@ -3,14 +3,14 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.indexmanagement.adminpanel.longrunningoperationnotification.action.index
+package org.opensearch.indexmanagement.adminpanel.notification.action.index
 
 import org.opensearch.action.ActionRequest
 import org.opensearch.action.ActionRequestValidationException
 import org.opensearch.action.support.WriteRequest
 import org.opensearch.common.io.stream.StreamInput
 import org.opensearch.common.io.stream.StreamOutput
-import org.opensearch.indexmanagement.adminpanel.longrunningoperationnotification.model.LRONConfig
+import org.opensearch.indexmanagement.adminpanel.notification.model.LRONConfig
 import org.opensearch.indexmanagement.util.NO_ID
 import java.io.IOException
 

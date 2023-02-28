@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.indexmanagement.adminpanel.longrunningoperationnotification.action.index
+package org.opensearch.indexmanagement.adminpanel.notification.action.index
 
 import org.opensearch.action.ActionResponse
 import org.opensearch.common.io.stream.StreamInput
