@@ -11,37 +11,28 @@ import org.opensearch.action.support.WriteRequest
 import org.opensearch.common.io.stream.StreamInput
 import org.opensearch.common.io.stream.StreamOutput
 import org.opensearch.indexmanagement.adminpanel.notification.model.LRONConfig
-import org.opensearch.indexmanagement.util.NO_ID
 import java.io.IOException
 
 class IndexLRONConfigRequest : ActionRequest {
-    val taskID: String
     val lronConfig: LRONConfig
-    val seqNo: Long
-    val primaryTerm: Long
     val refreshPolicy: WriteRequest.RefreshPolicy
+    val isUpdate: Boolean
 
     constructor(
-        taskID: String = NO_ID,
         lronConfig: LRONConfig,
-        seqNo: Long,
-        primaryTerm: Long,
-        refreshPolicy: WriteRequest.RefreshPolicy
+        refreshPolicy: WriteRequest.RefreshPolicy,
+        isUpdate: Boolean = false
     ) : super() {
-        this.taskID = taskID
         this.lronConfig = lronConfig
-        this.seqNo = seqNo
-        this.primaryTerm = primaryTerm
         this.refreshPolicy = refreshPolicy
+        this.isUpdate = isUpdate
     }
 
     @Throws(IOException::class)
     constructor(sin: StreamInput) : this(
-        taskID = sin.readString(),
         lronConfig = LRONConfig(sin),
-        seqNo = sin.readLong(),
-        primaryTerm = sin.readLong(),
-        refreshPolicy = sin.readEnum(WriteRequest.RefreshPolicy::class.java)
+        refreshPolicy = sin.readEnum(WriteRequest.RefreshPolicy::class.java),
+        isUpdate = sin.readBoolean()
     )
 
     override fun validate(): ActionRequestValidationException? {
@@ -51,10 +42,8 @@ class IndexLRONConfigRequest : ActionRequest {
 
     @Throws(IOException::class)
     override fun writeTo(out: StreamOutput) {
-        out.writeString(taskID)
         lronConfig.writeTo(out)
-        out.writeLong(seqNo)
-        out.writeLong(primaryTerm)
         out.writeEnum(refreshPolicy)
+        out.writeBoolean(isUpdate)
     }
 }

@@ -1,37 +1,29 @@
-/*
- * Copyright OpenSearch Contributors
- * SPDX-License-Identifier: Apache-2.0
- */
-
-package org.opensearch.indexmanagement.adminpanel.notification.action.get
+package org.opensearch.indexmanagement.adminpanel.notification.action.delete
 
 import org.opensearch.action.ActionRequest
 import org.opensearch.action.ActionRequestValidationException
+import org.opensearch.action.support.WriteRequest
 import org.opensearch.common.io.stream.StreamInput
 import org.opensearch.common.io.stream.StreamOutput
 import org.opensearch.indexmanagement.util.NO_ID
 import java.io.IOException
 
-/* There are default lronConfigs and lronConfigs binded with taskID */
-/* If includeDefault == true, this request will get the config with highest priority */
-/* else, it will only get the config binded with taskID */
-
-class GetLRONConfigRequest : ActionRequest {
+class DeleteLRONConfigRequest : ActionRequest {
     val taskID: String
-    val includeDefault: Boolean
+    val refreshPolicy: WriteRequest.RefreshPolicy
 
     constructor(
         taskID: String = NO_ID,
-        includeDefault: Boolean = false
+        refreshPolicy: WriteRequest.RefreshPolicy
     ) : super() {
         this.taskID = taskID
-        this.includeDefault = includeDefault
+        this.refreshPolicy = refreshPolicy
     }
 
     @Throws(IOException::class)
     constructor(sin: StreamInput) : this(
         taskID = sin.readString(),
-        includeDefault = sin.readBoolean()
+        refreshPolicy = sin.readEnum(WriteRequest.RefreshPolicy::class.java)
     )
 
     override fun validate(): ActionRequestValidationException? {
@@ -42,6 +34,6 @@ class GetLRONConfigRequest : ActionRequest {
     @Throws(IOException::class)
     override fun writeTo(out: StreamOutput) {
         out.writeString(taskID)
-        out.writeBoolean(includeDefault)
+        out.writeEnum(refreshPolicy)
     }
 }

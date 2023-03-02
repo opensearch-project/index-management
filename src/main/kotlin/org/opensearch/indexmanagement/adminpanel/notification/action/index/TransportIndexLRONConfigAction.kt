@@ -21,13 +21,10 @@ import org.opensearch.common.settings.Settings
 import org.opensearch.common.xcontent.XContentFactory
 import org.opensearch.commons.ConfigConstants
 import org.opensearch.commons.authuser.User
-import org.opensearch.index.seqno.SequenceNumbers
 import org.opensearch.indexmanagement.IndexManagementPlugin
 import org.opensearch.indexmanagement.adminpanel.notification.AdminPanelIndices
-import org.opensearch.indexmanagement.adminpanel.notification.util.LRON_DEFAULT_ID
-import org.opensearch.indexmanagement.adminpanel.notification.util.LRON_DOC_ID_PREFIX
+import org.opensearch.indexmanagement.adminpanel.notification.util.getDocID
 import org.opensearch.indexmanagement.settings.IndexManagementSettings
-import org.opensearch.indexmanagement.util.NO_ID
 import org.opensearch.indexmanagement.util.SecurityUtils
 import org.opensearch.rest.RestStatus
 import org.opensearch.tasks.Task
@@ -82,7 +79,7 @@ class TransportIndexLRONConfigAction @Inject constructor(
         private fun onCreateMappingsResponse(response: AcknowledgedResponse) {
             if (response.isAcknowledged) {
                 log.info("Successfully created or updated ${IndexManagementPlugin.ADMIN_PANEL_INDEX} with newest mappings.")
-                if (request.taskID == NO_ID) {
+                if (null == request.lronConfig.taskID) {
                     putLRONConfig()
                 } else {
                     validateTaskID()
@@ -98,28 +95,18 @@ class TransportIndexLRONConfigAction @Inject constructor(
             putLRONConfig()
         }
 
-        private fun generateID(): String {
-            if (NO_ID == request.taskID) {
-                return LRON_DOC_ID_PREFIX + LRON_DEFAULT_ID
-            } else {
-                return LRON_DOC_ID_PREFIX + request.taskID
-            }
-        }
-
         private fun putLRONConfig() {
-            val docID = generateID()
+            val docID = getDocID(request.lronConfig.taskID, request.lronConfig.actionName)
             val lronConfig = request.lronConfig.copy(user = this.user)
             val indexRequest = IndexRequest(IndexManagementPlugin.ADMIN_PANEL_INDEX)
                 .setRefreshPolicy(request.refreshPolicy)
                 .source(lronConfig.toXContent(XContentFactory.jsonBuilder()))
                 .id(docID)
                 .timeout(IndexRequest.DEFAULT_TIMEOUT)
-
-            if (request.seqNo == SequenceNumbers.UNASSIGNED_SEQ_NO || request.primaryTerm == SequenceNumbers.UNASSIGNED_PRIMARY_TERM) {
-                indexRequest.opType(DocWriteRequest.OpType.CREATE)
+            if (request.isUpdate) {
+                indexRequest.opType(DocWriteRequest.OpType.UPDATE)
             } else {
-                indexRequest.setIfSeqNo(request.seqNo)
-                    .setIfPrimaryTerm(request.primaryTerm)
+                indexRequest.opType(DocWriteRequest.OpType.CREATE)
             }
 
             client.index(
@@ -136,7 +123,8 @@ class TransportIndexLRONConfigAction @Inject constructor(
                                     response.version,
                                     response.primaryTerm,
                                     response.seqNo,
-                                    response.status()
+                                    response.status(),
+                                    lronConfig
                                 )
                             )
                         }

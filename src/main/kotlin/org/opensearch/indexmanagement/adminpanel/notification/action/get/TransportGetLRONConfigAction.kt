@@ -22,10 +22,9 @@ import org.opensearch.commons.ConfigConstants
 import org.opensearch.commons.authuser.User
 import org.opensearch.indexmanagement.IndexManagementPlugin
 import org.opensearch.indexmanagement.adminpanel.notification.model.LRONConfig
-import org.opensearch.indexmanagement.adminpanel.notification.util.LRON_DEFAULT_ID
-import org.opensearch.indexmanagement.adminpanel.notification.util.LRON_DOC_ID_PREFIX
-import org.opensearch.indexmanagement.adminpanel.notification.util.TYPE_DEFAULT
-import org.opensearch.indexmanagement.adminpanel.notification.util.TYPE_TASK_ID
+import org.opensearch.indexmanagement.adminpanel.notification.util.getDocID
+import org.opensearch.indexmanagement.adminpanel.notification.util.LRON_TYPE_DEFAULT
+import org.opensearch.indexmanagement.adminpanel.notification.util.LRON_TYPE_TASK_ID
 import org.opensearch.indexmanagement.opensearchapi.parseFromGetResponse
 import org.opensearch.indexmanagement.settings.IndexManagementSettings
 import org.opensearch.indexmanagement.util.NO_ID
@@ -85,15 +84,12 @@ class TransportGetLRONConfigAction @Inject constructor(
             /* response includes a docs array that contains the documents in the order specified in the request */
             /* we add items in order of priority in request, and we just take the first non-null doc in response*/
             if (NO_ID != request.taskID) {
-                multiGetRequest.add(IndexManagementPlugin.ADMIN_PANEL_INDEX, LRON_DOC_ID_PREFIX + request.taskID)
-                configTypes.add(TYPE_TASK_ID)
+                multiGetRequest.add(IndexManagementPlugin.ADMIN_PANEL_INDEX, getDocID(request.taskID))
+                configTypes.add(LRON_TYPE_TASK_ID)
             }
-            if (request.includeDefault) {
-                multiGetRequest.add(IndexManagementPlugin.ADMIN_PANEL_INDEX, LRON_DOC_ID_PREFIX + LRON_DEFAULT_ID)
-                configTypes.add(TYPE_DEFAULT)
-            }
-            if (0 == multiGetRequest.items.size) {
-                actionListener.onFailure(IllegalArgumentException("No task id and not include default configs"))
+            if (request.includeDefault || 0 == multiGetRequest.items.size) {
+                multiGetRequest.add(IndexManagementPlugin.ADMIN_PANEL_INDEX, getDocID(NO_ID))
+                configTypes.add(LRON_TYPE_DEFAULT)
             }
             client.multiGet(multiGetRequest, ActionListener.wrap(::onMultiGetResponse, actionListener::onFailure))
         }
@@ -123,7 +119,7 @@ class TransportGetLRONConfigAction @Inject constructor(
                             user,
                             lronConfig.user,
                             filterByEnabled,
-                            "lron_config",
+                            "LRONConfig",
                             response.response.id, actionListener
                         )
                     ) {

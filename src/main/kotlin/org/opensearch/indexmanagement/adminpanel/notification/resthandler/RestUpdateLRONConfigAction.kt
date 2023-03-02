@@ -1,36 +1,29 @@
-/*
- * Copyright OpenSearch Contributors
- * SPDX-License-Identifier: Apache-2.0
- */
-
 package org.opensearch.indexmanagement.adminpanel.notification.resthandler
 
 import org.opensearch.action.support.WriteRequest
 import org.opensearch.client.node.NodeClient
+import org.opensearch.indexmanagement.IndexManagementPlugin
 import org.opensearch.indexmanagement.adminpanel.notification.action.index.IndexLRONConfigAction
 import org.opensearch.indexmanagement.adminpanel.notification.action.index.IndexLRONConfigRequest
 import org.opensearch.indexmanagement.adminpanel.notification.model.LRONConfig
-import org.opensearch.indexmanagement.IndexManagementPlugin
 import org.opensearch.indexmanagement.opensearchapi.parseWithType
 import org.opensearch.indexmanagement.util.REFRESH
 import org.opensearch.rest.BaseRestHandler
-import org.opensearch.rest.BaseRestHandler.RestChannelConsumer
 import org.opensearch.rest.RestHandler
 import org.opensearch.rest.RestRequest
 import org.opensearch.rest.action.RestToXContentListener
 import java.io.IOException
 
-class RestIndexLRONConfigAction : BaseRestHandler() {
+class RestUpdateLRONConfigAction : BaseRestHandler() {
 
     override fun routes(): List<RestHandler.Route> {
         return listOf(
-            RestHandler.Route(RestRequest.Method.PUT, IndexManagementPlugin.LRON_BASE_URI),
-            RestHandler.Route(RestRequest.Method.PUT, "${IndexManagementPlugin.LRON_BASE_URI}/{taskID}")
+            RestHandler.Route(RestRequest.Method.POST, "${IndexManagementPlugin.LRON_BASE_URI}/{taskID}")
         )
     }
 
     override fun getName(): String {
-        return "index_lron_config_action"
+        return "update_lron_config_action"
     }
 
     @Throws(IOException::class)
@@ -43,7 +36,8 @@ class RestIndexLRONConfigAction : BaseRestHandler() {
         } else {
             WriteRequest.RefreshPolicy.IMMEDIATE
         }
-        val indexLRONConfigRequest = IndexLRONConfigRequest(lronConfig, refreshPolicy, false)
+
+        val indexLRONConfigRequest = IndexLRONConfigRequest(lronConfig, refreshPolicy, true)
 
         return RestChannelConsumer { channel ->
             client.execute(IndexLRONConfigAction.INSTANCE, indexLRONConfigRequest, RestToXContentListener(channel))

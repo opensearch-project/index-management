@@ -25,7 +25,7 @@ class RestGetLRONConfigAction : BaseRestHandler() {
     }
 
     override fun getName(): String {
-        return "get_lro_notification_action"
+        return "get_lron_config_action"
     }
 
     @Throws(IOException::class)
