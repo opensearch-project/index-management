@@ -5,6 +5,7 @@
 
 package org.opensearch.indexmanagement.adminpanel.notification.filter
 
+import org.apache.logging.log4j.LogManager
 import org.opensearch.action.ActionListener
 import org.opensearch.action.ActionRequest
 import org.opensearch.action.ActionResponse
@@ -14,11 +15,11 @@ import org.opensearch.action.admin.indices.shrink.ResizeAction
 import org.opensearch.action.admin.indices.shrink.ResizeRequest
 import org.opensearch.action.support.ActionFilter
 import org.opensearch.action.support.ActionFilterChain
+import org.opensearch.action.support.ActiveShardsObserver
 import org.opensearch.client.Client
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.core.xcontent.NamedXContentRegistry
 import org.opensearch.index.reindex.ReindexAction
-import org.opensearch.indexmanagement.notification.NotificationService
 import org.opensearch.script.ScriptService
 import org.opensearch.tasks.Task
 
@@ -26,9 +27,12 @@ class IndexOperationActionFilter(
     val client: Client,
     val clusterService: ClusterService,
     val xContentRegistry: NamedXContentRegistry,
-    val notificationService: NotificationService,
-    val scriptService: ScriptService
+    val scriptService: ScriptService,
+    val activeShardsObserver: ActiveShardsObserver
 ) : ActionFilter {
+
+    private val logger = LogManager.getLogger(IndexOperationActionFilter::class.java)
+
     override fun order() = Integer.MIN_VALUE
     override fun <Request : ActionRequest, Response : ActionResponse> apply(
         task: Task,
@@ -43,6 +47,7 @@ class IndexOperationActionFilter(
             OpenIndexAction.NAME,
             ResizeAction.NAME,
             ForceMergeAction.NAME -> {
+                logger.info("Add action filter for {} send out notification", action)
                 if (task.parentTaskId.isSet == false) {
                     wrappedListener = NotificationActionListener(
                         delegate = listener,
@@ -50,9 +55,10 @@ class IndexOperationActionFilter(
                         action = action,
                         clusterService = clusterService,
                         xContentRegistry = xContentRegistry,
-                        notificationService = notificationService,
-                        taskId = task.id,
-                        scriptService = scriptService
+                        task = task,
+                        scriptService = scriptService,
+                        request = request,
+                        activeShardsObserver = activeShardsObserver
                     )
 
                     if (request is ResizeRequest) {

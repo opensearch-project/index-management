@@ -36,10 +36,10 @@ data class LRONConfig(
     init {
         if (enabled) {
             require(!channels.isNullOrEmpty()) { "Enabled LRONConfig must contain at least one channel" }
-            require(null!=successMessageTemplate && null!=failedMessageTemplate) {"Enabled LRONConfig must has message template"}
-            require( successMessageTemplate?.lang == MUSTACHE && failedMessageTemplate?.lang == MUSTACHE) {
-                "LRONConfig message template must be a mustache script"
-            }
+            // require(null != successMessageTemplate && null != failedMessageTemplate) { "Enabled LRONConfig must has message template" }
+//            require(successMessageTemplate?.lang == MUSTACHE && failedMessageTemplate?.lang == MUSTACHE) {
+//                "LRONConfig message template must be a mustache script"
+//            }
         }
     }
 
@@ -55,7 +55,7 @@ data class LRONConfig(
         if (null != actionName) builder.field(ACTION_NAME_FIELD, actionName)
         if (params.paramAsBoolean(WITH_USER, true)) builder.optionalUserField(USER_FIELD, user)
         if (enabled) {
-            builder.startArray()
+            builder.startArray(CHANNELS_FIELD)
                 .also { channels?.forEach { channel -> channel.toXContent(it, params) } }
                 .endArray()
                 .field(SUCCESS_MESSAGE_TEMPLATE_FIELD, successMessageTemplate)

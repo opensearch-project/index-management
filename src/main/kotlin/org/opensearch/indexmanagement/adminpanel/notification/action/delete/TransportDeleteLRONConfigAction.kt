@@ -6,7 +6,8 @@ import org.opensearch.OpenSearchStatusException
 import org.opensearch.action.ActionListener
 import org.opensearch.action.delete.DeleteRequest
 import org.opensearch.action.delete.DeleteResponse
-import org.opensearch.action.get.*
+import org.opensearch.action.get.GetRequest
+import org.opensearch.action.get.GetResponse
 import org.opensearch.action.support.ActionFilters
 import org.opensearch.action.support.HandledTransportAction
 import org.opensearch.client.node.NodeClient
@@ -18,7 +19,7 @@ import org.opensearch.commons.authuser.User
 import org.opensearch.core.xcontent.NamedXContentRegistry
 import org.opensearch.indexmanagement.IndexManagementPlugin
 import org.opensearch.indexmanagement.adminpanel.notification.model.LRONConfig
-import org.opensearch.indexmanagement.adminpanel.notification.util.*
+import org.opensearch.indexmanagement.adminpanel.notification.util.getDocID
 import org.opensearch.indexmanagement.opensearchapi.parseFromGetResponse
 import org.opensearch.indexmanagement.settings.IndexManagementSettings
 import org.opensearch.indexmanagement.util.SecurityUtils
@@ -37,7 +38,8 @@ class TransportDeleteLRONConfigAction @Inject constructor(
 ) : HandledTransportAction<DeleteLRONConfigRequest, DeleteResponse>(
     DeleteLRONConfigAction.NAME, transportService, actionFilters, ::DeleteLRONConfigRequest
 ) {
-    @Volatile private var filterByEnabled = IndexManagementSettings.FILTER_BY_BACKEND_ROLES.get(settings)
+    @Volatile
+    private var filterByEnabled = IndexManagementSettings.FILTER_BY_BACKEND_ROLES.get(settings)
     private val log = LogManager.getLogger(javaClass)
 
     init {
@@ -59,15 +61,17 @@ class TransportDeleteLRONConfigAction @Inject constructor(
     ) {
         fun start() {
             log.debug(
-                "User and roles string from thread context: ${client.threadPool().threadContext.getTransient<String>(
+                "User and roles string from thread context: ${
+                client.threadPool().threadContext.getTransient<String>(
                     ConfigConstants.OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT
-                )}"
+                )
+                }"
             )
             client.threadPool().threadContext.stashContext().use {
                 if (!SecurityUtils.validateUserConfiguration(user, filterByEnabled, actionListener)) {
                     return
                 }
-                if (!filterByEnabled){
+                if (!filterByEnabled) {
                     executeDelete()
                 } else {
                     val getRequest = GetRequest(IndexManagementPlugin.ADMIN_PANEL_INDEX, docID)
@@ -76,15 +80,26 @@ class TransportDeleteLRONConfigAction @Inject constructor(
                         object : ActionListener<GetResponse> {
                             override fun onResponse(response: GetResponse) {
                                 if (!response.isExists) {
-                                    actionListener.onFailure(OpenSearchStatusException("LRONConfig $docID not found", RestStatus.NOT_FOUND))
+                                    actionListener.onFailure(
+                                        OpenSearchStatusException(
+                                            "LRONConfig $docID not found",
+                                            RestStatus.NOT_FOUND
+                                        )
+                                    )
                                     return
                                 }
 
                                 val lronConfig: LRONConfig?
                                 try {
-                                    lronConfig = parseFromGetResponse(response, xContentRegistry, LRONConfig.Companion::parse)
+                                    lronConfig =
+                                        parseFromGetResponse(response, xContentRegistry, LRONConfig.Companion::parse)
                                 } catch (e: IllegalArgumentException) {
-                                    actionListener.onFailure(OpenSearchStatusException("Failed to parse LRONConfig $docID", RestStatus.NOT_FOUND))
+                                    actionListener.onFailure(
+                                        OpenSearchStatusException(
+                                            "Failed to parse LRONConfig $docID",
+                                            RestStatus.NOT_FOUND
+                                        )
+                                    )
                                     return
                                 }
                                 if (!SecurityUtils.userHasPermissionForResource(
