@@ -20,7 +20,7 @@ import java.io.IOException
 class RestDeleteLRONConfigAction : BaseRestHandler() {
     override fun routes(): List<RestHandler.Route> {
         return listOf(
-            RestHandler.Route(RestRequest.Method.DELETE, "${IndexManagementPlugin.LRON_BASE_URI}/{docID}")
+            RestHandler.Route(RestRequest.Method.DELETE, "${IndexManagementPlugin.LRON_BASE_URI}/{id}")
         )
     }
 
@@ -30,7 +30,7 @@ class RestDeleteLRONConfigAction : BaseRestHandler() {
 
     @Throws(IOException::class)
     override fun prepareRequest(request: RestRequest, client: NodeClient): RestChannelConsumer {
-        val docID = request.param("docID")
+        val docID = request.param("id")
         val refreshPolicy = RefreshPolicy.parse(request.param(REFRESH, RefreshPolicy.IMMEDIATE.value))
         val deleteLRONConfigRequest = DeleteLRONConfigRequest(docID, refreshPolicy)
 

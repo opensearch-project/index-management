@@ -41,7 +41,8 @@ class TransportDeleteLRONConfigAction @Inject constructor(
 ) : HandledTransportAction<DeleteLRONConfigRequest, DeleteResponse>(
     DeleteLRONConfigAction.NAME, transportService, actionFilters, ::DeleteLRONConfigRequest
 ) {
-    @Volatile private var filterByEnabled = IndexManagementSettings.FILTER_BY_BACKEND_ROLES.get(settings)
+    @Volatile
+    private var filterByEnabled = IndexManagementSettings.FILTER_BY_BACKEND_ROLES.get(settings)
     private val log = LogManager.getLogger(javaClass)
 
     init {
@@ -63,9 +64,11 @@ class TransportDeleteLRONConfigAction @Inject constructor(
     ) {
         fun start() {
             log.debug(
-                "User and roles string from thread context: ${client.threadPool().threadContext.getTransient<String>(
+                "User and roles string from thread context: ${
+                client.threadPool().threadContext.getTransient<String>(
                     ConfigConstants.OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT
-                )}"
+                )
+                }"
             )
             client.threadPool().threadContext.stashContext().use {
                 if (!SecurityUtils.validateUserConfiguration(user, filterByEnabled, actionListener)) {
@@ -80,13 +83,19 @@ class TransportDeleteLRONConfigAction @Inject constructor(
                         object : ActionListener<GetResponse> {
                             override fun onResponse(response: GetResponse) {
                                 if (!response.isExists) {
-                                    actionListener.onFailure(OpenSearchStatusException("lronConfig $docID not found", RestStatus.NOT_FOUND))
+                                    actionListener.onFailure(
+                                        OpenSearchStatusException(
+                                            "lronConfig $docID not found",
+                                            RestStatus.NOT_FOUND
+                                        )
+                                    )
                                     return
                                 }
 
                                 val lronConfig: LRONConfig
                                 try {
-                                    lronConfig = parseFromGetResponse(response, xContentRegistry, LRONConfig.Companion::parse)
+                                    lronConfig =
+                                        parseFromGetResponse(response, xContentRegistry, LRONConfig.Companion::parse)
                                 } catch (e: IllegalArgumentException) {
                                     actionListener.onFailure(e)
                                     return

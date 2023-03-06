@@ -9,6 +9,7 @@ import org.apache.logging.log4j.LogManager
 import org.opensearch.action.ActionRequest
 import org.opensearch.action.ActionResponse
 import org.opensearch.action.support.ActionFilter
+import org.opensearch.action.support.ActiveShardsObserver
 import org.opensearch.client.Client
 import org.opensearch.cluster.metadata.IndexNameExpressionResolver
 import org.opensearch.cluster.node.DiscoveryNodes
@@ -29,7 +30,6 @@ import org.opensearch.core.xcontent.XContentParser.Token
 import org.opensearch.common.xcontent.XContentParserUtils.ensureExpectedToken
 import org.opensearch.env.Environment
 import org.opensearch.env.NodeEnvironment
-import org.opensearch.index.IndexModule
 import org.opensearch.indexmanagement.adminpanel.notification.AdminPanelIndices
 import org.opensearch.indexmanagement.adminpanel.notification.action.delete.DeleteLRONConfigAction
 import org.opensearch.indexmanagement.adminpanel.notification.action.delete.TransportDeleteLRONConfigAction
@@ -40,6 +40,7 @@ import org.opensearch.indexmanagement.adminpanel.notification.action.get.Transpo
 import org.opensearch.indexmanagement.adminpanel.notification.action.index.IndexLRONConfigAction
 import org.opensearch.indexmanagement.adminpanel.notification.action.index.TransportIndexLRONConfigAction
 import org.opensearch.indexmanagement.adminpanel.notification.resthandler.RestDeleteLRONConfigAction
+import org.opensearch.indexmanagement.adminpanel.notification.filter.IndexOperationActionFilter
 import org.opensearch.indexmanagement.adminpanel.notification.resthandler.RestGetLRONConfigAction
 import org.opensearch.indexmanagement.adminpanel.notification.resthandler.RestIndexLRONConfigAction
 import org.opensearch.indexmanagement.adminpanel.notification.resthandler.RestUpdateLRONConfigAction
@@ -90,8 +91,6 @@ import org.opensearch.indexmanagement.indexstatemanagement.transport.action.upda
 import org.opensearch.indexmanagement.indexstatemanagement.util.DEFAULT_INDEX_TYPE
 import org.opensearch.indexmanagement.indexstatemanagement.validation.ActionValidation
 import org.opensearch.indexmanagement.indexstatemanagement.migration.ISMTemplateService
-import org.opensearch.indexmanagement.notification.NotificationService
-import org.opensearch.indexmanagement.notification.TaskCompletionListener
 import org.opensearch.indexmanagement.refreshanalyzer.RefreshSearchAnalyzerAction
 import org.opensearch.indexmanagement.refreshanalyzer.RestRefreshSearchAnalyzerAction
 import org.opensearch.indexmanagement.refreshanalyzer.TransportRefreshSearchAnalyzerAction
@@ -193,7 +192,6 @@ import org.opensearch.repositories.RepositoriesService
 import org.opensearch.rest.RestController
 import org.opensearch.rest.RestHandler
 import org.opensearch.script.ScriptService
-import org.opensearch.tasks.TaskResultsService
 import org.opensearch.threadpool.ThreadPool
 import org.opensearch.transport.RemoteClusterService
 import org.opensearch.transport.TransportInterceptor
@@ -216,7 +214,7 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
     private var customIndexUUIDSetting: String? = null
     private val extensions = mutableSetOf<String>()
     private val extensionCheckerMap = mutableMapOf<String, StatusChecker>()
-    private lateinit var taskCompletionListener: TaskCompletionListener
+    lateinit var indexOperationActionFilter: IndexOperationActionFilter
 
     companion object {
         const val PLUGINS_BASE_URI = "/_plugins"
@@ -469,7 +467,9 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
         val smRunner = SMRunner.init(client, threadPool, settings, indexManagementIndices, clusterService)
 
         val pluginVersionSweepCoordinator = PluginVersionSweepCoordinator(skipFlag, settings, threadPool, clusterService)
-        taskCompletionListener = TaskCompletionListener(clusterService, xContentRegistry, NotificationService(client), scriptService, client)
+
+        val activeShardsObserver = ActiveShardsObserver(clusterService, client.threadPool())
+        indexOperationActionFilter = IndexOperationActionFilter(client, clusterService, xContentRegistry, scriptService, activeShardsObserver)
 
         return listOf(
             managedIndexRunner,
@@ -613,13 +613,7 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
     }
 
     override fun getActionFilters(): List<ActionFilter> {
-        return listOf(fieldCapsFilter)
-    }
-
-    override fun onIndexModule(indexModule: IndexModule) {
-        if (indexModule.index.name.equals(TaskResultsService.TASK_INDEX)) {
-            indexModule.addIndexOperationListener(taskCompletionListener)
-        }
+        return listOf(fieldCapsFilter, indexOperationActionFilter)
     }
 }
 

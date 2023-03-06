@@ -23,7 +23,7 @@ class RestGetLRONConfigAction : BaseRestHandler() {
     override fun routes(): List<RestHandler.Route> {
         return listOf(
             RestHandler.Route(RestRequest.Method.GET, IndexManagementPlugin.LRON_BASE_URI),
-            RestHandler.Route(RestRequest.Method.GET, "${IndexManagementPlugin.LRON_BASE_URI}/{docID}")
+            RestHandler.Route(RestRequest.Method.GET, "${IndexManagementPlugin.LRON_BASE_URI}/{id}")
         )
     }
 
@@ -33,7 +33,7 @@ class RestGetLRONConfigAction : BaseRestHandler() {
 
     @Throws(IOException::class)
     override fun prepareRequest(request: RestRequest, client: NodeClient): RestChannelConsumer {
-        val docID = request.param("docID")
+        val docID = request.param("id")
         val searchParams = request.getSearchParams(DEFAULT_LRON_CONFIG_SORT_FIELD)
 
         return RestChannelConsumer { channel ->

@@ -62,6 +62,14 @@
         },
         "priority": {
           "type": "integer"
+        },
+        "success_message_template": {
+          "type": "object",
+          "enabled": false
+        },
+        "failed_message_template": {
+          "type": "object",
+          "enabled": false
         }
       }
     }

@@ -24,7 +24,7 @@ class RestUpdateLRONConfigAction : BaseRestHandler() {
 
     override fun routes(): List<RestHandler.Route> {
         return listOf(
-            RestHandler.Route(RestRequest.Method.POST, "${IndexManagementPlugin.LRON_BASE_URI}/{docID}")
+            RestHandler.Route(RestRequest.Method.POST, "${IndexManagementPlugin.LRON_BASE_URI}/{id}")
         )
     }
 
@@ -34,7 +34,7 @@ class RestUpdateLRONConfigAction : BaseRestHandler() {
 
     @Throws(IOException::class)
     override fun prepareRequest(request: RestRequest, client: NodeClient): RestChannelConsumer {
-        val docID = request.param("docID")
+        val docID = request.param("id")
         val xcp = request.contentParser()
         val lronConfig = xcp.parseWithType(parse = LRONConfig.Companion::parse)
         if (getDocID(lronConfig.taskID, lronConfig.actionName) != docID) {

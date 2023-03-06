@@ -28,7 +28,6 @@ import org.opensearch.indexmanagement.util.SecurityUtils
 import org.opensearch.rest.RestStatus
 import org.opensearch.tasks.Task
 import org.opensearch.transport.TransportService
-import java.lang.IllegalArgumentException
 
 class TransportGetLRONConfigAction @Inject constructor(
     val client: NodeClient,
@@ -40,7 +39,8 @@ class TransportGetLRONConfigAction @Inject constructor(
 ) : HandledTransportAction<GetLRONConfigRequest, LRONConfigResponse>(
     GetLRONConfigAction.NAME, transportService, actionFilters, ::GetLRONConfigRequest
 ) {
-    @Volatile private var filterByEnabled = IndexManagementSettings.FILTER_BY_BACKEND_ROLES.get(settings)
+    @Volatile
+    private var filterByEnabled = IndexManagementSettings.FILTER_BY_BACKEND_ROLES.get(settings)
     private val log = LogManager.getLogger(javaClass)
 
     init {
@@ -60,12 +60,11 @@ class TransportGetLRONConfigAction @Inject constructor(
         private val user: User? = SecurityUtils.buildUser(client.threadPool().threadContext)
     ) {
         fun start() {
+            val threadContext = client.threadPool().threadContext
             log.debug(
-                "User and roles string from thread context: ${client.threadPool().threadContext.getTransient<String>(
-                    ConfigConstants.OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT
-                )}"
+                "User and roles string from thread context: ${threadContext.getTransient<String>(ConfigConstants.OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT)}"
             )
-            client.threadPool().threadContext.stashContext().use {
+            threadContext.stashContext().use {
                 if (!SecurityUtils.validateUserConfiguration(user, filterByEnabled, actionListener)) {
                     return
                 }
