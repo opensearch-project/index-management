@@ -42,7 +42,17 @@ class IndexOperationActionFilter(
         listener: ActionListener<Response>,
         chain: ActionFilterChain<Request, Response>
     ) {
-        var wrappedListener: ActionListener<Response> = listener
+
+        chain.proceed(task, action, request, wrapActionListener(task, action, request, listener))
+    }
+
+    fun <Request : ActionRequest, Response : ActionResponse> wrapActionListener(
+        task: Task,
+        action: String,
+        request: Request,
+        listener: ActionListener<Response>,
+    ): ActionListener<Response> {
+        var wrappedListener = listener
         when (action) {
             ReindexAction.NAME,
             OpenIndexAction.NAME,
@@ -69,6 +79,6 @@ class IndexOperationActionFilter(
                 }
             }
         }
-        chain.proceed(task, action, request, wrappedListener)
+        return wrappedListener
     }
 }
