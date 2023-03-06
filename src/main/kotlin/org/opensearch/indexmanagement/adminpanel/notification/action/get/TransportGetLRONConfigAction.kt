@@ -120,10 +120,10 @@ class TransportGetLRONConfigAction @Inject constructor(
                 searchRequest,
                 object : ActionListener<SearchResponse> {
                     override fun onResponse(response: SearchResponse) {
-                        val totalPolicies = response.hits.totalHits?.value ?: 0
+                        val totalConfigs = response.hits.totalHits?.value ?: 0
                         val lronConfigs =
                             parseFromSearchResponse(response, xContentRegistry, LRONConfig.Companion::parse)
-                        actionListener.onResponse(GetLRONConfigsResponse(lronConfigs, totalPolicies.toInt(), false))
+                        actionListener.onResponse(GetLRONConfigsResponse(lronConfigs, totalConfigs.toInt(), false))
                     }
 
                     override fun onFailure(t: Exception) {

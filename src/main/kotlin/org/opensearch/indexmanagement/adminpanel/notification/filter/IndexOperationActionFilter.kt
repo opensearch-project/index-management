@@ -22,6 +22,7 @@ import org.opensearch.core.xcontent.NamedXContentRegistry
 import org.opensearch.index.reindex.ReindexAction
 import org.opensearch.script.ScriptService
 import org.opensearch.tasks.Task
+import org.opensearch.tasks.TaskId
 
 class IndexOperationActionFilter(
     val client: Client,
@@ -47,8 +48,9 @@ class IndexOperationActionFilter(
             OpenIndexAction.NAME,
             ResizeAction.NAME,
             ForceMergeAction.NAME -> {
-                logger.info("Add action filter for {} send out notification", action)
                 if (task.parentTaskId.isSet == false) {
+                    val taskId = TaskId(clusterService.localNode().id, task.id)
+                    logger.info("Add notification action listener for taks: {} and action: {} ", taskId, action)
                     wrappedListener = NotificationActionListener(
                         delegate = listener,
                         client = client,

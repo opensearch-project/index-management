@@ -24,7 +24,7 @@ import org.opensearch.script.Script
 import java.io.IOException
 
 data class LRONConfig(
-    val enabled: Boolean,
+    val enabled: Boolean = true,
     val taskID: String?,
     val actionName: String?,
     val channels: List<Channel>?,
@@ -36,7 +36,6 @@ data class LRONConfig(
     init {
         if (enabled) {
             require(!channels.isNullOrEmpty()) { "Enabled LRONConfig must contain at least one channel" }
-            // require(null != successMessageTemplate && null != failedMessageTemplate) { "Enabled LRONConfig must has message template" }
 //            require(successMessageTemplate?.lang == MUSTACHE && failedMessageTemplate?.lang == MUSTACHE) {
 //                "LRONConfig message template must be a mustache script"
 //            }
@@ -58,8 +57,8 @@ data class LRONConfig(
             builder.startArray(CHANNELS_FIELD)
                 .also { channels?.forEach { channel -> channel.toXContent(it, params) } }
                 .endArray()
-                .field(SUCCESS_MESSAGE_TEMPLATE_FIELD, successMessageTemplate)
-                .field(FAILED_MESSAGE_TEMPLATE_FIELD, failedMessageTemplate)
+            if (successMessageTemplate != null) builder.field(SUCCESS_MESSAGE_TEMPLATE_FIELD, successMessageTemplate)
+            if (failedMessageTemplate != null) builder.field(FAILED_MESSAGE_TEMPLATE_FIELD, failedMessageTemplate)
         }
         if (params.paramAsBoolean(WITH_TYPE, true)) builder.endObject()
         return builder.endObject()
@@ -120,6 +119,7 @@ data class LRONConfig(
         }
 
         @JvmStatic
+        @Suppress("MaxLineLength", "CyclomaticComplexMethod", "NestedBlockDepth")
         @Throws(IOException::class)
         fun parse(xcp: XContentParser): LRONConfig {
             var enabled: Boolean = DEFAULT_ENABLED
@@ -137,8 +137,14 @@ data class LRONConfig(
 
                 when (fieldName) {
                     ENABLED_FIELD -> enabled = xcp.booleanValue()
-                    TASK_ID_FIELD -> taskID = if (xcp.currentToken() == XContentParser.Token.VALUE_NULL) null else xcp.text()
-                    ACTION_NAME_FIELD -> actionName = if (xcp.currentToken() == XContentParser.Token.VALUE_NULL) null else xcp.text()
+                    TASK_ID_FIELD ->
+                        taskID =
+                            if (xcp.currentToken() == XContentParser.Token.VALUE_NULL) null else xcp.text()
+
+                    ACTION_NAME_FIELD ->
+                        actionName =
+                            if (xcp.currentToken() == XContentParser.Token.VALUE_NULL) null else xcp.text()
+
                     CHANNELS_FIELD -> {
                         if (xcp.currentToken() != XContentParser.Token.VALUE_NULL) {
                             channels = mutableListOf()
@@ -148,13 +154,19 @@ data class LRONConfig(
                             }
                         }
                     }
-                    USER_FIELD -> user = if (xcp.currentToken() == XContentParser.Token.VALUE_NULL) null else User.parse(xcp)
+
+                    USER_FIELD ->
+                        user =
+                            if (xcp.currentToken() == XContentParser.Token.VALUE_NULL) null else User.parse(xcp)
+
                     SUCCESS_MESSAGE_TEMPLATE_FIELD -> if (xcp.currentToken() != XContentParser.Token.VALUE_NULL) {
                         successMessageTemplate = Script.parse(xcp, Script.DEFAULT_TEMPLATE_LANG)
                     }
+
                     FAILED_MESSAGE_TEMPLATE_FIELD -> if (xcp.currentToken() != XContentParser.Token.VALUE_NULL) {
                         failedMessageTemplate = Script.parse(xcp, Script.DEFAULT_TEMPLATE_LANG)
                     }
+
                     else -> throw IllegalArgumentException("Invalid field: [$fieldName] found in LRONConfig.")
                 }
             }

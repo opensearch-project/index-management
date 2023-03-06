@@ -66,9 +66,11 @@ class NotificationActionListener<Request : ActionRequest, Response : ActionRespo
     override fun onResponse(response: Response) {
         try {
             delegate.onResponse(response)
-            postOnResponse(response)
+            launch {
+                postOnResponse(response)
+            }
         } catch (e: Exception) {
-            delegate.onFailure(e)
+            onFailure(e)
         }
     }
 
@@ -80,11 +82,12 @@ class NotificationActionListener<Request : ActionRequest, Response : ActionRespo
         }
     }
 
-    private fun postOnResponse(response: Response) {
+    private suspend fun postOnResponse(response: Response) {
         try {
             if (response is ResizeResponse) {
                 // Not all shards are started
                 if (response.isShardsAcknowledged == false) {
+                    logger.debug("Not all shards are started, continue monitoring on shards status")
                     activeShardsObserver.waitForActiveShards(
                         arrayOf<String>(response.index()),
                         ActiveShardCount.DEFAULT, // once all primary shards are started, we think it is completed
@@ -107,9 +110,11 @@ class NotificationActionListener<Request : ActionRequest, Response : ActionRespo
                         notifyOperationComplete(action, e = e)
                     }
                     )
+                } else {
+                    notifyOperationComplete(action, response = response)
                 }
             } else {
-                // force_merge and reindex
+                // other operations are not waiting for shards started
                 notifyOperationComplete(action, response = response)
             }
         } catch (e: Exception) {
@@ -138,25 +143,29 @@ class NotificationActionListener<Request : ActionRequest, Response : ActionRespo
             ),
             object : ActionListener<GetLRONConfigsResponse> {
                 override fun onResponse(lronConfigResponse: GetLRONConfigsResponse) {
+                    if (lronConfigResponse.lronConfigs.isNullOrEmpty()) {
+                        logger.info("No notification channel configured for task: {} action: {}", taskId.toString(), action)
+                        return
+                    }
                     lronConfigResponse.lronConfigs.first().let {
                         val title = buildNotificationTitle()
                         val eventSource = EventSource(title, taskId.toString(), SeverityType.INFO)
                         launch {
-                            try {
-                                val user = it.user
-                                val config = it
-                                it.channels?.forEach {
+                            val user = it.user
+                            val config = it
+                            it.channels?.forEach {
+                                try {
                                     it.sendNotification(
                                         client,
                                         eventSource,
                                         buildNotificationMessage(response, e, isTimeout, config),
                                         user,
                                     )
+                                } catch (osse: OpenSearchStatusException) {
+                                    logger.warn("Sending notification failed, restStatus {}", osse.status(), osse)
+                                } catch (e: Exception) {
+                                    logger.error("Sending notification failed", e)
                                 }
-                            } catch (osse: OpenSearchStatusException) {
-                                logger.warn("Sending notification failed", osse)
-                            } catch (e: Exception) {
-                                logger.error("Sending notification failed", e)
                             }
                         }
                     }
@@ -199,7 +208,7 @@ class NotificationActionListener<Request : ActionRequest, Response : ActionRespo
                     val cancelled = response.reasonCancelled
                     result.append("${task.description} ")
                         .append(
-                            if (cancelled.isNullOrBlank()) {
+                            if (cancelled.isNullOrBlank() == false) {
                                 cancelled
                             } else if (e != null) {
                                 COMPLETED_WITH_ERROR
@@ -214,7 +223,7 @@ class NotificationActionListener<Request : ActionRequest, Response : ActionRespo
                 ResizeAction.NAME -> {
                     assert(request is ResizeRequest)
                     request as ResizeRequest
-                    result.append("${resizeType?.name?.lowercase()} from ${request.sourceIndex} to ${request.targetIndexRequest.index()}")
+                    result.append("${resizeType?.name?.lowercase()} from ${request.sourceIndex} to ${request.targetIndexRequest.index()} ")
                         .append(
                             if (isTimeout == true) {
                                 COMPLETED_WITH_TIMEOUT
@@ -227,7 +236,7 @@ class NotificationActionListener<Request : ActionRequest, Response : ActionRespo
                 }
 
                 org.opensearch.action.admin.indices.forcemerge.ForceMergeAction.NAME -> {
-                    "force_merge ${(request as ForceMergeRequest).indices().joinToString(",")} $COMPLETED"
+                    result.append("force_merge for index [${(request as ForceMergeRequest).indices().joinToString(",")}] $COMPLETED")
                 }
 
                 else -> {
