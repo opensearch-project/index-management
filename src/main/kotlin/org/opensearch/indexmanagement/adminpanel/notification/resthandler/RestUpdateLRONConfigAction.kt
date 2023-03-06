@@ -1,3 +1,8 @@
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package org.opensearch.indexmanagement.adminpanel.notification.resthandler
 
 import org.opensearch.action.support.WriteRequest
@@ -6,6 +11,7 @@ import org.opensearch.indexmanagement.IndexManagementPlugin
 import org.opensearch.indexmanagement.adminpanel.notification.action.index.IndexLRONConfigAction
 import org.opensearch.indexmanagement.adminpanel.notification.action.index.IndexLRONConfigRequest
 import org.opensearch.indexmanagement.adminpanel.notification.model.LRONConfig
+import org.opensearch.indexmanagement.adminpanel.notification.util.getDocID
 import org.opensearch.indexmanagement.opensearchapi.parseWithType
 import org.opensearch.indexmanagement.util.REFRESH
 import org.opensearch.rest.BaseRestHandler
@@ -18,7 +24,7 @@ class RestUpdateLRONConfigAction : BaseRestHandler() {
 
     override fun routes(): List<RestHandler.Route> {
         return listOf(
-            RestHandler.Route(RestRequest.Method.POST, "${IndexManagementPlugin.LRON_BASE_URI}/{taskID}")
+            RestHandler.Route(RestRequest.Method.POST, "${IndexManagementPlugin.LRON_BASE_URI}/{docID}")
         )
     }
 
@@ -28,8 +34,12 @@ class RestUpdateLRONConfigAction : BaseRestHandler() {
 
     @Throws(IOException::class)
     override fun prepareRequest(request: RestRequest, client: NodeClient): RestChannelConsumer {
+        val docID = request.param("docID")
         val xcp = request.contentParser()
         val lronConfig = xcp.parseWithType(parse = LRONConfig.Companion::parse)
+        if (getDocID(lronConfig.taskID, lronConfig.actionName) != docID) {
+            throw IllegalArgumentException("docID isn't match with lron_config")
+        }
 
         val refreshPolicy = if (request.hasParam(REFRESH)) {
             WriteRequest.RefreshPolicy.parse(request.param(REFRESH))

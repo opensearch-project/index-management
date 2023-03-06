@@ -8,9 +8,8 @@ package org.opensearch.indexmanagement.adminpanel.notification.action.get
 import org.apache.logging.log4j.LogManager
 import org.opensearch.OpenSearchStatusException
 import org.opensearch.action.ActionListener
-import org.opensearch.action.get.MultiGetItemResponse
-import org.opensearch.action.get.MultiGetRequest
-import org.opensearch.action.get.MultiGetResponse
+import org.opensearch.action.get.GetRequest
+import org.opensearch.action.get.GetResponse
 import org.opensearch.action.support.ActionFilters
 import org.opensearch.action.support.HandledTransportAction
 import org.opensearch.client.node.NodeClient
@@ -21,13 +20,10 @@ import org.opensearch.core.xcontent.NamedXContentRegistry
 import org.opensearch.commons.ConfigConstants
 import org.opensearch.commons.authuser.User
 import org.opensearch.indexmanagement.IndexManagementPlugin
+import org.opensearch.indexmanagement.adminpanel.notification.LRONConfigResponse
 import org.opensearch.indexmanagement.adminpanel.notification.model.LRONConfig
-import org.opensearch.indexmanagement.adminpanel.notification.util.getDocID
-import org.opensearch.indexmanagement.adminpanel.notification.util.LRON_TYPE_DEFAULT
-import org.opensearch.indexmanagement.adminpanel.notification.util.LRON_TYPE_TASK_ID
 import org.opensearch.indexmanagement.opensearchapi.parseFromGetResponse
 import org.opensearch.indexmanagement.settings.IndexManagementSettings
-import org.opensearch.indexmanagement.util.NO_ID
 import org.opensearch.indexmanagement.util.SecurityUtils
 import org.opensearch.rest.RestStatus
 import org.opensearch.tasks.Task
@@ -41,7 +37,7 @@ class TransportGetLRONConfigAction @Inject constructor(
     val clusterService: ClusterService,
     val settings: Settings,
     val xContentRegistry: NamedXContentRegistry,
-) : HandledTransportAction<GetLRONConfigRequest, GetLRONConfigResponse>(
+) : HandledTransportAction<GetLRONConfigRequest, LRONConfigResponse>(
     GetLRONConfigAction.NAME, transportService, actionFilters, ::GetLRONConfigRequest
 ) {
     @Volatile private var filterByEnabled = IndexManagementSettings.FILTER_BY_BACKEND_ROLES.get(settings)
@@ -53,16 +49,15 @@ class TransportGetLRONConfigAction @Inject constructor(
         }
     }
 
-    override fun doExecute(task: Task, request: GetLRONConfigRequest, listener: ActionListener<GetLRONConfigResponse>) {
+    override fun doExecute(task: Task, request: GetLRONConfigRequest, listener: ActionListener<LRONConfigResponse>) {
         GetLRONConfigHandler(client, listener, request).start()
     }
 
     inner class GetLRONConfigHandler(
         private val client: NodeClient,
-        private val actionListener: ActionListener<GetLRONConfigResponse>,
+        private val actionListener: ActionListener<LRONConfigResponse>,
         private val request: GetLRONConfigRequest,
-        private val user: User? = SecurityUtils.buildUser(client.threadPool().threadContext),
-        private val configTypes: MutableList<String> = mutableListOf()
+        private val user: User? = SecurityUtils.buildUser(client.threadPool().threadContext)
     ) {
         fun start() {
             log.debug(
@@ -74,72 +69,48 @@ class TransportGetLRONConfigAction @Inject constructor(
                 if (!SecurityUtils.validateUserConfiguration(user, filterByEnabled, actionListener)) {
                     return
                 }
-                executeMultiGet()
+                val getRequest = GetRequest().id(request.docID).index(IndexManagementPlugin.ADMIN_PANEL_INDEX)
+                client.get(getRequest, ActionListener.wrap(::onGetResponse, actionListener::onFailure))
             }
             return
         }
 
-        fun executeMultiGet() {
-            val multiGetRequest = MultiGetRequest()
-            /* response includes a docs array that contains the documents in the order specified in the request */
-            /* we add items in order of priority in request, and we just take the first non-null doc in response*/
-            if (NO_ID != request.taskID) {
-                multiGetRequest.add(IndexManagementPlugin.ADMIN_PANEL_INDEX, getDocID(request.taskID))
-                configTypes.add(LRON_TYPE_TASK_ID)
-            }
-            if (request.includeDefault || 0 == multiGetRequest.items.size) {
-                multiGetRequest.add(IndexManagementPlugin.ADMIN_PANEL_INDEX, getDocID(NO_ID))
-                configTypes.add(LRON_TYPE_DEFAULT)
-            }
-            client.multiGet(multiGetRequest, ActionListener.wrap(::onMultiGetResponse, actionListener::onFailure))
-        }
-
-        fun onMultiGetResponse(multiGetResponse: MultiGetResponse) {
-            /* All docs to get are in same index. If there is a failure, just return */
-            for (response in multiGetResponse.responses) {
-                if (null != response.failure) {
-                    actionListener.onFailure(response.failure.failure)
-                }
+        private fun onGetResponse(response: GetResponse) {
+            if (!response.isExists) {
+                actionListener.onFailure(OpenSearchStatusException("lronConfig ${request.docID} not found", RestStatus.NOT_FOUND))
+                return
             }
 
-            var lronConfig: LRONConfig?
-            var response: MultiGetItemResponse?
+            val lronConfig: LRONConfig
 
-            for (idx in multiGetResponse.responses.indices) {
-                response = multiGetResponse.responses[idx]
-                if (response.response.isExists) {
-                    try {
-                        lronConfig = parseFromGetResponse(response.response, xContentRegistry, LRONConfig.Companion::parse)
-                    } catch (e: IllegalArgumentException) {
-                        log.debug("can not parse LRONConfig: " + response.response.id)
-                        continue
-                    }
-                    if (
-                        !SecurityUtils.userHasPermissionForResource(
-                            user,
-                            lronConfig.user,
-                            filterByEnabled,
-                            "LRONConfig",
-                            response.response.id, actionListener
-                        )
-                    ) {
-                        return
-                    }
-                    actionListener.onResponse(
-                        GetLRONConfigResponse(
-                            id = response.response.id,
-                            version = response.response.version,
-                            primaryTerm = response.response.primaryTerm,
-                            seqNo = response.response.seqNo,
-                            configType = configTypes[idx],
-                            lronConfig = lronConfig
-                        )
+            try {
+                lronConfig = parseFromGetResponse(response, xContentRegistry, LRONConfig.Companion::parse)
+            } catch (e: IllegalArgumentException) {
+                actionListener.onFailure(e)
+                return
+            }
+
+            if (!SecurityUtils.userHasPermissionForResource(
+                    user,
+                    lronConfig.user,
+                    filterByEnabled,
+                    "lronConfig",
+                    request.docID,
+                    actionListener
+                )
+            ) {
+                return
+            } else {
+                actionListener.onResponse(
+                    LRONConfigResponse(
+                        response.id,
+                        response.version,
+                        response.primaryTerm,
+                        response.seqNo,
+                        lronConfig
                     )
-                    return
-                }
+                )
             }
-
-            actionListener.onFailure(OpenSearchStatusException("LRONConfig not found", RestStatus.NOT_FOUND))
         }
     }
 }

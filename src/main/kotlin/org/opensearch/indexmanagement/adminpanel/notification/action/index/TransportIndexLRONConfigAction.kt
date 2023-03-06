@@ -23,14 +23,14 @@ import org.opensearch.commons.ConfigConstants
 import org.opensearch.commons.authuser.User
 import org.opensearch.indexmanagement.IndexManagementPlugin
 import org.opensearch.indexmanagement.adminpanel.notification.AdminPanelIndices
+import org.opensearch.indexmanagement.adminpanel.notification.LRONConfigResponse
 import org.opensearch.indexmanagement.adminpanel.notification.util.getDocID
+import org.opensearch.indexmanagement.adminpanel.notification.util.getPriority
 import org.opensearch.indexmanagement.settings.IndexManagementSettings
 import org.opensearch.indexmanagement.util.SecurityUtils
 import org.opensearch.rest.RestStatus
 import org.opensearch.tasks.Task
 import org.opensearch.transport.TransportService
-
-private val log = LogManager.getLogger(TransportIndexLRONConfigAction::class.java)
 
 @Suppress("LongParameterList")
 class TransportIndexLRONConfigAction @Inject constructor(
@@ -40,10 +40,11 @@ class TransportIndexLRONConfigAction @Inject constructor(
     val adminPanelIndices: AdminPanelIndices,
     val clusterService: ClusterService,
     val settings: Settings
-) : HandledTransportAction<IndexLRONConfigRequest, IndexLRONConfigResponse>(
+) : HandledTransportAction<IndexLRONConfigRequest, LRONConfigResponse>(
     IndexLRONConfigAction.NAME, transportService, actionFilters, ::IndexLRONConfigRequest
 ) {
     @Volatile private var filterByEnabled = IndexManagementSettings.FILTER_BY_BACKEND_ROLES.get(settings)
+    private val log = LogManager.getLogger(javaClass)
 
     init {
         clusterService.clusterSettings.addSettingsUpdateConsumer(IndexManagementSettings.FILTER_BY_BACKEND_ROLES) {
@@ -51,13 +52,13 @@ class TransportIndexLRONConfigAction @Inject constructor(
         }
     }
 
-    override fun doExecute(task: Task, request: IndexLRONConfigRequest, listener: ActionListener<IndexLRONConfigResponse>) {
+    override fun doExecute(task: Task, request: IndexLRONConfigRequest, listener: ActionListener<LRONConfigResponse>) {
         IndexLRONConfigHandler(client, listener, request).start()
     }
 
     inner class IndexLRONConfigHandler(
         private val client: NodeClient,
-        private val actionListener: ActionListener<IndexLRONConfigResponse>,
+        private val actionListener: ActionListener<LRONConfigResponse>,
         private val request: IndexLRONConfigRequest,
         private val user: User? = SecurityUtils.buildUser(client.threadPool().threadContext)
     ) {
@@ -97,15 +98,16 @@ class TransportIndexLRONConfigAction @Inject constructor(
 
         private fun putLRONConfig() {
             val docID = getDocID(request.lronConfig.taskID, request.lronConfig.actionName)
-            val lronConfig = request.lronConfig.copy(user = this.user)
+            val lronConfig = request.lronConfig.copy(
+                user = this.user,
+                priority = getPriority(request.lronConfig.taskID, request.lronConfig.actionName)
+            )
             val indexRequest = IndexRequest(IndexManagementPlugin.ADMIN_PANEL_INDEX)
                 .setRefreshPolicy(request.refreshPolicy)
                 .source(lronConfig.toXContent(XContentFactory.jsonBuilder()))
                 .id(docID)
                 .timeout(IndexRequest.DEFAULT_TIMEOUT)
-            if (request.isUpdate) {
-                indexRequest.opType(DocWriteRequest.OpType.UPDATE)
-            } else {
+            if (!request.isUpdate) {
                 indexRequest.opType(DocWriteRequest.OpType.CREATE)
             }
 
@@ -118,12 +120,11 @@ class TransportIndexLRONConfigAction @Inject constructor(
                             actionListener.onFailure(OpenSearchStatusException(failureReasons, response.status()))
                         } else {
                             actionListener.onResponse(
-                                IndexLRONConfigResponse(
+                                LRONConfigResponse(
                                     response.id,
                                     response.version,
                                     response.primaryTerm,
                                     response.seqNo,
-                                    response.status(),
                                     lronConfig
                                 )
                             )

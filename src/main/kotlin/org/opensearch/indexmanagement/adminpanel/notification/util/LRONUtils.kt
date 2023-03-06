@@ -6,15 +6,24 @@
 @file:JvmName("LRONUtils")
 package org.opensearch.indexmanagement.adminpanel.notification.util
 
-const val LRON_CONFIG_TYPE = "lron_config_type"
 const val LRON_DEFAULT_ID = "default"
 const val LRON_DOC_ID_PREFIX = "LRON:"
 
+const val WITH_PRIORITY = "with_priority"
+const val PRIORITY_TASK_ID = 300
+const val PRIORITY_DEFAULT_ACTION = 200
+const val PRIORITY_DEFAULT = 100
+const val DEFAULT_LRON_CONFIG_SORT_FIELD = "lron_config.priority"
 
-const val LRON_TYPE_TASK_ID = "task_id"
-const val LRON_TYPE_DEFAULT = "default"
+fun getPriority(taskId: String? = null, actionName: String? = null): Int {
+    return when {
+        null != taskId -> PRIORITY_TASK_ID
+        null != actionName -> PRIORITY_DEFAULT_ACTION
+        else -> PRIORITY_DEFAULT
+    }
+}
 
-fun getDocID(taskId: String? = null, actionName: String? = null) : String {
+fun getDocID(taskId: String? = null, actionName: String? = null): String {
     if (null != taskId) {
         return LRON_DOC_ID_PREFIX + taskId
     } else if (null != actionName) {

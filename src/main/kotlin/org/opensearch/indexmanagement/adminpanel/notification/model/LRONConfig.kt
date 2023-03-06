@@ -15,12 +15,12 @@ import org.opensearch.core.xcontent.XContentParser
 import org.opensearch.common.xcontent.XContentParserUtils.ensureExpectedToken
 import org.opensearch.commons.authuser.User
 import org.opensearch.index.seqno.SequenceNumbers
+import org.opensearch.indexmanagement.adminpanel.notification.util.WITH_PRIORITY
 import org.opensearch.indexmanagement.common.model.notification.Channel
 import org.opensearch.indexmanagement.indexstatemanagement.util.WITH_TYPE
 import org.opensearch.indexmanagement.indexstatemanagement.util.WITH_USER
 import org.opensearch.indexmanagement.opensearchapi.optionalUserField
 import org.opensearch.indexmanagement.util.NO_ID
-import org.opensearch.script.Script
 import java.io.IOException
 
 data class LRONConfig(
@@ -29,17 +29,12 @@ data class LRONConfig(
     val actionName: String?,
     val channels: List<Channel>?,
     val user: User?,
-    val successMessageTemplate: Script?,
-    val failedMessageTemplate: Script?,
+    var priority: Int?
 ) : ToXContentObject, Writeable {
 
     init {
         if (enabled) {
             require(!channels.isNullOrEmpty()) { "Enabled LRONConfig must contain at least one channel" }
-            require(null!=successMessageTemplate && null!=failedMessageTemplate) {"Enabled LRONConfig must has message template"}
-            require( successMessageTemplate?.lang == MUSTACHE && failedMessageTemplate?.lang == MUSTACHE) {
-                "LRONConfig message template must be a mustache script"
-            }
         }
     }
 
@@ -55,11 +50,10 @@ data class LRONConfig(
         if (null != actionName) builder.field(ACTION_NAME_FIELD, actionName)
         if (params.paramAsBoolean(WITH_USER, true)) builder.optionalUserField(USER_FIELD, user)
         if (enabled) {
-            builder.startArray()
+            builder.startArray(CHANNELS_FIELD)
                 .also { channels?.forEach { channel -> channel.toXContent(it, params) } }
                 .endArray()
-                .field(SUCCESS_MESSAGE_TEMPLATE_FIELD, successMessageTemplate)
-                .field(FAILED_MESSAGE_TEMPLATE_FIELD, failedMessageTemplate)
+            if (params.paramAsBoolean(WITH_PRIORITY, true)) builder.field(PRIORITY_FIELD, priority)
         }
         if (params.paramAsBoolean(WITH_TYPE, true)) builder.endObject()
         return builder.endObject()
@@ -74,8 +68,7 @@ data class LRONConfig(
             sin.readList(::Channel)
         } else null,
         user = sin.readOptionalWriteable(::User),
-        successMessageTemplate = sin.readOptionalWriteable(::Script),
-        failedMessageTemplate = sin.readOptionalWriteable(::Script)
+        priority = sin.readOptionalInt()
     )
 
     @Throws(IOException::class)
@@ -88,8 +81,7 @@ data class LRONConfig(
             out.writeList(channels)
         } else out.writeBoolean(false)
         out.writeOptionalWriteable(user)
-        out.writeOptionalWriteable(successMessageTemplate)
-        out.writeOptionalWriteable(failedMessageTemplate)
+        out.writeOptionalInt(priority)
     }
 
     companion object {
@@ -99,10 +91,8 @@ data class LRONConfig(
         const val ACTION_NAME_FIELD = "action_name"
         const val CHANNELS_FIELD = "channels"
         const val USER_FIELD = "user"
-        const val SUCCESS_MESSAGE_TEMPLATE_FIELD = "success_message_template"
-        const val FAILED_MESSAGE_TEMPLATE_FIELD = "failed_message_template"
+        const val PRIORITY_FIELD = "priority"
 
-        const val MUSTACHE = "mustache"
         const val CHANNEL_TITLE = "Long Running Operation Notification"
         const val DEFAULT_ENABLED = true
 
@@ -127,8 +117,7 @@ data class LRONConfig(
             var actionName: String? = null
             var channels: List<Channel>? = null
             var user: User? = null
-            var successMessageTemplate: Script? = null
-            var failedMessageTemplate: Script? = null
+            var priority: Int? = null
 
             ensureExpectedToken(XContentParser.Token.START_OBJECT, xcp.currentToken(), xcp)
             while (xcp.nextToken() != XContentParser.Token.END_OBJECT) {
@@ -149,12 +138,7 @@ data class LRONConfig(
                         }
                     }
                     USER_FIELD -> user = if (xcp.currentToken() == XContentParser.Token.VALUE_NULL) null else User.parse(xcp)
-                    SUCCESS_MESSAGE_TEMPLATE_FIELD -> if (xcp.currentToken() != XContentParser.Token.VALUE_NULL) {
-                        successMessageTemplate = Script.parse(xcp, Script.DEFAULT_TEMPLATE_LANG)
-                    }
-                    FAILED_MESSAGE_TEMPLATE_FIELD -> if (xcp.currentToken() != XContentParser.Token.VALUE_NULL) {
-                        failedMessageTemplate = Script.parse(xcp, Script.DEFAULT_TEMPLATE_LANG)
-                    }
+                    PRIORITY_FIELD -> priority = if (xcp.currentToken() != XContentParser.Token.VALUE_NULL) null else xcp.intValue()
                     else -> throw IllegalArgumentException("Invalid field: [$fieldName] found in LRONConfig.")
                 }
             }
@@ -165,8 +149,7 @@ data class LRONConfig(
                 actionName = actionName,
                 channels = channels,
                 user = user,
-                successMessageTemplate = successMessageTemplate,
-                failedMessageTemplate = failedMessageTemplate
+                priority = priority
             )
         }
     }

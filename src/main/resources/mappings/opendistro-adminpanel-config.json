@@ -1,102 +1,24 @@
 {
-  "_meta" : {
-    "schema_version": 0
+  "_meta": {
+    "schema_version": 1
   },
   "dynamic": "strict",
   "properties": {
     "lron_config": {
       "properties": {
-        "destination": {
-          "properties": {
-            "name": {
-              "type": "text",
-              "fields": {
-                "keyword": {
-                  "type": "keyword",
-                  "ignore_above": 256
-                }
-              }
-            },
-            "type": {
-              "type": "keyword"
-            },
-            "last_update_time": {
-              "type": "date",
-              "format": "strict_date_time||epoch_millis"
-            },
-            "chime": {
-              "properties": {
-                "url": {
-                  "type": "text",
-                  "fields": {
-                    "keyword": {
-                      "type": "keyword",
-                      "ignore_above": 256
-                    }
-                  }
-                }
-              }
-            },
-            "slack": {
-              "properties": {
-                "url": {
-                  "type": "text",
-                  "fields": {
-                    "keyword": {
-                      "type": "keyword",
-                      "ignore_above": 256
-                    }
-                  }
-                }
-              }
-            },
-            "custom_webhook": {
-              "properties": {
-                "url": {
-                  "type": "text",
-                  "fields": {
-                    "keyword": {
-                      "type": "keyword",
-                      "ignore_above": 256
-                    }
-                  }
-                },
-                "scheme": {
-                  "type": "keyword"
-                },
-                "host": {
-                  "type": "text"
-                },
-                "port": {
-                  "type": "integer"
-                },
-                "path": {
-                  "type": "keyword"
-                },
-                "query_params": {
-                  "type": "object",
-                  "enabled": false
-                },
-                "header_params": {
-                  "type": "object",
-                  "enabled": false
-                },
-                "username": {
-                  "type": "text"
-                },
-                "password": {
-                  "type": "text"
-                }
-              }
-            }
-          }
-        },
-        "channel": {
+        "channels": {
+          "type": "nested",
           "properties": {
             "id": {
               "type": "keyword"
             }
           }
+        },
+        "task_id": {
+          "type": "keyword"
+        },
+        "action_name": {
+          "type": "keyword"
         },
         "user": {
           "properties": {
@@ -138,13 +60,8 @@
         "enabled": {
           "type": "boolean"
         },
-        "success_message_template": {
-          "type": "object",
-          "enabled": false
-        },
-        "failed_message_template": {
-          "type": "object",
-          "enabled": false
+        "priority": {
+          "type": "integer"
         }
       }
     }

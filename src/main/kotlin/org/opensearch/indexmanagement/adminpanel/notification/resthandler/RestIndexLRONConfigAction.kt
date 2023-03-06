@@ -24,8 +24,7 @@ class RestIndexLRONConfigAction : BaseRestHandler() {
 
     override fun routes(): List<RestHandler.Route> {
         return listOf(
-            RestHandler.Route(RestRequest.Method.PUT, IndexManagementPlugin.LRON_BASE_URI),
-            RestHandler.Route(RestRequest.Method.PUT, "${IndexManagementPlugin.LRON_BASE_URI}/{taskID}")
+            RestHandler.Route(RestRequest.Method.PUT, IndexManagementPlugin.LRON_BASE_URI)
         )
     }
 

@@ -9,29 +9,30 @@ import org.opensearch.action.ActionRequest
 import org.opensearch.action.ActionRequestValidationException
 import org.opensearch.common.io.stream.StreamInput
 import org.opensearch.common.io.stream.StreamOutput
+import org.opensearch.indexmanagement.common.model.rest.SearchParams
 import java.io.IOException
 
-class GetLRONConfigRequest : ActionRequest {
-    val docID: String
+class GetLRONConfigsRequest : ActionRequest {
+
+    val searchParams: SearchParams
 
     constructor(
-        docID: String
+        searchParams: SearchParams
     ) : super() {
-        this.docID = docID
+        this.searchParams = searchParams
     }
 
     @Throws(IOException::class)
     constructor(sin: StreamInput) : this(
-        docID = sin.readString()
+        searchParams = SearchParams(sin)
     )
 
     override fun validate(): ActionRequestValidationException? {
-        var validationException: ActionRequestValidationException? = null
-        return validationException
+        return null
     }
 
     @Throws(IOException::class)
     override fun writeTo(out: StreamOutput) {
-        out.writeString(docID)
+        searchParams.writeTo(out)
     }
 }
