@@ -13,10 +13,10 @@ import org.opensearch.action.ActionResponse
 import org.opensearch.action.admin.indices.forcemerge.ForceMergeAction
 import org.opensearch.action.admin.indices.shrink.ResizeAction
 import org.opensearch.action.admin.indices.shrink.ResizeRequest
-import org.opensearch.action.admin.indices.shrink.ResizeType
 import org.opensearch.action.support.ActiveShardsObserver
 import org.opensearch.client.Client
 import org.opensearch.cluster.OpenSearchAllocationTestCase
+import org.opensearch.cluster.metadata.IndexNameExpressionResolver
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.core.xcontent.NamedXContentRegistry
 import org.opensearch.index.reindex.ReindexAction
@@ -33,6 +33,7 @@ class IndexOperationActionFilterTests : OpenSearchAllocationTestCase() {
     private lateinit var clusterService: ClusterService
     private lateinit var xContentRegistry: NamedXContentRegistry
     private lateinit var filter: IndexOperationActionFilter
+    private lateinit var indexNameExpressionResolver: IndexNameExpressionResolver
 
     @Before
     @Throws(Exception::class)
@@ -47,10 +48,12 @@ class IndexOperationActionFilterTests : OpenSearchAllocationTestCase() {
         val namedXContentRegistryEntries = arrayListOf<NamedXContentRegistry.Entry>()
         xContentRegistry = NamedXContentRegistry(namedXContentRegistryEntries)
 
+        indexNameExpressionResolver = Mockito.mock(IndexNameExpressionResolver::class.java)
+
         val activeShardsObserver = ActiveShardsObserver(clusterService, client.threadPool())
 
         filter = IndexOperationActionFilter(
-            this.client, clusterService, xContentRegistry, scriptService, activeShardsObserver
+            this.client, clusterService, scriptService, activeShardsObserver, indexNameExpressionResolver
         )
     }
 
@@ -114,9 +117,6 @@ class IndexOperationActionFilterTests : OpenSearchAllocationTestCase() {
 
         Assert.assertNotSame(listener, newListener)
         Assert.assertTrue(newListener is NotificationActionListener<*, *>)
-        newListener as NotificationActionListener<*, *>
-        // default is shrink
-        Assert.assertEquals(newListener.resizeType, ResizeType.SHRINK)
     }
 
     inner class TestActionListener<Response : ActionResponse> : ActionListener<Response> {
