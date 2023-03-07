@@ -37,7 +37,7 @@ class RestUpdateLRONConfigAction : BaseRestHandler() {
         val docID = request.param("id")
         val xcp = request.contentParser()
         val lronConfig = xcp.parseWithType(parse = LRONConfig.Companion::parse)
-        if (getDocID(lronConfig.taskID, lronConfig.actionName) != docID) {
+        if (getDocID(lronConfig.taskId, lronConfig.actionName) != docID) {
             throw IllegalArgumentException("docID isn't match with lron_config")
         }
 

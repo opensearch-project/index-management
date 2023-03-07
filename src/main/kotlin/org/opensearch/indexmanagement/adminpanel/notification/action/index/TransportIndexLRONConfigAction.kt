@@ -26,11 +26,14 @@ import org.opensearch.indexmanagement.adminpanel.notification.AdminPanelIndices
 import org.opensearch.indexmanagement.adminpanel.notification.LRONConfigResponse
 import org.opensearch.indexmanagement.adminpanel.notification.util.getDocID
 import org.opensearch.indexmanagement.adminpanel.notification.util.getPriority
+import org.opensearch.indexmanagement.adminpanel.notification.util.validateActionName
+import org.opensearch.indexmanagement.adminpanel.notification.util.validateTaskID
 import org.opensearch.indexmanagement.settings.IndexManagementSettings
 import org.opensearch.indexmanagement.util.SecurityUtils
 import org.opensearch.rest.RestStatus
 import org.opensearch.tasks.Task
 import org.opensearch.transport.TransportService
+import java.lang.IllegalArgumentException
 
 @Suppress("LongParameterList")
 class TransportIndexLRONConfigAction @Inject constructor(
@@ -80,11 +83,7 @@ class TransportIndexLRONConfigAction @Inject constructor(
         private fun onCreateMappingsResponse(response: AcknowledgedResponse) {
             if (response.isAcknowledged) {
                 log.info("Successfully created or updated ${IndexManagementPlugin.ADMIN_PANEL_INDEX} with newest mappings.")
-                if (null == request.lronConfig.taskID) {
-                    putLRONConfig()
-                } else {
-                    validateTaskID()
-                }
+                validate()
             } else {
                 val message = "Unable to create or update ${IndexManagementPlugin.ADMIN_PANEL_INDEX} with newest mapping."
                 log.error(message)
@@ -92,15 +91,19 @@ class TransportIndexLRONConfigAction @Inject constructor(
             }
         }
 
-        private fun validateTaskID() {
-            putLRONConfig()
+        private fun validate() {
+            if (validateTaskID(request.lronConfig.taskId) && validateActionName(request.lronConfig.actionName)) {
+                putLRONConfig()
+            } else {
+                actionListener.onFailure(IllegalArgumentException("Invalid task id or action name"))
+            }
         }
 
         private fun putLRONConfig() {
-            val docID = getDocID(request.lronConfig.taskID, request.lronConfig.actionName)
+            val docID = getDocID(request.lronConfig.taskId, request.lronConfig.actionName)
             val lronConfig = request.lronConfig.copy(
                 user = this.user,
-                priority = getPriority(request.lronConfig.taskID, request.lronConfig.actionName)
+                priority = getPriority(request.lronConfig.taskId, request.lronConfig.actionName)
             )
             val indexRequest = IndexRequest(IndexManagementPlugin.ADMIN_PANEL_INDEX)
                 .setRefreshPolicy(request.refreshPolicy)

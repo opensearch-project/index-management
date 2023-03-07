@@ -26,7 +26,7 @@ import java.io.IOException
 
 data class LRONConfig(
     val enabled: Boolean = true,
-    val taskID: String?,
+    val taskId: String?,
     val actionName: String?,
     val channels: List<Channel>?,
     val user: User?,
@@ -52,7 +52,7 @@ data class LRONConfig(
         builder.startObject()
         if (params.paramAsBoolean(WITH_TYPE, true)) builder.startObject(LRON_CONFIG_FIELD)
         builder.field(ENABLED_FIELD, enabled)
-        if (null != taskID) builder.field(TASK_ID_FIELD, taskID)
+        if (null != taskId) builder.field(TASK_ID_FIELD, taskId)
         if (null != actionName) builder.field(ACTION_NAME_FIELD, actionName)
         if (params.paramAsBoolean(WITH_USER, true)) builder.optionalUserField(USER_FIELD, user)
         if (enabled) {
@@ -70,7 +70,7 @@ data class LRONConfig(
     @Throws(IOException::class)
     constructor(sin: StreamInput) : this(
         enabled = sin.readBoolean(),
-        taskID = sin.readOptionalString(),
+        taskId = sin.readOptionalString(),
         actionName = sin.readOptionalString(),
         channels = if (sin.readBoolean()) {
             sin.readList(::Channel)
@@ -84,7 +84,7 @@ data class LRONConfig(
     @Throws(IOException::class)
     override fun writeTo(out: StreamOutput) {
         out.writeBoolean(enabled)
-        out.writeOptionalString(taskID)
+        out.writeOptionalString(taskId)
         out.writeOptionalString(actionName)
         if (null != channels) {
             out.writeBoolean(true)
@@ -129,7 +129,7 @@ data class LRONConfig(
         @Throws(IOException::class)
         fun parse(xcp: XContentParser): LRONConfig {
             var enabled: Boolean = DEFAULT_ENABLED
-            var taskID: String? = null
+            var taskId: String? = null
             var actionName: String? = null
             var channels: List<Channel>? = null
             var user: User? = null
@@ -145,7 +145,7 @@ data class LRONConfig(
                 when (fieldName) {
                     ENABLED_FIELD -> enabled = xcp.booleanValue()
                     TASK_ID_FIELD ->
-                        taskID =
+                        taskId =
                             if (xcp.currentToken() == XContentParser.Token.VALUE_NULL) null else xcp.text()
 
                     ACTION_NAME_FIELD ->
@@ -176,7 +176,7 @@ data class LRONConfig(
 
             return LRONConfig(
                 enabled = enabled,
-                taskID = taskID,
+                taskId = taskId,
                 actionName = actionName,
                 channels = channels,
                 user = user,
