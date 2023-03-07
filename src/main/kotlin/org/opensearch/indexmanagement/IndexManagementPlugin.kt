@@ -468,8 +468,11 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
 
         val pluginVersionSweepCoordinator = PluginVersionSweepCoordinator(skipFlag, settings, threadPool, clusterService)
 
-        val activeShardsObserver = ActiveShardsObserver(clusterService, client.threadPool())
-        indexOperationActionFilter = IndexOperationActionFilter(client, clusterService, xContentRegistry, scriptService, activeShardsObserver)
+        indexOperationActionFilter = IndexOperationActionFilter(
+            client, clusterService, scriptService,
+            ActiveShardsObserver(clusterService, client.threadPool()),
+            indexNameExpressionResolver,
+        )
 
         return listOf(
             managedIndexRunner,

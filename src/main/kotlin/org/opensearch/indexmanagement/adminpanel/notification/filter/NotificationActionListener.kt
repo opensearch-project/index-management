@@ -16,49 +16,52 @@ import org.opensearch.action.ActionListener
 import org.opensearch.action.ActionRequest
 import org.opensearch.action.ActionResponse
 import org.opensearch.action.admin.indices.forcemerge.ForceMergeRequest
-import org.opensearch.action.admin.indices.shrink.ResizeAction
+import org.opensearch.action.admin.indices.forcemerge.ForceMergeResponse
+import org.opensearch.action.admin.indices.open.OpenIndexRequest
+import org.opensearch.action.admin.indices.open.OpenIndexResponse
 import org.opensearch.action.admin.indices.shrink.ResizeRequest
 import org.opensearch.action.admin.indices.shrink.ResizeResponse
-import org.opensearch.action.admin.indices.shrink.ResizeType
-import org.opensearch.action.support.ActiveShardCount
 import org.opensearch.action.support.ActiveShardsObserver
 import org.opensearch.client.Client
+import org.opensearch.cluster.metadata.IndexNameExpressionResolver
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.unit.TimeValue
 import org.opensearch.commons.notifications.model.EventSource
 import org.opensearch.commons.notifications.model.SeverityType
-import org.opensearch.core.xcontent.NamedXContentRegistry
 import org.opensearch.index.reindex.BulkByScrollResponse
-import org.opensearch.index.reindex.ReindexAction
 import org.opensearch.indexmanagement.adminpanel.notification.action.get.GetLRONConfigsAction
 import org.opensearch.indexmanagement.adminpanel.notification.action.get.GetLRONConfigsRequest
 import org.opensearch.indexmanagement.adminpanel.notification.action.get.GetLRONConfigsResponse
+import org.opensearch.indexmanagement.adminpanel.notification.filter.parser.ForceMergeRespParser
+import org.opensearch.indexmanagement.adminpanel.notification.filter.parser.OpenRespParser
+import org.opensearch.indexmanagement.adminpanel.notification.filter.parser.ReindexRespParser
+import org.opensearch.indexmanagement.adminpanel.notification.filter.parser.ResizeRespParser
 import org.opensearch.indexmanagement.adminpanel.notification.model.LRONConfig
+import org.opensearch.indexmanagement.adminpanel.notification.util.DEFAULT_LRON_CONFIG_SORT_FIELD
 import org.opensearch.indexmanagement.adminpanel.notification.util.getDocID
 import org.opensearch.indexmanagement.common.model.rest.DEFAULT_PAGINATION_SIZE
 import org.opensearch.indexmanagement.common.model.rest.SORT_ORDER_DESC
 import org.opensearch.indexmanagement.common.model.rest.SearchParams
+import org.opensearch.indexmanagement.util.OpenForTesting
 import org.opensearch.script.ScriptService
 import org.opensearch.script.TemplateScript
 import org.opensearch.tasks.Task
 import org.opensearch.tasks.TaskId
-import java.lang.StringBuilder
+import java.util.function.Consumer
 
 @Suppress("LongParameterList", "MaxLineLength")
 class NotificationActionListener<Request : ActionRequest, Response : ActionResponse>(
     val delegate: ActionListener<Response>,
     val client: Client,
     val clusterService: ClusterService,
-    val xContentRegistry: NamedXContentRegistry,
     val action: String,
     val task: Task,
     val scriptService: ScriptService,
     val activeShardsObserver: ActiveShardsObserver,
-    val request: Request
+    val request: Request,
+    val indexNameExpressionResolver: IndexNameExpressionResolver
 ) : ActionListener<Response>,
     CoroutineScope by CoroutineScope(SupervisorJob() + Dispatchers.Default + CoroutineName("NotificationActionListener")) {
-
-    var resizeType: ResizeType? = null
 
     private val logger = LogManager.getLogger(NotificationActionListener::class.java)
 
@@ -77,44 +80,39 @@ class NotificationActionListener<Request : ActionRequest, Response : ActionRespo
         try {
             delegate.onFailure(e)
         } finally {
-            notifyOperationComplete(action, e = e)
+            notifyOperationComplete(action, "$action execute failed with error: ${e.message}")
         }
     }
 
     private suspend fun postOnResponse(response: Response) {
         try {
-            if (response is ResizeResponse) {
-                // Not all shards are started
-                if (response.isShardsAcknowledged == false) {
-                    logger.debug("Not all shards are started, continue monitoring on shards status")
-                    activeShardsObserver.waitForActiveShards(
-                        arrayOf<String>(response.index()),
-                        ActiveShardCount.DEFAULT, // once all primary shards are started, we think it is completed
-                        MAX_WAIT_TIME,
-                        { shardsAcknowledged: Boolean ->
-                            if (shardsAcknowledged == false) {
-                                notifyOperationComplete(action, isTimeout = true)
-                            } else {
-                                notifyOperationComplete(
-                                    action,
-                                    response = ResizeResponse(
-                                        response.isAcknowledged,
-                                        shardsAcknowledged,
-                                        response.index()
-                                    )
-                                )
-                            }
-                        }, { e: java.lang.Exception ->
-                        // failed
-                        notifyOperationComplete(action, e = e)
-                    }
-                    )
-                } else {
-                    notifyOperationComplete(action, response = response)
+            val callback = object : Consumer<String> {
+                override fun accept(defaultMessage: String) {
+                    notifyOperationComplete(action, defaultMessage)
                 }
-            } else {
-                // other operations are not waiting for shards started
-                notifyOperationComplete(action, response = response)
+            }
+            when (response) {
+                is ResizeResponse -> ResizeRespParser(
+                    activeShardsObserver,
+                    request as ResizeRequest
+                ).parseAndSendNotification(response, callback)
+
+                is BulkByScrollResponse -> ReindexRespParser(task).parseAndSendNotification(response, callback)
+                is OpenIndexResponse -> OpenRespParser(
+                    activeShardsObserver,
+                    request as OpenIndexRequest,
+                    indexNameExpressionResolver,
+                    clusterService
+                ).parseAndSendNotification(response, callback)
+
+                is ForceMergeResponse -> ForceMergeRespParser(request as ForceMergeRequest).parseAndSendNotification(
+                    response,
+                    callback
+                )
+
+                else -> {
+                    throw IllegalArgumentException("")
+                }
             }
         } catch (e: Exception) {
             // ignore
@@ -123,14 +121,13 @@ class NotificationActionListener<Request : ActionRequest, Response : ActionRespo
 
     private fun notifyOperationComplete(
         action: String,
-        response: ActionResponse? = null,
-        e: Exception? = null,
-        isTimeout: Boolean = false
+        defaultMessage: String
     ) {
         val taskId = TaskId(clusterService.localNode().id, task.id).toString()
-        val queryString = "_id:(\"${getDocID()}\" OR \"${getDocID(taskId = taskId)}\" OR \"${getDocID(actionName = action)}\")"
+        val ids = arrayOf<String>(getDocID(), getDocID(taskId = taskId), getDocID(actionName = action))
+        val queryString = "_id:(${ids.map { escapeQueryString(it) }.joinToString(" OR ")})"
         val searchParam = SearchParams(
-            DEFAULT_PAGINATION_SIZE, 0, "lron_config.priority", SORT_ORDER_DESC, queryString
+            DEFAULT_PAGINATION_SIZE, 0, DEFAULT_LRON_CONFIG_SORT_FIELD, SORT_ORDER_DESC, queryString
         )
         client.execute(
             GetLRONConfigsAction.INSTANCE,
@@ -138,7 +135,11 @@ class NotificationActionListener<Request : ActionRequest, Response : ActionRespo
             object : ActionListener<GetLRONConfigsResponse> {
                 override fun onResponse(lronConfigsResponse: GetLRONConfigsResponse) {
                     if (0 == lronConfigsResponse.totalNumber) {
-                        logger.info("No notification channel configured for task: {} action: {}", taskId.toString(), action)
+                        logger.info(
+                            "No notification channel configured for task: {} action: {}",
+                            taskId.toString(),
+                            action
+                        )
                         return
                     }
                     lronConfigsResponse.lronConfigResponses.first().let {
@@ -152,7 +153,7 @@ class NotificationActionListener<Request : ActionRequest, Response : ActionRespo
                                     it.sendNotification(
                                         client,
                                         eventSource,
-                                        buildNotificationMessage(response, e, isTimeout, config),
+                                        buildNotificationMessage(defaultMessage, config),
                                         user,
                                     )
                                 } catch (osse: OpenSearchStatusException) {
@@ -173,78 +174,33 @@ class NotificationActionListener<Request : ActionRequest, Response : ActionRespo
         )
     }
 
+    @OpenForTesting
+    private fun escapeQueryString(query: String): String {
+        return query.replace("/", "\\/")
+            .replace(":", "\\:")
+    }
+
     private fun buildNotificationTitle() = "Index Management - Index Operation Complete Notification"
 
     fun buildNotificationMessage(
-        response: ActionResponse?,
-        e: Exception?,
-        isTimeout: Boolean,
+        defaultMessage: String,
         lronConfig: LRONConfig
     ): String {
-        var result = StringBuilder()
-
-        val script = if (e == null) {
-            lronConfig.successMessageTemplate
-        } else {
-            lronConfig.failedMessageTemplate
-        }
+        val script = lronConfig.successMessageTemplate
         if (script != null) {
             val contextMap = mutableMapOf<String, String>()
             contextMap["action"] = action
 
             return scriptService.compile(script, TemplateScript.CONTEXT)
                 .newInstance(script.params + mapOf("ctx" to contextMap)).execute()
-        } else {
-            when (action) {
-                ReindexAction.NAME -> {
-                    assert(response is BulkByScrollResponse)
-                    response as BulkByScrollResponse
-                    val cancelled = response.reasonCancelled
-                    result.append("${task.description} ")
-                        .append(
-                            if (cancelled.isNullOrBlank() == false) {
-                                cancelled
-                            } else if (e != null) {
-                                COMPLETED_WITH_ERROR
-                            } else {
-                                COMPLETED
-                            }
-                        ).append(System.lineSeparator())
-                    // "took":8154,"timed_out":false,"total":14074,"updated":0,"created":14074,"deleted":0,
-                    result.append("Details: total: ${response.total}, created: ${response.created}, updated: ${response.updated}, deleted: ${response.deleted}")
-                }
-
-                ResizeAction.NAME -> {
-                    assert(request is ResizeRequest)
-                    request as ResizeRequest
-                    result.append("${resizeType?.name?.lowercase()} from ${request.sourceIndex} to ${request.targetIndexRequest.index()} ")
-                        .append(
-                            if (isTimeout == true) {
-                                COMPLETED_WITH_TIMEOUT
-                            } else if (e != null) {
-                                COMPLETED_WITH_ERROR
-                            } else {
-                                COMPLETED
-                            }
-                        )
-                }
-
-                org.opensearch.action.admin.indices.forcemerge.ForceMergeAction.NAME -> {
-                    result.append("force_merge for index [${(request as ForceMergeRequest).indices().joinToString(",")}] $COMPLETED")
-                }
-
-                else -> {
-                    throw IllegalArgumentException("$action is not support for sending out notification")
-                }
-            }
-            return result.toString()
         }
+        return defaultMessage
     }
 
     public companion object {
         val MAX_WAIT_TIME: TimeValue = TimeValue.timeValueHours(12)
         const val COMPLETED = "has completed."
-        const val COMPLETED_WITH_ERROR = "$COMPLETED with errors. Error details: "
+        const val COMPLETED_WITH_ERROR = "has completed with errors. Error details:"
         val COMPLETED_WITH_TIMEOUT = "has timeout within ${MAX_WAIT_TIME.toHumanReadableString(0)}"
     }
 }

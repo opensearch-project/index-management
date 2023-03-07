@@ -12,13 +12,12 @@ import org.opensearch.action.ActionResponse
 import org.opensearch.action.admin.indices.forcemerge.ForceMergeAction
 import org.opensearch.action.admin.indices.open.OpenIndexAction
 import org.opensearch.action.admin.indices.shrink.ResizeAction
-import org.opensearch.action.admin.indices.shrink.ResizeRequest
 import org.opensearch.action.support.ActionFilter
 import org.opensearch.action.support.ActionFilterChain
 import org.opensearch.action.support.ActiveShardsObserver
 import org.opensearch.client.Client
+import org.opensearch.cluster.metadata.IndexNameExpressionResolver
 import org.opensearch.cluster.service.ClusterService
-import org.opensearch.core.xcontent.NamedXContentRegistry
 import org.opensearch.index.reindex.ReindexAction
 import org.opensearch.script.ScriptService
 import org.opensearch.tasks.Task
@@ -27,9 +26,9 @@ import org.opensearch.tasks.TaskId
 class IndexOperationActionFilter(
     val client: Client,
     val clusterService: ClusterService,
-    val xContentRegistry: NamedXContentRegistry,
     val scriptService: ScriptService,
-    val activeShardsObserver: ActiveShardsObserver
+    val activeShardsObserver: ActiveShardsObserver,
+    val indexNameExpressionResolver: IndexNameExpressionResolver
 ) : ActionFilter {
 
     private val logger = LogManager.getLogger(IndexOperationActionFilter::class.java)
@@ -42,7 +41,6 @@ class IndexOperationActionFilter(
         listener: ActionListener<Response>,
         chain: ActionFilterChain<Request, Response>
     ) {
-
         chain.proceed(task, action, request, wrapActionListener(task, action, request, listener))
     }
 
@@ -66,16 +64,12 @@ class IndexOperationActionFilter(
                         client = client,
                         action = action,
                         clusterService = clusterService,
-                        xContentRegistry = xContentRegistry,
                         task = task,
                         scriptService = scriptService,
                         request = request,
-                        activeShardsObserver = activeShardsObserver
+                        activeShardsObserver = activeShardsObserver,
+                        indexNameExpressionResolver = indexNameExpressionResolver
                     )
-
-                    if (request is ResizeRequest) {
-                        wrappedListener.resizeType = request.resizeType
-                    }
                 }
             }
         }
