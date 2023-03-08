@@ -33,12 +33,12 @@ class RestGetLRONConfigAction : BaseRestHandler() {
 
     @Throws(IOException::class)
     override fun prepareRequest(request: RestRequest, client: NodeClient): RestChannelConsumer {
-        val docID = request.param("id")
+        val docId = request.param("id")
         val searchParams = request.getSearchParams(DEFAULT_LRON_CONFIG_SORT_FIELD)
 
         return RestChannelConsumer { channel ->
-            if (null != docID) {
-                val getLRONConfigRequest = GetLRONConfigRequest(docID)
+            if (null != docId) {
+                val getLRONConfigRequest = GetLRONConfigRequest(docId)
                 client.execute(GetLRONConfigAction.INSTANCE, getLRONConfigRequest, RestToXContentListener(channel))
             } else {
                 val getLRONConfigsRequest = GetLRONConfigsRequest(searchParams)

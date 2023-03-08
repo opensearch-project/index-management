@@ -12,17 +12,17 @@ import org.opensearch.common.io.stream.StreamOutput
 import java.io.IOException
 
 class GetLRONConfigRequest : ActionRequest {
-    val docID: String
+    val docId: String
 
     constructor(
-        docID: String
+        docId: String
     ) : super() {
-        this.docID = docID
+        this.docId = docId
     }
 
     @Throws(IOException::class)
     constructor(sin: StreamInput) : this(
-        docID = sin.readString()
+        docId = sin.readString()
     )
 
     override fun validate(): ActionRequestValidationException? {
@@ -32,6 +32,6 @@ class GetLRONConfigRequest : ActionRequest {
 
     @Throws(IOException::class)
     override fun writeTo(out: StreamOutput) {
-        out.writeString(docID)
+        out.writeString(docId)
     }
 }

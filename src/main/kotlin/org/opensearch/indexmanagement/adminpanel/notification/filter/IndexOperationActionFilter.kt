@@ -58,7 +58,7 @@ class IndexOperationActionFilter(
             ForceMergeAction.NAME -> {
                 if (task.parentTaskId.isSet == false) {
                     val taskId = TaskId(clusterService.localNode().id, task.id)
-                    logger.info("Add notification action listener for taks: {} and action: {} ", taskId, action)
+                    logger.info("Add notification action listener for tasks: {} and action: {} ", taskId.toString(), action)
                     wrappedListener = NotificationActionListener(
                         delegate = listener,
                         client = client,

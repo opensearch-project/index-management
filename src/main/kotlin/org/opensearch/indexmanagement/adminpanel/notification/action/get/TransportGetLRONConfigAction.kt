@@ -6,10 +6,7 @@
 package org.opensearch.indexmanagement.adminpanel.notification.action.get
 
 import org.apache.logging.log4j.LogManager
-import org.opensearch.OpenSearchStatusException
 import org.opensearch.action.ActionListener
-import org.opensearch.action.get.GetRequest
-import org.opensearch.action.get.GetResponse
 import org.opensearch.action.support.ActionFilters
 import org.opensearch.action.support.HandledTransportAction
 import org.opensearch.client.node.NodeClient
@@ -19,13 +16,10 @@ import org.opensearch.common.settings.Settings
 import org.opensearch.core.xcontent.NamedXContentRegistry
 import org.opensearch.commons.ConfigConstants
 import org.opensearch.commons.authuser.User
-import org.opensearch.indexmanagement.IndexManagementPlugin
 import org.opensearch.indexmanagement.adminpanel.notification.LRONConfigResponse
-import org.opensearch.indexmanagement.adminpanel.notification.model.LRONConfig
-import org.opensearch.indexmanagement.opensearchapi.parseFromGetResponse
+import org.opensearch.indexmanagement.adminpanel.notification.util.getLRONConfigAndParse
 import org.opensearch.indexmanagement.settings.IndexManagementSettings
 import org.opensearch.indexmanagement.util.SecurityUtils
-import org.opensearch.rest.RestStatus
 import org.opensearch.tasks.Task
 import org.opensearch.transport.TransportService
 
@@ -68,48 +62,34 @@ class TransportGetLRONConfigAction @Inject constructor(
                 if (!SecurityUtils.validateUserConfiguration(user, filterByEnabled, actionListener)) {
                     return
                 }
-                val getRequest = GetRequest().id(request.docID).index(IndexManagementPlugin.ADMIN_PANEL_INDEX)
-                client.get(getRequest, ActionListener.wrap(::onGetResponse, actionListener::onFailure))
+                getLRONConfigAndParse(
+                    client,
+                    request.docId,
+                    xContentRegistry,
+                    object : ActionListener<LRONConfigResponse> {
+                        override fun onResponse(response: LRONConfigResponse) {
+                            if (!SecurityUtils.userHasPermissionForResource(
+                                    user,
+                                    response.lronConfig.user,
+                                    filterByEnabled,
+                                    "lronConfig",
+                                    request.docId,
+                                    actionListener
+                                )
+                            ) {
+                                return
+                            } else {
+                                actionListener.onResponse(response)
+                            }
+                        }
+
+                        override fun onFailure(e: java.lang.Exception) {
+                            actionListener.onFailure(e)
+                        }
+                    }
+                )
             }
             return
-        }
-
-        private fun onGetResponse(response: GetResponse) {
-            if (!response.isExists) {
-                actionListener.onFailure(OpenSearchStatusException("lronConfig ${request.docID} not found", RestStatus.NOT_FOUND))
-                return
-            }
-
-            val lronConfig: LRONConfig
-
-            try {
-                lronConfig = parseFromGetResponse(response, xContentRegistry, LRONConfig.Companion::parse)
-            } catch (e: IllegalArgumentException) {
-                actionListener.onFailure(e)
-                return
-            }
-
-            if (!SecurityUtils.userHasPermissionForResource(
-                    user,
-                    lronConfig.user,
-                    filterByEnabled,
-                    "lronConfig",
-                    request.docID,
-                    actionListener
-                )
-            ) {
-                return
-            } else {
-                actionListener.onResponse(
-                    LRONConfigResponse(
-                        response.id,
-                        response.version,
-                        response.primaryTerm,
-                        response.seqNo,
-                        lronConfig
-                    )
-                )
-            }
         }
     }
 }

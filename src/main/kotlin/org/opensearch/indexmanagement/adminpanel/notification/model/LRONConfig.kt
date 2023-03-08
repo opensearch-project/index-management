@@ -16,21 +16,24 @@ import org.opensearch.common.xcontent.XContentParserUtils.ensureExpectedToken
 import org.opensearch.commons.authuser.User
 import org.opensearch.index.seqno.SequenceNumbers
 import org.opensearch.indexmanagement.adminpanel.notification.util.WITH_PRIORITY
+import org.opensearch.indexmanagement.adminpanel.notification.util.supportedActions
+import org.opensearch.indexmanagement.adminpanel.notification.util.validateActionName
 import org.opensearch.indexmanagement.common.model.notification.Channel
 import org.opensearch.indexmanagement.indexstatemanagement.util.WITH_TYPE
 import org.opensearch.indexmanagement.indexstatemanagement.util.WITH_USER
 import org.opensearch.indexmanagement.opensearchapi.optionalUserField
 import org.opensearch.indexmanagement.util.NO_ID
 import org.opensearch.script.Script
+import org.opensearch.tasks.TaskId
 import java.io.IOException
 
 data class LRONConfig(
     val enabled: Boolean = true,
-    val taskId: String?,
+    val taskId: TaskId?,
     val actionName: String?,
     val channels: List<Channel>?,
     val user: User?,
-    var priority: Int?,
+    val priority: Int?,
     val successMessageTemplate: Script?,
     val failedMessageTemplate: Script?,
 ) : ToXContentObject, Writeable {
@@ -38,6 +41,9 @@ data class LRONConfig(
     init {
         if (enabled) {
             require(!channels.isNullOrEmpty()) { "Enabled LRONConfig must contain at least one channel" }
+            require(validateActionName(actionName)) {
+                "Invalid action name. All supported actions: $supportedActions"
+            }
 //            require(successMessageTemplate?.lang == MUSTACHE && failedMessageTemplate?.lang == MUSTACHE) {
 //                "LRONConfig message template must be a mustache script"
 //            }
@@ -52,7 +58,7 @@ data class LRONConfig(
         builder.startObject()
         if (params.paramAsBoolean(WITH_TYPE, true)) builder.startObject(LRON_CONFIG_FIELD)
         builder.field(ENABLED_FIELD, enabled)
-        if (null != taskId) builder.field(TASK_ID_FIELD, taskId)
+        if (null != taskId) builder.field(TASK_ID_FIELD, taskId.toString())
         if (null != actionName) builder.field(ACTION_NAME_FIELD, actionName)
         if (params.paramAsBoolean(WITH_USER, true)) builder.optionalUserField(USER_FIELD, user)
         if (enabled) {
@@ -70,7 +76,9 @@ data class LRONConfig(
     @Throws(IOException::class)
     constructor(sin: StreamInput) : this(
         enabled = sin.readBoolean(),
-        taskId = sin.readOptionalString(),
+        taskId = if (sin.readBoolean()) {
+            TaskId(sin.readString())
+        } else null,
         actionName = sin.readOptionalString(),
         channels = if (sin.readBoolean()) {
             sin.readList(::Channel)
@@ -84,7 +92,10 @@ data class LRONConfig(
     @Throws(IOException::class)
     override fun writeTo(out: StreamOutput) {
         out.writeBoolean(enabled)
-        out.writeOptionalString(taskId)
+        if (null != taskId) {
+            out.writeBoolean(true)
+            out.writeString(taskId.toString())
+        } else out.writeBoolean(false)
         out.writeOptionalString(actionName)
         if (null != channels) {
             out.writeBoolean(true)
@@ -129,7 +140,7 @@ data class LRONConfig(
         @Throws(IOException::class)
         fun parse(xcp: XContentParser): LRONConfig {
             var enabled: Boolean = DEFAULT_ENABLED
-            var taskId: String? = null
+            var taskId: TaskId? = null
             var actionName: String? = null
             var channels: List<Channel>? = null
             var user: User? = null
@@ -146,7 +157,7 @@ data class LRONConfig(
                     ENABLED_FIELD -> enabled = xcp.booleanValue()
                     TASK_ID_FIELD ->
                         taskId =
-                            if (xcp.currentToken() == XContentParser.Token.VALUE_NULL) null else xcp.text()
+                            if (xcp.currentToken() == XContentParser.Token.VALUE_NULL) null else TaskId(xcp.text())
 
                     ACTION_NAME_FIELD ->
                         actionName =

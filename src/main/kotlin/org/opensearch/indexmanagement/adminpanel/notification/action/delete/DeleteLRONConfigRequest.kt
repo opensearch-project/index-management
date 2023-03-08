@@ -14,20 +14,20 @@ import org.opensearch.indexmanagement.util.NO_ID
 import java.io.IOException
 
 class DeleteLRONConfigRequest : ActionRequest {
-    val docID: String
+    val docId: String
     val refreshPolicy: WriteRequest.RefreshPolicy
 
     constructor(
-        docID: String = NO_ID,
+        docId: String = NO_ID,
         refreshPolicy: WriteRequest.RefreshPolicy
     ) : super() {
-        this.docID = docID
+        this.docId = docId
         this.refreshPolicy = refreshPolicy
     }
 
     @Throws(IOException::class)
     constructor(sin: StreamInput) : this(
-        docID = sin.readString(),
+        docId = sin.readString(),
         refreshPolicy = sin.readEnum(WriteRequest.RefreshPolicy::class.java)
     )
 
@@ -38,7 +38,7 @@ class DeleteLRONConfigRequest : ActionRequest {
 
     @Throws(IOException::class)
     override fun writeTo(out: StreamOutput) {
-        out.writeString(docID)
+        out.writeString(docId)
         out.writeEnum(refreshPolicy)
     }
 }

@@ -123,7 +123,7 @@ class NotificationActionListener<Request : ActionRequest, Response : ActionRespo
         action: String,
         defaultMessage: String
     ) {
-        val taskId = TaskId(clusterService.localNode().id, task.id).toString()
+        val taskId = TaskId(clusterService.localNode().id, task.id)
         val ids = arrayOf<String>(getDocID(), getDocID(taskId = taskId), getDocID(actionName = action))
         val queryString = "_id:(${ids.map { escapeQueryString(it) }.joinToString(" OR ")})"
         val searchParam = SearchParams(

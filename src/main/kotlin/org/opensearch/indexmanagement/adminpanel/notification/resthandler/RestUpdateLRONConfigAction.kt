@@ -34,11 +34,11 @@ class RestUpdateLRONConfigAction : BaseRestHandler() {
 
     @Throws(IOException::class)
     override fun prepareRequest(request: RestRequest, client: NodeClient): RestChannelConsumer {
-        val docID = request.param("id")
+        val docId = request.param("id")
         val xcp = request.contentParser()
         val lronConfig = xcp.parseWithType(parse = LRONConfig.Companion::parse)
-        if (getDocID(lronConfig.taskId, lronConfig.actionName) != docID) {
-            throw IllegalArgumentException("docID isn't match with lron_config")
+        if (getDocID(lronConfig.taskId, lronConfig.actionName) != docId) {
+            throw IllegalArgumentException("docId isn't match with lron_config")
         }
 
         val refreshPolicy = if (request.hasParam(REFRESH)) {

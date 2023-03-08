@@ -30,9 +30,9 @@ class RestDeleteLRONConfigAction : BaseRestHandler() {
 
     @Throws(IOException::class)
     override fun prepareRequest(request: RestRequest, client: NodeClient): RestChannelConsumer {
-        val docID = request.param("id")
+        val docId = request.param("id")
         val refreshPolicy = RefreshPolicy.parse(request.param(REFRESH, RefreshPolicy.IMMEDIATE.value))
-        val deleteLRONConfigRequest = DeleteLRONConfigRequest(docID, refreshPolicy)
+        val deleteLRONConfigRequest = DeleteLRONConfigRequest(docId, refreshPolicy)
 
         return RestChannelConsumer { channel ->
             client.execute(DeleteLRONConfigAction.INSTANCE, deleteLRONConfigRequest, RestToXContentListener(channel))

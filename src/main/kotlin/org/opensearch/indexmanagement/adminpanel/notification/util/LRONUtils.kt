@@ -6,10 +6,21 @@
 @file:JvmName("LRONUtils")
 package org.opensearch.indexmanagement.adminpanel.notification.util
 
+import org.opensearch.OpenSearchStatusException
+import org.opensearch.action.ActionListener
 import org.opensearch.action.admin.indices.forcemerge.ForceMergeAction
 import org.opensearch.action.admin.indices.open.OpenIndexAction
 import org.opensearch.action.admin.indices.shrink.ResizeAction
+import org.opensearch.action.get.GetRequest
+import org.opensearch.action.get.GetResponse
+import org.opensearch.client.node.NodeClient
+import org.opensearch.core.xcontent.NamedXContentRegistry
 import org.opensearch.index.reindex.ReindexAction
+import org.opensearch.indexmanagement.IndexManagementPlugin
+import org.opensearch.indexmanagement.adminpanel.notification.LRONConfigResponse
+import org.opensearch.indexmanagement.adminpanel.notification.model.LRONConfig
+import org.opensearch.indexmanagement.opensearchapi.parseFromGetResponse
+import org.opensearch.rest.RestStatus
 import org.opensearch.tasks.TaskId
 
 const val LRON_DEFAULT_ID = "default"
@@ -28,25 +39,14 @@ val supportedActions = setOf(
     OpenIndexAction.NAME
 )
 
-fun validateTaskID(taskId: String?): Boolean {
-    if (null != taskId) {
-        try {
-            TaskId(taskId)
-        } catch (e: IllegalArgumentException) {
-            return false
-        }
-    }
-    return true
-}
-
 fun validateActionName(actionName: String?): Boolean {
-    if (!supportedActions.contains(actionName)) {
+    if (null != actionName && !supportedActions.contains(actionName)) {
         return false
     }
     return true
 }
 
-fun getPriority(taskId: String? = null, actionName: String? = null): Int {
+fun getPriority(taskId: TaskId? = null, actionName: String? = null): Int {
     return when {
         null != taskId -> PRIORITY_TASK_ID
         null != actionName -> PRIORITY_DEFAULT_ACTION
@@ -54,11 +54,57 @@ fun getPriority(taskId: String? = null, actionName: String? = null): Int {
     }
 }
 
-fun getDocID(taskId: String? = null, actionName: String? = null): String {
+fun getDocID(taskId: TaskId? = null, actionName: String? = null): String {
     if (null != taskId) {
-        return LRON_DOC_ID_PREFIX + taskId
+        return LRON_DOC_ID_PREFIX + taskId.toString()
     } else if (null != actionName) {
         return LRON_DOC_ID_PREFIX + actionName
     } else return LRON_DOC_ID_PREFIX + LRON_DEFAULT_ID
 }
-/* if we want to provide default lron config for actions, put const variables here */
+
+fun getLRONConfigAndParse(
+    client: NodeClient,
+    docId: String,
+    xContentRegistry: NamedXContentRegistry,
+    actionListener: ActionListener<LRONConfigResponse>
+) {
+    val getRequest = GetRequest(IndexManagementPlugin.ADMIN_PANEL_INDEX, docId)
+    client.get(
+        getRequest,
+        object : ActionListener<GetResponse> {
+            override fun onResponse(response: GetResponse) {
+                if (!response.isExists) {
+                    actionListener.onFailure(
+                        OpenSearchStatusException(
+                            "lronConfig $docId not found",
+                            RestStatus.NOT_FOUND
+                        )
+                    )
+                    return
+                }
+
+                val lronConfig: LRONConfig
+                try {
+                    lronConfig =
+                        parseFromGetResponse(response, xContentRegistry, LRONConfig.Companion::parse)
+                } catch (e: IllegalArgumentException) {
+                    actionListener.onFailure(e)
+                    return
+                }
+                actionListener.onResponse(
+                    LRONConfigResponse(
+                        id = response.id,
+                        version = response.version,
+                        primaryTerm = response.primaryTerm,
+                        seqNo = response.seqNo,
+                        lronConfig = lronConfig
+                    )
+                )
+            }
+
+            override fun onFailure(t: Exception) {
+                actionListener.onFailure(t)
+            }
+        }
+    )
+}

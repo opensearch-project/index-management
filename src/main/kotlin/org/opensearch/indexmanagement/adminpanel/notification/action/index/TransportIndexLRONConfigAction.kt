@@ -21,19 +21,18 @@ import org.opensearch.common.settings.Settings
 import org.opensearch.common.xcontent.XContentFactory
 import org.opensearch.commons.ConfigConstants
 import org.opensearch.commons.authuser.User
+import org.opensearch.core.xcontent.NamedXContentRegistry
 import org.opensearch.indexmanagement.IndexManagementPlugin
 import org.opensearch.indexmanagement.adminpanel.notification.AdminPanelIndices
 import org.opensearch.indexmanagement.adminpanel.notification.LRONConfigResponse
 import org.opensearch.indexmanagement.adminpanel.notification.util.getDocID
+import org.opensearch.indexmanagement.adminpanel.notification.util.getLRONConfigAndParse
 import org.opensearch.indexmanagement.adminpanel.notification.util.getPriority
-import org.opensearch.indexmanagement.adminpanel.notification.util.validateActionName
-import org.opensearch.indexmanagement.adminpanel.notification.util.validateTaskID
 import org.opensearch.indexmanagement.settings.IndexManagementSettings
 import org.opensearch.indexmanagement.util.SecurityUtils
 import org.opensearch.rest.RestStatus
 import org.opensearch.tasks.Task
 import org.opensearch.transport.TransportService
-import java.lang.IllegalArgumentException
 
 @Suppress("LongParameterList")
 class TransportIndexLRONConfigAction @Inject constructor(
@@ -42,7 +41,8 @@ class TransportIndexLRONConfigAction @Inject constructor(
     actionFilters: ActionFilters,
     val adminPanelIndices: AdminPanelIndices,
     val clusterService: ClusterService,
-    val settings: Settings
+    val settings: Settings,
+    val xContentRegistry: NamedXContentRegistry,
 ) : HandledTransportAction<IndexLRONConfigRequest, LRONConfigResponse>(
     IndexLRONConfigAction.NAME, transportService, actionFilters, ::IndexLRONConfigRequest
 ) {
@@ -63,7 +63,8 @@ class TransportIndexLRONConfigAction @Inject constructor(
         private val client: NodeClient,
         private val actionListener: ActionListener<LRONConfigResponse>,
         private val request: IndexLRONConfigRequest,
-        private val user: User? = SecurityUtils.buildUser(client.threadPool().threadContext)
+        private val user: User? = SecurityUtils.buildUser(client.threadPool().threadContext),
+        private val docId: String = getDocID(request.lronConfig.taskId, request.lronConfig.actionName)
     ) {
         fun start() {
             log.debug(
@@ -92,15 +93,39 @@ class TransportIndexLRONConfigAction @Inject constructor(
         }
 
         private fun validate() {
-            if (validateTaskID(request.lronConfig.taskId) && validateActionName(request.lronConfig.actionName)) {
-                putLRONConfig()
-            } else {
-                actionListener.onFailure(IllegalArgumentException("Invalid task id or action name"))
-            }
+            if (request.isUpdate && filterByEnabled) {
+                /* We need to verify whether the user has permissions for the resource (backend roles) */
+                getLRONConfigAndParse(
+                    client,
+                    docId,
+                    xContentRegistry,
+                    object : ActionListener<LRONConfigResponse> {
+                        override fun onResponse(response: LRONConfigResponse) {
+                            if (!SecurityUtils.userHasPermissionForResource(
+                                    user,
+                                    response.lronConfig.user,
+                                    filterByEnabled,
+                                    "lronConfig",
+                                    docId,
+                                    actionListener
+                                )
+                            ) {
+                                return
+                            } else {
+                                putLRONConfig()
+                            }
+                        }
+
+                        override fun onFailure(e: java.lang.Exception) {
+                            actionListener.onFailure(e)
+                        }
+                    }
+                )
+                return
+            } else putLRONConfig()
         }
 
         private fun putLRONConfig() {
-            val docID = getDocID(request.lronConfig.taskId, request.lronConfig.actionName)
             val lronConfig = request.lronConfig.copy(
                 user = this.user,
                 priority = getPriority(request.lronConfig.taskId, request.lronConfig.actionName)
@@ -108,7 +133,7 @@ class TransportIndexLRONConfigAction @Inject constructor(
             val indexRequest = IndexRequest(IndexManagementPlugin.ADMIN_PANEL_INDEX)
                 .setRefreshPolicy(request.refreshPolicy)
                 .source(lronConfig.toXContent(XContentFactory.jsonBuilder()))
-                .id(docID)
+                .id(docId)
                 .timeout(IndexRequest.DEFAULT_TIMEOUT)
             if (!request.isUpdate) {
                 indexRequest.opType(DocWriteRequest.OpType.CREATE)
