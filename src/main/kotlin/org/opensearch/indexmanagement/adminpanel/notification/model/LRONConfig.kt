@@ -33,9 +33,7 @@ data class LRONConfig(
     val actionName: String?,
     val channels: List<Channel>?,
     val user: User?,
-    val priority: Int?,
-    val successMessageTemplate: Script?,
-    val failedMessageTemplate: Script?,
+    val priority: Int?
 ) : ToXContentObject, Writeable {
 
     init {
@@ -44,9 +42,6 @@ data class LRONConfig(
             require(validateActionName(actionName)) {
                 "Invalid action name. All supported actions: $supportedActions"
             }
-//            require(successMessageTemplate?.lang == MUSTACHE && failedMessageTemplate?.lang == MUSTACHE) {
-//                "LRONConfig message template must be a mustache script"
-//            }
         }
     }
 
@@ -66,8 +61,6 @@ data class LRONConfig(
                 .also { channels?.forEach { channel -> channel.toXContent(it, params) } }
                 .endArray()
             if (params.paramAsBoolean(WITH_PRIORITY, true)) builder.field(PRIORITY_FIELD, priority)
-            if (successMessageTemplate != null) builder.field(SUCCESS_MESSAGE_TEMPLATE_FIELD, successMessageTemplate)
-            if (failedMessageTemplate != null) builder.field(FAILED_MESSAGE_TEMPLATE_FIELD, failedMessageTemplate)
         }
         if (params.paramAsBoolean(WITH_TYPE, true)) builder.endObject()
         return builder.endObject()
@@ -84,9 +77,7 @@ data class LRONConfig(
             sin.readList(::Channel)
         } else null,
         user = sin.readOptionalWriteable(::User),
-        priority = sin.readOptionalInt(),
-        successMessageTemplate = sin.readOptionalWriteable(::Script),
-        failedMessageTemplate = sin.readOptionalWriteable(::Script)
+        priority = sin.readOptionalInt()
     )
 
     @Throws(IOException::class)
@@ -103,8 +94,6 @@ data class LRONConfig(
         } else out.writeBoolean(false)
         out.writeOptionalWriteable(user)
         out.writeOptionalInt(priority)
-        out.writeOptionalWriteable(successMessageTemplate)
-        out.writeOptionalWriteable(failedMessageTemplate)
     }
 
     companion object {
@@ -115,12 +104,9 @@ data class LRONConfig(
         const val CHANNELS_FIELD = "channels"
         const val USER_FIELD = "user"
         const val PRIORITY_FIELD = "priority"
-        const val SUCCESS_MESSAGE_TEMPLATE_FIELD = "success_message_template"
-        const val FAILED_MESSAGE_TEMPLATE_FIELD = "failed_message_template"
-
         const val MUSTACHE = "mustache"
         const val CHANNEL_TITLE = "Long Running Operation Notification"
-        const val DEFAULT_ENABLED = true
+        private const val DEFAULT_ENABLED = true
 
         /* to fit with ISM XContentParser.parseWithType function */
         @JvmStatic
@@ -145,8 +131,6 @@ data class LRONConfig(
             var channels: List<Channel>? = null
             var user: User? = null
             var priority: Int? = null
-            var successMessageTemplate: Script? = null
-            var failedMessageTemplate: Script? = null
 
             ensureExpectedToken(XContentParser.Token.START_OBJECT, xcp.currentToken(), xcp)
             while (xcp.nextToken() != XContentParser.Token.END_OBJECT) {
@@ -173,14 +157,7 @@ data class LRONConfig(
                         }
                     }
                     USER_FIELD -> user = if (xcp.currentToken() == XContentParser.Token.VALUE_NULL) null else User.parse(xcp)
-                    PRIORITY_FIELD -> priority = if (xcp.currentToken() != XContentParser.Token.VALUE_NULL) null else xcp.intValue()
-                    SUCCESS_MESSAGE_TEMPLATE_FIELD -> if (xcp.currentToken() != XContentParser.Token.VALUE_NULL) {
-                        successMessageTemplate = Script.parse(xcp, Script.DEFAULT_TEMPLATE_LANG)
-                    }
-
-                    FAILED_MESSAGE_TEMPLATE_FIELD -> if (xcp.currentToken() != XContentParser.Token.VALUE_NULL) {
-                        failedMessageTemplate = Script.parse(xcp, Script.DEFAULT_TEMPLATE_LANG)
-                    }
+                    PRIORITY_FIELD -> priority = if (xcp.currentToken() == XContentParser.Token.VALUE_NULL) null else xcp.intValue()
                     else -> throw IllegalArgumentException("Invalid field: [$fieldName] found in LRONConfig.")
                 }
             }
@@ -191,9 +168,7 @@ data class LRONConfig(
                 actionName = actionName,
                 channels = channels,
                 user = user,
-                priority = priority,
-                successMessageTemplate = successMessageTemplate,
-                failedMessageTemplate = failedMessageTemplate
+                priority = priority
             )
         }
     }
