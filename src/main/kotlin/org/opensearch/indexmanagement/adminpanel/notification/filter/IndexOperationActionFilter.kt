@@ -19,21 +19,19 @@ import org.opensearch.client.Client
 import org.opensearch.cluster.metadata.IndexNameExpressionResolver
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.index.reindex.ReindexAction
-import org.opensearch.script.ScriptService
 import org.opensearch.tasks.Task
 import org.opensearch.tasks.TaskId
 
 class IndexOperationActionFilter(
     val client: Client,
     val clusterService: ClusterService,
-    val scriptService: ScriptService,
     val activeShardsObserver: ActiveShardsObserver,
     val indexNameExpressionResolver: IndexNameExpressionResolver
 ) : ActionFilter {
 
     private val logger = LogManager.getLogger(IndexOperationActionFilter::class.java)
 
-    override fun order() = Integer.MIN_VALUE
+    override fun order() = Integer.MAX_VALUE
     override fun <Request : ActionRequest, Response : ActionResponse> apply(
         task: Task,
         action: String,
@@ -65,7 +63,6 @@ class IndexOperationActionFilter(
                         action = action,
                         clusterService = clusterService,
                         task = task,
-                        scriptService = scriptService,
                         request = request,
                         activeShardsObserver = activeShardsObserver,
                         indexNameExpressionResolver = indexNameExpressionResolver

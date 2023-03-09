@@ -15,7 +15,8 @@ import org.opensearch.indexmanagement.common.model.notification.Channel
 import org.opensearch.indexmanagement.indexstatemanagement.randomChannel
 import org.opensearch.indexmanagement.randomUser
 import org.opensearch.tasks.TaskId
-import org.opensearch.test.OpenSearchTestCase.*
+import org.opensearch.test.OpenSearchTestCase.randomBoolean
+import org.opensearch.test.OpenSearchTestCase.randomLong
 import org.opensearch.test.rest.OpenSearchRestTestCase
 
 fun randomLRONConfig(

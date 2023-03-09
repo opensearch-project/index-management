@@ -18,12 +18,12 @@ class ReindexRespParser(val task: Task) : ResponseParser<BulkByScrollResponse> {
     ): String {
         val cancelled = response.reasonCancelled
         val result = StringBuilder()
-        result.append(task.description)
+        result.append("${task.description} ")
             .append(
-                if (false == cancelled.isNullOrBlank()) {
-                    cancelled
+                if (cancelled.isNullOrBlank() == false) {
+                    "has been cancelled with reason: $cancelled"
                 } else if (exception != null) {
-                    NotificationActionListener.COMPLETED_WITH_ERROR
+                    NotificationActionListener.COMPLETED_WITH_ERROR + exception.message
                 } else {
                     NotificationActionListener.COMPLETED
                 }
@@ -33,6 +33,15 @@ class ReindexRespParser(val task: Task) : ResponseParser<BulkByScrollResponse> {
             "Details: total: ${response.total}, created: ${response.created}, " +
                 "updated: ${response.updated}, deleted: ${response.deleted}"
         )
+
+        if (!response.bulkFailures.isNullOrEmpty()) {
+            result.append("${System.lineSeparator()}Bulk Failures: ${response.bulkFailures.joinToString(",") { it.message }}")
+        }
+        if (!response.searchFailures.isNullOrEmpty()) {
+            result.append(
+                "${System.lineSeparator()}Search Failures: ${response.searchFailures.joinToString(",") { it.reason.localizedMessage ?: "" }}"
+            )
+        }
 
         return result.toString()
     }

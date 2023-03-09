@@ -33,11 +33,7 @@ class ResizeRespParser(
                 ActiveShardCount.DEFAULT, // once all primary shards are started, we think it is completed
                 NotificationActionListener.MAX_WAIT_TIME,
                 { shardsAcknowledged: Boolean ->
-                    if (shardsAcknowledged == false) {
-                        callback.accept(buildNotificationMessage(response))
-                    } else {
-                        callback.accept(buildNotificationMessage(response, isTimeout = true))
-                    }
+                    callback.accept(buildNotificationMessage(response, isTimeout = !shardsAcknowledged))
                 },
                 { e: Exception ->
                     // failed
@@ -53,7 +49,7 @@ class ResizeRespParser(
         val result = StringBuilder()
         result.append("${request.resizeType.name.lowercase()} from ${request.sourceIndex} to ${request.targetIndexRequest.index()} ")
             .append(
-                if (isTimeout == true) {
+                if (isTimeout) {
                     NotificationActionListener.COMPLETED_WITH_TIMEOUT
                 } else if (exception != null) {
                     "${NotificationActionListener.COMPLETED_WITH_ERROR} ${exception.message}"

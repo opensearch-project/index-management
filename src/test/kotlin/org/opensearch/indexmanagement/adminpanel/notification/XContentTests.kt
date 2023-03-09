@@ -10,21 +10,15 @@ import org.opensearch.common.xcontent.LoggingDeprecationHandler
 import org.opensearch.common.xcontent.XContentFactory
 import org.opensearch.common.xcontent.XContentHelper
 import org.opensearch.common.xcontent.XContentType
-import org.opensearch.common.xcontent.json.JsonXContent
 import org.opensearch.core.xcontent.NamedXContentRegistry
 import org.opensearch.core.xcontent.ToXContent
 import org.opensearch.core.xcontent.XContentParser
 import org.opensearch.indexmanagement.adminpanel.notification.model.LRONConfig
 import org.opensearch.indexmanagement.adminpanel.notification.util.PRIORITY_TASK_ID
-import org.opensearch.indexmanagement.adminpanel.notification.util.getPriority
 import org.opensearch.indexmanagement.common.model.notification.Channel
-import org.opensearch.indexmanagement.opensearchapi.convertToMap
-import org.opensearch.indexmanagement.opensearchapi.string
 import org.opensearch.indexmanagement.randomUser
-import org.opensearch.script.Script
 import org.opensearch.tasks.TaskId
 import org.opensearch.test.OpenSearchTestCase
-import java.util.Random
 
 class XContentTests : OpenSearchTestCase() {
 
@@ -34,15 +28,16 @@ class XContentTests : OpenSearchTestCase() {
         Assert.assertEquals(
             buildMessage("lron_config", lronConfig, xContentType),
             lronConfig,
-            parsedItem(lronConfig, xContentType, LRONConfig.Companion::parse))
+            parsedItem(lronConfig, xContentType, LRONConfig.Companion::parse)
+        )
     }
 
     fun `test lronConfigResponse`() {
-        val lronConfig = LRONConfig(
+        LRONConfig(
             enabled = true,
-            taskId = TaskId("node_123",456),
+            taskId = TaskId("node_123", 456),
             actionName = "indices:admin/resize",
-            channels = listOf(Channel("channel123"),Channel("channel456")),
+            channels = listOf(Channel("channel123"), Channel("channel456")),
             user = randomUser(),
             priority = PRIORITY_TASK_ID
         )
@@ -52,16 +47,16 @@ class XContentTests : OpenSearchTestCase() {
         itemType: String,
         item: T,
         xContentType: XContentType
-    ): String{
+    ): String {
         return "$itemType toXContent test failed. xContentType: ${xContentType.subtype()}. " +
-                "${item.toXContent(XContentFactory.jsonBuilder(), ToXContent.EMPTY_PARAMS)}"
+            "${item.toXContent(XContentFactory.jsonBuilder(), ToXContent.EMPTY_PARAMS)}"
     }
 
     private fun <T : ToXContent> parsedItem(
         item: T,
         xContentType: XContentType,
-        parser:(xcp: XContentParser) -> T
-    ): T{
+        parser: (xcp: XContentParser) -> T
+    ): T {
         val bytesReference = toShuffledXContent(
             item,
             xContentType.xContent().mediaType(),

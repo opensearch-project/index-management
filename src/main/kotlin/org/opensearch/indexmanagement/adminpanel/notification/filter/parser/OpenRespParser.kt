@@ -27,17 +27,14 @@ class OpenRespParser(
     ) {
         if (response.isShardsAcknowledged == false) {
             val concreteIndices =
-                indexNameExpressionResolver.concreteIndices(clusterService.state(), request).map { it.name }
+                indexNameExpressionResolver.concreteIndexNames(clusterService.state(), request)
+
             activeShardsObserver.waitForActiveShards(
-                concreteIndices.toTypedArray(),
+                concreteIndices,
                 ActiveShardCount.DEFAULT, // once all primary shards are started, we think it is completed
                 NotificationActionListener.MAX_WAIT_TIME,
                 { shardsAcknowledged: Boolean ->
-                    if (shardsAcknowledged == false) {
-                        callback.accept(buildNotificationMessage(response, isTimeout = true))
-                    } else {
-                        callback.accept(buildNotificationMessage(response))
-                    }
+                    callback.accept(buildNotificationMessage(response, isTimeout = !shardsAcknowledged))
                 },
                 { e: Exception ->
                     // failed
@@ -56,7 +53,14 @@ class OpenRespParser(
     ): String {
         val result = StringBuilder()
         result.append(
-            "open index [${request.indices().joinToString(",")}] ${NotificationActionListener.COMPLETED}"
+            "open index [${request.indices().joinToString(",")}] " +
+                if (isTimeout) {
+                    NotificationActionListener.COMPLETED_WITH_TIMEOUT
+                } else if (exception != null) {
+                    "${NotificationActionListener.COMPLETED_WITH_ERROR} ${exception.message}"
+                } else {
+                    NotificationActionListener.COMPLETED
+                }
         )
 
         return result.toString()
