@@ -224,7 +224,7 @@ class NotificationActionListenerIT : IndexManagementRestTestCase() {
 
         waitFor {
             assertEquals(
-                "Notification index does not have a doc for close",
+                "Notification index have a doc for close",
                 0,
                 (
                     client.makeRequest("GET", "$notificationIndex/_search?q=msg:close")

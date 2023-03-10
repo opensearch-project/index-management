@@ -35,11 +35,17 @@ class ReindexRespParser(val task: Task) : ResponseParser<BulkByScrollResponse> {
         )
 
         if (!response.bulkFailures.isNullOrEmpty()) {
-            result.append("${System.lineSeparator()}Bulk Failures: ${response.bulkFailures.joinToString(",") { it.message }}")
+            result.append(
+                "${System.lineSeparator()}Bulk Failures: ${
+                response.bulkFailures.map { it.message }.toSet().joinToString(",")
+                }"
+            )
         }
         if (!response.searchFailures.isNullOrEmpty()) {
             result.append(
-                "${System.lineSeparator()}Search Failures: ${response.searchFailures.joinToString(",") { it.reason.localizedMessage ?: "" }}"
+                "${System.lineSeparator()}Search Failures: ${
+                response.searchFailures.map { it.reason.localizedMessage ?: "" }.toSet().joinToString(",")
+                }"
             )
         }
 
