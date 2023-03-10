@@ -25,7 +25,6 @@ import org.opensearch.action.admin.indices.shrink.ResizeRequest
 import org.opensearch.action.admin.indices.shrink.ResizeResponse
 import org.opensearch.action.delete.DeleteResponse
 import org.opensearch.action.support.ActiveShardsObserver
-import org.opensearch.action.support.WriteRequest
 import org.opensearch.client.Client
 import org.opensearch.cluster.metadata.IndexNameExpressionResolver
 import org.opensearch.cluster.service.ClusterService
@@ -171,8 +170,7 @@ class NotificationActionListener<Request : ActionRequest, Response : ActionRespo
                                 client.execute(
                                     DeleteLRONConfigAction.INSTANCE,
                                     DeleteLRONConfigRequest(
-                                        getDocID(taskId = taskId),
-                                        WriteRequest.RefreshPolicy.IMMEDIATE
+                                        getDocID(taskId = taskId)
                                     ),
                                     object : ActionListener<DeleteResponse> {
                                         override fun onResponse(response: DeleteResponse) {
