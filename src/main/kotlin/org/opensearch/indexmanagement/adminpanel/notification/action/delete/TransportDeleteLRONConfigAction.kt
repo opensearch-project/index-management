@@ -103,7 +103,6 @@ class TransportDeleteLRONConfigAction @Inject constructor(
 
         fun executeDelete() {
             val deleteRequest = DeleteRequest(IndexManagementPlugin.ADMIN_PANEL_INDEX, docId)
-                .setRefreshPolicy(request.refreshPolicy)
 
             client.delete(deleteRequest, actionListener)
         }

@@ -5,7 +5,6 @@
 
 package org.opensearch.indexmanagement.adminpanel.notification.resthandler
 
-import org.opensearch.action.support.WriteRequest
 import org.opensearch.client.node.NodeClient
 import org.opensearch.indexmanagement.IndexManagementPlugin
 import org.opensearch.indexmanagement.adminpanel.notification.action.index.IndexLRONConfigAction
@@ -13,7 +12,6 @@ import org.opensearch.indexmanagement.adminpanel.notification.action.index.Index
 import org.opensearch.indexmanagement.adminpanel.notification.model.LRONConfig
 import org.opensearch.indexmanagement.adminpanel.notification.util.getDocID
 import org.opensearch.indexmanagement.opensearchapi.parseWithType
-import org.opensearch.indexmanagement.util.REFRESH
 import org.opensearch.rest.BaseRestHandler
 import org.opensearch.rest.RestHandler
 import org.opensearch.rest.RestRequest
@@ -41,13 +39,7 @@ class RestUpdateLRONConfigAction : BaseRestHandler() {
             throw IllegalArgumentException("docId isn't match with lron_config")
         }
 
-        val refreshPolicy = if (request.hasParam(REFRESH)) {
-            WriteRequest.RefreshPolicy.parse(request.param(REFRESH))
-        } else {
-            WriteRequest.RefreshPolicy.IMMEDIATE
-        }
-
-        val indexLRONConfigRequest = IndexLRONConfigRequest(lronConfig, refreshPolicy, true)
+        val indexLRONConfigRequest = IndexLRONConfigRequest(lronConfig, true)
 
         return RestChannelConsumer { channel ->
             client.execute(IndexLRONConfigAction.INSTANCE, indexLRONConfigRequest, RestToXContentListener(channel))

@@ -5,12 +5,10 @@
 
 package org.opensearch.indexmanagement.adminpanel.notification.resthandler
 
-import org.opensearch.action.support.WriteRequest.RefreshPolicy
 import org.opensearch.client.node.NodeClient
 import org.opensearch.indexmanagement.IndexManagementPlugin
 import org.opensearch.indexmanagement.adminpanel.notification.action.delete.DeleteLRONConfigAction
 import org.opensearch.indexmanagement.adminpanel.notification.action.delete.DeleteLRONConfigRequest
-import org.opensearch.indexmanagement.util.REFRESH
 import org.opensearch.rest.BaseRestHandler
 import org.opensearch.rest.RestHandler
 import org.opensearch.rest.RestRequest
@@ -31,8 +29,7 @@ class RestDeleteLRONConfigAction : BaseRestHandler() {
     @Throws(IOException::class)
     override fun prepareRequest(request: RestRequest, client: NodeClient): RestChannelConsumer {
         val docId = request.param("id")
-        val refreshPolicy = RefreshPolicy.parse(request.param(REFRESH, RefreshPolicy.IMMEDIATE.value))
-        val deleteLRONConfigRequest = DeleteLRONConfigRequest(docId, refreshPolicy)
+        val deleteLRONConfigRequest = DeleteLRONConfigRequest(docId)
 
         return RestChannelConsumer { channel ->
             client.execute(DeleteLRONConfigAction.INSTANCE, deleteLRONConfigRequest, RestToXContentListener(channel))

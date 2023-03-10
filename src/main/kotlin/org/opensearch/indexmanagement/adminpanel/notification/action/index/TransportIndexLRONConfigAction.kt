@@ -13,6 +13,7 @@ import org.opensearch.action.index.IndexRequest
 import org.opensearch.action.index.IndexResponse
 import org.opensearch.action.support.ActionFilters
 import org.opensearch.action.support.HandledTransportAction
+import org.opensearch.action.support.WriteRequest
 import org.opensearch.action.support.master.AcknowledgedResponse
 import org.opensearch.client.node.NodeClient
 import org.opensearch.cluster.service.ClusterService
@@ -131,7 +132,7 @@ class TransportIndexLRONConfigAction @Inject constructor(
                 priority = getPriority(request.lronConfig.taskId, request.lronConfig.actionName)
             )
             val indexRequest = IndexRequest(IndexManagementPlugin.ADMIN_PANEL_INDEX)
-                .setRefreshPolicy(request.refreshPolicy)
+                .setRefreshPolicy(WriteRequest.RefreshPolicy.IMMEDIATE)
                 .source(lronConfig.toXContent(XContentFactory.jsonBuilder()))
                 .id(docId)
                 .timeout(IndexRequest.DEFAULT_TIMEOUT)

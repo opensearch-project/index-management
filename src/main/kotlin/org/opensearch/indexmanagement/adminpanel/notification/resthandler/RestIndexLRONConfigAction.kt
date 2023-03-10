@@ -5,14 +5,12 @@
 
 package org.opensearch.indexmanagement.adminpanel.notification.resthandler
 
-import org.opensearch.action.support.WriteRequest
 import org.opensearch.client.node.NodeClient
 import org.opensearch.indexmanagement.adminpanel.notification.action.index.IndexLRONConfigAction
 import org.opensearch.indexmanagement.adminpanel.notification.action.index.IndexLRONConfigRequest
 import org.opensearch.indexmanagement.adminpanel.notification.model.LRONConfig
 import org.opensearch.indexmanagement.IndexManagementPlugin
 import org.opensearch.indexmanagement.opensearchapi.parseWithType
-import org.opensearch.indexmanagement.util.REFRESH
 import org.opensearch.rest.BaseRestHandler
 import org.opensearch.rest.BaseRestHandler.RestChannelConsumer
 import org.opensearch.rest.RestHandler
@@ -37,12 +35,7 @@ class RestIndexLRONConfigAction : BaseRestHandler() {
         val xcp = request.contentParser()
         val lronConfig = xcp.parseWithType(parse = LRONConfig.Companion::parse)
 
-        val refreshPolicy = if (request.hasParam(REFRESH)) {
-            WriteRequest.RefreshPolicy.parse(request.param(REFRESH))
-        } else {
-            WriteRequest.RefreshPolicy.IMMEDIATE
-        }
-        val indexLRONConfigRequest = IndexLRONConfigRequest(lronConfig, refreshPolicy, false)
+        val indexLRONConfigRequest = IndexLRONConfigRequest(lronConfig, false)
 
         return RestChannelConsumer { channel ->
             client.execute(IndexLRONConfigAction.INSTANCE, indexLRONConfigRequest, RestToXContentListener(channel))
