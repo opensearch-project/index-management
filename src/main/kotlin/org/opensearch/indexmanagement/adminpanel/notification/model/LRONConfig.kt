@@ -121,7 +121,7 @@ data class LRONConfig(
         }
 
         @JvmStatic
-        @Suppress("MaxLineLength", "CyclomaticComplexMethod", "NestedBlockDepth")
+        @Suppress("MaxLineLength", "ComplexMethod", "NestedBlockDepth")
         @Throws(IOException::class)
         fun parse(xcp: XContentParser): LRONConfig {
             var enabled: Boolean = DEFAULT_ENABLED
@@ -141,11 +141,9 @@ data class LRONConfig(
                     TASK_ID_FIELD ->
                         taskId =
                             if (xcp.currentToken() == XContentParser.Token.VALUE_NULL) null else TaskId(xcp.text())
-
                     ACTION_NAME_FIELD ->
                         actionName =
                             if (xcp.currentToken() == XContentParser.Token.VALUE_NULL) null else xcp.text()
-
                     CHANNELS_FIELD -> {
                         if (xcp.currentToken() != XContentParser.Token.VALUE_NULL) {
                             channels = mutableListOf()

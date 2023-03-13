@@ -56,7 +56,9 @@ class TransportGetLRONConfigAction @Inject constructor(
         fun start() {
             val threadContext = client.threadPool().threadContext
             log.debug(
-                "User and roles string from thread context: ${threadContext.getTransient<String>(ConfigConstants.OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT)}"
+                "User and roles string from thread context: ${client.threadPool().threadContext.getTransient<String>(
+                    ConfigConstants.OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT
+                )}"
             )
             threadContext.stashContext().use {
                 if (!SecurityUtils.validateUserConfiguration(user, filterByEnabled, actionListener)) {

@@ -55,11 +55,8 @@ fun getPriority(taskId: TaskId? = null, actionName: String? = null): Int {
 }
 
 fun getDocID(taskId: TaskId? = null, actionName: String? = null): String {
-    if (null != taskId) {
-        return LRON_DOC_ID_PREFIX + taskId.toString()
-    } else if (null != actionName) {
-        return LRON_DOC_ID_PREFIX + actionName
-    } else return LRON_DOC_ID_PREFIX + LRON_DEFAULT_ID
+    val id = taskId?.toString() ?: actionName ?: LRON_DEFAULT_ID
+    return LRON_DOC_ID_PREFIX + id
 }
 
 fun getLRONConfigAndParse(
