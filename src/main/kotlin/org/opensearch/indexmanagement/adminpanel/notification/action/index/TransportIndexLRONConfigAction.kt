@@ -94,7 +94,7 @@ class TransportIndexLRONConfigAction @Inject constructor(
         }
 
         private fun validate() {
-            if (request.isUpdate && filterByEnabled) {
+            if (request.isUpdate) {
                 /* We need to verify whether the user has permissions for the resource (backend roles) */
                 getLRONConfigAndParse(
                     client,

@@ -54,6 +54,6 @@ class AdminPanelIndices(
 
     companion object {
         val adminPanelMappings = AdminPanelIndices::class.java.classLoader
-            .getResource("mappings/opendistro-adminpanel-config.json").readText()
+            .getResource("mappings/opendistro-adminpanel-config.json")!!.readText()
     }
 }

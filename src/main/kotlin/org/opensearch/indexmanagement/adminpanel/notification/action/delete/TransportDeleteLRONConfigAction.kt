@@ -11,6 +11,7 @@ import org.opensearch.action.delete.DeleteRequest
 import org.opensearch.action.delete.DeleteResponse
 import org.opensearch.action.support.ActionFilters
 import org.opensearch.action.support.HandledTransportAction
+import org.opensearch.action.support.WriteRequest
 import org.opensearch.client.node.NodeClient
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.inject.Inject
@@ -103,6 +104,7 @@ class TransportDeleteLRONConfigAction @Inject constructor(
 
         fun executeDelete() {
             val deleteRequest = DeleteRequest(IndexManagementPlugin.ADMIN_PANEL_INDEX, docId)
+                .setRefreshPolicy(WriteRequest.RefreshPolicy.IMMEDIATE)
 
             client.delete(deleteRequest, actionListener)
         }

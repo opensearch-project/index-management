@@ -6,13 +6,17 @@
 package org.opensearch.indexmanagement.adminpanel.notification
 
 import org.opensearch.common.UUIDs
+import org.opensearch.common.xcontent.XContentFactory
 import org.opensearch.commons.authuser.User
+import org.opensearch.core.xcontent.ToXContent
+import org.opensearch.indexmanagement.adminpanel.notification.action.get.GetLRONConfigsResponse
 import org.opensearch.indexmanagement.adminpanel.notification.model.LRONConfig
 import org.opensearch.indexmanagement.adminpanel.notification.util.getDocID
 import org.opensearch.indexmanagement.adminpanel.notification.util.getPriority
 import org.opensearch.indexmanagement.adminpanel.notification.util.supportedActions
 import org.opensearch.indexmanagement.common.model.notification.Channel
 import org.opensearch.indexmanagement.indexstatemanagement.randomChannel
+import org.opensearch.indexmanagement.opensearchapi.string
 import org.opensearch.indexmanagement.randomUser
 import org.opensearch.tasks.TaskId
 import org.opensearch.test.OpenSearchTestCase.randomBoolean
@@ -63,3 +67,17 @@ fun randomLRONConfigResponse(
         lronConfig = lronConfig
     )
 }
+
+fun randomLRONConfigsResponse(
+    size: Int = 10
+): GetLRONConfigsResponse {
+    return GetLRONConfigsResponse(
+        lronConfigResponses = List(size) { randomLRONConfigResponse() },
+        size,
+        randomBoolean()
+    )
+}
+
+fun LRONConfig.toJsonString(params: ToXContent.Params = ToXContent.EMPTY_PARAMS): String = this.toXContent(
+    XContentFactory.jsonBuilder(), params
+).string()
