@@ -17,6 +17,7 @@ import org.opensearch.indexmanagement.IndexManagementRestTestCase
 import org.opensearch.indexmanagement.makeRequest
 import org.opensearch.indexmanagement.waitFor
 import org.opensearch.rest.RestStatus
+import java.net.InetAddress
 import java.net.InetSocketAddress
 import java.time.Instant
 
@@ -26,35 +27,35 @@ class NotificationActionListenerIT : IndexManagementRestTestCase() {
     private val notificationIndex = "test-notification-index"
 
     private lateinit var server: HttpServer
-    private var port: Int = 50001
-
     private lateinit var client: RestClient
 
     @Before
     fun startMockWebHook() {
-        server = HttpServer.create(InetSocketAddress(port), 0)
+        server = HttpServer.create(InetSocketAddress(InetAddress.getLoopbackAddress(), 0), 0)
         server.createContext("/notification") {
             val msg = String(it.requestBody.readAllBytes())
-            println(msg)
+            logger.info(msg)
             val res = client.makeRequest(
                 "POST", "$notificationIndex/_doc?refresh=true",
                 StringEntity("""{"msg": "${msg.replace(System.lineSeparator(), " ")}"}""", ContentType.APPLICATION_JSON)
             )
-            println(res.restStatus())
+            logger.info(res.restStatus())
 
             it.sendResponseHeaders(200, "ack".toByteArray().size.toLong())
             it.responseBody.write("ack".toByteArray())
         }
         server.start()
+
+        setNotificationChannel()
     }
 
     @After
-    fun stopMockServer() {
+    fun stopMockServerAndClean() {
         server.stop(10)
+        wipeAllIndices()
     }
 
-    @Before
-    fun setup() {
+    private fun setNotificationChannel() {
         client = client()
         createIndex(notificationIndex, Settings.EMPTY)
         client.makeRequest(
@@ -70,7 +71,7 @@ class NotificationActionListenerIT : IndexManagementRestTestCase() {
                         "config_type": "webhook",
                         "is_enabled": true,
                         "webhook": {
-                          "url": "http://localhost:$port/notification"
+                          "url": "http://${server.address.hostString}:${server.address.port}/notification"
                         }
                       }
                     }
@@ -96,11 +97,6 @@ class NotificationActionListenerIT : IndexManagementRestTestCase() {
                 ContentType.APPLICATION_JSON
             )
         )
-    }
-
-    @After
-    fun clean() {
-        wipeAllIndices()
     }
 
     @Suppress("UNCHECKED_CAST")
