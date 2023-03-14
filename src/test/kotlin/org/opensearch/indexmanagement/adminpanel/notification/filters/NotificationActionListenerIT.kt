@@ -81,7 +81,7 @@ class NotificationActionListenerIT : IndexManagementRestTestCase() {
         )
 
         client.makeRequest(
-            "PUT", "_plugins/_im/lron",
+            "POST", "_plugins/_im/lron",
             StringEntity(
                 """
                 {

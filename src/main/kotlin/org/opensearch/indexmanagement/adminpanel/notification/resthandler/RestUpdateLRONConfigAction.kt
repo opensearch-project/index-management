@@ -22,7 +22,7 @@ class RestUpdateLRONConfigAction : BaseRestHandler() {
 
     override fun routes(): List<RestHandler.Route> {
         return listOf(
-            RestHandler.Route(RestRequest.Method.POST, "${IndexManagementPlugin.LRON_BASE_URI}/{id}")
+            RestHandler.Route(RestRequest.Method.PUT, "${IndexManagementPlugin.LRON_BASE_URI}/{id}")
         )
     }
 

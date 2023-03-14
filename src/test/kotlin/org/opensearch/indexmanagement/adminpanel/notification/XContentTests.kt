@@ -35,7 +35,7 @@ class XContentTests : OpenSearchTestCase() {
         )
 
         val xContentType = XContentType.values().random()
-        val lronConfig = randomLRONConfig(enabled = true)
+        val lronConfig = randomLRONConfig()
         Assert.assertEquals(
             buildMessage("lronConfig", xContentType),
             lronConfig,

@@ -5,6 +5,7 @@
 
 package org.opensearch.indexmanagement.adminpanel.notification
 
+import org.opensearch.ResourceAlreadyExistsException
 import org.opensearch.action.ActionListener
 import org.opensearch.action.admin.indices.create.CreateIndexRequest
 import org.opensearch.action.admin.indices.create.CreateIndexResponse
@@ -21,7 +22,7 @@ class AdminPanelIndices(
     private val clusterService: ClusterService,
 ) {
 
-    fun checkAndUpdateIMConfigIndex(actionListener: ActionListener<AcknowledgedResponse>) {
+    fun checkAndUpdateAdminPanelIndex(actionListener: ActionListener<AcknowledgedResponse>) {
         if (!adminPanelIndexExists()) {
             val indexRequest = CreateIndexRequest(IndexManagementPlugin.ADMIN_PANEL_INDEX)
                 .mapping(adminPanelMappings)
@@ -30,7 +31,17 @@ class AdminPanelIndices(
                 indexRequest,
                 object : ActionListener<CreateIndexResponse> {
                     override fun onFailure(e: Exception) {
-                        actionListener.onFailure(e)
+                        if (e is ResourceAlreadyExistsException) {
+                            /* if two request create the admin panel index at the same time, may raise this exception */
+                            /* but we don't take it as error */
+                            actionListener.onResponse(
+                                CreateIndexResponse(
+                                    true,
+                                    true,
+                                    IndexManagementPlugin.ADMIN_PANEL_INDEX
+                                )
+                            )
+                        } else actionListener.onFailure(e)
                     }
 
                     override fun onResponse(response: CreateIndexResponse) {
@@ -54,6 +65,6 @@ class AdminPanelIndices(
 
     companion object {
         val adminPanelMappings = AdminPanelIndices::class.java.classLoader
-            .getResource("mappings/opendistro-adminpanel-config.json")!!.readText()
+            .getResource("mappings/opensearch-admin-panel.json")!!.readText()
     }
 }

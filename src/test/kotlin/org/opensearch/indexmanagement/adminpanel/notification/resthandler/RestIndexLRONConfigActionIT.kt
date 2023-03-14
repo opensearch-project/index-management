@@ -37,7 +37,7 @@ class RestIndexLRONConfigActionIT : LRONConfigRestTestCase() {
         try {
             val lronConfig = randomLRONConfig()
             client().makeRequest(
-                "PUT",
+                "POST",
                 getResourceURI(lronConfig.taskId, lronConfig.actionName),
                 emptyMap(),
                 lronConfig.toHttpEntity()
@@ -68,7 +68,7 @@ class RestIndexLRONConfigActionIT : LRONConfigRestTestCase() {
         val mappingsMap = parserMap[IndexManagementPlugin.ADMIN_PANEL_INDEX]!!["mappings"] as Map<String, Any>
         val expected = createParser(
             XContentType.JSON.xContent(),
-            javaClass.classLoader.getResource("mappings/opendistro-adminpanel-config.json")!!
+            javaClass.classLoader.getResource("mappings/opensearch-admin-panel.json")!!
                 .readText()
         )
         val expectedMap = expected.map()

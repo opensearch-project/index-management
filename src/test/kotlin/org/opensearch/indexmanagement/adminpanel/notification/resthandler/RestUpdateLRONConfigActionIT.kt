@@ -31,7 +31,7 @@ class RestUpdateLRONConfigActionIT : LRONConfigRestTestCase() {
         )
 
         val response = client().makeRequest(
-            "POST",
+            "PUT",
             getResourceURI(lronConfig.taskId, lronConfig.actionName),
             emptyMap(),
             newLRONConfig.toHttpEntity()
@@ -53,7 +53,7 @@ class RestUpdateLRONConfigActionIT : LRONConfigRestTestCase() {
         try {
             val lronConfig = randomLRONConfig()
             client().makeRequest(
-                "POST",
+                "PUT",
                 getResourceURI(lronConfig.taskId, lronConfig.actionName),
                 emptyMap(),
                 lronConfig.toHttpEntity()

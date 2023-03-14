@@ -77,7 +77,7 @@ class TransportIndexLRONConfigAction @Inject constructor(
                 if (!SecurityUtils.validateUserConfiguration(user, filterByEnabled, actionListener)) {
                     return
                 }
-                adminPanelIndices.checkAndUpdateIMConfigIndex(ActionListener.wrap(::onCreateMappingsResponse, actionListener::onFailure))
+                adminPanelIndices.checkAndUpdateAdminPanelIndex(ActionListener.wrap(::onCreateMappingsResponse, actionListener::onFailure))
             }
             return
         }

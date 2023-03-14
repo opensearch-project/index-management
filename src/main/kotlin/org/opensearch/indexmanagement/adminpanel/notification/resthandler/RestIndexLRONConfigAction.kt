@@ -22,12 +22,12 @@ class RestIndexLRONConfigAction : BaseRestHandler() {
 
     override fun routes(): List<RestHandler.Route> {
         return listOf(
-            RestHandler.Route(RestRequest.Method.PUT, IndexManagementPlugin.LRON_BASE_URI)
+            RestHandler.Route(RestRequest.Method.POST, IndexManagementPlugin.LRON_BASE_URI)
         )
     }
 
     override fun getName(): String {
-        return "index_lron_config_action"
+        return "create_lron_config_action"
     }
 
     @Throws(IOException::class)
