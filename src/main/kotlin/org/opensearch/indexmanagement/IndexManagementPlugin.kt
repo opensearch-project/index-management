@@ -226,7 +226,7 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
         const val POLICY_BASE_URI = "$ISM_BASE_URI/policies"
         const val ROLLUP_JOBS_BASE_URI = "$ROLLUP_BASE_URI/jobs"
         const val INDEX_MANAGEMENT_INDEX = ".opendistro-ism-config"
-        const val ADMIN_PANEL_INDEX = ".admin-panel-config"
+        const val ADMIN_PANEL_INDEX = ".opendistro-admin-panel-config"
         const val INDEX_MANAGEMENT_JOB_TYPE = "opendistro-index-management"
         const val INDEX_STATE_MANAGEMENT_HISTORY_TYPE = "managed_index_meta_data"
 

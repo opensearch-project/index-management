@@ -55,12 +55,12 @@ data class LRONConfig(
         if (null != taskId) builder.field(TASK_ID_FIELD, taskId.toString())
         if (null != actionName) builder.field(ACTION_NAME_FIELD, actionName)
         if (params.paramAsBoolean(WITH_USER, true)) builder.optionalUserField(USER_FIELD, user)
-        if (enabled) {
+        if (null != channels) {
             builder.startArray(CHANNELS_FIELD)
-                .also { channels?.forEach { channel -> channel.toXContent(it, params) } }
+                .also { channels.forEach { channel -> channel.toXContent(it, params) } }
                 .endArray()
-            if (params.paramAsBoolean(WITH_PRIORITY, true)) builder.field(PRIORITY_FIELD, priority)
         }
+        if (params.paramAsBoolean(WITH_PRIORITY, true)) builder.field(PRIORITY_FIELD, priority)
         if (params.paramAsBoolean(WITH_TYPE, true)) builder.endObject()
         return builder.endObject()
     }
