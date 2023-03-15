@@ -7,7 +7,6 @@ package org.opensearch.indexmanagement.adminpanel.notification.filters.parser
 
 import com.nhaarman.mockitokotlin2.any
 import com.nhaarman.mockitokotlin2.doReturn
-import com.nhaarman.mockitokotlin2.eq
 import com.nhaarman.mockitokotlin2.never
 import com.nhaarman.mockitokotlin2.times
 import org.junit.Assert
@@ -21,6 +20,7 @@ import org.opensearch.action.support.ActiveShardsObserver
 import org.opensearch.cluster.ClusterState
 import org.opensearch.cluster.metadata.IndexNameExpressionResolver
 import org.opensearch.cluster.service.ClusterService
+import org.opensearch.common.unit.TimeValue
 import org.opensearch.indexmanagement.adminpanel.notification.filter.parser.OpenRespParser
 import org.opensearch.test.OpenSearchTestCase
 import java.lang.Exception
@@ -46,15 +46,15 @@ class OpenRespParserTests : OpenSearchTestCase() {
         val response = OpenIndexResponse(true, true)
         val parser = OpenRespParser(activeShardsObserver, request, indexNameExpressionResolver, clusterService)
 
-        parser.parseAndSendNotification(response) {
-            Assert.assertEquals(it, "open index [index-1,index-2] has completed.")
+        parser.parseAndSendNotification(response) { ret ->
+            Assert.assertEquals(ret.v2(), "open index [index-1,index-2] has completed.")
         }
 
         Mockito.verify(activeShardsObserver, never())
             .waitForActiveShards(any(), any(), any(), any(), any())
     }
 
-    fun `test not all shards are started`() {
+    fun `test not all shards are started sync`() {
         val request = OpenIndexRequest("index-1", "index-2")
         val response = OpenIndexResponse(true, false)
         val parser = OpenRespParser(activeShardsObserver, request, indexNameExpressionResolver, clusterService)
@@ -62,11 +62,55 @@ class OpenRespParserTests : OpenSearchTestCase() {
         doReturn(arrayOf("index-1", "index-2"))
             .`when`(indexNameExpressionResolver).concreteIndexNames(any(), any() as IndicesRequest)
 
-        parser.parseAndSendNotification(response) {
-            Assert.assertEquals(it, "open index [index-1,index-2] has completed.")
+        parser.parseAndSendNotification(response) { ret ->
+            Assert.assertEquals(ret.v2(), "open index [index-1,index-2] has completed.")
         }
 
         Mockito.verify(activeShardsObserver, times(1))
+            .waitForActiveShards(any(), Mockito.eq(ActiveShardCount.DEFAULT), any(), any(), any())
+    }
+
+    fun `test not all shards are started async`() {
+        val request: OpenIndexRequest = Mockito.mock()
+        Mockito.`when`(request.indices()).thenReturn(arrayOf("index-1", "index-2"))
+        Mockito.`when`(request.shouldStoreResult).thenReturn(true)
+        Mockito.`when`(request.ackTimeout()).thenReturn(TimeValue.timeValueHours(1))
+
+        val response = OpenIndexResponse(true, false)
+        val parser = OpenRespParser(activeShardsObserver, request, indexNameExpressionResolver, clusterService)
+
+        Mockito
+            .`when`(indexNameExpressionResolver.concreteIndexNames(any(), any() as IndicesRequest))
+            .thenReturn(arrayOf("index-1", "index-2"))
+
+        parser.parseAndSendNotification(response) { ret ->
+            Assert.assertEquals(
+                ret.v2(),
+                "open index [index-1,index-2] has completed, but timed out while waiting for enough shards to be started in 1h, try with `GET /<target>/_recovery` to get more details."
+            )
+        }
+
+        Mockito.verify(activeShardsObserver, never())
+            .waitForActiveShards(any(), Mockito.eq(ActiveShardCount.DEFAULT), any(), any(), any())
+    }
+
+    fun `test not all shards are started timeout`() {
+        val request = OpenIndexRequest("index-1", "index-2")
+        request.timeout(TimeValue.timeValueHours(2))
+        val response = OpenIndexResponse(true, false)
+        val parser = OpenRespParser(activeShardsObserver, request, indexNameExpressionResolver, clusterService)
+
+        doReturn(arrayOf("index-1", "index-2"))
+            .`when`(indexNameExpressionResolver).concreteIndexNames(any(), any() as IndicesRequest)
+
+        parser.parseAndSendNotification(response) { ret ->
+            Assert.assertEquals(
+                ret.v2(),
+                "open index [index-1,index-2] has completed, but timed out while waiting for enough shards to be started in 2h, try with `GET /<target>/_recovery` to get more details."
+            )
+        }
+
+        Mockito.verify(activeShardsObserver, never())
             .waitForActiveShards(any(), Mockito.eq(ActiveShardCount.DEFAULT), any(), any(), any())
     }
 
@@ -97,6 +141,9 @@ class OpenRespParserTests : OpenSearchTestCase() {
         val parser = OpenRespParser(activeShardsObserver, request, indexNameExpressionResolver, clusterService)
 
         val msg = parser.buildNotificationMessage(response, isTimeout = true)
-        Assert.assertEquals(msg, "open index [index-1,index-2] has timeout within 12h.")
+        Assert.assertEquals(
+            msg,
+            "open index [index-1,index-2] has completed, but timed out while waiting for enough shards to be started in 1h, try with `GET /<target>/_recovery` to get more details."
+        )
     }
 }

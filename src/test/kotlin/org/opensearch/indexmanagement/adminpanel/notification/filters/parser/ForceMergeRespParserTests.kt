@@ -29,7 +29,7 @@ class ForceMergeRespParserTests : OpenSearchTestCase() {
 
     @Before
     fun setup() {
-        task = Task(1, "transport", ReindexAction.NAME, "reindex from src to dest", TaskId.EMPTY_TASK_ID, mapOf())
+        task = Task(1, "transport", ReindexAction.NAME, "", TaskId.EMPTY_TASK_ID, mapOf())
     }
 
     fun `test build message for completion`() {

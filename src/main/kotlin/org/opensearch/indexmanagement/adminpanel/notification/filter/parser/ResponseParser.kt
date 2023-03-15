@@ -6,15 +6,17 @@
 package org.opensearch.indexmanagement.adminpanel.notification.filter.parser
 
 import org.opensearch.action.ActionResponse
+import org.opensearch.common.collect.Tuple
+import org.opensearch.indexmanagement.adminpanel.notification.filter.OperationResult
 import java.lang.Exception
 import java.util.function.Consumer
 
 interface ResponseParser<Response : ActionResponse> {
     fun parseAndSendNotification(
         response: Response,
-        callback: Consumer<String>
+        callback: Consumer<Tuple<OperationResult, String>>
     ) {
-        callback.accept(buildNotificationMessage(response))
+        callback.accept(Tuple.tuple(OperationResult.COMPLETE, buildNotificationMessage(response)))
     }
 
     fun buildNotificationMessage(
