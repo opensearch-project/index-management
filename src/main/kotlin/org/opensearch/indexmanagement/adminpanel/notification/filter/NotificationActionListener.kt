@@ -11,7 +11,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import org.apache.logging.log4j.LogManager
-import org.opensearch.OpenSearchSecurityException
 import org.opensearch.OpenSearchStatusException
 import org.opensearch.action.ActionListener
 import org.opensearch.action.ActionRequest
@@ -21,6 +20,7 @@ import org.opensearch.action.admin.indices.forcemerge.ForceMergeRequest
 import org.opensearch.action.admin.indices.forcemerge.ForceMergeResponse
 import org.opensearch.action.admin.indices.open.OpenIndexRequest
 import org.opensearch.action.admin.indices.open.OpenIndexResponse
+import org.opensearch.action.admin.indices.shrink.ResizeAction
 import org.opensearch.action.admin.indices.shrink.ResizeRequest
 import org.opensearch.action.admin.indices.shrink.ResizeResponse
 import org.opensearch.action.delete.DeleteResponse
@@ -32,6 +32,7 @@ import org.opensearch.common.collect.Tuple
 import org.opensearch.common.unit.TimeValue
 import org.opensearch.commons.notifications.model.EventSource
 import org.opensearch.commons.notifications.model.SeverityType
+import org.opensearch.index.IndexNotFoundException
 import org.opensearch.index.reindex.BulkByScrollResponse
 import org.opensearch.indexmanagement.adminpanel.notification.LRONConfigResponse
 import org.opensearch.indexmanagement.adminpanel.notification.action.delete.DeleteLRONConfigAction
@@ -83,7 +84,11 @@ class NotificationActionListener<Request : ActionRequest, Response : ActionRespo
         try {
             delegate.onFailure(e)
         } finally {
-            notify(action, OperationResult.FAILED, "$action execute failed with error: ${e.message}")
+            var actionName = action
+            if (action == ResizeAction.NAME) {
+                actionName = (request as ResizeRequest).resizeType.name.lowercase()
+            }
+            notify(action, OperationResult.FAILED, "$actionName execute failed with error: ${e.message}")
         }
     }
 
@@ -177,8 +182,8 @@ class NotificationActionListener<Request : ActionRequest, Response : ActionRespo
                     }
 
                     override fun onFailure(e: Exception) {
-                        if (e is OpenSearchSecurityException) {
-                            // ignore
+                        if (e is IndexNotFoundException) {
+                            logger.info("No notification channel configured for task: {} action: {}", taskId.toString(), action)
                         } else {
                             logger.error("Can't get notification channel config for action {}", action, e)
                         }
