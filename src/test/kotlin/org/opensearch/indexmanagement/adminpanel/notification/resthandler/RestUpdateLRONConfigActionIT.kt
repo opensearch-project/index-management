@@ -7,6 +7,7 @@ package org.opensearch.indexmanagement.adminpanel.notification.resthandler
 
 import org.junit.Assert
 import org.opensearch.client.ResponseException
+import org.opensearch.indexmanagement.adminpanel.notification.getResourceURI
 import org.opensearch.indexmanagement.adminpanel.notification.model.LRONConfig
 import org.opensearch.indexmanagement.adminpanel.notification.randomLRONConfig
 import org.opensearch.indexmanagement.adminpanel.notification.util.getDocID

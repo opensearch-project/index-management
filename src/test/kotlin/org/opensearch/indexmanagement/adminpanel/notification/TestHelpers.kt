@@ -9,6 +9,7 @@ import org.opensearch.common.UUIDs
 import org.opensearch.common.xcontent.XContentFactory
 import org.opensearch.commons.authuser.User
 import org.opensearch.core.xcontent.ToXContent
+import org.opensearch.indexmanagement.IndexManagementPlugin
 import org.opensearch.indexmanagement.adminpanel.notification.action.get.GetLRONConfigsResponse
 import org.opensearch.indexmanagement.adminpanel.notification.model.LRONConfig
 import org.opensearch.indexmanagement.adminpanel.notification.util.getDocID
@@ -81,3 +82,7 @@ fun randomLRONConfigsResponse(
 fun LRONConfig.toJsonString(params: ToXContent.Params = ToXContent.EMPTY_PARAMS): String = this.toXContent(
     XContentFactory.jsonBuilder(), params
 ).string()
+
+fun getResourceURI(taskId: TaskId?, actionName: String?): String {
+    return "${IndexManagementPlugin.LRON_BASE_URI}/${getDocID(taskId, actionName)}"
+}

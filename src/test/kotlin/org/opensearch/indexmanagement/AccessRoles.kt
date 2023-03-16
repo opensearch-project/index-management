@@ -5,6 +5,10 @@
 
 package org.opensearch.indexmanagement
 
+import org.opensearch.indexmanagement.adminpanel.notification.action.delete.DeleteLRONConfigAction
+import org.opensearch.indexmanagement.adminpanel.notification.action.get.GetLRONConfigAction
+import org.opensearch.indexmanagement.adminpanel.notification.action.get.GetLRONConfigsAction
+import org.opensearch.indexmanagement.adminpanel.notification.action.index.IndexLRONConfigAction
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.addpolicy.AddPolicyAction
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.deletepolicy.DeletePolicyAction
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.explain.ExplainAction
@@ -57,3 +61,8 @@ const val SEARCH_INDEX = "indices:data/read/search"
 const val CREATE_INDEX = "indices:admin/create"
 const val WRITE_INDEX = "indices:data/write/index"
 const val BULK_WRITE_INDEX = "indices:data/write/bulk*"
+// Long-running operation notification (lron)
+const val INDEX_LRON_CONFIG = IndexLRONConfigAction.NAME
+const val GET_LRON_CONFIG = GetLRONConfigAction.NAME
+const val GET_LRON_CONFIGS = GetLRONConfigsAction.NAME
+const val DELETE_LRON_CONFIG = DeleteLRONConfigAction.NAME

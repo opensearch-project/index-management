@@ -17,10 +17,8 @@ import org.opensearch.indexmanagement.IndexManagementPlugin
 import org.opensearch.indexmanagement.IndexManagementRestTestCase
 import org.opensearch.indexmanagement.adminpanel.notification.model.LRONConfig
 import org.opensearch.indexmanagement.adminpanel.notification.toJsonString
-import org.opensearch.indexmanagement.adminpanel.notification.util.getDocID
 import org.opensearch.indexmanagement.makeRequest
 import org.opensearch.rest.RestStatus
-import org.opensearch.tasks.TaskId
 
 abstract class LRONConfigRestTestCase : IndexManagementRestTestCase() {
     companion object {
@@ -68,8 +66,4 @@ abstract class LRONConfigRestTestCase : IndexManagementRestTestCase() {
     }
 
     protected fun LRONConfig.toHttpEntity(): HttpEntity = StringEntity(toJsonString(), ContentType.APPLICATION_JSON)
-
-    protected fun getResourceURI(taskId: TaskId?, actionName: String?): String {
-        return "${IndexManagementPlugin.LRON_BASE_URI}/${getDocID(taskId, actionName)}"
-    }
 }

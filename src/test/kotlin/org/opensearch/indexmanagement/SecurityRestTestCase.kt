@@ -372,7 +372,7 @@ abstract class SecurityRestTestCase : IndexManagementRestTestCase() {
         return executeRequest(request, expectedStatus, userClient)
     }
 
-    private fun executeRequest(
+    protected fun executeRequest(
         request: Request,
         expectedRestStatus: RestStatus? = null,
         client: RestClient
