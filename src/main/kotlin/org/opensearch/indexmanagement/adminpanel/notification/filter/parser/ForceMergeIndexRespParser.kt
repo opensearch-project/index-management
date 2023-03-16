@@ -7,10 +7,26 @@ package org.opensearch.indexmanagement.adminpanel.notification.filter.parser
 
 import org.opensearch.action.admin.indices.forcemerge.ForceMergeRequest
 import org.opensearch.action.admin.indices.forcemerge.ForceMergeResponse
+import org.opensearch.common.collect.Tuple
 import org.opensearch.indexmanagement.adminpanel.notification.filter.NotificationActionListener
+import org.opensearch.indexmanagement.adminpanel.notification.filter.OperationResult
 import java.lang.Exception
+import java.util.function.Consumer
 
-class ForceMergeRespParser(val request: ForceMergeRequest) : ResponseParser<ForceMergeResponse> {
+class ForceMergeIndexRespParser(val request: ForceMergeRequest) : ResponseParser<ForceMergeResponse> {
+
+    override fun parseAndSendNotification(
+        response: ForceMergeResponse,
+        callback: Consumer<Tuple<OperationResult, String>>
+    ) {
+        val hasFailures = response.shardFailures != null && response.shardFailures.isNotEmpty()
+        if (hasFailures) {
+            callback.accept(Tuple(OperationResult.FAILED, buildNotificationMessage(response)))
+        } else {
+            callback.accept(Tuple(OperationResult.COMPLETE, buildNotificationMessage(response)))
+        }
+    }
+
     override fun buildNotificationMessage(
         response: ForceMergeResponse,
         exception: Exception?,

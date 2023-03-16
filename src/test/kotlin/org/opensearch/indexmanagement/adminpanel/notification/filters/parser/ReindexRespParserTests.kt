@@ -5,7 +5,6 @@
 
 package org.opensearch.indexmanagement.adminpanel.notification.filters.parser
 
-import com.nhaarman.mockitokotlin2.times
 import org.junit.Assert
 import org.junit.Before
 import org.opensearch.action.bulk.BulkItemResponse
@@ -124,7 +123,7 @@ class ReindexRespParserTests : OpenSearchTestCase() {
             "reindex from src to dest has completed." +
                 System.lineSeparator() +
                 "Details: total: 100, created: 100, updated: 0, deleted: 0" +
-                "${System.lineSeparator()}Bulk Failures: java.lang.Exception: version conflicts"
+                "${System.lineSeparator()}Bulk Write Failures: java.lang.Exception: version conflicts"
         )
     }
 }

@@ -21,7 +21,7 @@ import org.opensearch.cluster.ClusterState
 import org.opensearch.cluster.metadata.IndexNameExpressionResolver
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.unit.TimeValue
-import org.opensearch.indexmanagement.adminpanel.notification.filter.parser.OpenRespParser
+import org.opensearch.indexmanagement.adminpanel.notification.filter.parser.OpenIndexRespParser
 import org.opensearch.test.OpenSearchTestCase
 import java.lang.Exception
 
@@ -44,7 +44,7 @@ class OpenRespParserTests : OpenSearchTestCase() {
     fun `test all shards are started`() {
         val request = OpenIndexRequest("index-1", "index-2")
         val response = OpenIndexResponse(true, true)
-        val parser = OpenRespParser(activeShardsObserver, request, indexNameExpressionResolver, clusterService)
+        val parser = OpenIndexRespParser(activeShardsObserver, request, indexNameExpressionResolver, clusterService)
 
         parser.parseAndSendNotification(response) { ret ->
             Assert.assertEquals(ret.v2(), "open index [index-1,index-2] has completed.")
@@ -57,7 +57,7 @@ class OpenRespParserTests : OpenSearchTestCase() {
     fun `test not all shards are started sync`() {
         val request = OpenIndexRequest("index-1", "index-2")
         val response = OpenIndexResponse(true, false)
-        val parser = OpenRespParser(activeShardsObserver, request, indexNameExpressionResolver, clusterService)
+        val parser = OpenIndexRespParser(activeShardsObserver, request, indexNameExpressionResolver, clusterService)
 
         doReturn(arrayOf("index-1", "index-2"))
             .`when`(indexNameExpressionResolver).concreteIndexNames(any(), any() as IndicesRequest)
@@ -77,7 +77,7 @@ class OpenRespParserTests : OpenSearchTestCase() {
         Mockito.`when`(request.ackTimeout()).thenReturn(TimeValue.timeValueHours(1))
 
         val response = OpenIndexResponse(true, false)
-        val parser = OpenRespParser(activeShardsObserver, request, indexNameExpressionResolver, clusterService)
+        val parser = OpenIndexRespParser(activeShardsObserver, request, indexNameExpressionResolver, clusterService)
 
         Mockito
             .`when`(indexNameExpressionResolver.concreteIndexNames(any(), any() as IndicesRequest))
@@ -98,7 +98,7 @@ class OpenRespParserTests : OpenSearchTestCase() {
         val request = OpenIndexRequest("index-1", "index-2")
         request.timeout(TimeValue.timeValueHours(2))
         val response = OpenIndexResponse(true, false)
-        val parser = OpenRespParser(activeShardsObserver, request, indexNameExpressionResolver, clusterService)
+        val parser = OpenIndexRespParser(activeShardsObserver, request, indexNameExpressionResolver, clusterService)
 
         doReturn(arrayOf("index-1", "index-2"))
             .`when`(indexNameExpressionResolver).concreteIndexNames(any(), any() as IndicesRequest)
@@ -117,7 +117,7 @@ class OpenRespParserTests : OpenSearchTestCase() {
     fun `test build message for completion`() {
         val request = OpenIndexRequest("index-1", "index-2")
         val response = OpenIndexResponse(true, true)
-        val parser = OpenRespParser(activeShardsObserver, request, indexNameExpressionResolver, clusterService)
+        val parser = OpenIndexRespParser(activeShardsObserver, request, indexNameExpressionResolver, clusterService)
 
         val msg = parser.buildNotificationMessage(response)
         Assert.assertEquals(msg, "open index [index-1,index-2] has completed.")
@@ -126,7 +126,7 @@ class OpenRespParserTests : OpenSearchTestCase() {
     fun `test build message for failure`() {
         val request = OpenIndexRequest("index-1", "index-2")
         val response = OpenIndexResponse(true, true)
-        val parser = OpenRespParser(activeShardsObserver, request, indexNameExpressionResolver, clusterService)
+        val parser = OpenIndexRespParser(activeShardsObserver, request, indexNameExpressionResolver, clusterService)
 
         val msg = parser.buildNotificationMessage(response, Exception("index already exits error"))
         Assert.assertEquals(
@@ -138,7 +138,7 @@ class OpenRespParserTests : OpenSearchTestCase() {
     fun `test build message for timeout`() {
         val request = OpenIndexRequest("index-1", "index-2")
         val response = OpenIndexResponse(true, true)
-        val parser = OpenRespParser(activeShardsObserver, request, indexNameExpressionResolver, clusterService)
+        val parser = OpenIndexRespParser(activeShardsObserver, request, indexNameExpressionResolver, clusterService)
 
         val msg = parser.buildNotificationMessage(response, isTimeout = true)
         Assert.assertEquals(

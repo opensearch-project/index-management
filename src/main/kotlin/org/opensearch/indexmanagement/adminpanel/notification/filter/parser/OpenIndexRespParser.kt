@@ -18,7 +18,7 @@ import org.opensearch.indexmanagement.adminpanel.notification.filter.OperationRe
 import java.lang.Exception
 import java.util.function.Consumer
 
-class OpenRespParser(
+class OpenIndexRespParser(
     val activeShardsObserver: ActiveShardsObserver,
     val request: OpenIndexRequest,
     val indexNameExpressionResolver: IndexNameExpressionResolver,

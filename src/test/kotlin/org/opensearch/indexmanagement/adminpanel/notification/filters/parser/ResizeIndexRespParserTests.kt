@@ -18,11 +18,11 @@ import org.opensearch.action.admin.indices.shrink.ResizeType
 import org.opensearch.action.support.ActiveShardCount
 import org.opensearch.action.support.ActiveShardsObserver
 import org.opensearch.common.unit.TimeValue
-import org.opensearch.indexmanagement.adminpanel.notification.filter.parser.ResizeRespParser
+import org.opensearch.indexmanagement.adminpanel.notification.filter.parser.ResizeIndexRespParser
 import org.opensearch.test.OpenSearchTestCase
 import java.lang.Exception
 
-class ResizeRespParserTests : OpenSearchTestCase() {
+class ResizeIndexRespParserTests : OpenSearchTestCase() {
 
     private lateinit var activeShardsObserver: ActiveShardsObserver
 
@@ -35,7 +35,7 @@ class ResizeRespParserTests : OpenSearchTestCase() {
         val request = ResizeRequest("target", "source")
         request.resizeType = ResizeType.SHRINK
         val response = ResizeResponse(true, true, "target")
-        val parser = ResizeRespParser(activeShardsObserver, request)
+        val parser = ResizeIndexRespParser(activeShardsObserver, request)
 
         parser.parseAndSendNotification(response) { ret ->
             Assert.assertEquals(ret.v2(), "shrink from source to target has completed.")
@@ -49,7 +49,7 @@ class ResizeRespParserTests : OpenSearchTestCase() {
         val request = ResizeRequest("target", "source")
         request.resizeType = ResizeType.SHRINK
         val response = ResizeResponse(true, false, "target")
-        val parser = ResizeRespParser(activeShardsObserver, request)
+        val parser = ResizeIndexRespParser(activeShardsObserver, request)
 
         parser.parseAndSendNotification(response) { ret ->
             Assert.assertEquals(ret.v2(), "shrink from source to target has completed.")
@@ -64,7 +64,7 @@ class ResizeRespParserTests : OpenSearchTestCase() {
         request.resizeType = ResizeType.SHRINK
         request.targetIndexRequest.timeout(TimeValue.timeValueMinutes(10))
         val response = ResizeResponse(true, false, "target")
-        val parser = ResizeRespParser(activeShardsObserver, request)
+        val parser = ResizeIndexRespParser(activeShardsObserver, request)
 
         parser.parseAndSendNotification(response) { ret ->
             Assert.assertEquals(ret.v2(), "shrink from source to target has completed.")
@@ -85,7 +85,7 @@ class ResizeRespParserTests : OpenSearchTestCase() {
         request.resizeType = ResizeType.SHRINK
         request.targetIndexRequest.timeout(TimeValue.timeValueHours(4))
         val response = ResizeResponse(true, false, "target")
-        val parser = ResizeRespParser(activeShardsObserver, request)
+        val parser = ResizeIndexRespParser(activeShardsObserver, request)
 
         parser.parseAndSendNotification(response) { ret ->
             Assert.assertEquals(
@@ -102,7 +102,7 @@ class ResizeRespParserTests : OpenSearchTestCase() {
         val request = ResizeRequest("target", "source")
         request.resizeType = ResizeType.SHRINK
         val response = ResizeResponse(true, false, "target")
-        val parser = ResizeRespParser(activeShardsObserver, request)
+        val parser = ResizeIndexRespParser(activeShardsObserver, request)
 
         val msg = parser.buildNotificationMessage(response)
         Assert.assertEquals(msg, "shrink from source to target has completed.")
@@ -112,7 +112,7 @@ class ResizeRespParserTests : OpenSearchTestCase() {
         val request = ResizeRequest("target", "source")
         request.resizeType = ResizeType.CLONE
         val response = ResizeResponse(true, false, "target")
-        val parser = ResizeRespParser(activeShardsObserver, request)
+        val parser = ResizeIndexRespParser(activeShardsObserver, request)
 
         val msg = parser.buildNotificationMessage(response, Exception("index already exits error"))
         Assert.assertEquals(
@@ -125,7 +125,7 @@ class ResizeRespParserTests : OpenSearchTestCase() {
         val request = ResizeRequest("target", "source")
         request.resizeType = ResizeType.SPLIT
         val response = ResizeResponse(true, false, "target")
-        val parser = ResizeRespParser(activeShardsObserver, request)
+        val parser = ResizeIndexRespParser(activeShardsObserver, request)
 
         val msg = parser.buildNotificationMessage(response, isTimeout = true)
         Assert.assertEquals(

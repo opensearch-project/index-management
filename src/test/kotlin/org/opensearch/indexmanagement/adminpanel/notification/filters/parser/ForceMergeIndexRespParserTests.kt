@@ -17,13 +17,13 @@ import org.opensearch.core.xcontent.DeprecationHandler
 import org.opensearch.core.xcontent.NamedXContentRegistry
 import org.opensearch.index.Index
 import org.opensearch.index.reindex.ReindexAction
-import org.opensearch.indexmanagement.adminpanel.notification.filter.parser.ForceMergeRespParser
+import org.opensearch.indexmanagement.adminpanel.notification.filter.parser.ForceMergeIndexRespParser
 import org.opensearch.indexmanagement.snapshotmanagement.toJsonString
 import org.opensearch.tasks.Task
 import org.opensearch.tasks.TaskId
 import org.opensearch.test.OpenSearchTestCase
 
-class ForceMergeRespParserTests : OpenSearchTestCase() {
+class ForceMergeIndexRespParserTests : OpenSearchTestCase() {
 
     private lateinit var task: Task
 
@@ -40,7 +40,7 @@ class ForceMergeRespParserTests : OpenSearchTestCase() {
 
         val response = ForceMergeResponse.fromXContent(xContentParser)
         val request = ForceMergeRequest("test-index-1")
-        val parser = ForceMergeRespParser(request)
+        val parser = ForceMergeIndexRespParser(request)
 
         val msg = parser.buildNotificationMessage(response)
         Assert.assertEquals(
@@ -64,7 +64,7 @@ class ForceMergeRespParserTests : OpenSearchTestCase() {
 
         val response = ForceMergeResponse.fromXContent(xContentParser)
         val request = ForceMergeRequest("test-index-1")
-        val parser = ForceMergeRespParser(request)
+        val parser = ForceMergeIndexRespParser(request)
 
         val msg = parser.buildNotificationMessage(response)
         Assert.assertEquals(

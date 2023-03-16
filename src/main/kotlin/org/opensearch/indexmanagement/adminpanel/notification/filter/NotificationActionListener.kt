@@ -40,10 +40,10 @@ import org.opensearch.indexmanagement.adminpanel.notification.action.delete.Dele
 import org.opensearch.indexmanagement.adminpanel.notification.action.get.GetLRONConfigsAction
 import org.opensearch.indexmanagement.adminpanel.notification.action.get.GetLRONConfigsRequest
 import org.opensearch.indexmanagement.adminpanel.notification.action.get.GetLRONConfigsResponse
-import org.opensearch.indexmanagement.adminpanel.notification.filter.parser.ForceMergeRespParser
-import org.opensearch.indexmanagement.adminpanel.notification.filter.parser.OpenRespParser
+import org.opensearch.indexmanagement.adminpanel.notification.filter.parser.ForceMergeIndexRespParser
+import org.opensearch.indexmanagement.adminpanel.notification.filter.parser.OpenIndexRespParser
 import org.opensearch.indexmanagement.adminpanel.notification.filter.parser.ReindexRespParser
-import org.opensearch.indexmanagement.adminpanel.notification.filter.parser.ResizeRespParser
+import org.opensearch.indexmanagement.adminpanel.notification.filter.parser.ResizeIndexRespParser
 import org.opensearch.indexmanagement.adminpanel.notification.model.LRONConfig
 import org.opensearch.indexmanagement.adminpanel.notification.util.DEFAULT_LRON_CONFIG_SORT_FIELD
 import org.opensearch.indexmanagement.adminpanel.notification.util.getDocID
@@ -101,17 +101,17 @@ class NotificationActionListener<Request : ActionRequest, Response : ActionRespo
             }
 
             when (response) {
-                is ResizeResponse -> ResizeRespParser(
+                is ResizeResponse -> ResizeIndexRespParser(
                     activeShardsObserver, request as ResizeRequest
                 ).parseAndSendNotification(response, callback)
 
                 is BulkByScrollResponse -> ReindexRespParser(task).parseAndSendNotification(response, callback)
 
-                is OpenIndexResponse -> OpenRespParser(
+                is OpenIndexResponse -> OpenIndexRespParser(
                     activeShardsObserver, request as OpenIndexRequest, indexNameExpressionResolver, clusterService
                 ).parseAndSendNotification(response, callback)
 
-                is ForceMergeResponse -> ForceMergeRespParser(request as ForceMergeRequest).parseAndSendNotification(
+                is ForceMergeResponse -> ForceMergeIndexRespParser(request as ForceMergeRequest).parseAndSendNotification(
                     response, callback
                 )
 

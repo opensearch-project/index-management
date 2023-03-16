@@ -18,7 +18,7 @@ import java.lang.Exception
 import java.util.function.Consumer
 import org.opensearch.action.admin.indices.shrink.ResizeResponse as ResizeResponse
 
-class ResizeRespParser(
+class ResizeIndexRespParser(
     val activeShardsObserver: ActiveShardsObserver,
     val request: ResizeRequest
 ) : ResponseParser<ResizeResponse> {
