@@ -27,7 +27,7 @@ import org.opensearch.tasks.TaskId
 import java.io.IOException
 
 data class LRONConfig(
-    val enabled: Boolean = true,
+    val lronCondition: LRONCondition,
     val taskId: TaskId?,
     val actionName: String?,
     val channels: List<Channel>?,
@@ -36,11 +36,11 @@ data class LRONConfig(
 ) : ToXContentObject, Writeable {
 
     init {
-        if (enabled) {
+        require(validateActionName(actionName)) {
+            "Invalid action name. All supported actions: $supportedActions"
+        }
+        if (lronCondition.isEnabled()) {
             require(!channels.isNullOrEmpty()) { "Enabled LRONConfig must contain at least one channel" }
-            require(validateActionName(actionName)) {
-                "Invalid action name. All supported actions: $supportedActions"
-            }
         }
     }
 
@@ -51,7 +51,7 @@ data class LRONConfig(
     override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
         builder.startObject()
         if (params.paramAsBoolean(WITH_TYPE, true)) builder.startObject(LRON_CONFIG_FIELD)
-        builder.field(ENABLED_FIELD, enabled)
+        builder.field(LRONCondition.LRON_CONDITION_FIELD, lronCondition)
         if (null != taskId) builder.field(TASK_ID_FIELD, taskId.toString())
         if (null != actionName) builder.field(ACTION_NAME_FIELD, actionName)
         if (params.paramAsBoolean(WITH_USER, true)) builder.optionalUserField(USER_FIELD, user)
@@ -67,7 +67,7 @@ data class LRONConfig(
 
     @Throws(IOException::class)
     constructor(sin: StreamInput) : this(
-        enabled = sin.readBoolean(),
+        lronCondition = LRONCondition(sin),
         taskId = if (sin.readBoolean()) {
             TaskId(sin.readString())
         } else null,
@@ -81,7 +81,7 @@ data class LRONConfig(
 
     @Throws(IOException::class)
     override fun writeTo(out: StreamOutput) {
-        out.writeBoolean(enabled)
+        lronCondition.writeTo(out)
         if (null != taskId) {
             out.writeBoolean(true)
             out.writeString(taskId.toString())
@@ -97,7 +97,6 @@ data class LRONConfig(
 
     companion object {
         const val LRON_CONFIG_FIELD = "lron_config"
-        const val ENABLED_FIELD = "enabled"
         const val TASK_ID_FIELD = "task_id"
         const val ACTION_NAME_FIELD = "action_name"
         const val CHANNELS_FIELD = "channels"
@@ -105,7 +104,6 @@ data class LRONConfig(
         const val PRIORITY_FIELD = "priority"
         const val MUSTACHE = "mustache"
         const val CHANNEL_TITLE = "Long Running Operation Notification"
-        private const val DEFAULT_ENABLED = true
 
         /* to fit with ISM XContentParser.parseWithType function */
         @JvmStatic
@@ -124,7 +122,7 @@ data class LRONConfig(
         @Suppress("MaxLineLength", "ComplexMethod", "NestedBlockDepth")
         @Throws(IOException::class)
         fun parse(xcp: XContentParser): LRONConfig {
-            var enabled: Boolean = DEFAULT_ENABLED
+            var lronCondition = LRONCondition()
             var taskId: TaskId? = null
             var actionName: String? = null
             var channels: List<Channel>? = null
@@ -137,7 +135,7 @@ data class LRONConfig(
                 xcp.nextToken()
 
                 when (fieldName) {
-                    ENABLED_FIELD -> enabled = xcp.booleanValue()
+                    LRONCondition.LRON_CONDITION_FIELD -> lronCondition = LRONCondition.parse(xcp)
                     TASK_ID_FIELD ->
                         taskId =
                             if (xcp.currentToken() == XContentParser.Token.VALUE_NULL) null else TaskId(xcp.text())
@@ -160,7 +158,7 @@ data class LRONConfig(
             }
 
             return LRONConfig(
-                enabled = enabled,
+                lronCondition = lronCondition,
                 taskId = taskId,
                 actionName = actionName,
                 channels = channels,

@@ -11,6 +11,7 @@ import org.opensearch.commons.authuser.User
 import org.opensearch.core.xcontent.ToXContent
 import org.opensearch.indexmanagement.IndexManagementPlugin
 import org.opensearch.indexmanagement.adminpanel.notification.action.get.GetLRONConfigsResponse
+import org.opensearch.indexmanagement.adminpanel.notification.model.LRONCondition
 import org.opensearch.indexmanagement.adminpanel.notification.model.LRONConfig
 import org.opensearch.indexmanagement.adminpanel.notification.util.getDocID
 import org.opensearch.indexmanagement.adminpanel.notification.util.getPriority
@@ -25,7 +26,7 @@ import org.opensearch.test.OpenSearchTestCase.randomLong
 import org.opensearch.test.rest.OpenSearchRestTestCase
 
 fun randomLRONConfig(
-    enabled: Boolean = randomBoolean(),
+    lronCondition: LRONCondition = randomLRONCondition(),
     taskId: TaskId? = randomTaskId(),
     actionName: String? = randomActionName(),
     channels: List<Channel>? = List(OpenSearchRestTestCase.randomIntBetween(1, 10)) { randomChannel() },
@@ -33,13 +34,20 @@ fun randomLRONConfig(
 ): LRONConfig {
     val priority = getPriority(taskId, actionName)
     return LRONConfig(
-        enabled = enabled,
+        lronCondition = lronCondition,
         taskId = taskId,
         actionName = actionName,
         channels = channels,
         user = user,
         priority = priority
     )
+}
+
+fun randomLRONCondition(
+    success: Boolean = randomBoolean(),
+    failure: Boolean = randomBoolean()
+): LRONCondition {
+    return LRONCondition(success, failure)
 }
 
 fun randomTaskId(

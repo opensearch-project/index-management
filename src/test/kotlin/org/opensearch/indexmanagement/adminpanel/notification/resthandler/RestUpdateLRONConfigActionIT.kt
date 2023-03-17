@@ -9,6 +9,7 @@ import org.junit.Assert
 import org.opensearch.client.ResponseException
 import org.opensearch.indexmanagement.adminpanel.notification.getResourceURI
 import org.opensearch.indexmanagement.adminpanel.notification.model.LRONConfig
+import org.opensearch.indexmanagement.adminpanel.notification.randomLRONCondition
 import org.opensearch.indexmanagement.adminpanel.notification.randomLRONConfig
 import org.opensearch.indexmanagement.adminpanel.notification.util.getDocID
 import org.opensearch.indexmanagement.indexstatemanagement.randomChannel
@@ -23,7 +24,7 @@ class RestUpdateLRONConfigActionIT : LRONConfigRestTestCase() {
         createLRONConfig(lronConfig)
 
         val newLRONConfig = LRONConfig(
-            enabled = true,
+            lronCondition = randomLRONCondition(),
             taskId = lronConfig.taskId,
             actionName = lronConfig.actionName,
             channels = List(10) { randomChannel() },

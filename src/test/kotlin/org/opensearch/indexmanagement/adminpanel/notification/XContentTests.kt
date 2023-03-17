@@ -15,6 +15,7 @@ import org.opensearch.core.xcontent.NamedXContentRegistry
 import org.opensearch.core.xcontent.ToXContent
 import org.opensearch.core.xcontent.XContentParser
 import org.opensearch.indexmanagement.adminpanel.notification.action.get.GetLRONConfigsResponse
+import org.opensearch.indexmanagement.adminpanel.notification.model.LRONCondition
 import org.opensearch.indexmanagement.adminpanel.notification.model.LRONConfig
 import org.opensearch.indexmanagement.adminpanel.notification.util.PRIORITY_TASK_ID
 import org.opensearch.indexmanagement.adminpanel.notification.util.getDocID
@@ -107,7 +108,7 @@ class XContentTests : OpenSearchTestCase() {
         @JvmStatic
         fun setup() {
             sampleLRONConfig = LRONConfig(
-                enabled = true,
+                lronCondition = LRONCondition(success = true, failure = false),
                 taskId = TaskId("node_123", 456L),
                 actionName = "indices:admin/resize",
                 channels = listOf(Channel("channel123"), Channel("channel456")),
@@ -128,7 +129,10 @@ class XContentTests : OpenSearchTestCase() {
               "_primary_term": 123,
               "_seq_no": 456,
               "lron_config": {
-                "enabled": true,
+                "lron_condition": {
+                    "success": true,
+                    "failure": false
+                },
                 "task_id": "node_123:456",
                 "action_name": "indices:admin/resize",
                 "channels": [

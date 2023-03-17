@@ -60,6 +60,17 @@
         "enabled": {
           "type": "boolean"
         },
+        "lron_condition": {
+          "type": "nested",
+          "properties": {
+            "success": {
+              "type": "boolean"
+            },
+            "failure": {
+              "type": "boolean"
+            }
+          }
+        },
         "priority": {
           "type": "integer"
         }

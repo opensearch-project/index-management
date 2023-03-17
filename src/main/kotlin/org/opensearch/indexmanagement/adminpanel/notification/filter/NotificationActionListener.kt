@@ -156,7 +156,7 @@ class NotificationActionListener<Request : ActionRequest, Response : ActionRespo
                             val eventSource = EventSource(title, taskId.toString(), SeverityType.INFO)
                             launch {
                                 val config = it.lronConfig
-                                if (config.enabled == true) {
+                                if (config.lronCondition.isEnabled()) {
                                     it.lronConfig.channels?.forEach {
                                         try {
                                             it.sendNotification(
