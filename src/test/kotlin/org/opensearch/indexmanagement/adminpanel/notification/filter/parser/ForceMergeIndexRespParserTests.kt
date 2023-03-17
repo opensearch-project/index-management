@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.indexmanagement.adminpanel.notification.filters.parser
+package org.opensearch.indexmanagement.adminpanel.notification.filter.parser
 
 import org.junit.Assert
 import org.junit.Before
@@ -17,7 +17,6 @@ import org.opensearch.core.xcontent.DeprecationHandler
 import org.opensearch.core.xcontent.NamedXContentRegistry
 import org.opensearch.index.Index
 import org.opensearch.index.reindex.ReindexAction
-import org.opensearch.indexmanagement.adminpanel.notification.filter.parser.ForceMergeIndexRespParser
 import org.opensearch.indexmanagement.snapshotmanagement.toJsonString
 import org.opensearch.tasks.Task
 import org.opensearch.tasks.TaskId

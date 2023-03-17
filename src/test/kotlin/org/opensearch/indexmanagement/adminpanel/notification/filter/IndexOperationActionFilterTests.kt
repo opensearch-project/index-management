@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.indexmanagement.adminpanel.notification.filters
+package org.opensearch.indexmanagement.adminpanel.notification.filter
 
 import org.junit.Assert
 import org.junit.Before
@@ -21,8 +21,6 @@ import org.opensearch.cluster.service.ClusterService
 import org.opensearch.core.xcontent.NamedXContentRegistry
 import org.opensearch.index.reindex.ReindexAction
 import org.opensearch.index.reindex.ReindexRequest
-import org.opensearch.indexmanagement.adminpanel.notification.filter.IndexOperationActionFilter
-import org.opensearch.indexmanagement.adminpanel.notification.filter.NotificationActionListener
 import org.opensearch.tasks.Task
 import org.opensearch.tasks.TaskId
 import org.opensearch.threadpool.ThreadPool

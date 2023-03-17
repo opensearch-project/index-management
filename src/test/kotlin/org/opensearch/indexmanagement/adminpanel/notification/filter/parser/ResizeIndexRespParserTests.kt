@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.indexmanagement.adminpanel.notification.filters.parser
+package org.opensearch.indexmanagement.adminpanel.notification.filter.parser
 
 import com.nhaarman.mockitokotlin2.any
 import com.nhaarman.mockitokotlin2.eq
@@ -18,7 +18,6 @@ import org.opensearch.action.admin.indices.shrink.ResizeType
 import org.opensearch.action.support.ActiveShardCount
 import org.opensearch.action.support.ActiveShardsObserver
 import org.opensearch.common.unit.TimeValue
-import org.opensearch.indexmanagement.adminpanel.notification.filter.parser.ResizeIndexRespParser
 import org.opensearch.test.OpenSearchTestCase
 import java.lang.Exception
 

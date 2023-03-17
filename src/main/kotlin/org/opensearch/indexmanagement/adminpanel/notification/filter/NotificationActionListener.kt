@@ -205,7 +205,7 @@ class NotificationActionListener<Request : ActionRequest, Response : ActionRespo
                 ),
                 object : ActionListener<DeleteResponse> {
                     override fun onResponse(response: DeleteResponse) {
-                        if (response.result == DocWriteResponse.Result.DELETED || response.result == DocWriteResponse.Result.NOT_FOUND) {
+                        if (response.result == DocWriteResponse.Result.DELETED) {
                             logger.info(
                                 "One time configuration for task:{} has been removed", taskId
                             )
@@ -223,7 +223,7 @@ class NotificationActionListener<Request : ActionRequest, Response : ActionRespo
     fun getQualifiedChannels(
         lronConfigsResponse: GetLRONConfigsResponse,
         result: OperationResult
-    ): MutableList<LRONConfigResponse> {
+    ): Set<LRONConfigResponse> {
         val runtimeConfig =
             lronConfigsResponse.lronConfigResponses.filter { it.lronConfig.taskId != null }.firstOrNull()
         val defaultConfig =
@@ -238,9 +238,10 @@ class NotificationActionListener<Request : ActionRequest, Response : ActionRespo
         if (runtimeConfig != null) channels.add(runtimeConfig)
         if (defaultConfig != null) channels.add(defaultConfig)
 
-        // fitler by conditions
-
-        return channels
+        return channels.filter { ch ->
+            val condtion = ch.lronConfig.lronCondition
+            condtion.success && result == OperationResult.COMPLETE || condtion.failure && result != OperationResult.COMPLETE
+        }.toSet()
     }
 
     fun escapeQueryString(query: String): String {

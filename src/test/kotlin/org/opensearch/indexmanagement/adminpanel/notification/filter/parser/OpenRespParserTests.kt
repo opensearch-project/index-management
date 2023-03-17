@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.indexmanagement.adminpanel.notification.filters.parser
+package org.opensearch.indexmanagement.adminpanel.notification.filter.parser
 
 import com.nhaarman.mockitokotlin2.any
 import com.nhaarman.mockitokotlin2.doReturn
@@ -21,7 +21,6 @@ import org.opensearch.cluster.ClusterState
 import org.opensearch.cluster.metadata.IndexNameExpressionResolver
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.unit.TimeValue
-import org.opensearch.indexmanagement.adminpanel.notification.filter.parser.OpenIndexRespParser
 import org.opensearch.test.OpenSearchTestCase
 import java.lang.Exception
 

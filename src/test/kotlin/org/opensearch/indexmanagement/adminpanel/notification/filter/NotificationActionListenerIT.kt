@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.indexmanagement.adminpanel.notification.filters
+package org.opensearch.indexmanagement.adminpanel.notification.filter
 
 import com.sun.net.httpserver.HttpServer
 import org.apache.hc.core5.http.ContentType
