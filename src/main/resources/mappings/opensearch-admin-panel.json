@@ -57,9 +57,6 @@
             }
           }
         },
-        "enabled": {
-          "type": "boolean"
-        },
         "lron_condition": {
           "type": "nested",
           "properties": {
