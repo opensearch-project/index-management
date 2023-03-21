@@ -213,6 +213,7 @@ class NotificationActionListenerIT : IndexManagementRestTestCase() {
             )
         }
     }
+
     @Suppress("UNCHECKED_CAST")
     fun `test no notification for close`() {
         createIndex("test-index-create", Settings.EMPTY)
@@ -224,6 +225,60 @@ class NotificationActionListenerIT : IndexManagementRestTestCase() {
                 0,
                 (
                     client.makeRequest("GET", "$notificationIndex/_search?q=msg:close")
+                        .asMap() as Map<String, Map<String, Map<String, Any>>>
+                    )["hits"]!!["total"]!!["value"]
+            )
+        }
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    fun `test no notification policy is configured`() {
+        insertSampleData("source-index", 10)
+        closeIndex("source-index")
+
+        // remove notification policy
+        client.makeRequest("DELETE", "_plugins/_im/lron/LRON:default")
+
+        val response = client.makeRequest(
+            "POST", "source-index/_open"
+        )
+
+        Assert.assertTrue(response.restStatus() == RestStatus.OK)
+
+        // should not have notification send out
+        waitFor {
+            assertEquals(
+                "Notification index does not have a doc",
+                0,
+                (
+                    client.makeRequest("GET", "$notificationIndex/_search?q=msg:open")
+                        .asMap() as Map<String, Map<String, Map<String, Any>>>
+                    )["hits"]!!["total"]!!["value"]
+            )
+        }
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    fun `test notification policy system index is not exists`() {
+        insertSampleData("source-index", 10)
+        closeIndex("source-index")
+
+        // delete system index
+        client.makeRequest("DELETE", ".opensearch-admin-panel")
+
+        val response = client.makeRequest(
+            "POST", "source-index/_open"
+        )
+
+        Assert.assertTrue(response.restStatus() == RestStatus.OK)
+
+        // should not have notification send out
+        waitFor {
+            assertEquals(
+                "Notification index does not have a doc",
+                0,
+                (
+                    client.makeRequest("GET", "$notificationIndex/_search?q=msg:open")
                         .asMap() as Map<String, Map<String, Map<String, Any>>>
                     )["hits"]!!["total"]!!["value"]
             )
