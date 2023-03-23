@@ -5,10 +5,10 @@
 
 package org.opensearch.indexmanagement
 
-import org.opensearch.indexmanagement.adminpanel.notification.action.delete.DeleteLRONConfigAction
-import org.opensearch.indexmanagement.adminpanel.notification.action.get.GetLRONConfigAction
-import org.opensearch.indexmanagement.adminpanel.notification.action.get.GetLRONConfigsAction
-import org.opensearch.indexmanagement.adminpanel.notification.action.index.IndexLRONConfigAction
+import org.opensearch.indexmanagement.controlcenter.notification.action.delete.DeleteLRONConfigAction
+import org.opensearch.indexmanagement.controlcenter.notification.action.get.GetLRONConfigAction
+import org.opensearch.indexmanagement.controlcenter.notification.action.get.GetLRONConfigsAction
+import org.opensearch.indexmanagement.controlcenter.notification.action.index.IndexLRONConfigAction
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.addpolicy.AddPolicyAction
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.deletepolicy.DeletePolicyAction
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.explain.ExplainAction
