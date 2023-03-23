@@ -18,6 +18,7 @@ import org.opensearch.indexmanagement.IndexManagementRestTestCase
 import org.opensearch.indexmanagement.makeRequest
 import org.opensearch.indexmanagement.waitFor
 import org.opensearch.rest.RestStatus
+import java.net.BindException
 import java.net.InetAddress
 import java.net.InetSocketAddress
 import java.time.Instant
@@ -32,7 +33,13 @@ class NotificationActionListenerIT : IndexManagementRestTestCase() {
 
     @Before
     fun startMockWebHook() {
-        server = HttpServer.create(InetSocketAddress(InetAddress.getLoopbackAddress(), 0), 0)
+        server = try {
+            HttpServer.create(InetSocketAddress(InetAddress.getLocalHost(), 0), 0)
+        } catch (e: BindException) {
+            HttpServer.create(InetSocketAddress(InetAddress.getLoopbackAddress(), 0), 0)
+        }
+        logger.info("starting mock server at {}", server.address.hostString)
+
         server.createContext("/notification") {
             val msg = String(it.requestBody.readAllBytes())
             logger.info(msg)
