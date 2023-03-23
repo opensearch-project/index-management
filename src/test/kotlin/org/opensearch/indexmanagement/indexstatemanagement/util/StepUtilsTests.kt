@@ -129,9 +129,9 @@ class StepUtilsTests : OpenSearchTestCase() {
         val clusterSettings = ClusterSettings(settings.build(), ClusterSettings.BUILT_IN_CLUSTER_SETTINGS)
         val remainingSpace = freeBytes - ((2 * indexSize) + threshold)
         if (remainingSpace > 0) {
-            assertEquals(remainingSpace, getNodeFreeMemoryAfterShrink(nodeStats, indexSize, clusterSettings))
+            assertEquals(remainingSpace, getNodeFreeDiskSpaceAfterShrink(nodeStats, indexSize, clusterSettings))
         } else {
-            assertEquals(-1L, getNodeFreeMemoryAfterShrink(nodeStats, indexSize, clusterSettings))
+            assertEquals(-1L, getNodeFreeDiskSpaceAfterShrink(nodeStats, indexSize, clusterSettings))
         }
     }
 }

@@ -52,9 +52,11 @@ suspend fun releaseShrinkLock(
 
 suspend fun deleteShrinkLock(
     shrinkActionProperties: ShrinkActionProperties,
-    lockService: LockService
+    lockService: LockService,
+    logger: Logger
 ): Boolean {
     val lockID = getShrinkLockID(shrinkActionProperties.nodeName)
+    logger.info("Deleting lock: $lockID")
     return lockService.suspendUntil { deleteLock(lockID, it) }
 }
 
@@ -163,7 +165,7 @@ fun getDiskSettings(clusterSettings: ClusterSettings): Settings {
  * Returns the amount of memory in the node which will be free below the high watermark level after adding 2*indexSizeInBytes, or -1
  * if adding 2*indexSizeInBytes goes over the high watermark threshold, or if nodeStats does not contain OsStats.
 */
-fun getNodeFreeMemoryAfterShrink(node: NodeStats, indexSizeInBytes: Long, clusterSettings: ClusterSettings): Long {
+fun getNodeFreeDiskSpaceAfterShrink(node: NodeStats, indexSizeInBytes: Long, clusterSettings: ClusterSettings): Long {
     val fsStats = node.fs
     if (fsStats != null) {
         val diskSpaceLeftInNode = fsStats.total.free.bytes

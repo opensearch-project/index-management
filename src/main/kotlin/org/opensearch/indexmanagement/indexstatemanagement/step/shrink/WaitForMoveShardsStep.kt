@@ -26,7 +26,7 @@ class WaitForMoveShardsStep(private val action: ShrinkAction) : ShrinkStep(name,
     override suspend fun wrappedExecute(context: StepContext): WaitForMoveShardsStep {
         val indexName = context.metadata.index
         // If the returned shrinkActionProperties are null, then the status has been set to failed, just return
-        val localShrinkActionProperties = updateAndGetShrinkActionProperties(context) ?: return this
+        val localShrinkActionProperties = checkShrinkActionPropertiesAndRenewLock(context) ?: return this
 
         val shardStats = getShardStats(indexName, context.client) ?: return this
 
@@ -87,7 +87,7 @@ class WaitForMoveShardsStep(private val action: ShrinkAction) : ShrinkStep(name,
         val response: IndicesStatsResponse = client.admin().indices().suspendUntil { stats(indexStatsRequests, it) }
         val shardStats = response.shards
         if (shardStats == null) {
-            fail(AttemptMoveShardsStep.FAILURE_MESSAGE, "Failed to move shards in shrink action as shard stats were null.")
+            setStepFailed(AttemptMoveShardsStep.FAILURE_MESSAGE, "Failed to move shards in shrink action as shard stats were null.")
             return null
         }
         return shardStats
