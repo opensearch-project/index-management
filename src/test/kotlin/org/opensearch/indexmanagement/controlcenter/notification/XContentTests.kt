@@ -117,17 +117,11 @@ class XContentTests : OpenSearchTestCase() {
             )
             sampleLRONConfigResponse = LRONConfigResponse(
                 id = getDocID(sampleLRONConfig.taskId, sampleLRONConfig.actionName),
-                version = 789L,
-                primaryTerm = 123L,
-                seqNo = 456L,
                 lronConfig = sampleLRONConfig
             )
             sampleExpectedJson = """
             {
               "_id": "LRON:node_123:456",
-              "_version": 789,
-              "_primary_term": 123,
-              "_seq_no": 456,
               "lron_config": {
                 "lron_condition": {
                     "success": true,

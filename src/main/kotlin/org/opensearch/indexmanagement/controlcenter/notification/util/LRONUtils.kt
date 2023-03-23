@@ -91,9 +91,6 @@ fun getLRONConfigAndParse(
                 actionListener.onResponse(
                     LRONConfigResponse(
                         id = response.id,
-                        version = response.version,
-                        primaryTerm = response.primaryTerm,
-                        seqNo = response.seqNo,
                         lronConfig = lronConfig
                     )
                 )

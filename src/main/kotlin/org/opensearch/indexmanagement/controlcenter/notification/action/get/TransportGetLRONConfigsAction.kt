@@ -91,7 +91,6 @@ class TransportGetLRONConfigsAction @Inject constructor(
                 .sort(sortBuilder)
                 .from(params.from)
                 .size(params.size)
-                .seqNoAndPrimaryTerm(true)
 
             val searchRequest = SearchRequest()
                 .source(searchSourceBuilder)
@@ -107,10 +106,7 @@ class TransportGetLRONConfigsAction @Inject constructor(
                                 .createParser(xContentRegistry, LoggingDeprecationHandler.INSTANCE, it.sourceAsString)
                             LRONConfigResponse(
                                 id = it.id,
-                                version = it.version,
-                                primaryTerm = it.primaryTerm,
-                                seqNo = it.seqNo,
-                                lronConfig = xcp.parseWithType(it.id, it.seqNo, it.primaryTerm, LRONConfig.Companion::parse)
+                                lronConfig = xcp.parseWithType(id = it.id, parse = LRONConfig.Companion::parse)
                             )
                         }
                         actionListener.onResponse(GetLRONConfigsResponse(lronConfigResponses, totalNumber.toInt(), response.isTimedOut))

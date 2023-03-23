@@ -151,9 +151,6 @@ class TransportIndexLRONConfigAction @Inject constructor(
                             actionListener.onResponse(
                                 LRONConfigResponse(
                                     response.id,
-                                    response.version,
-                                    response.primaryTerm,
-                                    response.seqNo,
                                     lronConfig
                                 )
                             )

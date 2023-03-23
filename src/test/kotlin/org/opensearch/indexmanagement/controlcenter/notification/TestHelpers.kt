@@ -62,17 +62,11 @@ fun randomActionName(): String {
 }
 
 fun randomLRONConfigResponse(
-    version: Long = randomLong(),
-    primaryTerm: Long = randomLong(),
-    seqNo: Long = randomLong(),
     lronConfig: LRONConfig = randomLRONConfig()
 ): LRONConfigResponse {
     val id = getDocID(lronConfig.taskId, lronConfig.actionName)
     return LRONConfigResponse(
         id = id,
-        version = version,
-        primaryTerm = primaryTerm,
-        seqNo = seqNo,
         lronConfig = lronConfig
     )
 }
