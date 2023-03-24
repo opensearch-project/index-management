@@ -11,10 +11,12 @@ import org.apache.hc.core5.http.io.entity.StringEntity
 import org.junit.After
 import org.junit.Assert
 import org.junit.Before
+import org.opensearch.action.admin.indices.open.OpenIndexAction
 import org.opensearch.client.RestClient
 import org.opensearch.common.settings.Settings
 import org.opensearch.indexmanagement.IndexManagementPlugin
 import org.opensearch.indexmanagement.IndexManagementRestTestCase
+import org.opensearch.indexmanagement.controlcenter.notification.util.supportedActions
 import org.opensearch.indexmanagement.makeRequest
 import org.opensearch.indexmanagement.waitFor
 import org.opensearch.rest.RestStatus
@@ -86,23 +88,26 @@ class NotificationActionListenerIT : IndexManagementRestTestCase() {
             )
         )
 
-        client.makeRequest(
-            "POST", "_plugins/_im/lron",
-            StringEntity(
-                """
-                {
-                    "lron_config": {
-                        "channels": [
-                            {
-                                "id": "$notificationConfId"
-                            }
-                        ]
+        supportedActions.forEach { action ->
+            client.makeRequest(
+                "POST", "_plugins/_im/lron",
+                StringEntity(
+                    """
+                    {
+                        "lron_config": {
+                            "action_name": "$action",
+                            "channels": [
+                                {
+                                    "id": "$notificationConfId"
+                                }
+                            ]
+                        }
                     }
-                }
-                """.trimIndent(),
-                ContentType.APPLICATION_JSON
+                    """.trimIndent(),
+                    ContentType.APPLICATION_JSON
+                )
             )
-        )
+        }
     }
 
     @Suppress("UNCHECKED_CAST")
@@ -243,7 +248,7 @@ class NotificationActionListenerIT : IndexManagementRestTestCase() {
         closeIndex("source-index")
 
         // remove notification policy
-        client.makeRequest("DELETE", "_plugins/_im/lron/LRON:default")
+        client.makeRequest("DELETE", "_plugins/_im/lron/LRON:${OpenIndexAction.NAME.replace("/", "%2F")}")
 
         val response = client.makeRequest(
             "POST", "source-index/_open"

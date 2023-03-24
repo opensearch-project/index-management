@@ -94,11 +94,8 @@ class NotificationActionListener<Request : ActionRequest, Response : ActionRespo
 
     fun parseAndSendNotification(response: ActionResponse) {
         try {
-            val callback = object : Consumer<Tuple<OperationResult, String>> {
-                override fun accept(result: Tuple<OperationResult, String>) {
-                    notify(action, result.v1(), result.v2())
-                }
-            }
+            val callback =
+                Consumer<Tuple<OperationResult, String>> { result -> notify(action, result.v1(), result.v2()) }
 
             when (response) {
                 is ResizeResponse -> ResizeIndexRespParser(
@@ -130,8 +127,8 @@ class NotificationActionListener<Request : ActionRequest, Response : ActionRespo
         defaultMessage: String
     ) {
         val taskId = TaskId(clusterService.localNode().id, task.id)
-        val ids = arrayOf<String>(getDocID(), getDocID(taskId = taskId), getDocID(actionName = action))
-        val queryString = "_id:(${ids.map { escapeQueryString(it) }.joinToString(" OR ")})"
+        val ids = arrayOf(getDocID(taskId = taskId), getDocID(actionName = action))
+        val queryString = "_id:(${ids.joinToString(" OR ") { escapeQueryString(it) }})"
         val searchParam = SearchParams(
             DEFAULT_PAGINATION_SIZE, 0, DEFAULT_LRON_CONFIG_SORT_FIELD, SORT_ORDER_DESC, queryString
         )
@@ -225,22 +222,20 @@ class NotificationActionListener<Request : ActionRequest, Response : ActionRespo
         result: OperationResult
     ): Set<LRONConfigResponse> {
         val runtimeConfig =
-            lronConfigsResponse.lronConfigResponses.filter { it.lronConfig.taskId != null }.firstOrNull()
+            lronConfigsResponse.lronConfigResponses.firstOrNull { it.lronConfig.taskId != null }
         val defaultConfig =
             // operation default
-            lronConfigsResponse.lronConfigResponses.filter { it.lronConfig.actionName != null && it.lronConfig.taskId == null }
-                .firstOrNull()
+            lronConfigsResponse.lronConfigResponses.firstOrNull { it.lronConfig.actionName != null && it.lronConfig.taskId == null }
                 // global default
-                ?: lronConfigsResponse.lronConfigResponses.filter { it.lronConfig.actionName == null && it.lronConfig.taskId == null }
-                    .firstOrNull()
+                ?: lronConfigsResponse.lronConfigResponses.firstOrNull { it.lronConfig.actionName == null && it.lronConfig.taskId == null }
 
         val channels = ArrayList<LRONConfigResponse>()
         if (runtimeConfig != null) channels.add(runtimeConfig)
         if (defaultConfig != null) channels.add(defaultConfig)
 
         return channels.filter { ch ->
-            val condtion = ch.lronConfig.lronCondition
-            condtion.success && result == OperationResult.COMPLETE || condtion.failure && result != OperationResult.COMPLETE
+            val condition = ch.lronConfig.lronCondition
+            condition.success && result == OperationResult.COMPLETE || condition.failure && result != OperationResult.COMPLETE
         }.toSet()
     }
 
