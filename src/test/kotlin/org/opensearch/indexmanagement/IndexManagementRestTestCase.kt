@@ -178,7 +178,7 @@ abstract class IndexManagementRestTestCase : ODFERestTestCase() {
                 // We hit a version of ES that doesn't serialize DeleteDataStreamAction.Request#wildcardExpressionsOriginallySpecified field or
                 // that doesn't support data streams so it's safe to ignore
                 val statusCode = e.response.statusLine.statusCode
-                if (!listOf(404, 405, 500).contains(statusCode)) {
+                if (!setOf(404, 405, 500).contains(statusCode)) {
                     throw e
                 }
             }
