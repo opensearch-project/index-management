@@ -18,7 +18,6 @@ import org.opensearch.client.RequestOptions
 import org.opensearch.client.WarningsHandler
 import org.opensearch.client.ResponseException
 import org.opensearch.common.Strings
-import org.opensearch.common.collect.Set
 import org.opensearch.common.io.PathUtils
 import org.opensearch.common.settings.Settings
 import org.opensearch.common.xcontent.DeprecationHandler
@@ -179,7 +178,7 @@ abstract class IndexManagementRestTestCase : ODFERestTestCase() {
                 // We hit a version of ES that doesn't serialize DeleteDataStreamAction.Request#wildcardExpressionsOriginallySpecified field or
                 // that doesn't support data streams so it's safe to ignore
                 val statusCode = e.response.statusLine.statusCode
-                if (!Set.of(404, 405, 500).contains(statusCode)) {
+                if (!setOf(404, 405, 500).contains(statusCode)) {
                     throw e
                 }
             }
