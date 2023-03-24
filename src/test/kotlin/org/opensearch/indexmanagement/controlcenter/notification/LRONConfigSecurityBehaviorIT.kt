@@ -6,7 +6,6 @@
 package org.opensearch.indexmanagement.controlcenter.notification
 
 import org.junit.After
-import org.junit.Assert
 import org.junit.Before
 import org.opensearch.client.Request
 import org.opensearch.client.RestClient
@@ -17,7 +16,6 @@ import org.opensearch.indexmanagement.GET_LRON_CONFIGS
 import org.opensearch.indexmanagement.INDEX_LRON_CONFIG
 import org.opensearch.indexmanagement.IndexManagementPlugin
 import org.opensearch.indexmanagement.SecurityRestTestCase
-import org.opensearch.indexmanagement.controlcenter.notification.model.LRONConfig
 import org.opensearch.rest.RestStatus
 
 @Suppress("UNCHECKED_CAST")
@@ -41,7 +39,7 @@ class LRONConfigSecurityBehaviorIT : SecurityRestTestCase() {
         )
 
         // In this test suite case john is a "super-user" which has all relevant privileges
-        createUser(name = superUser, pwd = password, backendRoles = listOf(HELPDESK))
+        createUser(name = superUser, pwd = password)
         createAndAssignRole(HELPDESK_ROLE, helpdeskClusterPermissions, superUser)
         superUserClient =
             SecureRestClientBuilder(clusterHosts.toTypedArray(), isHttps(), superUser, password).setSocketTimeout(
@@ -49,7 +47,7 @@ class LRONConfigSecurityBehaviorIT : SecurityRestTestCase() {
             ).setConnectionRequestTimeout(180000)
                 .build()
 
-        createUser(name = testUser, pwd = password, backendRoles = emptyList())
+        createUser(name = testUser, pwd = password)
         testUserClient =
             SecureRestClientBuilder(clusterHosts.toTypedArray(), isHttps(), testUser, password).setSocketTimeout(
                 60000
@@ -83,21 +81,8 @@ class LRONConfigSecurityBehaviorIT : SecurityRestTestCase() {
         try {
             createAndAssignRole(indexConfigRole, listOf(INDEX_LRON_CONFIG), testUser)
             executeRequest(request, RestStatus.OK, testUserClient!!)
-            request.setJsonEntity(randomLRONConfig().toJsonString())
-
-            setFilterByBackendRole(true)
-            executeRequest(request, RestStatus.FORBIDDEN, testUserClient!!)
-            /* we can also use create method to call put api to update user info*/
-            createUserWithCustomRole(
-                user = testUser,
-                password = password,
-                role = indexConfigRole,
-                backendRoles = listOf(HELPDESK)
-            )
-            executeRequest(request, RestStatus.OK, testUserClient!!)
         } finally {
             deleteRole(indexConfigRole)
-            setFilterByBackendRole(false)
         }
     }
 
@@ -118,23 +103,8 @@ class LRONConfigSecurityBehaviorIT : SecurityRestTestCase() {
         try {
             createAndAssignRole(indexConfigRole, listOf(INDEX_LRON_CONFIG), testUser)
             executeRequest(updateRequest, RestStatus.OK, testUserClient!!)
-
-            /* current doc was updated by testUser who doesn't have backend role */
-            /* we reset it with superUser before test filterByEnabled */
-            executeRequest(updateRequest, RestStatus.OK, superUserClient!!)
-            setFilterByBackendRole(true)
-            executeRequest(updateRequest, RestStatus.FORBIDDEN, testUserClient!!)
-            /* we can also use create method to call put api to update user info*/
-            createUserWithCustomRole(
-                user = testUser,
-                password = password,
-                role = indexConfigRole,
-                backendRoles = listOf(HELPDESK)
-            )
-            executeRequest(updateRequest, RestStatus.OK, testUserClient!!)
         } finally {
             deleteRole(indexConfigRole)
-            setFilterByBackendRole(false)
         }
     }
 
@@ -155,21 +125,8 @@ class LRONConfigSecurityBehaviorIT : SecurityRestTestCase() {
         try {
             createAndAssignRole(deleteConfigRole, listOf(DELETE_LRON_CONFIG), testUser)
             executeRequest(deleteRequest, RestStatus.OK, testUserClient!!)
-
-            setFilterByBackendRole(true)
-            executeRequest(createRequest, RestStatus.OK, superUserClient!!)
-            executeRequest(deleteRequest, RestStatus.FORBIDDEN, testUserClient!!)
-            /* we can also use create method to call put api to update user info*/
-            createUserWithCustomRole(
-                user = testUser,
-                password = password,
-                role = deleteConfigRole,
-                backendRoles = listOf(HELPDESK)
-            )
-            executeRequest(deleteRequest, RestStatus.OK, testUserClient!!)
         } finally {
             deleteRole(deleteConfigRole)
-            setFilterByBackendRole(false)
         }
     }
 
@@ -189,27 +146,15 @@ class LRONConfigSecurityBehaviorIT : SecurityRestTestCase() {
         try {
             createAndAssignRole(getConfigRole, listOf(GET_LRON_CONFIG), testUser)
             executeRequest(getRequest, RestStatus.OK, testUserClient!!)
-
-            setFilterByBackendRole(true)
-            executeRequest(getRequest, RestStatus.FORBIDDEN, testUserClient!!)
-            /* we can also use create method to call put api to update user info*/
-            createUserWithCustomRole(
-                user = testUser,
-                password = password,
-                role = getConfigRole,
-                backendRoles = listOf(HELPDESK)
-            )
-            executeRequest(getRequest, RestStatus.OK, testUserClient!!)
         } finally {
             deleteRole(getConfigRole)
-            setFilterByBackendRole(false)
         }
     }
 
     fun `test get LRONConfigs with security`() {
         /* super user */
         val createRequest = Request("POST", IndexManagementPlugin.LRON_BASE_URI)
-        val lronConfigResponses = randomList(1, 15) {
+        randomList(1, 15) {
             createRequest.setJsonEntity(randomLRONConfig().toJsonString())
             executeRequest(createRequest, RestStatus.OK, superUserClient!!).asMap()
         }
@@ -221,59 +166,11 @@ class LRONConfigSecurityBehaviorIT : SecurityRestTestCase() {
         executeRequest(getRequest, RestStatus.FORBIDDEN, testUserClient!!)
 
         val getConfigsRole = "get_lron_configs"
-        val anotherUser = "another"
-        val anotherBackendRole = "backendRoleForTest"
-        var anotherUserClient: RestClient? = null
         try {
             createAndAssignRole(getConfigsRole, listOf(GET_LRON_CONFIGS), testUser)
             executeRequest(getRequest, RestStatus.OK, testUserClient!!)
-
-            setFilterByBackendRole(true)
-            executeRequest(getRequest, RestStatus.FORBIDDEN, testUserClient!!)
-
-            /* we add other backend role to test the filterByBackendRole feature */
-            createUserWithCustomRole(
-                user = anotherUser,
-                password = password,
-                role = HELPDESK_ROLE,
-                backendRoles = listOf(anotherBackendRole)
-            )
-            anotherUserClient =
-                SecureRestClientBuilder(clusterHosts.toTypedArray(), isHttps(), anotherUser, password).setSocketTimeout(
-                    60000
-                ).setConnectionRequestTimeout(180000)
-                    .build()
-            val anotherLRONConfigResponses = randomList(1, 15) {
-                createRequest.setJsonEntity(randomLRONConfig().toJsonString())
-                executeRequest(createRequest, RestStatus.OK, anotherUserClient!!).asMap()
-            }
-            /* we can also use create method to call put api to update user info*/
-            createUserWithCustomRole(
-                user = testUser,
-                password = password,
-                role = getConfigsRole,
-                backendRoles = listOf(HELPDESK)
-            )
-
-            val testUserResponses = executeRequest(getRequest, RestStatus.OK, testUserClient!!)
-                .asMap()["lron_configs"] as List<Map<String, Any?>>
-            for (lronConfigResponse in lronConfigResponses) {
-                val resLRONConfigResponse = testUserResponses.find { lronConfigResponse["_id"] as String == it["_id"] as String }
-                assertEquals(
-                    "different lronConfigResponse",
-                    lronConfigResponse[LRONConfig.LRON_CONFIG_FIELD],
-                    resLRONConfigResponse!![LRONConfig.LRON_CONFIG_FIELD]
-                )
-            }
-            for (lronConfigResponse in anotherLRONConfigResponses) {
-                val resLRONConfigResponse = testUserResponses.find { lronConfigResponse["_id"] as String == it["_id"] as String }
-                Assert.assertNull("shouldn't get this LRONConfig", resLRONConfigResponse)
-            }
         } finally {
             deleteRole(getConfigsRole)
-            setFilterByBackendRole(false)
-            deleteUser(anotherUser)
-            anotherUserClient?.close()
         }
     }
 

@@ -16,9 +16,7 @@ import org.opensearch.action.support.HandledTransportAction
 import org.opensearch.action.support.WriteRequest
 import org.opensearch.action.support.master.AcknowledgedResponse
 import org.opensearch.client.node.NodeClient
-import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.inject.Inject
-import org.opensearch.common.settings.Settings
 import org.opensearch.common.xcontent.XContentFactory
 import org.opensearch.commons.ConfigConstants
 import org.opensearch.commons.authuser.User
@@ -29,7 +27,6 @@ import org.opensearch.indexmanagement.controlcenter.notification.LRONConfigRespo
 import org.opensearch.indexmanagement.controlcenter.notification.util.getDocID
 import org.opensearch.indexmanagement.controlcenter.notification.util.getLRONConfigAndParse
 import org.opensearch.indexmanagement.controlcenter.notification.util.getPriority
-import org.opensearch.indexmanagement.settings.IndexManagementSettings
 import org.opensearch.indexmanagement.util.SecurityUtils
 import org.opensearch.rest.RestStatus
 import org.opensearch.tasks.Task
@@ -41,20 +38,11 @@ class TransportIndexLRONConfigAction @Inject constructor(
     transportService: TransportService,
     actionFilters: ActionFilters,
     val controlCenterIndices: ControlCenterIndices,
-    val clusterService: ClusterService,
-    val settings: Settings,
     val xContentRegistry: NamedXContentRegistry,
 ) : HandledTransportAction<IndexLRONConfigRequest, LRONConfigResponse>(
     IndexLRONConfigAction.NAME, transportService, actionFilters, ::IndexLRONConfigRequest
 ) {
-    @Volatile private var filterByEnabled = IndexManagementSettings.FILTER_BY_BACKEND_ROLES.get(settings)
     private val log = LogManager.getLogger(javaClass)
-
-    init {
-        clusterService.clusterSettings.addSettingsUpdateConsumer(IndexManagementSettings.FILTER_BY_BACKEND_ROLES) {
-            filterByEnabled = it
-        }
-    }
 
     override fun doExecute(task: Task, request: IndexLRONConfigRequest, listener: ActionListener<LRONConfigResponse>) {
         IndexLRONConfigHandler(client, listener, request).start()
@@ -74,9 +62,6 @@ class TransportIndexLRONConfigAction @Inject constructor(
                 )}"
             )
             client.threadPool().threadContext.stashContext().use {
-                if (!SecurityUtils.validateUserConfiguration(user, filterByEnabled, actionListener)) {
-                    return
-                }
                 controlCenterIndices.checkAndUpdateControlCenterIndex(ActionListener.wrap(::onCreateMappingsResponse, actionListener::onFailure))
             }
             return
@@ -95,26 +80,14 @@ class TransportIndexLRONConfigAction @Inject constructor(
 
         private fun validate() {
             if (request.isUpdate) {
-                /* We need to verify whether the user has permissions for the resource (backend roles) */
+                /* We need to verify whether the resource exists */
                 getLRONConfigAndParse(
                     client,
                     docId,
                     xContentRegistry,
                     object : ActionListener<LRONConfigResponse> {
                         override fun onResponse(response: LRONConfigResponse) {
-                            if (!SecurityUtils.userHasPermissionForResource(
-                                    user,
-                                    response.lronConfig.user,
-                                    filterByEnabled,
-                                    "lronConfig",
-                                    docId,
-                                    actionListener
-                                )
-                            ) {
-                                return
-                            } else {
-                                putLRONConfig()
-                            }
+                            putLRONConfig()
                         }
 
                         override fun onFailure(e: java.lang.Exception) {

@@ -12,9 +12,7 @@ import org.opensearch.action.search.SearchResponse
 import org.opensearch.action.support.ActionFilters
 import org.opensearch.action.support.HandledTransportAction
 import org.opensearch.client.node.NodeClient
-import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.inject.Inject
-import org.opensearch.common.settings.Settings
 import org.opensearch.common.xcontent.LoggingDeprecationHandler
 import org.opensearch.common.xcontent.XContentFactory
 import org.opensearch.common.xcontent.XContentType
@@ -26,7 +24,6 @@ import org.opensearch.indexmanagement.IndexManagementPlugin
 import org.opensearch.indexmanagement.controlcenter.notification.LRONConfigResponse
 import org.opensearch.indexmanagement.controlcenter.notification.model.LRONConfig
 import org.opensearch.indexmanagement.opensearchapi.parseWithType
-import org.opensearch.indexmanagement.settings.IndexManagementSettings
 import org.opensearch.indexmanagement.util.SecurityUtils
 import org.opensearch.search.builder.SearchSourceBuilder
 import org.opensearch.tasks.Task
@@ -36,20 +33,11 @@ class TransportGetLRONConfigsAction @Inject constructor(
     val client: NodeClient,
     transportService: TransportService,
     actionFilters: ActionFilters,
-    val clusterService: ClusterService,
-    val settings: Settings,
     val xContentRegistry: NamedXContentRegistry,
 ) : HandledTransportAction<GetLRONConfigsRequest, GetLRONConfigsResponse>(
     GetLRONConfigsAction.NAME, transportService, actionFilters, ::GetLRONConfigsRequest
 ) {
-    @Volatile private var filterByEnabled = IndexManagementSettings.FILTER_BY_BACKEND_ROLES.get(settings)
     private val log = LogManager.getLogger(javaClass)
-
-    init {
-        clusterService.clusterSettings.addSettingsUpdateConsumer(IndexManagementSettings.FILTER_BY_BACKEND_ROLES) {
-            filterByEnabled = it
-        }
-    }
 
     override fun doExecute(task: Task, request: GetLRONConfigsRequest, listener: ActionListener<GetLRONConfigsResponse>) {
         GetLRONConfigsHandler(client, listener, request).start()
@@ -68,9 +56,6 @@ class TransportGetLRONConfigsAction @Inject constructor(
                 )}"
             )
             client.threadPool().threadContext.stashContext().use {
-                if (!SecurityUtils.validateUserConfiguration(user, filterByEnabled, actionListener)) {
-                    return
-                }
                 doSearch()
             }
             return
@@ -82,9 +67,6 @@ class TransportGetLRONConfigsAction @Inject constructor(
             val queryBuilder = QueryBuilders.boolQuery()
                 .must(QueryBuilders.existsQuery("lron_config"))
                 .must(QueryBuilders.queryStringQuery(params.queryString))
-
-            // Add user filter if enabled
-            SecurityUtils.addUserFilter(user, queryBuilder, filterByEnabled, "lron_config.user")
 
             val searchSourceBuilder = SearchSourceBuilder()
                 .query(queryBuilder)
