@@ -13,10 +13,8 @@ import org.opensearch.client.node.NodeClient
 import org.opensearch.common.inject.Inject
 import org.opensearch.core.xcontent.NamedXContentRegistry
 import org.opensearch.commons.ConfigConstants
-import org.opensearch.commons.authuser.User
 import org.opensearch.indexmanagement.controlcenter.notification.LRONConfigResponse
 import org.opensearch.indexmanagement.controlcenter.notification.util.getLRONConfigAndParse
-import org.opensearch.indexmanagement.util.SecurityUtils
 import org.opensearch.tasks.Task
 import org.opensearch.transport.TransportService
 
@@ -37,8 +35,7 @@ class TransportGetLRONConfigAction @Inject constructor(
     inner class GetLRONConfigHandler(
         private val client: NodeClient,
         private val actionListener: ActionListener<LRONConfigResponse>,
-        private val request: GetLRONConfigRequest,
-        private val user: User? = SecurityUtils.buildUser(client.threadPool().threadContext)
+        private val request: GetLRONConfigRequest
     ) {
         fun start() {
             val threadContext = client.threadPool().threadContext

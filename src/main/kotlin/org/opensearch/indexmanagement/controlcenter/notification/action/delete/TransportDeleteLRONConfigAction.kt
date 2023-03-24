@@ -15,12 +15,10 @@ import org.opensearch.action.support.WriteRequest
 import org.opensearch.client.node.NodeClient
 import org.opensearch.common.inject.Inject
 import org.opensearch.commons.ConfigConstants
-import org.opensearch.commons.authuser.User
 import org.opensearch.core.xcontent.NamedXContentRegistry
 import org.opensearch.indexmanagement.IndexManagementPlugin
 import org.opensearch.indexmanagement.controlcenter.notification.LRONConfigResponse
 import org.opensearch.indexmanagement.controlcenter.notification.util.getLRONConfigAndParse
-import org.opensearch.indexmanagement.util.SecurityUtils
 import org.opensearch.tasks.Task
 import org.opensearch.transport.TransportService
 import java.lang.Exception
@@ -43,7 +41,6 @@ class TransportDeleteLRONConfigAction @Inject constructor(
         private val client: NodeClient,
         private val actionListener: ActionListener<DeleteResponse>,
         private val request: DeleteLRONConfigRequest,
-        private val user: User? = SecurityUtils.buildUser(client.threadPool().threadContext),
         private val docId: String = request.docId
     ) {
         fun start() {

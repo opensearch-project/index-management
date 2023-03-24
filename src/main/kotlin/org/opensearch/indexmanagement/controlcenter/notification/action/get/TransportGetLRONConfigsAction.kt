@@ -17,14 +17,12 @@ import org.opensearch.common.xcontent.LoggingDeprecationHandler
 import org.opensearch.common.xcontent.XContentFactory
 import org.opensearch.common.xcontent.XContentType
 import org.opensearch.commons.ConfigConstants
-import org.opensearch.commons.authuser.User
 import org.opensearch.core.xcontent.NamedXContentRegistry
 import org.opensearch.index.query.QueryBuilders
 import org.opensearch.indexmanagement.IndexManagementPlugin
 import org.opensearch.indexmanagement.controlcenter.notification.LRONConfigResponse
 import org.opensearch.indexmanagement.controlcenter.notification.model.LRONConfig
 import org.opensearch.indexmanagement.opensearchapi.parseWithType
-import org.opensearch.indexmanagement.util.SecurityUtils
 import org.opensearch.search.builder.SearchSourceBuilder
 import org.opensearch.tasks.Task
 import org.opensearch.transport.TransportService
@@ -46,8 +44,7 @@ class TransportGetLRONConfigsAction @Inject constructor(
     inner class GetLRONConfigsHandler(
         private val client: NodeClient,
         private val actionListener: ActionListener<GetLRONConfigsResponse>,
-        private val request: GetLRONConfigsRequest,
-        private val user: User? = SecurityUtils.buildUser(client.threadPool().threadContext)
+        private val request: GetLRONConfigsRequest
     ) {
         fun start() {
             log.debug(
