@@ -40,7 +40,7 @@ class RestGetLRONConfigActionIT : LRONConfigRestTestCase() {
             client().makeRequest("GET", getResourceURI(lronConfig.taskId, lronConfig.actionName))
             fail("Expected 404 NOT_FOUND")
         } catch (e: ResponseException) {
-            logger.info(e.response.asMap())
+            logger.debug(e.response.asMap())
             assertEquals("Unexpected status", RestStatus.NOT_FOUND, e.response.restStatus())
         }
     }

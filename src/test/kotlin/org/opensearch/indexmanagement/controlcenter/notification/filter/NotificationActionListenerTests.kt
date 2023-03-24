@@ -67,7 +67,11 @@ class NotificationActionListenerTests : OpenSearchTestCase() {
 
     fun `test success and failed conditions`() {
         val lronConfigWithTaskId = randomLRONConfig(lronCondition = LRONCondition(true, false))
-        val lronConfigDefault = randomLRONConfig(lronCondition = LRONCondition(true, true), taskId = null, actionName = null)
+        val lronConfigDefault = randomLRONConfig(
+            lronCondition = LRONCondition(true, true),
+            taskId = null,
+            actionName = lronConfigWithTaskId.actionName
+        )
         val lronConfigResponseWithTaskId = randomLRONConfigResponse(lronConfig = lronConfigWithTaskId)
         val lronConfigResponseDefault = randomLRONConfigResponse(lronConfig = lronConfigDefault)
         val responses = GetLRONConfigsResponse(

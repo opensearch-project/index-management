@@ -16,9 +16,8 @@ import org.opensearch.common.xcontent.XContentParserUtils.ensureExpectedToken
 import org.opensearch.commons.authuser.User
 import org.opensearch.index.seqno.SequenceNumbers
 import org.opensearch.indexmanagement.controlcenter.notification.util.WITH_PRIORITY
-import org.opensearch.indexmanagement.controlcenter.notification.util.supportedActions
-import org.opensearch.indexmanagement.controlcenter.notification.util.validateActionName
 import org.opensearch.indexmanagement.common.model.notification.Channel
+import org.opensearch.indexmanagement.controlcenter.notification.util.validateTaskIdAndActionName
 import org.opensearch.indexmanagement.indexstatemanagement.util.WITH_TYPE
 import org.opensearch.indexmanagement.indexstatemanagement.util.WITH_USER
 import org.opensearch.indexmanagement.opensearchapi.optionalUserField
@@ -36,9 +35,7 @@ data class LRONConfig(
 ) : ToXContentObject, Writeable {
 
     init {
-        require(validateActionName(actionName)) {
-            "Invalid action name. All supported actions: $supportedActions"
-        }
+        validateTaskIdAndActionName(taskId, actionName)
         if (lronCondition.isEnabled()) {
             require(!channels.isNullOrEmpty()) { "Enabled LRONConfig must contain at least one channel" }
         }

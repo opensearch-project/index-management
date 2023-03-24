@@ -23,13 +23,11 @@ import org.opensearch.indexmanagement.opensearchapi.parseFromGetResponse
 import org.opensearch.rest.RestStatus
 import org.opensearch.tasks.TaskId
 
-const val LRON_DEFAULT_ID = "default"
 const val LRON_DOC_ID_PREFIX = "LRON:"
 
 const val WITH_PRIORITY = "with_priority"
-const val PRIORITY_TASK_ID = 300
-const val PRIORITY_DEFAULT_ACTION = 200
-const val PRIORITY_DEFAULT = 100
+const val PRIORITY_TASK_ID = 200
+const val PRIORITY_DEFAULT_ACTION = 100
 const val DEFAULT_LRON_CONFIG_SORT_FIELD = "lron_config.priority"
 
 val supportedActions = setOf(
@@ -39,23 +37,31 @@ val supportedActions = setOf(
     OpenIndexAction.NAME
 )
 
-fun validateActionName(actionName: String?): Boolean {
-    if (null != actionName && !supportedActions.contains(actionName)) {
-        return false
+fun validateTaskIdAndActionName(taskId: TaskId?, actionName: String?) {
+    require(null != actionName || null != taskId) { "LRONConfig must contain taskID or actionName" }
+    validateActionName(actionName)
+}
+
+fun validateActionName(actionName: String?) {
+    if (null == actionName) {
+        return
     }
-    return true
+    require(supportedActions.contains(actionName)) {
+        "Invalid action name. All supported actions: $supportedActions"
+    }
 }
 
 fun getPriority(taskId: TaskId? = null, actionName: String? = null): Int {
+    validateTaskIdAndActionName(taskId, actionName)
     return when {
         null != taskId -> PRIORITY_TASK_ID
-        null != actionName -> PRIORITY_DEFAULT_ACTION
-        else -> PRIORITY_DEFAULT
+        else -> PRIORITY_DEFAULT_ACTION
     }
 }
 
 fun getDocID(taskId: TaskId? = null, actionName: String? = null): String {
-    val id = taskId?.toString() ?: actionName ?: LRON_DEFAULT_ID
+    validateTaskIdAndActionName(taskId, actionName)
+    val id = taskId?.toString() ?: actionName
     return LRON_DOC_ID_PREFIX + id
 }
 
