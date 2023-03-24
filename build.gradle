@@ -573,6 +573,11 @@ integTest {
     if (System.getProperty("tests.clustername") != null) {
         exclude 'org/opensearch/indexmanagement/indexstatemanagement/MetadataRegressionIT.class'
     }
+
+    // remove from running with remote cluster
+    if (System.getProperty("tests.rest.cluster") != null) {
+        exclude 'org/opensearch/indexmanagement/controlcenter/notification/filter/NotificationActionListenerIT.class'
+    }
 }
 
 task integTestRemote(type: RestIntegTestTask) {
