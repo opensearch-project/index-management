@@ -132,7 +132,7 @@ class ShrinkAction(
         const val TARGET_INDEX_TEMPLATE_FIELD = "target_index_name_template"
         const val ALIASES_FIELD = "aliases"
         const val FORCE_UNSAFE_FIELD = "force_unsafe"
-        const val LOCK_RESOURCE_TYPE = "shrink"
+        const val LOCK_RESOURCE_TYPE = ".opendistro-ism-config-shrink"
         const val LOCK_RESOURCE_NAME = "node_name"
         fun getSecurityFailureMessage(failure: String) = "Shrink action failed because of missing permissions: $failure"
     }
