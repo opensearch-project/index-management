@@ -17,22 +17,11 @@ import org.opensearch.indexmanagement.indexstatemanagement.util.WITH_TYPE
 import org.opensearch.indexmanagement.indexstatemanagement.util.WITH_USER
 import java.io.IOException
 
-class GetLRONConfigsResponse : ActionResponse, ToXContentObject {
-
-    val lronConfigResponses: List<LRONConfigResponse>
-    val totalNumber: Int
+class GetLRONConfigsResponse(
+    val lronConfigResponses: List<LRONConfigResponse>,
+    val totalNumber: Int,
     val timedOut: Boolean
-
-    constructor(
-        lronConfigResponses: List<LRONConfigResponse>,
-        totalNumber: Int,
-        timedOut: Boolean
-    ) : super() {
-        this.lronConfigResponses = lronConfigResponses
-        this.totalNumber = totalNumber
-        this.timedOut = timedOut
-    }
-
+) : ActionResponse(), ToXContentObject {
     @Throws(IOException::class)
     constructor(sin: StreamInput) : this(
         lronConfigResponses = sin.readList(::LRONConfigResponse),

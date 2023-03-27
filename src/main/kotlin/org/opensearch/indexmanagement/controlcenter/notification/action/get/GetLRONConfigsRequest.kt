@@ -12,16 +12,9 @@ import org.opensearch.common.io.stream.StreamOutput
 import org.opensearch.indexmanagement.common.model.rest.SearchParams
 import java.io.IOException
 
-class GetLRONConfigsRequest : ActionRequest {
-
+class GetLRONConfigsRequest(
     val searchParams: SearchParams
-
-    constructor(
-        searchParams: SearchParams
-    ) : super() {
-        this.searchParams = searchParams
-    }
-
+) : ActionRequest() {
     @Throws(IOException::class)
     constructor(sin: StreamInput) : this(
         searchParams = SearchParams(sin)

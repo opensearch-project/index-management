@@ -12,18 +12,10 @@ import org.opensearch.common.io.stream.StreamOutput
 import org.opensearch.indexmanagement.controlcenter.notification.model.LRONConfig
 import java.io.IOException
 
-class IndexLRONConfigRequest : ActionRequest {
-    val lronConfig: LRONConfig
+class IndexLRONConfigRequest(
+    val lronConfig: LRONConfig,
     val isUpdate: Boolean
-
-    constructor(
-        lronConfig: LRONConfig,
-        isUpdate: Boolean = false
-    ) : super() {
-        this.lronConfig = lronConfig
-        this.isUpdate = isUpdate
-    }
-
+) : ActionRequest() {
     @Throws(IOException::class)
     constructor(sin: StreamInput) : this(
         lronConfig = LRONConfig(sin),

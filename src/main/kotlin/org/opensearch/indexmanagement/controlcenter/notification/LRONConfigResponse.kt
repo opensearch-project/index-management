@@ -18,18 +18,10 @@ import org.opensearch.indexmanagement.indexstatemanagement.util.WITH_USER
 import org.opensearch.indexmanagement.util._ID
 import java.io.IOException
 
-class LRONConfigResponse : ActionResponse, ToXContentObject {
-    val id: String
+class LRONConfigResponse(
+    val id: String,
     val lronConfig: LRONConfig
-
-    constructor(
-        id: String,
-        lronConfig: LRONConfig
-    ) : super() {
-        this.id = id
-        this.lronConfig = lronConfig
-    }
-
+) : ActionResponse(), ToXContentObject {
     @Throws(IOException::class)
     constructor(sin: StreamInput) : this(
         id = sin.readString(),

@@ -11,15 +11,9 @@ import org.opensearch.common.io.stream.StreamInput
 import org.opensearch.common.io.stream.StreamOutput
 import java.io.IOException
 
-class GetLRONConfigRequest : ActionRequest {
+class GetLRONConfigRequest(
     val docId: String
-
-    constructor(
-        docId: String
-    ) : super() {
-        this.docId = docId
-    }
-
+) : ActionRequest() {
     @Throws(IOException::class)
     constructor(sin: StreamInput) : this(
         docId = sin.readString()
