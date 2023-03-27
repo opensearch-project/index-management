@@ -7,8 +7,10 @@ package org.opensearch.indexmanagement.controlcenter.notification.action.get
 
 import org.opensearch.action.ActionRequest
 import org.opensearch.action.ActionRequestValidationException
+import org.opensearch.action.ValidateActions
 import org.opensearch.common.io.stream.StreamInput
 import org.opensearch.common.io.stream.StreamOutput
+import org.opensearch.indexmanagement.controlcenter.notification.util.LRON_DOC_ID_PREFIX
 import java.io.IOException
 
 class GetLRONConfigRequest(
@@ -21,6 +23,12 @@ class GetLRONConfigRequest(
 
     override fun validate(): ActionRequestValidationException? {
         var validationException: ActionRequestValidationException? = null
+        if (!(docId.startsWith(LRON_DOC_ID_PREFIX))) {
+            validationException = ValidateActions.addValidationError(
+                "Invalid LRONConfig ID",
+                validationException
+            )
+        }
         return validationException
     }
 

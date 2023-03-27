@@ -23,8 +23,7 @@ class IndexLRONConfigRequest(
     )
 
     override fun validate(): ActionRequestValidationException? {
-        var validationException: ActionRequestValidationException? = null
-        return validationException
+        return null
     }
 
     @Throws(IOException::class)
