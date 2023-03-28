@@ -6,9 +6,8 @@
 package org.opensearch.indexmanagement.controlcenter.notification.action.get
 
 import org.opensearch.action.ActionType
-import org.opensearch.indexmanagement.controlcenter.notification.LRONConfigResponse
 
-class GetLRONConfigAction private constructor() : ActionType<LRONConfigResponse>(NAME, ::LRONConfigResponse) {
+class GetLRONConfigAction private constructor() : ActionType<GetLRONConfigResponse>(NAME, ::GetLRONConfigResponse) {
     companion object {
         val INSTANCE = GetLRONConfigAction()
         const val NAME = "cluster:admin/opensearch/controlcenter/lron/get"

@@ -8,8 +8,6 @@ import org.opensearch.client.node.NodeClient
 import org.opensearch.indexmanagement.IndexManagementPlugin
 import org.opensearch.indexmanagement.controlcenter.notification.action.get.GetLRONConfigAction
 import org.opensearch.indexmanagement.controlcenter.notification.action.get.GetLRONConfigRequest
-import org.opensearch.indexmanagement.controlcenter.notification.action.get.GetLRONConfigsAction
-import org.opensearch.indexmanagement.controlcenter.notification.action.get.GetLRONConfigsRequest
 import org.opensearch.indexmanagement.controlcenter.notification.util.DEFAULT_LRON_CONFIG_SORT_FIELD
 import org.opensearch.rest.BaseRestHandler
 import org.opensearch.rest.BaseRestHandler.RestChannelConsumer
@@ -34,16 +32,11 @@ class RestGetLRONConfigAction : BaseRestHandler() {
     @Throws(IOException::class)
     override fun prepareRequest(request: RestRequest, client: NodeClient): RestChannelConsumer {
         val docId = request.param("id")
-        val searchParams = request.getSearchParams(DEFAULT_LRON_CONFIG_SORT_FIELD)
+        val searchParams = if (null == docId) request.getSearchParams(DEFAULT_LRON_CONFIG_SORT_FIELD) else null
+        val getLRONConfigRequest = GetLRONConfigRequest(docId, searchParams)
 
         return RestChannelConsumer { channel ->
-            if (null != docId) {
-                val getLRONConfigRequest = GetLRONConfigRequest(docId)
-                client.execute(GetLRONConfigAction.INSTANCE, getLRONConfigRequest, RestToXContentListener(channel))
-            } else {
-                val getLRONConfigsRequest = GetLRONConfigsRequest(searchParams)
-                client.execute(GetLRONConfigsAction.INSTANCE, getLRONConfigsRequest, RestToXContentListener(channel))
-            }
+            client.execute(GetLRONConfigAction.INSTANCE, getLRONConfigRequest, RestToXContentListener(channel))
         }
     }
 }

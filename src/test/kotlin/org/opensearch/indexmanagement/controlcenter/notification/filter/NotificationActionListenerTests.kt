@@ -15,7 +15,7 @@ import org.opensearch.action.support.ActiveShardsObserver
 import org.opensearch.client.Client
 import org.opensearch.cluster.metadata.IndexNameExpressionResolver
 import org.opensearch.cluster.service.ClusterService
-import org.opensearch.indexmanagement.controlcenter.notification.action.get.GetLRONConfigsResponse
+import org.opensearch.indexmanagement.controlcenter.notification.action.get.GetLRONConfigResponse
 import org.opensearch.indexmanagement.controlcenter.notification.model.LRONCondition
 import org.opensearch.indexmanagement.controlcenter.notification.randomLRONConfig
 import org.opensearch.indexmanagement.controlcenter.notification.randomLRONConfigResponse
@@ -57,8 +57,8 @@ class NotificationActionListenerTests : OpenSearchTestCase() {
     fun `test all conditions are disabled`() {
         val lronConfig = randomLRONConfig(lronCondition = LRONCondition(false, false))
         val lronConfigResponse = randomLRONConfigResponse(lronConfig = lronConfig)
-        val responses = GetLRONConfigsResponse(
-            lronConfigResponses = listOf(lronConfigResponse), 1, false
+        val responses = GetLRONConfigResponse(
+            lronConfigResponses = listOf(lronConfigResponse), 1
         )
 
         Assert.assertTrue(listener.getQualifiedChannels(responses, OperationResult.COMPLETE).isEmpty())
@@ -74,8 +74,8 @@ class NotificationActionListenerTests : OpenSearchTestCase() {
         )
         val lronConfigResponseWithTaskId = randomLRONConfigResponse(lronConfig = lronConfigWithTaskId)
         val lronConfigResponseDefault = randomLRONConfigResponse(lronConfig = lronConfigDefault)
-        val responses = GetLRONConfigsResponse(
-            lronConfigResponses = listOf(lronConfigResponseWithTaskId, lronConfigResponseDefault), 2, false
+        val responses = GetLRONConfigResponse(
+            lronConfigResponses = listOf(lronConfigResponseWithTaskId, lronConfigResponseDefault), 2
         )
 
         Assert.assertEquals(2, listener.getQualifiedChannels(responses, OperationResult.COMPLETE).size)

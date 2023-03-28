@@ -10,13 +10,13 @@ import org.opensearch.common.xcontent.XContentFactory
 import org.opensearch.commons.authuser.User
 import org.opensearch.core.xcontent.ToXContent
 import org.opensearch.indexmanagement.IndexManagementPlugin
-import org.opensearch.indexmanagement.controlcenter.notification.action.get.GetLRONConfigsResponse
 import org.opensearch.indexmanagement.controlcenter.notification.model.LRONCondition
 import org.opensearch.indexmanagement.controlcenter.notification.model.LRONConfig
 import org.opensearch.indexmanagement.controlcenter.notification.util.getDocID
 import org.opensearch.indexmanagement.controlcenter.notification.util.getPriority
 import org.opensearch.indexmanagement.controlcenter.notification.util.supportedActions
 import org.opensearch.indexmanagement.common.model.notification.Channel
+import org.opensearch.indexmanagement.controlcenter.notification.action.get.GetLRONConfigResponse
 import org.opensearch.indexmanagement.indexstatemanagement.randomChannel
 import org.opensearch.indexmanagement.opensearchapi.string
 import org.opensearch.indexmanagement.randomUser
@@ -71,13 +71,12 @@ fun randomLRONConfigResponse(
     )
 }
 
-fun randomLRONConfigsResponse(
+fun randomGetLRONConfigResponse(
     size: Int = 10
-): GetLRONConfigsResponse {
-    return GetLRONConfigsResponse(
+): GetLRONConfigResponse {
+    return GetLRONConfigResponse(
         lronConfigResponses = List(size) { randomLRONConfigResponse() },
-        size,
-        randomBoolean()
+        size
     )
 }
 

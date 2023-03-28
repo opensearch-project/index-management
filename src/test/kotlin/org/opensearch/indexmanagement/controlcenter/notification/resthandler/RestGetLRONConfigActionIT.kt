@@ -18,12 +18,13 @@ import org.opensearch.rest.RestStatus
 
 @Suppress("UNCHECKED_CAST")
 class RestGetLRONConfigActionIT : LRONConfigRestTestCase() {
-    fun `test get LRONConfig`() {
+    fun `test get LRONConfig with id`() {
         val lronConfig = randomLRONConfig()
         createLRONConfig(lronConfig)
         val response = client().makeRequest("GET", getResourceURI(lronConfig.taskId, lronConfig.actionName))
         assertEquals("get LRONConfig failed", RestStatus.OK, response.restStatus())
-        val responseBody = response.asMap()
+        val lronConfigs = response.asMap()["lron_configs"] as List<Map<String, Any?>>
+        val responseBody = lronConfigs[0]
         val gotId = responseBody["_id"] as String
         Assert.assertEquals("not same doc id", getDocID(lronConfig.taskId, lronConfig.actionName), gotId)
         val lronConfigMap = lronConfig.convertToMap()[LRONConfig.LRON_CONFIG_FIELD] as Map<String, Any>

@@ -34,9 +34,7 @@ import org.opensearch.indexmanagement.controlcenter.notification.ControlCenterIn
 import org.opensearch.indexmanagement.controlcenter.notification.action.delete.DeleteLRONConfigAction
 import org.opensearch.indexmanagement.controlcenter.notification.action.delete.TransportDeleteLRONConfigAction
 import org.opensearch.indexmanagement.controlcenter.notification.action.get.GetLRONConfigAction
-import org.opensearch.indexmanagement.controlcenter.notification.action.get.GetLRONConfigsAction
 import org.opensearch.indexmanagement.controlcenter.notification.action.get.TransportGetLRONConfigAction
-import org.opensearch.indexmanagement.controlcenter.notification.action.get.TransportGetLRONConfigsAction
 import org.opensearch.indexmanagement.controlcenter.notification.action.index.IndexLRONConfigAction
 import org.opensearch.indexmanagement.controlcenter.notification.action.index.TransportIndexLRONConfigAction
 import org.opensearch.indexmanagement.controlcenter.notification.resthandler.RestDeleteLRONConfigAction
@@ -606,7 +604,6 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
             ActionPlugin.ActionHandler(SMActions.GET_SM_POLICIES_ACTION_TYPE, TransportGetSMPoliciesAction::class.java),
             ActionPlugin.ActionHandler(IndexLRONConfigAction.INSTANCE, TransportIndexLRONConfigAction::class.java),
             ActionPlugin.ActionHandler(GetLRONConfigAction.INSTANCE, TransportGetLRONConfigAction::class.java),
-            ActionPlugin.ActionHandler(GetLRONConfigsAction.INSTANCE, TransportGetLRONConfigsAction::class.java),
             ActionPlugin.ActionHandler(DeleteLRONConfigAction.INSTANCE, TransportDeleteLRONConfigAction::class.java)
         )
     }

@@ -14,12 +14,12 @@ import org.opensearch.common.xcontent.XContentType
 import org.opensearch.core.xcontent.NamedXContentRegistry
 import org.opensearch.core.xcontent.ToXContent
 import org.opensearch.core.xcontent.XContentParser
-import org.opensearch.indexmanagement.controlcenter.notification.action.get.GetLRONConfigsResponse
 import org.opensearch.indexmanagement.controlcenter.notification.model.LRONCondition
 import org.opensearch.indexmanagement.controlcenter.notification.model.LRONConfig
 import org.opensearch.indexmanagement.controlcenter.notification.util.PRIORITY_TASK_ID
 import org.opensearch.indexmanagement.controlcenter.notification.util.getDocID
 import org.opensearch.indexmanagement.common.model.notification.Channel
+import org.opensearch.indexmanagement.controlcenter.notification.action.get.GetLRONConfigResponse
 import org.opensearch.indexmanagement.opensearchapi.parseWithType
 import org.opensearch.indexmanagement.opensearchapi.string
 import org.opensearch.indexmanagement.randomUser
@@ -51,11 +51,10 @@ class XContentTests : OpenSearchTestCase() {
         assertEquals("lronConfigResponse toXcontent failed.", sampleExpectedJson, responseString)
     }
 
-    fun `test getLRONConfigsResponse`() {
-        val response = GetLRONConfigsResponse(
+    fun `test getLRONConfigResponse`() {
+        val response = GetLRONConfigResponse(
             listOf(sampleLRONConfigResponse, sampleLRONConfigResponse),
-            totalNumber = 2,
-            timedOut = false
+            totalNumber = 2
         )
         val responseString = response.toXContent(XContentFactory.jsonBuilder(), ToXContent.EMPTY_PARAMS).string()
         val expectedJSON = """
@@ -64,12 +63,11 @@ class XContentTests : OpenSearchTestCase() {
                 $sampleExpectedJson,
                 $sampleExpectedJson
               ],
-              "total_number": 2,
-              "timed_out": false
+              "total_number": 2
             }
         """.replace("\\s".toRegex(), "")
 
-        assertEquals("lronConfigResponse toXcontent failed.", expectedJSON, responseString)
+        assertEquals("getLRONConfigResponse toXcontent failed.", expectedJSON, responseString)
     }
 
     private fun buildMessage(

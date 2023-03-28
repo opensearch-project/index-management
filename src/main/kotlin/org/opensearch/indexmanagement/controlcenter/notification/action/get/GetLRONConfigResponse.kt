@@ -17,22 +17,19 @@ import org.opensearch.indexmanagement.indexstatemanagement.util.WITH_TYPE
 import org.opensearch.indexmanagement.indexstatemanagement.util.WITH_USER
 import java.io.IOException
 
-class GetLRONConfigsResponse(
+class GetLRONConfigResponse(
     val lronConfigResponses: List<LRONConfigResponse>,
     val totalNumber: Int,
-    val timedOut: Boolean
 ) : ActionResponse(), ToXContentObject {
     @Throws(IOException::class)
     constructor(sin: StreamInput) : this(
         lronConfigResponses = sin.readList(::LRONConfigResponse),
         totalNumber = sin.readInt(),
-        timedOut = sin.readBoolean()
     )
 
     override fun writeTo(out: StreamOutput) {
         out.writeList(lronConfigResponses)
         out.writeInt(totalNumber)
-        out.writeBoolean(timedOut)
     }
 
     override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
@@ -43,7 +40,6 @@ class GetLRONConfigsResponse(
             .also { lronConfigResponses.forEach { lronConfigResponse -> lronConfigResponse.toXContent(it, lronConfigParams) } }
             .endArray()
             .field("total_number", totalNumber)
-            .field("timed_out", timedOut)
             .endObject()
     }
 }

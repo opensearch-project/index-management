@@ -12,7 +12,6 @@ import org.opensearch.client.RestClient
 import org.opensearch.commons.rest.SecureRestClientBuilder
 import org.opensearch.indexmanagement.DELETE_LRON_CONFIG
 import org.opensearch.indexmanagement.GET_LRON_CONFIG
-import org.opensearch.indexmanagement.GET_LRON_CONFIGS
 import org.opensearch.indexmanagement.INDEX_LRON_CONFIG
 import org.opensearch.indexmanagement.IndexManagementPlugin
 import org.opensearch.indexmanagement.SecurityRestTestCase
@@ -34,7 +33,6 @@ class LRONConfigSecurityBehaviorIT : SecurityRestTestCase() {
         val helpdeskClusterPermissions = listOf(
             INDEX_LRON_CONFIG,
             GET_LRON_CONFIG,
-            GET_LRON_CONFIGS,
             DELETE_LRON_CONFIG
         )
 
@@ -165,12 +163,12 @@ class LRONConfigSecurityBehaviorIT : SecurityRestTestCase() {
         /* test user */
         executeRequest(getRequest, RestStatus.FORBIDDEN, testUserClient!!)
 
-        val getConfigsRole = "get_lron_configs"
+        val getConfigRole = "get_lron_config"
         try {
-            createAndAssignRole(getConfigsRole, listOf(GET_LRON_CONFIGS), testUser)
+            createAndAssignRole(getConfigRole, listOf(GET_LRON_CONFIG), testUser)
             executeRequest(getRequest, RestStatus.OK, testUserClient!!)
         } finally {
-            deleteRole(getConfigsRole)
+            deleteRole(getConfigRole)
         }
     }
 

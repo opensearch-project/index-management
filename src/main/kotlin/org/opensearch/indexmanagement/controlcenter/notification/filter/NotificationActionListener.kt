@@ -37,9 +37,6 @@ import org.opensearch.index.reindex.BulkByScrollResponse
 import org.opensearch.indexmanagement.controlcenter.notification.LRONConfigResponse
 import org.opensearch.indexmanagement.controlcenter.notification.action.delete.DeleteLRONConfigAction
 import org.opensearch.indexmanagement.controlcenter.notification.action.delete.DeleteLRONConfigRequest
-import org.opensearch.indexmanagement.controlcenter.notification.action.get.GetLRONConfigsAction
-import org.opensearch.indexmanagement.controlcenter.notification.action.get.GetLRONConfigsRequest
-import org.opensearch.indexmanagement.controlcenter.notification.action.get.GetLRONConfigsResponse
 import org.opensearch.indexmanagement.controlcenter.notification.filter.parser.ForceMergeIndexRespParser
 import org.opensearch.indexmanagement.controlcenter.notification.filter.parser.OpenIndexRespParser
 import org.opensearch.indexmanagement.controlcenter.notification.filter.parser.ReindexRespParser
@@ -50,6 +47,9 @@ import org.opensearch.indexmanagement.controlcenter.notification.util.getDocID
 import org.opensearch.indexmanagement.common.model.rest.DEFAULT_PAGINATION_SIZE
 import org.opensearch.indexmanagement.common.model.rest.SORT_ORDER_DESC
 import org.opensearch.indexmanagement.common.model.rest.SearchParams
+import org.opensearch.indexmanagement.controlcenter.notification.action.get.GetLRONConfigAction
+import org.opensearch.indexmanagement.controlcenter.notification.action.get.GetLRONConfigRequest
+import org.opensearch.indexmanagement.controlcenter.notification.action.get.GetLRONConfigResponse
 import org.opensearch.indexmanagement.util.OpenForTesting
 import org.opensearch.tasks.Task
 import org.opensearch.tasks.TaskId
@@ -135,18 +135,18 @@ class NotificationActionListener<Request : ActionRequest, Response : ActionRespo
 
         client.threadPool().threadContext.stashContext().use {
             client.execute(
-                GetLRONConfigsAction.INSTANCE,
-                GetLRONConfigsRequest(searchParam),
-                object : ActionListener<GetLRONConfigsResponse> {
-                    override fun onResponse(lronConfigsResponse: GetLRONConfigsResponse) {
-                        if (0 == lronConfigsResponse.totalNumber) {
+                GetLRONConfigAction.INSTANCE,
+                GetLRONConfigRequest(searchParams = searchParam),
+                object : ActionListener<GetLRONConfigResponse> {
+                    override fun onResponse(lronConfigResponse: GetLRONConfigResponse) {
+                        if (0 == lronConfigResponse.totalNumber) {
                             logger.info(
                                 "No notification channel configured for task: {} action: {}", taskId.toString(), action
                             )
                             return
                         }
 
-                        val channels = getQualifiedChannels(lronConfigsResponse, result)
+                        val channels = getQualifiedChannels(lronConfigResponse, result)
 
                         channels.forEach {
                             val title = buildNotificationTitle()
@@ -218,16 +218,16 @@ class NotificationActionListener<Request : ActionRequest, Response : ActionRespo
     }
 
     fun getQualifiedChannels(
-        lronConfigsResponse: GetLRONConfigsResponse,
+        lronConfigResponse: GetLRONConfigResponse,
         result: OperationResult
     ): Set<LRONConfigResponse> {
         val runtimeConfig =
-            lronConfigsResponse.lronConfigResponses.firstOrNull { it.lronConfig.taskId != null }
+            lronConfigResponse.lronConfigResponses.firstOrNull { it.lronConfig.taskId != null }
         val defaultConfig =
             // operation default
-            lronConfigsResponse.lronConfigResponses.firstOrNull { it.lronConfig.actionName != null && it.lronConfig.taskId == null }
+            lronConfigResponse.lronConfigResponses.firstOrNull { it.lronConfig.actionName != null && it.lronConfig.taskId == null }
                 // global default
-                ?: lronConfigsResponse.lronConfigResponses.firstOrNull { it.lronConfig.actionName == null && it.lronConfig.taskId == null }
+                ?: lronConfigResponse.lronConfigResponses.firstOrNull { it.lronConfig.actionName == null && it.lronConfig.taskId == null }
 
         val channels = ArrayList<LRONConfigResponse>()
         if (runtimeConfig != null) channels.add(runtimeConfig)
