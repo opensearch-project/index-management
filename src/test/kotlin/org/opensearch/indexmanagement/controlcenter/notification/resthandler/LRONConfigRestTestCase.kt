@@ -15,17 +15,33 @@ import org.opensearch.client.Response
 import org.opensearch.client.ResponseException
 import org.opensearch.indexmanagement.IndexManagementPlugin
 import org.opensearch.indexmanagement.IndexManagementRestTestCase
+import org.opensearch.indexmanagement.controlcenter.notification.initNodeIdsInRestIT
 import org.opensearch.indexmanagement.controlcenter.notification.model.LRONConfig
 import org.opensearch.indexmanagement.controlcenter.notification.toJsonString
 import org.opensearch.indexmanagement.makeRequest
 import org.opensearch.rest.RestStatus
 
 abstract class LRONConfigRestTestCase : IndexManagementRestTestCase() {
-    companion object {
-        @AfterClass
-        @JvmStatic fun clearIndicesAfterClass() {
-            wipeAllIndices()
-        }
+    @Before
+    fun setDebugLogLevel() {
+        client().makeRequest(
+            "PUT", "_cluster/settings",
+            StringEntity(
+                """
+                {
+                    "transient": {
+                        "logger.org.opensearch.indexmanagement.controlcenter.notification":"DEBUG"
+                    }
+                }
+                """.trimIndent(),
+                ContentType.APPLICATION_JSON
+            )
+        )
+    }
+
+    @Before
+    fun initNodeIds() {
+        initNodeIdsInRestIT(client())
     }
 
     @After
@@ -44,26 +60,16 @@ abstract class LRONConfigRestTestCase : IndexManagementRestTestCase() {
         }
     }
 
-    @Before
-    fun setDebugLogLevel() {
-        client().makeRequest(
-            "PUT", "_cluster/settings",
-            StringEntity(
-                """
-                {
-                    "transient": {
-                        "logger.org.opensearch.indexmanagement.controlcenter.notification":"DEBUG"
-                    }
-                }
-                """.trimIndent(),
-                ContentType.APPLICATION_JSON
-            )
-        )
-    }
-
     fun createLRONConfig(lronConfig: LRONConfig): Response {
         return client().makeRequest("POST", IndexManagementPlugin.LRON_BASE_URI, emptyMap(), lronConfig.toHttpEntity())
     }
 
     protected fun LRONConfig.toHttpEntity(): HttpEntity = StringEntity(toJsonString(), ContentType.APPLICATION_JSON)
+
+    companion object {
+        @AfterClass
+        @JvmStatic fun clearIndicesAfterClass() {
+            wipeAllIndices()
+        }
+    }
 }

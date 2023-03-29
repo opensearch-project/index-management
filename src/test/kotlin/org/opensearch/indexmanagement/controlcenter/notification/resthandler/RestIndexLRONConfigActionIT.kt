@@ -11,7 +11,9 @@ import org.opensearch.common.xcontent.XContentType
 import org.opensearch.indexmanagement.IndexManagementPlugin
 import org.opensearch.indexmanagement.controlcenter.notification.getResourceURI
 import org.opensearch.indexmanagement.controlcenter.notification.model.LRONConfig
+import org.opensearch.indexmanagement.controlcenter.notification.nodeIdsInRestIT
 import org.opensearch.indexmanagement.controlcenter.notification.randomLRONConfig
+import org.opensearch.indexmanagement.controlcenter.notification.randomTaskId
 import org.opensearch.indexmanagement.controlcenter.notification.util.getDocID
 import org.opensearch.indexmanagement.makeRequest
 import org.opensearch.indexmanagement.opensearchapi.convertToMap
@@ -20,7 +22,7 @@ import org.opensearch.rest.RestStatus
 @Suppress("UNCHECKED_CAST")
 class RestIndexLRONConfigActionIT : LRONConfigRestTestCase() {
     fun `test creating LRONConfig`() {
-        val lronConfig = randomLRONConfig()
+        val lronConfig = randomLRONConfig(taskId = randomTaskId(nodeId = nodeIdsInRestIT.random()))
         val response = createLRONConfig(lronConfig)
         assertEquals("Create LRONConfig failed", RestStatus.OK, response.restStatus())
         val responseBody = response.asMap()
@@ -36,7 +38,7 @@ class RestIndexLRONConfigActionIT : LRONConfigRestTestCase() {
 
     fun `test creating LRONConfig with id fails`() {
         try {
-            val lronConfig = randomLRONConfig()
+            val lronConfig = randomLRONConfig(taskId = randomTaskId(nodeId = nodeIdsInRestIT.random()))
             client().makeRequest(
                 "POST",
                 getResourceURI(lronConfig.taskId, lronConfig.actionName),
@@ -51,7 +53,7 @@ class RestIndexLRONConfigActionIT : LRONConfigRestTestCase() {
 
     fun `test creating LRONConfig twice fails`() {
         try {
-            val lronConfig = randomLRONConfig()
+            val lronConfig = randomLRONConfig(taskId = randomTaskId(nodeId = nodeIdsInRestIT.random()))
             createLRONConfig(lronConfig)
             createLRONConfig(lronConfig)
             fail("Expected 409 CONFLICT")
@@ -61,7 +63,7 @@ class RestIndexLRONConfigActionIT : LRONConfigRestTestCase() {
     }
 
     fun `test mappings after LRONConfig creation`() {
-        val lronConfig = randomLRONConfig()
+        val lronConfig = randomLRONConfig(taskId = randomTaskId(nodeId = nodeIdsInRestIT.random()))
         createLRONConfig(lronConfig)
 
         val response = client().makeRequest("GET", "/${IndexManagementPlugin.CONTROL_CENTER_INDEX}/_mapping")

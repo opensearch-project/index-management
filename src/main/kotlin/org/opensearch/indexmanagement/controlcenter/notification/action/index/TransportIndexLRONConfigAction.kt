@@ -16,6 +16,7 @@ import org.opensearch.action.support.HandledTransportAction
 import org.opensearch.action.support.WriteRequest
 import org.opensearch.action.support.master.AcknowledgedResponse
 import org.opensearch.client.node.NodeClient
+import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.inject.Inject
 import org.opensearch.common.xcontent.XContentFactory
 import org.opensearch.commons.ConfigConstants
@@ -37,6 +38,7 @@ class TransportIndexLRONConfigAction @Inject constructor(
     val client: NodeClient,
     transportService: TransportService,
     actionFilters: ActionFilters,
+    val clusterService: ClusterService,
     val controlCenterIndices: ControlCenterIndices,
     val xContentRegistry: NamedXContentRegistry,
 ) : HandledTransportAction<IndexLRONConfigRequest, LRONConfigResponse>(
@@ -62,7 +64,9 @@ class TransportIndexLRONConfigAction @Inject constructor(
                 )}"
             )
             client.threadPool().threadContext.stashContext().use {
-                controlCenterIndices.checkAndUpdateControlCenterIndex(ActionListener.wrap(::onCreateMappingsResponse, actionListener::onFailure))
+                controlCenterIndices.checkAndUpdateControlCenterIndex(
+                    ActionListener.wrap(::onCreateMappingsResponse, actionListener::onFailure)
+                )
             }
             return
         }
@@ -79,6 +83,10 @@ class TransportIndexLRONConfigAction @Inject constructor(
         }
 
         private fun validate() {
+            if (null != request.lronConfig.taskId && null == clusterService.state().nodes.get(request.lronConfig.taskId.nodeId)) {
+                actionListener.onFailure(IllegalArgumentException("Illegal taskID. NodeID not exists."))
+                return
+            }
             if (request.isUpdate) {
                 /* We need to verify whether the resource exists */
                 getLRONConfigAndParse(

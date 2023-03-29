@@ -5,6 +5,7 @@
 
 package org.opensearch.indexmanagement.controlcenter.notification
 
+import org.opensearch.client.RestClient
 import org.opensearch.common.UUIDs
 import org.opensearch.common.xcontent.XContentFactory
 import org.opensearch.commons.authuser.User
@@ -18,12 +19,26 @@ import org.opensearch.indexmanagement.controlcenter.notification.util.supportedA
 import org.opensearch.indexmanagement.common.model.notification.Channel
 import org.opensearch.indexmanagement.controlcenter.notification.action.get.GetLRONConfigResponse
 import org.opensearch.indexmanagement.indexstatemanagement.randomChannel
+import org.opensearch.indexmanagement.makeRequest
 import org.opensearch.indexmanagement.opensearchapi.string
 import org.opensearch.indexmanagement.randomUser
 import org.opensearch.tasks.TaskId
 import org.opensearch.test.OpenSearchTestCase.randomBoolean
 import org.opensearch.test.OpenSearchTestCase.randomLong
 import org.opensearch.test.rest.OpenSearchRestTestCase
+
+/* need to be initialized before used */
+var nodeIdsInRestIT: Set<String> = emptySet()
+@Suppress("UNCHECKED_CAST")
+fun initNodeIdsInRestIT(client: RestClient) {
+    if (nodeIdsInRestIT.isNotEmpty()) {
+        return
+    }
+    val responseMap =
+        OpenSearchRestTestCase.entityAsMap(client.makeRequest("GET", "_nodes"))
+    val nodesMap = responseMap["nodes"] as Map<String, Any>
+    nodeIdsInRestIT = nodesMap.keys
+}
 
 fun randomLRONConfig(
     lronCondition: LRONCondition = randomLRONCondition(),

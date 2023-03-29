@@ -10,7 +10,9 @@ import org.opensearch.client.ResponseException
 import org.opensearch.indexmanagement.IndexManagementPlugin
 import org.opensearch.indexmanagement.controlcenter.notification.getResourceURI
 import org.opensearch.indexmanagement.controlcenter.notification.model.LRONConfig
+import org.opensearch.indexmanagement.controlcenter.notification.nodeIdsInRestIT
 import org.opensearch.indexmanagement.controlcenter.notification.randomLRONConfig
+import org.opensearch.indexmanagement.controlcenter.notification.randomTaskId
 import org.opensearch.indexmanagement.controlcenter.notification.util.getDocID
 import org.opensearch.indexmanagement.makeRequest
 import org.opensearch.indexmanagement.opensearchapi.convertToMap
@@ -19,7 +21,7 @@ import org.opensearch.rest.RestStatus
 @Suppress("UNCHECKED_CAST")
 class RestGetLRONConfigActionIT : LRONConfigRestTestCase() {
     fun `test get LRONConfig with id`() {
-        val lronConfig = randomLRONConfig()
+        val lronConfig = randomLRONConfig(taskId = randomTaskId(nodeId = nodeIdsInRestIT.random()))
         createLRONConfig(lronConfig)
         val response = client().makeRequest("GET", getResourceURI(lronConfig.taskId, lronConfig.actionName))
         assertEquals("get LRONConfig failed", RestStatus.OK, response.restStatus())
@@ -37,7 +39,7 @@ class RestGetLRONConfigActionIT : LRONConfigRestTestCase() {
 
     fun `test get nonexist LRONConfig fails`() {
         try {
-            val lronConfig = randomLRONConfig()
+            val lronConfig = randomLRONConfig(taskId = randomTaskId(nodeId = nodeIdsInRestIT.random()))
             client().makeRequest("GET", getResourceURI(lronConfig.taskId, lronConfig.actionName))
             fail("Expected 404 NOT_FOUND")
         } catch (e: ResponseException) {
@@ -47,7 +49,7 @@ class RestGetLRONConfigActionIT : LRONConfigRestTestCase() {
     }
 
     fun `test get all LRONConfigs`() {
-        val lronConfigResponses = randomList(1, 15) { createLRONConfig(randomLRONConfig()).asMap() }
+        val lronConfigResponses = randomList(1, 15) { createLRONConfig(randomLRONConfig(taskId = randomTaskId(nodeId = nodeIdsInRestIT.random()))).asMap() }
 
         val response = client().makeRequest("GET", IndexManagementPlugin.LRON_BASE_URI)
         assertEquals("get LRONConfigs failed", RestStatus.OK, response.restStatus())
