@@ -41,7 +41,6 @@ import org.opensearch.indexmanagement.controlcenter.notification.resthandler.Res
 import org.opensearch.indexmanagement.controlcenter.notification.filter.IndexOperationActionFilter
 import org.opensearch.indexmanagement.controlcenter.notification.resthandler.RestGetLRONConfigAction
 import org.opensearch.indexmanagement.controlcenter.notification.resthandler.RestIndexLRONConfigAction
-import org.opensearch.indexmanagement.controlcenter.notification.resthandler.RestUpdateLRONConfigAction
 import org.opensearch.indexmanagement.indexstatemanagement.DefaultIndexMetadataService
 import org.opensearch.indexmanagement.indexstatemanagement.ExtensionStatusChecker
 import org.opensearch.indexmanagement.indexstatemanagement.ISMActionsParser
@@ -359,7 +358,6 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
             RestCreateSMPolicyHandler(),
             RestUpdateSMPolicyHandler(),
             RestIndexLRONConfigAction(),
-            RestUpdateLRONConfigAction(),
             RestGetLRONConfigAction(),
             RestDeleteLRONConfigAction()
         )

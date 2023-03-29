@@ -67,7 +67,7 @@ class LRONConfigSecurityBehaviorIT : SecurityRestTestCase() {
         deleteIndexByName(IndexManagementPlugin.CONTROL_CENTER_INDEX)
     }
 
-    fun `test index LRONConfig with security`() {
+    fun `test index LRONConfig with security using POST`() {
         /* super user */
         val request = Request("POST", IndexManagementPlugin.LRON_BASE_URI)
         request.setJsonEntity(randomLRONConfig(taskId = randomTaskId(nodeId = nodeIdsInRestIT.random())).toJsonString())
@@ -85,7 +85,7 @@ class LRONConfigSecurityBehaviorIT : SecurityRestTestCase() {
         }
     }
 
-    fun `test update LRONConfig with security`() {
+    fun `test update LRONConfig with security using PUT`() {
         /* super user */
         val lronConfig = randomLRONConfig(taskId = randomTaskId(nodeId = nodeIdsInRestIT.random()))
         val createRequest = Request("POST", IndexManagementPlugin.LRON_BASE_URI)

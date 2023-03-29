@@ -10,6 +10,7 @@ import org.opensearch.indexmanagement.controlcenter.notification.action.index.In
 import org.opensearch.indexmanagement.controlcenter.notification.action.index.IndexLRONConfigRequest
 import org.opensearch.indexmanagement.controlcenter.notification.model.LRONConfig
 import org.opensearch.indexmanagement.IndexManagementPlugin
+import org.opensearch.indexmanagement.controlcenter.notification.util.getDocID
 import org.opensearch.indexmanagement.opensearchapi.parseWithType
 import org.opensearch.rest.BaseRestHandler
 import org.opensearch.rest.BaseRestHandler.RestChannelConsumer
@@ -22,7 +23,8 @@ class RestIndexLRONConfigAction : BaseRestHandler() {
 
     override fun routes(): List<RestHandler.Route> {
         return listOf(
-            RestHandler.Route(RestRequest.Method.POST, IndexManagementPlugin.LRON_BASE_URI)
+            RestHandler.Route(RestRequest.Method.POST, IndexManagementPlugin.LRON_BASE_URI),
+            RestHandler.Route(RestRequest.Method.PUT, "${IndexManagementPlugin.LRON_BASE_URI}/{id}")
         )
     }
 
@@ -32,10 +34,15 @@ class RestIndexLRONConfigAction : BaseRestHandler() {
 
     @Throws(IOException::class)
     override fun prepareRequest(request: RestRequest, client: NodeClient): RestChannelConsumer {
+        val docId = request.param("id")
         val xcp = request.contentParser()
         val lronConfig = xcp.parseWithType(parse = LRONConfig.Companion::parse)
+        val isUpdate = null != docId
+        if (isUpdate && getDocID(lronConfig.taskId, lronConfig.actionName) != docId) {
+            throw IllegalArgumentException("docId isn't match with lron_config")
+        }
 
-        val indexLRONConfigRequest = IndexLRONConfigRequest(lronConfig, false)
+        val indexLRONConfigRequest = IndexLRONConfigRequest(lronConfig, isUpdate)
 
         return RestChannelConsumer { channel ->
             client.execute(IndexLRONConfigAction.INSTANCE, indexLRONConfigRequest, RestToXContentListener(channel))
