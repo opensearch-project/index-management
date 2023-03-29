@@ -25,7 +25,9 @@ class RestDeleteLRONConfigActionIT : LRONConfigRestTestCase() {
         assertEquals("delete LRONConfig failed", RestStatus.OK, response.restStatus())
         val responseBody = response.asMap()
         val deletedId = responseBody["_id"] as String
+        val deletedResult = responseBody["result"] as String
         Assert.assertEquals("not same doc id", getDocID(lronConfig.taskId, lronConfig.actionName), deletedId)
+        Assert.assertEquals("wrong delete result", "deleted", deletedResult)
 
         try {
             client().makeRequest("GET", getResourceURI(lronConfig.taskId, lronConfig.actionName))
@@ -37,13 +39,13 @@ class RestDeleteLRONConfigActionIT : LRONConfigRestTestCase() {
     }
 
     fun `test delete nonexist LRONConfig fails`() {
-        try {
-            val lronConfig = randomLRONConfig(taskId = randomTaskId(nodeId = nodeIdsInRestIT.random()))
-            client().makeRequest("DELETE", getResourceURI(lronConfig.taskId, lronConfig.actionName))
-            fail("Expected 404 NOT_FOUND")
-        } catch (e: ResponseException) {
-            logger.info(e.response.asMap())
-            assertEquals("Unexpected status", RestStatus.NOT_FOUND, e.response.restStatus())
-        }
+        val lronConfig = randomLRONConfig(taskId = randomTaskId(nodeId = nodeIdsInRestIT.random()))
+        val response = client().makeRequest("DELETE", getResourceURI(lronConfig.taskId, lronConfig.actionName))
+        assertEquals("delete LRONConfig failed", RestStatus.OK, response.restStatus())
+        val responseBody = response.asMap()
+        val deletedId = responseBody["_id"] as String
+        val deletedResult = responseBody["result"] as String
+        Assert.assertEquals("not same doc id", getDocID(lronConfig.taskId, lronConfig.actionName), deletedId)
+        Assert.assertEquals("wrong delete result", "not_found", deletedResult)
     }
 }
