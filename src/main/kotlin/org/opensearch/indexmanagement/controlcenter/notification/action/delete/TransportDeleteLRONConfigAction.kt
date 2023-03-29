@@ -15,19 +15,14 @@ import org.opensearch.action.support.WriteRequest
 import org.opensearch.client.node.NodeClient
 import org.opensearch.common.inject.Inject
 import org.opensearch.commons.ConfigConstants
-import org.opensearch.core.xcontent.NamedXContentRegistry
 import org.opensearch.indexmanagement.IndexManagementPlugin
-import org.opensearch.indexmanagement.controlcenter.notification.LRONConfigResponse
-import org.opensearch.indexmanagement.controlcenter.notification.util.getLRONConfigAndParse
 import org.opensearch.tasks.Task
 import org.opensearch.transport.TransportService
-import java.lang.Exception
 
 class TransportDeleteLRONConfigAction @Inject constructor(
     val client: NodeClient,
     transportService: TransportService,
-    actionFilters: ActionFilters,
-    val xContentRegistry: NamedXContentRegistry,
+    actionFilters: ActionFilters
 ) : HandledTransportAction<DeleteLRONConfigRequest, DeleteResponse>(
     DeleteLRONConfigAction.NAME, transportService, actionFilters, ::DeleteLRONConfigRequest
 ) {
@@ -53,28 +48,11 @@ class TransportDeleteLRONConfigAction @Inject constructor(
             )
 
             client.threadPool().threadContext.stashContext().use {
-                getLRONConfigAndParse(
-                    client,
-                    request.docId,
-                    xContentRegistry,
-                    object : ActionListener<LRONConfigResponse> {
-                        override fun onResponse(response: LRONConfigResponse) {
-                            executeDelete()
-                        }
+                val deleteRequest = DeleteRequest(IndexManagementPlugin.CONTROL_CENTER_INDEX, docId)
+                    .setRefreshPolicy(WriteRequest.RefreshPolicy.IMMEDIATE)
 
-                        override fun onFailure(e: Exception) {
-                            actionListener.onFailure(e)
-                        }
-                    }
-                )
+                client.delete(deleteRequest, actionListener)
             }
-        }
-
-        fun executeDelete() {
-            val deleteRequest = DeleteRequest(IndexManagementPlugin.CONTROL_CENTER_INDEX, docId)
-                .setRefreshPolicy(WriteRequest.RefreshPolicy.IMMEDIATE)
-
-            client.delete(deleteRequest, actionListener)
         }
     }
 }
