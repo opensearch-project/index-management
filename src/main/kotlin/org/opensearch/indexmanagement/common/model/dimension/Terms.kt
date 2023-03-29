@@ -7,11 +7,11 @@ package org.opensearch.indexmanagement.common.model.dimension
 
 import org.opensearch.common.io.stream.StreamInput
 import org.opensearch.common.io.stream.StreamOutput
-import org.opensearch.common.xcontent.ToXContent
-import org.opensearch.common.xcontent.XContentBuilder
-import org.opensearch.common.xcontent.XContentParser
-import org.opensearch.common.xcontent.XContentParser.Token
-import org.opensearch.common.xcontent.XContentParserUtils.ensureExpectedToken
+import org.opensearch.core.xcontent.ToXContent
+import org.opensearch.core.xcontent.XContentBuilder
+import org.opensearch.core.xcontent.XContentParser
+import org.opensearch.core.xcontent.XContentParser.Token
+import org.opensearch.core.xcontent.XContentParserUtils.ensureExpectedToken
 import org.opensearch.index.query.AbstractQueryBuilder
 import org.opensearch.index.query.TermsQueryBuilder
 import org.opensearch.indexmanagement.util.IndexUtils.Companion.getFieldFromMappings

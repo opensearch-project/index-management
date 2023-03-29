@@ -5,7 +5,7 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.model.coordinator
 
-import org.opensearch.common.xcontent.ToXContentObject
+import org.opensearch.core.xcontent.ToXContentObject
 import org.opensearch.index.seqno.SequenceNumbers
 import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexConfig
 

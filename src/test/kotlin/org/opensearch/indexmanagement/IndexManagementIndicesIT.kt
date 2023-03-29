@@ -8,7 +8,7 @@ package org.opensearch.indexmanagement
 import org.apache.http.entity.ContentType
 import org.apache.http.entity.StringEntity
 import org.opensearch.common.settings.Settings
-import org.opensearch.common.xcontent.ToXContent
+import org.opensearch.core.xcontent.ToXContent
 import org.opensearch.common.xcontent.XContentFactory
 import org.opensearch.indexmanagement.IndexManagementIndices.Companion.HISTORY_INDEX_BASE
 import org.opensearch.indexmanagement.IndexManagementIndices.Companion.HISTORY_WRITE_INDEX_ALIAS

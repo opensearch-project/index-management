@@ -21,9 +21,9 @@ import org.opensearch.cluster.ClusterState
 import org.opensearch.cluster.metadata.IndexMetadata
 import org.opensearch.common.xcontent.LoggingDeprecationHandler
 import org.opensearch.common.xcontent.NamedXContentRegistry
-import org.opensearch.common.xcontent.ToXContent
-import org.opensearch.common.xcontent.ToXContentFragment
-import org.opensearch.common.xcontent.XContentBuilder
+import org.opensearch.core.xcontent.ToXContent
+import org.opensearch.core.xcontent.ToXContentFragment
+import org.opensearch.core.xcontent.XContentBuilder
 import org.opensearch.common.xcontent.XContentHelper
 import org.opensearch.common.xcontent.XContentType
 import org.opensearch.index.IndexNotFoundException

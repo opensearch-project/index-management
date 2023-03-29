@@ -10,8 +10,8 @@ import org.opensearch.action.support.broadcast.BroadcastResponse
 import org.opensearch.common.io.stream.StreamInput
 import org.opensearch.common.io.stream.StreamOutput
 import org.opensearch.common.xcontent.ConstructingObjectParser
-import org.opensearch.common.xcontent.ToXContent.Params
-import org.opensearch.common.xcontent.XContentBuilder
+import org.opensearch.core.xcontent.ToXContent.Params
+import org.opensearch.core.xcontent.XContentBuilder
 import org.opensearch.rest.action.RestActions
 import java.io.IOException
 import java.util.function.Function

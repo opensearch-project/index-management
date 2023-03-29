@@ -6,10 +6,10 @@
 package org.opensearch.indexmanagement.common.model.dimension
 
 import org.opensearch.common.io.stream.Writeable
-import org.opensearch.common.xcontent.ToXContentObject
-import org.opensearch.common.xcontent.XContentParser
-import org.opensearch.common.xcontent.XContentParser.Token
-import org.opensearch.common.xcontent.XContentParserUtils.ensureExpectedToken
+import org.opensearch.core.xcontent.ToXContentObject
+import org.opensearch.core.xcontent.XContentParser
+import org.opensearch.core.xcontent.XContentParser.Token
+import org.opensearch.core.xcontent.XContentParserUtils.ensureExpectedToken
 import org.opensearch.index.query.AbstractQueryBuilder
 import org.opensearch.search.aggregations.bucket.composite.CompositeValuesSourceBuilder
 import java.io.IOException
