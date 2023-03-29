@@ -101,6 +101,7 @@ class TransportIndexLRONConfigAction @Inject constructor(
 
             if (request.dryRun) {
                 actionListener.onResponse(LRONConfigResponse(docId, lronConfig))
+                return
             }
 
             val indexRequest = IndexRequest(IndexManagementPlugin.CONTROL_CENTER_INDEX)

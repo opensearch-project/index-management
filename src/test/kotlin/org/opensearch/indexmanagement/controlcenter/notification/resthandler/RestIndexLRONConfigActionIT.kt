@@ -19,6 +19,7 @@ import org.opensearch.indexmanagement.controlcenter.notification.util.getDocID
 import org.opensearch.indexmanagement.indexstatemanagement.randomChannel
 import org.opensearch.indexmanagement.makeRequest
 import org.opensearch.indexmanagement.opensearchapi.convertToMap
+import org.opensearch.indexmanagement.util.DRY_RUN
 import org.opensearch.rest.RestStatus
 
 @Suppress("UNCHECKED_CAST")
@@ -126,6 +127,30 @@ class RestIndexLRONConfigActionIT : LRONConfigRestTestCase() {
             fail("Expected 405 METHOD_NOT_ALLOWED")
         } catch (e: ResponseException) {
             assertEquals("Unexpected status", RestStatus.METHOD_NOT_ALLOWED, e.response.restStatus())
+        }
+    }
+
+    fun `test creating LRONConfig dryRun`() {
+        val lronConfig = randomLRONConfig(taskId = randomTaskId(nodeId = nodeIdsInRestIT.random()))
+        /* first use POST and PUT to create, then try to get */
+        client().makeRequest(
+            "POST",
+            IndexManagementPlugin.LRON_BASE_URI,
+            mapOf(DRY_RUN to "true"),
+            lronConfig.toHttpEntity()
+        )
+        client().makeRequest(
+            "PUT",
+            getResourceURI(lronConfig.taskId, lronConfig.actionName),
+            mapOf(DRY_RUN to "true"),
+            lronConfig.toHttpEntity()
+        )
+        try {
+            client().makeRequest("GET", getResourceURI(lronConfig.taskId, lronConfig.actionName))
+            fail("Expected 404 NOT_FOUND")
+        } catch (e: ResponseException) {
+            logger.debug(e.response.asMap())
+            assertEquals("Unexpected status", RestStatus.NOT_FOUND, e.response.restStatus())
         }
     }
 
