@@ -63,11 +63,15 @@ class TransportIndexLRONConfigAction @Inject constructor(
                 )}"
             )
             client.threadPool().threadContext.stashContext().use {
+                /* we use dryRun to help check permission and do request validation */
+                if (request.dryRun) {
+                    validate()
+                    return
+                }
                 controlCenterIndices.checkAndUpdateControlCenterIndex(
                     ActionListener.wrap(::onCreateMappingsResponse, actionListener::onFailure)
                 )
             }
-            return
         }
 
         private fun onCreateMappingsResponse(response: AcknowledgedResponse) {
@@ -94,6 +98,11 @@ class TransportIndexLRONConfigAction @Inject constructor(
                 user = this.user,
                 priority = getPriority(request.lronConfig.taskId, request.lronConfig.actionName)
             )
+
+            if (request.dryRun) {
+                actionListener.onResponse(LRONConfigResponse(docId, lronConfig))
+            }
+
             val indexRequest = IndexRequest(IndexManagementPlugin.CONTROL_CENTER_INDEX)
                 .setRefreshPolicy(WriteRequest.RefreshPolicy.IMMEDIATE)
                 .source(lronConfig.toXContent(XContentFactory.jsonBuilder()))

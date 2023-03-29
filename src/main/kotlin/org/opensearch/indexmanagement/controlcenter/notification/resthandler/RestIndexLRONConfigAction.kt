@@ -12,6 +12,7 @@ import org.opensearch.indexmanagement.controlcenter.notification.model.LRONConfi
 import org.opensearch.indexmanagement.IndexManagementPlugin
 import org.opensearch.indexmanagement.controlcenter.notification.util.getDocID
 import org.opensearch.indexmanagement.opensearchapi.parseWithType
+import org.opensearch.indexmanagement.util.DRY_RUN
 import org.opensearch.rest.BaseRestHandler
 import org.opensearch.rest.BaseRestHandler.RestChannelConsumer
 import org.opensearch.rest.RestHandler
@@ -35,6 +36,7 @@ class RestIndexLRONConfigAction : BaseRestHandler() {
     @Throws(IOException::class)
     override fun prepareRequest(request: RestRequest, client: NodeClient): RestChannelConsumer {
         val docId = request.param("id")
+        val dryRun = request.paramAsBoolean(DRY_RUN, false)
         val xcp = request.contentParser()
         val lronConfig = xcp.parseWithType(parse = LRONConfig.Companion::parse)
         val isUpdate = null != docId
@@ -42,7 +44,7 @@ class RestIndexLRONConfigAction : BaseRestHandler() {
             throw IllegalArgumentException("docId isn't match with lron_config")
         }
 
-        val indexLRONConfigRequest = IndexLRONConfigRequest(lronConfig, isUpdate)
+        val indexLRONConfigRequest = IndexLRONConfigRequest(lronConfig, isUpdate, dryRun)
 
         return RestChannelConsumer { channel ->
             client.execute(IndexLRONConfigAction.INSTANCE, indexLRONConfigRequest, RestToXContentListener(channel))

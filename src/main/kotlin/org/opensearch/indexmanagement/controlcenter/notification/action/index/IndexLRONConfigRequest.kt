@@ -14,12 +14,14 @@ import java.io.IOException
 
 class IndexLRONConfigRequest(
     val lronConfig: LRONConfig,
-    val isUpdate: Boolean
+    val isUpdate: Boolean,
+    val dryRun: Boolean = false
 ) : ActionRequest() {
     @Throws(IOException::class)
     constructor(sin: StreamInput) : this(
         lronConfig = LRONConfig(sin),
-        isUpdate = sin.readBoolean()
+        isUpdate = sin.readBoolean(),
+        dryRun = sin.readBoolean()
     )
 
     override fun validate(): ActionRequestValidationException? {
@@ -30,5 +32,6 @@ class IndexLRONConfigRequest(
     override fun writeTo(out: StreamOutput) {
         lronConfig.writeTo(out)
         out.writeBoolean(isUpdate)
+        out.writeBoolean(dryRun)
     }
 }
