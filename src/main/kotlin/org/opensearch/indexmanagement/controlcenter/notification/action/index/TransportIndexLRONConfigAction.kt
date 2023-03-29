@@ -26,7 +26,6 @@ import org.opensearch.indexmanagement.IndexManagementPlugin
 import org.opensearch.indexmanagement.controlcenter.notification.ControlCenterIndices
 import org.opensearch.indexmanagement.controlcenter.notification.LRONConfigResponse
 import org.opensearch.indexmanagement.controlcenter.notification.util.getDocID
-import org.opensearch.indexmanagement.controlcenter.notification.util.getLRONConfigAndParse
 import org.opensearch.indexmanagement.controlcenter.notification.util.getPriority
 import org.opensearch.indexmanagement.util.SecurityUtils
 import org.opensearch.rest.RestStatus
@@ -87,24 +86,7 @@ class TransportIndexLRONConfigAction @Inject constructor(
                 actionListener.onFailure(IllegalArgumentException("Illegal taskID. NodeID not exists."))
                 return
             }
-            if (request.isUpdate) {
-                /* We need to verify whether the resource exists */
-                getLRONConfigAndParse(
-                    client,
-                    docId,
-                    xContentRegistry,
-                    object : ActionListener<LRONConfigResponse> {
-                        override fun onResponse(response: LRONConfigResponse) {
-                            putLRONConfig()
-                        }
-
-                        override fun onFailure(e: java.lang.Exception) {
-                            actionListener.onFailure(e)
-                        }
-                    }
-                )
-                return
-            } else putLRONConfig()
+            putLRONConfig()
         }
 
         private fun putLRONConfig() {

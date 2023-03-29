@@ -6,7 +6,6 @@
 package org.opensearch.indexmanagement.controlcenter.notification.resthandler
 
 import org.junit.Assert
-import org.opensearch.client.ResponseException
 import org.opensearch.indexmanagement.controlcenter.notification.getResourceURI
 import org.opensearch.indexmanagement.controlcenter.notification.model.LRONConfig
 import org.opensearch.indexmanagement.controlcenter.notification.nodeIdsInRestIT
@@ -53,19 +52,21 @@ class RestUpdateLRONConfigActionIT : LRONConfigRestTestCase() {
         )
     }
 
-    fun `test update nonexist LRONConfig fails`() {
-        try {
-            val lronConfig = randomLRONConfig(taskId = randomTaskId(nodeId = nodeIdsInRestIT.random()))
-            client().makeRequest(
-                "PUT",
-                getResourceURI(lronConfig.taskId, lronConfig.actionName),
-                emptyMap(),
-                lronConfig.toHttpEntity()
-            )
-            fail("Expected 404 NOT_FOUND")
-        } catch (e: ResponseException) {
-            logger.info(e.response.asMap())
-            assertEquals("Unexpected status", RestStatus.NOT_FOUND, e.response.restStatus())
-        }
+    fun `test update auto create LRONConfig`() {
+        val lronConfig = randomLRONConfig(taskId = randomTaskId(nodeId = nodeIdsInRestIT.random()))
+        val response = client().makeRequest(
+            "PUT",
+            getResourceURI(lronConfig.taskId, lronConfig.actionName),
+            emptyMap(),
+            lronConfig.toHttpEntity()
+        )
+        assertEquals("autocreate LRONConfig failed", RestStatus.OK, response.restStatus())
+        val responseBody = response.asMap()
+        val lronConfigMap = lronConfig.convertToMap()[LRONConfig.LRON_CONFIG_FIELD] as Map<String, Any>
+        Assert.assertEquals(
+            "not same LRONConfig",
+            lronConfigMap.filterKeys { it != LRONConfig.USER_FIELD && it != LRONConfig.PRIORITY_FIELD },
+            responseBody["lron_config"] as Map<String, Any>
+        )
     }
 }
