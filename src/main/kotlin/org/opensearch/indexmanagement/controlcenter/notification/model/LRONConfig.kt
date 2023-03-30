@@ -33,7 +33,6 @@ data class LRONConfig(
     val user: User?,
     val priority: Int?
 ) : ToXContentObject, Writeable {
-
     init {
         validateTaskIdAndActionName(taskId, actionName)
         if (lronCondition.isEnabled()) {

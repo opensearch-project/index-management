@@ -27,7 +27,6 @@ import org.opensearch.tasks.TaskId
 import org.opensearch.test.OpenSearchTestCase
 
 class XContentTests : OpenSearchTestCase() {
-
     fun `test lronConfig parsing`() {
         Assert.assertEquals(
             buildMessage("lronConfig", XContentType.JSON),
@@ -42,6 +41,73 @@ class XContentTests : OpenSearchTestCase() {
             lronConfig,
             parsedItem(lronConfig, xContentType, LRONConfig.Companion::parse)
         )
+    }
+
+    fun `test lronConfig Parsing default values`() {
+        val jsonString = """
+            {
+              "lron_config": {
+                "task_id": "node_123:456",
+                "channels": [
+                  {
+                    "id": "channel123"
+                  }
+                ]
+              }
+            }
+            """.replace("\\s".toRegex(), "")
+        val lronConfig = XContentType.JSON.xContent().createParser(
+            xContentRegistry(),
+            LoggingDeprecationHandler.INSTANCE,
+            jsonString
+        ).parseWithType(parse = LRONConfig.Companion::parse)
+        assertEquals("action name should be null", null, lronConfig.actionName)
+        assertEquals("should be true by default", true, lronConfig.lronCondition.success)
+        assertEquals("should be true by default", true, lronConfig.lronCondition.failure)
+    }
+
+    fun `test lronConfig Parsing with no id no action fails`() {
+        val jsonString = """
+            {
+              "lron_config": {
+                "task_id": "node_123:456"
+              }
+            }
+            """.replace("\\s".toRegex(), "")
+        try {
+            XContentType.JSON.xContent().createParser(
+                xContentRegistry(),
+                LoggingDeprecationHandler.INSTANCE,
+                jsonString
+            ).parseWithType(parse = LRONConfig.Companion::parse)
+            Assert.fail("expect to throw error when parsing lronConfig")
+        } catch (e: IllegalArgumentException) {
+            assertEquals(e.message, "Enabled LRONConfig must contain at least one channel")
+        }
+    }
+
+    fun `test lronConfig Parsing with no channels fails`() {
+        val jsonString = """
+            {
+              "lron_config": {
+                "channels": [
+                  {
+                    "id": "channel123"
+                  }
+                ]
+              }
+            }
+            """.replace("\\s".toRegex(), "")
+        try {
+            XContentType.JSON.xContent().createParser(
+                xContentRegistry(),
+                LoggingDeprecationHandler.INSTANCE,
+                jsonString
+            ).parseWithType(parse = LRONConfig.Companion::parse)
+            Assert.fail("expect to throw error when parsing lronConfig")
+        } catch (e: IllegalArgumentException) {
+            assertEquals(e.message, "LRONConfig must contain taskID or actionName")
+        }
     }
 
     fun `test lronConfigResponse`() {
