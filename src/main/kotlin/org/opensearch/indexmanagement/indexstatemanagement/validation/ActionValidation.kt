@@ -28,6 +28,10 @@ class ActionValidation(
             "read_only" -> ValidateReadOnly(settings, clusterService, jvmService).execute(indexName)
             "read_write" -> ValidateReadWrite(settings, clusterService, jvmService).execute(indexName)
             "replica_count" -> ValidateReplicaCount(settings, clusterService, jvmService).execute(indexName)
+            "index_priority" -> ValidateIndexPriority(settings, clusterService, jvmService).execute(indexName)
+            "close" -> ValidateClose(settings, clusterService, jvmService).execute(indexName)
+            // No need for validation here
+            "notification" -> ValidateNothing(settings, clusterService, jvmService).execute(indexName)
             else -> {
                 // temporary call until all actions are mapped
                 ValidateNothing(settings, clusterService, jvmService).execute(indexName)

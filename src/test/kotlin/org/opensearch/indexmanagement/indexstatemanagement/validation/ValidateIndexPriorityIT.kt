@@ -21,10 +21,10 @@ import java.time.Instant
 import java.time.temporal.ChronoUnit
 import java.util.Locale
 
-class ValidateReadOnlyIT : IndexStateManagementRestTestCase() {
+class ValidateIndexPriorityIT : IndexStateManagementRestTestCase() {
     private val testIndexName = javaClass.simpleName.lowercase(Locale.ROOT)
 
-    fun `test read_only validation`() {
+    fun `test index_priority validation`() {
         enableValidationService()
         val indexName = "${testIndexName}_index_1"
         val policyID = "${testIndexName}_testPolicyName_1"
@@ -62,7 +62,7 @@ class ValidateReadOnlyIT : IndexStateManagementRestTestCase() {
         waitFor {
             val data = getExplainValidationResult(indexName)
             assertEquals(
-                "Index read action validation status is PASSED.",
+                "Index Priority action validation status is RE_VALIDATING.",
                 Validate.ValidationStatus.PASSED,
                 data.validationStatus
             )

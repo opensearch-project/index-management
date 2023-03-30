@@ -25,7 +25,7 @@ class NotificationAction(
 
     init {
         require(destination != null || channel != null) { "Notification must contain a destination or channel" }
-        require(destination == null || channel == null) { "Notification can only contain a single destination or channel" }
+        require(destination == null || channel == null) { "Notification can only contain either a destination or channel" }
         require(messageTemplate.lang == MUSTACHE) { "Notification message template must be a mustache script" }
     }
 
