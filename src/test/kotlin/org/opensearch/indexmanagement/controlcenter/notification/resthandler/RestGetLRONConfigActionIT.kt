@@ -49,7 +49,9 @@ class RestGetLRONConfigActionIT : LRONConfigRestTestCase() {
     }
 
     fun `test get all LRONConfigs`() {
-        val lronConfigResponses = randomList(1, 15) { createLRONConfig(randomLRONConfig(taskId = randomTaskId(nodeId = nodeIdsInRestIT.random()))).asMap() }
+        val lronConfigResponses = randomList(1, 15) {
+            createLRONConfig(randomLRONConfig(taskId = randomTaskId(nodeId = nodeIdsInRestIT.random()))).asMap()
+        }
 
         val response = client().makeRequest("GET", IndexManagementPlugin.LRON_BASE_URI)
         assertEquals("get LRONConfigs failed", RestStatus.OK, response.restStatus())
@@ -67,6 +69,21 @@ class RestGetLRONConfigActionIT : LRONConfigRestTestCase() {
                 lronConfigResponse[LRONConfig.LRON_CONFIG_FIELD],
                 resLRONConfigResponse!![LRONConfig.LRON_CONFIG_FIELD]
             )
+        }
+    }
+
+    fun `test get LRONConfig with docId and searchParams`() {
+        try {
+            val lronConfig = randomLRONConfig()
+            client().makeRequest(
+                "GET",
+                getResourceURI(lronConfig.taskId, lronConfig.actionName),
+                mapOf("size" to "10")
+            )
+            Assert.fail("Expected 400 BAD_REQUEST")
+        } catch (e: ResponseException) {
+            logger.debug(e.response.asMap())
+            assertEquals("unexpected status", RestStatus.BAD_REQUEST, e.response.restStatus())
         }
     }
 }

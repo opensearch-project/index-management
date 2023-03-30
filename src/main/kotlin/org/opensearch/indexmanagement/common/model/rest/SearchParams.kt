@@ -16,7 +16,6 @@ import java.io.IOException
 const val DEFAULT_PAGINATION_SIZE = 20
 const val DEFAULT_PAGINATION_FROM = 0
 const val DEFAULT_SORT_ORDER = "asc"
-const val SORT_ORDER_DESC = "desc"
 const val DEFAULT_QUERY_STRING = "*"
 
 data class SearchParams(

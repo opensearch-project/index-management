@@ -26,9 +26,15 @@ class GetLRONConfigRequest(
 
     override fun validate(): ActionRequestValidationException? {
         var validationException: ActionRequestValidationException? = null
-        if (!((null == docId) xor (null == searchParams))) {
+        if (null == docId && null == searchParams) {
             validationException = ValidateActions.addValidationError(
-                "Get LRONConfig requires exactly one of docId or searchParams not be none.",
+                "GetLRONConfigRequest must contain docId or searchParams",
+                validationException
+            )
+        }
+        if (null != docId && null != searchParams) {
+            validationException = ValidateActions.addValidationError(
+                "GetLRONConfigRequest can not contain both docId and searchParams",
                 validationException
             )
         }
