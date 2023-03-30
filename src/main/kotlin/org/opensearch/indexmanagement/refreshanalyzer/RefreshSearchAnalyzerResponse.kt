@@ -9,7 +9,7 @@ import org.opensearch.action.support.DefaultShardOperationFailedException
 import org.opensearch.action.support.broadcast.BroadcastResponse
 import org.opensearch.common.io.stream.StreamInput
 import org.opensearch.common.io.stream.StreamOutput
-import org.opensearch.common.xcontent.ConstructingObjectParser
+import org.opensearch.core.xcontent.ConstructingObjectParser
 import org.opensearch.core.xcontent.ToXContent.Params
 import org.opensearch.core.xcontent.XContentBuilder
 import org.opensearch.rest.action.RestActions

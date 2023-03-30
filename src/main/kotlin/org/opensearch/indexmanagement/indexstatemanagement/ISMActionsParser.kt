@@ -7,7 +7,7 @@ package org.opensearch.indexmanagement.indexstatemanagement
 
 import org.opensearch.common.io.stream.StreamInput
 import org.opensearch.core.xcontent.XContentParser
-import org.opensearch.core.xcontent.XContentParserUtils
+import org.opensearch.common.xcontent.XContentParserUtils
 import org.opensearch.indexmanagement.indexstatemanagement.action.AliasActionParser
 import org.opensearch.indexmanagement.indexstatemanagement.action.AllocationActionParser
 import org.opensearch.indexmanagement.indexstatemanagement.action.CloseActionParser

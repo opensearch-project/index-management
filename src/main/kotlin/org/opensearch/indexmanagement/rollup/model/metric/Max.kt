@@ -11,7 +11,7 @@ import org.opensearch.core.xcontent.ToXContent
 import org.opensearch.core.xcontent.XContentBuilder
 import org.opensearch.core.xcontent.XContentParser
 import org.opensearch.core.xcontent.XContentParser.Token
-import org.opensearch.core.xcontent.XContentParserUtils.ensureExpectedToken
+import org.opensearch.common.xcontent.XContentParserUtils.ensureExpectedToken
 
 class Max() : Metric(Type.MAX) {
     @Suppress("UNUSED_PARAMETER")

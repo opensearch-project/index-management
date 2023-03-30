@@ -20,12 +20,12 @@ import org.opensearch.cluster.metadata.IndexMetadata
 import org.opensearch.cluster.routing.allocation.command.MoveAllocationCommand
 import org.opensearch.common.Strings
 import org.opensearch.common.settings.Settings
-import org.opensearch.common.xcontent.DeprecationHandler
+import org.opensearch.core.xcontent.DeprecationHandler
 import org.opensearch.common.xcontent.LoggingDeprecationHandler
-import org.opensearch.common.xcontent.NamedXContentRegistry
+import org.opensearch.core.xcontent.NamedXContentRegistry
 import org.opensearch.common.xcontent.XContentHelper
 import org.opensearch.core.xcontent.XContentParser
-import org.opensearch.core.xcontent.XContentParserUtils
+import org.opensearch.common.xcontent.XContentParserUtils
 import org.opensearch.common.xcontent.XContentType
 import org.opensearch.common.xcontent.json.JsonXContent
 import org.opensearch.indexmanagement.IndexManagementPlugin
@@ -335,7 +335,7 @@ abstract class IndexStateManagementIntegTestCase : OpenSearchIntegTestCase() {
 
     fun updateIndexSettings(index: String, settings: Settings) {
         val request = Request("PUT", "/$index/_settings")
-        request.setJsonEntity(Strings.toString(settings))
+        request.setJsonEntity(Strings.toString(XContentType.JSON, settings))
         getRestClient().performRequest(request)
     }
 

@@ -16,7 +16,7 @@ import org.opensearch.common.bytes.BytesReference
 import org.opensearch.common.inject.Inject
 import org.opensearch.common.settings.Settings
 import org.opensearch.common.xcontent.LoggingDeprecationHandler
-import org.opensearch.common.xcontent.NamedXContentRegistry
+import org.opensearch.core.xcontent.NamedXContentRegistry
 import org.opensearch.common.xcontent.XContentHelper
 import org.opensearch.core.xcontent.XContentParser
 import org.opensearch.common.xcontent.XContentType

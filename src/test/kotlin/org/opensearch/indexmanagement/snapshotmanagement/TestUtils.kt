@@ -17,7 +17,7 @@ import org.opensearch.common.UUIDs
 import org.opensearch.common.collect.ImmutableOpenMap
 import org.opensearch.common.unit.TimeValue
 import org.opensearch.common.xcontent.LoggingDeprecationHandler
-import org.opensearch.common.xcontent.NamedXContentRegistry
+import org.opensearch.core.xcontent.NamedXContentRegistry
 import org.opensearch.core.xcontent.ToXContent
 import org.opensearch.common.xcontent.XContentFactory
 import org.opensearch.core.xcontent.XContentParser
