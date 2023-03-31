@@ -30,13 +30,14 @@ import org.opensearch.common.settings.Settings
 import org.opensearch.common.unit.TimeValue
 import org.opensearch.common.util.concurrent.ThreadContext
 import org.opensearch.common.xcontent.LoggingDeprecationHandler
-import org.opensearch.common.xcontent.NamedXContentRegistry
-import org.opensearch.common.xcontent.ToXContent
-import org.opensearch.common.xcontent.XContentBuilder
+import org.opensearch.core.xcontent.MediaType
+import org.opensearch.core.xcontent.NamedXContentRegistry
+import org.opensearch.core.xcontent.ToXContent
+import org.opensearch.core.xcontent.XContentBuilder
 import org.opensearch.common.xcontent.XContentFactory
 import org.opensearch.common.xcontent.XContentHelper
-import org.opensearch.common.xcontent.XContentParser
-import org.opensearch.common.xcontent.XContentParser.Token
+import org.opensearch.core.xcontent.XContentParser
+import org.opensearch.core.xcontent.XContentParser.Token
 import org.opensearch.common.xcontent.XContentParserUtils
 import org.opensearch.common.xcontent.XContentParserUtils.ensureExpectedToken
 import org.opensearch.common.xcontent.XContentType
@@ -73,7 +74,7 @@ fun contentParser(bytesReference: BytesReference): XContentParser {
 /** Convert an object to maps and lists representation */
 fun ToXContent.convertToMap(): Map<String, Any> {
     val bytesReference = XContentHelper.toXContent(this, XContentType.JSON, false)
-    return XContentHelper.convertToMap(bytesReference, false, XContentType.JSON).v2()
+    return XContentHelper.convertToMap(bytesReference, false, XContentType.JSON as (MediaType)).v2()
 }
 
 fun XContentParser.instant(): Instant? {
@@ -197,7 +198,7 @@ fun OpenSearchException.isRetryable(): Boolean {
  */
 fun XContentBuilder.string(): String = BytesReference.bytes(this).utf8ToString()
 
-fun XContentBuilder.toMap(): Map<String, Any> = XContentHelper.convertToMap(BytesReference.bytes(this), false, XContentType.JSON).v2()
+fun XContentBuilder.toMap(): Map<String, Any> = XContentHelper.convertToMap(BytesReference.bytes(this), false, XContentType.JSON as (MediaType)).v2()
 
 /**
  * Converts [OpenSearchClient] methods that take a callback into a kotlin suspending function.
