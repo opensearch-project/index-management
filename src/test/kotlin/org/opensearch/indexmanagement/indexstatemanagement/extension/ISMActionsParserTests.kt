@@ -7,7 +7,7 @@ package org.opensearch.indexmanagement.indexstatemanagement.extension
 
 import org.junit.After
 import org.opensearch.common.xcontent.LoggingDeprecationHandler
-import org.opensearch.common.xcontent.ToXContent
+import org.opensearch.core.xcontent.ToXContent
 import org.opensearch.common.xcontent.XContentFactory
 import org.opensearch.common.xcontent.XContentType
 import org.opensearch.indexmanagement.indexstatemanagement.ISMActionsParser
