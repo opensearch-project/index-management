@@ -93,12 +93,12 @@ data class LRONConfig(
 
     companion object {
         const val LRON_CONFIG_FIELD = "lron_config"
+        const val LRON_CONFIG_FIELDS = "lron_configs"
         const val TASK_ID_FIELD = "task_id"
         const val ACTION_NAME_FIELD = "action_name"
         const val CHANNELS_FIELD = "channels"
         const val USER_FIELD = "user"
         const val PRIORITY_FIELD = "priority"
-        const val MUSTACHE = "mustache"
         const val CHANNEL_TITLE = "Long Running Operation Notification"
 
         /* to fit with ISM XContentParser.parseWithType function */

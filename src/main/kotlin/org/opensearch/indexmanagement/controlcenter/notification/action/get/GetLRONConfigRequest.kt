@@ -34,7 +34,7 @@ class GetLRONConfigRequest(
         }
         if (null != docId && null != searchParams) {
             validationException = ValidateActions.addValidationError(
-                "GetLRONConfigRequest can not contain both docId and searchParams",
+                "Get LRONConfig requires either docId or searchParams to be specified",
                 validationException
             )
         }

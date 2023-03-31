@@ -85,6 +85,24 @@ class LRONConfigSecurityBehaviorIT : SecurityRestTestCase() {
         }
     }
 
+    fun `test index LRONConfig dry run with security using POST`() {
+        /* super user */
+        val request = Request("POST", IndexManagementPlugin.LRON_BASE_URI)
+        request.addParameter("dry_run", "true")
+        request.setJsonEntity(randomLRONConfig(taskId = randomTaskId(nodeId = nodeIdsInRestIT.random())).toJsonString())
+        executeRequest(request, RestStatus.OK, superUserClient!!)
+        /* test user */
+        executeRequest(request, RestStatus.FORBIDDEN, testUserClient!!)
+
+        val indexConfigRole = "index_lron_config"
+        try {
+            createAndAssignRole(indexConfigRole, listOf(INDEX_LRON_CONFIG), testUser)
+            executeRequest(request, RestStatus.OK, testUserClient!!)
+        } finally {
+            deleteRole(indexConfigRole)
+        }
+    }
+
     fun `test update LRONConfig with security using PUT`() {
         /* super user */
         val lronConfig = randomLRONConfig(taskId = randomTaskId(nodeId = nodeIdsInRestIT.random()))

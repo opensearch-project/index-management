@@ -6,6 +6,7 @@
 package org.opensearch.indexmanagement.controlcenter.notification.action.get
 
 import org.apache.logging.log4j.LogManager
+import org.opensearch.ExceptionsHelper
 import org.opensearch.action.ActionListener
 import org.opensearch.action.search.SearchRequest
 import org.opensearch.action.search.SearchResponse
@@ -18,6 +19,7 @@ import org.opensearch.common.xcontent.XContentFactory
 import org.opensearch.common.xcontent.XContentType
 import org.opensearch.core.xcontent.NamedXContentRegistry
 import org.opensearch.commons.ConfigConstants
+import org.opensearch.index.IndexNotFoundException
 import org.opensearch.index.query.QueryBuilders
 import org.opensearch.indexmanagement.IndexManagementPlugin
 import org.opensearch.indexmanagement.controlcenter.notification.LRONConfigResponse
@@ -64,12 +66,16 @@ class TransportGetLRONConfigAction @Inject constructor(
                                 actionListener.onResponse(GetLRONConfigResponse(listOf(response), 1))
                             }
 
-                            override fun onFailure(e: java.lang.Exception) {
-                                actionListener.onFailure(e)
+                            override fun onFailure(e: Exception) {
+                                if (e is IndexNotFoundException) {
+                                    // config index hasn't been initialized, catch this here and show empty result
+                                    actionListener.onResponse(GetLRONConfigResponse(emptyList(), 0))
+                                    return
+                                }
+                                actionListener.onFailure(ExceptionsHelper.unwrapCause(e) as Exception)
                             }
                         }
                     )
-                    return
                 } else {
                     doSearch()
                 }
@@ -109,8 +115,13 @@ class TransportGetLRONConfigAction @Inject constructor(
                         actionListener.onResponse(GetLRONConfigResponse(lronConfigResponses, totalNumber.toInt()))
                     }
 
-                    override fun onFailure(t: Exception) {
-                        actionListener.onFailure(t)
+                    override fun onFailure(e: Exception) {
+                        if (e is IndexNotFoundException) {
+                            // config index hasn't been initialized, catch this here and show empty result
+                            actionListener.onResponse(GetLRONConfigResponse(emptyList(), 0))
+                            return
+                        }
+                        actionListener.onFailure(ExceptionsHelper.unwrapCause(e) as Exception)
                     }
                 }
             )
