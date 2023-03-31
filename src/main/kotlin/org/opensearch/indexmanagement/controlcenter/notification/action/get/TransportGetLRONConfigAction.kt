@@ -67,11 +67,6 @@ class TransportGetLRONConfigAction @Inject constructor(
                             }
 
                             override fun onFailure(e: Exception) {
-                                if (e is IndexNotFoundException) {
-                                    // config index hasn't been initialized, catch this here and show empty result
-                                    actionListener.onResponse(GetLRONConfigResponse(emptyList(), 0))
-                                    return
-                                }
                                 actionListener.onFailure(ExceptionsHelper.unwrapCause(e) as Exception)
                             }
                         }

@@ -17,6 +17,7 @@ import org.opensearch.indexmanagement.controlcenter.notification.util.getDocID
 import org.opensearch.indexmanagement.makeRequest
 import org.opensearch.indexmanagement.opensearchapi.convertToMap
 import org.opensearch.rest.RestStatus
+import org.opensearch.test.OpenSearchTestCase
 
 @Suppress("UNCHECKED_CAST")
 class RestGetLRONConfigActionIT : LRONConfigRestTestCase() {
@@ -49,10 +50,11 @@ class RestGetLRONConfigActionIT : LRONConfigRestTestCase() {
     }
 
     fun `test get all LRONConfigs`() {
+        /* LRONConfigRestTestCase index a doc to auto create the index, here we wipe the index before count doc number */
+        wipeAllIndices()
         val lronConfigResponses = randomList(1, 15) {
             createLRONConfig(randomLRONConfig(taskId = randomTaskId(nodeId = nodeIdsInRestIT.random()))).asMap()
         }
-
         val response = client().makeRequest("GET", IndexManagementPlugin.LRON_BASE_URI)
         assertEquals("get LRONConfigs failed", RestStatus.OK, response.restStatus())
         val responseBody = response.asMap()
@@ -84,6 +86,20 @@ class RestGetLRONConfigActionIT : LRONConfigRestTestCase() {
         } catch (e: ResponseException) {
             logger.debug(e.response.asMap())
             assertEquals("unexpected status", RestStatus.BAD_REQUEST, e.response.restStatus())
+        }
+    }
+
+    fun `test get all LRONConfig if index not exists`() {
+        try {
+            wipeAllIndices()
+            val response = client().makeRequest("GET", IndexManagementPlugin.LRON_BASE_URI)
+            assertEquals("get LRONConfigs failed", RestStatus.OK, response.restStatus())
+            val responseBody = response.asMap()
+            val totalNumber = responseBody["total_number"]
+            OpenSearchTestCase.assertEquals("wrong LRONConfigs number", 0, totalNumber)
+        } finally {
+            /* index a random doc to create .opensearch-control-center index */
+            createLRONConfig(randomLRONConfig(taskId = randomTaskId(nodeId = nodeIdsInRestIT.random())))
         }
     }
 }
