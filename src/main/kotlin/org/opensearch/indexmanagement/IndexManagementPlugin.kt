@@ -37,6 +37,7 @@ import org.opensearch.indexmanagement.controlcenter.notification.action.get.GetL
 import org.opensearch.indexmanagement.controlcenter.notification.action.get.TransportGetLRONConfigAction
 import org.opensearch.indexmanagement.controlcenter.notification.action.index.IndexLRONConfigAction
 import org.opensearch.indexmanagement.controlcenter.notification.action.index.TransportIndexLRONConfigAction
+import org.opensearch.indexmanagement.controlcenter.notification.filter.IndexOperationActionFilter
 import org.opensearch.indexmanagement.controlcenter.notification.resthandler.RestDeleteLRONConfigAction
 import org.opensearch.indexmanagement.controlcenter.notification.resthandler.RestGetLRONConfigAction
 import org.opensearch.indexmanagement.controlcenter.notification.resthandler.RestIndexLRONConfigAction
