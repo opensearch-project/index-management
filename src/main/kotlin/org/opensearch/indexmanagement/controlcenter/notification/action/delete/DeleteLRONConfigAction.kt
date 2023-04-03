@@ -11,6 +11,6 @@ import org.opensearch.action.delete.DeleteResponse
 class DeleteLRONConfigAction private constructor() : ActionType<DeleteResponse>(NAME, ::DeleteResponse) {
     companion object {
         val INSTANCE = DeleteLRONConfigAction()
-        const val NAME = "cluster:admin/opendistro/controlcenter/lron/delete"
+        const val NAME = "cluster:admin/opensearch/controlcenter/lron/delete"
     }
 }

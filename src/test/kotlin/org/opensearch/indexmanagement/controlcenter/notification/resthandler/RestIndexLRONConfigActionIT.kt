@@ -154,6 +154,21 @@ class RestIndexLRONConfigActionIT : LRONConfigRestTestCase() {
         }
     }
 
+    fun `test autocreate index for indexLRONConfig action`() {
+        wipeAllIndices()
+        val lronConfig = randomLRONConfig(taskId = randomTaskId(nodeId = nodeIdsInRestIT.random()))
+        var response = createLRONConfig(lronConfig)
+        assertEquals("Create LRONConfig failed", RestStatus.OK, response.restStatus())
+        wipeAllIndices()
+        response = client().makeRequest(
+            "PUT",
+            getResourceURI(lronConfig.taskId, lronConfig.actionName),
+            lronConfig.toHttpEntity()
+        )
+        assertEquals("Create LRONConfig failed", RestStatus.OK, response.restStatus())
+        wipeAllIndices()
+    }
+
     fun `test mappings after LRONConfig creation`() {
         val lronConfig = randomLRONConfig(taskId = randomTaskId(nodeId = nodeIdsInRestIT.random()))
         createLRONConfig(lronConfig)

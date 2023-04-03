@@ -6,7 +6,6 @@
 package org.opensearch.indexmanagement.controlcenter.notification.action.index
 
 import org.opensearch.action.ActionRequest
-import org.opensearch.action.ActionRequestValidationException
 import org.opensearch.common.io.stream.StreamInput
 import org.opensearch.common.io.stream.StreamOutput
 import org.opensearch.indexmanagement.controlcenter.notification.model.LRONConfig
@@ -14,7 +13,7 @@ import java.io.IOException
 
 class IndexLRONConfigRequest(
     val lronConfig: LRONConfig,
-    val isUpdate: Boolean,
+    val isUpdate: Boolean = false,
     val dryRun: Boolean = false
 ) : ActionRequest() {
     @Throws(IOException::class)
@@ -24,9 +23,7 @@ class IndexLRONConfigRequest(
         dryRun = sin.readBoolean()
     )
 
-    override fun validate(): ActionRequestValidationException? {
-        return null
-    }
+    override fun validate() = null
 
     @Throws(IOException::class)
     override fun writeTo(out: StreamOutput) {

@@ -6,6 +6,7 @@
 package org.opensearch.indexmanagement.controlcenter.notification.action.index
 
 import org.apache.logging.log4j.LogManager
+import org.opensearch.ExceptionsHelper
 import org.opensearch.OpenSearchStatusException
 import org.opensearch.action.ActionListener
 import org.opensearch.action.DocWriteRequest
@@ -86,6 +87,7 @@ class TransportIndexLRONConfigAction @Inject constructor(
         }
 
         private fun validate() {
+            /* check whether the node id in task id exists */
             if (null != request.lronConfig.taskId && null == clusterService.state().nodes.get(request.lronConfig.taskId.nodeId)) {
                 actionListener.onFailure(IllegalArgumentException("Illegal taskID. NodeID not exists."))
                 return
@@ -131,7 +133,7 @@ class TransportIndexLRONConfigAction @Inject constructor(
                     }
 
                     override fun onFailure(e: Exception) {
-                        actionListener.onFailure(e)
+                        actionListener.onFailure(ExceptionsHelper.unwrapCause(e) as Exception)
                     }
                 }
             )
