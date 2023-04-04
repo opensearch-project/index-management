@@ -12,8 +12,6 @@
 package org.opensearch.indexmanagement
 
 import org.apache.http.HttpHeaders
-import org.apache.http.entity.ContentType
-import org.apache.http.entity.StringEntity
 import org.apache.http.message.BasicHeader
 import org.opensearch.client.Request
 import org.opensearch.client.Response
@@ -127,22 +125,6 @@ abstract class SecurityRestTestCase : IndexManagementRestTestCase() {
         ) = super.getTransform(transformId, header, userClient)
 
         fun getTransformMetadataExt(metadataId: String) = super.getTransformMetadata(metadataId)
-    }
-
-    protected fun updateClusterSetting(key: String, value: String, escapeValue: Boolean = true) {
-        val formattedValue = if (escapeValue) "\"$value\"" else value
-        val request = """
-            {
-                "persistent": {
-                    "$key": $formattedValue
-                }
-            }
-        """.trimIndent()
-        val res = client().makeRequest(
-            "PUT", "_cluster/settings", emptyMap(),
-            StringEntity(request, ContentType.APPLICATION_JSON)
-        )
-        assertEquals("Request failed", RestStatus.OK, res.restStatus())
     }
 
     protected fun createRollup(

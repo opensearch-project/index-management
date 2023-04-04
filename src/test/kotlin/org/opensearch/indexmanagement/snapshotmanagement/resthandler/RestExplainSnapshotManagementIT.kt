@@ -5,6 +5,8 @@
 
 package org.opensearch.indexmanagement.snapshotmanagement.resthandler
 
+import org.junit.After
+import org.junit.Before
 import org.opensearch.client.ResponseException
 import org.opensearch.common.xcontent.XContentType
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
@@ -14,6 +16,7 @@ import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata.WorkflowMetadata.Companion.TRIGGER_FIELD
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy
 import org.opensearch.indexmanagement.snapshotmanagement.randomSMPolicy
+import org.opensearch.indexmanagement.snapshotmanagement.settings.SnapshotManagementSettings
 import org.opensearch.indexmanagement.waitFor
 import org.opensearch.jobscheduler.spi.schedule.IntervalSchedule
 import org.opensearch.rest.RestStatus
@@ -22,6 +25,16 @@ import java.time.temporal.ChronoUnit
 
 @Suppress("UNCHECKED_CAST")
 class RestExplainSnapshotManagementIT : SnapshotManagementRestTestCase() {
+
+    @Before
+    fun allowMultiplePolicies() {
+        updateClusterSetting(SnapshotManagementSettings.MAXIMUM_POLICIES_PER_REPOSITORY.key, "10")
+    }
+
+    @After
+    fun clearUp() {
+        updateClusterSetting(SnapshotManagementSettings.MAXIMUM_POLICIES_PER_REPOSITORY.key, "1")
+    }
 
     fun `test explaining a snapshot management policy`() {
         val smPolicy = createSMPolicy(

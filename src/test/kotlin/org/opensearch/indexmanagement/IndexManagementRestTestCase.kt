@@ -6,6 +6,7 @@
 package org.opensearch.indexmanagement
 
 import org.apache.http.entity.ContentType
+import org.apache.http.entity.ContentType.APPLICATION_JSON
 import org.apache.http.entity.StringEntity
 import org.junit.AfterClass
 import org.junit.Before
@@ -161,6 +162,22 @@ abstract class IndexManagementRestTestCase : ODFERestTestCase() {
             }
             return result
         }
+    }
+
+    protected fun updateClusterSetting(key: String, value: String, escapeValue: Boolean = true) {
+        val formattedValue = if (escapeValue) "\"$value\"" else value
+        val request = """
+            {
+                "persistent": {
+                    "$key": $formattedValue
+                }
+            }
+        """.trimIndent()
+        val res = client().makeRequest(
+            "PUT", "_cluster/settings", emptyMap(),
+            StringEntity(request, APPLICATION_JSON)
+        )
+        assertEquals("Request failed", RestStatus.OK, res.restStatus())
     }
 
     override fun preserveIndicesUponCompletion(): Boolean = true

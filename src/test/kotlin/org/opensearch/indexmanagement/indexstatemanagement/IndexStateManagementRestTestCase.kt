@@ -285,22 +285,6 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
         return managedIndex?.policyID
     }
 
-    protected fun updateClusterSetting(key: String, value: String, escapeValue: Boolean = true) {
-        val formattedValue = if (escapeValue) "\"$value\"" else value
-        val request = """
-            {
-                "persistent": {
-                    "$key": $formattedValue
-                }
-            }
-        """.trimIndent()
-        val res = client().makeRequest(
-            "PUT", "_cluster/settings", emptyMap(),
-            StringEntity(request, APPLICATION_JSON)
-        )
-        assertEquals("Request failed", RestStatus.OK, res.restStatus())
-    }
-
     protected fun updateIndexStateManagementJitterSetting(value: Double) {
         updateClusterSetting(ManagedIndexSettings.JITTER.key, value.toString(), false)
     }

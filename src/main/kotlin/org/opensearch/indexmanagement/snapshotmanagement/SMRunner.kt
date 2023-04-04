@@ -26,15 +26,19 @@ import org.opensearch.index.seqno.SequenceNumbers
 import org.opensearch.indexmanagement.IndexManagementIndices
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.creationTransitions
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.deletionTransitions
+import org.opensearch.indexmanagement.snapshotmanagement.settings.SnapshotManagementSettings.Companion.CIRCUIT_BREAKER_JVM_THRESHOLD
+import org.opensearch.indexmanagement.snapshotmanagement.settings.SnapshotManagementSettings.Companion.minJvmThread
 import org.opensearch.indexmanagement.util.acquireLockForScheduledJob
 import org.opensearch.indexmanagement.util.releaseLockForScheduledJob
 import org.opensearch.jobscheduler.spi.JobExecutionContext
 import org.opensearch.jobscheduler.spi.ScheduledJobParameter
 import org.opensearch.jobscheduler.spi.ScheduledJobRunner
+import org.opensearch.monitor.jvm.JvmService
 import org.opensearch.rest.RestStatus
 import org.opensearch.threadpool.ThreadPool
 import java.time.Instant.now
 
+@Suppress("LongParameterList")
 object SMRunner :
     ScheduledJobRunner,
     CoroutineScope by CoroutineScope(SupervisorJob() + Dispatchers.Default + CoroutineName("snapshot_management_runner")) {
@@ -46,6 +50,8 @@ object SMRunner :
     private lateinit var clusterService: ClusterService
     private lateinit var threadPool: ThreadPool
     private lateinit var settings: Settings
+    private lateinit var jvmService: JvmService
+    @Volatile private var circuitBreakerJvmThreshold: Int = minJvmThread
 
     fun init(
         client: Client,
@@ -53,12 +59,19 @@ object SMRunner :
         settings: Settings,
         indicesManager: IndexManagementIndices,
         clusterService: ClusterService,
+        jvmService: JvmService,
     ): SMRunner {
         this.client = client
         this.threadPool = threadPool
         this.settings = settings
         this.indicesManager = indicesManager
         this.clusterService = clusterService
+        this.jvmService = jvmService
+
+        this.circuitBreakerJvmThreshold = CIRCUIT_BREAKER_JVM_THRESHOLD.get(settings)
+        clusterService.clusterSettings.addSettingsUpdateConsumer(CIRCUIT_BREAKER_JVM_THRESHOLD) {
+            circuitBreakerJvmThreshold = it
+        }
         return this
     }
 
@@ -79,12 +92,21 @@ object SMRunner :
         launch {
             val lock = acquireLockForScheduledJob(job, context, backoffPolicy)
             if (lock == null) {
-                log.warn("Cannot acquire lock for snapshot management job ${job.policyName}")
+                log.warn("Skipping current execution of ${job.policyName} because cannot acquire lock")
                 return@launch
             }
 
             if (ClusterStateHealth(clusterService.state()).status == ClusterHealthStatus.RED) {
                 log.warn("Skipping current execution of ${job.policyName} because of red cluster health")
+                return@launch
+            }
+
+            if (jvmService.stats().mem.heapUsedPercent > circuitBreakerJvmThreshold) {
+                log.warn(
+                    "Skipping current execution of ${job.policyName} because jvm heap percentage " +
+                        "${jvmService.stats().mem.heapUsedPercent} exceeds $circuitBreakerJvmThreshold of " +
+                        "cluster setting ${CIRCUIT_BREAKER_JVM_THRESHOLD.key}"
+                )
                 return@launch
             }
 

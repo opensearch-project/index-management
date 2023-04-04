@@ -440,7 +440,7 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
             client, clusterService, threadPool, indexManagementIndices, metadataService, templateService, indexMetadataProvider
         )
 
-        val smRunner = SMRunner.init(client, threadPool, settings, indexManagementIndices, clusterService)
+        val smRunner = SMRunner.init(client, threadPool, settings, indexManagementIndices, clusterService, jvmService)
 
         val pluginVersionSweepCoordinator = PluginVersionSweepCoordinator(skipFlag, settings, threadPool, clusterService)
 
@@ -532,7 +532,11 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
             LegacyOpenDistroRollupSettings.ROLLUP_ENABLED,
             LegacyOpenDistroRollupSettings.ROLLUP_SEARCH_ENABLED,
             LegacyOpenDistroRollupSettings.ROLLUP_DASHBOARDS,
-            SnapshotManagementSettings.FILTER_BY_BACKEND_ROLES
+            SnapshotManagementSettings.FILTER_BY_BACKEND_ROLES,
+            SnapshotManagementSettings.MAXIMUM_SNAPSHOTS_PER_POLICY,
+            SnapshotManagementSettings.MAXIMUM_POLICIES_PER_REPOSITORY,
+            SnapshotManagementSettings.REPOSITORY_DENY_LIST,
+            SnapshotManagementSettings.CIRCUIT_BREAKER_JVM_THRESHOLD,
         )
     }
 
