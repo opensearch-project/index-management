@@ -575,7 +575,7 @@ integTest {
     }
 
     // remove from running with remote cluster
-    if (System.getProperty("tests.rest.cluster") != null) {
+    if (usingRemoteCluster) {
         exclude 'org/opensearch/indexmanagement/controlcenter/notification/filter/NotificationActionListenerIT.class'
     }
 }

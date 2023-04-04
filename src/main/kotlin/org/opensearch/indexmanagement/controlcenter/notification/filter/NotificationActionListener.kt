@@ -23,6 +23,7 @@ import org.opensearch.action.admin.indices.open.OpenIndexResponse
 import org.opensearch.action.admin.indices.shrink.ResizeAction
 import org.opensearch.action.admin.indices.shrink.ResizeRequest
 import org.opensearch.action.admin.indices.shrink.ResizeResponse
+import org.opensearch.action.bulk.BackoffPolicy
 import org.opensearch.action.delete.DeleteResponse
 import org.opensearch.action.support.ActiveShardsObserver
 import org.opensearch.client.Client
@@ -50,9 +51,11 @@ import org.opensearch.indexmanagement.common.model.rest.SearchParams
 import org.opensearch.indexmanagement.controlcenter.notification.action.get.GetLRONConfigAction
 import org.opensearch.indexmanagement.controlcenter.notification.action.get.GetLRONConfigRequest
 import org.opensearch.indexmanagement.controlcenter.notification.action.get.GetLRONConfigResponse
+import org.opensearch.indexmanagement.opensearchapi.retry
 import org.opensearch.indexmanagement.util.OpenForTesting
 import org.opensearch.tasks.Task
 import org.opensearch.tasks.TaskId
+import org.opensearch.threadpool.ThreadPool.Names.GENERIC
 import java.util.function.Consumer
 
 @Suppress("LongParameterList", "MaxLineLength")
@@ -71,12 +74,15 @@ class NotificationActionListener<Request : ActionRequest, Response : ActionRespo
 
     private val logger = LogManager.getLogger(NotificationActionListener::class.java)
 
+    @Suppress("MagicNumber")
+    private val notificationRetryPolicy = BackoffPolicy.exponentialBackoff(TimeValue(1000), 3)
+
     override fun onResponse(response: Response) {
         try {
             delegate.onResponse(response)
             parseAndSendNotification(response)
         } catch (e: Exception) {
-            onFailure(e)
+            delegate.onFailure(e)
         }
     }
 
@@ -113,7 +119,7 @@ class NotificationActionListener<Request : ActionRequest, Response : ActionRespo
                 )
 
                 else -> {
-                    logger.debug("Action {} is not supported for notification, skip!", action)
+                    logger.debug("Action {} is not supported for notification!", action)
                 }
             }
         } catch (e: Exception) {
@@ -139,43 +145,7 @@ class NotificationActionListener<Request : ActionRequest, Response : ActionRespo
                 GetLRONConfigRequest(searchParams = searchParam),
                 object : ActionListener<GetLRONConfigResponse> {
                     override fun onResponse(lronConfigResponse: GetLRONConfigResponse) {
-                        if (0 == lronConfigResponse.totalNumber) {
-                            logger.info(
-                                "No notification channel configured for task: {} action: {}", taskId.toString(), action
-                            )
-                            return
-                        }
-
-                        val channels = getQualifiedChannels(lronConfigResponse, result)
-
-                        channels.forEach {
-                            val title = buildNotificationTitle()
-                            val eventSource = EventSource(title, taskId.toString(), SeverityType.INFO)
-                            launch {
-                                val config = it.lronConfig
-                                if (config.lronCondition.isEnabled()) {
-                                    it.lronConfig.channels?.forEach {
-                                        try {
-                                            it.sendNotification(
-                                                client,
-                                                eventSource,
-                                                defaultMessage,
-                                                config.user,
-                                            )
-                                        } catch (osse: OpenSearchStatusException) {
-                                            logger.warn(
-                                                "Sending notification failed, restStatus {}", osse.status(), osse
-                                            )
-                                        } catch (e: Exception) {
-                                            logger.error("Sending notification failed", e)
-                                        }
-                                    }
-                                }
-
-                                // remove one time configuration no matter it is enabled or not
-                                removeOneTimePolicy(config, taskId)
-                            }
-                        }
+                        sendNotification(lronConfigResponse, taskId, action, result, defaultMessage)
                     }
 
                     override fun onFailure(e: Exception) {
@@ -190,11 +160,59 @@ class NotificationActionListener<Request : ActionRequest, Response : ActionRespo
         }
     }
 
+    private fun sendNotification(
+        lronConfigResponse: GetLRONConfigResponse,
+        taskId: TaskId,
+        action: String,
+        result: OperationResult,
+        defaultMessage: String
+    ) {
+        if (0 == lronConfigResponse.totalNumber) {
+            logger.info("No notification channel configured for task: {} action: {}", taskId.toString(), action)
+            return
+        }
+
+        val channels = getQualifiedChannels(lronConfigResponse, result)
+        val eventSource = EventSource(TITLE, taskId.toString(), SeverityType.INFO)
+
+        channels.forEach {
+            // delay the sending time 5s for runtime policy
+            client.threadPool().schedule({
+                launch {
+                    val config = it.lronConfig
+                    if (config.lronCondition.isEnabled()) {
+                        it.lronConfig.channels?.forEach { channel ->
+                            try {
+                                notificationRetryPolicy.retry(logger) {
+                                    channel.sendNotification(
+                                        client,
+                                        eventSource,
+                                        defaultMessage,
+                                        config.user,
+                                    )
+                                }
+                            } catch (osse: OpenSearchStatusException) {
+                                logger.warn(
+                                    "Sending notification failed, restStatus {}", osse.status(), osse
+                                )
+                            } catch (e: Exception) {
+                                logger.error("Sending notification failed", e)
+                            }
+                        }
+                    }
+
+                    // remove one time configuration no matter it is enabled or not
+                    removeOneTimePolicy(config)
+                }
+            }, DELAY, GENERIC)
+        }
+    }
+
     fun removeOneTimePolicy(
-        config: LRONConfig,
-        taskId: TaskId
+        config: LRONConfig
     ) {
         if (config.taskId != null) {
+            val taskId = config.taskId
             client.execute(
                 DeleteLRONConfigAction.INSTANCE,
                 DeleteLRONConfigRequest(
@@ -243,12 +261,11 @@ class NotificationActionListener<Request : ActionRequest, Response : ActionRespo
         return query.replace("/", "\\/").replace(":", "\\:")
     }
 
-    private fun buildNotificationTitle() = "Index Management - Index Operation Complete Notification"
-
-    public companion object {
+    companion object {
         val MAX_WAIT_TIME: TimeValue = TimeValue.timeValueHours(1)
         const val COMPLETED = "has completed."
         const val COMPLETED_WITH_ERROR = "has completed with errors. Error details:"
-        val COMPLETED_WITH_TIMEOUT = "has timeout within ${MAX_WAIT_TIME.toHumanReadableString(0)}."
+        const val TITLE = "Index Management - Index Operation Complete Notification"
+        val DELAY: TimeValue = TimeValue.timeValueSeconds(5)
     }
 }
