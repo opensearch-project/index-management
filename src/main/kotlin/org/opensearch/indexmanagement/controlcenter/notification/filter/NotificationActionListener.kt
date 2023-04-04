@@ -119,11 +119,11 @@ class NotificationActionListener<Request : ActionRequest, Response : ActionRespo
                 )
 
                 else -> {
-                    logger.debug("Action {} is not supported for notification!", action)
+                    logger.debug("Action: {} is not supported for notification!", action)
                 }
             }
         } catch (e: Exception) {
-            logger.info("Sending out notification for action:{} failed", action, e)
+            logger.info("Sending out notification for action: {} failed", action, e)
         }
     }
 
@@ -150,9 +150,9 @@ class NotificationActionListener<Request : ActionRequest, Response : ActionRespo
 
                     override fun onFailure(e: Exception) {
                         if (e is IndexNotFoundException) {
-                            logger.info("No notification channel configured for task: {} action: {}", taskId.toString(), action)
+                            logger.debug("No notification policy configured for task: {} action: {}", taskId.toString(), action)
                         } else {
-                            logger.error("Can't get notification channel config for action {}", action, e)
+                            logger.error("Can't get notification policy for action: {}", action, e)
                         }
                     }
                 }
@@ -168,7 +168,7 @@ class NotificationActionListener<Request : ActionRequest, Response : ActionRespo
         defaultMessage: String
     ) {
         if (0 == lronConfigResponse.totalNumber) {
-            logger.info("No notification channel configured for task: {} action: {}", taskId.toString(), action)
+            logger.debug("No notification policy configured for task: {} action: {}", taskId.toString(), action)
             return
         }
 
@@ -222,13 +222,13 @@ class NotificationActionListener<Request : ActionRequest, Response : ActionRespo
                     override fun onResponse(response: DeleteResponse) {
                         if (response.result == DocWriteResponse.Result.DELETED) {
                             logger.info(
-                                "One time configuration for task:{} has been removed", taskId
+                                "One time notification policy for task: {} has been removed", taskId
                             )
                         }
                     }
 
                     override fun onFailure(e: Exception) {
-                        logger.warn("remove one time configuration failed", e)
+                        logger.info("Remove one time notification policy failed", e)
                     }
                 }
             )
