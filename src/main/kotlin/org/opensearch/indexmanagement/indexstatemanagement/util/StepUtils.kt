@@ -203,7 +203,10 @@ suspend fun resetReadOnlyAndRouting(index: String, client: Client, originalSetti
 }
 
 fun getShrinkLockID(nodeName: String): String {
-    return "$INDEX_MANAGEMENT_INDEX-$LOCK_SOURCE_JOB_ID-$nodeName"
+    return LockModel.generateLockId(
+        INDEX_MANAGEMENT_INDEX,
+        getShrinkJobID(nodeName)
+    )
 }
 
 fun getShrinkJobID(nodeName: String): String {
