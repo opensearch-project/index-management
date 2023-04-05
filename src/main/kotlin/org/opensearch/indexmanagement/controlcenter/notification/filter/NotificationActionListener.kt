@@ -101,7 +101,12 @@ class NotificationActionListener<Request : ActionRequest, Response : ActionRespo
     fun parseAndSendNotification(response: ActionResponse) {
         try {
             val callback =
-                Consumer<Tuple<OperationResult, String>> { result -> notify(action, result.v1(), result.v2()) }
+                Consumer<Tuple<OperationResult, String>> { result ->
+                    // delay the sending time 5s for runtime policy
+                    client.threadPool().schedule({
+                        notify(action, result.v1(), result.v2())
+                    }, DELAY, GENERIC)
+                }
 
             when (response) {
                 is ResizeResponse -> ResizeIndexRespParser(
@@ -150,7 +155,11 @@ class NotificationActionListener<Request : ActionRequest, Response : ActionRespo
 
                     override fun onFailure(e: Exception) {
                         if (e is IndexNotFoundException) {
-                            logger.debug("No notification policy configured for task: {} action: {}", taskId.toString(), action)
+                            logger.debug(
+                                "No notification policy configured for task: {} action: {}",
+                                taskId.toString(),
+                                action
+                            )
                         } else {
                             logger.error("Can't get notification policy for action: {}", action, e)
                         }
@@ -176,35 +185,32 @@ class NotificationActionListener<Request : ActionRequest, Response : ActionRespo
         val eventSource = EventSource(TITLE, taskId.toString(), SeverityType.INFO)
 
         channels.forEach {
-            // delay the sending time 5s for runtime policy
-            client.threadPool().schedule({
-                launch {
-                    val config = it.lronConfig
-                    if (config.lronCondition.isEnabled()) {
-                        it.lronConfig.channels?.forEach { channel ->
-                            try {
-                                notificationRetryPolicy.retry(logger) {
-                                    channel.sendNotification(
-                                        client,
-                                        eventSource,
-                                        defaultMessage,
-                                        config.user,
-                                    )
-                                }
-                            } catch (osse: OpenSearchStatusException) {
-                                logger.warn(
-                                    "Sending notification failed, restStatus {}", osse.status(), osse
+            launch {
+                val config = it.lronConfig
+                if (config.lronCondition.isEnabled()) {
+                    it.lronConfig.channels?.forEach { channel ->
+                        try {
+                            notificationRetryPolicy.retry(logger) {
+                                channel.sendNotification(
+                                    client,
+                                    eventSource,
+                                    defaultMessage,
+                                    config.user,
                                 )
-                            } catch (e: Exception) {
-                                logger.error("Sending notification failed", e)
                             }
+                        } catch (osse: OpenSearchStatusException) {
+                            logger.warn(
+                                "Sending notification failed, restStatus {}", osse.status(), osse
+                            )
+                        } catch (e: Exception) {
+                            logger.error("Sending notification failed", e)
                         }
                     }
-
-                    // remove one time configuration no matter it is enabled or not
-                    removeOneTimePolicy(config)
                 }
-            }, DELAY, GENERIC)
+
+                // remove one time configuration no matter it is enabled or not
+                removeOneTimePolicy(config)
+            }
         }
     }
 
