@@ -10,7 +10,7 @@ import org.opensearch.common.io.stream.BytesStreamOutput
 import org.opensearch.common.io.stream.NamedWriteableAwareStreamInput
 import org.opensearch.common.io.stream.NamedWriteableRegistry
 import org.opensearch.common.settings.Settings
-import org.opensearch.common.xcontent.ToXContent
+import org.opensearch.core.xcontent.ToXContent
 import org.opensearch.common.xcontent.XContentFactory
 import org.opensearch.index.Index
 import org.opensearch.index.shard.ShardId

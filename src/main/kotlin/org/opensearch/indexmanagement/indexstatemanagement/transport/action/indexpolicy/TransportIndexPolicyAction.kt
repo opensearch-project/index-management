@@ -25,7 +25,7 @@ import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.ValidationException
 import org.opensearch.common.inject.Inject
 import org.opensearch.common.settings.Settings
-import org.opensearch.common.xcontent.NamedXContentRegistry
+import org.opensearch.core.xcontent.NamedXContentRegistry
 import org.opensearch.common.xcontent.XContentFactory
 import org.opensearch.commons.ConfigConstants
 import org.opensearch.commons.authuser.User

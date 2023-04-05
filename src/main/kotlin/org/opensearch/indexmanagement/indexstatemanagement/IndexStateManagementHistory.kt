@@ -22,7 +22,7 @@ import org.opensearch.client.Client
 import org.opensearch.cluster.LocalNodeClusterManagerListener
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.settings.Settings
-import org.opensearch.common.xcontent.ToXContent
+import org.opensearch.core.xcontent.ToXContent
 import org.opensearch.common.xcontent.XContentFactory
 import org.opensearch.indexmanagement.IndexManagementIndices
 import org.opensearch.indexmanagement.IndexManagementPlugin

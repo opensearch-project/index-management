@@ -7,7 +7,7 @@ package org.opensearch.indexmanagement.snapshotmanagement.api.resthandler
 
 import org.opensearch.action.support.WriteRequest
 import org.opensearch.client.node.NodeClient
-import org.opensearch.common.xcontent.ToXContent
+import org.opensearch.core.xcontent.ToXContent
 import org.opensearch.index.seqno.SequenceNumbers
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.SM_POLICIES_URI
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.SMActions
