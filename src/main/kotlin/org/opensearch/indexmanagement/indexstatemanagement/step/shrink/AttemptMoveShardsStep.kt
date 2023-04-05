@@ -104,9 +104,9 @@ class AttemptMoveShardsStep(private val action: ShrinkAction) : ShrinkStep(name,
         val interval = getJobIntervalSeconds(context.metadata.indexUuid, client)
 
         // Get candidate nodes for shrink
-        val suitableNodes = findSuitableNodes(context, shardStats, indexSize) ?: return this
+        val suitableNodes = findSuitableNodes(context, shardStats, indexSize)
 
-        if (suitableNodes.size < 1) {
+        if (suitableNodes.isEmpty()) {
             info = mapOf("message" to NO_AVAILABLE_NODES_MESSAGE)
             stepStatus = StepStatus.CONDITION_NOT_MET
             return this
