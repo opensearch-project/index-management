@@ -25,8 +25,7 @@ import org.opensearch.common.settings.ClusterSettings
 import org.opensearch.common.settings.Settings
 import org.opensearch.common.unit.TimeValue
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
-import org.opensearch.indexmanagement.indexstatemanagement.action.ShrinkAction.Companion.LOCK_RESOURCE_NAME
-import org.opensearch.indexmanagement.indexstatemanagement.action.ShrinkAction.Companion.LOCK_RESOURCE_TYPE
+import org.opensearch.indexmanagement.indexstatemanagement.action.ShrinkAction.Companion.LOCK_SOURCE_JOB_ID
 import org.opensearch.indexmanagement.indexstatemanagement.step.shrink.AttemptMoveShardsStep
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
@@ -204,7 +203,11 @@ suspend fun resetReadOnlyAndRouting(index: String, client: Client, originalSetti
 }
 
 fun getShrinkLockID(nodeName: String): String {
-    return "$LOCK_RESOURCE_TYPE-$LOCK_RESOURCE_NAME-$nodeName"
+    return "$INDEX_MANAGEMENT_INDEX-$LOCK_SOURCE_JOB_ID-$nodeName"
+}
+
+fun getShrinkJobID(nodeName: String): String {
+    return "$LOCK_SOURCE_JOB_ID-$nodeName"
 }
 
 // Creates a map of shardIds to the set of node names which the shard copies reside on. For example, with 2 replicas

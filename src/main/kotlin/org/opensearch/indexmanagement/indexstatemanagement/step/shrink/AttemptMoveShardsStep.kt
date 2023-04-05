@@ -30,7 +30,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.util.getIntervalFromM
 import org.opensearch.indexmanagement.indexstatemanagement.util.getManagedIndexConfig
 import org.opensearch.indexmanagement.indexstatemanagement.util.getNodeFreeDiskSpaceAfterShrink
 import org.opensearch.indexmanagement.indexstatemanagement.util.getShardIdToNodeNameSet
-import org.opensearch.indexmanagement.indexstatemanagement.util.getShrinkLockID
+import org.opensearch.indexmanagement.indexstatemanagement.util.getShrinkJobID
 import org.opensearch.indexmanagement.indexstatemanagement.util.isIndexGreen
 import org.opensearch.indexmanagement.indexstatemanagement.util.issueUpdateSettingsRequest
 import org.opensearch.indexmanagement.opensearchapi.convertToMap
@@ -97,7 +97,7 @@ class AttemptMoveShardsStep(private val action: ShrinkAction) : ShrinkStep(name,
             return this
         }
 
-        // Get original index settings; revert them back after shrink completed
+        // Get original index settings; WaitForShrinkStep.resetReadOnlyAndRouting method resets write block and routing node after shrink completed.
         val originalIndexSettings = getOriginalSettings(indexName, context.clusterService)
 
         // Get the job interval to use in determining the lock length
@@ -262,7 +262,7 @@ class AttemptMoveShardsStep(private val action: ShrinkAction) : ShrinkStep(name,
     ): Pair<LockModel, String>? {
         if (suitableNodes.isNotEmpty()) {
             for (nodeName in suitableNodes) {
-                val lockID = getShrinkLockID(nodeName)
+                val lockID = getShrinkJobID(nodeName)
                 val lock: LockModel? = lockService.suspendUntil {
                     acquireLockWithId(INDEX_MANAGEMENT_INDEX, getShrinkLockDuration(jobIntervalSeconds), lockID, it)
                 }
@@ -286,7 +286,7 @@ class AttemptMoveShardsStep(private val action: ShrinkAction) : ShrinkStep(name,
         stepContext: StepContext,
         shardStats: Array<ShardStats>,
         indexSizeInBytes: Long
-    ): List<String>? {
+    ): List<String> {
         val nodesStatsReq = NodesStatsRequest().addMetric(FS_METRIC)
         val nodeStatsResponse: NodesStatsResponse = stepContext.client.admin().cluster().suspendUntil { nodesStats(nodesStatsReq, it) }
         val nodesList = nodeStatsResponse.nodes.filter { it.node.isDataNode }
@@ -298,10 +298,15 @@ class AttemptMoveShardsStep(private val action: ShrinkAction) : ShrinkStep(name,
         for (node in nodesList) {
             // Gets the amount of disk space in the node which will be free below the high watermark level after adding 2*indexSizeInBytes,
             // as the source index is duplicated during the shrink
-            val remainingDsikSpace = getNodeFreeDiskSpaceAfterShrink(node, indexSizeInBytes, stepContext.clusterService.clusterSettings)
-            if (remainingDsikSpace > 0L) {
-                nodesWithSpace.add(Tuple(remainingDsikSpace, node.node.name))
+            val remainingDiskSpace = getNodeFreeDiskSpaceAfterShrink(node, indexSizeInBytes, stepContext.clusterService.clusterSettings)
+            if (remainingDiskSpace > 0L) {
+                nodesWithSpace.add(Tuple(remainingDiskSpace, node.node.name))
             }
+        }
+        // If no node has enough disk space, skip next step
+        if (nodesWithSpace.size < 1) {
+            logger.info("No node has enough disk space for shrink action.")
+            return suitableNodes
         }
         val shardIdToNodeList: Map<Int, Set<String>> = getShardIdToNodeNameSet(shardStats, stepContext.clusterService.state().nodes)
         // For each node, do a dry run of moving all shards to the node to make sure that there aren't any other blockers
@@ -323,10 +328,13 @@ class AttemptMoveShardsStep(private val action: ShrinkAction) : ShrinkStep(name,
                 stepContext.client.admin().cluster().suspendUntil { reroute(clusterRerouteRequest, it) }
             val numOfDecisions = clusterRerouteResponse.explanations.explanations().size
             val numNoDecisions = clusterRerouteResponse.explanations.explanations().count { it.decisions().type().equals((Decision.Type.NO)) }
-            // NO decision type is not counted
+            // NO decision type is not counted; YES and THROTTLE decision type are available for shrink.
             if (numOfDecisions - numNoDecisions >= requestedShardIds.size) {
                 suitableNodes.add(sizeNodeTuple.v2())
             }
+        }
+        if (suitableNodes.size < 1) {
+            logger.info("No node has shard moving permission for shrink action.")
         }
         return suitableNodes
     }
@@ -421,9 +429,9 @@ class AttemptMoveShardsStep(private val action: ShrinkAction) : ShrinkStep(name,
         const val name = "attempt_move_shards_step"
         const val UPDATE_FAILED_MESSAGE = "Shrink action failed because shard settings could not be updated."
         const val NO_AVAILABLE_NODES_MESSAGE =
-            "There are no available nodes for a shrink action. Delaying until node becomes available."
+            "There is no node with enough disk space or shard moving permission for a shrink action."
         const val NO_UNLOCKED_NODES_MESSAGE =
-            "There are no unlocked nodes for a shrink action. Delaying until node becomes unlocked."
+            "Candidate node for shrink action is locked for other actions. Delaying until gets unlocked."
         const val UNSAFE_FAILURE_MESSAGE = "Shrink failed because index has no replicas and force_unsafe is not set to true."
         const val ONE_PRIMARY_SHARD_MESSAGE = "Source index only has one primary shard. Skip this shrink execution."
         const val NO_SHARD_COUNT_CHANGE_MESSAGE = "Source index already has target number of shards. Skip this shrink execution."
