@@ -6,7 +6,7 @@
 package org.opensearch.indexmanagement.indexstatemanagement.validation
 
 import org.opensearch.indexmanagement.indexstatemanagement.IndexStateManagementRestTestCase
-import org.opensearch.indexmanagement.indexstatemanagement.action.DeleteAction
+import org.opensearch.indexmanagement.indexstatemanagement.action.CloseAction
 import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
 import org.opensearch.indexmanagement.indexstatemanagement.model.State
 import org.opensearch.indexmanagement.indexstatemanagement.randomErrorNotification
@@ -24,7 +24,7 @@ class ValidateCloseIT : IndexStateManagementRestTestCase() {
         enableValidationService()
         val index1 = "index-1"
         val policyID = "${testIndexName}_precheck"
-        val actionConfig = DeleteAction(0)
+        val actionConfig = CloseAction(0)
         actionConfig.configRetry = ActionRetry(0)
         val states = listOf(State(name = "CloseAction", actions = listOf(actionConfig), transitions = listOf()))
 
