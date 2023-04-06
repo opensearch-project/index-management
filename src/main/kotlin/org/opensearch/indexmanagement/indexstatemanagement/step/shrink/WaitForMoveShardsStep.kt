@@ -87,7 +87,7 @@ class WaitForMoveShardsStep(private val action: ShrinkAction) : ShrinkStep(name,
         val response: IndicesStatsResponse = client.admin().indices().suspendUntil { stats(indexStatsRequests, it) }
         val shardStats = response.shards
         if (shardStats == null) {
-            setStepFailed(AttemptMoveShardsStep.FAILURE_MESSAGE, "Failed to move shards in shrink action as shard stats were null.")
+            cleanupAndFail(AttemptMoveShardsStep.FAILURE_MESSAGE, "Failed to move shards in shrink action as shard stats were null.")
             return null
         }
         return shardStats

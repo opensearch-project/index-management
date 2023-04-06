@@ -328,6 +328,9 @@ class AttemptMoveShardsStep(private val action: ShrinkAction) : ShrinkStep(name,
                 stepContext.client.admin().cluster().suspendUntil { reroute(clusterRerouteRequest, it) }
             val numOfDecisions = clusterRerouteResponse.explanations.explanations().size
             val numNoDecisions = clusterRerouteResponse.explanations.explanations().count { it.decisions().type().equals((Decision.Type.NO)) }
+            val numYesDecisions = clusterRerouteResponse.explanations.explanations().count { it.decisions().type().equals((Decision.Type.YES)) }
+            val numThrottleDecisions = clusterRerouteResponse.explanations.explanations().count { it.decisions().type().equals((Decision.Type.THROTTLE)) }
+            logger.debug(getShardMovingDecisionInfo(numNoDecisions, numYesDecisions, numThrottleDecisions, targetNodeName))
             // NO decision type is not counted; YES and THROTTLE decision type are available for shrink.
             if (numOfDecisions - numNoDecisions >= requestedShardIds.size) {
                 suitableNodes.add(sizeNodeTuple.v2())
@@ -446,6 +449,7 @@ class AttemptMoveShardsStep(private val action: ShrinkAction) : ShrinkStep(name,
         private const val MAXIMUM_DOCS_PER_SHARD = 0x80000000 // The maximum number of documents per shard is 2^31
         fun getSuccessMessage(node: String) = "Successfully initialized moving the shards to $node for a shrink action."
         fun getIndexExistsMessage(newIndex: String) = "Shrink failed because $newIndex already exists."
+        fun getShardMovingDecisionInfo(noCount: Int, yesCount: Int, throttleCount: Int, node: String) = "For shard moving decisions on node $node, the count of NO decisions: $noCount, the count of YES decisions: $yesCount, the count of THROTTLE decisions: $throttleCount."
 
         // If we couldn't get the job interval for the lock, use the default of 12 hours.
         // Lock is 3x + 30 minutes the job interval to allow the next step's execution to extend the lock without losing it.
