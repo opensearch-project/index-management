@@ -95,11 +95,11 @@ fun getShrinkLockModel(
     lockSeqNo: Long,
     lockDurationSecond: Long
 ): LockModel {
-    val lockID = getShrinkLockID(nodeName)
+    val jobID = getShrinkJobID(nodeName)
     val lockCreationInstant: Instant = Instant.ofEpochSecond(lockEpochSecond)
     return LockModel(
         jobIndexName,
-        lockID,
+        jobID,
         lockCreationInstant,
         lockDurationSecond,
         false,
