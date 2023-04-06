@@ -37,7 +37,7 @@ class ResizeIndexRespParserTests : OpenSearchTestCase() {
         val parser = ResizeIndexRespParser(activeShardsObserver, request)
 
         parser.parseAndSendNotification(response) { ret ->
-            Assert.assertEquals(ret.v2(), "shrink from source to target has completed.")
+            Assert.assertEquals(ret.v2(), "Shrink from source to target has completed.")
         }
 
         Mockito.verify(activeShardsObserver, never())
@@ -51,7 +51,7 @@ class ResizeIndexRespParserTests : OpenSearchTestCase() {
         val parser = ResizeIndexRespParser(activeShardsObserver, request)
 
         parser.parseAndSendNotification(response) { ret ->
-            Assert.assertEquals(ret.v2(), "shrink from source to target has completed.")
+            Assert.assertEquals(ret.v2(), "Shrink from source to target has completed.")
         }
 
         Mockito.verify(activeShardsObserver, times(1))
@@ -66,7 +66,7 @@ class ResizeIndexRespParserTests : OpenSearchTestCase() {
         val parser = ResizeIndexRespParser(activeShardsObserver, request)
 
         parser.parseAndSendNotification(response) { ret ->
-            Assert.assertEquals(ret.v2(), "shrink from source to target has completed.")
+            Assert.assertEquals(ret.v2(), "Shrink from source to target has completed.")
         }
 
         Mockito.verify(activeShardsObserver, times(1))
@@ -89,7 +89,7 @@ class ResizeIndexRespParserTests : OpenSearchTestCase() {
         parser.parseAndSendNotification(response) { ret ->
             Assert.assertEquals(
                 ret.v2(),
-                "shrink from source to target has completed, but timed out while waiting for enough shards to be started in 4h, try with `GET /<target>/_recovery` to get more details."
+                "Shrink from source to target has completed, but timed out while waiting for enough shards to be started in 4h, try with `GET /<target>/_recovery` to get more details."
             )
         }
 
@@ -104,7 +104,7 @@ class ResizeIndexRespParserTests : OpenSearchTestCase() {
         val parser = ResizeIndexRespParser(activeShardsObserver, request)
 
         val msg = parser.buildNotificationMessage(response)
-        Assert.assertEquals(msg, "shrink from source to target has completed.")
+        Assert.assertEquals(msg, "Shrink from source to target has completed.")
     }
 
     fun `test build message for failure`() {
@@ -116,7 +116,7 @@ class ResizeIndexRespParserTests : OpenSearchTestCase() {
         val msg = parser.buildNotificationMessage(response, Exception("index already exits error"))
         Assert.assertEquals(
             msg,
-            "clone from source to target has completed with errors. Error details: index already exits error"
+            "Clone from source to target has completed with errors. Error details: index already exits error"
         )
     }
 
@@ -129,7 +129,7 @@ class ResizeIndexRespParserTests : OpenSearchTestCase() {
         val msg = parser.buildNotificationMessage(response, isTimeout = true)
         Assert.assertEquals(
             msg,
-            "split from source to target has completed, but timed out while waiting for enough shards to be started in 1h, try with `GET /<target>/_recovery` to get more details."
+            "Split from source to target has completed, but timed out while waiting for enough shards to be started in 1h, try with `GET /<target>/_recovery` to get more details."
         )
     }
 }

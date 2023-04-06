@@ -35,7 +35,7 @@ class ForceMergeIndexRespParser(val request: ForceMergeRequest) : ResponseParser
 
         val result = StringBuilder()
         result.append(
-            "force_merge for index [${request.indices().joinToString(",")}] " +
+            "Force_merge for index [${request.indices().joinToString(",")}] " +
                 if (response.shardFailures != null && response.shardFailures.isNotEmpty()) {
                     "${NotificationActionListener.COMPLETED_WITH_ERROR} ${
                     response.shardFailures.joinToString(",") { it.reason() }

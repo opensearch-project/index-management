@@ -7,7 +7,11 @@ package org.opensearch.indexmanagement.controlcenter.notification.filter.parser
 
 import org.junit.Assert
 import org.junit.Before
+import org.mockito.Mockito
+import org.mockito.Mockito.mock
 import org.opensearch.action.bulk.BulkItemResponse
+import org.opensearch.cluster.node.DiscoveryNode
+import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.unit.TimeValue
 import org.opensearch.index.reindex.BulkByScrollResponse
 import org.opensearch.index.reindex.BulkByScrollTask
@@ -21,10 +25,15 @@ import java.util.concurrent.TimeUnit
 class ReindexRespParserTests : OpenSearchTestCase() {
 
     private lateinit var task: Task
+    private lateinit var clusterService: ClusterService
 
     @Before
     fun setup() {
         task = Task(1, "transport", ReindexAction.NAME, "reindex from src to dest", TaskId.EMPTY_TASK_ID, mapOf())
+        clusterService = mock()
+        val node = Mockito.mock<DiscoveryNode>()
+        Mockito.`when`(node.id).thenReturn("mJzoy8SBuTW12rbV8jSg")
+        Mockito.`when`(clusterService.localNode()).thenReturn(node)
     }
 
     fun `test build message for completion`() {
@@ -48,12 +57,12 @@ class ReindexRespParserTests : OpenSearchTestCase() {
             ),
             listOf(), listOf(), false
         )
-        val parser = ReindexRespParser(task)
+        val parser = ReindexRespParser(task, clusterService)
 
         val msg = parser.buildNotificationMessage(response)
         Assert.assertEquals(
             msg,
-            "reindex from src to dest has completed." +
+            "Reindex from src to dest has completed." +
                 System.lineSeparator() +
                 "Details: total: 100, created: 100, updated: 0, deleted: 0"
         )
@@ -80,12 +89,12 @@ class ReindexRespParserTests : OpenSearchTestCase() {
             ),
             listOf(), listOf(), false
         )
-        val parser = ReindexRespParser(task)
+        val parser = ReindexRespParser(task, clusterService)
 
         val msg = parser.buildNotificationMessage(response)
         Assert.assertEquals(
             msg,
-            "reindex from src to dest has been cancelled with reason: user cancelled" +
+            "Reindex from src to dest has been cancelled with reason: user cancelled" +
                 System.lineSeparator() +
                 "Details: total: 100, created: 100, updated: 0, deleted: 0"
         )
@@ -114,15 +123,15 @@ class ReindexRespParserTests : OpenSearchTestCase() {
             ),
             listOf(BulkItemResponse.Failure("dest", "id-1", Exception("version conflicts"))), listOf(), false
         )
-        val parser = ReindexRespParser(task)
+        val parser = ReindexRespParser(task, clusterService)
 
         val msg = parser.buildNotificationMessage(response)
         Assert.assertEquals(
             msg,
-            "reindex from src to dest has completed." +
+            "Reindex from src to dest has completed." +
                 System.lineSeparator() +
                 "Details: total: 100, created: 100, updated: 0, deleted: 0" +
-                "${System.lineSeparator()}Bulk Write Failures: java.lang.Exception: version conflicts"
+                "${System.lineSeparator()}There has some error happened, check with `GET /_tasks/mJzoy8SBuTW12rbV8jSg:1` to get detail."
         )
     }
 }

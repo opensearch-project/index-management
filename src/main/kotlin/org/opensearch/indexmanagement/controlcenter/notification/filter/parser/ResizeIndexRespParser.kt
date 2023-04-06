@@ -60,7 +60,12 @@ class ResizeIndexRespParser(
                     }
                 )
             } else {
-                callback.accept(Tuple.tuple(OperationResult.TIMEOUT, buildNotificationMessage(response, isTimeout = true)))
+                callback.accept(
+                    Tuple.tuple(
+                        OperationResult.TIMEOUT,
+                        buildNotificationMessage(response, isTimeout = true)
+                    )
+                )
             }
         } else {
             callback.accept(Tuple.tuple(OperationResult.COMPLETE, buildNotificationMessage(response)))
@@ -69,7 +74,11 @@ class ResizeIndexRespParser(
 
     override fun buildNotificationMessage(response: ResizeResponse, exception: Exception?, isTimeout: Boolean): String {
         val result = StringBuilder()
-        result.append("${request.resizeType.name.lowercase()} from ${request.sourceIndex} to ${request.targetIndexRequest.index()} ")
+        result.append(
+            "${
+            request.resizeType.name.lowercase().replaceFirstChar { it.uppercase() }
+            } from ${request.sourceIndex} to ${request.targetIndexRequest.index()} "
+        )
             .append(
                 if (isTimeout) {
                     "has completed, but timed out while waiting for enough shards to be started in ${

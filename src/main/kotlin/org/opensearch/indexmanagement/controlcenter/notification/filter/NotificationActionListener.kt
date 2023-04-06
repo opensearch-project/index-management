@@ -113,7 +113,9 @@ class NotificationActionListener<Request : ActionRequest, Response : ActionRespo
                     activeShardsObserver, request as ResizeRequest
                 ).parseAndSendNotification(response, callback)
 
-                is BulkByScrollResponse -> ReindexRespParser(task).parseAndSendNotification(response, callback)
+                is BulkByScrollResponse -> {
+                    ReindexRespParser(task, clusterService).parseAndSendNotification(response, callback)
+                }
 
                 is OpenIndexResponse -> OpenIndexRespParser(
                     activeShardsObserver, request as OpenIndexRequest, indexNameExpressionResolver, clusterService

@@ -85,7 +85,7 @@ class OpenIndexRespParser(
     ): String {
         val result = StringBuilder()
         result.append(
-            "open index [${request.indices().joinToString(",")}] " +
+            "Open index [${request.indices().joinToString(",")}] " +
                 if (isTimeout) {
                     "has completed, but timed out while waiting for enough shards to be started in ${
                     totalWaitTime.toHumanReadableString(1)

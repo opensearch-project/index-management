@@ -44,7 +44,7 @@ class ForceMergeIndexRespParserTests : OpenSearchTestCase() {
         val msg = parser.buildNotificationMessage(response)
         Assert.assertEquals(
             msg,
-            "force_merge for index [test-index-1] has completed."
+            "Force_merge for index [test-index-1] has completed."
         )
     }
 
@@ -68,7 +68,7 @@ class ForceMergeIndexRespParserTests : OpenSearchTestCase() {
         val msg = parser.buildNotificationMessage(response)
         Assert.assertEquals(
             msg,
-            "force_merge for index [test-index-1] has completed with errors. Error details: OpenSearchException[OpenSearch exception [type=exception, reason=shard is not available]]"
+            "Force_merge for index [test-index-1] has completed with errors. Error details: OpenSearchException[OpenSearch exception [type=exception, reason=shard is not available]]"
         )
     }
 }
