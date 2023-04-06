@@ -37,7 +37,7 @@ class StepUtilsTests : OpenSearchTestCase() {
         )
         val lockModel = getShrinkLockModel(shrinkActionProperties)
         assertEquals("Incorrect lock model job index name", INDEX_MANAGEMENT_INDEX, lockModel.jobIndexName)
-        assertEquals("Incorrect lock model jobID", getShrinkLockID(shrinkActionProperties.nodeName), lockModel.jobId)
+        assertEquals("Incorrect lock model jobID", getShrinkJobID(shrinkActionProperties.nodeName), lockModel.jobId)
         assertEquals("Incorrect lock model duration", shrinkActionProperties.lockDurationSecond, lockModel.lockDurationSeconds)
         assertEquals("Incorrect lock model lockID", "${lockModel.jobIndexName}-${lockModel.jobId}", lockModel.lockId)
         assertEquals("Incorrect lock model sequence number", shrinkActionProperties.lockSeqNo, lockModel.seqNo)
