@@ -20,7 +20,6 @@ import org.opensearch.action.admin.indices.forcemerge.ForceMergeRequest
 import org.opensearch.action.admin.indices.forcemerge.ForceMergeResponse
 import org.opensearch.action.admin.indices.open.OpenIndexRequest
 import org.opensearch.action.admin.indices.open.OpenIndexResponse
-import org.opensearch.action.admin.indices.shrink.ResizeAction
 import org.opensearch.action.admin.indices.shrink.ResizeRequest
 import org.opensearch.action.admin.indices.shrink.ResizeResponse
 import org.opensearch.action.bulk.BackoffPolicy
@@ -90,11 +89,10 @@ class NotificationActionListener<Request : ActionRequest, Response : ActionRespo
         try {
             delegate.onFailure(e)
         } finally {
-            var actionName = action
-            if (action == ResizeAction.NAME) {
-                actionName = (request as ResizeRequest).resizeType.name.lowercase()
-            }
-            notify(action, OperationResult.FAILED, "$actionName execute failed with error: ${e.message}")
+            notify(
+                action, OperationResult.FAILED,
+                "${task.description.replaceFirstChar { it.uppercase() }} $COMPLETED_WITH_ERROR ${e.message}"
+            )
         }
     }
 
@@ -152,7 +150,9 @@ class NotificationActionListener<Request : ActionRequest, Response : ActionRespo
                 GetLRONConfigRequest(searchParams = searchParam),
                 object : ActionListener<GetLRONConfigResponse> {
                     override fun onResponse(lronConfigResponse: GetLRONConfigResponse) {
-                        sendNotification(lronConfigResponse, taskId, action, result, defaultMessage)
+                        launch {
+                            sendNotification(lronConfigResponse, taskId, action, result, defaultMessage)
+                        }
                     }
 
                     override fun onFailure(e: Exception) {
@@ -171,7 +171,8 @@ class NotificationActionListener<Request : ActionRequest, Response : ActionRespo
         }
     }
 
-    private fun sendNotification(
+    @Suppress("NestedBlockDepth")
+    private suspend fun sendNotification(
         lronConfigResponse: GetLRONConfigResponse,
         taskId: TaskId,
         action: String,
@@ -183,15 +184,16 @@ class NotificationActionListener<Request : ActionRequest, Response : ActionRespo
             return
         }
 
-        val channels = getQualifiedChannels(lronConfigResponse, result)
+        val policies = getNotificationPolices(lronConfigResponse, result)
         val eventSource = EventSource(TITLE, taskId.toString(), SeverityType.INFO)
 
-        channels.forEach {
-            launch {
-                val config = it.lronConfig
-                if (config.lronCondition.isEnabled()) {
-                    it.lronConfig.channels?.forEach { channel ->
-                        try {
+        val channelSent = mutableSetOf<String>()
+        policies.forEach {
+            val config = it.lronConfig
+            if (config.lronCondition.isEnabled()) {
+                config.channels?.forEach { channel ->
+                    try {
+                        if (channel.id !in channelSent) {
                             notificationRetryPolicy.retry(logger) {
                                 channel.sendNotification(
                                     client,
@@ -200,19 +202,20 @@ class NotificationActionListener<Request : ActionRequest, Response : ActionRespo
                                     config.user,
                                 )
                             }
-                        } catch (osse: OpenSearchStatusException) {
-                            logger.warn(
-                                "Sending notification failed, restStatus {}", osse.status(), osse
-                            )
-                        } catch (e: Exception) {
-                            logger.error("Sending notification failed", e)
+                            channelSent.add(channel.id)
                         }
+                    } catch (osse: OpenSearchStatusException) {
+                        logger.warn(
+                            "Sending notification failed, restStatus {}", osse.status(), osse
+                        )
+                    } catch (e: Exception) {
+                        logger.error("Sending notification failed", e)
                     }
                 }
-
-                // remove one time configuration no matter it is enabled or not
-                removeOneTimePolicy(config)
             }
+
+            // remove one time configuration no matter it is enabled or not
+            removeOneTimePolicy(config)
         }
     }
 
@@ -243,7 +246,7 @@ class NotificationActionListener<Request : ActionRequest, Response : ActionRespo
         }
     }
 
-    fun getQualifiedChannels(
+    fun getNotificationPolices(
         lronConfigResponse: GetLRONConfigResponse,
         result: OperationResult
     ): Set<LRONConfigResponse> {

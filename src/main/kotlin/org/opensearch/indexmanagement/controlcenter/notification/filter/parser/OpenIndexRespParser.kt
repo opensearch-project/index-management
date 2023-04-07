@@ -22,7 +22,7 @@ class OpenIndexRespParser(
     val activeShardsObserver: ActiveShardsObserver,
     val request: OpenIndexRequest,
     val indexNameExpressionResolver: IndexNameExpressionResolver,
-    var clusterService: ClusterService
+    val clusterService: ClusterService
 ) : ResponseParser<OpenIndexResponse> {
 
     private var totalWaitTime: TimeValue = NotificationActionListener.MAX_WAIT_TIME

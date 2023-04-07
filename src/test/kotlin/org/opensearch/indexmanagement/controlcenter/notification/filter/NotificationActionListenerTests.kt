@@ -61,8 +61,8 @@ class NotificationActionListenerTests : OpenSearchTestCase() {
             lronConfigResponses = listOf(lronConfigResponse), 1
         )
 
-        Assert.assertTrue(listener.getQualifiedChannels(responses, OperationResult.COMPLETE).isEmpty())
-        Assert.assertTrue(listener.getQualifiedChannels(responses, OperationResult.FAILED).isEmpty())
+        Assert.assertTrue(listener.getNotificationPolices(responses, OperationResult.COMPLETE).isEmpty())
+        Assert.assertTrue(listener.getNotificationPolices(responses, OperationResult.FAILED).isEmpty())
     }
 
     fun `test success and failed conditions`() {
@@ -78,7 +78,7 @@ class NotificationActionListenerTests : OpenSearchTestCase() {
             lronConfigResponses = listOf(lronConfigResponseWithTaskId, lronConfigResponseDefault), 2
         )
 
-        Assert.assertEquals(2, listener.getQualifiedChannels(responses, OperationResult.COMPLETE).size)
-        Assert.assertEquals(1, listener.getQualifiedChannels(responses, OperationResult.FAILED).size)
+        Assert.assertEquals(2, listener.getNotificationPolices(responses, OperationResult.COMPLETE).size)
+        Assert.assertEquals(1, listener.getNotificationPolices(responses, OperationResult.FAILED).size)
     }
 }

@@ -5,6 +5,7 @@
 
 package org.opensearch.indexmanagement.controlcenter.notification.filter
 
+import com.sun.net.httpserver.HttpHandler
 import com.sun.net.httpserver.HttpServer
 import org.apache.hc.core5.http.ContentType
 import org.apache.hc.core5.http.io.entity.StringEntity
@@ -12,8 +13,10 @@ import org.junit.After
 import org.junit.Assert
 import org.junit.Before
 import org.opensearch.action.admin.indices.open.OpenIndexAction
+import org.opensearch.client.ResponseException
 import org.opensearch.client.RestClient
 import org.opensearch.common.settings.Settings
+import org.opensearch.index.reindex.ReindexAction
 import org.opensearch.indexmanagement.IndexManagementPlugin
 import org.opensearch.indexmanagement.IndexManagementRestTestCase
 import org.opensearch.indexmanagement.controlcenter.notification.util.supportedActions
@@ -37,7 +40,7 @@ class NotificationActionListenerIT : IndexManagementRestTestCase() {
         server = HttpServer.create(InetSocketAddress(InetAddress.getLoopbackAddress(), 0), 0)
         logger.info("starting mock server at {}", server.address.hostString)
 
-        server.createContext("/notification") {
+        val httpHandler = HttpHandler {
             val msg = String(it.requestBody.readAllBytes())
             logger.info(msg)
             val res = client.makeRequest(
@@ -48,7 +51,11 @@ class NotificationActionListenerIT : IndexManagementRestTestCase() {
 
             it.sendResponseHeaders(200, "ack".toByteArray().size.toLong())
             it.responseBody.write("ack".toByteArray())
+            it.close()
         }
+
+        server.createContext("/notification", httpHandler)
+        server.createContext("/notification2", httpHandler)
         server.start()
 
         setNotificationChannel()
@@ -125,7 +132,7 @@ class NotificationActionListenerIT : IndexManagementRestTestCase() {
                 "Notification index does not have a doc",
                 1,
                 (
-                    client.makeRequest("GET", "$notificationIndex/_search?q=msg:force_merge")
+                    client.makeRequest("GET", "$notificationIndex/_search?q=msg:Force_merge")
                         .asMap() as Map<String, Map<String, Map<String, Any>>>
                     )["hits"]!!["total"]!!["value"]
             )
@@ -158,7 +165,7 @@ class NotificationActionListenerIT : IndexManagementRestTestCase() {
                 "Notification index does not have a doc",
                 1,
                 (
-                    client.makeRequest("GET", "$notificationIndex/_search?q=msg:split")
+                    client.makeRequest("GET", "$notificationIndex/_search?q=msg:Split")
                         .asMap() as Map<String, Map<String, Map<String, Any>>>
                     )["hits"]!!["total"]!!["value"]
             )
@@ -182,7 +189,7 @@ class NotificationActionListenerIT : IndexManagementRestTestCase() {
                 "Notification index does not have a doc",
                 1,
                 (
-                    client.makeRequest("GET", "$notificationIndex/_search?q=msg:open")
+                    client.makeRequest("GET", "$notificationIndex/_search?q=msg:Open")
                         .asMap() as Map<String, Map<String, Map<String, Any>>>
                     )["hits"]!!["total"]!!["value"]
             )
@@ -226,6 +233,152 @@ class NotificationActionListenerIT : IndexManagementRestTestCase() {
     }
 
     @Suppress("UNCHECKED_CAST")
+    fun `test notify for reindex with runtime policy`() {
+        insertSampleData("source-index", 10)
+        createIndex("reindex-dest", Settings.EMPTY)
+        client.makeRequest(
+            "POST", "/_plugins/_notifications/configs",
+            StringEntity(
+                """
+                    {
+                      "config_id": "config_id",
+                      "name": "test-webhook2",
+                      "config": {
+                        "name": "Sample webhook Channel2",
+                        "description": "This is a webhook channel2",
+                        "config_type": "webhook",
+                        "is_enabled": true,
+                        "webhook": {
+                          "url": "http://${server.address.hostString}:${server.address.port}/notification2"
+                        }
+                      }
+                    }
+                """.trimIndent(),
+                ContentType.APPLICATION_JSON
+            )
+        )
+
+        val response = client.makeRequest(
+            "POST", "_reindex?wait_for_completion=false",
+            StringEntity(
+                """
+                {
+                  "source": {
+                    "index": "source-index"
+                  },
+                  "dest": {
+                    "index": "reindex-dest"
+                  }
+                }
+                """.trimIndent(),
+                ContentType.APPLICATION_JSON
+            )
+        )
+
+        Assert.assertTrue(response.restStatus() == RestStatus.OK)
+        val taskId = response.asMap()["task"] as String
+        logger.info("task id {}", taskId)
+
+        val policyResponse = client.makeRequest(
+            "POST", "_plugins/_im/lron",
+            StringEntity(
+                """
+                    {
+                        "lron_config": {
+                            "action_name": "${ReindexAction.NAME}",
+                            "task_id": "$taskId",
+                            "channels": [
+                                {
+                                    "id": "config_id"
+                                }
+                            ]
+                        }
+                    }
+                """.trimIndent(),
+                ContentType.APPLICATION_JSON
+            )
+        )
+        val id = policyResponse.asMap()["_id"] as String
+        logger.info("policy id {}", id)
+
+        waitFor(Instant.ofEpochSecond(60)) {
+            assertEquals(
+                "Notification index does not have a doc",
+                2,
+                (
+                    client.makeRequest("GET", "$notificationIndex/_search?q=msg:Reindex")
+                        .asMap() as Map<String, Map<String, Map<String, Any>>>
+                    )["hits"]!!["total"]!!["value"]
+            )
+
+            // runtime policy been removed
+            val res = try {
+                client.makeRequest("GET", "_plugins/_im/lron/${id.replace("/", "%2F")}")
+            } catch (e: ResponseException) {
+                e.response
+            }
+            assertEquals(RestStatus.NOT_FOUND.status, res.statusLine.statusCode)
+        }
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    fun `test notify for reindex with duplicate channel`() {
+        insertSampleData("source-index", 10)
+        createIndex("reindex-dest", Settings.EMPTY)
+
+        val response = client.makeRequest(
+            "POST", "_reindex?wait_for_completion=false",
+            StringEntity(
+                """
+                {
+                  "source": {
+                    "index": "source-index"
+                  },
+                  "dest": {
+                    "index": "reindex-dest"
+                  }
+                }
+                """.trimIndent(),
+                ContentType.APPLICATION_JSON
+            )
+        )
+
+        Assert.assertTrue(response.restStatus() == RestStatus.OK)
+        val taskId = response.asMap()["task"] as String
+
+        client.makeRequest(
+            "POST", "_plugins/_im/lron",
+            StringEntity(
+                """
+                    {
+                        "lron_config": {
+                            "action_name": "${ReindexAction.NAME}",
+                            "task_id": "$taskId",
+                            "channels": [
+                                {
+                                    "id": "$notificationConfId"
+                                }
+                            ]
+                        }
+                    }
+                """.trimIndent(),
+                ContentType.APPLICATION_JSON
+            )
+        )
+
+        waitFor(Instant.ofEpochSecond(60)) {
+            assertEquals(
+                "Notification index does not have a doc",
+                1,
+                (
+                    client.makeRequest("GET", "$notificationIndex/_search?q=msg:Reindex")
+                        .asMap() as Map<String, Map<String, Map<String, Any>>>
+                    )["hits"]!!["total"]!!["value"]
+            )
+        }
+    }
+
+    @Suppress("UNCHECKED_CAST")
     fun `test no notification for close`() {
         createIndex("test-index-create", Settings.EMPTY)
         closeIndex("test-index-create")
@@ -235,7 +388,7 @@ class NotificationActionListenerIT : IndexManagementRestTestCase() {
                 "Notification index have a doc for close",
                 0,
                 (
-                    client.makeRequest("GET", "$notificationIndex/_search?q=msg:close")
+                    client.makeRequest("GET", "$notificationIndex/_search?q=msg:Close")
                         .asMap() as Map<String, Map<String, Map<String, Any>>>
                     )["hits"]!!["total"]!!["value"]
             )
@@ -262,7 +415,7 @@ class NotificationActionListenerIT : IndexManagementRestTestCase() {
                 "Notification index does not have a doc",
                 0,
                 (
-                    client.makeRequest("GET", "$notificationIndex/_search?q=msg:open")
+                    client.makeRequest("GET", "$notificationIndex/_search?q=msg:Open")
                         .asMap() as Map<String, Map<String, Map<String, Any>>>
                     )["hits"]!!["total"]!!["value"]
             )
@@ -289,7 +442,7 @@ class NotificationActionListenerIT : IndexManagementRestTestCase() {
                 "Notification index does not have a doc",
                 0,
                 (
-                    client.makeRequest("GET", "$notificationIndex/_search?q=msg:open")
+                    client.makeRequest("GET", "$notificationIndex/_search?q=msg:Open")
                         .asMap() as Map<String, Map<String, Map<String, Any>>>
                     )["hits"]!!["total"]!!["value"]
             )
