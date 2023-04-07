@@ -278,17 +278,15 @@ class AttemptMoveShardsStep(private val action: ShrinkAction) : ShrinkStep(name,
         jobIntervalSeconds: Long?,
         indexName: String
     ): Pair<LockModel, String>? {
-        if (suitableNodes.isNotEmpty()) {
-            for (nodeName in suitableNodes) {
-                val lockID = getShrinkJobID(nodeName)
-                val lock: LockModel? = lockService.suspendUntil {
-                    acquireLockWithId(INDEX_MANAGEMENT_INDEX, getShrinkLockDuration(jobIntervalSeconds), lockID, it)
-                }
-                if (lock != null) {
-                    return lock to nodeName
-                } else {
-                    logger.info("Shrink action could not acquire lock of node [$nodeName] for [$indexName] .")
-                }
+        for (nodeName in suitableNodes) {
+            val lockID = getShrinkJobID(nodeName)
+            val lock: LockModel? = lockService.suspendUntil {
+                acquireLockWithId(INDEX_MANAGEMENT_INDEX, getShrinkLockDuration(jobIntervalSeconds), lockID, it)
+            }
+            if (lock != null) {
+                return lock to nodeName
+            } else {
+                logger.info("Shrink action could not acquire lock of node [$nodeName] for [$indexName] .")
             }
         }
         info = mapOf("message" to NO_UNLOCKED_NODES_MESSAGE)
