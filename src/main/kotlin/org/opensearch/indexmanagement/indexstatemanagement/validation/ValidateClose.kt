@@ -63,8 +63,8 @@ class ValidateClose(
     @Suppress("TooManyFunctions")
     companion object {
         const val name = "validate_close"
-        fun getNoIndexMessage(index: String) = "no such index [index=$index]"
-        fun getIndexNotValidMessage(index: String) = "Close index [index=$index] not valid"
+        fun getNoIndexMessage(index: String) = "No such index [index=$index] for close action."
+        fun getIndexNotValidMessage(index: String) = "Index [index=$index] is not valid. Abort close action on it."
         fun getValidationPassedMessage(index: String) = "Close action validation passed for [index=$index]"
     }
 }

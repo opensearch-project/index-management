@@ -11,7 +11,6 @@ import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
 import org.opensearch.indexmanagement.indexstatemanagement.model.State
 import org.opensearch.indexmanagement.indexstatemanagement.randomErrorNotification
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Validate
-import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ActionRetry
 import org.opensearch.indexmanagement.waitFor
 import java.time.Instant
 import java.time.temporal.ChronoUnit
@@ -20,13 +19,14 @@ import java.util.Locale
 class ValidateCloseIT : IndexStateManagementRestTestCase() {
     private val testIndexName = javaClass.simpleName.lowercase(Locale.ROOT)
 
-    fun `test close index is not valid`() {
+    fun `test basic`() {
         enableValidationService()
-        val index1 = "index-1"
-        val policyID = "${testIndexName}_precheck"
+        val indexName = "${testIndexName}_index_1"
+        val policyID = "${testIndexName}_testPolicyName_1"
         val actionConfig = CloseAction(0)
-        actionConfig.configRetry = ActionRetry(0)
-        val states = listOf(State(name = "CloseAction", actions = listOf(actionConfig), transitions = listOf()))
+        val states = listOf(
+            State("CloseState", listOf(actionConfig), listOf())
+        )
 
         val policy = Policy(
             id = policyID,
@@ -37,32 +37,29 @@ class ValidateCloseIT : IndexStateManagementRestTestCase() {
             defaultState = states[0].name,
             states = states
         )
-
         createPolicy(policy, policyID)
+        createIndex(indexName, policyID)
 
-        val managedIndexConfig = getExistingManagedIndexConfig(index1)
+        assertEquals("open", getIndexState(indexName))
 
-        // Change the start time so the job will trigger in 2 seconds, this will trigger the first initialization of the policy
+        val managedIndexConfig = getExistingManagedIndexConfig(indexName)
+        // Change the start time so the job will trigger in 2 seconds.
         updateManagedIndexConfigStartTime(managedIndexConfig)
-        waitFor { assertEquals(policyID, getExplainManagedIndexMetaData(index1).policyID) }
-        // waitFor { assertIndexExists(index1) }
 
-        // Need to speed up to second execution where it will trigger the first execution of the action
+        waitFor { assertEquals(policyID, getExplainManagedIndexMetaData(indexName).policyID) }
+
+        // Need to wait two cycles.
+        // Change the start time so the job will trigger in 2 seconds.
         updateManagedIndexConfigStartTime(managedIndexConfig)
+
+        waitFor { assertEquals("close", getIndexState(indexName)) }
+
         waitFor {
-            val data = getExplainValidationResult(index1)
+            val data = getExplainValidationResult(indexName)
             assertEquals(
-                "Index close action validation status is RE_VALIDATING.",
-                Validate.ValidationStatus.RE_VALIDATING,
+                "Index close action validation status is PASSED.",
+                Validate.ValidationStatus.PASSED,
                 data.validationStatus
-            )
-        }
-        waitFor {
-            val data = getExplainValidationResult(index1)
-            assertEquals(
-                "Index close action validation message is index is invalid.",
-                ValidateClose.getNoIndexMessage(index1),
-                data.validationMessage
             )
         }
     }
