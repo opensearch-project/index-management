@@ -36,7 +36,9 @@ class WaitForTransformCompletionStep : Step(name) {
         } else {
             val explainTransformRequest = ExplainTransformRequest(listOf(transformJobId))
             try {
-                val response: ExplainTransformResponse = context.client.suspendUntil { execute(ExplainTransformAction.INSTANCE, explainTransformRequest, it) }
+                val response: ExplainTransformResponse = context.client.suspendUntil {
+                    execute(ExplainTransformAction.INSTANCE, explainTransformRequest, it)
+                }
                 logger.info("Received the status for jobs [${response.getIdsToExplain().keys}]")
                 val metadata = response.getIdsToExplain()[transformJobId]?.metadata
 

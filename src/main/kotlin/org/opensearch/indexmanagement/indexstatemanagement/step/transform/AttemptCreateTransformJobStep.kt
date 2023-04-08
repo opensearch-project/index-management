@@ -117,7 +117,8 @@ class AttemptCreateTransformJobStep(
     companion object {
         const val name = "attempt_create_transform"
         fun getFailedMessage(transformId: String, index: String) = "Failed to create the transform job [$transformId] [index=$index]"
-        fun getFailedJobExistsMessage(transformId: String, index: String) = "Transform job [$transformId] already exists, skipping creation [index=$index]"
+        fun getFailedJobExistsMessage(transformId: String, index: String) =
+            "Transform job [$transformId] already exists, skipping creation [index=$index]"
         fun getFailedToStartMessage(transformId: String, index: String) = "Failed to start the transform job [$transformId] [index=$index]"
         fun getSuccessMessage(transformId: String, index: String) = "Successfully created the transform job [$transformId] [index=$index]"
         fun getSuccessRestartMessage(transformId: String, index: String) = "Successfully restarted the transform job [$transformId] [index=$index]"
