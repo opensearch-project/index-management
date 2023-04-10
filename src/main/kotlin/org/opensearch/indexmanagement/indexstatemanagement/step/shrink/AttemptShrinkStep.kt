@@ -11,11 +11,14 @@ import org.opensearch.action.admin.indices.shrink.ResizeRequest
 import org.opensearch.action.admin.indices.shrink.ResizeResponse
 import org.opensearch.action.admin.indices.stats.IndicesStatsRequest
 import org.opensearch.action.admin.indices.stats.IndicesStatsResponse
+import org.opensearch.action.support.master.AcknowledgedResponse
+import org.opensearch.cluster.metadata.IndexMetadata
 import org.opensearch.common.settings.Settings
 import org.opensearch.indexmanagement.indexstatemanagement.action.ShrinkAction
 import org.opensearch.indexmanagement.indexstatemanagement.util.INDEX_NUMBER_OF_SHARDS
-import org.opensearch.indexmanagement.indexstatemanagement.util.getNodeFreeMemoryAfterShrink
+import org.opensearch.indexmanagement.indexstatemanagement.util.getNodeFreeDiskSpaceAfterShrink
 import org.opensearch.indexmanagement.indexstatemanagement.util.isIndexGreen
+import org.opensearch.indexmanagement.indexstatemanagement.util.issueUpdateSettingsRequest
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ActionProperties
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
@@ -29,14 +32,17 @@ class AttemptShrinkStep(private val action: ShrinkAction) : ShrinkStep(name, tru
     override suspend fun wrappedExecute(context: StepContext): AttemptShrinkStep {
         val indexName = context.metadata.index
         // If the returned shrinkActionProperties are null, then the status has been set to failed, just return
-        val localShrinkActionProperties = updateAndGetShrinkActionProperties(context) ?: return this
+        val localShrinkActionProperties = checkShrinkActionPropertiesAndRenewLock(context) ?: return this
 
         if (!isIndexGreen(context.client, indexName)) {
             stepStatus = StepStatus.CONDITION_NOT_MET
             info = mapOf("message" to INDEX_HEALTH_NOT_GREEN_MESSAGE)
             return this
         }
+
         if (!isNodeStillSuitable(localShrinkActionProperties.nodeName, indexName, context)) return this
+
+        if (!confirmIndexWriteBlock(context, indexName)) return this
 
         // If the resize index api fails, the step will be set to failed and resizeIndex will return false
         if (!resizeIndex(indexName, localShrinkActionProperties, context)) return this
@@ -69,12 +75,32 @@ class AttemptShrinkStep(private val action: ShrinkAction) : ShrinkStep(name, tru
             cleanupAndFail(FAILURE_MESSAGE, "Shrink action failed as node stats were missing the previously selected node.")
             return false
         }
-        val remainingMem = getNodeFreeMemoryAfterShrink(node, indexSizeInBytes, context.clusterService.clusterSettings)
+        val remainingMem = getNodeFreeDiskSpaceAfterShrink(node, indexSizeInBytes, context.clusterService.clusterSettings)
         if (remainingMem < 1L) {
             cleanupAndFail(NOT_ENOUGH_SPACE_FAILURE_MESSAGE, NOT_ENOUGH_SPACE_FAILURE_MESSAGE)
             return false
         }
         return true
+    }
+
+    // Set index write block again before sending shrink request, in case of write block flipped by other processes in previous steps.
+    private suspend fun confirmIndexWriteBlock(stepContext: StepContext, indexName: String): Boolean {
+        val updateSettings = Settings.builder()
+            .put(IndexMetadata.SETTING_BLOCKS_WRITE, true)
+            .build()
+        var response: AcknowledgedResponse? = null
+        val isUpdateAcknowledged: Boolean
+
+        try {
+            response = issueUpdateSettingsRequest(stepContext.client, stepContext.metadata.index, updateSettings)
+        } finally {
+            isUpdateAcknowledged = response != null && response.isAcknowledged
+        }
+
+        if (!isUpdateAcknowledged) {
+            cleanupAndFail(WRITE_BLOCK_FAILED_MESSAGE, "Failed to confirm write block for index: [$indexName] before sending shrink request.")
+        }
+        return isUpdateAcknowledged
     }
 
     private suspend fun resizeIndex(sourceIndex: String, shrinkActionProperties: ShrinkActionProperties, context: StepContext): Boolean {
@@ -113,6 +139,7 @@ class AttemptShrinkStep(private val action: ShrinkAction) : ShrinkStep(name, tru
     companion object {
         const val name = "attempt_shrink_step"
         const val FAILURE_MESSAGE = "Shrink failed when sending shrink request."
+        const val WRITE_BLOCK_FAILED_MESSAGE = "Failed to set write block before sending shrink request."
         const val NOT_ENOUGH_SPACE_FAILURE_MESSAGE = "Shrink failed as the selected node no longer had enough free space to shrink to."
         const val INDEX_HEALTH_NOT_GREEN_MESSAGE = "Shrink delayed because index health is not green."
         fun getSuccessMessage(newIndex: String) = "Shrink started. $newIndex currently being populated."
