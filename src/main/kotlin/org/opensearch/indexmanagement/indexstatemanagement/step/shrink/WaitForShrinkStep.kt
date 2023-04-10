@@ -30,7 +30,7 @@ class WaitForShrinkStep(private val action: ShrinkAction) : ShrinkStep(name, tru
     override suspend fun wrappedExecute(context: StepContext): WaitForShrinkStep {
         val indexName = context.metadata.index
         // If the returned shrinkActionProperties are null, then the status has been set to failed, just return
-        val localShrinkActionProperties = updateAndGetShrinkActionProperties(context) ?: return this
+        val localShrinkActionProperties = checkShrinkActionPropertiesAndRenewLock(context) ?: return this
 
         val targetIndex = localShrinkActionProperties.targetIndexName
         if (shrinkNotDone(targetIndex, localShrinkActionProperties.targetNumShards, context.client, context.clusterService)) {
@@ -42,7 +42,7 @@ class WaitForShrinkStep(private val action: ShrinkAction) : ShrinkStep(name, tru
         if (!clearAllocationSettings(context, targetIndex)) return this
         if (!resetReadOnlyAndRouting(indexName, context.client, localShrinkActionProperties.originalIndexSettings)) return this
 
-        if (!deleteShrinkLock(localShrinkActionProperties, context.lockService)) {
+        if (!deleteShrinkLock(localShrinkActionProperties, context.lockService, logger)) {
             logger.error("Failed to delete Shrink action lock on node [${localShrinkActionProperties.nodeName}]")
         }
         stepStatus = StepStatus.COMPLETED
