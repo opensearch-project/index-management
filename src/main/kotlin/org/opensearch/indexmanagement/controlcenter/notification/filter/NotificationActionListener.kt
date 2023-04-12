@@ -79,9 +79,10 @@ class NotificationActionListener<Request : ActionRequest, Response : ActionRespo
     override fun onResponse(response: Response) {
         try {
             delegate.onResponse(response)
-            parseAndSendNotification(response)
         } catch (e: Exception) {
             delegate.onFailure(e)
+        } finally {
+            parseAndSendNotification(response)
         }
     }
 
@@ -89,10 +90,14 @@ class NotificationActionListener<Request : ActionRequest, Response : ActionRespo
         try {
             delegate.onFailure(e)
         } finally {
-            notify(
-                action, OperationResult.FAILED,
-                "${task.description.replaceFirstChar { it.uppercase() }} $COMPLETED_WITH_ERROR ${e.message}"
-            )
+            try {
+                notify(
+                    action, OperationResult.FAILED,
+                    "${task.description.replaceFirstChar { it.uppercase() }} $COMPLETED_WITH_ERROR ${e.message}"
+                )
+            } catch (t: Throwable) {
+                logger.info("Sending out error notification for action: {} failed", action, t)
+            }
         }
     }
 
@@ -127,7 +132,7 @@ class NotificationActionListener<Request : ActionRequest, Response : ActionRespo
                     logger.debug("Action: {} is not supported for notification!", action)
                 }
             }
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             logger.info("Sending out notification for action: {} failed", action, e)
         }
     }
