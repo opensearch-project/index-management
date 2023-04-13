@@ -19,7 +19,7 @@ import java.util.Locale
 class ValidateCloseIT : IndexStateManagementRestTestCase() {
     private val testIndexName = javaClass.simpleName.lowercase(Locale.ROOT)
 
-    fun `test basic`() {
+    fun `test basic close action validation`() {
         enableValidationService()
         val indexName = "${testIndexName}_index_1"
         val policyID = "${testIndexName}_testPolicyName_1"
