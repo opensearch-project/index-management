@@ -25,8 +25,7 @@ import org.opensearch.common.settings.ClusterSettings
 import org.opensearch.common.settings.Settings
 import org.opensearch.common.unit.TimeValue
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
-import org.opensearch.indexmanagement.indexstatemanagement.action.ShrinkAction.Companion.LOCK_RESOURCE_NAME
-import org.opensearch.indexmanagement.indexstatemanagement.action.ShrinkAction.Companion.LOCK_RESOURCE_TYPE
+import org.opensearch.indexmanagement.indexstatemanagement.action.ShrinkAction.Companion.LOCK_SOURCE_JOB_ID
 import org.opensearch.indexmanagement.indexstatemanagement.step.shrink.AttemptMoveShardsStep
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
@@ -52,9 +51,11 @@ suspend fun releaseShrinkLock(
 
 suspend fun deleteShrinkLock(
     shrinkActionProperties: ShrinkActionProperties,
-    lockService: LockService
+    lockService: LockService,
+    logger: Logger
 ): Boolean {
     val lockID = getShrinkLockID(shrinkActionProperties.nodeName)
+    logger.info("Deleting lock: $lockID")
     return lockService.suspendUntil { deleteLock(lockID, it) }
 }
 
@@ -94,11 +95,11 @@ fun getShrinkLockModel(
     lockSeqNo: Long,
     lockDurationSecond: Long
 ): LockModel {
-    val lockID = getShrinkLockID(nodeName)
+    val jobID = getShrinkJobID(nodeName)
     val lockCreationInstant: Instant = Instant.ofEpochSecond(lockEpochSecond)
     return LockModel(
         jobIndexName,
-        lockID,
+        jobID,
         lockCreationInstant,
         lockDurationSecond,
         false,
@@ -163,7 +164,7 @@ fun getDiskSettings(clusterSettings: ClusterSettings): Settings {
  * Returns the amount of memory in the node which will be free below the high watermark level after adding 2*indexSizeInBytes, or -1
  * if adding 2*indexSizeInBytes goes over the high watermark threshold, or if nodeStats does not contain OsStats.
 */
-fun getNodeFreeMemoryAfterShrink(node: NodeStats, indexSizeInBytes: Long, clusterSettings: ClusterSettings): Long {
+fun getNodeFreeDiskSpaceAfterShrink(node: NodeStats, indexSizeInBytes: Long, clusterSettings: ClusterSettings): Long {
     val fsStats = node.fs
     if (fsStats != null) {
         val diskSpaceLeftInNode = fsStats.total.free.bytes
@@ -202,7 +203,14 @@ suspend fun resetReadOnlyAndRouting(index: String, client: Client, originalSetti
 }
 
 fun getShrinkLockID(nodeName: String): String {
-    return "$LOCK_RESOURCE_TYPE-$LOCK_RESOURCE_NAME-$nodeName"
+    return LockModel.generateLockId(
+        INDEX_MANAGEMENT_INDEX,
+        getShrinkJobID(nodeName)
+    )
+}
+
+fun getShrinkJobID(nodeName: String): String {
+    return "$LOCK_SOURCE_JOB_ID-$nodeName"
 }
 
 // Creates a map of shardIds to the set of node names which the shard copies reside on. For example, with 2 replicas
