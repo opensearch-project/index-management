@@ -27,6 +27,7 @@ class ValidateClose(
     override fun execute(indexName: String): Validate {
         // if these conditions are false, fail validation and do not execute close action
         if (!indexExists(indexName) || !validIndex(indexName)) {
+            validationStatus = ValidationStatus.FAILED
             return this
         }
         validationMessage = getValidationPassedMessage(indexName)
@@ -38,7 +39,6 @@ class ValidateClose(
         if (!isIndexExists) {
             val message = getNoIndexMessage(indexName)
             logger.warn(message)
-            validationStatus = ValidationStatus.RE_VALIDATING
             validationMessage = message
             return false
         }
@@ -54,7 +54,6 @@ class ValidateClose(
         } catch (e: Exception) {
             val message = getIndexNotValidMessage(indexName)
             logger.warn(message)
-            validationStatus = ValidationStatus.RE_VALIDATING
             validationMessage = message
         }
         return true
