@@ -59,6 +59,7 @@ class ValidateSnapshot(
             val message = getIndexNotValidMessage(indexName)
             logger.warn(message)
             validationMessage = message
+            return false
         }
         return true
     }
