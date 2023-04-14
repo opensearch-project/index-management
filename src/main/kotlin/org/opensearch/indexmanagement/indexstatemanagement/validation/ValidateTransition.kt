@@ -56,6 +56,7 @@ class ValidateTransition(
             logger.warn(message)
             validationStatus = ValidationStatus.RE_VALIDATING
             validationMessage = message
+            return false
         }
         return true
     }
