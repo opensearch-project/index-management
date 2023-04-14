@@ -29,6 +29,7 @@ class ActionValidation(
             "read_only" -> ValidateReadOnly(settings, clusterService, jvmService).execute(indexName)
             "read_write" -> ValidateReadWrite(settings, clusterService, jvmService).execute(indexName)
             "replica_count" -> ValidateReplicaCount(settings, clusterService, jvmService).execute(indexName)
+            "snapshot" -> ValidateSnapshot(settings, clusterService, jvmService).execute(indexName)
             "transition" -> ValidateTransition(settings, clusterService, jvmService).execute(indexName)
             "close" -> ValidateClose(settings, clusterService, jvmService).execute(indexName)
             "index_priority" -> ValidateIndexPriority(settings, clusterService, jvmService).execute(indexName)
