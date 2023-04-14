@@ -18,6 +18,7 @@ class ActionValidation(
     val jvmService: JvmService
 ) {
 
+    @Suppress("ComplexMethod")
     fun validate(actionName: String, indexName: String): ValidationResult {
         // map action to validation class
         val validation = when (actionName) {
