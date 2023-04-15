@@ -64,9 +64,9 @@ import kotlin.coroutines.suspendCoroutine
 
 const val OPENDISTRO_SECURITY_PROTECTED_INDICES_CONF_REQUEST = "_opendistro_security_protected_indices_conf_request"
 
-fun contentParser(bytesReference: BytesReference): XContentParser {
+fun contentParser(bytesReference: BytesReference, xContentRegistry: NamedXContentRegistry = NamedXContentRegistry.EMPTY): XContentParser {
     return XContentHelper.createParser(
-        NamedXContentRegistry.EMPTY,
+        xContentRegistry,
         LoggingDeprecationHandler.INSTANCE,
         bytesReference,
         XContentType.JSON

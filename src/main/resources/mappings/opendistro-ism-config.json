@@ -452,6 +452,83 @@
                     }
                   }
                 },
+                "transform": {
+                  "properties": {
+                    "ism_transform": {
+                      "properties": {
+                        "description": {
+                          "type": "text"
+                        },
+                        "target_index": {
+                          "type": "text",
+                          "fields": {
+                            "keyword": {
+                              "type": "keyword",
+                              "ignore_above": 256
+                            }
+                          }
+                        },
+                        "page_size": {
+                          "type": "long"
+                        },
+                        "data_selection_query": {
+                          "type": "object",
+                          "enabled": false
+                        },
+                        "groups": {
+                          "properties": {
+                            "date_histogram": {
+                              "properties": {
+                                "source_field": {
+                                  "type": "keyword"
+                                },
+                                "target_field": {
+                                  "type": "keyword"
+                                },
+                                "fixed_interval": {
+                                  "type": "keyword"
+                                },
+                                "calendar_interval": {
+                                  "type": "keyword"
+                                },
+                                "timezone": {
+                                  "type": "keyword"
+                                }
+                              }
+                            },
+                            "terms": {
+                              "properties": {
+                                "source_field": {
+                                  "type": "keyword"
+                                },
+                                "target_field": {
+                                  "type": "keyword"
+                                }
+                              }
+                            },
+                            "histogram": {
+                              "properties": {
+                                "source_field": {
+                                  "type": "keyword"
+                                },
+                                "target_field": {
+                                  "type": "keyword"
+                                },
+                                "interval": {
+                                  "type": "double"
+                                }
+                              }
+                            }
+                          }
+                        },
+                        "aggregations": {
+                          "type": "object",
+                          "enabled": false
+                        }
+                      }
+                    }
+                  }
+                },
                 "shrink": {
                   "properties": {
                     "num_new_shards": {
@@ -781,6 +858,10 @@
                   "type": "boolean"
                 },
                 "shrink_action_properties": {
+                  "type": "object",
+                  "enabled": false
+                },
+                "transform_action_properties": {
                   "type": "object",
                   "enabled": false
                 }

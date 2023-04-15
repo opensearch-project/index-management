@@ -54,7 +54,7 @@ data class TransformActionProperties(
                 }
             }
 
-            return TransformActionProperties(requireNotNull(transformId), requireNotNull(hasTransformFailed))
+            return TransformActionProperties(transformId, hasTransformFailed)
         }
     }
 

@@ -5,6 +5,9 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.action
 
+import org.opensearch.common.io.stream.StreamOutput
+import org.opensearch.core.xcontent.ToXContent
+import org.opensearch.core.xcontent.XContentBuilder
 import org.opensearch.indexmanagement.indexstatemanagement.step.transform.AttemptCreateTransformJobStep
 import org.opensearch.indexmanagement.indexstatemanagement.step.transform.WaitForTransformCompletionStep
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Action
@@ -46,4 +49,15 @@ class TransformAction(
     }
 
     override fun getSteps(): List<Step> = steps
+
+    override fun populateAction(builder: XContentBuilder, params: ToXContent.Params) {
+        builder.startObject(type)
+        builder.field(ISM_TRANSFORM_FIELD, ismTransform)
+        builder.endObject()
+    }
+
+    override fun populateAction(out: StreamOutput) {
+        ismTransform.writeTo(out)
+        out.writeInt(actionIndex)
+    }
 }

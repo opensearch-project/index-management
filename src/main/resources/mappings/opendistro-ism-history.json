@@ -112,6 +112,10 @@
                 "shrink_action_properties": {
                   "type": "object",
                   "enabled": false
+                },
+                "transform_action_properties": {
+                  "type": "object",
+                  "enabled": false
                 }
               }
             }
