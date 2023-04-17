@@ -49,6 +49,7 @@ data class ISMTransform(
         require(pageSize in Transform.MINIMUM_PAGE_SIZE..Transform.MAXIMUM_PAGE_SIZE) {
             "Page size must be between ${Transform.MINIMUM_PAGE_SIZE} and ${Transform.MAXIMUM_PAGE_SIZE}"
         }
+        require(description.isNotEmpty()) { "Description cannot be empty" }
         require(targetIndex.isNotEmpty()) { "TargetIndex cannot be empty" }
         require(groups.isNotEmpty()) { "Groups cannot be empty" }
         aggregations.aggregatorFactories.forEach {

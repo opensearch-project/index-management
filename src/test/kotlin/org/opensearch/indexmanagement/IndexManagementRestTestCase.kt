@@ -37,8 +37,8 @@ import kotlin.collections.HashSet
 
 abstract class IndexManagementRestTestCase : ODFERestTestCase() {
 
-    val configSchemaVersion = 17
-    val historySchemaVersion = 5
+    val configSchemaVersion = 18
+    val historySchemaVersion = 6
 
     // Having issues with tests leaking into other tests and mappings being incorrect and they are not caught by any pending task wait check as
     // they do not go through the pending task queue. Ideally this should probably be written in a way to wait for the
