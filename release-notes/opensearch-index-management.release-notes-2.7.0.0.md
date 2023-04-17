@@ -21,4 +21,4 @@ Compatible with OpenSearch 2.7.0
 * Shrink action Fix. ([#718](https://github.com/opensearch-project/index-management/pull/718))
 
 ### Documentation
-* Added 2.7 release notes. ([#]())
+* Added 2.7 release notes. ([#755](https://github.com/opensearch-project/index-management/pull/755))
