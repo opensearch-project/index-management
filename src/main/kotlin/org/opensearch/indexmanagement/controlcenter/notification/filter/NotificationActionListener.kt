@@ -93,7 +93,7 @@ class NotificationActionListener<Request : ActionRequest, Response : ActionRespo
             try {
                 notify(
                     action, OperationResult.FAILED,
-                    "${task.description.replaceFirstChar { it.uppercase() }} $COMPLETED_WITH_ERROR ${e.message}"
+                    "${task.description.replaceFirstChar { it.uppercase() }} $FAILED ${e.message}"
                 )
             } catch (t: Throwable) {
                 logger.info("Sending out error notification for action: {} failed", action, t)
@@ -190,7 +190,7 @@ class NotificationActionListener<Request : ActionRequest, Response : ActionRespo
         }
 
         val policies = getNotificationPolices(lronConfigResponse, result)
-        val eventSource = EventSource(TITLE, taskId.toString(), SeverityType.INFO)
+        val eventSource = EventSource(buildTitle(), taskId.toString(), SeverityType.INFO)
 
         val channelSent = mutableSetOf<String>()
         policies.forEach {
@@ -277,11 +277,15 @@ class NotificationActionListener<Request : ActionRequest, Response : ActionRespo
         return query.replace("/", "\\/").replace(":", "\\:")
     }
 
+    fun buildTitle(): String {
+        val clusterName = clusterService.clusterName
+        return "$clusterName: Index Management - Index Operation Notification"
+    }
+
     companion object {
         val MAX_WAIT_TIME: TimeValue = TimeValue.timeValueHours(1)
         const val COMPLETED = "has completed."
-        const val COMPLETED_WITH_ERROR = "has completed with errors. Error details:"
-        const val TITLE = "Index Management - Index Operation Complete Notification"
+        const val FAILED = "has failed. Error details:"
         val DELAY: TimeValue = TimeValue.timeValueSeconds(5)
     }
 }

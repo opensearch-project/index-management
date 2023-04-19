@@ -43,7 +43,7 @@ class ReindexRespParser(val task: Task, val clusterService: ClusterService) : Re
                 if (reason.isNullOrBlank() == false) {
                     "has been cancelled with reason: $reason"
                 } else if (exception != null) {
-                    NotificationActionListener.COMPLETED_WITH_ERROR + exception.message
+                    NotificationActionListener.FAILED + exception.message
                 } else {
                     NotificationActionListener.COMPLETED
                 }

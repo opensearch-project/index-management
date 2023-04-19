@@ -91,7 +91,7 @@ class OpenIndexRespParser(
                     totalWaitTime.toHumanReadableString(1)
                     }, try with `GET /<target>/_recovery` to get more details."
                 } else if (exception != null) {
-                    "${NotificationActionListener.COMPLETED_WITH_ERROR} ${exception.message}"
+                    "${NotificationActionListener.FAILED} ${exception.message}"
                 } else {
                     NotificationActionListener.COMPLETED
                 }

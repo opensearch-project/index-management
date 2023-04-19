@@ -37,7 +37,7 @@ class ForceMergeIndexRespParser(val request: ForceMergeRequest) : ResponseParser
         result.append(
             "Force_merge for index [${request.indices().joinToString(",")}] " +
                 if (response.shardFailures != null && response.shardFailures.isNotEmpty()) {
-                    "${NotificationActionListener.COMPLETED_WITH_ERROR} ${
+                    "${NotificationActionListener.FAILED} ${
                     response.shardFailures.joinToString(",") { it.reason() }
                     }"
                 } else {
