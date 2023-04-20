@@ -130,7 +130,7 @@ class OpenRespParserTests : OpenSearchTestCase() {
         val msg = parser.buildNotificationMessage(response, Exception("index already exits error"))
         Assert.assertEquals(
             msg,
-            "Open index [index-1,index-2] has completed with errors. Error details: index already exits error"
+            "Open index [index-1,index-2] has failed. Error details: index already exits error"
         )
     }
 

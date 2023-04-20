@@ -116,7 +116,7 @@ class ResizeIndexRespParserTests : OpenSearchTestCase() {
         val msg = parser.buildNotificationMessage(response, Exception("index already exits error"))
         Assert.assertEquals(
             msg,
-            "Clone from source to target has completed with errors. Error details: index already exits error"
+            "Clone from source to target has failed. Error details: index already exits error"
         )
     }
 
