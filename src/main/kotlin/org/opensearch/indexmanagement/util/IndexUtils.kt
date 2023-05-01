@@ -134,7 +134,7 @@ class IndexUtils {
             actionListener: ActionListener<AcknowledgedResponse>
         ) {
             if (clusterState.metadata.indices.containsKey(index)) {
-                if (shouldUpdateIndex(clusterState.metadata.indices[index], schemaVersion)) {
+                if (shouldUpdateIndex(clusterState.metadata.indices[index]!!, schemaVersion)) {
                     val putMappingRequest: PutMappingRequest = PutMappingRequest(index).source(mapping, XContentType.JSON)
                     client.putMapping(putMappingRequest, actionListener)
                 } else {

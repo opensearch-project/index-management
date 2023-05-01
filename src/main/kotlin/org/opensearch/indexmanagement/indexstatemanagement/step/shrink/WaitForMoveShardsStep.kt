@@ -33,7 +33,7 @@ class WaitForMoveShardsStep(private val action: ShrinkAction) : ShrinkStep(name,
         val numShardsInSync = getNumShardsInSync(shardStats, context.clusterService.state(), indexName)
         val nodeToMoveOnto = localShrinkActionProperties.nodeName
         val numShardsOnNode = getNumShardsWithCopyOnNode(shardStats, context.clusterService.state(), nodeToMoveOnto)
-        val numPrimaryShards = context.clusterService.state().metadata.indices[indexName].numberOfShards
+        val numPrimaryShards = context.clusterService.state().metadata.indices[indexName]!!.numberOfShards
 
         // If a copy of each shard is on the node, and all shards are in sync, move on
         if (numShardsOnNode >= numPrimaryShards && numShardsInSync >= numPrimaryShards) {
@@ -49,8 +49,8 @@ class WaitForMoveShardsStep(private val action: ShrinkAction) : ShrinkStep(name,
 
     // Returns the number of shard IDs where all primary and replicas are in sync
     private fun getNumShardsInSync(shardStats: Array<ShardStats>, state: ClusterState, indexName: String): Int {
-        val numReplicas = state.metadata.indices[indexName].numberOfReplicas
-        val inSyncAllocations = state.metadata.indices[indexName].inSyncAllocationIds
+        val numReplicas = state.metadata.indices[indexName]!!.numberOfReplicas
+        val inSyncAllocations = state.metadata.indices[indexName]!!.inSyncAllocationIds
         var numShardsInSync = 0
         for (shard: ShardStats in shardStats) {
             val routingInfo = shard.shardRouting
@@ -58,7 +58,7 @@ class WaitForMoveShardsStep(private val action: ShrinkAction) : ShrinkStep(name,
             if (routingInfo.primary()) {
                 // All shards must be in sync as it isn't known which shard (replica or primary) will be
                 // moved to the target node and used in the shrink.
-                if (inSyncAllocations[routingInfo.id].size == (numReplicas + 1)) {
+                if (inSyncAllocations[routingInfo.id]!!.size == (numReplicas + 1)) {
                     numShardsInSync++
                 }
             }

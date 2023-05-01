@@ -269,7 +269,7 @@ class TransportExplainAction @Inject constructor(
                     clusterStateRequest,
                     object : ActionListener<ClusterStateResponse> {
                         override fun onResponse(response: ClusterStateResponse) {
-                            val clusterStateIndexMetadatas = response.state.metadata.indices.associate { it.key to it.value }
+                            val clusterStateIndexMetadatas = response.state.metadata.indices.entries.associate { it.key to it.value }
                             getMetadataMap(clusterStateIndexMetadatas, threadContext)
                         }
 

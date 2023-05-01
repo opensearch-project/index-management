@@ -14,17 +14,16 @@ import org.opensearch.action.admin.cluster.snapshots.get.GetSnapshotsResponse
 import org.opensearch.action.index.IndexResponse
 import org.opensearch.cluster.SnapshotsInProgress
 import org.opensearch.common.UUIDs
-import org.opensearch.common.collect.ImmutableOpenMap
 import org.opensearch.common.unit.TimeValue
 import org.opensearch.common.xcontent.LoggingDeprecationHandler
+import org.opensearch.common.xcontent.XContentFactory
+import org.opensearch.common.xcontent.XContentType
 import org.opensearch.core.xcontent.NamedXContentRegistry
 import org.opensearch.core.xcontent.ToXContent
-import org.opensearch.common.xcontent.XContentFactory
 import org.opensearch.core.xcontent.XContentParser
-import org.opensearch.common.xcontent.XContentType
-import org.opensearch.indexmanagement.opensearchapi.string
 import org.opensearch.index.seqno.SequenceNumbers
 import org.opensearch.indexmanagement.indexstatemanagement.randomChannel
+import org.opensearch.indexmanagement.opensearchapi.string
 import org.opensearch.indexmanagement.opensearchapi.toMap
 import org.opensearch.indexmanagement.randomCronSchedule
 import org.opensearch.indexmanagement.randomInstant
@@ -39,9 +38,9 @@ import org.opensearch.snapshots.Snapshot
 import org.opensearch.snapshots.SnapshotId
 import org.opensearch.snapshots.SnapshotInfo
 import org.opensearch.test.OpenSearchTestCase.randomAlphaOfLength
-import org.opensearch.test.OpenSearchTestCase.randomBoolean
-import org.opensearch.test.OpenSearchTestCase.randomIntBetween
 import org.opensearch.test.OpenSearchTestCase.randomNonNegativeLong
+import org.opensearch.test.OpenSearchTestCase.randomIntBetween
+import org.opensearch.test.OpenSearchTestCase.randomBoolean
 import org.opensearch.test.rest.OpenSearchRestTestCase
 import java.time.Instant
 import java.time.temporal.ChronoUnit
@@ -242,7 +241,7 @@ fun mockInProgressSnapshotInfo(
         emptyList(),
         randomNonNegativeLong(),
         randomNonNegativeLong(),
-        ImmutableOpenMap.of(),
+        mapOf(),
         "",
         mapOf("sm_policy" to "daily-snapshot"),
         Version.CURRENT,

@@ -846,7 +846,7 @@ object ManagedIndexRunner :
 
             val response: ClusterStateResponse = client.admin().cluster().suspendUntil { state(clusterStateRequest, it) }
 
-            indexMetaData = response.state.metadata.indices.firstOrNull()?.value
+            indexMetaData = response.state.metadata.indices.entries.firstOrNull()?.value
         } catch (e: Exception) {
             logger.error("Failed to get IndexMetaData from cluster manager cluster state for index=$index", e)
         }

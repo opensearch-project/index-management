@@ -21,7 +21,6 @@ import org.opensearch.client.IndicesAdminClient
 import org.opensearch.cluster.metadata.IndexNameExpressionResolver
 import org.opensearch.cluster.metadata.MappingMetadata
 import org.opensearch.cluster.service.ClusterService
-import org.opensearch.common.collect.ImmutableOpenMap
 import org.opensearch.common.xcontent.XContentType
 import org.opensearch.indexmanagement.rollup.model.RollupJobValidationResult
 import org.opensearch.test.OpenSearchTestCase
@@ -292,16 +291,14 @@ class RollupMapperServiceTests : OpenSearchTestCase() {
 
     private fun getMappingResponse(indexName: String, emptyMapping: Boolean = false): GetMappingsResponse {
         val mappings = if (emptyMapping) {
-            ImmutableOpenMap.Builder<String, MappingMetadata>().build()
+            mutableMapOf()
         } else {
             val mappingSourceMap = createParser(
                 XContentType.JSON.xContent(),
                 javaClass.classLoader.getResource("mappings/kibana-sample-data.json").readText()
             ).map()
             val mappingMetadata = MappingMetadata("_doc", mappingSourceMap) // it seems it still expects a type, i.e. _doc now
-            ImmutableOpenMap.Builder<String, MappingMetadata>()
-                .fPut(indexName, mappingMetadata)
-                .build()
+            mutableMapOf(indexName to mappingMetadata)
         }
 
         return GetMappingsResponse(mappings)

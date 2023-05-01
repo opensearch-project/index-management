@@ -54,7 +54,7 @@ class WaitForShrinkStep(private val action: ShrinkAction) : ShrinkStep(name, tru
 
     private suspend fun shrinkNotDone(targetIndex: String, targetNumShards: Int, client: Client, clusterService: ClusterService): Boolean {
         val numPrimaryShardsStarted = getNumPrimaryShardsStarted(client, targetIndex)
-        val numPrimaryShards = clusterService.state().metadata.indices[targetIndex].numberOfShards
+        val numPrimaryShards = clusterService.state().metadata.indices[targetIndex]!!.numberOfShards
         return numPrimaryShards != targetNumShards || numPrimaryShardsStarted != targetNumShards
     }
 

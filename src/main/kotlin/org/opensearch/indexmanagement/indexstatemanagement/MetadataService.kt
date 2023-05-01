@@ -111,7 +111,7 @@ class MetadataService(
             val indexUuidMap = mutableMapOf<IndexUuid, IndexName>()
             clusterStateManagedIndexMetadata.forEach { (indexName, metadata) ->
                 val indexMetadata = indicesMetadata[indexName]
-                val currentIndexUuid = indexMetadata.indexUUID
+                val currentIndexUuid = indexMetadata!!.indexUUID
                 if (currentIndexUuid != metadata?.indexUuid) {
                     corruptManagedIndices.add(indexMetadata.index)
                 } else {

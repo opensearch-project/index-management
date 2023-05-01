@@ -113,7 +113,7 @@ abstract class IndexStateManagementIntegTestCase : OpenSearchIntegTestCase() {
         return client().admin().cluster().prepareState()
             .setIndices(indexName)
             .setMetadata(true).get()
-            .state.metadata.indices[indexName]
+            .state.metadata.indices[indexName]!!
     }
 
     // reuse utility fun from RestTestCase

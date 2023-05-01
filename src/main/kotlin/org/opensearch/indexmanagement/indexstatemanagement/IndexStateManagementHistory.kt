@@ -176,7 +176,7 @@ class IndexStateManagementHistory(
             clusterStateRequest,
             object : ActionListener<ClusterStateResponse> {
                 override fun onResponse(clusterStateResponse: ClusterStateResponse) {
-                    if (!clusterStateResponse.state.metadata.indices.isEmpty) {
+                    if (clusterStateResponse.state.metadata.indices.isNotEmpty()) {
                         val indicesToDelete = getIndicesToDelete(clusterStateResponse)
                         logger.info("Deleting old history indices viz $indicesToDelete")
                         deleteAllOldHistoryIndices(indicesToDelete)
@@ -199,7 +199,7 @@ class IndexStateManagementHistory(
             val creationTime = indexMetaData.creationDate
 
             if ((Instant.now().toEpochMilli() - creationTime) > historyRetentionPeriod.millis) {
-                val alias = indexMetaData.aliases.firstOrNull { IndexManagementIndices.HISTORY_WRITE_INDEX_ALIAS == it.value.alias }
+                val alias = indexMetaData.aliases.entries.firstOrNull { IndexManagementIndices.HISTORY_WRITE_INDEX_ALIAS == it.value.alias }
                 if (alias != null && historyEnabled) {
                     // If index has write alias and history is enable, don't delete the index.
                     continue
