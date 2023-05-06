@@ -36,7 +36,6 @@ import org.opensearch.indexmanagement.indexstatemanagement.IndexMetadataProvider
 import org.opensearch.indexmanagement.indexstatemanagement.IndexStateManagementHistory
 import org.opensearch.indexmanagement.indexstatemanagement.ManagedIndexCoordinator
 import org.opensearch.indexmanagement.indexstatemanagement.ManagedIndexRunner
-import org.opensearch.indexmanagement.indexstatemanagement.MetadataService
 import org.opensearch.indexmanagement.indexstatemanagement.PluginVersionSweepCoordinator
 import org.opensearch.indexmanagement.indexstatemanagement.SkipExecution
 import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexConfig
@@ -75,7 +74,6 @@ import org.opensearch.indexmanagement.indexstatemanagement.transport.action.upda
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.updateindexmetadata.UpdateManagedIndexMetaDataAction
 import org.opensearch.indexmanagement.indexstatemanagement.util.DEFAULT_INDEX_TYPE
 import org.opensearch.indexmanagement.indexstatemanagement.validation.ActionValidation
-import org.opensearch.indexmanagement.indexstatemanagement.migration.ISMTemplateService
 import org.opensearch.indexmanagement.refreshanalyzer.RefreshSearchAnalyzerAction
 import org.opensearch.indexmanagement.refreshanalyzer.RestRefreshSearchAnalyzerAction
 import org.opensearch.indexmanagement.refreshanalyzer.TransportRefreshSearchAnalyzerAction
@@ -432,12 +430,9 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
             .registerExtensionChecker(extensionChecker)
             .registerIndexMetadataProvider(indexMetadataProvider)
 
-        val metadataService = MetadataService(client, clusterService, skipFlag, indexManagementIndices)
-        val templateService = ISMTemplateService(client, clusterService, xContentRegistry, indexManagementIndices)
-
         val managedIndexCoordinator = ManagedIndexCoordinator(
             environment.settings(),
-            client, clusterService, threadPool, indexManagementIndices, metadataService, templateService, indexMetadataProvider
+            client, clusterService, threadPool, indexManagementIndices, indexMetadataProvider
         )
 
         val smRunner = SMRunner.init(client, threadPool, settings, indexManagementIndices, clusterService)

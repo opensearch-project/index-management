@@ -57,7 +57,7 @@ class TransportUpdateRollupMappingAction @Inject constructor(
     }
 
     @Suppress("ReturnCount", "LongMethod")
-    override fun masterOperation(
+    override fun clusterManagerOperation(
         request: UpdateRollupMappingRequest,
         state: ClusterState,
         listener: ActionListener<AcknowledgedResponse>
