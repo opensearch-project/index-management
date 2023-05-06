@@ -76,7 +76,7 @@ class TransportUpdateManagedIndexMetaDataAction @Inject constructor(
             .toTypedArray()
     }
 
-    override fun masterOperation(
+    override fun clusterManagerOperation(
         request: UpdateManagedIndexMetaDataRequest,
         state: ClusterState,
         listener: ActionListener<AcknowledgedResponse>

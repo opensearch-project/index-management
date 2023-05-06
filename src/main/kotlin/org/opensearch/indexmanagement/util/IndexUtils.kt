@@ -80,10 +80,10 @@ class IndexUtils {
             return DEFAULT_SCHEMA_VERSION
         }
 
-        fun shouldUpdateIndex(index: IndexMetadata, newVersion: Long): Boolean {
+        fun shouldUpdateIndex(index: IndexMetadata?, newVersion: Long): Boolean {
             var oldVersion = DEFAULT_SCHEMA_VERSION
 
-            val indexMapping = index.mapping()?.sourceAsMap()
+            val indexMapping = index?.mapping()?.sourceAsMap()
             if (indexMapping != null && indexMapping.containsKey(_META) && indexMapping[_META] is HashMap<*, *>) {
                 val metaData = indexMapping[_META] as HashMap<*, *>
                 if (metaData.containsKey(SCHEMA_VERSION)) {

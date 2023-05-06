@@ -84,7 +84,7 @@ class AttemptMoveShardsStep(private val action: ShrinkAction) : ShrinkStep(name,
         val (statsStore, statsDocs, shardStats) = getIndexStats(indexName, client) ?: return this
         val indexSize = statsStore.sizeInBytes
         // Get stats of current and target shards
-        val numOriginalShards = context.clusterService.state().metadata.indices[indexName].numberOfShards
+        val numOriginalShards = context.clusterService.state().metadata.indices[indexName]?.numberOfShards ?: throw IllegalStateException("numOriginalShards should not be null")
         val numTargetShards = getNumTargetShards(numOriginalShards, indexSize)
 
         if (shouldFailTooManyDocuments(statsDocs, numTargetShards)) return this
@@ -215,7 +215,7 @@ class AttemptMoveShardsStep(private val action: ShrinkAction) : ShrinkStep(name,
     private fun shouldFailUnsafe(clusterService: ClusterService, indexName: String): Boolean {
         // If forceUnsafe is set and is true, then we don't even need to check the number of replicas
         if (action.forceUnsafe == true) return false
-        val numReplicas = clusterService.state().metadata.indices[indexName].numberOfReplicas
+        val numReplicas = clusterService.state().metadata.indices[indexName]?.numberOfReplicas
         val shouldFailForceUnsafeCheck = numReplicas == 0
         if (shouldFailForceUnsafeCheck) {
             logger.info(UNSAFE_FAILURE_MESSAGE)

@@ -21,7 +21,7 @@
 // testing tasks don't derive from Test so the jacoco plugin can't do this automatically.
 def jacocoDir = "${buildDir}/jacoco"
 
-task dummyTest(type: Test) {
+tasks.register("dummyTest", Test) {
     enabled = false
     workingDir = file("/") // Force absolute path to jacoco agent jar
     jacoco {
@@ -31,7 +31,7 @@ task dummyTest(type: Test) {
     }
 }
 
-task dummyIntegTest(type: Test) {
+tasks.register("dummyIntegTest", Test) {
     enabled = false
     workingDir = file("/") // Force absolute path to jacoco agent jar
     jacoco {
@@ -51,8 +51,8 @@ jacocoTestReport {
     sourceDirectories.from = "src/main/kotlin"
     classDirectories.from = sourceSets.main.output
     reports {
-        html.enabled = true // human readable
-        xml.enabled = true // for coverlay
+        html.required = true // human readable
+        xml.required = true // for coverlay
     }
 }
 
