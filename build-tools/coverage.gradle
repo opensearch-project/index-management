@@ -51,8 +51,8 @@ jacocoTestReport {
     sourceDirectories.from = "src/main/kotlin"
     classDirectories.from = sourceSets.main.output
     reports {
-        html.enabled = true // human readable
-        xml.enabled = true // for coverlay
+        html.required = true // human readable
+        xml.required = true // for coverlay
     }
 }
 

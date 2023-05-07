@@ -25,13 +25,13 @@ ext {
 
 jacoco {
     toolVersion = '0.8.7'
-    reportsDir = file("$buildDir/JacocoReport")
+    reportsDirectory = file("$buildDir/JacocoReport")
 }
 
 jacocoTestReport {
     reports {
-        xml.enabled false
-        csv.enabled false
+        xml.required = false
+        csv.required = false
         html.destination file("${buildDir}/jacoco/")
     }
 }
@@ -70,7 +70,7 @@ idea.module {
 }
 
 task sourcesJar(type: Jar, dependsOn: classes) {
-    classifier = 'sources'
+    archiveClassifier = 'sources'
     from sourceSets.main.allSource
 }
 
@@ -84,12 +84,11 @@ test {
 }
 
 task integTest(type: RestIntegTestTask) {
-    description 'Run integ test with opensearch test framework'
-    group 'verification'
-    systemProperty 'tests.security.manager', 'false'
-    dependsOn test
+    description = "Run integration tests against integTest cluster"
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
 }
-check.dependsOn integTest
+tasks.named("check").configure { dependsOn(integTest) }
 
 testClusters.javaRestTest {
     testDistribution = 'INTEG_TEST'
