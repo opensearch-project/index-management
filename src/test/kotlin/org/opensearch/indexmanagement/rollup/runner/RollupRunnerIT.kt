@@ -1253,6 +1253,75 @@ class RollupRunnerIT : RollupRestTestCase() {
         assertEquals("Backing index [$backingIndex2] has to have owner rollup job with id:[${startedRollup1.id}]", rollupMetadata.failureReason)
     }
 
+    fun `test rollup with date_nanos as date_histogram field`() {
+        val index = "date-nanos-index"
+        val rollupIndex = "date-nanos-index-rollup"
+        createIndex(
+            index,
+            Settings.EMPTY,
+            """"properties": {
+                  "purchaseDate": {
+                    "type": "date_nanos" 
+                  },
+                  "itemName": {
+                    "type": "keyword"
+                  },
+                  "itemPrice": {
+                    "type": "float"
+                  }
+                }"""
+        )
+
+        indexDoc(index, "1", """{"purchaseDate": 123.12345, "itemName": "shoes", "itemPrice": 100.5}""".trimIndent())
+        indexDoc(index, "2", """{"purchaseDate": 56363455.123459, "itemName": "shoes", "itemPrice": 30.0}""".trimIndent())
+        indexDoc(index, "3", """{"purchaseDate": "2015-01-01T14:10:30.743656789Z", "itemName": "shoes", "itemPrice": 60.592}""".trimIndent())
+
+        refreshAllIndices()
+
+        val job1 = Rollup(
+            id = "rollup_with_alias_99243411",
+            schemaVersion = 1L,
+            enabled = true,
+            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+            jobLastUpdatedTime = Instant.now(),
+            jobEnabledTime = Instant.now(),
+            description = "basic change of page size",
+            sourceIndex = index,
+            targetIndex = rollupIndex,
+            metadataID = null,
+            roles = emptyList(),
+            pageSize = 1000,
+            delay = 0,
+            continuous = true,
+            dimensions = listOf(
+                DateHistogram(sourceField = "purchaseDate", fixedInterval = "1d"),
+                Terms("itemName", "itemName"),
+            ),
+            metrics = listOf(
+                RollupMetrics(
+                    sourceField = "itemPrice",
+                    targetField = "itemPrice",
+                    metrics = listOf(Sum(), Min(), Max(), ValueCount(), Average())
+                )
+            )
+        ).let { createRollup(it, it.id) }
+
+        updateRollupStartTime(job1)
+
+        waitFor { assertTrue("Target rollup index was not created", indexExists(rollupIndex)) }
+
+        var startedRollup1 = waitFor {
+            val rollupJob = getRollup(rollupId = job1.id)
+            assertNotNull("Rollup job doesn't have metadata set", rollupJob.metadataID)
+            val rollupMetadata = getRollupMetadata(rollupJob.metadataID!!)
+            assertEquals("Rollup is not started", RollupMetadata.Status.STARTED, rollupMetadata.status)
+            rollupJob
+        }
+        var rollupMetadataID = startedRollup1.metadataID!!
+        var rollupMetadata = getRollupMetadata(rollupMetadataID)
+        assertEquals("Backing index ", rollupMetadata.failureReason)
+    }
+
     // TODO: Test scenarios:
     // - Source index deleted after first execution
     //      * If this is with a source index pattern and the underlying indices are recreated but with different data

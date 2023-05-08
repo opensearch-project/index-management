@@ -194,10 +194,16 @@ class RollupMetadataService(val client: Client, val xContentRegistry: NamedXCont
 
             // Get the doc value field of the dateHistogram.sourceField for the first search hit converted to epoch millis
             // If the doc value is null or empty it will be treated the same as empty doc hits
-            val firstHitTimestamp = response.hits.hits.first().field(dateHistogram.sourceField).getValue<String>()?.toLong()
-                ?: return StartingTimeResult.NoDocumentsFound
-
-            return StartingTimeResult.Success(getRoundedTime(firstHitTimestamp, dateHistogram))
+            val firstHitTimestampAsString = response.hits.hits.first().field(dateHistogram.sourceField).getValue<String>()
+            if (firstHitTimestampAsString == null) {
+                return StartingTimeResult.NoDocumentsFound
+            }
+            try {
+                return StartingTimeResult.Success(getRoundedTime(firstHitTimestampAsString.toLong(), dateHistogram))
+            } catch (e: NumberFormatException) {
+                val firstHitTimestampAsDouble = firstHitTimestampAsString.toDouble()
+                return StartingTimeResult.Success(getRoundedTime(firstHitTimestampAsDouble.toLong(), dateHistogram))
+            }
         } catch (e: RemoteTransportException) {
             val unwrappedException = ExceptionsHelper.unwrapCause(e) as Exception
             logger.debug("Error when getting initial start time for rollup [${rollup.id}]: $unwrappedException")
