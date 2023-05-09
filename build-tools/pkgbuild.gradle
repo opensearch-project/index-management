@@ -13,7 +13,7 @@ afterEvaluate {
         version = "${project.version}" - "-SNAPSHOT"
 
         into '/usr/share/opensearch/plugins'
-        from(zipTree(bundlePlugin.archivePath)) {
+        from(zipTree(bundlePlugin.archiveFile)) {
             into opensearchplugin.name
         }
 
@@ -41,9 +41,11 @@ afterEvaluate {
         arch = 'NOARCH'
         dependsOn 'assemble'
         finalizedBy 'renameRpm'
-        task renameRpm(type: Copy) {
+        tasks.register("renameRpm", Copy) {
             from("$buildDir/distributions")
-            rename "$archiveFileName", "${packageName}-${archiveVersion}.rpm"
+            into("$buildDir/distributions")
+            include archiveFileName
+            rename archiveFileName, "${packageName}-${version}.rpm"
             doLast { delete file("$buildDir/distributions/$archiveFileName") }
         }
     }
@@ -51,9 +53,11 @@ afterEvaluate {
         arch = 'all'
         dependsOn 'assemble'
         finalizedBy 'renameDeb'
-        task renameDeb(type: Copy) {
+        tasks.register("renameDeb", Copy) {
             from("$buildDir/distributions")
-            rename "$archiveFileName", "${packageName}-${archiveVersion}.deb"
+            into("$buildDir/distributions")
+            include archiveFileName
+            rename archiveFileName, "${packageName}-${version}.deb"
             doLast { delete file("$buildDir/distributions/$archiveFileName") }
         }
     }
