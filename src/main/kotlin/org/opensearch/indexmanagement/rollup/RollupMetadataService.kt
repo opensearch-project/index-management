@@ -21,10 +21,10 @@ import org.opensearch.client.Client
 import org.opensearch.common.Rounding
 import org.opensearch.common.unit.TimeValue
 import org.opensearch.common.xcontent.LoggingDeprecationHandler
-import org.opensearch.core.xcontent.NamedXContentRegistry
 import org.opensearch.common.xcontent.XContentFactory
 import org.opensearch.common.xcontent.XContentHelper
 import org.opensearch.common.xcontent.XContentType
+import org.opensearch.core.xcontent.NamedXContentRegistry
 import org.opensearch.index.query.MatchAllQueryBuilder
 import org.opensearch.indexmanagement.IndexManagementPlugin
 import org.opensearch.indexmanagement.common.model.dimension.DateHistogram
@@ -194,16 +194,15 @@ class RollupMetadataService(val client: Client, val xContentRegistry: NamedXCont
 
             // Get the doc value field of the dateHistogram.sourceField for the first search hit converted to epoch millis
             // If the doc value is null or empty it will be treated the same as empty doc hits
-            val firstHitTimestampAsString = response.hits.hits.first().field(dateHistogram.sourceField).getValue<String>()
+            var firstHitTimestampAsString = response.hits.hits.first().field(dateHistogram.sourceField).getValue<String>()
             if (firstHitTimestampAsString == null) {
                 return StartingTimeResult.NoDocumentsFound
             }
-            try {
-                return StartingTimeResult.Success(getRoundedTime(firstHitTimestampAsString.toLong(), dateHistogram))
-            } catch (e: NumberFormatException) {
-                val firstHitTimestampAsDouble = firstHitTimestampAsString.toDouble()
-                return StartingTimeResult.Success(getRoundedTime(firstHitTimestampAsDouble.toLong(), dateHistogram))
+            // in case of date_nanos type we have to trim nanos part.
+            if (firstHitTimestampAsString.indexOf(".") != -1) {
+                firstHitTimestampAsString = firstHitTimestampAsString.substring(0, firstHitTimestampAsString.indexOf("."))
             }
+            return StartingTimeResult.Success(getRoundedTime(firstHitTimestampAsString.toLong(), dateHistogram))
         } catch (e: RemoteTransportException) {
             val unwrappedException = ExceptionsHelper.unwrapCause(e) as Exception
             logger.debug("Error when getting initial start time for rollup [${rollup.id}]: $unwrappedException")

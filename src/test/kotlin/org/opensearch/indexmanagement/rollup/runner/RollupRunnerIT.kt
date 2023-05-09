@@ -33,6 +33,7 @@ import org.opensearch.rest.RestRequest
 import org.opensearch.rest.RestStatus
 import java.time.Instant
 import java.time.temporal.ChronoUnit
+import java.util.Collections.emptyMap
 
 class RollupRunnerIT : RollupRestTestCase() {
 
@@ -1272,17 +1273,17 @@ class RollupRunnerIT : RollupRestTestCase() {
                 }"""
         )
 
-        indexDoc(index, "1", """{"purchaseDate": 123.12345, "itemName": "shoes", "itemPrice": 100.5}""".trimIndent())
-        indexDoc(index, "2", """{"purchaseDate": 56363455.123459, "itemName": "shoes", "itemPrice": 30.0}""".trimIndent())
-        indexDoc(index, "3", """{"purchaseDate": "2015-01-01T14:10:30.743656789Z", "itemName": "shoes", "itemPrice": 60.592}""".trimIndent())
+        indexDoc(index, "1", """{"purchaseDate": 1683149130000.6497, "itemName": "shoes", "itemPrice": 100.5}""".trimIndent())
+        indexDoc(index, "2", """{"purchaseDate": 1683494790000, "itemName": "shoes", "itemPrice": 30.0}""".trimIndent())
+        indexDoc(index, "3", """{"purchaseDate": "2023-05-08T18:57:33.743656789Z", "itemName": "shoes", "itemPrice": 60.592}""".trimIndent())
 
         refreshAllIndices()
 
-        val job1 = Rollup(
+        val job = Rollup(
             id = "rollup_with_alias_99243411",
             schemaVersion = 1L,
             enabled = true,
-            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.DAYS),
             jobLastUpdatedTime = Instant.now(),
             jobEnabledTime = Instant.now(),
             description = "basic change of page size",
@@ -1294,7 +1295,7 @@ class RollupRunnerIT : RollupRestTestCase() {
             delay = 0,
             continuous = true,
             dimensions = listOf(
-                DateHistogram(sourceField = "purchaseDate", fixedInterval = "1d"),
+                DateHistogram(sourceField = "purchaseDate", fixedInterval = "5d"),
                 Terms("itemName", "itemName"),
             ),
             metrics = listOf(
@@ -1306,20 +1307,16 @@ class RollupRunnerIT : RollupRestTestCase() {
             )
         ).let { createRollup(it, it.id) }
 
-        updateRollupStartTime(job1)
+        updateRollupStartTime(job)
 
         waitFor { assertTrue("Target rollup index was not created", indexExists(rollupIndex)) }
 
-        var startedRollup1 = waitFor {
-            val rollupJob = getRollup(rollupId = job1.id)
+        waitFor {
+            val rollupJob = getRollup(rollupId = job.id)
             assertNotNull("Rollup job doesn't have metadata set", rollupJob.metadataID)
             val rollupMetadata = getRollupMetadata(rollupJob.metadataID!!)
             assertEquals("Rollup is not started", RollupMetadata.Status.STARTED, rollupMetadata.status)
-            rollupJob
         }
-        var rollupMetadataID = startedRollup1.metadataID!!
-        var rollupMetadata = getRollupMetadata(rollupMetadataID)
-        assertEquals("Backing index ", rollupMetadata.failureReason)
     }
 
     // TODO: Test scenarios:

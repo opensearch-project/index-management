@@ -43,7 +43,6 @@ afterEvaluate {
         finalizedBy 'renameRpm'
         task renameRpm(type: Copy) {
             from("$buildDir/distributions")
-            into("$buildDir/distributions")
             rename "$archiveFileName", "${packageName}-${archiveVersion}.rpm"
             doLast { delete file("$buildDir/distributions/$archiveFileName") }
         }
@@ -54,7 +53,6 @@ afterEvaluate {
         finalizedBy 'renameDeb'
         task renameDeb(type: Copy) {
             from("$buildDir/distributions")
-            into("$buildDir/distributions")
             rename "$archiveFileName", "${packageName}-${archiveVersion}.deb"
             doLast { delete file("$buildDir/distributions/$archiveFileName") }
         }
