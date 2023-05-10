@@ -1710,4 +1710,88 @@ class RollupInterceptorIT : RollupRestTestCase() {
             assertTrue("The query_string query field check failed!", e.message!!.contains("Could not find a rollup job that can answer this query because [missing field unknown_field]"))
         }
     }
+
+    fun `test roll up search query_string query with index pattern as source`() {
+        val sourceIndex = "source_rollup_search_qsq_1"
+        val targetIndex = "target_rollup_qsq_search_1"
+
+        createSampleIndexForQSQTest(sourceIndex)
+
+        val rollup = Rollup(
+            id = "basic_query_string_query_rollup_search111",
+            enabled = true,
+            schemaVersion = 1L,
+            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+            jobLastUpdatedTime = Instant.now(),
+            jobEnabledTime = Instant.now(),
+            description = "basic search test",
+            sourceIndex = "source_roll*",
+            targetIndex = targetIndex,
+            metadataID = null,
+            roles = emptyList(),
+            pageSize = 10,
+            delay = 0,
+            continuous = false,
+            dimensions = listOf(
+                DateHistogram(sourceField = "event_ts", fixedInterval = "1h"),
+                Terms("state", "state"),
+                Terms("state_ext", "state_ext"),
+                Terms("state_ext2", "state_ext2"),
+                Terms("state_ordinal", "state_ordinal"),
+                Terms("abc test", "abc test"),
+            ),
+            metrics = listOf(
+                RollupMetrics(
+                    sourceField = "earnings", targetField = "earnings",
+                    metrics = listOf(
+                        Sum(), Min(), Max(),
+                        ValueCount(), Average()
+                    )
+                )
+            )
+        ).let { createRollup(it, it.id) }
+
+        updateRollupStartTime(rollup)
+
+        waitFor {
+            val rollupJob = getRollup(rollupId = rollup.id)
+            assertNotNull("Rollup job doesn't have metadata set", rollupJob.metadataID)
+            val rollupMetadata = getRollupMetadata(rollupJob.metadataID!!)
+            assertEquals("Rollup is not finished", RollupMetadata.Status.FINISHED, rollupMetadata.status)
+        }
+
+        refreshAllIndices()
+
+        // Term query
+        var req = """
+            {
+                "size": 0,
+                "query": {
+                    "query_string": {
+                        "query": "state:TX AND state_ext:CA AND 0",
+                        "default_field": "state_ordinal"
+                    }
+                    
+                },
+                "aggs": {
+                    "earnings_total": {
+                        "sum": {
+                            "field": "earnings"
+                        }
+                    }
+                }
+            }
+        """.trimIndent()
+        var rawRes = client().makeRequest("POST", "/$sourceIndex/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
+        assertTrue(rawRes.restStatus() == RestStatus.OK)
+        var rollupRes = client().makeRequest("POST", "/$targetIndex/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
+        assertTrue(rollupRes.restStatus() == RestStatus.OK)
+        var rawAggRes = rawRes.asMap()["aggregations"] as Map<String, Map<String, Any>>
+        var rollupAggRes = rollupRes.asMap()["aggregations"] as Map<String, Map<String, Any>>
+        assertEquals(
+            "Source and rollup index did not return same min results",
+            rawAggRes.getValue("earnings_total")["value"],
+            rollupAggRes.getValue("earnings_total")["value"]
+        )
+    }
 }

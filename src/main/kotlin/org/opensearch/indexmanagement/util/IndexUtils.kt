@@ -15,9 +15,9 @@ import org.opensearch.cluster.metadata.IndexAbstraction
 import org.opensearch.cluster.metadata.IndexMetadata
 import org.opensearch.common.hash.MurmurHash3
 import org.opensearch.common.xcontent.LoggingDeprecationHandler
+import org.opensearch.common.xcontent.XContentType
 import org.opensearch.core.xcontent.NamedXContentRegistry
 import org.opensearch.core.xcontent.XContentParser.Token
-import org.opensearch.common.xcontent.XContentType
 import org.opensearch.indexmanagement.IndexManagementIndices
 import org.opensearch.indexmanagement.IndexManagementPlugin
 import java.nio.ByteBuffer
@@ -242,8 +242,8 @@ class IndexUtils {
             }
 
             var concreteIndexName: String
-            if (concreteIndices.size == 1 && isConcreteIndex(indexName, clusterState)) {
-                concreteIndexName = indexName
+            if (concreteIndices.size == 1 && isConcreteIndex(concreteIndices[0], clusterState)) {
+                concreteIndexName = concreteIndices[0]
             } else if (isAlias(indexName, clusterState) || isDataStream(indexName, clusterState)) {
                 concreteIndexName = getWriteIndex(indexName, clusterState)
                     ?: getNewestIndexByCreationDate(concreteIndices, clusterState) //
