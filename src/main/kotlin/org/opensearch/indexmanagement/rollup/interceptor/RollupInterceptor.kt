@@ -115,7 +115,7 @@ class RollupInterceptor(
     fun getConcreteSourceIndex(sourceIndex: String, resolver: IndexNameExpressionResolver, clusterState: ClusterState): String {
         val concreteIndexNames = resolver.concreteIndexNames(clusterState, IndicesOptions.LENIENT_EXPAND_OPEN, sourceIndex)
         if (concreteIndexNames.isEmpty()) {
-            throw IllegalStateException("Cannot resolve rollup sourceIndex [$sourceIndex]")
+            throw IllegalArgumentException("Cannot resolve rollup sourceIndex [$sourceIndex]")
         }
         return IndexUtils.getConcreteIndex(sourceIndex, concreteIndexNames, clusterState)
     }
