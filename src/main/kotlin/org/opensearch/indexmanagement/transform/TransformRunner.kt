@@ -53,7 +53,6 @@ object TransformRunner :
     private lateinit var transformSearchService: TransformSearchService
     private lateinit var transformIndexer: TransformIndexer
     private lateinit var transformValidator: TransformValidator
-    private lateinit var targetIndexMappingService: TargetIndexMappingService
     private lateinit var threadPool: ThreadPool
 
     fun initialize(
@@ -67,12 +66,11 @@ object TransformRunner :
     ): TransformRunner {
         this.clusterService = clusterService
         this.client = client
-        this.targetIndexMappingService = TargetIndexMappingService(client)
         this.xContentRegistry = xContentRegistry
         this.settings = settings
         this.transformSearchService = TransformSearchService(settings, clusterService, client)
         this.transformMetadataService = TransformMetadataService(client, xContentRegistry)
-        this.transformIndexer = TransformIndexer(settings, clusterService, client, targetIndexMappingService)
+        this.transformIndexer = TransformIndexer(settings, clusterService, client)
         this.transformValidator = TransformValidator(indexNameExpressionResolver, clusterService, client, settings, jvmService)
 
         this.threadPool = threadPool
@@ -112,10 +110,10 @@ object TransformRunner :
         var bucketsToTransform = BucketsToTransform(HashSet(), metadata)
 
         // If date was used in term query generate target date field mapping and store it in transform context
-        val targetDateFieldMapping = targetIndexMappingService.getTargetMappingsForDates(transform)
+        val targetIndexDateFieldMappings = TargetIndexMappingService.getTargetMappingsForDates(transform)
         val transformContext = TransformContext(
             TransformLockManager(transform, context),
-            targetDateFieldMapping
+            targetIndexDateFieldMappings
         )
 
         // Acquires the lock if there is no running job execution for the given transform; Lock is acquired per transform

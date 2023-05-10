@@ -1,10 +1,12 @@
-import org.opensearch.common.time.DateFormatter
-import java.time.ZoneId
-
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
  */
+
+package org.opensearch.indexmanagement.transform.util
+
+import org.opensearch.common.time.DateFormatter
+import java.time.ZoneId
 
 private const val DATE_FORMAT = "uuuu-MM-dd'T'HH:mm:ss.SSSZZ"
 private val timezone: ZoneId = ZoneId.of("UTC")

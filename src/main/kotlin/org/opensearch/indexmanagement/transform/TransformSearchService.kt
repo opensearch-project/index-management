@@ -5,7 +5,7 @@
 
 package org.opensearch.indexmanagement.transform
 
-import formatMillis
+import org.opensearch.indexmanagement.transform.util.formatMillis
 import org.apache.logging.log4j.LogManager
 import org.opensearch.ExceptionsHelper
 import org.opensearch.OpenSearchSecurityException
@@ -211,7 +211,7 @@ class TransformSearchService(
                 transform,
                 searchResponse,
                 modifiedBuckets = modifiedBuckets,
-                mappedTargetDateFields = transformContext.getMappedTargetDateFields()
+                targetIndexDateFieldMappings = transformContext.getTargetIndexDateFieldMappings()
             )
         } catch (e: TransformSearchServiceException) {
             throw e
@@ -340,7 +340,7 @@ class TransformSearchService(
             searchResponse: SearchResponse,
             waterMarkDocuments: Boolean = true,
             modifiedBuckets: MutableSet<Map<String, Any>>? = null,
-            mappedTargetDateFields: Map<String, Any>,
+            targetIndexDateFieldMappings: Map<String, Any>,
         ): TransformSearchResult {
             val aggs = searchResponse.aggregations.get(transform.id) as CompositeAggregation
             val buckets = if (modifiedBuckets != null) aggs.buckets.filter { modifiedBuckets.contains(it.key) } else aggs.buckets
@@ -358,14 +358,14 @@ class TransformSearchService(
                 aggregatedBucket.key.entries.forEach { bucket ->
                     // Check if the date is used as a term (exists in conversion list) - if it is,
                     // convert the date (which is in epoch time millis format to ISO 8601)
-                    if (mappedTargetDateFields.isNullOrEmpty() || !mappedTargetDateFields.containsKey(bucket.key)) {
+                    if (targetIndexDateFieldMappings.isNullOrEmpty() || !targetIndexDateFieldMappings.containsKey(bucket.key)) {
                         document[bucket.key] = bucket.value
                     } else {
                         document[bucket.key] = formatMillis(bucket.value as Long)
                     }
                 }
                 aggregatedBucket.aggregations.forEach { aggregation ->
-                    document[aggregation.name] = getAggregationValue(aggregation, mappedTargetDateFields)
+                    document[aggregation.name] = getAggregationValue(aggregation, targetIndexDateFieldMappings)
                 }
 
                 val indexRequest = IndexRequest(transform.targetIndex)
@@ -387,11 +387,11 @@ class TransformSearchService(
             return BucketSearchResult(modifiedBuckets, aggs.afterKey(), searchResponse.took.millis)
         }
 
-        private fun getAggregationValue(aggregation: Aggregation, mappedTargetDateFields: Map<String, Any>): Any {
+        private fun getAggregationValue(aggregation: Aggregation, targetIndexDateFieldMappings: Map<String, Any>): Any {
             return when (aggregation) {
                 is InternalSum, is InternalMin, is InternalMax, is InternalAvg, is InternalValueCount -> {
                     val agg = aggregation as NumericMetricsAggregation.SingleValue
-                    if (mappedTargetDateFields.isEmpty() || !mappedTargetDateFields.containsKey(agg.name)) {
+                    if (targetIndexDateFieldMappings.isEmpty() || !targetIndexDateFieldMappings.containsKey(agg.name)) {
                         agg.value()
                     } else {
                         formatMillis(agg.value().toLong())
