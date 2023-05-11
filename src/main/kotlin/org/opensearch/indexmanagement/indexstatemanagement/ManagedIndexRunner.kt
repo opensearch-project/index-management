@@ -262,12 +262,12 @@ object ManagedIndexRunner :
         }
 
         // Check the cluster state for the index metadata
-        var clusterStateIndexMetadata = getIndexMetadata(managedIndexConfig.index)
+        val clusterStateIndexMetadata = getIndexMetadata(managedIndexConfig.index)
         val defaultIndexMetadataService = indexMetadataProvider.services[DEFAULT_INDEX_TYPE] as DefaultIndexMetadataService
         val clusterStateIndexUUID = clusterStateIndexMetadata?.let { defaultIndexMetadataService.getCustomIndexUUID(it) }
         // If the index metadata is null, the index is not in the cluster state. If the index metadata is not null, but
         // the cluster state index uuid differs from the one in the managed index config then the config is referring
-        // to a different index which does not exist in the cluster. We need to check all of the extensions to confirm an index exists
+        // to a different index which does not exist in the cluster. We need to check all the extensions to confirm an index exists
         if (clusterStateIndexMetadata == null || clusterStateIndexUUID != managedIndexConfig.indexUuid) {
             // If the cluster state/default index type didn't have an index with a matching name and uuid combination, try all other index types
             val nonDefaultIndexTypes = indexMetadataProvider.services.keys.filter { it != DEFAULT_INDEX_TYPE }
@@ -846,7 +846,7 @@ object ManagedIndexRunner :
 
             val response: ClusterStateResponse = client.admin().cluster().suspendUntil { state(clusterStateRequest, it) }
 
-            indexMetaData = response.state.metadata.indices.firstOrNull()?.value
+            indexMetaData = response.state.metadata.indices[index]
         } catch (e: Exception) {
             logger.error("Failed to get IndexMetaData from cluster manager cluster state for index=$index", e)
         }

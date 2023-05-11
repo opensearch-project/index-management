@@ -63,7 +63,7 @@ buildscript {
         notifications_core_build_download = 'https://ci.opensearch.org/ci/dbc/distribution-build-opensearch/' + opensearch_no_snapshot +
                 '/latest/linux/x64/tar/builds/opensearch/plugins/opensearch-notifications-core-' + notifications_no_snapshot + '.zip'
 
-        kotlin_version = System.getProperty("kotlin.version", "1.6.10")
+        kotlin_version = System.getProperty("kotlin.version", "1.8.21")
 
         security_plugin_version = System.getProperty("security.version", opensearch_build)
     }
@@ -85,7 +85,7 @@ buildscript {
 }
 
 plugins {
-    id 'nebula.ospackage' version "8.3.0"
+    id "com.netflix.nebula.ospackage" version "11.3.0"
     id "com.dorongold.task-tree" version "2.1.1"
 }
 
@@ -137,6 +137,8 @@ opensearchplugin {
     description 'OpenSearch Index Management Plugin'
     classname 'org.opensearch.indexmanagement.IndexManagementPlugin'
     extendedPlugins = ['opensearch-job-scheduler']
+    licenseFile rootProject.file('LICENSE')
+    noticeFile rootProject.file('NOTICE')
 }
 
 tasks.named("integTest").configure {
@@ -188,8 +190,6 @@ tasks.named('forbiddenApisTest').configure {
 
 ext {
     projectSubstitutions = [:]
-    licenseFile = rootProject.file('LICENSE')
-    noticeFile = rootProject.file('NOTICE')
 }
 
 allprojects {
