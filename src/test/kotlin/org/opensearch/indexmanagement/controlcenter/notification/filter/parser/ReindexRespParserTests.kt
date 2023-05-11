@@ -7,33 +7,29 @@ package org.opensearch.indexmanagement.controlcenter.notification.filter.parser
 
 import org.junit.Assert
 import org.junit.Before
-import org.mockito.Mockito
-import org.mockito.Mockito.mock
 import org.opensearch.action.bulk.BulkItemResponse
-import org.opensearch.cluster.node.DiscoveryNode
-import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.unit.TimeValue
 import org.opensearch.index.reindex.BulkByScrollResponse
 import org.opensearch.index.reindex.BulkByScrollTask
 import org.opensearch.index.reindex.ReindexAction
+import org.opensearch.index.reindex.ReindexRequest
 import org.opensearch.tasks.Task
 import org.opensearch.tasks.TaskId
-import org.opensearch.test.OpenSearchTestCase
 import java.lang.Exception
 import java.util.concurrent.TimeUnit
 
-class ReindexRespParserTests : OpenSearchTestCase() {
+class ReindexRespParserTests : BaseRespParserTestCase() {
 
     private lateinit var task: Task
-    private lateinit var clusterService: ClusterService
+    private lateinit var request: ReindexRequest
 
     @Before
     fun setup() {
         task = Task(1, "transport", ReindexAction.NAME, "reindex from src to dest", TaskId.EMPTY_TASK_ID, mapOf())
-        clusterService = mock()
-        val node = Mockito.mock<DiscoveryNode>()
-        Mockito.`when`(node.id).thenReturn("mJzoy8SBuTW12rbV8jSg")
-        Mockito.`when`(clusterService.localNode()).thenReturn(node)
+        request = ReindexRequest().also {
+            it.searchRequest.indices("source")
+            it.destination.index("dest")
+        }
     }
 
     fun `test build message for completion`() {
@@ -57,14 +53,14 @@ class ReindexRespParserTests : OpenSearchTestCase() {
             ),
             listOf(), listOf(), false
         )
-        val parser = ReindexRespParser(task, clusterService)
+        val parser = ReindexRespParser(task, request, clusterService)
 
         val msg = parser.buildNotificationMessage(response)
         Assert.assertEquals(
             msg,
-            "Reindex from src to dest has completed." +
+            "The reindex job on from test-cluster/source to test-cluster/dest has completed." +
                 System.lineSeparator() +
-                "Details: total: 100, created: 100, updated: 0, deleted: 0"
+                "Details: total: 100, created: 100, updated: 0, deleted: 0, conflicts: 0"
         )
     }
 
@@ -89,14 +85,14 @@ class ReindexRespParserTests : OpenSearchTestCase() {
             ),
             listOf(), listOf(), false
         )
-        val parser = ReindexRespParser(task, clusterService)
+        val parser = ReindexRespParser(task, request, clusterService)
 
         val msg = parser.buildNotificationMessage(response)
         Assert.assertEquals(
             msg,
-            "Reindex from src to dest has been cancelled with reason: user cancelled" +
+            "The reindex job on from test-cluster/source to test-cluster/dest has been cancelled with reason: user cancelled" +
                 System.lineSeparator() +
-                "Details: total: 100, created: 100, updated: 0, deleted: 0"
+                "Details: total: 100, created: 100, updated: 0, deleted: 0, conflicts: 0"
         )
     }
 
@@ -123,15 +119,15 @@ class ReindexRespParserTests : OpenSearchTestCase() {
             ),
             listOf(BulkItemResponse.Failure("dest", "id-1", Exception("version conflicts"))), listOf(), false
         )
-        val parser = ReindexRespParser(task, clusterService)
+        val parser = ReindexRespParser(task, request, clusterService)
 
         val msg = parser.buildNotificationMessage(response)
         Assert.assertEquals(
             msg,
-            "Reindex from src to dest has completed." +
+            "The reindex job on from test-cluster/source to test-cluster/dest has failed: version conflicts" +
                 System.lineSeparator() +
-                "Details: total: 100, created: 100, updated: 0, deleted: 0" +
-                "${System.lineSeparator()}There has some error happened, check with `GET /_tasks/mJzoy8SBuTW12rbV8jSg:1` to get detail."
+                "Details: total: 100, created: 100, updated: 0, deleted: 0, conflicts: 0" +
+                "${System.lineSeparator()}Check with `GET /_tasks/mJzoy8SBuTW12rbV8jSg:1` to get detailed errors."
         )
     }
 }

@@ -16,10 +16,13 @@ import org.opensearch.action.ActionListener
 import org.opensearch.action.ActionRequest
 import org.opensearch.action.ActionResponse
 import org.opensearch.action.DocWriteResponse
+import org.opensearch.action.admin.indices.forcemerge.ForceMergeAction
 import org.opensearch.action.admin.indices.forcemerge.ForceMergeRequest
 import org.opensearch.action.admin.indices.forcemerge.ForceMergeResponse
+import org.opensearch.action.admin.indices.open.OpenIndexAction
 import org.opensearch.action.admin.indices.open.OpenIndexRequest
 import org.opensearch.action.admin.indices.open.OpenIndexResponse
+import org.opensearch.action.admin.indices.shrink.ResizeAction
 import org.opensearch.action.admin.indices.shrink.ResizeRequest
 import org.opensearch.action.admin.indices.shrink.ResizeResponse
 import org.opensearch.action.bulk.BackoffPolicy
@@ -28,12 +31,13 @@ import org.opensearch.action.support.ActiveShardsObserver
 import org.opensearch.client.Client
 import org.opensearch.cluster.metadata.IndexNameExpressionResolver
 import org.opensearch.cluster.service.ClusterService
-import org.opensearch.common.collect.Tuple
 import org.opensearch.common.unit.TimeValue
 import org.opensearch.commons.notifications.model.EventSource
 import org.opensearch.commons.notifications.model.SeverityType
 import org.opensearch.index.IndexNotFoundException
 import org.opensearch.index.reindex.BulkByScrollResponse
+import org.opensearch.index.reindex.ReindexAction
+import org.opensearch.index.reindex.ReindexRequest
 import org.opensearch.indexmanagement.controlcenter.notification.LRONConfigResponse
 import org.opensearch.indexmanagement.controlcenter.notification.action.delete.DeleteLRONConfigAction
 import org.opensearch.indexmanagement.controlcenter.notification.action.delete.DeleteLRONConfigRequest
@@ -50,6 +54,7 @@ import org.opensearch.indexmanagement.common.model.rest.SearchParams
 import org.opensearch.indexmanagement.controlcenter.notification.action.get.GetLRONConfigAction
 import org.opensearch.indexmanagement.controlcenter.notification.action.get.GetLRONConfigRequest
 import org.opensearch.indexmanagement.controlcenter.notification.action.get.GetLRONConfigResponse
+import org.opensearch.indexmanagement.controlcenter.notification.filter.parser.ActionRespParseResult
 import org.opensearch.indexmanagement.opensearchapi.retry
 import org.opensearch.indexmanagement.util.OpenForTesting
 import org.opensearch.tasks.Task
@@ -90,43 +95,48 @@ class NotificationActionListener<Request : ActionRequest, Response : ActionRespo
         try {
             delegate.onFailure(e)
         } finally {
-            try {
-                notify(
-                    action, OperationResult.FAILED,
-                    "${task.description.replaceFirstChar { it.uppercase() }} $FAILED ${e.message}"
-                )
-            } catch (t: Throwable) {
-                logger.info("Sending out error notification for action: {} failed", action, t)
-            }
+            parseAndSendNotification(null, e)
         }
     }
 
-    fun parseAndSendNotification(response: ActionResponse) {
+    fun parseAndSendNotification(response: ActionResponse?, ex: Exception? = null) {
         try {
-            val callback =
-                Consumer<Tuple<OperationResult, String>> { result ->
-                    // delay the sending time 5s for runtime policy
-                    client.threadPool().schedule({
-                        notify(action, result.v1(), result.v2())
-                    }, DELAY, GENERIC)
+            val callback = Consumer<ActionRespParseResult> { result ->
+                // delay the sending time 5s for runtime policy
+                client.threadPool().schedule({
+                    notify(action, result)
+                }, DELAY, GENERIC)
+            }
+
+            when (action) {
+                ResizeAction.NAME -> {
+                    ResizeIndexRespParser(
+                        activeShardsObserver, request as ResizeRequest, clusterService
+                    ).parseAndSendNotification(response as ResizeResponse, ex, callback)
                 }
 
-            when (response) {
-                is ResizeResponse -> ResizeIndexRespParser(
-                    activeShardsObserver, request as ResizeRequest
-                ).parseAndSendNotification(response, callback)
-
-                is BulkByScrollResponse -> {
-                    ReindexRespParser(task, clusterService).parseAndSendNotification(response, callback)
+                ReindexAction.NAME -> {
+                    ReindexRespParser(
+                        task,
+                        request as ReindexRequest,
+                        clusterService
+                    ).parseAndSendNotification(response as BulkByScrollResponse, ex, callback)
                 }
 
-                is OpenIndexResponse -> OpenIndexRespParser(
-                    activeShardsObserver, request as OpenIndexRequest, indexNameExpressionResolver, clusterService
-                ).parseAndSendNotification(response, callback)
+                OpenIndexAction.NAME -> {
+                    OpenIndexRespParser(
+                        activeShardsObserver, request as OpenIndexRequest, indexNameExpressionResolver, clusterService
+                    ).parseAndSendNotification(response as OpenIndexResponse, ex, callback)
+                }
 
-                is ForceMergeResponse -> ForceMergeIndexRespParser(request as ForceMergeRequest).parseAndSendNotification(
-                    response, callback
-                )
+                ForceMergeAction.NAME -> {
+                    ForceMergeIndexRespParser(
+                        request as ForceMergeRequest,
+                        clusterService
+                    ).parseAndSendNotification(
+                        response as ForceMergeResponse, ex, callback
+                    )
+                }
 
                 else -> {
                     logger.debug("Action: {} is not supported for notification!", action)
@@ -139,8 +149,7 @@ class NotificationActionListener<Request : ActionRequest, Response : ActionRespo
 
     fun notify(
         action: String,
-        result: OperationResult,
-        defaultMessage: String
+        result: ActionRespParseResult
     ) {
         val taskId = TaskId(clusterService.localNode().id, task.id)
         val ids = arrayOf(getDocID(taskId = taskId), getDocID(actionName = action))
@@ -156,7 +165,7 @@ class NotificationActionListener<Request : ActionRequest, Response : ActionRespo
                 object : ActionListener<GetLRONConfigResponse> {
                     override fun onResponse(lronConfigResponse: GetLRONConfigResponse) {
                         launch {
-                            sendNotification(lronConfigResponse, taskId, action, result, defaultMessage)
+                            sendNotification(lronConfigResponse, taskId, action, result)
                         }
                     }
 
@@ -181,16 +190,15 @@ class NotificationActionListener<Request : ActionRequest, Response : ActionRespo
         lronConfigResponse: GetLRONConfigResponse,
         taskId: TaskId,
         action: String,
-        result: OperationResult,
-        defaultMessage: String
+        result: ActionRespParseResult
     ) {
         if (0 == lronConfigResponse.totalNumber) {
             logger.debug("No notification policy configured for task: {} action: {}", taskId.toString(), action)
             return
         }
 
-        val policies = getNotificationPolices(lronConfigResponse, result)
-        val eventSource = EventSource(buildTitle(), taskId.toString(), SeverityType.INFO)
+        val policies = getNotificationPolices(lronConfigResponse, result.operationResult)
+        val eventSource = EventSource(result.title, taskId.toString(), SeverityType.INFO)
 
         val channelSent = mutableSetOf<String>()
         policies.forEach {
@@ -203,7 +211,7 @@ class NotificationActionListener<Request : ActionRequest, Response : ActionRespo
                                 channel.sendNotification(
                                     client,
                                     eventSource,
-                                    defaultMessage,
+                                    result.message,
                                     config.user,
                                 )
                             }
@@ -277,15 +285,10 @@ class NotificationActionListener<Request : ActionRequest, Response : ActionRespo
         return query.replace("/", "\\/").replace(":", "\\:")
     }
 
-    fun buildTitle(): String {
-        val clusterName = clusterService.clusterName
-        return "$clusterName: Index Management - Index Operation Notification"
-    }
-
     companion object {
         val MAX_WAIT_TIME: TimeValue = TimeValue.timeValueHours(1)
         const val COMPLETED = "has completed."
-        const val FAILED = "has failed. Error details:"
+        const val FAILED = "has failed:"
         val DELAY: TimeValue = TimeValue.timeValueSeconds(5)
     }
 }

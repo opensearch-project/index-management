@@ -18,10 +18,9 @@ import org.opensearch.action.admin.indices.shrink.ResizeType
 import org.opensearch.action.support.ActiveShardCount
 import org.opensearch.action.support.ActiveShardsObserver
 import org.opensearch.common.unit.TimeValue
-import org.opensearch.test.OpenSearchTestCase
 import java.lang.Exception
 
-class ResizeIndexRespParserTests : OpenSearchTestCase() {
+class ResizeIndexRespParserTests : BaseRespParserTestCase() {
 
     private lateinit var activeShardsObserver: ActiveShardsObserver
 
@@ -34,10 +33,10 @@ class ResizeIndexRespParserTests : OpenSearchTestCase() {
         val request = ResizeRequest("target", "source")
         request.resizeType = ResizeType.SHRINK
         val response = ResizeResponse(true, true, "target")
-        val parser = ResizeIndexRespParser(activeShardsObserver, request)
+        val parser = ResizeIndexRespParser(activeShardsObserver, request, clusterService)
 
         parser.parseAndSendNotification(response) { ret ->
-            Assert.assertEquals(ret.v2(), "Shrink from source to target has completed.")
+            Assert.assertEquals(ret.message, "The shrink job on from test-cluster/source to test-cluster/target has completed.")
         }
 
         Mockito.verify(activeShardsObserver, never())
@@ -48,10 +47,10 @@ class ResizeIndexRespParserTests : OpenSearchTestCase() {
         val request = ResizeRequest("target", "source")
         request.resizeType = ResizeType.SHRINK
         val response = ResizeResponse(true, false, "target")
-        val parser = ResizeIndexRespParser(activeShardsObserver, request)
+        val parser = ResizeIndexRespParser(activeShardsObserver, request, clusterService)
 
         parser.parseAndSendNotification(response) { ret ->
-            Assert.assertEquals(ret.v2(), "Shrink from source to target has completed.")
+            Assert.assertEquals(ret.message, "Shrink from source to target has completed.")
         }
 
         Mockito.verify(activeShardsObserver, times(1))
@@ -63,10 +62,10 @@ class ResizeIndexRespParserTests : OpenSearchTestCase() {
         request.resizeType = ResizeType.SHRINK
         request.targetIndexRequest.timeout(TimeValue.timeValueMinutes(10))
         val response = ResizeResponse(true, false, "target")
-        val parser = ResizeIndexRespParser(activeShardsObserver, request)
+        val parser = ResizeIndexRespParser(activeShardsObserver, request, clusterService)
 
         parser.parseAndSendNotification(response) { ret ->
-            Assert.assertEquals(ret.v2(), "Shrink from source to target has completed.")
+            Assert.assertEquals(ret.message, "Shrink from source to target has completed.")
         }
 
         Mockito.verify(activeShardsObserver, times(1))
@@ -84,12 +83,12 @@ class ResizeIndexRespParserTests : OpenSearchTestCase() {
         request.resizeType = ResizeType.SHRINK
         request.targetIndexRequest.timeout(TimeValue.timeValueHours(4))
         val response = ResizeResponse(true, false, "target")
-        val parser = ResizeIndexRespParser(activeShardsObserver, request)
+        val parser = ResizeIndexRespParser(activeShardsObserver, request, clusterService)
 
         parser.parseAndSendNotification(response) { ret ->
             Assert.assertEquals(
-                ret.v2(),
-                "Shrink from source to target has completed, but timed out while waiting for enough shards to be started in 4h, try with `GET /<target>/_recovery` to get more details."
+                ret.message,
+                "The shrink job on from test-cluster/source to test-cluster/target has completed, but timed out while waiting for enough shards to be started in 4h, try with `GET /target/_recovery` to get more index recovery details."
             )
         }
 
@@ -101,22 +100,22 @@ class ResizeIndexRespParserTests : OpenSearchTestCase() {
         val request = ResizeRequest("target", "source")
         request.resizeType = ResizeType.SHRINK
         val response = ResizeResponse(true, false, "target")
-        val parser = ResizeIndexRespParser(activeShardsObserver, request)
+        val parser = ResizeIndexRespParser(activeShardsObserver, request, clusterService)
 
         val msg = parser.buildNotificationMessage(response)
-        Assert.assertEquals(msg, "Shrink from source to target has completed.")
+        Assert.assertEquals(msg, "The shrink job on from test-cluster/source to test-cluster/target has completed.")
     }
 
     fun `test build message for failure`() {
         val request = ResizeRequest("target", "source")
         request.resizeType = ResizeType.CLONE
         val response = ResizeResponse(true, false, "target")
-        val parser = ResizeIndexRespParser(activeShardsObserver, request)
+        val parser = ResizeIndexRespParser(activeShardsObserver, request, clusterService)
 
         val msg = parser.buildNotificationMessage(response, Exception("index already exits error"))
         Assert.assertEquals(
             msg,
-            "Clone from source to target has failed. Error details: index already exits error"
+            "The clone job on from test-cluster/source to test-cluster/target has failed: index already exits error"
         )
     }
 
@@ -124,12 +123,12 @@ class ResizeIndexRespParserTests : OpenSearchTestCase() {
         val request = ResizeRequest("target", "source")
         request.resizeType = ResizeType.SPLIT
         val response = ResizeResponse(true, false, "target")
-        val parser = ResizeIndexRespParser(activeShardsObserver, request)
+        val parser = ResizeIndexRespParser(activeShardsObserver, request, clusterService)
 
         val msg = parser.buildNotificationMessage(response, isTimeout = true)
         Assert.assertEquals(
             msg,
-            "Split from source to target has completed, but timed out while waiting for enough shards to be started in 1h, try with `GET /<target>/_recovery` to get more details."
+            "The split job on from test-cluster/source to test-cluster/target has completed, but timed out while waiting for enough shards to be started in 1h, try with `GET /target/_recovery` to get more index recovery details."
         )
     }
 }

@@ -11,7 +11,6 @@ import org.opensearch.action.support.ActiveShardCount
 import org.opensearch.action.support.ActiveShardsObserver
 import org.opensearch.cluster.metadata.IndexNameExpressionResolver
 import org.opensearch.cluster.service.ClusterService
-import org.opensearch.common.collect.Tuple
 import org.opensearch.common.unit.TimeValue
 import org.opensearch.indexmanagement.controlcenter.notification.filter.NotificationActionListener
 import org.opensearch.indexmanagement.controlcenter.notification.filter.OperationResult
@@ -26,11 +25,26 @@ class OpenIndexRespParser(
 ) : ResponseParser<OpenIndexResponse> {
 
     private var totalWaitTime: TimeValue = NotificationActionListener.MAX_WAIT_TIME
+    private val indexNameWithCluster = getIndexName(request, clusterService)
 
     override fun parseAndSendNotification(
-        response: OpenIndexResponse,
-        callback: Consumer<Tuple<OperationResult, String>>
+        response: OpenIndexResponse?,
+        ex: Exception?,
+        callback: Consumer<ActionRespParseResult>
     ) {
+        if (ex != null) {
+            callback.accept(
+                ActionRespParseResult(
+                    OperationResult.FAILED,
+                    buildNotificationMessage(null, ex),
+                    buildNotificationTitle(OperationResult.FAILED)
+                )
+            )
+            return
+        }
+
+        requireNotNull(response) { "OpenIndexResponse must not be null" }
+
         val isAsync = request.shouldStoreResult
         // the elapsedTime is the time user already waiting for, which is set through request parameter. the default value is 30s
         // the maximum wait time is 1 hour and the left is maximum - elapsed
@@ -49,47 +63,56 @@ class OpenIndexRespParser(
                     TimeValue(leftTimeInMillis),
                     { shardsAcknowledged: Boolean ->
                         callback.accept(
-                            Tuple.tuple(
+                            ActionRespParseResult(
                                 if (shardsAcknowledged) OperationResult.COMPLETE else OperationResult.TIMEOUT,
-                                buildNotificationMessage(response, isTimeout = !shardsAcknowledged)
+                                buildNotificationMessage(response, isTimeout = !shardsAcknowledged),
+                                buildNotificationTitle(if (shardsAcknowledged) OperationResult.COMPLETE else OperationResult.TIMEOUT)
                             )
                         )
                     },
                     { e: Exception ->
                         // failed
                         callback.accept(
-                            Tuple.tuple(
+                            ActionRespParseResult(
                                 OperationResult.FAILED,
-                                buildNotificationMessage(response, e)
+                                buildNotificationMessage(response, e),
+                                buildNotificationTitle(OperationResult.FAILED)
                             )
                         )
                     }
                 )
             } else {
                 callback.accept(
-                    Tuple.tuple(
+                    ActionRespParseResult(
                         OperationResult.TIMEOUT,
-                        buildNotificationMessage(response, isTimeout = true)
+                        buildNotificationMessage(response, isTimeout = true),
+                        buildNotificationTitle(OperationResult.TIMEOUT)
                     )
                 )
             }
         } else {
-            callback.accept(Tuple.tuple(OperationResult.COMPLETE, buildNotificationMessage(response)))
+            callback.accept(
+                ActionRespParseResult(
+                    OperationResult.COMPLETE,
+                    buildNotificationMessage(response),
+                    buildNotificationTitle(OperationResult.COMPLETE)
+                )
+            )
         }
     }
 
     override fun buildNotificationMessage(
-        response: OpenIndexResponse,
+        response: OpenIndexResponse?,
         exception: Exception?,
         isTimeout: Boolean
     ): String {
         val result = StringBuilder()
         result.append(
-            "Open index [${request.indices().joinToString(",")}] " +
+            "The open index job on $indexNameWithCluster " +
                 if (isTimeout) {
                     "has completed, but timed out while waiting for enough shards to be started in ${
                     totalWaitTime.toHumanReadableString(1)
-                    }, try with `GET /<target>/_recovery` to get more details."
+                    }, try with `GET /${request.indices().joinToString(",")}/_recovery` to get more details."
                 } else if (exception != null) {
                     "${NotificationActionListener.FAILED} ${exception.message}"
                 } else {
@@ -98,5 +121,9 @@ class OpenIndexRespParser(
         )
 
         return result.toString()
+    }
+
+    override fun buildNotificationTitle(operationResult: OperationResult): String {
+        return "Open on $indexNameWithCluster has ${operationResult.desc}."
     }
 }
