@@ -321,27 +321,26 @@ class TransformRunnerIT : TransformRestTestCase() {
             assertTrue("Target transform index was not created", indexExists(transform.targetIndex))
         }
 
-        Thread.sleep(60000)
-
-        waitFor {
+        waitFor(Instant.ofEpochSecond(60)) {
             val transformJob = getTransform(transformId = transform.id)
             assertNotNull("Transform job doesn't have metadata set", transformJob.metadataId)
             val transformMetadata = getTransformMetadata(transformJob.metadataId!!)
             assertEquals("Transform is not finished", TransformMetadata.Status.FINISHED, transformMetadata.status)
+        }
 
-            val sourceIndexMapping = client().makeRequest("GET", "/$sourceIdxTestName/_mapping")
-            val sourceIndexParserMap = createParser(XContentType.JSON.xContent(), sourceIndexMapping.entity.content).map() as Map<String, Map<String, Any>>
-            val targetIndexMapping = client().makeRequest("GET", "/$targetIdxTestName/_mapping")
-            val targetIndexParserMap = createParser(XContentType.JSON.xContent(), targetIndexMapping.entity.content).map() as Map<String, Map<String, Any>>
+        val sourceIndexMapping = client().makeRequest("GET", "/$sourceIdxTestName/_mapping")
+        val sourceIndexParserMap = createParser(XContentType.JSON.xContent(), sourceIndexMapping.entity.content).map() as Map<String, Map<String, Any>>
+        val targetIndexMapping = client().makeRequest("GET", "/$targetIdxTestName/_mapping")
+        val targetIndexParserMap = createParser(XContentType.JSON.xContent(), targetIndexMapping.entity.content).map() as Map<String, Map<String, Any>>
 
-            val sourcePickupDate = (((sourceIndexParserMap[sourceIdxTestName]?.get("mappings") as Map<String, Any>)["properties"] as Map<String, Any>)["tpep_pickup_datetime"] as Map<String, Any>)["type"]
-            val targetPickupDate = (((targetIndexParserMap[targetIdxTestName]?.get("mappings") as Map<String, Any>)["properties"] as Map<String, Any>)["tpep_pickup_datetime"] as Map<String, Any>)["type"]
+        val sourcePickupDate = (((sourceIndexParserMap[sourceIdxTestName]?.get("mappings") as Map<String, Any>)["properties"] as Map<String, Any>)["tpep_pickup_datetime"] as Map<String, Any>)["type"]
+        val targetPickupDate = (((targetIndexParserMap[targetIdxTestName]?.get("mappings") as Map<String, Any>)["properties"] as Map<String, Any>)["tpep_pickup_datetime"] as Map<String, Any>)["type"]
 
-            assertEquals(sourcePickupDate, targetPickupDate)
+        assertEquals(sourcePickupDate, targetPickupDate)
 
-            val pickupDateTimeTerm = "pickupDateTerm14"
+        val pickupDateTimeTerm = "pickupDateTerm14"
 
-            val request = """
+        val request = """
             {
                 "size": 0,
                 "aggs": {
@@ -354,24 +353,23 @@ class TransformRunnerIT : TransformRestTestCase() {
                     }
                 }
             }
-            """.trimIndent()
+            """
 
-            var rawRes = client().makeRequest(RestRequest.Method.POST.name, "/$sourceIdxTestName/_search", emptyMap(), StringEntity(request, ContentType.APPLICATION_JSON))
-            assertTrue(rawRes.restStatus() == RestStatus.OK)
+        var rawRes = client().makeRequest(RestRequest.Method.POST.name, "/$sourceIdxTestName/_search", emptyMap(), StringEntity(request, ContentType.APPLICATION_JSON))
+        assertTrue(rawRes.restStatus() == RestStatus.OK)
 
-            var transformRes = client().makeRequest(RestRequest.Method.POST.name, "/$targetIdxTestName/_search", emptyMap(), StringEntity(request, ContentType.APPLICATION_JSON))
-            assertTrue(transformRes.restStatus() == RestStatus.OK)
+        var transformRes = client().makeRequest(RestRequest.Method.POST.name, "/$targetIdxTestName/_search", emptyMap(), StringEntity(request, ContentType.APPLICATION_JSON))
+        assertTrue(transformRes.restStatus() == RestStatus.OK)
 
-            val rawAggBuckets = (rawRes.asMap()["aggregations"] as Map<String, Map<String, List<Map<String, Map<String, Any>>>>>)[pickupDateTimeTerm]!!["buckets"]!!
-            val transformAggBuckets = (transformRes.asMap()["aggregations"] as Map<String, Map<String, List<Map<String, Map<String, Any>>>>>)[pickupDateTimeTerm]!!["buckets"]!!
+        val rawAggBuckets = (rawRes.asMap()["aggregations"] as Map<String, Map<String, List<Map<String, Map<String, Any>>>>>)[pickupDateTimeTerm]!!["buckets"]!!
+        val transformAggBuckets = (transformRes.asMap()["aggregations"] as Map<String, Map<String, List<Map<String, Map<String, Any>>>>>)[pickupDateTimeTerm]!!["buckets"]!!
 
-            assertEquals("Different bucket sizes", rawAggBuckets.size, transformAggBuckets.size)
+        assertEquals("Different bucket sizes", rawAggBuckets.size, transformAggBuckets.size)
 
-            // Verify the values of keys and metrics in all buckets
-            for (i in rawAggBuckets.indices) {
-                assertEquals("Term pickup date bucket keys are not the same", rawAggBuckets[i]["key"], transformAggBuckets[i]["key"])
-                assertEquals("Avg fare amounts are not the same", rawAggBuckets[i]["avgFareAmount"], transformAggBuckets[i]["avgFareAmount"])
-            }
+        // Verify the values of keys and metrics in all buckets
+        for (i in rawAggBuckets.indices) {
+            assertEquals("Term pickup date bucket keys are not the same", rawAggBuckets[i]["key"], transformAggBuckets[i]["key"])
+            assertEquals("Avg fare amounts are not the same", rawAggBuckets[i]["avgFareAmount"], transformAggBuckets[i]["avgFareAmount"])
         }
     }
 
@@ -418,20 +416,21 @@ class TransformRunnerIT : TransformRestTestCase() {
             assertNotNull("Transform job doesn't have metadata set", transformJob.metadataId)
             val transformMetadata = getTransformMetadata(transformJob.metadataId!!)
             assertEquals("Transform is not finished", TransformMetadata.Status.FINISHED, transformMetadata.status)
+        }
 
-            val sourceIndexMapping = client().makeRequest("GET", "/$sourceIdxTestName/_mapping")
-            val sourceIndexParserMap = createParser(XContentType.JSON.xContent(), sourceIndexMapping.entity.content).map() as Map<String, Map<String, Any>>
-            val targetIndexMapping = client().makeRequest("GET", "/$targetIdxTestName/_mapping")
-            val targetIndexParserMap = createParser(XContentType.JSON.xContent(), targetIndexMapping.entity.content).map() as Map<String, Map<String, Any>>
+        val sourceIndexMapping = client().makeRequest("GET", "/$sourceIdxTestName/_mapping")
+        val sourceIndexParserMap = createParser(XContentType.JSON.xContent(), sourceIndexMapping.entity.content).map() as Map<String, Map<String, Any>>
+        val targetIndexMapping = client().makeRequest("GET", "/$targetIdxTestName/_mapping")
+        val targetIndexParserMap = createParser(XContentType.JSON.xContent(), targetIndexMapping.entity.content).map() as Map<String, Map<String, Any>>
 
-            val sourcePickupDate = (((sourceIndexParserMap[sourceIdxTestName]?.get("mappings") as Map<String, Any>)["properties"] as Map<String, Any>)[pickupDateTime] as Map<String, Any>)["type"]
-            val targetPickupDate = (((targetIndexParserMap[targetIdxTestName]?.get("mappings") as Map<String, Any>)["properties"] as Map<String, Any>)[pickupDateTime] as Map<String, Any>)["type"]
+        val sourcePickupDate = (((sourceIndexParserMap[sourceIdxTestName]?.get("mappings") as Map<String, Any>)["properties"] as Map<String, Any>)[pickupDateTime] as Map<String, Any>)["type"]
+        val targetPickupDate = (((targetIndexParserMap[targetIdxTestName]?.get("mappings") as Map<String, Any>)["properties"] as Map<String, Any>)[pickupDateTime] as Map<String, Any>)["type"]
 
-            assertEquals("date", targetPickupDate)
-            assertEquals(sourcePickupDate, targetPickupDate)
+        assertEquals("date", targetPickupDate)
+        assertEquals(sourcePickupDate, targetPickupDate)
 
+        waitFor(Instant.ofEpochSecond(30)) {
             val storeAndForwardTerm = "storeAndForwardTerm"
-
             val request = """
             {
                 "size": 0,
@@ -447,7 +446,7 @@ class TransformRunnerIT : TransformRestTestCase() {
                     }
                 }
             }
-            """.trimIndent()
+            """
 
             var rawRes = client().makeRequest(RestRequest.Method.POST.name, "/$sourceIdxTestName/_search", emptyMap(), StringEntity(request, ContentType.APPLICATION_JSON))
             assertTrue(rawRes.restStatus() == RestStatus.OK)

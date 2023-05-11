@@ -53,15 +53,14 @@ class TransformIndexer(
         }
     }
 
-    private suspend fun createTargetIndex(transform: Transform, targetFieldMappings: Map<String, Any>) {
-        val index = transform.targetIndex
-        if (!clusterService.state().routingTable.hasIndex(index)) {
+    private suspend fun createTargetIndex(targetIndex: String, targetFieldMappings: Map<String, Any>) {
+        if (!clusterService.state().routingTable.hasIndex(targetIndex)) {
             val transformTargetIndexMapping = TargetIndexMappingService.createTargetIndexMapping(targetFieldMappings)
-            val request = CreateIndexRequest(index).mapping(transformTargetIndexMapping)
+            val request = CreateIndexRequest(targetIndex).mapping(transformTargetIndexMapping)
             // TODO: Read in the actual mappings from the source index and use that
             val response: CreateIndexResponse = client.admin().indices().suspendUntil { create(request, it) }
             if (!response.isAcknowledged) {
-                logger.error("Failed to create the target index $index")
+                logger.error("Failed to create the target index $targetIndex")
                 throw TransformIndexException("Failed to create the target index")
             }
         }
@@ -77,7 +76,7 @@ class TransformIndexer(
                 val targetIndex = updatableDocsToIndex.first().index()
                 logger.debug("Attempting to index ${updatableDocsToIndex.size} documents to $targetIndex")
 
-                createTargetIndex(transform, transformContext.getTargetIndexDateFieldMappings())
+                createTargetIndex(transform.targetIndex, transformContext.getTargetIndexDateFieldMappings())
                 backoffPolicy.retry(logger, listOf(RestStatus.TOO_MANY_REQUESTS)) {
                     val bulkRequest = BulkRequest().add(updatableDocsToIndex)
                     val bulkResponse: BulkResponse = client.suspendUntil { bulk(bulkRequest, it) }

@@ -9,8 +9,8 @@ import org.apache.logging.log4j.LogManager
 import org.opensearch.action.admin.indices.mapping.get.GetMappingsRequest
 import org.opensearch.action.admin.indices.mapping.get.GetMappingsResponse
 import org.opensearch.client.Client
-import org.opensearch.common.xcontent.XContentBuilder
 import org.opensearch.common.xcontent.XContentFactory
+import org.opensearch.core.xcontent.XContentBuilder
 import org.opensearch.index.IndexNotFoundException
 import org.opensearch.indexmanagement.common.model.dimension.DateHistogram
 import org.opensearch.indexmanagement.opensearchapi.string
@@ -75,15 +75,15 @@ object TargetIndexMappingService {
             }
             val sourceFieldType = IndexUtils.getFieldFromMappings(dimension.sourceField, sourceIndexMapping)
             // Consider only date fields as relevant for building the target index mapping
-            if (dimension !is DateHistogram && sourceFieldType?.get(TYPE) != null && sourceFieldType[TYPE] == "date") {
+            if (dimension !is DateHistogram && sourceFieldType?.get(TYPE) != null && (sourceFieldType[TYPE] == "date" || sourceFieldType[TYPE] == "date_nanos")) {
                 // Taking the source field settings (type, format etc.)
-                val dateTypeTargetMapping = mapOf("type" to "date", "format" to DEFAULT_DATE_FORMAT)
+                val dateTypeTargetMapping = mapOf("type" to sourceFieldType[TYPE], "format" to DEFAULT_DATE_FORMAT)
                 dateFieldMappings[dimension.targetField] = dateTypeTargetMapping
             }
         }
     }
 
-    fun createTargetIndexMapping(dateCompositeAggregations: Map<String, Any>): String {
+    fun createTargetIndexMapping(dateFieldMappings: Map<String, Any>): String {
         // Build static properties
         val builder = XContentFactory.jsonBuilder().startObject()
             .startObject(METADATA)
@@ -102,7 +102,7 @@ object TargetIndexMappingService {
             .startObject(PROPERTIES)
 
         // Dynamically build composite aggregation mapping
-        mapCompositeAggregation(dateCompositeAggregations, builder)
+        mapCompositeAggregation(dateFieldMappings, builder)
 
         // Close the object and return as a string
         return builder.endObject()
@@ -133,7 +133,7 @@ object TargetIndexMappingService {
         aggBuilders: Collection<AggregationBuilder>,
         sourceIndexMapping: Map<String, Any>,
         targetIndexMapping: MutableMap<String, Any>,
-        parentPath: String?
+        parentPath: String?,
     ) {
         val iterator = aggBuilders.iterator()
         while (iterator.hasNext()) {
