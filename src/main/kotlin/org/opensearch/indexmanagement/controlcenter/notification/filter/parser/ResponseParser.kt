@@ -16,7 +16,7 @@ import java.util.function.Consumer
 interface ResponseParser<Response : ActionResponse> {
     fun parseAndSendNotification(
         response: Response?,
-        ex: Exception?,
+        ex: Exception? = null,
         callback: Consumer<ActionRespParseResult>
     ) {
         callback.accept(

@@ -132,7 +132,7 @@ class NotificationActionListenerIT : IndexManagementRestTestCase() {
                 "Notification index does not have a doc",
                 1,
                 (
-                    client.makeRequest("GET", "$notificationIndex/_search?q=msg:Force_merge")
+                    client.makeRequest("GET", "$notificationIndex/_search?q=msg:merge")
                         .asMap() as Map<String, Map<String, Map<String, Any>>>
                     )["hits"]!!["total"]!!["value"]
             )
