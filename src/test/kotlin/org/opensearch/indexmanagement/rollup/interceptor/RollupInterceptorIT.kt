@@ -1712,20 +1712,20 @@ class RollupInterceptorIT : RollupRestTestCase() {
     }
 
     fun `test roll up search query_string query with index pattern as source`() {
-        val sourceIndex = "source_rollup_search_qsq_1"
-        val targetIndex = "target_rollup_qsq_search_1"
+        val sourceIndex = "source_111_rollup_search_qsq_98243"
+        val targetIndex = "target_rollup_qsq_search_98243"
 
         createSampleIndexForQSQTest(sourceIndex)
 
         val rollup = Rollup(
-            id = "basic_query_string_query_rollup_search111",
+            id = "basic_query_string_query_rollup_search98243",
             enabled = true,
             schemaVersion = 1L,
             jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
             jobLastUpdatedTime = Instant.now(),
             jobEnabledTime = Instant.now(),
             description = "basic search test",
-            sourceIndex = "source_roll*",
+            sourceIndex = "source_111*",
             targetIndex = targetIndex,
             metadataID = null,
             roles = emptyList(),

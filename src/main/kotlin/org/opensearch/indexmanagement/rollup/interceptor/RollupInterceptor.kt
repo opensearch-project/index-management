@@ -5,6 +5,7 @@
 
 package org.opensearch.indexmanagement.rollup.interceptor
 
+import org.apache.logging.log4j.LogManager
 import org.opensearch.action.support.IndicesOptions
 import org.opensearch.cluster.ClusterState
 import org.opensearch.cluster.metadata.IndexNameExpressionResolver
@@ -56,6 +57,8 @@ class RollupInterceptor(
     val settings: Settings,
     val indexNameExpressionResolver: IndexNameExpressionResolver
 ) : TransportInterceptor {
+
+    private val logger = LogManager.getLogger(javaClass)
 
     @Volatile private var searchEnabled = RollupSettings.ROLLUP_SEARCH_ENABLED.get(settings)
     @Volatile private var searchAllJobs = RollupSettings.ROLLUP_SEARCH_ALL_JOBS.get(settings)
@@ -115,9 +118,20 @@ class RollupInterceptor(
     fun getConcreteSourceIndex(sourceIndex: String, resolver: IndexNameExpressionResolver, clusterState: ClusterState): String {
         val concreteIndexNames = resolver.concreteIndexNames(clusterState, IndicesOptions.LENIENT_EXPAND_OPEN, sourceIndex)
         if (concreteIndexNames.isEmpty()) {
-            throw IllegalArgumentException("Cannot resolve rollup sourceIndex [$sourceIndex]")
+            logger.warn("Cannot resolve rollup sourceIndex [$sourceIndex]")
+            return ""
         }
-        return IndexUtils.getConcreteIndex(sourceIndex, concreteIndexNames, clusterState)
+
+        var concreteIndexName: String = ""
+        if (concreteIndexNames.size == 1 && IndexUtils.isConcreteIndex(concreteIndexNames[0], clusterState)) {
+            concreteIndexName = concreteIndexNames[0]
+        } else if (concreteIndexNames.size > 1) {
+            concreteIndexName = IndexUtils.getNewestIndexByCreationDate(concreteIndexNames, clusterState)
+        } else if (IndexUtils.isAlias(sourceIndex, clusterState) || IndexUtils.isDataStream(sourceIndex, clusterState)) {
+            concreteIndexName = IndexUtils.getWriteIndex(sourceIndex, clusterState)
+                ?: IndexUtils.getNewestIndexByCreationDate(concreteIndexNames, clusterState) //
+        }
+        return concreteIndexName
     }
 
     /*
@@ -182,7 +196,7 @@ class RollupInterceptor(
     @Suppress("ComplexMethod", "ThrowsCount")
     private fun getQueryMetadata(
         query: QueryBuilder?,
-        concreteSourceIndexName: String,
+        concreteSourceIndexName: String?,
         fieldMappings: MutableSet<RollupFieldMapping> = mutableSetOf()
     ): Set<RollupFieldMapping> {
         if (query == null) {
@@ -229,6 +243,9 @@ class RollupInterceptor(
                 fieldMappings.add(RollupFieldMapping(RollupFieldMapping.Companion.FieldType.DIMENSION, query.fieldName(), Dimension.Type.TERMS.type))
             }
             is QueryStringQueryBuilder -> {
+                if (concreteSourceIndexName == null) {
+                    throw IllegalArgumentException("Can't parse query_string query without sourceIndex mappings!")
+                }
                 // Throws IllegalArgumentException if unable to parse query
                 val (queryFields, otherFields) = QueryStringQueryUtil.extractFieldsFromQueryString(query, concreteSourceIndexName)
                 for (field in queryFields) {
