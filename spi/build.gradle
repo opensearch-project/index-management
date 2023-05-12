@@ -23,15 +23,23 @@ ext {
     noticeFile = rootProject.file('NOTICE')
 }
 
+plugins.withId('java') {
+    sourceCompatibility = targetCompatibility = JavaVersion.VERSION_11
+}
+
+plugins.withId('org.jetbrains.kotlin.jvm') {
+    compileKotlin.kotlinOptions.jvmTarget = compileTestKotlin.kotlinOptions.jvmTarget = JavaVersion.VERSION_11
+}
+
 jacoco {
     toolVersion = '0.8.7'
-    reportsDir = file("$buildDir/JacocoReport")
+    reportsDirectory = file("$buildDir/JacocoReport")
 }
 
 jacocoTestReport {
     reports {
-        xml.enabled false
-        csv.enabled false
+        xml.required.set(false)
+        csv.required.set(false)
         html.destination file("${buildDir}/jacoco/")
     }
 }
@@ -44,7 +52,7 @@ repositories {
     maven { url "https://aws.oss.sonatype.org/content/repositories/snapshots" }
 }
 
-configurations.all {
+configurations.configureEach {
     if (it.state != Configuration.State.UNRESOLVED) return
     resolutionStrategy {
         force "org.jetbrains.kotlin:kotlin-stdlib:${kotlin_version}"
@@ -69,21 +77,22 @@ idea.module {
     excludeDirs -= file("$buildDir")
 }
 
-task sourcesJar(type: Jar, dependsOn: classes) {
-    classifier = 'sources'
+tasks.register("sourcesJar", Jar) {
+    dependsOn "classes"
+    archiveClassifier = 'sources'
     from sourceSets.main.allSource
 }
 
 test {
     doFirst {
         test.classpath -= project.files(project.tasks.named('shadowJar'))
-        test.classpath -= project.configurations.getByName(ShadowBasePlugin.CONFIGURATION_NAME)
-        test.classpath += project.extensions.getByType(SourceSetContainer).getByName(SourceSet.MAIN_SOURCE_SET_NAME).runtimeClasspath
+        test.classpath -= project.configurations.named(ShadowBasePlugin.CONFIGURATION_NAME)
+        test.classpath += project.extensions.getByType(SourceSetContainer).named(SourceSet.MAIN_SOURCE_SET_NAME).runtimeClasspath
     }
     systemProperty 'tests.security.manager', 'false'
 }
 
-task integTest(type: RestIntegTestTask) {
+tasks.register("integTest", RestIntegTestTask) {
     description 'Run integ test with opensearch test framework'
     group 'verification'
     systemProperty 'tests.security.manager', 'false'

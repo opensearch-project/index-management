@@ -19,9 +19,7 @@ import org.opensearch.core.xcontent.NamedXContentRegistry
 import org.opensearch.indexmanagement.IndexManagementIndices
 import org.opensearch.indexmanagement.indexstatemanagement.IndexMetadataProvider
 import org.opensearch.indexmanagement.indexstatemanagement.ManagedIndexCoordinator
-import org.opensearch.indexmanagement.indexstatemanagement.MetadataService
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings
-import org.opensearch.indexmanagement.indexstatemanagement.migration.ISMTemplateService
 import org.opensearch.search.SearchModule
 import org.opensearch.test.ClusterServiceUtils
 import org.opensearch.test.OpenSearchTestCase
@@ -37,8 +35,6 @@ class ManagedIndexCoordinatorTests : OpenSearchAllocationTestCase() {
     private lateinit var settings: Settings
 
     private lateinit var indexManagementIndices: IndexManagementIndices
-    private lateinit var metadataService: MetadataService
-    private lateinit var templateService: ISMTemplateService
     private lateinit var coordinator: ManagedIndexCoordinator
     private lateinit var indexMetadataProvider: IndexMetadataProvider
 
@@ -50,8 +46,6 @@ class ManagedIndexCoordinatorTests : OpenSearchAllocationTestCase() {
         client = Mockito.mock(Client::class.java)
         threadPool = Mockito.mock(ThreadPool::class.java)
         indexManagementIndices = Mockito.mock(IndexManagementIndices::class.java)
-        metadataService = Mockito.mock(MetadataService::class.java)
-        templateService = Mockito.mock(ISMTemplateService::class.java)
 
         val namedXContentRegistryEntries = arrayListOf<NamedXContentRegistry.Entry>()
         xContentRegistry = NamedXContentRegistry(namedXContentRegistryEntries)
@@ -77,14 +71,14 @@ class ManagedIndexCoordinatorTests : OpenSearchAllocationTestCase() {
         clusterService = Mockito.spy(originClusterService)
         indexMetadataProvider = IndexMetadataProvider(settings, client, clusterService, mutableMapOf())
         coordinator = ManagedIndexCoordinator(
-            settings, client, clusterService, threadPool, indexManagementIndices, metadataService,
-            templateService, indexMetadataProvider, NamedXContentRegistry(SearchModule(Settings.EMPTY, emptyList()).namedXContents)
+            settings, client, clusterService, threadPool, indexManagementIndices, indexMetadataProvider,
+            NamedXContentRegistry(SearchModule(Settings.EMPTY, emptyList()).namedXContents)
         )
     }
 
     fun `test after start`() {
         coordinator.afterStart()
-        Mockito.verify(threadPool, Mockito.times(2)).scheduleWithFixedDelay(Mockito.any(), Mockito.any(), Mockito.anyString())
+        Mockito.verify(threadPool, Mockito.times(1)).scheduleWithFixedDelay(Mockito.any(), Mockito.any(), Mockito.anyString())
     }
 
     fun `test before stop`() {
@@ -101,7 +95,7 @@ class ManagedIndexCoordinatorTests : OpenSearchAllocationTestCase() {
 
     fun `test on cluster manager`() {
         coordinator.onClusterManager()
-        Mockito.verify(threadPool, Mockito.times(3)).scheduleWithFixedDelay(Mockito.any(), Mockito.any(), Mockito.anyString())
+        Mockito.verify(threadPool, Mockito.times(1)).scheduleWithFixedDelay(Mockito.any(), Mockito.any(), Mockito.anyString())
     }
 
     fun `test off cluster manager`() {

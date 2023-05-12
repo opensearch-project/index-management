@@ -14,7 +14,6 @@ import org.opensearch.action.admin.cluster.snapshots.get.GetSnapshotsResponse
 import org.opensearch.action.index.IndexResponse
 import org.opensearch.cluster.SnapshotsInProgress
 import org.opensearch.common.UUIDs
-import org.opensearch.common.collect.ImmutableOpenMap
 import org.opensearch.common.unit.TimeValue
 import org.opensearch.common.xcontent.LoggingDeprecationHandler
 import org.opensearch.core.xcontent.NamedXContentRegistry
@@ -242,7 +241,7 @@ fun mockInProgressSnapshotInfo(
         emptyList(),
         randomNonNegativeLong(),
         randomNonNegativeLong(),
-        ImmutableOpenMap.of(),
+        mapOf(),
         "",
         mapOf("sm_policy" to "daily-snapshot"),
         Version.CURRENT,
