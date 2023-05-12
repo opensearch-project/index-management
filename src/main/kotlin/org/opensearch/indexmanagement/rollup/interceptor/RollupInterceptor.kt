@@ -193,7 +193,7 @@ class RollupInterceptor(
         return fieldMappings
     }
 
-    @Suppress("ComplexMethod", "ThrowsCount")
+    @Suppress("ComplexMethod", "ThrowsCount", "LongMethod")
     private fun getQueryMetadata(
         query: QueryBuilder?,
         concreteSourceIndexName: String?,
@@ -202,7 +202,6 @@ class RollupInterceptor(
         if (query == null) {
             return fieldMappings
         }
-
         when (query) {
             is TermQueryBuilder -> {
                 fieldMappings.add(RollupFieldMapping(RollupFieldMapping.Companion.FieldType.DIMENSION, query.fieldName(), Dimension.Type.TERMS.type))
@@ -259,7 +258,6 @@ class RollupInterceptor(
                 throw IllegalArgumentException("The ${query.name} query is currently not supported in rollups")
             }
         }
-
         return fieldMappings
     }
 
