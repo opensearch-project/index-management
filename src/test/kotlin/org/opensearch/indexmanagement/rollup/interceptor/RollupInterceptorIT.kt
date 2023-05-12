@@ -7,6 +7,7 @@ package org.opensearch.indexmanagement.rollup.interceptor
 
 import org.apache.hc.core5.http.ContentType
 import org.apache.hc.core5.http.io.entity.StringEntity
+import org.junit.Assert
 import org.opensearch.client.ResponseException
 import org.opensearch.indexmanagement.common.model.dimension.DateHistogram
 import org.opensearch.indexmanagement.common.model.dimension.Terms
@@ -1793,5 +1794,86 @@ class RollupInterceptorIT : RollupRestTestCase() {
             rawAggRes.getValue("earnings_total")["value"],
             rollupAggRes.getValue("earnings_total")["value"]
         )
+    }
+
+    fun `test roll up search query_string query with index pattern as source deleted`() {
+        val sourceIndex = "source_999_rollup_search_qsq_982439"
+        val targetIndex = "target_rollup_qsq_search_982439"
+
+        createSampleIndexForQSQTest(sourceIndex)
+
+        val rollup = Rollup(
+            id = "basic_query_string_query_rollup_search982499",
+            enabled = true,
+            schemaVersion = 1L,
+            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+            jobLastUpdatedTime = Instant.now(),
+            jobEnabledTime = Instant.now(),
+            description = "basic search test",
+            sourceIndex = "source_999*",
+            targetIndex = targetIndex,
+            metadataID = null,
+            roles = emptyList(),
+            pageSize = 10,
+            delay = 0,
+            continuous = false,
+            dimensions = listOf(
+                DateHistogram(sourceField = "event_ts", fixedInterval = "1h"),
+                Terms("state", "state"),
+                Terms("state_ext", "state_ext"),
+                Terms("state_ext2", "state_ext2"),
+                Terms("state_ordinal", "state_ordinal"),
+                Terms("abc test", "abc test"),
+            ),
+            metrics = listOf(
+                RollupMetrics(
+                    sourceField = "earnings", targetField = "earnings",
+                    metrics = listOf(
+                        Sum(), Min(), Max(),
+                        ValueCount(), Average()
+                    )
+                )
+            )
+        ).let { createRollup(it, it.id) }
+
+        updateRollupStartTime(rollup)
+
+        waitFor {
+            val rollupJob = getRollup(rollupId = rollup.id)
+            assertNotNull("Rollup job doesn't have metadata set", rollupJob.metadataID)
+            val rollupMetadata = getRollupMetadata(rollupJob.metadataID!!)
+            assertEquals("Rollup is not finished", RollupMetadata.Status.FINISHED, rollupMetadata.status)
+        }
+
+        refreshAllIndices()
+
+        deleteIndex(sourceIndex)
+
+        // Term query
+        var req = """
+            {
+                "size": 0,
+                "query": {
+                    "query_string": {
+                        "query": "state:TX AND state_ext:CA AND 0",
+                        "default_field": "state_ordinal"
+                    }
+                    
+                },
+                "aggs": {
+                    "earnings_total": {
+                        "sum": {
+                            "field": "earnings"
+                        }
+                    }
+                }
+            }
+        """.trimIndent()
+        try {
+            client().makeRequest("POST", "/$targetIndex/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
+            fail("Failure was expected when searching rollup index using qsq query when sourceIndex does not exist!")
+        } catch (e: ResponseException) {
+            Assert.assertTrue(e.message!!.contains("Can't parse query_string query without sourceIndex mappings!"))
+        }
     }
 }

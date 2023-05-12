@@ -242,7 +242,7 @@ class RollupInterceptor(
                 fieldMappings.add(RollupFieldMapping(RollupFieldMapping.Companion.FieldType.DIMENSION, query.fieldName(), Dimension.Type.TERMS.type))
             }
             is QueryStringQueryBuilder -> {
-                if (concreteSourceIndexName == null) {
+                if (concreteSourceIndexName.isNullOrEmpty()) {
                     throw IllegalArgumentException("Can't parse query_string query without sourceIndex mappings!")
                 }
                 // Throws IllegalArgumentException if unable to parse query
