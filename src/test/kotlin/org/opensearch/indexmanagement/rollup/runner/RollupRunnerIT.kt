@@ -1280,7 +1280,7 @@ class RollupRunnerIT : RollupRestTestCase() {
         refreshAllIndices()
 
         val job = Rollup(
-            id = "rollup_with_alias_99243411",
+            id = "rollup_with_alias_992434131",
             schemaVersion = 1L,
             enabled = true,
             jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.DAYS),
