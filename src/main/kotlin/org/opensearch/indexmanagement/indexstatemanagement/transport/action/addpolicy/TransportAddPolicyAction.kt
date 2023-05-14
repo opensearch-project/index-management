@@ -5,8 +5,10 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.transport.action.addpolicy
 
+import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import org.apache.logging.log4j.LogManager
 import org.opensearch.ExceptionsHelper
@@ -32,9 +34,9 @@ import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.inject.Inject
 import org.opensearch.common.settings.Settings
 import org.opensearch.common.unit.TimeValue
-import org.opensearch.core.xcontent.NamedXContentRegistry
 import org.opensearch.commons.ConfigConstants
 import org.opensearch.commons.authuser.User
+import org.opensearch.core.xcontent.NamedXContentRegistry
 import org.opensearch.index.Index
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
 import org.opensearch.indexmanagement.indexstatemanagement.DefaultIndexMetadataService
@@ -51,6 +53,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.util.FailedIndex
 import org.opensearch.indexmanagement.indexstatemanagement.util.managedIndexConfigIndexRequest
 import org.opensearch.indexmanagement.indexstatemanagement.util.removeClusterStateMetadatas
 import org.opensearch.indexmanagement.opensearchapi.parseFromGetResponse
+import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.settings.IndexManagementSettings
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ISMIndexMetadata
 import org.opensearch.indexmanagement.util.IndexUtils
@@ -60,8 +63,6 @@ import org.opensearch.indexmanagement.util.SecurityUtils.Companion.validateUserC
 import org.opensearch.rest.RestStatus
 import org.opensearch.tasks.Task
 import org.opensearch.transport.TransportService
-import java.lang.Exception
-import java.lang.IllegalArgumentException
 import java.time.Duration
 import java.time.Instant
 
@@ -78,7 +79,9 @@ class TransportAddPolicyAction @Inject constructor(
     val indexMetadataProvider: IndexMetadataProvider
 ) : HandledTransportAction<AddPolicyRequest, ISMStatusResponse>(
     AddPolicyAction.NAME, transportService, actionFilters, ::AddPolicyRequest
-) {
+),
+    CoroutineScope by CoroutineScope(SupervisorJob() + Dispatchers.Default + CoroutineName("TransportAddPolicyAction"))
+{
 
     @Volatile private var jobInterval = ManagedIndexSettings.JOB_INTERVAL.get(settings)
     @Volatile private var jobJitter = ManagedIndexSettings.JITTER.get(settings)
@@ -145,7 +148,7 @@ class TransportAddPolicyAction @Inject constructor(
                     return@launch
                 }
                 if (user != null) {
-                    validateIndexPermissions(0, indicesToAdd.values.toList())
+                    validateIndexPermissions(indicesToAdd.values.toList())
                 } else {
                     removeClosedIndices()
                 }
@@ -155,45 +158,24 @@ class TransportAddPolicyAction @Inject constructor(
         /**
          * We filter the requested indices to the indices user has permission to manage and apply policies only on top of those
          */
-        private fun validateIndexPermissions(current: Int, indices: List<String>) {
-            val request = ManagedIndexRequest().indices(indices[current])
-            client.execute(
-                ManagedIndexAction.INSTANCE,
-                request,
-                object : ActionListener<AcknowledgedResponse> {
-                    override fun onResponse(response: AcknowledgedResponse) {
-                        permittedIndices.add(indices[current])
-                        proceed(current, indices)
-                    }
-
-                    override fun onFailure(e: Exception) {
-                        when (e is OpenSearchSecurityException) {
-                            true -> {
-                                proceed(current, indices)
-                            }
-                            false -> {
-                                // failing the request for any other exception
-                                actionListener.onFailure(e)
-                            }
-                        }
-                    }
+        private suspend fun validateIndexPermissions(indices: List<String>) {
+            indices.forEach { index ->
+                try {
+                    val ack: AcknowledgedResponse = client.suspendUntil { execute(ManagedIndexAction.INSTANCE, ManagedIndexRequest().indices(index), it) }
+                    permittedIndices.add(index)
+                } catch (e: OpenSearchSecurityException) {
+                    log.debug("No permissions for index [$index]")
                 }
-            )
-        }
-
-        private fun proceed(current: Int, indices: List<String>) {
-            if (current < indices.count() - 1) {
-                validateIndexPermissions(current + 1, indices)
-            } else {
-                // sanity check that there are indices - if none then return
-                if (permittedIndices.isEmpty()) {
-                    actionListener.onResponse(ISMStatusResponse(0, failedIndices))
-                    return
-                }
-                // Filter out the indices that the user does not have permissions for
-                indicesToAdd.values.removeIf { !permittedIndices.contains(it) }
-                removeClosedIndices()
             }
+
+            // sanity check that there are indices - if none then return
+            if (permittedIndices.isEmpty()) {
+                actionListener.onResponse(ISMStatusResponse(0, failedIndices))
+                return
+            }
+            // Filter out the indices that the user does not have permissions for
+            indicesToAdd.values.removeIf { !permittedIndices.contains(it) }
+            removeClosedIndices()
         }
 
         private fun removeClosedIndices() {
