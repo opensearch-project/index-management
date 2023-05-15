@@ -80,8 +80,7 @@ class TransportAddPolicyAction @Inject constructor(
 ) : HandledTransportAction<AddPolicyRequest, ISMStatusResponse>(
     AddPolicyAction.NAME, transportService, actionFilters, ::AddPolicyRequest
 ),
-    CoroutineScope by CoroutineScope(SupervisorJob() + Dispatchers.Default + CoroutineName("TransportAddPolicyAction"))
-{
+    CoroutineScope by CoroutineScope(SupervisorJob() + Dispatchers.Default + CoroutineName("TransportAddPolicyAction")) {
 
     @Volatile private var jobInterval = ManagedIndexSettings.JOB_INTERVAL.get(settings)
     @Volatile private var jobJitter = ManagedIndexSettings.JITTER.get(settings)
