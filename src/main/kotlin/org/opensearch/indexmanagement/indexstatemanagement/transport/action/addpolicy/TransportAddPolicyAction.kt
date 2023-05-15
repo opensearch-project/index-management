@@ -160,8 +160,10 @@ class TransportAddPolicyAction @Inject constructor(
         private suspend fun validateIndexPermissions(indices: List<String>) {
             indices.forEach { index ->
                 try {
-                    val ack: AcknowledgedResponse = client.suspendUntil { execute(ManagedIndexAction.INSTANCE, ManagedIndexRequest().indices(index), it) }
+                    val ack: AcknowledgedResponse =
+                        client.suspendUntil { execute(ManagedIndexAction.INSTANCE, ManagedIndexRequest().indices(index), it) }
                     permittedIndices.add(index)
+                    log.debug("AddPolicy ack response: [${ack.isAcknowledged}]")
                 } catch (e: OpenSearchSecurityException) {
                     log.debug("No permissions for index [$index]")
                 }
