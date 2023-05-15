@@ -15,7 +15,7 @@ buildscript {
     ext {
         opensearch_version = System.getProperty("opensearch.version", "1.3.10-SNAPSHOT")
         // 1.1.0 -> 1.1.0.0, and 1.1.0-SNAPSHOT -> 1.1.0.0-SNAPSHOT
-        opensearch_build = opensearch_version.replaceAll(/(\.\d)([^\d]*)$/, '$1.0$2')
+        opensearch_build = opensearch_version.replaceAll(/(\.\d+)([^\d]*)$/, '$1.0$2')
         notification_version = System.getProperty("notification.version", opensearch_build)
         common_utils_version = System.getProperty("common_utils.version", opensearch_build)
         job_scheduler_version = System.getProperty("job_scheduler_version.version", opensearch_build)
@@ -79,6 +79,8 @@ configurations.all {
         force "com.fasterxml.jackson.core:jackson-databind:${versions.jackson_databind}"
         force 'org.yaml:snakeyaml:1.32'
         force 'org.codehaus.plexus:plexus-utils:3.0.24'
+        // This is required as the core test framework updated to depend on a newer version and conflicts with the version used by mockito
+        force "net.bytebuddy:byte-buddy:1.14.3"
     }
 }
 
