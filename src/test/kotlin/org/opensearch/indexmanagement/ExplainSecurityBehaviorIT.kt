@@ -31,8 +31,8 @@ class ExplainSecurityBehaviorIT : SecurityRestTestCase() {
 
     private var userClient: RestClient? = null
 
-    private val PERMITTED_INDICES_PREFIX = "permitted-index"
-    private val PERMITTED_INDICES_PATTERN = "permitted-index*"
+    private val permittedIndiciesPrefix = "permitted-index"
+    private val permittedIndicesPattern = "permitted-index*"
     @Before
     fun setupUsersAndRoles() {
         // Init super transform user
@@ -51,7 +51,7 @@ class ExplainSecurityBehaviorIT : SecurityRestTestCase() {
         )
         // In this test suite case john is a "super-user" which has all relevant privileges
         createUser(ismUser, password, listOf(HELPDESK))
-        createRole(HELPDESK_ROLE, helpdeskClusterPermissions, indexPermissions, listOf(PERMITTED_INDICES_PATTERN))
+        createRole(HELPDESK_ROLE, helpdeskClusterPermissions, indexPermissions, listOf(permittedIndicesPattern))
         assignRoleToUsers(HELPDESK_ROLE, listOf(ismUser))
 
         userClient =
@@ -77,9 +77,9 @@ class ExplainSecurityBehaviorIT : SecurityRestTestCase() {
         val notPermittedindices = mutableListOf<String>()
         for (i in 1..5) {
             createIndex("$notPermittedIndexPrefix-$i", """ "properties": { "field_a": { "type": "long" } }""", client())
-            createIndex("$PERMITTED_INDICES_PREFIX-$i", """ "properties": { "field_a": { "type": "long" } }""", client())
+            createIndex("$permittedIndiciesPrefix-$i", """ "properties": { "field_a": { "type": "long" } }""", client())
             notPermittedindices += "$notPermittedIndexPrefix-$i"
-            permittedindices += "$PERMITTED_INDICES_PREFIX-$i"
+            permittedindices += "$permittedIndiciesPrefix-$i"
         }
 
         val allIndicesJoined = (notPermittedindices + permittedindices).joinToString(separator = ",")
@@ -108,7 +108,7 @@ class ExplainSecurityBehaviorIT : SecurityRestTestCase() {
         } catch (e: ResponseException) {
             fail(e.message)
         } finally {
-            deleteIndexByName("$PERMITTED_INDICES_PREFIX*")
+            deleteIndexByName("$permittedIndiciesPrefix*")
             deleteIndexByName("$notPermittedIndexPrefix*")
         }
     }
