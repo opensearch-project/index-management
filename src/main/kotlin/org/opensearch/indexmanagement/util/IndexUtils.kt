@@ -234,24 +234,5 @@ class IndexUtils {
             return clusterState.metadata
                 .indicesLookup[indexName]!!.type == IndexAbstraction.Type.CONCRETE_INDEX
         }
-
-        fun getConcreteIndex(indexName: String, concreteIndices: Array<String>, clusterState: ClusterState): String {
-
-            if (concreteIndices.isEmpty()) {
-                throw IllegalArgumentException("ConcreteIndices list can't be empty!")
-            }
-
-            var concreteIndexName: String
-            if (concreteIndices.size == 1 && isConcreteIndex(indexName, clusterState)) {
-                concreteIndexName = indexName
-            } else if (isAlias(indexName, clusterState) || isDataStream(indexName, clusterState)) {
-                concreteIndexName = getWriteIndex(indexName, clusterState)
-                    ?: getNewestIndexByCreationDate(concreteIndices, clusterState) //
-            } else {
-                concreteIndexName = getNewestIndexByCreationDate(concreteIndices, clusterState)
-            }
-
-            return concreteIndexName
-        }
     }
 }
