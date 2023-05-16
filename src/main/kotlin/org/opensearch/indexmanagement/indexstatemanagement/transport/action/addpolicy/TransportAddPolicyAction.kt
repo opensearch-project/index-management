@@ -5,10 +5,8 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.transport.action.addpolicy
 
-import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import org.apache.logging.log4j.LogManager
 import org.opensearch.ExceptionsHelper
@@ -34,6 +32,7 @@ import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.inject.Inject
 import org.opensearch.common.settings.Settings
 import org.opensearch.common.unit.TimeValue
+import org.opensearch.common.util.concurrent.ThreadContext
 import org.opensearch.commons.ConfigConstants
 import org.opensearch.commons.authuser.User
 import org.opensearch.core.xcontent.NamedXContentRegistry
@@ -52,8 +51,10 @@ import org.opensearch.indexmanagement.indexstatemanagement.util.DEFAULT_INDEX_TY
 import org.opensearch.indexmanagement.indexstatemanagement.util.FailedIndex
 import org.opensearch.indexmanagement.indexstatemanagement.util.managedIndexConfigIndexRequest
 import org.opensearch.indexmanagement.indexstatemanagement.util.removeClusterStateMetadatas
+import org.opensearch.indexmanagement.opensearchapi.IndexManagementSecurityContext
 import org.opensearch.indexmanagement.opensearchapi.parseFromGetResponse
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
+import org.opensearch.indexmanagement.opensearchapi.withClosableContext
 import org.opensearch.indexmanagement.settings.IndexManagementSettings
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ISMIndexMetadata
 import org.opensearch.indexmanagement.util.IndexUtils
@@ -79,8 +80,7 @@ class TransportAddPolicyAction @Inject constructor(
     val indexMetadataProvider: IndexMetadataProvider
 ) : HandledTransportAction<AddPolicyRequest, ISMStatusResponse>(
     AddPolicyAction.NAME, transportService, actionFilters, ::AddPolicyRequest
-),
-    CoroutineScope by CoroutineScope(SupervisorJob() + Dispatchers.Default + CoroutineName("TransportAddPolicyAction")) {
+) {
 
     @Volatile private var jobInterval = ManagedIndexSettings.JOB_INTERVAL.get(settings)
     @Volatile private var jobJitter = ManagedIndexSettings.JITTER.get(settings)
@@ -107,7 +107,8 @@ class TransportAddPolicyAction @Inject constructor(
         private val client: NodeClient,
         private val actionListener: ActionListener<ISMStatusResponse>,
         private val request: AddPolicyRequest,
-        private val user: User? = buildUser(client.threadPool().threadContext)
+        private val user: User? = buildUser(client.threadPool().threadContext),
+        private val threadContext: ThreadContext? = client.threadPool().threadContext
     ) {
         private lateinit var startTime: Instant
         private lateinit var policy: Policy
@@ -147,10 +148,11 @@ class TransportAddPolicyAction @Inject constructor(
                     return@launch
                 }
                 if (user != null) {
-                    validateIndexPermissions(indicesToAdd.values.toList())
-                } else {
-                    removeClosedIndices()
+                    withClosableContext(IndexManagementSecurityContext("AddPolicyHandler", Settings.EMPTY, threadContext!!, user)) {
+                        validateIndexPermissions(indicesToAdd.values.toList())
+                    }
                 }
+                removeClosedIndices()
             }
         }
 
@@ -176,7 +178,6 @@ class TransportAddPolicyAction @Inject constructor(
             }
             // Filter out the indices that the user does not have permissions for
             indicesToAdd.values.removeIf { !permittedIndices.contains(it) }
-            removeClosedIndices()
         }
 
         private fun removeClosedIndices() {
