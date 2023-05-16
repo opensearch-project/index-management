@@ -115,18 +115,21 @@ class PolicySecurityBehaviorIT : SecurityRestTestCase() {
                 states = states
             )
             createPolicy(policy, policy.id, true, client())
-
+            // Call AddPolicyAction as user
             addPolicyToIndex(index = allIndicesJoined, policyId = policy.id, expectedStatus = RestStatus.OK, client = superUserClient!!)
 
-            val searchResponse = responseAsMap(client().makeRequest(RestRequest.Method.GET.toString(), "$INDEX_MANAGEMENT_INDEX/_search?size=1000"))
+            refreshAllIndices()
 
+            val searchResponse = responseAsMap(client().makeRequest(RestRequest.Method.GET.toString(), "$INDEX_MANAGEMENT_INDEX/_search?size=1000"))
             val numOfHits = ((searchResponse["hits"] as Map<*, *>)["total"] as Map<*, *>)["value"] as Int
+            // 1 Policy document + 5 ManagedIndex docs
             assertEquals(1 + 5, numOfHits)
         } catch (e: ResponseException) {
             logger.error(e.message, e)
         } finally {
             deleteIndexByName("$PERMITTED_INDICES_PREFIX*")
             deleteIndexByName("$notPermittedIndexPrefix*")
+            deleteIndexByName("$INDEX_MANAGEMENT_INDEX")
         }
     }
 
