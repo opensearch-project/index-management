@@ -32,7 +32,6 @@ import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.inject.Inject
 import org.opensearch.common.settings.Settings
 import org.opensearch.common.unit.TimeValue
-import org.opensearch.common.util.concurrent.ThreadContext
 import org.opensearch.commons.ConfigConstants
 import org.opensearch.commons.authuser.User
 import org.opensearch.core.xcontent.NamedXContentRegistry
@@ -108,11 +107,9 @@ class TransportAddPolicyAction @Inject constructor(
         private val actionListener: ActionListener<ISMStatusResponse>,
         private val request: AddPolicyRequest,
         private val user: User? = buildUser(client.threadPool().threadContext),
-        private val threadContext: ThreadContext? = client.threadPool().threadContext
     ) {
         private lateinit var startTime: Instant
         private lateinit var policy: Policy
-        private val permittedIndices = mutableListOf<String>()
         private val indicesToAdd = mutableMapOf<String, String>() // uuid: name
         private val failedIndices: MutableList<FailedIndex> = mutableListOf()
 
@@ -148,7 +145,7 @@ class TransportAddPolicyAction @Inject constructor(
                     return@launch
                 }
                 if (user != null) {
-                    withClosableContext(IndexManagementSecurityContext("AddPolicyHandler", Settings.EMPTY, threadContext!!, user)) {
+                    withClosableContext(IndexManagementSecurityContext("AddPolicyHandler", settings, client.threadPool().threadContext, user)) {
                         validateIndexPermissions(indicesToAdd.values.toList())
                     }
                 }
@@ -160,12 +157,11 @@ class TransportAddPolicyAction @Inject constructor(
          * We filter the requested indices to the indices user has permission to manage and apply policies only on top of those
          */
         private suspend fun validateIndexPermissions(indices: List<String>) {
+            val permittedIndices = mutableListOf<String>()
             indices.forEach { index ->
                 try {
-                    val ack: AcknowledgedResponse =
-                        client.suspendUntil { execute(ManagedIndexAction.INSTANCE, ManagedIndexRequest().indices(index), it) }
+                    client.suspendUntil { execute(ManagedIndexAction.INSTANCE, ManagedIndexRequest().indices(index), it) }
                     permittedIndices.add(index)
-                    log.debug("AddPolicy ack response: [${ack.isAcknowledged}]")
                 } catch (e: OpenSearchSecurityException) {
                     log.debug("No permissions for index [$index]")
                 }
