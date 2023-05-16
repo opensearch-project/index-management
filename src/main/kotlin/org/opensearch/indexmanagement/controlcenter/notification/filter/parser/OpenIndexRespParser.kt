@@ -27,6 +27,7 @@ class OpenIndexRespParser(
     private var totalWaitTime: TimeValue = NotificationActionListener.MAX_WAIT_TIME
     private val indexNameWithCluster = getIndexName(request, clusterService)
 
+    @Suppress("LongMethod")
     override fun parseAndSendNotification(
         response: OpenIndexResponse?,
         ex: Exception?,

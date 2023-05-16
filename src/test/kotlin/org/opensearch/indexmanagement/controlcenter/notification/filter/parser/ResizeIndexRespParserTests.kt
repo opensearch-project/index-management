@@ -20,7 +20,7 @@ import org.opensearch.action.support.ActiveShardsObserver
 import org.opensearch.common.unit.TimeValue
 import java.lang.Exception
 
-class ResizeIndexRespParserTests : BaseRespParserTestCase() {
+class ResizeIndexRespParserTests : BaseRespParserTests() {
 
     private lateinit var activeShardsObserver: ActiveShardsObserver
 

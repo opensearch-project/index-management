@@ -19,7 +19,7 @@ import org.opensearch.cluster.metadata.IndexNameExpressionResolver
 import org.opensearch.common.unit.TimeValue
 import java.lang.Exception
 
-class OpenRespParserTests : BaseRespParserTestCase() {
+class OpenRespParserTests : BaseRespParserTests() {
 
     private lateinit var activeShardsObserver: ActiveShardsObserver
     private lateinit var indexNameExpressionResolver: IndexNameExpressionResolver

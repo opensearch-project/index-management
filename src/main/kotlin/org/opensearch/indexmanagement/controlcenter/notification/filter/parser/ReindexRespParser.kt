@@ -98,7 +98,9 @@ class ReindexRespParser(
             append(System.lineSeparator())
             // "took":8154,"timed_out":false,"total":14074,"updated":0,"created":14074,"deleted":0,
             append(
-                "Details: total: ${response.total}, created: ${response.created}, updated: ${response.updated}, deleted: ${response.deleted}, conflicts: ${response.versionConflicts}"
+                "Details: total: ${response.total}, created: ${response.created}, " +
+                    "updated: ${response.updated}, deleted: ${response.deleted}, " +
+                    "conflicts: ${response.versionConflicts}"
             )
 
             val taskId = TaskId(clusterService.localNode().id, task.id)

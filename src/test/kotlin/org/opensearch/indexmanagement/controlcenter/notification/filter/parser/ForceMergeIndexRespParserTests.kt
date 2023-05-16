@@ -17,7 +17,7 @@ import org.opensearch.core.xcontent.NamedXContentRegistry
 import org.opensearch.index.Index
 import org.opensearch.indexmanagement.snapshotmanagement.toJsonString
 
-class ForceMergeIndexRespParserTests : BaseRespParserTestCase() {
+class ForceMergeIndexRespParserTests : BaseRespParserTests() {
 
     fun `test build message for completion`() {
         val xContentParser = XContentType.JSON.xContent().createParser(

@@ -13,7 +13,7 @@ import org.opensearch.cluster.node.DiscoveryNode
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.test.OpenSearchTestCase
 
-open class BaseRespParserTestCase : OpenSearchTestCase() {
+open class BaseRespParserTests : OpenSearchTestCase() {
     companion object {
         lateinit var clusterService: ClusterService
 

@@ -27,6 +27,7 @@ class ResizeIndexRespParser(
     private var totalWaitTime: TimeValue = NotificationActionListener.MAX_WAIT_TIME
     private val indexWithCluster = getIndexName(request, clusterService)
 
+    @Suppress("LongMethod")
     override fun parseAndSendNotification(
         response: ResizeResponse?,
         ex: Exception?,

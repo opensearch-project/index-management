@@ -18,7 +18,7 @@ import org.opensearch.tasks.TaskId
 import java.lang.Exception
 import java.util.concurrent.TimeUnit
 
-class ReindexRespParserTests : BaseRespParserTestCase() {
+class ReindexRespParserTests : BaseRespParserTests() {
 
     private lateinit var task: Task
     private lateinit var request: ReindexRequest
