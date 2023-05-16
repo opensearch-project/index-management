@@ -297,7 +297,12 @@ class IndexManagementSecurityContext(
      */
     override fun updateThreadContext(context: CoroutineContext) {
         logger.debug("Setting security context in thread ${Thread.currentThread().name} for job $id")
-        injector.injectRoles(if (user == null) DEFAULT_INJECT_ROLES else user.roles)
+        if (user == null) {
+            injector.injectRoles(DEFAULT_INJECT_ROLES)
+        } else {
+            injector.injectRoles(user.roles)
+            injector.injectUser(user.name)
+        }
         injector.injectProperty(INTERNAL_REQUEST, true)
     }
 

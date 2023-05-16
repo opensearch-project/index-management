@@ -26,6 +26,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.IndexStateManagementR
 import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexConfig
 import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
 import org.opensearch.indexmanagement.indexstatemanagement.resthandler.RestExplainAction
+import org.opensearch.indexmanagement.indexstatemanagement.resthandler.RestExplainAction.Companion.EXPLAIN_BASE_URI
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings
 import org.opensearch.indexmanagement.indexstatemanagement.toJsonString
 import org.opensearch.indexmanagement.indexstatemanagement.util.INDEX_NUMBER_OF_REPLICAS
@@ -212,6 +213,16 @@ abstract class SecurityRestTestCase : IndexManagementRestTestCase() {
         client: RestClient?,
     ): Policy {
         return IndexStateManagementRestTestCaseExt.createPolicyExt(policy, policyId, refresh, client)
+    }
+
+    protected fun managedIndicesExplain(
+        indices: List<String>,
+        client: RestClient
+    ): Map<*, *> {
+
+        val request = Request("GET", "$EXPLAIN_BASE_URI")
+        request.addParameter("index", indices.joinToString(separator = ","))
+        return entityAsMap(executeRequest(request, RestStatus.OK, client))
     }
 
     protected fun managedIndexExplainAllAsMap(
