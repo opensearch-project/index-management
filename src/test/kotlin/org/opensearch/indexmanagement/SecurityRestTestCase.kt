@@ -11,8 +11,8 @@
 
 package org.opensearch.indexmanagement
 
-import org.apache.hc.core5.http.HttpHeaders
 import org.apache.hc.core5.http.ContentType
+import org.apache.hc.core5.http.HttpHeaders
 import org.apache.hc.core5.http.io.entity.StringEntity
 import org.apache.hc.core5.http.message.BasicHeader
 import org.opensearch.client.Request
@@ -538,7 +538,7 @@ abstract class SecurityRestTestCase : IndexManagementRestTestCase() {
         const val AVAILABILITY_INDEX = "availability-1"
 
         const val PHONE_OPERATOR = "phone_operator"
-        const val HELPDESK = "helpdesk_stuff"
+        const val HELPDESK = "helpdesk_staff"
         const val HELPDESK_ROLE = "helpdesk_role"
         const val PHONE_OPERATOR_ROLE = "phone_operator_role"
 

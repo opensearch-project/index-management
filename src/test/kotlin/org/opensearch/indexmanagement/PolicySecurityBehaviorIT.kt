@@ -36,20 +36,15 @@ class PolicySecurityBehaviorIT : SecurityRestTestCase() {
     private val password = "Test123!"
 
     private val ismUser = "john"
-    private var superUserClient: RestClient? = null
+    private var ismUserClient: RestClient? = null
 
-    private val testUser = "testUser"
-    private val testRole = "test_role"
-    var testUserClient: RestClient? = null
-
-    private val PERMITTED_INDICES_PREFIX = "permitted-index"
-    private val PERMITTED_INDICES_PATTERN = "permitted-index*"
+    private val permittedIndicesPrefix = "permitted-index"
+    private val permittedIndicesPattern = "permitted-index*"
     @Before
     fun setupUsersAndRoles() {
 //        updateClusterSetting(ManagedIndexSettings.JITTER.key, "0.0", false)
 
-        // Init super transform user
-        val helpdeskClusterPermissions = listOf(
+        val custerPermissions = listOf(
             AddPolicyAction.NAME
         )
 
@@ -62,28 +57,23 @@ class PolicySecurityBehaviorIT : SecurityRestTestCase() {
             SEARCH_INDEX,
             PUT_INDEX_MAPPING
         )
-        // In this test suite case john is a "super-user" which has all relevant privileges
         createUser(ismUser, password, listOf(HELPDESK))
-        createRole(HELPDESK_ROLE, helpdeskClusterPermissions, indexPermissions, listOf(PERMITTED_INDICES_PATTERN))
+        createRole(HELPDESK_ROLE, custerPermissions, indexPermissions, listOf(permittedIndicesPattern))
         assignRoleToUsers(HELPDESK_ROLE, listOf(ismUser))
 
-        superUserClient =
+        ismUserClient =
             SecureRestClientBuilder(clusterHosts.toTypedArray(), isHttps(), ismUser, password).setSocketTimeout(60000)
                 .build()
     }
 
     @After
     fun cleanup() {
-        // Remove super user
-        superUserClient?.close()
+        // Remove user
+        ismUserClient?.close()
         deleteUser(ismUser)
         deleteRole(HELPDESK_ROLE)
-        // Remove test user
-        testUserClient?.close()
-        deleteUser(testUser)
-        deleteRole(testRole)
 
-        deleteIndexByName(".opendistro-ism-config")
+        deleteIndexByName("$INDEX_MANAGEMENT_INDEX")
     }
 
     fun `test add policy`() {
@@ -95,9 +85,9 @@ class PolicySecurityBehaviorIT : SecurityRestTestCase() {
         val notPermittedindices = mutableListOf<String>()
         for (i in 1..5) {
             createIndex("$notPermittedIndexPrefix-$i", """ "properties": { "field_a": { "type": "long" } }""", client())
-            createIndex("$PERMITTED_INDICES_PREFIX-$i", """ "properties": { "field_a": { "type": "long" } }""", client())
+            createIndex("$permittedIndicesPrefix-$i", """ "properties": { "field_a": { "type": "long" } }""", client())
             notPermittedindices += "$notPermittedIndexPrefix-$i"
-            permittedindices += "$PERMITTED_INDICES_PREFIX-$i"
+            permittedindices += "$permittedIndicesPrefix-$i"
         }
 
         val allIndicesJoined = (notPermittedindices + permittedindices).joinToString(separator = ",")
@@ -116,7 +106,7 @@ class PolicySecurityBehaviorIT : SecurityRestTestCase() {
             )
             createPolicy(policy, policy.id, true, client())
             // Call AddPolicyAction as user
-            addPolicyToIndex(index = allIndicesJoined, policyId = policy.id, expectedStatus = RestStatus.OK, client = superUserClient!!)
+            addPolicyToIndex(index = allIndicesJoined, policyId = policy.id, expectedStatus = RestStatus.OK, client = ismUserClient!!)
 
             refreshAllIndices()
 
@@ -127,17 +117,8 @@ class PolicySecurityBehaviorIT : SecurityRestTestCase() {
         } catch (e: ResponseException) {
             logger.error(e.message, e)
         } finally {
-            deleteIndexByName("$PERMITTED_INDICES_PREFIX*")
+            deleteIndexByName("$permittedIndicesPrefix*")
             deleteIndexByName("$notPermittedIndexPrefix*")
-            deleteIndexByName("$INDEX_MANAGEMENT_INDEX")
         }
-    }
-
-    private fun createTestUserWithRole(clusterPermissions: List<String>, indexPermissions: List<String>) {
-        val testBackendRole = testRole + "_backend"
-        // In this test suite case john is a "super-user" which has all relevant privileges
-        createUser(testUser, password, listOf(testBackendRole))
-        createRole(testRole, clusterPermissions, indexPermissions, listOf(AIRLINE_INDEX_PATTERN))
-        assignRoleToUsers(testRole, listOf(testUser))
     }
 }
