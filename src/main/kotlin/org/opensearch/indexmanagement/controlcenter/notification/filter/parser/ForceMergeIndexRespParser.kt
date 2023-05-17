@@ -63,7 +63,7 @@ class ForceMergeIndexRespParser(val request: ForceMergeRequest, val clusterServi
     ): String {
         val result = StringBuilder()
         result.append(
-            "The force merge job on $indexNameWithCluster" +
+            "The force merge job on $indexNameWithCluster " +
                 if (exception != null) {
                     "${NotificationActionListener.FAILED} ${exception.message}"
                 } else if (response != null && !response.shardFailures.isNullOrEmpty()) {
