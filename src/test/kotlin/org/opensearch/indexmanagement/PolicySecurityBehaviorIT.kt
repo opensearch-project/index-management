@@ -33,7 +33,7 @@ import java.util.Locale
 
 @TestLogging("level:DEBUG", reason = "Debug for tests.")
 class PolicySecurityBehaviorIT : SecurityRestTestCase() {
-    private val password = "Test123!"
+    private val password = "TestpgfhertergGd435AASA123!"
 
     private val ismUser = "john"
     private var ismUserClient: RestClient? = null
