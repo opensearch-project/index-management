@@ -90,7 +90,7 @@ class ReindexRespParser(
                     "has been cancelled with reason: $reason"
                 } else if (failed) {
                     response.bulkFailures.isNullOrEmpty()
-                    "${NotificationActionListener.FAILED} ${failures.take(2).map { it.message }.joinToString(",")}"
+                    "${NotificationActionListener.FAILED} ${failures.map { it.message }.distinct().take(2).joinToString(",")}"
                 } else {
                     NotificationActionListener.COMPLETED
                 }
