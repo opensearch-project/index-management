@@ -72,7 +72,7 @@ class NotificationActionListener<Request : ActionRequest, Response : ActionRespo
     val task: Task,
     val activeShardsObserver: ActiveShardsObserver,
     val request: Request,
-    val indexNameExpressionResolver: IndexNameExpressionResolver
+    val indexNameExpressionResolver: IndexNameExpressionResolver,
 ) : ActionListener<Response>,
     CoroutineScope by CoroutineScope(SupervisorJob() + Dispatchers.Default + CoroutineName("NotificationActionListener")) {
 
@@ -112,7 +112,7 @@ class NotificationActionListener<Request : ActionRequest, Response : ActionRespo
                 ResizeAction.NAME -> {
                     ResizeIndexRespParser(
                         activeShardsObserver, request as ResizeRequest, clusterService
-                    ).parseAndSendNotification(response as ResizeResponse, ex, callback)
+                    ).parseAndSendNotification(if (response == null) null else response as ResizeResponse, ex, callback)
                 }
 
                 ReindexAction.NAME -> {
@@ -120,13 +120,21 @@ class NotificationActionListener<Request : ActionRequest, Response : ActionRespo
                         task,
                         request as ReindexRequest,
                         clusterService
-                    ).parseAndSendNotification(response as BulkByScrollResponse, ex, callback)
+                    ).parseAndSendNotification(
+                        if (response == null) null else response as BulkByScrollResponse,
+                        ex,
+                        callback
+                    )
                 }
 
                 OpenIndexAction.NAME -> {
                     OpenIndexRespParser(
                         activeShardsObserver, request as OpenIndexRequest, indexNameExpressionResolver, clusterService
-                    ).parseAndSendNotification(response as OpenIndexResponse, ex, callback)
+                    ).parseAndSendNotification(
+                        if (response == null) null else response as OpenIndexResponse,
+                        ex,
+                        callback
+                    )
                 }
 
                 ForceMergeAction.NAME -> {
@@ -134,7 +142,7 @@ class NotificationActionListener<Request : ActionRequest, Response : ActionRespo
                         request as ForceMergeRequest,
                         clusterService
                     ).parseAndSendNotification(
-                        response as ForceMergeResponse, ex, callback
+                        if (response == null) null else response as ForceMergeResponse, ex, callback
                     )
                 }
 
@@ -149,7 +157,7 @@ class NotificationActionListener<Request : ActionRequest, Response : ActionRespo
 
     fun notify(
         action: String,
-        result: ActionRespParseResult
+        result: ActionRespParseResult,
     ) {
         val taskId = TaskId(clusterService.localNode().id, task.id)
         val ids = arrayOf(getDocID(taskId = taskId), getDocID(actionName = action))
@@ -190,7 +198,7 @@ class NotificationActionListener<Request : ActionRequest, Response : ActionRespo
         lronConfigResponse: GetLRONConfigResponse,
         taskId: TaskId,
         action: String,
-        result: ActionRespParseResult
+        result: ActionRespParseResult,
     ) {
         if (0 == lronConfigResponse.totalNumber) {
             logger.debug("No notification policy configured for task: {} action: {}", taskId.toString(), action)
@@ -233,7 +241,7 @@ class NotificationActionListener<Request : ActionRequest, Response : ActionRespo
     }
 
     fun removeOneTimePolicy(
-        config: LRONConfig
+        config: LRONConfig,
     ) {
         if (config.taskId != null) {
             val taskId = config.taskId
@@ -261,7 +269,7 @@ class NotificationActionListener<Request : ActionRequest, Response : ActionRespo
 
     fun getNotificationPolices(
         lronConfigResponse: GetLRONConfigResponse,
-        result: OperationResult
+        result: OperationResult,
     ): Set<LRONConfigResponse> {
         val runtimeConfig =
             lronConfigResponse.lronConfigResponses.firstOrNull { it.lronConfig.taskId != null }
