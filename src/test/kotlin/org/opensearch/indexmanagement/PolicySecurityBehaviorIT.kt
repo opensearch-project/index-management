@@ -23,7 +23,6 @@ import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
 import org.opensearch.indexmanagement.indexstatemanagement.model.State
 import org.opensearch.indexmanagement.indexstatemanagement.randomErrorNotification
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.addpolicy.AddPolicyAction
-import org.opensearch.rest.RestRequest
 import org.opensearch.rest.RestStatus
 import org.opensearch.test.OpenSearchTestCase
 import org.opensearch.test.junit.annotations.TestLogging
@@ -110,10 +109,8 @@ class PolicySecurityBehaviorIT : SecurityRestTestCase() {
 
             refreshAllIndices()
 
-            val searchResponse = responseAsMap(client().makeRequest(RestRequest.Method.GET.toString(), "$INDEX_MANAGEMENT_INDEX/_search?size=1000"))
-            val numOfHits = ((searchResponse["hits"] as Map<*, *>)["total"] as Map<*, *>)["value"] as Int
-            // 1 Policy document + 5 ManagedIndex docs
-            assertEquals(1 + 5, numOfHits)
+            val explainResponseAsMap = managedIndexExplainAllAsMap(client())
+            assertEquals(5, explainResponseAsMap["total_managed_indices"] as Int)
         } catch (e: ResponseException) {
             logger.error(e.message, e)
         } finally {

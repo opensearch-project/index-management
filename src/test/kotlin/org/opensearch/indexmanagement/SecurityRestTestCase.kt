@@ -25,6 +25,7 @@ import org.opensearch.common.xcontent.XContentType
 import org.opensearch.indexmanagement.indexstatemanagement.IndexStateManagementRestTestCase
 import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexConfig
 import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
+import org.opensearch.indexmanagement.indexstatemanagement.resthandler.RestExplainAction
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings
 import org.opensearch.indexmanagement.indexstatemanagement.toJsonString
 import org.opensearch.indexmanagement.indexstatemanagement.util.INDEX_NUMBER_OF_REPLICAS
@@ -211,6 +212,13 @@ abstract class SecurityRestTestCase : IndexManagementRestTestCase() {
         client: RestClient?,
     ): Policy {
         return IndexStateManagementRestTestCaseExt.createPolicyExt(policy, policyId, refresh, client)
+    }
+
+    protected fun managedIndexExplainAllAsMap(
+        client: RestClient?,
+    ): Map<*, *> {
+        val request = Request("GET", "${RestExplainAction.EXPLAIN_BASE_URI}")
+        return entityAsMap(executeRequest(request, RestStatus.OK, client!!))
     }
 
     protected fun getExistingManagedIndexConfig(index: String) = IndexStateManagementRestTestCaseExt.getExistingManagedIndexConfigExt(index)
@@ -400,7 +408,7 @@ abstract class SecurityRestTestCase : IndexManagementRestTestCase() {
         val request = Request(RestRequest.Method.PUT.name, "_plugins/_security/api/internalusers/$name")
         request.setJsonEntity(json)
 
-        executeRequest(request, null, client())
+        executeRequest(request, RestStatus.CREATED, client())
     }
 
     protected fun createUserWithCustomRole(
@@ -453,7 +461,7 @@ abstract class SecurityRestTestCase : IndexManagementRestTestCase() {
         """.trimIndent()
 
         request.setJsonEntity(entity)
-        client().performRequest(request)
+        executeRequest(request, RestStatus.CREATED, client())
     }
 
     protected fun assignRoleToUsers(role: String, users: List<String>) {
