@@ -9,4 +9,4 @@ Compatible with OpenSearch 1.3.10
 * Fix 1.3.10 build issues. ([#780](https://github.com/opensearch-project/index-management/pull/780))
 
 ### Documentation
-* Added 1.3.10 release notes. ([#]())
+* Added 1.3.10 release notes. ([#784](https://github.com/opensearch-project/index-management/pull/784))
