@@ -43,7 +43,7 @@ import java.util.Locale
 class IndexStateManagementSecurityBehaviorIT : SecurityRestTestCase() {
 
     private val testIndexName = javaClass.simpleName.lowercase(Locale.ROOT)
-    private val password = "Test123!"
+    private val password = "Test123sdfsdfds435346FDGDFGDFG2342&^%#$@#35!"
 
     private val superIsmUser = "john"
     private var superUserClient: RestClient? = null
