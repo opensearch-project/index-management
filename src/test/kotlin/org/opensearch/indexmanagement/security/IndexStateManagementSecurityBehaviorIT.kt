@@ -1,6 +1,12 @@
 /*
- * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
+ *
+ * Modifications Copyright OpenSearch Contributors. See
+ * GitHub history for details.
  */
 
 package org.opensearch.indexmanagement.security
@@ -9,7 +15,6 @@ import org.junit.After
 import org.junit.Before
 import org.opensearch.client.RestClient
 import org.opensearch.commons.rest.SecureRestClientBuilder
-import org.opensearch.indexmanagement.SecurityRestTestCase
 import org.opensearch.indexmanagement.common.model.dimension.DateHistogram
 import org.opensearch.indexmanagement.common.model.dimension.Terms
 import org.opensearch.indexmanagement.indexstatemanagement.action.RollupAction
@@ -28,12 +33,29 @@ import org.opensearch.indexmanagement.rollup.model.metric.Max
 import org.opensearch.indexmanagement.rollup.model.metric.Min
 import org.opensearch.indexmanagement.rollup.model.metric.Sum
 import org.opensearch.indexmanagement.rollup.model.metric.ValueCount
-import org.opensearch.indexmanagement.waitFor
+import org.opensearch.indexmanagement.security.ADD_POLICY
+import org.opensearch.indexmanagement.security.BULK_WRITE_INDEX
+import org.opensearch.indexmanagement.security.CREATE_INDEX
+import org.opensearch.indexmanagement.security.DELETE_POLICY
+import org.opensearch.indexmanagement.security.EXPLAIN_INDEX
+import org.opensearch.indexmanagement.security.EXPLAIN_ROLLUP
+import org.opensearch.indexmanagement.security.GET_INDEX_MAPPING
+import org.opensearch.indexmanagement.security.GET_POLICIES
+import org.opensearch.indexmanagement.security.GET_POLICY
+import org.opensearch.indexmanagement.security.GET_ROLLUP
+import org.opensearch.indexmanagement.security.INDEX_ROLLUP
+import org.opensearch.indexmanagement.security.MANAGED_INDEX
+import org.opensearch.indexmanagement.security.PUT_INDEX_MAPPING
+import org.opensearch.indexmanagement.security.SEARCH_INDEX
+import org.opensearch.indexmanagement.security.UPDATE_ROLLUP
+import org.opensearch.indexmanagement.security.WRITE_INDEX
+import org.opensearch.indexmanagement.security.WRITE_POLICY
 import org.opensearch.rest.RestStatus
 import org.opensearch.test.junit.annotations.TestLogging
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 import java.util.Locale
+import org.opensearch.indexmanagement.SecurityRestTestCase
 
 @TestLogging("level:DEBUG", reason = "Debug for tests.")
 class IndexStateManagementSecurityBehaviorIT : SecurityRestTestCase() {
