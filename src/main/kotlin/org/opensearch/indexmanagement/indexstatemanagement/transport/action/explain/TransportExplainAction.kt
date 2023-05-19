@@ -81,6 +81,7 @@ class TransportExplainAction @Inject constructor(
     val client: NodeClient,
     transportService: TransportService,
     actionFilters: ActionFilters,
+    val settings: Settings,
     val clusterService: ClusterService,
     val xContentRegistry: NamedXContentRegistry,
     val indexMetadataProvider: IndexMetadataProvider
@@ -374,7 +375,7 @@ class TransportExplainAction @Inject constructor(
 
             CoroutineScope(Dispatchers.IO).launch {
                 val threadContext = client.threadPool().threadContext
-                withClosableContext(IndexManagementSecurityContext("ManagedIndexExplainHandler", Settings.EMPTY, threadContext, user)) {
+                withClosableContext(IndexManagementSecurityContext("ManagedIndexExplainHandler", settings, threadContext, user)) {
                     // filter out indicies for which user doesn't have manage index permissions
                     for (i in 0 until indexNames.count()) {
                         val request = ManagedIndexRequest().indices(indexNames[i])
