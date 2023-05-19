@@ -1,6 +1,12 @@
 /*
- * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
+ *
+ * Modifications Copyright OpenSearch Contributors. See
+ * GitHub history for details.
  */
 
 package org.opensearch.indexmanagement.security
@@ -9,6 +15,18 @@ import org.junit.After
 import org.junit.Before
 import org.opensearch.client.RestClient
 import org.opensearch.commons.rest.SecureRestClientBuilder
+import org.opensearch.indexmanagement.BULK_WRITE_INDEX
+import org.opensearch.indexmanagement.CREATE_INDEX
+import org.opensearch.indexmanagement.EXPLAIN_INDEX
+import org.opensearch.indexmanagement.GET_INDEX_MAPPING
+import org.opensearch.indexmanagement.GET_POLICIES
+import org.opensearch.indexmanagement.GET_POLICY
+import org.opensearch.indexmanagement.MANAGED_INDEX
+import org.opensearch.indexmanagement.PUT_INDEX_MAPPING
+import org.opensearch.indexmanagement.SEARCH_INDEX
+import org.opensearch.indexmanagement.SecurityRestTestCase
+import org.opensearch.indexmanagement.WRITE_INDEX
+import org.opensearch.indexmanagement.WRITE_POLICY
 import org.opensearch.indexmanagement.SecurityRestTestCase
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings
 import org.opensearch.indexmanagement.makeRequest
