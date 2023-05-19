@@ -7,6 +7,7 @@ package org.opensearch.indexmanagement.controlcenter.notification.filter.parser
 
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
+import org.opensearch.ResourceAlreadyExistsException
 import org.opensearch.action.admin.indices.shrink.ResizeRequest
 import org.opensearch.action.support.ActiveShardCount
 import org.opensearch.action.support.ActiveShardsObserver
@@ -16,11 +17,13 @@ import org.opensearch.indexmanagement.controlcenter.notification.filter.Notifica
 import org.opensearch.indexmanagement.controlcenter.notification.filter.OperationResult
 import java.util.function.Consumer
 import org.opensearch.action.admin.indices.shrink.ResizeResponse
+import org.opensearch.index.IndexNotFoundException
+import java.lang.IllegalStateException
 
 class ResizeIndexRespParser(
     val activeShardsObserver: ActiveShardsObserver,
     val request: ResizeRequest,
-    val clusterService: ClusterService
+    val clusterService: ClusterService,
 ) : ResponseParser<ResizeResponse> {
 
     val logger: Logger = LogManager.getLogger(this::class.java)
@@ -31,7 +34,7 @@ class ResizeIndexRespParser(
     override fun parseAndSendNotification(
         response: ResizeResponse?,
         ex: Exception?,
-        callback: Consumer<ActionRespParseResult>
+        callback: Consumer<ActionRespParseResult>,
     ) {
         val isAsync = request.shouldStoreResult
         if (ex != null) {
@@ -104,22 +107,38 @@ class ResizeIndexRespParser(
     override fun buildNotificationMessage(
         response: ResizeResponse?,
         exception: Exception?,
-        isTimeout: Boolean
+        isTimeout: Boolean,
     ): String {
         val result = StringBuilder()
+        val action = request.resizeType.name.lowercase()
         result.append(
-            "The ${request.resizeType.name.lowercase()} job on from $indexWithCluster to ${
-            getIndexName(
-                request.targetIndexRequest, clusterService
-            )
+            "The $action operation from $indexWithCluster to ${
+            getIndexName(request.targetIndexRequest, clusterService)
             } "
         ).append(
             if (isTimeout) {
-                "has completed, but timed out while waiting for enough shards to be started in ${
-                totalWaitTime.toHumanReadableString(1)
-                }, try with `GET /${request.targetIndexRequest.index()}/_recovery` to get more index recovery details."
+                "has taken more than ${totalWaitTime.toHumanReadableString(1)} to complete. " +
+                    "To see the latest status, use `GET /${request.targetIndexRequest.index()}/_recovery`"
             } else if (exception != null) {
-                "${NotificationActionListener.FAILED} ${exception.message}"
+                val message = exception.message ?: ""
+                return when (exception) {
+                    is IllegalStateException -> {
+                        when {
+                            message.contains("must have all shards allocated on the same node") -> {
+                                "You must allocate a copy of every shard of the source index to the same node before $action."
+                            }
+
+                            message.contains("must be read-only to resize index") -> {
+                                "$indexWithCluster must be set to read-only to $action the index. To set it to read-only, use `PUT /${request.sourceIndex}/_block/write` "
+                            }
+
+                            else -> message
+                        }
+                    }
+                    is ResourceAlreadyExistsException -> "The target index ${ getIndexName(request.targetIndexRequest, clusterService)} already exists."
+                    is IndexNotFoundException -> "The $indexWithCluster does not exist."
+                    else -> message
+                }
             } else {
                 NotificationActionListener.COMPLETED
             }
@@ -131,7 +150,7 @@ class ResizeIndexRespParser(
         val builder = StringBuilder()
         with(builder) {
             append(request.resizeType.name.lowercase().replaceFirstChar { it.uppercase() })
-            append(" on $indexWithCluster has ${operationResult.desc}.")
+            append(" on $indexWithCluster has ${getOperationResultDesc(operationResult)}.")
         }
         return builder.toString()
     }

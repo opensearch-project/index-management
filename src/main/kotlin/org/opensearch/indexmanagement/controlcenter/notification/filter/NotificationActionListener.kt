@@ -295,8 +295,8 @@ class NotificationActionListener<Request : ActionRequest, Response : ActionRespo
 
     companion object {
         val MAX_WAIT_TIME: TimeValue = TimeValue.timeValueHours(1)
-        const val COMPLETED = "has completed."
-        const val FAILED = "has failed:"
+        const val COMPLETED = "has been completed."
+        const val FAILED = "has failed."
         val DELAY: TimeValue = TimeValue.timeValueSeconds(5)
     }
 }

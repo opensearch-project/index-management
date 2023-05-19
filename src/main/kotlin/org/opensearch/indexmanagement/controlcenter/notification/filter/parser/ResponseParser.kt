@@ -39,20 +39,35 @@ interface ResponseParser<Response : ActionResponse> {
     ): String
 
     fun getIndexName(req: ActionRequest, clusterService: ClusterService): String? {
+        var clusterName = clusterService.clusterName.value()
         return when (req) {
             is IndicesRequest -> {
-                "${clusterService.clusterName.value()}/${req.indices().joinToString(",")}"
+                if (req.indices().size == 1)
+                    "[$clusterName/${req.indices().joinToString(",")}]"
+                else
+                    "[${req.indices().joinToString(",")}] from [$clusterName]"
             }
 
             is ReindexRequest -> {
-                val clusterName =
-                    if (req.remoteInfo != null) "remote cluster ${req.remoteInfo.host}" else clusterService.clusterName.value()
-                "$clusterName/${req.searchRequest.indices().joinToString(",")}"
+                clusterName =
+                    if (req.remoteInfo != null) "remote cluster ${req.remoteInfo.host}" else clusterName
+                if (req.searchRequest.indices().size == 1)
+                    "[$clusterName/${req.searchRequest.indices().joinToString(",")}]"
+                else
+                    "[${req.searchRequest.indices().joinToString(",")}] from [$clusterName]"
             }
 
             else -> {
                 ""
             }
+        }
+    }
+
+    fun getOperationResultDesc(result: OperationResult): String {
+        return when (result) {
+            OperationResult.COMPLETE -> "been completed"
+            OperationResult.FAILED -> "failed"
+            OperationResult.TIMEOUT -> "failed"
         }
     }
 }

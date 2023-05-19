@@ -65,7 +65,7 @@ class ReindexRespParser(
         isTimeout: Boolean
     ): String {
         val result = StringBuilder(
-            "The reindex job on from $sourceIndex to ${getIndexName(request.destination, clusterService)} "
+            "The reindex operation from $sourceIndex to ${getIndexName(request.destination, clusterService)} "
         )
         if (exception != null) {
             result.append("${NotificationActionListener.FAILED} ${exception.message}")
@@ -84,37 +84,33 @@ class ReindexRespParser(
         }
         val failed = failures.isNotEmpty()
 
+        val taskId = TaskId(clusterService.localNode().id, task.id)
+
         with(result) {
             append(
                 if (!reason.isNullOrBlank()) {
-                    "has been cancelled with reason: $reason"
+                    "has been cancelled by user's request"
                 } else if (failed) {
-                    response.bulkFailures.isNullOrEmpty()
-                    "${NotificationActionListener.FAILED} ${failures.map { it.message }.distinct().take(2).joinToString(",")}"
+                    "${NotificationActionListener.FAILED} \n\n ${failures.size} errors were found, including: \n" +
+                        failures.map { it.message }.distinct().take(2).joinToString(",") +
+                        "\nTo see full errors, use `GET /_tasks/$taskId`"
                 } else {
                     NotificationActionListener.COMPLETED
                 }
             )
-            append(System.lineSeparator())
-            // "took":8154,"timed_out":false,"total":14074,"updated":0,"created":14074,"deleted":0,
+            append("\n\n")
+            append("*Summary (number of documents)* \n")
             append(
-                "Details: total: ${response.total}, created: ${response.created}, " +
-                    "updated: ${response.updated}, deleted: ${response.deleted}, " +
-                    "conflicts: ${response.versionConflicts}"
+                "Total: ${response.total}, Created: ${response.created}, " +
+                    "Updated: ${response.updated}, Deleted: ${response.deleted}, " +
+                    "Conflicts: ${response.versionConflicts}"
             )
-
-            val taskId = TaskId(clusterService.localNode().id, task.id)
-
-            if (failed) {
-                append(System.lineSeparator())
-                append("Check with `GET /_tasks/$taskId` to get detailed errors.")
-            }
         }
 
         return result.toString()
     }
 
     override fun buildNotificationTitle(operationResult: OperationResult): String {
-        return "Reindex on $sourceIndex has ${operationResult.desc}."
+        return "Reindex operation on $sourceIndex has ${getOperationResultDesc(operationResult)}."
     }
 }

@@ -5,6 +5,7 @@
 
 package org.opensearch.indexmanagement.controlcenter.notification.filter.parser
 
+import org.opensearch.OpenSearchException
 import org.opensearch.action.admin.indices.forcemerge.ForceMergeRequest
 import org.opensearch.action.admin.indices.forcemerge.ForceMergeResponse
 import org.opensearch.cluster.service.ClusterService
@@ -21,7 +22,7 @@ class ForceMergeIndexRespParser(val request: ForceMergeRequest, val clusterServi
     override fun parseAndSendNotification(
         response: ForceMergeResponse?,
         ex: Exception?,
-        callback: Consumer<ActionRespParseResult>
+        callback: Consumer<ActionRespParseResult>,
     ) {
         if (ex != null) {
             callback.accept(
@@ -59,23 +60,26 @@ class ForceMergeIndexRespParser(val request: ForceMergeRequest, val clusterServi
     override fun buildNotificationMessage(
         response: ForceMergeResponse?,
         exception: Exception?,
-        isTimeout: Boolean
+        isTimeout: Boolean,
     ): String {
-        val result = StringBuilder()
-        result.append(
-            "The force merge job on $indexNameWithCluster " +
-                if (exception != null) {
-                    "${NotificationActionListener.FAILED} ${exception.message}"
-                } else if (response != null && !response.shardFailures.isNullOrEmpty()) {
-                    "${NotificationActionListener.FAILED} ${response.shardFailures.joinToString(",") { it.reason() }}"
-                } else {
-                    NotificationActionListener.COMPLETED
-                }
-        )
-        return result.toString()
+        return if (exception != null) {
+            if (exception is OpenSearchException)
+                "index [" + exception.index.name + "] ${exception.message}."
+            else
+                exception.message ?: ""
+        } else if (response != null && !response.shardFailures.isNullOrEmpty())
+            response.shardFailures.joinToString(",") { "index [${it.index()} shard [${it.shardId()}] ${it.reason()}" }
+        else if (request.indices().size == 1)
+            "The force merge operation on $indexNameWithCluster ${NotificationActionListener.COMPLETED}"
+        else
+            "$indexNameWithCluster have been merged."
     }
 
     override fun buildNotificationTitle(operationResult: OperationResult): String {
-        return "Force merge on $indexNameWithCluster has ${operationResult.desc}."
+        if (request.indices().size == 1) {
+            return "Force merge operation on $indexNameWithCluster has ${getOperationResultDesc(operationResult)}."
+        } else {
+            return "Force merge operation on ${request.indices().size} indexes from [${clusterService.clusterName.value()}] has ${getOperationResultDesc(operationResult)}"
+        }
     }
 }
