@@ -91,15 +91,15 @@ class ResizeIndexRespParserTests : BaseRespParserTests() {
         }
     }
 
-    fun `test read-only has not set exception`() {
+    fun `test block write has not set exception`() {
         val request = ResizeRequest("target", "source_index")
         request.resizeType = ResizeType.SHRINK
         request.targetIndexRequest.timeout(TimeValue.timeValueMinutes(10))
         val parser = ResizeIndexRespParser(activeShardsObserver, request, clusterService)
 
-        parser.parseAndSendNotification(null, IllegalStateException("index source_index must be read-only to resize index. use \"index.blocks.write=true\"")) { ret ->
+        parser.parseAndSendNotification(null, IllegalStateException("index source_index must block write operations to resize index. use \"index.blocks.write=true\"")) { ret ->
             Assert.assertEquals(ret.operationResult, OperationResult.FAILED)
-            Assert.assertEquals(ret.message, "[test-cluster/source_index] must be set to read-only to shrink the index. To set it to read-only, use `PUT /source_index/_block/write` ")
+            Assert.assertEquals(ret.message, "[test-cluster/source_index] must be set to block write to shrink the index. To set it to block write, use `PUT /source_index/_block/write` ")
             Assert.assertEquals(ret.title, "Shrink operation on [test-cluster/source_index] has failed")
         }
     }

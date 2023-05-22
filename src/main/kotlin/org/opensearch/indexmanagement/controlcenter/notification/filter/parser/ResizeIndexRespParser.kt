@@ -132,9 +132,9 @@ class ResizeIndexRespParser(
                                     "}"
                             }
 
-                            message.contains("must be read-only to resize index") -> {
-                                "$indexWithCluster must be set to read-only to $action the index. " +
-                                    "To set it to read-only, use `PUT /${request.sourceIndex}/_block/write` "
+                            message.contains("must block write operations to resize index") -> {
+                                "$indexWithCluster must be set to block write to $action the index. " +
+                                    "To set it to block write, use `PUT /${request.sourceIndex}/_block/write` "
                             }
 
                             else -> message
