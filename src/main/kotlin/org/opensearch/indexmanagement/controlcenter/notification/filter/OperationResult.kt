@@ -6,5 +6,5 @@
 package org.opensearch.indexmanagement.controlcenter.notification.filter
 
 enum class OperationResult {
-    COMPLETE, FAILED, TIMEOUT
+    COMPLETE, FAILED, TIMEOUT, CANCELLED
 }

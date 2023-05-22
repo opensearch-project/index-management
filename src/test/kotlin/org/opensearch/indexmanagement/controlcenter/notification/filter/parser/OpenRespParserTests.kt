@@ -17,6 +17,7 @@ import org.opensearch.action.support.ActiveShardCount
 import org.opensearch.action.support.ActiveShardsObserver
 import org.opensearch.cluster.metadata.IndexNameExpressionResolver
 import org.opensearch.common.unit.TimeValue
+import org.opensearch.indexmanagement.controlcenter.notification.filter.OperationResult
 import java.lang.Exception
 
 class OpenRespParserTests : BaseRespParserTests() {
@@ -36,7 +37,8 @@ class OpenRespParserTests : BaseRespParserTests() {
         val parser = OpenIndexRespParser(activeShardsObserver, request, indexNameExpressionResolver, clusterService)
 
         parser.parseAndSendNotification(response) { ret ->
-            Assert.assertEquals(ret.message, "The open index job on test-cluster/index-1,index-2 has completed.")
+            Assert.assertEquals(ret.message, "[index-1,index-2] from [test-cluster] have been set to open.")
+            Assert.assertEquals(ret.title, "2 indexes from [test-cluster] have been opened")
         }
 
         Mockito.verify(activeShardsObserver, never())
@@ -51,10 +53,9 @@ class OpenRespParserTests : BaseRespParserTests() {
 
         val parser = OpenIndexRespParser(activeShardsObserver, request, indexNameExpressionResolver, clusterService)
 
-        parser.parseAndSendNotification(response, null) { ret ->
-            Assert.assertEquals(ret.message, "Open index [index-1,index-2] has completed.")
-        }
+        parser.parseAndSendNotification(response, null) {}
 
+        // wait for shard to get started
         Mockito.verify(activeShardsObserver, times(1))
             .waitForActiveShards(any(), Mockito.eq(ActiveShardCount.DEFAULT), any(), any(), any())
     }
@@ -75,16 +76,19 @@ class OpenRespParserTests : BaseRespParserTests() {
         parser.parseAndSendNotification(response) { ret ->
             Assert.assertEquals(
                 ret.message,
-                "The open index job on test-cluster/index-1,index-2 has completed, but timed out while waiting for enough shards to be started in 1h, try with `GET /index-1,index-2/_recovery` to get more details.",
+                "Opening the index [index-1,index-2] from [test-cluster] have taken more than 1h to complete. To see the latest status, use `GET /index-1,index-2/_recovery`",
             )
+            Assert.assertEquals(ret.title, "2 indexes from [test-cluster] have timed out to open")
         }
 
+        // don't wait for shard to get started
         Mockito.verify(activeShardsObserver, never())
             .waitForActiveShards(any(), Mockito.eq(ActiveShardCount.DEFAULT), any(), any(), any())
     }
 
     fun `test not all shards are started timeout`() {
         val request = OpenIndexRequest("index-1", "index-2")
+        // wait for 2 hours which is greater than default wait time 1 hour
         request.timeout(TimeValue.timeValueHours(2))
         val response = OpenIndexResponse(true, false)
         val parser = OpenIndexRespParser(activeShardsObserver, request, indexNameExpressionResolver, clusterService)
@@ -93,9 +97,10 @@ class OpenRespParserTests : BaseRespParserTests() {
             .thenReturn(arrayOf("index-1", "index-2"))
 
         parser.parseAndSendNotification(response, null) { ret ->
+            Assert.assertEquals(ret.title, "2 indexes from [test-cluster] have timed out to open")
             Assert.assertEquals(
                 ret.message,
-                "The open index job on test-cluster/index-1,index-2 has completed, but timed out while waiting for enough shards to be started in 2h, try with `GET /index-1,index-2/_recovery` to get more details.",
+                "Opening the index [index-1,index-2] from [test-cluster] have taken more than 2h to complete. To see the latest status, use `GET /index-1,index-2/_recovery`",
             )
         }
 
@@ -109,7 +114,10 @@ class OpenRespParserTests : BaseRespParserTests() {
         val parser = OpenIndexRespParser(activeShardsObserver, request, indexNameExpressionResolver, clusterService)
 
         val msg = parser.buildNotificationMessage(response)
-        Assert.assertEquals(msg, "The open index job on test-cluster/index-1,index-2 has completed.")
+        Assert.assertEquals(msg, "[index-1,index-2] from [test-cluster] have been set to open.")
+
+        val title = parser.buildNotificationTitle(OperationResult.COMPLETE)
+        Assert.assertEquals(title, "2 indexes from [test-cluster] have been opened")
     }
 
     fun `test build message for failure`() {
@@ -120,8 +128,10 @@ class OpenRespParserTests : BaseRespParserTests() {
         val msg = parser.buildNotificationMessage(response, Exception("index already exits error"))
         Assert.assertEquals(
             msg,
-            "The open index job on test-cluster/index-1,index-2 has failed: index already exits error",
+            "index already exits error",
         )
+        val title = parser.buildNotificationTitle(OperationResult.FAILED)
+        Assert.assertEquals(title, "2 indexes from [test-cluster] have failed to open")
     }
 
     fun `test build message for timeout`() {
@@ -132,7 +142,10 @@ class OpenRespParserTests : BaseRespParserTests() {
         val msg = parser.buildNotificationMessage(response, isTimeout = true)
         Assert.assertEquals(
             msg,
-            "The open index job on test-cluster/index-1,index-2 has completed, but timed out while waiting for enough shards to be started in 1h, try with `GET /index-1,index-2/_recovery` to get more details.",
+            "Opening the index [index-1,index-2] from [test-cluster] have taken more than 1h to complete. To see the latest status, use `GET /index-1,index-2/_recovery`",
         )
+
+        val title = parser.buildNotificationTitle(OperationResult.TIMEOUT)
+        Assert.assertEquals(title, "2 indexes from [test-cluster] have timed out to open")
     }
 }

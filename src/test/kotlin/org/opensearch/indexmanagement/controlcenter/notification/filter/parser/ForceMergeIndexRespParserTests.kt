@@ -15,6 +15,7 @@ import org.opensearch.common.xcontent.XContentType
 import org.opensearch.core.xcontent.DeprecationHandler
 import org.opensearch.core.xcontent.NamedXContentRegistry
 import org.opensearch.index.Index
+import org.opensearch.indexmanagement.controlcenter.notification.filter.OperationResult
 import org.opensearch.indexmanagement.snapshotmanagement.toJsonString
 
 class ForceMergeIndexRespParserTests : BaseRespParserTests() {
@@ -30,9 +31,30 @@ class ForceMergeIndexRespParserTests : BaseRespParserTests() {
         val parser = ForceMergeIndexRespParser(request, clusterService)
 
         val msg = parser.buildNotificationMessage(response)
+        val title = parser.buildNotificationTitle(OperationResult.COMPLETE)
+        Assert.assertEquals(title, "Force merge operation on [test-cluster/test-index-1] has completed")
         Assert.assertEquals(
             msg,
-            "The force merge job on test-cluster/test-index-1 has completed."
+            "The force merge operation on [test-cluster/test-index-1] has been completed."
+        )
+    }
+
+    fun `test build message for completion with multiple indexes`() {
+        val xContentParser = XContentType.JSON.xContent().createParser(
+            NamedXContentRegistry.EMPTY, DeprecationHandler.IGNORE_DEPRECATIONS,
+            "{\"_shards\":{\"total\":10,\"successful\":10,\"failed\":0}}"
+        )
+
+        val response = ForceMergeResponse.fromXContent(xContentParser)
+        val request = ForceMergeRequest("test-index-1", "test-index-2")
+        val parser = ForceMergeIndexRespParser(request, clusterService)
+
+        val msg = parser.buildNotificationMessage(response)
+        val title = parser.buildNotificationTitle(OperationResult.COMPLETE)
+        Assert.assertEquals(title, "Force merge operation on 2 indexes from [test-cluster] has completed")
+        Assert.assertEquals(
+            msg,
+            "[test-index-1,test-index-2] from [test-cluster] have been merged."
         )
     }
 
@@ -53,10 +75,12 @@ class ForceMergeIndexRespParserTests : BaseRespParserTests() {
         val request = ForceMergeRequest("test-index-1")
         val parser = ForceMergeIndexRespParser(request, clusterService)
 
+        val title = parser.buildNotificationTitle(OperationResult.FAILED)
+        Assert.assertEquals(title, "Force merge operation on [test-cluster/test-index-1] has failed")
         val msg = parser.buildNotificationMessage(response)
         Assert.assertEquals(
             msg,
-            "The force merge job on test-cluster/test-index-1 has failed: OpenSearchException[OpenSearch exception [type=exception, reason=shard is not available]]"
+            "index [test-index-1] shard [-1] OpenSearchException[OpenSearch exception [type=exception, reason=shard is not available]]"
         )
     }
 }

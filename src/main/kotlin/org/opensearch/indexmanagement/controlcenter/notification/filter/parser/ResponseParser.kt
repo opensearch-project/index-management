@@ -63,11 +63,12 @@ interface ResponseParser<Response : ActionResponse> {
         }
     }
 
-    fun getOperationResultDesc(result: OperationResult): String {
+    fun getOperationResultTitleDesc(result: OperationResult): String {
         return when (result) {
-            OperationResult.COMPLETE -> "been completed"
+            OperationResult.COMPLETE -> "completed"
             OperationResult.FAILED -> "failed"
-            OperationResult.TIMEOUT -> "failed"
+            OperationResult.TIMEOUT -> "timed out"
+            OperationResult.CANCELLED -> "been cancelled"
         }
     }
 }

@@ -48,6 +48,14 @@ class ReindexRespParser(
                     buildNotificationTitle(OperationResult.FAILED)
                 )
             )
+        } else if (!response.reasonCancelled.isNullOrEmpty()) {
+            callback.accept(
+                ActionRespParseResult(
+                    OperationResult.FAILED,
+                    buildNotificationMessage(response),
+                    buildNotificationTitle(OperationResult.CANCELLED)
+                )
+            )
         } else {
             callback.accept(
                 ActionRespParseResult(
@@ -91,7 +99,7 @@ class ReindexRespParser(
                 if (!reason.isNullOrBlank()) {
                     "has been cancelled by user's request"
                 } else if (failed) {
-                    "${NotificationActionListener.FAILED} \n\n ${failures.size} errors were found, including: \n" +
+                    "${NotificationActionListener.FAILED} \n\n ${failures.size} error(s) found, including: \n" +
                         failures.map { it.message }.distinct().take(2).joinToString(",") +
                         "\nTo see full errors, use `GET /_tasks/$taskId`"
                 } else {
@@ -111,6 +119,6 @@ class ReindexRespParser(
     }
 
     override fun buildNotificationTitle(operationResult: OperationResult): String {
-        return "Reindex operation on $sourceIndex has ${getOperationResultDesc(operationResult)}."
+        return "Reindex operation on $sourceIndex has ${getOperationResultTitleDesc(operationResult)}"
     }
 }

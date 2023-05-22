@@ -133,6 +133,6 @@ class OpenIndexRespParser(
         return if (request.indices().size == 1)
             "$indexNameWithCluster has $result"
         else
-            "${request.indices().size} indexes have $result"
+            "${request.indices().size} indexes from [${clusterService.clusterName.value()}] have $result"
     }
 }

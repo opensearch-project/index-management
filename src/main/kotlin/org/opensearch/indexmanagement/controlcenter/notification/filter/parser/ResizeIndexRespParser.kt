@@ -125,17 +125,24 @@ class ResizeIndexRespParser(
                     is IllegalStateException -> {
                         when {
                             message.contains("must have all shards allocated on the same node") -> {
-                                "You must allocate a copy of every shard of the source index to the same node before $action."
+                                "You must allocate a copy of every shard of the source index to the same node before $action. " +
+                                    "To allocate it to same node, try use PUT /${request.sourceIndex}/_settings\n" +
+                                    "{\n" +
+                                    "\"index.routing.allocation.require._name\":\"your_node_name\"\n" +
+                                    "}"
                             }
 
                             message.contains("must be read-only to resize index") -> {
-                                "$indexWithCluster must be set to read-only to $action the index. To set it to read-only, use `PUT /${request.sourceIndex}/_block/write` "
+                                "$indexWithCluster must be set to read-only to $action the index. " +
+                                    "To set it to read-only, use `PUT /${request.sourceIndex}/_block/write` "
                             }
 
                             else -> message
                         }
                     }
-                    is ResourceAlreadyExistsException -> "The target index ${ getIndexName(request.targetIndexRequest, clusterService)} already exists."
+                    is ResourceAlreadyExistsException -> {
+                        "The target index ${getIndexName(request.targetIndexRequest, clusterService)} already exists."
+                    }
                     is IndexNotFoundException -> "The $indexWithCluster does not exist."
                     else -> message
                 }
@@ -150,7 +157,7 @@ class ResizeIndexRespParser(
         val builder = StringBuilder()
         with(builder) {
             append(request.resizeType.name.lowercase().replaceFirstChar { it.uppercase() })
-            append(" on $indexWithCluster has ${getOperationResultDesc(operationResult)}.")
+            append(" operation on $indexWithCluster has ${getOperationResultTitleDesc(operationResult)}")
         }
         return builder.toString()
     }

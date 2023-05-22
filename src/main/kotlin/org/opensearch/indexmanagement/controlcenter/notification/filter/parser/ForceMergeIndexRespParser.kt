@@ -68,7 +68,7 @@ class ForceMergeIndexRespParser(val request: ForceMergeRequest, val clusterServi
             else
                 exception.message ?: ""
         } else if (response != null && !response.shardFailures.isNullOrEmpty())
-            response.shardFailures.joinToString(",") { "index [${it.index()} shard [${it.shardId()}] ${it.reason()}" }
+            response.shardFailures.joinToString(",") { "index [${it.index()}] shard [${it.shardId()}] ${it.reason()}" }
         else if (request.indices().size == 1)
             "The force merge operation on $indexNameWithCluster ${NotificationActionListener.COMPLETED}"
         else
@@ -77,9 +77,10 @@ class ForceMergeIndexRespParser(val request: ForceMergeRequest, val clusterServi
 
     override fun buildNotificationTitle(operationResult: OperationResult): String {
         if (request.indices().size == 1) {
-            return "Force merge operation on $indexNameWithCluster has ${getOperationResultDesc(operationResult)}."
+            return "Force merge operation on $indexNameWithCluster has ${getOperationResultTitleDesc(operationResult)}"
         } else {
-            return "Force merge operation on ${request.indices().size} indexes from [${clusterService.clusterName.value()}] has ${getOperationResultDesc(operationResult)}"
+            return "Force merge operation on " +
+                "${request.indices().size} indexes from [${clusterService.clusterName.value()}] has ${getOperationResultTitleDesc(operationResult)}"
         }
     }
 }

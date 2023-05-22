@@ -13,6 +13,7 @@ import org.opensearch.index.reindex.BulkByScrollResponse
 import org.opensearch.index.reindex.BulkByScrollTask
 import org.opensearch.index.reindex.ReindexAction
 import org.opensearch.index.reindex.ReindexRequest
+import org.opensearch.indexmanagement.controlcenter.notification.filter.OperationResult
 import org.opensearch.tasks.Task
 import org.opensearch.tasks.TaskId
 import java.lang.Exception
@@ -58,10 +59,14 @@ class ReindexRespParserTests : BaseRespParserTests() {
         val msg = parser.buildNotificationMessage(response)
         Assert.assertEquals(
             msg,
-            "The reindex job on from test-cluster/source to test-cluster/dest has completed." +
-                System.lineSeparator() +
-                "Details: total: 100, created: 100, updated: 0, deleted: 0, conflicts: 0"
+            "The reindex operation from [test-cluster/source] to [test-cluster/dest] has been completed.\n" +
+                "\n" +
+                "*Summary (number of documents)* \n" +
+                "Total: 100, Created: 100, Updated: 0, Deleted: 0, Conflicts: 0"
         )
+
+        val title = parser.buildNotificationTitle(OperationResult.COMPLETE)
+        Assert.assertEquals(title, "Reindex operation on [test-cluster/source] has completed")
     }
 
     fun `test build message for cancellation`() {
@@ -71,7 +76,7 @@ class ReindexRespParserTests : BaseRespParserTests() {
                 1,
                 100,
                 0,
-                100,
+                20,
                 0,
                 1,
                 0,
@@ -90,10 +95,14 @@ class ReindexRespParserTests : BaseRespParserTests() {
         val msg = parser.buildNotificationMessage(response)
         Assert.assertEquals(
             msg,
-            "The reindex job on from test-cluster/source to test-cluster/dest has been cancelled with reason: user cancelled" +
-                System.lineSeparator() +
-                "Details: total: 100, created: 100, updated: 0, deleted: 0, conflicts: 0"
+            "The reindex operation from [test-cluster/source] to [test-cluster/dest] has been cancelled by user's request\n" +
+                "\n" +
+                "*Summary (number of documents)* \n" +
+                "Total: 100, Created: 20, Updated: 0, Deleted: 0, Conflicts: 0"
         )
+
+        val title = parser.buildNotificationTitle(OperationResult.CANCELLED)
+        Assert.assertEquals(title, "Reindex operation on [test-cluster/source] has been cancelled")
     }
 
     fun `test build message for failure`() {
@@ -103,10 +112,10 @@ class ReindexRespParserTests : BaseRespParserTests() {
                 1,
                 100,
                 0,
-                100,
+                99,
                 0,
                 1,
-                0,
+                1,
                 0,
                 0,
                 0,
@@ -124,10 +133,17 @@ class ReindexRespParserTests : BaseRespParserTests() {
         val msg = parser.buildNotificationMessage(response)
         Assert.assertEquals(
             msg,
-            "The reindex job on from test-cluster/source to test-cluster/dest has failed: version conflicts" +
-                System.lineSeparator() +
-                "Details: total: 100, created: 100, updated: 0, deleted: 0, conflicts: 0" +
-                "${System.lineSeparator()}Check with `GET /_tasks/mJzoy8SBuTW12rbV8jSg:1` to get detailed errors."
+            "The reindex operation from [test-cluster/source] to [test-cluster/dest] has failed. \n" +
+                "\n" +
+                " 1 error(s) found, including: \n" +
+                "version conflicts\n" +
+                "To see full errors, use `GET /_tasks/mJzoy8SBuTW12rbV8jSg:1`\n" +
+                "\n" +
+                "*Summary (number of documents)* \n" +
+                "Total: 100, Created: 99, Updated: 0, Deleted: 0, Conflicts: 1"
         )
+
+        val title = parser.buildNotificationTitle(OperationResult.FAILED)
+        Assert.assertEquals(title, "Reindex operation on [test-cluster/source] has failed")
     }
 }
