@@ -6,7 +6,7 @@
 package org.opensearch.indexmanagement.indexstatemanagement.resthandler
 
 import org.opensearch.client.node.NodeClient
-import org.opensearch.common.Strings
+import org.opensearch.core.common.Strings
 import org.opensearch.core.xcontent.XContentParser.Token
 import org.opensearch.common.xcontent.XContentParserUtils.ensureExpectedToken
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.ISM_BASE_URI
