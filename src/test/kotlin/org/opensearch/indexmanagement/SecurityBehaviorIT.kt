@@ -21,7 +21,7 @@ import org.opensearch.test.junit.annotations.TestLogging
 
 @TestLogging("level:DEBUG", reason = "Debug for tests.")
 class SecurityBehaviorIT : SecurityRestTestCase() {
-    private val password = "Test123!"
+    private val password = "TestpgfhertergGd435AASA123!"
 
     private val john = "john"
     private var johnClient: RestClient? = null

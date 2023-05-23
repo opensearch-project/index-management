@@ -33,6 +33,7 @@ import org.opensearch.rest.RestRequest
 import org.opensearch.rest.RestStatus
 import java.time.Instant
 import java.time.temporal.ChronoUnit
+import java.util.Collections.emptyMap
 
 class RollupRunnerIT : RollupRestTestCase() {
 
@@ -1251,6 +1252,71 @@ class RollupRunnerIT : RollupRestTestCase() {
         var rollupMetadataID = startedRollup1.metadataID!!
         var rollupMetadata = getRollupMetadata(rollupMetadataID)
         assertEquals("Backing index [$backingIndex2] has to have owner rollup job with id:[${startedRollup1.id}]", rollupMetadata.failureReason)
+    }
+
+    fun `test rollup with date_nanos as date_histogram field`() {
+        val index = "date-nanos-index"
+        val rollupIndex = "date-nanos-index-rollup"
+        createIndex(
+            index,
+            Settings.EMPTY,
+            """"properties": {
+                  "purchaseDate": {
+                    "type": "date_nanos" 
+                  },
+                  "itemName": {
+                    "type": "keyword"
+                  },
+                  "itemPrice": {
+                    "type": "float"
+                  }
+                }"""
+        )
+
+        indexDoc(index, "1", """{"purchaseDate": 1683149130000.6497, "itemName": "shoes", "itemPrice": 100.5}""".trimIndent())
+        indexDoc(index, "2", """{"purchaseDate": 1683494790000, "itemName": "shoes", "itemPrice": 30.0}""".trimIndent())
+        indexDoc(index, "3", """{"purchaseDate": "2023-05-08T18:57:33.743656789Z", "itemName": "shoes", "itemPrice": 60.592}""".trimIndent())
+
+        refreshAllIndices()
+
+        val job = Rollup(
+            id = "rollup_with_alias_992434131",
+            schemaVersion = 1L,
+            enabled = true,
+            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.DAYS),
+            jobLastUpdatedTime = Instant.now(),
+            jobEnabledTime = Instant.now(),
+            description = "basic change of page size",
+            sourceIndex = index,
+            targetIndex = rollupIndex,
+            metadataID = null,
+            roles = emptyList(),
+            pageSize = 1000,
+            delay = 0,
+            continuous = true,
+            dimensions = listOf(
+                DateHistogram(sourceField = "purchaseDate", fixedInterval = "5d"),
+                Terms("itemName", "itemName"),
+            ),
+            metrics = listOf(
+                RollupMetrics(
+                    sourceField = "itemPrice",
+                    targetField = "itemPrice",
+                    metrics = listOf(Sum(), Min(), Max(), ValueCount(), Average())
+                )
+            )
+        ).let { createRollup(it, it.id) }
+
+        updateRollupStartTime(job)
+
+        waitFor { assertTrue("Target rollup index was not created", indexExists(rollupIndex)) }
+
+        waitFor {
+            val rollupJob = getRollup(rollupId = job.id)
+            assertNotNull("Rollup job doesn't have metadata set", rollupJob.metadataID)
+            val rollupMetadata = getRollupMetadata(rollupJob.metadataID!!)
+            assertEquals("Rollup is not started", RollupMetadata.Status.STARTED, rollupMetadata.status)
+        }
     }
 
     // TODO: Test scenarios:
