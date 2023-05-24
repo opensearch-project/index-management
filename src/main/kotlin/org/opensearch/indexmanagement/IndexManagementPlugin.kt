@@ -165,6 +165,7 @@ import org.opensearch.indexmanagement.transform.resthandler.RestPreviewTransform
 import org.opensearch.indexmanagement.transform.resthandler.RestStartTransformAction
 import org.opensearch.indexmanagement.transform.resthandler.RestStopTransformAction
 import org.opensearch.indexmanagement.transform.settings.TransformSettings
+import org.opensearch.indices.SystemIndexDescriptor
 import org.opensearch.jobscheduler.spi.JobSchedulerExtension
 import org.opensearch.jobscheduler.spi.ScheduledJobParser
 import org.opensearch.jobscheduler.spi.ScheduledJobRunner
@@ -173,6 +174,7 @@ import org.opensearch.plugins.ActionPlugin
 import org.opensearch.plugins.ExtensiblePlugin
 import org.opensearch.plugins.NetworkPlugin
 import org.opensearch.plugins.Plugin
+import org.opensearch.plugins.SystemIndexPlugin
 import org.opensearch.repositories.RepositoriesService
 import org.opensearch.rest.RestController
 import org.opensearch.rest.RestHandler
@@ -185,7 +187,7 @@ import org.opensearch.watcher.ResourceWatcherService
 import java.util.function.Supplier
 
 @Suppress("TooManyFunctions")
-class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin, ExtensiblePlugin, Plugin() {
+class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin, ExtensiblePlugin, SystemIndexPlugin, Plugin() {
 
     private val logger = LogManager.getLogger(javaClass)
     lateinit var indexManagementIndices: IndexManagementIndices
@@ -582,6 +584,10 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
 
     override fun getActionFilters(): List<ActionFilter> {
         return listOf(fieldCapsFilter)
+    }
+
+    override fun getSystemIndexDescriptors(settings: Settings): Collection<SystemIndexDescriptor> {
+        return listOf(SystemIndexDescriptor(INDEX_MANAGEMENT_INDEX, "Index for storing index management configuration and metadata."))
     }
 }
 
