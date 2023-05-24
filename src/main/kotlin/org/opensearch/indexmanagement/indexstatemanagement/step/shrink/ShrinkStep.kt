@@ -55,7 +55,7 @@ abstract class ShrinkStep(
 
     protected suspend fun cleanupAndFail(infoMessage: String, logMessage: String? = null, cause: String? = null, e: Exception? = null) {
         cleanupResources(cleanupSettings, cleanupLock, cleanupTargetIndex)
-        fail(infoMessage, logMessage, cause, e)
+        setStepFailed(infoMessage, logMessage, cause, e)
     }
 
     abstract fun getGenericFailureMessage(): String
@@ -63,12 +63,11 @@ abstract class ShrinkStep(
     abstract suspend fun wrappedExecute(context: StepContext): Step
 
     @Suppress("ReturnCount")
-    protected suspend fun updateAndGetShrinkActionProperties(context: StepContext): ShrinkActionProperties? {
+    protected suspend fun checkShrinkActionPropertiesAndRenewLock(context: StepContext): ShrinkActionProperties? {
         val actionMetadata = context.metadata.actionMetaData
         var localShrinkActionProperties = actionMetadata?.actionProperties?.shrinkActionProperties
-        shrinkActionProperties = localShrinkActionProperties
         if (localShrinkActionProperties == null) {
-            cleanupAndFail(METADATA_FAILURE_MESSAGE, METADATA_FAILURE_MESSAGE)
+            setStepFailed(METADATA_FAILURE_MESSAGE, METADATA_FAILURE_MESSAGE)
             return null
         }
         val lock = renewShrinkLock(localShrinkActionProperties, context.lockService, logger)
@@ -85,7 +84,7 @@ abstract class ShrinkStep(
         return localShrinkActionProperties
     }
 
-    protected fun fail(infoMessage: String, logMessage: String? = null, cause: String? = null, e: Exception? = null) {
+    protected fun setStepFailed(infoMessage: String, logMessage: String? = null, cause: String? = null, e: Exception? = null) {
         if (logMessage != null) {
             if (e != null) {
                 logger.error(logMessage, e)
@@ -95,7 +94,6 @@ abstract class ShrinkStep(
         }
         info = if (cause == null) mapOf("message" to infoMessage) else mapOf("message" to infoMessage, "cause" to cause)
         stepStatus = StepStatus.FAILED
-        shrinkActionProperties = null
     }
 
     protected suspend fun cleanupResources(resetSettings: Boolean, releaseLock: Boolean, deleteTargetIndex: Boolean) {
@@ -104,6 +102,7 @@ abstract class ShrinkStep(
             if (resetSettings) resetIndexSettings(localShrinkActionProperties)
             if (deleteTargetIndex) deleteTargetIndex(localShrinkActionProperties)
             if (releaseLock) releaseLock(localShrinkActionProperties)
+            shrinkActionProperties = null
         } else {
             logger.error("Shrink action failed to clean up resources due to null shrink action properties.")
         }

@@ -34,7 +34,7 @@ import java.time.temporal.ChronoUnit
 
 @TestLogging("level:DEBUG", reason = "Debug for tests.")
 class RollupSecurityBehaviorIT : SecurityRestTestCase() {
-    private val password = "Test123!"
+    private val password = "TestpgfhertergGd435AASA123!"
 
     private val superRollupUser = "john"
     private var superUserClient: RestClient? = null

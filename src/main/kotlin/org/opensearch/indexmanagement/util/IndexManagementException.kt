@@ -7,7 +7,7 @@ package org.opensearch.indexmanagement.util
 
 import org.opensearch.OpenSearchException
 import org.opensearch.OpenSearchStatusException
-import org.opensearch.common.Strings
+import org.opensearch.core.common.Strings
 import org.opensearch.common.ValidationException
 import org.opensearch.index.IndexNotFoundException
 import org.opensearch.rest.RestStatus

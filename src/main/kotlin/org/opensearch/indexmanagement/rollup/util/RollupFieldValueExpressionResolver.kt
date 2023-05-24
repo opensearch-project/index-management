@@ -57,9 +57,9 @@ object RollupFieldValueExpressionResolver {
     open class IndexAliasUtils(val clusterService: ClusterService) {
 
         open fun hasAlias(index: String): Boolean {
-            val aliases = this.clusterService.state().metadata().indices.get(index)?.aliases
+            val aliases = this.clusterService.state().metadata().indices[index]?.aliases
             if (aliases != null) {
-                return aliases.size() > 0
+                return aliases.isNotEmpty()
             }
             return false
         }

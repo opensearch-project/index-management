@@ -26,14 +26,15 @@ class WaitForMoveShardsStep(private val action: ShrinkAction) : ShrinkStep(name,
     override suspend fun wrappedExecute(context: StepContext): WaitForMoveShardsStep {
         val indexName = context.metadata.index
         // If the returned shrinkActionProperties are null, then the status has been set to failed, just return
-        val localShrinkActionProperties = updateAndGetShrinkActionProperties(context) ?: return this
+        val localShrinkActionProperties = checkShrinkActionPropertiesAndRenewLock(context) ?: return this
 
         val shardStats = getShardStats(indexName, context.client) ?: return this
 
         val numShardsInSync = getNumShardsInSync(shardStats, context.clusterService.state(), indexName)
         val nodeToMoveOnto = localShrinkActionProperties.nodeName
         val numShardsOnNode = getNumShardsWithCopyOnNode(shardStats, context.clusterService.state(), nodeToMoveOnto)
-        val numPrimaryShards = context.clusterService.state().metadata.indices[indexName].numberOfShards
+        val numPrimaryShards = context.clusterService.state().metadata.indices[indexName]?.numberOfShards
+            ?: error("numberOfShards should not be null")
 
         // If a copy of each shard is on the node, and all shards are in sync, move on
         if (numShardsOnNode >= numPrimaryShards && numShardsInSync >= numPrimaryShards) {
@@ -49,8 +50,8 @@ class WaitForMoveShardsStep(private val action: ShrinkAction) : ShrinkStep(name,
 
     // Returns the number of shard IDs where all primary and replicas are in sync
     private fun getNumShardsInSync(shardStats: Array<ShardStats>, state: ClusterState, indexName: String): Int {
-        val numReplicas = state.metadata.indices[indexName].numberOfReplicas
-        val inSyncAllocations = state.metadata.indices[indexName].inSyncAllocationIds
+        val numReplicas = state.metadata.indices[indexName]?.numberOfReplicas ?: error("numberOfReplicas should not be null")
+        val inSyncAllocations = state.metadata.indices[indexName]?.inSyncAllocationIds
         var numShardsInSync = 0
         for (shard: ShardStats in shardStats) {
             val routingInfo = shard.shardRouting
@@ -58,7 +59,7 @@ class WaitForMoveShardsStep(private val action: ShrinkAction) : ShrinkStep(name,
             if (routingInfo.primary()) {
                 // All shards must be in sync as it isn't known which shard (replica or primary) will be
                 // moved to the target node and used in the shrink.
-                if (inSyncAllocations[routingInfo.id].size == (numReplicas + 1)) {
+                if (inSyncAllocations?.get(routingInfo.id)?.size == (numReplicas + 1)) {
                     numShardsInSync++
                 }
             }
@@ -87,7 +88,7 @@ class WaitForMoveShardsStep(private val action: ShrinkAction) : ShrinkStep(name,
         val response: IndicesStatsResponse = client.admin().indices().suspendUntil { stats(indexStatsRequests, it) }
         val shardStats = response.shards
         if (shardStats == null) {
-            fail(AttemptMoveShardsStep.FAILURE_MESSAGE, "Failed to move shards in shrink action as shard stats were null.")
+            cleanupAndFail(AttemptMoveShardsStep.FAILURE_MESSAGE, "Failed to move shards in shrink action as shard stats were null.")
             return null
         }
         return shardStats

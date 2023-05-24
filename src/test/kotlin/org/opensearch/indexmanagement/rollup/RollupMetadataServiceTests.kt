@@ -735,7 +735,7 @@ class RollupMetadataServiceTests : OpenSearchTestCase() {
 
         // TODO: Mockito 2 supposedly should be able to mock final classes but there were errors when trying to do so
         //   Will need to check if there is a workaround or a better way to mock getting hits.hits since this current approach is verbose
-        val docField = DocumentField(dateHistogram.sourceField, listOf(getInstant(timestamp).toEpochMilli().toString()))
+        val docField = DocumentField(dateHistogram.sourceField, listOf(timestamp))
         val searchHit = SearchHit(0)
         searchHit.setDocumentField(dateHistogram.sourceField, docField)
         val searchHits = SearchHits(arrayOf(searchHit), null, 0.0F)
