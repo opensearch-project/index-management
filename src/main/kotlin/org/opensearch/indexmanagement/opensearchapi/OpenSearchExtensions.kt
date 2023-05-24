@@ -38,6 +38,7 @@ import org.opensearch.common.xcontent.XContentType
 import org.opensearch.commons.InjectSecurity
 import org.opensearch.commons.authuser.User
 import org.opensearch.commons.notifications.NotificationsPluginInterface
+import org.opensearch.core.concurrency.OpenSearchRejectedExecutionException
 import org.opensearch.core.xcontent.MediaType
 import org.opensearch.core.xcontent.NamedXContentRegistry
 import org.opensearch.core.xcontent.ToXContent
@@ -180,6 +181,12 @@ suspend fun <T> BackoffPolicy.retry(
                 delay(backoff.millis)
             } else {
                 throw e
+            }
+        } catch (rje: OpenSearchRejectedExecutionException) {
+            if (iter.hasNext()) {
+                backoff = iter.next()
+                logger.warn("Rejected execution. Retrying in $backoff.", rje)
+                delay((backoff.millis))
             }
         }
     } while (true)
