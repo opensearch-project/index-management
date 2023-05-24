@@ -56,7 +56,7 @@ abstract class IndexManagementRestTestCase : ODFERestTestCase() {
     // preemptively seems to give the job scheduler time to listen to operations.
     @Before
     fun initializeManagedIndex() {
-        if (!indexExists(IndexManagementPlugin.INDEX_MANAGEMENT_INDEX)) {
+        if (!isIndexExists(IndexManagementPlugin.INDEX_MANAGEMENT_INDEX)) {
             val request = Request("PUT", "/${IndexManagementPlugin.INDEX_MANAGEMENT_INDEX}")
             var entity = "{\"settings\": " + Strings.toString(XContentType.JSON, Settings.builder().put(INDEX_HIDDEN, true).build())
             entity += ",\"mappings\" : ${IndexManagementIndices.indexManagementMappings}}"
@@ -76,6 +76,11 @@ abstract class IndexManagementRestTestCase : ODFERestTestCase() {
     fun Response.asMap(): Map<String, Any> = entityAsMap(this)
 
     protected fun Response.restStatus(): RestStatus = RestStatus.fromCode(this.statusLine.statusCode)
+
+    protected fun isIndexExists(index: String): Boolean {
+        val response = client().makeRequest("HEAD", index)
+        return RestStatus.OK == response.restStatus()
+    }
 
     protected fun assertIndexExists(index: String) {
         val response = client().makeRequest("HEAD", index)

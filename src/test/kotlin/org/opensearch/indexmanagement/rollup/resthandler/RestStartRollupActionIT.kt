@@ -247,6 +247,8 @@ class RestStartRollupActionIT : RollupRestTestCase() {
         assertEquals("Rollup is not RETRY", RollupMetadata.Status.RETRY, rollupMetadata.status)
 
         // clearing the config index to prevent other tests using this multi shard index
+        Thread.sleep(2000L)
         deleteIndex(IndexManagementPlugin.INDEX_MANAGEMENT_INDEX)
+        Thread.sleep(2000L)
     }
 }
