@@ -19,7 +19,7 @@ import org.opensearch.rest.RestStatus
 
 @Suppress("UNCHECKED_CAST")
 class LRONConfigSecurityBehaviorIT : SecurityRestTestCase() {
-    private val password = "password"
+    private val password = "TestpgfhertergGd435AASA123!"
     private val superUser = "superUser"
     private var superUserClient: RestClient? = null
 
