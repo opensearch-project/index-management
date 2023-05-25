@@ -21,6 +21,7 @@ const val IF_SEQ_NO = "if_seq_no"
 const val _PRIMARY_TERM = "_primary_term"
 const val IF_PRIMARY_TERM = "if_primary_term"
 const val REFRESH = "refresh"
+const val DRY_RUN = "dry_run"
 
 fun RestRequest.getSearchParams(defaultPolicySortField: String): SearchParams {
     val size = this.paramAsInt("size", DEFAULT_PAGINATION_SIZE)

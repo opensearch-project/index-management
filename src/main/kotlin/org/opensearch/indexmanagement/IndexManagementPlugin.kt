@@ -29,6 +29,16 @@ import org.opensearch.core.xcontent.XContentParser.Token
 import org.opensearch.common.xcontent.XContentParserUtils.ensureExpectedToken
 import org.opensearch.env.Environment
 import org.opensearch.env.NodeEnvironment
+import org.opensearch.indexmanagement.controlcenter.notification.ControlCenterIndices
+import org.opensearch.indexmanagement.controlcenter.notification.action.delete.DeleteLRONConfigAction
+import org.opensearch.indexmanagement.controlcenter.notification.action.delete.TransportDeleteLRONConfigAction
+import org.opensearch.indexmanagement.controlcenter.notification.action.get.GetLRONConfigAction
+import org.opensearch.indexmanagement.controlcenter.notification.action.get.TransportGetLRONConfigAction
+import org.opensearch.indexmanagement.controlcenter.notification.action.index.IndexLRONConfigAction
+import org.opensearch.indexmanagement.controlcenter.notification.action.index.TransportIndexLRONConfigAction
+import org.opensearch.indexmanagement.controlcenter.notification.resthandler.RestDeleteLRONConfigAction
+import org.opensearch.indexmanagement.controlcenter.notification.resthandler.RestGetLRONConfigAction
+import org.opensearch.indexmanagement.controlcenter.notification.resthandler.RestIndexLRONConfigAction
 import org.opensearch.indexmanagement.indexstatemanagement.DefaultIndexMetadataService
 import org.opensearch.indexmanagement.indexstatemanagement.ExtensionStatusChecker
 import org.opensearch.indexmanagement.indexstatemanagement.ISMActionsParser
@@ -205,11 +215,14 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
     companion object {
         const val PLUGINS_BASE_URI = "/_plugins"
         const val ISM_BASE_URI = "$PLUGINS_BASE_URI/_ism"
+        const val IM_BASE_URI = "$PLUGINS_BASE_URI/_im"
         const val ROLLUP_BASE_URI = "$PLUGINS_BASE_URI/_rollup"
         const val TRANSFORM_BASE_URI = "$PLUGINS_BASE_URI/_transform"
+        const val LRON_BASE_URI = "$IM_BASE_URI/lron"
         const val POLICY_BASE_URI = "$ISM_BASE_URI/policies"
         const val ROLLUP_JOBS_BASE_URI = "$ROLLUP_BASE_URI/jobs"
         const val INDEX_MANAGEMENT_INDEX = ".opendistro-ism-config"
+        const val CONTROL_CENTER_INDEX = ".opensearch-control-center"
         const val INDEX_MANAGEMENT_JOB_TYPE = "opendistro-index-management"
         const val INDEX_STATE_MANAGEMENT_HISTORY_TYPE = "managed_index_meta_data"
 
@@ -342,7 +355,10 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
             RestExplainSMPolicyHandler(),
             RestDeleteSMPolicyHandler(),
             RestCreateSMPolicyHandler(),
-            RestUpdateSMPolicyHandler()
+            RestUpdateSMPolicyHandler(),
+            RestIndexLRONConfigAction(),
+            RestGetLRONConfigAction(),
+            RestDeleteLRONConfigAction()
         )
     }
 
@@ -400,6 +416,7 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
             .registerConsumers()
             .registerClusterConfigurationProvider(skipFlag)
         indexManagementIndices = IndexManagementIndices(settings, client.admin().indices(), clusterService)
+        val controlCenterIndices = ControlCenterIndices(client.admin().indices(), clusterService)
         actionValidation = ActionValidation(settings, clusterService, jvmService)
         val indexStateManagementHistory =
             IndexStateManagementHistory(
@@ -451,6 +468,7 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
             rollupRunner,
             transformRunner,
             indexManagementIndices,
+            controlCenterIndices,
             actionValidation,
             managedIndexCoordinator,
             indexStateManagementHistory,
@@ -574,7 +592,10 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
             ActionPlugin.ActionHandler(SMActions.START_SM_POLICY_ACTION_TYPE, TransportStartSMAction::class.java),
             ActionPlugin.ActionHandler(SMActions.STOP_SM_POLICY_ACTION_TYPE, TransportStopSMAction::class.java),
             ActionPlugin.ActionHandler(SMActions.EXPLAIN_SM_POLICY_ACTION_TYPE, TransportExplainSMAction::class.java),
-            ActionPlugin.ActionHandler(SMActions.GET_SM_POLICIES_ACTION_TYPE, TransportGetSMPoliciesAction::class.java)
+            ActionPlugin.ActionHandler(SMActions.GET_SM_POLICIES_ACTION_TYPE, TransportGetSMPoliciesAction::class.java),
+            ActionPlugin.ActionHandler(IndexLRONConfigAction.INSTANCE, TransportIndexLRONConfigAction::class.java),
+            ActionPlugin.ActionHandler(GetLRONConfigAction.INSTANCE, TransportGetLRONConfigAction::class.java),
+            ActionPlugin.ActionHandler(DeleteLRONConfigAction.INSTANCE, TransportDeleteLRONConfigAction::class.java)
         )
     }
 
