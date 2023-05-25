@@ -5,9 +5,9 @@
 
 package org.opensearch.indexmanagement.controlcenter.notification.resthandler
 
-import org.apache.hc.core5.http.ContentType
-import org.apache.hc.core5.http.HttpEntity
-import org.apache.hc.core5.http.io.entity.StringEntity
+import org.apache.http.HttpEntity
+import org.apache.http.entity.ContentType
+import org.apache.http.entity.StringEntity
 import org.junit.After
 import org.junit.AfterClass
 import org.junit.Before
