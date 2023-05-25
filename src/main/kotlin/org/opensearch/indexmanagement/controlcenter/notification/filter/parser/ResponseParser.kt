@@ -18,15 +18,7 @@ interface ResponseParser<Response : ActionResponse> {
         response: Response?,
         ex: Exception? = null,
         callback: Consumer<ActionRespParseResult>
-    ) {
-        callback.accept(
-            ActionRespParseResult(
-                OperationResult.COMPLETE,
-                buildNotificationMessage(response),
-                buildNotificationTitle(OperationResult.COMPLETE)
-            )
-        )
-    }
+    )
 
     fun buildNotificationMessage(
         response: Response?,

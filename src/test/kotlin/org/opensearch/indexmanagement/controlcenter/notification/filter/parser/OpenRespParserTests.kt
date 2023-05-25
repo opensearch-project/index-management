@@ -11,14 +11,16 @@ import org.mockito.ArgumentMatchers.any
 import org.mockito.Mockito
 import org.mockito.Mockito.never
 import org.mockito.Mockito.times
+import org.opensearch.OpenSearchException
 import org.opensearch.action.admin.indices.open.OpenIndexRequest
 import org.opensearch.action.admin.indices.open.OpenIndexResponse
 import org.opensearch.action.support.ActiveShardCount
 import org.opensearch.action.support.ActiveShardsObserver
 import org.opensearch.cluster.metadata.IndexNameExpressionResolver
 import org.opensearch.common.unit.TimeValue
+import org.opensearch.index.Index
 import org.opensearch.indexmanagement.controlcenter.notification.filter.OperationResult
-import java.lang.Exception
+import kotlin.Exception
 
 class OpenRespParserTests : BaseRespParserTests() {
 
@@ -132,6 +134,20 @@ class OpenRespParserTests : BaseRespParserTests() {
         )
         val title = parser.buildNotificationTitle(OperationResult.FAILED)
         Assert.assertEquals(title, "2 indexes from [test-cluster] have failed to open")
+    }
+
+    fun `test build message for exception`() {
+        val request = OpenIndexRequest("index-1", "index-2")
+        val parser = OpenIndexRespParser(activeShardsObserver, request, indexNameExpressionResolver, clusterService)
+
+        val ex = OpenSearchException("index already exits error")
+        ex.index = Index("index-1", "uuid")
+
+        parser.parseAndSendNotification(null, ex) { ret ->
+            Assert.assertEquals(ret.operationResult, OperationResult.FAILED)
+            Assert.assertEquals(ret.message, "index [index-1] index already exits error.")
+            Assert.assertEquals(ret.title, "2 indexes from [test-cluster] have failed to open")
+        }
     }
 
     fun `test build message for timeout`() {

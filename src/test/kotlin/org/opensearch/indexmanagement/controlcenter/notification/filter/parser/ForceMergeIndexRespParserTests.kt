@@ -75,12 +75,29 @@ class ForceMergeIndexRespParserTests : BaseRespParserTests() {
         val request = ForceMergeRequest("test-index-1")
         val parser = ForceMergeIndexRespParser(request, clusterService)
 
-        val title = parser.buildNotificationTitle(OperationResult.FAILED)
-        Assert.assertEquals(title, "Force merge operation on [test-cluster/test-index-1] has failed")
-        val msg = parser.buildNotificationMessage(response)
-        Assert.assertEquals(
-            msg,
-            "index [test-index-1] shard [-1] OpenSearchException[OpenSearch exception [type=exception, reason=shard is not available]]"
-        )
+        parser.parseAndSendNotification(response, null) { ret ->
+            Assert.assertEquals(ret.operationResult, OperationResult.FAILED)
+            Assert.assertEquals(ret.title, "Force merge operation on [test-cluster/test-index-1] has failed")
+            Assert.assertEquals(
+                ret.message,
+                "index [test-index-1] shard [-1] OpenSearchException[OpenSearch exception [type=exception, reason=shard is not available]]"
+            )
+        }
+    }
+
+    fun `test build message for exception`() {
+        val ex = OpenSearchException("index not exists")
+        ex.index = Index("test-index-1", "uuid")
+        val request = ForceMergeRequest("test-index-1")
+        val parser = ForceMergeIndexRespParser(request, clusterService)
+
+        parser.parseAndSendNotification(null, ex) { ret ->
+            Assert.assertEquals(ret.operationResult, OperationResult.FAILED)
+            Assert.assertEquals(ret.title, "Force merge operation on [test-cluster/test-index-1] has failed")
+            Assert.assertEquals(
+                ret.message,
+                "index [test-index-1] index not exists."
+            )
+        }
     }
 }

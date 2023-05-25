@@ -7,8 +7,10 @@ package org.opensearch.indexmanagement.controlcenter.notification.filter.parser
 
 import org.junit.Assert
 import org.junit.Before
+import org.opensearch.OpenSearchException
 import org.opensearch.action.bulk.BulkItemResponse
 import org.opensearch.common.unit.TimeValue
+import org.opensearch.index.Index
 import org.opensearch.index.reindex.BulkByScrollResponse
 import org.opensearch.index.reindex.BulkByScrollTask
 import org.opensearch.index.reindex.ReindexAction
@@ -145,5 +147,20 @@ class ReindexRespParserTests : BaseRespParserTests() {
 
         val title = parser.buildNotificationTitle(OperationResult.FAILED)
         Assert.assertEquals(title, "Reindex operation on [test-cluster/source] has failed")
+    }
+
+    fun `test build message for exception`() {
+        val parser = ReindexRespParser(task, request, clusterService)
+        val ex = OpenSearchException("index doest not exists")
+        ex.index = Index("source", "uuid")
+
+        parser.parseAndSendNotification(null, ex) { ret ->
+            Assert.assertEquals(ret.operationResult, OperationResult.FAILED)
+            Assert.assertEquals(ret.title, "Reindex operation on [test-cluster/source] has failed")
+            Assert.assertEquals(
+                ret.message,
+                "The reindex operation from [test-cluster/source] to [test-cluster/dest] has failed. index doest not exists"
+            )
+        }
     }
 }
