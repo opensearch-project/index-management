@@ -3,7 +3,6 @@
 Compatible with OpenSearch 2.8.0
 
 ### Maintenance
-* Fix build errors after refactoring of Strings class in opensearch core. ([#786](https://github.com/opensearch-project/index-management/pull/786))
 * Upgrade to gradle 8.1.1. ([#777](https://github.com/opensearch-project/index-management/pull/777))
 * Bump version to 2.8. ([#787](https://github.com/opensearch-project/index-management/pull/787))
 
