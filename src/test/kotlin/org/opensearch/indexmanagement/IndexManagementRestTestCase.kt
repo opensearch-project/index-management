@@ -170,7 +170,7 @@ abstract class IndexManagementRestTestCase : ODFERestTestCase() {
     override fun preserveIndicesUponCompletion(): Boolean = true
     companion object {
         @JvmStatic
-        protected val isMultiNode = System.getProperty("cluster.number_of_nodes", "1").toInt() > 1
+        val isMultiNode = System.getProperty("cluster.number_of_nodes", "1").toInt() > 1
         protected val defaultKeepIndexSet = setOf(".opendistro_security")
         /**
          * We override preserveIndicesUponCompletion to true and use this function to clean up indices

@@ -13,6 +13,7 @@ import org.opensearch.client.Response
 import org.opensearch.client.RestClient
 import org.opensearch.client.WarningsHandler
 import org.opensearch.commons.authuser.User
+import org.opensearch.indexmanagement.IndexManagementRestTestCase.Companion.isMultiNode
 import org.opensearch.jobscheduler.spi.schedule.CronSchedule
 import org.opensearch.jobscheduler.spi.schedule.IntervalSchedule
 import org.opensearch.jobscheduler.spi.schedule.Schedule
@@ -109,10 +110,16 @@ fun RestClient.makeRequest(
     return performRequest(request)
 }
 
+
 fun <T> waitFor(
     timeout: Instant = Instant.ofEpochSecond(20),
     block: () -> T
 ): T {
+    if (isMultiNode) {
+        // job scheduling could be skipped in multi-node tests
+        // https://github.com/opensearch-project/job-scheduler/issues/173
+        timeout.plusSeconds(60)
+    }
     val startTime = Instant.now().toEpochMilli()
     do {
         try {
