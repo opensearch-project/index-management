@@ -101,6 +101,7 @@ class NotificationActionListener<Request : ActionRequest, Response : ActionRespo
 
     fun parseAndSendNotification(response: ActionResponse?, ex: Exception? = null) {
         try {
+            logger.debug("sending out notifications for action {}", action)
             val callback = Consumer<ActionRespParseResult> { result ->
                 // delay the sending time 5s for runtime policy
                 client.threadPool().schedule({
