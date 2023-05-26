@@ -4,7 +4,7 @@ Compatible with OpenSearch 2.8.0
 
 ### Maintenance
 * Upgrade to gradle 8.1.1. ([#777](https://github.com/opensearch-project/index-management/pull/777))
-* Bump version to 2.8. ([#787](https://github.com/opensearch-project/index-management/pull/787))
+* Bump version to 2.8. ([#759](https://github.com/opensearch-project/index-management/pull/759))
 
 ### Features
 * Support notification integration with long running operations. ([#790, 791, 793](https://github.com/opensearch-project/index-management/pull/793))
