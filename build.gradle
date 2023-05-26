@@ -182,6 +182,12 @@ configurations.testImplementation {
     exclude module: "securemock"
 }
 
+tasks.named('forbiddenApisTest').configure {
+    //we are using jdk-internal instead of jdk-non-portable to allow for com.sun.net.httpserver.* usage
+    bundledSignatures -= 'jdk-non-portable'
+    bundledSignatures += 'jdk-internal'
+}
+
 ext {
     projectSubstitutions = [:]
 }
@@ -566,6 +572,11 @@ integTest {
     // TODO: raise issue in Core, this is because of the test framework
     if (System.getProperty("tests.clustername") != null) {
         exclude 'org/opensearch/indexmanagement/indexstatemanagement/MetadataRegressionIT.class'
+    }
+
+    // remove from running with remote cluster
+    if (usingRemoteCluster) {
+        exclude 'org/opensearch/indexmanagement/controlcenter/notification/filter/NotificationActionListenerIT.class'
     }
 }
 
