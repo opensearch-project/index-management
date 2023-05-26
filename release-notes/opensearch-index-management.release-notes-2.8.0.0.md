@@ -10,9 +10,6 @@ Compatible with OpenSearch 2.8.0
 ### Features
 * Support notification integration with long running operations. ([#790, 791, 793](https://github.com/opensearch-project/index-management/pull/793))
 
-### Refactoring
-* Replace Set in org.opensearch.common.collect with java.util references. ([#785](https://github.com/opensearch-project/index-management/pull/785))
-
 ### Bug fixes
 * Remove recursion call when checking permission on indices. ([#785](https://github.com/opensearch-project/index-management/pull/785))
 * Added trimming of nanos part of "epoch_millis" timestamp when date_histogram type used is date_nanos. ([#782](https://github.com/opensearch-project/index-management/pull/782))
