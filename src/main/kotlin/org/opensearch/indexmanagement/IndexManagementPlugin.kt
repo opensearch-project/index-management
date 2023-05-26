@@ -9,6 +9,7 @@ import org.apache.logging.log4j.LogManager
 import org.opensearch.action.ActionRequest
 import org.opensearch.action.ActionResponse
 import org.opensearch.action.support.ActionFilter
+import org.opensearch.action.support.ActiveShardsObserver
 import org.opensearch.client.Client
 import org.opensearch.cluster.metadata.IndexNameExpressionResolver
 import org.opensearch.cluster.node.DiscoveryNodes
@@ -36,6 +37,7 @@ import org.opensearch.indexmanagement.controlcenter.notification.action.get.GetL
 import org.opensearch.indexmanagement.controlcenter.notification.action.get.TransportGetLRONConfigAction
 import org.opensearch.indexmanagement.controlcenter.notification.action.index.IndexLRONConfigAction
 import org.opensearch.indexmanagement.controlcenter.notification.action.index.TransportIndexLRONConfigAction
+import org.opensearch.indexmanagement.controlcenter.notification.filter.IndexOperationActionFilter
 import org.opensearch.indexmanagement.controlcenter.notification.resthandler.RestDeleteLRONConfigAction
 import org.opensearch.indexmanagement.controlcenter.notification.resthandler.RestGetLRONConfigAction
 import org.opensearch.indexmanagement.controlcenter.notification.resthandler.RestIndexLRONConfigAction
@@ -211,6 +213,7 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
     private var customIndexUUIDSetting: String? = null
     private val extensions = mutableSetOf<String>()
     private val extensionCheckerMap = mutableMapOf<String, StatusChecker>()
+    lateinit var indexOperationActionFilter: IndexOperationActionFilter
 
     companion object {
         const val PLUGINS_BASE_URI = "/_plugins"
@@ -463,6 +466,12 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
 
         val pluginVersionSweepCoordinator = PluginVersionSweepCoordinator(skipFlag, settings, threadPool, clusterService)
 
+        indexOperationActionFilter = IndexOperationActionFilter(
+            client, clusterService,
+            ActiveShardsObserver(clusterService, client.threadPool()),
+            indexNameExpressionResolver,
+        )
+
         return listOf(
             managedIndexRunner,
             rollupRunner,
@@ -604,7 +613,7 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
     }
 
     override fun getActionFilters(): List<ActionFilter> {
-        return listOf(fieldCapsFilter)
+        return listOf(fieldCapsFilter, indexOperationActionFilter)
     }
 
     override fun getSystemIndexDescriptors(settings: Settings): Collection<SystemIndexDescriptor> {
