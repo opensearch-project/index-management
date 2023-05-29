@@ -82,7 +82,9 @@ class TransportPreviewTransformAction @Inject constructor(
                     val user = SecurityUtils.buildUser(client.threadPool().threadContext)
 
                     CoroutineScope(Dispatchers.IO).launch {
-                        withClosableContext(IndexManagementSecurityContext("PreviewTransformHandler", settings, client.threadPool().threadContext, user)) {
+                        withClosableContext(
+                            IndexManagementSecurityContext("PreviewTransformHandler", settings, client.threadPool().threadContext, user)
+                        ) {
                             executeSearch(searchRequest, transform, listener)
                         }
                     }

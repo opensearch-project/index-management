@@ -100,7 +100,7 @@ object TargetIndexMappingService {
         sourceFieldType?.get(TYPE) != null && (sourceFieldType[TYPE] == "date" || sourceFieldType[TYPE] == "date_nanos")
 
     fun createTargetIndexMapping(dateFieldMappings: Map<String, Any>): String {
-        /** TODO - Check if the mappings from file can be loaded into the XContentBuilder which later on can be populated with additional date field mappings
+        /** TODO - Check if the mappings from file can be loaded into the XContentBuilder
          * val dynamicMappings = IndexManagementIndices.transformTargetMappings
          * val mappings = createTargetIndexMappingsAsString(dateFieldMappings, dynamicMappings)
          */
@@ -151,6 +151,7 @@ object TargetIndexMappingService {
      * Creates properties section in target index mappings based on the given date fields
      * Parses target index mapping as a string - instead of using XContentBuilder
      */
+    @Suppress("UNUSED_PARAMETER")
     private fun createTargetIndexMappingsAsString(
         dateFieldMappings: Map<String, Any>,
         dynamicMappings: String,
