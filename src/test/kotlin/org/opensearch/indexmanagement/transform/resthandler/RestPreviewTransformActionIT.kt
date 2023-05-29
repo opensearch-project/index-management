@@ -25,6 +25,7 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.format.DateTimeParseException
 import java.time.temporal.ChronoUnit
+import java.util.Locale
 
 @Suppress("UNCHECKED_CAST")
 class RestPreviewTransformActionIT : TransformRestTestCase() {
@@ -110,8 +111,7 @@ class RestPreviewTransformActionIT : TransformRestTestCase() {
         assertEquals("Preview transform failed", RestStatus.OK, response.restStatus())
         val transformedDocs = response.asMap()["documents"] as List<Map<String, Any>>
         assertEquals("Transformed docs have unexpected schema", expectedKeys, transformedDocs.first().keys)
-
-        val dateFormatter = DateTimeFormatter.ofPattern("uuuu-MM-dd'T'HH:mm:ss.SSSZZ").withZone(ZoneId.of("UTC"))
+        val dateFormatter = DateTimeFormatter.ofPattern("uuuu-MM-dd'T'HH:mm:ss.SSSZZ", Locale.ROOT).withZone(ZoneId.of("UTC"))
         for (doc in transformedDocs) {
             assertTrue(isValid(doc["tpep_pickup_datetime"] as? String, dateFormatter))
         }
