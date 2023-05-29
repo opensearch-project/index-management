@@ -17,6 +17,7 @@ import org.opensearch.indexmanagement.opensearchapi.string
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.transform.exceptions.TransformIndexException
 import org.opensearch.indexmanagement.transform.model.Transform
+import org.opensearch.indexmanagement.transform.util.DEFAULT_DATE_FORMAT
 import org.opensearch.indexmanagement.util.IndexUtils
 import org.opensearch.search.aggregations.AggregationBuilder
 import org.opensearch.search.aggregations.support.ValuesSourceAggregationBuilder
@@ -37,12 +38,23 @@ object TargetIndexMappingService {
     private const val DYNAMIC_TEMPLATE = "dynamic_templates"
     private const val MATCH_MAPPING_TYPE = "match_mapping_type"
     private const val MAPPING = "mapping"
-    private const val DEFAULT_DATE_FORMAT = "strict_date_optional_time||epoch_millis"
 
     fun initialize(client: Client) {
         this.client = client
     }
 
+    /**
+     *
+     * Check if the source index contains date fields and returns target index mapping for date fields by using default date format
+     * Example:
+     *   input map: [tpep_pickup_datetime, [type: date]]
+     *   target index mapping: "tpep_pickup_datetime": {
+     *       "type": "date",
+     *       "format": "strict_date_optional_time||epoch_millis"
+     *   }
+     * @return map of the date properties
+     *
+     */
     suspend fun getTargetMappingsForDates(transform: Transform): Map<String, Any> {
         val sourceIndex = transform.sourceIndex
         try {
@@ -75,15 +87,23 @@ object TargetIndexMappingService {
             }
             val sourceFieldType = IndexUtils.getFieldFromMappings(dimension.sourceField, sourceIndexMapping)
             // Consider only date fields as relevant for building the target index mapping
-            if (dimension !is DateHistogram && sourceFieldType?.get(TYPE) != null && (sourceFieldType[TYPE] == "date" || sourceFieldType[TYPE] == "date_nanos")) {
+            // Excluding date histogram since user can define format in it
+            if (dimension !is DateHistogram && isSourceFieldDate(sourceFieldType)) {
                 // Taking the source field settings (type, format etc.)
-                val dateTypeTargetMapping = mapOf("type" to sourceFieldType[TYPE], "format" to DEFAULT_DATE_FORMAT)
+                val dateTypeTargetMapping = mapOf("type" to sourceFieldType!![TYPE], "format" to DEFAULT_DATE_FORMAT)
                 dateFieldMappings[dimension.targetField] = dateTypeTargetMapping
             }
         }
     }
 
+    private fun isSourceFieldDate(sourceFieldType: Map<*, *>?) =
+        sourceFieldType?.get(TYPE) != null && (sourceFieldType[TYPE] == "date" || sourceFieldType[TYPE] == "date_nanos")
+
     fun createTargetIndexMapping(dateFieldMappings: Map<String, Any>): String {
+        /** TODO - Check if the mappings from file can be loaded into the XContentBuilder which later on can be populated with additional date field mappings
+         * val dynamicMappings = IndexManagementIndices.transformTargetMappings
+         * val mappings = createTargetIndexMappingsAsString(dateFieldMappings, dynamicMappings)
+         */
         // Build static properties
         val builder = XContentFactory.jsonBuilder().startObject()
             .startObject(METADATA)
@@ -103,8 +123,6 @@ object TargetIndexMappingService {
 
         // Dynamically build composite aggregation mapping
         mapCompositeAggregation(dateFieldMappings, builder)
-
-        // Close the object and return as a string
         return builder.endObject()
             .endObject()
             .string()
@@ -125,6 +143,43 @@ object TargetIndexMappingService {
                 builder.endObject()
             } else {
                 builder.field(it.key, it.value.toString())
+            }
+        }
+    }
+
+    /**
+     * Creates properties section in target index mappings based on the given date fields
+     * Parses target index mapping as a string - instead of using XContentBuilder
+     */
+    private fun createTargetIndexMappingsAsString(
+        dateFieldMappings: Map<String, Any>,
+        dynamicMappings: String,
+    ): String {
+        val compositeAgg = mapCompositeAggregationToString(dateFieldMappings)
+        return dynamicMappings.trimIndent().dropLast(1) + ", \n \"properties\" : \n { \n $compositeAgg \n } \n }"
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    private fun mapCompositeAggregationToString(
+        compositeAggregation: Map<String, Any>,
+    ): String {
+        return buildString {
+            var isFirst = true
+            val iterator = compositeAggregation.entries.iterator()
+            while (iterator.hasNext()) {
+                val it = iterator.next()
+                if (!isFirst) {
+                    append(",")
+                }
+                isFirst = false
+                if (it.value is Map<*, *>) {
+                    append("\"${it.key}\" : {")
+                    append(mapCompositeAggregationToString(it.value as Map<String, Any>))
+                    append("\n }")
+                } else {
+                    append("\n")
+                    append("\"${it.key}\" : \"${it.value}\"")
+                }
             }
         }
     }

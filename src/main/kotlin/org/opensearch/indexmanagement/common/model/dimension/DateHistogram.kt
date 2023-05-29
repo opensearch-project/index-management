@@ -14,6 +14,7 @@ import org.opensearch.core.xcontent.XContentParser.Token
 import org.opensearch.common.xcontent.XContentParserUtils.ensureExpectedToken
 import org.opensearch.index.query.AbstractQueryBuilder
 import org.opensearch.index.query.RangeQueryBuilder
+import org.opensearch.indexmanagement.transform.util.DEFAULT_DATE_FORMAT
 import org.opensearch.indexmanagement.util.IndexUtils.Companion.getFieldFromMappings
 import org.opensearch.search.aggregations.AggregatorFactories
 import org.opensearch.search.aggregations.bucket.composite.CompositeValuesSourceBuilder
@@ -29,7 +30,7 @@ data class DateHistogram(
     val fixedInterval: String? = null,
     val calendarInterval: String? = null,
     val timezone: ZoneId = ZoneId.of(UTC),
-    val format: String? = null
+    val format: String? = DEFAULT_DATE_FORMAT
 ) : Dimension(Type.DATE_HISTOGRAM, sourceField, targetField) {
 
     init {

@@ -358,6 +358,7 @@ class TransformSearchService(
                 aggregatedBucket.key.entries.forEach { bucket ->
                     // Check if the date is used as a term (exists in conversion list) - if it is,
                     // convert the date (which is in epoch time millis format to ISO 8601)
+//                    document[bucket.key] = bucket.value
                     if (targetIndexDateFieldMappings.isNullOrEmpty() || !targetIndexDateFieldMappings.containsKey(bucket.key)) {
                         document[bucket.key] = bucket.value
                     } else {
@@ -391,7 +392,7 @@ class TransformSearchService(
             return when (aggregation) {
                 is InternalSum, is InternalMin, is InternalMax, is InternalAvg, is InternalValueCount -> {
                     val agg = aggregation as NumericMetricsAggregation.SingleValue
-                    if (targetIndexDateFieldMappings.isEmpty() || !targetIndexDateFieldMappings.containsKey(agg.name)) {
+                    if (aggregation is InternalValueCount || aggregation is InternalSum || !targetIndexDateFieldMappings.containsKey(agg.name)) {
                         agg.value()
                     } else {
                         formatMillis(agg.value().toLong())

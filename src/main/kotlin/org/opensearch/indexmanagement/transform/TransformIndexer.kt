@@ -22,7 +22,6 @@ import org.opensearch.common.settings.Settings
 import org.opensearch.indexmanagement.opensearchapi.retry
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.transform.exceptions.TransformIndexException
-import org.opensearch.indexmanagement.transform.model.Transform
 import org.opensearch.indexmanagement.transform.settings.TransformSettings
 import org.opensearch.indexmanagement.transform.util.TransformContext
 import org.opensearch.rest.RestStatus
@@ -67,7 +66,7 @@ class TransformIndexer(
     }
 
     @Suppress("ThrowsCount", "RethrowCaughtException")
-    suspend fun index(transform: Transform, docsToIndex: List<DocWriteRequest<*>>, transformContext: TransformContext): Long {
+    suspend fun index(transformTargetIndex: String, docsToIndex: List<DocWriteRequest<*>>, transformContext: TransformContext): Long {
         var updatableDocsToIndex = docsToIndex
         var indexTimeInMillis = 0L
         val nonRetryableFailures = mutableListOf<BulkItemResponse>()
@@ -76,7 +75,7 @@ class TransformIndexer(
                 val targetIndex = updatableDocsToIndex.first().index()
                 logger.debug("Attempting to index ${updatableDocsToIndex.size} documents to $targetIndex")
 
-                createTargetIndex(transform.targetIndex, transformContext.getTargetIndexDateFieldMappings())
+                createTargetIndex(transformTargetIndex, transformContext.getTargetIndexDateFieldMappings())
                 backoffPolicy.retry(logger, listOf(RestStatus.TOO_MANY_REQUESTS)) {
                     val bulkRequest = BulkRequest().add(updatableDocsToIndex)
                     val bulkResponse: BulkResponse = client.suspendUntil { bulk(bulkRequest, it) }

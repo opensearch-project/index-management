@@ -24,12 +24,16 @@ import org.opensearch.client.Client
 import org.opensearch.cluster.metadata.IndexNameExpressionResolver
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.inject.Inject
+import org.opensearch.common.settings.Settings
 import org.opensearch.commons.ConfigConstants
+import org.opensearch.indexmanagement.opensearchapi.IndexManagementSecurityContext
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
+import org.opensearch.indexmanagement.opensearchapi.withClosableContext
 import org.opensearch.indexmanagement.transform.TargetIndexMappingService
 import org.opensearch.indexmanagement.transform.TransformSearchService
 import org.opensearch.indexmanagement.transform.TransformValidator
 import org.opensearch.indexmanagement.transform.model.Transform
+import org.opensearch.indexmanagement.util.SecurityUtils
 import org.opensearch.rest.RestStatus
 import org.opensearch.tasks.Task
 import org.opensearch.transport.TransportService
@@ -37,6 +41,7 @@ import org.opensearch.transport.TransportService
 class TransportPreviewTransformAction @Inject constructor(
     transportService: TransportService,
     actionFilters: ActionFilters,
+    val settings: Settings,
     private val client: Client,
     private val clusterService: ClusterService,
     private val indexNameExpressionResolver: IndexNameExpressionResolver
@@ -74,8 +79,12 @@ class TransportPreviewTransformAction @Inject constructor(
                         return
                     }
                     val searchRequest = TransformSearchService.getSearchServiceRequest(transform = transform, pageSize = 10)
+                    val user = SecurityUtils.buildUser(client.threadPool().threadContext)
+
                     CoroutineScope(Dispatchers.IO).launch {
-                        executeSearch(searchRequest, transform, listener)
+                        withClosableContext(IndexManagementSecurityContext("PreviewTransformHandler", settings, client.threadPool().threadContext, user)) {
+                            executeSearch(searchRequest, transform, listener)
+                        }
                     }
                 }
 
