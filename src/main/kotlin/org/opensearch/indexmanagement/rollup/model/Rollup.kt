@@ -8,12 +8,12 @@ package org.opensearch.indexmanagement.rollup.model
 import org.opensearch.common.io.stream.StreamInput
 import org.opensearch.common.io.stream.StreamOutput
 import org.opensearch.common.io.stream.Writeable
+import org.opensearch.common.xcontent.XContentParserUtils.ensureExpectedToken
+import org.opensearch.commons.authuser.User
 import org.opensearch.core.xcontent.ToXContent
 import org.opensearch.core.xcontent.XContentBuilder
 import org.opensearch.core.xcontent.XContentParser
 import org.opensearch.core.xcontent.XContentParser.Token
-import org.opensearch.common.xcontent.XContentParserUtils.ensureExpectedToken
-import org.opensearch.commons.authuser.User
 import org.opensearch.index.seqno.SequenceNumbers
 import org.opensearch.indexmanagement.common.model.dimension.DateHistogram
 import org.opensearch.indexmanagement.common.model.dimension.Dimension
@@ -54,7 +54,8 @@ data class Rollup(
     val continuous: Boolean,
     val dimensions: List<Dimension>,
     val metrics: List<RollupMetrics>,
-    val user: User? = null
+    val user: User? = null,
+    val sourceIndexFieldMappings: Map<String, Any>? = mapOf()
 ) : ScheduledJobParameter, Writeable {
 
     init {
@@ -150,7 +151,8 @@ data class Rollup(
         metrics = sin.readList(::RollupMetrics),
         user = if (sin.readBoolean()) {
             User(sin)
-        } else null
+        } else null,
+        sourceIndexFieldMappings = sin.readMap()
     )
 
     override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
@@ -171,6 +173,7 @@ data class Rollup(
             .field(CONTINUOUS_FIELD, continuous)
             .field(DIMENSIONS_FIELD, dimensions.toTypedArray())
             .field(RollupMetrics.METRICS_FIELD, metrics.toTypedArray())
+            .field(SOURCE_INDEX_FIELD_MAPPINGS_FIELD, sourceIndexFieldMappings)
         if (params.paramAsBoolean(WITH_USER, true)) builder.optionalUserField(USER_FIELD, user)
         if (params.paramAsBoolean(WITH_TYPE, true)) builder.endObject()
         builder.endObject()
@@ -211,6 +214,7 @@ data class Rollup(
         out.writeCollection(metrics)
         out.writeBoolean(user != null)
         user?.writeTo(out)
+        out.writeMap(sourceIndexFieldMappings)
     }
 
     companion object {
@@ -236,6 +240,7 @@ data class Rollup(
         const val CONTINUOUS_FIELD = "continuous"
         const val DIMENSIONS_FIELD = "dimensions"
         const val METRICS_FIELD = "metrics"
+        const val SOURCE_INDEX_FIELD_MAPPINGS_FIELD = "source_index_field_mappings"
         const val MINIMUM_JOB_INTERVAL = 1
         const val MINIMUM_DELAY = 0
         const val MINIMUM_PAGE_SIZE = 1
@@ -273,6 +278,7 @@ data class Rollup(
             val dimensions = mutableListOf<Dimension>()
             val metrics = mutableListOf<RollupMetrics>()
             var user: User? = null
+            var sourceIndexFieldMappings = mutableMapOf<String, Any>()
 
             ensureExpectedToken(Token.START_OBJECT, xcp.currentToken(), xcp)
 
@@ -316,6 +322,9 @@ data class Rollup(
                     USER_FIELD -> {
                         user = if (xcp.currentToken() == Token.VALUE_NULL) null else User.parse(xcp)
                     }
+                    SOURCE_INDEX_FIELD_MAPPINGS_FIELD -> {
+                        sourceIndexFieldMappings = xcp.map()
+                    }
                     else -> throw IllegalArgumentException("Invalid field [$fieldName] found in Rollup.")
                 }
             }
@@ -351,7 +360,8 @@ data class Rollup(
                 continuous = continuous,
                 dimensions = dimensions,
                 metrics = metrics,
-                user = user
+                user = user,
+                sourceIndexFieldMappings = sourceIndexFieldMappings
             )
         }
     }

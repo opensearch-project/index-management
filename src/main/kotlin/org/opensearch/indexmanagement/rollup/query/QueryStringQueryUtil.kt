@@ -24,11 +24,11 @@ object QueryStringQueryUtil {
 
     fun rewriteQueryStringQuery(
         queryBuilder: QueryBuilder,
-        concreteIndexName: String
+        sourceIndexMappings: Map<String, Any>
     ): QueryStringQueryBuilder {
         val qsqBuilder = queryBuilder as QueryStringQueryBuilder
         // Parse query_string query and extract all discovered fields
-        val (fieldsFromQueryString, otherFields) = extractFieldsFromQueryString(queryBuilder, concreteIndexName)
+        val (fieldsFromQueryString, otherFields) = extractFieldsFromQueryString(queryBuilder, sourceIndexMappings)
         // Rewrite query_string
         var newQueryString = qsqBuilder.queryString()
         fieldsFromQueryString.forEach { field ->
@@ -93,8 +93,8 @@ object QueryStringQueryUtil {
     }
 
     @Suppress("ComplexMethod", "LongMethod", "ThrowsCount", "EmptyCatchBlock")
-    fun extractFieldsFromQueryString(queryBuilder: QueryBuilder, concreteIndexName: String): Pair<List<String>, Map<String, Float>> {
-        val context = QueryShardContextFactory.createShardContext(concreteIndexName)
+    fun extractFieldsFromQueryString(queryBuilder: QueryBuilder, sourceIndexMappings: Map<String, Any>): Pair<List<String>, Map<String, Float>> {
+        val context = QueryShardContextFactory.createShardContext(sourceIndexMappings)
         val qsqBuilder = queryBuilder as QueryStringQueryBuilder
         val rewrittenQueryString = if (qsqBuilder.escape()) QueryParser.escape(qsqBuilder.queryString()) else qsqBuilder.queryString()
         val queryParser: QueryStringQueryParserExt

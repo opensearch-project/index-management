@@ -7,10 +7,18 @@
 
 package org.opensearch.indexmanagement.rollup.util
 
+import org.apache.logging.log4j.Logger
+import org.opensearch.OpenSearchStatusException
+import org.opensearch.action.admin.indices.mapping.get.GetMappingsRequest
+import org.opensearch.action.admin.indices.mapping.get.GetMappingsResponse
 import org.opensearch.action.get.GetResponse
 import org.opensearch.action.search.SearchRequest
+import org.opensearch.action.support.IndicesOptions
+import org.opensearch.client.Client
 import org.opensearch.cluster.ClusterState
 import org.opensearch.cluster.metadata.IndexMetadata
+import org.opensearch.cluster.metadata.IndexNameExpressionResolver
+import org.opensearch.cluster.metadata.MappingMetadata
 import org.opensearch.common.xcontent.LoggingDeprecationHandler
 import org.opensearch.common.xcontent.XContentHelper
 import org.opensearch.common.xcontent.XContentParserUtils.ensureExpectedToken
@@ -33,6 +41,7 @@ import org.opensearch.indexmanagement.common.model.dimension.Dimension
 import org.opensearch.indexmanagement.common.model.dimension.Histogram
 import org.opensearch.indexmanagement.common.model.dimension.Terms
 import org.opensearch.indexmanagement.opensearchapi.parseWithType
+import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.rollup.RollupMapperService
 import org.opensearch.indexmanagement.rollup.model.Rollup
 import org.opensearch.indexmanagement.rollup.model.RollupFieldMapping
@@ -46,6 +55,7 @@ import org.opensearch.indexmanagement.rollup.query.QueryStringQueryUtil
 import org.opensearch.indexmanagement.rollup.settings.LegacyOpenDistroRollupSettings
 import org.opensearch.indexmanagement.rollup.settings.RollupSettings
 import org.opensearch.indexmanagement.util.IndexUtils
+import org.opensearch.rest.RestStatus
 import org.opensearch.script.Script
 import org.opensearch.script.ScriptType
 import org.opensearch.search.aggregations.AggregationBuilder
@@ -290,8 +300,7 @@ fun Rollup.rewriteAggregationBuilder(aggregationBuilder: AggregationBuilder): Ag
 @Suppress("ComplexMethod", "LongMethod")
 fun Rollup.rewriteQueryBuilder(
     queryBuilder: QueryBuilder,
-    fieldNameMappingTypeMap: Map<String, String>,
-    concreteIndexName: String = ""
+    fieldNameMappingTypeMap: Map<String, String>
 ): QueryBuilder {
     return when (queryBuilder) {
         is TermQueryBuilder -> {
@@ -322,19 +331,19 @@ fun Rollup.rewriteQueryBuilder(
         is BoolQueryBuilder -> {
             val newBoolQueryBuilder = BoolQueryBuilder()
             queryBuilder.must()?.forEach {
-                val newMustQueryBuilder = this.rewriteQueryBuilder(it, fieldNameMappingTypeMap, concreteIndexName)
+                val newMustQueryBuilder = this.rewriteQueryBuilder(it, fieldNameMappingTypeMap)
                 newBoolQueryBuilder.must(newMustQueryBuilder)
             }
             queryBuilder.mustNot()?.forEach {
-                val newMustNotQueryBuilder = this.rewriteQueryBuilder(it, fieldNameMappingTypeMap, concreteIndexName)
+                val newMustNotQueryBuilder = this.rewriteQueryBuilder(it, fieldNameMappingTypeMap)
                 newBoolQueryBuilder.mustNot(newMustNotQueryBuilder)
             }
             queryBuilder.should()?.forEach {
-                val newShouldQueryBuilder = this.rewriteQueryBuilder(it, fieldNameMappingTypeMap, concreteIndexName)
+                val newShouldQueryBuilder = this.rewriteQueryBuilder(it, fieldNameMappingTypeMap)
                 newBoolQueryBuilder.should(newShouldQueryBuilder)
             }
             queryBuilder.filter()?.forEach {
-                val newFilterQueryBuilder = this.rewriteQueryBuilder(it, fieldNameMappingTypeMap, concreteIndexName)
+                val newFilterQueryBuilder = this.rewriteQueryBuilder(it, fieldNameMappingTypeMap)
                 newBoolQueryBuilder.filter(newFilterQueryBuilder)
             }
             newBoolQueryBuilder.minimumShouldMatch(queryBuilder.minimumShouldMatch())
@@ -343,15 +352,15 @@ fun Rollup.rewriteQueryBuilder(
             newBoolQueryBuilder.boost(queryBuilder.boost())
         }
         is BoostingQueryBuilder -> {
-            val newPositiveQueryBuilder = this.rewriteQueryBuilder(queryBuilder.positiveQuery(), fieldNameMappingTypeMap, concreteIndexName)
-            val newNegativeQueryBuilder = this.rewriteQueryBuilder(queryBuilder.negativeQuery(), fieldNameMappingTypeMap, concreteIndexName)
+            val newPositiveQueryBuilder = this.rewriteQueryBuilder(queryBuilder.positiveQuery(), fieldNameMappingTypeMap)
+            val newNegativeQueryBuilder = this.rewriteQueryBuilder(queryBuilder.negativeQuery(), fieldNameMappingTypeMap)
             val newBoostingQueryBuilder = BoostingQueryBuilder(newPositiveQueryBuilder, newNegativeQueryBuilder)
             if (queryBuilder.negativeBoost() >= 0) newBoostingQueryBuilder.negativeBoost(queryBuilder.negativeBoost())
             newBoostingQueryBuilder.queryName(queryBuilder.queryName())
             newBoostingQueryBuilder.boost(queryBuilder.boost())
         }
         is ConstantScoreQueryBuilder -> {
-            val newInnerQueryBuilder = this.rewriteQueryBuilder(queryBuilder.innerQuery(), fieldNameMappingTypeMap, concreteIndexName)
+            val newInnerQueryBuilder = this.rewriteQueryBuilder(queryBuilder.innerQuery(), fieldNameMappingTypeMap)
             val newConstantScoreQueryBuilder = ConstantScoreQueryBuilder(newInnerQueryBuilder)
             newConstantScoreQueryBuilder.boost(queryBuilder.boost())
             newConstantScoreQueryBuilder.queryName(queryBuilder.queryName())
@@ -359,7 +368,7 @@ fun Rollup.rewriteQueryBuilder(
         is DisMaxQueryBuilder -> {
             val newDisMaxQueryBuilder = DisMaxQueryBuilder()
             queryBuilder.innerQueries().forEach {
-                newDisMaxQueryBuilder.add(this.rewriteQueryBuilder(it, fieldNameMappingTypeMap, concreteIndexName))
+                newDisMaxQueryBuilder.add(this.rewriteQueryBuilder(it, fieldNameMappingTypeMap))
             }
             newDisMaxQueryBuilder.tieBreaker(queryBuilder.tieBreaker())
             newDisMaxQueryBuilder.queryName(queryBuilder.queryName())
@@ -372,16 +381,16 @@ fun Rollup.rewriteQueryBuilder(
             newMatchPhraseQueryBuilder.boost(queryBuilder.boost())
         }
         is QueryStringQueryBuilder -> {
-            QueryStringQueryUtil.rewriteQueryStringQuery(queryBuilder, concreteIndexName)
+            QueryStringQueryUtil.rewriteQueryStringQuery(queryBuilder, this.sourceIndexFieldMappings!!)
         }
         // We do nothing otherwise, the validation logic should have already verified so not throwing an exception
         else -> queryBuilder
     }
 }
 
-fun Set<Rollup>.buildRollupQuery(fieldNameMappingTypeMap: Map<String, String>, oldQuery: QueryBuilder, targetIndexName: String = ""): QueryBuilder {
+fun Set<Rollup>.buildRollupQuery(fieldNameMappingTypeMap: Map<String, String>, oldQuery: QueryBuilder): QueryBuilder {
     val wrappedQueryBuilder = BoolQueryBuilder()
-    wrappedQueryBuilder.must(this.first().rewriteQueryBuilder(oldQuery, fieldNameMappingTypeMap, targetIndexName))
+    wrappedQueryBuilder.must(this.first().rewriteQueryBuilder(oldQuery, fieldNameMappingTypeMap))
     wrappedQueryBuilder.should(TermsQueryBuilder("rollup._id", this.map { it.id }))
     wrappedQueryBuilder.minimumShouldMatch(1)
     return wrappedQueryBuilder
@@ -406,7 +415,6 @@ fun Rollup.populateFieldMappings(): Set<RollupFieldMapping> {
 fun SearchSourceBuilder.rewriteSearchSourceBuilder(
     jobs: Set<Rollup>,
     fieldNameMappingTypeMap: Map<String, String>,
-    concreteIndexName: String
 ): SearchSourceBuilder {
     val ssb = SearchSourceBuilder()
     // can use first() here as all jobs in the set will have a superset of the query's terms
@@ -422,7 +430,7 @@ fun SearchSourceBuilder.rewriteSearchSourceBuilder(
     if (this.minScore() != null) ssb.minScore(this.minScore())
     if (this.postFilter() != null) ssb.postFilter(this.postFilter())
     ssb.profile(this.profile())
-    if (this.query() != null) ssb.query(jobs.buildRollupQuery(fieldNameMappingTypeMap, this.query(), concreteIndexName))
+    if (this.query() != null) ssb.query(jobs.buildRollupQuery(fieldNameMappingTypeMap, this.query()))
     this.rescores()?.forEach { ssb.addRescorer(it) }
     this.scriptFields()?.forEach { ssb.scriptField(it.fieldName(), it.script(), it.ignoreFailure()) }
     if (this.searchAfter() != null) ssb.searchAfter(this.searchAfter())
@@ -444,9 +452,8 @@ fun SearchSourceBuilder.rewriteSearchSourceBuilder(
 fun SearchSourceBuilder.rewriteSearchSourceBuilder(
     job: Rollup,
     fieldNameMappingTypeMap: Map<String, String>,
-    concreteIndexName: String
 ): SearchSourceBuilder {
-    return this.rewriteSearchSourceBuilder(setOf(job), fieldNameMappingTypeMap, concreteIndexName)
+    return this.rewriteSearchSourceBuilder(setOf(job), fieldNameMappingTypeMap)
 }
 
 fun Rollup.getInitialDocValues(docCount: Long): MutableMap<String, Any?> =
@@ -463,4 +470,57 @@ fun parseRollup(response: GetResponse, xContentRegistry: NamedXContentRegistry =
     )
 
     return xcp.parseWithType(response.id, response.seqNo, response.primaryTerm, Rollup.Companion::parse)
+}
+
+/**
+ * QueryStringQueryParser (core's class) requires proper field mappings to parse query_string queries
+ * We will store only mappings for dimensions as they are only allowed to be used in rollup queries
+ * */
+@Suppress("ReturnCount")
+suspend fun populateSourceIndexFieldMappings(
+    rollup: Rollup,
+    resolver: IndexNameExpressionResolver,
+    state: ClusterState,
+    client: Client,
+    log: Logger
+): Rollup {
+
+    if (!rollup.sourceIndexFieldMappings.isNullOrEmpty()) {
+        return rollup
+    }
+
+    val concreteIndices = resolver.concreteIndexNames(
+        state,
+        IndicesOptions.strictExpandOpen(),
+        true,
+        rollup.sourceIndex
+    )
+    if (concreteIndices.isEmpty()) {
+        throw OpenSearchStatusException("Unable to resolve sourceIndex: [${rollup.sourceIndex}]", RestStatus.BAD_REQUEST)
+    }
+    // Taking newest index by creation date is correct approach here, since datastreams or "datastream-like constructs" can "change" mappings
+    // of field over time.(for example: update mappings in index template then rollover)
+    val concreteIndex = IndexUtils.getNewestIndexByCreationDate(concreteIndices, state)
+    val getMappingsResponse: GetMappingsResponse = client.admin().indices().suspendUntil {
+        getMappings(GetMappingsRequest().indices(concreteIndex), it)
+    }
+    if (getMappingsResponse.mappings().isEmpty() || !getMappingsResponse.mappings().containsKey(concreteIndex)) {
+        throw OpenSearchStatusException("Unable to get mappings for concrete index: [$concreteIndex]", RestStatus.INTERNAL_SERVER_ERROR)
+    }
+    val rootProperties = mutableMapOf<String, Any>()
+    val mappingMetadata: MappingMetadata = getMappingsResponse.mappings()[concreteIndex]!!
+    // Since DATE_HISTOGRAM field is not allowed in queries, we can skip it.
+    rollup.dimensions.filter { it.type != Dimension.Type.DATE_HISTOGRAM }.forEach { dimension ->
+        val fieldProps = IndexUtils.getFieldFromMappings(dimension.sourceField, mappingMetadata.sourceAsMap())
+        if (fieldProps == null) {
+            log.error("failed to fetch field properties for sourceIndex field [${dimension.sourceField}]")
+            return@forEach
+        }
+        // Flattened fields (for example: ip.addr.v4) are fine here, since MapperService can handle them.
+        rootProperties[dimension.sourceField] = fieldProps
+    }
+    if (rootProperties.isEmpty()) {
+        return rollup
+    }
+    return rollup.copy(sourceIndexFieldMappings = mapOf("_doc" to mapOf("properties" to rootProperties)))
 }

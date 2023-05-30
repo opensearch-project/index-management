@@ -5,8 +5,15 @@
 
 package org.opensearch.indexmanagement.rollup.interceptor
 
+import kotlinx.coroutines.CoroutineName
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import org.apache.logging.log4j.LogManager
 import org.opensearch.action.support.IndicesOptions
+import org.opensearch.action.support.master.AcknowledgedResponse
+import org.opensearch.client.Client
 import org.opensearch.cluster.ClusterState
 import org.opensearch.cluster.metadata.IndexNameExpressionResolver
 import org.opensearch.cluster.service.ClusterService
@@ -24,6 +31,9 @@ import org.opensearch.index.query.TermQueryBuilder
 import org.opensearch.index.query.TermsQueryBuilder
 import org.opensearch.index.search.MatchQuery
 import org.opensearch.indexmanagement.common.model.dimension.Dimension
+import org.opensearch.indexmanagement.opensearchapi.suspendUntil
+import org.opensearch.indexmanagement.rollup.action.mapping.UpdateRollupMappingAction
+import org.opensearch.indexmanagement.rollup.action.mapping.UpdateRollupMappingRequest
 import org.opensearch.indexmanagement.rollup.model.Rollup
 import org.opensearch.indexmanagement.rollup.model.RollupFieldMapping
 import org.opensearch.indexmanagement.rollup.model.RollupFieldMapping.Companion.UNKNOWN_MAPPING
@@ -33,6 +43,7 @@ import org.opensearch.indexmanagement.rollup.util.getDateHistogram
 import org.opensearch.indexmanagement.rollup.util.getRollupJobs
 import org.opensearch.indexmanagement.rollup.util.isRollupIndex
 import org.opensearch.indexmanagement.rollup.util.populateFieldMappings
+import org.opensearch.indexmanagement.rollup.util.populateSourceIndexFieldMappings
 import org.opensearch.indexmanagement.rollup.util.rewriteSearchSourceBuilder
 import org.opensearch.indexmanagement.util.IndexUtils
 import org.opensearch.search.aggregations.AggregationBuilder
@@ -54,9 +65,10 @@ import org.opensearch.transport.TransportRequestHandler
 
 class RollupInterceptor(
     val clusterService: ClusterService,
+    val client: Client,
     val settings: Settings,
     val indexNameExpressionResolver: IndexNameExpressionResolver
-) : TransportInterceptor {
+) : TransportInterceptor, CoroutineScope by CoroutineScope(SupervisorJob() + Dispatchers.Default + CoroutineName("RollupInterceptor")) {
 
     private val logger = LogManager.getLogger(javaClass)
 
@@ -81,38 +93,103 @@ class RollupInterceptor(
     ): TransportRequestHandler<T> {
         return object : TransportRequestHandler<T> {
             override fun messageReceived(request: T, channel: TransportChannel, task: Task) {
-                if (searchEnabled && request is ShardSearchRequest) {
-                    val index = request.shardId().indexName
-                    val isRollupIndex = isRollupIndex(index, clusterService.state())
-                    if (isRollupIndex) {
-                        if (request.source().size() != 0) {
-                            throw IllegalArgumentException("Rollup search must have size explicitly set to 0, but found ${request.source().size()}")
-                        }
+                if (!searchEnabled || request !is ShardSearchRequest) {
+                    actualHandler.messageReceived(request, channel, task)
+                    return
+                }
+                val index = request.shardId().indexName
+                val isRollupIndex = isRollupIndex(index, clusterService.state())
+                if (!isRollupIndex) {
+                    actualHandler.messageReceived(request, channel, task)
+                    return
+                }
+                if (request.source().size() != 0) {
+                    throw IllegalArgumentException("Rollup search must have size explicitly set to 0, but found ${request.source().size()}")
+                }
+                var rollupJobs = clusterService.state().metadata.index(index).getRollupJobs()
+                if (rollupJobs.isNullOrEmpty()) {
+                    throw IllegalArgumentException("No rollup job associated with target_index")
+                }
 
-                        val indices = request.indices().map { it.toString() }.toTypedArray()
-                        val concreteIndices = indexNameExpressionResolver
-                            .concreteIndexNames(clusterService.state(), request.indicesOptions(), *indices)
-                        // To extract fields from QueryStringQueryBuilder we need concrete source index name.
-                        val rollupJob = clusterService.state().metadata.index(index).getRollupJobs()?.get(0)
-                            ?: throw IllegalArgumentException("No rollup job associated with target_index")
-                        val queryFieldMappings = getQueryMetadata(
-                            request.source().query(),
-                            getConcreteSourceIndex(rollupJob.sourceIndex, indexNameExpressionResolver, clusterService.state())
-                        )
-                        val aggregationFieldMappings = getAggregationMetadata(request.source().aggregations()?.aggregatorFactories)
-                        val fieldMappings = queryFieldMappings + aggregationFieldMappings
+                if (verifySourceIndexMappingsExists(rollupJobs)) {
+                    rewriteRollupSearchRequest(request, rollupJobs)
+                    actualHandler.messageReceived(request, channel, task)
+                } else {
+                    launch {
 
-                        val allMatchingRollupJobs = validateIndicies(concreteIndices, fieldMappings)
+                        val updatedJobs = updateSourceIndexFieldMappings(rollupJobs)
+                        updateRollupIndexMetaField(updatedJobs)
+                        // Create new list of jobs with merged updated jobs
+                        val allRollupJobs =
+                            if (updatedJobs.isNullOrEmpty()) rollupJobs
+                            else rollupJobs.filter {
+                                    job ->
+                                updatedJobs.find { newJob -> newJob.id == job.id } == null
+                            }.plus(updatedJobs)
 
-                        // only rebuild if there is necessity to rebuild
-                        if (fieldMappings.isNotEmpty()) {
-                            rewriteShardSearchForRollupJobs(request, allMatchingRollupJobs)
-                        }
+                        rewriteRollupSearchRequest(request, allRollupJobs)
+                        actualHandler.messageReceived(request, channel, task)
                     }
                 }
-                actualHandler.messageReceived(request, channel, task)
             }
         }
+    }
+
+    private suspend fun updateRollupIndexMetaField(updatedJobs: List<Rollup>?) {
+        updatedJobs?.forEach { rollup ->
+            client.suspendUntil<Client, AcknowledgedResponse> {
+                execute(UpdateRollupMappingAction.INSTANCE, UpdateRollupMappingRequest(rollup), it)
+            }
+        }
+    }
+
+    private fun rewriteRollupSearchRequest(request: ShardSearchRequest, rollupJobs: List<Rollup>) {
+
+        val rollupJob = rollupJobs.get(0)
+
+        val indices = request.indices().map { it.toString() }.toTypedArray()
+        val concreteIndices = indexNameExpressionResolver
+            .concreteIndexNames(clusterService.state(), request.indicesOptions(), *indices)
+
+        val queryFieldMappings = getQueryMetadata(
+            request.source().query(),
+            rollupJob
+        )
+        val aggregationFieldMappings = getAggregationMetadata(request.source().aggregations()?.aggregatorFactories)
+        val fieldMappings = queryFieldMappings + aggregationFieldMappings
+
+        val allMatchingRollupJobs = validateIndicies(concreteIndices, fieldMappings)
+
+        // only rebuild if there is necessity to rebuild
+        if (fieldMappings.isNotEmpty()) {
+            rewriteShardSearchForRollupJobs(request, allMatchingRollupJobs)
+        }
+    }
+
+    private fun verifySourceIndexMappingsExists(rollupJobs: List<Rollup>): Boolean = rollupJobs.find { it.sourceIndexFieldMappings.isNullOrEmpty() } == null
+
+    private suspend fun updateSourceIndexFieldMappings(rollupJobs: List<Rollup>): List<Rollup>? {
+
+        val updatedJobs = mutableListOf<Rollup>()
+        rollupJobs.forEach { rollup ->
+            if (!rollup.sourceIndexFieldMappings.isNullOrEmpty()) {
+                return@forEach
+            }
+
+            try {
+                val updatedRollup = populateSourceIndexFieldMappings(
+                    rollup,
+                    indexNameExpressionResolver,
+                    clusterService.state(),
+                    client,
+                    logger
+                )
+                updatedJobs += updatedRollup
+            } catch (e: Exception) {
+                logger.debug("Failed to update sourceIndex mappings for sourceIndex [${rollup.sourceIndex}]", e)
+            }
+        }
+        return updatedJobs
     }
 
     fun getConcreteSourceIndex(sourceIndex: String, resolver: IndexNameExpressionResolver, clusterState: ClusterState): String {
@@ -196,7 +273,7 @@ class RollupInterceptor(
     @Suppress("ComplexMethod", "ThrowsCount", "LongMethod")
     private fun getQueryMetadata(
         query: QueryBuilder?,
-        concreteSourceIndexName: String?,
+        rollup: Rollup,
         fieldMappings: MutableSet<RollupFieldMapping> = mutableSetOf()
     ): Set<RollupFieldMapping> {
         if (query == null) {
@@ -216,20 +293,20 @@ class RollupInterceptor(
                 // do nothing
             }
             is BoolQueryBuilder -> {
-                query.must()?.forEach { this.getQueryMetadata(it, concreteSourceIndexName, fieldMappings) }
-                query.mustNot()?.forEach { this.getQueryMetadata(it, concreteSourceIndexName, fieldMappings) }
-                query.should()?.forEach { this.getQueryMetadata(it, concreteSourceIndexName, fieldMappings) }
-                query.filter()?.forEach { this.getQueryMetadata(it, concreteSourceIndexName, fieldMappings) }
+                query.must()?.forEach { this.getQueryMetadata(it, rollup, fieldMappings) }
+                query.mustNot()?.forEach { this.getQueryMetadata(it, rollup, fieldMappings) }
+                query.should()?.forEach { this.getQueryMetadata(it, rollup, fieldMappings) }
+                query.filter()?.forEach { this.getQueryMetadata(it, rollup, fieldMappings) }
             }
             is BoostingQueryBuilder -> {
-                this.getQueryMetadata(query.positiveQuery(), concreteSourceIndexName, fieldMappings)
-                this.getQueryMetadata(query.negativeQuery(), concreteSourceIndexName, fieldMappings)
+                this.getQueryMetadata(query.positiveQuery(), rollup, fieldMappings)
+                this.getQueryMetadata(query.negativeQuery(), rollup, fieldMappings)
             }
             is ConstantScoreQueryBuilder -> {
-                this.getQueryMetadata(query.innerQuery(), concreteSourceIndexName, fieldMappings)
+                this.getQueryMetadata(query.innerQuery(), rollup, fieldMappings)
             }
             is DisMaxQueryBuilder -> {
-                query.innerQueries().forEach { this.getQueryMetadata(it, concreteSourceIndexName, fieldMappings) }
+                query.innerQueries().forEach { this.getQueryMetadata(it, rollup, fieldMappings) }
             }
             is MatchPhraseQueryBuilder -> {
                 if (!query.analyzer().isNullOrEmpty() || query.slop() != MatchQuery.DEFAULT_PHRASE_SLOP ||
@@ -242,11 +319,11 @@ class RollupInterceptor(
                 fieldMappings.add(RollupFieldMapping(RollupFieldMapping.Companion.FieldType.DIMENSION, query.fieldName(), Dimension.Type.TERMS.type))
             }
             is QueryStringQueryBuilder -> {
-                if (concreteSourceIndexName.isNullOrEmpty()) {
+                if (rollup.sourceIndexFieldMappings.isNullOrEmpty()) {
                     throw IllegalArgumentException("Can't parse query_string query without sourceIndex mappings!")
                 }
                 // Throws IllegalArgumentException if unable to parse query
-                val (queryFields, otherFields) = QueryStringQueryUtil.extractFieldsFromQueryString(query, concreteSourceIndexName)
+                val (queryFields, otherFields) = QueryStringQueryUtil.extractFieldsFromQueryString(query, rollup.sourceIndexFieldMappings)
                 for (field in queryFields) {
                     fieldMappings.add(RollupFieldMapping(RollupFieldMapping.Companion.FieldType.DIMENSION, field, Dimension.Type.TERMS.type))
                 }
@@ -328,11 +405,10 @@ class RollupInterceptor(
     private fun rewriteShardSearchForRollupJobs(request: ShardSearchRequest, matchingRollupJobs: Map<Rollup, Set<RollupFieldMapping>>) {
         val matchedRollup = pickRollupJob(matchingRollupJobs.keys)
         val fieldNameMappingTypeMap = matchingRollupJobs.getValue(matchedRollup).associateBy({ it.fieldName }, { it.mappingType })
-        val concreteSourceIndex = getConcreteSourceIndex(matchedRollup.sourceIndex, indexNameExpressionResolver, clusterService.state())
         if (searchAllJobs) {
-            request.source(request.source().rewriteSearchSourceBuilder(matchingRollupJobs.keys, fieldNameMappingTypeMap, concreteSourceIndex))
+            request.source(request.source().rewriteSearchSourceBuilder(matchingRollupJobs.keys, fieldNameMappingTypeMap))
         } else {
-            request.source(request.source().rewriteSearchSourceBuilder(matchedRollup, fieldNameMappingTypeMap, concreteSourceIndex))
+            request.source(request.source().rewriteSearchSourceBuilder(matchedRollup, fieldNameMappingTypeMap))
         }
     }
 }
