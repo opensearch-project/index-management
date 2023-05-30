@@ -12,7 +12,7 @@ Compatible with OpenSearch 2.8.0
 ### Bug fixes
 * Remove recursion call when checking permission on indices. ([#779](https://github.com/opensearch-project/index-management/pull/779))
 * Added trimming of nanos part of "epoch_millis" timestamp when date_histogram type used is date_nanos. ([#772](https://github.com/opensearch-project/index-management/pull/772))
-* Added proper resolving of sourceIndex inside RollupInterceptor, it's required for QueryStringQuery parsing. ([#764](https://github.com/opensearch-project/index-management/pull/764))
+* Added proper resolving of sourceIndex inside RollupInterceptor, it's required for QueryStringQuery parsing. ([#773](https://github.com/opensearch-project/index-management/pull/773))
 
 ### Documentation
 * Added 2.8 release notes. ([#794](https://github.com/opensearch-project/index-management/pull/794))
