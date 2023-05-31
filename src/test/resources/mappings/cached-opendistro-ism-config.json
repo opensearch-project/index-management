@@ -1,6 +1,6 @@
 {
   "_meta" : {
-    "schema_version": 17
+    "schema_version": 18
   },
   "dynamic": "strict",
   "properties": {
@@ -1196,6 +1196,9 @@
                   "type": "keyword"
                 },
                 "timezone": {
+                  "type": "keyword"
+                },
+                "format": {
                   "type": "keyword"
                 }
               }
