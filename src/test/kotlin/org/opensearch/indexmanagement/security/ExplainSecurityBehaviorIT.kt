@@ -11,15 +11,6 @@ import org.opensearch.action.admin.indices.alias.IndicesAliasesRequest
 import org.opensearch.client.ResponseException
 import org.opensearch.client.RestClient
 import org.opensearch.commons.rest.SecureRestClientBuilder
-import org.opensearch.indexmanagement.BULK_WRITE_INDEX
-import org.opensearch.indexmanagement.CREATE_INDEX
-import org.opensearch.indexmanagement.GET_INDEX_MAPPING
-import org.opensearch.indexmanagement.IndexManagementPlugin
-import org.opensearch.indexmanagement.MANAGED_INDEX
-import org.opensearch.indexmanagement.PUT_INDEX_MAPPING
-import org.opensearch.indexmanagement.SEARCH_INDEX
-import org.opensearch.indexmanagement.SecurityRestTestCase
-import org.opensearch.indexmanagement.WRITE_INDEX
 import org.opensearch.indexmanagement.IndexManagementPlugin
 import org.opensearch.indexmanagement.SecurityRestTestCase
 import org.opensearch.indexmanagement.indexstatemanagement.action.AliasAction
