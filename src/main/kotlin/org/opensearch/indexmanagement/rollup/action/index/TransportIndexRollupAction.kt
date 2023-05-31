@@ -101,7 +101,13 @@ class TransportIndexRollupAction @Inject constructor(
                                 )
                             )
                         }
-                        request.rollup = populateSourceIndexFieldMappings(request.rollup, indexNameExpressionResolver, clusterService.state(), client, log)
+                        request.rollup = populateSourceIndexFieldMappings(
+                            request.rollup,
+                            indexNameExpressionResolver,
+                            clusterService.state(),
+                            client,
+                            log
+                        )
                         indexRollupDoc()
                     } else {
                         updateRollup()

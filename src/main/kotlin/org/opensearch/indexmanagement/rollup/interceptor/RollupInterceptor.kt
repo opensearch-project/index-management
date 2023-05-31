@@ -63,6 +63,7 @@ import org.opensearch.transport.TransportInterceptor
 import org.opensearch.transport.TransportRequest
 import org.opensearch.transport.TransportRequestHandler
 
+@Suppress("TooManyFunctions")
 class RollupInterceptor(
     val clusterService: ClusterService,
     val client: Client,
@@ -143,6 +144,7 @@ class RollupInterceptor(
         }
     }
 
+    @Suppress("SpreadOperator")
     private fun rewriteRollupSearchRequest(request: ShardSearchRequest, rollupJobs: List<Rollup>) {
 
         val rollupJob = rollupJobs.get(0)
@@ -166,7 +168,9 @@ class RollupInterceptor(
         }
     }
 
-    private fun verifySourceIndexMappingsExists(rollupJobs: List<Rollup>): Boolean = rollupJobs.find { it.sourceIndexFieldMappings.isNullOrEmpty() } == null
+    private fun verifySourceIndexMappingsExists(rollupJobs: List<Rollup>): Boolean {
+        return rollupJobs.find { it.sourceIndexFieldMappings.isNullOrEmpty() } == null
+    }
 
     private suspend fun updateSourceIndexFieldMappings(rollupJobs: List<Rollup>): List<Rollup>? {
 
