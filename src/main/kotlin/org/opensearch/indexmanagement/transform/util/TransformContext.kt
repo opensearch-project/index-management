@@ -10,8 +10,10 @@ package org.opensearch.indexmanagement.transform.util
  */
 class TransformContext(
     val transformLockManager: TransformLockManager,
-    var lastSuccessfulPageSize: Int? = null
+    var lastSuccessfulPageSize: Int? = null,
 ) {
+    private lateinit var targetDateFieldMappings: Map<String, Any>
+
     fun getMaxRequestTimeoutInSeconds(): Long? {
         // Lock timeout must be greater than LOCK_BUFFER
         var maxRequestTimeout = transformLockManager.lockExpirationInSeconds()?.minus(LOCK_BUFFER_SECONDS)
@@ -20,6 +22,12 @@ class TransformContext(
             return null
         }
         return maxRequestTimeout
+    }
+
+    fun getTargetIndexDateFieldMappings() = targetDateFieldMappings
+
+    fun setTargetDateFieldMappings(dateFieldMappings: Map<String, Any>) {
+        this.targetDateFieldMappings = dateFieldMappings
     }
 
     suspend fun renewLockForLongSearch(timeSpentOnSearch: Long) {
