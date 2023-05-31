@@ -1838,7 +1838,10 @@ class RollupInterceptorIT : RollupRestTestCase() {
         )
     }
 
-    fun `test roll up search with rollup job without sourceIndexFieldMappings populated`() {
+    /**
+     * Rollup job exists without sourceIndexFieldMappings field and sourceIndex exists - we are able populate sourceIndexFieldMappings
+     * */
+    fun `test roll up search with rollup job without sourceIndexFieldMappings populated success`() {
         val sourceIndex = "source_999_rollup_search_qsq_982439"
         val targetIndex = "target_rollup_qsq_search_982439331"
 
@@ -1932,8 +1935,6 @@ class RollupInterceptorIT : RollupRestTestCase() {
         var rawRes = client().makeRequest("POST", "/$sourceIndex/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
         assertTrue(rawRes.restStatus() == RestStatus.OK)
 
-//        deleteIndex(sourceIndex)
-
         var rollupRes = client().makeRequest("POST", "/$targetIndex/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
         assertTrue(rollupRes.restStatus() == RestStatus.OK)
         var rawAggRes = rawRes.asMap()["aggregations"] as Map<String, Map<String, Any>>
@@ -1943,6 +1944,50 @@ class RollupInterceptorIT : RollupRestTestCase() {
             rawAggRes.getValue("earnings_total")["value"],
             rollupAggRes.getValue("earnings_total")["value"]
         )
+    }
+
+    /**
+     * Rollup job exists without sourceIndexFieldMappings field and sourceIndex is already deleted - expect failure
+     * */
+    fun `test roll up search with rollup job without sourceIndexFieldMappings populated failure`() {
+        val sourceIndex = "hhh_source_999_rollup_search_qsq_9824392"
+        val targetIndex = "target_rollup_qsq_search_9824393313"
+
+        createSampleIndexForQSQTest(sourceIndex)
+
+        val rollup = Rollup(
+            id = "rollup_without_sourceindexfieldmapping_set_f",
+            enabled = true,
+            schemaVersion = 1L,
+            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+            jobLastUpdatedTime = Instant.now(),
+            jobEnabledTime = Instant.now(),
+            description = "basic search test",
+            sourceIndex = sourceIndex,
+            targetIndex = targetIndex,
+            metadataID = null,
+            roles = emptyList(),
+            pageSize = 10,
+            delay = 0,
+            continuous = false,
+            dimensions = listOf(
+                DateHistogram(sourceField = "event_ts", fixedInterval = "1h"),
+                Terms("state", "state"),
+                Terms("state_ext", "state_ext"),
+                Terms("state_ext2", "state_ext2"),
+                Terms("state_ordinal", "state_ordinal"),
+                Terms("abc test", "abc test"),
+            ),
+            metrics = listOf(
+                RollupMetrics(
+                    sourceField = "earnings", targetField = "earnings",
+                    metrics = listOf(
+                        Sum(), Min(), Max(),
+                        ValueCount(), Average()
+                    )
+                )
+            )
+        ).let { createRollup(it, it.id) }
 
         updateRollupStartTime(rollup)
 
@@ -1953,17 +1998,56 @@ class RollupInterceptorIT : RollupRestTestCase() {
             assertEquals("Rollup is not finished", RollupMetadata.Status.FINISHED, rollupMetadata.status)
         }
 
-        rawRes = client().makeRequest("POST", "/$sourceIndex/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
+        refreshAllIndices()
+
+        val rollupString = rollup.toJsonString(params = XCONTENT_WITHOUT_TYPE)
+        val mappingString = """{
+              "_meta": {
+                "rollups": {
+                  "${rollup.id}": $rollupString
+                }
+              }
+       
+        }
+        """.trimIndent()
+        val response = client()
+            .makeRequest(
+                "PUT",
+                "$targetIndex/_mapping",
+                emptyMap(),
+                StringEntity(mappingString, ContentType.APPLICATION_JSON)
+            )
+        assertEquals("Unable to create a new rollup", RestStatus.OK, response.restStatus())
+
+        // Term query
+        var req = """
+            {
+                "size": 0,
+                "query": {
+                    "query_string": {
+                        "query": "state:TX AND state_ext:CA AND 0",
+                        "default_field": "state_ordinal"
+                    }
+                    
+                },
+                "aggs": {
+                    "earnings_total": {
+                        "sum": {
+                            "field": "earnings"
+                        }
+                    }
+                }
+            }
+        """.trimIndent()
+
+        var rawRes = client().makeRequest("POST", "/$sourceIndex/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
         assertTrue(rawRes.restStatus() == RestStatus.OK)
 
-        rollupRes = client().makeRequest("POST", "/$targetIndex/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
-        assertTrue(rollupRes.restStatus() == RestStatus.OK)
-        rawAggRes = rawRes.asMap()["aggregations"] as Map<String, Map<String, Any>>
-        rollupAggRes = rollupRes.asMap()["aggregations"] as Map<String, Map<String, Any>>
-        assertEquals(
-            "Source and rollup index did not return same min results",
-            rawAggRes.getValue("earnings_total")["value"],
-            rollupAggRes.getValue("earnings_total")["value"]
-        )
+        deleteIndex(sourceIndex)
+        try {
+            client().makeRequest("POST", "/$targetIndex/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
+        } catch (e: ResponseException) {
+            assertTrue(e.message!!.contains("Can't parse query_string query without sourceIndex mappings!"))
+        }
     }
 }

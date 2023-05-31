@@ -113,7 +113,11 @@ class RollupInterceptor(
                 }
 
                 if (verifySourceIndexMappingsExists(rollupJobs)) {
-                    rewriteRollupSearchRequest(request, rollupJobs)
+                    try {
+                        rewriteRollupSearchRequest(request, rollupJobs)
+                    } catch (e: Exception) {
+                        channel.sendResponse(e)
+                    }
                     actualHandler.messageReceived(request, channel, task)
                 } else {
                     launch {
@@ -128,7 +132,11 @@ class RollupInterceptor(
                                 updatedJobs.find { newJob -> newJob.id == job.id } == null
                             }.plus(updatedJobs)
 
-                        rewriteRollupSearchRequest(request, allRollupJobs)
+                        try {
+                            rewriteRollupSearchRequest(request, allRollupJobs)
+                        } catch (e: Exception) {
+                            channel.sendResponse(e)
+                        }
                         actualHandler.messageReceived(request, channel, task)
                     }
                 }
