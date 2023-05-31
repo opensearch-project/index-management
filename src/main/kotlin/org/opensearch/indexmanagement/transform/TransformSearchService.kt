@@ -206,7 +206,12 @@ class TransformSearchService(
             // If the request was successful, update page size
             transformContext.lastSuccessfulPageSize = pageSize
             transformContext.renewLockForLongSearch(Instant.now().epochSecond - searchStart)
-            return convertResponse(transform, searchResponse, modifiedBuckets = modifiedBuckets)
+            return convertResponse(
+                transform,
+                searchResponse,
+                modifiedBuckets = modifiedBuckets,
+                targetIndexDateFieldMappings = transformContext.getTargetIndexDateFieldMappings()
+            )
         } catch (e: TransformSearchServiceException) {
             throw e
         } catch (e: RemoteTransportException) {
@@ -333,7 +338,8 @@ class TransformSearchService(
             transform: Transform,
             searchResponse: SearchResponse,
             waterMarkDocuments: Boolean = true,
-            modifiedBuckets: MutableSet<Map<String, Any>>? = null
+            modifiedBuckets: MutableSet<Map<String, Any>>? = null,
+            targetIndexDateFieldMappings: Map<String, Any>,
         ): TransformSearchResult {
             val aggs = searchResponse.aggregations.get(transform.id) as CompositeAggregation
             val buckets = if (modifiedBuckets != null) aggs.buckets.filter { modifiedBuckets.contains(it.key) } else aggs.buckets
@@ -348,8 +354,12 @@ class TransformSearchService(
                 val hashedId = hashToFixedSize(id)
 
                 val document = transform.convertToDoc(aggregatedBucket.docCount, waterMarkDocuments)
-                aggregatedBucket.key.entries.forEach { bucket -> document[bucket.key] = bucket.value }
-                aggregatedBucket.aggregations.forEach { aggregation -> document[aggregation.name] = getAggregationValue(aggregation) }
+                aggregatedBucket.key.entries.forEach { bucket ->
+                    document[bucket.key] = bucket.value
+                }
+                aggregatedBucket.aggregations.forEach { aggregation ->
+                    document[aggregation.name] = getAggregationValue(aggregation, targetIndexDateFieldMappings)
+                }
 
                 val indexRequest = IndexRequest(transform.targetIndex)
                     .id(hashedId)
@@ -370,11 +380,20 @@ class TransformSearchService(
             return BucketSearchResult(modifiedBuckets, aggs.afterKey(), searchResponse.took.millis)
         }
 
-        private fun getAggregationValue(aggregation: Aggregation): Any {
+        private fun getAggregationValue(aggregation: Aggregation, targetIndexDateFieldMappings: Map<String, Any>): Any {
             return when (aggregation) {
                 is InternalSum, is InternalMin, is InternalMax, is InternalAvg, is InternalValueCount -> {
                     val agg = aggregation as NumericMetricsAggregation.SingleValue
-                    agg.value()
+                    /**
+                     * When date filed is used in transform aggregation (min, max avg), the value of the field is in exponential format
+                     * which is not allowed since the target index mapping for date field is strict_date_optional_time||epoch_millis
+                     * That's why the exponential value is transformed to long: agg.value().toLong()
+                     */
+                    if (aggregation is InternalValueCount || aggregation is InternalSum || !targetIndexDateFieldMappings.containsKey(agg.name)) {
+                        agg.value()
+                    } else {
+                        agg.value().toLong()
+                    }
                 }
                 is Percentiles -> {
                     val percentiles = mutableMapOf<String, Double>()
