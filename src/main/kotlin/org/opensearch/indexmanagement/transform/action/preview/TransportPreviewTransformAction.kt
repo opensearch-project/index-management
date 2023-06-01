@@ -5,6 +5,9 @@
 
 package org.opensearch.indexmanagement.transform.action.preview
 
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import org.apache.logging.log4j.LogManager
 import org.opensearch.ExceptionsHelper
 import org.opensearch.OpenSearchStatusException
@@ -21,10 +24,16 @@ import org.opensearch.client.Client
 import org.opensearch.cluster.metadata.IndexNameExpressionResolver
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.inject.Inject
+import org.opensearch.common.settings.Settings
 import org.opensearch.commons.ConfigConstants
+import org.opensearch.indexmanagement.opensearchapi.IndexManagementSecurityContext
+import org.opensearch.indexmanagement.opensearchapi.suspendUntil
+import org.opensearch.indexmanagement.opensearchapi.withClosableContext
+import org.opensearch.indexmanagement.transform.TargetIndexMappingService
 import org.opensearch.indexmanagement.transform.TransformSearchService
 import org.opensearch.indexmanagement.transform.TransformValidator
 import org.opensearch.indexmanagement.transform.model.Transform
+import org.opensearch.indexmanagement.util.SecurityUtils
 import org.opensearch.rest.RestStatus
 import org.opensearch.tasks.Task
 import org.opensearch.transport.TransportService
@@ -32,6 +41,7 @@ import org.opensearch.transport.TransportService
 class TransportPreviewTransformAction @Inject constructor(
     transportService: TransportService,
     actionFilters: ActionFilters,
+    val settings: Settings,
     private val client: Client,
     private val clusterService: ClusterService,
     private val indexNameExpressionResolver: IndexNameExpressionResolver
@@ -69,7 +79,15 @@ class TransportPreviewTransformAction @Inject constructor(
                         return
                     }
                     val searchRequest = TransformSearchService.getSearchServiceRequest(transform = transform, pageSize = 10)
-                    executeSearch(searchRequest, transform, listener)
+                    val user = SecurityUtils.buildUser(client.threadPool().threadContext)
+
+                    CoroutineScope(Dispatchers.IO).launch {
+                        withClosableContext(
+                            IndexManagementSecurityContext("PreviewTransformHandler", settings, client.threadPool().threadContext, user)
+                        ) {
+                            executeSearch(searchRequest, transform, listener)
+                        }
+                    }
                 }
 
                 override fun onFailure(e: Exception) {
@@ -87,31 +105,31 @@ class TransportPreviewTransformAction @Inject constructor(
 
         return issues
     }
+    suspend fun executeSearch(searchRequest: SearchRequest, transform: Transform, listener: ActionListener<PreviewTransformResponse>) {
+        val response = try {
+            val searchResponse: SearchResponse = client.suspendUntil { search(searchRequest, it) }
+            searchResponse
+        } catch (e: Exception) {
+            listener.onFailure(e)
+            return
+        }
 
-    fun executeSearch(searchRequest: SearchRequest, transform: Transform, listener: ActionListener<PreviewTransformResponse>) {
-        client.search(
-            searchRequest,
-            object : ActionListener<SearchResponse> {
-                override fun onResponse(response: SearchResponse) {
-                    try {
-                        val transformSearchResult = TransformSearchService.convertResponse(
-                            transform = transform, searchResponse = response, waterMarkDocuments = false
-                        )
-                        val formattedResult = transformSearchResult.docsToIndex.map {
-                            it.sourceAsMap()
-                        }
-                        listener.onResponse(PreviewTransformResponse(formattedResult, RestStatus.OK))
-                    } catch (e: Exception) {
-                        listener.onFailure(
-                            OpenSearchStatusException(
-                                "Failed to parse the transformed results", RestStatus.INTERNAL_SERVER_ERROR, ExceptionsHelper.unwrapCause(e)
-                            )
-                        )
-                    }
-                }
-
-                override fun onFailure(e: Exception) = listener.onFailure(e)
+        try {
+            val targetIndexDateFieldMappings = TargetIndexMappingService.getTargetMappingsForDates(transform)
+            val transformSearchResult = TransformSearchService.convertResponse(
+                transform = transform, searchResponse = response, waterMarkDocuments = false,
+                targetIndexDateFieldMappings = targetIndexDateFieldMappings
+            )
+            val formattedResult = transformSearchResult.docsToIndex.map {
+                it.sourceAsMap()
             }
-        )
+            listener.onResponse(PreviewTransformResponse(formattedResult, RestStatus.OK))
+        } catch (e: Exception) {
+            listener.onFailure(
+                OpenSearchStatusException(
+                    "Failed to parse the transformed results", RestStatus.INTERNAL_SERVER_ERROR, ExceptionsHelper.unwrapCause(e)
+                )
+            )
+        }
     }
 }
