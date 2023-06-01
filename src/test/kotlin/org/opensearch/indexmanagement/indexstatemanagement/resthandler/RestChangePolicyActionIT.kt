@@ -436,13 +436,13 @@ class RestChangePolicyActionIT : IndexStateManagementRestTestCase() {
         // speed up to first execution where we initialize the policy on the job
         updateManagedIndexConfigStartTime(firstManagedIndexConfig)
 
-        waitFor { assertEquals(policy.id, getExplainManagedIndexMetaData(firstIndex).policyID) }
+        waitFor { assertEquals(policy.id, getExplainManagedIndexMetaData(firstIndex)!!.policyID) }
 
         // speed up to second execution where we attempt transition which should succeed
         // and transitionTo should be set
         updateManagedIndexConfigStartTime(firstManagedIndexConfig)
 
-        waitFor { assertEquals(secondState.name, getExplainManagedIndexMetaData(firstIndex).transitionTo) }
+        waitFor { assertEquals(secondState.name, getExplainManagedIndexMetaData(firstIndex)!!.transitionTo) }
 
         // speed up to third execution where we transition to second state
         updateManagedIndexConfigStartTime(firstManagedIndexConfig)
@@ -452,7 +452,7 @@ class RestChangePolicyActionIT : IndexStateManagementRestTestCase() {
 //            getExplainManagedIndexMetaData(firstIndex).let {
 //                assertEquals(it.copy(stateMetaData = it.stateMetaData?.copy(name = secondState.name)), it)
 //            }
-            assertEquals(secondState.name, getExplainManagedIndexMetaData(firstIndex).stateMetaData?.name)
+            assertEquals(secondState.name, getExplainManagedIndexMetaData(firstIndex)!!.stateMetaData?.name)
             logger.info("Explain firstIndex before change policy: ${getExplainManagedIndexMetaData(firstIndex)}")
         }
         logger.info("time after check")
@@ -465,7 +465,7 @@ class RestChangePolicyActionIT : IndexStateManagementRestTestCase() {
         // speed up to first execution where we initialize the policy on the job
         updateManagedIndexConfigStartTime(secondManagedIndexConfig)
 
-        waitFor { assertEquals(policy.id, getExplainManagedIndexMetaData(secondIndex).policyID) }
+        waitFor { assertEquals(policy.id, getExplainManagedIndexMetaData(secondIndex)!!.policyID) }
 
         val newPolicy = createRandomPolicy()
         val changePolicy = ChangePolicy(newPolicy.id, null, listOf(StateFilter(state = firstState.name)), false)
@@ -562,10 +562,10 @@ class RestChangePolicyActionIT : IndexStateManagementRestTestCase() {
 
         // Change the start time so the job will trigger in 2 seconds and init policy
         updateManagedIndexConfigStartTime(managedIndexConfig)
-        waitFor { assertEquals(policy.id, getExplainManagedIndexMetaData(index).policyID) }
+        waitFor { assertEquals(policy.id, getExplainManagedIndexMetaData(index)!!.policyID) }
 
         // We should expect the explain API to show an initialized ManagedIndexMetaData with the default state from the initial policy
-        waitFor { assertEquals(policy.defaultState, getExplainManagedIndexMetaData(indexName).stateMetaData?.name) }
+        waitFor { assertEquals(policy.defaultState, getExplainManagedIndexMetaData(indexName)!!.stateMetaData?.name) }
 
         // add 10 documents which is not enough to trigger the 100 million rollover condition
         insertSampleData(indexName, docCount = 10)
@@ -574,10 +574,10 @@ class RestChangePolicyActionIT : IndexStateManagementRestTestCase() {
         updateManagedIndexConfigStartTime(managedIndexConfig)
         // verify we are in rollover and have not completed it yet
         waitFor {
-            assertEquals(RolloverAction.name, getExplainManagedIndexMetaData(indexName).actionMetaData?.name)
+            assertEquals(RolloverAction.name, getExplainManagedIndexMetaData(indexName)!!.actionMetaData?.name)
             assertEquals(
                 AttemptRolloverStep.getPendingMessage(indexName),
-                getExplainManagedIndexMetaData(indexName).info?.get("message")
+                getExplainManagedIndexMetaData(indexName)!!.info?.get("message")
             )
         }
 
@@ -609,7 +609,7 @@ class RestChangePolicyActionIT : IndexStateManagementRestTestCase() {
         waitFor {
             assertNull(getManagedIndexConfigByDocId(managedIndexConfig.id)?.changePolicy)
             assertEquals(newPolicy.id, getManagedIndexConfigByDocId(managedIndexConfig.id)?.policyID)
-            assertEquals(newPolicy.id, getExplainManagedIndexMetaData(indexName).policyID)
+            assertEquals(newPolicy.id, getExplainManagedIndexMetaData(indexName)!!.policyID)
         }
 
         // speed up to next execution where we should now execute with the updated policy
@@ -619,7 +619,7 @@ class RestChangePolicyActionIT : IndexStateManagementRestTestCase() {
         waitFor {
             assertEquals(
                 AttemptRolloverStep.getSuccessMessage(indexName),
-                getExplainManagedIndexMetaData(indexName).info?.get("message")
+                getExplainManagedIndexMetaData(indexName)!!.info?.get("message")
             )
         }
     }

@@ -5,9 +5,9 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement
 
+import org.apache.hc.core5.http.ContentType
 import org.apache.hc.core5.http.HttpEntity
 import org.apache.hc.core5.http.HttpHeaders
-import org.apache.hc.core5.http.ContentType
 import org.apache.hc.core5.http.io.entity.StringEntity
 import org.apache.hc.core5.http.message.BasicHeader
 import org.junit.After
@@ -22,13 +22,13 @@ import org.opensearch.client.RestClient
 import org.opensearch.cluster.metadata.IndexMetadata
 import org.opensearch.common.settings.Settings
 import org.opensearch.common.unit.TimeValue
-import org.opensearch.core.xcontent.DeprecationHandler
 import org.opensearch.common.xcontent.LoggingDeprecationHandler
-import org.opensearch.core.xcontent.NamedXContentRegistry
-import org.opensearch.core.xcontent.XContentParser.Token
 import org.opensearch.common.xcontent.XContentParserUtils.ensureExpectedToken
 import org.opensearch.common.xcontent.XContentType
 import org.opensearch.common.xcontent.json.JsonXContent.jsonXContent
+import org.opensearch.core.xcontent.DeprecationHandler
+import org.opensearch.core.xcontent.NamedXContentRegistry
+import org.opensearch.core.xcontent.XContentParser.Token
 import org.opensearch.index.seqno.SequenceNumbers
 import org.opensearch.indexmanagement.IndexManagementIndices
 import org.opensearch.indexmanagement.IndexManagementPlugin
@@ -620,7 +620,7 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
     // Calls explain API for a single concrete index and converts the response into a ManagedIndexMetaData
     // This only works for indices with a ManagedIndexMetaData that has been initialized
     @Suppress("LoopWithTooManyJumpStatements")
-    protected fun getExplainManagedIndexMetaData(indexName: String, userClient: RestClient? = null): ManagedIndexMetaData {
+    protected fun getExplainManagedIndexMetaData(indexName: String, userClient: RestClient? = null): ManagedIndexMetaData? {
         if (indexName.contains("*") || indexName.contains(",")) {
             throw IllegalArgumentException("This method is only for a single concrete index")
         }
@@ -633,8 +633,13 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
         while (xcp.nextToken() != Token.END_OBJECT) {
             val cn = xcp.currentName()
             xcp.nextToken()
-            if (cn == "total_managed_indices") continue
-
+            if (cn == "total_managed_indices") {
+                if (xcp.text() == "0") {
+                    return null
+                } else {
+                    continue
+                }
+            }
             metadata = ManagedIndexMetaData.parse(xcp)
             break // bypass roles field
         }

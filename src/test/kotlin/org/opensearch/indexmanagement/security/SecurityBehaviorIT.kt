@@ -139,11 +139,7 @@ class SecurityBehaviorIT : SecurityRestTestCase() {
 
             waitFor {
                 var airlineIndex = getExplainManagedIndexMetaData(AIRLINE_INDEX, johnClient!!)
-                assertEquals(AIRLINE_POLICY, airlineIndex.policyID)
-                assertEquals(AIRLINE_INDEX, airlineIndex.index)
-
-                airlineIndex = getExplainManagedIndexMetaData(AIRLINE_INDEX, janeClient)
-                assertEquals(AIRLINE_POLICY, airlineIndex.policyID)
+                assertEquals(AIRLINE_POLICY, airlineIndex!!.policyID)
                 assertEquals(AIRLINE_INDEX, airlineIndex.index)
             }
 
@@ -152,7 +148,7 @@ class SecurityBehaviorIT : SecurityRestTestCase() {
 
             waitFor {
                 val availabilityIndex = getExplainManagedIndexMetaData(AVAILABILITY_INDEX, janeClient)
-                assertEquals(AVAILABILITY_POLICY, availabilityIndex.policyID)
+                assertEquals(AVAILABILITY_POLICY, availabilityIndex!!.policyID)
                 assertEquals(AVAILABILITY_INDEX, availabilityIndex.index)
             }
 

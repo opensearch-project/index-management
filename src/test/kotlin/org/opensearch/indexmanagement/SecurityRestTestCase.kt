@@ -106,7 +106,7 @@ abstract class SecurityRestTestCase : IndexManagementRestTestCase() {
             return super.createIndex(index, policyID, alias, replicas, shards, mapping, settings)
         }
 
-        fun getExplainManagedIndexMetaDataExt(indexName: String, userClient: RestClient? = null): ManagedIndexMetaData {
+        fun getExplainManagedIndexMetaDataExt(indexName: String, userClient: RestClient? = null): ManagedIndexMetaData? {
             return super.getExplainManagedIndexMetaData(indexName, userClient)
         }
     }
@@ -259,7 +259,7 @@ abstract class SecurityRestTestCase : IndexManagementRestTestCase() {
         executeRequest(request, expectedStatus, client)
     }
 
-    protected fun getExplainManagedIndexMetaData(indexName: String, userClient: RestClient? = null): ManagedIndexMetaData {
+    protected fun getExplainManagedIndexMetaData(indexName: String, userClient: RestClient? = null): ManagedIndexMetaData? {
         return IndexStateManagementRestTestCaseExt.getExplainManagedIndexMetaDataExt(indexName, userClient)
     }
 

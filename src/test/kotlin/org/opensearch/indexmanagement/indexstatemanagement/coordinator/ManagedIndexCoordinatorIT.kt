@@ -160,10 +160,10 @@ class ManagedIndexCoordinatorIT : IndexStateManagementRestTestCase() {
 
         // Change the start time so the job will trigger in 2 seconds and init policy
         updateManagedIndexConfigStartTime(managedIndexConfig)
-        waitFor { assertEquals(policy.id, getExplainManagedIndexMetaData(indexName).policyID) }
+        waitFor { assertEquals(policy.id, getExplainManagedIndexMetaData(indexName)!!.policyID) }
 
         // Expect the Explain API to show an initialized ManagedIndexMetaData with the default state from the policy
-        waitFor { assertEquals(policy.defaultState, getExplainManagedIndexMetaData(indexName).stateMetaData?.name) }
+        waitFor { assertEquals(policy.defaultState, getExplainManagedIndexMetaData(indexName)!!.stateMetaData?.name) }
 
         // Disable Index State Management
         updateClusterSetting(ManagedIndexSettings.INDEX_STATE_MANAGEMENT_ENABLED.key, "false")
@@ -211,7 +211,7 @@ class ManagedIndexCoordinatorIT : IndexStateManagementRestTestCase() {
         waitFor {
             assertEquals(
                 AttemptRolloverStep.getSuccessMessage(indexName),
-                getExplainManagedIndexMetaData(indexName).info?.get("message")
+                getExplainManagedIndexMetaData(indexName)!!.info?.get("message")
             )
         }
     }
@@ -260,10 +260,10 @@ class ManagedIndexCoordinatorIT : IndexStateManagementRestTestCase() {
         // Will change the startTime each execution so that it triggers in 2 seconds
         // First execution: Policy is initialized
         updateManagedIndexConfigStartTime(managedIndexConfig)
-        waitFor { assertEquals(policyID, getExplainManagedIndexMetaData(indexName).policyID) }
+        waitFor { assertEquals(policyID, getExplainManagedIndexMetaData(indexName)!!.policyID) }
 
         // Expect the Explain API to show an initialized ManagedIndexMetaData with the default state from the policy
-        waitFor { assertEquals(policy.defaultState, getExplainManagedIndexMetaData(indexName).stateMetaData?.name) }
+        waitFor { assertEquals(policy.defaultState, getExplainManagedIndexMetaData(indexName)!!.stateMetaData?.name) }
 
         // Second execution: Index is set to read-only for force_merge
         updateManagedIndexConfigStartTime(managedIndexConfig)
@@ -278,7 +278,7 @@ class ManagedIndexCoordinatorIT : IndexStateManagementRestTestCase() {
             assertEquals(
                 "maxNumSegments not set in ActionProperties",
                 forceMergeActionConfig.maxNumSegments,
-                getExplainManagedIndexMetaData(indexName).actionMetaData?.actionProperties?.maxNumSegments
+                getExplainManagedIndexMetaData(indexName)!!.actionMetaData?.actionProperties?.maxNumSegments
             )
         }
 
@@ -292,7 +292,7 @@ class ManagedIndexCoordinatorIT : IndexStateManagementRestTestCase() {
         waitFor {
             assertEquals(
                 WaitForForceMergeStep.getSuccessMessage(indexName),
-                getExplainManagedIndexMetaData(indexName).info?.get("message")
+                getExplainManagedIndexMetaData(indexName)!!.info?.get("message")
             )
         }
 
@@ -312,7 +312,7 @@ class ManagedIndexCoordinatorIT : IndexStateManagementRestTestCase() {
         waitFor {
             assertEquals(
                 WaitForForceMergeStep.getSuccessMessage(indexName),
-                getExplainManagedIndexMetaData(indexName).info?.get("message")
+                getExplainManagedIndexMetaData(indexName)!!.info?.get("message")
             )
         }
 

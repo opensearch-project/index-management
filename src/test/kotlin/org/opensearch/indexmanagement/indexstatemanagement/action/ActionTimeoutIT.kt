@@ -35,14 +35,14 @@ class ActionTimeoutIT : IndexStateManagementRestTestCase() {
         // First execution. We need to initialize the policy.
         updateManagedIndexConfigStartTime(managedIndexConfig)
 
-        waitFor { assertEquals(policyID, getExplainManagedIndexMetaData(indexName).policyID) }
+        waitFor { assertEquals(policyID, getExplainManagedIndexMetaData(indexName)!!.policyID) }
 
         // the second execution we move into rollover action, we won't hit the timeout as this is the execution that sets the startTime
         updateManagedIndexConfigStartTime(managedIndexConfig)
         waitFor {
             assertEquals(
                 "Should be attempting to rollover",
-                getExplainManagedIndexMetaData(indexName).info?.get("message"),
+                getExplainManagedIndexMetaData(indexName)!!.info?.get("message"),
                 AttemptRolloverStep.getPendingMessage(indexName)
             )
         }
@@ -88,7 +88,7 @@ class ActionTimeoutIT : IndexStateManagementRestTestCase() {
         // First execution. We need to initialize the policy.
         updateManagedIndexConfigStartTime(managedIndexConfig)
 
-        waitFor { assertEquals(policyID, getExplainManagedIndexMetaData(indexName).policyID) }
+        waitFor { assertEquals(policyID, getExplainManagedIndexMetaData(indexName)!!.policyID) }
 
         // the second execution we move into open action, we won't hit the timeout as this is the execution that sets the startTime
         updateManagedIndexConfigStartTime(managedIndexConfig)
@@ -111,7 +111,7 @@ class ActionTimeoutIT : IndexStateManagementRestTestCase() {
         waitFor {
             assertEquals(
                 "Should be attempting to rollover",
-                getExplainManagedIndexMetaData(indexName).info?.get("message"),
+                getExplainManagedIndexMetaData(indexName)!!.info?.get("message"),
                 AttemptRolloverStep.getPendingMessage(indexName)
             )
         }

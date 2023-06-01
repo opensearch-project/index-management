@@ -26,7 +26,7 @@ import java.util.Locale
 
 @TestLogging("level:DEBUG", reason = "Debug for tests.")
 class ExplainSecurityBehaviorIT : SecurityRestTestCase() {
-    private val password = "Test123!"
+    private val password = "Test123!hjkhkjh67867890jksdf"
     private val ismUser = "john"
 
     private var userClient: RestClient? = null

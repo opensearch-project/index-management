@@ -261,14 +261,14 @@ class RollupActionIT : IndexStateManagementRestTestCase() {
 
         // Change the start time so the job will initialize the policy
         updateManagedIndexConfigStartTime(managedIndexConfig)
-        waitFor { assertEquals(policyID, getExplainManagedIndexMetaData(indexName).policyID) }
+        waitFor { assertEquals(policyID, getExplainManagedIndexMetaData(indexName)!!.policyID) }
 
         // Change the start time so we attempt to create rollup step will execute
         updateManagedIndexConfigStartTime(managedIndexConfig)
         waitFor {
             assertEquals(
                 AttemptCreateRollupJobStep.getSuccessMessage(rollupId, indexName),
-                getExplainManagedIndexMetaData(indexName).info?.get("message")
+                getExplainManagedIndexMetaData(indexName)!!.info?.get("message")
             )
         }
 
@@ -279,7 +279,7 @@ class RollupActionIT : IndexStateManagementRestTestCase() {
         waitFor {
             assertEquals(
                 WaitForRollupCompletionStep.getJobFailedMessage(rollupId, indexName),
-                getExplainManagedIndexMetaData(indexName).info?.get("message")
+                getExplainManagedIndexMetaData(indexName)!!.info?.get("message")
             )
         }
     }
@@ -330,14 +330,14 @@ class RollupActionIT : IndexStateManagementRestTestCase() {
 
         // Change the start time so the job will initialize the policy
         updateManagedIndexConfigStartTime(managedIndexConfig)
-        waitFor { assertEquals(policyID, getExplainManagedIndexMetaData(indexName).policyID) }
+        waitFor { assertEquals(policyID, getExplainManagedIndexMetaData(indexName)!!.policyID) }
 
         // Change the start time so we attempt to create rollup step will execute
         updateManagedIndexConfigStartTime(managedIndexConfig)
         waitFor {
             assertEquals(
                 AttemptCreateRollupJobStep.getFailedMessage(rollupId, indexName),
-                getExplainManagedIndexMetaData(indexName).info?.get("message")
+                getExplainManagedIndexMetaData(indexName)!!.info?.get("message")
             )
         }
     }
@@ -379,14 +379,14 @@ class RollupActionIT : IndexStateManagementRestTestCase() {
 
         // Change the start time so the job will initialize the policy
         updateManagedIndexConfigStartTime(managedIndexConfig)
-        waitFor { assertEquals(policyID, getExplainManagedIndexMetaData(indexName).policyID) }
+        waitFor { assertEquals(policyID, getExplainManagedIndexMetaData(indexName)!!.policyID) }
 
         // Change the start time so we attempt to create rollup step will execute
         updateManagedIndexConfigStartTime(managedIndexConfig)
         waitFor {
             assertEquals(
                 AttemptCreateRollupJobStep.getSuccessMessage(rollupId, indexName),
-                getExplainManagedIndexMetaData(indexName).info?.get("message")
+                getExplainManagedIndexMetaData(indexName)!!.info?.get("message")
             )
         }
 
@@ -395,7 +395,7 @@ class RollupActionIT : IndexStateManagementRestTestCase() {
         waitFor {
             assertEquals(
                 WaitForRollupCompletionStep.getJobProcessingMessage(rollupId, indexName),
-                getExplainManagedIndexMetaData(indexName).info?.get("message")
+                getExplainManagedIndexMetaData(indexName)!!.info?.get("message")
             )
         }
 
@@ -405,7 +405,7 @@ class RollupActionIT : IndexStateManagementRestTestCase() {
         waitFor {
             assertEquals(
                 WaitForRollupCompletionStep.getJobFailedMessage(rollupId, indexName),
-                getExplainManagedIndexMetaData(indexName).info?.get("message")
+                getExplainManagedIndexMetaData(indexName)!!.info?.get("message")
             )
         }
     }
@@ -416,14 +416,14 @@ class RollupActionIT : IndexStateManagementRestTestCase() {
 
         // Change the start time so that the policy will be initialized.
         updateManagedIndexConfigStartTime(managedIndexConfig)
-        waitFor { assertEquals(policyId, getExplainManagedIndexMetaData(indexName).policyID) }
+        waitFor { assertEquals(policyId, getExplainManagedIndexMetaData(indexName)!!.policyID) }
 
         // Change the start time so that the rollup action will be attempted.
         updateManagedIndexConfigStartTime(managedIndexConfig)
         waitFor {
             assertEquals(
                 AttemptCreateRollupJobStep.getSuccessMessage(rollupId, indexName),
-                getExplainManagedIndexMetaData(indexName).info?.get("message")
+                getExplainManagedIndexMetaData(indexName)!!.info?.get("message")
             )
         }
 
@@ -434,7 +434,7 @@ class RollupActionIT : IndexStateManagementRestTestCase() {
         waitFor {
             assertEquals(
                 WaitForRollupCompletionStep.getJobCompletionMessage(rollupId, indexName),
-                getExplainManagedIndexMetaData(indexName).info?.get("message")
+                getExplainManagedIndexMetaData(indexName)!!.info?.get("message")
             )
         }
 

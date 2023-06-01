@@ -49,13 +49,13 @@ class TransitionActionIT : IndexStateManagementRestTestCase() {
         // Initializing the policy/metadata
         updateManagedIndexConfigStartTime(managedIndexConfig)
 
-        waitFor { assertEquals(policyID, getExplainManagedIndexMetaData(indexName).policyID) }
+        waitFor { assertEquals(policyID, getExplainManagedIndexMetaData(indexName)!!.policyID) }
 
         // Evaluating transition conditions for first time
         updateManagedIndexConfigStartTime(managedIndexConfig)
 
         // Should not have evaluated to true
-        waitFor { assertEquals(AttemptTransitionStep.getEvaluatingMessage(indexName), getExplainManagedIndexMetaData(indexName).info?.get("message")) }
+        waitFor { assertEquals(AttemptTransitionStep.getEvaluatingMessage(indexName), getExplainManagedIndexMetaData(indexName)!!.info?.get("message")) }
 
         // Add 6 documents (>5)
         insertSampleData(indexName, 6)
@@ -64,7 +64,7 @@ class TransitionActionIT : IndexStateManagementRestTestCase() {
         updateManagedIndexConfigStartTime(managedIndexConfig)
 
         // Should have evaluated to true
-        waitFor { assertEquals(AttemptTransitionStep.getSuccessMessage(indexName, secondStateName), getExplainManagedIndexMetaData(indexName).info?.get("message")) }
+        waitFor { assertEquals(AttemptTransitionStep.getSuccessMessage(indexName, secondStateName), getExplainManagedIndexMetaData(indexName)!!.info?.get("message")) }
     }
 
     fun `test rollover age transition for index with no rollover fails`() {
@@ -94,13 +94,13 @@ class TransitionActionIT : IndexStateManagementRestTestCase() {
         // Initializing the policy/metadata
         updateManagedIndexConfigStartTime(managedIndexConfig)
 
-        waitFor { assertEquals(policyID, getExplainManagedIndexMetaData(indexName).policyID) }
+        waitFor { assertEquals(policyID, getExplainManagedIndexMetaData(indexName)!!.policyID) }
 
         // Evaluating transition conditions for first time
         updateManagedIndexConfigStartTime(managedIndexConfig)
 
         // Should fail because it attempted to use the rollover age and the index has not been rolled over
-        waitFor { assertEquals(AttemptTransitionStep.getFailedRolloverDateMessage(indexName), getExplainManagedIndexMetaData(indexName).info?.get("message")) }
+        waitFor { assertEquals(AttemptTransitionStep.getFailedRolloverDateMessage(indexName), getExplainManagedIndexMetaData(indexName)!!.info?.get("message")) }
     }
 
     fun `test rollover age transition for index`() {
@@ -131,7 +131,7 @@ class TransitionActionIT : IndexStateManagementRestTestCase() {
         // Initializing the policy/metadata
         updateManagedIndexConfigStartTime(managedIndexConfig)
 
-        waitFor { assertEquals(policyID, getExplainManagedIndexMetaData(indexName).policyID) }
+        waitFor { assertEquals(policyID, getExplainManagedIndexMetaData(indexName)!!.policyID) }
 
         // Rollover the index
         rolloverIndex(alias)
@@ -140,6 +140,6 @@ class TransitionActionIT : IndexStateManagementRestTestCase() {
         updateManagedIndexConfigStartTime(managedIndexConfig)
 
         // Should have evaluated to true
-        waitFor { assertEquals(AttemptTransitionStep.getSuccessMessage(indexName, secondStateName), getExplainManagedIndexMetaData(indexName).info?.get("message")) }
+        waitFor { assertEquals(AttemptTransitionStep.getSuccessMessage(indexName, secondStateName), getExplainManagedIndexMetaData(indexName)!!.info?.get("message")) }
     }
 }

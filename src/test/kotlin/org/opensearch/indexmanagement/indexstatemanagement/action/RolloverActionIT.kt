@@ -62,12 +62,12 @@ class RolloverActionIT : IndexStateManagementRestTestCase() {
 
         // Change the start time so the job will trigger in 2 seconds, this will trigger the first initialization of the policy
         updateManagedIndexConfigStartTime(managedIndexConfig)
-        waitFor { assertEquals(policyID, getExplainManagedIndexMetaData(firstIndex).policyID) }
+        waitFor { assertEquals(policyID, getExplainManagedIndexMetaData(firstIndex)!!.policyID) }
 
         // Need to speed up to second execution where it will trigger the first execution of the action
         updateManagedIndexConfigStartTime(managedIndexConfig)
         waitFor {
-            val info = getExplainManagedIndexMetaData(firstIndex).info as Map<String, Any?>
+            val info = getExplainManagedIndexMetaData(firstIndex)!!.info as Map<String, Any?>
             assertEquals("Index did not rollover.", AttemptRolloverStep.getSuccessMessage(firstIndex), info["message"])
             assertNull("Should not have conditions if none specified", info["conditions"])
         }
@@ -115,12 +115,12 @@ class RolloverActionIT : IndexStateManagementRestTestCase() {
 
         // Change the start time so the job will trigger in 2 seconds, this will trigger the first initialization of the policy
         updateManagedIndexConfigStartTime(managedIndexConfig)
-        waitFor { assertEquals(policyID, getExplainManagedIndexMetaData(firstIndex).policyID) }
+        waitFor { assertEquals(policyID, getExplainManagedIndexMetaData(firstIndex)!!.policyID) }
 
         // Need to speed up to second execution where it will trigger the first execution of the action
         updateManagedIndexConfigStartTime(managedIndexConfig)
         waitFor {
-            val info = getExplainManagedIndexMetaData(firstIndex).info as Map<String, Any?>
+            val info = getExplainManagedIndexMetaData(firstIndex)!!.info as Map<String, Any?>
             assertEquals("Index did not rollover.", AttemptRolloverStep.getSuccessMessage(firstIndex), info["message"])
             assertNull("Should not have conditions if none specified", info["conditions"])
         }
@@ -153,12 +153,12 @@ class RolloverActionIT : IndexStateManagementRestTestCase() {
 
         // Change the start time so the job will trigger in 2 seconds, this will trigger the first initialization of the policy
         updateManagedIndexConfigStartTime(managedIndexConfig)
-        waitFor { assertEquals(policyID, getExplainManagedIndexMetaData(firstIndex).policyID) }
+        waitFor { assertEquals(policyID, getExplainManagedIndexMetaData(firstIndex)!!.policyID) }
 
         // Need to speed up to second execution where it will trigger the first execution of the action
         updateManagedIndexConfigStartTime(managedIndexConfig)
         waitFor {
-            val info = getExplainManagedIndexMetaData(firstIndex).info as Map<String, Any?>
+            val info = getExplainManagedIndexMetaData(firstIndex)!!.info as Map<String, Any?>
             assertEquals(
                 "Index rollover before it met the condition.",
                 AttemptRolloverStep.getPendingMessage(firstIndex), info["message"]
@@ -181,7 +181,7 @@ class RolloverActionIT : IndexStateManagementRestTestCase() {
         // Need to speed up to second execution where it will trigger the first execution of the action
         updateManagedIndexConfigStartTime(managedIndexConfig)
         waitFor {
-            val info = getExplainManagedIndexMetaData(firstIndex).info as Map<String, Any?>
+            val info = getExplainManagedIndexMetaData(firstIndex)!!.info as Map<String, Any?>
             assertEquals("Index did not rollover", AttemptRolloverStep.getSuccessMessage(firstIndex), info["message"])
             val conditions = info["conditions"] as Map<String, Any?>
             assertEquals(
@@ -232,7 +232,7 @@ class RolloverActionIT : IndexStateManagementRestTestCase() {
 
         // Change the start time so the job will trigger in 2 seconds, this will trigger the first initialization of the policy
         updateManagedIndexConfigStartTime(managedIndexConfig)
-        waitFor { assertEquals(policyID, getExplainManagedIndexMetaData(firstIndex).policyID) }
+        waitFor { assertEquals(policyID, getExplainManagedIndexMetaData(firstIndex)!!.policyID) }
 
         // assuming our ingestion is randomly split between the 20 primary shards
         // then 250kb/20 gives around 12.5kb per primary shard which is below our 100kb condition
@@ -255,7 +255,7 @@ class RolloverActionIT : IndexStateManagementRestTestCase() {
         // Confirm index is waiting to meet the rollover condition
         updateManagedIndexConfigStartTime(managedIndexConfig)
         waitFor {
-            val info = getExplainManagedIndexMetaData(firstIndex).info as Map<String, Any?>
+            val info = getExplainManagedIndexMetaData(firstIndex)!!.info as Map<String, Any?>
             assertEquals(
                 "Index rollover before it met the condition.",
                 AttemptRolloverStep.getPendingMessage(firstIndex), info["message"]
@@ -295,7 +295,7 @@ class RolloverActionIT : IndexStateManagementRestTestCase() {
         // Speed up to third execution
         updateManagedIndexConfigStartTime(managedIndexConfig)
         waitFor {
-            val info = getExplainManagedIndexMetaData(firstIndex).info as Map<String, Any?>
+            val info = getExplainManagedIndexMetaData(firstIndex)!!.info as Map<String, Any?>
             assertEquals("Index did not rollover", AttemptRolloverStep.getSuccessMessage(firstIndex), info["message"])
             val conditions = info["conditions"] as Map<String, Any?>
             assertEquals(
@@ -335,12 +335,12 @@ class RolloverActionIT : IndexStateManagementRestTestCase() {
 
         // Change the start time so the job will trigger in 2 seconds, this will trigger the first initialization of the policy
         updateManagedIndexConfigStartTime(managedIndexConfig)
-        waitFor { assertEquals(policyID, getExplainManagedIndexMetaData(firstIndex).policyID) }
+        waitFor { assertEquals(policyID, getExplainManagedIndexMetaData(firstIndex)!!.policyID) }
 
         // Need to speed up to second execution where it will trigger the first execution of the action
         updateManagedIndexConfigStartTime(managedIndexConfig)
         waitFor {
-            val info = getExplainManagedIndexMetaData(firstIndex).info as Map<String, Any?>
+            val info = getExplainManagedIndexMetaData(firstIndex)!!.info as Map<String, Any?>
             assertEquals(
                 "Index rollover before it met the condition.",
                 AttemptRolloverStep.getPendingMessage(firstIndex), info["message"]
@@ -363,7 +363,7 @@ class RolloverActionIT : IndexStateManagementRestTestCase() {
         // Need to speed up to second execution where it will trigger the first execution of the action
         updateManagedIndexConfigStartTime(managedIndexConfig)
         waitFor {
-            val info = getExplainManagedIndexMetaData(firstIndex).info as Map<String, Any?>
+            val info = getExplainManagedIndexMetaData(firstIndex)!!.info as Map<String, Any?>
             assertEquals("Index did not rollover", AttemptRolloverStep.getSuccessMessage(firstIndex), info["message"])
             val conditions = info["conditions"] as Map<String, Any?>
             assertEquals(
@@ -413,12 +413,12 @@ class RolloverActionIT : IndexStateManagementRestTestCase() {
 
         // Change the start time so the job will trigger in 2 seconds, this will trigger the first initialization of the policy
         updateManagedIndexConfigStartTime(managedIndexConfig)
-        waitFor { assertEquals(policyID, getExplainManagedIndexMetaData(index1).policyID) }
+        waitFor { assertEquals(policyID, getExplainManagedIndexMetaData(index1)!!.policyID) }
 
         // Need to speed up to second execution where it will trigger the first execution of the action
         updateManagedIndexConfigStartTime(managedIndexConfig)
         waitFor {
-            val info = getExplainManagedIndexMetaData(index1).info as Map<String, Any?>
+            val info = getExplainManagedIndexMetaData(index1)!!.info as Map<String, Any?>
             assertEquals(
                 "Index rollover not stopped by pre-check.",
                 AttemptRolloverStep.getFailedPreCheckMessage(index1), info["message"]
@@ -435,7 +435,7 @@ class RolloverActionIT : IndexStateManagementRestTestCase() {
 
         updateManagedIndexConfigStartTime(managedIndexConfig)
         waitFor {
-            val info = getExplainManagedIndexMetaData(index1).info as Map<String, Any?>
+            val info = getExplainManagedIndexMetaData(index1)!!.info as Map<String, Any?>
             assertEquals(
                 "Index rollover not skip.",
                 AttemptRolloverStep.getSkipRolloverMessage(index1), info["message"]
@@ -475,12 +475,12 @@ class RolloverActionIT : IndexStateManagementRestTestCase() {
 
         // Change the start time so that the job will trigger in 2 seconds. This will trigger the first initialization of the policy.
         updateManagedIndexConfigStartTime(managedIndexConfig)
-        waitFor { assertEquals(policyID, getExplainManagedIndexMetaData(firstIndexName).policyID) }
+        waitFor { assertEquals(policyID, getExplainManagedIndexMetaData(firstIndexName)!!.policyID) }
 
         // Speed up to the second execution of the policy where it will trigger the first execution of the action.
         updateManagedIndexConfigStartTime(managedIndexConfig)
         waitFor {
-            val info = getExplainManagedIndexMetaData(firstIndexName).info as Map<String, Any?>
+            val info = getExplainManagedIndexMetaData(firstIndexName)!!.info as Map<String, Any?>
             assertEquals(
                 "Data stream did not rollover.",
                 AttemptRolloverStep.getSuccessDataStreamRolloverMessage(dataStreamName, firstIndexName),
@@ -495,7 +495,7 @@ class RolloverActionIT : IndexStateManagementRestTestCase() {
         // Ensure that that policy is applied to the newly created index as well.
         managedIndexConfig = getExistingManagedIndexConfig(secondIndexName)
         updateManagedIndexConfigStartTime(managedIndexConfig)
-        waitFor { assertEquals(policyID, getExplainManagedIndexMetaData(secondIndexName).policyID) }
+        waitFor { assertEquals(policyID, getExplainManagedIndexMetaData(secondIndexName)!!.policyID) }
     }
 
     @Suppress("UNCHECKED_CAST")
@@ -531,13 +531,13 @@ class RolloverActionIT : IndexStateManagementRestTestCase() {
 
         // Change the start time so that the job will trigger in 2 seconds. This will trigger the first initialization of the policy.
         updateManagedIndexConfigStartTime(managedIndexConfig)
-        waitFor { assertEquals(policyID, getExplainManagedIndexMetaData(firstIndexName).policyID) }
+        waitFor { assertEquals(policyID, getExplainManagedIndexMetaData(firstIndexName)!!.policyID) }
 
         // Speed up to the second execution of the policy where it will trigger the first execution of the action.
         // Rollover shouldn't have happened yet as the conditions aren't met.
         updateManagedIndexConfigStartTime(managedIndexConfig)
         waitFor {
-            val info = getExplainManagedIndexMetaData(firstIndexName).info as Map<String, Any?>
+            val info = getExplainManagedIndexMetaData(firstIndexName)!!.info as Map<String, Any?>
             assertEquals(
                 "Index rollover before it met the condition.",
                 AttemptRolloverStep.getPendingMessage(firstIndexName),
@@ -565,7 +565,7 @@ class RolloverActionIT : IndexStateManagementRestTestCase() {
         // Rollover should have happened as the conditions were met.
         updateManagedIndexConfigStartTime(managedIndexConfig)
         waitFor {
-            val info = getExplainManagedIndexMetaData(firstIndexName).info as Map<String, Any?>
+            val info = getExplainManagedIndexMetaData(firstIndexName)!!.info as Map<String, Any?>
             assertEquals(
                 "Data stream did not rollover",
                 AttemptRolloverStep.getSuccessDataStreamRolloverMessage(dataStreamName, firstIndexName),
@@ -617,7 +617,7 @@ class RolloverActionIT : IndexStateManagementRestTestCase() {
 
         // Change the start time so the job will trigger in 2 seconds, this will trigger the first initialization of the policy
         updateManagedIndexConfigStartTime(managedIndexConfig)
-        waitFor { assertEquals(policyID, getExplainManagedIndexMetaData(firstIndex).policyID) }
+        waitFor { assertEquals(policyID, getExplainManagedIndexMetaData(firstIndex)!!.policyID) }
 
         // Rollover the alias manually before ISM tries to roll it over
         rolloverIndex(aliasName)
@@ -625,8 +625,8 @@ class RolloverActionIT : IndexStateManagementRestTestCase() {
         // Need to speed up to second execution where it will trigger the first execution of the action
         updateManagedIndexConfigStartTime(managedIndexConfig)
         waitFor {
-            val info = getExplainManagedIndexMetaData(firstIndex).info as Map<String, Any?>
-            val stepMetadata = getExplainManagedIndexMetaData(firstIndex).stepMetaData
+            val info = getExplainManagedIndexMetaData(firstIndex)!!.info as Map<String, Any?>
+            val stepMetadata = getExplainManagedIndexMetaData(firstIndex)!!.stepMetaData
             assertEquals("Index should succeed if already rolled over.", AttemptRolloverStep.getAlreadyRolledOverMessage(firstIndex, aliasName), info["message"])
             assertEquals("Index should succeed if already rolled over.", Step.StepStatus.COMPLETED, stepMetadata?.stepStatus)
         }

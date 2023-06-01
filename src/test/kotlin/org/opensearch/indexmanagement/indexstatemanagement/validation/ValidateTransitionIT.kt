@@ -49,7 +49,7 @@ class ValidateTransitionIT : IndexStateManagementRestTestCase() {
         // Initializing the policy/metadata
         updateManagedIndexConfigStartTime(managedIndexConfig)
 
-        waitFor { assertEquals(policyID, getExplainManagedIndexMetaData(indexName).policyID) }
+        waitFor { assertEquals(policyID, getExplainManagedIndexMetaData(indexName)!!.policyID) }
 
         // Add 6 documents (>5)
         insertSampleData(indexName, 6)

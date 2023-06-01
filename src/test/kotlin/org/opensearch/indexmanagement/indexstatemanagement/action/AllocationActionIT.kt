@@ -43,7 +43,7 @@ class AllocationActionIT : IndexStateManagementRestTestCase() {
         // Change the start time so the job will trigger in 2 seconds.
         updateManagedIndexConfigStartTime(managedIndexConfig)
 
-        waitFor { assertEquals(policyID, getExplainManagedIndexMetaData(indexName).policyID) }
+        waitFor { assertEquals(policyID, getExplainManagedIndexMetaData(indexName)!!.policyID) }
 
         // Need to wait two cycles.
         // Change the start time so the job will trigger in 2 seconds.
@@ -88,7 +88,7 @@ class AllocationActionIT : IndexStateManagementRestTestCase() {
         // Change the start time so the job will trigger in 2 seconds.
         updateManagedIndexConfigStartTime(managedIndexConfig)
 
-        waitFor { assertEquals(policyID, getExplainManagedIndexMetaData(indexName).policyID) }
+        waitFor { assertEquals(policyID, getExplainManagedIndexMetaData(indexName)!!.policyID) }
 
         // Need to wait two cycles.
         // Change the start time so the job will trigger in 2 seconds.
@@ -139,7 +139,7 @@ class AllocationActionIT : IndexStateManagementRestTestCase() {
         // Change the start time so the job will trigger in 2 seconds.
         updateManagedIndexConfigStartTime(managedIndexConfig)
 
-        waitFor { assertEquals(policyID, getExplainManagedIndexMetaData(indexName).policyID) }
+        waitFor { assertEquals(policyID, getExplainManagedIndexMetaData(indexName)!!.policyID) }
 
         // Need to wait two cycles.
         // Change the start time so the job will trigger in 2 seconds.
@@ -191,7 +191,7 @@ class AllocationActionIT : IndexStateManagementRestTestCase() {
         // Change the start time so the job will trigger in 2 seconds.
         updateManagedIndexConfigStartTime(managedIndexConfig)
 
-        waitFor { assertEquals(policyID, getExplainManagedIndexMetaData(indexName).policyID) }
+        waitFor { assertEquals(policyID, getExplainManagedIndexMetaData(indexName)!!.policyID) }
 
         // Need to wait two cycles.
         // Change the start time so the job will trigger in 2 seconds.
@@ -235,14 +235,14 @@ class AllocationActionIT : IndexStateManagementRestTestCase() {
         // Change the start time so the job will trigger in 2 seconds.
         updateManagedIndexConfigStartTime(managedIndexConfig)
 
-        waitFor { assertEquals(policyID, getExplainManagedIndexMetaData(indexName).policyID) }
+        waitFor { assertEquals(policyID, getExplainManagedIndexMetaData(indexName)!!.policyID) }
 
         // Need to wait two cycles.
         // Change the start time so the job will trigger in 2 seconds.
         updateManagedIndexConfigStartTime(managedIndexConfig)
 
         waitFor {
-            assertEquals(AttemptAllocationStep.getFailedMessage(indexName), getExplainManagedIndexMetaData(indexName).info?.get("message"))
+            assertEquals(AttemptAllocationStep.getFailedMessage(indexName), getExplainManagedIndexMetaData(indexName)!!.info?.get("message"))
         }
     }
 }

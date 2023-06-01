@@ -8,8 +8,8 @@ package org.opensearch.indexmanagement
 import org.apache.hc.core5.http.ContentType
 import org.apache.hc.core5.http.io.entity.StringEntity
 import org.opensearch.common.settings.Settings
-import org.opensearch.core.xcontent.ToXContent
 import org.opensearch.common.xcontent.XContentFactory
+import org.opensearch.core.xcontent.ToXContent
 import org.opensearch.indexmanagement.IndexManagementIndices.Companion.HISTORY_INDEX_BASE
 import org.opensearch.indexmanagement.IndexManagementIndices.Companion.HISTORY_WRITE_INDEX_ALIAS
 import org.opensearch.indexmanagement.IndexManagementIndices.Companion.indexManagementMappings
@@ -110,7 +110,7 @@ class IndexManagementIndicesIT : IndexStateManagementRestTestCase() {
 
         // wait for the policy to initialize which will add 1 history document to the history index
         // this should update the history mappings to the new version
-        waitFor { assertEquals(policyID, getExplainManagedIndexMetaData(index).policyID) }
+        waitFor { assertEquals(policyID, getExplainManagedIndexMetaData(index)!!.policyID) }
 
         waitFor {
             assertIndexExists(HISTORY_WRITE_INDEX_ALIAS)
