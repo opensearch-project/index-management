@@ -13,4 +13,7 @@ This document contains a list of maintainers in this repo. See [opensearch-proje
 | Xuesong Luo           | [xluo-aws](https://github.com/xluo-aws)       | Amazon      |
 | Hailong Cui           | [Hailong-am](https://github.com/Hailong-am)   | Amazon      |
 | Binlong Gao           | [gaobinlong](https://github.com/gaobinlong)   | Amazon      |
+| Amardeepsingh Siglani           | [AWSHurneyt](https://github.com/amsiglan)   | Amazon      |
+| Subhobrata Dey           | [sbcd90](https://github.com/sbcd90)   | Amazon      |
+| Surya Sashank Nistala           | [eirsep](https://github.com/eirsep)   | Amazon      |
 | Thomas Hurney           | [AWSHurneyt](https://github.com/AWSHurneyt)   | Amazon      |
