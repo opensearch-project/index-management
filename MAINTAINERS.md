@@ -13,3 +13,4 @@ This document contains a list of maintainers in this repo. See [opensearch-proje
 | Xuesong Luo           | [xluo-aws](https://github.com/xluo-aws)       | Amazon      |
 | Hailong Cui           | [Hailong-am](https://github.com/Hailong-am)   | Amazon      |
 | Binlong Gao           | [gaobinlong](https://github.com/gaobinlong)   | Amazon      |
+| Thomas Hurney           | [AWSHurneyt](https://github.com/AWSHurneyt)   | Amazon      |
