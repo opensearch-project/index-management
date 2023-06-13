@@ -8,8 +8,8 @@ package org.opensearch.indexmanagement
 import org.apache.hc.core5.http.ContentType
 import org.apache.hc.core5.http.io.entity.StringEntity
 import org.opensearch.common.settings.Settings
-import org.opensearch.core.xcontent.ToXContent
 import org.opensearch.common.xcontent.XContentFactory
+import org.opensearch.core.xcontent.ToXContent
 import org.opensearch.indexmanagement.IndexManagementIndices.Companion.HISTORY_INDEX_BASE
 import org.opensearch.indexmanagement.IndexManagementIndices.Companion.HISTORY_WRITE_INDEX_ALIAS
 import org.opensearch.indexmanagement.IndexManagementIndices.Companion.indexManagementMappings
@@ -213,7 +213,9 @@ class IndexManagementIndicesIT : IndexStateManagementRestTestCase() {
     }
 
     fun `test rollup backward compatibility with opendistro`() {
-        val rollup = randomRollup()
+        var rollup = randomRollup()
+        rollup = rollup.copy(sourceIndex = "bwc_index_1")
+        createIndex("bwc_index_1", Settings.builder().build())
         val rollupJsonString = rollup.toXContent(XContentFactory.jsonBuilder(), ToXContent.EMPTY_PARAMS).string()
         val createRollupResponse = client().makeRequest(
             "PUT", "${IndexManagementPlugin.LEGACY_ROLLUP_JOBS_BASE_URI}/${rollup.id}", emptyMap(),
