@@ -9,12 +9,13 @@
  * GitHub history for details.
  */
 
-package org.opensearch.indexmanagement
+package org.opensearch.indexmanagement.security
 
 import org.junit.After
 import org.junit.Before
 import org.opensearch.client.RestClient
 import org.opensearch.commons.rest.SecureRestClientBuilder
+import org.opensearch.indexmanagement.SecurityRestTestCase
 import org.opensearch.indexmanagement.common.model.dimension.DateHistogram
 import org.opensearch.indexmanagement.common.model.dimension.Terms
 import org.opensearch.indexmanagement.indexstatemanagement.action.RollupAction
@@ -25,6 +26,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.randomErrorNotificati
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings
 import org.opensearch.indexmanagement.indexstatemanagement.step.rollup.AttemptCreateRollupJobStep
 import org.opensearch.indexmanagement.indexstatemanagement.step.rollup.WaitForRollupCompletionStep
+import org.opensearch.indexmanagement.makeRequest
 import org.opensearch.indexmanagement.rollup.model.ISMRollup
 import org.opensearch.indexmanagement.rollup.model.RollupMetadata
 import org.opensearch.indexmanagement.rollup.model.RollupMetrics
@@ -33,6 +35,7 @@ import org.opensearch.indexmanagement.rollup.model.metric.Max
 import org.opensearch.indexmanagement.rollup.model.metric.Min
 import org.opensearch.indexmanagement.rollup.model.metric.Sum
 import org.opensearch.indexmanagement.rollup.model.metric.ValueCount
+import org.opensearch.indexmanagement.waitFor
 import org.opensearch.rest.RestStatus
 import org.opensearch.test.junit.annotations.TestLogging
 import java.time.Instant
@@ -140,7 +143,7 @@ class IndexStateManagementSecurityBehaviorIT : SecurityRestTestCase() {
             updateManagedIndexConfigStartTime(managedIndexConfig)
             waitFor {
                 val managedIndex = getExplainManagedIndexMetaData(indexName, superUserClient!!)
-                assertEquals(policyID, managedIndex.policyID)
+                assertEquals(policyID, managedIndex!!.policyID)
                 assertEquals(indexName, managedIndex.index)
                 // user without appropriate privileges can't access the neither the index nor the policy
                 checkIndexAccess(indexName, testClient!!, RestStatus.FORBIDDEN)
@@ -165,7 +168,7 @@ class IndexStateManagementSecurityBehaviorIT : SecurityRestTestCase() {
         try {
             val testPolicyJson = createReplicaCountTestPolicyRequest(10, "")
             createPolicyJson(testPolicyJson, AIRLINE_POLICY, true, superUserClient!!)
-            client().makeRequest("PUT", "/$AIRLINE_INDEX")
+            client().makeRequest("PUT", "/$AIRLINE_INDEX", emptyMap())
 
             checkPolicyGet(AIRLINE_POLICY, testClient!!, RestStatus.OK)
             checkPolicyGet(AIRLINE_POLICY, superUserClient!!, RestStatus.OK)
@@ -178,7 +181,7 @@ class IndexStateManagementSecurityBehaviorIT : SecurityRestTestCase() {
     }
 
     fun `test explain index`() {
-        createTestUserWithRole(listOf(EXPLAIN_INDEX), listOf(GET_INDEX_MAPPING, SEARCH_INDEX))
+        createTestUserWithRole(listOf(EXPLAIN_INDEX), listOf(MANAGED_INDEX, GET_INDEX_MAPPING, SEARCH_INDEX))
 
         testClient =
             SecureRestClientBuilder(clusterHosts.toTypedArray(), isHttps(), testUser, password).setSocketTimeout(60000)
@@ -187,13 +190,12 @@ class IndexStateManagementSecurityBehaviorIT : SecurityRestTestCase() {
         try {
             val testPolicyJson = createReplicaCountTestPolicyRequest(10, AIRLINE_INDEX_PATTERN)
             createPolicyJson(testPolicyJson, AIRLINE_POLICY, true, client())
-            client().makeRequest("PUT", "/$AIRLINE_INDEX")
-
+            client().makeRequest("PUT", "/$AIRLINE_INDEX", emptyMap())
             val testIndexConfig = getExistingManagedIndexConfig(AIRLINE_INDEX)
             updateManagedIndexConfigStartTime(testIndexConfig)
             waitFor {
                 val airlineIndex = getExplainManagedIndexMetaData(AIRLINE_INDEX, testClient)
-                assertEquals(AIRLINE_POLICY, airlineIndex.policyID)
+                assertEquals(AIRLINE_POLICY, airlineIndex!!.policyID)
                 assertEquals(AIRLINE_INDEX, airlineIndex.index)
             }
         } finally {
@@ -288,14 +290,14 @@ class IndexStateManagementSecurityBehaviorIT : SecurityRestTestCase() {
 
         // Change the start time so that the policy will be initialized.
         updateManagedIndexConfigStartTime(managedIndexConfig)
-        waitFor { assertEquals(policyId, getExplainManagedIndexMetaData(indexName).policyID) }
+        waitFor { assertEquals(policyId, getExplainManagedIndexMetaData(indexName)!!.policyID) }
 
         // Change the start time so that the rollup action will be attempted.
         updateManagedIndexConfigStartTime(managedIndexConfig)
         waitFor {
             assertEquals(
                 AttemptCreateRollupJobStep.getSuccessMessage(rollupId, indexName),
-                getExplainManagedIndexMetaData(indexName).info?.get("message")
+                getExplainManagedIndexMetaData(indexName)!!.info?.get("message")
             )
         }
 
@@ -306,7 +308,7 @@ class IndexStateManagementSecurityBehaviorIT : SecurityRestTestCase() {
         waitFor {
             assertEquals(
                 WaitForRollupCompletionStep.getJobCompletionMessage(rollupId, indexName),
-                getExplainManagedIndexMetaData(indexName).info?.get("message")
+                getExplainManagedIndexMetaData(indexName)!!.info?.get("message")
             )
         }
         val rollupJob = getRollup(rollupId = rollupId)

@@ -53,7 +53,7 @@ class ValidateRolloverIT : IndexStateManagementRestTestCase() {
 
         // Change the start time so the job will trigger in 2 seconds, this will trigger the first initialization of the policy
         updateManagedIndexConfigStartTime(managedIndexConfig)
-        waitFor { assertEquals(policyID, getExplainManagedIndexMetaData(index1).policyID) }
+        waitFor { assertEquals(policyID, getExplainManagedIndexMetaData(index1)!!.policyID) }
 
         updateIndexSetting(index1, ManagedIndexSettings.ROLLOVER_SKIP.key, "true")
 
@@ -104,7 +104,7 @@ class ValidateRolloverIT : IndexStateManagementRestTestCase() {
 
         // Change the start time so the job will trigger in 2 seconds, this will trigger the first initialization of the policy
         updateManagedIndexConfigStartTime(managedIndexConfig)
-        waitFor { assertEquals(policyID, getExplainManagedIndexMetaData(index1).policyID) }
+        waitFor { assertEquals(policyID, getExplainManagedIndexMetaData(index1)!!.policyID) }
 
         // Rollover the alias manually before ISM tries to roll it over
         rolloverIndex(aliasName)
@@ -151,7 +151,7 @@ class ValidateRolloverIT : IndexStateManagementRestTestCase() {
 
         // Change the start time so the job will trigger in 2 seconds, this will trigger the first initialization of the policy
         updateManagedIndexConfigStartTime(managedIndexConfig)
-        waitFor { assertEquals(policyID, getExplainManagedIndexMetaData(index1).policyID) }
+        waitFor { assertEquals(policyID, getExplainManagedIndexMetaData(index1)!!.policyID) }
 
         // Need to speed up to second execution where it will trigger the first execution of the action
         updateManagedIndexConfigStartTime(managedIndexConfig)
@@ -199,7 +199,7 @@ class ValidateRolloverIT : IndexStateManagementRestTestCase() {
 
         // Change the start time so the job will trigger in 2 seconds, this will trigger the first initialization of the policy
         updateManagedIndexConfigStartTime(managedIndexConfig)
-        waitFor { assertEquals(policyID, getExplainManagedIndexMetaData(index1).policyID) }
+        waitFor { assertEquals(policyID, getExplainManagedIndexMetaData(index1)!!.policyID) }
 
         // Need to speed up to second execution where it will trigger the first execution of the action
         updateManagedIndexConfigStartTime(managedIndexConfig)

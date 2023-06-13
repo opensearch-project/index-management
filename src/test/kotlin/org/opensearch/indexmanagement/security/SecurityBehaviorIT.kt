@@ -1,4 +1,5 @@
 /*
+ * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
  *
  * The OpenSearch Contributors require contributions made to
@@ -9,13 +10,16 @@
  * GitHub history for details.
  */
 
-package org.opensearch.indexmanagement
+package org.opensearch.indexmanagement.security
 
 import org.junit.After
 import org.junit.Before
 import org.opensearch.client.RestClient
 import org.opensearch.commons.rest.SecureRestClientBuilder
+import org.opensearch.indexmanagement.SecurityRestTestCase
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings
+import org.opensearch.indexmanagement.makeRequest
+import org.opensearch.indexmanagement.waitFor
 import org.opensearch.rest.RestStatus
 import org.opensearch.test.junit.annotations.TestLogging
 
@@ -135,11 +139,7 @@ class SecurityBehaviorIT : SecurityRestTestCase() {
 
             waitFor {
                 var airlineIndex = getExplainManagedIndexMetaData(AIRLINE_INDEX, johnClient!!)
-                assertEquals(AIRLINE_POLICY, airlineIndex.policyID)
-                assertEquals(AIRLINE_INDEX, airlineIndex.index)
-
-                airlineIndex = getExplainManagedIndexMetaData(AIRLINE_INDEX, janeClient)
-                assertEquals(AIRLINE_POLICY, airlineIndex.policyID)
+                assertEquals(AIRLINE_POLICY, airlineIndex!!.policyID)
                 assertEquals(AIRLINE_INDEX, airlineIndex.index)
             }
 
@@ -148,7 +148,7 @@ class SecurityBehaviorIT : SecurityRestTestCase() {
 
             waitFor {
                 val availabilityIndex = getExplainManagedIndexMetaData(AVAILABILITY_INDEX, janeClient)
-                assertEquals(AVAILABILITY_POLICY, availabilityIndex.policyID)
+                assertEquals(AVAILABILITY_POLICY, availabilityIndex!!.policyID)
                 assertEquals(AVAILABILITY_INDEX, availabilityIndex.index)
             }
 

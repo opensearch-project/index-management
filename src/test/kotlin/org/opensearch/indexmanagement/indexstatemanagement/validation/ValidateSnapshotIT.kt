@@ -53,7 +53,7 @@ class ValidateSnapshotIT : IndexStateManagementRestTestCase() {
         // Change the start time so the job will trigger in 2 seconds.
         updateManagedIndexConfigStartTime(managedIndexConfig)
 
-        waitFor { assertEquals(policyID, getExplainManagedIndexMetaData(indexName).policyID) }
+        waitFor { assertEquals(policyID, getExplainManagedIndexMetaData(indexName)!!.policyID) }
 
         // Need to wait two cycles for wait for snapshot step
         updateManagedIndexConfigStartTime(managedIndexConfig)

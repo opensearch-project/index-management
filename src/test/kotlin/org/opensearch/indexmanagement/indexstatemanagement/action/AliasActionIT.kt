@@ -43,7 +43,7 @@ class AliasActionIT : IndexStateManagementRestTestCase() {
         // Change the start time so the job will trigger in 2 seconds.
         updateManagedIndexConfigStartTime(managedIndexConfig)
 
-        waitFor { assertEquals(policyID, getExplainManagedIndexMetaData(indexName).policyID) }
+        waitFor { assertEquals(policyID, getExplainManagedIndexMetaData(indexName)!!.policyID) }
 
         waitFor {
             val alias = getAlias(indexName, "")
@@ -55,7 +55,7 @@ class AliasActionIT : IndexStateManagementRestTestCase() {
         updateManagedIndexConfigStartTime(managedIndexConfig)
 
         waitFor {
-            val info = getExplainManagedIndexMetaData(indexName).info as Map<String, Any?>
+            val info = getExplainManagedIndexMetaData(indexName)!!.info as Map<String, Any?>
             assertEquals("Alias was not successfully updated", AttemptAliasActionsStep.getSuccessMessage(indexName), info["message"])
             val alias = getAlias(indexName, "")
             assertTrue("Alias was not added to index", alias.containsKey(aliasName))
@@ -86,7 +86,7 @@ class AliasActionIT : IndexStateManagementRestTestCase() {
         // Change the start time so the job will trigger in 2 seconds.
         updateManagedIndexConfigStartTime(managedIndexConfig)
 
-        waitFor { assertEquals(policyID, getExplainManagedIndexMetaData(indexName).policyID) }
+        waitFor { assertEquals(policyID, getExplainManagedIndexMetaData(indexName)!!.policyID) }
 
         waitFor {
             val alias = getAlias(indexName, "")
@@ -98,7 +98,7 @@ class AliasActionIT : IndexStateManagementRestTestCase() {
         updateManagedIndexConfigStartTime(managedIndexConfig)
 
         waitFor {
-            val info = getExplainManagedIndexMetaData(indexName).info as Map<String, Any?>
+            val info = getExplainManagedIndexMetaData(indexName)!!.info as Map<String, Any?>
             assertEquals("Alias was not successfully updated", AttemptAliasActionsStep.getSuccessMessage(indexName), info["message"])
             val alias = getAlias(indexName, "")
             assertTrue("Alias was not added to index", alias.containsKey(aliasName))
@@ -129,7 +129,7 @@ class AliasActionIT : IndexStateManagementRestTestCase() {
         // Change the start time so the job will trigger in 2 seconds.
         updateManagedIndexConfigStartTime(managedIndexConfig)
 
-        waitFor { assertEquals(policyID, getExplainManagedIndexMetaData(indexName).policyID) }
+        waitFor { assertEquals(policyID, getExplainManagedIndexMetaData(indexName)!!.policyID) }
 
         waitFor {
             val alias = getAlias(indexName, "")
@@ -141,7 +141,7 @@ class AliasActionIT : IndexStateManagementRestTestCase() {
         updateManagedIndexConfigStartTime(managedIndexConfig)
 
         waitFor {
-            val info = getExplainManagedIndexMetaData(indexName).info as Map<String, Any?>
+            val info = getExplainManagedIndexMetaData(indexName)!!.info as Map<String, Any?>
             assertEquals("Alias was not successfully updated", AttemptAliasActionsStep.getSuccessMessage(indexName), info["message"])
             val alias = getAlias(indexName, "")
             assertTrue("Alias was not removed from index", !alias.containsKey(aliasName))

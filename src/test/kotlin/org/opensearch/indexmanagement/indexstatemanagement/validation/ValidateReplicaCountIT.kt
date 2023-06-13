@@ -50,7 +50,7 @@ class ValidateReplicaCountIT : IndexStateManagementRestTestCase() {
         // Change the start time so the job will trigger in 2 seconds, this will trigger the first initialization of the policy
         updateManagedIndexConfigStartTime(managedIndexConfig)
 
-        waitFor { assertEquals(policyID, getExplainManagedIndexMetaData(indexName).policyID) }
+        waitFor { assertEquals(policyID, getExplainManagedIndexMetaData(indexName)!!.policyID) }
 
         // Need to speed up to second execution where it will trigger the first execution of the action which
         // should set the replica count to the desired number

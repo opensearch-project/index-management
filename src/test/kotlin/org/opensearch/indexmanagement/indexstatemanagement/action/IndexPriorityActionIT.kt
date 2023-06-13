@@ -41,7 +41,7 @@ class IndexPriorityActionIT : IndexStateManagementRestTestCase() {
         updateManagedIndexConfigStartTime(managedIndexConfig)
 
         // ism policy initialized
-        waitFor { assertEquals(policyID, getExplainManagedIndexMetaData(indexName).policyID) }
+        waitFor { assertEquals(policyID, getExplainManagedIndexMetaData(indexName)!!.policyID) }
 
         // change the runJob start time to change index priority
         updateManagedIndexConfigStartTime(managedIndexConfig)

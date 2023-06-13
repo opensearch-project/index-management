@@ -44,7 +44,7 @@ class ActionRetryIT : IndexStateManagementRestTestCase() {
         // First execution. We need to initialize the policy.
         updateManagedIndexConfigStartTime(managedIndexConfig)
 
-        waitFor { assertEquals(policyID, getExplainManagedIndexMetaData(indexName).policyID) }
+        waitFor { assertEquals(policyID, getExplainManagedIndexMetaData(indexName)!!.policyID) }
 
         // Second execution is to fail the step once.
         updateManagedIndexConfigStartTime(managedIndexConfig)
@@ -53,7 +53,7 @@ class ActionRetryIT : IndexStateManagementRestTestCase() {
             val managedIndexMetaData = getExplainManagedIndexMetaData(indexName)
             assertEquals(
                 ActionMetaData(
-                    "rollover", managedIndexMetaData.actionMetaData?.startTime, 0, false, 1,
+                    "rollover", managedIndexMetaData!!.actionMetaData?.startTime, 0, false, 1,
                     managedIndexMetaData.actionMetaData?.lastRetryTime, null
                 ),
                 managedIndexMetaData.actionMetaData
@@ -69,7 +69,7 @@ class ActionRetryIT : IndexStateManagementRestTestCase() {
             val managedIndexMetaData = getExplainManagedIndexMetaData(indexName)
             assertEquals(
                 ActionMetaData(
-                    "rollover", managedIndexMetaData.actionMetaData?.startTime, 0, false, 2,
+                    "rollover", managedIndexMetaData!!.actionMetaData?.startTime, 0, false, 2,
                     managedIndexMetaData.actionMetaData?.lastRetryTime, null
                 ),
                 managedIndexMetaData.actionMetaData
@@ -85,7 +85,7 @@ class ActionRetryIT : IndexStateManagementRestTestCase() {
             val managedIndexMetaData = getExplainManagedIndexMetaData(indexName)
             assertEquals(
                 ActionMetaData(
-                    "rollover", managedIndexMetaData.actionMetaData?.startTime, 0, true, 2,
+                    "rollover", managedIndexMetaData!!.actionMetaData?.startTime, 0, true, 2,
                     managedIndexMetaData.actionMetaData?.lastRetryTime, null
                 ),
                 managedIndexMetaData.actionMetaData
@@ -119,11 +119,11 @@ class ActionRetryIT : IndexStateManagementRestTestCase() {
         updateManagedIndexConfigStartTime(managedIndexConfig)
         // First execution. We need to initialize the policy.
 
-        waitFor { assertEquals(policyID, getExplainManagedIndexMetaData(indexName).policyID) }
+        waitFor { assertEquals(policyID, getExplainManagedIndexMetaData(indexName)!!.policyID) }
         // Second execution is to fail the step once.
         updateManagedIndexConfigStartTime(managedIndexConfig)
 
-        waitFor { assertEquals(1, getExplainManagedIndexMetaData(indexName).actionMetaData?.consumedRetries) }
+        waitFor { assertEquals(1, getExplainManagedIndexMetaData(indexName)!!.actionMetaData?.consumedRetries) }
 
         // Third execution should not run job since we have the retry backoff.
         updateManagedIndexConfigStartTime(managedIndexConfig)

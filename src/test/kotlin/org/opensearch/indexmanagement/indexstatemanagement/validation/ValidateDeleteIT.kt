@@ -49,7 +49,7 @@ class ValidateDeleteIT : IndexStateManagementRestTestCase() {
 
         // Change the start time so the job will trigger in 2 seconds, this will trigger the first initialization of the policy
         updateManagedIndexConfigStartTime(managedIndexConfig)
-        waitFor { assertEquals(policyID, getExplainManagedIndexMetaData(index1).policyID) }
+        waitFor { assertEquals(policyID, getExplainManagedIndexMetaData(index1)!!.policyID) }
         // waitFor { assertIndexExists(index1) }
 
         // Need to speed up to second execution where it will trigger the first execution of the action

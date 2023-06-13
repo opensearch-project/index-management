@@ -52,7 +52,7 @@ class ValidateForceMergeIT : IndexStateManagementRestTestCase() {
         // First execution: Policy is initialized
         updateManagedIndexConfigStartTime(managedIndexConfig)
 
-        waitFor { assertEquals(policyID, getExplainManagedIndexMetaData(indexName).policyID) }
+        waitFor { assertEquals(policyID, getExplainManagedIndexMetaData(indexName)!!.policyID) }
 
         // Second execution: Index is set to read-only for force_merge
         updateManagedIndexConfigStartTime(managedIndexConfig)
@@ -80,7 +80,7 @@ class ValidateForceMergeIT : IndexStateManagementRestTestCase() {
             assertEquals(
                 "maxNumSegments not set in ActionProperties",
                 forceMergeActionConfig.maxNumSegments,
-                getExplainManagedIndexMetaData(indexName).actionMetaData?.actionProperties?.maxNumSegments
+                getExplainManagedIndexMetaData(indexName)!!.actionMetaData?.actionProperties?.maxNumSegments
             )
         }
 
@@ -89,7 +89,7 @@ class ValidateForceMergeIT : IndexStateManagementRestTestCase() {
 
         waitFor { assertTrue("Segment count for [$indexName] after force merge is incorrect", validateSegmentCount(indexName, min = 1, max = 1)) }
         // verify we reset actionproperties at end of forcemerge
-        waitFor { assertNull("maxNumSegments was not reset", getExplainManagedIndexMetaData(indexName).actionMetaData?.actionProperties) }
+        waitFor { assertNull("maxNumSegments was not reset", getExplainManagedIndexMetaData(indexName)!!.actionMetaData?.actionProperties) }
         // index should still be readonly after force merge finishes
         waitFor { assertEquals("true", getIndexBlocksWriteSetting(indexName)) }
     }

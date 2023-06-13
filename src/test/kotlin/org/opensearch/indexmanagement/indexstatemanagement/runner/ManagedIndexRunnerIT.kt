@@ -54,7 +54,7 @@ class ManagedIndexRunnerIT : IndexStateManagementRestTestCase() {
         // init policy on managed index
         updateManagedIndexConfigStartTime(managedIndexConfig)
 
-        waitFor { assertEquals(policy.id, getExplainManagedIndexMetaData(indexName).policyID) }
+        waitFor { assertEquals(policy.id, getExplainManagedIndexMetaData(indexName)!!.policyID) }
 
         // change policy seqNo on managed index
         updateManagedIndexConfigPolicySeqNo(managedIndexConfig.copy(policySeqNo = 17))
@@ -150,23 +150,23 @@ class ManagedIndexRunnerIT : IndexStateManagementRestTestCase() {
 
         // init policy
         updateManagedIndexConfigStartTime(managedIndexConfig)
-        waitFor { assertEquals(createdPolicy.id, getExplainManagedIndexMetaData(indexName).policyID) }
+        waitFor { assertEquals(createdPolicy.id, getExplainManagedIndexMetaData(indexName)!!.policyID) }
 
         // speed up to first execution that should set index to read only
         updateManagedIndexConfigStartTime(managedIndexConfig)
-        waitFor { assertEquals(SetReadOnlyStep.getSuccessMessage(indexName), getExplainManagedIndexMetaData(indexName).info?.get("message")) }
+        waitFor { assertEquals(SetReadOnlyStep.getSuccessMessage(indexName), getExplainManagedIndexMetaData(indexName)!!.info?.get("message")) }
 
         // speed up to second execution that should transition to second_state
         updateManagedIndexConfigStartTime(managedIndexConfig)
-        waitFor { assertEquals(AttemptTransitionStep.getSuccessMessage(indexName, secondState.name), getExplainManagedIndexMetaData(indexName).info?.get("message")) }
+        waitFor { assertEquals(AttemptTransitionStep.getSuccessMessage(indexName, secondState.name), getExplainManagedIndexMetaData(indexName)!!.info?.get("message")) }
 
         // speed up to third execution that should set index back to read write
         updateManagedIndexConfigStartTime(managedIndexConfig)
-        waitFor { assertEquals(SetReadWriteStep.getSuccessMessage(indexName), getExplainManagedIndexMetaData(indexName).info?.get("message")) }
+        waitFor { assertEquals(SetReadWriteStep.getSuccessMessage(indexName), getExplainManagedIndexMetaData(indexName)!!.info?.get("message")) }
 
         // speed up to fourth execution that should transition to first_state
         updateManagedIndexConfigStartTime(managedIndexConfig)
-        waitFor { assertEquals(AttemptTransitionStep.getSuccessMessage(indexName, firstState.name), getExplainManagedIndexMetaData(indexName).info?.get("message")) }
+        waitFor { assertEquals(AttemptTransitionStep.getSuccessMessage(indexName, firstState.name), getExplainManagedIndexMetaData(indexName)!!.info?.get("message")) }
 
         // remove read_only from the allowlist
         val allowedActions = ISMActionsParser.instance.parsers.map { it.getActionType() }.toList()
@@ -176,7 +176,7 @@ class ManagedIndexRunnerIT : IndexStateManagementRestTestCase() {
 
         // speed up to fifth execution that should try to set index to read only and fail because the action is not allowed
         updateManagedIndexConfigStartTime(managedIndexConfig)
-        waitFor { assertEquals("Attempted to execute action=read_only which is not allowed.", getExplainManagedIndexMetaData(indexName).info?.get("message")) }
+        waitFor { assertEquals("Attempted to execute action=read_only which is not allowed.", getExplainManagedIndexMetaData(indexName)!!.info?.get("message")) }
     }
 
     fun `test jitter changing`() {

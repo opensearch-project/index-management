@@ -227,12 +227,12 @@ class RestRetryFailedManagedIndexActionIT : IndexStateManagementRestTestCase() {
         val managedIndexConfig = getExistingManagedIndexConfig(indexName)
         // change the start time so the job will trigger in 2 seconds.
         updateManagedIndexConfigStartTime(managedIndexConfig)
-        waitFor { assertEquals(invalidPolicy.id, getExplainManagedIndexMetaData(indexName).policyID) }
+        waitFor { assertEquals(invalidPolicy.id, getExplainManagedIndexMetaData(indexName)!!.policyID) }
 
         // Change the start time so we attempt allocation that is intended to fail
         updateManagedIndexConfigStartTime(managedIndexConfig)
         waitFor {
-            assertEquals(Step.StepStatus.FAILED, getExplainManagedIndexMetaData(indexName).stepMetaData?.stepStatus)
+            assertEquals(Step.StepStatus.FAILED, getExplainManagedIndexMetaData(indexName)!!.stepMetaData?.stepStatus)
         }
 
         waitFor {
@@ -266,7 +266,7 @@ class RestRetryFailedManagedIndexActionIT : IndexStateManagementRestTestCase() {
         updateManagedIndexConfigStartTime(managedIndexConfig)
 
         // verify we have policy
-        waitFor { assertEquals(policyID, getExplainManagedIndexMetaData(indexName).policyID) }
+        waitFor { assertEquals(policyID, getExplainManagedIndexMetaData(indexName)!!.policyID) }
 
         // speed up to execute set read only force merge step
         updateManagedIndexConfigStartTime(managedIndexConfig)
