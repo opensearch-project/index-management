@@ -8,6 +8,7 @@ package org.opensearch.indexmanagement
 
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
+import org.opensearch.OpenSearchStatusException
 import org.opensearch.ResourceAlreadyExistsException
 import org.opensearch.action.ActionListener
 import org.opensearch.action.admin.indices.alias.Alias
@@ -28,6 +29,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.util.INDEX_NUMBER_OF_
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.util.IndexUtils
 import org.opensearch.indexmanagement.util.OpenForTesting
+import org.opensearch.rest.RestStatus
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import kotlin.coroutines.suspendCoroutine
@@ -84,10 +86,15 @@ class IndexManagementIndices(
                 }
             )
         }
-        if (!response.isAcknowledged) {
-            logger.warn("create or update $INDEX_MANAGEMENT_INDEX with newest mapping was not acknowledged.")
+        if (response.isAcknowledged) {
+            return true
+        } else {
+            logger.error("Unable to create or update $INDEX_MANAGEMENT_INDEX with newest mapping.")
+            throw OpenSearchStatusException(
+                "Unable to create or update $INDEX_MANAGEMENT_INDEX with newest mapping.",
+                RestStatus.INTERNAL_SERVER_ERROR
+            )
         }
-        return true
     }
 
     fun indexManagementIndexExists(): Boolean = clusterService.state().routingTable.hasIndex(INDEX_MANAGEMENT_INDEX)
