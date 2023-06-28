@@ -195,14 +195,12 @@ class RestIndexLRONConfigActionIT : LRONConfigRestTestCase() {
         removeControlCenterIndex()
         val threadSize = 5
         val lronConfigs = List(threadSize) { randomLRONConfig(taskId = randomTaskId(nodeId = nodeIdsInRestIT.random())) }
-        lronConfigs.forEach { logger.error(it.taskId) }
         val threadPool = Executors.newFixedThreadPool(threadSize)
         try {
             runBlocking {
                 val dispatcher = threadPool.asCoroutineDispatcher()
                 val responses = lronConfigs.map {
                     async(dispatcher) {
-                        logger.error(it.taskId)
                         createLRONConfig(it)
                     }
                 }.awaitAll()
