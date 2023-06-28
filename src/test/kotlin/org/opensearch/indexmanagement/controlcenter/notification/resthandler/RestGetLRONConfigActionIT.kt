@@ -39,6 +39,8 @@ class RestGetLRONConfigActionIT : LRONConfigRestTestCase() {
     }
 
     fun `test get nonexist LRONConfig fails`() {
+        /* index a random doc to create .opensearch-control-center index */
+        createLRONConfig(randomLRONConfig(taskId = randomTaskId(nodeId = nodeIdsInRestIT.random())))
         try {
             val lronConfig = randomLRONConfig(taskId = randomTaskId(nodeId = nodeIdsInRestIT.random()))
             client().makeRequest("GET", getResourceURI(lronConfig.taskId, lronConfig.actionName))
@@ -51,7 +53,7 @@ class RestGetLRONConfigActionIT : LRONConfigRestTestCase() {
 
     fun `test get all LRONConfigs`() {
         /* LRONConfigRestTestCase index a doc to auto create the index, here we wipe the index before count doc number */
-        wipeAllIndices()
+        removeControlCenterIndex()
         val lronConfigResponses = randomList(1, 15) {
             createLRONConfig(randomLRONConfig(taskId = randomTaskId(nodeId = nodeIdsInRestIT.random()))).asMap()
         }
@@ -90,16 +92,11 @@ class RestGetLRONConfigActionIT : LRONConfigRestTestCase() {
     }
 
     fun `test get all LRONConfig if index not exists`() {
-        try {
-            wipeAllIndices()
-            val response = client().makeRequest("GET", IndexManagementPlugin.LRON_BASE_URI)
-            assertEquals("get LRONConfigs failed", RestStatus.OK, response.restStatus())
-            val responseBody = response.asMap()
-            val totalNumber = responseBody["total_number"]
-            OpenSearchTestCase.assertEquals("wrong LRONConfigs number", 0, totalNumber)
-        } finally {
-            /* index a random doc to create .opensearch-control-center index */
-            createLRONConfig(randomLRONConfig(taskId = randomTaskId(nodeId = nodeIdsInRestIT.random())))
-        }
+        removeControlCenterIndex()
+        val response = client().makeRequest("GET", IndexManagementPlugin.LRON_BASE_URI)
+        assertEquals("get LRONConfigs failed", RestStatus.OK, response.restStatus())
+        val responseBody = response.asMap()
+        val totalNumber = responseBody["total_number"]
+        OpenSearchTestCase.assertEquals("wrong LRONConfigs number", 0, totalNumber)
     }
 }
