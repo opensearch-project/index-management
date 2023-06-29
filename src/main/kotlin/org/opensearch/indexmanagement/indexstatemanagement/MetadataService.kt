@@ -111,11 +111,13 @@ class MetadataService(
             val indexUuidMap = mutableMapOf<IndexUuid, IndexName>()
             clusterStateManagedIndexMetadata.forEach { (indexName, metadata) ->
                 val indexMetadata = indicesMetadata[indexName]
-                val currentIndexUuid = indexMetadata.indexUUID
-                if (currentIndexUuid != metadata?.indexUuid) {
-                    corruptManagedIndices.add(indexMetadata.index)
-                } else {
-                    indexUuidMap[currentIndexUuid] = indexName
+                indexMetadata?.let {
+                    val currentIndexUuid = it.indexUUID
+                    if (currentIndexUuid != metadata?.indexUuid) {
+                        corruptManagedIndices.add(it.index)
+                    } else {
+                        indexUuidMap[currentIndexUuid] = indexName
+                    }
                 }
             }
             logger.info("Corrupt managed indices with outdated index uuid in metadata: $corruptManagedIndices")
