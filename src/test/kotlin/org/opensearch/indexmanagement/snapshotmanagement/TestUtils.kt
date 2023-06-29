@@ -209,6 +209,7 @@ fun mockSnapshotInfo(
     endTime: Long = randomNonNegativeLong(),
     reason: String? = null, // reason with valid string leads to FAILED snapshot state
     policyName: String = "daily-snapshot",
+    remoteStoreIndexShallowCopy: Boolean = randomBoolean(),
 ): SnapshotInfo {
     val result = SnapshotInfo(
         SnapshotId(name, UUIDs.randomBase64UUID()),
@@ -221,6 +222,7 @@ fun mockSnapshotInfo(
         emptyList(),
         false,
         mapOf("sm_policy" to policyName),
+        remoteStoreIndexShallowCopy
     )
     return result
 }
@@ -232,6 +234,7 @@ fun mockSnapshotInfo(
  */
 fun mockInProgressSnapshotInfo(
     name: String = randomAlphaOfLength(10),
+    remoteStoreIndexShallowCopy: Boolean = randomBoolean(),
 ): SnapshotInfo {
     val entry = SnapshotsInProgress.Entry(
         Snapshot("repo", SnapshotId(name, UUIDs.randomBase64UUID())),
@@ -246,6 +249,7 @@ fun mockInProgressSnapshotInfo(
         "",
         mapOf("sm_policy" to "daily-snapshot"),
         Version.CURRENT,
+        remoteStoreIndexShallowCopy
     )
     return SnapshotInfo(entry)
 }
