@@ -40,7 +40,7 @@ import java.lang.Exception
  * MetadataService starts to move metadata from cluster state to config index
  */
 @OpenForTesting
-@Suppress("MagicNumber", "ReturnCount", "LongMethod", "ComplexMethod")
+@Suppress("MagicNumber", "ReturnCount", "LongMethod", "ComplexMethod", "NestedBlockDepth")
 class MetadataService(
     private val client: Client,
     private val clusterService: ClusterService,
