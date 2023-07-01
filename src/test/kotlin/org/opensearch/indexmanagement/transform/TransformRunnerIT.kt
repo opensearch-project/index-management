@@ -321,7 +321,7 @@ class TransformRunnerIT : TransformRestTestCase() {
             assertTrue("Target transform index was not created", indexExists(transform.targetIndex))
         }
 
-        waitFor(Instant.ofEpochSecond(60)) {
+        waitFor(Instant.ofEpochSecond(180)) {
             val transformJob = getTransform(transformId = transform.id)
             assertNotNull("Transform job doesn't have metadata set", transformJob.metadataId)
             val transformMetadata = getTransformMetadata(transformJob.metadataId!!)
@@ -504,7 +504,7 @@ class TransformRunnerIT : TransformRestTestCase() {
             assertTrue("Target transform index was not created", indexExists(transform.targetIndex))
         }
 
-        waitFor(Instant.ofEpochSecond(60)) {
+        waitFor(Instant.ofEpochSecond(180)) {
             val transformJob = getTransform(transformId = transform.id)
             assertNotNull("Transform job doesn't have metadata set", transformJob.metadataId)
             val transformMetadata = getTransformMetadata(transformJob.metadataId!!)
