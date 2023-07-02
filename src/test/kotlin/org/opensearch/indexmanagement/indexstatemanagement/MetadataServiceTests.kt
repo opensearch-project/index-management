@@ -22,7 +22,6 @@ import org.opensearch.client.ClusterAdminClient
 import org.opensearch.cluster.ClusterState
 import org.opensearch.cluster.metadata.Metadata
 import org.opensearch.cluster.service.ClusterService
-import org.opensearch.common.collect.ImmutableOpenMap
 import org.opensearch.indexmanagement.IndexManagementIndices
 import org.opensearch.test.OpenSearchTestCase
 import kotlin.test.assertFailsWith
@@ -40,7 +39,7 @@ class MetadataServiceTests : OpenSearchTestCase() {
     fun setup() {
         whenever(clusterService.state()).doReturn(clusterState)
         whenever(clusterState.metadata).doReturn(metadata)
-        whenever(metadata.indices).doReturn(ImmutableOpenMap.of())
+        whenever(metadata.indices).doReturn(mapOf())
     }
 
     fun `test config index not exists`() = runBlocking {
