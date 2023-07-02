@@ -40,7 +40,7 @@ import java.lang.Exception
  * MetadataService starts to move metadata from cluster state to config index
  */
 @OpenForTesting
-@Suppress("MagicNumber", "ReturnCount", "LongMethod", "ComplexMethod")
+@Suppress("MagicNumber", "ReturnCount", "LongMethod", "ComplexMethod", "NestedBlockDepth")
 class MetadataService(
     private val client: Client,
     private val clusterService: ClusterService,
@@ -111,11 +111,13 @@ class MetadataService(
             val indexUuidMap = mutableMapOf<IndexUuid, IndexName>()
             clusterStateManagedIndexMetadata.forEach { (indexName, metadata) ->
                 val indexMetadata = indicesMetadata[indexName]
-                val currentIndexUuid = indexMetadata.indexUUID
-                if (currentIndexUuid != metadata?.indexUuid) {
-                    corruptManagedIndices.add(indexMetadata.index)
-                } else {
-                    indexUuidMap[currentIndexUuid] = indexName
+                indexMetadata?.let {
+                    val currentIndexUuid = it.indexUUID
+                    if (currentIndexUuid != metadata?.indexUuid) {
+                        corruptManagedIndices.add(it.index)
+                    } else {
+                        indexUuidMap[currentIndexUuid] = indexName
+                    }
                 }
             }
             logger.info("Corrupt managed indices with outdated index uuid in metadata: $corruptManagedIndices")

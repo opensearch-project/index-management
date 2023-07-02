@@ -109,7 +109,7 @@ abstract class IndexStateManagementIntegTestCase : OpenSearchIntegTestCase() {
 //        return listOf(TestPlugin::class.java)
 //    }
 
-    protected fun getIndexMetadata(indexName: String): IndexMetadata {
+    protected fun getIndexMetadata(indexName: String): IndexMetadata? {
         return client().admin().cluster().prepareState()
             .setIndices(indexName)
             .setMetadata(true).get()
