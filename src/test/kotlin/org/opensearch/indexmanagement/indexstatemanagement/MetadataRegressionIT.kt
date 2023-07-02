@@ -70,7 +70,7 @@ class MetadataRegressionIT : IndexStateManagementIntegTestCase() {
         addPolicyToIndex(indexName, policyID)
 
         // put some metadata into cluster state
-        var indexMetadata = getIndexMetadata(indexName)
+        var indexMetadata = getIndexMetadata(indexName)!!
         metadataToClusterState = metadataToClusterState.copy(
             index = indexName,
             indexUuid = indexMetadata.indexUUID,
@@ -85,7 +85,7 @@ class MetadataRegressionIT : IndexStateManagementIntegTestCase() {
             UpdateManagedIndexMetaDataAction.INSTANCE, request
         ).get()
         logger.info(response.isAcknowledged)
-        indexMetadata = getIndexMetadata(indexName)
+        indexMetadata = getIndexMetadata(indexName)!!
         logger.info("check if metadata is saved in cluster state: ${indexMetadata.getCustomData("managed_index_metadata")}")
 
         // TODO increase wait time since flaky seeing here. After looking through the log
@@ -102,7 +102,7 @@ class MetadataRegressionIT : IndexStateManagementIntegTestCase() {
                 "Happy moving",
                 getExplainManagedIndexMetaData(indexName).info?.get("message")
             )
-            assertEquals(null, getIndexMetadata(indexName).getCustomData("managed_index_metadata"))
+            assertEquals(null, getIndexMetadata(indexName)!!.getCustomData("managed_index_metadata"))
         }
 
         logger.info("metadata has moved")
@@ -156,7 +156,7 @@ class MetadataRegressionIT : IndexStateManagementIntegTestCase() {
         logger.info("managed-index: ${getExistingManagedIndexConfig(indexName)}")
 
         // manually save metadata into cluster state
-        var indexMetadata = getIndexMetadata(indexName)
+        var indexMetadata = getIndexMetadata(indexName)!!
         metadataToClusterState = metadataToClusterState.copy(
             index = indexName,
             indexUuid = indexMetadata.indexUUID,
@@ -172,7 +172,7 @@ class MetadataRegressionIT : IndexStateManagementIntegTestCase() {
         ).get()
 
         logger.info(response.isAcknowledged)
-        indexMetadata = getIndexMetadata(indexName)
+        indexMetadata = getIndexMetadata(indexName)!!
         logger.info("check if metadata is saved in cluster state: ${indexMetadata.getCustomData("managed_index_metadata")}")
 
         waitFor {
@@ -187,7 +187,7 @@ class MetadataRegressionIT : IndexStateManagementIntegTestCase() {
                 "Happy moving",
                 getExplainManagedIndexMetaData(indexName).info?.get("message")
             )
-            assertEquals(null, getIndexMetadata(indexName).getCustomData("managed_index_metadata"))
+            assertEquals(null, getIndexMetadata(indexName)!!.getCustomData("managed_index_metadata"))
         }
 
         logger.info("metadata has moved")
@@ -225,7 +225,7 @@ class MetadataRegressionIT : IndexStateManagementIntegTestCase() {
         addPolicyToIndex(indexName, policyID)
 
         // put some metadata into cluster state
-        val indexMetadata = getIndexMetadata(indexName)
+        val indexMetadata = getIndexMetadata(indexName)!!
         metadataToClusterState = metadataToClusterState.copy(
             index = indexName,
             indexUuid = "randomindexuuid",
@@ -237,7 +237,7 @@ class MetadataRegressionIT : IndexStateManagementIntegTestCase() {
             )
         )
         client().execute(UpdateManagedIndexMetaDataAction.INSTANCE, request).get()
-        logger.info("check if metadata is saved in cluster state: ${getIndexMetadata(indexName).getCustomData("managed_index_metadata")}")
+        logger.info("check if metadata is saved in cluster state: ${getIndexMetadata(indexName)!!.getCustomData("managed_index_metadata")}")
 
         waitFor {
             assertEquals(
@@ -248,7 +248,7 @@ class MetadataRegressionIT : IndexStateManagementIntegTestCase() {
 
         waitFor(Instant.ofEpochSecond(120)) {
             assertEquals(null, getExplainManagedIndexMetaData(indexName).info?.get("message"))
-            assertEquals(null, getIndexMetadata(indexName).getCustomData("managed_index_metadata"))
+            assertEquals(null, getIndexMetadata(indexName)!!.getCustomData("managed_index_metadata"))
         }
 
         logger.info("corrupt metadata has been cleaned")

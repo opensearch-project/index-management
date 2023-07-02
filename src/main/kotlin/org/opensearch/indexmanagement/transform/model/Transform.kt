@@ -363,7 +363,9 @@ data class Transform(
                             groups.add(Dimension.parse(xcp))
                         }
                     }
-                    AGGREGATIONS_FIELD -> aggregations = AggregatorFactories.parseAggregators(xcp)
+                    AGGREGATIONS_FIELD -> {
+                        AggregatorFactories.parseAggregators(xcp)?.let { aggregations = it }
+                    }
                     CONTINUOUS_FIELD -> continuous = xcp.booleanValue()
                     USER_FIELD -> {
                         user = if (xcp.currentToken() == Token.VALUE_NULL) null else User.parse(xcp)

@@ -199,8 +199,6 @@ fun XContentBuilder.buildMetadata(name: String, metadata: ToXContentFragment, pa
 
 // Get the oldest rollover time or null if index was never rolled over
 fun IndexMetadata.getOldestRolloverTime(): Instant? {
-    return this.rolloverInfos.values()
-        .map { it.value.time }
-        .minOrNull() // oldest should be min as its epoch time
+    return this.rolloverInfos.values.minOfOrNull { it.time } // oldest should be min as its epoch time
         ?.let { Instant.ofEpochMilli(it) }
 }

@@ -343,9 +343,9 @@ class RollupMapperService(
                 return RollupJobValidationResult.Failure(getMappingsResult.message, getMappingsResult.cause)
         }
 
-        val indexMapping: MappingMetadata = res.mappings[targetIndexResolvedName]
+        val indexMapping: MappingMetadata? = res.mappings[targetIndexResolvedName]
 
-        return if (((indexMapping.sourceAsMap?.get(_META) as Map<*, *>?)?.get(ROLLUPS) as Map<*, *>?)?.containsKey(rollup.id) == true) {
+        return if (((indexMapping?.sourceAsMap?.get(_META) as Map<*, *>?)?.get(ROLLUPS) as Map<*, *>?)?.containsKey(rollup.id) == true) {
             RollupJobValidationResult.Valid
         } else {
             RollupJobValidationResult.Invalid("Rollup job [${rollup.id}] does not exist in rollup index [$targetIndexResolvedName]")
