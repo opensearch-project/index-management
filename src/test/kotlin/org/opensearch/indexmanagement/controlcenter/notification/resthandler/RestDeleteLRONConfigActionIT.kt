@@ -39,6 +39,8 @@ class RestDeleteLRONConfigActionIT : LRONConfigRestTestCase() {
     }
 
     fun `test delete nonexist LRONConfig response`() {
+        /* index a random doc to create .opensearch-control-center index */
+        createLRONConfig(randomLRONConfig(taskId = randomTaskId(nodeId = nodeIdsInRestIT.random())))
         val lronConfig = randomLRONConfig(taskId = randomTaskId(nodeId = nodeIdsInRestIT.random()))
         val response = client().makeRequest("DELETE", getResourceURI(lronConfig.taskId, lronConfig.actionName))
         assertEquals("delete LRONConfig failed", RestStatus.OK, response.restStatus())

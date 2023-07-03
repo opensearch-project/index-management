@@ -5,6 +5,10 @@
 
 package org.opensearch.indexmanagement.controlcenter.notification.resthandler
 
+import kotlinx.coroutines.asCoroutineDispatcher
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.runBlocking
 import org.junit.Assert
 import org.opensearch.client.ResponseException
 import org.opensearch.common.xcontent.XContentType
@@ -21,6 +25,7 @@ import org.opensearch.indexmanagement.makeRequest
 import org.opensearch.indexmanagement.opensearchapi.convertToMap
 import org.opensearch.indexmanagement.util.DRY_RUN
 import org.opensearch.rest.RestStatus
+import java.util.concurrent.Executors
 
 @Suppress("UNCHECKED_CAST")
 class RestIndexLRONConfigActionIT : LRONConfigRestTestCase() {
@@ -155,21 +160,21 @@ class RestIndexLRONConfigActionIT : LRONConfigRestTestCase() {
     }
 
     fun `test autocreate index for indexLRONConfig action`() {
-        wipeAllIndices()
+        removeControlCenterIndex()
         val lronConfig = randomLRONConfig(taskId = randomTaskId(nodeId = nodeIdsInRestIT.random()))
         var response = createLRONConfig(lronConfig)
         assertEquals("Create LRONConfig failed", RestStatus.OK, response.restStatus())
-        wipeAllIndices()
+        removeControlCenterIndex()
         response = client().makeRequest(
             "PUT",
             getResourceURI(lronConfig.taskId, lronConfig.actionName),
             lronConfig.toHttpEntity()
         )
         assertEquals("Create LRONConfig failed", RestStatus.OK, response.restStatus())
-        wipeAllIndices()
     }
 
     fun `test mappings after LRONConfig creation`() {
+        removeControlCenterIndex()
         val lronConfig = randomLRONConfig(taskId = randomTaskId(nodeId = nodeIdsInRestIT.random()))
         createLRONConfig(lronConfig)
 
@@ -184,5 +189,30 @@ class RestIndexLRONConfigActionIT : LRONConfigRestTestCase() {
         val expectedMap = expected.map()
 
         assertEquals("Mappings are different", expectedMap, mappingsMap)
+    }
+
+    fun `test concurrent indexing requests auto create index and not throw exception`() {
+        removeControlCenterIndex()
+        val threadSize = 5
+        val lronConfigs = List(threadSize) { randomLRONConfig(taskId = randomTaskId(nodeId = nodeIdsInRestIT.random())) }
+        val threadPool = Executors.newFixedThreadPool(threadSize)
+        try {
+            runBlocking {
+                val dispatcher = threadPool.asCoroutineDispatcher()
+                val responses = lronConfigs.map {
+                    async(dispatcher) {
+                        createLRONConfig(it)
+                    }
+                }.awaitAll()
+                responses.forEach { assertEquals("Create LRONConfig failed", RestStatus.OK, it.restStatus()) }
+            }
+        } finally {
+            threadPool.shutdown()
+        }
+        val response = client().makeRequest("GET", IndexManagementPlugin.LRON_BASE_URI)
+        assertEquals("get LRONConfigs failed", RestStatus.OK, response.restStatus())
+        val responseBody = response.asMap()
+        val totalNumber = responseBody["total_number"]
+        assertEquals("wrong LRONConfigs number", threadSize, totalNumber)
     }
 }
