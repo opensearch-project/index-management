@@ -13,6 +13,7 @@ import org.junit.After
 import org.junit.Assert
 import org.junit.Before
 import org.opensearch.action.admin.indices.open.OpenIndexAction
+import org.opensearch.client.Response
 import org.opensearch.client.ResponseException
 import org.opensearch.client.RestClient
 import org.opensearch.common.settings.Settings
@@ -198,25 +199,7 @@ class NotificationActionListenerIT : IndexManagementRestTestCase() {
 
     @Suppress("UNCHECKED_CAST")
     fun `test notify for reindex`() {
-        insertSampleData("source-index", 10)
-        createIndex("reindex-dest", Settings.EMPTY)
-
-        val response = client.makeRequest(
-            "POST", "_reindex?wait_for_completion=false",
-            StringEntity(
-                """
-                {
-                  "source": {
-                    "index": "source-index"
-                  },
-                  "dest": {
-                    "index": "reindex-dest"
-                  }
-                }
-                """.trimIndent(),
-                ContentType.APPLICATION_JSON
-            )
-        )
+        val response = performReindex()
 
         Assert.assertTrue(response.restStatus() == RestStatus.OK)
 
@@ -323,25 +306,7 @@ class NotificationActionListenerIT : IndexManagementRestTestCase() {
 
     @Suppress("UNCHECKED_CAST")
     fun `test notify for reindex with duplicate channel`() {
-        insertSampleData("source-index", 10)
-        createIndex("reindex-dest", Settings.EMPTY)
-
-        val response = client.makeRequest(
-            "POST", "_reindex?wait_for_completion=false",
-            StringEntity(
-                """
-                {
-                  "source": {
-                    "index": "source-index"
-                  },
-                  "dest": {
-                    "index": "reindex-dest"
-                  }
-                }
-                """.trimIndent(),
-                ContentType.APPLICATION_JSON
-            )
-        )
+        val response = performReindex()
 
         Assert.assertTrue(response.restStatus() == RestStatus.OK)
         val taskId = response.asMap()["task"] as String
@@ -447,5 +412,79 @@ class NotificationActionListenerIT : IndexManagementRestTestCase() {
                     )["hits"]!!["total"]!!["value"]
             )
         }
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    fun `test runtime policy been removed when index operation finished`() {
+        val response = performReindex()
+
+        Assert.assertTrue(response.restStatus() == RestStatus.OK)
+        val taskId = response.asMap()["task"]
+        Assert.assertNotNull(taskId)
+
+        // put runtime policy only for failure
+        client.makeRequest(
+            "POST", "_plugins/_im/lron",
+            StringEntity(
+                """
+                    {
+                        "lron_config": {
+                            "task_id": "$taskId",
+                            "lron_condition": {
+                                "failure": true,
+                                "success": false
+                            },
+                            "channels": [
+                                {
+                                    "id": "$notificationConfId"
+                                }
+                            ]
+                        }
+                    }
+                """.trimIndent(),
+                ContentType.APPLICATION_JSON
+            )
+        )
+
+        waitFor(Instant.ofEpochSecond(60)) {
+            assertEquals(
+                "Notification index does not have a doc",
+                1,
+                (
+                    client.makeRequest("GET", "$notificationIndex/_search?q=msg:reindex")
+                        .asMap() as Map<String, Map<String, Map<String, Any>>>
+                    )["hits"]!!["total"]!!["value"]
+            )
+
+            try {
+                client.makeRequest("GET", "_plugins/_im/lron/LRON:$taskId")
+            } catch (e: ResponseException) {
+                // runtime policy been removed
+                Assert.assertTrue(e.response.restStatus() == RestStatus.NOT_FOUND)
+            }
+        }
+    }
+
+    private fun performReindex(): Response {
+        insertSampleData("source-index", 10)
+        createIndex("reindex-dest", Settings.EMPTY)
+
+        val response = client.makeRequest(
+            "POST", "_reindex?wait_for_completion=false",
+            StringEntity(
+                """
+                    {
+                      "source": {
+                        "index": "source-index"
+                      },
+                      "dest": {
+                        "index": "reindex-dest"
+                      }
+                    }
+                """.trimIndent(),
+                ContentType.APPLICATION_JSON
+            )
+        )
+        return response
     }
 }

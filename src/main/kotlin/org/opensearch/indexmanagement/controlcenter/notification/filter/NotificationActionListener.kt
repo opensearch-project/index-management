@@ -235,9 +235,12 @@ class NotificationActionListener<Request : ActionRequest, Response : ActionRespo
                     }
                 }
             }
+        }
 
-            // remove one time configuration no matter it is enabled or not
-            removeOneTimePolicy(config)
+        // remove one time configuration
+        val runtimeConfig = lronConfigResponse.lronConfigResponses.firstOrNull() { it.lronConfig.taskId != null }
+        runtimeConfig?.let {
+            removeOneTimePolicy(it.lronConfig)
         }
     }
 
