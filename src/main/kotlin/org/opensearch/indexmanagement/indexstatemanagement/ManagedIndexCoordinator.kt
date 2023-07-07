@@ -264,7 +264,7 @@ class ManagedIndexCoordinator(
     suspend fun sweepClusterChangedEvent(event: ClusterChangedEvent) {
         // If IM config doesn't exist skip
         if (!ismIndices.indexManagementIndexExists()) {
-            logger.warn("[.opendistro-ism-config] config index does not exist")
+            logger.debug("[.opendistro-ism-config] config index does not exist")
             return
         }
         // indices delete event
