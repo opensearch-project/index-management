@@ -6,7 +6,7 @@
 package org.opensearch.indexmanagement.refreshanalyzer
 
 import org.opensearch.client.node.NodeClient
-import org.opensearch.common.Strings
+import org.opensearch.core.common.Strings
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.OPEN_DISTRO_BASE_URI
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.PLUGINS_BASE_URI
 import org.opensearch.rest.BaseRestHandler
