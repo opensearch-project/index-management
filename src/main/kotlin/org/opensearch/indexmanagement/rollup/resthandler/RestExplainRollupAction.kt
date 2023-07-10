@@ -6,7 +6,7 @@
 package org.opensearch.indexmanagement.rollup.resthandler
 
 import org.opensearch.client.node.NodeClient
-import org.opensearch.common.Strings
+import org.opensearch.core.common.Strings
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.LEGACY_ROLLUP_JOBS_BASE_URI
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.ROLLUP_JOBS_BASE_URI
 import org.opensearch.indexmanagement.rollup.action.explain.ExplainRollupAction
