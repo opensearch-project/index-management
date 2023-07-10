@@ -262,6 +262,11 @@ class ManagedIndexCoordinator(
      */
     @OpenForTesting
     suspend fun sweepClusterChangedEvent(event: ClusterChangedEvent) {
+        // If IM config doesn't exist skip
+        if (!ismIndices.indexManagementIndexExists()) {
+            logger.debug("[.opendistro-ism-config] config index does not exist")
+            return
+        }
         // indices delete event
         var removeManagedIndexReq = emptyList<DocWriteRequest<*>>()
         var indicesToClean = emptyList<Index>()
