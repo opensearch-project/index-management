@@ -17,9 +17,6 @@ import org.opensearch.indexmanagement.IndexManagementPlugin
 import org.opensearch.indexmanagement.IndexManagementRestTestCase
 import org.opensearch.indexmanagement.controlcenter.notification.initNodeIdsInRestIT
 import org.opensearch.indexmanagement.controlcenter.notification.model.LRONConfig
-import org.opensearch.indexmanagement.controlcenter.notification.nodeIdsInRestIT
-import org.opensearch.indexmanagement.controlcenter.notification.randomLRONConfig
-import org.opensearch.indexmanagement.controlcenter.notification.randomTaskId
 import org.opensearch.indexmanagement.controlcenter.notification.toJsonString
 import org.opensearch.indexmanagement.makeRequest
 import org.opensearch.rest.RestStatus
@@ -30,8 +27,6 @@ abstract class LRONConfigRestTestCase : IndexManagementRestTestCase() {
         setDebugLogLevel()
         /* init cluster node ids in integ test */
         initNodeIdsInRestIT(client())
-        /* index a random doc to create .opensearch-control-center index */
-        createLRONConfig(randomLRONConfig(taskId = randomTaskId(nodeId = nodeIdsInRestIT.random())))
     }
 
     @After
@@ -74,8 +69,13 @@ abstract class LRONConfigRestTestCase : IndexManagementRestTestCase() {
 
     companion object {
         @AfterClass
-        @JvmStatic fun clearIndicesAfterClass() {
-            wipeAllIndices()
+        @JvmStatic fun removeControlCenterIndex() {
+            try {
+                adminClient().makeRequest("DELETE", IndexManagementPlugin.CONTROL_CENTER_INDEX, emptyMap())
+            } catch (e: ResponseException) {
+                /* ignore if the index has not been created */
+                assertEquals("Unexpected status", RestStatus.NOT_FOUND, RestStatus.fromCode(e.response.statusLine.statusCode))
+            }
         }
     }
 }

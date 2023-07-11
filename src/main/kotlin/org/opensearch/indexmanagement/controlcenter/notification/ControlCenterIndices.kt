@@ -5,6 +5,7 @@
 
 package org.opensearch.indexmanagement.controlcenter.notification
 
+import org.opensearch.ExceptionsHelper
 import org.opensearch.ResourceAlreadyExistsException
 import org.opensearch.action.ActionListener
 import org.opensearch.action.admin.indices.create.CreateIndexRequest
@@ -31,7 +32,7 @@ class ControlCenterIndices(
                 indexRequest,
                 object : ActionListener<CreateIndexResponse> {
                     override fun onFailure(e: Exception) {
-                        if (e is ResourceAlreadyExistsException) {
+                        if (ExceptionsHelper.unwrapCause(e) is ResourceAlreadyExistsException) {
                             /* if two request create the control center index at the same time, may raise this exception */
                             /* but we don't take it as error */
                             actionListener.onResponse(
