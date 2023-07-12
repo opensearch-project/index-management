@@ -12,11 +12,9 @@ Compatible with OpenSearch 2.9.0
 
 ### Bug fixes
 * Bugfix/202 transform date add date conversion. ([#622](https://github.com/opensearch-project/index-management/pull/622))
+* Fix build errors after refactoring of Strings class in core. ([#786](https://github.com/opensearch-project/index-management/pull/786))
 * Fix LRON concurrent indexing throw ResourceAlreadyExists. ([#831](https://github.com/opensearch-project/index-management/pull/831))
 * ImmutableOpenMap to j.u.Map. ([#838](https://github.com/opensearch-project/index-management/pull/838))
-* Fix build errors after refactoring of Strings class in core. ([#786](https://github.com/opensearch-project/index-management/pull/786))
-
-### Refactoring
 * Remove runtime notification settings. ([#839](https://github.com/opensearch-project/index-management/pull/839))
 
 ### Documentation
