@@ -20,4 +20,4 @@ Compatible with OpenSearch 2.9.0
 * Remove runtime notification settings. ([#839](https://github.com/opensearch-project/index-management/pull/839))
 
 ### Documentation
-* Added 2.9 release notes. ([#]())
+* Added 2.9 release notes. ([#851](https://github.com/opensearch-project/index-management/pull/851))
