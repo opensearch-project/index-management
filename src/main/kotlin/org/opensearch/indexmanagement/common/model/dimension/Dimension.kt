@@ -29,6 +29,9 @@ abstract class Dimension(
         }
     }
 
+    /**
+     * TODO explain what is the use of appendType
+     */
     abstract fun toSourceBuilder(appendType: Boolean = false): CompositeValuesSourceBuilder<*>
 
     /**

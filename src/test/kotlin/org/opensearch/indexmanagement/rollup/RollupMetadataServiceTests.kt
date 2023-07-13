@@ -77,7 +77,7 @@ class RollupMetadataServiceTests : OpenSearchTestCase() {
         val expectedWindowEndTime = getInstant("2020-10-02T05:02:00Z")
 
         runBlocking {
-            val initMetadataResult = metadataService.init(rollup)
+            val initMetadataResult = metadataService.getOrInitMetadata(rollup)
             require(initMetadataResult is MetadataResult.Success) { "Init metadata returned unexpected results" }
 
             val metadata = initMetadataResult.metadata
@@ -115,7 +115,7 @@ class RollupMetadataServiceTests : OpenSearchTestCase() {
         val expectedWindowEndTime = getInstant("2020-10-02T06:00:00Z")
 
         runBlocking {
-            val initMetadataResult = metadataService.init(rollup)
+            val initMetadataResult = metadataService.getOrInitMetadata(rollup)
             require(initMetadataResult is MetadataResult.Success) { "Init metadata returned unexpected results" }
 
             val metadata = initMetadataResult.metadata
@@ -154,7 +154,7 @@ class RollupMetadataServiceTests : OpenSearchTestCase() {
         val expectedWindowEndTime = localDateAtTimezone("2020-03-08T03:00:00", ZoneId.of("America/Los_Angeles"))
 
         runBlocking {
-            val initMetadataResult = metadataService.init(rollup)
+            val initMetadataResult = metadataService.getOrInitMetadata(rollup)
             require(initMetadataResult is MetadataResult.Success) { "Init metadata returned unexpected results" }
 
             val metadata = initMetadataResult.metadata
@@ -192,7 +192,7 @@ class RollupMetadataServiceTests : OpenSearchTestCase() {
         val expectedWindowEndTime = getInstant("2020-10-03T00:00:00Z")
 
         runBlocking {
-            val initMetadataResult = metadataService.init(rollup)
+            val initMetadataResult = metadataService.getOrInitMetadata(rollup)
             require(initMetadataResult is MetadataResult.Success) { "Init metadata returned unexpected results" }
 
             val metadata = initMetadataResult.metadata
@@ -230,7 +230,7 @@ class RollupMetadataServiceTests : OpenSearchTestCase() {
         val expectedWindowEndTime = getInstant("2020-02-29T00:00:00Z")
 
         runBlocking {
-            val initMetadataResult = metadataService.init(rollup)
+            val initMetadataResult = metadataService.getOrInitMetadata(rollup)
             require(initMetadataResult is MetadataResult.Success) { "Init metadata returned unexpected results" }
 
             val metadata = initMetadataResult.metadata
@@ -270,7 +270,7 @@ class RollupMetadataServiceTests : OpenSearchTestCase() {
         val expectedWindowEndTime = getInstant("2020-03-23T00:00:00Z")
 
         runBlocking {
-            val initMetadataResult = metadataService.init(rollup)
+            val initMetadataResult = metadataService.getOrInitMetadata(rollup)
             require(initMetadataResult is MetadataResult.Success) { "Init metadata returned unexpected results" }
 
             val metadata = initMetadataResult.metadata
@@ -308,7 +308,7 @@ class RollupMetadataServiceTests : OpenSearchTestCase() {
         val expectedWindowEndTime = getInstant("2020-01-01T00:00:00Z")
 
         runBlocking {
-            val initMetadataResult = metadataService.init(rollup)
+            val initMetadataResult = metadataService.getOrInitMetadata(rollup)
             require(initMetadataResult is MetadataResult.Success) { "Init metadata returned unexpected results" }
 
             val metadata = initMetadataResult.metadata
@@ -346,7 +346,7 @@ class RollupMetadataServiceTests : OpenSearchTestCase() {
         val expectedWindowEndTime = getInstant("2020-07-01T00:00:00Z")
 
         runBlocking {
-            val initMetadataResult = metadataService.init(rollup)
+            val initMetadataResult = metadataService.getOrInitMetadata(rollup)
             require(initMetadataResult is MetadataResult.Success) { "Init metadata returned unexpected results" }
 
             val metadata = initMetadataResult.metadata
@@ -384,7 +384,7 @@ class RollupMetadataServiceTests : OpenSearchTestCase() {
         val expectedWindowEndTime = getInstant("2021-01-01T00:00:00Z")
 
         runBlocking {
-            val initMetadataResult = metadataService.init(rollup)
+            val initMetadataResult = metadataService.getOrInitMetadata(rollup)
             require(initMetadataResult is MetadataResult.Success) { "Init metadata returned unexpected results" }
 
             val metadata = initMetadataResult.metadata
@@ -422,7 +422,7 @@ class RollupMetadataServiceTests : OpenSearchTestCase() {
         val expectedWindowEndTime = localDateAtTimezone("2020-04-24T09:00:00", ZoneId.of("America/Los_Angeles"))
 
         runBlocking {
-            val initMetadataResult = metadataService.init(rollup)
+            val initMetadataResult = metadataService.getOrInitMetadata(rollup)
             require(initMetadataResult is MetadataResult.Success) { "Init metadata returned unexpected results" }
 
             val metadata = initMetadataResult.metadata
@@ -460,7 +460,7 @@ class RollupMetadataServiceTests : OpenSearchTestCase() {
         val expectedWindowEndTime = localDateAtTimezone("2020-04-24T02:00:00", ZoneId.of("America/Los_Angeles"))
 
         runBlocking {
-            val initMetadataResult = metadataService.init(rollup)
+            val initMetadataResult = metadataService.getOrInitMetadata(rollup)
             require(initMetadataResult is MetadataResult.Success) { "Init metadata returned unexpected results" }
 
             val metadata = initMetadataResult.metadata
@@ -498,7 +498,7 @@ class RollupMetadataServiceTests : OpenSearchTestCase() {
         val expectedWindowEndTime = getInstant("2020-04-25T00:00:00Z")
 
         runBlocking {
-            val initMetadataResult = metadataService.init(rollup)
+            val initMetadataResult = metadataService.getOrInitMetadata(rollup)
             require(initMetadataResult is MetadataResult.Success) { "Init metadata returned unexpected results" }
 
             val metadata = initMetadataResult.metadata
@@ -538,7 +538,7 @@ class RollupMetadataServiceTests : OpenSearchTestCase() {
         val expectedWindowEndTime = localDateAtTimezone("2020-03-08T03:00:00", ZoneId.of("America/Los_Angeles"))
 
         runBlocking {
-            val initMetadataResult = metadataService.init(rollup)
+            val initMetadataResult = metadataService.getOrInitMetadata(rollup)
             require(initMetadataResult is MetadataResult.Success) { "Init metadata returned unexpected results" }
 
             val metadata = initMetadataResult.metadata
@@ -577,7 +577,7 @@ class RollupMetadataServiceTests : OpenSearchTestCase() {
         val expectedWindowEndTime = getInstant("2020-02-08T00:00:00Z")
 
         runBlocking {
-            val initMetadataResult = metadataService.init(rollup)
+            val initMetadataResult = metadataService.getOrInitMetadata(rollup)
             require(initMetadataResult is MetadataResult.Success) { "Init metadata returned unexpected results" }
 
             val metadata = initMetadataResult.metadata
@@ -604,7 +604,7 @@ class RollupMetadataServiceTests : OpenSearchTestCase() {
         val metadataService = RollupMetadataService(client, xContentRegistry)
 
         runBlocking {
-            val initMetadataResult = metadataService.init(rollup)
+            val initMetadataResult = metadataService.getOrInitMetadata(rollup)
             require(initMetadataResult is MetadataResult.Failure) { "Init metadata returned unexpected results" }
 
             assertEquals(getException, initMetadataResult.cause)
@@ -629,7 +629,7 @@ class RollupMetadataServiceTests : OpenSearchTestCase() {
         val metadataService = RollupMetadataService(client, xContentRegistry)
 
         runBlocking {
-            val initMetadataResult = metadataService.init(rollup)
+            val initMetadataResult = metadataService.getOrInitMetadata(rollup)
             require(initMetadataResult is MetadataResult.Failure) { "Init metadata returned unexpected results" }
 
             assertEquals(indexException, initMetadataResult.cause)

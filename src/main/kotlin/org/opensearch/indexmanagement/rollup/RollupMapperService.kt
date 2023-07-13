@@ -56,9 +56,9 @@ class RollupMapperService(
     private val logger = LogManager.getLogger(javaClass)
 
     /**
-     * If the index already exists we need to verify it's a rollup index,
-     * confirm it does not conflict with existing jobs and is a valid job.
-     * If
+     * If the target index already exists, we need to validate
+     * 1. it's a rollup index - rollup index setting exists
+     * 2. it has the rollup job in mapping
      *
      * @param rollup Rollup job we're currently executing
      * @param targetIndexResolvedName concrete index name
@@ -66,7 +66,7 @@ class RollupMapperService(
      * @return RollupJobValidationResult indicating success or failure with appropriate error message included.
      */
     @Suppress("ReturnCount")
-    private suspend fun validateAndAttemptToUpdateTargetIndex(
+    suspend fun validateTargetIndex(
         rollup: Rollup,
         targetIndexResolvedName: String,
         hasLegacyPlugin: Boolean
@@ -79,9 +79,11 @@ class RollupMapperService(
                 return prepareTargetIndex(rollup, targetIndexResolvedName, hasLegacyPlugin)
             }
         } else if (!isRollupIndex(targetIndexResolvedName, clusterService.state())) {
+            // Only at target_index alias scenario, we could have an un-prepared target index. Otherwise,
+            // the target index should be created and prepared by rollup run
             return RollupJobValidationResult.Invalid("Target index [$targetIndexResolvedName] is a non rollup index")
         }
-        return when (val jobExistsResult = jobExistsInRollupIndex(rollup, targetIndexResolvedName)) {
+        return when (val jobExistsResult = jobExistsInTargetIndexMapping(rollup, targetIndexResolvedName)) {
             is RollupJobValidationResult.Valid -> jobExistsResult
             is RollupJobValidationResult.Invalid -> updateRollupIndexMappings(rollup, targetIndexResolvedName)
             is RollupJobValidationResult.Failure -> jobExistsResult
@@ -93,10 +95,7 @@ class RollupMapperService(
      * or there isn't any rollup job present in _meta
      */
     @Suppress("ReturnCount")
-    suspend fun validateTargetIndexAlias(rollup: Rollup, targetIndexResolvedName: String): RollupJobValidationResult {
-
-        val errorMessage: String
-
+    private fun validateTargetIndexAlias(rollup: Rollup, targetIndexResolvedName: String): RollupJobValidationResult {
         if (!RollupFieldValueExpressionResolver.indexAliasUtils.hasAlias(targetIndexResolvedName)) {
             logger.error("[${rollup.targetIndex}] is not an alias!")
             return RollupJobValidationResult.Failure("[${rollup.targetIndex}] is not an alias!")
@@ -106,13 +105,14 @@ class RollupMapperService(
         if (rollupJobs != null &&
             (rollupJobs.size > 1 || rollupJobs[0].id != rollup.id)
         ) {
-            errorMessage = "More than one rollup jobs present on the backing index of the target alias, " +
+            val errorMessage = "More than one rollup jobs present on the backing index of the target alias, " +
                 "cannot perform rollup to this target alias [${rollup.targetIndex}]."
             logger.error(errorMessage)
             return RollupJobValidationResult.Failure(errorMessage)
         }
 
-        // All other backing indices have to have this rollup job in _META field and it has to be the only one!
+        // TODO the idea for this check is using one alias for one continuous rollup, which can be loosen to multiple rollup jobs with overlapping dimensions?
+        // All other backing indices have to have this rollup job in _META field, and it has to be the only one!
         val backingIndices = RollupFieldValueExpressionResolver.indexAliasUtils.getBackingIndicesForAlias(rollup.targetIndex)
         backingIndices?.forEach {
             if (it.index.name != targetIndexResolvedName) {
@@ -126,7 +126,7 @@ class RollupMapperService(
         return RollupJobValidationResult.Valid
     }
 
-    suspend fun validateNonWriteBackingIndex(backingIndex: String, currentRollupJob: Rollup, rollupJobs: List<Rollup>?): RollupJobValidationResult {
+    private fun validateNonWriteBackingIndex(backingIndex: String, currentRollupJob: Rollup, rollupJobs: List<Rollup>?): RollupJobValidationResult {
         var errorMessage = ""
         if (rollupJobs == null) {
             errorMessage = "Backing index [$backingIndex] has to have owner rollup job with id:[${currentRollupJob.id}]"
@@ -142,14 +142,11 @@ class RollupMapperService(
         return RollupJobValidationResult.Valid
     }
 
-    // This creates the target index if it doesn't already else validate the target index is rollup index
-    // If the target index mappings doesn't contain rollup job attempts to update the mappings.
-    // TODO: error handling
     @Suppress("ReturnCount")
-    suspend fun attemptCreateRollupTargetIndex(job: Rollup, hasLegacyPlugin: Boolean): RollupJobValidationResult {
+    suspend fun attemptCreateOrValidateTargetIndex(job: Rollup, hasLegacyPlugin: Boolean): RollupJobValidationResult {
         val targetIndexResolvedName = RollupFieldValueExpressionResolver.resolve(job, job.targetIndex)
         if (indexExists(targetIndexResolvedName)) {
-            val validationResult = validateAndAttemptToUpdateTargetIndex(job, targetIndexResolvedName, hasLegacyPlugin)
+            val validationResult = validateTargetIndex(job, targetIndexResolvedName, hasLegacyPlugin)
             when (validationResult) {
                 is RollupJobValidationResult.Failure -> logger.error(validationResult.message)
                 is RollupJobValidationResult.Invalid -> logger.error(validationResult.reason)
@@ -157,7 +154,7 @@ class RollupMapperService(
             }
             return validationResult
         } else {
-            val errorMessage = "Failed to create target index [$targetIndexResolvedName]"
+            val errorMessage = "Failed to create target index [$targetIndexResolvedName] for rollup [${job.id}]"
             return try {
                 val response = createTargetIndex(targetIndexResolvedName, hasLegacyPlugin)
                 if (response.isAcknowledged) {
@@ -179,7 +176,7 @@ class RollupMapperService(
         }
     }
 
-    suspend fun addRollupSettingToIndex(targetIndexResolvedName: String, hasLegacyPlugin: Boolean): Boolean {
+    private suspend fun addRollupSettingToIndex(targetIndexResolvedName: String, hasLegacyPlugin: Boolean): Boolean {
         val settings = if (hasLegacyPlugin) {
             Settings.builder().put(LegacyOpenDistroRollupSettings.ROLLUP_INDEX.key, true).build()
         } else {
@@ -190,12 +187,17 @@ class RollupMapperService(
         }
         return resp.isAcknowledged
     }
+
+    /**
+     * Target index may be already created but hasn't been set up for rollup use, e.g., alias rollover scenario
+     * This method prepares this kind of target index for rollup use
+     */
     @Suppress("ReturnCount")
-    suspend fun prepareTargetIndex(rollup: Rollup, targetIndexResolvedName: String, hasLegacyPlugin: Boolean): RollupJobValidationResult {
+    private suspend fun prepareTargetIndex(rollup: Rollup, targetIndexResolvedName: String, hasLegacyPlugin: Boolean): RollupJobValidationResult {
         var errorMessage = ""
         try {
             // 1. First we need to add index.plugins.rollup_index setting to index
-            if (addRollupSettingToIndex(targetIndexResolvedName, hasLegacyPlugin) == false) {
+            if (!addRollupSettingToIndex(targetIndexResolvedName, hasLegacyPlugin)) {
                 logger.error("Failed to update rollup settings for target index: [$targetIndexResolvedName]")
                 return RollupJobValidationResult.Invalid("Failed to update rollup settings for target index: [$targetIndexResolvedName]")
             }
@@ -209,6 +211,7 @@ class RollupMapperService(
             if (!respMappings.isAcknowledged) {
                 return RollupJobValidationResult.Invalid("Failed to put initial rollup mappings for target index [$targetIndexResolvedName]")
             }
+
             // 3. Add this rollup job to target_index's _meta
             errorMessage = "Failed to update mappings for target index [$targetIndexResolvedName]"
             updateRollupIndexMappings(rollup, targetIndexResolvedName)
@@ -243,20 +246,20 @@ class RollupMapperService(
         return client.admin().indices().suspendUntil { create(request, it) }
     }
 
-    // Source index can be a pattern so will need to resolve the index to concrete indices and check:
-    // 1. If there are any indices resolving to the given source index
-    // 2. That each concrete index is valid (in terms of mappings, etc.)
+    /**
+     * Source index can be a pattern so will need to resolve the index to concrete indices and check:
+     *  1. If there are any indices resolving to the given source index
+     *  2. Each concrete index is valid (in terms of mappings, etc.)
+     */
     @Suppress("ReturnCount")
     suspend fun isSourceIndexValid(rollup: Rollup): RollupJobValidationResult {
-        // TODO: Add some entry in metadata that will store index -> indexUUID for validated indices
-        //  That way, we only need to validate indices that aren't in the metadata (covers cases where new index with same name was made)
         // Allow no indices, open and closed
-        // Rolling up on closed indices will not be caught here
+        // Rolling up on closed indices will not be caught here TODO where will closed indices be caught???
         val concreteIndices =
             indexNameExpressionResolver.concreteIndexNames(clusterService.state(), IndicesOptions.lenientExpand(), true, rollup.sourceIndex)
+
         if (concreteIndices.isEmpty()) return RollupJobValidationResult.Invalid("No indices found for [${rollup.sourceIndex}]")
 
-        // Validate mappings for each concrete index resolved from the rollup source index
         concreteIndices.forEach { index ->
             when (val sourceIndexMappingResult = isSourceIndexMappingsValid(index, rollup)) {
                 is RollupJobValidationResult.Valid -> {} // no-op if valid
@@ -268,6 +271,9 @@ class RollupMapperService(
         return RollupJobValidationResult.Valid
     }
 
+    /**
+     * Validate if rollup dimension and metric definition match with source index mapping
+     */
     @Suppress("ReturnCount", "ComplexMethod")
     private suspend fun isSourceIndexMappingsValid(index: String, rollup: Rollup): RollupJobValidationResult {
         try {
@@ -278,10 +284,7 @@ class RollupMapperService(
             }
 
             val indexTypeMappings = res.mappings[index]
-            if (indexTypeMappings == null) {
-                return RollupJobValidationResult.Invalid("Source index [$index] mappings are empty, cannot validate the job.")
-            }
-
+                ?: return RollupJobValidationResult.Invalid("Source index [$index] mappings are empty, cannot validate the job.")
             val indexMappingSource = indexTypeMappings.sourceAsMap
 
             val issues = mutableSetOf<String>()
@@ -302,7 +305,6 @@ class RollupMapperService(
                     }
                 }
             }
-
             // Validate source fields in metrics
             rollup.metrics.forEach { metric ->
                 if (!isFieldInMappings(metric.sourceField, indexMappingSource))
@@ -336,7 +338,7 @@ class RollupMapperService(
         return field != null
     }
 
-    private suspend fun jobExistsInRollupIndex(rollup: Rollup, targetIndexResolvedName: String): RollupJobValidationResult {
+    private suspend fun jobExistsInTargetIndexMapping(rollup: Rollup, targetIndexResolvedName: String): RollupJobValidationResult {
         val res = when (val getMappingsResult = getMappings(targetIndexResolvedName)) {
             is GetMappingsResult.Success -> getMappingsResult.response
             is GetMappingsResult.Failure ->
@@ -397,8 +399,7 @@ class RollupMapperService(
             }
 
             if (!response) {
-                // TODO: when this happens is it failure or invalid?
-                logger.error("$errorMessage with no exception")
+                logger.error("$errorMessage because no acknowledgement.")
                 return RollupJobValidationResult.Failure(errorMessage)
             }
             return RollupJobValidationResult.Valid

@@ -51,7 +51,6 @@ import org.opensearch.script.ScriptType
 import org.opensearch.search.aggregations.AggregationBuilder
 import org.opensearch.search.aggregations.AggregatorFactories
 import org.opensearch.search.aggregations.bucket.composite.CompositeAggregationBuilder
-import org.opensearch.search.aggregations.bucket.composite.CompositeValuesSourceBuilder
 import org.opensearch.search.aggregations.bucket.histogram.DateHistogramAggregationBuilder
 import org.opensearch.search.aggregations.bucket.histogram.HistogramAggregationBuilder
 import org.opensearch.search.aggregations.bucket.terms.TermsAggregationBuilder
@@ -101,33 +100,33 @@ fun Rollup.getRollupSearchRequest(metadata: RollupMetadata): SearchRequest {
 
 @Suppress("ComplexMethod", "NestedBlockDepth")
 fun Rollup.getCompositeAggregationBuilder(afterKey: Map<String, Any>?): CompositeAggregationBuilder {
-    val sources = mutableListOf<CompositeValuesSourceBuilder<*>>()
-    this.dimensions.forEach { dimension -> sources.add(dimension.toSourceBuilder(appendType = true)) }
-    return CompositeAggregationBuilder(this.id, sources).size(this.pageSize).also { compositeAgg ->
-        afterKey?.let { compositeAgg.aggregateAfter(it) }
-        this.metrics.forEach { metric ->
-            val subAggs = metric.metrics.flatMap { agg ->
-                when (agg) {
-                    is Average -> {
-                        listOf(
-                            SumAggregationBuilder(metric.targetFieldWithType(agg) + ".sum").field(metric.sourceField),
-                            ValueCountAggregationBuilder(metric.targetFieldWithType(agg) + ".value_count").field(metric.sourceField)
-                        )
+    return CompositeAggregationBuilder(this.id, this.dimensions.map { dim -> dim.toSourceBuilder(appendType = true) })
+        .size(this.pageSize).also { compositeAgg ->
+            afterKey?.let { compositeAgg.aggregateAfter(it) }
+
+            this.metrics.forEach { rollupMetrics ->
+                rollupMetrics.metrics.flatMap { metric ->
+                    when (metric) {
+                        is Average -> {
+                            // TODO how are we using these 2 aggs after composite search?
+                            listOf(
+                                SumAggregationBuilder(rollupMetrics.targetFieldWithType(metric) + ".sum").field(rollupMetrics.sourceField),
+                                ValueCountAggregationBuilder(rollupMetrics.targetFieldWithType(metric) + ".value_count").field(rollupMetrics.sourceField)
+                            )
+                        }
+                        is Sum -> listOf(SumAggregationBuilder(rollupMetrics.targetFieldWithType(metric)).field(rollupMetrics.sourceField))
+                        is Max -> listOf(MaxAggregationBuilder(rollupMetrics.targetFieldWithType(metric)).field(rollupMetrics.sourceField))
+                        is Min -> listOf(MinAggregationBuilder(rollupMetrics.targetFieldWithType(metric)).field(rollupMetrics.sourceField))
+                        is ValueCount -> listOf(ValueCountAggregationBuilder(rollupMetrics.targetFieldWithType(metric)).field(rollupMetrics.sourceField))
+                        // This shouldn't be possible as rollup will fail to initialize with an unsupported metric TODO where do we fail this, experiment?
+                        else -> throw IllegalArgumentException("Found unsupported metric aggregation ${metric.type.type}")
                     }
-                    is Sum -> listOf(SumAggregationBuilder(metric.targetFieldWithType(agg)).field(metric.sourceField))
-                    is Max -> listOf(MaxAggregationBuilder(metric.targetFieldWithType(agg)).field(metric.sourceField))
-                    is Min -> listOf(MinAggregationBuilder(metric.targetFieldWithType(agg)).field(metric.sourceField))
-                    is ValueCount -> listOf(ValueCountAggregationBuilder(metric.targetFieldWithType(agg)).field(metric.sourceField))
-                    // This shouldn't be possible as rollup will fail to initialize with an unsupported metric
-                    else -> throw IllegalArgumentException("Found unsupported metric aggregation ${agg.type.type}")
-                }
+                }.forEach { compositeAgg.subAggregation(it) }
             }
-            subAggs.forEach { compositeAgg.subAggregation(it) }
         }
-    }
 }
 
-// There can only be one date histogram in Rollup and it should always be in the first position of dimensions
+// There can only be one date histogram in Rollup, and it should always be in the first position of dimensions
 // This is validated in the rollup init itself, but need to redo it here to correctly return date histogram
 fun Rollup.getDateHistogram(): DateHistogram {
     val dimension = this.dimensions.first()
@@ -193,10 +192,15 @@ fun IndexMetadata.getRollupJobs(): List<Rollup>? {
     return if (rollupJobs.size > 0) rollupJobs else null
 }
 
-// TODO: If we have to set this manually for each aggregation builder then it means we could miss new ones settings in the future
+/**
+ * TODO provide example of this transformation
+ * TODO we don't support composite aggregation?
+ *
+ * @param aggregationBuilder: the aggregation from rollup query that needs to be rewritten
+ */
 @Suppress("ComplexMethod", "LongMethod")
 fun Rollup.rewriteAggregationBuilder(aggregationBuilder: AggregationBuilder): AggregationBuilder {
-    val aggFactory = AggregatorFactories.builder().also { factories ->
+    val subAggregations = AggregatorFactories.builder().also { factories ->
         aggregationBuilder.subAggregations.forEach {
             factories.addAggregator(this.rewriteAggregationBuilder(it))
         }
@@ -205,15 +209,15 @@ fun Rollup.rewriteAggregationBuilder(aggregationBuilder: AggregationBuilder): Ag
     return when (aggregationBuilder) {
         is TermsAggregationBuilder -> {
             val dim = this.findMatchingDimension(aggregationBuilder.field(), Dimension.Type.TERMS) as Terms
-            dim.getRewrittenAggregation(aggregationBuilder, aggFactory)
+            dim.getRewrittenAggregation(aggregationBuilder, subAggregations)
         }
         is DateHistogramAggregationBuilder -> {
             val dim = this.findMatchingDimension(aggregationBuilder.field(), Dimension.Type.DATE_HISTOGRAM) as DateHistogram
-            dim.getRewrittenAggregation(aggregationBuilder, aggFactory)
+            dim.getRewrittenAggregation(aggregationBuilder, subAggregations)
         }
         is HistogramAggregationBuilder -> {
             val dim = this.findMatchingDimension(aggregationBuilder.field(), Dimension.Type.HISTOGRAM) as Histogram
-            dim.getRewrittenAggregation(aggregationBuilder, aggFactory)
+            dim.getRewrittenAggregation(aggregationBuilder, subAggregations)
         }
         is SumAggregationBuilder -> {
             SumAggregationBuilder(aggregationBuilder.name)
@@ -258,7 +262,7 @@ fun Rollup.rewriteAggregationBuilder(aggregationBuilder: AggregationBuilder): Ag
             * pre-computed value counts instead of their sum. Unfortunately can't just use the sum aggregation
             * because I was not able to find a way to cast the result of that to a long (instead of the returned float)
             * and the 3893 vs 3893.0 was bothering me.. so this is the next best I can think of. Hopefully there is a better
-            * way and we can use that in the future.
+            * way, and we can use that in the future.
             * */
             ScriptedMetricAggregationBuilder(aggregationBuilder.name)
                 .initScript(Script(ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, "state.valueCounts = []", emptyMap()))
@@ -287,6 +291,9 @@ fun Rollup.rewriteAggregationBuilder(aggregationBuilder: AggregationBuilder): Ag
     }
 }
 
+/**
+ *
+ */
 @Suppress("ComplexMethod", "LongMethod")
 fun Rollup.rewriteQueryBuilder(
     queryBuilder: QueryBuilder,
@@ -380,11 +387,10 @@ fun Rollup.rewriteQueryBuilder(
 }
 
 fun Set<Rollup>.buildRollupQuery(fieldNameMappingTypeMap: Map<String, String>, oldQuery: QueryBuilder, targetIndexName: String = ""): QueryBuilder {
-    val wrappedQueryBuilder = BoolQueryBuilder()
-    wrappedQueryBuilder.must(this.first().rewriteQueryBuilder(oldQuery, fieldNameMappingTypeMap, targetIndexName))
-    wrappedQueryBuilder.should(TermsQueryBuilder("rollup._id", this.map { it.id }))
-    wrappedQueryBuilder.minimumShouldMatch(1)
-    return wrappedQueryBuilder
+    return BoolQueryBuilder()
+        .must(this.first().rewriteQueryBuilder(oldQuery, fieldNameMappingTypeMap, targetIndexName))
+        .should(TermsQueryBuilder("rollup._id", this.map { it.id }))
+        .minimumShouldMatch(1)
 }
 
 fun Rollup.populateFieldMappings(): Set<RollupFieldMapping> {
@@ -400,8 +406,6 @@ fun Rollup.populateFieldMappings(): Set<RollupFieldMapping> {
     return fieldMappings
 }
 
-// TODO: Not a fan of this.. but I can't find a way to overwrite the aggregations on the shallow copy or original
-//  so we need to instantiate a new one so we can add the rewritten aggregation builders
 @Suppress("ComplexMethod")
 fun SearchSourceBuilder.rewriteSearchSourceBuilder(
     jobs: Set<Rollup>,
@@ -409,8 +413,11 @@ fun SearchSourceBuilder.rewriteSearchSourceBuilder(
     concreteIndexName: String
 ): SearchSourceBuilder {
     val ssb = SearchSourceBuilder()
-    // can use first() here as all jobs in the set will have a superset of the query's terms
+    if (this.query() != null) ssb.query(jobs.buildRollupQuery(fieldNameMappingTypeMap, this.query(), concreteIndexName))
+    // can use the first rollup here as all are superset of the rollup query
     this.aggregations()?.aggregatorFactories?.forEach { ssb.aggregation(jobs.first().rewriteAggregationBuilder(it)) }
+
+    // can't find a way to overwrite the aggregations on the shallow copy or original so need to instantiate a new one
     if (this.explain() != null) ssb.explain(this.explain())
     if (this.ext() != null) ssb.ext(this.ext())
     ssb.fetchSource(this.fetchSource())
@@ -422,7 +429,6 @@ fun SearchSourceBuilder.rewriteSearchSourceBuilder(
     if (this.minScore() != null) ssb.minScore(this.minScore())
     if (this.postFilter() != null) ssb.postFilter(this.postFilter())
     ssb.profile(this.profile())
-    if (this.query() != null) ssb.query(jobs.buildRollupQuery(fieldNameMappingTypeMap, this.query(), concreteIndexName))
     this.rescores()?.forEach { ssb.addRescorer(it) }
     this.scriptFields()?.forEach { ssb.scriptField(it.fieldName(), it.script(), it.ignoreFailure()) }
     if (this.searchAfter() != null) ssb.searchAfter(this.searchAfter())

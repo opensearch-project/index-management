@@ -56,20 +56,22 @@ class RollupIndexer(
     @Suppress("ReturnCount")
     suspend fun indexRollups(rollup: Rollup, internalComposite: InternalComposite): RollupIndexResult {
         try {
-            var requestsToRetry = convertResponseToRequests(rollup, internalComposite)
+            var requestsToRetry = convertSearchRespToIndexReqs(rollup, internalComposite)
             var stats = RollupStats(0, 0, requestsToRetry.size.toLong(), 0, 0)
+
+            val retryableFailures = mutableListOf<BulkItemResponse>()
             val nonRetryableFailures = mutableListOf<BulkItemResponse>()
             if (requestsToRetry.isNotEmpty()) {
-                retryIngestPolicy.retry(logger, listOf(RestStatus.TOO_MANY_REQUESTS)) {
-                    if (it.seconds >= (Rollup.ROLLUP_LOCK_DURATION_SECONDS / 2)) {
+                retryIngestPolicy.retry(logger, listOf(RestStatus.TOO_MANY_REQUESTS)) { backOffTime ->
+                    if (backOffTime.seconds >= (Rollup.ROLLUP_LOCK_DURATION_SECONDS / 2)) {
                         throw ExceptionsHelper.convertToOpenSearchException(
-                            IllegalStateException("Cannot retry ingestion with a delay more than half of the rollup lock TTL")
+                            IllegalStateException("Cannot retry ingestion with a backoff (${backOffTime.seconds}) more than half of the rollup lock duration (1800s)")
                         )
                     }
                     val bulkRequest = BulkRequest().add(requestsToRetry)
                     val bulkResponse: BulkResponse = client.suspendUntil { bulk(bulkRequest, it) }
                     stats = stats.copy(indexTimeInMillis = stats.indexTimeInMillis + bulkResponse.took.millis)
-                    val retryableFailures = mutableListOf<BulkItemResponse>()
+
                     (bulkResponse.items ?: arrayOf()).filter { it.isFailed }.forEach { failedResponse ->
                         if (failedResponse.status() == RestStatus.TOO_MANY_REQUESTS) {
                             retryableFailures.add(failedResponse)
@@ -99,21 +101,17 @@ class RollupIndexer(
         }
     }
 
-    // TODO: Doc counts for aggregations are showing the doc counts of the rollup docs and not the raw data which is expected...
-    //  Elastic has a PR for a _doc_count mapping which we might be able to use but its in PR and they could change it
-    //  Is there a way we can overwrite doc_count? On request/response? https://github.com/elastic/elasticsearch/pull/58339
-    //  Perhaps try to save it in what will most likely be the correct way for that PR so we can reuse in the future?
     @Suppress("ComplexMethod")
-    fun convertResponseToRequests(job: Rollup, internalComposite: InternalComposite): List<DocWriteRequest<*>> {
+    private fun convertSearchRespToIndexReqs(rollup: Rollup, internalComposite: InternalComposite): List<DocWriteRequest<*>> {
         val requests = mutableListOf<DocWriteRequest<*>>()
-        internalComposite.buckets.forEach {
-            val docId = job.id + "#" + it.key.entries.joinToString("#") { it.value?.toString() ?: ODFE_MAGIC_NULL }
+        internalComposite.buckets.forEach { bucket ->
+            val docId = rollup.id + "#" + bucket.key.entries.joinToString("#") { it.value?.toString() ?: ODFE_MAGIC_NULL }
             val documentId = hashToFixedSize(docId)
 
-            val mapOfKeyValues = job.getInitialDocValues(it.docCount)
+            val mapOfKeyValues = rollup.getInitialDocValues(bucket.docCount)
             val aggResults = mutableMapOf<String, Any?>()
-            it.key.entries.forEach { aggResults[it.key] = it.value }
-            it.aggregations.forEach {
+            bucket.key.entries.forEach { aggResults[it.key] = it.value }
+            bucket.aggregations.forEach {
                 when (it) {
                     is InternalSum -> aggResults[it.name] = it.value
                     is InternalMax -> aggResults[it.name] = it.value
@@ -124,10 +122,9 @@ class RollupIndexer(
                 }
             }
             mapOfKeyValues.putAll(aggResults)
-            val targetIndexResolvedName = RollupFieldValueExpressionResolver.resolve(job, job.targetIndex)
-            val indexRequest = IndexRequest(targetIndexResolvedName)
-                .id(documentId)
-                .source(mapOfKeyValues, XContentType.JSON)
+
+            val indexRequest = IndexRequest(RollupFieldValueExpressionResolver.resolve(rollup, rollup.targetIndex))
+                .id(documentId).source(mapOfKeyValues, XContentType.JSON)
             requests.add(indexRequest)
         }
         return requests

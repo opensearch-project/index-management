@@ -177,6 +177,9 @@ class IndexUtils {
             }
         }
 
+        /**
+         * The field name can be a path in the format "field1.field2...fieldn"
+         */
         fun getFieldFromMappings(fieldName: String, mappings: Map<*, *>): Map<*, *>? {
             var currMap = mappings
             fieldName.split(".").forEach { field ->

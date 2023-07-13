@@ -291,6 +291,7 @@ data class RollupMetadata(
     }
 }
 
+// TODO this can be refactor out, just use mergeStats instead
 fun RollupMetadata.incrementStats(response: SearchResponse, internalComposite: InternalComposite): RollupMetadata {
     return this.copy(
         stats = this.stats.copy(
