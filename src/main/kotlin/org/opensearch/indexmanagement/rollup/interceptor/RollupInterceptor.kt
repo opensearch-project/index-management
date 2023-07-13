@@ -5,6 +5,9 @@
 
 package org.opensearch.indexmanagement.rollup.interceptor
 
+import org.apache.logging.log4j.LogManager
+import org.opensearch.action.support.IndicesOptions
+import org.opensearch.cluster.ClusterState
 import org.opensearch.cluster.metadata.IndexNameExpressionResolver
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.settings.Settings
@@ -55,6 +58,8 @@ class RollupInterceptor(
     val indexNameExpressionResolver: IndexNameExpressionResolver
 ) : TransportInterceptor {
 
+    private val logger = LogManager.getLogger(javaClass)
+
     @Volatile private var searchEnabled = RollupSettings.ROLLUP_SEARCH_ENABLED.get(settings)
     @Volatile private var searchAllJobs = RollupSettings.ROLLUP_SEARCH_ALL_JOBS.get(settings)
 
@@ -92,7 +97,7 @@ class RollupInterceptor(
                             ?: throw IllegalArgumentException("No rollup job associated with target_index")
                         val queryFieldMappings = getQueryMetadata(
                             request.source().query(),
-                            IndexUtils.getConcreteIndex(rollupJob.sourceIndex, concreteIndices, clusterService.state())
+                            getConcreteSourceIndex(rollupJob.sourceIndex, indexNameExpressionResolver, clusterService.state())
                         )
                         val aggregationFieldMappings = getAggregationMetadata(request.source().aggregations()?.aggregatorFactories)
                         val fieldMappings = queryFieldMappings + aggregationFieldMappings
@@ -109,6 +114,26 @@ class RollupInterceptor(
             }
         }
     }
+
+    fun getConcreteSourceIndex(sourceIndex: String, resolver: IndexNameExpressionResolver, clusterState: ClusterState): String {
+        val concreteIndexNames = resolver.concreteIndexNames(clusterState, IndicesOptions.LENIENT_EXPAND_OPEN, sourceIndex)
+        if (concreteIndexNames.isEmpty()) {
+            logger.warn("Cannot resolve rollup sourceIndex [$sourceIndex]")
+            return ""
+        }
+
+        var concreteIndexName: String = ""
+        if (concreteIndexNames.size == 1 && IndexUtils.isConcreteIndex(concreteIndexNames[0], clusterState)) {
+            concreteIndexName = concreteIndexNames[0]
+        } else if (concreteIndexNames.size > 1) {
+            concreteIndexName = IndexUtils.getNewestIndexByCreationDate(concreteIndexNames, clusterState)
+        } else if (IndexUtils.isAlias(sourceIndex, clusterState) || IndexUtils.isDataStream(sourceIndex, clusterState)) {
+            concreteIndexName = IndexUtils.getWriteIndex(sourceIndex, clusterState)
+                ?: IndexUtils.getNewestIndexByCreationDate(concreteIndexNames, clusterState) //
+        }
+        return concreteIndexName
+    }
+
     /*
     * Validate that all indices have rollup job which matches field mappings from request
     * TODO return compiled list of issues here instead of just throwing exception
@@ -168,16 +193,15 @@ class RollupInterceptor(
         return fieldMappings
     }
 
-    @Suppress("ComplexMethod", "ThrowsCount")
+    @Suppress("ComplexMethod", "ThrowsCount", "LongMethod")
     private fun getQueryMetadata(
         query: QueryBuilder?,
-        concreteSourceIndexName: String,
+        concreteSourceIndexName: String?,
         fieldMappings: MutableSet<RollupFieldMapping> = mutableSetOf()
     ): Set<RollupFieldMapping> {
         if (query == null) {
             return fieldMappings
         }
-
         when (query) {
             is TermQueryBuilder -> {
                 fieldMappings.add(RollupFieldMapping(RollupFieldMapping.Companion.FieldType.DIMENSION, query.fieldName(), Dimension.Type.TERMS.type))
@@ -218,6 +242,9 @@ class RollupInterceptor(
                 fieldMappings.add(RollupFieldMapping(RollupFieldMapping.Companion.FieldType.DIMENSION, query.fieldName(), Dimension.Type.TERMS.type))
             }
             is QueryStringQueryBuilder -> {
+                if (concreteSourceIndexName.isNullOrEmpty()) {
+                    throw IllegalArgumentException("Can't parse query_string query without sourceIndex mappings!")
+                }
                 // Throws IllegalArgumentException if unable to parse query
                 val (queryFields, otherFields) = QueryStringQueryUtil.extractFieldsFromQueryString(query, concreteSourceIndexName)
                 for (field in queryFields) {
@@ -231,7 +258,6 @@ class RollupInterceptor(
                 throw IllegalArgumentException("The ${query.name} query is currently not supported in rollups")
             }
         }
-
         return fieldMappings
     }
 
@@ -302,10 +328,11 @@ class RollupInterceptor(
     private fun rewriteShardSearchForRollupJobs(request: ShardSearchRequest, matchingRollupJobs: Map<Rollup, Set<RollupFieldMapping>>) {
         val matchedRollup = pickRollupJob(matchingRollupJobs.keys)
         val fieldNameMappingTypeMap = matchingRollupJobs.getValue(matchedRollup).associateBy({ it.fieldName }, { it.mappingType })
+        val concreteSourceIndex = getConcreteSourceIndex(matchedRollup.sourceIndex, indexNameExpressionResolver, clusterService.state())
         if (searchAllJobs) {
-            request.source(request.source().rewriteSearchSourceBuilder(matchingRollupJobs.keys, fieldNameMappingTypeMap, matchedRollup.sourceIndex))
+            request.source(request.source().rewriteSearchSourceBuilder(matchingRollupJobs.keys, fieldNameMappingTypeMap, concreteSourceIndex))
         } else {
-            request.source(request.source().rewriteSearchSourceBuilder(matchedRollup, fieldNameMappingTypeMap, matchedRollup.sourceIndex))
+            request.source(request.source().rewriteSearchSourceBuilder(matchedRollup, fieldNameMappingTypeMap, concreteSourceIndex))
         }
     }
 }
