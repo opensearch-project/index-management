@@ -47,6 +47,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.model.ErrorNotificati
 import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexConfig
 import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
 import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.getManagedIndexMetadata
+import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.getRolloverAlias
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.ALLOW_LIST
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.ALLOW_LIST_NONE
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.DEFAULT_ISM_ENABLED
@@ -219,6 +220,36 @@ object ManagedIndexRunner :
         this.extensionStatusChecker = extensionStatusChecker
         return this
     }
+    // Detects if a nonidempotent step was a transient failure or not
+    suspend fun isTransientFailure(stepContext: StepContext): Boolean {
+        val stepName = stepContext.metadata.stepMetaData?.name
+        when (stepName) {
+            "attempt_rollover" -> {
+                val stepStartTime = stepContext.metadata.stepMetaData?.startTime
+                // Retrieve the alias name
+                val indexName = stepContext.metadata.index
+                val metadata = stepContext.clusterService.state().metadata()
+                val indexAbstraction = metadata.indicesLookup[indexName]
+                val isDataStreamIndex = indexAbstraction?.parentDataStream != null
+
+                val aliasName = when {
+                    isDataStreamIndex -> indexAbstraction?.parentDataStream?.name
+                    else -> metadata.index(indexName).getRolloverAlias()
+                }
+
+                if (aliasName == null) {
+                    logger.debug("Index has no alias attached to it. Not a Transient Failure")
+                    return false
+                }
+                // Check if any indicies under this alias were created after the step start time
+                val getRequest = GetRequest("_alias/$aliasName")
+                val getResponse: GetResponse = this.client.suspendUntil { get(getRequest, it) }
+                logger.debug("ronsax these are all the aliass $getResponse")
+            }
+        }
+        logger.debug("ronsax you got it wrong but the step name is $stepName")
+        return true
+    }
 
     override fun runJob(job: ScheduledJobParameter, context: JobExecutionContext) {
         if (job !is ManagedIndexConfig) {
@@ -358,7 +389,8 @@ object ManagedIndexRunner :
         if (managedIndexMetaData.stepMetaData?.stepStatus == Step.StepStatus.STARTING) {
             val isIdempotent = step?.isIdempotent()
             logger.info("Previous execution failed to update step status, isIdempotent=$isIdempotent")
-            if (isIdempotent != true) {
+            // Want to retry this step if it was caused by a transient failure
+            if (isIdempotent != true && !isTransientFailure(stepContext)) {
                 val info = mapOf("message" to "Previous action was not able to update IndexMetaData.")
                 val updated = updateManagedIndexMetaData(
                     managedIndexMetaData.copy(
