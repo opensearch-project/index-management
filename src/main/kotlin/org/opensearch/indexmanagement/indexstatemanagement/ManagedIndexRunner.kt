@@ -59,9 +59,37 @@ import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndex
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.INDEX_STATE_MANAGEMENT_ENABLED
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.JOB_INTERVAL
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.ACTION_VALIDATION_ENABLED
-import org.opensearch.indexmanagement.indexstatemanagement.util.*
+import org.opensearch.indexmanagement.indexstatemanagement.util.DEFAULT_INDEX_TYPE
+import org.opensearch.indexmanagement.indexstatemanagement.util.ISM_TEMPLATE_FIELD
+import org.opensearch.indexmanagement.indexstatemanagement.util.MetadataCheck
+import org.opensearch.indexmanagement.indexstatemanagement.util.checkMetadata
+import org.opensearch.indexmanagement.indexstatemanagement.util.deleteManagedIndexMetadataRequest
+import org.opensearch.indexmanagement.indexstatemanagement.util.deleteManagedIndexRequest
+import org.opensearch.indexmanagement.indexstatemanagement.util.getCompletedManagedIndexMetaData
+import org.opensearch.indexmanagement.indexstatemanagement.util.getStartingManagedIndexMetaData
+import org.opensearch.indexmanagement.indexstatemanagement.util.hasDifferentJobInterval
+import org.opensearch.indexmanagement.indexstatemanagement.util.hasTimedOut
+import org.opensearch.indexmanagement.indexstatemanagement.util.hasVersionConflict
+import org.opensearch.indexmanagement.indexstatemanagement.util.isAllowed
+import org.opensearch.indexmanagement.indexstatemanagement.util.isFailed
+import org.opensearch.indexmanagement.indexstatemanagement.util.isSafeToChange
+import org.opensearch.indexmanagement.indexstatemanagement.util.isSuccessfulDelete
+import org.opensearch.indexmanagement.indexstatemanagement.util.managedIndexConfigIndexRequest
+import org.opensearch.indexmanagement.indexstatemanagement.util.managedIndexMetadataIndexRequest
+import org.opensearch.indexmanagement.indexstatemanagement.util.publishLegacyNotification
+import org.opensearch.indexmanagement.indexstatemanagement.util.sendNotification
+import org.opensearch.indexmanagement.indexstatemanagement.util.shouldBackoff
+import org.opensearch.indexmanagement.indexstatemanagement.util.shouldChangePolicy
+import org.opensearch.indexmanagement.indexstatemanagement.util.updateDisableManagedIndexRequest
 import org.opensearch.indexmanagement.indexstatemanagement.validation.ActionValidation
-import org.opensearch.indexmanagement.opensearchapi.*
+import org.opensearch.indexmanagement.opensearchapi.IndexManagementSecurityContext
+import org.opensearch.indexmanagement.opensearchapi.convertToMap
+import org.opensearch.indexmanagement.opensearchapi.parseWithType
+import org.opensearch.indexmanagement.opensearchapi.retry
+import org.opensearch.indexmanagement.opensearchapi.string
+import org.opensearch.indexmanagement.opensearchapi.suspendUntil
+import org.opensearch.indexmanagement.opensearchapi.withClosableContext
+import org.opensearch.indexmanagement.opensearchapi.parseFromSearchResponse
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Action
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Validate
@@ -214,7 +242,6 @@ object ManagedIndexRunner :
                     isDataStreamIndex -> indexAbstraction?.parentDataStream?.name
                     else -> metadata.index(indexName).getRolloverAlias()
                 }
-
                 if (aliasName == null) {
                     logger.debug("Index has no alias attached to it. Not a Transient Failure")
                     return false
@@ -223,14 +250,14 @@ object ManagedIndexRunner :
                 val searchRequest = SearchRequest()
                     .source(
                         SearchSourceBuilder().query(
-                            QueryBuilders.existsQuery(ISM_TEMPLATE_FIELD)
+                            QueryBuilders.existsQuery(ISM_TEMPLATE_FIELD) // NEED TO CHANGE THIS TO QUERY ALIAS
                         ).size(ManagedIndexCoordinator.MAX_HITS)
                     )
                     .indices(INDEX_MANAGEMENT_INDEX)
 
                 val response: SearchResponse = client.suspendUntil { search(searchRequest, it) }
-                parseFromSearchResponse(response = response, parse = Policy.Companion::parse)
-                logger.debug("ronsax these are all the alias $response")
+                val aliasIndicies = parseFromSearchResponse(response = response, parse = Policy.Companion::parse)
+                logger.debug("ronsax these are all the indicies $aliasIndicies")
             }
         }
         logger.debug("ronsax you got it wrong but the step name is $stepName")
