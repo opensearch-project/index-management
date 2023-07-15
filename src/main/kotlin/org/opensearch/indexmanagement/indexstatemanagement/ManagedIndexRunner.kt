@@ -21,6 +21,8 @@ import org.opensearch.action.bulk.BulkResponse
 import org.opensearch.action.get.GetRequest
 import org.opensearch.action.get.GetResponse
 import org.opensearch.action.index.IndexResponse
+import org.opensearch.action.search.SearchRequest
+import org.opensearch.action.search.SearchResponse
 import org.opensearch.action.support.IndicesOptions
 import org.opensearch.action.update.UpdateResponse
 import org.opensearch.client.Client
@@ -39,6 +41,7 @@ import org.opensearch.core.xcontent.XContentParser.Token
 import org.opensearch.common.xcontent.XContentParserUtils.ensureExpectedToken
 import org.opensearch.common.xcontent.XContentType
 import org.opensearch.index.engine.VersionConflictEngineException
+import org.opensearch.index.query.QueryBuilders
 import org.opensearch.index.seqno.SequenceNumbers
 import org.opensearch.indexmanagement.IndexManagementIndices
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
@@ -56,35 +59,10 @@ import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndex
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.INDEX_STATE_MANAGEMENT_ENABLED
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.JOB_INTERVAL
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.ACTION_VALIDATION_ENABLED
-import org.opensearch.indexmanagement.indexstatemanagement.util.DEFAULT_INDEX_TYPE
-import org.opensearch.indexmanagement.indexstatemanagement.util.MetadataCheck
-import org.opensearch.indexmanagement.indexstatemanagement.util.checkMetadata
-import org.opensearch.indexmanagement.indexstatemanagement.util.deleteManagedIndexMetadataRequest
-import org.opensearch.indexmanagement.indexstatemanagement.util.deleteManagedIndexRequest
-import org.opensearch.indexmanagement.indexstatemanagement.util.getCompletedManagedIndexMetaData
-import org.opensearch.indexmanagement.indexstatemanagement.util.getStartingManagedIndexMetaData
-import org.opensearch.indexmanagement.indexstatemanagement.util.hasDifferentJobInterval
-import org.opensearch.indexmanagement.indexstatemanagement.util.hasTimedOut
-import org.opensearch.indexmanagement.indexstatemanagement.util.hasVersionConflict
-import org.opensearch.indexmanagement.indexstatemanagement.util.isAllowed
-import org.opensearch.indexmanagement.indexstatemanagement.util.isFailed
-import org.opensearch.indexmanagement.indexstatemanagement.util.isSafeToChange
-import org.opensearch.indexmanagement.indexstatemanagement.util.isSuccessfulDelete
-import org.opensearch.indexmanagement.indexstatemanagement.util.managedIndexConfigIndexRequest
-import org.opensearch.indexmanagement.indexstatemanagement.util.managedIndexMetadataIndexRequest
-import org.opensearch.indexmanagement.indexstatemanagement.util.publishLegacyNotification
-import org.opensearch.indexmanagement.indexstatemanagement.util.sendNotification
-import org.opensearch.indexmanagement.indexstatemanagement.util.shouldBackoff
-import org.opensearch.indexmanagement.indexstatemanagement.util.shouldChangePolicy
-import org.opensearch.indexmanagement.indexstatemanagement.util.updateDisableManagedIndexRequest
+import org.opensearch.indexmanagement.indexstatemanagement.util.ISM_TEMPLATE_FIELD
 import org.opensearch.indexmanagement.indexstatemanagement.validation.ActionValidation
-import org.opensearch.indexmanagement.opensearchapi.IndexManagementSecurityContext
-import org.opensearch.indexmanagement.opensearchapi.convertToMap
-import org.opensearch.indexmanagement.opensearchapi.parseWithType
-import org.opensearch.indexmanagement.opensearchapi.retry
-import org.opensearch.indexmanagement.opensearchapi.string
+import org.opensearch.indexmanagement.opensearchapi.parseFromSearchResponse
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
-import org.opensearch.indexmanagement.opensearchapi.withClosableContext
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Action
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Validate
@@ -102,6 +80,7 @@ import org.opensearch.rest.RestStatus
 import org.opensearch.script.Script
 import org.opensearch.script.ScriptService
 import org.opensearch.script.TemplateScript
+import org.opensearch.search.builder.SearchSourceBuilder
 import org.opensearch.threadpool.ThreadPool
 import java.time.Instant
 import java.time.temporal.ChronoUnit
@@ -225,7 +204,7 @@ object ManagedIndexRunner :
         val stepName = stepContext.metadata.stepMetaData?.name
         when (stepName) {
             "attempt_rollover" -> {
-                val stepStartTime = stepContext.metadata.stepMetaData?.startTime
+//                val stepStartTime = stepContext.metadata.stepMetaData?.startTime
                 // Retrieve the alias name
                 val indexName = stepContext.metadata.index
                 val metadata = stepContext.clusterService.state().metadata()
@@ -242,9 +221,18 @@ object ManagedIndexRunner :
                     return false
                 }
                 // Check if any indicies under this alias were created after the step start time
-                val getRequest = GetRequest("_alias/$aliasName")
-                val getResponse: GetResponse = this.client.suspendUntil { get(getRequest, it) }
-                logger.debug("ronsax these are all the aliass $getResponse")
+                val searchRequest = SearchRequest()
+                    .source(
+                        SearchSourceBuilder().query(
+                            QueryBuilders.existsQuery(ISM_TEMPLATE_FIELD)
+                        ).size(ManagedIndexCoordinator.MAX_HITS)
+                    )
+                    .indices(INDEX_MANAGEMENT_INDEX)
+
+                val response: SearchResponse = client.suspendUntil { search(searchRequest, it) }
+                parseFromSearchResponse(response = response, parse = Policy.Companion::parse)
+                logger.debug("ronsax these are all the alias $response")
+            }
             }
         }
         logger.debug("ronsax you got it wrong but the step name is $stepName")
