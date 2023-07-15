@@ -59,10 +59,9 @@ import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndex
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.INDEX_STATE_MANAGEMENT_ENABLED
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.JOB_INTERVAL
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.ACTION_VALIDATION_ENABLED
-import org.opensearch.indexmanagement.indexstatemanagement.util.ISM_TEMPLATE_FIELD
+import org.opensearch.indexmanagement.indexstatemanagement.util.*
 import org.opensearch.indexmanagement.indexstatemanagement.validation.ActionValidation
-import org.opensearch.indexmanagement.opensearchapi.parseFromSearchResponse
-import org.opensearch.indexmanagement.opensearchapi.suspendUntil
+import org.opensearch.indexmanagement.opensearchapi.*
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Action
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Validate
@@ -232,7 +231,6 @@ object ManagedIndexRunner :
                 val response: SearchResponse = client.suspendUntil { search(searchRequest, it) }
                 parseFromSearchResponse(response = response, parse = Policy.Companion::parse)
                 logger.debug("ronsax these are all the alias $response")
-            }
             }
         }
         logger.debug("ronsax you got it wrong but the step name is $stepName")
