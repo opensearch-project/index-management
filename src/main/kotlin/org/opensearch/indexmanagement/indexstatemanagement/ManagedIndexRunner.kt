@@ -258,7 +258,8 @@ object ManagedIndexRunner :
                     val hitIndex = hit.index
                     val indexMetaData = getIndexMetadata(hitIndex)
                     val indexCreationDate = indexMetaData?.creationDate
-                    // Index was created after step started, therefore it finished a rollover
+                    // Index was created after step started, therefore it finished a rollover, not a transient failure
+                    // TODO Revisit why its a failure
                     if (stepStartTime!! < indexCreationDate!!) {
                         return false
                     }
@@ -405,11 +406,11 @@ object ManagedIndexRunner :
             logger.info("Backoff for retrying. Remaining time ${shouldBackOff.second}")
             return
         }
-
+        logger.debug("ronsax the step is ${managedIndexMetaData.stepMetaData?.name} status is: ${managedIndexMetaData.stepMetaData?.stepStatus}")
         if (managedIndexMetaData.stepMetaData?.stepStatus == Step.StepStatus.STARTING) {
             val isIdempotent = step?.isIdempotent()
             logger.info("Previous execution failed to update step status, isIdempotent=$isIdempotent")
-            // Want to retry this step if it was caused by a transient failure
+            // If this was just a transient failure retry the step, otherwise fail the index
             if (!isIdempotent!! && !isTransientFailure(stepContext)) {
                 val info = mapOf("message" to "Previous action was not able to update IndexMetaData.")
                 val updated = updateManagedIndexMetaData(
@@ -488,6 +489,7 @@ object ManagedIndexRunner :
             if (executedManagedIndexMetaData.isFailed) {
                 try {
                     // if the policy has no error_notification this will do nothing otherwise it will try to send the configured error message
+                    logger.debug("ronsax")
                     publishErrorNotification(policy, executedManagedIndexMetaData)
                 } catch (e: Exception) {
                     logger.error("Failed to publish error notification", e)
