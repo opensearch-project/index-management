@@ -686,4 +686,54 @@ class RolloverActionIT : IndexStateManagementRestTestCase() {
             assertEquals("Index did not rollover.", "Previous action was not able to update IndexMetaData.", info["message"])
         }
     }
+    fun `test rollover continues executing after a transient failure`() {
+        val aliasName = "${testIndexName}_alias"
+        val indexNameBase = "${testIndexName}_index"
+        val firstIndex = "$indexNameBase-1"
+        val policyID = "${testIndexName}_testPolicyName_1"
+        val actionConfig = RolloverAction(null, 0, null, null, 0)
+        val states = listOf(State(name = "RolloverAction", actions = listOf(actionConfig), transitions = listOf()))
+        val policy = Policy(
+            id = policyID,
+            description = "$testIndexName description",
+            schemaVersion = 1L,
+            lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
+            errorNotification = randomErrorNotification(),
+            defaultState = states[0].name,
+            states = states
+        )
+
+        createPolicy(policy, policyID)
+        // create index defaults
+        createIndex(firstIndex, policyID, aliasName)
+
+        val managedIndexConfig = getExistingManagedIndexConfig(firstIndex)
+
+        // Change the start time so the job will trigger in 2 seconds, this will trigger the first initialization of the policy
+        updateManagedIndexConfigStartTime(managedIndexConfig)
+        waitFor { assertEquals(policyID, getExplainManagedIndexMetaData(firstIndex).policyID) }
+
+        // Updating managed index metadata step status to "starting" to reproduce transient failure
+        waitFor {
+            val response = client().makeRequest(
+                "POST", ".opendistro-ism-config/_update/${managedIndexConfig.id}%23metadata",
+                StringEntity(
+                    "{\"script\":{\"managed_index\": \"ctx._source.managed_index_metadata.step.step_status = params.step_status\"," +
+                            "\"lang\": \"painless\", \"params\": {\"step_status\": \"starting\"}}}",
+                    ContentType.APPLICATION_JSON
+                )
+            )
+            assertEquals("Request failed", RestStatus.OK, response.restStatus())
+        }
+        // Need to speed up to second execution where it will trigger the first execution of the action
+        updateManagedIndexConfigStartTime(managedIndexConfig)
+        waitFor {
+            val info = getExplainManagedIndexMetaData(firstIndex).info as Map<String, Any?>
+            assertEquals("Index did not rollover.", AttemptRolloverStep.getSuccessMessage(firstIndex), info["message"])
+        }
+        waitFor {
+            val info = getExplainManagedIndexMetaData(firstIndex).info as Map<String, Any?>
+            Assert.assertNotEquals("Managed disabled without rollover", "Previous action was not able to update IndexMetaData.", info["message"])
+        }
+    }
 }
