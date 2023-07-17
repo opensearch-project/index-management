@@ -41,7 +41,6 @@ import org.opensearch.core.xcontent.XContentParser.Token
 import org.opensearch.common.xcontent.XContentParserUtils.ensureExpectedToken
 import org.opensearch.common.xcontent.XContentType
 import org.opensearch.index.engine.VersionConflictEngineException
-import org.opensearch.index.query.QueryBuilders
 import org.opensearch.index.seqno.SequenceNumbers
 import org.opensearch.indexmanagement.IndexManagementIndices
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
@@ -60,7 +59,6 @@ import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndex
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.JOB_INTERVAL
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.ACTION_VALIDATION_ENABLED
 import org.opensearch.indexmanagement.indexstatemanagement.util.DEFAULT_INDEX_TYPE
-import org.opensearch.indexmanagement.indexstatemanagement.util.ISM_TEMPLATE_FIELD
 import org.opensearch.indexmanagement.indexstatemanagement.util.MetadataCheck
 import org.opensearch.indexmanagement.indexstatemanagement.util.checkMetadata
 import org.opensearch.indexmanagement.indexstatemanagement.util.deleteManagedIndexMetadataRequest
@@ -89,7 +87,6 @@ import org.opensearch.indexmanagement.opensearchapi.retry
 import org.opensearch.indexmanagement.opensearchapi.string
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.opensearchapi.withClosableContext
-import org.opensearch.indexmanagement.opensearchapi.parseFromSearchResponse
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Action
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Validate
@@ -107,7 +104,6 @@ import org.opensearch.rest.RestStatus
 import org.opensearch.script.Script
 import org.opensearch.script.ScriptService
 import org.opensearch.script.TemplateScript
-import org.opensearch.search.builder.SearchSourceBuilder
 import org.opensearch.threadpool.ThreadPool
 import java.time.Instant
 import java.time.temporal.ChronoUnit
@@ -231,7 +227,7 @@ object ManagedIndexRunner :
         val stepName = stepContext.metadata.stepMetaData?.name
         when (stepName) {
             "attempt_rollover" -> {
-//                val stepStartTime = stepContext.metadata.stepMetaData?.startTime
+                val stepStartTime = stepContext.metadata.stepMetaData?.startTime
                 // Retrieve the alias name
                 val indexName = stepContext.metadata.index
                 val metadata = stepContext.clusterService.state().metadata()
@@ -248,16 +244,27 @@ object ManagedIndexRunner :
                 }
                 // Check if any indicies under this alias were created after the step start time
                 val searchRequest = SearchRequest()
-                    .source(
-                        SearchSourceBuilder().query(
-                            QueryBuilders.existsQuery(ISM_TEMPLATE_FIELD) // NEED TO CHANGE THIS TO QUERY ALIAS
-                        ).size(ManagedIndexCoordinator.MAX_HITS)
-                    )
-                    .indices(INDEX_MANAGEMENT_INDEX)
+//                    .source(
+//                        SearchSourceBuilder().query(
+//                            QueryBuilders.existsQuery(aliasName) // NEED TO CHANGE THIS TO QUERY ALIAS
+//                        ).size(ManagedIndexCoordinator.MAX_HITS)
+//                    )
+                    .indices(aliasName)
 
                 val response: SearchResponse = client.suspendUntil { search(searchRequest, it) }
-                val aliasIndicies = parseFromSearchResponse(response = response, parse = Policy.Companion::parse)
-                logger.debug("ronsax these are all the indicies $aliasIndicies")
+                // Parse through all indices under that alias
+                val hits = response.hits
+                hits.forEach { hit ->
+                    val hitIndex = hit.index
+                    val indexMetaData = getIndexMetadata(hitIndex)
+                    val indexCreationDate = indexMetaData?.creationDate
+                    // Index was created after step started, therefore it finished a rollover
+                    if (stepStartTime!! < indexCreationDate!!) {
+                        return false
+                    }
+                }
+                // Did not find any indices created after the rollover policy step started, therefore is a Transient failure
+                return true
             }
         }
         logger.debug("ronsax you got it wrong but the step name is $stepName")
@@ -403,7 +410,7 @@ object ManagedIndexRunner :
             val isIdempotent = step?.isIdempotent()
             logger.info("Previous execution failed to update step status, isIdempotent=$isIdempotent")
             // Want to retry this step if it was caused by a transient failure
-            if (isIdempotent != true && !isTransientFailure(stepContext)) {
+            if (!isIdempotent!! && !isTransientFailure(stepContext)) {
                 val info = mapOf("message" to "Previous action was not able to update IndexMetaData.")
                 val updated = updateManagedIndexMetaData(
                     managedIndexMetaData.copy(
