@@ -719,7 +719,7 @@ class RolloverActionIT : IndexStateManagementRestTestCase() {
                 "POST", ".opendistro-ism-config/_update/${managedIndexConfig.id}%23metadata",
                 StringEntity(
                     "{\"script\":{\"managed_index\": \"ctx._source.managed_index_metadata.step.step_status = params.step_status\"," +
-                            "\"lang\": \"painless\", \"params\": {\"step_status\": \"starting\"}}}",
+                        "\"lang\": \"painless\", \"params\": {\"step_status\": \"starting\"}}}",
                     ContentType.APPLICATION_JSON
                 )
             )

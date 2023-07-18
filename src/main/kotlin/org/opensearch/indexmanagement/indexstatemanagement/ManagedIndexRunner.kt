@@ -267,8 +267,22 @@ object ManagedIndexRunner :
                 // Did not find any indices created after the rollover policy step started, therefore is a Transient failure
                 return true
             }
+            "attempt_snapshot" -> {
+                // TODO implement logic for detecting transient failure in attempt snapshot step
+            }
+            "attempt_notification" -> {
+                // TODO implement logic for detecting transient failure in attempt notification step
+            }
+            "attempt_shrink_step" -> {
+                // TODO implement logic for detecting transient failure in attempt shrink step
+            }
+            "attempt_call_force_merge" -> {
+                // TODO implement logic for detecting transient failure in attempt call force merge step
+            }
+            else -> {
+                logger.debug("Detected unfamiliar nonIdempotent step:  $stepName")
+            }
         }
-        logger.debug("ronsax you got it wrong but the step name is $stepName")
         return true
     }
 
