@@ -227,29 +227,8 @@ object ManagedIndexRunner :
         val stepName = stepContext.metadata.stepMetaData?.name
         when (stepName) {
             "attempt_rollover" -> {
-                val stepStartTime = stepContext.metadata.stepMetaData?.startTime
-                // Retrieve the alias name
-                val indexName = stepContext.metadata.index
-                val metadata = stepContext.clusterService.state().metadata()
-                val indexAbstraction = metadata.indicesLookup[indexName]
-                val isDataStreamIndex = indexAbstraction?.parentDataStream != null
-
-                val aliasName = when {
-                    isDataStreamIndex -> indexAbstraction?.parentDataStream?.name
-                    else -> metadata.index(indexName).getRolloverAlias()
-                }
-                if (aliasName == null) {
-                    logger.debug("Index has no alias attached to it. Not a Transient Failure")
-                    return false
-                }
-                // Check if any indicies under this alias were created after the step start time
-                val searchRequest = SearchRequest()
-//                    .source(
-//                        SearchSourceBuilder().query(
-//                            QueryBuilders.existsQuery(aliasName) // NEED TO CHANGE THIS TO QUERY ALIAS
-//                        ).size(ManagedIndexCoordinator.MAX_HITS)
-//                    )
-                    .indices(aliasName)
+                val stepContextRolloverCompleted = stepContext.metadata.rolledOver
+                val searchRequest = SearchRequest().indices(stepContext.metadata.index)
 
                 val response: SearchResponse = client.suspendUntil { search(searchRequest, it) }
                 // Parse through all indices under that alias
@@ -257,15 +236,52 @@ object ManagedIndexRunner :
                 hits.forEach { hit ->
                     val hitIndex = hit.index
                     val indexMetaData = getIndexMetadata(hitIndex)
-                    val indexCreationDate = indexMetaData?.creationDate
-                    // Index was created after step started, therefore it finished a rollover, not a transient failure
-                    // TODO Revisit why its a failure
-                    if (stepStartTime!! < indexCreationDate!!) {
-                        return false
-                    }
+                    val reqeustRolleverCompleted = indexMetaData
+                    logger.debug("ronsax stepContext: $stepContextRolloverCompleted request: $reqeustRolleverCompleted")
+                    logger.debug("ronsax check this out: $indexMetaData")
                 }
-                // Did not find any indices created after the rollover policy step started, therefore is a Transient failure
                 return true
+
+                // OLD DRAFT
+//                val stepStartTime = stepContext.metadata.stepMetaData?.startTime
+//                // Retrieve the alias name
+//                val indexName = stepContext.metadata.index
+//                val metadata = stepContext.clusterService.state().metadata()
+//                val indexAbstraction = metadata.indicesLookup[indexName]
+//                val isDataStreamIndex = indexAbstraction?.parentDataStream != null
+//
+//                val aliasName = when {
+//                    isDataStreamIndex -> indexAbstraction?.parentDataStream?.name
+//                    else -> metadata.index(indexName).getRolloverAlias()
+//                }
+//                if (aliasName == null) {
+//                    logger.debug("Index has no alias attached to it. Not a Transient Failure")
+//                    return false
+//                }
+//                // Check if any indicies under this alias were created after the step start time
+//                val searchRequest = SearchRequest()
+//                    .source(
+//                        SearchSourceBuilder().query(
+//                            QueryBuilders.existsQuery(aliasName) // NEED TO CHANGE THIS TO QUERY ALIAS
+//                        ).size(ManagedIndexCoordinator.MAX_HITS)
+//                    )
+//                    .indices(aliasName)
+//
+//                val response: SearchResponse = client.suspendUntil { search(searchRequest, it) }
+//                // Parse through all indices under that alias
+//                val hits = response.hits
+//                hits.forEach { hit ->
+//                    val hitIndex = hit.index
+//                    val indexMetaData = getIndexMetadata(hitIndex)
+//                    val indexCreationDate = indexMetaData?.creationDate
+//                    // Index was created after step started, therefore it finished a rollover, not a transient failure
+//                    // TODO Revisit why its a failure
+//                    if (stepStartTime!! < indexCreationDate!!) {
+//                        return false
+//                    }
+//                }
+//                // Did not find any indices created after the rollover policy step started, therefore is a Transient failure
+//                return true
             }
             "attempt_snapshot" -> {
                 // TODO implement logic for detecting transient failure in attempt snapshot step
@@ -424,8 +440,8 @@ object ManagedIndexRunner :
         if (managedIndexMetaData.stepMetaData?.stepStatus == Step.StepStatus.STARTING) {
             val isIdempotent = step?.isIdempotent()
             logger.info("Previous execution failed to update step status, isIdempotent=$isIdempotent")
-            // If this was just a transient failure retry the step, otherwise fail the index
-            if (!isIdempotent!! && !isTransientFailure(stepContext)) {
+            // If this step was not a transient failure fail the index
+            if (isIdempotent != true && !isTransientFailure(stepContext)) {
                 val info = mapOf("message" to "Previous action was not able to update IndexMetaData.")
                 val updated = updateManagedIndexMetaData(
                     managedIndexMetaData.copy(
