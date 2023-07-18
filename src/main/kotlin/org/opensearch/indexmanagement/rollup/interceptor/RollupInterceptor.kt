@@ -135,6 +135,7 @@ class RollupInterceptor(
     /**
      * Validate that all indices have rollup job which matches field mappings from request
      */
+    @Suppress("ThrowsCount")
     private fun validateIndicies(concreteIndices: Array<String>, fieldMappings: Set<RollupFieldMapping>): Map<Rollup, Set<RollupFieldMapping>> {
         val allMatchingRollupJobs: MutableMap<Rollup, Set<RollupFieldMapping>> = mutableMapOf()
         val allIssues: MutableSet<String> = mutableSetOf()

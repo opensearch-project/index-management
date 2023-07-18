@@ -65,7 +65,10 @@ class RollupIndexer(
                 retryIngestPolicy.retry(logger, listOf(RestStatus.TOO_MANY_REQUESTS)) { backOffTime ->
                     if (backOffTime.seconds >= (Rollup.ROLLUP_LOCK_DURATION_SECONDS / 2)) {
                         throw ExceptionsHelper.convertToOpenSearchException(
-                            IllegalStateException("Cannot retry ingestion with a backoff (${backOffTime.seconds}) more than half of the rollup lock duration (1800s)")
+                            IllegalStateException(
+                                "Cannot retry ingestion with a backoff (${backOffTime.seconds}) " +
+                                    "more than half of the rollup lock duration (1800s)"
+                            )
                         )
                     }
                     val bulkRequest = BulkRequest().add(requestsToRetry)

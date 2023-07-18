@@ -111,14 +111,19 @@ fun Rollup.getCompositeAggregationBuilder(afterKey: Map<String, Any>?): Composit
                             // TODO how are we using these 2 aggs after composite search?
                             listOf(
                                 SumAggregationBuilder(rollupMetrics.targetFieldWithType(metric) + ".sum").field(rollupMetrics.sourceField),
-                                ValueCountAggregationBuilder(rollupMetrics.targetFieldWithType(metric) + ".value_count").field(rollupMetrics.sourceField)
+                                ValueCountAggregationBuilder(rollupMetrics.targetFieldWithType(metric) + ".value_count")
+                                    .field(rollupMetrics.sourceField)
                             )
                         }
                         is Sum -> listOf(SumAggregationBuilder(rollupMetrics.targetFieldWithType(metric)).field(rollupMetrics.sourceField))
                         is Max -> listOf(MaxAggregationBuilder(rollupMetrics.targetFieldWithType(metric)).field(rollupMetrics.sourceField))
                         is Min -> listOf(MinAggregationBuilder(rollupMetrics.targetFieldWithType(metric)).field(rollupMetrics.sourceField))
-                        is ValueCount -> listOf(ValueCountAggregationBuilder(rollupMetrics.targetFieldWithType(metric)).field(rollupMetrics.sourceField))
-                        // This shouldn't be possible as rollup will fail to initialize with an unsupported metric TODO where do we fail this, experiment?
+                        is ValueCount -> listOf(
+                            ValueCountAggregationBuilder(rollupMetrics.targetFieldWithType(metric))
+                                .field(rollupMetrics.sourceField)
+                        )
+                        // This shouldn't be possible as rollup will fail to initialize with an unsupported metric
+                        // TODO where do we fail this, experiment?
                         else -> throw IllegalArgumentException("Found unsupported metric aggregation ${metric.type.type}")
                     }
                 }.forEach { compositeAgg.subAggregation(it) }

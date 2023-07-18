@@ -110,7 +110,6 @@ fun RestClient.makeRequest(
     return performRequest(request)
 }
 
-
 fun <T> waitFor(
     timeout: Instant = Instant.ofEpochSecond(20),
     block: () -> T

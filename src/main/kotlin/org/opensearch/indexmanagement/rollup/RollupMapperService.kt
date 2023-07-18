@@ -111,7 +111,8 @@ class RollupMapperService(
             return RollupJobValidationResult.Failure(errorMessage)
         }
 
-        // TODO the idea for this check is using one alias for one continuous rollup, which can be loosen to multiple rollup jobs with overlapping dimensions?
+        // TODO the idea for this check is using one alias for one continuous rollup,
+        //  which can be loosen to multiple rollup jobs with overlapping dimensions?
         // All other backing indices have to have this rollup job in _META field, and it has to be the only one!
         val backingIndices = RollupFieldValueExpressionResolver.indexAliasUtils.getBackingIndicesForAlias(rollup.targetIndex)
         backingIndices?.forEach {
