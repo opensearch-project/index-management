@@ -1038,6 +1038,10 @@
               }
             }
           }
+        },
+        "source_index_field_mappings": {
+          "type": "object",
+          "enabled": false
         }
       }
     },

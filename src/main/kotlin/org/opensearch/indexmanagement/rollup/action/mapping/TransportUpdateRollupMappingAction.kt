@@ -21,16 +21,15 @@ import org.opensearch.common.bytes.BytesReference
 import org.opensearch.common.inject.Inject
 import org.opensearch.common.io.stream.StreamInput
 import org.opensearch.common.io.stream.Writeable
-import org.opensearch.core.xcontent.MediaType
 import org.opensearch.common.xcontent.XContentFactory
 import org.opensearch.common.xcontent.XContentHelper
 import org.opensearch.common.xcontent.XContentType
+import org.opensearch.core.xcontent.MediaType
 import org.opensearch.indexmanagement.indexstatemanagement.util.XCONTENT_WITHOUT_TYPE
 import org.opensearch.indexmanagement.rollup.util.RollupFieldValueExpressionResolver
 import org.opensearch.indexmanagement.util.IndexUtils.Companion._META
 import org.opensearch.threadpool.ThreadPool
 import org.opensearch.transport.TransportService
-import java.lang.Exception
 
 class TransportUpdateRollupMappingAction @Inject constructor(
     threadPool: ThreadPool,
@@ -101,15 +100,8 @@ class TransportUpdateRollupMappingAction @Inject constructor(
                 val updatedRollups = mapOf<String, Any>("rollups" to rollupJobEntries)
                 metaMappings[_META] = updatedRollups
             } else {
-                if ((rollups as Map<*, *>).containsKey(request.rollup.id)) {
-                    log.debug("Meta rollup mappings already contain rollup ${request.rollup.id} for index [$index]")
-                    return listener.onFailure(
-                        IllegalStateException("Meta rollup mappings already contain rollup ${request.rollup.id} for index [$index]")
-                    )
-                }
-
                 // In this case rollup mappings exists and there is no entry for request.rollup.id
-                val rollupJobEntries = rollups.toMutableMap()
+                val rollupJobEntries = (rollups as Map<*, *>).toMutableMap()
                 rollupJobEntries[request.rollup.id] = rollup
                 val updatedRollups = mapOf<String, Any>("rollups" to rollupJobEntries)
                 metaMappings[_META] = updatedRollups

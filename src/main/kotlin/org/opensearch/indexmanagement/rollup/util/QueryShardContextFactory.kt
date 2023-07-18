@@ -58,18 +58,8 @@ object QueryShardContextFactory {
         this.environment = environment
     }
 
-    private fun getIndexSettingsAndMetadata(indexName: String?): Triple<Index?, Settings?, IndexMetadata?> {
-        val index: Index?
-        val indexSettings: Settings?
-        val indexMetadata = clusterService.state().metadata.index(indexName)
-            ?: throw IllegalArgumentException("Can't find IndexMetadata for index: [$indexName]")
-        index = indexMetadata.index
-        indexSettings = indexMetadata.settings
-        return Triple(index, indexSettings, indexMetadata)
-    }
-
-    fun createShardContext(indexName: String?): QueryShardContext {
-        val (index, indexSettings, indexMetadata) = getIndexSettingsAndMetadata(indexName)
+    fun createShardContext(sourceIndexMappings: Map<String, Any>): QueryShardContext {
+        val index = Index("dummyIndex", "dummyUUID")
         val nodeSettings = Settings.builder()
             .put("node.name", "dummyNodeName")
             .put(Environment.PATH_HOME_SETTING.key, environment.tmpDir())
@@ -83,7 +73,7 @@ object QueryShardContextFactory {
             pluginsService.pluginSettingsFilter, emptySet()
         )
         val indexScopedSettings: IndexScopedSettings = settingsModule.indexScopedSettings
-        val idxSettings = newIndexSettings(index, indexSettings, indexScopedSettings)
+        val idxSettings = newIndexSettings(index, Settings.EMPTY, indexScopedSettings)
         val indicesModule = IndicesModule(pluginsService.filterPlugins(MapperPlugin::class.java))
         val mapperRegistry = indicesModule.mapperRegistry
         val analysisModule = AnalysisModule(environment, emptyList())
@@ -95,12 +85,12 @@ object QueryShardContextFactory {
             xContentRegistry,
             similarityService,
             mapperRegistry,
-            { createShardContext(null) },
+            { createShardContext(mapOf()) },
             { false },
             scriptService
         )
         // In order to be able to call toQuery method on QueryBuilder, we need to setup mappings in MapperService
-        mapperService.merge("_doc", indexMetadata?.mapping()?.source(), MapperService.MergeReason.MAPPING_UPDATE)
+        mapperService.merge("_doc", sourceIndexMappings, MapperService.MergeReason.MAPPING_UPDATE)
 
         return QueryShardContext(
             0,
@@ -117,7 +107,7 @@ object QueryShardContextFactory {
             null,
             { Instant.now().toEpochMilli() },
             null,
-            { pattern -> Regex.simpleMatch(pattern, index?.name) },
+            { pattern -> Regex.simpleMatch(pattern, index.name) },
             { true },
             null
         )

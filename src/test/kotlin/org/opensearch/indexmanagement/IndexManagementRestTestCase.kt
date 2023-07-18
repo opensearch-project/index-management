@@ -12,17 +12,17 @@ import org.junit.Before
 import org.junit.rules.DisableOnDebug
 import org.opensearch.action.admin.cluster.node.tasks.list.ListTasksAction
 import org.opensearch.client.Request
-import org.opensearch.client.Response
-import org.opensearch.client.RestClient
 import org.opensearch.client.RequestOptions
-import org.opensearch.client.WarningsHandler
+import org.opensearch.client.Response
 import org.opensearch.client.ResponseException
+import org.opensearch.client.RestClient
+import org.opensearch.client.WarningsHandler
 import org.opensearch.common.Strings
 import org.opensearch.common.io.PathUtils
 import org.opensearch.common.settings.Settings
+import org.opensearch.common.xcontent.XContentType
 import org.opensearch.core.xcontent.DeprecationHandler
 import org.opensearch.core.xcontent.NamedXContentRegistry
-import org.opensearch.common.xcontent.XContentType
 import org.opensearch.indexmanagement.indexstatemanagement.util.INDEX_HIDDEN
 import org.opensearch.rest.RestStatus
 import java.io.IOException
@@ -32,8 +32,6 @@ import javax.management.MBeanServerInvocationHandler
 import javax.management.ObjectName
 import javax.management.remote.JMXConnectorFactory
 import javax.management.remote.JMXServiceURL
-import kotlin.collections.ArrayList
-import kotlin.collections.HashSet
 
 abstract class IndexManagementRestTestCase : ODFERestTestCase() {
 

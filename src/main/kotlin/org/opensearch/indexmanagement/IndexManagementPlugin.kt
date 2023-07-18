@@ -25,9 +25,9 @@ import org.opensearch.common.settings.Setting
 import org.opensearch.common.settings.Settings
 import org.opensearch.common.settings.SettingsFilter
 import org.opensearch.common.util.concurrent.ThreadContext
+import org.opensearch.common.xcontent.XContentParserUtils.ensureExpectedToken
 import org.opensearch.core.xcontent.NamedXContentRegistry
 import org.opensearch.core.xcontent.XContentParser.Token
-import org.opensearch.common.xcontent.XContentParserUtils.ensureExpectedToken
 import org.opensearch.env.Environment
 import org.opensearch.env.NodeEnvironment
 import org.opensearch.indexmanagement.controlcenter.notification.ControlCenterIndices
@@ -125,6 +125,7 @@ import org.opensearch.indexmanagement.rollup.settings.RollupSettings
 import org.opensearch.indexmanagement.rollup.util.QueryShardContextFactory
 import org.opensearch.indexmanagement.rollup.util.RollupFieldValueExpressionResolver
 import org.opensearch.indexmanagement.settings.IndexManagementSettings
+import org.opensearch.indexmanagement.snapshotmanagement.SMRunner
 import org.opensearch.indexmanagement.snapshotmanagement.api.resthandler.RestCreateSMPolicyHandler
 import org.opensearch.indexmanagement.snapshotmanagement.api.resthandler.RestDeleteSMPolicyHandler
 import org.opensearch.indexmanagement.snapshotmanagement.api.resthandler.RestExplainSMPolicyHandler
@@ -140,7 +141,6 @@ import org.opensearch.indexmanagement.snapshotmanagement.api.transport.get.Trans
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.index.TransportIndexSMPolicyAction
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.start.TransportStartSMAction
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.stop.TransportStopSMAction
-import org.opensearch.indexmanagement.snapshotmanagement.SMRunner
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy
 import org.opensearch.indexmanagement.snapshotmanagement.settings.SnapshotManagementSettings
@@ -388,7 +388,7 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
             namedWriteableRegistry,
             environment
         )
-        rollupInterceptor = RollupInterceptor(clusterService, settings, indexNameExpressionResolver)
+        rollupInterceptor = RollupInterceptor(clusterService, client, settings, indexNameExpressionResolver)
         val jvmService = JvmService(environment.settings())
         val transformRunner = TransformRunner.initialize(
             client,

@@ -7,6 +7,7 @@ package org.opensearch.indexmanagement.rollup.runner
 
 import org.apache.hc.core5.http.ContentType
 import org.apache.hc.core5.http.io.entity.StringEntity
+import org.junit.Assert
 import org.opensearch.common.settings.Settings
 import org.opensearch.indexmanagement.IndexManagementPlugin
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.ROLLUP_JOBS_BASE_URI
@@ -337,27 +338,12 @@ class RollupRunnerIT : RollupRestTestCase() {
         )
 
         // Create rollup job
-        rollup = createRollup(rollup = rollup, rollupId = rollup.id)
-        assertEquals(indexName, rollup.sourceIndex)
-        assertEquals(null, rollup.metadataID)
-
-        // Update rollup start time to run first execution
-        updateRollupStartTime(rollup)
-
-        var rollupMetadata: RollupMetadata?
-        // Assert on first execution
-        waitFor {
-            val rollupJob = getRollup(rollupId = rollup.id)
-            assertNotNull("Rollup job not found", rollupJob)
-            assertNotNull("Rollup job doesn't have metadata set", rollupJob.metadataID)
-
-            rollupMetadata = getRollupMetadata(rollupJob.metadataID!!)
-            assertNotNull("Rollup metadata not found", rollupMetadata)
-            assertEquals("Unexpected metadata status", RollupMetadata.Status.FAILED, rollupMetadata!!.status)
-            assertEquals("Unexpected failure reason", "No indices found for [${rollup.sourceIndex}]", rollupMetadata!!.failureReason)
+        try {
+            createRollup(rollup = rollup, rollupId = rollup.id)
+            Assert.fail("Rollup creation shouldn've failed because sourceIndex does not exists")
+        } catch (e: Exception) {
+            assertTrue(e.message!!.contains("no such index [test_index_runner_fourth]"))
         }
-
-        // TODO: Call _start to retry and test recovery behavior?
     }
 
     fun `test metadata stats contains correct info`() {
