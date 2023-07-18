@@ -10,7 +10,7 @@ import org.opensearch.OpenSearchStatusException
 import org.opensearch.core.common.Strings
 import org.opensearch.common.ValidationException
 import org.opensearch.index.IndexNotFoundException
-import org.opensearch.rest.RestStatus
+import org.opensearch.core.rest.RestStatus
 import java.lang.IllegalArgumentException
 
 class IndexManagementException(message: String, val status: RestStatus, ex: Exception) : OpenSearchException(message, ex) {

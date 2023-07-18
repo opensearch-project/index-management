@@ -7,7 +7,7 @@ package org.opensearch.indexmanagement.indexstatemanagement.transport.action.del
 
 import org.opensearch.action.support.WriteRequest
 import org.opensearch.common.io.stream.BytesStreamOutput
-import org.opensearch.common.io.stream.StreamInput
+import org.opensearch.core.common.io.stream.StreamInput
 import org.opensearch.test.OpenSearchTestCase
 
 class DeletePolicyRequestTests : OpenSearchTestCase() {

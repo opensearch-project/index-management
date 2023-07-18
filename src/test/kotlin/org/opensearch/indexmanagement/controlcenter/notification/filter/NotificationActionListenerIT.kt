@@ -23,7 +23,7 @@ import org.opensearch.indexmanagement.IndexManagementRestTestCase
 import org.opensearch.indexmanagement.controlcenter.notification.util.supportedActions
 import org.opensearch.indexmanagement.makeRequest
 import org.opensearch.indexmanagement.waitFor
-import org.opensearch.rest.RestStatus
+import org.opensearch.core.rest.RestStatus
 import java.net.InetAddress
 import java.net.InetSocketAddress
 import java.time.Instant

@@ -31,7 +31,7 @@ import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedInde
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepContext
 import org.opensearch.ingest.TestTemplateService.MockTemplateScript
 import org.opensearch.jobscheduler.spi.utils.LockService
-import org.opensearch.rest.RestStatus
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.script.ScriptService
 import org.opensearch.script.TemplateScript
 import org.opensearch.snapshots.ConcurrentSnapshotExecutionException

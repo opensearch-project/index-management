@@ -29,7 +29,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.step.shrink.WaitForSh
 import org.opensearch.indexmanagement.makeRequest
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
 import org.opensearch.indexmanagement.waitFor
-import org.opensearch.rest.RestStatus
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.script.Script
 import org.opensearch.script.ScriptType
 import java.time.Instant

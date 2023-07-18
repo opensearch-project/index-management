@@ -24,7 +24,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.randomChannel
 import org.opensearch.indexmanagement.makeRequest
 import org.opensearch.indexmanagement.opensearchapi.convertToMap
 import org.opensearch.indexmanagement.util.DRY_RUN
-import org.opensearch.rest.RestStatus
+import org.opensearch.core.rest.RestStatus
 import java.util.concurrent.Executors
 
 @Suppress("UNCHECKED_CAST")

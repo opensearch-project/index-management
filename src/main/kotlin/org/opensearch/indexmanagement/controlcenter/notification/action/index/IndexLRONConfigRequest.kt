@@ -6,8 +6,8 @@
 package org.opensearch.indexmanagement.controlcenter.notification.action.index
 
 import org.opensearch.action.ActionRequest
-import org.opensearch.common.io.stream.StreamInput
-import org.opensearch.common.io.stream.StreamOutput
+import org.opensearch.core.common.io.stream.StreamInput
+import org.opensearch.core.common.io.stream.StreamOutput
 import org.opensearch.indexmanagement.controlcenter.notification.model.LRONConfig
 import java.io.IOException
 
