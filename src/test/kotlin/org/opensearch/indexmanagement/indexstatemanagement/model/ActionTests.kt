@@ -6,8 +6,8 @@
 package org.opensearch.indexmanagement.indexstatemanagement.model
 
 import org.opensearch.cluster.routing.allocation.DiskThresholdSettings
-import org.opensearch.common.io.stream.InputStreamStreamInput
-import org.opensearch.common.io.stream.OutputStreamStreamOutput
+import org.opensearch.core.common.io.stream.InputStreamStreamInput
+import org.opensearch.core.common.io.stream.OutputStreamStreamOutput
 import org.opensearch.common.settings.ClusterSettings
 import org.opensearch.common.settings.Settings
 import org.opensearch.common.unit.ByteSizeValue

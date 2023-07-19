@@ -9,12 +9,12 @@ import org.junit.Assert
 import org.opensearch.OpenSearchException
 import org.opensearch.action.admin.indices.forcemerge.ForceMergeRequest
 import org.opensearch.action.admin.indices.forcemerge.ForceMergeResponse
-import org.opensearch.action.support.DefaultShardOperationFailedException
+import org.opensearch.core.action.support.DefaultShardOperationFailedException
 import org.opensearch.action.support.broadcast.BroadcastResponse
 import org.opensearch.common.xcontent.XContentType
 import org.opensearch.core.xcontent.DeprecationHandler
 import org.opensearch.core.xcontent.NamedXContentRegistry
-import org.opensearch.index.Index
+import org.opensearch.core.index.Index
 import org.opensearch.indexmanagement.controlcenter.notification.filter.OperationResult
 import org.opensearch.indexmanagement.snapshotmanagement.toJsonString
 

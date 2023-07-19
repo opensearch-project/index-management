@@ -10,8 +10,8 @@ import org.opensearch.action.DocWriteRequest
 import org.opensearch.action.ValidateActions.addValidationError
 import org.opensearch.action.index.IndexRequest
 import org.opensearch.action.support.WriteRequest
-import org.opensearch.common.io.stream.StreamInput
-import org.opensearch.common.io.stream.StreamOutput
+import org.opensearch.core.common.io.stream.StreamInput
+import org.opensearch.core.common.io.stream.StreamOutput
 import org.opensearch.index.seqno.SequenceNumbers
 import org.opensearch.indexmanagement.transform.model.Transform
 import java.io.IOException

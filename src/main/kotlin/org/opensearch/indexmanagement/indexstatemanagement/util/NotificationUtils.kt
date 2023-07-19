@@ -19,7 +19,7 @@ import org.opensearch.indexmanagement.common.model.notification.Channel
 import org.opensearch.indexmanagement.common.model.notification.validateResponseStatus
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
-import org.opensearch.rest.RestStatus
+import org.opensearch.core.rest.RestStatus
 
 /**
  * Extension function for publishing a notification to a legacy destination.

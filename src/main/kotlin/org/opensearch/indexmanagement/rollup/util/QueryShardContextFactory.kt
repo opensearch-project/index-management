@@ -9,7 +9,7 @@ import org.opensearch.Version
 import org.opensearch.client.Client
 import org.opensearch.cluster.metadata.IndexMetadata
 import org.opensearch.cluster.service.ClusterService
-import org.opensearch.common.io.stream.NamedWriteableRegistry
+import org.opensearch.core.common.io.stream.NamedWriteableRegistry
 import org.opensearch.common.regex.Regex
 import org.opensearch.common.settings.IndexScopedSettings
 import org.opensearch.common.settings.Settings
@@ -17,7 +17,7 @@ import org.opensearch.common.settings.SettingsModule
 import org.opensearch.common.util.BigArrays
 import org.opensearch.core.xcontent.NamedXContentRegistry
 import org.opensearch.env.Environment
-import org.opensearch.index.Index
+import org.opensearch.core.index.Index
 import org.opensearch.index.IndexSettings
 import org.opensearch.index.mapper.MapperService
 import org.opensearch.index.query.QueryShardContext
