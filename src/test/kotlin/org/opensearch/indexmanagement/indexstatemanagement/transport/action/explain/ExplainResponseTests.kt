@@ -6,7 +6,7 @@
 package org.opensearch.indexmanagement.indexstatemanagement.transport.action.explain
 
 import org.opensearch.common.io.stream.BytesStreamOutput
-import org.opensearch.common.io.stream.StreamInput
+import org.opensearch.core.common.io.stream.StreamInput
 import org.opensearch.indexmanagement.indexstatemanagement.randomPolicy
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Validate
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData

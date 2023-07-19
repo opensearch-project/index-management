@@ -8,8 +8,8 @@ package org.opensearch.indexmanagement.transform.action.explain
 import org.opensearch.action.ActionRequest
 import org.opensearch.action.ActionRequestValidationException
 import org.opensearch.action.ValidateActions.addValidationError
-import org.opensearch.common.io.stream.StreamInput
-import org.opensearch.common.io.stream.StreamOutput
+import org.opensearch.core.common.io.stream.StreamInput
+import org.opensearch.core.common.io.stream.StreamOutput
 import java.io.IOException
 
 class ExplainTransformRequest(val transformIDs: List<String>) : ActionRequest() {

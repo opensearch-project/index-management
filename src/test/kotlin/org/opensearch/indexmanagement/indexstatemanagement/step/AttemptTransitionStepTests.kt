@@ -37,7 +37,7 @@ import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedInde
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepContext
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepMetaData
 import org.opensearch.jobscheduler.spi.utils.LockService
-import org.opensearch.rest.RestStatus
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.script.ScriptService
 import org.opensearch.test.OpenSearchTestCase
 import org.opensearch.transport.RemoteTransportException

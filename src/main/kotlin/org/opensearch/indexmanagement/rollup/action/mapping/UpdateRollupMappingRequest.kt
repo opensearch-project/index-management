@@ -7,8 +7,8 @@ package org.opensearch.indexmanagement.rollup.action.mapping
 
 import org.opensearch.action.ActionRequestValidationException
 import org.opensearch.action.support.master.AcknowledgedRequest
-import org.opensearch.common.io.stream.StreamInput
-import org.opensearch.common.io.stream.StreamOutput
+import org.opensearch.core.common.io.stream.StreamInput
+import org.opensearch.core.common.io.stream.StreamOutput
 import org.opensearch.indexmanagement.rollup.model.Rollup
 
 class UpdateRollupMappingRequest : AcknowledgedRequest<UpdateRollupMappingRequest> {

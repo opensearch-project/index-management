@@ -7,7 +7,7 @@ package org.opensearch.indexmanagement.indexstatemanagement.transport.action.ind
 
 import org.opensearch.action.support.WriteRequest
 import org.opensearch.common.io.stream.BytesStreamOutput
-import org.opensearch.common.io.stream.StreamInput
+import org.opensearch.core.common.io.stream.StreamInput
 import org.opensearch.indexmanagement.indexstatemanagement.ISMActionsParser
 import org.opensearch.indexmanagement.indexstatemanagement.action.AllocationAction
 import org.opensearch.indexmanagement.indexstatemanagement.action.DeleteAction

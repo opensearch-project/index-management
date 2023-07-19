@@ -12,7 +12,7 @@ import org.opensearch.indexmanagement.IndexManagementRestTestCase
 import org.opensearch.indexmanagement.makeRequest
 import org.opensearch.indexmanagement.refreshanalyzer.RestRefreshSearchAnalyzerAction.Companion.REFRESH_SEARCH_ANALYZER_BASE_URI
 import org.opensearch.rest.RestRequest.Method.POST
-import org.opensearch.rest.RestStatus
+import org.opensearch.core.rest.RestStatus
 
 class RestRefreshSearchAnalyzerActionIT : IndexManagementRestTestCase() {
 

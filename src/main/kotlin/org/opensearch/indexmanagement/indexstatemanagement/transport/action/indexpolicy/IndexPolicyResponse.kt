@@ -6,8 +6,8 @@
 package org.opensearch.indexmanagement.indexstatemanagement.transport.action.indexpolicy
 
 import org.opensearch.action.ActionResponse
-import org.opensearch.common.io.stream.StreamInput
-import org.opensearch.common.io.stream.StreamOutput
+import org.opensearch.core.common.io.stream.StreamInput
+import org.opensearch.core.common.io.stream.StreamOutput
 import org.opensearch.core.xcontent.ToXContent
 import org.opensearch.core.xcontent.ToXContentObject
 import org.opensearch.core.xcontent.XContentBuilder
@@ -18,7 +18,7 @@ import org.opensearch.indexmanagement.util._ID
 import org.opensearch.indexmanagement.util._PRIMARY_TERM
 import org.opensearch.indexmanagement.util._SEQ_NO
 import org.opensearch.indexmanagement.util._VERSION
-import org.opensearch.rest.RestStatus
+import org.opensearch.core.rest.RestStatus
 import java.io.IOException
 
 class IndexPolicyResponse : ActionResponse, ToXContentObject {

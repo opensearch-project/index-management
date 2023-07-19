@@ -5,7 +5,7 @@
 
 package org.opensearch.indexmanagement.spi.indexstatemanagement
 
-import org.opensearch.common.io.stream.StreamInput
+import org.opensearch.core.common.io.stream.StreamInput
 import org.opensearch.core.xcontent.XContentParser
 
 abstract class ActionParser(var customAction: Boolean = false) {

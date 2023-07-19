@@ -7,7 +7,7 @@
 package org.opensearch.indexmanagement.common.model.notification
 
 import org.opensearch.OpenSearchStatusException
-import org.opensearch.rest.RestStatus
+import org.opensearch.core.rest.RestStatus
 
 /**
  * all valid response status

@@ -32,7 +32,7 @@ import org.opensearch.indexmanagement.opensearchapi.string
 import org.opensearch.indexmanagement.refreshanalyzer.RestRefreshSearchAnalyzerAction
 import org.opensearch.indexmanagement.rollup.randomRollup
 import org.opensearch.rest.RestRequest
-import org.opensearch.rest.RestStatus
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.test.OpenSearchTestCase
 import java.util.Locale
 
