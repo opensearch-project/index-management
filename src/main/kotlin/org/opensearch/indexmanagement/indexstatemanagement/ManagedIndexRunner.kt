@@ -15,14 +15,13 @@ import kotlinx.coroutines.withContext
 import org.apache.logging.log4j.LogManager
 import org.opensearch.action.admin.cluster.state.ClusterStateRequest
 import org.opensearch.action.admin.cluster.state.ClusterStateResponse
+import org.opensearch.action.admin.indices.alias.get.GetAliasesRequest
 import org.opensearch.action.bulk.BackoffPolicy
 import org.opensearch.action.bulk.BulkRequest
 import org.opensearch.action.bulk.BulkResponse
 import org.opensearch.action.get.GetRequest
 import org.opensearch.action.get.GetResponse
 import org.opensearch.action.index.IndexResponse
-import org.opensearch.action.search.SearchRequest
-import org.opensearch.action.search.SearchResponse
 import org.opensearch.action.support.IndicesOptions
 import org.opensearch.action.update.UpdateResponse
 import org.opensearch.client.Client
@@ -227,61 +226,37 @@ object ManagedIndexRunner :
         val stepName = stepContext.metadata.stepMetaData?.name
         when (stepName) {
             "attempt_rollover" -> {
-                val stepContextRolloverCompleted = stepContext.metadata.rolledOver
-                val searchRequest = SearchRequest().indices(stepContext.metadata.index)
+                val stepStartTime = stepContext.metadata.stepMetaData?.startTime
+                // Retrieve the alias name
+                val indexName = stepContext.metadata.index
+                val metadata = stepContext.clusterService.state().metadata()
+                val indexAbstraction = metadata.indicesLookup[indexName]
+                val isDataStreamIndex = indexAbstraction?.parentDataStream != null
 
-                val response: SearchResponse = client.suspendUntil { search(searchRequest, it) }
-                // Parse through all indices under that alias
-                val hits = response.hits
-                hits.forEach { hit ->
-                    val hitIndex = hit.index
-                    val indexMetaData = getIndexMetadata(hitIndex)
-                    val reqeustRolleverCompleted = indexMetaData
-                    logger.debug("ronsax stepContext: $stepContextRolloverCompleted request: $reqeustRolleverCompleted")
-                    logger.debug("ronsax check this out: $indexMetaData")
+                val aliasName = when {
+                    isDataStreamIndex -> indexAbstraction?.parentDataStream?.name
+                    else -> metadata.index(indexName).getRolloverAlias()
                 }
-                return true
-
-                // OLD DRAFT
-//                val stepStartTime = stepContext.metadata.stepMetaData?.startTime
-//                // Retrieve the alias name
-//                val indexName = stepContext.metadata.index
-//                val metadata = stepContext.clusterService.state().metadata()
-//                val indexAbstraction = metadata.indicesLookup[indexName]
-//                val isDataStreamIndex = indexAbstraction?.parentDataStream != null
-//
-//                val aliasName = when {
-//                    isDataStreamIndex -> indexAbstraction?.parentDataStream?.name
-//                    else -> metadata.index(indexName).getRolloverAlias()
-//                }
-//                if (aliasName == null) {
-//                    logger.debug("Index has no alias attached to it. Not a Transient Failure")
-//                    return false
-//                }
-//                // Check if any indicies under this alias were created after the step start time
-//                val searchRequest = SearchRequest()
-//                    .source(
-//                        SearchSourceBuilder().query(
-//                            QueryBuilders.existsQuery(aliasName) // NEED TO CHANGE THIS TO QUERY ALIAS
-//                        ).size(ManagedIndexCoordinator.MAX_HITS)
-//                    )
-//                    .indices(aliasName)
-//
-//                val response: SearchResponse = client.suspendUntil { search(searchRequest, it) }
-//                // Parse through all indices under that alias
-//                val hits = response.hits
-//                hits.forEach { hit ->
-//                    val hitIndex = hit.index
-//                    val indexMetaData = getIndexMetadata(hitIndex)
-//                    val indexCreationDate = indexMetaData?.creationDate
-//                    // Index was created after step started, therefore it finished a rollover, not a transient failure
-//                    // TODO Revisit why its a failure
-//                    if (stepStartTime!! < indexCreationDate!!) {
-//                        return false
-//                    }
-//                }
-//                // Did not find any indices created after the rollover policy step started, therefore is a Transient failure
-//                return true
+                if (aliasName == null) {
+                    logger.debug("Index has no alias attached to it. Not a Transient Failure")
+                    return false
+                }
+                val response = client.suspendUntil { admin().indices().getAliases(GetAliasesRequest(aliasName), it) }
+                // Parse through all indices under that alias
+                logger.debug("ronsax: $response $stepStartTime")
+                val aliasIndices = response.aliases
+                aliasIndices.forEach { (index, _) ->
+                    val indexMetaData = getIndexMetadata(index)
+                    val indexCreationDate = indexMetaData?.creationDate
+                    // Transient failure detected: Index was created after step started, therefore it finished a rollover
+                    if (stepStartTime!! < indexCreationDate!!) {
+                        logger.debug("ronsax indexName: $index creationTime $indexCreationDate")
+                        logger.debug("Have to rerun attempt rollover step due to transient failure ${stepContext.metadata.index}")
+                        return true
+                    }
+                }
+                // Did not find any indices created after the rollover policy step started, therefore is not a Transient failure
+                return false
             }
             "attempt_snapshot" -> {
                 // TODO implement logic for detecting transient failure in attempt snapshot step

@@ -686,7 +686,7 @@ class RolloverActionIT : IndexStateManagementRestTestCase() {
             assertEquals("Index did not rollover.", "Previous action was not able to update IndexMetaData.", info["message"])
         }
     }
-    fun `test rollover continues executing after a transient failure`() {
+    fun `test rollover detects transient failure and continues executing`() {
         val aliasName = "${testIndexName}_alias"
         val indexNameBase = "${testIndexName}_index"
         val firstIndex = "$indexNameBase-1"
@@ -713,7 +713,13 @@ class RolloverActionIT : IndexStateManagementRestTestCase() {
         updateManagedIndexConfigStartTime(managedIndexConfig)
         waitFor { assertEquals(policyID, getExplainManagedIndexMetaData(firstIndex).policyID) }
 
-        // Updating managed index metadata step status to "starting" to reproduce transient failure
+        // Need to speed up to second execution where it will trigger the attempt rollover step
+        updateManagedIndexConfigStartTime(managedIndexConfig)
+        waitFor {
+            val info = getExplainManagedIndexMetaData(firstIndex).info as Map<String, Any?>
+            assertEquals("Index did not rollover.", AttemptRolloverStep.getSuccessMessage(firstIndex), info["message"])
+        }
+        // Manually produce transient failure
         waitFor {
             val response = client().makeRequest(
                 "POST", ".opendistro-ism-config/_update/${managedIndexConfig.id}%23metadata",
@@ -725,15 +731,11 @@ class RolloverActionIT : IndexStateManagementRestTestCase() {
             )
             assertEquals("Request failed", RestStatus.OK, response.restStatus())
         }
-        // Need to speed up to second execution where it will trigger the first execution of the action
+        // Execute again to see if the metadata will update
         updateManagedIndexConfigStartTime(managedIndexConfig)
         waitFor {
-            val info = getExplainManagedIndexMetaData(firstIndex).info as Map<String, Any?>
-            assertEquals("Index did not rollover.", AttemptRolloverStep.getSuccessMessage(firstIndex), info["message"])
-        }
-        waitFor {
-            val info = getExplainManagedIndexMetaData(firstIndex).info as Map<String, Any?>
-            Assert.assertNotEquals("Managed disabled without rollover", "Previous action was not able to update IndexMetaData.", info["message"])
+            val stepStatus = getExplainManagedIndexMetaData(firstIndex).stepMetaData?.stepStatus
+            assertEquals("Index did not rollover.", "completed", stepStatus)
         }
     }
 }
