@@ -15,7 +15,7 @@ import org.opensearch.indexmanagement.GET_LRON_CONFIG
 import org.opensearch.indexmanagement.INDEX_LRON_CONFIG
 import org.opensearch.indexmanagement.IndexManagementPlugin
 import org.opensearch.indexmanagement.SecurityRestTestCase
-import org.opensearch.rest.RestStatus
+import org.opensearch.core.rest.RestStatus
 
 @Suppress("UNCHECKED_CAST")
 class LRONConfigSecurityBehaviorIT : SecurityRestTestCase() {

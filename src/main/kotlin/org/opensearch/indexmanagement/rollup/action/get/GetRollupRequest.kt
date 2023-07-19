@@ -8,8 +8,8 @@ package org.opensearch.indexmanagement.rollup.action.get
 import org.opensearch.action.ActionRequest
 import org.opensearch.action.ActionRequestValidationException
 import org.opensearch.action.ValidateActions
-import org.opensearch.common.io.stream.StreamInput
-import org.opensearch.common.io.stream.StreamOutput
+import org.opensearch.core.common.io.stream.StreamInput
+import org.opensearch.core.common.io.stream.StreamOutput
 import org.opensearch.search.fetch.subphase.FetchSourceContext
 import java.io.IOException
 

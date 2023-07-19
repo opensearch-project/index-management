@@ -10,7 +10,7 @@ import org.junit.Before
 import org.opensearch.OpenSearchException
 import org.opensearch.action.bulk.BulkItemResponse
 import org.opensearch.common.unit.TimeValue
-import org.opensearch.index.Index
+import org.opensearch.core.index.Index
 import org.opensearch.index.reindex.BulkByScrollResponse
 import org.opensearch.index.reindex.BulkByScrollTask
 import org.opensearch.index.reindex.ReindexAction

@@ -19,7 +19,7 @@ import org.opensearch.action.admin.indices.shrink.ResizeType
 import org.opensearch.action.support.ActiveShardCount
 import org.opensearch.action.support.ActiveShardsObserver
 import org.opensearch.common.unit.TimeValue
-import org.opensearch.index.Index
+import org.opensearch.core.index.Index
 import org.opensearch.index.IndexNotFoundException
 import org.opensearch.indexmanagement.controlcenter.notification.filter.OperationResult
 import java.lang.IllegalStateException

@@ -5,8 +5,8 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.model
 
-import org.opensearch.common.io.stream.InputStreamStreamInput
-import org.opensearch.common.io.stream.OutputStreamStreamOutput
+import org.opensearch.core.common.io.stream.InputStreamStreamInput
+import org.opensearch.core.common.io.stream.OutputStreamStreamOutput
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ActionMetaData
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ActionProperties

@@ -24,7 +24,7 @@ import org.opensearch.core.xcontent.DeprecationHandler
 import org.opensearch.core.xcontent.NamedXContentRegistry
 import org.opensearch.common.xcontent.XContentType
 import org.opensearch.indexmanagement.indexstatemanagement.util.INDEX_HIDDEN
-import org.opensearch.rest.RestStatus
+import org.opensearch.core.rest.RestStatus
 import java.io.IOException
 import java.nio.file.Files
 import java.util.*

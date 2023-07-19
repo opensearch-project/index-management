@@ -7,13 +7,13 @@ package org.opensearch.indexmanagement.transform
 
 import org.opensearch.cluster.metadata.IndexMetadata
 import org.opensearch.common.io.stream.BytesStreamOutput
-import org.opensearch.common.io.stream.NamedWriteableAwareStreamInput
-import org.opensearch.common.io.stream.NamedWriteableRegistry
+import org.opensearch.core.common.io.stream.NamedWriteableAwareStreamInput
+import org.opensearch.core.common.io.stream.NamedWriteableRegistry
 import org.opensearch.common.settings.Settings
 import org.opensearch.core.xcontent.ToXContent
 import org.opensearch.common.xcontent.XContentFactory
-import org.opensearch.index.Index
-import org.opensearch.index.shard.ShardId
+import org.opensearch.core.index.Index
+import org.opensearch.core.index.shard.ShardId
 import org.opensearch.indexmanagement.common.model.dimension.Dimension
 import org.opensearch.indexmanagement.opensearchapi.string
 import org.opensearch.indexmanagement.randomInstant

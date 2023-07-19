@@ -6,8 +6,8 @@
 package org.opensearch.indexmanagement.refreshanalyzer
 
 import org.junit.Assert
-import org.opensearch.action.support.DefaultShardOperationFailedException
-import org.opensearch.index.shard.ShardId
+import org.opensearch.core.action.support.DefaultShardOperationFailedException
+import org.opensearch.core.index.shard.ShardId
 import org.opensearch.test.OpenSearchTestCase
 
 class RefreshSearchAnalyzerResponseTests : OpenSearchTestCase() {
