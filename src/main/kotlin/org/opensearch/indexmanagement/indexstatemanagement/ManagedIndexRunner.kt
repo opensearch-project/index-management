@@ -222,6 +222,7 @@ object ManagedIndexRunner :
         return this
     }
     // Detects if a nonidempotent step was a transient failure or not
+    @Suppress("ReturnCount")
     suspend fun isTransientFailure(stepContext: StepContext): Boolean {
         val stepName = stepContext.metadata.stepMetaData?.name
         when (stepName) {

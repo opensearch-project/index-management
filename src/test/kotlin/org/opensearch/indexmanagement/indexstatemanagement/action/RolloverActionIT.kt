@@ -637,7 +637,7 @@ class RolloverActionIT : IndexStateManagementRestTestCase() {
         val indexNameBase = "${testIndexName}_index"
         val firstIndex = "$indexNameBase-1"
         val policyID = "${testIndexName}_testPolicyName_1"
-        val actionConfig = RolloverAction(null, 0, null, null, 0)
+        val actionConfig = RolloverAction(null, 1, null, null, 0)
         val states = listOf(State(name = "RolloverAction", actions = listOf(actionConfig), transitions = listOf()))
         val policy = Policy(
             id = policyID,
@@ -658,7 +658,8 @@ class RolloverActionIT : IndexStateManagementRestTestCase() {
         // Change the start time so the job will trigger in 2 seconds, this will trigger the first initialization of the policy
         updateManagedIndexConfigStartTime(managedIndexConfig)
         waitFor { assertEquals(policyID, getExplainManagedIndexMetaData(firstIndex).policyID) }
-
+        // Insert data to trigger rollover
+        insertSampleData(index = firstIndex, docCount = 5, delay = 0)
         // Need to speed up to second execution where it will trigger the attempt rollover step
         updateManagedIndexConfigStartTime(managedIndexConfig)
         waitFor {
@@ -670,8 +671,15 @@ class RolloverActionIT : IndexStateManagementRestTestCase() {
             val response = client().makeRequest(
                 "POST", ".opendistro-ism-config/_update/${managedIndexConfig.id}%23metadata",
                 StringEntity(
-                    "{\"script\":{\"managed_index\": \"ctx._source.managed_index_metadata.step.step_status = params.step_status\"," +
-                        "\"lang\": \"painless\", \"params\": {\"step_status\": \"starting\"}}}",
+                    "{\n" +
+                        "    \"script\": {\n" +
+                        "        \"source\": \"ctx._source.managed_index_metadata.step.step_status = params.step_status\",\n" +
+                        "        \"lang\": \"painless\",\n" +
+                        "        \"params\": {\n" +
+                        "            \"step_status\": \"starting\"\n" +
+                        "    }\n" +
+                        "  }\n" +
+                        "}",
                     ContentType.APPLICATION_JSON
                 )
             )
