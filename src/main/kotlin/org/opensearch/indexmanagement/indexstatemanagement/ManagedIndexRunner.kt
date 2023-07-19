@@ -15,6 +15,7 @@ import kotlinx.coroutines.withContext
 import org.apache.logging.log4j.LogManager
 import org.opensearch.action.admin.cluster.state.ClusterStateRequest
 import org.opensearch.action.admin.cluster.state.ClusterStateResponse
+import org.opensearch.action.admin.indices.alias.get.GetAliasesRequest
 import org.opensearch.action.bulk.BackoffPolicy
 import org.opensearch.action.bulk.BulkRequest
 import org.opensearch.action.bulk.BulkResponse
@@ -47,6 +48,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.model.ErrorNotificati
 import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexConfig
 import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
 import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.getManagedIndexMetadata
+import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.getRolloverAlias
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.ALLOW_LIST
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.ALLOW_LIST_NONE
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.DEFAULT_ISM_ENABLED
@@ -219,6 +221,59 @@ object ManagedIndexRunner :
         this.extensionStatusChecker = extensionStatusChecker
         return this
     }
+    // Detects if a nonidempotent step was a transient failure or not
+    suspend fun isTransientFailure(stepContext: StepContext): Boolean {
+        val stepName = stepContext.metadata.stepMetaData?.name
+        when (stepName) {
+            "attempt_rollover" -> {
+                val stepStartTime = stepContext.metadata.stepMetaData?.startTime
+                // Retrieve the alias name
+                val indexName = stepContext.metadata.index
+                val metadata = stepContext.clusterService.state().metadata()
+                val indexAbstraction = metadata.indicesLookup[indexName]
+                val isDataStreamIndex = indexAbstraction?.parentDataStream != null
+
+                val aliasName = when {
+                    isDataStreamIndex -> indexAbstraction?.parentDataStream?.name
+                    else -> metadata.index(indexName).getRolloverAlias()
+                }
+                if (aliasName == null) {
+                    logger.debug("Index has no alias attached to it. Not a Transient Failure")
+                    return false
+                }
+                val response = client.suspendUntil { admin().indices().getAliases(GetAliasesRequest(aliasName), it) }
+                // Parse through all indices under that alias
+                val aliasIndices = response.aliases
+                aliasIndices.forEach { (index, _) ->
+                    val indexMetaData = getIndexMetadata(index)
+                    val indexCreationDate = indexMetaData?.creationDate
+                    // Transient failure detected: Index was created after step started, therefore it finished a rollover
+                    if (stepStartTime!! < indexCreationDate!!) {
+                        logger.debug("Have to rerun attempt rollover step due to transient failure ${stepContext.metadata.index}")
+                        return true
+                    }
+                }
+                // Did not find any indices created after the rollover policy step started, therefore is not a Transient failure
+                return false
+            }
+            "attempt_snapshot" -> {
+                // TODO implement logic for detecting transient failure in attempt snapshot step
+            }
+            "attempt_notification" -> {
+                // TODO implement logic for detecting transient failure in attempt notification step
+            }
+            "attempt_shrink_step" -> {
+                // TODO implement logic for detecting transient failure in attempt shrink step
+            }
+            "attempt_call_force_merge" -> {
+                // TODO implement logic for detecting transient failure in attempt call force merge step
+            }
+            else -> {
+                logger.debug("Detected unfamiliar nonIdempotent step:  $stepName")
+            }
+        }
+        return true
+    }
 
     override fun runJob(job: ScheduledJobParameter, context: JobExecutionContext) {
         if (job !is ManagedIndexConfig) {
@@ -358,7 +413,8 @@ object ManagedIndexRunner :
         if (managedIndexMetaData.stepMetaData?.stepStatus == Step.StepStatus.STARTING) {
             val isIdempotent = step?.isIdempotent()
             logger.info("Previous execution failed to update step status, isIdempotent=$isIdempotent")
-            if (isIdempotent != true) {
+            // If this step was not a transient failure fail the index
+            if (isIdempotent != true && !isTransientFailure(stepContext)) {
                 val info = mapOf("message" to "Previous action was not able to update IndexMetaData.")
                 val updated = updateManagedIndexMetaData(
                     managedIndexMetaData.copy(
