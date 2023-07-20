@@ -296,15 +296,18 @@ class AttemptRolloverStep(private val action: RolloverAction) : Step(name) {
                     client.admin().cluster().state(ClusterStateRequest(), it)
                 }
                 // If the index was rolled over, this is a transient failure
-                isTransientFailure = response.state.metadata.index(indexName).rolloverInfos.containsKey(aliasName)
-                val result = ManagedIndexRunner.updateManagedIndexMetaData(
-                    managedIndexMetaData.copy(
-                        stepMetaData = managedIndexMetaData.stepMetaData?.copy(stepStatus = StepStatus.COMPLETED),
-                        info = mapOf("message" to getAlreadyRolledOverMessage(indexName, aliasName))
+                val wasRolledOver: Boolean = response.state.metadata.index(indexName).rolloverInfos.containsKey(aliasName)
+                if (wasRolledOver) {
+                    isTransientFailure = true
+                    val result = ManagedIndexRunner.updateManagedIndexMetaData(
+                        managedIndexMetaData.copy(
+                            stepMetaData = managedIndexMetaData.stepMetaData?.copy(stepStatus = StepStatus.COMPLETED),
+                            info = mapOf("message" to getAlreadyRolledOverMessage(indexName, aliasName))
+                        )
                     )
-                )
-                if (!result.metadataSaved) {
-                    logger.error("Not able to update managed index meta data for index ${managedIndexMetaData.index}")
+                    if (!result.metadataSaved) {
+                        logger.error("Not able to update managed index meta data for index ${managedIndexMetaData.index}")
+                    }
                 }
             } catch (e: Exception) {
                 logger.error("Failed to request index ${stepContext.metadata.index} cluster data when checking for transient failure", e)
