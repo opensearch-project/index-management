@@ -7,12 +7,16 @@ package org.opensearch.indexmanagement.indexstatemanagement.step.rollover
 
 import org.apache.logging.log4j.LogManager
 import org.opensearch.ExceptionsHelper
+import org.opensearch.action.admin.cluster.state.ClusterStateRequest
+import org.opensearch.action.admin.cluster.state.ClusterStateResponse
 import org.opensearch.action.admin.indices.rollover.RolloverRequest
 import org.opensearch.action.admin.indices.rollover.RolloverResponse
 import org.opensearch.action.admin.indices.stats.IndicesStatsRequest
 import org.opensearch.action.admin.indices.stats.IndicesStatsResponse
+import org.opensearch.client.Client
 import org.opensearch.common.unit.ByteSizeValue
 import org.opensearch.common.unit.TimeValue
+import org.opensearch.indexmanagement.indexstatemanagement.ManagedIndexRunner
 import org.opensearch.indexmanagement.indexstatemanagement.action.RolloverAction
 import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.getRolloverAlias
 import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.getRolloverSkip
@@ -270,7 +274,44 @@ class AttemptRolloverStep(private val action: RolloverAction) : Step(name) {
     }
 
     override fun isIdempotent(): Boolean = false
+    @Suppress("NestedBlockDepth")
+    override suspend fun isTransientFailure(client: Client, stepContext: StepContext, managedIndexMetaData: ManagedIndexMetaData): Boolean {
+        var isTransientFailure = false
+        // Retrieve the alias name
+        val indexName = stepContext.metadata.index
+        val metadata = stepContext.clusterService.state().metadata()
+        val indexAbstraction = metadata.indicesLookup[indexName]
+        val isDataStreamIndex = indexAbstraction?.parentDataStream != null
 
+        val aliasName = when {
+            isDataStreamIndex -> indexAbstraction?.parentDataStream?.name
+            else -> metadata.index(indexName).getRolloverAlias()
+        }
+        if (aliasName == null) {
+            logger.error("Index $indexName has no alias attached to it. Not a Transient Failure in step attemptRolloverStep")
+            isTransientFailure = false
+        } else {
+            try {
+                val response: ClusterStateResponse = client.suspendUntil {
+                    client.admin().cluster().state(ClusterStateRequest(), it)
+                }
+                // If the index was rolled over, this is a transient failure
+                isTransientFailure = response.state.metadata.index(indexName).rolloverInfos.containsKey(aliasName)
+                val result = ManagedIndexRunner.updateManagedIndexMetaData(
+                    managedIndexMetaData.copy(
+                        stepMetaData = managedIndexMetaData.stepMetaData?.copy(stepStatus = StepStatus.COMPLETED),
+                        info = mapOf("message" to getAlreadyRolledOverMessage(indexName, aliasName))
+                    )
+                )
+                if (!result.metadataSaved) {
+                    logger.error("Not able to update managed index meta data for index ${managedIndexMetaData.index}")
+                }
+            } catch (e: Exception) {
+                logger.error("Failed to request index ${stepContext.metadata.index} cluster data when checking for transient failure", e)
+            }
+        }
+        return isTransientFailure
+    }
     @Suppress("TooManyFunctions")
     companion object {
         const val name = "attempt_rollover"

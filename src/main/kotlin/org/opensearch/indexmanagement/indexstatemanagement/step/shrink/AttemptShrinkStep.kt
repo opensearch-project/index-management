@@ -12,6 +12,7 @@ import org.opensearch.action.admin.indices.shrink.ResizeResponse
 import org.opensearch.action.admin.indices.stats.IndicesStatsRequest
 import org.opensearch.action.admin.indices.stats.IndicesStatsResponse
 import org.opensearch.action.support.master.AcknowledgedResponse
+import org.opensearch.client.Client
 import org.opensearch.cluster.metadata.IndexMetadata
 import org.opensearch.common.settings.Settings
 import org.opensearch.indexmanagement.indexstatemanagement.action.ShrinkAction
@@ -135,6 +136,10 @@ class AttemptShrinkStep(private val action: ShrinkAction) : ShrinkStep(name, tru
     }
 
     override fun isIdempotent() = false
+    override suspend fun isTransientFailure(client: Client, stepContext: StepContext, managedIndexMetaData: ManagedIndexMetaData): Boolean {
+        // TODO implement logic for detecting transient failure in attempt shrink step
+        return false
+    }
 
     companion object {
         const val name = "attempt_shrink_step"

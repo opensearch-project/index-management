@@ -9,6 +9,7 @@ import org.apache.logging.log4j.LogManager
 import org.opensearch.ExceptionsHelper
 import org.opensearch.action.admin.cluster.snapshots.create.CreateSnapshotRequest
 import org.opensearch.action.admin.cluster.snapshots.create.CreateSnapshotResponse
+import org.opensearch.client.Client
 import org.opensearch.common.regex.Regex
 import org.opensearch.indexmanagement.indexstatemanagement.action.SnapshotAction
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.SNAPSHOT_DENY_LIST
@@ -17,6 +18,7 @@ import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ActionProperties
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepContext
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepMetaData
 import org.opensearch.rest.RestStatus
 import org.opensearch.script.Script
@@ -155,6 +157,10 @@ class AttemptSnapshotStep(private val action: SnapshotAction) : Step(name) {
     }
 
     override fun isIdempotent(): Boolean = false
+    override suspend fun isTransientFailure(client: Client, stepContext: StepContext, managedIndexMetaData: ManagedIndexMetaData): Boolean {
+        // TODO implement logic for detecting transient failure in attempt snapshot step
+        return false
+    }
 
     companion object {
         val validTopContextFields = setOf("index", "indexUuid")

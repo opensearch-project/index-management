@@ -689,7 +689,7 @@ class RolloverActionIT : IndexStateManagementRestTestCase() {
         updateManagedIndexConfigStartTime(managedIndexConfig)
         waitFor {
             val stepStatus = getExplainManagedIndexMetaData(firstIndex).stepMetaData?.stepStatus
-            assertEquals("Index did not rollover.", Step.StepStatus.COMPLETED, stepStatus)
+            assertEquals("rollover step did not continue executing after detecting the transient failure.", Step.StepStatus.COMPLETED, stepStatus)
         }
     }
 }

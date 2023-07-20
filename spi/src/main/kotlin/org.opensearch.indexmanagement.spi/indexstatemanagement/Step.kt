@@ -6,6 +6,7 @@
 package org.opensearch.indexmanagement.spi.indexstatemanagement
 
 import org.apache.logging.log4j.Logger
+import org.opensearch.client.Client
 import org.opensearch.common.io.stream.StreamInput
 import org.opensearch.common.io.stream.StreamOutput
 import org.opensearch.common.io.stream.Writeable
@@ -37,6 +38,10 @@ abstract class Step(val name: String, val isSafeToDisableOn: Boolean = true) {
     abstract fun getUpdatedManagedIndexMetadata(currentMetadata: ManagedIndexMetaData): ManagedIndexMetaData
 
     abstract fun isIdempotent(): Boolean
+
+    open suspend fun isTransientFailure(client: Client, stepContext: StepContext, managedIndexMetaData: ManagedIndexMetaData): Boolean {
+        return false
+    }
 
     final fun getStepStartTime(metadata: ManagedIndexMetaData): Instant {
         return when {
