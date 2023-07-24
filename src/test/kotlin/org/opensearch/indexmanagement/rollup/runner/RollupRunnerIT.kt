@@ -1319,6 +1319,78 @@ class RollupRunnerIT : RollupRestTestCase() {
         }
     }
 
+    @Suppress("UNCHECKED_CAST")
+    fun `test rollup with max metric when metric property not present`() {
+        val sourceIdxTestName = "source_idx_test_max"
+        val targetIdxTestName = "target_idx_test_max"
+        val propertyName = "message.bytes_in"
+        val maxMetricName = "min_message_bytes_in"
+
+        generateMessageLogsData(sourceIdxTestName)
+        val rollup = Rollup(
+            id = "rollup_test_max",
+            schemaVersion = 1L,
+            enabled = true,
+            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+            jobLastUpdatedTime = Instant.now(),
+            jobEnabledTime = Instant.now(),
+            description = "basic stats test",
+            sourceIndex = sourceIdxTestName,
+            targetIndex = targetIdxTestName,
+            metadataID = null,
+            roles = emptyList(),
+            pageSize = 100,
+            delay = 0,
+            continuous = false,
+            dimensions = listOf(
+                DateHistogram(sourceField = "message.timestamp_received", targetField = "message.timestamp_received", fixedInterval = "10m"),
+                Terms("message.plugin", "message.plugin")
+            ),
+            metrics = listOf(
+                RollupMetrics(sourceField = propertyName, targetField = propertyName, metrics = listOf(Max()))
+            )
+        ).let { createRollup(it, it.id) }
+
+        updateRollupStartTime(rollup)
+
+        waitFor { assertTrue("Target rollup index was not created", indexExists(rollup.targetIndex)) }
+
+        waitFor {
+            val rollupJob = getRollup(rollupId = rollup.id)
+            assertNotNull("Rollup job doesn't have metadata set", rollupJob.metadataID)
+            val rollupMetadata = getRollupMetadata(rollupJob.metadataID!!)
+            assertEquals("Rollup is not finished", RollupMetadata.Status.FINISHED, rollupMetadata.status)
+
+            // Term query
+            val req = """
+            {
+                "size": 0,
+                "query": {
+                  "match_all": {}
+                },
+                "aggs": {
+                    "$maxMetricName": {
+                        "max": {
+                            "field": "$propertyName"
+                        }
+                    }
+                }
+            }
+            """.trimIndent()
+            var rawRes = client().makeRequest(RestRequest.Method.POST.name, "/$sourceIdxTestName/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
+            assertTrue(rawRes.restStatus() == RestStatus.OK)
+            var rollupRes = client().makeRequest(RestRequest.Method.POST.name, "/$targetIdxTestName/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
+            assertTrue(rollupRes.restStatus() == RestStatus.OK)
+            var rawAggRes = rawRes.asMap()["aggregations"] as Map<String, Map<String, Any>>
+            var rollupAggRes = rollupRes.asMap()["aggregations"] as Map<String, Map<String, Any>>
+            assertEquals(
+                "Source and rollup index did not return same max results",
+                rawAggRes.getValue(maxMetricName)["value"],
+                rollupAggRes.getValue(maxMetricName)["value"]
+            )
+        }
+    }
+
     // TODO: Test scenarios:
     // - Source index deleted after first execution
     //      * If this is with a source index pattern and the underlying indices are recreated but with different data
