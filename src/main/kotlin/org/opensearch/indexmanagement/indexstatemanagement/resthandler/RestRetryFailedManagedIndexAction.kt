@@ -55,7 +55,7 @@ class RestRetryFailedManagedIndexAction : BaseRestHandler() {
             throw IllegalArgumentException("Missing indices")
         }
         val body = if (request.hasContent()) {
-            XContentHelper.convertToMap(request.requiredContent(), false, request.xContentType as (MediaType)).v2()
+            XContentHelper.convertToMap(request.requiredContent(), false, request.mediaType).v2()
         } else {
             mapOf()
         }
