@@ -12,6 +12,7 @@ import com.nhaarman.mockitokotlin2.eq
 import com.nhaarman.mockitokotlin2.mock
 import com.nhaarman.mockitokotlin2.whenever
 import kotlinx.coroutines.runBlocking
+import org.junit.Assert
 import org.junit.Before
 import org.opensearch.action.ActionListener
 import org.opensearch.action.admin.cluster.snapshots.create.CreateSnapshotResponse
@@ -135,6 +136,14 @@ class AttemptSnapshotStepTests : OpenSearchTestCase() {
             assertEquals("Step status is not FAILED", Step.StepStatus.FAILED, updatedManagedIndexMetaData.stepMetaData?.stepStatus)
             assertEquals("Did not get cause from nested exception", "some error", updatedManagedIndexMetaData.info!!["cause"])
         }
+    }
+
+    suspend fun `test detect transient failure`() {
+        // TODO adjust this test after implementing isTransientFailure method
+        val step = AttemptSnapshotStep(snapshotAction)
+        val client = getClient(getAdminClient(getClusterAdminClient(null, null)))
+        val stepContext = StepContext(metadata, clusterService, client, null, null, scriptService, settings, lockService)
+        Assert.assertEquals("Cannot detect transient failure", false, step.isTransientFailure(client, stepContext, metadata))
     }
 
     private fun getClient(adminClient: AdminClient): Client = mock { on { admin() } doReturn adminClient }

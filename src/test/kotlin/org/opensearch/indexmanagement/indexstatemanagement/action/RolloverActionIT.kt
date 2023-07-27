@@ -688,8 +688,9 @@ class RolloverActionIT : IndexStateManagementRestTestCase() {
         // Execute again to see if the metadata will update
         updateManagedIndexConfigStartTime(managedIndexConfig)
         waitFor {
-            val stepStatus = getExplainManagedIndexMetaData(firstIndex).stepMetaData?.stepStatus
-            assertEquals("rollover step did not continue executing after detecting the transient failure.", Step.StepStatus.COMPLETED, stepStatus)
+            val stepMetaData = getExplainManagedIndexMetaData(firstIndex).stepMetaData
+            assertEquals("executed the wrong step: ${stepMetaData?.name} instead of attempt rollover", "attempt_rollover", stepMetaData?.name)
+            assertEquals("rollover step did not continue executing after detecting the transient failure.", Step.StepStatus.COMPLETED, stepMetaData?.stepStatus)
         }
     }
 }
