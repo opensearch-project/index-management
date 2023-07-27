@@ -28,7 +28,7 @@ import org.opensearch.jobscheduler.spi.utils.LockService
 import org.opensearch.script.ScriptService
 import org.opensearch.test.OpenSearchTestCase
 
-class AttemptNotificationStepTests {
+class AttemptNotificationStepTests : OpenSearchTestCase() {
     private val clusterService: ClusterService = mock()
     private val scriptService: ScriptService = mock()
     private val settings: Settings = Settings.EMPTY
