@@ -76,7 +76,7 @@ fun contentParser(bytesReference: BytesReference, xContentRegistry: NamedXConten
 
 /** Convert an object to maps and lists representation */
 fun ToXContent.convertToMap(): Map<String, Any> {
-    val bytesReference = XContentHelper.toXContent(this, XContentType.JSON, false)
+    val bytesReference = XContentHelper.toXContent(this, MediaType.fromMediaType(XContentType.JSON.mediaType()), ToXContent.EMPTY_PARAMS, false)
     return XContentHelper.convertToMap(bytesReference, false, XContentType.JSON as (MediaType)).v2()
 }
 
