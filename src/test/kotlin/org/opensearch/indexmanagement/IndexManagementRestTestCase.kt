@@ -153,6 +153,11 @@ abstract class IndexManagementRestTestCase : ODFERestTestCase() {
         insertSampleBulkData(index, javaClass.classLoader.getResource("data/nyc_5000.ndjson").readText())
     }
 
+    protected fun generateMessageLogsData(index: String = "message-logs") {
+        createIndex(index, Settings.EMPTY, """"properties": {"message":{"properties":{"bytes_in":{"type":"long"},"bytes_out":{"type":"long"},"plugin":{"eager_global_ordinals":true,"ignore_above":10000,"type":"keyword"},"timestamp_received":{"type":"date"}}}}""")
+        insertSampleBulkData(index, javaClass.classLoader.getResource("data/message_logs.ndjson").readText())
+    }
+
     @Suppress("UNCHECKED_CAST")
     protected fun extractFailuresFromSearchResponse(searchResponse: Response): List<Map<String, String>?>? {
         val shards = searchResponse.asMap()["_shards"] as Map<String, ArrayList<Map<String, Any>>>
