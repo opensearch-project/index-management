@@ -5,6 +5,11 @@
 
 package org.opensearch.indexmanagement.rollup.util
 
+import com.nhaarman.mockitokotlin2.doReturn
+import com.nhaarman.mockitokotlin2.mock
+import com.nhaarman.mockitokotlin2.whenever
+import org.opensearch.cluster.ClusterState
+import org.opensearch.cluster.metadata.Metadata
 import org.opensearch.index.query.BoolQueryBuilder
 import org.opensearch.index.query.ConstantScoreQueryBuilder
 import org.opensearch.index.query.DisMaxQueryBuilder
@@ -229,5 +234,17 @@ class RollupUtilsTests : OpenSearchTestCase() {
         } else {
             assertEquals("Rewritten aggregation builder is not the correct type", aggBuilder.type, rewrittenAgg.type)
         }
+    }
+
+    fun `test isRollupIndex`() {
+        val indexName = "missing index"
+        val clusterState: ClusterState = mock()
+        val metadata: Metadata = mock()
+
+        whenever(clusterState.metadata).doReturn(metadata)
+        whenever(metadata.index(indexName)).doReturn(null)
+
+        val actual = isRollupIndex(indexName, clusterState)
+        assertFalse(actual)
     }
 }
