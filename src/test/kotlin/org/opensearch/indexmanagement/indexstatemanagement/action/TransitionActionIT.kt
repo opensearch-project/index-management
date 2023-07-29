@@ -64,7 +64,14 @@ class TransitionActionIT : IndexStateManagementRestTestCase() {
         updateManagedIndexConfigStartTime(managedIndexConfig)
 
         // Should have evaluated to true
-        waitFor { assertEquals(AttemptTransitionStep.getSuccessMessage(indexName, secondStateName), getExplainManagedIndexMetaData(indexName).info?.get("message")) }
+        waitFor {
+            assertEquals(AttemptTransitionStep.getSuccessMessage(indexName, secondStateName), getExplainManagedIndexMetaData(indexName).info?.get("message"))
+            // check doc count in infomap
+            // docCount
+            val infoMap = getExplainManagedIndexMetaData(indexName).info as Map<String, Any?>
+            val conditions = infoMap?.get("conditions") as Map<String, Any?>
+            assertNotNull("Missing min doc count condition", conditions?.get("docCount"))
+        }
     }
 
     fun `test rollover age transition for index with no rollover fails`() {
@@ -139,7 +146,14 @@ class TransitionActionIT : IndexStateManagementRestTestCase() {
         // Evaluating transition conditions for first time
         updateManagedIndexConfigStartTime(managedIndexConfig)
 
-        // Should have evaluated to true
-        waitFor { assertEquals(AttemptTransitionStep.getSuccessMessage(indexName, secondStateName), getExplainManagedIndexMetaData(indexName).info?.get("message")) }
+        waitFor {
+            // Should have evaluated to true
+            assertEquals(AttemptTransitionStep.getSuccessMessage(indexName, secondStateName), getExplainManagedIndexMetaData(indexName).info?.get("message"))
+            // check all current state conditions in infomap align with index
+            val infoMap = getExplainManagedIndexMetaData(indexName).info as Map<String, Any?>
+            // rolloverAge
+            val conditions = infoMap?.get("conditions") as Map<String, Any?>
+            assertNotNull("Rollover age is not there", conditions?.get("rolloverAge"))
+        }
     }
 }
