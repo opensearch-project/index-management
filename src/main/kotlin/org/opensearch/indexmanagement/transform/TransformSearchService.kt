@@ -35,7 +35,7 @@ import org.opensearch.indexmanagement.opensearchapi.retry
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.transform.exceptions.TransformSearchServiceException
 import org.opensearch.indexmanagement.transform.model.BucketSearchResult
-import org.opensearch.indexmanagement.transform.model.ShardNewDocuments
+import org.opensearch.indexmanagement.transform.model.ShardWithNewDocuments
 import org.opensearch.indexmanagement.transform.model.Transform
 import org.opensearch.indexmanagement.transform.model.TransformSearchResult
 import org.opensearch.indexmanagement.transform.model.TransformStats
@@ -114,11 +114,14 @@ class TransformSearchService(
         }
     }
 
+    /**
+     *
+     */
     @Suppress("RethrowCaughtException")
     suspend fun getShardLevelModifiedBuckets(
         transform: Transform,
         afterKey: Map<String, Any>?,
-        currentShard: ShardNewDocuments,
+        currentShard: ShardWithNewDocuments,
         transformContext: TransformContext
     ): BucketSearchResult {
         try {
@@ -178,10 +181,8 @@ class TransformSearchService(
     ): TransformSearchResult {
         try {
             var pageSize: Int =
-                if (modifiedBuckets.isNullOrEmpty())
-                    transform.pageSize
-                else
-                    modifiedBuckets.size
+                if (modifiedBuckets.isNullOrEmpty()) transform.pageSize
+                else modifiedBuckets.size
 
             var retryAttempt = 0
             val searchStart = Instant.now().epochSecond
@@ -313,13 +314,13 @@ class TransformSearchService(
             transform: Transform,
             afterKey: Map<String, Any>? = null,
             pageSize: Int,
-            currentShard: ShardNewDocuments,
+            currentShard: ShardWithNewDocuments,
             timeoutInSeconds: Long?
         ): SearchRequest {
             val rangeQuery = getSeqNoRangeQuery(currentShard.from, currentShard.to)
             val query = QueryBuilders.boolQuery().filter(rangeQuery).must(transform.dataSelectionQuery)
-            val sources = transform.groups.map { it.toSourceBuilder().missingBucket(true) }
-            val aggregationBuilder = CompositeAggregationBuilder(transform.id, sources)
+            val aggregationBuilder = CompositeAggregationBuilder(transform.id,
+                transform.groups.map { it.toSourceBuilder().missingBucket(true) })
                 .size(pageSize)
                 .apply { afterKey?.let { this.aggregateAfter(it) } }
             return getSearchServiceRequest(currentShard.shardId.indexName, query, aggregationBuilder, timeoutInSeconds)
@@ -337,27 +338,28 @@ class TransformSearchService(
         fun convertResponse(
             transform: Transform,
             searchResponse: SearchResponse,
-            waterMarkDocuments: Boolean = true,
+            markDocument: Boolean = true,
             modifiedBuckets: MutableSet<Map<String, Any>>? = null,
             targetIndexDateFieldMappings: Map<String, Any>,
         ): TransformSearchResult {
             val aggs = searchResponse.aggregations.get(transform.id) as CompositeAggregation
             val buckets = if (modifiedBuckets != null) aggs.buckets.filter { modifiedBuckets.contains(it.key) } else aggs.buckets
+
             val documentsProcessed = buckets.fold(0L) { sum, bucket -> sum + bucket.docCount }
             val pagesProcessed = 1L
             val searchTime = searchResponse.took.millis
             val stats = TransformStats(pagesProcessed, documentsProcessed, 0, 0, searchTime)
-            val afterKey = aggs.afterKey()
+
             val docsToIndex = mutableListOf<IndexRequest>()
-            buckets.forEach { aggregatedBucket ->
-                val id = transform.id + "#" + aggregatedBucket.key.entries.joinToString(":") { bucket -> bucket.value?.toString() ?: ODFE_MAGIC_NULL }
+            buckets.forEach { bucket ->
+                val id = transform.id + "#" + bucket.key.entries.joinToString(":") { keyEntry -> keyEntry.value?.toString() ?: ODFE_MAGIC_NULL }
                 val hashedId = hashToFixedSize(id)
 
-                val document = transform.convertToDoc(aggregatedBucket.docCount, waterMarkDocuments)
-                aggregatedBucket.key.entries.forEach { bucket ->
-                    document[bucket.key] = bucket.value
+                val document = transform.convertToDoc(bucket.docCount, markDocument)
+                bucket.key.entries.forEach { keyEntry ->
+                    document[keyEntry.key] = keyEntry.value
                 }
-                aggregatedBucket.aggregations.forEach { aggregation ->
+                bucket.aggregations.forEach { aggregation ->
                     document[aggregation.name] = getAggregationValue(aggregation, targetIndexDateFieldMappings)
                 }
 
@@ -367,10 +369,12 @@ class TransformSearchService(
                 docsToIndex.add(indexRequest)
             }
 
-            return TransformSearchResult(stats, docsToIndex, afterKey)
+            return TransformSearchResult(stats, docsToIndex, aggs.afterKey())
         }
 
-        // Gathers and returns from the bucket search response the modified buckets from the query, the afterkey, and the search time
+        /**
+         * Gathers and returns from the bucket search response the modified buckets from the query, the afterKey, and the search time
+         */
         private fun convertBucketSearchResponse(
             transform: Transform,
             searchResponse: SearchResponse
@@ -411,14 +415,18 @@ class TransformSearchService(
             }
         }
 
+        /**
+         * Converts indices stats response to map of shardId to global checkpoint.
+         */
         fun convertIndicesStatsResponse(response: IndicesStatsResponse): Map<ShardId, Long> {
             val shardStats = HashMap<ShardId, Long>()
-            val shardsToSearch = response.shards.filter { it.shardRouting.primary() && it.shardRouting.active() }
-            for (shard in shardsToSearch) {
+            val primaryShards = response.shards.filter { it.shardRouting.primary() && it.shardRouting.active() }
+            for (shard in primaryShards) {
                 val shardId = shard.shardRouting.shardId()
-                // Remove uuid as it isn't streamed, so it would break our hashing. We aren't using it anyways
+                // Remove uuid as it isn't streamed, so it would break our hashing. We aren't using it anyways // TODO reading don't understand what hashing this is referring to
                 val shardIDNoUUID = ShardId(Index(shardId.index.name, IndexMetadata.INDEX_UUID_NA_VALUE), shardId.id)
-                // If it is null, we will still run the transform, but without bounding the sequence number
+                // If it is null, we will still run the transform, but without bounding the sequence number // TODO reading w/o bounding meaning seq meaning?
+                // TODO reading why using global checkpoint here?
                 shardStats[shardIDNoUUID] = shard.seqNoStats?.globalCheckpoint ?: SequenceNumbers.UNASSIGNED_SEQ_NO
             }
             return shardStats

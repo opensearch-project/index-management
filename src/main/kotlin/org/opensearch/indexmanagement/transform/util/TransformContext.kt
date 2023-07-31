@@ -14,9 +14,12 @@ class TransformContext(
 ) {
     private lateinit var targetDateFieldMappings: Map<String, Any>
 
+    /**
+     * A null output means the request should not be performed
+     */
     fun getMaxRequestTimeoutInSeconds(): Long? {
         // Lock timeout must be greater than LOCK_BUFFER
-        var maxRequestTimeout = transformLockManager.lockExpirationInSeconds()?.minus(LOCK_BUFFER_SECONDS)
+        val maxRequestTimeout = transformLockManager.lockExpirationInSeconds()?.minus(LOCK_BUFFER_SECONDS)
         // Do not set invalid timeout
         if (maxRequestTimeout != null && maxRequestTimeout < 0) {
             return null

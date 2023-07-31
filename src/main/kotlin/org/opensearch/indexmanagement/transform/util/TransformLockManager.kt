@@ -36,6 +36,7 @@ class TransformLockManager(
         protected set
 
     fun lockExpirationInSeconds() = lock?.let { it.lockTime.epochSecond + it.lockDurationSeconds - Instant.now().epochSecond }
+
     /**
      * Util method to attempt to get the lock on the requested scheduled job using the backoff policy.
      * If failed to acquire the lock using backoff policy will return a null lock otherwise returns acquired lock.
@@ -102,7 +103,8 @@ class TransformLockManager(
      */
     suspend fun renewLockForLongSearch(timeSpentOnSearch: Long) {
         // If the request was longer than 10 minutes and lock expires in less than 20 minutes, renew the lock just in case
-        if (timeSpentOnSearch > TIMEOUT_UPPER_BOUND_IN_SECONDS && lockExpirationInSeconds() ?: 0 < MAXIMUM_LOCK_EXPIRATION_IN_SECONDS
+        if (timeSpentOnSearch > TIMEOUT_UPPER_BOUND_IN_SECONDS && (lockExpirationInSeconds()
+                ?: 0) < MAXIMUM_LOCK_EXPIRATION_IN_SECONDS
         ) {
             this.renewLockForScheduledJob()
         }

@@ -95,7 +95,7 @@ data class TransformMetadata(
         out.writeBoolean(shardIDToGlobalCheckpoint != null)
         shardIDToGlobalCheckpoint?.let { out.writeMap(it, { writer, k -> k.writeTo(writer) }, { writer, v -> writer.writeLong(v) }) }
         out.writeBoolean(continuousStats != null)
-        continuousStats?.let { it.writeTo(out) }
+        continuousStats?.writeTo(out)
     }
 
     fun mergeStats(stats: TransformStats): TransformMetadata {

@@ -117,7 +117,7 @@ class TransportPreviewTransformAction @Inject constructor(
         try {
             val targetIndexDateFieldMappings = TargetIndexMappingService.getTargetMappingsForDates(transform)
             val transformSearchResult = TransformSearchService.convertResponse(
-                transform = transform, searchResponse = response, waterMarkDocuments = false,
+                transform = transform, searchResponse = response, markDocument = false,
                 targetIndexDateFieldMappings = targetIndexDateFieldMappings
             )
             val formattedResult = transformSearchResult.docsToIndex.map {
