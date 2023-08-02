@@ -1,5 +1,5 @@
 ### Create these mappings first if you want to have the date mapping correctly created for datetime fields
-PUT https://localhost:9200/nyc-taxi-data
+PUT localhost:9200/nyc-taxi-data
 Authorization: Basic admin admin
 Content-Type: application/json
 
@@ -10,16 +10,16 @@ Content-Type: application/json
 }
 
 ###
-POST https://localhost:9200/nyc-taxi-data/_bulk?pretty
+POST localhost:9200/nyc-taxi-data/_bulk?pretty
 Authorization: Basic admin admin
 Content-Type: application/x-ndjson
 
 < ../../src/test/resources/data/nyc_5000.ndjson
 
 ###
-DELETE https://localhost:9200/nyc-taxi-data/
+DELETE localhost:9200/nyc-taxi-data/
 Authorization: Basic admin admin
 
 ###
-GET https://localhost:9200/nyc-taxi-data/_mapping
+GET localhost:9200/nyc-taxi-data/_mapping
 Authorization: Basic admin admin
