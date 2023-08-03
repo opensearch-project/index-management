@@ -14,7 +14,7 @@ import org.opensearch.action.search.SearchPhaseExecutionException
 import org.opensearch.action.search.SearchResponse
 import org.opensearch.client.Client
 import org.opensearch.cluster.service.ClusterService
-import org.opensearch.common.breaker.CircuitBreakingException
+import org.opensearch.core.common.breaker.CircuitBreakingException
 import org.opensearch.common.settings.Settings
 import org.opensearch.indexmanagement.opensearchapi.retry
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil

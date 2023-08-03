@@ -14,9 +14,9 @@ import org.opensearch.client.Client
 import org.opensearch.cluster.metadata.IndexNameExpressionResolver
 import org.opensearch.cluster.node.DiscoveryNodes
 import org.opensearch.cluster.service.ClusterService
-import org.opensearch.common.component.Lifecycle
-import org.opensearch.common.component.LifecycleComponent
-import org.opensearch.common.component.LifecycleListener
+import org.opensearch.common.lifecycle.Lifecycle
+import org.opensearch.common.lifecycle.LifecycleComponent
+import org.opensearch.common.lifecycle.LifecycleListener
 import org.opensearch.common.inject.Inject
 import org.opensearch.core.common.io.stream.NamedWriteableRegistry
 import org.opensearch.common.settings.ClusterSettings
