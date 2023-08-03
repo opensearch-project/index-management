@@ -15,7 +15,7 @@ import org.opensearch.action.support.HandledTransportAction
 import org.opensearch.client.node.NodeClient
 import org.opensearch.common.inject.Inject
 import org.opensearch.common.xcontent.LoggingDeprecationHandler
-import org.opensearch.common.xcontent.XContentFactory
+import org.opensearch.common.xcontent.XContentHelper
 import org.opensearch.common.xcontent.XContentType
 import org.opensearch.core.xcontent.NamedXContentRegistry
 import org.opensearch.commons.ConfigConstants
@@ -100,8 +100,10 @@ class TransportGetLRONConfigAction @Inject constructor(
                     override fun onResponse(response: SearchResponse) {
                         val totalNumber = response.hits.totalHits?.value ?: 0
                         val lronConfigResponses = response.hits.hits.map {
-                            val xcp = XContentFactory.xContent(XContentType.JSON)
-                                .createParser(xContentRegistry, LoggingDeprecationHandler.INSTANCE, it.sourceAsString)
+                            val xcp = XContentHelper.createParser(
+                                xContentRegistry,
+                                LoggingDeprecationHandler.INSTANCE, it.sourceRef, XContentType.JSON
+                            )
                             LRONConfigResponse(
                                 id = it.id,
                                 lronConfig = xcp.parseWithType(id = it.id, parse = LRONConfig.Companion::parse)

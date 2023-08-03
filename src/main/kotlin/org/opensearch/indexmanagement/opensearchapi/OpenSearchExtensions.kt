@@ -28,7 +28,6 @@ import org.opensearch.common.settings.Settings
 import org.opensearch.common.unit.TimeValue
 import org.opensearch.common.util.concurrent.ThreadContext
 import org.opensearch.common.xcontent.LoggingDeprecationHandler
-import org.opensearch.common.xcontent.XContentFactory
 import org.opensearch.common.xcontent.XContentHelper
 import org.opensearch.core.xcontent.XContentParserUtils
 import org.opensearch.core.xcontent.XContentParserUtils.ensureExpectedToken
@@ -129,8 +128,7 @@ fun <T> parseFromSearchResponse(
         val id = it.id
         val seqNo = it.seqNo
         val primaryTerm = it.primaryTerm
-        val xcp = XContentFactory.xContent(XContentType.JSON)
-            .createParser(xContentRegistry, LoggingDeprecationHandler.INSTANCE, it.sourceAsString)
+        val xcp = XContentHelper.createParser(xContentRegistry, LoggingDeprecationHandler.INSTANCE, it.sourceRef, XContentType.JSON)
         xcp.parseWithType(id, seqNo, primaryTerm, parse)
     }
 }

@@ -21,7 +21,7 @@ import org.opensearch.action.support.WriteRequest
 import org.opensearch.action.update.UpdateRequest
 // import org.opensearch.alerting.destination.message.BaseMessage
 import org.opensearch.client.Client
-import org.opensearch.common.unit.ByteSizeValue
+import org.opensearch.core.common.unit.ByteSizeValue
 import org.opensearch.common.unit.TimeValue
 import org.opensearch.common.xcontent.LoggingDeprecationHandler
 import org.opensearch.core.xcontent.NamedXContentRegistry
