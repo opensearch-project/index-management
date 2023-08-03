@@ -10,7 +10,7 @@ import org.opensearch.core.common.io.stream.InputStreamStreamInput
 import org.opensearch.core.common.io.stream.OutputStreamStreamOutput
 import org.opensearch.common.settings.ClusterSettings
 import org.opensearch.common.settings.Settings
-import org.opensearch.common.unit.ByteSizeValue
+import org.opensearch.core.common.unit.ByteSizeValue
 import org.opensearch.common.unit.TimeValue
 import org.opensearch.common.xcontent.LoggingDeprecationHandler
 import org.opensearch.common.xcontent.XContentFactory
