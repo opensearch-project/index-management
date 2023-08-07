@@ -7,8 +7,8 @@ package org.opensearch.indexmanagement.snapshotmanagement.api.transport.get
 
 import org.opensearch.action.ActionRequest
 import org.opensearch.action.ActionRequestValidationException
-import org.opensearch.common.io.stream.StreamInput
-import org.opensearch.common.io.stream.StreamOutput
+import org.opensearch.core.common.io.stream.StreamInput
+import org.opensearch.core.common.io.stream.StreamOutput
 
 class GetSMPolicyRequest(
     val policyID: String

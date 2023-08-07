@@ -31,7 +31,7 @@ import org.opensearch.indexmanagement.util.releaseLockForScheduledJob
 import org.opensearch.jobscheduler.spi.JobExecutionContext
 import org.opensearch.jobscheduler.spi.ScheduledJobParameter
 import org.opensearch.jobscheduler.spi.ScheduledJobRunner
-import org.opensearch.rest.RestStatus
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.threadpool.ThreadPool
 import java.time.Instant.now
 

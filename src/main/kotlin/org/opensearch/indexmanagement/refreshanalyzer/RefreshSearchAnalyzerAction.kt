@@ -6,7 +6,7 @@
 package org.opensearch.indexmanagement.refreshanalyzer
 
 import org.opensearch.action.ActionType
-import org.opensearch.common.io.stream.Writeable
+import org.opensearch.core.common.io.stream.Writeable
 
 class RefreshSearchAnalyzerAction : ActionType<RefreshSearchAnalyzerResponse>(NAME, reader) {
     companion object {

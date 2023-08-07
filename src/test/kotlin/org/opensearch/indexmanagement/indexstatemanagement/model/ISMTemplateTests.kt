@@ -5,8 +5,8 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.model
 
-import org.opensearch.common.io.stream.InputStreamStreamInput
-import org.opensearch.common.io.stream.OutputStreamStreamOutput
+import org.opensearch.core.common.io.stream.InputStreamStreamInput
+import org.opensearch.core.common.io.stream.OutputStreamStreamOutput
 import org.opensearch.indexmanagement.indexstatemanagement.randomISMTemplate
 import org.opensearch.test.OpenSearchTestCase
 import java.io.ByteArrayInputStream

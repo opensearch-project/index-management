@@ -7,7 +7,7 @@ package org.opensearch.indexmanagement.indexstatemanagement.transport.action.upd
 
 import org.opensearch.action.ActionType
 import org.opensearch.action.support.master.AcknowledgedResponse
-import org.opensearch.common.io.stream.Writeable
+import org.opensearch.core.common.io.stream.Writeable
 
 class UpdateManagedIndexMetaDataAction : ActionType<AcknowledgedResponse>(NAME, reader) {
 

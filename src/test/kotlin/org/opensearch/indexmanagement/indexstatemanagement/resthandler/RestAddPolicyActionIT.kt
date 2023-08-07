@@ -20,7 +20,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.util.UPDATED_INDICES
 import org.opensearch.indexmanagement.makeRequest
 import org.opensearch.indexmanagement.waitFor
 import org.opensearch.rest.RestRequest.Method.POST
-import org.opensearch.rest.RestStatus
+import org.opensearch.core.rest.RestStatus
 
 class RestAddPolicyActionIT : IndexStateManagementRestTestCase() {
 

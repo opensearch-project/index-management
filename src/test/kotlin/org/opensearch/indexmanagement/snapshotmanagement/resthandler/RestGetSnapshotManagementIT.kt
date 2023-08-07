@@ -16,7 +16,7 @@ import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy.Companion.ENABLED_TIME_FIELD
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy.Companion.SM_TYPE
 import org.opensearch.indexmanagement.snapshotmanagement.randomSMPolicy
-import org.opensearch.rest.RestStatus
+import org.opensearch.core.rest.RestStatus
 
 class RestGetSnapshotManagementIT : SnapshotManagementRestTestCase() {
 

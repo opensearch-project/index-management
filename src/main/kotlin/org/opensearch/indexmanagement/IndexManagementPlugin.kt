@@ -18,7 +18,7 @@ import org.opensearch.common.component.Lifecycle
 import org.opensearch.common.component.LifecycleComponent
 import org.opensearch.common.component.LifecycleListener
 import org.opensearch.common.inject.Inject
-import org.opensearch.common.io.stream.NamedWriteableRegistry
+import org.opensearch.core.common.io.stream.NamedWriteableRegistry
 import org.opensearch.common.settings.ClusterSettings
 import org.opensearch.common.settings.IndexScopedSettings
 import org.opensearch.common.settings.Setting
@@ -27,7 +27,7 @@ import org.opensearch.common.settings.SettingsFilter
 import org.opensearch.common.util.concurrent.ThreadContext
 import org.opensearch.core.xcontent.NamedXContentRegistry
 import org.opensearch.core.xcontent.XContentParser.Token
-import org.opensearch.common.xcontent.XContentParserUtils.ensureExpectedToken
+import org.opensearch.core.xcontent.XContentParserUtils.ensureExpectedToken
 import org.opensearch.env.Environment
 import org.opensearch.env.NodeEnvironment
 import org.opensearch.indexmanagement.controlcenter.notification.ControlCenterIndices

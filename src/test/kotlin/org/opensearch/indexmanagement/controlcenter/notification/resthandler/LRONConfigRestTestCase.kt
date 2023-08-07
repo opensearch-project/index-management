@@ -19,7 +19,7 @@ import org.opensearch.indexmanagement.controlcenter.notification.initNodeIdsInRe
 import org.opensearch.indexmanagement.controlcenter.notification.model.LRONConfig
 import org.opensearch.indexmanagement.controlcenter.notification.toJsonString
 import org.opensearch.indexmanagement.makeRequest
-import org.opensearch.rest.RestStatus
+import org.opensearch.core.rest.RestStatus
 
 abstract class LRONConfigRestTestCase : IndexManagementRestTestCase() {
     @Before
