@@ -17,7 +17,7 @@ import org.opensearch.action.get.GetResponse
 import org.opensearch.action.index.IndexRequest
 import org.opensearch.action.index.IndexResponse
 import org.opensearch.client.Client
-import org.opensearch.common.Strings
+import org.opensearch.core.common.Strings
 import org.opensearch.common.time.DateFormatter
 import org.opensearch.common.unit.TimeValue
 import org.opensearch.common.xcontent.LoggingDeprecationHandler
