@@ -5,7 +5,6 @@
 
 package org.opensearch.indexmanagement.spi.indexstatemanagement.model
 
-import org.opensearch.common.Strings
 import org.opensearch.core.common.io.stream.StreamInput
 import org.opensearch.core.common.io.stream.StreamOutput
 import org.opensearch.core.common.io.stream.Writeable
@@ -57,7 +56,7 @@ data class ManagedIndexMetaData(
         if (actionMetaData != null) resultMap[ActionMetaData.ACTION] = actionMetaData.getMapValueString()
         if (stepMetaData != null) resultMap[StepMetaData.STEP] = stepMetaData.getMapValueString()
         if (policyRetryInfo != null) resultMap[PolicyRetryInfoMetaData.RETRY_INFO] = policyRetryInfo.getMapValueString()
-        if (info != null) resultMap[INFO] = Strings.toString(XContentFactory.jsonBuilder().map(info))
+        if (info != null) resultMap[INFO] = XContentFactory.jsonBuilder().map(info).toString()
 
         return resultMap
     }
