@@ -20,24 +20,23 @@ import org.opensearch.action.admin.indices.alias.Alias
 import org.opensearch.action.bulk.BackoffPolicy
 import org.opensearch.action.get.GetResponse
 import org.opensearch.action.search.SearchResponse
-import org.opensearch.action.support.DefaultShardOperationFailedException
 import org.opensearch.client.OpenSearchClient
-import org.opensearch.common.bytes.BytesReference
-import org.opensearch.common.io.stream.StreamInput
-import org.opensearch.common.io.stream.StreamOutput
-import org.opensearch.common.io.stream.Writeable
+import org.opensearch.core.common.io.stream.StreamInput
+import org.opensearch.core.common.io.stream.StreamOutput
+import org.opensearch.core.common.io.stream.Writeable
 import org.opensearch.common.settings.Settings
 import org.opensearch.common.unit.TimeValue
 import org.opensearch.common.util.concurrent.ThreadContext
 import org.opensearch.common.xcontent.LoggingDeprecationHandler
-import org.opensearch.common.xcontent.XContentFactory
 import org.opensearch.common.xcontent.XContentHelper
-import org.opensearch.common.xcontent.XContentParserUtils
-import org.opensearch.common.xcontent.XContentParserUtils.ensureExpectedToken
+import org.opensearch.core.xcontent.XContentParserUtils
+import org.opensearch.core.xcontent.XContentParserUtils.ensureExpectedToken
 import org.opensearch.common.xcontent.XContentType
 import org.opensearch.commons.InjectSecurity
 import org.opensearch.commons.authuser.User
 import org.opensearch.commons.notifications.NotificationsPluginInterface
+import org.opensearch.core.action.support.DefaultShardOperationFailedException
+import org.opensearch.core.common.bytes.BytesReference
 import org.opensearch.core.concurrency.OpenSearchRejectedExecutionException
 import org.opensearch.core.xcontent.MediaType
 import org.opensearch.core.xcontent.NamedXContentRegistry
@@ -54,7 +53,7 @@ import org.opensearch.indexmanagement.util.NO_ID
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.DEFAULT_INJECT_ROLES
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.INTERNAL_REQUEST
 import org.opensearch.jobscheduler.spi.utils.LockService
-import org.opensearch.rest.RestStatus
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.transport.RemoteTransportException
 import java.io.IOException
 import java.time.Instant
@@ -74,7 +73,7 @@ fun contentParser(bytesReference: BytesReference): XContentParser {
 
 /** Convert an object to maps and lists representation */
 fun ToXContent.convertToMap(): Map<String, Any> {
-    val bytesReference = XContentHelper.toXContent(this, XContentType.JSON, false)
+    val bytesReference = XContentHelper.toXContent(this, MediaType.fromMediaType(XContentType.JSON.mediaType()), ToXContent.EMPTY_PARAMS, false)
     return XContentHelper.convertToMap(bytesReference, false, XContentType.JSON as (MediaType)).v2()
 }
 
@@ -129,8 +128,7 @@ fun <T> parseFromSearchResponse(
         val id = it.id
         val seqNo = it.seqNo
         val primaryTerm = it.primaryTerm
-        val xcp = XContentFactory.xContent(XContentType.JSON)
-            .createParser(xContentRegistry, LoggingDeprecationHandler.INSTANCE, it.sourceAsString)
+        val xcp = XContentHelper.createParser(xContentRegistry, LoggingDeprecationHandler.INSTANCE, it.sourceRef, XContentType.JSON)
         xcp.parseWithType(id, seqNo, primaryTerm, parse)
     }
 }

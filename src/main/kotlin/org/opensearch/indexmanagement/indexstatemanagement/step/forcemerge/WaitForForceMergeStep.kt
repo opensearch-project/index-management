@@ -16,7 +16,7 @@ import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ActionPrope
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepContext
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepMetaData
-import org.opensearch.rest.RestStatus
+import org.opensearch.core.rest.RestStatus
 import java.time.Duration
 import java.time.Instant
 

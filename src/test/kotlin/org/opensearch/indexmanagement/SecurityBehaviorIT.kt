@@ -16,7 +16,7 @@ import org.junit.Before
 import org.opensearch.client.RestClient
 import org.opensearch.commons.rest.SecureRestClientBuilder
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings
-import org.opensearch.rest.RestStatus
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.test.junit.annotations.TestLogging
 
 @TestLogging("level:DEBUG", reason = "Debug for tests.")

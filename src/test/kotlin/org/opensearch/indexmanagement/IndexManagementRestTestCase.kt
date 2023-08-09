@@ -17,14 +17,15 @@ import org.opensearch.client.RestClient
 import org.opensearch.client.RequestOptions
 import org.opensearch.client.WarningsHandler
 import org.opensearch.client.ResponseException
-import org.opensearch.common.Strings
+import org.opensearch.core.common.Strings
 import org.opensearch.common.io.PathUtils
 import org.opensearch.common.settings.Settings
 import org.opensearch.core.xcontent.DeprecationHandler
 import org.opensearch.core.xcontent.NamedXContentRegistry
 import org.opensearch.common.xcontent.XContentType
 import org.opensearch.indexmanagement.indexstatemanagement.util.INDEX_HIDDEN
-import org.opensearch.rest.RestStatus
+import org.opensearch.core.rest.RestStatus
+import org.opensearch.core.xcontent.MediaType
 import java.io.IOException
 import java.nio.file.Files
 import java.util.*
@@ -194,7 +195,7 @@ abstract class IndexManagementRestTestCase : ODFERestTestCase() {
             }
 
             val response = client.performRequest(Request("GET", "/_cat/indices?format=json&expand_wildcards=all"))
-            val xContentType = XContentType.fromMediaType(response.entity.contentType.value)
+            val xContentType = MediaType.fromMediaType(response.entity.contentType.value)
             xContentType.xContent().createParser(
                 NamedXContentRegistry.EMPTY, DeprecationHandler.THROW_UNSUPPORTED_OPERATION,
                 response.entity.content
@@ -263,7 +264,7 @@ abstract class IndexManagementRestTestCase : ODFERestTestCase() {
         protected fun waitForThreadPools(client: RestClient) {
             val response = client.performRequest(Request("GET", "/_cat/thread_pool?format=json"))
 
-            val xContentType = XContentType.fromMediaType(response.entity.contentType.value)
+            val xContentType = MediaType.fromMediaType(response.entity.contentType.value)
             xContentType.xContent().createParser(
                 NamedXContentRegistry.EMPTY, DeprecationHandler.THROW_UNSUPPORTED_OPERATION,
                 response.entity.content

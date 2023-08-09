@@ -22,14 +22,14 @@ import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.settings.Settings
 import org.opensearch.common.unit.TimeValue
 import org.opensearch.common.xcontent.XContentType
-import org.opensearch.index.Index
+import org.opensearch.core.index.Index
 import org.opensearch.index.query.BoolQueryBuilder
 import org.opensearch.index.query.ExistsQueryBuilder
 import org.opensearch.index.query.QueryBuilder
 import org.opensearch.index.query.QueryBuilders
 import org.opensearch.index.query.RangeQueryBuilder
 import org.opensearch.index.seqno.SequenceNumbers
-import org.opensearch.index.shard.ShardId
+import org.opensearch.core.index.shard.ShardId
 import org.opensearch.indexmanagement.common.model.dimension.Dimension
 import org.opensearch.indexmanagement.opensearchapi.retry
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
@@ -46,7 +46,7 @@ import org.opensearch.indexmanagement.transform.util.TransformContext
 import org.opensearch.indexmanagement.util.IndexUtils.Companion.LUCENE_MAX_CLAUSES
 import org.opensearch.indexmanagement.util.IndexUtils.Companion.ODFE_MAGIC_NULL
 import org.opensearch.indexmanagement.util.IndexUtils.Companion.hashToFixedSize
-import org.opensearch.rest.RestStatus
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.search.aggregations.Aggregation
 import org.opensearch.search.aggregations.bucket.composite.CompositeAggregation
 import org.opensearch.search.aggregations.bucket.composite.CompositeAggregationBuilder

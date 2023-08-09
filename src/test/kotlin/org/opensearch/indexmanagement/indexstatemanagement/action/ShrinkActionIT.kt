@@ -15,7 +15,7 @@ import org.opensearch.cluster.routing.allocation.DiskThresholdSettings.CLUSTER_R
 import org.opensearch.cluster.routing.allocation.DiskThresholdSettings.CLUSTER_ROUTING_ALLOCATION_HIGH_DISK_WATERMARK_SETTING
 import org.opensearch.cluster.routing.allocation.DiskThresholdSettings.CLUSTER_ROUTING_ALLOCATION_LOW_DISK_WATERMARK_SETTING
 import org.opensearch.common.settings.Settings
-import org.opensearch.common.unit.ByteSizeValue
+import org.opensearch.core.common.unit.ByteSizeValue
 import org.opensearch.index.query.QueryBuilders
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
 import org.opensearch.indexmanagement.indexstatemanagement.IndexStateManagementRestTestCase
@@ -29,7 +29,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.step.shrink.WaitForSh
 import org.opensearch.indexmanagement.makeRequest
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
 import org.opensearch.indexmanagement.waitFor
-import org.opensearch.rest.RestStatus
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.script.Script
 import org.opensearch.script.ScriptType
 import java.time.Instant

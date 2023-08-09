@@ -14,7 +14,7 @@ import org.apache.logging.log4j.LogManager
 import org.opensearch.cluster.ClusterChangedEvent
 import org.opensearch.cluster.ClusterStateListener
 import org.opensearch.cluster.service.ClusterService
-import org.opensearch.common.component.LifecycleListener
+import org.opensearch.common.lifecycle.LifecycleListener
 import org.opensearch.common.settings.Settings
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings
 import org.opensearch.indexmanagement.util.OpenForTesting

@@ -8,7 +8,7 @@ package org.opensearch.indexmanagement.rollup.action
 import org.opensearch.action.DocWriteRequest
 import org.opensearch.action.support.WriteRequest
 import org.opensearch.common.io.stream.BytesStreamOutput
-import org.opensearch.common.io.stream.StreamInput
+import org.opensearch.core.common.io.stream.StreamInput
 import org.opensearch.index.seqno.SequenceNumbers
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
 import org.opensearch.indexmanagement.rollup.action.delete.DeleteRollupRequest

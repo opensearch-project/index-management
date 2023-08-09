@@ -11,7 +11,7 @@ import org.opensearch.action.admin.cluster.node.stats.NodeStats
 import org.opensearch.cluster.routing.allocation.DiskThresholdSettings
 import org.opensearch.common.settings.ClusterSettings
 import org.opensearch.common.settings.Settings
-import org.opensearch.common.unit.ByteSizeValue
+import org.opensearch.core.common.unit.ByteSizeValue
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
 import org.opensearch.indexmanagement.indexstatemanagement.randomByteSizeValue
 import org.opensearch.indexmanagement.randomInstant

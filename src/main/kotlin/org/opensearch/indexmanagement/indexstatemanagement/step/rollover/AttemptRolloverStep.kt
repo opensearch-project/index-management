@@ -11,7 +11,7 @@ import org.opensearch.action.admin.indices.rollover.RolloverRequest
 import org.opensearch.action.admin.indices.rollover.RolloverResponse
 import org.opensearch.action.admin.indices.stats.IndicesStatsRequest
 import org.opensearch.action.admin.indices.stats.IndicesStatsResponse
-import org.opensearch.common.unit.ByteSizeValue
+import org.opensearch.core.common.unit.ByteSizeValue
 import org.opensearch.common.unit.TimeValue
 import org.opensearch.indexmanagement.indexstatemanagement.action.RolloverAction
 import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.getRolloverAlias
@@ -23,7 +23,7 @@ import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepContext
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepMetaData
-import org.opensearch.rest.RestStatus
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.transport.RemoteTransportException
 import java.time.Instant
 

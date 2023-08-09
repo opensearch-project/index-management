@@ -18,9 +18,9 @@ import org.opensearch.action.get.GetResponse
 import org.opensearch.action.index.IndexResponse
 import org.opensearch.action.search.SearchResponse
 import org.opensearch.client.Client
-import org.opensearch.common.bytes.BytesArray
-import org.opensearch.common.bytes.BytesReference
+import org.opensearch.core.common.bytes.BytesReference
 import org.opensearch.common.document.DocumentField
+import org.opensearch.core.common.bytes.BytesArray
 import org.opensearch.core.xcontent.NamedXContentRegistry
 import org.opensearch.core.xcontent.ToXContent
 import org.opensearch.indexmanagement.common.model.dimension.DateHistogram

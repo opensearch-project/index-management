@@ -26,7 +26,7 @@ import org.opensearch.client.Client
 import org.opensearch.cluster.metadata.Template
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.io.stream.BytesStreamOutput
-import org.opensearch.common.io.stream.StreamInput
+import org.opensearch.core.common.io.stream.StreamInput
 import org.opensearch.common.settings.Settings
 import org.opensearch.common.unit.TimeValue
 import org.opensearch.common.xcontent.LoggingDeprecationHandler
@@ -43,7 +43,7 @@ import org.opensearch.indexmanagement.opensearchapi.parseWithType
 import org.opensearch.indexmanagement.opensearchapi.retry
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.util.OpenForTesting
-import org.opensearch.rest.RestStatus
+import org.opensearch.core.rest.RestStatus
 import java.time.Instant
 
 @OpenForTesting

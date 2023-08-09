@@ -8,7 +8,7 @@ package org.opensearch.indexmanagement.transform.opensearchapi
 import org.junit.Assert
 import org.opensearch.OpenSearchException
 import org.opensearch.indexmanagement.util.IndexManagementException
-import org.opensearch.rest.RestStatus
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.tasks.TaskCancelledException
 import org.opensearch.test.OpenSearchTestCase
 

@@ -10,8 +10,8 @@ import org.apache.http.entity.StringEntity
 import org.junit.Assert
 import org.opensearch.cluster.metadata.DataStream
 import org.opensearch.common.settings.Settings
-import org.opensearch.common.unit.ByteSizeUnit
-import org.opensearch.common.unit.ByteSizeValue
+import org.opensearch.core.common.unit.ByteSizeUnit
+import org.opensearch.core.common.unit.ByteSizeValue
 import org.opensearch.common.unit.TimeValue
 import org.opensearch.indexmanagement.indexstatemanagement.IndexStateManagementRestTestCase
 import org.opensearch.indexmanagement.indexstatemanagement.model.ISMTemplate
@@ -26,7 +26,7 @@ import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ActionRetry
 import org.opensearch.indexmanagement.waitFor
 import org.opensearch.rest.RestRequest
-import org.opensearch.rest.RestStatus
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.test.OpenSearchTestCase
 import java.time.Instant
 import java.time.temporal.ChronoUnit

@@ -7,7 +7,7 @@ package org.opensearch.indexmanagement.indexstatemanagement
 
 import org.apache.lucene.util.automaton.Operations
 import org.opensearch.OpenSearchException
-import org.opensearch.common.Strings
+import org.opensearch.core.common.Strings
 import org.opensearch.common.ValidationException
 import org.opensearch.common.regex.Regex
 import org.opensearch.indexmanagement.indexstatemanagement.model.ISMTemplate

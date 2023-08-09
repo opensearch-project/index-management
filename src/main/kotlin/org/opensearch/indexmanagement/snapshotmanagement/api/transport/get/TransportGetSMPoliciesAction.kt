@@ -32,7 +32,7 @@ import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy
 import org.opensearch.indexmanagement.snapshotmanagement.settings.SnapshotManagementSettings.Companion.FILTER_BY_BACKEND_ROLES
 import org.opensearch.indexmanagement.snapshotmanagement.util.SM_POLICY_NAME_KEYWORD
 import org.opensearch.indexmanagement.util.SecurityUtils
-import org.opensearch.rest.RestStatus
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.search.builder.SearchSourceBuilder
 import org.opensearch.transport.TransportService
 

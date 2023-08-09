@@ -5,11 +5,11 @@
 
 package org.opensearch.indexmanagement.rollup.model.metric
 
-import org.opensearch.common.io.stream.Writeable
+import org.opensearch.core.common.io.stream.Writeable
 import org.opensearch.core.xcontent.ToXContentObject
 import org.opensearch.core.xcontent.XContentParser
 import org.opensearch.core.xcontent.XContentParser.Token
-import org.opensearch.common.xcontent.XContentParserUtils.ensureExpectedToken
+import org.opensearch.core.xcontent.XContentParserUtils.ensureExpectedToken
 import java.io.IOException
 
 abstract class Metric(val type: Type) : ToXContentObject, Writeable {

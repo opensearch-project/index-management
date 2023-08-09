@@ -10,7 +10,7 @@ import org.opensearch.common.settings.Settings
 import org.opensearch.indexmanagement.makeRequest
 import org.opensearch.indexmanagement.rollup.RollupRestTestCase
 import org.opensearch.indexmanagement.rollup.settings.RollupSettings
-import org.opensearch.rest.RestStatus
+import org.opensearch.core.rest.RestStatus
 
 // TODO: Add assertions on fields
 @Suppress("UNCHECKED_CAST")
