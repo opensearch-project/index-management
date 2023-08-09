@@ -5,9 +5,7 @@
 
 package org.opensearch.indexmanagement.rollup.interceptor
 
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.*
 import org.apache.logging.log4j.LogManager
 import org.opensearch.action.search.SearchRequest
 import org.opensearch.action.search.SearchResponse
@@ -61,14 +59,17 @@ import org.opensearch.transport.TransportInterceptor
 import org.opensearch.transport.TransportRequest
 import org.opensearch.transport.TransportRequestHandler
 import java.util.Date
+import java.util.concurrent.CountDownLatch
 
 private val logger = LogManager.getLogger(RollupInterceptor::class.java)
+//private val scope: CoroutineScope = CoroutineScope(Dispatchers.IO)
 class RollupInterceptor(
     val clusterService: ClusterService,
     val settings: Settings,
     val indexNameExpressionResolver: IndexNameExpressionResolver,
     val client: Client
-) : TransportInterceptor {
+) : TransportInterceptor,
+    CoroutineScope by CoroutineScope(SupervisorJob() + Dispatchers.Default + CoroutineName("RollupInterceptor")){
 
     private val logger = LogManager.getLogger(javaClass)
 
@@ -93,7 +94,7 @@ class RollupInterceptor(
     /*
     Returns tuple (isOverlap, min(Live Data Date)) to filter out overlapping data in rollup query
      */
-    suspend fun isOverlap(rollupIndex: String, liveIndex: String, job: Rollup): Pair<Boolean, Date> {
+    fun isOverlap(rollupIndex: String, liveIndex: String, job: Rollup): Pair<Boolean, Date> {
         /*
         1. Get the date_histogram source_field & target field from the rollup job
         2. Query rollup index to find the maxRolledDate
@@ -122,19 +123,19 @@ class RollupInterceptor(
             }
         }
          */
-        val queryJson ="{\"size\":0,\"aggs\":{\"minDate\":{\"min\":{\"field\":$dateSourceField}}}}"
-        val searchSourceBuilder = SearchSourceBuilder()
-            .query(QueryBuilders.wrapperQuery(queryJson))
-
-        val minLiveDateRequest = SearchRequest()
-            .source(searchSourceBuilder)
-            .indices(liveIndex)
-
-        val minLiveDateResponse: SearchResponse = client.suspendUntil { search(minLiveDateRequest, it) }
-        logger.error("ronsax: aggs are ${minLiveDateResponse.aggregations}")
-        var minLiveDate = Date()
-        var maxRolledDate = Date()
-        logger.error("ronsax in helper $rollupIndex $dateTargetField $minLiveDate $maxRolledDate")
+//        val queryJson ="{\"size\":0,\"aggs\":{\"minDate\":{\"min\":{\"field\":$dateSourceField}}}}" //TODO check if this query is formatted correctly
+//        val searchSourceBuilder = SearchSourceBuilder()
+//            .query(QueryBuilders.wrapperQuery(queryJson))
+//
+//        val minLiveDateRequest = SearchRequest()
+//            .source(searchSourceBuilder)
+//            .indices(liveIndex)
+//
+//        val minLiveDateResponse: SearchResponse = client.search(minLiveDateRequest).get()
+////        logger.error("ronsax: aggs are ${minLiveDateResponse.aggregations}")
+//        var minLiveDate = Date()
+//        var maxRolledDate = Date()
+        logger.error("ronsax in helper $rollupIndex $dateTargetField $liveIndex $dateSourceField")
         return Pair(false, Date())
     }
 
@@ -145,54 +146,60 @@ class RollupInterceptor(
         forceExecution: Boolean,
         actualHandler: TransportRequestHandler<T>
     ): TransportRequestHandler<T> {
-        return object : TransportRequestHandler<T> {
-            override fun messageReceived(request: T, channel: TransportChannel, task: Task) {
-                if (searchEnabled && request is ShardSearchRequest && isRollupIndex(request.shardId().indexName, clusterService.state())) {
-                    val index = request.shardId().indexName
+        return TransportRequestHandler<T> { request, channel, task ->
+            if (searchEnabled && request is ShardSearchRequest && isRollupIndex(request.shardId().indexName, clusterService.state())) {
+                val index = request.shardId().indexName
 
-//                        if (request.source().size() != 0) {
-//                            throw IllegalArgumentException("Rollup search must have size explicitly set to 0, but found ${request.source().size()}")
-//                        }
-                    val indices = request.indices().map { it.toString() }.toTypedArray()
-                    val concreteIndices = indexNameExpressionResolver
-                        .concreteIndexNames(clusterService.state(), request.indicesOptions(), *indices)
-                    val concreteRolledIndexNames = mutableListOf<String>()
-                    var liveIndexTest = ""
-                    var rollupIndexTest = ""
-                    for (indexName in concreteIndices) {
-                        if (isRollupIndex(indexName, clusterService.state())) {
-                            concreteRolledIndexNames.add(indexName)
-                            liveIndexTest = indexName
-                        }
-                        else {
-                            rollupIndexTest = indexName
-                        }
-                    }
-                    val filteredConcreteIndices = concreteRolledIndexNames.toTypedArray()
-                    val rollupJob = clusterService.state().metadata.index(index).getRollupJobs()?.get(0)
-                        ?: throw IllegalArgumentException("No rollup job associated with target_index")
-                    CoroutineScope(Dispatchers.IO).launch {
-                        val (isOverlap, minLiveDataDate) = isOverlap(rollupIndexTest, liveIndexTest, rollupJob)
-                        logger.error("ronsax in intercept $isOverlap $minLiveDataDate")
-                    }
-                    // To extract fields from QueryStringQueryBuilder we need concrete source index name.
-                    // TODO add prefix to query if there is overlap
-                    val queryFieldMappings = getQueryMetadata(
-                        request.source().query(),
-                        getConcreteSourceIndex(rollupJob.sourceIndex, indexNameExpressionResolver, clusterService.state())
-                    )
-                    val aggregationFieldMappings = getAggregationMetadata(request.source().aggregations()?.aggregatorFactories)
-                    val fieldMappings = queryFieldMappings + aggregationFieldMappings
-
-                    val allMatchingRollupJobs = validateIndicies(filteredConcreteIndices, fieldMappings)
-
-                    // only rebuild if there is necessity to rebuild
-                    if (fieldMappings.isNotEmpty()) {
-                        rewriteShardSearchForRollupJobs(request, allMatchingRollupJobs)
+                //                        if (request.source().size() != 0) {
+                //                            throw IllegalArgumentException("Rollup search must have size explicitly set to 0, but found ${request.source().size()}")
+                //                        }
+                val indices = request.indices().map { it.toString() }.toTypedArray()
+                val concreteIndices = indexNameExpressionResolver
+                    .concreteIndexNames(clusterService.state(), request.indicesOptions(), *indices)
+                val concreteRolledIndexNames = mutableListOf<String>()
+                var liveIndexTest = ""
+                var rollupIndexTest = ""
+                for (indexName in concreteIndices) {
+                    if (isRollupIndex(indexName, clusterService.state())) {
+                        concreteRolledIndexNames.add(indexName)
+                        liveIndexTest = indexName
+                    } else {
+                        rollupIndexTest = indexName
                     }
                 }
-                actualHandler.messageReceived(request, channel, task)
+                val filteredConcreteIndices = concreteRolledIndexNames.toTypedArray()
+                val rollupJob = clusterService.state().metadata.index(index).getRollupJobs()?.get(0)
+                    ?: throw IllegalArgumentException("No rollup job associated with target_index")
+                try {
+                    val latch = CountDownLatch(1)
+                    val thread = Thread {
+                        val (isOverlap, minLiveDataDate) = isOverlap(rollupIndexTest, liveIndexTest, rollupJob)
+                        logger.error("ronsax in intercept $isOverlap $minLiveDataDate")
+                        latch.countDown()
+                    }
+                    thread.start()
+                    latch.await()
+                    logger.error("ronsax the thread finished baby!!")
+                } catch (e: Exception) {
+                    logger.error(e)
+                }
+                // To extract fields from QueryStringQueryBuilder we need concrete source index name.
+                // TODO add prefix to query if there is overlap
+                val queryFieldMappings = getQueryMetadata(
+                    request.source().query(),
+                    getConcreteSourceIndex(rollupJob.sourceIndex, indexNameExpressionResolver, clusterService.state())
+                )
+                val aggregationFieldMappings = getAggregationMetadata(request.source().aggregations()?.aggregatorFactories)
+                val fieldMappings = queryFieldMappings + aggregationFieldMappings
+
+                val allMatchingRollupJobs = validateIndicies(filteredConcreteIndices, fieldMappings)
+
+                // only rebuild if there is necessity to rebuild
+                if (fieldMappings.isNotEmpty()) {
+                    rewriteShardSearchForRollupJobs(request, allMatchingRollupJobs)
+                }
             }
+            actualHandler.messageReceived(request, channel, task)
         }
     }
 
