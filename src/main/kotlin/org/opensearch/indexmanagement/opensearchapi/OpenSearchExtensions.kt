@@ -75,7 +75,9 @@ fun contentParser(bytesReference: BytesReference): XContentParser {
 
 /** Convert an object to maps and lists representation */
 fun ToXContent.convertToMap(): Map<String, Any> {
-    val bytesReference = XContentHelper.toXContent(this, MediaType.fromMediaType(XContentType.JSON.mediaType()), ToXContent.EMPTY_PARAMS, false)
+    val bytesReference = org.opensearch.core.xcontent.XContentHelper.toXContent(
+        this, XContentType.JSON, ToXContent.EMPTY_PARAMS, false
+    )
     return XContentHelper.convertToMap(bytesReference, false, XContentType.JSON as (MediaType)).v2()
 }
 
