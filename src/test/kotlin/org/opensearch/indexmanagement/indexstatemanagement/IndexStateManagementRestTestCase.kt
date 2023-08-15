@@ -24,9 +24,9 @@ import org.opensearch.common.settings.Settings
 import org.opensearch.common.unit.TimeValue
 import org.opensearch.core.xcontent.DeprecationHandler
 import org.opensearch.common.xcontent.LoggingDeprecationHandler
+import org.opensearch.common.xcontent.XContentParserUtils.ensureExpectedToken
 import org.opensearch.core.xcontent.NamedXContentRegistry
 import org.opensearch.core.xcontent.XContentParser.Token
-import org.opensearch.common.xcontent.XContentParserUtils.ensureExpectedToken
 import org.opensearch.common.xcontent.XContentType
 import org.opensearch.common.xcontent.json.JsonXContent.jsonXContent
 import org.opensearch.index.seqno.SequenceNumbers
@@ -67,6 +67,7 @@ import org.opensearch.indexmanagement.waitFor
 import org.opensearch.jobscheduler.spi.schedule.IntervalSchedule
 import org.opensearch.rest.RestRequest
 import org.opensearch.rest.RestStatus
+import org.opensearch.indexmanagement.rollup.randomTermQuery
 import org.opensearch.test.OpenSearchTestCase
 import java.io.IOException
 import java.time.Duration
@@ -238,16 +239,28 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
         index: String,
         alias: String,
         action: String = "remove",
-        isWriteIndex: Boolean = false
+        isWriteIndex: Boolean = false,
+        routing: Int? = null,
+        searchRouting: Int = randomInt(),
+        indexRouting: Int = randomInt(),
+        filter: String = randomTermQuery().toString(),
+        isHidden: Boolean = randomBoolean()
     ) {
         val isWriteIndexField = if (isWriteIndex) "\",\"is_write_index\": \"$isWriteIndex" else ""
+        val params = if (action == "add" && routing != null) """
+            ,"routing": $routing,
+            "search_routing": $searchRouting,
+            "index_routing": $indexRouting,
+            "filter": $filter,
+            "is_hidden": $isHidden
+        """.trimIndent() else ""
         val body = """
             {
               "actions": [
                 {
                   "$action": {
                     "index": "$index",
-                    "alias": "$alias$isWriteIndexField"
+                    "alias": "$alias$isWriteIndexField"$params
                   }
                 }
               ]

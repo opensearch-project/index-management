@@ -7,12 +7,18 @@ package org.opensearch.indexmanagement.indexstatemanagement.step.rollover
 
 import org.apache.logging.log4j.LogManager
 import org.opensearch.ExceptionsHelper
+import org.opensearch.action.admin.indices.alias.IndicesAliasesRequest
+import org.opensearch.action.admin.indices.alias.IndicesAliasesRequest.AliasActions
 import org.opensearch.action.admin.indices.rollover.RolloverRequest
 import org.opensearch.action.admin.indices.rollover.RolloverResponse
 import org.opensearch.action.admin.indices.stats.IndicesStatsRequest
 import org.opensearch.action.admin.indices.stats.IndicesStatsResponse
 import org.opensearch.common.unit.ByteSizeValue
+import org.opensearch.action.support.master.AcknowledgedResponse
+import org.opensearch.client.Client
+import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.unit.TimeValue
+import org.opensearch.index.IndexNotFoundException
 import org.opensearch.indexmanagement.indexstatemanagement.action.RolloverAction
 import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.getRolloverAlias
 import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.getRolloverSkip
@@ -33,6 +39,7 @@ class AttemptRolloverStep(private val action: RolloverAction) : Step(name) {
     private val logger = LogManager.getLogger(javaClass)
     private var stepStatus = StepStatus.STARTING
     private var info: Map<String, Any>? = null
+    private var newIndex: String? = null // this variable holds the new index name if rollover is successful in this run
 
     @Suppress("ComplexMethod", "LongMethod")
     override suspend fun execute(): Step {
@@ -53,6 +60,9 @@ class AttemptRolloverStep(private val action: RolloverAction) : Step(name) {
         if (clusterService.state().metadata.index(indexName).rolloverInfos.containsKey(rolloverTarget)) {
             stepStatus = StepStatus.COMPLETED
             info = mapOf("message" to getAlreadyRolledOverMessage(indexName, rolloverTarget))
+
+            // If already rolled over, alias may not get copied over yet
+            copyAlias(clusterService, indexName, context.client, rolloverTarget, context.metadata)
             return this
         }
 
@@ -114,6 +124,7 @@ class AttemptRolloverStep(private val action: RolloverAction) : Step(name) {
                     " numDocs=$numDocs, indexSize=${indexSize.bytes}, primaryShardSize=${largestPrimaryShardSize.bytes}]"
             )
             executeRollover(context, rolloverTarget, isDataStream, conditions)
+            copyAlias(clusterService, indexName, context.client, rolloverTarget, context.metadata)
         } else {
             stepStatus = StepStatus.CONDITION_NOT_MET
             info = mapOf("message" to getPendingMessage(indexName), "conditions" to conditions)
@@ -158,14 +169,14 @@ class AttemptRolloverStep(private val action: RolloverAction) : Step(name) {
         val indexName = context.metadata.index
         val metadata = context.clusterService.state().metadata
         val indexAlias = metadata.index(indexName)?.aliases?.get(alias)
-        logger.debug("Index $indexName has aliases $indexAlias")
+        logger.debug("Index {} has aliases {}", indexName, indexAlias)
         if (indexAlias == null) {
             return false
         }
         val isWriteIndex = indexAlias.writeIndex() // this could be null
         if (isWriteIndex != true) {
             val aliasIndices = metadata.indicesLookup[alias]?.indices?.map { it.index }
-            logger.debug("Alias $alias contains indices $aliasIndices")
+            logger.debug("Alias {} contains indices {}", alias, aliasIndices)
             if (aliasIndices != null && aliasIndices.size > 1) {
                 return false
             }
@@ -225,6 +236,9 @@ class AttemptRolloverStep(private val action: RolloverAction) : Step(name) {
                     else -> getSuccessMessage(indexName)
                 }
 
+                // Save newIndex later to metadata to be reused in case of failures
+                newIndex = response.newIndex
+
                 stepStatus = StepStatus.COMPLETED
                 info = listOfNotNull(
                     "message" to message,
@@ -251,21 +265,104 @@ class AttemptRolloverStep(private val action: RolloverAction) : Step(name) {
         }
     }
 
+    /**
+     * This method should be called ASAP after rollover succeed
+     *
+     * Rollover currently only copy the alias being rolled over on to new index
+     * This method copy any remaining aliases to new index
+     *
+     * TODO This method can be deprecated once this issue finished
+     * https://github.com/opensearch-project/index-management/issues/849 finished
+     */
+    @Suppress("ComplexMethod")
+    private suspend fun copyAlias(
+        clusterService: ClusterService,
+        indexName: String,
+        client: Client,
+        rolloverTarget: String,
+        metadata: ManagedIndexMetaData
+    ) {
+        if (!action.copyAlias) return
+
+        // Try to preserve the rollover conditions
+        val conditions = info?.get("conditions") ?: context?.metadata?.info?.get("conditions")
+
+        val rolledOverIndexName = newIndex ?: metadata.rolledOverIndexName
+        if (rolledOverIndexName == null) {
+            // Only in rare case when the program shut down unexpectedly before rolledOverIndexName is set or metadata corrupted
+            // ISM cannot auto recover from this case, so the status is COMPLETED
+            logger.error("Cannot find rolled over index to copy aliases to")
+            stepStatus = StepStatus.COMPLETED
+            info = listOfNotNull(
+                "message" to getCopyAliasRolledOverIndexNotFoundMessage(indexName),
+                if (conditions != null) "conditions" to conditions else null
+            ).toMap()
+            return
+        }
+
+        val aliasActions = mutableListOf<AliasActions>()
+        val aliases = clusterService.state().metadata().index(indexName).aliases
+        for (alias in aliases) {
+            val aliasName = alias.key
+            // Skip the alias that has been rolled over on, since it's already copied
+            if (aliasName == rolloverTarget) continue
+
+            val aliasMetadata = alias.value
+            val aliasAction = AliasActions(AliasActions.Type.ADD).index(rolledOverIndexName)
+                .alias(aliasMetadata.alias)
+                .filter(aliasMetadata.filter?.toString())
+                .searchRouting(aliasMetadata.searchRouting)
+                .indexRouting(aliasMetadata.indexRouting)
+                .isHidden(aliasMetadata.isHidden)
+            aliasActions.add(aliasAction)
+        }
+        val aliasReq = IndicesAliasesRequest()
+        aliasActions.forEach { aliasReq.addAliasAction(it) }
+
+        try {
+            val aliasRes: AcknowledgedResponse = client.admin().indices().suspendUntil { aliases(aliasReq, it) }
+            if (aliasRes.isAcknowledged) {
+                stepStatus = StepStatus.COMPLETED
+                info = listOfNotNull(
+                    "message" to getSuccessCopyAliasMessage(indexName, rolledOverIndexName),
+                    if (conditions != null) "conditions" to conditions else null
+                ).toMap()
+            } else {
+                stepStatus = StepStatus.FAILED
+                info = listOfNotNull(
+                    "message" to getFailedCopyAliasMessage(indexName, rolledOverIndexName),
+                    if (conditions != null) "conditions" to conditions else null
+                ).toMap()
+            }
+        } catch (e: IndexNotFoundException) {
+            logger.error("Index not found while copying alias from $indexName to $rolledOverIndexName", e)
+            stepStatus = StepStatus.FAILED
+            info = listOfNotNull(
+                "message" to getCopyAliasIndexNotFoundMessage(rolledOverIndexName),
+                if (conditions != null) "conditions" to conditions else null
+            ).toMap()
+        } catch (e: Exception) {
+            handleException(indexName, e, getFailedCopyAliasMessage(indexName, rolledOverIndexName), conditions)
+        }
+    }
+
     override fun getUpdatedManagedIndexMetadata(currentMetadata: ManagedIndexMetaData): ManagedIndexMetaData {
         return currentMetadata.copy(
             stepMetaData = StepMetaData(name, getStepStartTime(currentMetadata).toEpochMilli(), stepStatus),
             rolledOver = if (currentMetadata.rolledOver == true) true else stepStatus == StepStatus.COMPLETED,
+            rolledOverIndexName = if (currentMetadata.rolledOverIndexName != null) currentMetadata.rolledOverIndexName else newIndex,
             transitionTo = null,
             info = info
         )
     }
 
-    private fun handleException(indexName: String, e: Exception, message: String = getFailedMessage(indexName)) {
+    private fun handleException(indexName: String, e: Exception, message: String = getFailedMessage(indexName), conditions: Any? = null) {
         logger.error(message, e)
         stepStatus = StepStatus.FAILED
-        val mutableInfo = mutableMapOf("message" to message)
+        val mutableInfo: MutableMap<String, Any> = mutableMapOf("message" to message)
         val errorMessage = e.message
         if (errorMessage != null) mutableInfo["cause"] = errorMessage
+        if (conditions != null) mutableInfo["conditions"] = conditions
         info = mutableInfo.toMap()
     }
 
@@ -288,5 +385,13 @@ class AttemptRolloverStep(private val action: RolloverAction) : Step(name) {
         fun getSkipRolloverMessage(index: String) = "Skipped rollover action for [index=$index]"
         fun getAlreadyRolledOverMessage(index: String, alias: String) =
             "This index has already been rolled over using this alias, treating as a success [index=$index, alias=$alias]"
+        fun getSuccessCopyAliasMessage(index: String, newIndex: String) =
+            "Successfully rolled over and copied alias from [index=$index] to [index=$newIndex]"
+        fun getFailedCopyAliasMessage(index: String, newIndex: String) =
+            "Successfully rolled over but failed to copied alias from [index=$index] to [index=$newIndex]"
+        fun getCopyAliasIndexNotFoundMessage(newIndex: String?) =
+            "Successfully rolled over but new index [index=$newIndex] not found during copy alias"
+        fun getCopyAliasRolledOverIndexNotFoundMessage(index: String?) =
+            "Successfully rolled over [index=$index] but ISM cannot find rolled over index from metadata to copy aliases to, please manually copy"
     }
 }
