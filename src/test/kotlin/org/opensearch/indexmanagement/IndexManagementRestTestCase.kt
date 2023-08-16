@@ -37,7 +37,7 @@ import javax.management.remote.JMXServiceURL
 abstract class IndexManagementRestTestCase : ODFERestTestCase() {
 
     val configSchemaVersion = 19
-    val historySchemaVersion = 5
+    val historySchemaVersion = 6
 
     // Having issues with tests leaking into other tests and mappings being incorrect and they are not caught by any pending task wait check as
     // they do not go through the pending task queue. Ideally this should probably be written in a way to wait for the
@@ -168,7 +168,6 @@ abstract class IndexManagementRestTestCase : ODFERestTestCase() {
 
     override fun preserveIndicesUponCompletion(): Boolean = true
     companion object {
-        private val logger = LogManager.getLogger(IndexManagementRestTestCase::class.java)
         val isMultiNode = System.getProperty("cluster.number_of_nodes", "1").toInt() > 1
         val isBWCTest = System.getProperty("tests.plugin_bwc_version", "0") != "0"
         protected val defaultKeepIndexSet = setOf(".opendistro_security")
@@ -177,6 +176,7 @@ abstract class IndexManagementRestTestCase : ODFERestTestCase() {
          * Meant to be used in @After or @AfterClass of your feature test suite
          */
         fun wipeAllIndices(client: RestClient = adminClient(), keepIndex: Set<String> = defaultKeepIndexSet, skip: Boolean = false) {
+            val logger = LogManager.getLogger(IndexManagementRestTestCase::class.java)
             if (skip) {
                 logger.info("Skipping wipeAllIndices...")
                 return

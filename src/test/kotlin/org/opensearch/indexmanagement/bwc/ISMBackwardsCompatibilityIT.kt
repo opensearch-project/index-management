@@ -7,6 +7,8 @@ package org.opensearch.indexmanagement.bwc
 
 import org.junit.Assert
 import org.opensearch.common.settings.Settings
+import org.opensearch.indexmanagement.IndexManagementIndices.Companion.HISTORY_WRITE_INDEX_ALIAS
+import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
 import org.opensearch.indexmanagement.indexstatemanagement.IndexStateManagementRestTestCase
 import org.opensearch.indexmanagement.indexstatemanagement.action.RolloverAction
 import org.opensearch.indexmanagement.indexstatemanagement.step.rollover.AttemptRolloverStep
@@ -69,14 +71,20 @@ class ISMBackwardsCompatibilityIT : IndexStateManagementRestTestCase() {
             .build()
     }
 
-    private val indexNameBase = "${testIndexName}_index_doc"
-    private val firstIndex = "$indexNameBase-1"
-    private val aliasName = "${testIndexName}_doc_alias"
-    private val policyID = "${testIndexName}_testPolicyName_doc_1"
-
     @Throws(Exception::class)
     @Suppress("UNCHECKED_CAST")
     fun `test rollover policy backwards compatibility`() {
+        val indexNameBase = "${testIndexName}_index"
+        val index1 = "$indexNameBase-1"
+        val newIndex1 = "$indexNameBase-000002"
+        val aliasName1 = "${testIndexName}_alias"
+
+        val index2 = "$indexNameBase-2-1"
+        val newIndex2 = "$indexNameBase-2-000002"
+        val aliasName2 = "${testIndexName}_alias2"
+
+        val policyID = "${testIndexName}_testPolicyName_doc_1"
+
         val uri = getPluginUri()
         val responseMap = getAsMap(uri)["nodes"] as Map<String, Map<String, Any>>
         for (response in responseMap.values) {
@@ -86,32 +94,49 @@ class ISMBackwardsCompatibilityIT : IndexStateManagementRestTestCase() {
                 ClusterType.OLD -> {
                     assertTrue(pluginNames.contains("opendistro-index-management") || pluginNames.contains("opensearch-index-management"))
 
-                    createRolloverPolicy()
-                    val managedIndexConfig = getExistingManagedIndexConfig(firstIndex)
-                    // Change the start time so the job will trigger in 2 seconds, this will trigger the first initialization of the policy
-                    updateManagedIndexConfigStartTime(managedIndexConfig)
-                    waitFor { assertEquals(policyID, getExplainManagedIndexMetaData(firstIndex).policyID) }
+                    createRolloverPolicy(policyID)
 
-                    verifyPendingRollover()
+                    createIndex(index1, policyID, aliasName1)
+                    createIndex(index2, policyID, aliasName2)
+
+                    // Change the start time so the job will trigger in 2 seconds, this will trigger the first initialization of the policy
+                    updateManagedIndexConfigStartTime(getExistingManagedIndexConfig(index1))
+                    waitFor { assertEquals(policyID, getExplainManagedIndexMetaData(index1).policyID) }
+
+                    // Change the start time so the job will trigger in 2 seconds, this will trigger the first initialization of the policy
+                    updateManagedIndexConfigStartTime(getExistingManagedIndexConfig(index2))
+                    waitFor { assertEquals(policyID, getExplainManagedIndexMetaData(index2).policyID) }
+
+                    verifyPendingRollover(index1)
+                    verifyPendingRollover(index2)
                 }
                 ClusterType.MIXED -> {
                     assertTrue(pluginNames.contains("opensearch-index-management"))
 
-                    verifyPendingRollover()
+                    verifyPendingRollover(index1)
+                    verifyPendingRollover(index2)
                 }
                 ClusterType.UPGRADED -> {
                     assertTrue(pluginNames.contains("opensearch-index-management"))
 
-                    verifyPendingRollover()
-                    insertSampleData(index = firstIndex, docCount = 5, delay = 0)
-                    verifySuccessfulRollover()
+                    verifyPendingRollover(index1)
+                    insertSampleData(index = index1, docCount = 5, delay = 0)
+                    verifySuccessfulRollover(index1, newIndex1)
+
+                    verifyIndexSchemaVersion(INDEX_MANAGEMENT_INDEX, configSchemaVersion)
+                    verifyIndexSchemaVersion(HISTORY_WRITE_INDEX_ALIAS, historySchemaVersion)
+
+                    insertSampleData(index = index2, docCount = 5, delay = 0)
+                    verifySuccessfulRollover(index2, newIndex2)
+
+                    deleteIndex("$indexNameBase*")
                 }
             }
             break
         }
     }
 
-    private fun createRolloverPolicy() {
+    private fun createRolloverPolicy(policyID: String) {
         val policy = """
             {
               "policy": {
@@ -137,21 +162,19 @@ class ISMBackwardsCompatibilityIT : IndexStateManagementRestTestCase() {
               }
             }
         """.trimIndent()
-
         createPolicyJson(policy, policyID)
-        createIndex(firstIndex, policyID, aliasName)
     }
 
     @Suppress("UNCHECKED_CAST")
-    private fun verifyPendingRollover() {
-        val managedIndexConfig = getExistingManagedIndexConfig(firstIndex)
+    private fun verifyPendingRollover(index: String) {
+        val managedIndexConfig = getExistingManagedIndexConfig(index)
         // Need to speed up to second execution where it will trigger the first execution of the action
         updateManagedIndexConfigStartTime(managedIndexConfig)
         waitFor {
-            val info = getExplainManagedIndexMetaData(firstIndex).info as Map<String, Any?>
+            val info = getExplainManagedIndexMetaData(index).info as Map<String, Any?>
             assertEquals(
                 "Index rollover before it met the condition.",
-                AttemptRolloverStep.getPendingMessage(firstIndex), info["message"]
+                AttemptRolloverStep.getPendingMessage(index), info["message"]
             )
             val conditions = info["conditions"] as Map<String, Any?>
             assertEquals(
@@ -168,15 +191,14 @@ class ISMBackwardsCompatibilityIT : IndexStateManagementRestTestCase() {
     }
 
     @Suppress("UNCHECKED_CAST")
-    private fun verifySuccessfulRollover() {
-        val managedIndexConfig = getExistingManagedIndexConfig(firstIndex)
+    private fun verifySuccessfulRollover(index: String, newIndex: String) {
+        val managedIndexConfig = getExistingManagedIndexConfig(index)
         // Need to speed up to second execution where it will trigger the first execution of the action
         updateManagedIndexConfigStartTime(managedIndexConfig)
-        val newIndex = "$indexNameBase-000002"
         waitFor {
-            val metadata = getExplainManagedIndexMetaData(firstIndex)
+            val metadata = getExplainManagedIndexMetaData(index)
             val info = metadata.info as Map<String, Any?>
-            assertEquals("Index did not rollover", AttemptRolloverStep.getSuccessMessage(firstIndex), info["message"])
+            assertEquals("Index did not rollover", AttemptRolloverStep.getSuccessMessage(index), info["message"])
             val conditions = info["conditions"] as Map<String, Any?>
             assertEquals(
                 "Did not have exclusively min age and min doc count conditions",
