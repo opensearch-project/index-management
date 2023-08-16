@@ -330,7 +330,7 @@ class AttemptRolloverStep(private val action: RolloverAction) : Step(name) {
             } else {
                 stepStatus = StepStatus.FAILED
                 info = listOfNotNull(
-                    "message" to getFailedCopyAliasMessage(indexName, rolledOverIndexName),
+                    "message" to getCopyAliasNotAckMessage(indexName, rolledOverIndexName),
                     if (conditions != null) "conditions" to conditions else null
                 ).toMap()
             }
@@ -389,6 +389,8 @@ class AttemptRolloverStep(private val action: RolloverAction) : Step(name) {
             "Successfully rolled over and copied alias from [index=$index] to [index=$newIndex]"
         fun getFailedCopyAliasMessage(index: String, newIndex: String) =
             "Successfully rolled over but failed to copied alias from [index=$index] to [index=$newIndex]"
+        fun getCopyAliasNotAckMessage(index: String, newIndex: String) =
+            "Successfully rolled over but copy alias from [index=$index] to [index=$newIndex] is not acknowledged"
         fun getCopyAliasIndexNotFoundMessage(newIndex: String?) =
             "Successfully rolled over but new index [index=$newIndex] not found during copy alias"
         fun getCopyAliasRolledOverIndexNotFoundMessage(index: String?) =

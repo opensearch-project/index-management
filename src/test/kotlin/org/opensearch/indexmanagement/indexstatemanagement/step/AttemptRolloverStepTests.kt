@@ -65,6 +65,30 @@ class AttemptRolloverStepTests : OpenSearchTestCase() {
         whenever(metadata.index(oldIndexName).rolloverInfos).thenReturn(mapOf(alias to mock()))
     }
 
+    fun `test copy alias in rollover step is not acknowledged`() {
+        val rolloverResponse = RolloverResponse(oldIndexName, newIndexName, mapOf(), false, true, true, true)
+        val aliasResponse = AcknowledgedResponse(false)
+        // val exception = Exception("test exception")
+        val client = getClient(getAdminClient(getIndicesAdminClient(rolloverResponse, aliasResponse, null, null)))
+
+        runBlocking {
+            val rolloverAction = RolloverAction(null, null, null, null, true, 0)
+            val managedIndexMetaData = ManagedIndexMetaData(
+                oldIndexName, "indexUuid", "policy_id",
+                null, null, null,
+                null, null, null,
+                null, null, null,
+                null, null, rolledOverIndexName = newIndexName
+            )
+            val attemptRolloverStep = AttemptRolloverStep(rolloverAction)
+            val context = StepContext(managedIndexMetaData, clusterService, client, null, null, scriptService, settings, lockService)
+            attemptRolloverStep.preExecute(logger, context).execute()
+            val updatedManagedIndexMetaData = attemptRolloverStep.getUpdatedManagedIndexMetadata(managedIndexMetaData)
+            assertEquals("Step status is not FAILED", Step.StepStatus.FAILED, updatedManagedIndexMetaData.stepMetaData?.stepStatus)
+            assertEquals("message info is not matched", AttemptRolloverStep.getCopyAliasNotAckMessage(oldIndexName, newIndexName), updatedManagedIndexMetaData.info?.get("message"))
+        }
+    }
+
     fun `test copy alias in rollover step failed`() {
         val rolloverResponse = RolloverResponse(oldIndexName, newIndexName, mapOf(), false, true, true, true)
         // val aliasResponse = AcknowledgedResponse(true)
