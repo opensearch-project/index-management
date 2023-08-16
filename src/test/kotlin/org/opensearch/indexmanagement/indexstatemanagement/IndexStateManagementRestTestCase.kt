@@ -78,7 +78,7 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
 
     @After
     fun clearIndicesAfterEachTest() {
-        wipeAllIndices()
+        wipeAllIndices(skip = isBWCTest)
     }
 
     val explainResponseOpendistroPolicyIdSetting = "index.opendistro.index_state_management.policy_id"
@@ -90,13 +90,11 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
         updateIndexStateManagementJitterSetting(0.0)
     }
 
-    @Before
-    protected fun disableValidationService() {
+    protected open fun disableValidationService() {
         updateValidationServiceSetting(false)
     }
 
-    @Before
-    protected fun enableValidationService() {
+    protected open fun enableValidationService() {
         updateValidationServiceSetting(true)
     }
 

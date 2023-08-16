@@ -7,22 +7,23 @@ package org.opensearch.indexmanagement
 
 import org.apache.http.entity.ContentType
 import org.apache.http.entity.StringEntity
+import org.apache.logging.log4j.LogManager
 import org.junit.AfterClass
 import org.junit.Before
 import org.junit.rules.DisableOnDebug
 import org.opensearch.action.admin.cluster.node.tasks.list.ListTasksAction
 import org.opensearch.client.Request
-import org.opensearch.client.Response
-import org.opensearch.client.RestClient
 import org.opensearch.client.RequestOptions
-import org.opensearch.client.WarningsHandler
+import org.opensearch.client.Response
 import org.opensearch.client.ResponseException
+import org.opensearch.client.RestClient
+import org.opensearch.client.WarningsHandler
 import org.opensearch.common.Strings
 import org.opensearch.common.io.PathUtils
 import org.opensearch.common.settings.Settings
+import org.opensearch.common.xcontent.XContentType
 import org.opensearch.core.xcontent.DeprecationHandler
 import org.opensearch.core.xcontent.NamedXContentRegistry
-import org.opensearch.common.xcontent.XContentType
 import org.opensearch.indexmanagement.indexstatemanagement.util.INDEX_HIDDEN
 import org.opensearch.rest.RestStatus
 import java.io.IOException
@@ -32,8 +33,6 @@ import javax.management.MBeanServerInvocationHandler
 import javax.management.ObjectName
 import javax.management.remote.JMXConnectorFactory
 import javax.management.remote.JMXServiceURL
-import kotlin.collections.ArrayList
-import kotlin.collections.HashSet
 
 abstract class IndexManagementRestTestCase : ODFERestTestCase() {
 
@@ -169,14 +168,19 @@ abstract class IndexManagementRestTestCase : ODFERestTestCase() {
 
     override fun preserveIndicesUponCompletion(): Boolean = true
     companion object {
-        @JvmStatic
+        private val logger = LogManager.getLogger(IndexManagementRestTestCase::class.java)
         val isMultiNode = System.getProperty("cluster.number_of_nodes", "1").toInt() > 1
+        val isBWCTest = System.getProperty("tests.plugin_bwc_version", "0") != "0"
         protected val defaultKeepIndexSet = setOf(".opendistro_security")
         /**
          * We override preserveIndicesUponCompletion to true and use this function to clean up indices
          * Meant to be used in @After or @AfterClass of your feature test suite
          */
-        fun wipeAllIndices(client: RestClient = adminClient(), keepIndex: kotlin.collections.Set<String> = defaultKeepIndexSet) {
+        fun wipeAllIndices(client: RestClient = adminClient(), keepIndex: Set<String> = defaultKeepIndexSet, skip: Boolean = false) {
+            if (skip) {
+                logger.info("Skipping wipeAllIndices...")
+                return
+            }
             try {
                 client.performRequest(Request("DELETE", "_data_stream/*"))
             } catch (e: ResponseException) {

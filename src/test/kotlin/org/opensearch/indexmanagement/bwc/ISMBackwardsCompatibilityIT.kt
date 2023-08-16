@@ -7,16 +7,10 @@ package org.opensearch.indexmanagement.bwc
 
 import org.junit.Assert
 import org.opensearch.common.settings.Settings
-import org.opensearch.common.unit.TimeValue
 import org.opensearch.indexmanagement.indexstatemanagement.IndexStateManagementRestTestCase
 import org.opensearch.indexmanagement.indexstatemanagement.action.RolloverAction
-import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
-import org.opensearch.indexmanagement.indexstatemanagement.model.State
-import org.opensearch.indexmanagement.indexstatemanagement.randomErrorNotification
 import org.opensearch.indexmanagement.indexstatemanagement.step.rollover.AttemptRolloverStep
 import org.opensearch.indexmanagement.waitFor
-import java.time.Instant
-import java.time.temporal.ChronoUnit
 import java.util.Locale
 
 class ISMBackwardsCompatibilityIT : IndexStateManagementRestTestCase() {
@@ -82,7 +76,7 @@ class ISMBackwardsCompatibilityIT : IndexStateManagementRestTestCase() {
 
     @Throws(Exception::class)
     @Suppress("UNCHECKED_CAST")
-    fun `test policy backwards compatibility`() {
+    fun `test rollover policy backwards compatibility`() {
         val uri = getPluginUri()
         val responseMap = getAsMap(uri)["nodes"] as Map<String, Map<String, Any>>
         for (response in responseMap.values) {
@@ -91,107 +85,26 @@ class ISMBackwardsCompatibilityIT : IndexStateManagementRestTestCase() {
             when (CLUSTER_TYPE) {
                 ClusterType.OLD -> {
                     assertTrue(pluginNames.contains("opendistro-index-management") || pluginNames.contains("opensearch-index-management"))
-                    createRolloverPolicy()
 
+                    createRolloverPolicy()
                     val managedIndexConfig = getExistingManagedIndexConfig(firstIndex)
                     // Change the start time so the job will trigger in 2 seconds, this will trigger the first initialization of the policy
                     updateManagedIndexConfigStartTime(managedIndexConfig)
                     waitFor { assertEquals(policyID, getExplainManagedIndexMetaData(firstIndex).policyID) }
 
-                    // Need to speed up to second execution where it will trigger the first execution of the action
-                    updateManagedIndexConfigStartTime(managedIndexConfig)
-                    waitFor {
-                        val info = getExplainManagedIndexMetaData(firstIndex).info as Map<String, Any?>
-                        assertEquals(
-                            "Index rollover before it met the condition.",
-                            AttemptRolloverStep.getPendingMessage(firstIndex), info["message"]
-                        )
-                        val conditions = info["conditions"] as Map<String, Any?>
-                        assertEquals(
-                            "Did not have exclusively min age and min doc count conditions",
-                            setOf(RolloverAction.MIN_INDEX_AGE_FIELD, RolloverAction.MIN_DOC_COUNT_FIELD), conditions.keys
-                        )
-                        val minAge = conditions[RolloverAction.MIN_INDEX_AGE_FIELD] as Map<String, Any?>
-                        val minDocCount = conditions[RolloverAction.MIN_DOC_COUNT_FIELD] as Map<String, Any?>
-                        assertEquals("Did not have min age condition", "2d", minAge["condition"])
-                        assertTrue("Did not have min age current", minAge["current"] is String)
-                        assertEquals("Did not have min doc count condition", 3, minDocCount["condition"])
-                        assertEquals("Did not have min doc count current", 0, minDocCount["current"])
-                    }
+                    verifyPendingRollover()
                 }
                 ClusterType.MIXED -> {
                     assertTrue(pluginNames.contains("opensearch-index-management"))
 
-                    val managedIndexConfig = getExistingManagedIndexConfig(firstIndex)
-                    // Need to speed up to second execution where it will trigger the first execution of the action
-                    updateManagedIndexConfigStartTime(managedIndexConfig)
-                    waitFor {
-                        val info = getExplainManagedIndexMetaData(firstIndex).info as Map<String, Any?>
-                        assertEquals(
-                            "Index rollover before it met the condition.",
-                            AttemptRolloverStep.getPendingMessage(firstIndex), info["message"]
-                        )
-                        val conditions = info["conditions"] as Map<String, Any?>
-                        assertEquals(
-                            "Did not have exclusively min age and min doc count conditions",
-                            setOf(RolloverAction.MIN_INDEX_AGE_FIELD, RolloverAction.MIN_DOC_COUNT_FIELD), conditions.keys
-                        )
-                        val minAge = conditions[RolloverAction.MIN_INDEX_AGE_FIELD] as Map<String, Any?>
-                        val minDocCount = conditions[RolloverAction.MIN_DOC_COUNT_FIELD] as Map<String, Any?>
-                        assertEquals("Did not have min age condition", "2d", minAge["condition"])
-                        assertTrue("Did not have min age current", minAge["current"] is String)
-                        assertEquals("Did not have min doc count condition", 3, minDocCount["condition"])
-                        assertEquals("Did not have min doc count current", 0, minDocCount["current"])
-                    }
+                    verifyPendingRollover()
                 }
                 ClusterType.UPGRADED -> {
                     assertTrue(pluginNames.contains("opensearch-index-management"))
 
-                    val managedIndexConfig = getExistingManagedIndexConfig(firstIndex)
-                    // Need to speed up to second execution where it will trigger the first execution of the action
-                    updateManagedIndexConfigStartTime(managedIndexConfig)
-                    waitFor {
-                        val info = getExplainManagedIndexMetaData(firstIndex).info as Map<String, Any?>
-                        assertEquals(
-                            "Index rollover before it met the condition.",
-                            AttemptRolloverStep.getPendingMessage(firstIndex), info["message"]
-                        )
-                        val conditions = info["conditions"] as Map<String, Any?>
-                        assertEquals(
-                            "Did not have exclusively min age and min doc count conditions",
-                            setOf(RolloverAction.MIN_INDEX_AGE_FIELD, RolloverAction.MIN_DOC_COUNT_FIELD), conditions.keys
-                        )
-                        val minAge = conditions[RolloverAction.MIN_INDEX_AGE_FIELD] as Map<String, Any?>
-                        val minDocCount = conditions[RolloverAction.MIN_DOC_COUNT_FIELD] as Map<String, Any?>
-                        assertEquals("Did not have min age condition", "2d", minAge["condition"])
-                        assertTrue("Did not have min age current", minAge["current"] is String)
-                        assertEquals("Did not have min doc count condition", 3, minDocCount["condition"])
-                        assertEquals("Did not have min doc count current", 0, minDocCount["current"])
-                    }
-
+                    verifyPendingRollover()
                     insertSampleData(index = firstIndex, docCount = 5, delay = 0)
-
-                    // Need to speed up to second execution where it will trigger the first execution of the action
-                    updateManagedIndexConfigStartTime(managedIndexConfig)
-                    val newIndex = "$indexNameBase-000002"
-                    waitFor {
-                        val metadata = getExplainManagedIndexMetaData(firstIndex)
-                        val info = metadata.info as Map<String, Any?>
-                        assertEquals("Index did not rollover", AttemptRolloverStep.getSuccessCopyAliasMessage(firstIndex, newIndex), info["message"])
-                        val conditions = info["conditions"] as Map<String, Any?>
-                        assertEquals(
-                            "Did not have exclusively min age and min doc count conditions",
-                            setOf(RolloverAction.MIN_INDEX_AGE_FIELD, RolloverAction.MIN_DOC_COUNT_FIELD), conditions.keys
-                        )
-                        val minAge = conditions[RolloverAction.MIN_INDEX_AGE_FIELD] as Map<String, Any?>
-                        val minDocCount = conditions[RolloverAction.MIN_DOC_COUNT_FIELD] as Map<String, Any?>
-                        assertEquals("Did not have min age condition", "2d", minAge["condition"])
-                        assertTrue("Did not have min age current", minAge["current"] is String)
-                        assertEquals("Did not have min doc count condition", 3, minDocCount["condition"])
-                        assertEquals("Did not have min doc count current", 5, minDocCount["current"])
-                        assertEquals("Did not have rolled over index name", metadata.rolledOverIndexName, newIndex)
-                    }
-                    Assert.assertTrue("New rollover index does not exist.", indexExists(newIndex))
+                    verifySuccessfulRollover()
                 }
             }
             break
@@ -199,20 +112,84 @@ class ISMBackwardsCompatibilityIT : IndexStateManagementRestTestCase() {
     }
 
     private fun createRolloverPolicy() {
-        val actionConfig = RolloverAction(null, 3, TimeValue.timeValueDays(2), null, true, 0)
-        val states = listOf(State(name = "RolloverAction", actions = listOf(actionConfig), transitions = listOf()))
-        val policy = Policy(
-            id = policyID,
-            description = "$testIndexName description",
-            schemaVersion = 1L,
-            lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
-            errorNotification = randomErrorNotification(),
-            defaultState = states[0].name,
-            states = states
-        )
+        val policy = """
+            {
+              "policy": {
+                "policy_id": "$policyID",
+                "description": "description",
+                "default_state": "RolloverAction",
+                "states": [
+                  {
+                    "name": "RolloverAction",
+                    "actions": [
+                      {
+                        "rollover": {
+                          "min_doc_count": 3,
+                          "min_index_age": "2d"
+                        }
+                      }
+                    ],
+                    "transitions": [
+                      
+                    ]
+                  }
+                ]
+              }
+            }
+        """.trimIndent()
 
-        createPolicy(policy, policyID)
-        // create index defaults
+        createPolicyJson(policy, policyID)
         createIndex(firstIndex, policyID, aliasName)
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    private fun verifyPendingRollover() {
+        val managedIndexConfig = getExistingManagedIndexConfig(firstIndex)
+        // Need to speed up to second execution where it will trigger the first execution of the action
+        updateManagedIndexConfigStartTime(managedIndexConfig)
+        waitFor {
+            val info = getExplainManagedIndexMetaData(firstIndex).info as Map<String, Any?>
+            assertEquals(
+                "Index rollover before it met the condition.",
+                AttemptRolloverStep.getPendingMessage(firstIndex), info["message"]
+            )
+            val conditions = info["conditions"] as Map<String, Any?>
+            assertEquals(
+                "Did not have exclusively min age and min doc count conditions",
+                setOf(RolloverAction.MIN_INDEX_AGE_FIELD, RolloverAction.MIN_DOC_COUNT_FIELD), conditions.keys
+            )
+            val minAge = conditions[RolloverAction.MIN_INDEX_AGE_FIELD] as Map<String, Any?>
+            val minDocCount = conditions[RolloverAction.MIN_DOC_COUNT_FIELD] as Map<String, Any?>
+            assertEquals("Did not have min age condition", "2d", minAge["condition"])
+            assertTrue("Did not have min age current", minAge["current"] is String)
+            assertEquals("Did not have min doc count condition", 3, minDocCount["condition"])
+            assertEquals("Did not have min doc count current", 0, minDocCount["current"])
+        }
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    private fun verifySuccessfulRollover() {
+        val managedIndexConfig = getExistingManagedIndexConfig(firstIndex)
+        // Need to speed up to second execution where it will trigger the first execution of the action
+        updateManagedIndexConfigStartTime(managedIndexConfig)
+        val newIndex = "$indexNameBase-000002"
+        waitFor {
+            val metadata = getExplainManagedIndexMetaData(firstIndex)
+            val info = metadata.info as Map<String, Any?>
+            assertEquals("Index did not rollover", AttemptRolloverStep.getSuccessMessage(firstIndex), info["message"])
+            val conditions = info["conditions"] as Map<String, Any?>
+            assertEquals(
+                "Did not have exclusively min age and min doc count conditions",
+                setOf(RolloverAction.MIN_INDEX_AGE_FIELD, RolloverAction.MIN_DOC_COUNT_FIELD), conditions.keys
+            )
+            val minAge = conditions[RolloverAction.MIN_INDEX_AGE_FIELD] as Map<String, Any?>
+            val minDocCount = conditions[RolloverAction.MIN_DOC_COUNT_FIELD] as Map<String, Any?>
+            assertEquals("Did not have min age condition", "2d", minAge["condition"])
+            assertTrue("Did not have min age current", minAge["current"] is String)
+            assertEquals("Did not have min doc count condition", 3, minDocCount["condition"])
+            assertEquals("Did not have min doc count current", 5, minDocCount["current"])
+            assertEquals("Did not have rolled over index name", metadata.rolledOverIndexName, newIndex)
+        }
+        Assert.assertTrue("New rollover index does not exist.", indexExists(newIndex))
     }
 }
