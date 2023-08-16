@@ -495,6 +495,9 @@ class RolloverActionIT : IndexStateManagementRestTestCase() {
         managedIndexConfig = getExistingManagedIndexConfig(secondIndexName)
         updateManagedIndexConfigStartTime(managedIndexConfig)
         waitFor { assertEquals(policyID, getExplainManagedIndexMetaData(secondIndexName).policyID) }
+
+        val metadata = getExplainManagedIndexMetaData(firstIndexName)
+        assertEquals(metadata.rolledOverIndexName, secondIndexName)
     }
 
     @Suppress("UNCHECKED_CAST")
@@ -588,6 +591,9 @@ class RolloverActionIT : IndexStateManagementRestTestCase() {
 
         val secondIndexName = DataStream.getDefaultBackingIndexName(dataStreamName, 2L)
         Assert.assertTrue("New rollover index does not exist.", indexExists(secondIndexName))
+
+        val metadata = getExplainManagedIndexMetaData(firstIndexName)
+        assertEquals(metadata.rolledOverIndexName, secondIndexName)
     }
 
     fun `test rollover from outside ISM doesn't fail ISM job`() {
