@@ -613,32 +613,44 @@ task integTestRemote(type: RestIntegTestTask) {
 
 // === Set up BWC tests ===
 
-String bwcMinVersion = "1.13.2.0"
-String bwcJobSchedulerVersion = "1.13.0.0"
+String bwcMinVersion = "2.6.0.0"
 String bwcBundleVersion = "1.3.2.0"
 Boolean bwcBundleTest = (project.findProperty('customDistributionDownloadType') != null &&
         project.properties['customDistributionDownloadType'] == "bundle");
 String bwcVersion = bwcBundleTest ? bwcBundleVersion : bwcMinVersion
 String bwcCurrentVersion = opensearch_version.replace("-SNAPSHOT", "")
 String baseName = "indexmanagementBwcCluster"
-String bwcFilePath = "src/test/resources/bwc/"
-String bwc_js_resource_location = bwcFilePath + "job-scheduler/" + bwcJobSchedulerVersion
-String bwc_im_resource_location = bwcFilePath + "indexmanagement/" + bwcVersion
 
-// Downloads the bwc job scheduler version
-String bwc_js_download_url = "https://github.com/opendistro-for-elasticsearch/job-scheduler/releases/download/v" +
-        bwcJobSchedulerVersion + "/job-scheduler-artifacts.zip"
-
-// Downloads the bwc index management version
-String bwc_im_download_url = "https://github.com/opendistro-for-elasticsearch/index-management/releases/download/v" +
-        bwcMinVersion + "/index-management-artifacts.zip"
-getPluginResource(bwc_im_resource_location, bwc_im_download_url)
-
+configurations {
+    bwcZip
+}
+dependencies {
+    bwcZip "org.opensearch.plugin:opensearch-job-scheduler:${bwcMinVersion}-SNAPSHOT@zip"
+    bwcZip "org.opensearch.plugin:opensearch-index-management:${bwcMinVersion}-SNAPSHOT@zip"
+}
+ext.resolvebwcZipFile = { pluginId ->
+    return new Callable<RegularFile>() {
+        @Override
+        RegularFile call() throws Exception {
+            return new RegularFile() {
+                @Override
+                File getAsFile() {
+                    return configurations.bwcZip.resolvedConfiguration.resolvedArtifacts
+                            .find { ResolvedArtifact f ->
+                                f.name.startsWith(pluginId)
+                            }
+                            .file
+                }
+            }
+        }
+    }
+}
+Integer bwcNumNodes = 3
 2.times {i ->
     testClusters {
         "${baseName}$i"{
             testDistribution = "ARCHIVE"
-            numberOfNodes = 3
+            numberOfNodes = bwcNumNodes
             if (bwcBundleTest) {
                 versions = [
                         "1.3.2", bwcCurrentVersion
@@ -686,31 +698,10 @@ getPluginResource(bwc_im_resource_location, bwc_im_download_url)
                 }
             } else {
                 versions = [
-                        "7.10.2", opensearch_version
+                        "2.6.0-SNAPSHOT", opensearch_version
                 ]
-                plugin(provider(new Callable<RegularFile>(){
-                    @Override
-                    RegularFile call() throws Exception {
-                        return new RegularFile() {
-                            @Override
-                            File getAsFile() {
-                                return getPluginResource(bwc_js_resource_location, bwc_js_download_url)
-                            }
-                        }
-                    }
-                }))
-
-                plugin(provider(new Callable<RegularFile>(){
-                    @Override
-                    RegularFile call() throws Exception {
-                        return new RegularFile() {
-                            @Override
-                            File getAsFile() {
-                                return getPluginResource(bwc_im_resource_location, bwc_im_download_url)
-                            }
-                        }
-                    }
-                }))
+                plugin(provider(resolvebwcZipFile("opensearch-job-scheduler")))
+                plugin(provider(resolvebwcZipFile("opensearch-index-management")))
             }
 
             setting 'path.repo',
@@ -748,6 +739,7 @@ task prepareBwcTests {
         nonInputProperties.systemProperty('tests.rest.cluster', "${-> testClusters."${baseName}$i".allHttpSocketURI.join(",")}")
         nonInputProperties.systemProperty('tests.clustername', "${-> testClusters."${baseName}$i".getName()}")
         systemProperty 'tests.security.manager', 'false'
+        systemProperty 'cluster.number_of_nodes', "${bwcNumNodes}"
     }
 }
 
@@ -772,6 +764,7 @@ task "${baseName}#oneThirdsUpgradeCluster"(type: StandaloneRestIntegTestTask) {
     nonInputProperties.systemProperty('tests.rest.cluster', "${-> testClusters."${baseName}0".allHttpSocketURI.join(",")}")
     nonInputProperties.systemProperty('tests.clustername', "${-> testClusters."${baseName}0".getName()}")
     systemProperty 'tests.security.manager', 'false'
+    systemProperty 'cluster.number_of_nodes', "${bwcNumNodes}"
 }
 
 // Upgrade the second node to new OpenSearch version with upgraded plugin version after the first node is upgraded.
@@ -792,6 +785,7 @@ task "${baseName}#twoThirdsUpgradedClusterTask"(type: StandaloneRestIntegTestTas
     nonInputProperties.systemProperty('tests.rest.cluster', "${-> testClusters."${baseName}0".allHttpSocketURI.join(",")}")
     nonInputProperties.systemProperty('tests.clustername', "${-> testClusters."${baseName}0".getName()}")
     systemProperty 'tests.security.manager', 'false'
+    systemProperty 'cluster.number_of_nodes', "${bwcNumNodes}"
 }
 
 // Upgrade the third node to new OpenSearch version with upgraded plugin version after the second node is upgraded.
@@ -812,6 +806,7 @@ task "${baseName}#rollingUpgradeClusterTask"(type: StandaloneRestIntegTestTask) 
     nonInputProperties.systemProperty('tests.rest.cluster', "${-> testClusters."${baseName}0".allHttpSocketURI.join(",")}")
     nonInputProperties.systemProperty('tests.clustername', "${-> testClusters."${baseName}0".getName()}")
     systemProperty 'tests.security.manager', 'false'
+    systemProperty 'cluster.number_of_nodes', "${bwcNumNodes}"
 }
 
 // Upgrade all the nodes of the old cluster to new OpenSearch version with upgraded plugin version
@@ -830,6 +825,7 @@ task "${baseName}#fullRestartClusterTask"(type: StandaloneRestIntegTestTask) {
     nonInputProperties.systemProperty('tests.rest.cluster', "${-> testClusters."${baseName}1".allHttpSocketURI.join(",")}")
     nonInputProperties.systemProperty('tests.clustername', "${-> testClusters."${baseName}1".getName()}")
     systemProperty 'tests.security.manager', 'false'
+    systemProperty 'cluster.number_of_nodes', "${bwcNumNodes}"
 }
 
 // A bwc test suite which runs all the bwc tasks combined
@@ -837,7 +833,7 @@ task bwcTestSuite(type: StandaloneRestIntegTestTask) {
     exclude '**/*Test*'
     exclude '**/*IT*'
     // TODO refactor bwc test #677
-    // dependsOn tasks.named("${baseName}#rollingUpgradeClusterTask")
+    dependsOn tasks.named("${baseName}#rollingUpgradeClusterTask")
     dependsOn tasks.named("${baseName}#fullRestartClusterTask")
 }
 

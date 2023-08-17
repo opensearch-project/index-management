@@ -367,6 +367,7 @@ fun ManagedIndexMetaData.getCompletedManagedIndexMetaData(
     return this.copy(
         policyCompleted = updatedStepMetaData.policyCompleted,
         rolledOver = updatedStepMetaData.rolledOver,
+        rolledOverIndexName = updatedStepMetaData.rolledOverIndexName,
         actionMetaData = updatedActionMetaData,
         stepMetaData = updatedStepMetaData.stepMetaData,
         transitionTo = updatedStepMetaData.transitionTo,
