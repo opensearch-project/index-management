@@ -7,7 +7,7 @@ package org.opensearch.indexmanagement
 
 import org.apache.logging.log4j.LogManager
 import org.opensearch.action.ActionRequest
-import org.opensearch.action.ActionResponse
+import org.opensearch.core.action.ActionResponse
 import org.opensearch.action.support.ActionFilter
 import org.opensearch.action.support.ActiveShardsObserver
 import org.opensearch.client.Client

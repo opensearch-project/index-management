@@ -12,9 +12,9 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import org.apache.logging.log4j.LogManager
 import org.opensearch.OpenSearchStatusException
-import org.opensearch.action.ActionListener
+import org.opensearch.core.action.ActionListener
 import org.opensearch.action.ActionRequest
-import org.opensearch.action.ActionResponse
+import org.opensearch.core.action.ActionResponse
 import org.opensearch.action.DocWriteResponse
 import org.opensearch.action.admin.indices.forcemerge.ForceMergeAction
 import org.opensearch.action.admin.indices.forcemerge.ForceMergeRequest
@@ -58,7 +58,7 @@ import org.opensearch.indexmanagement.controlcenter.notification.filter.parser.A
 import org.opensearch.indexmanagement.opensearchapi.retry
 import org.opensearch.indexmanagement.util.OpenForTesting
 import org.opensearch.tasks.Task
-import org.opensearch.tasks.TaskId
+import org.opensearch.core.tasks.TaskId
 import org.opensearch.threadpool.ThreadPool.Names.GENERIC
 import java.util.function.Consumer
 

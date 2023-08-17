@@ -9,7 +9,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.apache.logging.log4j.LogManager
 import org.opensearch.ExceptionsHelper
-import org.opensearch.action.ActionListener
+import org.opensearch.core.action.ActionListener
 import org.opensearch.action.ActionRequestValidationException
 import org.opensearch.action.DocWriteResponse
 import org.opensearch.action.admin.cluster.settings.ClusterUpdateSettingsRequest
