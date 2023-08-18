@@ -59,6 +59,9 @@ import org.opensearch.search.aggregations.metrics.SumAggregationBuilder
 import org.opensearch.search.aggregations.metrics.ValueCountAggregationBuilder
 import org.opensearch.search.builder.SearchSourceBuilder
 import org.opensearch.search.internal.ShardSearchRequest
+import org.opensearch.search.sort.SortBuilder
+import org.opensearch.search.sort.SortBuilders
+import org.opensearch.search.sort.SortOrder
 import org.opensearch.tasks.Task
 import org.opensearch.transport.TransportChannel
 import org.opensearch.transport.TransportInterceptor
@@ -66,6 +69,7 @@ import org.opensearch.transport.TransportRequest
 import org.opensearch.transport.TransportRequestHandler
 import java.util.Date
 import java.util.concurrent.CountDownLatch
+import java.text.SimpleDateFormat
 
 private val logger = LogManager.getLogger(RollupInterceptor::class.java)
 class RollupInterceptor(
@@ -95,9 +99,47 @@ class RollupInterceptor(
         val response: SearchResponse = client.suspendUntil { search(searchRequest, it) }
         logger.error("ronsax response is $response")
     }
-//    private fun rewriteLiveIndexIntervals(request: ShardSearchRequest, indexID: String, start: Date, end: Date) {
-//        /*rewrite request*/
-//    }
+
+    private fun convertEpochMillisToDateString(epochMillis: Long): String {
+        val pattern = "yyyy-MM-dd HH:mm:ss"
+        val dateFormat = SimpleDateFormat(pattern)
+        val date = Date(epochMillis)
+        val dateString = dateFormat.format(date)
+        return dateString
+    }
+    private fun convertDateStringToEpochMillis(dateString: String): Long {
+        val pattern = "yyyy-MM-dd HH:mm:ss"
+        val dateFormat = SimpleDateFormat(pattern)
+
+        try {
+            val date = dateFormat.parse(dateString)
+            return (date.time)
+        } catch (e: Exception) {
+            println("Error parsing date: ${e.message}")
+        }
+    return 0L
+    }
+    private fun convertFixedIntervalStringToMs(fixedInterval:String): Long {
+        // Possible types are ms, s, m, h, d
+        val regex = """(\d+)([a-zA-Z]+)""".toRegex()
+        val matchResult = regex.find(fixedInterval)
+            ?: throw IllegalArgumentException("Invalid interval format: $fixedInterval")
+
+        val numericValue = matchResult.groupValues[1].toLong()
+        val intervalType = matchResult.groupValues[2]
+
+        val milliseconds = when (intervalType) {
+            "ms" -> numericValue
+            "s" -> numericValue * 1000L
+            "m" -> numericValue * 60 * 1000L
+            "h" -> numericValue * 60 * 60 * 1000L
+            "d" -> numericValue * 24 * 60 * 60 * 1000L
+            "w" -> numericValue * 7 * 24 * 60 * 60 * 1000L
+            else -> throw IllegalArgumentException("Unsupported interval type: $intervalType")
+        }
+
+        return milliseconds
+    }
     /*
     Modifies search request to handle overlap between rollup index and live index
      */
@@ -110,37 +152,28 @@ class RollupInterceptor(
          */
         var dateSourceField: String = ""
         var dateTargetField: String = ""
-//        val rollupInterval: String = ""
+        var rollupInterval: String? = ""
         for (dim in job.dimensions) {
-            if (dim.type == Dimension.Type.DATE_HISTOGRAM) {
+            if (dim is DateHistogram) {
                 dateSourceField = dim.sourceField
                 dateTargetField = dim.targetField
-//                rollupInterval = dim.fixedInterval
+                rollupInterval = dim.fixedInterval
                 break
             }
         }
-//        /*
-//        Query to find minLiveDate
-//        {
-//            "size": 0,
-//            "aggs": {
-//                "minDate": {
-//                    "min": {
-//                        "date_histogram": "tpep_pickup_datetime"
-//                    }
-//                }
-//            }
-//        }
-//         */
-//
-//
+        // Keep existing query and add 3 fake match alls to avoid infinite loop
+        val fakeQuery = QueryBuilders.boolQuery()
+            .must(request.source().query())
+            .must(QueryBuilders.matchAllQuery())
+            .must(QueryBuilders.matchAllQuery())
+            .must(QueryBuilders.matchAllQuery())
+
         // Build search request to find the minimum date in the live data index
-        val minDateAggregation: AggregationBuilder = AggregationBuilders
-            .min("minDate")
-            .field(dateSourceField)
+        var sort = SortBuilders.fieldSort(dateSourceField).order(SortOrder.ASC)
         var searchSourceBuilder = SearchSourceBuilder()
-            .aggregation(minDateAggregation)
-            .size(0)
+            .sort(sort)
+            .size(1)
+            .query(fakeQuery)
         val minLiveDateRequest = SearchRequest()
             .indices(liveIndex)
             .source(searchSourceBuilder)
@@ -156,30 +189,19 @@ class RollupInterceptor(
                 }
 
                 override fun onFailure(e: Exception) {
-                    logger.error("ronsax :( ", e)
+                    logger.error("ronsax minLiveDate request failed ", e)
                     latch.countDown()
                 }
             })
         latch.await()
 
         // Build search request to find the maximum date on the rolled data index
-        val queryJson = """{
-  "query": {
-    "bool": {
-      "must": [
-        { "match_all": {} },
-        { "match_all": {} },
-        { "match_all": {} }
-      ]
-    }
-  }
-}""".trimMargin()
-        val maxDateAggregation: AggregationBuilder = AggregationBuilders
-            .min("maxDate")
-            .field(dateTargetField)
+        sort = SortBuilders.fieldSort("${dateTargetField}.date_histogram").order(SortOrder.DESC)
         searchSourceBuilder = SearchSourceBuilder()
-            .aggregation(maxDateAggregation)
-            .query(QueryBuilders.wrapperQuery(queryJson))
+            .sort(sort)
+            .query(fakeQuery)
+            .size(1)
+//            .query(QueryBuilders.wrapperQuery(queryJson))
         // Need to avoid infinite interceptor loop
         val maxRolledDateRequest = SearchRequest()
             .indices(rollupIndex)
@@ -195,31 +217,33 @@ class RollupInterceptor(
                 }
 
                 override fun onFailure(e: Exception) {
-                    logger.error("ronsax :( ", e)
+                    logger.error("ronsax maxLiveDate request failed ", e)
                     latch.countDown()
                 }
             })
         latch.await()
 
         if (minLiveDateResponse != null && maxRolledDateResponse != null) {
-            val maxRolledDate = maxRolledDateResponse!!.aggregations.get("maxDate") as Date
-            val minLiveDate = minLiveDateResponse!!.aggregations.get("minDate") as Date
-            if (minLiveDate <= maxRolledDate) {
+            // Rollup data ends at maxRolledDate + fixedInterval
+            val maxRolledDate: Long = maxRolledDateResponse!!.hits.hits[0].sourceAsMap.get("${dateTargetField}.date_histogram") as Long
+            val rollupDataEndPoint = maxRolledDate + convertFixedIntervalStringToMs(fixedInterval = rollupInterval!!)
+            val minLiveDate = minLiveDateResponse!!.hits.hits[0].sourceAsMap.get("$dateSourceField") as String
+            val liveDataStartPoint = convertDateStringToEpochMillis(minLiveDate)
+            if (liveDataStartPoint <= rollupDataEndPoint) {
                 // Find intersection timestamp
                 val intersectionTime = maxRolledDate
                 val shardRequestIndex = request.shardId().indexName
                 // Change request to include overlap filter
                 if (shardRequestIndex == liveIndex) {
                     val filterOverlapQuery = QueryBuilders.boolQuery()
-                        .must(QueryBuilders.rangeQuery(dateSourceField).gte(intersectionTime))
+                        .must(QueryBuilders.rangeQuery(dateSourceField).gte(convertEpochMillisToDateString(intersectionTime))) // fix date format
                     val combinedQuery: BoolQueryBuilder = QueryBuilders.boolQuery()
                         .must(request.source().query())
                         .must(filterOverlapQuery)
                     request.source().query(combinedQuery)
                 } else if (shardRequestIndex == rollupIndex) {
-                    // Need to set size to 0 if this is rollup index
                     val filterOverlapQuery = QueryBuilders.boolQuery()
-                        .must(QueryBuilders.rangeQuery(dateSourceField).lt(intersectionTime))
+                        .must(QueryBuilders.rangeQuery(dateSourceField).lt(intersectionTime)) // fix date format
                     val combinedQuery: BoolQueryBuilder = QueryBuilders.boolQuery()
                         .must(request.source().query())
                         .must(filterOverlapQuery)
@@ -249,36 +273,26 @@ class RollupInterceptor(
         }
         return Pair(false, null)
     }
-    // Need to determine if this was an internal client call to avoid infinite loop from interceptor
+    // Need to determine if this was an internal client call to avoid infinite loop from interceptor, -> query string doesn't include "query"
     fun isInternalSearchRequest(request: ShardSearchRequest): Boolean {
         val jsonRequest: String = request.source().query().toString()
         // Detected dummy field from internal search request
-        if (jsonRequest.contains("{\n" +
-                    "  \"query\": {\n" +
-                    "    \"bool\": {\n" +
-                    "      \"must\": [\n" +
-                    "        { \"match_all\": {} },\n" +
-                    "        { \"match_all\": {} },\n" +
-                    "        { \"match_all\": {} }\n" +
-                    "      ]\n" +
-                    "    }\n" +
-                    "  }\n" +
-                    "}")) {
-            // Rebuild request without the dummy field
-            val removedDummyField = jsonRequest.replace("{\n" +
-                    "  \"query\": {\n" +
-                    "    \"bool\": {\n" +
-                    "      \"must\": [\n" +
-                    "        { \"match_all\": {} },\n" +
-                    "        { \"match_all\": {} },\n" +
-                    "        { \"match_all\": {} }\n" +
-                    "      ]\n" +
-                    "    }\n" +
-                    "  }\n" +
-                    "}", "")
-            val newQuery = QueryBuilders.wrapperQuery(removedDummyField)
-            val newSource = request.source().query(newQuery)
-            request.source(newSource)
+        if (jsonRequest.contains(",\n" +
+                    "      {\n" +
+                    "        \"match_all\" : {\n" +
+                    "          \"boost\" : 1.0\n" +
+                    "        }\n" +
+                    "      },\n" +
+                    "      {\n" +
+                    "        \"match_all\" : {\n" +
+                    "          \"boost\" : 1.0\n" +
+                    "        }\n" +
+                    "      },\n" +
+                    "      {\n" +
+                    "        \"match_all\" : {\n" +
+                    "          \"boost\" : 1.0\n" +
+                    "        }\n" +
+                    "      }")) {
             return true
         }
 
@@ -297,7 +311,7 @@ class RollupInterceptor(
                 if (searchEnabled && request is ShardSearchRequest) {
                     val (containsRollup, rollupJob) = originalSearchContainsRollup(request)
                     // Only modifies rollup searches and avoids internal client calls
-                    if (containsRollup && !isInternalSearchRequest(request)) {
+                    if (containsRollup) {
                         val indices = request.indices().map { it.toString() }.toTypedArray()
                         val concreteIndices = indexNameExpressionResolver
                             .concreteIndexNames(clusterService.state(), request.indicesOptions(), *indices)
@@ -313,16 +327,17 @@ class RollupInterceptor(
                         val concreteRollupIndicesArray = concreteRolledIndexNames.toTypedArray()
                         val concreteLiveIndicesArray = concreteLiveIndexNames.toTypedArray()
                         val shardRequestIndex = request.shardId().indexName
-                        mergeLiveIndexIntervals(concreteLiveIndicesArray, concreteRollupIndicesArray, rollupJob!!, request)
+                        // Check before rewriting rollup because it deletes dummy field
+                        val requestCalledInInterceptor = isInternalSearchRequest(request)
                         // Rewrite the request to fit rollup format
                         if (isRollupIndex(shardRequestIndex, clusterService.state())) {
-                            if (request.source().size() != 0) {
-                                throw IllegalArgumentException("Rollup search must have size explicitly set to 0, but found ${request.source().size()}")
-                            }
+//                            if (!requestCalledInInterceptor && request.source().size() != 0) {
+//                                throw IllegalArgumentException("Rollup search must have size explicitly set to 0, but found ${request.source().size()}")
+//                            }
                             // To extract fields from QueryStringQueryBuilder we need concrete source index name.
                             val queryFieldMappings = getQueryMetadata(
                                 request.source().query(),
-                                getConcreteSourceIndex(rollupJob.sourceIndex, indexNameExpressionResolver, clusterService.state())
+                                getConcreteSourceIndex(rollupJob!!.sourceIndex, indexNameExpressionResolver, clusterService.state())
                             )
                             val aggregationFieldMappings = getAggregationMetadata(request.source().aggregations()?.aggregatorFactories)
                             val fieldMappings = queryFieldMappings + aggregationFieldMappings
@@ -333,6 +348,10 @@ class RollupInterceptor(
                             if (fieldMappings.isNotEmpty()) {
                                 rewriteShardSearchForRollupJobs(request, allMatchingRollupJobs)
                             }
+                        }
+                        // avoid infinite interceptor loop
+                        if (concreteRollupIndicesArray.isNotEmpty() && concreteLiveIndicesArray.isNotEmpty() && !requestCalledInInterceptor) {
+                            mergeLiveIndexIntervals(concreteLiveIndicesArray, concreteRollupIndicesArray, rollupJob!!, request)
                         }
                     }
                 }
