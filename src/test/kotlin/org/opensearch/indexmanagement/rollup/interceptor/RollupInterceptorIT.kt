@@ -1876,4 +1876,82 @@ class RollupInterceptorIT : RollupRestTestCase() {
             Assert.assertTrue(e.message!!.contains("Can't parse query_string query without sourceIndex mappings!"))
         }
     }
+    fun `test search a live index and rollup index with no overlap`() {
+        generateNYCTaxiData("source_rollup_search")
+        val rollup = Rollup(
+            id = "basic_term_query_rollup_search",
+            enabled = true,
+            schemaVersion = 1L,
+            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+            jobLastUpdatedTime = Instant.now(),
+            jobEnabledTime = Instant.now(),
+            description = "basic search test",
+            sourceIndex = "source_rollup_search",
+            targetIndex = "target_rollup_search",
+            metadataID = null,
+            roles = emptyList(),
+            pageSize = 10,
+            delay = 0,
+            continuous = false,
+            dimensions = listOf(
+                DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "1h"),
+                Terms("RatecodeID", "RatecodeID"),
+                Terms("PULocationID", "PULocationID")
+            ),
+            metrics = listOf(
+                RollupMetrics(
+                    sourceField = "passenger_count", targetField = "passenger_count",
+                    metrics = listOf(
+                        Sum(), Min(), Max(),
+                        ValueCount(), Average()
+                    )
+                ),
+                RollupMetrics(sourceField = "total_amount", targetField = "total_amount", metrics = listOf(Max(), Min()))
+            )
+        ).let { createRollup(it, it.id) }
+
+        updateRollupStartTime(rollup)
+
+        waitFor {
+            val rollupJob = getRollup(rollupId = rollup.id)
+            assertNotNull("Rollup job doesn't have metadata set", rollupJob.metadataID)
+            val rollupMetadata = getRollupMetadata(rollupJob.metadataID!!)
+            assertEquals("Rollup is not finished", RollupMetadata.Status.FINISHED, rollupMetadata.status)
+        }
+
+        refreshAllIndices()
+
+        // Delete values from live index
+        var deleteResponse = client().makeRequest(
+            "POST",
+            "source_rollup_search/_delete_by_query",
+            mapOf("refresh" to "true"),
+            StringEntity("""{"query": {"match_all": {}}}""", ContentType.APPLICATION_JSON)
+        )
+        assertTrue(deleteResponse.restStatus() == RestStatus.OK)
+        // Term query
+        var req = """
+            {
+                "size": 0,
+                "query": {
+                    "match_all": {}
+                },
+                "aggs": {
+                    "sum_passenger_count": {
+                        "sum": {
+                            "field": "passenger_count"
+                        }
+                    }
+                }
+            }
+        """.trimIndent()
+        var searchResponse = client().makeRequest("POST", "/target_rollup_search,source_rollup_search/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
+        assertTrue(searchResponse.restStatus() == RestStatus.OK)
+        var responseAggs = searchResponse.asMap()["aggregations"] as Map<String, Map<String, Any>>
+        assertEquals(
+            "Aggregation from searching both indices is wrong",
+            9024.0,
+            responseAggs.getValue("sum_passenger_count")["value"]
+        )
+    }
 }

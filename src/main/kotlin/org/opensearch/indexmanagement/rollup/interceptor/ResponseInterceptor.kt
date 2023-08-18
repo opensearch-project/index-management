@@ -18,7 +18,6 @@ import org.opensearch.transport.TransportRequestOptions
 import org.opensearch.transport.TransportResponseHandler
 import org.opensearch.transport.TransportException
 
-
 class ResponseInterceptor(
     val clusterService: ClusterService,
     val settings: Settings,
@@ -48,7 +47,6 @@ class ResponseInterceptor(
     private inner class CustomResponseHandler<T : TransportResponse?>(
         private val originalHandler: TransportResponseHandler<T>?
     ) : TransportResponseHandler<T> {
-
         override fun read(inStream: StreamInput?): T {
             val response = originalHandler?.read(inStream)
             // Modify the response if necessary
@@ -57,7 +55,7 @@ class ResponseInterceptor(
 
         override fun handleResponse(response: T?) {
             // Handle the response or delegate to the original handler
-            logger.error("ronsax response interceptoed!! $response")
+//            logger.error("ronsax response interceptoed!! $response")
             originalHandler?.handleResponse(response)
         }
 
@@ -69,6 +67,5 @@ class ResponseInterceptor(
         override fun executor(): String {
             return originalHandler?.executor() ?: ""
         }
-
     }
 }
