@@ -392,8 +392,8 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
             namedWriteableRegistry,
             environment
         )
-        rollupInterceptor = RollupInterceptor(clusterService, settings, indexNameExpressionResolver)
-        responseInterceptor = ResponseInterceptor(clusterService, settings, indexNameExpressionResolver)
+        rollupInterceptor = RollupInterceptor(clusterService, settings, indexNameExpressionResolver, xContentRegistry)
+        responseInterceptor = ResponseInterceptor(clusterService, settings, indexNameExpressionResolver, client)
         val jvmService = JvmService(environment.settings())
         val transformRunner = TransformRunner.initialize(
             client,

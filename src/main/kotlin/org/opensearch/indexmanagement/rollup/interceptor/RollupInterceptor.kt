@@ -10,7 +10,16 @@ import org.opensearch.action.support.IndicesOptions
 import org.opensearch.cluster.ClusterState
 import org.opensearch.cluster.metadata.IndexNameExpressionResolver
 import org.opensearch.cluster.service.ClusterService
+import org.opensearch.common.bytes.BytesReference
+import org.opensearch.common.io.stream.BytesStreamOutput
 import org.opensearch.common.settings.Settings
+import org.opensearch.common.xcontent.LoggingDeprecationHandler
+import org.opensearch.common.xcontent.XContentFactory
+import org.opensearch.common.xcontent.XContentHelper
+import org.opensearch.common.xcontent.XContentType
+import org.opensearch.core.xcontent.NamedXContentRegistry
+import org.opensearch.core.xcontent.ToXContent
+import org.opensearch.core.xcontent.XContentBuilder
 import org.opensearch.index.query.BoolQueryBuilder
 import org.opensearch.index.query.BoostingQueryBuilder
 import org.opensearch.index.query.ConstantScoreQueryBuilder
@@ -18,11 +27,13 @@ import org.opensearch.index.query.DisMaxQueryBuilder
 import org.opensearch.index.query.MatchAllQueryBuilder
 import org.opensearch.index.query.MatchPhraseQueryBuilder
 import org.opensearch.index.query.QueryBuilder
+import org.opensearch.index.query.QueryBuilders
 import org.opensearch.index.query.QueryStringQueryBuilder
 import org.opensearch.index.query.RangeQueryBuilder
 import org.opensearch.index.query.TermQueryBuilder
 import org.opensearch.index.query.TermsQueryBuilder
 import org.opensearch.index.search.MatchQuery
+import org.opensearch.indexmanagement.common.model.dimension.DateHistogram
 import org.opensearch.indexmanagement.common.model.dimension.Dimension
 import org.opensearch.indexmanagement.rollup.model.Rollup
 import org.opensearch.indexmanagement.rollup.model.RollupFieldMapping
@@ -35,7 +46,7 @@ import org.opensearch.indexmanagement.rollup.util.isRollupIndex
 import org.opensearch.indexmanagement.rollup.util.populateFieldMappings
 import org.opensearch.indexmanagement.rollup.util.rewriteSearchSourceBuilder
 import org.opensearch.indexmanagement.util.IndexUtils
-import org.opensearch.search.aggregations.AggregationBuilder
+import org.opensearch.search.aggregations.*
 import org.opensearch.search.aggregations.bucket.histogram.DateHistogramAggregationBuilder
 import org.opensearch.search.aggregations.bucket.histogram.DateHistogramInterval
 import org.opensearch.search.aggregations.bucket.histogram.HistogramAggregationBuilder
@@ -46,6 +57,8 @@ import org.opensearch.search.aggregations.metrics.MinAggregationBuilder
 import org.opensearch.search.aggregations.metrics.SumAggregationBuilder
 import org.opensearch.search.aggregations.metrics.ValueCountAggregationBuilder
 import org.opensearch.search.internal.ShardSearchRequest
+import org.opensearch.search.aggregations.pipeline.SumBucketPipelineAggregationBuilder
+import org.opensearch.search.builder.SearchSourceBuilder
 import org.opensearch.tasks.Task
 import org.opensearch.transport.TransportChannel
 import org.opensearch.transport.TransportInterceptor
@@ -55,7 +68,8 @@ import org.opensearch.transport.TransportRequestHandler
 class RollupInterceptor(
     val clusterService: ClusterService,
     val settings: Settings,
-    val indexNameExpressionResolver: IndexNameExpressionResolver
+    val indexNameExpressionResolver: IndexNameExpressionResolver,
+    val xContentRegistry: NamedXContentRegistry
 ) : TransportInterceptor {
 
     private val logger = LogManager.getLogger(javaClass)
@@ -71,6 +85,83 @@ class RollupInterceptor(
             searchAllJobs = it
         }
     }
+    // Returns Pair<containsRollup: Boolean, rollupJob: RollupJob>
+    private fun originalSearchContainsRollup(request: ShardSearchRequest): Pair<Boolean, Rollup?> {
+        val indices = request.indices().map { it.toString() }.toTypedArray()
+        val allIndices = indexNameExpressionResolver
+            .concreteIndexNames(clusterService.state(), request.indicesOptions(), *indices)
+        for (index in allIndices) {
+            if (isRollupIndex(index, clusterService.state())) {
+                val rollupJob = clusterService.state().metadata.index(index).getRollupJobs()?.get(0)
+                return Pair(true, rollupJob)
+            }
+        }
+        return Pair(false, null)
+    }
+    // Need to determine if this was an internal client call to avoid infinite loop from interceptor, -> query string doesn't include "query"
+    fun isInternalSearchRequest(request: ShardSearchRequest): Boolean {
+        if (request.source().query() != null) {
+            val jsonRequest: String = request.source().query().toString()
+            // Detected dummy field from internal search request
+            if (jsonRequest.contains(",\n" +
+                        "      {\n" +
+                        "        \"match_all\" : {\n" +
+                        "          \"boost\" : 1.0\n" +
+                        "        }\n" +
+                        "      },\n" +
+                        "      {\n" +
+                        "        \"match_all\" : {\n" +
+                        "          \"boost\" : 1.0\n" +
+                        "        }\n" +
+                        "      },\n" +
+                        "      {\n" +
+                        "        \"match_all\" : {\n" +
+                        "          \"boost\" : 1.0\n" +
+                        "        }\n" +
+                        "      }")) {
+                return true
+        }
+        }
+        return false
+    }
+    fun copyAggregations(oldAggs: AggregatorFactories.Builder): AggregatorFactories.Builder {
+        val xContentBuilder = XContentFactory.jsonBuilder()
+//        val bytesReference: BytesReference = BytesReference.bytes(oldAggs)
+        val bytesReference = BytesReference.bytes(oldAggs.toXContent(xContentBuilder, ToXContent.EMPTY_PARAMS))
+        val parser = XContentHelper.createParser(
+            xContentRegistry,
+            LoggingDeprecationHandler.INSTANCE, bytesReference, XContentType.JSON
+        )
+        return AggregatorFactories.parseAggregators(parser)
+    }
+
+    // Wrap original aggregations into buckets based on fixed interval to remove overlap in response interceptor
+    fun breakRequestIntoBuckets(request: ShardSearchRequest, rollupJob: Rollup) {
+        val oldAggs = copyAggregations(request.source().aggregations())
+        logger.error("ronsax oldAggs is now $oldAggs")
+        var dateSourceField: String = ""
+//        var dateTargetField: String = ""
+        var rollupInterval: String = ""
+        for (dim in rollupJob.dimensions) {
+            if (dim is DateHistogram) {
+                dateSourceField = dim.sourceField
+//                dateTargetField = dim.targetField
+                rollupInterval = dim.fixedInterval!!
+                break
+            }
+        }
+        // Wraps all existing aggs in bucket aggregation
+        // Notifies the response interceptor that was rewritten since agg name is interceptor_interval_data
+        // Edge case if User selected this as the aggregation name :/
+        val intervalAgg = AggregationBuilders.dateHistogram("interceptor_interval_data")
+            .field(dateSourceField)
+            .calendarInterval(DateHistogramInterval(rollupInterval))
+            .format("epoch_millis")
+            .subAggregations(oldAggs)
+        request.source().aggregation(intervalAgg)
+        return
+    }
+
 
     @Suppress("SpreadOperator")
     override fun <T : TransportRequest> interceptHandler(
@@ -82,38 +173,52 @@ class RollupInterceptor(
         return object : TransportRequestHandler<T> {
             override fun messageReceived(request: T, channel: TransportChannel, task: Task) {
                 if (searchEnabled && request is ShardSearchRequest) {
-                    val index = request.shardId().indexName
-                    val isRollupIndex = isRollupIndex(index, clusterService.state())
-                    if (isRollupIndex) {
-//                        if (request.source().size() != 0) {
-//                            throw IllegalArgumentException("Rollup search must have size explicitly set to 0, but found ${request.source().size()}")
-//                        }
-
+                    val (containsRollup, rollupJob) = originalSearchContainsRollup(request)
+                    val shardRequestIndex = request.shardId().indexName
+                    val isRollupIndex = isRollupIndex(shardRequestIndex, clusterService.state())
+                    // Only modifies rollup searches and avoids internal client calls
+                    if (containsRollup || isRollupIndex) {
                         val indices = request.indices().map { it.toString() }.toTypedArray()
                         val concreteIndices = indexNameExpressionResolver
                             .concreteIndexNames(clusterService.state(), request.indicesOptions(), *indices)
                         val concreteRolledIndexNames = mutableListOf<String>()
+                        val concreteLiveIndexNames = mutableListOf<String>()
                         for (indexName in concreteIndices) {
                             if (isRollupIndex(indexName, clusterService.state())) {
                                 concreteRolledIndexNames.add(indexName)
+                            } else {
+                                concreteLiveIndexNames.add(indexName)
                             }
                         }
-                        val filteredConcreteIndices = concreteRolledIndexNames.toTypedArray()
-                        // To extract fields from QueryStringQueryBuilder we need concrete source index name.
-                        val rollupJob = clusterService.state().metadata.index(index).getRollupJobs()?.get(0)
-                            ?: throw IllegalArgumentException("No rollup job associated with target_index")
-                        val queryFieldMappings = getQueryMetadata(
-                            request.source().query(),
-                            getConcreteSourceIndex(rollupJob.sourceIndex, indexNameExpressionResolver, clusterService.state())
-                        )
-                        val aggregationFieldMappings = getAggregationMetadata(request.source().aggregations()?.aggregatorFactories)
-                        val fieldMappings = queryFieldMappings + aggregationFieldMappings
+                        val concreteRollupIndicesArray = concreteRolledIndexNames.toTypedArray()
+                        val concreteLiveIndicesArray = concreteLiveIndexNames.toTypedArray()
+                        // Check before rewriting rollup because it deletes dummy field
+                        val requestCalledInInterceptor = isInternalSearchRequest(request)
+                        // Rewrite the request to fit rollup format
+                        if (isRollupIndex) {
+//                            if (!requestCalledInInterceptor && request.source().size() != 0) {
+//                                throw IllegalArgumentException("Rollup search must have size explicitly set to 0, but found ${request.source().size()}")
+//                            }
+                            // To extract fields from QueryStringQueryBuilder we need concrete source index name.
+                            val queryFieldMappings = getQueryMetadata(
+                                request.source().query(),
+                                getConcreteSourceIndex(rollupJob!!.sourceIndex, indexNameExpressionResolver, clusterService.state())
+                            )
+                            val aggregationFieldMappings = getAggregationMetadata(request.source().aggregations()?.aggregatorFactories)
+                            val fieldMappings = queryFieldMappings + aggregationFieldMappings
 
-                        val allMatchingRollupJobs = validateIndicies(filteredConcreteIndices, fieldMappings)
+                            val allMatchingRollupJobs = validateIndicies(concreteRollupIndicesArray, fieldMappings)
 
-                        // only rebuild if there is necessity to rebuild
-                        if (fieldMappings.isNotEmpty()) {
-                            rewriteShardSearchForRollupJobs(request, allMatchingRollupJobs)
+                            // only rebuild if there is necessity to rebuild
+                            if (fieldMappings.isNotEmpty()) {
+                                rewriteShardSearchForRollupJobs(request, allMatchingRollupJobs)
+                            }
+                        }
+                        // Avoid infinite interceptor loop
+                        // Need to break into buckets for agg search on live and rollup indices
+                        if (concreteRollupIndicesArray.isNotEmpty() && concreteLiveIndicesArray.isNotEmpty() && request.source().aggregations() != null && !requestCalledInInterceptor) {
+                            // Break apart request to remove overlapping parts
+                            breakRequestIntoBuckets(request, rollupJob!!)
                         }
                     }
                 }
