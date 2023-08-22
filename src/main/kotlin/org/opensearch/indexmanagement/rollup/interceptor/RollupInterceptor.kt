@@ -6,32 +6,18 @@
 package org.opensearch.indexmanagement.rollup.interceptor
 
 import org.apache.logging.log4j.LogManager
+import org.opensearch.Version
 import org.opensearch.action.support.IndicesOptions
 import org.opensearch.cluster.ClusterState
 import org.opensearch.cluster.metadata.IndexNameExpressionResolver
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.bytes.BytesReference
 import org.opensearch.common.io.stream.BytesStreamOutput
+import org.opensearch.common.io.stream.NamedWriteableAwareStreamInput
+import org.opensearch.common.io.stream.NamedWriteableRegistry
 import org.opensearch.common.settings.Settings
-import org.opensearch.common.xcontent.LoggingDeprecationHandler
-import org.opensearch.common.xcontent.XContentFactory
-import org.opensearch.common.xcontent.XContentHelper
-import org.opensearch.common.xcontent.XContentType
 import org.opensearch.core.xcontent.NamedXContentRegistry
-import org.opensearch.core.xcontent.ToXContent
-import org.opensearch.core.xcontent.XContentBuilder
-import org.opensearch.index.query.BoolQueryBuilder
-import org.opensearch.index.query.BoostingQueryBuilder
-import org.opensearch.index.query.ConstantScoreQueryBuilder
-import org.opensearch.index.query.DisMaxQueryBuilder
-import org.opensearch.index.query.MatchAllQueryBuilder
-import org.opensearch.index.query.MatchPhraseQueryBuilder
-import org.opensearch.index.query.QueryBuilder
-import org.opensearch.index.query.QueryBuilders
-import org.opensearch.index.query.QueryStringQueryBuilder
-import org.opensearch.index.query.RangeQueryBuilder
-import org.opensearch.index.query.TermQueryBuilder
-import org.opensearch.index.query.TermsQueryBuilder
+import org.opensearch.index.query.*
 import org.opensearch.index.search.MatchQuery
 import org.opensearch.indexmanagement.common.model.dimension.DateHistogram
 import org.opensearch.indexmanagement.common.model.dimension.Dimension
@@ -40,30 +26,23 @@ import org.opensearch.indexmanagement.rollup.model.RollupFieldMapping
 import org.opensearch.indexmanagement.rollup.model.RollupFieldMapping.Companion.UNKNOWN_MAPPING
 import org.opensearch.indexmanagement.rollup.query.QueryStringQueryUtil
 import org.opensearch.indexmanagement.rollup.settings.RollupSettings
-import org.opensearch.indexmanagement.rollup.util.getDateHistogram
-import org.opensearch.indexmanagement.rollup.util.getRollupJobs
-import org.opensearch.indexmanagement.rollup.util.isRollupIndex
-import org.opensearch.indexmanagement.rollup.util.populateFieldMappings
-import org.opensearch.indexmanagement.rollup.util.rewriteSearchSourceBuilder
+import org.opensearch.indexmanagement.rollup.util.*
 import org.opensearch.indexmanagement.util.IndexUtils
+import org.opensearch.search.SearchModule
 import org.opensearch.search.aggregations.*
 import org.opensearch.search.aggregations.bucket.histogram.DateHistogramAggregationBuilder
 import org.opensearch.search.aggregations.bucket.histogram.DateHistogramInterval
 import org.opensearch.search.aggregations.bucket.histogram.HistogramAggregationBuilder
 import org.opensearch.search.aggregations.bucket.terms.TermsAggregationBuilder
-import org.opensearch.search.aggregations.metrics.AvgAggregationBuilder
-import org.opensearch.search.aggregations.metrics.MaxAggregationBuilder
-import org.opensearch.search.aggregations.metrics.MinAggregationBuilder
-import org.opensearch.search.aggregations.metrics.SumAggregationBuilder
-import org.opensearch.search.aggregations.metrics.ValueCountAggregationBuilder
+import org.opensearch.search.aggregations.metrics.*
 import org.opensearch.search.internal.ShardSearchRequest
-import org.opensearch.search.aggregations.pipeline.SumBucketPipelineAggregationBuilder
-import org.opensearch.search.builder.SearchSourceBuilder
 import org.opensearch.tasks.Task
 import org.opensearch.transport.TransportChannel
 import org.opensearch.transport.TransportInterceptor
 import org.opensearch.transport.TransportRequest
 import org.opensearch.transport.TransportRequestHandler
+import java.nio.ByteBuffer
+import java.util.*
 
 class RollupInterceptor(
     val clusterService: ClusterService,
@@ -124,15 +103,69 @@ class RollupInterceptor(
         }
         return false
     }
+    // Returns true if request was already modified into "interceptor_interval_data" bucket aggregation
+    fun isRequestRewritten(request: ShardSearchRequest): Boolean {
+        val currentAggs = request.source().aggregations().aggregatorFactories
+        for (agg in currentAggs) {
+            if (agg.name == "interceptor_interval_data") {
+                return true
+            }
+        }
+        return false
+    }
     fun copyAggregations(oldAggs: AggregatorFactories.Builder): AggregatorFactories.Builder {
-        val xContentBuilder = XContentFactory.jsonBuilder()
+
+//        val out = BytesStreamOutput()
+//        oldAggs.writeTo(out)
+//
+//        val sin = StreamInput.wrap(out.bytes().toBytesRef().bytes)
+//        val loadedAggregators = AggregatorFactories(sin)
+//        // Create a new AggregatorFactories.Builder and add the loaded aggregators manually
+//        val newAggsBuilder = AggregatorFactories.builder()
+//        for (aggregator in loadedAggregators) {
+//            newAggsBuilder.addAggregator(aggregator)
+//        }
+//
+//        return newAggsBuilder
+//        try {
+//            val xContentBuilder = XContentFactory.jsonBuilder()
 //        val bytesReference: BytesReference = BytesReference.bytes(oldAggs)
-        val bytesReference = BytesReference.bytes(oldAggs.toXContent(xContentBuilder, ToXContent.EMPTY_PARAMS))
-        val parser = XContentHelper.createParser(
-            xContentRegistry,
-            LoggingDeprecationHandler.INSTANCE, bytesReference, XContentType.JSON
-        )
-        return AggregatorFactories.parseAggregators(parser)
+//            val bytesReference = BytesReference.bytes(oldAggs.toXContent(xContentBuilder, ToXContent.EMPTY_PARAMS))
+//            val string =
+//                oldAggs.toXContent(XContentBuilder.builder(XContentType.JSON.xContent()), ToXContent.EMPTY_PARAMS)
+//                    .string()
+//            val parser = XContentType.JSON.xContent().createParser(
+//                NamedXContentRegistry(SearchModule(Settings.EMPTY, emptyList()).namedXContents), LoggingDeprecationHandler.INSTANCE, string)
+//            return AggregatorFactories.parseAggregators(parser)
+//        } catch(e:Exception) {
+//            logger.error(e)
+//        }
+//        return oldAggs
+        try {
+            val aggsStr = BytesStreamOutput().use<BytesStreamOutput, String?> { out ->
+                out.writeVersion(Version.CURRENT)
+                oldAggs.writeTo(out)
+                val bytes = BytesReference.toBytes(out.bytes())
+                Base64.getUrlEncoder().withoutPadding().encodeToString(bytes)
+
+            }
+            val bytesReference = BytesReference.fromByteBuffer(
+                ByteBuffer.wrap(
+                    Base64.getUrlDecoder().decode(
+                        aggsStr
+                    )
+                )
+            )
+            val wrapperStreamInput = NamedWriteableAwareStreamInput(
+                bytesReference.streamInput(),
+                NamedWriteableRegistry(SearchModule(Settings.EMPTY, emptyList()).namedWriteables)
+            )
+            wrapperStreamInput.setVersion(wrapperStreamInput.readVersion())
+            return AggregatorFactories.Builder(wrapperStreamInput)
+        } catch (e: Exception) {
+            logger.error(e)
+            return oldAggs
+        }
     }
 
     // Wrap original aggregations into buckets based on fixed interval to remove overlap in response interceptor
@@ -216,7 +249,7 @@ class RollupInterceptor(
                         }
                         // Avoid infinite interceptor loop
                         // Need to break into buckets for agg search on live and rollup indices
-                        if (concreteRollupIndicesArray.isNotEmpty() && concreteLiveIndicesArray.isNotEmpty() && request.source().aggregations() != null && !requestCalledInInterceptor) {
+                         if (concreteRollupIndicesArray.isNotEmpty() && concreteLiveIndicesArray.isNotEmpty() && request.source().aggregations() != null && !requestCalledInInterceptor && !isRequestRewritten(request)) {
                             // Break apart request to remove overlapping parts
                             breakRequestIntoBuckets(request, rollupJob!!)
                         }

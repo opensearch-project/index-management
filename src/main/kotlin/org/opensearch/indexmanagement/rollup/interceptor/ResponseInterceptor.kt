@@ -275,7 +275,9 @@ class ResponseInterceptor(
 //            7. iterate throguh all key, vals in map and construct an internalAggregation object for each of them, add to InternalAggregations object
 //            8. return InternalAggregations object
 //             */
-//            return InternalAggregations()
+//            intervalAggregations.get<>()
+//            val result = listOf(intervalAggregations)
+//            return InternalAggregations(intervalAggregations, null)
 //        }
         @Suppress("UNCHECKED_CAST")
         override fun handleResponse(response: T?) {
@@ -285,10 +287,7 @@ class ResponseInterceptor(
                 is QuerySearchResult -> {
                     if (response.hasAggs() && isRewrittenInterceptorRequest(response)) {
                         // Check for overlap
-                        val latch2 = CountDownLatch(1)
                         val (startTime, endTime) = findOverlap(response)
-                        latch2.countDown()
-                        latch2.await()
                         logger.error("ronsax: index: ${response.shardIndex} start $startTime and end $endTime")
                         // Modify agg to be original result without overlap computed in
                         // TODO handle overlap here
@@ -307,10 +306,7 @@ class ResponseInterceptor(
                     val queryResult = response.queryResult()
                     if (queryResult.hasAggs() && isRewrittenInterceptorRequest(queryResult)) {
                         // Check for overlap
-                        val latch2 = CountDownLatch(1)
                         val (startTime, endTime) = findOverlap(queryResult)
-                        latch2.countDown()
-                        latch2.await()
                         logger.error("ronsax: index: ${response.shardIndex} start $startTime and end $endTime")
                         // Modify agg to be original result without overlap computed in
 
