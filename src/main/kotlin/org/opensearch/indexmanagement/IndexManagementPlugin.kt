@@ -612,7 +612,7 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
     }
 
     override fun getTransportInterceptors(namedWriteableRegistry: NamedWriteableRegistry, threadContext: ThreadContext): List<TransportInterceptor> {
-        return listOf(rollupInterceptor, responseInterceptor)
+        return listOf(rollupInterceptor)
     }
 
     override fun getActionFilters(): List<ActionFilter> {
