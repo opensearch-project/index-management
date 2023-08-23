@@ -14,17 +14,10 @@ import org.opensearch.cluster.metadata.IndexNameExpressionResolver
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.io.stream.StreamInput
 import org.opensearch.common.settings.Settings
-import org.opensearch.index.query.QueryBuilders
 import org.opensearch.indexmanagement.common.model.dimension.DateHistogram
 import org.opensearch.indexmanagement.rollup.model.Rollup
 import org.opensearch.indexmanagement.rollup.util.getRollupJobs
 import org.opensearch.indexmanagement.rollup.util.isRollupIndex
-import org.opensearch.search.DocValueFormat
-import org.opensearch.search.aggregations.InternalAggregation
-import org.opensearch.search.aggregations.InternalAggregations
-import org.opensearch.search.aggregations.metrics.InternalSum
-import org.opensearch.search.aggregations.support.ValuesSource
-import org.opensearch.search.aggregations.support.ValuesSourceConfig
 import org.opensearch.search.builder.SearchSourceBuilder
 import org.opensearch.search.fetch.QueryFetchSearchResult
 import org.opensearch.search.internal.ShardSearchRequest
@@ -99,7 +92,7 @@ class ResponseInterceptor(
             }
             return null
         }
-        fun getRollupAndLiveIndices(request:ShardSearchRequest): Pair<Array<String>, Array<String>> {
+        fun getRollupAndLiveIndices(request: ShardSearchRequest): Pair<Array<String>, Array<String>> {
             val liveIndices = mutableListOf<String>()
             val rollupIndices = mutableListOf<String>()
             val indices = request.indices().map { it.toString() }.toTypedArray()
@@ -114,14 +107,14 @@ class ResponseInterceptor(
             }
             return Pair(rollupIndices.toTypedArray(), liveIndices.toTypedArray())
         }
-        private fun convertEpochMillisToDateString(epochMillis: Long): String {
+        fun convertEpochMillisToDateString(epochMillis: Long): String {
             val pattern = "yyyy-MM-dd HH:mm:ss"
             val dateFormat = SimpleDateFormat(pattern)
             val date = Date(epochMillis)
             val dateString = dateFormat.format(date)
             return dateString
         }
-        private fun convertDateStringToEpochMillis(dateString: String): Long {
+        fun convertDateStringToEpochMillis(dateString: String): Long {
             val pattern = "yyyy-MM-dd HH:mm:ss"
             val dateFormat = SimpleDateFormat(pattern)
 
@@ -133,7 +126,7 @@ class ResponseInterceptor(
             }
             return 0L
         }
-        private fun convertFixedIntervalStringToMs(fixedInterval:String): Long {
+        fun convertFixedIntervalStringToMs(fixedInterval: String): Long {
             // Possible types are ms, s, m, h, d
             val regex = """(\d+)([a-zA-Z]+)""".toRegex()
             val matchResult = regex.find(fixedInterval)
@@ -157,8 +150,8 @@ class ResponseInterceptor(
 
 //         Returns Pair(startRange: Long, endRange: Long)
 //         Note startRange is inclusive and endRange is exclusive, they are longs becuase the type is epoch milliseconds
-        fun findOverlap(response: QuerySearchResult): Pair<Long,Long> {
-            val job:Rollup = getRollupJob(response)!! // maybe throw a try catch later
+        fun findOverlap(response: QuerySearchResult): Pair<Long, Long> {
+            val job: Rollup = getRollupJob(response)!! // maybe throw a try catch later
             var dateSourceField: String = ""
             var dateTargetField: String = ""
             var rollupInterval: String? = ""
@@ -171,7 +164,7 @@ class ResponseInterceptor(
                 }
             }
             // Keep existing query and add 3 fake match alls to avoid infinite loop
-            val request:ShardSearchRequest = response.shardSearchRequest!!
+            val request: ShardSearchRequest = response.shardSearchRequest!!
             val oldQuery = request.source().query()
 //            val fakeQuery = QueryBuilders.boolQuery()
 //                .must(oldQuery ?: QueryBuilders.matchAllQuery())
@@ -187,7 +180,6 @@ class ResponseInterceptor(
             var searchSourceBuilder = SearchSourceBuilder()
                 .sort(sort)
                 .size(1)
-                .query(oldQuery)
             val minLiveDateRequest = SearchRequest()
                 .indices(liveIndex)
                 .source(searchSourceBuilder)
@@ -206,11 +198,12 @@ class ResponseInterceptor(
                         logger.error("ronsax minLiveDate request failed ", e)
                         latch.countDown()
                     }
-                })
+                }
+            )
             latch.await()
 
             // Build search request to find the maximum date on the rolled data index
-            sort = SortBuilders.fieldSort("${dateTargetField}.date_histogram").order(SortOrder.DESC)
+            sort = SortBuilders.fieldSort("$dateTargetField.date_histogram").order(SortOrder.DESC)
             searchSourceBuilder = SearchSourceBuilder()
                 .sort(sort)
                 .query(oldQuery)
@@ -233,14 +226,15 @@ class ResponseInterceptor(
                         logger.error("ronsax maxLiveDate request failed ", e)
                         latch.countDown()
                     }
-                })
+                }
+            )
             latch.await()
 
             if (minLiveDateResponse != null && maxRolledDateResponse != null) {
                 // Rollup data ends at maxRolledDate + fixedInterval
-                val maxRolledDate: Long = maxRolledDateResponse!!.hits.hits[0].sourceAsMap.get("${dateTargetField}.date_histogram") as Long
+                val maxRolledDate: Long = maxRolledDateResponse!!.hits.hits[0].sourceAsMap.get("$dateTargetField.date_histogram") as Long // broken for rollup index
                 val rollupDataEndPoint = maxRolledDate + convertFixedIntervalStringToMs(fixedInterval = rollupInterval!!)
-                val minLiveDate = minLiveDateResponse!!.hits.hits[0].sourceAsMap.get("$dateSourceField") as String
+                val minLiveDate = minLiveDateResponse!!.hits.hits[0].sourceAsMap.get("$dateSourceField") as String // broken for rollup index
                 val liveDataStartPoint = convertDateStringToEpochMillis(minLiveDate)
                 if (liveDataStartPoint <= rollupDataEndPoint) {
                     // Find intersection timestamp
@@ -287,37 +281,39 @@ class ResponseInterceptor(
                     if (response.hasAggs() && isRewrittenInterceptorRequest(response)) {
                         // Check for overlap
                         val (startTime, endTime) = findOverlap(response)
-                        logger.error("ronsax: index: ${response.shardIndex} start $startTime and end $endTime")
+                        logger.error("ronsax: live index: start $startTime and end $endTime")
                         // Modify agg to be original result without overlap computed in
                         // TODO handle overlap here
                         // TODO create a copy of the QuerySearchResult with aggregations modified
 //                        val newQuerySerach = QuerySearchResult()
 //                        val responseForHandler = newQuerySerach as T
-
+//                        response.shardIndex = response.shardSearchRequest?.shardId()?.id ?: -1
                         originalHandler?.handleResponse(response)
                     } else {
                         originalHandler?.handleResponse(response)
                     }
                 }
-                // rollup index
+                // when just 1 rollup index is in request, keep for testing
                 is QueryFetchSearchResult -> {
                     val queryResult = response.queryResult()
                     if (queryResult.hasAggs() && isRewrittenInterceptorRequest(queryResult)) {
                         // Check for overlap
                         val (startTime, endTime) = findOverlap(queryResult)
-                        logger.error("ronsax: index: ${response.shardIndex} start $startTime and end $endTime")
-                        // Modify agg to be original result without overlap computed in
+                        logger.error("ronsax: rollup index: start $startTime and end $endTime")
+//                        response.shardIndex = response.shardSearchRequest?.shardId()?.id ?: -1
 
                         // TODO handle overlap here
-                        val r1: T = QueryFetchSearchResult(response.queryResult(), response.fetchResult()) as T
-                        originalHandler?.handleResponse(r1)
+                        // TODO change response object
+//                        val r1 = QueryFetchSearchResult(response.queryResult(), response.fetchResult())
+//                        r1.shardIndex = response.shardIndex
+//                        val r2: T = r1 as T
+                        originalHandler?.handleResponse(response)
                     } else {
                         originalHandler?.handleResponse(response)
                     }
-                }
-                else -> {
-                // Delegate to original handler
-                originalHandler?.handleResponse(response)
+                } else -> {
+                    // Delegate to original handler
+                    originalHandler?.handleResponse(response)
                 }
             }
         }

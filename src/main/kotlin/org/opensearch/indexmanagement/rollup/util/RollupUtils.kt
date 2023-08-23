@@ -468,7 +468,7 @@ fun parseRollup(response: GetResponse, xContentRegistry: NamedXContentRegistry =
 // Changes aggregations in search source builder to new original aggregation (Change query too?)
 fun SearchSourceBuilder.changeAggregations(aggregationBuilderCollection: Collection<AggregationBuilder>): SearchSourceBuilder {
     val ssb = SearchSourceBuilder()
-    aggregationBuilderCollection.forEach {ssb.aggregation(it)}
+    aggregationBuilderCollection.forEach { ssb.aggregation(it) }
     if (this.explain() != null) ssb.explain(this.explain())
     if (this.ext() != null) ssb.ext(this.ext())
     ssb.fetchSource(this.fetchSource())
@@ -498,5 +498,3 @@ fun SearchSourceBuilder.changeAggregations(aggregationBuilderCollection: Collect
     if (this.collapse() != null) ssb.collapse(this.collapse())
     return ssb
 }
-
-

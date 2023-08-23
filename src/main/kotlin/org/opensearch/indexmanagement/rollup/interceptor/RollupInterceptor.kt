@@ -17,7 +17,17 @@ import org.opensearch.common.io.stream.NamedWriteableAwareStreamInput
 import org.opensearch.common.io.stream.NamedWriteableRegistry
 import org.opensearch.common.settings.Settings
 import org.opensearch.core.xcontent.NamedXContentRegistry
-import org.opensearch.index.query.*
+import org.opensearch.index.query.QueryBuilder
+import org.opensearch.index.query.TermQueryBuilder
+import org.opensearch.index.query.TermsQueryBuilder
+import org.opensearch.index.query.RangeQueryBuilder
+import org.opensearch.index.query.MatchAllQueryBuilder
+import org.opensearch.index.query.BoolQueryBuilder
+import org.opensearch.index.query.BoostingQueryBuilder
+import org.opensearch.index.query.ConstantScoreQueryBuilder
+import org.opensearch.index.query.DisMaxQueryBuilder
+import org.opensearch.index.query.MatchPhraseQueryBuilder
+import org.opensearch.index.query.QueryStringQueryBuilder
 import org.opensearch.index.search.MatchQuery
 import org.opensearch.indexmanagement.common.model.dimension.DateHistogram
 import org.opensearch.indexmanagement.common.model.dimension.Dimension
@@ -26,15 +36,26 @@ import org.opensearch.indexmanagement.rollup.model.RollupFieldMapping
 import org.opensearch.indexmanagement.rollup.model.RollupFieldMapping.Companion.UNKNOWN_MAPPING
 import org.opensearch.indexmanagement.rollup.query.QueryStringQueryUtil
 import org.opensearch.indexmanagement.rollup.settings.RollupSettings
-import org.opensearch.indexmanagement.rollup.util.*
+import org.opensearch.indexmanagement.rollup.util.isRollupIndex
+import org.opensearch.indexmanagement.rollup.util.getRollupJobs
+import org.opensearch.indexmanagement.rollup.util.changeAggregations
+import org.opensearch.indexmanagement.rollup.util.populateFieldMappings
+import org.opensearch.indexmanagement.rollup.util.getDateHistogram
+import org.opensearch.indexmanagement.rollup.util.rewriteSearchSourceBuilder
 import org.opensearch.indexmanagement.util.IndexUtils
 import org.opensearch.search.SearchModule
-import org.opensearch.search.aggregations.*
+import org.opensearch.search.aggregations.AggregatorFactories
+import org.opensearch.search.aggregations.AggregationBuilder
+import org.opensearch.search.aggregations.AggregationBuilders
 import org.opensearch.search.aggregations.bucket.histogram.DateHistogramAggregationBuilder
 import org.opensearch.search.aggregations.bucket.histogram.DateHistogramInterval
 import org.opensearch.search.aggregations.bucket.histogram.HistogramAggregationBuilder
 import org.opensearch.search.aggregations.bucket.terms.TermsAggregationBuilder
-import org.opensearch.search.aggregations.metrics.*
+import org.opensearch.search.aggregations.metrics.SumAggregationBuilder
+import org.opensearch.search.aggregations.metrics.MaxAggregationBuilder
+import org.opensearch.search.aggregations.metrics.AvgAggregationBuilder
+import org.opensearch.search.aggregations.metrics.MinAggregationBuilder
+import org.opensearch.search.aggregations.metrics.ValueCountAggregationBuilder
 import org.opensearch.search.internal.ShardSearchRequest
 import org.opensearch.tasks.Task
 import org.opensearch.transport.TransportChannel
@@ -42,8 +63,7 @@ import org.opensearch.transport.TransportInterceptor
 import org.opensearch.transport.TransportRequest
 import org.opensearch.transport.TransportRequestHandler
 import java.nio.ByteBuffer
-import java.util.*
-
+import java.util.Base64
 class RollupInterceptor(
     val clusterService: ClusterService,
     val settings: Settings,
@@ -127,40 +147,12 @@ class RollupInterceptor(
         return false
     }
     fun copyAggregations(oldAggs: AggregatorFactories.Builder): AggregatorFactories.Builder {
-
-//        val out = BytesStreamOutput()
-//        oldAggs.writeTo(out)
-//
-//        val sin = StreamInput.wrap(out.bytes().toBytesRef().bytes)
-//        val loadedAggregators = AggregatorFactories(sin)
-//        // Create a new AggregatorFactories.Builder and add the loaded aggregators manually
-//        val newAggsBuilder = AggregatorFactories.builder()
-//        for (aggregator in loadedAggregators) {
-//            newAggsBuilder.addAggregator(aggregator)
-//        }
-//
-//        return newAggsBuilder
-//        try {
-//            val xContentBuilder = XContentFactory.jsonBuilder()
-//        val bytesReference: BytesReference = BytesReference.bytes(oldAggs)
-//            val bytesReference = BytesReference.bytes(oldAggs.toXContent(xContentBuilder, ToXContent.EMPTY_PARAMS))
-//            val string =
-//                oldAggs.toXContent(XContentBuilder.builder(XContentType.JSON.xContent()), ToXContent.EMPTY_PARAMS)
-//                    .string()
-//            val parser = XContentType.JSON.xContent().createParser(
-//                NamedXContentRegistry(SearchModule(Settings.EMPTY, emptyList()).namedXContents), LoggingDeprecationHandler.INSTANCE, string)
-//            return AggregatorFactories.parseAggregators(parser)
-//        } catch(e:Exception) {
-//            logger.error(e)
-//        }
-//        return oldAggs
         try {
             val aggsStr = BytesStreamOutput().use<BytesStreamOutput, String?> { out ->
                 out.writeVersion(Version.CURRENT)
                 oldAggs.writeTo(out)
                 val bytes = BytesReference.toBytes(out.bytes())
                 Base64.getUrlEncoder().withoutPadding().encodeToString(bytes)
-
             }
             val bytesReference = BytesReference.fromByteBuffer(
                 ByteBuffer.wrap(
@@ -184,14 +176,11 @@ class RollupInterceptor(
     // Wrap original aggregations into buckets based on fixed interval to remove overlap in response interceptor
     fun breakRequestIntoBuckets(request: ShardSearchRequest, rollupJob: Rollup) {
         val oldAggs = copyAggregations(request.source().aggregations())
-        logger.error("ronsax oldAggs is now $oldAggs")
         var dateSourceField: String = ""
-//        var dateTargetField: String = ""
         var rollupInterval: String = ""
         for (dim in rollupJob.dimensions) {
             if (dim is DateHistogram) {
                 dateSourceField = dim.sourceField
-//                dateTargetField = dim.targetField
                 rollupInterval = dim.fixedInterval!!
                 break
             }
@@ -208,7 +197,6 @@ class RollupInterceptor(
         request.source(request.source().changeAggregations(listOf(intervalAgg)))
         return
     }
-
 
     @Suppress("SpreadOperator")
     override fun <T : TransportRequest> interceptHandler(
