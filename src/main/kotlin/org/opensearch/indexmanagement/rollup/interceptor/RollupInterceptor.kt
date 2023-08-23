@@ -92,13 +92,13 @@ class RollupInterceptor(
                         val indices = request.indices().map { it.toString() }.toTypedArray()
                         val concreteIndices = indexNameExpressionResolver
                             .concreteIndexNames(clusterService.state(), request.indicesOptions(), *indices)
-                        val concreteRolledIndexNames = mutableListOf<String>()
+                        val concreteRolledUpIndexNames = mutableListOf<String>()
                         for (indexName in concreteIndices) {
                             if (isRollupIndex(indexName, clusterService.state())) {
-                                concreteRolledIndexNames.add(indexName)
+                                concreteRolledUpIndexNames.add(indexName)
                             }
                         }
-                        val filteredConcreteIndices = concreteRolledIndexNames.toTypedArray()
+                        val filteredConcreteIndices = concreteRolledUpIndexNames.toTypedArray()
                         // To extract fields from QueryStringQueryBuilder we need concrete source index name.
                         val rollupJob = clusterService.state().metadata.index(index).getRollupJobs()?.get(0)
                             ?: throw IllegalArgumentException("No rollup job associated with target_index")
