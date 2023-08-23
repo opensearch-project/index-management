@@ -113,7 +113,6 @@ import org.opensearch.indexmanagement.rollup.action.start.TransportStartRollupAc
 import org.opensearch.indexmanagement.rollup.action.stop.StopRollupAction
 import org.opensearch.indexmanagement.rollup.action.stop.TransportStopRollupAction
 import org.opensearch.indexmanagement.rollup.actionfilter.FieldCapsFilter
-import org.opensearch.indexmanagement.rollup.interceptor.ResponseInterceptor
 import org.opensearch.indexmanagement.rollup.interceptor.RollupInterceptor
 import org.opensearch.indexmanagement.rollup.model.Rollup
 import org.opensearch.indexmanagement.rollup.model.RollupMetadata
@@ -209,7 +208,6 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
     lateinit var clusterService: ClusterService
     lateinit var indexNameExpressionResolver: IndexNameExpressionResolver
     lateinit var rollupInterceptor: RollupInterceptor
-    lateinit var responseInterceptor: ResponseInterceptor
     lateinit var fieldCapsFilter: FieldCapsFilter
     lateinit var indexMetadataProvider: IndexMetadataProvider
     private val indexMetadataServices: MutableList<Map<String, IndexMetadataService>> = mutableListOf()
@@ -393,7 +391,6 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
             environment
         )
         rollupInterceptor = RollupInterceptor(clusterService, settings, indexNameExpressionResolver)
-        responseInterceptor = ResponseInterceptor(clusterService, settings, indexNameExpressionResolver)
         val jvmService = JvmService(environment.settings())
         val transformRunner = TransformRunner.initialize(
             client,
