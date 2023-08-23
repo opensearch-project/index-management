@@ -464,3 +464,11 @@ fun parseRollup(response: GetResponse, xContentRegistry: NamedXContentRegistry =
 
     return xcp.parseWithType(response.id, response.seqNo, response.primaryTerm, Rollup.Companion::parse)
 }
+// Changes aggregations in search source builder to new original aggregation
+//fun SearchSourceBuilder.rewriteAggregations(aggregationBuilder: AggregationBuilder): AggregationBuilder {
+//    val aggFactory = AggregatorFactories.builder().also { factories ->
+//        aggregationBuilder.subAggregations.forEach {
+//            factories.addAggregator(this.rewriteAggregations(it))
+//        }
+//    }
+

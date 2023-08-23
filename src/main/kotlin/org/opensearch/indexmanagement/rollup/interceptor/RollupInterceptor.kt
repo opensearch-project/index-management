@@ -227,6 +227,12 @@ class RollupInterceptor(
                         val concreteLiveIndicesArray = concreteLiveIndexNames.toTypedArray()
                         // Check before rewriting rollup because it deletes dummy field
                         val requestCalledInInterceptor = isInternalSearchRequest(request)
+                        // Avoid infinite interceptor loop
+                        // Need to break into buckets for agg search on live and rollup indices
+                        if (concreteRollupIndicesArray.isNotEmpty() && concreteLiveIndicesArray.isNotEmpty() && request.source().aggregations() != null && !requestCalledInInterceptor && !isRequestRewritten(request)) {
+                            // Break apart request to remove overlapping parts
+                            breakRequestIntoBuckets(request, rollupJob!!)
+                        }
                         // Rewrite the request to fit rollup format
                         if (isRollupIndex) {
 //                            if (!requestCalledInInterceptor && request.source().size() != 0) {
@@ -246,12 +252,6 @@ class RollupInterceptor(
                             if (fieldMappings.isNotEmpty()) {
                                 rewriteShardSearchForRollupJobs(request, allMatchingRollupJobs)
                             }
-                        }
-                        // Avoid infinite interceptor loop
-                        // Need to break into buckets for agg search on live and rollup indices
-                         if (concreteRollupIndicesArray.isNotEmpty() && concreteLiveIndicesArray.isNotEmpty() && request.source().aggregations() != null && !requestCalledInInterceptor && !isRequestRewritten(request)) {
-                            // Break apart request to remove overlapping parts
-                            breakRequestIntoBuckets(request, rollupJob!!)
                         }
                     }
                 }

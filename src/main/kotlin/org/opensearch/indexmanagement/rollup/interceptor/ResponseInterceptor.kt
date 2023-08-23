@@ -291,7 +291,7 @@ class ResponseInterceptor(
                         logger.error("ronsax: index: ${response.shardIndex} start $startTime and end $endTime")
                         // Modify agg to be original result without overlap computed in
                         // TODO handle overlap here
-                        response.aggregations()
+                        val aggs = response.aggregations().expand()
                         // TODO create a copy of the QuerySearchResult with aggregations modified
 //                        val newQuerySerach = QuerySearchResult()
 //                        val responseForHandler = newQuerySerach as T
