@@ -173,11 +173,11 @@ class ResponseInterceptor(
             // Keep existing query and add 3 fake match alls to avoid infinite loop
             val request:ShardSearchRequest = response.shardSearchRequest!!
             val oldQuery = request.source().query()
-            val fakeQuery = QueryBuilders.boolQuery()
-                .must(oldQuery ?: QueryBuilders.matchAllQuery())
-                .must(QueryBuilders.matchAllQuery())
-                .must(QueryBuilders.matchAllQuery())
-                .must(QueryBuilders.matchAllQuery())
+//            val fakeQuery = QueryBuilders.boolQuery()
+//                .must(oldQuery ?: QueryBuilders.matchAllQuery())
+//                .must(QueryBuilders.matchAllQuery())
+//                .must(QueryBuilders.matchAllQuery())
+//                .must(QueryBuilders.matchAllQuery())
             // TODO scale this for multiple indices!!!!
             val (rollupIndices, liveIndices) = getRollupAndLiveIndices(request)
             val rollupIndex = rollupIndices[0]
@@ -187,7 +187,7 @@ class ResponseInterceptor(
             var searchSourceBuilder = SearchSourceBuilder()
                 .sort(sort)
                 .size(1)
-                .query(fakeQuery)
+                .query(oldQuery)
             val minLiveDateRequest = SearchRequest()
                 .indices(liveIndex)
                 .source(searchSourceBuilder)
@@ -213,9 +213,8 @@ class ResponseInterceptor(
             sort = SortBuilders.fieldSort("${dateTargetField}.date_histogram").order(SortOrder.DESC)
             searchSourceBuilder = SearchSourceBuilder()
                 .sort(sort)
-                .query(fakeQuery)
+                .query(oldQuery)
                 .size(1)
-//            .query(QueryBuilders.wrapperQuery(queryJson))
             // Need to avoid infinite interceptor loop
             val maxRolledDateRequest = SearchRequest()
                 .indices(rollupIndex)
@@ -291,7 +290,6 @@ class ResponseInterceptor(
                         logger.error("ronsax: index: ${response.shardIndex} start $startTime and end $endTime")
                         // Modify agg to be original result without overlap computed in
                         // TODO handle overlap here
-                        val aggs = response.aggregations().expand()
                         // TODO create a copy of the QuerySearchResult with aggregations modified
 //                        val newQuerySerach = QuerySearchResult()
 //                        val responseForHandler = newQuerySerach as T
