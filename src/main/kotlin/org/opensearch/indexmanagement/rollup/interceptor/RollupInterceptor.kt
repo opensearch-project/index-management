@@ -85,9 +85,9 @@ class RollupInterceptor(
                     val index = request.shardId().indexName
                     val isRollupIndex = isRollupIndex(index, clusterService.state())
                     if (isRollupIndex) {
-//                        if (request.source().size() != 0) {
-//                            throw IllegalArgumentException("Rollup search must have size explicitly set to 0, but found ${request.source().size()}")
-//                        }
+                        if (request.source().size() != 0) {
+                            throw IllegalArgumentException("Rollup search must have size explicitly set to 0, but found ${request.source().size()}")
+                        }
 
                         val indices = request.indices().map { it.toString() }.toTypedArray()
                         val concreteIndices = indexNameExpressionResolver
