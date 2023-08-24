@@ -323,6 +323,11 @@ class ResponseInterceptor(
         }
 
 //         Returns a new InternalAggregations that contains a merged aggregation(s) with the overlapping data removed, computation varies based on metric used (edge case avg?)
+        /**
+         * kughbniohujbnuhygjbjuhygj
+         * @param intervalAggregations
+         * @return Int
+         */
         fun computeAggregationsWithoutOverlap(intervalAggregations: InternalAggregations, start: Long, end: Long): InternalAggregations {
 //            /*
 //            PSUEDOCODE
@@ -337,7 +342,7 @@ class ResponseInterceptor(
 //             */
             // Create an empty map to hold the agg values
             // {aggName: String: Pair<value: Double, type:String>}
-            val sumValues = mutableMapOf<String, Pair<Double, String>>()
+            val aggValues = mutableMapOf<String, Pair<Double, String>>()
 //
 //            // Iterate through each aggregation and bucket
             val interceptorAgg = intervalAggregations.asMap().get("interceptor_interval_data") as InternalDateHistogram
@@ -349,12 +354,12 @@ class ResponseInterceptor(
                 if (timestamp >= start && timestamp < end) {
                     for (originalAgg in bucket.aggregations) {
                         val aggName = originalAgg.name
-                        if (sumValues.containsKey(aggName)) {
+                        if (aggValues.containsKey(aggName)) {
                             // Compute running calculation
-                            val (currentValue, _) = sumValues[aggName]!!
-                            sumValues[aggName] = computeRunningValue(originalAgg!!, currentValue)
+                            val (currentValue, _) = aggValues[aggName]!!
+                            aggValues[aggName] = computeRunningValue(originalAgg!!, currentValue)
                         } else {
-                            sumValues[aggName] = getAggComputationStartValue(originalAgg)
+                            aggValues[aggName] = getAggComputationStartValue(originalAgg)
                         }
                     }
                 }
@@ -363,7 +368,7 @@ class ResponseInterceptor(
 
             // Create a new InternalAggregations with sum values
             val allAggregations = mutableListOf<InternalAggregation>()
-            for ((aggName, data) in sumValues) {
+            for ((aggName, data) in aggValues) {
                 val (value, type) = data
                 val newAgg = createNewMetricAgg(aggName, value, type)
                 allAggregations.add(newAgg)
