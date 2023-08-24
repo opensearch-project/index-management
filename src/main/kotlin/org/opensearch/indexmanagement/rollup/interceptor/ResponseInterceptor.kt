@@ -21,22 +21,28 @@ import org.opensearch.indexmanagement.rollup.util.isRollupIndex
 import org.opensearch.search.DocValueFormat
 import org.opensearch.search.aggregations.InternalAggregation
 import org.opensearch.search.aggregations.InternalAggregations
-import org.opensearch.search.aggregations.InternalOrder.Aggregation
 import org.opensearch.search.aggregations.bucket.histogram.InternalDateHistogram
 import org.opensearch.search.aggregations.metrics.InternalMax
 import org.opensearch.search.aggregations.metrics.InternalMin
-import org.opensearch.search.aggregations.metrics.InternalNumericMetricsAggregation
 import org.opensearch.search.aggregations.metrics.InternalSum
 import org.opensearch.search.builder.SearchSourceBuilder
 import org.opensearch.search.fetch.QueryFetchSearchResult
 import org.opensearch.search.internal.ShardSearchRequest
 import org.opensearch.search.query.QuerySearchResult
+import org.opensearch.index.query.QueryBuilders
 import org.opensearch.search.sort.SortBuilders
 import org.opensearch.search.sort.SortOrder
-import org.opensearch.transport.*
-import java.text.SimpleDateFormat
+import org.opensearch.transport.Transport
+import org.opensearch.transport.TransportException
+import org.opensearch.transport.TransportInterceptor
+import org.opensearch.transport.TransportRequest
+import org.opensearch.transport.TransportRequestOptions
+import org.opensearch.transport.TransportResponse
+import org.opensearch.transport.TransportResponseHandler
 import java.time.ZonedDateTime
-import java.util.*
+import java.time.LocalDateTime
+import java.time.ZoneOffset
+import java.time.format.DateTimeFormatter
 import java.util.concurrent.CountDownLatch
 import kotlin.math.max
 import kotlin.math.min
@@ -113,24 +119,12 @@ class ResponseInterceptor(
             }
             return Pair(rollupIndices.toTypedArray(), liveIndices.toTypedArray())
         }
-        fun convertEpochMillisToDateString(epochMillis: Long): String {
-            val pattern = "yyyy-MM-dd HH:mm:ss"
-            val dateFormat = SimpleDateFormat(pattern)
-            val date = Date(epochMillis)
-            val dateString = dateFormat.format(date)
-            return dateString
-        }
         fun convertDateStringToEpochMillis(dateString: String): Long {
             val pattern = "yyyy-MM-dd HH:mm:ss"
-            val dateFormat = SimpleDateFormat(pattern)
-
-            try {
-                val date = dateFormat.parse(dateString)
-                return (date.time)
-            } catch (e: Exception) {
-                println("Error parsing date: ${e.message}")
-            }
-            return 0L
+            val formatter = DateTimeFormatter.ofPattern(pattern)
+            val localDateTime = LocalDateTime.parse(dateString, formatter)
+            val epochMillis = localDateTime.toInstant(ZoneOffset.UTC).toEpochMilli()
+            return epochMillis
         }
         fun convertFixedIntervalStringToMs(fixedInterval: String): Long {
             // Possible types are ms, s, m, h, d
@@ -153,6 +147,43 @@ class ResponseInterceptor(
 
             return milliseconds
         }
+        fun getIntersectionTime(liveDataStartPoint: Long, rollupIndex: String, dateTargetField: String): Long {
+            // Build search request to find the minimum rollup timestamp >= liveDataStartPoint
+            val sort = SortBuilders.fieldSort("$dateTargetField.date_histogram").order(SortOrder.ASC)
+            val query = QueryBuilders.boolQuery()
+                .must(QueryBuilders.rangeQuery(dateTargetField).gte(liveDataStartPoint))
+            val searchSourceBuilder = SearchSourceBuilder()
+                .sort(sort)
+                .query(query)
+                .size(1)
+            // Need to avoid infinite interceptor loop
+            val req = SearchRequest()
+                .indices(rollupIndex)
+                .source(searchSourceBuilder)
+            var res: SearchResponse? = null
+            val latch = CountDownLatch(1)
+            client.search(
+                req,
+                object : ActionListener<SearchResponse> {
+                    override fun onResponse(searchResponse: SearchResponse) {
+                        res = searchResponse
+                        latch.countDown()
+                    }
+
+                    override fun onFailure(e: Exception) {
+                        logger.error("request to find intersection time failed :(", e)
+                        latch.countDown()
+                    }
+                }
+            )
+            latch.await()
+            try {
+                return res!!.hits.hits[0].sourceAsMap.get("$dateTargetField.date_histogram") as Long
+            } catch (e: Exception) {
+                logger.error("Not able to retrieve intersection time from response: $e")
+            }
+            return 0L // dummy :P
+        }
 
 //         Returns Pair(startRange: Long, endRange: Long)
 //         Note startRange is inclusive and endRange is exclusive, they are longs becuase the type is epoch milliseconds
@@ -172,11 +203,6 @@ class ResponseInterceptor(
             // Keep existing query and add 3 fake match alls to avoid infinite loop
             val request: ShardSearchRequest = response.shardSearchRequest!!
             val oldQuery = request.source().query()
-//            val fakeQuery = QueryBuilders.boolQuery()
-//                .must(oldQuery ?: QueryBuilders.matchAllQuery())
-//                .must(QueryBuilders.matchAllQuery())
-//                .must(QueryBuilders.matchAllQuery())
-//                .must(QueryBuilders.matchAllQuery())
             // TODO scale this for multiple indices!!!!
             val (rollupIndices, liveIndices) = getRollupAndLiveIndices(request)
             val rollupIndex = rollupIndices[0]
@@ -238,13 +264,13 @@ class ResponseInterceptor(
 
             if (minLiveDateResponse != null && maxRolledDateResponse != null) {
                 // Rollup data ends at maxRolledDate + fixedInterval
-                val maxRolledDate: Long = maxRolledDateResponse!!.hits.hits[0].sourceAsMap.get("$dateTargetField.date_histogram") as Long // broken for rollup index
+                val maxRolledDate: Long = maxRolledDateResponse!!.hits.hits[0].sourceAsMap.get("$dateTargetField.date_histogram") as Long
                 val rollupDataEndPoint = maxRolledDate + convertFixedIntervalStringToMs(fixedInterval = rollupInterval!!)
-                val minLiveDate = minLiveDateResponse!!.hits.hits[0].sourceAsMap.get("$dateSourceField") as String // broken for rollup index
+                val minLiveDate = minLiveDateResponse!!.hits.hits[0].sourceAsMap.get("$dateSourceField") as String
                 val liveDataStartPoint = convertDateStringToEpochMillis(minLiveDate)
                 if (liveDataStartPoint <= rollupDataEndPoint) {
                     // Find intersection timestamp
-                    val intersectionTime = maxRolledDate
+                    val intersectionTime = getIntersectionTime(liveDataStartPoint, rollupIndex, dateTargetField)
                     val shardRequestIndex = request.shardId().indexName
                     if (shardRequestIndex == liveIndex) {
                         // Start at intersection timestamp, end at inf
@@ -263,30 +289,38 @@ class ResponseInterceptor(
         fun zonedDateTimeToMillis(zonedDateTime: ZonedDateTime): Long {
             return zonedDateTime.toInstant().toEpochMilli()
         }
+        // Depending on which metric the aggregation is computer data differently
+        fun computeRunningValue(agg: org.opensearch.search.aggregations.Aggregation, currentValue: Double): Pair<Double, String> {
+            when (agg) {
+                is InternalSum -> {
+                    return Pair(agg.value + currentValue, agg.type)
+                }
+                is InternalMax -> {
+                    return Pair(max(agg.value,currentValue), agg.type)
+                }
+                is InternalMin -> {
+                    return Pair(min(agg.value,currentValue), agg.type)
+                }
+                else -> throw IllegalArgumentException("This aggregation is not currently supported in rollups searches")
+            }
+        }
         // Depending on which metric the aggregation is return a different start value
-//        fun computeRunningValue(agg: InternalNumericMetricsAggregation.SingleValue, currentValue: Double): Double {
-//            when (agg) {
-//                is InternalSum -> {
-//                    return agg.value + currentValue
-//                }
-//                is InternalMax -> {
-//                    return max(agg.value, currentValue)
-//                }
-//                is InternalMin -> {
-//                    return min(agg.value, currentValue)
-//                }
-//                else -> throw IllegalArgumentException("This aggregation is not currently supported in rollups searches")
-//            }
-//        }
-        // Depending on which metric the aggregation is return a different start value
-//        fun getAggComputationStartValue(agg: InternalNumericMetricsAggregation.SingleValue): Double {
-//            when (agg) {
-//                is InternalSum -> return agg.value
-//                is InternalMax -> return agg.value
-//                is InternalMin -> return agg.value
-//                else -> throw IllegalArgumentException("This aggregation is not currently supported in rollups searches")
-//            }
-//        }
+        fun getAggComputationStartValue(agg: org.opensearch.search.aggregations.Aggregation): Pair<Double, String> {
+            when (agg) {
+                is InternalSum -> return Pair(agg.value, agg.type)
+                is InternalMax -> return Pair(agg.value, agg.type)
+                is InternalMin -> return Pair(agg.value, agg.type)
+                else -> throw IllegalArgumentException("This aggregation is not currently supported in rollups searches")
+            }
+        }
+        fun createNewMetricAgg(aggName: String, aggValue: Double, aggType: String): InternalAggregation {
+            when (aggType) {
+                "sum" -> return InternalSum(aggName, aggValue, DocValueFormat.RAW, null)
+                "min" -> return InternalMin(aggName, aggValue, DocValueFormat.RAW, null)
+                "max" -> return InternalMax(aggName, aggValue, DocValueFormat.RAW, null)
+                else -> throw IllegalArgumentException("Could recreate an aggregation for type $aggType")
+            }
+        }
 
 //         Returns a new InternalAggregations that contains a merged aggregation(s) with the overlapping data removed, computation varies based on metric used (edge case avg?)
         fun computeAggregationsWithoutOverlap(intervalAggregations: InternalAggregations, start: Long, end: Long): InternalAggregations {
@@ -301,8 +335,9 @@ class ResponseInterceptor(
 //            7. iterate throguh all key, vals in map and construct an internalAggregation object for each of them, add to InternalAggregations object
 //            8. return InternalAggregations object
 //             */
-//            // Create an empty map to hold the sum values TODO add other metrics later
-            val sumValues = mutableMapOf<String, Double>()
+            // Create an empty map to hold the agg values
+            // {aggName: String: Pair<value: Double, type:String>}
+            val sumValues = mutableMapOf<String, Pair<Double, String>>()
 //
 //            // Iterate through each aggregation and bucket
             val interceptorAgg = intervalAggregations.asMap().get("interceptor_interval_data") as InternalDateHistogram
@@ -315,16 +350,11 @@ class ResponseInterceptor(
                     for (originalAgg in bucket.aggregations) {
                         val aggName = originalAgg.name
                         if (sumValues.containsKey(aggName)) {
-                            // Compute running sum
-                            if (originalAgg is InternalSum) {
-                                sumValues[aggName] = sumValues[aggName]!! + originalAgg.value
-                            }
-//                            sumValues[aggName] = computeRunningValue(originalAgg!!, currentValue!!)
+                            // Compute running calculation
+                            val (currentValue, _) = sumValues[aggName]!!
+                            sumValues[aggName] = computeRunningValue(originalAgg!!, currentValue)
                         } else {
-                            if (originalAgg is InternalSum) {
-                                sumValues[aggName] = originalAgg.value
-                            }
-//                            sumValues[aggName] = getAggComputationStartValue(originalAgg)
+                            sumValues[aggName] = getAggComputationStartValue(originalAgg)
                         }
                     }
                 }
@@ -333,9 +363,10 @@ class ResponseInterceptor(
 
             // Create a new InternalAggregations with sum values
             val allAggregations = mutableListOf<InternalAggregation>()
-            for ((aggName, sumValue) in sumValues) {
-                val sumAgg = InternalSum(aggName, sumValue, DocValueFormat.RAW, null)
-                allAggregations.add(sumAgg)
+            for ((aggName, data) in sumValues) {
+                val (value, type) = data
+                val newAgg = createNewMetricAgg(aggName, value, type)
+                allAggregations.add(newAgg)
             }
 
 
@@ -343,7 +374,7 @@ class ResponseInterceptor(
         }
         @Suppress("UNCHECKED_CAST")
         override fun handleResponse(response: T?) {
-            // Handle the response if it came from intercpetor
+            // Handle the response if it came from interceptor
             when (response) {
                 // live index
                 is QuerySearchResult -> {

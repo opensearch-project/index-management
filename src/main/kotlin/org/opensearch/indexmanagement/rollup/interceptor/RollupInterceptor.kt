@@ -195,6 +195,7 @@ class RollupInterceptor(
                         }
                         // Rewrite the request to fit rollup format if not already done previously
                         if (isRollupIndex && !isReqeustRollupFormat(request)) {
+                            // TODO fix logic to allow response interceptor client calls to have a size of 1
 //                            if (!requestCalledInInterceptor && request.source().size() != 0) {
 //                                throw IllegalArgumentException("Rollup search must have size explicitly set to 0, but found ${request.source().size()}")
 //                            }
