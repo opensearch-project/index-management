@@ -18,22 +18,28 @@ import org.opensearch.indexmanagement.common.model.dimension.DateHistogram
 import org.opensearch.indexmanagement.rollup.model.Rollup
 import org.opensearch.indexmanagement.rollup.util.getRollupJobs
 import org.opensearch.indexmanagement.rollup.util.isRollupIndex
+import org.opensearch.search.DocValueFormat
+import org.opensearch.search.aggregations.InternalAggregation
+import org.opensearch.search.aggregations.InternalAggregations
+import org.opensearch.search.aggregations.InternalOrder.Aggregation
+import org.opensearch.search.aggregations.bucket.histogram.InternalDateHistogram
+import org.opensearch.search.aggregations.metrics.InternalMax
+import org.opensearch.search.aggregations.metrics.InternalMin
+import org.opensearch.search.aggregations.metrics.InternalNumericMetricsAggregation
+import org.opensearch.search.aggregations.metrics.InternalSum
 import org.opensearch.search.builder.SearchSourceBuilder
 import org.opensearch.search.fetch.QueryFetchSearchResult
 import org.opensearch.search.internal.ShardSearchRequest
 import org.opensearch.search.query.QuerySearchResult
 import org.opensearch.search.sort.SortBuilders
 import org.opensearch.search.sort.SortOrder
-import org.opensearch.transport.TransportInterceptor
-import org.opensearch.transport.TransportResponse
-import org.opensearch.transport.TransportRequest
-import org.opensearch.transport.Transport
-import org.opensearch.transport.TransportRequestOptions
-import org.opensearch.transport.TransportResponseHandler
-import org.opensearch.transport.TransportException
+import org.opensearch.transport.*
 import java.text.SimpleDateFormat
+import java.time.ZonedDateTime
 import java.util.*
 import java.util.concurrent.CountDownLatch
+import kotlin.math.max
+import kotlin.math.min
 
 class ResponseInterceptor(
     val clusterService: ClusterService,
@@ -254,9 +260,36 @@ class ResponseInterceptor(
             // No overlap so start and end include everything
             return Pair(0L, Long.MAX_VALUE)
         }
+        fun zonedDateTimeToMillis(zonedDateTime: ZonedDateTime): Long {
+            return zonedDateTime.toInstant().toEpochMilli()
+        }
+        // Depending on which metric the aggregation is return a different start value
+//        fun computeRunningValue(agg: InternalNumericMetricsAggregation.SingleValue, currentValue: Double): Double {
+//            when (agg) {
+//                is InternalSum -> {
+//                    return agg.value + currentValue
+//                }
+//                is InternalMax -> {
+//                    return max(agg.value, currentValue)
+//                }
+//                is InternalMin -> {
+//                    return min(agg.value, currentValue)
+//                }
+//                else -> throw IllegalArgumentException("This aggregation is not currently supported in rollups searches")
+//            }
+//        }
+        // Depending on which metric the aggregation is return a different start value
+//        fun getAggComputationStartValue(agg: InternalNumericMetricsAggregation.SingleValue): Double {
+//            when (agg) {
+//                is InternalSum -> return agg.value
+//                is InternalMax -> return agg.value
+//                is InternalMin -> return agg.value
+//                else -> throw IllegalArgumentException("This aggregation is not currently supported in rollups searches")
+//            }
+//        }
 
 //         Returns a new InternalAggregations that contains a merged aggregation(s) with the overlapping data removed, computation varies based on metric used (edge case avg?)
-//        fun computeAggregationsWithoutOverlap(intervalAggregations: InternalAggregations, start: Long, end: Long): InternalAggregations {
+        fun computeAggregationsWithoutOverlap(intervalAggregations: InternalAggregations, start: Long, end: Long): InternalAggregations {
 //            /*
 //            PSUEDOCODE
 //            1. Look at first bucket to see which aggs where in initial request
@@ -268,10 +301,46 @@ class ResponseInterceptor(
 //            7. iterate throguh all key, vals in map and construct an internalAggregation object for each of them, add to InternalAggregations object
 //            8. return InternalAggregations object
 //             */
-//            intervalAggregations.get<>()
-//            val result = listOf(intervalAggregations)
-//            return InternalAggregations(intervalAggregations, null)
-//        }
+//            // Create an empty map to hold the sum values TODO add other metrics later
+            val sumValues = mutableMapOf<String, Double>()
+//
+//            // Iterate through each aggregation and bucket
+            val interceptorAgg = intervalAggregations.asMap().get("interceptor_interval_data") as InternalDateHistogram
+            for (bucket in interceptorAgg.buckets) {
+                val zdt = bucket.key as ZonedDateTime
+                val timestamp: Long = zonedDateTimeToMillis(zdt)
+                // Only consider buckets within the specified range
+                // Start is inclusive and end is exclusive
+                if (timestamp >= start && timestamp < end) {
+                    for (originalAgg in bucket.aggregations) {
+                        val aggName = originalAgg.name
+                        if (sumValues.containsKey(aggName)) {
+                            // Compute running sum
+                            if (originalAgg is InternalSum) {
+                                sumValues[aggName] = sumValues[aggName]!! + originalAgg.value
+                            }
+//                            sumValues[aggName] = computeRunningValue(originalAgg!!, currentValue!!)
+                        } else {
+                            if (originalAgg is InternalSum) {
+                                sumValues[aggName] = originalAgg.value
+                            }
+//                            sumValues[aggName] = getAggComputationStartValue(originalAgg)
+                        }
+                    }
+                }
+
+            }
+
+            // Create a new InternalAggregations with sum values
+            val allAggregations = mutableListOf<InternalAggregation>()
+            for ((aggName, sumValue) in sumValues) {
+                val sumAgg = InternalSum(aggName, sumValue, DocValueFormat.RAW, null)
+                allAggregations.add(sumAgg)
+            }
+
+
+            return InternalAggregations(allAggregations, null)
+        }
         @Suppress("UNCHECKED_CAST")
         override fun handleResponse(response: T?) {
             // Handle the response if it came from intercpetor
@@ -281,13 +350,8 @@ class ResponseInterceptor(
                     if (response.hasAggs() && isRewrittenInterceptorRequest(response)) {
                         // Check for overlap
                         val (startTime, endTime) = findOverlap(response)
-                        logger.error("ronsax: live index: start $startTime and end $endTime")
                         // Modify agg to be original result without overlap computed in
-                        // TODO handle overlap here
-                        // TODO create a copy of the QuerySearchResult with aggregations modified
-//                        val newQuerySerach = QuerySearchResult()
-//                        val responseForHandler = newQuerySerach as T
-//                        response.shardIndex = response.shardSearchRequest?.shardId()?.id ?: -1
+                        response.aggregations(computeAggregationsWithoutOverlap(response.aggregations().expand(), startTime, endTime))
                         originalHandler?.handleResponse(response)
                     } else {
                         originalHandler?.handleResponse(response)
@@ -299,10 +363,8 @@ class ResponseInterceptor(
                     if (queryResult.hasAggs() && isRewrittenInterceptorRequest(queryResult)) {
                         // Check for overlap
                         val (startTime, endTime) = findOverlap(queryResult)
-                        logger.error("ronsax: rollup index: start $startTime and end $endTime")
-//                        response.shardIndex = response.shardSearchRequest?.shardId()?.id ?: -1
-
-                        // TODO handle overlap here
+                        // Modify agg to be original result without overlap computed in
+                        queryResult.aggregations(computeAggregationsWithoutOverlap(queryResult.aggregations().expand(), startTime, endTime))
                         // TODO change response object
 //                        val r1 = QueryFetchSearchResult(response.queryResult(), response.fetchResult())
 //                        r1.shardIndex = response.shardIndex

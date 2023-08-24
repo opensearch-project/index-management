@@ -97,32 +97,6 @@ class RollupInterceptor(
         }
         return Pair(false, null)
     }
-    // Need to determine if this was an internal client call to avoid infinite loop from interceptor, -> query string doesn't include "query"
-//    fun isRequestFromResponseInterceptor(request: ShardSearchRequest): Boolean {
-//        if (request.source().query() != null) {
-//            val jsonRequest: String = request.source().query().toString()
-//            // Detected dummy field from internal search request
-//            if (jsonRequest.contains(",\n" +
-//                        "      {\n" +
-//                        "        \"match_all\" : {\n" +
-//                        "          \"boost\" : 1.0\n" +
-//                        "        }\n" +
-//                        "      },\n" +
-//                        "      {\n" +
-//                        "        \"match_all\" : {\n" +
-//                        "          \"boost\" : 1.0\n" +
-//                        "        }\n" +
-//                        "      },\n" +
-//                        "      {\n" +
-//                        "        \"match_all\" : {\n" +
-//                        "          \"boost\" : 1.0\n" +
-//                        "        }\n" +
-//                        "      }")) {
-//                return true
-//            }
-//        }
-//        return false
-//    }
     // Returns true if request was already modified into "interceptor_interval_data" bucket aggregation
     fun isRequestRewrittenIntoBuckets(request: ShardSearchRequest): Boolean {
         val currentAggs = request.source().aggregations().aggregatorFactories
@@ -214,10 +188,7 @@ class RollupInterceptor(
                     // Only modifies rollup searches and avoids internal client calls
                     if (containsRollup || isRollupIndex) {
                         val (concreteRollupIndicesArray, concreteLiveIndicesArray) = getConcreteIndices(request)
-                        // Check before rewriting rollup because it deletes dummy field
-//                        val requestCalledInInterceptor = isRequestFromResponseInterceptor(request)
                         // Avoid infinite interceptor loop
-                        // Need to break into buckets for agg search on live and rollup indices
                         if (concreteRollupIndicesArray.isNotEmpty() && concreteLiveIndicesArray.isNotEmpty() && request.source().aggregations() != null && !isRequestRewrittenIntoBuckets(request)) {
                             // Break apart request to remove overlapping parts
                             breakRequestIntoBuckets(request, rollupJob!!)
