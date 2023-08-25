@@ -6,8 +6,8 @@
 package org.opensearch.indexmanagement.transform.action.get
 
 import org.apache.logging.log4j.LogManager
-import org.opensearch.action.ActionListener
-import org.opensearch.action.ActionResponse
+import org.opensearch.core.action.ActionListener
+import org.opensearch.core.action.ActionResponse
 import org.opensearch.action.support.ActionFilters
 import org.opensearch.action.support.HandledTransportAction
 import org.opensearch.client.Client

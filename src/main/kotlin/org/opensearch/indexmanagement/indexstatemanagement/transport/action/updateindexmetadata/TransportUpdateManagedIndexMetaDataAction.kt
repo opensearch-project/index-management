@@ -6,7 +6,7 @@
 package org.opensearch.indexmanagement.indexstatemanagement.transport.action.updateindexmetadata
 
 import org.apache.logging.log4j.LogManager
-import org.opensearch.action.ActionListener
+import org.opensearch.core.action.ActionListener
 import org.opensearch.action.support.ActionFilters
 import org.opensearch.action.support.clustermanager.TransportClusterManagerNodeAction
 import org.opensearch.action.support.master.AcknowledgedResponse

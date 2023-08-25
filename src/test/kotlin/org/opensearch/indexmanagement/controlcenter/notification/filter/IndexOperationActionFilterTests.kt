@@ -8,8 +8,8 @@ package org.opensearch.indexmanagement.controlcenter.notification.filter
 import org.junit.Assert
 import org.junit.Before
 import org.mockito.Mockito
-import org.opensearch.action.ActionListener
-import org.opensearch.action.ActionResponse
+import org.opensearch.core.action.ActionListener
+import org.opensearch.core.action.ActionResponse
 import org.opensearch.action.admin.indices.forcemerge.ForceMergeAction
 import org.opensearch.action.admin.indices.open.OpenIndexAction
 import org.opensearch.action.admin.indices.shrink.ResizeAction
@@ -22,7 +22,7 @@ import org.opensearch.core.xcontent.NamedXContentRegistry
 import org.opensearch.index.reindex.ReindexAction
 import org.opensearch.index.reindex.ReindexRequest
 import org.opensearch.tasks.Task
-import org.opensearch.tasks.TaskId
+import org.opensearch.core.tasks.TaskId
 import org.opensearch.threadpool.ThreadPool
 
 class IndexOperationActionFilterTests : OpenSearchAllocationTestCase() {

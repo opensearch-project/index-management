@@ -9,7 +9,7 @@ import org.junit.Assert
 import org.opensearch.OpenSearchException
 import org.opensearch.indexmanagement.util.IndexManagementException
 import org.opensearch.core.rest.RestStatus
-import org.opensearch.tasks.TaskCancelledException
+import org.opensearch.core.tasks.TaskCancelledException
 import org.opensearch.test.OpenSearchTestCase
 
 class ExtensionsTests : OpenSearchTestCase() {
