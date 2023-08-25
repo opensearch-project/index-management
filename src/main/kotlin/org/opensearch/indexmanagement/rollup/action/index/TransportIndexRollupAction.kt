@@ -7,7 +7,7 @@ package org.opensearch.indexmanagement.rollup.action.index
 
 import org.apache.logging.log4j.LogManager
 import org.opensearch.OpenSearchStatusException
-import org.opensearch.action.ActionListener
+import org.opensearch.core.action.ActionListener
 import org.opensearch.action.DocWriteRequest
 import org.opensearch.action.get.GetRequest
 import org.opensearch.action.get.GetResponse

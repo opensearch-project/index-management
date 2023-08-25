@@ -11,7 +11,7 @@ import org.opensearch.index.reindex.ReindexRequest
 import org.opensearch.indexmanagement.controlcenter.notification.filter.NotificationActionListener
 import org.opensearch.indexmanagement.controlcenter.notification.filter.OperationResult
 import org.opensearch.tasks.Task
-import org.opensearch.tasks.TaskId
+import org.opensearch.core.tasks.TaskId
 import java.util.function.Consumer
 
 class ReindexRespParser(

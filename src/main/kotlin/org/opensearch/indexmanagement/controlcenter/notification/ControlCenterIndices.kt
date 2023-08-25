@@ -7,7 +7,7 @@ package org.opensearch.indexmanagement.controlcenter.notification
 
 import org.opensearch.ExceptionsHelper
 import org.opensearch.ResourceAlreadyExistsException
-import org.opensearch.action.ActionListener
+import org.opensearch.core.action.ActionListener
 import org.opensearch.action.admin.indices.create.CreateIndexRequest
 import org.opensearch.action.admin.indices.create.CreateIndexResponse
 import org.opensearch.action.support.master.AcknowledgedResponse

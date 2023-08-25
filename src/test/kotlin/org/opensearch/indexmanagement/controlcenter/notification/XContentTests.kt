@@ -23,7 +23,7 @@ import org.opensearch.indexmanagement.controlcenter.notification.action.get.GetL
 import org.opensearch.indexmanagement.opensearchapi.parseWithType
 import org.opensearch.indexmanagement.opensearchapi.string
 import org.opensearch.indexmanagement.randomUser
-import org.opensearch.tasks.TaskId
+import org.opensearch.core.tasks.TaskId
 import org.opensearch.test.OpenSearchTestCase
 
 class XContentTests : OpenSearchTestCase() {

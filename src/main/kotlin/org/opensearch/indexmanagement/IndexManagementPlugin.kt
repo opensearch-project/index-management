@@ -7,7 +7,6 @@ package org.opensearch.indexmanagement
 
 import org.apache.logging.log4j.LogManager
 import org.opensearch.action.ActionRequest
-import org.opensearch.action.ActionResponse
 import org.opensearch.action.support.ActionFilter
 import org.opensearch.action.support.ActiveShardsObserver
 import org.opensearch.client.Client
@@ -25,6 +24,7 @@ import org.opensearch.common.settings.Setting
 import org.opensearch.common.settings.Settings
 import org.opensearch.common.settings.SettingsFilter
 import org.opensearch.common.util.concurrent.ThreadContext
+import org.opensearch.core.action.ActionResponse
 import org.opensearch.core.xcontent.NamedXContentRegistry
 import org.opensearch.core.xcontent.XContentParser.Token
 import org.opensearch.core.xcontent.XContentParserUtils.ensureExpectedToken

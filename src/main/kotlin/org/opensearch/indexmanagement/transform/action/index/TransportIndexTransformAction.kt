@@ -7,7 +7,7 @@ package org.opensearch.indexmanagement.transform.action.index
 
 import org.apache.logging.log4j.LogManager
 import org.opensearch.OpenSearchStatusException
-import org.opensearch.action.ActionListener
+import org.opensearch.core.action.ActionListener
 import org.opensearch.action.DocWriteRequest
 import org.opensearch.action.admin.indices.mapping.get.GetMappingsAction
 import org.opensearch.action.admin.indices.mapping.get.GetMappingsRequest

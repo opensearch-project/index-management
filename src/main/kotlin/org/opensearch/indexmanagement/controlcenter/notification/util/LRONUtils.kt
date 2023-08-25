@@ -7,7 +7,7 @@
 package org.opensearch.indexmanagement.controlcenter.notification.util
 
 import org.opensearch.OpenSearchStatusException
-import org.opensearch.action.ActionListener
+import org.opensearch.core.action.ActionListener
 import org.opensearch.action.admin.indices.forcemerge.ForceMergeAction
 import org.opensearch.action.admin.indices.open.OpenIndexAction
 import org.opensearch.action.admin.indices.shrink.ResizeAction
@@ -21,7 +21,7 @@ import org.opensearch.indexmanagement.controlcenter.notification.LRONConfigRespo
 import org.opensearch.indexmanagement.controlcenter.notification.model.LRONConfig
 import org.opensearch.indexmanagement.opensearchapi.parseFromGetResponse
 import org.opensearch.core.rest.RestStatus
-import org.opensearch.tasks.TaskId
+import org.opensearch.core.tasks.TaskId
 
 const val LRON_DOC_ID_PREFIX = "LRON:"
 

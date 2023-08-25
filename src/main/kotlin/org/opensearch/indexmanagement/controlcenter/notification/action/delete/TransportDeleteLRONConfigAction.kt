@@ -6,7 +6,7 @@
 package org.opensearch.indexmanagement.controlcenter.notification.action.delete
 
 import org.apache.logging.log4j.LogManager
-import org.opensearch.action.ActionListener
+import org.opensearch.core.action.ActionListener
 import org.opensearch.action.delete.DeleteRequest
 import org.opensearch.action.delete.DeleteResponse
 import org.opensearch.action.support.ActionFilters
