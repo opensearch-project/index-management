@@ -6,7 +6,7 @@
 package org.opensearch.indexmanagement.util
 
 import org.opensearch.OpenSearchStatusException
-import org.opensearch.action.ActionListener
+import org.opensearch.core.action.ActionListener
 import org.opensearch.common.util.concurrent.ThreadContext
 import org.opensearch.commons.ConfigConstants
 import org.opensearch.commons.authuser.User

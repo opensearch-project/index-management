@@ -6,7 +6,7 @@
 package org.opensearch.indexmanagement.controlcenter.notification.filter.parser
 
 import org.opensearch.action.ActionRequest
-import org.opensearch.action.ActionResponse
+import org.opensearch.core.action.ActionResponse
 import org.opensearch.action.IndicesRequest
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.index.reindex.ReindexRequest

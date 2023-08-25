@@ -8,9 +8,9 @@ package org.opensearch.indexmanagement.controlcenter.notification.filter
 import org.junit.Assert
 import org.junit.Before
 import org.mockito.Mockito.mock
-import org.opensearch.action.ActionListener
+import org.opensearch.core.action.ActionListener
 import org.opensearch.action.ActionRequest
-import org.opensearch.action.ActionResponse
+import org.opensearch.core.action.ActionResponse
 import org.opensearch.action.support.ActiveShardsObserver
 import org.opensearch.client.Client
 import org.opensearch.cluster.metadata.IndexNameExpressionResolver

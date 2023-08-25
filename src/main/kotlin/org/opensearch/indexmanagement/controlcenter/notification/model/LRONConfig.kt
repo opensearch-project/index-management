@@ -22,7 +22,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.util.WITH_TYPE
 import org.opensearch.indexmanagement.indexstatemanagement.util.WITH_USER
 import org.opensearch.indexmanagement.opensearchapi.optionalUserField
 import org.opensearch.indexmanagement.util.NO_ID
-import org.opensearch.tasks.TaskId
+import org.opensearch.core.tasks.TaskId
 import java.io.IOException
 
 data class LRONConfig(
