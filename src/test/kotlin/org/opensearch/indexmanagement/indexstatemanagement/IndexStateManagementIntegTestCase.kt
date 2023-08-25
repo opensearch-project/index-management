@@ -11,7 +11,7 @@ import org.junit.After
 import org.junit.Before
 import org.opensearch.OpenSearchParseException
 import org.opensearch.action.ActionRequest
-import org.opensearch.action.ActionResponse
+import org.opensearch.core.action.ActionResponse
 import org.opensearch.action.admin.cluster.reroute.ClusterRerouteRequest
 import org.opensearch.action.search.SearchResponse
 import org.opensearch.client.Request

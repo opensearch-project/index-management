@@ -11,8 +11,8 @@ import com.nhaarman.mockitokotlin2.mock
 import com.nhaarman.mockitokotlin2.whenever
 import org.junit.Before
 import org.mockito.Mockito
-import org.opensearch.action.ActionListener
-import org.opensearch.action.ActionResponse
+import org.opensearch.core.action.ActionListener
+import org.opensearch.core.action.ActionResponse
 import org.opensearch.action.index.IndexResponse
 import org.opensearch.client.AdminClient
 import org.opensearch.client.Client
