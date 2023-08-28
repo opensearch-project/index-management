@@ -262,13 +262,13 @@ class ResponseInterceptor(
             )
             latch.await()
 
-            if (minLiveDateResponse != null && maxRolledDateResponse != null) {
+            if (minLiveDateResponse != null && maxRolledDateResponse != null && minLiveDateResponse!!.hits.hits.isNotEmpty() && maxRolledDateResponse!!.hits.hits.isNotEmpty()) {
                 // Rollup data ends at maxRolledDate + fixedInterval
                 val maxRolledDate: Long = maxRolledDateResponse!!.hits.hits[0].sourceAsMap.get("$dateTargetField.date_histogram") as Long
                 val rollupDataEndPoint = maxRolledDate + convertFixedIntervalStringToMs(fixedInterval = rollupInterval!!)
                 val minLiveDate = minLiveDateResponse!!.hits.hits[0].sourceAsMap.get("$dateSourceField") as String
                 val liveDataStartPoint = convertDateStringToEpochMillis(minLiveDate)
-                if (liveDataStartPoint <= rollupDataEndPoint) {
+                if (liveDataStartPoint < rollupDataEndPoint) {
                     // Find intersection timestamp
                     val intersectionTime = getIntersectionTime(liveDataStartPoint, rollupIndex, dateTargetField)
                     val shardRequestIndex = request.shardId().indexName
@@ -296,10 +296,10 @@ class ResponseInterceptor(
                     return Pair(agg.value + currentValue, agg.type)
                 }
                 is InternalMax -> {
-                    return Pair(max(agg.value,currentValue), agg.type)
+                    return Pair(max(agg.value, currentValue), agg.type)
                 }
                 is InternalMin -> {
-                    return Pair(min(agg.value,currentValue), agg.type)
+                    return Pair(min(agg.value, currentValue), agg.type)
                 }
                 else -> throw IllegalArgumentException("This aggregation is not currently supported in rollups searches")
             }
@@ -363,7 +363,6 @@ class ResponseInterceptor(
                         }
                     }
                 }
-
             }
 
             // Create a new InternalAggregations with sum values
@@ -373,8 +372,6 @@ class ResponseInterceptor(
                 val newAgg = createNewMetricAgg(aggName, value, type)
                 allAggregations.add(newAgg)
             }
-
-
             return InternalAggregations(allAggregations, null)
         }
         @Suppress("UNCHECKED_CAST")
