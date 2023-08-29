@@ -360,7 +360,6 @@ class ResponseInterceptorIT : RollupRestTestCase() {
             StringEntity("""{"query": {"match_all": {}}}""", ContentType.APPLICATION_JSON)
         )
         assertTrue(deleteResponse.restStatus() == RestStatus.OK)
-        // Term query
         var req = """
             {
                 "size": 0,
