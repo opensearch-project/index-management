@@ -498,3 +498,7 @@ fun SearchSourceBuilder.changeAggregations(aggregationBuilderCollection: Collect
     if (this.collapse() != null) ssb.collapse(this.collapse())
     return ssb
 }
+
+// fun InternalAvg.getSumAndCount(): Pair<Double, Long> {
+//     return Pair(this.getSum(), this.
+// }

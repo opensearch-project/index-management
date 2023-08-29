@@ -22,14 +22,14 @@ import org.opensearch.search.DocValueFormat
 import org.opensearch.search.aggregations.InternalAggregation
 import org.opensearch.search.aggregations.InternalAggregations
 import org.opensearch.search.aggregations.bucket.histogram.InternalDateHistogram
-import org.opensearch.search.aggregations.metrics.InternalMax
-import org.opensearch.search.aggregations.metrics.InternalMin
-import org.opensearch.search.aggregations.metrics.InternalSum
 import org.opensearch.search.builder.SearchSourceBuilder
 import org.opensearch.search.fetch.QueryFetchSearchResult
 import org.opensearch.search.internal.ShardSearchRequest
 import org.opensearch.search.query.QuerySearchResult
 import org.opensearch.index.query.QueryBuilders
+import org.opensearch.script.Script
+import org.opensearch.script.ScriptType
+import org.opensearch.search.aggregations.metrics.*
 import org.opensearch.search.sort.SortBuilders
 import org.opensearch.search.sort.SortOrder
 import org.opensearch.transport.Transport
@@ -147,7 +147,7 @@ class ResponseInterceptor(
 
             return milliseconds
         }
-        fun getIntersectionTime(liveDataStartPoint: Long, rollupIndex: String, dateTargetField: String): Long {
+        fun getIntersectionTime(liveDataStartPoint: Long, rollupIndices: Array<String>, dateTargetField: String): Long {
             // Build search request to find the minimum rollup timestamp >= liveDataStartPoint
             val sort = SortBuilders.fieldSort("$dateTargetField.date_histogram").order(SortOrder.ASC)
             val query = QueryBuilders.boolQuery()
@@ -158,8 +158,8 @@ class ResponseInterceptor(
                 .size(1)
             // Need to avoid infinite interceptor loop
             val req = SearchRequest()
-                .indices(rollupIndex)
                 .source(searchSourceBuilder)
+            rollupIndices.forEach { req.indices(it) }
             var res: SearchResponse? = null
             val latch = CountDownLatch(1)
             client.search(
@@ -205,47 +205,20 @@ class ResponseInterceptor(
             val oldQuery = request.source().query()
             // TODO scale this for multiple indices!!!!
             val (rollupIndices, liveIndices) = getRollupAndLiveIndices(request)
-            val rollupIndex = rollupIndices[0]
-            val liveIndex = liveIndices[0]
-            // Build search request to find the minimum date in the live data index
-            var sort = SortBuilders.fieldSort(dateSourceField).order(SortOrder.ASC)
-            var searchSourceBuilder = SearchSourceBuilder()
-                .sort(sort)
-                .size(1)
-            val minLiveDateRequest = SearchRequest()
-                .indices(liveIndex)
-                .source(searchSourceBuilder)
-
-            var minLiveDateResponse: SearchResponse? = null
-            var latch = CountDownLatch(1)
-            client.search(
-                minLiveDateRequest,
-                object : ActionListener<SearchResponse> {
-                    override fun onResponse(searchResponse: SearchResponse) {
-                        minLiveDateResponse = searchResponse
-                        latch.countDown()
-                    }
-
-                    override fun onFailure(e: Exception) {
-                        logger.error("ronsax minLiveDate request failed ", e)
-                        latch.countDown()
-                    }
-                }
-            )
-            latch.await()
-
+            val shardRequestIndex = request.shardId().indexName
+            val isShardIndexRollup = isRollupIndex(shardRequestIndex, clusterService.state())
             // Build search request to find the maximum date on the rolled data index
-            sort = SortBuilders.fieldSort("$dateTargetField.date_histogram").order(SortOrder.DESC)
-            searchSourceBuilder = SearchSourceBuilder()
+            var sort = SortBuilders.fieldSort("$dateTargetField.date_histogram").order(SortOrder.DESC)
+            var searchSourceBuilder = SearchSourceBuilder()
                 .sort(sort)
                 .query(oldQuery)
                 .size(1)
             // Need to avoid infinite interceptor loop
             val maxRolledDateRequest = SearchRequest()
-                .indices(rollupIndex)
                 .source(searchSourceBuilder)
+            rollupIndices.forEach { maxRolledDateRequest.indices(it) } // add all rollup indices to this request
             var maxRolledDateResponse: SearchResponse? = null
-            latch = CountDownLatch(1)
+            var latch = CountDownLatch(1)
             client.search(
                 maxRolledDateRequest,
                 object : ActionListener<SearchResponse> {
@@ -261,7 +234,41 @@ class ResponseInterceptor(
                 }
             )
             latch.await()
+            // Build search request to find the minimum date in the live data index
+            sort = SortBuilders.fieldSort(dateSourceField).order(SortOrder.ASC)
+            searchSourceBuilder = SearchSourceBuilder()
+                .sort(sort)
+                .size(1)
+            val minLiveDateRequest = SearchRequest()
+                .source(searchSourceBuilder)
+            /*
+            If the shard index is a rollup index I want to find the minimum value of all the live indices to compute the overlap
+            If the shard index is a live index I only care about the minimum value of the current shard index
+             */
+            if (isShardIndexRollup) {
+                liveIndices.forEach { minLiveDateRequest.indices(it) }
+            } else { // shard index is live index
+                minLiveDateRequest.indices(shardRequestIndex)
+            }
 
+            var minLiveDateResponse: SearchResponse? = null
+            latch = CountDownLatch(1)
+            client.search(
+                minLiveDateRequest,
+                object : ActionListener<SearchResponse> {
+                    override fun onResponse(searchResponse: SearchResponse) {
+                        minLiveDateResponse = searchResponse
+                        latch.countDown()
+                    }
+
+                    override fun onFailure(e: Exception) {
+                        logger.error("ronsax minLiveDate request failed ", e)
+                        latch.countDown()
+                    }
+                }
+            )
+            latch.await()
+            // if they overlap find part to exclude
             if (minLiveDateResponse != null && maxRolledDateResponse != null && minLiveDateResponse!!.hits.hits.isNotEmpty() && maxRolledDateResponse!!.hits.hits.isNotEmpty()) {
                 // Rollup data ends at maxRolledDate + fixedInterval
                 val maxRolledDate: Long = maxRolledDateResponse!!.hits.hits[0].sourceAsMap.get("$dateTargetField.date_histogram") as Long
@@ -270,14 +277,13 @@ class ResponseInterceptor(
                 val liveDataStartPoint = convertDateStringToEpochMillis(minLiveDate)
                 if (liveDataStartPoint < rollupDataEndPoint) {
                     // Find intersection timestamp
-                    val intersectionTime = getIntersectionTime(liveDataStartPoint, rollupIndex, dateTargetField)
-                    val shardRequestIndex = request.shardId().indexName
-                    if (shardRequestIndex == liveIndex) {
-                        // Start at intersection timestamp, end at inf
-                        return Pair(intersectionTime, Long.MAX_VALUE)
-                    } else if (shardRequestIndex == rollupIndex) {
+                    val intersectionTime = getIntersectionTime(liveDataStartPoint, rollupIndices, dateTargetField)
+                    if (isShardIndexRollup) {
                         // Start at 0, end at intersection time
                         return Pair(0L, intersectionTime)
+                    } else { // Shard index is live
+                        // Start at intersection timestamp, end at inf
+                        return Pair(intersectionTime, Long.MAX_VALUE)
                     }
                 }
             } else {
@@ -290,41 +296,93 @@ class ResponseInterceptor(
             return zonedDateTime.toInstant().toEpochMilli()
         }
         // Depending on which metric the aggregation is computer data differently
-        fun computeRunningValue(agg: org.opensearch.search.aggregations.Aggregation, currentValue: Double): Pair<Double, String> {
+        fun computeRunningValue(agg: org.opensearch.search.aggregations.Aggregation, currentValue: Any): Pair<Any, String> {
             when (agg) {
                 is InternalSum -> {
-                    return Pair(agg.value + currentValue, agg.type)
+                    return Pair(agg.value + (currentValue as Double), agg.type)
                 }
                 is InternalMax -> {
-                    return Pair(max(agg.value, currentValue), agg.type)
+                    return Pair(max(agg.value, (currentValue as Double)), agg.type)
                 }
                 is InternalMin -> {
-                    return Pair(min(agg.value, currentValue), agg.type)
+                    return Pair(min(agg.value, (currentValue as Double)), agg.type)
                 }
-                else -> throw IllegalArgumentException("This aggregation is not currently supported in rollups searches")
+                is InternalValueCount -> { // Live data uses this
+                    return Pair(agg.value + (currentValue as Long), agg.type)
+                }
+                is InternalScriptedMetric -> {
+                    // Rollup InternalValueCount
+                    return Pair((agg.aggregation() as Long) + (currentValue as Long), "value_count")
+                }
+                else -> throw IllegalArgumentException("This aggregation is not currently supported in rollups searches: ${agg.name}")
             }
         }
         // Depending on which metric the aggregation is return a different start value
-        fun getAggComputationStartValue(agg: org.opensearch.search.aggregations.Aggregation): Pair<Double, String> {
+        fun getAggComputationStartValue(agg: org.opensearch.search.aggregations.Aggregation): Pair<Any, String> {
             when (agg) {
                 is InternalSum -> return Pair(agg.value, agg.type)
                 is InternalMax -> return Pair(agg.value, agg.type)
                 is InternalMin -> return Pair(agg.value, agg.type)
-                else -> throw IllegalArgumentException("This aggregation is not currently supported in rollups searches")
+                is InternalValueCount -> return Pair(agg.value, agg.type) // Live data
+                is InternalScriptedMetric -> return Pair(agg.aggregation(), "value_count") // Rollup data
+                else -> throw IllegalArgumentException("This aggregation is not currently supported in rollups searches: ${agg.name}")
             }
         }
-        fun createNewMetricAgg(aggName: String, aggValue: Double, aggType: String): InternalAggregation {
+        fun createNewMetricAgg(aggName: String, aggValue: Any, aggType: String): InternalAggregation {
             when (aggType) {
-                "sum" -> return InternalSum(aggName, aggValue, DocValueFormat.RAW, null)
-                "min" -> return InternalMin(aggName, aggValue, DocValueFormat.RAW, null)
-                "max" -> return InternalMax(aggName, aggValue, DocValueFormat.RAW, null)
-                else -> throw IllegalArgumentException("Could recreate an aggregation for type $aggType")
+                "sum" -> return InternalSum(aggName, (aggValue as Double), DocValueFormat.RAW, null)
+                "min" -> return InternalMin(aggName, (aggValue as Double), DocValueFormat.RAW, null)
+                "max" -> return InternalMax(aggName, (aggValue as Double), DocValueFormat.RAW, null)
+                "value_count" -> return InternalValueCount(aggName, (aggValue as Long), null)
+//                "scripted_metric" -> {
+//                    val script = Script(
+//                        ScriptType.INLINE,
+//                        "painless",
+//                        "long valueCount = 0; for (vc in states) { valueCount += vc } return valueCount;",
+//                        emptyMap(), // options
+//                        emptyMap()  // params
+//                    )
+//                    return ScriptedMetricAggregationBuilder(aggName).
+//                }
+//                "avg" -> return InternalAvg(agg) // TODO look at how to make this bad boy
+                else -> throw IllegalArgumentException("Could not recreate an aggregation for type $aggType")
             }
+        }
+        // Create original avg aggregation
+        fun initRollupAvgAgg(modifiedName: String, value: Any, aggValues: MutableMap<String, Pair<Any, String>>, addedAggregations : MutableSet<String>): InternalAvg {
+            // Sum calc
+            if (modifiedName.contains(".rollup.avg.sum")) {
+                // Won't double count
+                addedAggregations += modifiedName
+                val originalName = modifiedName.removeSuffix(".rollup.avg.sum")
+                val avgSum: Double = value as Double
+                for ((aggName, data) in aggValues) {
+                    // Found value count component to create InternalAvg object
+                    if (!addedAggregations.contains(aggName) && aggName.contains(originalName)) {
+                        addedAggregations += aggName
+                        val (avgCount, _) = data
+                        return InternalAvg(originalName, avgSum, (avgCount as Long), DocValueFormat.RAW, null)
+                    }
+                }
+            } else { // Value count calc
+                // Won't double count
+                addedAggregations += modifiedName
+                val originalName = modifiedName.removeSuffix(".rollup.avg.value_count")
+                val avgCount = value as Long
+                for ((aggName, data) in aggValues) {
+                    // Found sum component to create InternalAvg object
+                    if (!addedAggregations.contains(aggName) && aggName.contains(originalName)) {
+                        addedAggregations += aggName
+                        val (avgSum, _) = data
+                        return InternalAvg(originalName, (avgSum as Double), avgCount, DocValueFormat.RAW, null)
+                    }
+                }
+            }
+            throw Exception("Can't calculate avg agg for rollup index")
         }
 
 //         Returns a new InternalAggregations that contains a merged aggregation(s) with the overlapping data removed, computation varies based on metric used (edge case avg?)
         /**
-         * kughbniohujbnuhygjbjuhygj
          * @param intervalAggregations
          * @return Int
          */
@@ -341,8 +399,8 @@ class ResponseInterceptor(
 //            8. return InternalAggregations object
 //             */
             // Create an empty map to hold the agg values
-            // {aggName: String: Pair<value: Double, type:String>}
-            val aggValues = mutableMapOf<String, Pair<Double, String>>()
+            // {aggName: String: Pair<value: Any, type:String>}
+            val aggValues = mutableMapOf<String, Pair<Any, String>>()
 //
 //            // Iterate through each aggregation and bucket
             val interceptorAgg = intervalAggregations.asMap().get("interceptor_interval_data") as InternalDateHistogram
@@ -367,10 +425,26 @@ class ResponseInterceptor(
 
             // Create a new InternalAggregations with sum values
             val allAggregations = mutableListOf<InternalAggregation>()
+            val addedAggregations = mutableSetOf<String>() // avoid repeating the same aggregations
             for ((aggName, data) in aggValues) {
-                val (value, type) = data
-                val newAgg = createNewMetricAgg(aggName, value, type)
-                allAggregations.add(newAgg)
+                if (addedAggregations.contains(aggName)) continue
+                // special case to compute value_count for rollup indices
+                else if (aggName.contains(".rollup.value_count")) {
+                    val (value, _) = data
+                    val originalName = aggName.removeSuffix(".rollup.value_count")
+                    allAggregations.add(InternalValueCount(originalName, value as Long, null))
+                    addedAggregations += aggName
+                }
+                // special case to compute avg agg using sum and value_count calculation
+                else if (aggName.contains(".rollup.avg.sum") || aggName.contains(".rollup.avg.value_count")) {
+                    val (value, _) = data
+                    allAggregations.add(initRollupAvgAgg(aggName, value, aggValues, addedAggregations))
+                } else { // Sum, Min, or Max agg
+                    val (value, type) = data
+                    val newAgg = createNewMetricAgg(aggName, value, type)
+                    allAggregations.add(newAgg)
+                    addedAggregations += aggName
+                }
             }
             return InternalAggregations(allAggregations, null)
         }

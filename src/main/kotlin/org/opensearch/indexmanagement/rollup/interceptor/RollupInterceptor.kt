@@ -146,10 +146,48 @@ class RollupInterceptor(
             return oldAggs
         }
     }
+    // Need to modify aggs for rollup docs with avg and value count aggs
+    fun modifyRollupAggs(aggFacts: MutableCollection<AggregationBuilder>): AggregatorFactories.Builder {
+        val build = AggregatorFactories.builder()
+        for (agg in aggFacts) {
+            when (agg) {
+                is SumAggregationBuilder -> {
+                    build.addAggregator(agg)
+                }
+                is MaxAggregationBuilder -> {
+                    build.addAggregator(agg)
+                }
+
+                is MinAggregationBuilder -> {
+                    build.addAggregator(agg)
+                }
+
+                is ValueCountAggregationBuilder -> {
+                    // I want to append .rollup.value_count to the name so its identified in response interceptor
+                    val newValueCount = ValueCountAggregationBuilder("${agg.name}.rollup.value_count")
+                    newValueCount.field(agg.field())
+                    build.addAggregator(newValueCount)
+                }
+                is AvgAggregationBuilder -> {
+                    // Going to split this into a value_count and a sum agg to put together in response interceptor
+                    // Need to do this since .count and .sum are private in InternalAvg
+                    val avgValueCount = ValueCountAggregationBuilder("${agg.name}.rollup.avg.value_count")
+                    avgValueCount.field(agg.field())
+                    build.addAggregator(avgValueCount)
+                    val avgSumCount = SumAggregationBuilder("${agg.name}.rollup.avg.sum")
+                    avgSumCount.field(agg.field())
+                    build.addAggregator(avgSumCount)
+                }
+
+                else -> throw IllegalArgumentException("The ${agg.type} aggregation is not currently supported in rollups")
+            }
+        }
+        return build
+    }
 
     // Wrap original aggregations into buckets based on fixed interval to remove overlap in response interceptor
     fun breakRequestIntoBuckets(request: ShardSearchRequest, rollupJob: Rollup) {
-        val oldAggs = copyAggregations(request.source().aggregations())
+        val oldAggs = modifyRollupAggs(request.source().aggregations().aggregatorFactories)
         var dateSourceField: String = ""
         var rollupInterval: String = ""
         for (dim in rollupJob.dimensions) {
