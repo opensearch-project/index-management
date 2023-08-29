@@ -383,7 +383,12 @@ class ResponseInterceptorIT : RollupRestTestCase() {
                             "field": "passenger_count"
                         }
                     },
-                    "total_passenger_count": {
+                    "avg_passenger_count": {
+                        "avg": {
+                            "field": "passenger_count"
+                        }
+                    },
+                    "count_passenger_count": {
                         "value_count": {
                             "field": "passenger_count"
                         }
@@ -406,13 +411,18 @@ class ResponseInterceptorIT : RollupRestTestCase() {
         )
         assertEquals(
             "min agg is wrong",
-            9024.0,
+            0.0,
             responseAggs.getValue("min_passenger_count")["value"]
         )
         assertEquals(
-            "value_count",
-            9024.0,
-            responseAggs.getValue("total_passenger_count")["value"]
+            "value_count is wrong",
+            5000,
+            responseAggs.getValue("count_passenger_count")["value"]
+        )
+        assertEquals(
+            "avg is wrong",
+            1.8048,
+            responseAggs.getValue("avg_passenger_count")["value"]
         )
     }
 }

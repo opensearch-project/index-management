@@ -27,9 +27,12 @@ import org.opensearch.search.fetch.QueryFetchSearchResult
 import org.opensearch.search.internal.ShardSearchRequest
 import org.opensearch.search.query.QuerySearchResult
 import org.opensearch.index.query.QueryBuilders
-import org.opensearch.script.Script
-import org.opensearch.script.ScriptType
-import org.opensearch.search.aggregations.metrics.*
+import org.opensearch.search.aggregations.metrics.InternalAvg
+import org.opensearch.search.aggregations.metrics.InternalMax
+import org.opensearch.search.aggregations.metrics.InternalMin
+import org.opensearch.search.aggregations.metrics.InternalScriptedMetric
+import org.opensearch.search.aggregations.metrics.InternalSum
+import org.opensearch.search.aggregations.metrics.InternalValueCount
 import org.opensearch.search.sort.SortBuilders
 import org.opensearch.search.sort.SortOrder
 import org.opensearch.transport.Transport
@@ -349,7 +352,7 @@ class ResponseInterceptor(
             }
         }
         // Create original avg aggregation
-        fun initRollupAvgAgg(modifiedName: String, value: Any, aggValues: MutableMap<String, Pair<Any, String>>, addedAggregations : MutableSet<String>): InternalAvg {
+        fun initRollupAvgAgg(modifiedName: String, value: Any, aggValues: MutableMap<String, Pair<Any, String>>, addedAggregations: MutableSet<String>): InternalAvg {
             // Sum calc
             if (modifiedName.contains(".rollup.avg.sum")) {
                 // Won't double count
