@@ -6,15 +6,10 @@
 package org.opensearch.indexmanagement.rollup.interceptor
 
 import org.apache.logging.log4j.LogManager
-import org.opensearch.Version
 import org.opensearch.action.support.IndicesOptions
 import org.opensearch.cluster.ClusterState
 import org.opensearch.cluster.metadata.IndexNameExpressionResolver
 import org.opensearch.cluster.service.ClusterService
-import org.opensearch.common.bytes.BytesReference
-import org.opensearch.common.io.stream.BytesStreamOutput
-import org.opensearch.common.io.stream.NamedWriteableAwareStreamInput
-import org.opensearch.common.io.stream.NamedWriteableRegistry
 import org.opensearch.common.settings.Settings
 import org.opensearch.core.xcontent.NamedXContentRegistry
 import org.opensearch.index.query.QueryBuilder
@@ -43,7 +38,6 @@ import org.opensearch.indexmanagement.rollup.util.populateFieldMappings
 import org.opensearch.indexmanagement.rollup.util.getDateHistogram
 import org.opensearch.indexmanagement.rollup.util.rewriteSearchSourceBuilder
 import org.opensearch.indexmanagement.util.IndexUtils
-import org.opensearch.search.SearchModule
 import org.opensearch.search.aggregations.AggregatorFactories
 import org.opensearch.search.aggregations.AggregationBuilder
 import org.opensearch.search.aggregations.AggregationBuilders
@@ -62,8 +56,7 @@ import org.opensearch.transport.TransportChannel
 import org.opensearch.transport.TransportInterceptor
 import org.opensearch.transport.TransportRequest
 import org.opensearch.transport.TransportRequestHandler
-import java.nio.ByteBuffer
-import java.util.Base64
+@Suppress("TooManyFunctions")
 class RollupInterceptor(
     val clusterService: ClusterService,
     val settings: Settings,
@@ -85,6 +78,7 @@ class RollupInterceptor(
         }
     }
     // Returns Pair<containsRollup: Boolean, rollupJob: RollupJob>
+    @Suppress("SpreadOperator")
     private fun originalSearchContainsRollup(request: ShardSearchRequest): Pair<Boolean, Rollup?> {
         val indices = request.indices().map { it.toString() }.toTypedArray()
         val allIndices = indexNameExpressionResolver
@@ -201,7 +195,9 @@ class RollupInterceptor(
                     if (containsRollup || isRollupIndex) {
                         val (concreteRollupIndicesArray, concreteLiveIndicesArray) = getConcreteIndices(request)
                         // Avoid infinite interceptor loop
-                        if (concreteRollupIndicesArray.isNotEmpty() && concreteLiveIndicesArray.isNotEmpty() && request.source().aggregations() != null && !isRequestRewrittenIntoBuckets(request)) {
+                        @Suppress("ComplexCondition")
+                        if (concreteRollupIndicesArray.isNotEmpty() && concreteLiveIndicesArray.isNotEmpty()
+                            && request.source().aggregations() != null && !isRequestRewrittenIntoBuckets(request)) {
                             // Break apart request to remove overlapping parts
                             breakRequestIntoBuckets(request, rollupJob!!)
                         }
@@ -209,7 +205,8 @@ class RollupInterceptor(
                         if (isRollupIndex && !isReqeustRollupFormat(request)) {
                             // TODO fix logic to allow response interceptor client calls to have a size of 1
 //                            if (!requestCalledInInterceptor && request.source().size() != 0) {
-//                                throw IllegalArgumentException("Rollup search must have size explicitly set to 0, but found ${request.source().size()}")
+//                                throw IllegalArgumentException("Rollup search must have size explicitly set to 0, " +
+//                                        "but found ${request.source().size()}")
 //                            }
                             rewriteRollupRequest(request, rollupJob!!, concreteRollupIndicesArray)
                         }
@@ -220,6 +217,7 @@ class RollupInterceptor(
         }
     }
     // Returns Pair (concreteRollupIndices: Array<String>, concreteLiveIndicesArray: Array<String>)
+    @Suppress("SpreadOperator")
     fun getConcreteIndices(request: ShardSearchRequest): Pair<Array<String>, Array<String>> {
         val indices = request.indices().map { it.toString() }.toTypedArray()
         val concreteIndices = indexNameExpressionResolver

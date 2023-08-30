@@ -75,6 +75,7 @@ class ResponseInterceptor(
         }
     }
 
+    @Suppress("TooManyFunctions")
     private inner class CustomResponseHandler<T : TransportResponse?>(
         private val originalHandler: TransportResponseHandler<T>?
     ) : TransportResponseHandler<T> {
@@ -91,6 +92,7 @@ class ResponseInterceptor(
             }
             return false
         }
+        @Suppress("SpreadOperator")
         fun getRollupJob(response: QuerySearchResult): Rollup? {
             val originalRequest = response.shardSearchRequest!!
             val indices = originalRequest.indices().map { it.toString() }.toTypedArray()
@@ -103,6 +105,7 @@ class ResponseInterceptor(
             }
             return null
         }
+        @Suppress("SpreadOperator")
         fun getRollupAndLiveIndices(request: ShardSearchRequest): Pair<Array<String>, Array<String>> {
             val liveIndices = mutableListOf<String>()
             val rollupIndices = mutableListOf<String>()
@@ -160,6 +163,7 @@ class ResponseInterceptor(
 
 //         Returns Pair(startRange: Long, endRange: Long)
 //         Note startRange is inclusive and endRange is exclusive, they are Longs because the type is epoch milliseconds
+        @Suppress("LongMethod")
         fun findOverlap(response: QuerySearchResult): Pair<Long, Long> {
             val job: Rollup = getRollupJob(response)!! // maybe throw a try catch later
             var dateSourceField: String = ""
@@ -239,32 +243,29 @@ class ResponseInterceptor(
                 }
             )
             latch.await()
+
             // if they overlap find part to exclude
-            if (minLiveDateResponse != null && maxRolledDateResponse != null && minLiveDateResponse!!.hits.hits.isNotEmpty() && maxRolledDateResponse!!.hits.hits.isNotEmpty()) {
+            @Suppress("ComplexCondition")
+            if (minLiveDateResponse != null && maxRolledDateResponse != null && minLiveDateResponse!!.hits.hits.isNotEmpty()
+                && maxRolledDateResponse!!.hits.hits.isNotEmpty()) {
                 // Rollup data ends at maxRolledDate + fixedInterval
                 val maxRolledDate: Long = maxRolledDateResponse!!.hits.hits[0].sourceAsMap.get("$dateTargetField.date_histogram") as Long
                 val rollupDataEndPoint = maxRolledDate + convertFixedIntervalStringToMs(fixedInterval = rollupInterval!!)
                 val minLiveDate = minLiveDateResponse!!.hits.hits[0].sourceAsMap.get("$dateSourceField") as String
                 val liveDataStartPoint = convertDateStringToEpochMillis(minLiveDate)
-                if (liveDataStartPoint < rollupDataEndPoint) {
-                    // Find intersection timestamp
-                    if (isShardIndexRollup) {
-                        // Start at 0, end at live data
-                        val endTime = getRollupEndTime(liveDataStartPoint, rollupIndices, dateTargetField)
-                        return Pair(0L, endTime)
-                    } else {
-                        // Include all live data
-                        return Pair(0L, Long.MAX_VALUE)
-                    }
+                // If intersection found on rollup index, remove overlap
+                if ((liveDataStartPoint < rollupDataEndPoint) && isShardIndexRollup) {
+                    // Start at 0, end at live data
+                    val endTime = getRollupEndTime(liveDataStartPoint, rollupIndices, dateTargetField)
+                    return Pair(0L, endTime)
                 }
-            } else {
-                logger.error("Not able to make client calls in response interceptor")
             }
-            // No overlap so start and end include everything
+            // No overlap or is live data index so start and end include everything
             return Pair(0L, Long.MAX_VALUE)
         }
 
         // Depending on which metric the aggregation is computer data differently
+        @Suppress("ReturnCount")
         fun computeRunningValue(agg: org.opensearch.search.aggregations.Aggregation, currentValue: Any): Pair<Any, String> {
             when (agg) {
                 is InternalSum -> {
@@ -287,6 +288,7 @@ class ResponseInterceptor(
             }
         }
         // Depending on which metric the aggregation is return a different start value
+        @Suppress("ReturnCount")
         fun getAggComputationStartValue(agg: org.opensearch.search.aggregations.Aggregation): Pair<Any, String> {
             when (agg) {
                 is InternalSum -> return Pair(agg.value, agg.type)
@@ -297,6 +299,7 @@ class ResponseInterceptor(
                 else -> throw IllegalArgumentException("This aggregation is not currently supported in rollups searches: ${agg.name}")
             }
         }
+        @Suppress("ReturnCount")
         fun createNewMetricAgg(aggName: String, aggValue: Any, aggType: String): InternalAggregation {
             when (aggType) {
                 "sum" -> return InternalSum(aggName, (aggValue as Double), DocValueFormat.RAW, null)
@@ -307,7 +310,8 @@ class ResponseInterceptor(
             }
         }
         // Create original avg aggregation
-        fun initRollupAvgAgg(modifiedName: String, value: Any, aggValues: MutableMap<String, Pair<Any, String>>, addedAggregations: MutableSet<String>): InternalAvg {
+        fun initRollupAvgAgg(modifiedName: String, value: Any, aggValues: MutableMap<String, Pair<Any, String>>,
+                             addedAggregations: MutableSet<String>): InternalAvg {
             // Sum calc
             if (modifiedName.contains(".rollup.avg.sum")) {
                 // Won't double count
@@ -336,10 +340,11 @@ class ResponseInterceptor(
                     }
                 }
             }
-            throw Exception("Can't calculate avg agg for rollup index")
+            throw NullPointerException("Can't calculate avg agg for rollup index")
         }
 
-//         Returns a new InternalAggregations that contains a merged aggregation(s) with the overlapping data removed, computation varies based on metric used (edge case avg?)
+//       Returns a new InternalAggregations that contains merged aggregation(s) with the overlapping data removed
+        @Suppress("NestedBlockDepth")
         fun computeAggregationsWithoutOverlap(intervalAggregations: InternalAggregations, start: Long, end: Long): InternalAggregations {
             // Store the running values of the aggregations being computed
             // {aggName: String: Pair<value: Any, type:String>}

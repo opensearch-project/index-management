@@ -66,7 +66,6 @@ import java.time.LocalDateTime
 import java.time.ZoneOffset
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
-import java.util.*
 
 const val DATE_FIELD_STRICT_DATE_OPTIONAL_TIME_FORMAT = "strict_date_optional_time"
 const val DATE_FIELD_EPOCH_MILLIS_FORMAT = "epoch_millis"
@@ -470,6 +469,7 @@ fun parseRollup(response: GetResponse, xContentRegistry: NamedXContentRegistry =
     return xcp.parseWithType(response.id, response.seqNo, response.primaryTerm, Rollup.Companion::parse)
 }
 // Changes aggregations in search source builder to new original aggregation (Change query too?)
+@Suppress("ComplexMethod")
 fun SearchSourceBuilder.changeAggregations(aggregationBuilderCollection: Collection<AggregationBuilder>): SearchSourceBuilder {
     val ssb = SearchSourceBuilder()
     aggregationBuilderCollection.forEach { ssb.aggregation(it) }
@@ -510,7 +510,7 @@ fun convertDateStringToEpochMillis(dateString: String): Long {
     val epochMillis = localDateTime.toInstant(ZoneOffset.UTC).toEpochMilli()
     return epochMillis
 }
-
+@Suppress("MagicNumber")
 fun convertFixedIntervalStringToMs(fixedInterval: String): Long {
     // Possible types are ms, s, m, h, d
     val regex = """(\d+)([a-zA-Z]+)""".toRegex()
