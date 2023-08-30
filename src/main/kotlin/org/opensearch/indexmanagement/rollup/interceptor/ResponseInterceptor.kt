@@ -243,11 +243,9 @@ class ResponseInterceptor(
                 }
             )
             latch.await()
-
+            val foundMinAndMax = (minLiveDateResponse != null && maxRolledDateResponse != null)
             // if they overlap find part to exclude
-            @Suppress("ComplexCondition")
-            if (minLiveDateResponse != null && maxRolledDateResponse != null && minLiveDateResponse!!.hits.hits.isNotEmpty()
-                && maxRolledDateResponse!!.hits.hits.isNotEmpty()) {
+            if (foundMinAndMax && minLiveDateResponse!!.hits.hits.isNotEmpty() && maxRolledDateResponse!!.hits.hits.isNotEmpty()) {
                 // Rollup data ends at maxRolledDate + fixedInterval
                 val maxRolledDate: Long = maxRolledDateResponse!!.hits.hits[0].sourceAsMap.get("$dateTargetField.date_histogram") as Long
                 val rollupDataEndPoint = maxRolledDate + convertFixedIntervalStringToMs(fixedInterval = rollupInterval!!)
@@ -310,8 +308,12 @@ class ResponseInterceptor(
             }
         }
         // Create original avg aggregation
-        fun initRollupAvgAgg(modifiedName: String, value: Any, aggValues: MutableMap<String, Pair<Any, String>>,
-                             addedAggregations: MutableSet<String>): InternalAvg {
+        fun initRollupAvgAgg(
+            modifiedName: String,
+            value: Any,
+            aggValues: MutableMap<String, Pair<Any, String>>,
+            addedAggregations: MutableSet<String>
+        ): InternalAvg {
             // Sum calc
             if (modifiedName.contains(".rollup.avg.sum")) {
                 // Won't double count

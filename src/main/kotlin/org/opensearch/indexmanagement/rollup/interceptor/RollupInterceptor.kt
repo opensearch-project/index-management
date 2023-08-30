@@ -195,9 +195,8 @@ class RollupInterceptor(
                     if (containsRollup || isRollupIndex) {
                         val (concreteRollupIndicesArray, concreteLiveIndicesArray) = getConcreteIndices(request)
                         // Avoid infinite interceptor loop
-                        @Suppress("ComplexCondition")
-                        if (concreteRollupIndicesArray.isNotEmpty() && concreteLiveIndicesArray.isNotEmpty()
-                            && request.source().aggregations() != null && !isRequestRewrittenIntoBuckets(request)) {
+                        val isMultiSearch = (concreteRollupIndicesArray.isNotEmpty() && concreteLiveIndicesArray.isNotEmpty())
+                        if (isMultiSearch && request.source().aggregations() != null && !isRequestRewrittenIntoBuckets(request)) {
                             // Break apart request to remove overlapping parts
                             breakRequestIntoBuckets(request, rollupJob!!)
                         }
