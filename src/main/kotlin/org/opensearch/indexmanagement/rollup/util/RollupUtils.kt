@@ -62,6 +62,10 @@ import org.opensearch.search.aggregations.metrics.ScriptedMetricAggregationBuild
 import org.opensearch.search.aggregations.metrics.SumAggregationBuilder
 import org.opensearch.search.aggregations.metrics.ValueCountAggregationBuilder
 import org.opensearch.search.builder.SearchSourceBuilder
+import java.time.LocalDateTime
+import java.time.ZoneOffset
+import java.time.ZonedDateTime
+import java.time.format.DateTimeFormatter
 import java.util.*
 
 const val DATE_FIELD_STRICT_DATE_OPTIONAL_TIME_FORMAT = "strict_date_optional_time"
@@ -499,6 +503,36 @@ fun SearchSourceBuilder.changeAggregations(aggregationBuilderCollection: Collect
     return ssb
 }
 
-// fun InternalAvg.getSumAndCount(): Pair<Double, Long> {
-//     return Pair(this.getSum(), this.
-// }
+fun convertDateStringToEpochMillis(dateString: String): Long {
+    val pattern = "yyyy-MM-dd HH:mm:ss"
+    val formatter = DateTimeFormatter.ofPattern(pattern)
+    val localDateTime = LocalDateTime.parse(dateString, formatter)
+    val epochMillis = localDateTime.toInstant(ZoneOffset.UTC).toEpochMilli()
+    return epochMillis
+}
+
+fun convertFixedIntervalStringToMs(fixedInterval: String): Long {
+    // Possible types are ms, s, m, h, d
+    val regex = """(\d+)([a-zA-Z]+)""".toRegex()
+    val matchResult = regex.find(fixedInterval)
+        ?: throw IllegalArgumentException("Invalid interval format: $fixedInterval")
+
+    val numericValue = matchResult.groupValues[1].toLong()
+    val intervalType = matchResult.groupValues[2]
+
+    val milliseconds = when (intervalType) {
+        "ms" -> numericValue
+        "s" -> numericValue * 1000L
+        "m" -> numericValue * 60 * 1000L
+        "h" -> numericValue * 60 * 60 * 1000L
+        "d" -> numericValue * 24 * 60 * 60 * 1000L
+        "w" -> numericValue * 7 * 24 * 60 * 60 * 1000L
+        else -> throw IllegalArgumentException("Unsupported interval type: $intervalType")
+    }
+
+    return milliseconds
+}
+
+fun zonedDateTimeToMillis(zonedDateTime: ZonedDateTime): Long {
+    return zonedDateTime.toInstant().toEpochMilli()
+}

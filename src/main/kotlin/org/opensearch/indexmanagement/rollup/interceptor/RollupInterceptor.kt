@@ -120,32 +120,6 @@ class RollupInterceptor(
         }
         return false
     }
-    fun copyAggregations(oldAggs: AggregatorFactories.Builder): AggregatorFactories.Builder {
-        try {
-            val aggsStr = BytesStreamOutput().use<BytesStreamOutput, String?> { out ->
-                out.writeVersion(Version.CURRENT)
-                oldAggs.writeTo(out)
-                val bytes = BytesReference.toBytes(out.bytes())
-                Base64.getUrlEncoder().withoutPadding().encodeToString(bytes)
-            }
-            val bytesReference = BytesReference.fromByteBuffer(
-                ByteBuffer.wrap(
-                    Base64.getUrlDecoder().decode(
-                        aggsStr
-                    )
-                )
-            )
-            val wrapperStreamInput = NamedWriteableAwareStreamInput(
-                bytesReference.streamInput(),
-                NamedWriteableRegistry(SearchModule(Settings.EMPTY, emptyList()).namedWriteables)
-            )
-            wrapperStreamInput.setVersion(wrapperStreamInput.readVersion())
-            return AggregatorFactories.Builder(wrapperStreamInput)
-        } catch (e: Exception) {
-            logger.error(e)
-            return oldAggs
-        }
-    }
     // Need to modify aggs for rollup docs with avg and value count aggs
     fun modifyRollupAggs(aggFacts: MutableCollection<AggregationBuilder>): AggregatorFactories.Builder {
         val build = AggregatorFactories.builder()
@@ -205,7 +179,7 @@ class RollupInterceptor(
             .calendarInterval(DateHistogramInterval(rollupInterval))
             .format("epoch_millis")
             .subAggregations(oldAggs)
-        // Changes aggreagtion in source to new agg
+        // Changes aggregation in source to new agg
         request.source(request.source().changeAggregations(listOf(intervalAgg)))
         return
     }

@@ -16,17 +16,19 @@ import org.opensearch.common.io.stream.StreamInput
 import org.opensearch.common.settings.Settings
 import org.opensearch.indexmanagement.common.model.dimension.DateHistogram
 import org.opensearch.indexmanagement.rollup.model.Rollup
-import org.opensearch.indexmanagement.rollup.util.getRollupJobs
-import org.opensearch.indexmanagement.rollup.util.isRollupIndex
 import org.opensearch.search.DocValueFormat
 import org.opensearch.search.aggregations.InternalAggregation
 import org.opensearch.search.aggregations.InternalAggregations
 import org.opensearch.search.aggregations.bucket.histogram.InternalDateHistogram
 import org.opensearch.search.builder.SearchSourceBuilder
-import org.opensearch.search.fetch.QueryFetchSearchResult
 import org.opensearch.search.internal.ShardSearchRequest
 import org.opensearch.search.query.QuerySearchResult
 import org.opensearch.index.query.QueryBuilders
+import org.opensearch.indexmanagement.rollup.util.convertDateStringToEpochMillis
+import org.opensearch.indexmanagement.rollup.util.convertFixedIntervalStringToMs
+import org.opensearch.indexmanagement.rollup.util.getRollupJobs
+import org.opensearch.indexmanagement.rollup.util.isRollupIndex
+import org.opensearch.indexmanagement.rollup.util.zonedDateTimeToMillis
 import org.opensearch.search.aggregations.metrics.InternalAvg
 import org.opensearch.search.aggregations.metrics.InternalMax
 import org.opensearch.search.aggregations.metrics.InternalMin
@@ -43,9 +45,6 @@ import org.opensearch.transport.TransportRequestOptions
 import org.opensearch.transport.TransportResponse
 import org.opensearch.transport.TransportResponseHandler
 import java.time.ZonedDateTime
-import java.time.LocalDateTime
-import java.time.ZoneOffset
-import java.time.format.DateTimeFormatter
 import java.util.concurrent.CountDownLatch
 import kotlin.math.max
 import kotlin.math.min
@@ -63,8 +62,6 @@ class ResponseInterceptor(
     }
 
     private inner class CustomAsyncSender(private val originalSender: TransportInterceptor.AsyncSender) : TransportInterceptor.AsyncSender {
-        // Logic for overlap
-
         override fun <T : TransportResponse?> sendRequest(
             connection: Transport.Connection?,
             action: String?,
@@ -83,7 +80,6 @@ class ResponseInterceptor(
     ) : TransportResponseHandler<T> {
         override fun read(inStream: StreamInput?): T {
             val response = originalHandler?.read(inStream)
-            // Modify the response if necessary
             return response!!
         }
         fun isRewrittenInterceptorRequest(response: QuerySearchResult): Boolean {
@@ -122,71 +118,7 @@ class ResponseInterceptor(
             }
             return Pair(rollupIndices.toTypedArray(), liveIndices.toTypedArray())
         }
-        fun convertDateStringToEpochMillis(dateString: String): Long {
-            val pattern = "yyyy-MM-dd HH:mm:ss"
-            val formatter = DateTimeFormatter.ofPattern(pattern)
-            val localDateTime = LocalDateTime.parse(dateString, formatter)
-            val epochMillis = localDateTime.toInstant(ZoneOffset.UTC).toEpochMilli()
-            return epochMillis
-        }
-        fun convertFixedIntervalStringToMs(fixedInterval: String): Long {
-            // Possible types are ms, s, m, h, d
-            val regex = """(\d+)([a-zA-Z]+)""".toRegex()
-            val matchResult = regex.find(fixedInterval)
-                ?: throw IllegalArgumentException("Invalid interval format: $fixedInterval")
 
-            val numericValue = matchResult.groupValues[1].toLong()
-            val intervalType = matchResult.groupValues[2]
-
-            val milliseconds = when (intervalType) {
-                "ms" -> numericValue
-                "s" -> numericValue * 1000L
-                "m" -> numericValue * 60 * 1000L
-                "h" -> numericValue * 60 * 60 * 1000L
-                "d" -> numericValue * 24 * 60 * 60 * 1000L
-                "w" -> numericValue * 7 * 24 * 60 * 60 * 1000L
-                else -> throw IllegalArgumentException("Unsupported interval type: $intervalType")
-            }
-
-            return milliseconds
-        }
-        fun getIntersectionTime(liveDataStartPoint: Long, rollupIndices: Array<String>, dateTargetField: String): Long {
-            // Build search request to find the minimum rollup timestamp >= liveDataStartPoint
-            val sort = SortBuilders.fieldSort("$dateTargetField.date_histogram").order(SortOrder.ASC)
-            val query = QueryBuilders.boolQuery()
-                .must(QueryBuilders.rangeQuery(dateTargetField).gte(liveDataStartPoint))
-            val searchSourceBuilder = SearchSourceBuilder()
-                .sort(sort)
-                .query(query)
-                .size(1)
-            // Need to avoid infinite interceptor loop
-            val req = SearchRequest()
-                .source(searchSourceBuilder)
-            rollupIndices.forEach { req.indices(it) }
-            var res: SearchResponse? = null
-            val latch = CountDownLatch(1)
-            client.search(
-                req,
-                object : ActionListener<SearchResponse> {
-                    override fun onResponse(searchResponse: SearchResponse) {
-                        res = searchResponse
-                        latch.countDown()
-                    }
-
-                    override fun onFailure(e: Exception) {
-                        logger.error("request to find intersection time failed :(", e)
-                        latch.countDown()
-                    }
-                }
-            )
-            latch.await()
-            try {
-                return res!!.hits.hits[0].sourceAsMap.get("$dateTargetField.date_histogram") as Long
-            } catch (e: Exception) {
-                logger.error("Not able to retrieve intersection time from response: $e")
-            }
-            return 0L // dummy :P
-        }
         // Calculated the end time for the current shard index if it is a rollup index with data overlapp
         fun getRollupEndTime(liveDataStartPoint: Long, rollupIndices: Array<String>, dateTargetField: String): Long {
             // Build search request to find the maximum rollup timestamp <= liveDataStartPoint
@@ -227,7 +159,7 @@ class ResponseInterceptor(
         }
 
 //         Returns Pair(startRange: Long, endRange: Long)
-//         Note startRange is inclusive and endRange is exclusive, they are longs becuase the type is epoch milliseconds
+//         Note startRange is inclusive and endRange is exclusive, they are Longs because the type is epoch milliseconds
         fun findOverlap(response: QuerySearchResult): Pair<Long, Long> {
             val job: Rollup = getRollupJob(response)!! // maybe throw a try catch later
             var dateSourceField: String = ""
@@ -241,14 +173,12 @@ class ResponseInterceptor(
                     break
                 }
             }
-            // Keep existing query and add 3 fake match alls to avoid infinite loop
             val request: ShardSearchRequest = response.shardSearchRequest!!
             val oldQuery = request.source().query()
-            // TODO scale this for multiple indices!!!!
             val (rollupIndices, liveIndices) = getRollupAndLiveIndices(request)
             val shardRequestIndex = request.shardId().indexName
             val isShardIndexRollup = isRollupIndex(shardRequestIndex, clusterService.state())
-            // Build search request to find the maximum date on the rolled data index
+            // Build search request to find the maximum date in all rollup indices
             var sort = SortBuilders.fieldSort("$dateTargetField.date_histogram").order(SortOrder.DESC)
             var searchSourceBuilder = SearchSourceBuilder()
                 .sort(sort)
@@ -269,13 +199,13 @@ class ResponseInterceptor(
                     }
 
                     override fun onFailure(e: Exception) {
-                        logger.error("ronsax maxLiveDate request failed ", e)
+                        logger.error("maxLiveDate request failed in response interceptor", e)
                         latch.countDown()
                     }
                 }
             )
             latch.await()
-            // Build search request to find the minimum date in the live data index
+            // Build search request to find the minimum date in all live indices
             sort = SortBuilders.fieldSort(dateSourceField).order(SortOrder.ASC)
             searchSourceBuilder = SearchSourceBuilder()
                 .sort(sort)
@@ -283,8 +213,8 @@ class ResponseInterceptor(
             val minLiveDateRequest = SearchRequest()
                 .source(searchSourceBuilder)
             /*
-            If the shard index is a rollup index I want to find the minimum value of all the live indices to compute the overlap
-            If the shard index is a live index I only care about the minimum value of the current shard index
+            If the response shard index is a rollup index, need to find the minimum value of all the live indices to compute the overlap
+            If the response shard index is a live index, need to only compute minimum value of the current shard index
              */
             if (isShardIndexRollup) {
                 liveIndices.forEach { minLiveDateRequest.indices(it) }
@@ -303,7 +233,7 @@ class ResponseInterceptor(
                     }
 
                     override fun onFailure(e: Exception) {
-                        logger.error("ronsax minLiveDate request failed ", e)
+                        logger.error("minLiveDate request failed in response interceptor", e)
                         latch.countDown()
                     }
                 }
@@ -318,7 +248,6 @@ class ResponseInterceptor(
                 val liveDataStartPoint = convertDateStringToEpochMillis(minLiveDate)
                 if (liveDataStartPoint < rollupDataEndPoint) {
                     // Find intersection timestamp
-//                    val intersectionTime = getIntersectionTime(liveDataStartPoint, rollupIndices, dateTargetField)
                     if (isShardIndexRollup) {
                         // Start at 0, end at live data
                         val endTime = getRollupEndTime(liveDataStartPoint, rollupIndices, dateTargetField)
@@ -334,9 +263,7 @@ class ResponseInterceptor(
             // No overlap so start and end include everything
             return Pair(0L, Long.MAX_VALUE)
         }
-        fun zonedDateTimeToMillis(zonedDateTime: ZonedDateTime): Long {
-            return zonedDateTime.toInstant().toEpochMilli()
-        }
+
         // Depending on which metric the aggregation is computer data differently
         fun computeRunningValue(agg: org.opensearch.search.aggregations.Aggregation, currentValue: Any): Pair<Any, String> {
             when (agg) {
@@ -413,23 +340,8 @@ class ResponseInterceptor(
         }
 
 //         Returns a new InternalAggregations that contains a merged aggregation(s) with the overlapping data removed, computation varies based on metric used (edge case avg?)
-        /**
-         * @param intervalAggregations
-         * @return Int
-         */
         fun computeAggregationsWithoutOverlap(intervalAggregations: InternalAggregations, start: Long, end: Long): InternalAggregations {
-//            /*
-//            PSUEDOCODE
-//            1. Look at first bucket to see which aggs where in initial request
-//            2. Store in a map of {aggregationName: [aggType, runningSum/Min/Max/Avg to change]
-//            3. Iterate through all buckets
-//                4. if bucket in range start <= timeStamp < end
-//                    5. update all computation values in map
-//            6. init new InternalAggregations object
-//            7. iterate throguh all key, vals in map and construct an internalAggregation object for each of them, add to InternalAggregations object
-//            8. return InternalAggregations object
-//             */
-            // Create an empty map to hold the agg values
+            // Store the running values of the aggregations being computed
             // {aggName: String: Pair<value: Any, type:String>}
             val aggValues = mutableMapOf<String, Pair<Any, String>>()
 //
@@ -490,23 +402,6 @@ class ResponseInterceptor(
                         val (startTime, endTime) = findOverlap(response)
                         // Modify agg to be original result without overlap computed in
                         response.aggregations(computeAggregationsWithoutOverlap(response.aggregations().expand(), startTime, endTime))
-                        originalHandler?.handleResponse(response)
-                    } else {
-                        originalHandler?.handleResponse(response)
-                    }
-                }
-                // when just 1 rollup index is in request, keep for testing
-                is QueryFetchSearchResult -> {
-                    val queryResult = response.queryResult()
-                    if (queryResult.hasAggs() && isRewrittenInterceptorRequest(queryResult)) {
-                        // Check for overlap
-                        val (startTime, endTime) = findOverlap(queryResult)
-                        // Modify agg to be original result without overlap computed in
-                        queryResult.aggregations(computeAggregationsWithoutOverlap(queryResult.aggregations().expand(), startTime, endTime))
-                        // TODO change response object
-//                        val r1 = QueryFetchSearchResult(response.queryResult(), response.fetchResult())
-//                        r1.shardIndex = response.shardIndex
-//                        val r2: T = r1 as T
                         originalHandler?.handleResponse(response)
                     } else {
                         originalHandler?.handleResponse(response)
