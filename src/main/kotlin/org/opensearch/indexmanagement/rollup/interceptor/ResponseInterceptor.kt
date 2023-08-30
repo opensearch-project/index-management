@@ -187,6 +187,44 @@ class ResponseInterceptor(
             }
             return 0L // dummy :P
         }
+        // Calculated the end time for the current shard index if it is a rollup index with data overlapp
+        fun getRollupEndTime(liveDataStartPoint: Long, rollupIndices: Array<String>, dateTargetField: String): Long {
+            // Build search request to find the maximum rollup timestamp <= liveDataStartPoint
+            val sort = SortBuilders.fieldSort("$dateTargetField.date_histogram").order(SortOrder.DESC)
+            val query = QueryBuilders.boolQuery()
+                .must(QueryBuilders.rangeQuery(dateTargetField).lte(liveDataStartPoint))
+            val searchSourceBuilder = SearchSourceBuilder()
+                .sort(sort)
+                .query(query)
+                .size(1)
+            // Need to avoid infinite interceptor loop
+            val req = SearchRequest()
+                .source(searchSourceBuilder)
+            rollupIndices.forEach { req.indices(it) }
+            var res: SearchResponse? = null
+            val latch = CountDownLatch(1)
+            client.search(
+                req,
+                object : ActionListener<SearchResponse> {
+                    override fun onResponse(searchResponse: SearchResponse) {
+                        res = searchResponse
+                        latch.countDown()
+                    }
+
+                    override fun onFailure(e: Exception) {
+                        logger.error("request to find intersection time failed :(", e)
+                        latch.countDown()
+                    }
+                }
+            )
+            latch.await()
+            try {
+                return res!!.hits.hits[0].sourceAsMap.get("$dateTargetField.date_histogram") as Long
+            } catch (e: Exception) {
+                logger.error("Not able to retrieve intersection time from response: $e")
+            }
+            return 0L // dummy :P
+        }
 
 //         Returns Pair(startRange: Long, endRange: Long)
 //         Note startRange is inclusive and endRange is exclusive, they are longs becuase the type is epoch milliseconds
@@ -280,13 +318,14 @@ class ResponseInterceptor(
                 val liveDataStartPoint = convertDateStringToEpochMillis(minLiveDate)
                 if (liveDataStartPoint < rollupDataEndPoint) {
                     // Find intersection timestamp
-                    val intersectionTime = getIntersectionTime(liveDataStartPoint, rollupIndices, dateTargetField)
+//                    val intersectionTime = getIntersectionTime(liveDataStartPoint, rollupIndices, dateTargetField)
                     if (isShardIndexRollup) {
-                        // Start at 0, end at intersection time
-                        return Pair(0L, intersectionTime)
-                    } else { // Shard index is live
-                        // Start at intersection timestamp, end at inf
-                        return Pair(intersectionTime, Long.MAX_VALUE)
+                        // Start at 0, end at live data
+                        val endTime = getRollupEndTime(liveDataStartPoint, rollupIndices, dateTargetField)
+                        return Pair(0L, endTime)
+                    } else {
+                        // Include all live data
+                        return Pair(0L, Long.MAX_VALUE)
                     }
                 }
             } else {
@@ -337,17 +376,6 @@ class ResponseInterceptor(
                 "min" -> return InternalMin(aggName, (aggValue as Double), DocValueFormat.RAW, null)
                 "max" -> return InternalMax(aggName, (aggValue as Double), DocValueFormat.RAW, null)
                 "value_count" -> return InternalValueCount(aggName, (aggValue as Long), null)
-//                "scripted_metric" -> {
-//                    val script = Script(
-//                        ScriptType.INLINE,
-//                        "painless",
-//                        "long valueCount = 0; for (vc in states) { valueCount += vc } return valueCount;",
-//                        emptyMap(), // options
-//                        emptyMap()  // params
-//                    )
-//                    return ScriptedMetricAggregationBuilder(aggName).
-//                }
-//                "avg" -> return InternalAvg(agg) // TODO look at how to make this bad boy
                 else -> throw IllegalArgumentException("Could not recreate an aggregation for type $aggType")
             }
         }
