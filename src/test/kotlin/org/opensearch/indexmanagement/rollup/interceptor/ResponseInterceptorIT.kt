@@ -30,7 +30,7 @@ class ResponseInterceptorIT : RollupRestTestCase() {
     fun `test search a live index and rollup index with no overlap`() {
         generateNYCTaxiData("source_rollup_search")
         val rollup = Rollup(
-            id = "basic_term_query_rollup_search",
+            id = "base_case1_rollup_search",
             enabled = true,
             schemaVersion = 1L,
             jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
@@ -189,17 +189,17 @@ class ResponseInterceptorIT : RollupRestTestCase() {
     }
     // Edge Case
     fun `test search a live index with no data and rollup index with data`() {
-        generateNYCTaxiData("source_rollup_search")
+        generateNYCTaxiData("source_rollup_search_no_data_case")
         val rollup = Rollup(
-            id = "basic_term_query_rollup_search",
+            id = "base_case_2_rollup_search",
             enabled = true,
             schemaVersion = 1L,
             jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
             jobLastUpdatedTime = Instant.now(),
             jobEnabledTime = Instant.now(),
             description = "basic search test",
-            sourceIndex = "source_rollup_search",
-            targetIndex = "target_rollup_search",
+            sourceIndex = "source_rollup_search_no_data_case",
+            targetIndex = "target_rollup_search_no_data_case",
             metadataID = null,
             roles = emptyList(),
             pageSize = 10,
@@ -266,7 +266,7 @@ class ResponseInterceptorIT : RollupRestTestCase() {
                 }
             }
         """.trimIndent()
-        var searchResponse = client().makeRequest("POST", "/source_rollup_search/_search", emptyMap(), StringEntity(aggReq, ContentType.APPLICATION_JSON))
+        var searchResponse = client().makeRequest("POST", "/source_rollup_search_no_data_case/_search", emptyMap(), StringEntity(aggReq, ContentType.APPLICATION_JSON))
         assertTrue("Could not search inital data for expected values", searchResponse.restStatus() == RestStatus.OK)
         var expectedAggs = searchResponse.asMap()["aggregations"] as Map<String, Map<String, Any>>
         val expectedSum = expectedAggs.getValue("sum_passenger_count")["value"]
@@ -278,12 +278,12 @@ class ResponseInterceptorIT : RollupRestTestCase() {
         // Delete values from live index
         var deleteResponse = client().makeRequest(
             "POST",
-            "source_rollup_search/_delete_by_query",
+            "source_rollup_search_no_data_case/_delete_by_query",
             mapOf("refresh" to "true"),
             StringEntity("""{"query": {"match_all": {}}}""", ContentType.APPLICATION_JSON)
         )
         assertTrue(deleteResponse.restStatus() == RestStatus.OK)
-        var searchBothResponse = client().makeRequest("POST", "/target_rollup_search,source_rollup_search/_search", emptyMap(), StringEntity(aggReq, ContentType.APPLICATION_JSON))
+        var searchBothResponse = client().makeRequest("POST", "/target_rollup_search_no_data_case,source_rollup_search_no_data_case/_search", emptyMap(), StringEntity(aggReq, ContentType.APPLICATION_JSON))
         assertTrue(searchBothResponse.restStatus() == RestStatus.OK)
         var responseAggs = searchBothResponse.asMap()["aggregations"] as Map<String, Map<String, Any>>
         assertEquals(
@@ -313,17 +313,17 @@ class ResponseInterceptorIT : RollupRestTestCase() {
         )
     }
     fun `test search a live index and rollup index with data overlap`() {
-        generateNYCTaxiData("source_rollup_search")
+        generateNYCTaxiData("source_rollup_search_data_overlap_case")
         val rollup = Rollup(
-            id = "basic_term_query_rollup_search",
+            id = "case2_rollup_search",
             enabled = true,
             schemaVersion = 1L,
             jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
             jobLastUpdatedTime = Instant.now(),
             jobEnabledTime = Instant.now(),
             description = "basic search test",
-            sourceIndex = "source_rollup_search",
-            targetIndex = "target_rollup_search",
+            sourceIndex = "source_rollup_search_data_overlap_case",
+            targetIndex = "target_rollup_search_data_overlap_case",
             metadataID = null,
             roles = emptyList(),
             pageSize = 10,
@@ -388,7 +388,7 @@ class ResponseInterceptorIT : RollupRestTestCase() {
                 }
             }
         """.trimIndent()
-        var expectedSearchResponse = client().makeRequest("POST", "/source_rollup_search/_search", emptyMap(), StringEntity(aggReq, ContentType.APPLICATION_JSON))
+        var expectedSearchResponse = client().makeRequest("POST", "/source_rollup_search_data_overlap_case/_search", emptyMap(), StringEntity(aggReq, ContentType.APPLICATION_JSON))
         assertTrue("Could not search inital data for expected values", expectedSearchResponse.restStatus() == RestStatus.OK)
         var expectedAggs = expectedSearchResponse.asMap()["aggregations"] as Map<String, Map<String, Any>>
         val expectedSum = expectedAggs.getValue("sum_passenger_count")["value"]
@@ -415,7 +415,7 @@ class ResponseInterceptorIT : RollupRestTestCase() {
         """.trimIndent()
         var deleteLiveResponse = client().makeRequest(
             "POST",
-            "source_rollup_search/_delete_by_query",
+            "source_rollup_search_data_overlap_case/_delete_by_query",
             mapOf("refresh" to "true"),
             StringEntity(r, ContentType.APPLICATION_JSON)
         )
@@ -423,7 +423,7 @@ class ResponseInterceptorIT : RollupRestTestCase() {
         assertTrue("Could not delete live data", deleteLiveResponse.restStatus() == RestStatus.OK)
         // Rollup index is complete overlap of live data
         // Search both and check if time series data is the same
-        var searchBothResponse = client().makeRequest("POST", "/target_rollup_search,source_rollup_search/_search", emptyMap(), StringEntity(aggReq, ContentType.APPLICATION_JSON))
+        var searchBothResponse = client().makeRequest("POST", "/target_rollup_search_data_overlap_case,source_rollup_search_data_overlap_case/_search", emptyMap(), StringEntity(aggReq, ContentType.APPLICATION_JSON))
         assertTrue(searchBothResponse.restStatus() == RestStatus.OK)
         var responseAggs = searchBothResponse.asMap()["aggregations"] as Map<String, Map<String, Any>>
         assertEquals(
@@ -453,17 +453,17 @@ class ResponseInterceptorIT : RollupRestTestCase() {
         )
     }
     fun `test search multiple live data indices and a rollup data index with overlap`() {
-        generateNYCTaxiData("source_rollup_search")
+        generateNYCTaxiData("source_rollup_search_multi_index_case")
         val rollup = Rollup(
-            id = "basic_term_query_rollup_search",
+            id = "case3_rollup_search",
             enabled = true,
             schemaVersion = 1L,
             jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
             jobLastUpdatedTime = Instant.now(),
             jobEnabledTime = Instant.now(),
             description = "basic search test",
-            sourceIndex = "source_rollup_search",
-            targetIndex = "target_rollup_search",
+            sourceIndex = "source_rollup_search_multi_index_case",
+            targetIndex = "target_rollup_search_multi_index_case",
             metadataID = null,
             roles = emptyList(),
             pageSize = 10,
@@ -511,7 +511,7 @@ class ResponseInterceptorIT : RollupRestTestCase() {
         """.trimIndent()
         var deleteLiveResponse = client().makeRequest(
             "POST",
-            "source_rollup_search/_delete_by_query",
+            "source_rollup_search_multi_index_case/_delete_by_query",
             mapOf("refresh" to "true"),
             StringEntity(r, ContentType.APPLICATION_JSON)
         )
@@ -519,7 +519,7 @@ class ResponseInterceptorIT : RollupRestTestCase() {
         assertTrue("Could not delete live data", deleteLiveResponse.restStatus() == RestStatus.OK)
 
         // Insert more live data
-        generateNYCTaxiData("source_rollup_search2")
+        generateNYCTaxiData("source_rollup_search_multi_index_case2")
         // Expected values would discard the overlapping rollup index completely
         var aggReq = """
             {
@@ -556,7 +556,7 @@ class ResponseInterceptorIT : RollupRestTestCase() {
                 }
             }
         """.trimIndent()
-        var searchResponse = client().makeRequest("POST", "/source_rollup_search,source_rollup_search2/_search", emptyMap(), StringEntity(aggReq, ContentType.APPLICATION_JSON))
+        var searchResponse = client().makeRequest("POST", "/source_rollup_search_multi_index_case,source_rollup_search_multi_index_case2/_search", emptyMap(), StringEntity(aggReq, ContentType.APPLICATION_JSON))
         assertTrue("Could not search initial data for expected values", searchResponse.restStatus() == RestStatus.OK)
         var expectedAggs = searchResponse.asMap()["aggregations"] as Map<String, Map<String, Any>>
         val expectedSum = expectedAggs.getValue("sum_passenger_count")["value"]
@@ -567,7 +567,7 @@ class ResponseInterceptorIT : RollupRestTestCase() {
         refreshAllIndices()
 
         // Search all 3 indices to check if overlap was removed
-        var searchAllResponse = client().makeRequest("POST", "/target_rollup_search,source_rollup_search,source_rollup_search2/_search", emptyMap(), StringEntity(aggReq, ContentType.APPLICATION_JSON))
+        var searchAllResponse = client().makeRequest("POST", "/target_rollup_search_multi_index_case,source_rollup_search_multi_index_case,source_rollup_search_multi_index_case2/_search", emptyMap(), StringEntity(aggReq, ContentType.APPLICATION_JSON))
         assertTrue(searchAllResponse.restStatus() == RestStatus.OK)
         var responseAggs = searchAllResponse.asMap()["aggregations"] as Map<String, Map<String, Any>>
         assertEquals(
@@ -636,7 +636,7 @@ class ResponseInterceptorIT : RollupRestTestCase() {
         assertTrue("Could not create alias", createAliasRes.restStatus() == RestStatus.OK)
         // Rollup alias into rollup-nyc-taxi-data
         val rollup = Rollup(
-            id = "basic_term_query_rollup_search",
+            id = "alias_rollup_search",
             enabled = true,
             schemaVersion = 1L,
             jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
