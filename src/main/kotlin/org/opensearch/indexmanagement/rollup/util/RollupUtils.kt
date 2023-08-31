@@ -65,7 +65,6 @@ import org.opensearch.search.builder.SearchSourceBuilder
 import java.time.LocalDateTime
 import java.time.ZoneOffset
 import java.time.ZonedDateTime
-import java.time.format.DateTimeFormatter
 
 const val DATE_FIELD_STRICT_DATE_OPTIONAL_TIME_FORMAT = "strict_date_optional_time"
 const val DATE_FIELD_EPOCH_MILLIS_FORMAT = "epoch_millis"
@@ -504,11 +503,21 @@ fun SearchSourceBuilder.changeAggregations(aggregationBuilderCollection: Collect
 }
 
 fun convertDateStringToEpochMillis(dateString: String): Long {
-    val pattern = "yyyy-MM-dd HH:mm:ss"
-    val formatter = DateTimeFormatter.ofPattern(pattern)
-    val localDateTime = LocalDateTime.parse(dateString, formatter)
-    val epochMillis = localDateTime.toInstant(ZoneOffset.UTC).toEpochMilli()
-    return epochMillis
+    val parts = dateString.split(" ")
+    val dateParts = parts[0].split("-")
+    val timeParts = parts[1].split(":")
+
+    val year = dateParts[0].toInt()
+    val month = dateParts[1].toInt()
+    val day = dateParts[2].toInt()
+
+    val hour = timeParts[0].toInt()
+    val minute = timeParts[1].toInt()
+    val second = timeParts[2].toInt()
+
+    val localDateTime = LocalDateTime.of(year, month, day, hour, minute, second)
+    val instant = localDateTime.toInstant(ZoneOffset.UTC)
+    return instant.toEpochMilli()
 }
 @Suppress("MagicNumber")
 fun convertFixedIntervalStringToMs(fixedInterval: String): Long {
