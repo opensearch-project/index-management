@@ -35,6 +35,7 @@ import org.opensearch.cluster.ClusterState
 import org.opensearch.cluster.ClusterStateListener
 import org.opensearch.cluster.block.ClusterBlockException
 import org.opensearch.cluster.metadata.IndexMetadata
+import org.opensearch.cluster.routing.Preference
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.lifecycle.LifecycleListener
 import org.opensearch.common.regex.Regex
@@ -429,6 +430,7 @@ class ManagedIndexCoordinator(
                 ).size(MAX_HITS)
             )
             .indices(INDEX_MANAGEMENT_INDEX)
+            .preference(Preference.PRIMARY_FIRST.type())
 
         return try {
             val response: SearchResponse = client.suspendUntil { search(searchRequest, it) }

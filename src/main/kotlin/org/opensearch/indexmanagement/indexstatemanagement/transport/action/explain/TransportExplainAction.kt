@@ -24,6 +24,7 @@ import org.opensearch.action.support.HandledTransportAction
 import org.opensearch.action.support.master.AcknowledgedResponse
 import org.opensearch.client.node.NodeClient
 import org.opensearch.cluster.metadata.IndexMetadata
+import org.opensearch.cluster.routing.Preference
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.inject.Inject
 import org.opensearch.common.util.concurrent.ThreadContext
@@ -177,6 +178,7 @@ class TransportExplainAction @Inject constructor(
             return SearchRequest()
                 .indices(INDEX_MANAGEMENT_INDEX)
                 .source(searchSourceBuilder)
+                .preference(Preference.PRIMARY_FIRST.type())
         }
 
         private fun searchForMetadata(searchRequest: SearchRequest) {
