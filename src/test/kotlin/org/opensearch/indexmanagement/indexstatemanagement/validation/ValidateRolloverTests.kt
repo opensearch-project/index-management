@@ -40,7 +40,7 @@ class ValidateRolloverTests : OpenSearchTestCase() {
         ("rollover", 1, 0, false, 0, null, null),
         null, null, null
     )
-    val actionConfig = RolloverAction(null, 3, TimeValue.timeValueDays(2), null, 0)
+    val actionConfig = RolloverAction(null, 3, TimeValue.timeValueDays(2), null, false, 0)
     private val client: Client = mock()
     private val lockService: LockService = LockService(mock(), clusterService)
     private val validate = ValidateRollover(settings, clusterService, jvmService)

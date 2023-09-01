@@ -37,7 +37,8 @@ data class ManagedIndexMetaData(
     val info: Map<String, Any>?,
     val id: String = NO_ID,
     val seqNo: Long = SequenceNumbers.UNASSIGNED_SEQ_NO,
-    val primaryTerm: Long = SequenceNumbers.UNASSIGNED_PRIMARY_TERM
+    val primaryTerm: Long = SequenceNumbers.UNASSIGNED_PRIMARY_TERM,
+    val rolledOverIndexName: String? = null,
 ) : Writeable, ToXContentFragment {
 
     @Suppress("ComplexMethod")
@@ -50,6 +51,7 @@ data class ManagedIndexMetaData(
         if (policyPrimaryTerm != null) resultMap[POLICY_PRIMARY_TERM] = policyPrimaryTerm.toString()
         if (policyCompleted != null) resultMap[POLICY_COMPLETED] = policyCompleted.toString()
         if (rolledOver != null) resultMap[ROLLED_OVER] = rolledOver.toString()
+        if (rolledOverIndexName != null) resultMap[ROLLED_OVER_INDEX_NAME] = rolledOverIndexName
         if (indexCreationDate != null) resultMap[INDEX_CREATION_DATE] = indexCreationDate.toString()
         if (transitionTo != null) resultMap[TRANSITION_TO] = transitionTo
         if (stateMetaData != null) resultMap[StateMetaData.STATE] = stateMetaData.getMapValueString()
@@ -75,6 +77,7 @@ data class ManagedIndexMetaData(
             .field(POLICY_PRIMARY_TERM, policyPrimaryTerm)
             .field(POLICY_COMPLETED, policyCompleted)
             .field(ROLLED_OVER, rolledOver)
+            .field(ROLLED_OVER_INDEX_NAME, rolledOverIndexName)
             .field(INDEX_CREATION_DATE, indexCreationDate)
             .field(TRANSITION_TO, transitionTo)
             .addObject(StateMetaData.STATE, stateMetaData, params, true)
@@ -109,6 +112,7 @@ data class ManagedIndexMetaData(
         // Only show rolled_over if we have rolled over or we are in the rollover action
         if (rolledOver == true || (actionMetaData != null && actionMetaData.name == "rollover")) {
             builder.field(ROLLED_OVER, rolledOver)
+            if (rolledOverIndexName != null) builder.field(ROLLED_OVER_INDEX_NAME, rolledOverIndexName)
         }
 
         if (indexCreationDate != null) builder.field(INDEX_CREATION_DATE, indexCreationDate)
@@ -141,6 +145,7 @@ data class ManagedIndexMetaData(
         streamOutput.writeOptionalLong(policyPrimaryTerm)
         streamOutput.writeOptionalBoolean(policyCompleted)
         streamOutput.writeOptionalBoolean(rolledOver)
+        streamOutput.writeOptionalString(rolledOverIndexName)
         streamOutput.writeOptionalLong(indexCreationDate)
         streamOutput.writeOptionalString(transitionTo)
 
@@ -171,6 +176,7 @@ data class ManagedIndexMetaData(
         const val POLICY_PRIMARY_TERM = "policy_primary_term"
         const val POLICY_COMPLETED = "policy_completed"
         const val ROLLED_OVER = "rolled_over"
+        const val ROLLED_OVER_INDEX_NAME = "rolled_over_index_name"
         const val INDEX_CREATION_DATE = "index_creation_date"
         const val TRANSITION_TO = "transition_to"
         const val INFO = "info"
@@ -184,6 +190,7 @@ data class ManagedIndexMetaData(
             val policyPrimaryTerm: Long? = si.readOptionalLong()
             val policyCompleted: Boolean? = si.readOptionalBoolean()
             val rolledOver: Boolean? = si.readOptionalBoolean()
+            val rolledOverIndexName: String? = si.readOptionalString()
             val indexCreationDate: Long? = si.readOptionalLong()
             val transitionTo: String? = si.readOptionalString()
 
@@ -206,6 +213,7 @@ data class ManagedIndexMetaData(
                 policyPrimaryTerm = policyPrimaryTerm,
                 policyCompleted = policyCompleted,
                 rolledOver = rolledOver,
+                rolledOverIndexName = rolledOverIndexName,
                 indexCreationDate = indexCreationDate,
                 transitionTo = transitionTo,
                 stateMetaData = state,
@@ -233,6 +241,7 @@ data class ManagedIndexMetaData(
             var policyPrimaryTerm: Long? = null
             var policyCompleted: Boolean? = null
             var rolledOver: Boolean? = null
+            var rolledOverIndexName: String? = null
             var indexCreationDate: Long? = null
             var transitionTo: String? = null
 
@@ -255,6 +264,7 @@ data class ManagedIndexMetaData(
                     POLICY_PRIMARY_TERM -> policyPrimaryTerm = if (xcp.currentToken() == XContentParser.Token.VALUE_NULL) null else xcp.longValue()
                     POLICY_COMPLETED -> policyCompleted = if (xcp.currentToken() == XContentParser.Token.VALUE_NULL) null else xcp.booleanValue()
                     ROLLED_OVER -> rolledOver = if (xcp.currentToken() == XContentParser.Token.VALUE_NULL) null else xcp.booleanValue()
+                    ROLLED_OVER_INDEX_NAME -> rolledOverIndexName = if (xcp.currentToken() == XContentParser.Token.VALUE_NULL) null else xcp.text()
                     INDEX_CREATION_DATE -> indexCreationDate = if (xcp.currentToken() == XContentParser.Token.VALUE_NULL) null else xcp.longValue()
                     TRANSITION_TO -> transitionTo = if (xcp.currentToken() == XContentParser.Token.VALUE_NULL) null else xcp.text()
                     StateMetaData.STATE -> {
@@ -276,23 +286,24 @@ data class ManagedIndexMetaData(
             }
 
             return ManagedIndexMetaData(
-                requireNotNull(index) { "$INDEX is null" },
-                requireNotNull(indexUuid) { "$INDEX_UUID is null" },
-                requireNotNull(policyID) { "$POLICY_ID is null" },
-                policySeqNo,
-                policyPrimaryTerm,
-                policyCompleted,
-                rolledOver,
-                indexCreationDate,
-                transitionTo,
-                state,
-                action,
-                step,
-                retryInfo,
-                info,
-                id,
-                seqNo,
-                primaryTerm
+                index = requireNotNull(index) { "$INDEX is null" },
+                indexUuid = requireNotNull(indexUuid) { "$INDEX_UUID is null" },
+                policyID = requireNotNull(policyID) { "$POLICY_ID is null" },
+                policySeqNo = policySeqNo,
+                policyPrimaryTerm = policyPrimaryTerm,
+                policyCompleted = policyCompleted,
+                rolledOver = rolledOver,
+                rolledOverIndexName = rolledOverIndexName,
+                indexCreationDate = indexCreationDate,
+                transitionTo = transitionTo,
+                stateMetaData = state,
+                actionMetaData = action,
+                stepMetaData = step,
+                policyRetryInfo = retryInfo,
+                info = info,
+                id = id,
+                seqNo = seqNo,
+                primaryTerm = primaryTerm,
             )
         }
 
@@ -322,6 +333,7 @@ data class ManagedIndexMetaData(
                 policyPrimaryTerm = map[POLICY_PRIMARY_TERM]?.toLong(),
                 policyCompleted = map[POLICY_COMPLETED]?.toBoolean(),
                 rolledOver = map[ROLLED_OVER]?.toBoolean(),
+                rolledOverIndexName = map[ROLLED_OVER_INDEX_NAME],
                 indexCreationDate = map[INDEX_CREATION_DATE]?.toLong(),
                 transitionTo = map[TRANSITION_TO],
                 stateMetaData = StateMetaData.fromManagedIndexMetaDataMap(map),
