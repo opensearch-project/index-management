@@ -1,6 +1,6 @@
 {
   "_meta" : {
-    "schema_version": 18
+    "schema_version": 19
   },
   "dynamic": "strict",
   "properties": {
@@ -229,6 +229,9 @@
                     },
                     "min_primary_shard_size": {
                       "type": "keyword"
+                    },
+                    "copy_alias": {
+                      "type": "boolean"
                     }
                   }
                 },
@@ -784,6 +787,9 @@
         },
         "rolled_over": {
           "type": "boolean"
+        },
+        "rolled_over_index_name": {
+          "type": "keyword"
         },
         "index_creation_date": {
           "type": "date",

@@ -71,6 +71,7 @@ import org.opensearch.jobscheduler.spi.schedule.IntervalSchedule
 import org.opensearch.rest.RestRequest
 import org.opensearch.search.SearchModule
 import org.opensearch.core.rest.RestStatus
+import org.opensearch.indexmanagement.rollup.randomTermQuery
 import org.opensearch.test.OpenSearchTestCase
 import java.io.IOException
 import java.time.Duration
@@ -81,7 +82,7 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
 
     @After
     fun clearIndicesAfterEachTest() {
-        wipeAllIndices()
+        wipeAllIndices(skip = isBWCTest)
     }
 
     val explainResponseOpendistroPolicyIdSetting = "index.opendistro.index_state_management.policy_id"
@@ -93,13 +94,11 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
         updateIndexStateManagementJitterSetting(0.0)
     }
 
-    @Before
-    protected fun disableValidationService() {
+    protected open fun disableValidationService() {
         updateValidationServiceSetting(false)
     }
 
-    @Before
-    protected fun enableValidationService() {
+    protected open fun enableValidationService() {
         updateValidationServiceSetting(true)
     }
 
@@ -242,16 +241,28 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
         index: String,
         alias: String,
         action: String = "remove",
-        isWriteIndex: Boolean = false
+        isWriteIndex: Boolean = false,
+        routing: Int? = null,
+        searchRouting: Int = randomInt(),
+        indexRouting: Int = randomInt(),
+        filter: String = randomTermQuery().toString(),
+        isHidden: Boolean = randomBoolean()
     ) {
         val isWriteIndexField = if (isWriteIndex) "\",\"is_write_index\": \"$isWriteIndex" else ""
+        val params = if (action == "add" && routing != null) """
+            ,"routing": $routing,
+            "search_routing": $searchRouting,
+            "index_routing": $indexRouting,
+            "filter": $filter,
+            "is_hidden": $isHidden
+        """.trimIndent() else ""
         val body = """
             {
               "actions": [
                 {
                   "$action": {
                     "index": "$index",
-                    "alias": "$alias$isWriteIndexField"
+                    "alias": "$alias$isWriteIndexField"$params
                   }
                 }
               ]
