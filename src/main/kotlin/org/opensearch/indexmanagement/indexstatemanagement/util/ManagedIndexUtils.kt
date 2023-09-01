@@ -21,6 +21,7 @@ import org.opensearch.action.support.WriteRequest
 import org.opensearch.action.update.UpdateRequest
 // import org.opensearch.alerting.destination.message.BaseMessage
 import org.opensearch.client.Client
+import org.opensearch.cluster.routing.Preference
 import org.opensearch.core.common.unit.ByteSizeValue
 import org.opensearch.common.unit.TimeValue
 import org.opensearch.common.xcontent.LoggingDeprecationHandler
@@ -199,6 +200,7 @@ fun getSweptManagedIndexSearchRequest(scroll: Boolean = false, size: Int = Manag
                 .fetchSource(emptyArray(), emptyArray())
                 .query(boolQueryBuilder)
         )
+        .preference(Preference.PRIMARY_FIRST.type())
     if (scroll) req.scroll(TimeValue.timeValueMinutes(1))
     return req
 }
