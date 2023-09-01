@@ -13,6 +13,7 @@ import org.opensearch.action.search.SearchResponse
 import org.opensearch.action.support.ActionFilters
 import org.opensearch.action.support.HandledTransportAction
 import org.opensearch.client.node.NodeClient
+import org.opensearch.cluster.routing.Preference
 import org.opensearch.common.inject.Inject
 import org.opensearch.common.xcontent.LoggingDeprecationHandler
 import org.opensearch.common.xcontent.XContentHelper
@@ -93,6 +94,7 @@ class TransportGetLRONConfigAction @Inject constructor(
             val searchRequest = SearchRequest()
                 .source(searchSourceBuilder)
                 .indices(IndexManagementPlugin.CONTROL_CENTER_INDEX)
+                .preference(Preference.PRIMARY_FIRST.type())
 
             client.search(
                 searchRequest,
