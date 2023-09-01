@@ -13,6 +13,7 @@ import org.opensearch.action.search.SearchResponse
 import org.opensearch.action.support.ActionFilters
 import org.opensearch.action.support.HandledTransportAction
 import org.opensearch.client.Client
+import org.opensearch.cluster.routing.Preference
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.inject.Inject
 import org.opensearch.common.settings.Settings
@@ -90,6 +91,7 @@ class TransportGetPoliciesAction @Inject constructor(
         val searchRequest = SearchRequest()
             .source(searchSourceBuilder)
             .indices(INDEX_MANAGEMENT_INDEX)
+            .preference(Preference.PRIMARY_FIRST.type())
 
         client.threadPool().threadContext.stashContext().use {
             client.search(

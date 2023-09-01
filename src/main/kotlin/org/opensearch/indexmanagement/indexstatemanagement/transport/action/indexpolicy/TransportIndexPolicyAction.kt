@@ -20,6 +20,7 @@ import org.opensearch.action.support.HandledTransportAction
 import org.opensearch.action.support.master.AcknowledgedResponse
 import org.opensearch.client.node.NodeClient
 import org.opensearch.cluster.metadata.AutoExpandReplicas
+import org.opensearch.cluster.routing.Preference
 import org.opensearch.cluster.routing.allocation.AwarenessReplicaBalance
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.ValidationException
@@ -180,6 +181,7 @@ class TransportIndexPolicyAction @Inject constructor(
                     ).size(MAX_HITS)
                 )
                 .indices(IndexManagementPlugin.INDEX_MANAGEMENT_INDEX)
+                .preference(Preference.PRIMARY_FIRST.type())
 
             client.search(
                 searchRequest,
