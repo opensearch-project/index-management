@@ -1,6 +1,6 @@
 {
   "_meta" : {
-    "schema_version": 5
+    "schema_version": 6
   },
   "dynamic": "strict",
   "properties": {
@@ -36,6 +36,9 @@
         },
         "rolled_over": {
           "type": "boolean"
+        },
+        "rolled_over_index_name": {
+          "type": "keyword"
         },
         "index_creation_date": {
           "type": "date",
