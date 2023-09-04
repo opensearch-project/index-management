@@ -50,16 +50,15 @@ class RollupSearchService(
         }
     }
 
-    // TODO: Failed shouldn't process? How to recover from failed -> how does a user retry a failed rollup
+    /**
+     * TODO what situations shouldn't continue?
+     */
     @Suppress("ReturnCount")
     fun shouldProcessRollup(rollup: Rollup, metadata: RollupMetadata?): Boolean {
         if (!rollup.enabled) return false
-        // For both continuous and non-continuous rollups if there is an afterKey it means we are still
-        // processing data from the current window and should continue to process, the only way we ended up here with an
-        // afterKey is if we were still processing data is if the job somehow stopped and was rescheduled (i.e. node crashed etc.)
 
-        // Assuming if this has been called with null metadata, that metadata needs to be initialized
-        // TODO: This is mostly used for the check in runJob(), maybe move this out and make that call "metadata == null || shouldProcessRollup"
+        // If metadata is null, continue to initialize it
+        // TODO: This is mostly used for the check in runJob(), move this out and make that call "metadata == null || shouldProcessRollup"
         //  so that shouldProcessRollup() doesn't let this through in the while loop when rolling up
         if (metadata == null) return true
 
@@ -70,6 +69,9 @@ class RollupSearchService(
             return false
         }
 
+        // For both continuous and non-continuous rollups if there is an afterKey it means we are still
+        // processing data from the current window and should continue to process, the only way we ended up here with an
+        // afterKey is if we were still processing data is if the job somehow stopped and was rescheduled (i.e. node crashed etc.)
         if (metadata.afterKey != null) return true
 
         if (!rollup.continuous) {
@@ -79,10 +81,10 @@ class RollupSearchService(
             if (listOf(RollupMetadata.Status.INIT, RollupMetadata.Status.STARTED).contains(metadata.status)) return true
             // If a non-continuous rollup job does not have an afterKey and is not in INIT or STARTED then
             // it can only be FINISHED here since STOPPED and FAILED have already been checked
-            logger.debug("Non-continuous job [${rollup.id}] is not processing next window [$metadata]")
+            logger.debug("Non-continuous job [{}] is not processing next window [{}]", rollup.id, metadata)
             return false
         } else {
-            return hasNextFullWindow(rollup, metadata) // TODO: Behavior when next full window but 0 docs/afterkey is null
+            return hasNextFullWindow(rollup, metadata) // TODO: Behavior when next full window but 0 docs/afterKey is null
         }
     }
 
@@ -91,19 +93,19 @@ class RollupSearchService(
     }
 
     @Suppress("ComplexMethod")
-    suspend fun executeCompositeSearch(job: Rollup, metadata: RollupMetadata): RollupSearchResult {
+    suspend fun executeCompositeSearch(rollup: Rollup, metadata: RollupMetadata): RollupSearchResult {
         return try {
             var retryCount = 0
             RollupSearchResult.Success(
                 retrySearchPolicy.retry(logger) {
                     val decay = 2f.pow(retryCount++)
+                    val pageSize = max(1, rollup.pageSize.div(decay.toInt()))
+                    if (decay > 1) logger.warn(
+                        "Composite search failed for rollup, retrying [#${retryCount - 1}] -" +
+                            " reducing page size of composite aggregation from ${rollup.pageSize} to $pageSize"
+                    )
                     client.suspendUntil { listener: ActionListener<SearchResponse> ->
-                        val pageSize = max(1, job.pageSize.div(decay.toInt()))
-                        if (decay > 1) logger.warn(
-                            "Composite search failed for rollup, retrying [#${retryCount - 1}] -" +
-                                " reducing page size of composite aggregation from ${job.pageSize} to $pageSize"
-                        )
-                        search(job.copy(pageSize = pageSize).getRollupSearchRequest(metadata), listener)
+                        search(rollup.copy(pageSize = pageSize).getRollupSearchRequest(metadata), listener)
                     }
                 }
             )

@@ -55,7 +55,7 @@ class RollupMetadataService(val client: Client, val xContentRegistry: NamedXCont
     // If the job does not have a metadataID then we need to initialize the first metadata
     // document for this job otherwise we should get the existing metadata document
     @Suppress("ReturnCount", "ComplexMethod", "NestedBlockDepth")
-    suspend fun init(rollup: Rollup): MetadataResult {
+    suspend fun getOrInitMetadata(rollup: Rollup): MetadataResult {
         if (rollup.metadataID != null) {
             val existingMetadata = when (val getMetadataResult = getExistingMetadata(rollup)) {
                 is MetadataResult.Success -> getMetadataResult.metadata
@@ -93,12 +93,14 @@ class RollupMetadataService(val client: Client, val xContentRegistry: NamedXCont
             }
         }
 
-        val createdMetadataResult = if (rollup.continuous) createContinuousMetadata(rollup) else createNonContinuousMetadata(rollup)
-        return when (createdMetadataResult) {
-            is MetadataResult.Success -> submitMetadataUpdate(createdMetadataResult.metadata, false)
+        return when (
+            val initMetadata = if (rollup.continuous) initContinuousMetadata(rollup)
+            else initNonContinuousMetadata(rollup)
+        ) {
+            is MetadataResult.Success -> submitMetadataUpdate(initMetadata.metadata, false)
             // Hitting this case means that there were no documents when initializing start time for a continuous rollup
-            is MetadataResult.NoMetadata -> createdMetadataResult
-            is MetadataResult.Failure -> createdMetadataResult
+            is MetadataResult.NoMetadata -> initMetadata
+            is MetadataResult.Failure -> initMetadata
         }
     }
 
@@ -125,7 +127,7 @@ class RollupMetadataService(val client: Client, val xContentRegistry: NamedXCont
     }
 
     // This returns the first instantiation of a RollupMetadata for a non-continuous rollup
-    private fun createNonContinuousMetadata(rollup: Rollup): MetadataResult =
+    private fun initNonContinuousMetadata(rollup: Rollup): MetadataResult =
         MetadataResult.Success(
             RollupMetadata(
                 rollupID = rollup.id, lastUpdatedTime = Instant.now(), status = RollupMetadata.Status.INIT,
@@ -146,9 +148,8 @@ class RollupMetadataService(val client: Client, val xContentRegistry: NamedXCont
         )
     }
 
-    // This returns the first instantiation of a RollupMetadata for a continuous rollup
     @Suppress("ReturnCount")
-    private suspend fun createContinuousMetadata(rollup: Rollup): MetadataResult {
+    private suspend fun initContinuousMetadata(rollup: Rollup): MetadataResult {
         val nextWindowStartTime = when (val initStartTimeResult = getInitialStartTime(rollup)) {
             is StartingTimeResult.Success -> initStartTimeResult.startingTime
             is StartingTimeResult.NoDocumentsFound -> return MetadataResult.NoMetadata
@@ -170,12 +171,13 @@ class RollupMetadataService(val client: Client, val xContentRegistry: NamedXCont
         )
     }
 
-    // TODO: Let User specify their own filter query that is applied to the composite agg search
+    /**
+     * @return StartingTimeResult: NoDocumentsFound will result in a no-op from the runner
+     */
     @Suppress("ReturnCount")
     @Throws(Exception::class)
     private suspend fun getInitialStartTime(rollup: Rollup): StartingTimeResult {
         try {
-            // Rollup requires the first dimension to be the date histogram
             val dateHistogram = rollup.dimensions.first() as DateHistogram
             val searchSourceBuilder = SearchSourceBuilder()
                 .size(1)
@@ -190,13 +192,12 @@ class RollupMetadataService(val client: Client, val xContentRegistry: NamedXCont
             val response: SearchResponse = client.suspendUntil { search(searchRequest, it) }
 
             if (response.hits.hits.isEmpty()) {
-                // Empty doc hits will result in a no-op from the runner
                 return StartingTimeResult.NoDocumentsFound
             }
 
             // Get the doc value field of the dateHistogram.sourceField for the first search hit converted to epoch millis
             // If the doc value is null or empty it will be treated the same as empty doc hits
-            val firstHitTimestampAsString: String? = response.hits.hits.first().field(dateHistogram.sourceField).getValue<String>()
+            val firstHitTimestampAsString: String = response.hits.hits.first().field(dateHistogram.sourceField).getValue<String>()
                 ?: return StartingTimeResult.NoDocumentsFound
             // Parse date and extract epochMillis
             val formatter = DateFormatter.forPattern(DATE_FIELD_STRICT_DATE_OPTIONAL_TIME_FORMAT)
@@ -225,7 +226,9 @@ class RollupMetadataService(val client: Client, val xContentRegistry: NamedXCont
         return Instant.ofEpochMilli(roundedMillis)
     }
 
-    /** Takes an existing start or end time and returns the value for the next window based on the rollup interval */
+    /**
+     * Takes an existing start or end time and returns the value for the next window based on the rollup interval
+     */
     private fun getShiftedTime(time: Instant, rollup: Rollup): Instant {
         val dateHistogram = rollup.dimensions.first() as DateHistogram
         val roundingStrategy = getRoundingStrategy(dateHistogram)
@@ -241,7 +244,6 @@ class RollupMetadataService(val client: Client, val xContentRegistry: NamedXCont
      * Get the rounding strategy for the given time interval in the DateHistogram.
      * This is used to calculate time windows by rounding the given time based on the interval.
      */
-    // TODO: Could make this an extension function of DateHistogram and add to some utility file
     private fun getRoundingStrategy(dateHistogram: DateHistogram): Rounding {
         val intervalString = (dateHistogram.calendarInterval ?: dateHistogram.fixedInterval) as String
         // TODO: Make sure the interval string is validated before getting here so we don't get errors
@@ -261,7 +263,7 @@ class RollupMetadataService(val client: Client, val xContentRegistry: NamedXCont
     }
 
     // This updates the metadata for a continuous rollup after an execution of the composite search and ingestion of rollup data
-    fun getUpdatedContinuousMetadata(
+    private fun getUpdatedContinuousMetadata(
         rollup: Rollup,
         metadata: RollupMetadata,
         internalComposite: InternalComposite
@@ -305,15 +307,18 @@ class RollupMetadataService(val client: Client, val xContentRegistry: NamedXCont
             } else MetadataResult.NoMetadata
         } catch (e: RemoteTransportException) {
             val unwrappedException = ExceptionsHelper.unwrapCause(e) as Exception
-            logger.debug("$errorMessage: $unwrappedException")
+            logger.debug("{}: {}", errorMessage, unwrappedException)
             return MetadataResult.Failure(errorMessage, unwrappedException)
         } catch (e: Exception) {
             // TODO: Catching general exceptions for now, can make more granular
-            logger.debug("$errorMessage: $e")
+            logger.debug("{}: {}", errorMessage, e)
             return MetadataResult.Failure(errorMessage, e)
         }
     }
 
+    /**
+     *
+     */
     suspend fun updateMetadata(rollup: Rollup, metadata: RollupMetadata, internalComposite: InternalComposite): RollupMetadata {
         val updatedMetadata = if (rollup.continuous) {
             getUpdatedContinuousMetadata(rollup, metadata, internalComposite)

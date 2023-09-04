@@ -36,6 +36,7 @@ data class DateHistogram(
         require(sourceField.isNotEmpty() && targetField.isNotEmpty()) { "Source and target field must not be empty" }
         require(fixedInterval != null || calendarInterval != null) { "Must specify a fixed or calendar interval" }
         require(fixedInterval == null || calendarInterval == null) { "Can only specify a fixed or calendar interval" }
+        // TODO validate the interval string of calendarInterval
     }
 
     @Throws(IOException::class)
@@ -112,6 +113,11 @@ data class DateHistogram(
         subAggregations: AggregatorFactories.Builder
     ): DateHistogramAggregationBuilder =
         DateHistogramAggregationBuilder(aggregationBuilder.name)
+            .field(this.targetField + ".date_histogram")
+            // TODO: Should we reject all other timezones if they are specified in the query?: aggregationBuilder.timeZone()
+            .timeZone(timezone)
+            // Rebuild the agg
+            .subAggregations(subAggregations)
             .also { aggregationBuilder.calendarInterval?.apply { it.calendarInterval(this) } }
             .also { aggregationBuilder.fixedInterval?.apply { it.fixedInterval(this) } }
             .also { aggregationBuilder.extendedBounds()?.apply { it.extendedBounds(this) } }
@@ -123,10 +129,6 @@ data class DateHistogram(
             }
             .offset(aggregationBuilder.offset())
             .also { aggregationBuilder.order()?.apply { it.order(this) } }
-            .field(this.targetField + ".date_histogram")
-            // TODO: Should we reject all other timezones if they are specified in the query?: aggregationBuilder.timeZone()
-            .timeZone(timezone)
-            .subAggregations(subAggregations)
 
     companion object {
         const val UTC = "UTC"
@@ -162,6 +164,7 @@ data class DateHistogram(
                 }
             }
             if (targetField == null) targetField = sourceField
+
             return DateHistogram(
                 sourceField = requireNotNull(sourceField) { "Source field must not be null" },
                 targetField = requireNotNull(targetField) { "Target field must not be null" },

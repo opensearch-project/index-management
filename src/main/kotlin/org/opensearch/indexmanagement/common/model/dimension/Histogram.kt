@@ -90,6 +90,9 @@ data class Histogram(
         subAggregations: AggregatorFactories.Builder
     ): HistogramAggregationBuilder =
         HistogramAggregationBuilder(aggregationBuilder.name)
+            .field(this.targetField + ".histogram")
+            // Rebuild the agg
+            .subAggregations(subAggregations)
             .interval(aggregationBuilder.interval())
             .also {
                 if (aggregationBuilder.minBound().isFinite() && aggregationBuilder.maxBound().isFinite()) {
@@ -104,8 +107,6 @@ data class Histogram(
             }
             .offset(aggregationBuilder.offset())
             .also { aggregationBuilder.order()?.apply { it.order(this) } }
-            .field(this.targetField + ".histogram")
-            .subAggregations(subAggregations)
 
     companion object {
         const val HISTOGRAM_INTERVAL_FIELD = "interval"

@@ -75,6 +75,9 @@ data class Terms(
         subAggregations: AggregatorFactories.Builder
     ): TermsAggregationBuilder =
         TermsAggregationBuilder(aggregationBuilder.name)
+            .field(this.targetField + ".terms")
+            // Rebuild the agg
+            .subAggregations(subAggregations)
             .also { aggregationBuilder.collectMode()?.apply { it.collectMode(this) } }
             .executionHint(aggregationBuilder.executionHint())
             .includeExclude(aggregationBuilder.includeExclude())
@@ -100,8 +103,6 @@ data class Terms(
                     it.size(aggregationBuilder.size())
                 }
             }
-            .field(this.targetField + ".terms")
-            .subAggregations(subAggregations)
 
     companion object {
         @Suppress("ComplexMethod", "LongMethod")

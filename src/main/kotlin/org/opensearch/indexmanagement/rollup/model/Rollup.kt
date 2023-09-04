@@ -241,9 +241,7 @@ data class Rollup(
         const val MINIMUM_PAGE_SIZE = 1
         const val MAXIMUM_PAGE_SIZE = 10_000
         const val ROLLUP_DOC_ID_FIELD = "$ROLLUP_TYPE.$_ID"
-        /*
-        *  _doc_count has to be in root of document so that core's aggregator would pick it up and use it
-        * */
+        // _doc_count has to be in root of document so that core's aggregator would pick it up and use it
         const val ROLLUP_DOC_COUNT_FIELD = "_doc_count"
         const val ROLLUP_DOC_SCHEMA_VERSION_FIELD = "$ROLLUP_TYPE._$SCHEMA_VERSION_FIELD"
         const val USER_FIELD = "user"
