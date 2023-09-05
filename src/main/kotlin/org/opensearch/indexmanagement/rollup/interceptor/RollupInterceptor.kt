@@ -182,7 +182,7 @@ class RollupInterceptor(
         return
     }
 
-    @Suppress("SpreadOperator")
+    @Suppress("SpreadOperator", "NestedBlockDepth")
     override fun <T : TransportRequest> interceptHandler(
         action: String,
         executor: String,

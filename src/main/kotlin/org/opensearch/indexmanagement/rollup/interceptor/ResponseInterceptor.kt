@@ -123,6 +123,7 @@ class ResponseInterceptor(
         }
 
         // Calculated the end time for the current shard index if it is a rollup index with data overlapp
+        @Suppress("SpreadOperator")
         fun getRollupEndTime(liveDataStartPoint: Long, rollupIndices: Array<String>, dateTargetField: String): Long {
             // Build search request to find the maximum rollup timestamp <= liveDataStartPoint
             val sort = SortBuilders.fieldSort("$dateTargetField.date_histogram").order(SortOrder.DESC)
@@ -163,7 +164,7 @@ class ResponseInterceptor(
 
 //         Returns Pair(startRange: Long, endRange: Long)
 //         Note startRange is inclusive and endRange is exclusive, they are Longs because the type is epoch milliseconds
-        @Suppress("LongMethod")
+        @Suppress("LongMethod", "SpreadOperator")
         fun findOverlap(response: QuerySearchResult): Pair<Long, Long> {
             val job: Rollup = getRollupJob(response)!! // maybe throw a try catch later
             var dateSourceField: String = ""
