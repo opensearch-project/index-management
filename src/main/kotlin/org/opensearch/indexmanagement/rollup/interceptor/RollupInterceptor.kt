@@ -114,6 +114,10 @@ class RollupInterceptor(
         }
         return false
     }
+    // If the request has a sort on it, size can be > 0 on a rollup search
+    fun canHaveSize(request: ShardSearchRequest): Boolean {
+        return request.source().sorts() != null
+    }
     // Need to modify aggs for rollup docs with avg and value count aggs
     fun modifyRollupAggs(aggFacts: MutableCollection<AggregationBuilder>): AggregatorFactories.Builder {
         val build = AggregatorFactories.builder()
@@ -203,10 +207,12 @@ class RollupInterceptor(
                         // Rewrite the request to fit rollup format if not already done previously
                         if (isRollupIndex && !isReqeustRollupFormat(request)) {
                             // TODO fix logic to allow response interceptor client calls to have a size of 1
-//                            if (!requestCalledInInterceptor && request.source().size() != 0) {
-//                                throw IllegalArgumentException("Rollup search must have size explicitly set to 0, " +
-//                                        "but found ${request.source().size()}")
-//                            }
+                            if (!canHaveSize(request) && request.source().size() != 0) {
+                                throw IllegalArgumentException(
+                                    "Rollup search must have size explicitly set to 0, " +
+                                        "but found ${request.source().size()}"
+                                )
+                            }
                             rewriteRollupRequest(request, rollupJob!!, concreteRollupIndicesArray)
                         }
                     }
