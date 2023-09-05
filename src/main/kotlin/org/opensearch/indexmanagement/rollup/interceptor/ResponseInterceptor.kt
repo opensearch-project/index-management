@@ -135,7 +135,7 @@ class ResponseInterceptor(
             // Need to avoid infinite interceptor loop
             val req = SearchRequest()
                 .source(searchSourceBuilder)
-            rollupIndices.forEach { req.indices(it) }
+                .indices(*rollupIndices)
             var res: SearchResponse? = null
             val latch = CountDownLatch(1)
             client.search(
@@ -191,7 +191,7 @@ class ResponseInterceptor(
             // Need to avoid infinite interceptor loop
             val maxRolledDateRequest = SearchRequest()
                 .source(searchSourceBuilder)
-            rollupIndices.forEach { maxRolledDateRequest.indices(it) } // add all rollup indices to this request
+                .indices(*rollupIndices) // add all rollup indices to this request
             var maxRolledDateResponse: SearchResponse? = null
             var latch = CountDownLatch(1)
             client.search(
@@ -221,7 +221,7 @@ class ResponseInterceptor(
             If the response shard index is a live index, need to only compute minimum value of the current shard index
              */
             if (isShardIndexRollup) {
-                liveIndices.forEach { minLiveDateRequest.indices(it) }
+                minLiveDateRequest.indices(*liveIndices)
             } else { // shard index is live index
                 minLiveDateRequest.indices(shardRequestIndex)
             }
