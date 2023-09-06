@@ -2,7 +2,7 @@ name: Docker Security Test Workflow
 on:
   pull_request:
     branches:
-      - "*"
+      - "**"
   push:
     branches:
       - "*"
