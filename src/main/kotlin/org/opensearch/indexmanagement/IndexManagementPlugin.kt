@@ -615,7 +615,17 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
     }
 
     override fun getSystemIndexDescriptors(settings: Settings): Collection<SystemIndexDescriptor> {
-        return listOf(SystemIndexDescriptor(INDEX_MANAGEMENT_INDEX, "Index for storing index management configuration and metadata."))
+        return listOf(
+            SystemIndexDescriptor(
+                INDEX_MANAGEMENT_INDEX,
+                "Index for storing index management configuration and metadata."
+            ),
+            SystemIndexDescriptor(
+                CONTROL_CENTER_INDEX,
+                "Index for storing notification policy of long running index operations."
+            ),
+
+        )
     }
 }
 
