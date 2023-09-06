@@ -27,14 +27,14 @@ import org.opensearch.indexmanagement.rollup.model.metric.Sum
 import org.opensearch.indexmanagement.rollup.model.metric.ValueCount
 import org.opensearch.indexmanagement.rollup.randomRollup
 import org.opensearch.jobscheduler.spi.schedule.IntervalSchedule
-import org.opensearch.rest.RestStatus
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.test.junit.annotations.TestLogging
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 
 @TestLogging("level:DEBUG", reason = "Debug for tests.")
 class RollupSecurityBehaviorIT : SecurityRestTestCase() {
-    private val password = "Test123!"
+    private val password = "TestpgfhertergGd435AASA123!"
 
     private val superRollupUser = "john"
     private var superUserClient: RestClient? = null
@@ -72,7 +72,9 @@ class RollupSecurityBehaviorIT : SecurityRestTestCase() {
         assignRoleToUsers(HELPDESK_ROLE, listOf(superRollupUser))
 
         superUserClient =
-            SecureRestClientBuilder(clusterHosts.toTypedArray(), isHttps(), superRollupUser, password).setSocketTimeout(60000)
+            SecureRestClientBuilder(clusterHosts.toTypedArray(), isHttps(), superRollupUser, password).setSocketTimeout(
+                60000
+            ).setConnectionRequestTimeout(180000)
                 .build()
     }
 
@@ -120,6 +122,7 @@ class RollupSecurityBehaviorIT : SecurityRestTestCase() {
 
         testUserClient =
             SecureRestClientBuilder(clusterHosts.toTypedArray(), isHttps(), testUser, password).setSocketTimeout(60000)
+                .setConnectionRequestTimeout(180000)
                 .build()
 
         val rollup = randomRollup()
@@ -149,6 +152,7 @@ class RollupSecurityBehaviorIT : SecurityRestTestCase() {
 
         testUserClient =
             SecureRestClientBuilder(clusterHosts.toTypedArray(), isHttps(), testUser, password).setSocketTimeout(60000)
+                .setConnectionRequestTimeout(180000)
                 .build()
 
         val rollup = randomRollup()
@@ -194,6 +198,7 @@ class RollupSecurityBehaviorIT : SecurityRestTestCase() {
 
         testUserClient =
             SecureRestClientBuilder(clusterHosts.toTypedArray(), isHttps(), testUser, password).setSocketTimeout(60000)
+                .setConnectionRequestTimeout(180000)
                 .build()
         val rollup = randomRollup()
 

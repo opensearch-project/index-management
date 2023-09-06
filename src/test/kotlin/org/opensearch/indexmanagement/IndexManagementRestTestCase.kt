@@ -5,27 +5,28 @@
 
 package org.opensearch.indexmanagement
 
-import org.apache.http.entity.ContentType
-import org.apache.http.entity.StringEntity
+import org.apache.hc.core5.http.ContentType
+import org.apache.hc.core5.http.io.entity.StringEntity
+import org.apache.logging.log4j.LogManager
 import org.junit.AfterClass
 import org.junit.Before
 import org.junit.rules.DisableOnDebug
 import org.opensearch.action.admin.cluster.node.tasks.list.ListTasksAction
 import org.opensearch.client.Request
-import org.opensearch.client.Response
-import org.opensearch.client.RestClient
 import org.opensearch.client.RequestOptions
-import org.opensearch.client.WarningsHandler
+import org.opensearch.client.Response
 import org.opensearch.client.ResponseException
-import org.opensearch.common.Strings
-import org.opensearch.common.collect.Set
+import org.opensearch.core.common.Strings
+import org.opensearch.client.RestClient
+import org.opensearch.client.WarningsHandler
 import org.opensearch.common.io.PathUtils
 import org.opensearch.common.settings.Settings
-import org.opensearch.common.xcontent.DeprecationHandler
-import org.opensearch.common.xcontent.NamedXContentRegistry
 import org.opensearch.common.xcontent.XContentType
+import org.opensearch.core.xcontent.DeprecationHandler
+import org.opensearch.core.xcontent.NamedXContentRegistry
 import org.opensearch.indexmanagement.indexstatemanagement.util.INDEX_HIDDEN
-import org.opensearch.rest.RestStatus
+import org.opensearch.core.rest.RestStatus
+import org.opensearch.core.xcontent.MediaType
 import java.io.IOException
 import java.nio.file.Files
 import java.util.*
@@ -33,13 +34,11 @@ import javax.management.MBeanServerInvocationHandler
 import javax.management.ObjectName
 import javax.management.remote.JMXConnectorFactory
 import javax.management.remote.JMXServiceURL
-import kotlin.collections.ArrayList
-import kotlin.collections.HashSet
 
 abstract class IndexManagementRestTestCase : ODFERestTestCase() {
 
-    val configSchemaVersion = 17
-    val historySchemaVersion = 5
+    val configSchemaVersion = 19
+    val historySchemaVersion = 6
 
     // Having issues with tests leaking into other tests and mappings being incorrect and they are not caught by any pending task wait check as
     // they do not go through the pending task queue. Ideally this should probably be written in a way to wait for the
@@ -57,9 +56,9 @@ abstract class IndexManagementRestTestCase : ODFERestTestCase() {
     // preemptively seems to give the job scheduler time to listen to operations.
     @Before
     fun initializeManagedIndex() {
-        if (!indexExists(IndexManagementPlugin.INDEX_MANAGEMENT_INDEX)) {
+        if (!isIndexExists(IndexManagementPlugin.INDEX_MANAGEMENT_INDEX)) {
             val request = Request("PUT", "/${IndexManagementPlugin.INDEX_MANAGEMENT_INDEX}")
-            var entity = "{\"settings\": " + Strings.toString(Settings.builder().put(INDEX_HIDDEN, true).build())
+            var entity = "{\"settings\": " + Strings.toString(XContentType.JSON, Settings.builder().put(INDEX_HIDDEN, true).build())
             entity += ",\"mappings\" : ${IndexManagementIndices.indexManagementMappings}}"
             request.setJsonEntity(entity)
             client().performRequest(request)
@@ -77,6 +76,11 @@ abstract class IndexManagementRestTestCase : ODFERestTestCase() {
     fun Response.asMap(): Map<String, Any> = entityAsMap(this)
 
     protected fun Response.restStatus(): RestStatus = RestStatus.fromCode(this.statusLine.statusCode)
+
+    protected fun isIndexExists(index: String): Boolean {
+        val response = client().makeRequest("HEAD", index)
+        return RestStatus.OK == response.restStatus()
+    }
 
     protected fun assertIndexExists(index: String) {
         val response = client().makeRequest("HEAD", index)
@@ -148,6 +152,11 @@ abstract class IndexManagementRestTestCase : ODFERestTestCase() {
         insertSampleBulkData(index, javaClass.classLoader.getResource("data/nyc_5000.ndjson").readText())
     }
 
+    protected fun generateMessageLogsData(index: String = "message-logs") {
+        createIndex(index, Settings.EMPTY, """"properties": {"message":{"properties":{"bytes_in":{"type":"long"},"bytes_out":{"type":"long"},"plugin":{"eager_global_ordinals":true,"ignore_above":10000,"type":"keyword"},"timestamp_received":{"type":"date"}}}}""")
+        insertSampleBulkData(index, javaClass.classLoader.getResource("data/message_logs.ndjson").readText())
+    }
+
     @Suppress("UNCHECKED_CAST")
     protected fun extractFailuresFromSearchResponse(searchResponse: Response): List<Map<String, String>?>? {
         val shards = searchResponse.asMap()["_shards"] as Map<String, ArrayList<Map<String, Any>>>
@@ -165,27 +174,32 @@ abstract class IndexManagementRestTestCase : ODFERestTestCase() {
 
     override fun preserveIndicesUponCompletion(): Boolean = true
     companion object {
-        @JvmStatic
-        protected val isMultiNode = System.getProperty("cluster.number_of_nodes", "1").toInt() > 1
+        val isMultiNode = System.getProperty("cluster.number_of_nodes", "1").toInt() > 1
+        val isBWCTest = System.getProperty("tests.plugin_bwc_version", "0") != "0"
         protected val defaultKeepIndexSet = setOf(".opendistro_security")
         /**
          * We override preserveIndicesUponCompletion to true and use this function to clean up indices
          * Meant to be used in @After or @AfterClass of your feature test suite
          */
-        fun wipeAllIndices(client: RestClient = adminClient(), keepIndex: kotlin.collections.Set<String> = defaultKeepIndexSet) {
+        fun wipeAllIndices(client: RestClient = adminClient(), keepIndex: Set<String> = defaultKeepIndexSet, skip: Boolean = false) {
+            val logger = LogManager.getLogger(IndexManagementRestTestCase::class.java)
+            if (skip) {
+                logger.info("Skipping wipeAllIndices...")
+                return
+            }
             try {
                 client.performRequest(Request("DELETE", "_data_stream/*"))
             } catch (e: ResponseException) {
                 // We hit a version of ES that doesn't serialize DeleteDataStreamAction.Request#wildcardExpressionsOriginallySpecified field or
                 // that doesn't support data streams so it's safe to ignore
                 val statusCode = e.response.statusLine.statusCode
-                if (!Set.of(404, 405, 500).contains(statusCode)) {
+                if (!setOf(404, 405, 500).contains(statusCode)) {
                     throw e
                 }
             }
 
             val response = client.performRequest(Request("GET", "/_cat/indices?format=json&expand_wildcards=all"))
-            val xContentType = XContentType.fromMediaType(response.entity.contentType.value)
+            val xContentType = MediaType.fromMediaType(response.entity.contentType)
             xContentType.xContent().createParser(
                 NamedXContentRegistry.EMPTY, DeprecationHandler.THROW_UNSUPPORTED_OPERATION,
                 response.entity.content
@@ -254,7 +268,7 @@ abstract class IndexManagementRestTestCase : ODFERestTestCase() {
         protected fun waitForThreadPools(client: RestClient) {
             val response = client.performRequest(Request("GET", "/_cat/thread_pool?format=json"))
 
-            val xContentType = XContentType.fromMediaType(response.entity.contentType.value)
+            val xContentType = MediaType.fromMediaType(response.entity.contentType)
             xContentType.xContent().createParser(
                 NamedXContentRegistry.EMPTY, DeprecationHandler.THROW_UNSUPPORTED_OPERATION,
                 response.entity.content

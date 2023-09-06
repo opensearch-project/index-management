@@ -20,7 +20,7 @@ import org.opensearch.indexmanagement.rollup.model.RollupMetadata
 import org.opensearch.indexmanagement.rollup.randomRollup
 import org.opensearch.indexmanagement.waitFor
 import org.opensearch.jobscheduler.spi.schedule.IntervalSchedule
-import org.opensearch.rest.RestStatus
+import org.opensearch.core.rest.RestStatus
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 
@@ -247,6 +247,8 @@ class RestStartRollupActionIT : RollupRestTestCase() {
         assertEquals("Rollup is not RETRY", RollupMetadata.Status.RETRY, rollupMetadata.status)
 
         // clearing the config index to prevent other tests using this multi shard index
+        Thread.sleep(2000L)
         deleteIndex(IndexManagementPlugin.INDEX_MANAGEMENT_INDEX)
+        Thread.sleep(2000L)
     }
 }

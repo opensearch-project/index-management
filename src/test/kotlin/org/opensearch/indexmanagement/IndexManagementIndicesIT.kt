@@ -5,10 +5,10 @@
 
 package org.opensearch.indexmanagement
 
-import org.apache.http.entity.ContentType
-import org.apache.http.entity.StringEntity
+import org.apache.hc.core5.http.ContentType
+import org.apache.hc.core5.http.io.entity.StringEntity
 import org.opensearch.common.settings.Settings
-import org.opensearch.common.xcontent.ToXContent
+import org.opensearch.core.xcontent.ToXContent
 import org.opensearch.common.xcontent.XContentFactory
 import org.opensearch.indexmanagement.IndexManagementIndices.Companion.HISTORY_INDEX_BASE
 import org.opensearch.indexmanagement.IndexManagementIndices.Companion.HISTORY_WRITE_INDEX_ALIAS
@@ -32,7 +32,7 @@ import org.opensearch.indexmanagement.opensearchapi.string
 import org.opensearch.indexmanagement.refreshanalyzer.RestRefreshSearchAnalyzerAction
 import org.opensearch.indexmanagement.rollup.randomRollup
 import org.opensearch.rest.RestRequest
-import org.opensearch.rest.RestStatus
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.test.OpenSearchTestCase
 import java.util.Locale
 

@@ -5,9 +5,9 @@
 
 package org.opensearch.indexmanagement.common.model.rest
 
-import org.opensearch.common.io.stream.StreamInput
-import org.opensearch.common.io.stream.StreamOutput
-import org.opensearch.common.io.stream.Writeable
+import org.opensearch.core.common.io.stream.StreamInput
+import org.opensearch.core.common.io.stream.StreamOutput
+import org.opensearch.core.common.io.stream.Writeable
 import org.opensearch.search.sort.FieldSortBuilder
 import org.opensearch.search.sort.SortBuilders
 import org.opensearch.search.sort.SortOrder
@@ -16,6 +16,7 @@ import java.io.IOException
 const val DEFAULT_PAGINATION_SIZE = 20
 const val DEFAULT_PAGINATION_FROM = 0
 const val DEFAULT_SORT_ORDER = "asc"
+const val SORT_ORDER_DESC = "desc"
 const val DEFAULT_QUERY_STRING = "*"
 
 data class SearchParams(

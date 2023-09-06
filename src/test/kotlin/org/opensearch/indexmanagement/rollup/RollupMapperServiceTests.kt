@@ -13,7 +13,7 @@ import com.nhaarman.mockitokotlin2.mock
 import com.nhaarman.mockitokotlin2.whenever
 import kotlinx.coroutines.runBlocking
 import org.mockito.ArgumentMatchers.anyBoolean
-import org.opensearch.action.ActionListener
+import org.opensearch.core.action.ActionListener
 import org.opensearch.action.admin.indices.mapping.get.GetMappingsResponse
 import org.opensearch.client.AdminClient
 import org.opensearch.client.Client
@@ -21,7 +21,6 @@ import org.opensearch.client.IndicesAdminClient
 import org.opensearch.cluster.metadata.IndexNameExpressionResolver
 import org.opensearch.cluster.metadata.MappingMetadata
 import org.opensearch.cluster.service.ClusterService
-import org.opensearch.common.collect.ImmutableOpenMap
 import org.opensearch.common.xcontent.XContentType
 import org.opensearch.indexmanagement.rollup.model.RollupJobValidationResult
 import org.opensearch.test.OpenSearchTestCase
@@ -292,16 +291,14 @@ class RollupMapperServiceTests : OpenSearchTestCase() {
 
     private fun getMappingResponse(indexName: String, emptyMapping: Boolean = false): GetMappingsResponse {
         val mappings = if (emptyMapping) {
-            ImmutableOpenMap.Builder<String, MappingMetadata>().build()
+            mapOf<String, MappingMetadata>()
         } else {
             val mappingSourceMap = createParser(
                 XContentType.JSON.xContent(),
                 javaClass.classLoader.getResource("mappings/kibana-sample-data.json").readText()
             ).map()
             val mappingMetadata = MappingMetadata("_doc", mappingSourceMap) // it seems it still expects a type, i.e. _doc now
-            ImmutableOpenMap.Builder<String, MappingMetadata>()
-                .fPut(indexName, mappingMetadata)
-                .build()
+            mapOf(indexName to mappingMetadata)
         }
 
         return GetMappingsResponse(mappings)

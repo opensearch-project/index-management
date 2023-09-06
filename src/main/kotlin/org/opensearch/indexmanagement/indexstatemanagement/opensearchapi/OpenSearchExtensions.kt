@@ -20,10 +20,10 @@ import org.opensearch.client.Client
 import org.opensearch.cluster.ClusterState
 import org.opensearch.cluster.metadata.IndexMetadata
 import org.opensearch.common.xcontent.LoggingDeprecationHandler
-import org.opensearch.common.xcontent.NamedXContentRegistry
-import org.opensearch.common.xcontent.ToXContent
-import org.opensearch.common.xcontent.ToXContentFragment
-import org.opensearch.common.xcontent.XContentBuilder
+import org.opensearch.core.xcontent.NamedXContentRegistry
+import org.opensearch.core.xcontent.ToXContent
+import org.opensearch.core.xcontent.ToXContentFragment
+import org.opensearch.core.xcontent.XContentBuilder
 import org.opensearch.common.xcontent.XContentHelper
 import org.opensearch.common.xcontent.XContentType
 import org.opensearch.index.IndexNotFoundException
@@ -199,8 +199,6 @@ fun XContentBuilder.buildMetadata(name: String, metadata: ToXContentFragment, pa
 
 // Get the oldest rollover time or null if index was never rolled over
 fun IndexMetadata.getOldestRolloverTime(): Instant? {
-    return this.rolloverInfos.values()
-        .map { it.value.time }
-        .minOrNull() // oldest should be min as its epoch time
+    return this.rolloverInfos.values.minOfOrNull { it.time } // oldest should be min as its epoch time
         ?.let { Instant.ofEpochMilli(it) }
 }

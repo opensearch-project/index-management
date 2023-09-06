@@ -19,12 +19,12 @@ import org.opensearch.action.index.IndexRequest
 import org.opensearch.client.Client
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.settings.Settings
-import org.opensearch.indexmanagement.IndexManagementIndices
 import org.opensearch.indexmanagement.opensearchapi.retry
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.transform.exceptions.TransformIndexException
 import org.opensearch.indexmanagement.transform.settings.TransformSettings
-import org.opensearch.rest.RestStatus
+import org.opensearch.indexmanagement.transform.util.TransformContext
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.transport.RemoteTransportException
 
 @Suppress("ComplexMethod")
@@ -36,7 +36,8 @@ class TransformIndexer(
 
     private val logger = LogManager.getLogger(javaClass)
 
-    @Volatile private var backoffPolicy = BackoffPolicy.constantBackoff(
+    @Volatile
+    private var backoffPolicy = BackoffPolicy.constantBackoff(
         TransformSettings.TRANSFORM_JOB_INDEX_BACKOFF_MILLIS.get(settings),
         TransformSettings.TRANSFORM_JOB_INDEX_BACKOFF_COUNT.get(settings)
     )
@@ -51,21 +52,21 @@ class TransformIndexer(
         }
     }
 
-    private suspend fun createTargetIndex(index: String) {
-        if (!clusterService.state().routingTable.hasIndex(index)) {
-            val request = CreateIndexRequest(index)
-                .mapping(IndexManagementIndices.transformTargetMappings)
+    private suspend fun createTargetIndex(targetIndex: String, targetFieldMappings: Map<String, Any>) {
+        if (!clusterService.state().routingTable.hasIndex(targetIndex)) {
+            val transformTargetIndexMapping = TargetIndexMappingService.createTargetIndexMapping(targetFieldMappings)
+            val request = CreateIndexRequest(targetIndex).mapping(transformTargetIndexMapping)
             // TODO: Read in the actual mappings from the source index and use that
             val response: CreateIndexResponse = client.admin().indices().suspendUntil { create(request, it) }
             if (!response.isAcknowledged) {
-                logger.error("Failed to create the target index $index")
+                logger.error("Failed to create the target index $targetIndex")
                 throw TransformIndexException("Failed to create the target index")
             }
         }
     }
 
     @Suppress("ThrowsCount", "RethrowCaughtException")
-    suspend fun index(docsToIndex: List<DocWriteRequest<*>>): Long {
+    suspend fun index(transformTargetIndex: String, docsToIndex: List<DocWriteRequest<*>>, transformContext: TransformContext): Long {
         var updatableDocsToIndex = docsToIndex
         var indexTimeInMillis = 0L
         val nonRetryableFailures = mutableListOf<BulkItemResponse>()
@@ -73,7 +74,8 @@ class TransformIndexer(
             if (updatableDocsToIndex.isNotEmpty()) {
                 val targetIndex = updatableDocsToIndex.first().index()
                 logger.debug("Attempting to index ${updatableDocsToIndex.size} documents to $targetIndex")
-                createTargetIndex(targetIndex)
+
+                createTargetIndex(transformTargetIndex, transformContext.getTargetIndexDateFieldMappings())
                 backoffPolicy.retry(logger, listOf(RestStatus.TOO_MANY_REQUESTS)) {
                     val bulkRequest = BulkRequest().add(updatableDocsToIndex)
                     val bulkResponse: BulkResponse = client.suspendUntil { bulk(bulkRequest, it) }

@@ -10,7 +10,7 @@ import org.opensearch.common.settings.Settings
 import org.opensearch.indexmanagement.makeRequest
 import org.opensearch.indexmanagement.rollup.RollupRestTestCase
 import org.opensearch.indexmanagement.rollup.settings.RollupSettings
-import org.opensearch.rest.RestStatus
+import org.opensearch.core.rest.RestStatus
 
 // TODO: Add assertions on fields
 @Suppress("UNCHECKED_CAST")
@@ -27,7 +27,7 @@ class FieldCapsFilterIT : RollupRestTestCase() {
         assertTrue(indices.containsAll(listOf("raw-data", "rollup-data")))
 
         // Request for all indices
-        response = client().makeRequest("GET", "//_field_caps?fields=*")
+        response = client().makeRequest("GET", "/_field_caps?fields=*")
         assertTrue(response.restStatus() == RestStatus.OK)
         data = response.asMap()
         indices = data["indices"] as List<String>

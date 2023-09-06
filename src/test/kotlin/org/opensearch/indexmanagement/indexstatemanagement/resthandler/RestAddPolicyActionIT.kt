@@ -5,8 +5,8 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.resthandler
 
-import org.apache.http.entity.ContentType.APPLICATION_JSON
-import org.apache.http.entity.StringEntity
+import org.apache.hc.core5.http.ContentType
+import org.apache.hc.core5.http.io.entity.StringEntity
 import org.opensearch.client.ResponseException
 import org.opensearch.common.settings.Settings
 import org.opensearch.common.xcontent.XContentHelper
@@ -20,7 +20,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.util.UPDATED_INDICES
 import org.opensearch.indexmanagement.makeRequest
 import org.opensearch.indexmanagement.waitFor
 import org.opensearch.rest.RestRequest.Method.POST
-import org.opensearch.rest.RestStatus
+import org.opensearch.core.rest.RestStatus
 
 class RestAddPolicyActionIT : IndexStateManagementRestTestCase() {
 
@@ -54,7 +54,7 @@ class RestAddPolicyActionIT : IndexStateManagementRestTestCase() {
         val response = client().makeRequest(
             POST.toString(),
             "${RestAddPolicyAction.ADD_POLICY_BASE_URI}/$index",
-            StringEntity("{ \"policy_id\": \"${policy.id}\" }", APPLICATION_JSON)
+            StringEntity("{ \"policy_id\": \"${policy.id}\" }", ContentType.APPLICATION_JSON)
         )
         assertEquals("Unexpected RestStatus", RestStatus.OK, response.restStatus())
         val actualMessage = response.asMap()
@@ -81,7 +81,7 @@ class RestAddPolicyActionIT : IndexStateManagementRestTestCase() {
         val response = client().makeRequest(
             POST.toString(),
             "${RestAddPolicyAction.ADD_POLICY_BASE_URI}/$index",
-            StringEntity("{ \"policy_id\": \"${policy.id}\" }", APPLICATION_JSON)
+            StringEntity("{ \"policy_id\": \"${policy.id}\" }", ContentType.APPLICATION_JSON)
         )
         assertEquals("Unexpected RestStatus", RestStatus.OK, response.restStatus())
         val actualMessage = response.asMap()
@@ -113,7 +113,7 @@ class RestAddPolicyActionIT : IndexStateManagementRestTestCase() {
         val response = client().makeRequest(
             POST.toString(),
             "${RestAddPolicyAction.ADD_POLICY_BASE_URI}/$indexOne,$indexTwo",
-            StringEntity("{ \"policy_id\": \"${newPolicy.id}\" }", APPLICATION_JSON)
+            StringEntity("{ \"policy_id\": \"${newPolicy.id}\" }", ContentType.APPLICATION_JSON)
         )
         assertEquals("Unexpected RestStatus", RestStatus.OK, response.restStatus())
         val actualMessage = response.asMap()
@@ -153,7 +153,7 @@ class RestAddPolicyActionIT : IndexStateManagementRestTestCase() {
         val response = client().makeRequest(
             POST.toString(),
             "${RestAddPolicyAction.ADD_POLICY_BASE_URI}/$indexPattern*",
-            StringEntity("{ \"policy_id\": \"${newPolicy.id}\" }", APPLICATION_JSON)
+            StringEntity("{ \"policy_id\": \"${newPolicy.id}\" }", ContentType.APPLICATION_JSON)
         )
         assertEquals("Unexpected RestStatus", RestStatus.OK, response.restStatus())
         val actualMessage = response.asMap()
@@ -198,7 +198,7 @@ class RestAddPolicyActionIT : IndexStateManagementRestTestCase() {
         val response = client().makeRequest(
             POST.toString(),
             "${RestAddPolicyAction.ADD_POLICY_BASE_URI}/.*",
-            StringEntity("{ \"policy_id\": \"${policy.id}\" }", APPLICATION_JSON)
+            StringEntity("{ \"policy_id\": \"${policy.id}\" }", ContentType.APPLICATION_JSON)
         )
         assertEquals("Unexpected RestStatus", RestStatus.OK, response.restStatus())
         val actualMessage = response.asMap()

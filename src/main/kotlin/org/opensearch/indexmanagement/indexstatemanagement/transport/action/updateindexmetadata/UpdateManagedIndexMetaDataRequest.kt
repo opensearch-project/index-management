@@ -8,9 +8,9 @@ package org.opensearch.indexmanagement.indexstatemanagement.transport.action.upd
 import org.opensearch.action.ActionRequestValidationException
 import org.opensearch.action.ValidateActions.addValidationError
 import org.opensearch.action.support.master.AcknowledgedRequest
-import org.opensearch.common.io.stream.StreamInput
-import org.opensearch.common.io.stream.StreamOutput
-import org.opensearch.index.Index
+import org.opensearch.core.common.io.stream.StreamInput
+import org.opensearch.core.common.io.stream.StreamOutput
+import org.opensearch.core.index.Index
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
 
 class UpdateManagedIndexMetaDataRequest : AcknowledgedRequest<UpdateManagedIndexMetaDataRequest> {

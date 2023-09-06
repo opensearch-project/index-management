@@ -1,0 +1,75 @@
+{
+  "_meta": {
+    "schema_version": 1
+  },
+  "dynamic": "strict",
+  "properties": {
+    "lron_config": {
+      "properties": {
+        "channels": {
+          "properties": {
+            "id": {
+              "type": "keyword"
+            }
+          }
+        },
+        "task_id": {
+          "type": "keyword"
+        },
+        "action_name": {
+          "type": "keyword"
+        },
+        "user": {
+          "properties": {
+            "name": {
+              "type": "text",
+              "fields": {
+                "keyword": {
+                  "type": "keyword",
+                  "ignore_above": 256
+                }
+              }
+            },
+            "backend_roles": {
+              "type" : "text",
+              "fields" : {
+                "keyword" : {
+                  "type" : "keyword"
+                }
+              }
+            },
+            "roles": {
+              "type" : "text",
+              "fields" : {
+                "keyword" : {
+                  "type" : "keyword"
+                }
+              }
+            },
+            "custom_attribute_names": {
+              "type" : "text",
+              "fields" : {
+                "keyword" : {
+                  "type" : "keyword"
+                }
+              }
+            }
+          }
+        },
+        "lron_condition": {
+          "properties": {
+            "success": {
+              "type": "boolean"
+            },
+            "failure": {
+              "type": "boolean"
+            }
+          }
+        },
+        "priority": {
+          "type": "integer"
+        }
+      }
+    }
+  }
+}

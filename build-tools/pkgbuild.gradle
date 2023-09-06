@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-apply plugin: 'nebula.ospackage'
+apply plugin: 'com.netflix.nebula.ospackage'
 
 // This is afterEvaluate because the bundlePlugin ZIP task is updated afterEvaluate and changes the ZIP name to match the plugin name
 afterEvaluate {
@@ -13,7 +13,7 @@ afterEvaluate {
         version = "${project.version}" - "-SNAPSHOT"
 
         into '/usr/share/opensearch/plugins'
-        from(zipTree(bundlePlugin.archivePath)) {
+        from(zipTree(bundlePlugin.archiveFile)) {
             into opensearchplugin.name
         }
 
@@ -41,24 +41,24 @@ afterEvaluate {
         arch = 'NOARCH'
         dependsOn 'assemble'
         finalizedBy 'renameRpm'
-        task renameRpm(type: Copy) {
+        tasks.register("renameRpm", Copy) {
             from("$buildDir/distributions")
             into("$buildDir/distributions")
-            include archiveName
-            rename archiveName, "${packageName}-${version}.rpm"
-            doLast { delete file("$buildDir/distributions/$archiveName") }
+            include archiveFileName.get()
+            rename archiveFileName.get(), "${packageName}-${version}.rpm"
+            doLast { delete file("$buildDir/distributions/$archiveFileName") }
         }
     }
     buildDeb {
         arch = 'all'
         dependsOn 'assemble'
         finalizedBy 'renameDeb'
-        task renameDeb(type: Copy) {
+        tasks.register("renameDeb", Copy) {
             from("$buildDir/distributions")
             into("$buildDir/distributions")
-            include archiveName
-            rename archiveName, "${packageName}-${version}.deb"
-            doLast { delete file("$buildDir/distributions/$archiveName") }
+            include archiveFileName.get()
+            rename archiveFileName.get(), "${packageName}-${version}.deb"
+            doLast { delete file("$buildDir/distributions/$archiveFileName") }
         }
     }
 }

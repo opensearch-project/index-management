@@ -5,8 +5,8 @@
 
 package org.opensearch.indexmanagement.rollup.runner
 
-import org.apache.http.entity.ContentType
-import org.apache.http.entity.StringEntity
+import org.apache.hc.core5.http.ContentType
+import org.apache.hc.core5.http.io.entity.StringEntity
 import org.opensearch.common.settings.Settings
 import org.opensearch.indexmanagement.IndexManagementPlugin
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.ROLLUP_JOBS_BASE_URI
@@ -30,9 +30,10 @@ import org.opensearch.indexmanagement.rollup.settings.RollupSettings.Companion.R
 import org.opensearch.indexmanagement.waitFor
 import org.opensearch.jobscheduler.spi.schedule.IntervalSchedule
 import org.opensearch.rest.RestRequest
-import org.opensearch.rest.RestStatus
+import org.opensearch.core.rest.RestStatus
 import java.time.Instant
 import java.time.temporal.ChronoUnit
+import java.util.Collections.emptyMap
 
 class RollupRunnerIT : RollupRestTestCase() {
 
@@ -1251,6 +1252,143 @@ class RollupRunnerIT : RollupRestTestCase() {
         var rollupMetadataID = startedRollup1.metadataID!!
         var rollupMetadata = getRollupMetadata(rollupMetadataID)
         assertEquals("Backing index [$backingIndex2] has to have owner rollup job with id:[${startedRollup1.id}]", rollupMetadata.failureReason)
+    }
+
+    fun `test rollup with date_nanos as date_histogram field`() {
+        val index = "date-nanos-index"
+        val rollupIndex = "date-nanos-index-rollup"
+        createIndex(
+            index,
+            Settings.EMPTY,
+            """"properties": {
+                  "purchaseDate": {
+                    "type": "date_nanos" 
+                  },
+                  "itemName": {
+                    "type": "keyword"
+                  },
+                  "itemPrice": {
+                    "type": "float"
+                  }
+                }"""
+        )
+
+        indexDoc(index, "1", """{"purchaseDate": 1683149130000.6497, "itemName": "shoes", "itemPrice": 100.5}""".trimIndent())
+        indexDoc(index, "2", """{"purchaseDate": 1683494790000, "itemName": "shoes", "itemPrice": 30.0}""".trimIndent())
+        indexDoc(index, "3", """{"purchaseDate": "2023-05-08T18:57:33.743656789Z", "itemName": "shoes", "itemPrice": 60.592}""".trimIndent())
+
+        refreshAllIndices()
+
+        val job = Rollup(
+            id = "rollup_with_alias_992434131",
+            schemaVersion = 1L,
+            enabled = true,
+            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.DAYS),
+            jobLastUpdatedTime = Instant.now(),
+            jobEnabledTime = Instant.now(),
+            description = "basic change of page size",
+            sourceIndex = index,
+            targetIndex = rollupIndex,
+            metadataID = null,
+            roles = emptyList(),
+            pageSize = 1000,
+            delay = 0,
+            continuous = true,
+            dimensions = listOf(
+                DateHistogram(sourceField = "purchaseDate", fixedInterval = "5d"),
+                Terms("itemName", "itemName"),
+            ),
+            metrics = listOf(
+                RollupMetrics(
+                    sourceField = "itemPrice",
+                    targetField = "itemPrice",
+                    metrics = listOf(Sum(), Min(), Max(), ValueCount(), Average())
+                )
+            )
+        ).let { createRollup(it, it.id) }
+
+        updateRollupStartTime(job)
+
+        waitFor { assertTrue("Target rollup index was not created", indexExists(rollupIndex)) }
+
+        waitFor {
+            val rollupJob = getRollup(rollupId = job.id)
+            assertNotNull("Rollup job doesn't have metadata set", rollupJob.metadataID)
+            val rollupMetadata = getRollupMetadata(rollupJob.metadataID!!)
+            assertEquals("Rollup is not started", RollupMetadata.Status.STARTED, rollupMetadata.status)
+        }
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    fun `test rollup with max metric when metric property not present`() {
+        val sourceIdxTestName = "source_idx_test_max"
+        val targetIdxTestName = "target_idx_test_max"
+        val propertyName = "message.bytes_in"
+        val maxMetricName = "min_message_bytes_in"
+
+        generateMessageLogsData(sourceIdxTestName)
+        val rollup = Rollup(
+            id = "rollup_test_max",
+            schemaVersion = 1L,
+            enabled = true,
+            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+            jobLastUpdatedTime = Instant.now(),
+            jobEnabledTime = Instant.now(),
+            description = "basic stats test",
+            sourceIndex = sourceIdxTestName,
+            targetIndex = targetIdxTestName,
+            metadataID = null,
+            roles = emptyList(),
+            pageSize = 100,
+            delay = 0,
+            continuous = false,
+            dimensions = listOf(
+                DateHistogram(sourceField = "message.timestamp_received", targetField = "message.timestamp_received", fixedInterval = "10m"),
+                Terms("message.plugin", "message.plugin")
+            ),
+            metrics = listOf(
+                RollupMetrics(sourceField = propertyName, targetField = propertyName, metrics = listOf(Max()))
+            )
+        ).let { createRollup(it, it.id) }
+
+        updateRollupStartTime(rollup)
+
+        waitFor { assertTrue("Target rollup index was not created", indexExists(rollup.targetIndex)) }
+
+        waitFor {
+            val rollupJob = getRollup(rollupId = rollup.id)
+            assertNotNull("Rollup job doesn't have metadata set", rollupJob.metadataID)
+            val rollupMetadata = getRollupMetadata(rollupJob.metadataID!!)
+            assertEquals("Rollup is not finished", RollupMetadata.Status.FINISHED, rollupMetadata.status)
+
+            // Term query
+            val req = """
+            {
+                "size": 0,
+                "query": {
+                  "match_all": {}
+                },
+                "aggs": {
+                    "$maxMetricName": {
+                        "max": {
+                            "field": "$propertyName"
+                        }
+                    }
+                }
+            }
+            """.trimIndent()
+            var rawRes = client().makeRequest(RestRequest.Method.POST.name, "/$sourceIdxTestName/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
+            assertTrue(rawRes.restStatus() == RestStatus.OK)
+            var rollupRes = client().makeRequest(RestRequest.Method.POST.name, "/$targetIdxTestName/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
+            assertTrue(rollupRes.restStatus() == RestStatus.OK)
+            var rawAggRes = rawRes.asMap()["aggregations"] as Map<String, Map<String, Any>>
+            var rollupAggRes = rollupRes.asMap()["aggregations"] as Map<String, Map<String, Any>>
+            assertEquals(
+                "Source and rollup index did not return same max results",
+                rawAggRes.getValue(maxMetricName)["value"],
+                rollupAggRes.getValue(maxMetricName)["value"]
+            )
+        }
     }
 
     // TODO: Test scenarios:

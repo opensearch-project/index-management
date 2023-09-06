@@ -11,7 +11,7 @@ import kotlinx.coroutines.launch
 import org.apache.logging.log4j.LogManager
 import org.opensearch.ExceptionsHelper
 import org.opensearch.OpenSearchSecurityException
-import org.opensearch.action.ActionListener
+import org.opensearch.core.action.ActionListener
 import org.opensearch.action.admin.cluster.state.ClusterStateRequest
 import org.opensearch.action.admin.cluster.state.ClusterStateResponse
 import org.opensearch.action.get.GetResponse
@@ -24,11 +24,12 @@ import org.opensearch.action.support.HandledTransportAction
 import org.opensearch.action.support.master.AcknowledgedResponse
 import org.opensearch.client.node.NodeClient
 import org.opensearch.cluster.metadata.IndexMetadata
+import org.opensearch.cluster.routing.Preference
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.inject.Inject
 import org.opensearch.common.util.concurrent.ThreadContext
 import org.opensearch.common.xcontent.LoggingDeprecationHandler
-import org.opensearch.common.xcontent.NamedXContentRegistry
+import org.opensearch.core.xcontent.NamedXContentRegistry
 import org.opensearch.common.xcontent.XContentHelper
 import org.opensearch.common.xcontent.XContentType
 import org.opensearch.commons.ConfigConstants
@@ -177,6 +178,7 @@ class TransportExplainAction @Inject constructor(
             return SearchRequest()
                 .indices(INDEX_MANAGEMENT_INDEX)
                 .source(searchSourceBuilder)
+                .preference(Preference.PRIMARY_FIRST.type())
         }
 
         private fun searchForMetadata(searchRequest: SearchRequest) {
@@ -269,7 +271,7 @@ class TransportExplainAction @Inject constructor(
                     clusterStateRequest,
                     object : ActionListener<ClusterStateResponse> {
                         override fun onResponse(response: ClusterStateResponse) {
-                            val clusterStateIndexMetadatas = response.state.metadata.indices.associate { it.key to it.value }
+                            val clusterStateIndexMetadatas = response.state.metadata.indices
                             getMetadataMap(clusterStateIndexMetadatas, threadContext)
                         }
 

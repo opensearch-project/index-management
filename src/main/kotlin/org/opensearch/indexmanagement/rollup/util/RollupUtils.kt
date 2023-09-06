@@ -12,11 +12,11 @@ import org.opensearch.action.search.SearchRequest
 import org.opensearch.cluster.ClusterState
 import org.opensearch.cluster.metadata.IndexMetadata
 import org.opensearch.common.xcontent.LoggingDeprecationHandler
-import org.opensearch.common.xcontent.NamedXContentRegistry
 import org.opensearch.common.xcontent.XContentHelper
-import org.opensearch.common.xcontent.XContentParser.Token
-import org.opensearch.common.xcontent.XContentParserUtils.ensureExpectedToken
+import org.opensearch.core.xcontent.XContentParserUtils.ensureExpectedToken
 import org.opensearch.common.xcontent.XContentType
+import org.opensearch.core.xcontent.NamedXContentRegistry
+import org.opensearch.core.xcontent.XContentParser.Token
 import org.opensearch.index.query.BoolQueryBuilder
 import org.opensearch.index.query.BoostingQueryBuilder
 import org.opensearch.index.query.ConstantScoreQueryBuilder
@@ -63,13 +63,17 @@ import org.opensearch.search.aggregations.metrics.SumAggregationBuilder
 import org.opensearch.search.aggregations.metrics.ValueCountAggregationBuilder
 import org.opensearch.search.builder.SearchSourceBuilder
 
+const val DATE_FIELD_STRICT_DATE_OPTIONAL_TIME_FORMAT = "strict_date_optional_time"
 const val DATE_FIELD_EPOCH_MILLIS_FORMAT = "epoch_millis"
 
 @Suppress("ReturnCount")
 fun isRollupIndex(index: String, clusterState: ClusterState): Boolean {
-    if (RollupSettings.ROLLUP_INDEX.get(clusterState.metadata.index(index).settings)) {
+    val idx = clusterState.metadata.index(index)
+    if (idx == null) {
+        return false
+    } else if (RollupSettings.ROLLUP_INDEX.get(idx.settings)) {
         return true
-    } else if (LegacyOpenDistroRollupSettings.ROLLUP_INDEX.get(clusterState.metadata.index(index).settings)) {
+    } else if (LegacyOpenDistroRollupSettings.ROLLUP_INDEX.get(idx.settings)) {
         return true
     }
     return false

@@ -21,7 +21,7 @@ class ActionRetryIT : IndexStateManagementRestTestCase() {
     private val testIndexName = javaClass.simpleName.lowercase(Locale.ROOT)
 
     /**
-     * We are forcing RollOver to fail in this Integ test.
+     * We are forcing RollOver to fail in this integration test.
      */
     fun `test failed action`() {
         disableValidationService()

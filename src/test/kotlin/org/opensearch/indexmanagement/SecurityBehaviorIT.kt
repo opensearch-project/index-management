@@ -16,12 +16,12 @@ import org.junit.Before
 import org.opensearch.client.RestClient
 import org.opensearch.commons.rest.SecureRestClientBuilder
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings
-import org.opensearch.rest.RestStatus
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.test.junit.annotations.TestLogging
 
 @TestLogging("level:DEBUG", reason = "Debug for tests.")
 class SecurityBehaviorIT : SecurityRestTestCase() {
-    private val password = "Test123!"
+    private val password = "TestpgfhertergGd435AASA123!"
 
     private val john = "john"
     private var johnClient: RestClient? = null
@@ -53,6 +53,7 @@ class SecurityBehaviorIT : SecurityRestTestCase() {
 
         johnClient =
             SecureRestClientBuilder(clusterHosts.toTypedArray(), isHttps(), john, password).setSocketTimeout(60000)
+                .setConnectionRequestTimeout(180000)
                 .build()
     }
 
@@ -97,9 +98,11 @@ class SecurityBehaviorIT : SecurityRestTestCase() {
 
         val jillClient =
             SecureRestClientBuilder(clusterHosts.toTypedArray(), isHttps(), jill, password).setSocketTimeout(60000)
+                .setConnectionRequestTimeout(180000)
                 .build()
         val janeClient =
             SecureRestClientBuilder(clusterHosts.toTypedArray(), isHttps(), jane, password).setSocketTimeout(60000)
+                .setConnectionRequestTimeout(180000)
                 .build()
 
         setFilterByBackendRole(false)

@@ -5,11 +5,11 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement
 
-import org.apache.http.HttpEntity
-import org.apache.http.HttpHeaders
-import org.apache.http.entity.ContentType.APPLICATION_JSON
-import org.apache.http.entity.StringEntity
-import org.apache.http.message.BasicHeader
+import org.apache.hc.core5.http.HttpEntity
+import org.apache.hc.core5.http.HttpHeaders
+import org.apache.hc.core5.http.ContentType
+import org.apache.hc.core5.http.io.entity.StringEntity
+import org.apache.hc.core5.http.message.BasicHeader
 import org.junit.After
 import org.junit.Before
 import org.opensearch.OpenSearchParseException
@@ -22,11 +22,11 @@ import org.opensearch.client.RestClient
 import org.opensearch.cluster.metadata.IndexMetadata
 import org.opensearch.common.settings.Settings
 import org.opensearch.common.unit.TimeValue
-import org.opensearch.common.xcontent.DeprecationHandler
+import org.opensearch.core.xcontent.DeprecationHandler
 import org.opensearch.common.xcontent.LoggingDeprecationHandler
-import org.opensearch.common.xcontent.NamedXContentRegistry
-import org.opensearch.common.xcontent.XContentParser.Token
-import org.opensearch.common.xcontent.XContentParserUtils.ensureExpectedToken
+import org.opensearch.core.xcontent.NamedXContentRegistry
+import org.opensearch.core.xcontent.XContentParser.Token
+import org.opensearch.core.xcontent.XContentParserUtils.ensureExpectedToken
 import org.opensearch.common.xcontent.XContentType
 import org.opensearch.common.xcontent.json.JsonXContent.jsonXContent
 import org.opensearch.index.seqno.SequenceNumbers
@@ -66,7 +66,8 @@ import org.opensearch.indexmanagement.util._SEQ_NO
 import org.opensearch.indexmanagement.waitFor
 import org.opensearch.jobscheduler.spi.schedule.IntervalSchedule
 import org.opensearch.rest.RestRequest
-import org.opensearch.rest.RestStatus
+import org.opensearch.core.rest.RestStatus
+import org.opensearch.indexmanagement.rollup.randomTermQuery
 import org.opensearch.test.OpenSearchTestCase
 import java.io.IOException
 import java.time.Duration
@@ -77,7 +78,7 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
 
     @After
     fun clearIndicesAfterEachTest() {
-        wipeAllIndices()
+        wipeAllIndices(skip = isBWCTest)
     }
 
     val explainResponseOpendistroPolicyIdSetting = "index.opendistro.index_state_management.policy_id"
@@ -89,13 +90,11 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
         updateIndexStateManagementJitterSetting(0.0)
     }
 
-    @Before
-    protected fun disableValidationService() {
+    protected open fun disableValidationService() {
         updateValidationServiceSetting(false)
     }
 
-    @Before
-    protected fun enableValidationService() {
+    protected open fun enableValidationService() {
         updateValidationServiceSetting(true)
     }
 
@@ -134,7 +133,7 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
                 "PUT",
                 "$POLICY_BASE_URI/$policyId?refresh=$refresh",
                 emptyMap(),
-                StringEntity(policyString, APPLICATION_JSON)
+                StringEntity(policyString, ContentType.APPLICATION_JSON)
             )
         assertEquals("Unable to create a new policy", RestStatus.CREATED, response.restStatus())
         return response
@@ -222,7 +221,7 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
                 "index_patterns": ["$dataStream"]
             }
             """.trimIndent(),
-            APPLICATION_JSON
+            ContentType.APPLICATION_JSON
         )
         val res = client().makeRequest(
             "PUT",
@@ -238,22 +237,34 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
         index: String,
         alias: String,
         action: String = "remove",
-        isWriteIndex: Boolean = false
+        isWriteIndex: Boolean = false,
+        routing: Int? = null,
+        searchRouting: Int = randomInt(),
+        indexRouting: Int = randomInt(),
+        filter: String = randomTermQuery().toString(),
+        isHidden: Boolean = randomBoolean()
     ) {
         val isWriteIndexField = if (isWriteIndex) "\",\"is_write_index\": \"$isWriteIndex" else ""
+        val params = if (action == "add" && routing != null) """
+            ,"routing": $routing,
+            "search_routing": $searchRouting,
+            "index_routing": $indexRouting,
+            "filter": $filter,
+            "is_hidden": $isHidden
+        """.trimIndent() else ""
         val body = """
             {
               "actions": [
                 {
                   "$action": {
                     "index": "$index",
-                    "alias": "$alias$isWriteIndexField"
+                    "alias": "$alias$isWriteIndexField"$params
                   }
                 }
               ]
             }
         """.trimIndent()
-        val response = client().makeRequest("POST", "_aliases", StringEntity(body, APPLICATION_JSON))
+        val response = client().makeRequest("POST", "_aliases", StringEntity(body, ContentType.APPLICATION_JSON))
         assertEquals("Unexpected RestStatus", RestStatus.OK, response.restStatus())
     }
 
@@ -272,7 +283,7 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
               "policy_id": "$policyID"
             }
         """.trimIndent()
-        val response = client().makeRequest("POST", "/_opendistro/_ism/add/$index", StringEntity(body, APPLICATION_JSON))
+        val response = client().makeRequest("POST", "/_opendistro/_ism/add/$index", StringEntity(body, ContentType.APPLICATION_JSON))
         assertEquals("Unexpected RestStatus", RestStatus.OK, response.restStatus())
     }
 
@@ -296,7 +307,7 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
         """.trimIndent()
         val res = client().makeRequest(
             "PUT", "_cluster/settings", emptyMap(),
-            StringEntity(request, APPLICATION_JSON)
+            StringEntity(request, ContentType.APPLICATION_JSON)
         )
         assertEquals("Request failed", RestStatus.OK, res.restStatus())
     }
@@ -321,7 +332,7 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
         """.trimIndent()
         val res = client().makeRequest(
             "PUT", "$index/_settings", emptyMap(),
-            StringEntity(body, APPLICATION_JSON)
+            StringEntity(body, ContentType.APPLICATION_JSON)
         )
         assertEquals("Update index setting failed", RestStatus.OK, res.restStatus())
     }
@@ -346,7 +357,7 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
         """.trimIndent()
         val response = client().makeRequest(
             "POST", "$INDEX_MANAGEMENT_INDEX/_search", emptyMap(),
-            StringEntity(request, APPLICATION_JSON)
+            StringEntity(request, ContentType.APPLICATION_JSON)
         )
         assertEquals("Request failed", RestStatus.OK, response.restStatus())
         val searchResponse = SearchResponse.fromXContent(createParser(jsonXContent, response.entity.content))
@@ -386,7 +397,7 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
         """.trimIndent()
         val response = client().makeRequest(
             "POST", "${IndexManagementIndices.HISTORY_ALL}/_search", emptyMap(),
-            StringEntity(request, APPLICATION_JSON)
+            StringEntity(request, ContentType.APPLICATION_JSON)
         )
         assertEquals("Request failed", RestStatus.OK, response.restStatus())
         return SearchResponse.fromXContent(createParser(jsonXContent, response.entity.content))
@@ -418,7 +429,7 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
                     client().makeRequest(
                         "GET",
                         "_cluster/allocation/explain",
-                        StringEntity("{ \"index\": \"$INDEX_MANAGEMENT_INDEX\" }", APPLICATION_JSON)
+                        StringEntity("{ \"index\": \"$INDEX_MANAGEMENT_INDEX\" }", ContentType.APPLICATION_JSON)
                     )
                     fail("Expected 400 Bad Request when there are no unassigned shards to explain")
                 } catch (e: ResponseException) {
@@ -436,7 +447,7 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
             StringEntity(
                 "{\"doc\":{\"managed_index\":{\"schedule\":{\"interval\":{\"start_time\":" +
                     "\"$startTimeMillis\"}}}}}",
-                APPLICATION_JSON
+                ContentType.APPLICATION_JSON
             )
         )
 
@@ -448,15 +459,15 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
             "POST", "$INDEX_MANAGEMENT_INDEX/_update/${update.id}",
             StringEntity(
                 "{\"doc\":{\"managed_index\":{\"policy_seq_no\":\"${update.policySeqNo}\"}}}",
-                APPLICATION_JSON
+                ContentType.APPLICATION_JSON
             )
         )
         assertEquals("Request failed", RestStatus.OK, response.restStatus())
     }
 
-    protected fun Policy.toHttpEntity(): HttpEntity = StringEntity(toJsonString(), APPLICATION_JSON)
+    protected fun Policy.toHttpEntity(): HttpEntity = StringEntity(toJsonString(), ContentType.APPLICATION_JSON)
 
-    protected fun ManagedIndexConfig.toHttpEntity(): HttpEntity = StringEntity(toJsonString(), APPLICATION_JSON)
+    protected fun ManagedIndexConfig.toHttpEntity(): HttpEntity = StringEntity(toJsonString(), ContentType.APPLICATION_JSON)
 
     protected fun ChangePolicy.toHttpEntity(): HttpEntity {
         var string = "{\"${ChangePolicy.POLICY_ID_FIELD}\":\"$policyID\","
@@ -465,7 +476,7 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
         }
         string += "\"${ChangePolicy.INCLUDE_FIELD}\":${include.map { "{\"${StateFilter.STATE_FIELD}\":\"${it.state}\"}" }}}"
 
-        return StringEntity(string, APPLICATION_JSON)
+        return StringEntity(string, ContentType.APPLICATION_JSON)
     }
 
     // Useful settings when debugging to prevent timeouts
@@ -696,7 +707,7 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
                 "PUT",
                 "_snapshot/$repository",
                 emptyMap(),
-                StringEntity("{\"type\":\"fs\", \"settings\": {\"location\": \"$repository\"}}", APPLICATION_JSON)
+                StringEntity("{\"type\":\"fs\", \"settings\": {\"location\": \"$repository\"}}", ContentType.APPLICATION_JSON)
             )
         assertEquals("Unable to create a new repository", RestStatus.OK, response.restStatus())
     }
@@ -992,7 +1003,7 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
                     "  }, \n" +
                     "  \"order\": $order\n" +
                     "}",
-                APPLICATION_JSON
+                ContentType.APPLICATION_JSON
             )
         )
         assertEquals("Request failed", RestStatus.OK, response.restStatus())
@@ -1006,7 +1017,7 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
                     "  \"index_patterns\": [\"$indexPatterns\"],\n" +
                     "  \"order\": $order\n" +
                     "}",
-                APPLICATION_JSON
+                ContentType.APPLICATION_JSON
             )
         )
         assertEquals("Request failed", RestStatus.OK, response.restStatus())
@@ -1029,7 +1040,7 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
                     "    }\n" +
                     "  }\n" +
                     "}",
-                APPLICATION_JSON
+                ContentType.APPLICATION_JSON
             )
         )
         assertEquals("Request failed", RestStatus.OK, response.restStatus())

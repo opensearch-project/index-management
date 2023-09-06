@@ -18,7 +18,7 @@ import org.opensearch.indexmanagement.spi.indexstatemanagement.Validate
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ActionRetry
 import org.opensearch.indexmanagement.waitFor
 import org.opensearch.rest.RestRequest
-import org.opensearch.rest.RestStatus
+import org.opensearch.core.rest.RestStatus
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 import java.util.Locale
@@ -32,7 +32,7 @@ class ValidateRolloverIT : IndexStateManagementRestTestCase() {
         val index1 = "index-1"
         val alias1 = "x"
         val policyID = "${testIndexName}_precheck"
-        val actionConfig = RolloverAction(null, 3, TimeValue.timeValueDays(2), null, 0)
+        val actionConfig = RolloverAction(null, 3, TimeValue.timeValueDays(2), null, false, 0)
         actionConfig.configRetry = ActionRetry(0)
         val states = listOf(State(name = "RolloverAction", actions = listOf(actionConfig), transitions = listOf()))
         val policy = Policy(
@@ -84,7 +84,7 @@ class ValidateRolloverIT : IndexStateManagementRestTestCase() {
         val indexNameBase = "${testIndexName}_index"
         val index1 = "$indexNameBase-1"
         val policyID = "${testIndexName}_testPolicyName_1"
-        val actionConfig = RolloverAction(null, null, null, null, 0)
+        val actionConfig = RolloverAction(null, null, null, null, false, 0)
         val states = listOf(State(name = "RolloverAction", actions = listOf(actionConfig), transitions = listOf()))
         val policy = Policy(
             id = policyID,
@@ -131,7 +131,7 @@ class ValidateRolloverIT : IndexStateManagementRestTestCase() {
         val index1 = "index-1"
         val index2 = "index-2"
         val policyID = "${testIndexName}_precheck"
-        val actionConfig = RolloverAction(null, 3, TimeValue.timeValueDays(2), null, 0)
+        val actionConfig = RolloverAction(null, 3, TimeValue.timeValueDays(2), null, false, 0)
         actionConfig.configRetry = ActionRetry(0)
         val states = listOf(State(name = "RolloverAction", actions = listOf(actionConfig), transitions = listOf()))
         val policy = Policy(
@@ -175,7 +175,7 @@ class ValidateRolloverIT : IndexStateManagementRestTestCase() {
         val index2 = "index-2"
         val alias1 = "x"
         val policyID = "${testIndexName}_precheck"
-        val actionConfig = RolloverAction(null, 3, TimeValue.timeValueDays(2), null, 0)
+        val actionConfig = RolloverAction(null, 3, TimeValue.timeValueDays(2), null, false, 0)
         actionConfig.configRetry = ActionRetry(0)
         val states = listOf(State(name = "RolloverAction", actions = listOf(actionConfig), transitions = listOf()))
         val policy = Policy(

@@ -5,8 +5,8 @@
 
 package org.opensearch.indexmanagement.snapshotmanagement.resthandler
 
-import org.apache.http.HttpHeaders
-import org.apache.http.message.BasicHeader
+import org.apache.hc.core5.http.HttpHeaders
+import org.apache.hc.core5.http.message.BasicHeader
 import org.opensearch.client.ResponseException
 import org.opensearch.indexmanagement.IndexManagementPlugin
 import org.opensearch.indexmanagement.makeRequest
@@ -16,7 +16,7 @@ import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy.Companion.ENABLED_TIME_FIELD
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy.Companion.SM_TYPE
 import org.opensearch.indexmanagement.snapshotmanagement.randomSMPolicy
-import org.opensearch.rest.RestStatus
+import org.opensearch.core.rest.RestStatus
 
 class RestGetSnapshotManagementIT : SnapshotManagementRestTestCase() {
 

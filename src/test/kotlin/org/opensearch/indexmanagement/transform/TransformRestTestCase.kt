@@ -5,19 +5,19 @@
 
 package org.opensearch.indexmanagement.transform
 
-import org.apache.http.HttpEntity
-import org.apache.http.HttpHeaders
-import org.apache.http.entity.ContentType.APPLICATION_JSON
-import org.apache.http.entity.StringEntity
-import org.apache.http.message.BasicHeader
+import org.apache.hc.core5.http.HttpEntity
+import org.apache.hc.core5.http.HttpHeaders
+import org.apache.hc.core5.http.ContentType
+import org.apache.hc.core5.http.io.entity.StringEntity
+import org.apache.hc.core5.http.message.BasicHeader
 import org.junit.AfterClass
 import org.opensearch.client.Response
 import org.opensearch.client.ResponseException
 import org.opensearch.client.RestClient
 import org.opensearch.common.settings.Settings
-import org.opensearch.common.xcontent.NamedXContentRegistry
-import org.opensearch.common.xcontent.XContentParser
-import org.opensearch.common.xcontent.XContentParserUtils.ensureExpectedToken
+import org.opensearch.core.xcontent.NamedXContentRegistry
+import org.opensearch.core.xcontent.XContentParser
+import org.opensearch.core.xcontent.XContentParserUtils.ensureExpectedToken
 import org.opensearch.common.xcontent.XContentType
 import org.opensearch.index.seqno.SequenceNumbers
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
@@ -32,7 +32,7 @@ import org.opensearch.indexmanagement.util._PRIMARY_TERM
 import org.opensearch.indexmanagement.util._SEQ_NO
 import org.opensearch.indexmanagement.waitFor
 import org.opensearch.jobscheduler.spi.schedule.IntervalSchedule
-import org.opensearch.rest.RestStatus
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.search.SearchModule
 import java.time.Duration
 import java.time.Instant
@@ -80,7 +80,7 @@ abstract class TransformRestTestCase : IndexManagementRestTestCase() {
                 "PUT",
                 "$TRANSFORM_BASE_URI/$transformId?refresh=$refresh",
                 emptyMap(),
-                StringEntity(transformString, APPLICATION_JSON)
+                StringEntity(transformString, ContentType.APPLICATION_JSON)
             )
         assertEquals("Unable to create a new transform", RestStatus.CREATED, response.restStatus())
         return response
@@ -243,14 +243,14 @@ abstract class TransformRestTestCase : IndexManagementRestTestCase() {
             StringEntity(
                 "{\"doc\":{\"transform\":{\"schedule\":{\"interval\":{\"start_time\":" +
                     "\"$startTimeMillis\"}}}}}",
-                APPLICATION_JSON
+                ContentType.APPLICATION_JSON
             )
         )
 
         assertEquals("Request failed", RestStatus.OK, response.restStatus())
     }
 
-    protected fun Transform.toHttpEntity(): HttpEntity = StringEntity(toJsonString(), APPLICATION_JSON)
+    protected fun Transform.toHttpEntity(): HttpEntity = StringEntity(toJsonString(), ContentType.APPLICATION_JSON)
 
     override fun xContentRegistry(): NamedXContentRegistry {
         return NamedXContentRegistry(SearchModule(Settings.EMPTY, emptyList()).namedXContents)

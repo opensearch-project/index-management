@@ -5,8 +5,8 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.action
 
-import org.apache.http.entity.ContentType
-import org.apache.http.entity.StringEntity
+import org.apache.hc.core5.http.ContentType
+import org.apache.hc.core5.http.io.entity.StringEntity
 import org.opensearch.cluster.metadata.DataStream
 import org.opensearch.indexmanagement.common.model.dimension.DateHistogram
 import org.opensearch.indexmanagement.common.model.dimension.Terms

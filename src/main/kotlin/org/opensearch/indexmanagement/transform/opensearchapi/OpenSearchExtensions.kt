@@ -12,8 +12,8 @@ import org.opensearch.action.bulk.BackoffPolicy
 import org.opensearch.common.unit.TimeValue
 import org.opensearch.indexmanagement.opensearchapi.isRetryable
 import org.opensearch.indexmanagement.transform.util.TransformLockManager
-import org.opensearch.rest.RestStatus
-import org.opensearch.tasks.TaskCancelledException
+import org.opensearch.core.rest.RestStatus
+import org.opensearch.core.tasks.TaskCancelledException
 import java.util.regex.Pattern
 
 /**

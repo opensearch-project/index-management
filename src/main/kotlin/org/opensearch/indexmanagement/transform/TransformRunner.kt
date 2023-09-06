@@ -16,8 +16,8 @@ import org.opensearch.client.Client
 import org.opensearch.cluster.metadata.IndexNameExpressionResolver
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.settings.Settings
-import org.opensearch.common.xcontent.NamedXContentRegistry
-import org.opensearch.index.shard.ShardId
+import org.opensearch.core.xcontent.NamedXContentRegistry
+import org.opensearch.core.index.shard.ShardId
 import org.opensearch.indexmanagement.opensearchapi.IndexManagementSecurityContext
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.opensearchapi.withClosableContext
@@ -72,6 +72,7 @@ object TransformRunner :
         this.transformMetadataService = TransformMetadataService(client, xContentRegistry)
         this.transformIndexer = TransformIndexer(settings, clusterService, client)
         this.transformValidator = TransformValidator(indexNameExpressionResolver, clusterService, client, settings, jvmService)
+
         this.threadPool = threadPool
         return this
     }
@@ -108,7 +109,10 @@ object TransformRunner :
         val transformProcessedBucketLog = TransformProcessedBucketLog()
         var bucketsToTransform = BucketsToTransform(HashSet(), metadata)
 
-        val transformContext = TransformContext(TransformLockManager(transform, context))
+        val transformContext = TransformContext(
+            TransformLockManager(transform, context)
+        )
+
         // Acquires the lock if there is no running job execution for the given transform; Lock is acquired per transform
         val transformLockManager = transformContext.transformLockManager
         transformLockManager.acquireLockForScheduledJob()
@@ -129,6 +133,10 @@ object TransformRunner :
                             currentMetadata = validatedMetadata
                             return
                         }
+                        // If date was used in term query generate target date field mapping and store it in transform context
+                        val targetIndexDateFieldMappings = TargetIndexMappingService.getTargetMappingsForDates(transform)
+                        transformContext.setTargetDateFieldMappings(targetIndexDateFieldMappings)
+
                         if (transform.continuous) {
                             // If we have not populated the list of shards to search, do so now
                             if (bucketsToTransform.shardsToSearch == null) {
@@ -271,7 +279,7 @@ object TransformRunner :
             )
         }
         val indexTimeInMillis = withTransformSecurityContext(transform) {
-            transformIndexer.index(transformSearchResult.docsToIndex)
+            transformIndexer.index(transform.targetIndex, transformSearchResult.docsToIndex, transformContext)
         }
         val afterKey = transformSearchResult.afterKey
         val stats = transformSearchResult.stats
@@ -298,7 +306,7 @@ object TransformRunner :
                 transformSearchService.executeCompositeSearch(transform, null, modifiedBuckets, transformContext)
             }
             val indexTimeInMillis = withTransformSecurityContext(transform) {
-                transformIndexer.index(transformSearchResult.docsToIndex)
+                transformIndexer.index(transform.targetIndex, transformSearchResult.docsToIndex, transformContext)
             }
             val stats = transformSearchResult.stats
             val updatedStats = stats.copy(

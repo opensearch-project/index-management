@@ -7,16 +7,16 @@ package org.opensearch.indexmanagement.util
 
 import org.opensearch.ExceptionsHelper
 import org.opensearch.OpenSearchStatusException
-import org.opensearch.action.ActionListener
-import org.opensearch.action.ActionResponse
+import org.opensearch.core.action.ActionListener
+import org.opensearch.core.action.ActionResponse
 import org.opensearch.action.search.SearchRequest
 import org.opensearch.action.search.SearchResponse
 import org.opensearch.client.Client
-import org.opensearch.common.bytes.BytesReference
+import org.opensearch.core.common.bytes.BytesReference
 import org.opensearch.common.xcontent.LoggingDeprecationHandler
-import org.opensearch.common.xcontent.NamedXContentRegistry
+import org.opensearch.core.xcontent.NamedXContentRegistry
 import org.opensearch.common.xcontent.XContentHelper
-import org.opensearch.common.xcontent.XContentParser
+import org.opensearch.core.xcontent.XContentParser
 import org.opensearch.common.xcontent.XContentType
 import org.opensearch.indexmanagement.IndexManagementPlugin
 import org.opensearch.indexmanagement.opensearchapi.parseWithType
@@ -24,7 +24,7 @@ import org.opensearch.indexmanagement.rollup.action.get.GetRollupsResponse
 import org.opensearch.indexmanagement.rollup.model.Rollup
 import org.opensearch.indexmanagement.transform.action.get.GetTransformsResponse
 import org.opensearch.indexmanagement.transform.model.Transform
-import org.opensearch.rest.RestStatus
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.search.builder.SearchSourceBuilder
 
 fun getJobs(

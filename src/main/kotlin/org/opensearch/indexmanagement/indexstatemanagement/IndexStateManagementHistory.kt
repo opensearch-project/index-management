@@ -6,7 +6,7 @@
 package org.opensearch.indexmanagement.indexstatemanagement
 
 import org.apache.logging.log4j.LogManager
-import org.opensearch.action.ActionListener
+import org.opensearch.core.action.ActionListener
 import org.opensearch.action.DocWriteRequest
 import org.opensearch.action.admin.cluster.state.ClusterStateRequest
 import org.opensearch.action.admin.cluster.state.ClusterStateResponse
@@ -22,7 +22,7 @@ import org.opensearch.client.Client
 import org.opensearch.cluster.LocalNodeClusterManagerListener
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.settings.Settings
-import org.opensearch.common.xcontent.ToXContent
+import org.opensearch.core.xcontent.ToXContent
 import org.opensearch.common.xcontent.XContentFactory
 import org.opensearch.indexmanagement.IndexManagementIndices
 import org.opensearch.indexmanagement.IndexManagementPlugin
@@ -176,7 +176,7 @@ class IndexStateManagementHistory(
             clusterStateRequest,
             object : ActionListener<ClusterStateResponse> {
                 override fun onResponse(clusterStateResponse: ClusterStateResponse) {
-                    if (!clusterStateResponse.state.metadata.indices.isEmpty) {
+                    if (!clusterStateResponse.state.metadata.indices.isEmpty()) {
                         val indicesToDelete = getIndicesToDelete(clusterStateResponse)
                         logger.info("Deleting old history indices viz $indicesToDelete")
                         deleteAllOldHistoryIndices(indicesToDelete)
@@ -199,7 +199,10 @@ class IndexStateManagementHistory(
             val creationTime = indexMetaData.creationDate
 
             if ((Instant.now().toEpochMilli() - creationTime) > historyRetentionPeriod.millis) {
-                val alias = indexMetaData.aliases.firstOrNull { IndexManagementIndices.HISTORY_WRITE_INDEX_ALIAS == it.value.alias }
+                val alias = indexMetaData.aliases.firstNotNullOfOrNull {
+                        alias ->
+                    IndexManagementIndices.HISTORY_WRITE_INDEX_ALIAS == alias.value.alias
+                }
                 if (alias != null && historyEnabled) {
                     // If index has write alias and history is enable, don't delete the index.
                     continue

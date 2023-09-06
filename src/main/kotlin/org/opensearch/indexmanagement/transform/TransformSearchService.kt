@@ -8,7 +8,7 @@ package org.opensearch.indexmanagement.transform
 import org.apache.logging.log4j.LogManager
 import org.opensearch.ExceptionsHelper
 import org.opensearch.OpenSearchSecurityException
-import org.opensearch.action.ActionListener
+import org.opensearch.core.action.ActionListener
 import org.opensearch.action.admin.indices.stats.IndicesStatsAction
 import org.opensearch.action.admin.indices.stats.IndicesStatsRequest
 import org.opensearch.action.admin.indices.stats.IndicesStatsResponse
@@ -22,14 +22,14 @@ import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.settings.Settings
 import org.opensearch.common.unit.TimeValue
 import org.opensearch.common.xcontent.XContentType
-import org.opensearch.index.Index
+import org.opensearch.core.index.Index
 import org.opensearch.index.query.BoolQueryBuilder
 import org.opensearch.index.query.ExistsQueryBuilder
 import org.opensearch.index.query.QueryBuilder
 import org.opensearch.index.query.QueryBuilders
 import org.opensearch.index.query.RangeQueryBuilder
 import org.opensearch.index.seqno.SequenceNumbers
-import org.opensearch.index.shard.ShardId
+import org.opensearch.core.index.shard.ShardId
 import org.opensearch.indexmanagement.common.model.dimension.Dimension
 import org.opensearch.indexmanagement.opensearchapi.retry
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
@@ -46,7 +46,7 @@ import org.opensearch.indexmanagement.transform.util.TransformContext
 import org.opensearch.indexmanagement.util.IndexUtils.Companion.LUCENE_MAX_CLAUSES
 import org.opensearch.indexmanagement.util.IndexUtils.Companion.ODFE_MAGIC_NULL
 import org.opensearch.indexmanagement.util.IndexUtils.Companion.hashToFixedSize
-import org.opensearch.rest.RestStatus
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.search.aggregations.Aggregation
 import org.opensearch.search.aggregations.bucket.composite.CompositeAggregation
 import org.opensearch.search.aggregations.bucket.composite.CompositeAggregationBuilder
@@ -206,7 +206,12 @@ class TransformSearchService(
             // If the request was successful, update page size
             transformContext.lastSuccessfulPageSize = pageSize
             transformContext.renewLockForLongSearch(Instant.now().epochSecond - searchStart)
-            return convertResponse(transform, searchResponse, modifiedBuckets = modifiedBuckets)
+            return convertResponse(
+                transform,
+                searchResponse,
+                modifiedBuckets = modifiedBuckets,
+                targetIndexDateFieldMappings = transformContext.getTargetIndexDateFieldMappings()
+            )
         } catch (e: TransformSearchServiceException) {
             throw e
         } catch (e: RemoteTransportException) {
@@ -333,7 +338,8 @@ class TransformSearchService(
             transform: Transform,
             searchResponse: SearchResponse,
             waterMarkDocuments: Boolean = true,
-            modifiedBuckets: MutableSet<Map<String, Any>>? = null
+            modifiedBuckets: MutableSet<Map<String, Any>>? = null,
+            targetIndexDateFieldMappings: Map<String, Any>,
         ): TransformSearchResult {
             val aggs = searchResponse.aggregations.get(transform.id) as CompositeAggregation
             val buckets = if (modifiedBuckets != null) aggs.buckets.filter { modifiedBuckets.contains(it.key) } else aggs.buckets
@@ -348,8 +354,12 @@ class TransformSearchService(
                 val hashedId = hashToFixedSize(id)
 
                 val document = transform.convertToDoc(aggregatedBucket.docCount, waterMarkDocuments)
-                aggregatedBucket.key.entries.forEach { bucket -> document[bucket.key] = bucket.value }
-                aggregatedBucket.aggregations.forEach { aggregation -> document[aggregation.name] = getAggregationValue(aggregation) }
+                aggregatedBucket.key.entries.forEach { bucket ->
+                    document[bucket.key] = bucket.value
+                }
+                aggregatedBucket.aggregations.forEach { aggregation ->
+                    document[aggregation.name] = getAggregationValue(aggregation, targetIndexDateFieldMappings)
+                }
 
                 val indexRequest = IndexRequest(transform.targetIndex)
                     .id(hashedId)
@@ -370,11 +380,20 @@ class TransformSearchService(
             return BucketSearchResult(modifiedBuckets, aggs.afterKey(), searchResponse.took.millis)
         }
 
-        private fun getAggregationValue(aggregation: Aggregation): Any {
+        private fun getAggregationValue(aggregation: Aggregation, targetIndexDateFieldMappings: Map<String, Any>): Any {
             return when (aggregation) {
                 is InternalSum, is InternalMin, is InternalMax, is InternalAvg, is InternalValueCount -> {
                     val agg = aggregation as NumericMetricsAggregation.SingleValue
-                    agg.value()
+                    /**
+                     * When date filed is used in transform aggregation (min, max avg), the value of the field is in exponential format
+                     * which is not allowed since the target index mapping for date field is strict_date_optional_time||epoch_millis
+                     * That's why the exponential value is transformed to long: agg.value().toLong()
+                     */
+                    if (aggregation is InternalValueCount || aggregation is InternalSum || !targetIndexDateFieldMappings.containsKey(agg.name)) {
+                        agg.value()
+                    } else {
+                        agg.value().toLong()
+                    }
                 }
                 is Percentiles -> {
                     val percentiles = mutableMapOf<String, Double>()

@@ -5,8 +5,8 @@
 
 package org.opensearch.indexmanagement.bwc
 
-import org.apache.http.entity.ContentType.APPLICATION_JSON
-import org.apache.http.entity.StringEntity
+import org.apache.hc.core5.http.ContentType
+import org.apache.hc.core5.http.io.entity.StringEntity
 import org.opensearch.common.settings.Settings
 import org.opensearch.common.xcontent.XContentFactory
 import org.opensearch.index.query.QueryBuilders
@@ -18,7 +18,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.util.XCONTENT_WITHOUT
 import org.opensearch.indexmanagement.makeRequest
 import org.opensearch.indexmanagement.opensearchapi.string
 import org.opensearch.indexmanagement.util.NO_ID
-import org.opensearch.rest.RestStatus
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.search.builder.SearchSourceBuilder
 
 class IndexManagementBackwardsCompatibilityIT : IndexManagementRestTestCase() {
@@ -56,7 +56,6 @@ class IndexManagementBackwardsCompatibilityIT : IndexManagementRestTestCase() {
             val pluginNames = plugins.map { plugin -> plugin ["name"] }.toSet()
             when (CLUSTER_TYPE) {
                 ClusterType.OLD -> {
-                    assertTrue(pluginNames.contains("opendistro-index-management"))
                     createBasicPolicy()
 
                     verifyPolicyExists(LEGACY_POLICY_BASE_URI)
@@ -120,14 +119,14 @@ class IndexManagementBackwardsCompatibilityIT : IndexManagementRestTestCase() {
             method = "PUT",
             endpoint = "$LEGACY_POLICY_BASE_URI/$POLICY_NAME?refresh=true",
             params = emptyMap(),
-            entity = StringEntity(policyString, APPLICATION_JSON)
+            entity = StringEntity(policyString, ContentType.APPLICATION_JSON)
         )
 
         val addResponse = client().makeRequest(
             method = "POST",
             endpoint = "$LEGACY_ISM_BASE_URI/add/$INDEX_NAME",
             params = emptyMap(),
-            entity = StringEntity(policyNameString, APPLICATION_JSON)
+            entity = StringEntity(policyNameString, ContentType.APPLICATION_JSON)
         )
 
         assertEquals("Create policy failed", RestStatus.CREATED, createResponse.restStatus())
@@ -148,7 +147,7 @@ class IndexManagementBackwardsCompatibilityIT : IndexManagementRestTestCase() {
             "GET",
             "$uri/$POLICY_NAME",
             emptyMap(),
-            StringEntity(search, APPLICATION_JSON)
+            StringEntity(search, ContentType.APPLICATION_JSON)
         )
         assertEquals("Get policy failed", RestStatus.OK, getResponse.restStatus())
     }

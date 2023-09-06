@@ -8,15 +8,22 @@ package org.opensearch.indexmanagement.transform.resthandler
 import org.junit.AfterClass
 import org.junit.Before
 import org.opensearch.client.ResponseException
+import org.opensearch.common.time.DateFormatter
 import org.opensearch.index.IndexNotFoundException
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.TRANSFORM_BASE_URI
 import org.opensearch.indexmanagement.common.model.dimension.Terms
 import org.opensearch.indexmanagement.makeRequest
 import org.opensearch.indexmanagement.transform.TransformRestTestCase
+import org.opensearch.indexmanagement.transform.model.Transform
 import org.opensearch.indexmanagement.transform.randomTransform
-import org.opensearch.rest.RestStatus
+import org.opensearch.jobscheduler.spi.schedule.IntervalSchedule
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.search.aggregations.AggregationBuilders
 import org.opensearch.search.aggregations.AggregatorFactories
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeParseException
+import java.time.temporal.ChronoUnit
 
 @Suppress("UNCHECKED_CAST")
 class RestPreviewTransformActionIT : TransformRestTestCase() {
@@ -68,6 +75,46 @@ class RestPreviewTransformActionIT : TransformRestTestCase() {
         assertEquals("Transformed docs have unexpected schema", expectedKeys, transformedDocs.first().keys)
     }
 
+    fun `test preview with term aggregation on date field`() {
+        val targetIdxTestName = "target_idx_test_14"
+        val pickupDateTime = "tpep_pickup_datetime"
+        val fareAmount = "fare_amount"
+
+        val transform = Transform(
+            id = "id_14",
+            schemaVersion = 1L,
+            enabled = true,
+            enabledAt = Instant.now(),
+            updatedAt = Instant.now(),
+            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+            description = "test transform doc values must be the same",
+            metadataId = null,
+            sourceIndex = sourceIndex,
+            targetIndex = targetIdxTestName,
+            roles = emptyList(),
+            pageSize = 1,
+            groups = listOf(
+                Terms(sourceField = pickupDateTime, targetField = pickupDateTime)
+            ),
+            aggregations = AggregatorFactories.builder().addAggregator(AggregationBuilders.avg(fareAmount).field(fareAmount))
+        ).let { createTransform(it, it.id) }
+
+        val response = client().makeRequest(
+            "POST",
+            "$TRANSFORM_BASE_URI/_preview",
+            emptyMap(),
+            transform.toHttpEntity()
+        )
+        val expectedKeys = setOf("fare_amount", "tpep_pickup_datetime", "transform._doc_count", "_doc_count")
+        assertEquals("Preview transform failed", RestStatus.OK, response.restStatus())
+        val transformedDocs = response.asMap()["documents"] as List<Map<String, Any>>
+        assertEquals("Transformed docs have unexpected schema", expectedKeys, transformedDocs.first().keys)
+        val dateFormatter = DateFormatter.forPattern("uuuu-MM-dd'T'HH:mm:ss.SSSZZ").withZone(ZoneId.of("UTC"))
+        for (doc in transformedDocs) {
+            assertTrue(isValid(doc["tpep_pickup_datetime"].toString().toLong(), dateFormatter))
+        }
+    }
+
     fun `test mismatched columns`() {
         val factories = AggregatorFactories.builder()
             .addAggregator(AggregationBuilders.sum("revenue").field("total_amountdzdfd"))
@@ -101,5 +148,14 @@ class RestPreviewTransformActionIT : TransformRestTestCase() {
         } catch (e: ResponseException) {
             assertEquals("Unexpected failure code", RestStatus.NOT_FOUND, e.response.restStatus())
         }
+    }
+
+    private fun isValid(date: Long, dateFormatter: DateFormatter): Boolean {
+        try {
+            dateFormatter.formatMillis(date)
+        } catch (e: DateTimeParseException) {
+            return false
+        }
+        return true
     }
 }

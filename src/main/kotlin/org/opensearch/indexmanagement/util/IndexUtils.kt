@@ -6,7 +6,7 @@
 package org.opensearch.indexmanagement.util
 
 import org.apache.logging.log4j.LogManager
-import org.opensearch.action.ActionListener
+import org.opensearch.core.action.ActionListener
 import org.opensearch.action.admin.indices.mapping.put.PutMappingRequest
 import org.opensearch.action.support.master.AcknowledgedResponse
 import org.opensearch.client.IndicesAdminClient
@@ -15,9 +15,9 @@ import org.opensearch.cluster.metadata.IndexAbstraction
 import org.opensearch.cluster.metadata.IndexMetadata
 import org.opensearch.common.hash.MurmurHash3
 import org.opensearch.common.xcontent.LoggingDeprecationHandler
-import org.opensearch.common.xcontent.NamedXContentRegistry
-import org.opensearch.common.xcontent.XContentParser.Token
 import org.opensearch.common.xcontent.XContentType
+import org.opensearch.core.xcontent.NamedXContentRegistry
+import org.opensearch.core.xcontent.XContentParser.Token
 import org.opensearch.indexmanagement.IndexManagementIndices
 import org.opensearch.indexmanagement.IndexManagementPlugin
 import java.nio.ByteBuffer
@@ -80,10 +80,10 @@ class IndexUtils {
             return DEFAULT_SCHEMA_VERSION
         }
 
-        fun shouldUpdateIndex(index: IndexMetadata, newVersion: Long): Boolean {
+        fun shouldUpdateIndex(index: IndexMetadata?, newVersion: Long): Boolean {
             var oldVersion = DEFAULT_SCHEMA_VERSION
 
-            val indexMapping = index.mapping()?.sourceAsMap()
+            val indexMapping = index?.mapping()?.sourceAsMap()
             if (indexMapping != null && indexMapping.containsKey(_META) && indexMapping[_META] is HashMap<*, *>) {
                 val metaData = indexMapping[_META] as HashMap<*, *>
                 if (metaData.containsKey(SCHEMA_VERSION)) {
@@ -233,25 +233,6 @@ class IndexUtils {
         fun isConcreteIndex(indexName: String?, clusterState: ClusterState): Boolean {
             return clusterState.metadata
                 .indicesLookup[indexName]!!.type == IndexAbstraction.Type.CONCRETE_INDEX
-        }
-
-        fun getConcreteIndex(indexName: String, concreteIndices: Array<String>, clusterState: ClusterState): String {
-
-            if (concreteIndices.isEmpty()) {
-                throw IllegalArgumentException("ConcreteIndices list can't be empty!")
-            }
-
-            var concreteIndexName: String
-            if (concreteIndices.size == 1 && isConcreteIndex(indexName, clusterState)) {
-                concreteIndexName = indexName
-            } else if (isAlias(indexName, clusterState) || isDataStream(indexName, clusterState)) {
-                concreteIndexName = getWriteIndex(indexName, clusterState)
-                    ?: getNewestIndexByCreationDate(concreteIndices, clusterState) //
-            } else {
-                concreteIndexName = getNewestIndexByCreationDate(concreteIndices, clusterState)
-            }
-
-            return concreteIndexName
         }
     }
 }

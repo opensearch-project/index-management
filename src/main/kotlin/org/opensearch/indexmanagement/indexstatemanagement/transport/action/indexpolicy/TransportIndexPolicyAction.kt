@@ -9,7 +9,7 @@ import org.apache.logging.log4j.LogManager
 import org.opensearch.ExceptionsHelper
 import org.opensearch.OpenSearchStatusException
 import org.opensearch.ResourceAlreadyExistsException
-import org.opensearch.action.ActionListener
+import org.opensearch.core.action.ActionListener
 import org.opensearch.action.DocWriteRequest
 import org.opensearch.action.index.IndexRequest
 import org.opensearch.action.index.IndexResponse
@@ -20,12 +20,13 @@ import org.opensearch.action.support.HandledTransportAction
 import org.opensearch.action.support.master.AcknowledgedResponse
 import org.opensearch.client.node.NodeClient
 import org.opensearch.cluster.metadata.AutoExpandReplicas
+import org.opensearch.cluster.routing.Preference
 import org.opensearch.cluster.routing.allocation.AwarenessReplicaBalance
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.ValidationException
 import org.opensearch.common.inject.Inject
 import org.opensearch.common.settings.Settings
-import org.opensearch.common.xcontent.NamedXContentRegistry
+import org.opensearch.core.xcontent.NamedXContentRegistry
 import org.opensearch.common.xcontent.XContentFactory
 import org.opensearch.commons.ConfigConstants
 import org.opensearch.commons.authuser.User
@@ -48,7 +49,7 @@ import org.opensearch.indexmanagement.util.IndexManagementException
 import org.opensearch.indexmanagement.util.IndexUtils
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.buildUser
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.validateUserConfiguration
-import org.opensearch.rest.RestStatus
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.search.builder.SearchSourceBuilder
 import org.opensearch.tasks.Task
 import org.opensearch.transport.TransportService
@@ -180,6 +181,7 @@ class TransportIndexPolicyAction @Inject constructor(
                     ).size(MAX_HITS)
                 )
                 .indices(IndexManagementPlugin.INDEX_MANAGEMENT_INDEX)
+                .preference(Preference.PRIMARY_FIRST.type())
 
             client.search(
                 searchRequest,

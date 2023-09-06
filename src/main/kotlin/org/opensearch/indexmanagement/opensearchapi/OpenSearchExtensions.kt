@@ -15,34 +15,35 @@ import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.opensearch.ExceptionsHelper
 import org.opensearch.OpenSearchException
-import org.opensearch.action.ActionListener
+import org.opensearch.core.action.ActionListener
 import org.opensearch.action.admin.indices.alias.Alias
 import org.opensearch.action.bulk.BackoffPolicy
 import org.opensearch.action.get.GetResponse
 import org.opensearch.action.search.SearchResponse
-import org.opensearch.action.support.DefaultShardOperationFailedException
 import org.opensearch.client.OpenSearchClient
-import org.opensearch.common.bytes.BytesReference
-import org.opensearch.common.io.stream.StreamInput
-import org.opensearch.common.io.stream.StreamOutput
-import org.opensearch.common.io.stream.Writeable
+import org.opensearch.core.common.io.stream.StreamInput
+import org.opensearch.core.common.io.stream.StreamOutput
+import org.opensearch.core.common.io.stream.Writeable
 import org.opensearch.common.settings.Settings
 import org.opensearch.common.unit.TimeValue
 import org.opensearch.common.util.concurrent.ThreadContext
 import org.opensearch.common.xcontent.LoggingDeprecationHandler
-import org.opensearch.common.xcontent.NamedXContentRegistry
-import org.opensearch.common.xcontent.ToXContent
-import org.opensearch.common.xcontent.XContentBuilder
-import org.opensearch.common.xcontent.XContentFactory
 import org.opensearch.common.xcontent.XContentHelper
-import org.opensearch.common.xcontent.XContentParser
-import org.opensearch.common.xcontent.XContentParser.Token
-import org.opensearch.common.xcontent.XContentParserUtils
-import org.opensearch.common.xcontent.XContentParserUtils.ensureExpectedToken
+import org.opensearch.core.xcontent.XContentParserUtils
+import org.opensearch.core.xcontent.XContentParserUtils.ensureExpectedToken
 import org.opensearch.common.xcontent.XContentType
 import org.opensearch.commons.InjectSecurity
 import org.opensearch.commons.authuser.User
 import org.opensearch.commons.notifications.NotificationsPluginInterface
+import org.opensearch.core.action.support.DefaultShardOperationFailedException
+import org.opensearch.core.common.bytes.BytesReference
+import org.opensearch.core.concurrency.OpenSearchRejectedExecutionException
+import org.opensearch.core.xcontent.MediaType
+import org.opensearch.core.xcontent.NamedXContentRegistry
+import org.opensearch.core.xcontent.ToXContent
+import org.opensearch.core.xcontent.XContentBuilder
+import org.opensearch.core.xcontent.XContentParser
+import org.opensearch.core.xcontent.XContentParser.Token
 import org.opensearch.index.seqno.SequenceNumbers
 import org.opensearch.indexmanagement.indexstatemanagement.action.ShrinkAction
 import org.opensearch.indexmanagement.indexstatemanagement.model.ISMTemplate
@@ -52,7 +53,7 @@ import org.opensearch.indexmanagement.util.NO_ID
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.DEFAULT_INJECT_ROLES
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.INTERNAL_REQUEST
 import org.opensearch.jobscheduler.spi.utils.LockService
-import org.opensearch.rest.RestStatus
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.transport.RemoteTransportException
 import java.io.IOException
 import java.time.Instant
@@ -66,14 +67,18 @@ const val OPENDISTRO_SECURITY_PROTECTED_INDICES_CONF_REQUEST = "_opendistro_secu
 fun contentParser(bytesReference: BytesReference): XContentParser {
     return XContentHelper.createParser(
         NamedXContentRegistry.EMPTY,
-        LoggingDeprecationHandler.INSTANCE, bytesReference, XContentType.JSON
+        LoggingDeprecationHandler.INSTANCE,
+        bytesReference,
+        XContentType.JSON
     )
 }
 
 /** Convert an object to maps and lists representation */
 fun ToXContent.convertToMap(): Map<String, Any> {
-    val bytesReference = XContentHelper.toXContent(this, XContentType.JSON, false)
-    return XContentHelper.convertToMap(bytesReference, false, XContentType.JSON).v2()
+    val bytesReference = org.opensearch.core.xcontent.XContentHelper.toXContent(
+        this, XContentType.JSON, ToXContent.EMPTY_PARAMS, false
+    )
+    return XContentHelper.convertToMap(bytesReference, false, XContentType.JSON as (MediaType)).v2()
 }
 
 fun XContentParser.instant(): Instant? {
@@ -127,8 +132,7 @@ fun <T> parseFromSearchResponse(
         val id = it.id
         val seqNo = it.seqNo
         val primaryTerm = it.primaryTerm
-        val xcp = XContentFactory.xContent(XContentType.JSON)
-            .createParser(xContentRegistry, LoggingDeprecationHandler.INSTANCE, it.sourceAsString)
+        val xcp = XContentHelper.createParser(xContentRegistry, LoggingDeprecationHandler.INSTANCE, it.sourceRef, XContentType.JSON)
         xcp.parseWithType(id, seqNo, primaryTerm, parse)
     }
 }
@@ -180,6 +184,12 @@ suspend fun <T> BackoffPolicy.retry(
             } else {
                 throw e
             }
+        } catch (rje: OpenSearchRejectedExecutionException) {
+            if (iter.hasNext()) {
+                backoff = iter.next()
+                logger.warn("Rejected execution. Retrying in $backoff.", rje)
+                delay((backoff.millis))
+            }
         }
     } while (true)
 }
@@ -197,7 +207,7 @@ fun OpenSearchException.isRetryable(): Boolean {
  */
 fun XContentBuilder.string(): String = BytesReference.bytes(this).utf8ToString()
 
-fun XContentBuilder.toMap(): Map<String, Any> = XContentHelper.convertToMap(BytesReference.bytes(this), false, XContentType.JSON).v2()
+fun XContentBuilder.toMap(): Map<String, Any> = XContentHelper.convertToMap(BytesReference.bytes(this), false, XContentType.JSON as (MediaType)).v2()
 
 /**
  * Converts [OpenSearchClient] methods that take a callback into a kotlin suspending function.

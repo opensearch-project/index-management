@@ -6,9 +6,9 @@
 package org.opensearch.indexmanagement.rollup.actionfilter
 
 import org.apache.logging.log4j.LogManager
-import org.opensearch.action.ActionListener
+import org.opensearch.core.action.ActionListener
 import org.opensearch.action.ActionRequest
-import org.opensearch.action.ActionResponse
+import org.opensearch.core.action.ActionResponse
 import org.opensearch.action.fieldcaps.FieldCapabilities
 import org.opensearch.action.fieldcaps.FieldCapabilitiesRequest
 import org.opensearch.action.fieldcaps.FieldCapabilitiesResponse

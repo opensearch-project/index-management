@@ -6,10 +6,10 @@
 package org.opensearch.indexmanagement.indexstatemanagement.action
 
 import org.opensearch.action.admin.indices.alias.Alias
-import org.opensearch.common.io.stream.StreamInput
-import org.opensearch.common.unit.ByteSizeValue
-import org.opensearch.common.xcontent.XContentParser
-import org.opensearch.common.xcontent.XContentParserUtils.ensureExpectedToken
+import org.opensearch.core.common.io.stream.StreamInput
+import org.opensearch.core.common.unit.ByteSizeValue
+import org.opensearch.core.xcontent.XContentParser
+import org.opensearch.core.xcontent.XContentParserUtils.ensureExpectedToken
 import org.opensearch.indexmanagement.indexstatemanagement.action.ShrinkAction.Companion.ALIASES_FIELD
 import org.opensearch.indexmanagement.indexstatemanagement.action.ShrinkAction.Companion.FORCE_UNSAFE_FIELD
 import org.opensearch.indexmanagement.indexstatemanagement.action.ShrinkAction.Companion.MAX_SHARD_SIZE_FIELD

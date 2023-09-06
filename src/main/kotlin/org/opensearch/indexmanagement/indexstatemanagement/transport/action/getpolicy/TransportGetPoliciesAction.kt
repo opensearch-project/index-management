@@ -7,16 +7,17 @@ package org.opensearch.indexmanagement.indexstatemanagement.transport.action.get
 
 import org.apache.logging.log4j.LogManager
 import org.opensearch.ExceptionsHelper
-import org.opensearch.action.ActionListener
+import org.opensearch.core.action.ActionListener
 import org.opensearch.action.search.SearchRequest
 import org.opensearch.action.search.SearchResponse
 import org.opensearch.action.support.ActionFilters
 import org.opensearch.action.support.HandledTransportAction
 import org.opensearch.client.Client
+import org.opensearch.cluster.routing.Preference
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.inject.Inject
 import org.opensearch.common.settings.Settings
-import org.opensearch.common.xcontent.NamedXContentRegistry
+import org.opensearch.core.xcontent.NamedXContentRegistry
 import org.opensearch.commons.ConfigConstants
 import org.opensearch.index.IndexNotFoundException
 import org.opensearch.index.query.Operator
@@ -90,6 +91,7 @@ class TransportGetPoliciesAction @Inject constructor(
         val searchRequest = SearchRequest()
             .source(searchSourceBuilder)
             .indices(INDEX_MANAGEMENT_INDEX)
+            .preference(Preference.PRIMARY_FIRST.type())
 
         client.threadPool().threadContext.stashContext().use {
             client.search(

@@ -12,17 +12,17 @@ import com.nhaarman.mockitokotlin2.mock
 import com.nhaarman.mockitokotlin2.whenever
 import kotlinx.coroutines.runBlocking
 import org.junit.Before
-import org.opensearch.action.ActionListener
+import org.opensearch.core.action.ActionListener
 import org.opensearch.action.DocWriteResponse
 import org.opensearch.action.get.GetResponse
 import org.opensearch.action.index.IndexResponse
 import org.opensearch.action.search.SearchResponse
 import org.opensearch.client.Client
-import org.opensearch.common.bytes.BytesArray
-import org.opensearch.common.bytes.BytesReference
+import org.opensearch.core.common.bytes.BytesReference
 import org.opensearch.common.document.DocumentField
-import org.opensearch.common.xcontent.NamedXContentRegistry
-import org.opensearch.common.xcontent.ToXContent
+import org.opensearch.core.common.bytes.BytesArray
+import org.opensearch.core.xcontent.NamedXContentRegistry
+import org.opensearch.core.xcontent.ToXContent
 import org.opensearch.indexmanagement.common.model.dimension.DateHistogram
 import org.opensearch.indexmanagement.indexstatemanagement.util.WITH_TYPE
 import org.opensearch.indexmanagement.rollup.model.Rollup
@@ -735,7 +735,7 @@ class RollupMetadataServiceTests : OpenSearchTestCase() {
 
         // TODO: Mockito 2 supposedly should be able to mock final classes but there were errors when trying to do so
         //   Will need to check if there is a workaround or a better way to mock getting hits.hits since this current approach is verbose
-        val docField = DocumentField(dateHistogram.sourceField, listOf(getInstant(timestamp).toEpochMilli().toString()))
+        val docField = DocumentField(dateHistogram.sourceField, listOf(timestamp))
         val searchHit = SearchHit(0)
         searchHit.setDocumentField(dateHistogram.sourceField, docField)
         val searchHits = SearchHits(arrayOf(searchHit), null, 0.0F)

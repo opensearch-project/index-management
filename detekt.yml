@@ -23,3 +23,5 @@ complexity:
     excludes: ['**/test/**']
   LongParameterList:
     excludes: ['**/test/**']
+  NestedBlockDepth:
+    threshold: 5

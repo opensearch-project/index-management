@@ -17,6 +17,7 @@ import org.opensearch.client.Client
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.settings.Settings
 import org.opensearch.common.xcontent.XContentType
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.indexmanagement.opensearchapi.retry
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.rollup.model.Rollup
@@ -27,7 +28,6 @@ import org.opensearch.indexmanagement.rollup.util.RollupFieldValueExpressionReso
 import org.opensearch.indexmanagement.rollup.util.getInitialDocValues
 import org.opensearch.indexmanagement.util.IndexUtils.Companion.ODFE_MAGIC_NULL
 import org.opensearch.indexmanagement.util.IndexUtils.Companion.hashToFixedSize
-import org.opensearch.rest.RestStatus
 import org.opensearch.search.aggregations.bucket.composite.InternalComposite
 import org.opensearch.search.aggregations.metrics.InternalAvg
 import org.opensearch.search.aggregations.metrics.InternalMax
@@ -116,8 +116,9 @@ class RollupIndexer(
             it.aggregations.forEach {
                 when (it) {
                     is InternalSum -> aggResults[it.name] = it.value
-                    is InternalMax -> aggResults[it.name] = it.value
-                    is InternalMin -> aggResults[it.name] = it.value
+                    // TODO: Need to redo the logic in corresponding doXContentBody of InternalMax and InternalMin
+                    is InternalMax -> if (it.value.isInfinite()) aggResults[it.name] = null else aggResults[it.name] = it.value
+                    is InternalMin -> if (it.value.isInfinite()) aggResults[it.name] = null else aggResults[it.name] = it.value
                     is InternalValueCount -> aggResults[it.name] = it.value
                     is InternalAvg -> aggResults[it.name] = it.value
                     else -> error("Found aggregation in composite result that is not supported [${it.type} - ${it.name}]")

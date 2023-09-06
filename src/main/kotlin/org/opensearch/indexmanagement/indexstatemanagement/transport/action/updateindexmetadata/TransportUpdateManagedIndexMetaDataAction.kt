@@ -6,7 +6,7 @@
 package org.opensearch.indexmanagement.indexstatemanagement.transport.action.updateindexmetadata
 
 import org.apache.logging.log4j.LogManager
-import org.opensearch.action.ActionListener
+import org.opensearch.core.action.ActionListener
 import org.opensearch.action.support.ActionFilters
 import org.opensearch.action.support.clustermanager.TransportClusterManagerNodeAction
 import org.opensearch.action.support.master.AcknowledgedResponse
@@ -23,9 +23,9 @@ import org.opensearch.cluster.metadata.Metadata
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.Priority
 import org.opensearch.common.inject.Inject
-import org.opensearch.common.io.stream.StreamInput
-import org.opensearch.common.io.stream.Writeable
-import org.opensearch.index.Index
+import org.opensearch.core.common.io.stream.StreamInput
+import org.opensearch.core.common.io.stream.Writeable
+import org.opensearch.core.index.Index
 import org.opensearch.indexmanagement.IndexManagementPlugin
 import org.opensearch.indexmanagement.indexstatemanagement.IndexMetadataProvider
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
@@ -76,7 +76,7 @@ class TransportUpdateManagedIndexMetaDataAction @Inject constructor(
             .toTypedArray()
     }
 
-    override fun masterOperation(
+    override fun clusterManagerOperation(
         request: UpdateManagedIndexMetaDataRequest,
         state: ClusterState,
         listener: ActionListener<AcknowledgedResponse>

@@ -13,7 +13,7 @@ import com.nhaarman.mockitokotlin2.mock
 import com.nhaarman.mockitokotlin2.whenever
 import kotlinx.coroutines.runBlocking
 import org.junit.Before
-import org.opensearch.action.ActionListener
+import org.opensearch.core.action.ActionListener
 import org.opensearch.action.admin.cluster.snapshots.create.CreateSnapshotResponse
 import org.opensearch.client.AdminClient
 import org.opensearch.client.Client
@@ -31,7 +31,7 @@ import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedInde
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepContext
 import org.opensearch.ingest.TestTemplateService.MockTemplateScript
 import org.opensearch.jobscheduler.spi.utils.LockService
-import org.opensearch.rest.RestStatus
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.script.ScriptService
 import org.opensearch.script.TemplateScript
 import org.opensearch.snapshots.ConcurrentSnapshotExecutionException

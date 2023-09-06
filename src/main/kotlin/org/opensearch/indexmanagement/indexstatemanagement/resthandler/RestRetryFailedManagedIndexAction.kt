@@ -6,7 +6,7 @@
 package org.opensearch.indexmanagement.indexstatemanagement.resthandler
 
 import org.opensearch.client.node.NodeClient
-import org.opensearch.common.Strings
+import org.opensearch.core.common.Strings
 import org.opensearch.common.logging.DeprecationLogger
 import org.opensearch.common.xcontent.XContentHelper
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.ISM_BASE_URI
@@ -54,7 +54,7 @@ class RestRetryFailedManagedIndexAction : BaseRestHandler() {
             throw IllegalArgumentException("Missing indices")
         }
         val body = if (request.hasContent()) {
-            XContentHelper.convertToMap(request.requiredContent(), false, request.xContentType).v2()
+            XContentHelper.convertToMap(request.requiredContent(), false, request.mediaType).v2()
         } else {
             mapOf()
         }

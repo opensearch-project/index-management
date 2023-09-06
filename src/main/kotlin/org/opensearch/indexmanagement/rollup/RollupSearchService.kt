@@ -8,13 +8,13 @@ package org.opensearch.indexmanagement.rollup
 import org.apache.logging.log4j.LogManager
 import org.opensearch.ExceptionsHelper
 import org.opensearch.OpenSearchSecurityException
-import org.opensearch.action.ActionListener
+import org.opensearch.core.action.ActionListener
 import org.opensearch.action.bulk.BackoffPolicy
 import org.opensearch.action.search.SearchPhaseExecutionException
 import org.opensearch.action.search.SearchResponse
 import org.opensearch.client.Client
 import org.opensearch.cluster.service.ClusterService
-import org.opensearch.common.breaker.CircuitBreakingException
+import org.opensearch.core.common.breaker.CircuitBreakingException
 import org.opensearch.common.settings.Settings
 import org.opensearch.indexmanagement.opensearchapi.retry
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil

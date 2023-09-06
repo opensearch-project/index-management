@@ -19,12 +19,14 @@ import org.opensearch.action.search.SearchRequest
 import org.opensearch.action.search.SearchResponse
 import org.opensearch.client.Client
 import org.opensearch.common.Rounding
+import org.opensearch.common.time.DateFormatter
+import org.opensearch.common.time.DateFormatters
 import org.opensearch.common.unit.TimeValue
 import org.opensearch.common.xcontent.LoggingDeprecationHandler
-import org.opensearch.common.xcontent.NamedXContentRegistry
 import org.opensearch.common.xcontent.XContentFactory
 import org.opensearch.common.xcontent.XContentHelper
 import org.opensearch.common.xcontent.XContentType
+import org.opensearch.core.xcontent.NamedXContentRegistry
 import org.opensearch.index.query.MatchAllQueryBuilder
 import org.opensearch.indexmanagement.IndexManagementPlugin
 import org.opensearch.indexmanagement.common.model.dimension.DateHistogram
@@ -34,7 +36,7 @@ import org.opensearch.indexmanagement.rollup.model.ContinuousMetadata
 import org.opensearch.indexmanagement.rollup.model.Rollup
 import org.opensearch.indexmanagement.rollup.model.RollupMetadata
 import org.opensearch.indexmanagement.rollup.model.RollupStats
-import org.opensearch.indexmanagement.rollup.util.DATE_FIELD_EPOCH_MILLIS_FORMAT
+import org.opensearch.indexmanagement.rollup.util.DATE_FIELD_STRICT_DATE_OPTIONAL_TIME_FORMAT
 import org.opensearch.indexmanagement.util.NO_ID
 import org.opensearch.search.aggregations.bucket.composite.InternalComposite
 import org.opensearch.search.aggregations.bucket.histogram.DateHistogramAggregationBuilder
@@ -181,7 +183,7 @@ class RollupMetadataService(val client: Client, val xContentRegistry: NamedXCont
                 .sort(dateHistogram.sourceField, SortOrder.ASC) // TODO: figure out where nulls are sorted
                 .trackTotalHits(false)
                 .fetchSource(false)
-                .docValueField(dateHistogram.sourceField, DATE_FIELD_EPOCH_MILLIS_FORMAT)
+                .docValueField(dateHistogram.sourceField, DATE_FIELD_STRICT_DATE_OPTIONAL_TIME_FORMAT)
             val searchRequest = SearchRequest(rollup.sourceIndex)
                 .source(searchSourceBuilder)
                 .allowPartialSearchResults(false)
@@ -194,10 +196,12 @@ class RollupMetadataService(val client: Client, val xContentRegistry: NamedXCont
 
             // Get the doc value field of the dateHistogram.sourceField for the first search hit converted to epoch millis
             // If the doc value is null or empty it will be treated the same as empty doc hits
-            val firstHitTimestamp = response.hits.hits.first().field(dateHistogram.sourceField).getValue<String>()?.toLong()
+            val firstHitTimestampAsString: String? = response.hits.hits.first().field(dateHistogram.sourceField).getValue<String>()
                 ?: return StartingTimeResult.NoDocumentsFound
-
-            return StartingTimeResult.Success(getRoundedTime(firstHitTimestamp, dateHistogram))
+            // Parse date and extract epochMillis
+            val formatter = DateFormatter.forPattern(DATE_FIELD_STRICT_DATE_OPTIONAL_TIME_FORMAT)
+            val epochMillis = DateFormatters.from(formatter.parse(firstHitTimestampAsString), formatter.locale()).toInstant().toEpochMilli()
+            return StartingTimeResult.Success(getRoundedTime(epochMillis, dateHistogram))
         } catch (e: RemoteTransportException) {
             val unwrappedException = ExceptionsHelper.unwrapCause(e) as Exception
             logger.debug("Error when getting initial start time for rollup [${rollup.id}]: $unwrappedException")

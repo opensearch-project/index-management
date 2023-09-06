@@ -9,24 +9,24 @@ import org.opensearch.action.admin.indices.stats.IndicesStatsAction
 import org.opensearch.action.admin.indices.stats.IndicesStatsRequest
 import org.opensearch.action.admin.indices.stats.IndicesStatsResponse
 import org.opensearch.client.Client
-import org.opensearch.common.bytes.BytesReference
-import org.opensearch.common.io.stream.StreamInput
-import org.opensearch.common.io.stream.StreamOutput
-import org.opensearch.common.io.stream.Writeable
+import org.opensearch.core.common.bytes.BytesReference
+import org.opensearch.core.common.io.stream.StreamInput
+import org.opensearch.core.common.io.stream.StreamOutput
+import org.opensearch.core.common.io.stream.Writeable
 import org.opensearch.common.xcontent.LoggingDeprecationHandler
-import org.opensearch.common.xcontent.ToXContent
-import org.opensearch.common.xcontent.XContentBuilder
+import org.opensearch.core.xcontent.ToXContent
+import org.opensearch.core.xcontent.XContentBuilder
 import org.opensearch.common.xcontent.XContentFactory
-import org.opensearch.common.xcontent.XContentParser
-import org.opensearch.common.xcontent.XContentParser.Token
-import org.opensearch.common.xcontent.XContentParserUtils.ensureExpectedToken
+import org.opensearch.core.xcontent.XContentParser
+import org.opensearch.core.xcontent.XContentParser.Token
+import org.opensearch.core.xcontent.XContentParserUtils.ensureExpectedToken
 import org.opensearch.common.xcontent.XContentType
 import org.opensearch.commons.authuser.User
 import org.opensearch.index.query.AbstractQueryBuilder
 import org.opensearch.index.query.MatchAllQueryBuilder
 import org.opensearch.index.query.QueryBuilder
 import org.opensearch.index.seqno.SequenceNumbers
-import org.opensearch.index.shard.ShardId
+import org.opensearch.core.index.shard.ShardId
 import org.opensearch.indexmanagement.common.model.dimension.DateHistogram
 import org.opensearch.indexmanagement.common.model.dimension.Dimension
 import org.opensearch.indexmanagement.common.model.dimension.Histogram
@@ -45,7 +45,7 @@ import org.opensearch.jobscheduler.spi.schedule.CronSchedule
 import org.opensearch.jobscheduler.spi.schedule.IntervalSchedule
 import org.opensearch.jobscheduler.spi.schedule.Schedule
 import org.opensearch.jobscheduler.spi.schedule.ScheduleParser
-import org.opensearch.rest.RestStatus
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.search.aggregations.AggregatorFactories
 import java.io.IOException
 import java.time.Instant
@@ -363,7 +363,9 @@ data class Transform(
                             groups.add(Dimension.parse(xcp))
                         }
                     }
-                    AGGREGATIONS_FIELD -> aggregations = AggregatorFactories.parseAggregators(xcp)
+                    AGGREGATIONS_FIELD -> {
+                        AggregatorFactories.parseAggregators(xcp)?.let { aggregations = it }
+                    }
                     CONTINUOUS_FIELD -> continuous = xcp.booleanValue()
                     USER_FIELD -> {
                         user = if (xcp.currentToken() == Token.VALUE_NULL) null else User.parse(xcp)

@@ -395,6 +395,7 @@ class IndexStateManagementHistoryIT : IndexStateManagementRestTestCase() {
     }
 
     fun `test history shard settings`() {
+        deleteIndex(IndexManagementIndices.HISTORY_ALL)
         val indexName = "${testIndexName}_shard_settings"
         val policyID = "${testIndexName}_shard_settings_1"
         val actionConfig = ReadOnlyAction(0)
@@ -429,7 +430,8 @@ class IndexStateManagementHistoryIT : IndexStateManagementRestTestCase() {
         waitFor {
             assertIndexExists(IndexManagementIndices.HISTORY_WRITE_INDEX_ALIAS)
             val indexSettings = getIndexSettings(IndexManagementIndices.HISTORY_WRITE_INDEX_ALIAS)
-            val historyIndexName = indexSettings.keys.filter { it.startsWith(IndexManagementIndices.HISTORY_INDEX_BASE) }.firstOrNull()
+            val historyIndexName =
+                indexSettings.keys.firstOrNull { it.startsWith(IndexManagementIndices.HISTORY_INDEX_BASE) }
             assertNotNull("Could not find a concrete history index", historyIndexName)
             assertEquals("Wrong number of shards", 2, getNumberOfShardsSetting(historyIndexName!!))
             assertEquals("Wrong number of replicas", 3, getNumberOfReplicasSetting(historyIndexName))

@@ -15,8 +15,8 @@ import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.inject.Inject
 import org.opensearch.common.settings.Settings
 import org.opensearch.common.util.concurrent.ThreadContext
-import org.opensearch.common.xcontent.XContentParser
-import org.opensearch.common.xcontent.XContentParserUtils.ensureExpectedToken
+import org.opensearch.core.xcontent.XContentParser
+import org.opensearch.core.xcontent.XContentParserUtils.ensureExpectedToken
 import org.opensearch.commons.authuser.User
 import org.opensearch.index.IndexNotFoundException
 import org.opensearch.index.query.BoolQueryBuilder
@@ -39,7 +39,7 @@ import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy.Companio
 import org.opensearch.indexmanagement.snapshotmanagement.settings.SnapshotManagementSettings.Companion.FILTER_BY_BACKEND_ROLES
 import org.opensearch.indexmanagement.snapshotmanagement.smMetadataDocIdToPolicyName
 import org.opensearch.indexmanagement.util.SecurityUtils
-import org.opensearch.rest.RestStatus
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.search.builder.SearchSourceBuilder
 import org.opensearch.search.fetch.subphase.FetchSourceContext
 import org.opensearch.transport.TransportService

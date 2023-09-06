@@ -5,12 +5,12 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.util
 
-import org.opensearch.common.bytes.BytesReference
-import org.opensearch.common.unit.ByteSizeValue
+import org.opensearch.core.common.bytes.BytesReference
+import org.opensearch.core.common.unit.ByteSizeValue
 import org.opensearch.common.unit.TimeValue
 import org.opensearch.common.xcontent.LoggingDeprecationHandler
 import org.opensearch.common.xcontent.XContentHelper
-import org.opensearch.common.xcontent.XContentParser
+import org.opensearch.core.xcontent.XContentParser
 import org.opensearch.common.xcontent.XContentType
 import org.opensearch.commons.destination.message.LegacyBaseMessage
 import org.opensearch.commons.destination.message.LegacyCustomWebhookMessage

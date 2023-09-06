@@ -6,7 +6,7 @@
 package org.opensearch.indexmanagement.rollup.action.mapping
 
 import org.apache.logging.log4j.LogManager
-import org.opensearch.action.ActionListener
+import org.opensearch.core.action.ActionListener
 import org.opensearch.action.admin.indices.mapping.put.PutMappingRequest
 import org.opensearch.action.support.ActionFilters
 import org.opensearch.action.support.clustermanager.TransportClusterManagerNodeAction
@@ -17,10 +17,11 @@ import org.opensearch.cluster.block.ClusterBlockException
 import org.opensearch.cluster.block.ClusterBlockLevel
 import org.opensearch.cluster.metadata.IndexNameExpressionResolver
 import org.opensearch.cluster.service.ClusterService
-import org.opensearch.common.bytes.BytesReference
+import org.opensearch.core.common.bytes.BytesReference
 import org.opensearch.common.inject.Inject
-import org.opensearch.common.io.stream.StreamInput
-import org.opensearch.common.io.stream.Writeable
+import org.opensearch.core.common.io.stream.StreamInput
+import org.opensearch.core.common.io.stream.Writeable
+import org.opensearch.core.xcontent.MediaType
 import org.opensearch.common.xcontent.XContentFactory
 import org.opensearch.common.xcontent.XContentHelper
 import org.opensearch.common.xcontent.XContentType
@@ -56,7 +57,7 @@ class TransportUpdateRollupMappingAction @Inject constructor(
     }
 
     @Suppress("ReturnCount", "LongMethod")
-    override fun masterOperation(
+    override fun clusterManagerOperation(
         request: UpdateRollupMappingRequest,
         state: ClusterState,
         listener: ActionListener<AcknowledgedResponse>
@@ -81,7 +82,7 @@ class TransportUpdateRollupMappingAction @Inject constructor(
         val rollup = XContentHelper.convertToMap(
             BytesReference.bytes(request.rollup.toXContent(XContentFactory.jsonBuilder(), XCONTENT_WITHOUT_TYPE)),
             false,
-            XContentType.JSON
+            XContentType.JSON as (MediaType)
         ).v2()
         val metaMappings = mutableMapOf<String, Any>()
         // TODO: Clean this up
