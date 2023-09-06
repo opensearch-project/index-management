@@ -230,4 +230,7 @@ class RollupUtilsTests : OpenSearchTestCase() {
             assertEquals("Rewritten aggregation builder is not the correct type", aggBuilder.type, rewrittenAgg.type)
         }
     }
+    fun `test changeAggregations`() {
+        /* add later */
+    }
 }
