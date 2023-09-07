@@ -11,7 +11,6 @@ import org.opensearch.cluster.ClusterState
 import org.opensearch.cluster.metadata.IndexNameExpressionResolver
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.settings.Settings
-import org.opensearch.core.xcontent.NamedXContentRegistry
 import org.opensearch.index.query.QueryBuilder
 import org.opensearch.index.query.TermQueryBuilder
 import org.opensearch.index.query.TermsQueryBuilder
@@ -61,7 +60,6 @@ class RollupInterceptor(
     val clusterService: ClusterService,
     val settings: Settings,
     val indexNameExpressionResolver: IndexNameExpressionResolver,
-    val xContentRegistry: NamedXContentRegistry
 ) : TransportInterceptor {
 
     private val logger = LogManager.getLogger(javaClass)
@@ -206,7 +204,9 @@ class RollupInterceptor(
                         }
                         // Rewrite the request to fit rollup format if not already done previously
                         if (isRollupIndex && !isReqeustRollupFormat(request)) {
-                            // TODO fix logic to allow response interceptor client calls to have a size of 1
+                            /* Client calls from the response interceptor require request bodies of 1,
+                            otherwise do not allow size > 0 for rollup indices
+                             */
                             if (!canHaveSize(request) && request.source().size() != 0) {
                                 throw IllegalArgumentException(
                                     "Rollup search must have size explicitly set to 0, " +
