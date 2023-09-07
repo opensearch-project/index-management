@@ -22,7 +22,7 @@ jobs:
       - name: Checkout Branch
         uses: actions/checkout@v2
       - name: Run integration tests with multi node config
-        run: ./gradlew integTest -Dtests.class="org.opensearch.indexmanagement.rollup.interceptor.ResponseInterceptorIT"
+        run: ./gradlew integTest -Dtests.class="org.opensearch.indexmanagement.rollup.interceptor.ResponseInterceptorIT" -Dtests.method="test search multiple live data indices and a rollup data index with overlap" -PcustomDistributionUrl="https://artifacts.opensearch.org/snapshots/core/opensearch/2.9.0-SNAPSHOT/opensearch-min-2.9.0-SNAPSHOT-darwin-x64-latest.tar.gz"
       - name: Upload failed logs
         uses: actions/upload-artifact@v2
         if: failure()

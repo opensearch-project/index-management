@@ -720,6 +720,7 @@ class ResponseInterceptorIT : RollupRestTestCase() {
         val expectedAvg = expectedAggs.getValue("avg_passenger_count")["value"]
         refreshAllIndices()
         // Validate result from searching rollup-nyc-taxi-data, searching nyc-taxi-data
+        val start = System.currentTimeMillis()
         var searchAllResponse = client().makeRequest("POST", "/rollup-nyc-taxi-data,nyc-taxi-data/_search", emptyMap(), StringEntity(aggReq, ContentType.APPLICATION_JSON))
         assertTrue(searchAllResponse.restStatus() == RestStatus.OK)
         var responseAggs = searchAllResponse.asMap()["aggregations"] as Map<String, Map<String, Any>>
@@ -748,5 +749,7 @@ class ResponseInterceptorIT : RollupRestTestCase() {
             expectedAvg,
             responseAggs.getValue("avg_passenger_count")["value"]
         )
+        val elapsedTimeMs = System.currentTimeMillis() - start
+        assertEquals("ronsax search reqeust took $elapsedTimeMs ms", true, false)
     }
 }
