@@ -3,7 +3,7 @@ name: Security test workflow
 on:
   pull_request:
     branches:
-      - "**"
+      - "*"
   push:
     branches:
       - "*"
