@@ -31,8 +31,13 @@ import org.opensearch.indexmanagement.rollup.randomValueCount
 import org.opensearch.indexmanagement.transform.randomAggregationBuilder
 import org.opensearch.search.aggregations.metrics.AvgAggregationBuilder
 import org.opensearch.search.aggregations.metrics.ValueCountAggregationBuilder
+import org.opensearch.search.builder.SearchSourceBuilder
 import org.opensearch.test.OpenSearchTestCase
 import org.opensearch.test.rest.OpenSearchRestTestCase
+import java.time.ZoneId
+import java.time.ZonedDateTime
+import kotlin.test.assertFails
+import kotlin.test.assertFailsWith
 
 class RollupUtilsTests : OpenSearchTestCase() {
 
@@ -231,6 +236,59 @@ class RollupUtilsTests : OpenSearchTestCase() {
         }
     }
     fun `test changeAggregations`() {
-        /* add later */
+        val ssb = SearchSourceBuilder()
+        val oldAggBuilder = randomAggregationBuilder()
+        ssb.aggregation(oldAggBuilder)
+        var newAgg = randomAggregationBuilder()
+        while (newAgg == oldAggBuilder) newAgg = randomAggregationBuilder()
+        val newSsb = ssb.changeAggregations(listOf(newAgg))
+        assertNotEquals("Did not change search source builders aggregations :(", newSsb, ssb)
+    }
+    fun `test convertDateStringToEpochMillis`() {
+        // Check correct time format
+        val dateString = "2023-07-18 12:30:00"
+        val expectedMillis = 1689683400000L
+        val actualMillis = convertDateStringToEpochMillis(dateString)
+        assertEquals(expectedMillis, actualMillis)
+
+        // Testing an invalid date format throws error
+        assertFails { convertDateStringToEpochMillis("invalid format") }
+    }
+    fun `test convertFixedIntervalStringToMs`() {
+        // Test ms
+        val msString = "5ms"
+        val expectedMs = 5L
+        assertEquals("ms conversion is wrong", convertFixedIntervalStringToMs(msString), expectedMs)
+        // Test s
+        val sString = "5s"
+        val expectedS = 5000L
+        assertEquals("ms conversion is wrong", convertFixedIntervalStringToMs(sString), expectedS)
+        // Test m
+        val mString = "3m"
+        val expectedM = 180000L
+        assertEquals("m conversion is wrong", convertFixedIntervalStringToMs(mString), expectedM)
+        // Test h
+        val hString = "2h"
+        val expectedH = 7200000L
+        assertEquals("h conversion is wrong", convertFixedIntervalStringToMs(hString), expectedH)
+        // Test d
+        val dString = "1d"
+        val expectedD = 86400000L
+        assertEquals("d conversion is wrong", convertFixedIntervalStringToMs(dString), expectedD)
+        // Test w
+        val wString = "1w"
+        val expectedW = 604800000L
+        assertEquals("w conversion is wrong", convertFixedIntervalStringToMs(wString), expectedW)
+        // Test error
+        val invalid = ";)"
+        assertFailsWith<IllegalArgumentException> {
+            convertFixedIntervalStringToMs(invalid)
+        }
+    }
+    fun `test zonedDateTimeToMillis`() {
+        val zonedDateTime = ZonedDateTime.of(2023, 7, 18, 12, 30, 0, 0, ZoneId.of("UTC"))
+        val expectedMillis = 1689683400000L // ms since epoch of the zonedDateTime
+        val actualMillis = zonedDateTimeToMillis(zonedDateTime)
+        assertEquals(expectedMillis, actualMillis)
     }
 }

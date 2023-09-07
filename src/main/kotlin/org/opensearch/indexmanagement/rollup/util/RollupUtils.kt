@@ -467,7 +467,7 @@ fun parseRollup(response: GetResponse, xContentRegistry: NamedXContentRegistry =
 
     return xcp.parseWithType(response.id, response.seqNo, response.primaryTerm, Rollup.Companion::parse)
 }
-// Changes aggregations in search source builder to new original aggregation (Change query too?)
+// Returns a SearchSourceBuilder with different aggregations but the rest of the properties are the same
 @Suppress("ComplexMethod")
 fun SearchSourceBuilder.changeAggregations(aggregationBuilderCollection: Collection<AggregationBuilder>): SearchSourceBuilder {
     val ssb = SearchSourceBuilder()
@@ -501,12 +501,14 @@ fun SearchSourceBuilder.changeAggregations(aggregationBuilderCollection: Collect
     if (this.collapse() != null) ssb.collapse(this.collapse())
     return ssb
 }
-
+@Suppress("MagicNumber")
 fun convertDateStringToEpochMillis(dateString: String): Long {
     val parts = dateString.split(" ")
+    require(parts.size == 2) { "Date in was not correct format" }
     val dateParts = parts[0].split("-")
     val timeParts = parts[1].split(":")
 
+    require((dateParts.size == 3 && timeParts.size == 3)) { "Date in was not correct format" }
     val year = dateParts[0].toInt()
     val month = dateParts[1].toInt()
     val day = dateParts[2].toInt()
