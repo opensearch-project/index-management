@@ -196,7 +196,10 @@ class RollupInterceptor(
                     // Only modifies rollup searches and avoids internal client calls
                     if (containsRollup || isRollupIndex) {
                         val (concreteRollupIndicesArray, concreteLiveIndicesArray) = getConcreteIndices(request)
-                        // Avoid infinite interceptor loop
+                        /* Avoid infinite interceptor loop:
+                        if there is an internal client call made in the reponse interceptor there is only 1 index.
+                        Therefore, conditions are not met for api to combine rollup and live data
+                         */
                         val isMultiSearch = (concreteRollupIndicesArray.isNotEmpty() && concreteLiveIndicesArray.isNotEmpty())
                         if (isMultiSearch && request.source().aggregations() != null && !isRequestRewrittenIntoBuckets(request)) {
                             // Break apart request to remove overlapping parts

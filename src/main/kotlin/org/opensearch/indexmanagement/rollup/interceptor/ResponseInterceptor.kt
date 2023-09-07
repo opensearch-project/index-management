@@ -219,6 +219,7 @@ class ResponseInterceptor(
                 .source(searchSourceBuilder)
             /*
             If the response shard index is a rollup index, need to find the minimum value of all the live indices to compute the overlap
+            This is because I am comparing this index to all the live data to compute the interval I want to keep
             If the response shard index is a live index, need to only compute minimum value of the current shard index
              */
             if (isShardIndexRollup) {
