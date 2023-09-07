@@ -18,16 +18,53 @@ Content-Type: application/json
       }
     ],
     "ism_template": {
-      "index_patterns": ["testdelete"],
+      "index_patterns": ["testdelete2"],
       "priority": 100
     }
   }
 }
 
-### delete index
+###
+DELETE localhost:9200/_opendistro/_ism/policies/exampledelete
+
+###
 PUT http://localhost:9200/testdelete
 Content-Type: application/json
+
+###
+DELETE http://localhost:9200/testdelete
+Content-Type: application/json
+
+### add policy api call
+POST localhost:9200/_plugins/_ism/add/testdelete
+Content-Type: application/json
+
+{
+  "policy_id": "exampledelete"
+}
 
 ### explain api call
 GET localhost:9200/_plugins/_ism/explain/testdelete?validate_action=true
 Accept: application/json
+
+### get policy call
+GET localhost:9200/.opendistro-ism-config/_doc/exampledelete
+
+### get managed index call
+GET localhost:9200/.opendistro-ism-config/_search
+Content-Type: application/json
+
+{
+  "seq_no_primary_term": true,
+  "query": {
+    "term": {
+      "managed_index.index": {
+        "value": "testdelete2"
+      }
+    }
+  }
+}
+
+###
+PUT http://localhost:9200/testdelete2
+Content-Type: application/json
