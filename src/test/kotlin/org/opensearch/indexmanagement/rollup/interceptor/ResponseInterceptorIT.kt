@@ -645,7 +645,7 @@ class ResponseInterceptorIT : RollupRestTestCase() {
             jobEnabledTime = Instant.now(),
             description = "basic search test",
             sourceIndex = "nyc-taxi-data",
-            targetIndex = "rollup-alias-nyc-taxi-data",
+            targetIndex = "rollup-nyc-taxi-data",
             metadataID = null,
             roles = emptyList(),
             pageSize = 10,
@@ -722,15 +722,12 @@ class ResponseInterceptorIT : RollupRestTestCase() {
         refreshAllIndices()
 
         // Validate result from searching rollup-nyc-taxi-data, searching nyc-taxi-data
-        val start = System.currentTimeMillis()
-        val r = client().makeRequest(
+        var r = client().makeRequest(
             "PUT", "_cluster/settings",
             StringEntity(
                 """
                 {
                     "transient": {
-                        "logger.org.opensearch.indexmanagement.rollup":"DEBUG",
-                        "logger.org.opensearch.jobscheduler":"DEBUG",
                         "logger.org.opensearch.transport": "Trace"
                     }
                 }
@@ -738,10 +735,25 @@ class ResponseInterceptorIT : RollupRestTestCase() {
                 ContentType.APPLICATION_JSON
             )
         )
-        logger.info("enable trace log $r")
+        logger.info("enable trace log ${r.entity.content.bufferedReader().use { it.readText() }}")
         logger.info("start to make search call ${Date()}")
         var searchAllResponse = client().makeRequest("POST", "/rollup-nyc-taxi-data,nyc-taxi-data/_search", emptyMap(), StringEntity(aggReq, ContentType.APPLICATION_JSON))
         logger.info("search call finished ${Date()}")
+
+        r = client().makeRequest(
+            "PUT", "_cluster/settings",
+            StringEntity(
+                """
+                {
+                    "transient": {
+                        "logger.org.opensearch.transport": null
+                    }
+                }
+                """.trimIndent(),
+                ContentType.APPLICATION_JSON
+            )
+        )
+        logger.info("disable trace log ${r.entity.content.bufferedReader().use { it.readText() }}")
 
         assertTrue(searchAllResponse.restStatus() == RestStatus.OK)
         var responseAggs = searchAllResponse.asMap()["aggregations"] as Map<String, Map<String, Any>>
@@ -770,7 +782,5 @@ class ResponseInterceptorIT : RollupRestTestCase() {
             expectedAvg,
             responseAggs.getValue("avg_passenger_count")["value"]
         )
-        val elapsedTimeMs = System.currentTimeMillis() - start
-        assertEquals("ronsax search reqeust took $elapsedTimeMs ms", true, false)
     }
 }
