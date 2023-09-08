@@ -2,7 +2,7 @@ name: Test and Build Workflow
 on:
   pull_request:
     branches:
-      - "**"
+      - "*"
   push:
     branches:
       - "*"
