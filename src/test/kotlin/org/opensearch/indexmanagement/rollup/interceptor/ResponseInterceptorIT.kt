@@ -24,6 +24,7 @@ import org.opensearch.jobscheduler.spi.schedule.IntervalSchedule
 import org.opensearch.rest.RestStatus
 import java.time.Instant
 import java.time.temporal.ChronoUnit
+import java.util.Date
 
 @Suppress("UNCHECKED_CAST")
 class ResponseInterceptorIT : RollupRestTestCase() {
@@ -644,7 +645,7 @@ class ResponseInterceptorIT : RollupRestTestCase() {
             jobEnabledTime = Instant.now(),
             description = "basic search test",
             sourceIndex = "nyc-taxi-data",
-            targetIndex = "rollup-nyc-taxi-data",
+            targetIndex = "rollup-alias-nyc-taxi-data",
             metadataID = null,
             roles = emptyList(),
             pageSize = 10,
@@ -719,9 +720,29 @@ class ResponseInterceptorIT : RollupRestTestCase() {
         val expectedCount = expectedAggs.getValue("count_passenger_count")["value"]
         val expectedAvg = expectedAggs.getValue("avg_passenger_count")["value"]
         refreshAllIndices()
+
         // Validate result from searching rollup-nyc-taxi-data, searching nyc-taxi-data
         val start = System.currentTimeMillis()
+        val r = client().makeRequest(
+            "PUT", "_cluster/settings",
+            StringEntity(
+                """
+                {
+                    "transient": {
+                        "logger.org.opensearch.indexmanagement.rollup":"DEBUG",
+                        "logger.org.opensearch.jobscheduler":"DEBUG",
+                        "logger.org.opensearch.transport": "Trace"
+                    }
+                }
+                """.trimIndent(),
+                ContentType.APPLICATION_JSON
+            )
+        )
+        logger.info("enable trace log $r")
+        logger.info("start to make search call ${Date()}")
         var searchAllResponse = client().makeRequest("POST", "/rollup-nyc-taxi-data,nyc-taxi-data/_search", emptyMap(), StringEntity(aggReq, ContentType.APPLICATION_JSON))
+        logger.info("search call finished ${Date()}")
+
         assertTrue(searchAllResponse.restStatus() == RestStatus.OK)
         var responseAggs = searchAllResponse.asMap()["aggregations"] as Map<String, Map<String, Any>>
         assertEquals(
