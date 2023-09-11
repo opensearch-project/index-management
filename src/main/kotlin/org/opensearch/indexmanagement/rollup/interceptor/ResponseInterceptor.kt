@@ -56,7 +56,6 @@ class ResponseInterceptor(
     val client: Client
 ) : TransportInterceptor {
     private val logger = LogManager.getLogger(javaClass)
-
     override fun interceptSender(sender: TransportInterceptor.AsyncSender): TransportInterceptor.AsyncSender {
         return CustomAsyncSender(sender)
     }
@@ -195,6 +194,7 @@ class ResponseInterceptor(
                 .indices(*rollupIndices) // add all rollup indices to this request
             var maxRolledDateResponse: SearchResponse? = null
             var latch = CountDownLatch(1)
+            logger.info("ronsax sending request to find max rollup time for index: $shardRequestIndex")
             client.search(
                 maxRolledDateRequest,
                 object : ActionListener<SearchResponse> {
@@ -230,6 +230,7 @@ class ResponseInterceptor(
 
             var minLiveDateResponse: SearchResponse? = null
             latch = CountDownLatch(1)
+            logger.info("ronsax sending request to find minLiveData for index: $shardRequestIndex")
             client.search(
                 minLiveDateRequest,
                 object : ActionListener<SearchResponse> {
@@ -256,6 +257,7 @@ class ResponseInterceptor(
                 // If intersection found on rollup index, remove overlap
                 if ((liveDataStartPoint < rollupDataEndPoint) && isShardIndexRollup) {
                     // Start at 0, end at live data
+                    logger.info("ronsax sending request to find rollup endtime for index: $shardRequestIndex")
                     val endTime = getRollupEndTime(liveDataStartPoint, rollupIndices, dateTargetField)
                     return Pair(0L, endTime)
                 }

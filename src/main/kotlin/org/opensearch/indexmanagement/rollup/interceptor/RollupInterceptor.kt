@@ -77,7 +77,7 @@ class RollupInterceptor(
     }
     // Returns Pair<containsRollup: Boolean, rollupJob: RollupJob>
     @Suppress("SpreadOperator")
-    private fun originalSearchContainsRollup(request: ShardSearchRequest): Pair<Boolean, Rollup?> {
+    private fun originalSearchContainsRollup(request: ShardSearchRequest): Pair<Boolean, Rollup?> { // Throwing an error on data streams
         val indices = request.indices().map { it.toString() }.toTypedArray()
         val allIndices = indexNameExpressionResolver
             .concreteIndexNames(clusterService.state(), request.indicesOptions(), *indices)
@@ -169,7 +169,7 @@ class RollupInterceptor(
         }
         // Wraps all existing aggs in bucket aggregation
         // Notifies the response interceptor that was rewritten since agg name is interceptor_interval_data
-        // Edge case if User selected this as the aggregation name :/
+        // Edge case if User selected interceptor_interval_data as the aggregation name :/
         val intervalAgg = AggregationBuilders.dateHistogram("interceptor_interval_data")
             .field(dateSourceField)
             .calendarInterval(DateHistogramInterval(rollupInterval))
@@ -190,14 +190,16 @@ class RollupInterceptor(
         return object : TransportRequestHandler<T> {
             override fun messageReceived(request: T, channel: TransportChannel, task: Task) {
                 if (searchEnabled && request is ShardSearchRequest) {
-                    val (containsRollup, rollupJob) = originalSearchContainsRollup(request)
+                    val isDataStream = (request.indices().any { IndexUtils.isDataStream(it, clusterService.state()) })
                     val shardRequestIndex = request.shardId().indexName
-                    val isRollupIndex = isRollupIndex(shardRequestIndex, clusterService.state())
+                    // isRollupIndex throws an exception if the request is on a data stream
+                    val isRollupIndex = if (isDataStream) false else isRollupIndex(shardRequestIndex, clusterService.state())
+                    val (containsRollup, rollupJob) = if (isDataStream) Pair(false, null) else originalSearchContainsRollup(request)
                     // Only modifies rollup searches and avoids internal client calls
                     if (containsRollup || isRollupIndex) {
                         val (concreteRollupIndicesArray, concreteLiveIndicesArray) = getConcreteIndices(request)
                         /* Avoid infinite interceptor loop:
-                        if there is an internal client call made in the reponse interceptor there is only 1 index.
+                        if there is an internal client call made in the response interceptor there is only 1 index.
                         Therefore, conditions are not met for api to combine rollup and live data
                          */
                         val isMultiSearch = (concreteRollupIndicesArray.isNotEmpty() && concreteLiveIndicesArray.isNotEmpty())
