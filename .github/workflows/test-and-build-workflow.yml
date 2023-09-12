@@ -27,7 +27,7 @@ jobs:
           - os: macos-latest
             os_build_args: -x integTest -x jacocoTestReport
           - os: ubuntu-latest
-            os_build_args: integTest --tests "org.opensearch.indexmanagement.rollup.interceptor.RollupInterceptor*"
+            os_build_args: integTest --tests "org.opensearch.indexmanagement.rollup.interceptor.RollupInterceptor*" --debug
     runs-on: ${{ matrix.os }}
     steps:
       # This step uses the setup-java Github action: https://github.com/actions/setup-java
