@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.indexmanagement.rollup.resthandler
+package org.opensearch.indexmanagement.rollup.interceptor
 
 import org.opensearch.client.ResponseException
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
@@ -15,7 +15,7 @@ import org.opensearch.test.junit.annotations.TestLogging
 
 @TestLogging(value = "level:DEBUG", reason = "Debugging tests")
 @Suppress("UNCHECKED_CAST")
-class RestDeleteRollupActionIT : RollupRestTestCase() {
+class RollupInterceptor3IT : RollupRestTestCase() {
     @Throws(Exception::class)
     fun `test deleting a rollup`() {
         val rollup = createRandomRollup()

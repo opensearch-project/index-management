@@ -26,7 +26,7 @@ import java.time.Instant
 import java.time.temporal.ChronoUnit
 
 @Suppress("UNCHECKED_CAST")
-class ResponseInterceptorIT : RollupRestTestCase() {
+class RollupInterceptor2IT : RollupRestTestCase() {
     fun `test search a live index and rollup index with no overlap`() {
         generateNYCTaxiData("source_rollup_search")
         val rollup = Rollup(
