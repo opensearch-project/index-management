@@ -128,7 +128,7 @@ class ResponseInterceptor(
 
         // Calculated the end time for the current shard index if it is a rollup index with data overlapp
         @Suppress("SpreadOperator")
-        suspend fun getRollupEndTime(liveDataStartPoint: Long, rollupIndices: Array<String>, dateTargetField: String, shardRequestIndex: String): Long {
+        suspend fun getRollupEndTime(liveDataStartPoint: Long, rollupIndices: Array<String>, dateTargetField: String): Long {
             // Build search request to find the maximum rollup timestamp <= liveDataStartPoint
             val sort = SortBuilders.fieldSort("$dateTargetField.date_histogram").order(SortOrder.DESC)
             val query = QueryBuilders.boolQuery()
@@ -141,7 +141,6 @@ class ResponseInterceptor(
             val req = SearchRequest()
                 .source(searchSourceBuilder)
                 .indices(*rollupIndices)
-            logger.info("ronsax sending search request for endtiem of $shardRequestIndex")
             val res = client.suspendUntil { search(req, it) }
 
             try {
@@ -218,7 +217,7 @@ class ResponseInterceptor(
                 if ((liveDataStartPoint < rollupDataEndPoint) && isShardIndexRollup) {
                     // Start at 0, end at live data
                     logger.info("ronsax sending request to find rollup endtime for index: $shardRequestIndex")
-                    val endTime = getRollupEndTime(liveDataStartPoint, rollupIndices, dateTargetField, shardRequestIndex)
+                    val endTime = getRollupEndTime(liveDataStartPoint, rollupIndices, dateTargetField)
                     return Pair(0L, endTime)
                 }
             }
