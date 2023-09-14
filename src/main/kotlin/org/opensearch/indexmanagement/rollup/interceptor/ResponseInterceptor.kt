@@ -55,7 +55,7 @@ import kotlin.math.min
 
 /**
 * The Response Interceptor class modifies resopnses if the search API is triggered on rollup and live data
-* 1. The class check if the request was rewritten in the RollupInterceptor into more granular buckets
+* 1. The class checks if the request was rewritten in the RollupInterceptor into more granular buckets
 * 2. in findOverlap it checks for overlap between live data and rollup data and returns the interval to include
 * 3. computeAggregationsWithoutOverlap() iterates through the buckets and recomputes the aggregations in the expected format
 * 4. Returns a new response for each shard to be combined later
@@ -73,12 +73,12 @@ class ResponseInterceptor(
     }
 
     private inner class CustomAsyncSender(private val originalSender: TransportInterceptor.AsyncSender) : TransportInterceptor.AsyncSender {
-        override fun <T : TransportResponse?> sendRequest(
-            connection: Transport.Connection?,
-            action: String?,
-            request: TransportRequest?,
-            options: TransportRequestOptions?,
-            handler: TransportResponseHandler<T>?
+        override fun <T : TransportResponse> sendRequest(
+            connection: Transport.Connection,
+            action: String,
+            request: TransportRequest,
+            options: TransportRequestOptions,
+            handler: TransportResponseHandler<T>
         ) {
             val interceptedHandler = CustomResponseHandler(handler)
 
@@ -94,6 +94,13 @@ class ResponseInterceptor(
             val response = originalHandler?.read(inStream)
             return response!!
         }
+
+        /**
+         * Check if this response was modified in the request interceptor
+         * and should be put back together
+         * @param QuerySearchResult
+         * @return Boolean
+         */
         fun isRewrittenInterceptorRequest(response: QuerySearchResult): Boolean {
             val currentAggregations = response.aggregations().expand()
             for (agg in currentAggregations) {
@@ -135,6 +142,8 @@ class ResponseInterceptor(
 
         /**
          * Calculates the end time for the current shard index if it is a rollup index with data overlapp
+         * @params liveDataStartPoint: Long, rollupIndices: Array<String>, dateTargetField: String
+         * @return Long
          **/
         @Suppress("SpreadOperator")
         suspend fun getRollupEndTime(liveDataStartPoint: Long, rollupIndices: Array<String>, dateTargetField: String): Long {
@@ -159,8 +168,10 @@ class ResponseInterceptor(
             return 0L // dummy :P
         }
         /**
-         * Returns Pair(startRange: Long, endRange: Long)
+         * Checks for overlap in timeseries data and returns the non overlapping interval to include
          * Note startRange is inclusive and endRange is exclusive, they are Longs because the type is epoch milliseconds
+         * @param QuerySearchResult
+         * @return Pair(startRange: Long, endRange: Long)
          **/
         // TODO intercept at the index level instead of the shard level to avoid redundant client calls for every index
         @Suppress("LongMethod", "SpreadOperator")
@@ -234,7 +245,11 @@ class ResponseInterceptor(
             return Pair(0L, Long.MAX_VALUE)
         }
 
-        // Depending on which metric the aggregation is, computation is different
+        /**
+         * Depending on which metric the aggregation is, computation is different
+         * @params agg: org.opensearch.search.aggregations.Aggregation, currentValue: Any
+         * @return Pair<Any, String>
+         */
         @Suppress("ReturnCount")
         fun computeRunningValue(agg: org.opensearch.search.aggregations.Aggregation, currentValue: Any): Pair<Any, String> {
             when (agg) {
@@ -279,7 +294,11 @@ class ResponseInterceptor(
                 else -> throw IllegalArgumentException("Could not recreate an aggregation for type $aggType")
             }
         }
-        // Create original avg aggregation
+        /**
+         * Create original avg aggregation
+         * @return InternalAvg
+         */
+
         fun initRollupAvgAgg(
             modifiedName: String,
             value: Any,
@@ -319,6 +338,8 @@ class ResponseInterceptor(
 
         /**
          * Returns a new InternalAggregations that contains merged aggregation(s) with the overlapping data removed
+         * @params intervalAggregations: InternalAggregations, start: Long, end: Long
+         * @return InternalAggregations
          */
         @Suppress("NestedBlockDepth")
         fun computeAggregationsWithoutOverlap(intervalAggregations: InternalAggregations, start: Long, end: Long): InternalAggregations {

@@ -75,7 +75,12 @@ class RollupInterceptor(
             searchAllJobs = it
         }
     }
-    // Returns Pair<containsRollup: Boolean, rollupJob: RollupJob>
+
+    /**
+     * Checks if any of the indices in the original request contain a rollup index
+     * @param ShardSearchRequest
+     * @return Pair<containsRollup: Boolean, rollupJob: RollupJob>
+     */
     @Suppress("SpreadOperator")
     private fun originalSearchContainsRollup(request: ShardSearchRequest): Pair<Boolean, Rollup?> { // Throwing an error on data streams
         val indices = request.indices().map { it.toString() }.toTypedArray()
@@ -89,7 +94,11 @@ class RollupInterceptor(
         }
         return Pair(false, null)
     }
-    // Returns true if request was already modified into "interceptor_interval_data" bucket aggregation
+    /**
+     * Returns true if request was already modified into "interceptor_interval_data" bucket aggregation
+     * @param ShardSearchRequest
+     * @return Boolean
+     */
     fun isRequestRewrittenIntoBuckets(request: ShardSearchRequest): Boolean {
         val currentAggs = request.source().aggregations().aggregatorFactories
         if (currentAggs != null) {
@@ -101,8 +110,12 @@ class RollupInterceptor(
         }
         return false
     }
-    // Helper fn to avoid rewritting a rollup request an extra time
-    fun isReqeustRollupFormat(request: ShardSearchRequest): Boolean {
+    /**
+     * Helper fn to avoid rewritting a rollup request an extra time
+     * @param ShardSearchRequest
+     * @return Boolean
+     */
+    fun isRequestRollupFormat(request: ShardSearchRequest): Boolean {
         if (request.source().query() != null) {
             val jsonRequest: String = request.source().query().toString()
             // Detected dummy field from internal search request
@@ -112,11 +125,28 @@ class RollupInterceptor(
         }
         return false
     }
-    // If the request has a sort on it, size can be > 0 on a rollup search
-    fun canHaveSize(request: ShardSearchRequest): Boolean {
+
+    /**
+     * If the request has a sort on it, size can be > 0 on a rollup search
+     * Context: we need to make call to find out the min, max time of rollup and live indexes,
+     * however, this call would be intercepted here and get re-write.
+     *
+     * So the idea is to explicitly allow this call to go through rollup interceptor w/o re-write them,
+     * so that whether it's from response interceptor or client, both should work.
+     * @param ShardSearchRequest
+     * @return Boolean
+     */
+    fun allowRequest(request: ShardSearchRequest): Boolean {
         return request.source().sorts() != null
     }
-    // Need to modify aggs for rollup docs with avg and value count aggs
+    /**
+     * Need to modify aggs for rollup docs with avg and value count aggs
+     * Context in order to recompute the avg metric in the response interceptor
+     * Need to modify the avg request into a sum and value count request,
+     * Then ResponseInterceptor puts the aggs back into an avg aggregation
+     * @param MutableCollection<AggregationBuilder>
+     * @return AggregatorFactories.Builder
+     */
     fun modifyRollupAggs(aggFacts: MutableCollection<AggregationBuilder>): AggregatorFactories.Builder {
         val build = AggregatorFactories.builder()
         for (agg in aggFacts) {
@@ -155,8 +185,12 @@ class RollupInterceptor(
         return build
     }
 
-    // Wrap original aggregations into buckets based on fixed interval to remove overlap in response interceptor
-    fun breakRequestIntoBuckets(request: ShardSearchRequest, rollupJob: Rollup) {
+    /**
+     * Wrap original aggregations into a bucket aggreagtion based on fixed interval
+     * to make response more granular and remove overlap in response interceptor
+     * @params request: ShardSearchRequest, rollupJob: Rollup
+     */
+    fun breakIntoBuckets(request: ShardSearchRequest, rollupJob: Rollup) {
         val oldAggs = modifyRollupAggs(request.source().aggregations().aggregatorFactories)
         var dateSourceField: String = ""
         var rollupInterval: String = ""
@@ -205,14 +239,14 @@ class RollupInterceptor(
                         val isMultiSearch = (concreteRollupIndicesArray.isNotEmpty() && concreteLiveIndicesArray.isNotEmpty())
                         if (isMultiSearch && request.source().aggregations() != null && !isRequestRewrittenIntoBuckets(request)) {
                             // Break apart request to remove overlapping parts
-                            breakRequestIntoBuckets(request, rollupJob!!)
+                            breakIntoBuckets(request, rollupJob!!)
                         }
                         // Rewrite the request to fit rollup format if not already done previously
-                        if (isRollupIndex && !isReqeustRollupFormat(request)) {
+                        if (isRollupIndex && !isRequestRollupFormat(request)) {
                             /* Client calls from the response interceptor require request bodies of 1,
                             otherwise do not allow size > 0 for rollup indices
                              */
-                            if (!canHaveSize(request) && request.source().size() != 0) {
+                            if (!allowRequest(request) && request.source().size() != 0) {
                                 throw IllegalArgumentException(
                                     "Rollup search must have size explicitly set to 0, " +
                                         "but found ${request.source().size()}"
@@ -226,7 +260,10 @@ class RollupInterceptor(
             }
         }
     }
-    // Returns Pair (concreteRollupIndices: Array<String>, concreteLiveIndicesArray: Array<String>)
+
+    /**
+     * @return Pair (concreteRollupIndices: Array<String>, concreteLiveIndicesArray: Array<String>)
+     */
     @Suppress("SpreadOperator")
     fun getConcreteIndices(request: ShardSearchRequest): Pair<Array<String>, Array<String>> {
         val indices = request.indices().map { it.toString() }.toTypedArray()
@@ -245,6 +282,10 @@ class RollupInterceptor(
         val concreteLiveIndicesArray = concreteLiveIndexNames.toTypedArray()
         return Pair(concreteRollupIndicesArray, concreteLiveIndicesArray)
     }
+
+    /**
+     * Modifies ShardSearchRequest to fit rollup index format
+     */
     fun rewriteRollupRequest(request: ShardSearchRequest, rollupJob: Rollup, concreteRollupIndicesArray: Array<String>) {
         // To extract fields from QueryStringQueryBuilder we need concrete source index name.
         val queryFieldMappings = getQueryMetadata(
