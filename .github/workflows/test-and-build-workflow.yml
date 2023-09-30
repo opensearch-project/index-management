@@ -2,13 +2,13 @@ name: Test and Build Workflow
 on:
   pull_request:
     branches:
-      - "*"
+      - "**"
   push:
     branches:
-      - "*"
+      - "**"
 
 jobs:
-  build:
+  test-and-build:
     env:
       BUILD_ARGS: ${{ matrix.os_build_args }}
       WORKING_DIR: ${{ matrix.working_directory }}.
