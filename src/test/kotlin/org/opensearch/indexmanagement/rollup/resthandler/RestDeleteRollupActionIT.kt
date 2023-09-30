@@ -37,7 +37,6 @@ class RestDeleteRollupActionIT : RollupRestTestCase() {
             assertEquals(RestStatus.NOT_FOUND, e.response.restStatus())
         }
     }
-
     @Throws(Exception::class)
     fun `test deleting a rollup that doesn't exist and config index doesnt exist`() {
         try {

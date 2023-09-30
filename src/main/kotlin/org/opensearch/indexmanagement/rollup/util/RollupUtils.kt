@@ -62,6 +62,9 @@ import org.opensearch.search.aggregations.metrics.ScriptedMetricAggregationBuild
 import org.opensearch.search.aggregations.metrics.SumAggregationBuilder
 import org.opensearch.search.aggregations.metrics.ValueCountAggregationBuilder
 import org.opensearch.search.builder.SearchSourceBuilder
+import java.time.LocalDateTime
+import java.time.ZoneOffset
+import java.time.ZonedDateTime
 
 const val DATE_FIELD_STRICT_DATE_OPTIONAL_TIME_FORMAT = "strict_date_optional_time"
 const val DATE_FIELD_EPOCH_MILLIS_FORMAT = "epoch_millis"
@@ -463,4 +466,84 @@ fun parseRollup(response: GetResponse, xContentRegistry: NamedXContentRegistry =
     )
 
     return xcp.parseWithType(response.id, response.seqNo, response.primaryTerm, Rollup.Companion::parse)
+}
+// Returns a SearchSourceBuilder with different aggregations but the rest of the properties are the same
+@Suppress("ComplexMethod")
+fun SearchSourceBuilder.changeAggregations(aggregationBuilderCollection: Collection<AggregationBuilder>): SearchSourceBuilder {
+    val ssb = SearchSourceBuilder()
+    aggregationBuilderCollection.forEach { ssb.aggregation(it) }
+    if (this.explain() != null) ssb.explain(this.explain())
+    if (this.ext() != null) ssb.ext(this.ext())
+    ssb.fetchSource(this.fetchSource())
+    this.docValueFields()?.forEach { ssb.docValueField(it.field, it.format) }
+    ssb.storedFields(this.storedFields())
+    if (this.from() >= 0) ssb.from(this.from())
+    ssb.highlighter(this.highlighter())
+    this.indexBoosts()?.forEach { ssb.indexBoost(it.index, it.boost) }
+    if (this.minScore() != null) ssb.minScore(this.minScore())
+    if (this.postFilter() != null) ssb.postFilter(this.postFilter())
+    ssb.profile(this.profile())
+    if (this.query() != null) ssb.query(this.query())
+    this.rescores()?.forEach { ssb.addRescorer(it) }
+    this.scriptFields()?.forEach { ssb.scriptField(it.fieldName(), it.script(), it.ignoreFailure()) }
+    if (this.searchAfter() != null) ssb.searchAfter(this.searchAfter())
+    if (this.slice() != null) ssb.slice(this.slice())
+    if (this.size() >= 0) ssb.size(this.size())
+    this.sorts()?.forEach { ssb.sort(it) }
+    if (this.stats() != null) ssb.stats(this.stats())
+    if (this.suggest() != null) ssb.suggest(this.suggest())
+    if (this.terminateAfter() >= 0) ssb.terminateAfter(this.terminateAfter())
+    if (this.timeout() != null) ssb.timeout(this.timeout())
+    ssb.trackScores(this.trackScores())
+    this.trackTotalHitsUpTo()?.let { ssb.trackTotalHitsUpTo(it) }
+    if (this.version() != null) ssb.version(this.version())
+    if (this.seqNoAndPrimaryTerm() != null) ssb.seqNoAndPrimaryTerm(this.seqNoAndPrimaryTerm())
+    if (this.collapse() != null) ssb.collapse(this.collapse())
+    return ssb
+}
+@Suppress("MagicNumber")
+fun convertDateStringToEpochMillis(dateString: String): Long {
+    val parts = dateString.split(" ")
+    require(parts.size == 2) { "Date in was not correct format" }
+    val dateParts = parts[0].split("-")
+    val timeParts = parts[1].split(":")
+
+    require((dateParts.size == 3 && timeParts.size == 3)) { "Date in was not correct format" }
+    val year = dateParts[0].toInt()
+    val month = dateParts[1].toInt()
+    val day = dateParts[2].toInt()
+
+    val hour = timeParts[0].toInt()
+    val minute = timeParts[1].toInt()
+    val second = timeParts[2].toInt()
+
+    val localDateTime = LocalDateTime.of(year, month, day, hour, minute, second)
+    val instant = localDateTime.toInstant(ZoneOffset.UTC)
+    return instant.toEpochMilli()
+}
+@Suppress("MagicNumber")
+fun convertFixedIntervalStringToMs(fixedInterval: String): Long {
+    // Possible types are ms, s, m, h, d
+    val regex = """(\d+)([a-zA-Z]+)""".toRegex()
+    val matchResult = regex.find(fixedInterval)
+        ?: throw IllegalArgumentException("Invalid interval format: $fixedInterval")
+
+    val numericValue = matchResult.groupValues[1].toLong()
+    val intervalType = matchResult.groupValues[2]
+
+    val milliseconds = when (intervalType) {
+        "ms" -> numericValue
+        "s" -> numericValue * 1000L
+        "m" -> numericValue * 60 * 1000L
+        "h" -> numericValue * 60 * 60 * 1000L
+        "d" -> numericValue * 24 * 60 * 60 * 1000L
+        "w" -> numericValue * 7 * 24 * 60 * 60 * 1000L
+        else -> throw IllegalArgumentException("Unsupported interval type: $intervalType")
+    }
+
+    return milliseconds
+}
+
+fun zonedDateTimeToMillis(zonedDateTime: ZonedDateTime): Long {
+    return zonedDateTime.toInstant().toEpochMilli()
 }

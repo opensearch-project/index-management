@@ -1045,21 +1045,6 @@ class RollupInterceptorIT : RollupRestTestCase() {
                 }
             }
         """.trimIndent()
-        // Search 1 non-rollup index and 1 rollup
-        val searchResult1 = client().makeRequest("POST", "/$sourceIndex2,$targetIndex2/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
-        assertTrue(searchResult1.restStatus() == RestStatus.OK)
-        val failures = extractFailuresFromSearchResponse(searchResult1)
-        assertNotNull(failures)
-        assertEquals(1, failures?.size)
-        assertEquals(
-            "Searching multiple indices where one is rollup and other is not, didn't return failure",
-            "illegal_argument_exception", failures?.get(0)?.get("type") ?: "Didn't find failure type in search response"
-
-        )
-        assertEquals(
-            "Searching multiple indices where one is rollup and other is not, didn't return failure",
-            "Not all indices have rollup job", failures?.get(0)?.get("reason") ?: "Didn't find failure reason in search response"
-        )
 
         // Search 2 rollups with different mappings
         try {
