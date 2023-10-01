@@ -61,15 +61,6 @@ fun IndexMetadata.getRolloverSkip(): Boolean {
     return this.settings.getAsBoolean(ManagedIndexSettings.ROLLOVER_SKIP.key, false)
 }
 
-fun IndexMetadata.getManagedIndexMetadata(): ManagedIndexMetaData? {
-    val existingMetaDataMap = this.getCustomData(ManagedIndexMetaData.MANAGED_INDEX_METADATA_TYPE)
-
-    if (existingMetaDataMap != null) {
-        return ManagedIndexMetaData.fromMap(existingMetaDataMap)
-    }
-    return null
-}
-
 fun getUuidsForClosedIndices(state: ClusterState, defaultIndexMetadataService: DefaultIndexMetadataService): MutableList<String> {
     val indexMetadatas = state.metadata.indices
     val closeList = mutableListOf<String>()

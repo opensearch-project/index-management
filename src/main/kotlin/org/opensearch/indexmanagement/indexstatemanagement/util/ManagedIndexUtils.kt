@@ -7,11 +7,8 @@
 @file:JvmName("ManagedIndexUtils")
 package org.opensearch.indexmanagement.indexstatemanagement.util
 
-// import inet.ipaddr.IPAddressString
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-// import org.apache.logging.log4j.LogManager
-import org.apache.logging.log4j.Logger
 import org.opensearch.action.delete.DeleteRequest
 import org.opensearch.action.get.GetRequest
 import org.opensearch.action.get.GetResponse
@@ -19,7 +16,6 @@ import org.opensearch.action.index.IndexRequest
 import org.opensearch.action.search.SearchRequest
 import org.opensearch.action.support.WriteRequest
 import org.opensearch.action.update.UpdateRequest
-// import org.opensearch.alerting.destination.message.BaseMessage
 import org.opensearch.client.Client
 import org.opensearch.cluster.routing.Preference
 import org.opensearch.core.common.unit.ByteSizeValue
@@ -38,14 +34,12 @@ import org.opensearch.indexmanagement.indexstatemanagement.action.DeleteAction
 import org.opensearch.indexmanagement.indexstatemanagement.action.RolloverAction
 import org.opensearch.indexmanagement.indexstatemanagement.action.TransitionsAction
 import org.opensearch.indexmanagement.indexstatemanagement.model.ChangePolicy
-import org.opensearch.indexmanagement.indexstatemanagement.model.ISMTemplate
 import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexConfig
 import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
 import org.opensearch.indexmanagement.indexstatemanagement.model.State
 import org.opensearch.indexmanagement.indexstatemanagement.model.Transition
 import org.opensearch.indexmanagement.indexstatemanagement.model.coordinator.SweptManagedIndexConfig
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings
-import org.opensearch.indexmanagement.opensearchapi.optionalISMTemplateField
 import org.opensearch.indexmanagement.opensearchapi.optionalTimeField
 import org.opensearch.indexmanagement.opensearchapi.parseWithType
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
@@ -136,17 +130,6 @@ private fun updateEnabledField(uuid: String, enabled: Boolean, enabledTime: Long
         .endObject()
         .endObject()
     return UpdateRequest(INDEX_MANAGEMENT_INDEX, uuid).doc(builder)
-}
-
-fun updateISMTemplateRequest(policyID: String, ismTemplates: List<ISMTemplate>, seqNo: Long, primaryTerm: Long): UpdateRequest {
-    val builder = XContentFactory.jsonBuilder()
-        .startObject()
-        .startObject(Policy.POLICY_TYPE)
-        .optionalISMTemplateField(Policy.ISM_TEMPLATE, ismTemplates)
-        .endObject()
-        .endObject()
-    return UpdateRequest(INDEX_MANAGEMENT_INDEX, policyID).doc(builder)
-        .setIfSeqNo(seqNo).setIfPrimaryTerm(primaryTerm)
 }
 
 fun updateDisableManagedIndexRequest(uuid: String): UpdateRequest {
@@ -455,7 +438,7 @@ fun ManagedIndexConfig.hasDifferentJobInterval(jobInterval: Int): Boolean {
  * @param stateName the name of the state the [ManagedIndexConfig] is currently in
  * @param newPolicy the new (actual data model) policy we will eventually try to change to
  * @param changePolicy the change policy to change to
- * @return if its safe to change
+ * @return if it's safe to change
  */
 @Suppress("ReturnCount")
 fun Policy.isSafeToChange(stateName: String?, newPolicy: Policy, changePolicy: ChangePolicy): Boolean {
@@ -485,71 +468,6 @@ fun Policy.isSafeToChange(stateName: String?, newPolicy: Policy, changePolicy: C
  * Allowed actions are ones that are specified in the [ManagedIndexSettings.ALLOW_LIST] setting.
  */
 fun Action.isAllowed(allowList: List<String>): Boolean = allowList.contains(this.type)
-
-/**
- * Check if cluster state metadata has been moved to config index
- *
- * log warning if remaining cluster state metadata has newer last_updated_time
- */
-@Suppress("ReturnCount", "ComplexCondition", "ComplexMethod")
-fun checkMetadata(
-    clusterStateMetadata: ManagedIndexMetaData?,
-    configIndexMetadata: Any?,
-    currentIndexUuid: String?,
-    logger: Logger
-): MetadataCheck {
-    // indexUuid saved in ISM metadata may be outdated
-    // if an index restored from snapshot
-    val indexUuid1 = clusterStateMetadata?.indexUuid
-    val indexUuid2 = when (configIndexMetadata) {
-        is ManagedIndexMetaData -> configIndexMetadata.indexUuid
-        is Map<*, *> -> configIndexMetadata["index_uuid"]
-        else -> null
-    } as String?
-    if ((indexUuid1 != null && indexUuid1 != currentIndexUuid) ||
-        (indexUuid2 != null && indexUuid2 != currentIndexUuid)
-    ) {
-        return MetadataCheck.CORRUPT
-    }
-
-    if (clusterStateMetadata != null) {
-        if (configIndexMetadata == null) return MetadataCheck.PENDING
-
-        // compare last updated time between 2 metadatas
-        val t1 = clusterStateMetadata.stepMetaData?.startTime
-        val t2 = when (configIndexMetadata) {
-            is ManagedIndexMetaData -> configIndexMetadata.stepMetaData?.startTime
-            is Map<*, *> -> {
-                @Suppress("UNCHECKED_CAST")
-                val stepMetadata = configIndexMetadata["step"] as Map<String, Any>?
-                stepMetadata?.get("start_time")
-            }
-            else -> null
-        } as Long?
-        if (t1 != null && t2 != null && t1 > t2) {
-            logger.warn("Cluster state metadata get updates after moved for [${clusterStateMetadata.index}]")
-        }
-    }
-    return MetadataCheck.SUCCESS
-}
-
-enum class MetadataCheck {
-    PENDING, CORRUPT, SUCCESS
-}
-
-// private val baseMessageLogger = LogManager.getLogger(BaseMessage::class.java)
-//
-// fun BaseMessage.isHostInDenylist(networks: List<String>): Boolean {
-//     val ipStr = IPAddressString(this.uri.host)
-//     for (network in networks) {
-//         val netStr = IPAddressString(network)
-//         if (netStr.contains(ipStr)) {
-//             baseMessageLogger.error("Host: {} resolves to: {} which is in denylist: {}.", uri.host, InetAddress.getByName(uri.host), netStr)
-//             return true
-//         }
-//     }
-//     return false
-// }
 
 @Suppress("BlockingMethodInNonBlockingContext")
 suspend fun getManagedIndexConfig(indexUuid: String, client: Client): ManagedIndexConfig? {

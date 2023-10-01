@@ -44,14 +44,11 @@ import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexCon
 import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
 import org.opensearch.indexmanagement.common.model.rest.SearchParams
 import org.opensearch.indexmanagement.indexstatemanagement.ManagedIndexRunner.actionValidation
-import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.getManagedIndexMetadata
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.managedIndex.ManagedIndexAction
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.managedIndex.ManagedIndexRequest
 import org.opensearch.indexmanagement.indexstatemanagement.util.DEFAULT_INDEX_TYPE
 import org.opensearch.indexmanagement.indexstatemanagement.util.MANAGED_INDEX_INDEX_UUID_FIELD
 import org.opensearch.indexmanagement.indexstatemanagement.util.MANAGED_INDEX_NAME_KEYWORD_FIELD
-import org.opensearch.indexmanagement.indexstatemanagement.util.MetadataCheck
-import org.opensearch.indexmanagement.indexstatemanagement.util.checkMetadata
 import org.opensearch.indexmanagement.indexstatemanagement.util.managedIndexMetadataID
 import org.opensearch.indexmanagement.opensearchapi.parseWithType
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
@@ -75,7 +72,7 @@ typealias ManagedIndexConfigDocUUID = String
 typealias ManagedIndexMetadataDocUUID = String // managedIndexMetadataID(indexUuid) -> <indexUuid>#metadata
 typealias ManagedIndexMetadataMap = Map<String, String?>
 
-@Suppress("SpreadOperator", "TooManyFunctions")
+@Suppress("SpreadOperator", "TooManyFunctions", "UnusedPrivateMember")
 class TransportExplainAction @Inject constructor(
     val client: NodeClient,
     transportService: TransportService,
@@ -330,21 +327,18 @@ class TransportExplainAction @Inject constructor(
                         managedIndexMetadata = ManagedIndexMetaData.fromMap(metadataMapFromManagedIndex)
                     }
 
-                    // clusterStateIndexMetadatas will not be null only for the default index type
                     if (clusterStateIndexMetadatas != null) {
-                        val currentIndexUuid = indices[indexName]
-                        val clusterStateMetadata = clusterStateIndexMetadatas[indexName]?.getManagedIndexMetadata()
-                        val metadataCheck = checkMetadata(clusterStateMetadata, configIndexMetadataMap, currentIndexUuid, log)
-                        val info = metadataStatusToInfo[metadataCheck]
-                        info?.let { managedIndexMetadata = clusterStateMetadata?.copy(info = it) }
+                        val clusterStateMetadata = clusterStateIndexMetadatas[indexName]
+                        @Suppress("UNUSED_EXPRESSION")
+                        clusterStateMetadata
                     }
                 }
                 if (validateAction) {
                     var validationResult = actionValidation.validate("nothing", indexName)
                     val policy = policiesforValidation[indexName]
                     if (policy != null && managedIndexMetadata != null) {
-                        val state = policy.getStateToExecute(managedIndexMetadata!!)
-                        val action = state?.getActionToExecute(managedIndexMetadata!!, indexMetadataProvider)
+                        val state = policy.getStateToExecute(managedIndexMetadata)
+                        val action = state?.getActionToExecute(managedIndexMetadata, indexMetadataProvider)
                         var actionName = action?.type
                         if (actionName == null) {
                             actionName = "nothing"
@@ -444,14 +438,5 @@ class TransportExplainAction @Inject constructor(
                 ).parseWithType(parse = ManagedIndexConfig.Companion::parse)
             }
         }
-    }
-
-    companion object {
-        const val METADATA_MOVING_WARNING = "Managed index's metadata is pending migration."
-        const val METADATA_CORRUPT_WARNING = "Managed index's metadata is corrupt, please use remove policy API to clean it."
-        val metadataStatusToInfo = mapOf(
-            MetadataCheck.PENDING to mapOf("message" to METADATA_MOVING_WARNING),
-            MetadataCheck.CORRUPT to mapOf("message" to METADATA_CORRUPT_WARNING)
-        )
     }
 }
