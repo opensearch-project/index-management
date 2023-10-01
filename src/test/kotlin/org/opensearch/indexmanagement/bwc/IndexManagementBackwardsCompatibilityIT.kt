@@ -19,6 +19,7 @@ import org.opensearch.indexmanagement.makeRequest
 import org.opensearch.indexmanagement.opensearchapi.string
 import org.opensearch.indexmanagement.util.NO_ID
 import org.opensearch.core.rest.RestStatus
+import org.opensearch.indexmanagement.waitFor
 import org.opensearch.search.builder.SearchSourceBuilder
 
 class IndexManagementBackwardsCompatibilityIT : IndexManagementRestTestCase() {
@@ -59,7 +60,9 @@ class IndexManagementBackwardsCompatibilityIT : IndexManagementRestTestCase() {
                     createBasicPolicy()
 
                     verifyPolicyExists(LEGACY_POLICY_BASE_URI)
-                    verifyPolicyOnIndex(LEGACY_ISM_BASE_URI)
+                    waitFor {
+                        verifyPolicyOnIndex(LEGACY_ISM_BASE_URI)
+                    }
                 }
                 ClusterType.MIXED -> {
                     assertTrue(pluginNames.contains("opensearch-index-management"))
@@ -162,6 +165,7 @@ class IndexManagementBackwardsCompatibilityIT : IndexManagementRestTestCase() {
 
         assertEquals("Explain Index failed", RestStatus.OK, getResponse.restStatus())
         val responseBody = getResponse.asMap()
+        logger.info("Response body: $responseBody")
         assertTrue("Test index does not exist", responseBody.containsKey(INDEX_NAME))
         val responsePolicy = responseBody[INDEX_NAME] as Map<String, String>
         val responsePolicyId = responsePolicy["policy_id"]
