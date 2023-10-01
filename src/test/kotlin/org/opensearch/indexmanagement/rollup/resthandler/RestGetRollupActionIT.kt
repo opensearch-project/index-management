@@ -51,7 +51,7 @@ class RestGetRollupActionIT : RollupRestTestCase() {
 
     @Throws(Exception::class)
     fun `test getting all rollups`() {
-        val rollups = randomList(1, 15) { createRollup(randomRollup(), rollupId = "$testName-2") }
+        val rollups = randomList(1, 15) { createRandomRollup() }
 
         // Using a larger response size than the default in case leftover rollups prevent the ones created in this test from being returned
         val res = client().makeRequest("GET", "$ROLLUP_JOBS_BASE_URI?size=100")
@@ -94,7 +94,7 @@ class RestGetRollupActionIT : RollupRestTestCase() {
     fun `test changing response size when getting rollups`() {
         // Ensure at least more rollup jobs than the default (20) exists
         val rollupCount = 25
-        repeat(rollupCount) { createRollup(randomRollup(), rollupId = "$testName-3") }
+        repeat(rollupCount) { createRandomRollup() }
 
         // The default response size is 20, so even though 25 rollup jobs were made, at most 20 will be returned
         var res = client().makeRequest("GET", ROLLUP_JOBS_BASE_URI)

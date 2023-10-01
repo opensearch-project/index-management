@@ -257,7 +257,7 @@ class RestIndexRollupActionIT : RollupRestTestCase() {
                     }
                 )
             }
-            val rollup = createRollup(rollup = randomRollup().copy(metrics = metrics), rollupId = "$testName-1")
+            val rollup = createRollup(rollup = randomRollup().copy(metrics = metrics), rollupId = "$testName-2")
             client().makeRequest(
                 "PUT",
                 "$ROLLUP_JOBS_BASE_URI/${rollup.id}?refresh=true&if_seq_no=${rollup.seqNo}&if_primary_term=${rollup.primaryTerm}",
