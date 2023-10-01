@@ -37,11 +37,9 @@ class SMRunnerIT : SnapshotManagementRestTestCase() {
             assertNotNull(explainMetadata.creation!!.trigger.time)
         }
 
-        // Wait for cron schedule to meet
-        Thread.sleep(60_000L)
-
         // Create condition met
         updateSMPolicyStartTime(smPolicy)
+        updateSMMetadata(getSMPolicy(smPolicy.policyName))
         waitFor {
             val explainMetadata = parseExplainResponse(explainSMPolicy(policyName).entity.content).first()
             assertNotNull(explainMetadata.creation!!.started)

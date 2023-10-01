@@ -27,8 +27,12 @@ import org.opensearch.core.xcontent.NamedXContentRegistry
 import org.opensearch.indexmanagement.indexstatemanagement.util.INDEX_HIDDEN
 import org.opensearch.core.rest.RestStatus
 import org.opensearch.core.xcontent.MediaType
+import org.opensearch.indexmanagement.rollup.model.Rollup
+import org.opensearch.jobscheduler.spi.schedule.IntervalSchedule
 import java.io.IOException
 import java.nio.file.Files
+import java.time.Duration
+import java.time.Instant
 import java.util.*
 import javax.management.MBeanServerInvocationHandler
 import javax.management.ObjectName
@@ -63,6 +67,24 @@ abstract class IndexManagementRestTestCase : ODFERestTestCase() {
             request.setJsonEntity(entity)
             client().performRequest(request)
         }
+    }
+
+    @Before
+    fun setDebugLogLevel() {
+        client().makeRequest(
+            "PUT", "_cluster/settings",
+            StringEntity(
+                """
+                {
+                    "transient": {
+                        "logger.org.opensearch.indexmanagement":"DEBUG",
+                        "logger.org.opensearch.jobscheduler":"DEBUG"
+                    }
+                }
+                """.trimIndent(),
+                ContentType.APPLICATION_JSON
+            )
+        )
     }
 
     protected val isDebuggingTest = DisableOnDebug(null).isDebugging
@@ -170,6 +192,41 @@ abstract class IndexManagementRestTestCase : ODFERestTestCase() {
             }
             return result
         }
+    }
+
+    open fun updateRollupStartTime(update: Rollup, desiredStartTimeMillis: Long? = null) {
+        // Before updating start time of a job always make sure there are no unassigned shards that could cause the config
+        // index to move to a new node and negate this forced start
+        if (isMultiNode) {
+            waitFor {
+                try {
+                    client().makeRequest("GET", "_cluster/allocation/explain")
+                    fail("Expected 400 Bad Request when there are no unassigned shards to explain")
+                } catch (e: ResponseException) {
+                    assertEquals(RestStatus.BAD_REQUEST, e.response.restStatus())
+                }
+            }
+        }
+        val intervalSchedule = (update.jobSchedule as IntervalSchedule)
+        val millis = Duration.of(intervalSchedule.interval.toLong(), intervalSchedule.unit).minusSeconds(2).toMillis()
+        val startTimeMillis = desiredStartTimeMillis ?: (Instant.now().toEpochMilli() - millis)
+        val waitForActiveShards = if (isMultiNode) "all" else "1"
+        // TODO flaky: Add this log to confirm this update is missed by job scheduler
+        // This miss is because shard remove, job scheduler deschedule on the original node and reschedule on another node
+        // However the shard comes back, and job scheduler deschedule on the another node and reschedule on the original node
+        // During this period, this update got missed
+        // Since from the log, this happens very fast (within 0.1~0.2s), the above cluster explain may not have the granularity to catch this.
+        logger.info("Update rollup start time to $startTimeMillis")
+        val response = client().makeRequest(
+            "POST", "${IndexManagementPlugin.INDEX_MANAGEMENT_INDEX}/_update/${update.id}?wait_for_active_shards=$waitForActiveShards&refresh=true",
+            StringEntity(
+                "{\"doc\":{\"rollup\":{\"schedule\":{\"interval\":{\"start_time\":" +
+                    "\"$startTimeMillis\"}}}}}",
+                ContentType.APPLICATION_JSON
+            )
+        )
+
+        assertEquals("Request failed", RestStatus.OK, response.restStatus())
     }
 
     override fun preserveIndicesUponCompletion(): Boolean = true

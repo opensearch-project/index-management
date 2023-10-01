@@ -13,10 +13,8 @@ import org.apache.hc.core5.http.HttpStatus
 import org.apache.hc.core5.http.io.entity.StringEntity
 import org.apache.hc.core5.http.message.BasicHeader
 import org.junit.AfterClass
-import org.junit.Before
 import org.opensearch.client.Request
 import org.opensearch.client.Response
-import org.opensearch.client.ResponseException
 import org.opensearch.client.RestClient
 import org.opensearch.common.settings.Settings
 import org.opensearch.common.xcontent.LoggingDeprecationHandler
@@ -38,10 +36,8 @@ import org.opensearch.indexmanagement.util._ID
 import org.opensearch.indexmanagement.util._PRIMARY_TERM
 import org.opensearch.indexmanagement.util._SEQ_NO
 import org.opensearch.indexmanagement.waitFor
-import org.opensearch.jobscheduler.spi.schedule.IntervalSchedule
 import org.opensearch.core.rest.RestStatus
 import org.opensearch.test.OpenSearchTestCase
-import java.time.Duration
 import java.time.Instant
 
 abstract class RollupRestTestCase : IndexManagementRestTestCase() {
@@ -90,24 +86,6 @@ abstract class RollupRestTestCase : IndexManagementRestTestCase() {
             }
             assertFalse(hasCancallableRunningTasks)
         }
-    }
-
-    @Before
-    fun setDebugLogLevel() {
-        client().makeRequest(
-            "PUT", "_cluster/settings",
-            StringEntity(
-                """
-                {
-                    "transient": {
-                        "logger.org.opensearch.indexmanagement.rollup":"DEBUG",
-                        "logger.org.opensearch.jobscheduler":"DEBUG"
-                    }
-                }
-                """.trimIndent(),
-                ContentType.APPLICATION_JSON
-            )
-        )
     }
 
     protected fun createRollup(
@@ -269,41 +247,6 @@ abstract class RollupRestTestCase : IndexManagementRestTestCase() {
     }
 
     protected fun Rollup.toHttpEntity(): HttpEntity = StringEntity(toJsonString(), ContentType.APPLICATION_JSON)
-
-    protected fun updateRollupStartTime(update: Rollup, desiredStartTimeMillis: Long? = null) {
-        // Before updating start time of a job always make sure there are no unassigned shards that could cause the config
-        // index to move to a new node and negate this forced start
-        if (isMultiNode) {
-            waitFor {
-                try {
-                    client().makeRequest("GET", "_cluster/allocation/explain")
-                    fail("Expected 400 Bad Request when there are no unassigned shards to explain")
-                } catch (e: ResponseException) {
-                    assertEquals(RestStatus.BAD_REQUEST, e.response.restStatus())
-                }
-            }
-        }
-        val intervalSchedule = (update.jobSchedule as IntervalSchedule)
-        val millis = Duration.of(intervalSchedule.interval.toLong(), intervalSchedule.unit).minusSeconds(2).toMillis()
-        val startTimeMillis = desiredStartTimeMillis ?: (Instant.now().toEpochMilli() - millis)
-        val waitForActiveShards = if (isMultiNode) "all" else "1"
-        // TODO flaky: Add this log to confirm this update is missed by job scheduler
-        // This miss is because shard remove, job scheduler deschedule on the original node and reschedule on another node
-        // However the shard comes back, and job scheduler deschedule on the another node and reschedule on the original node
-        // During this period, this update got missed
-        // Since from the log, this happens very fast (within 0.1~0.2s), the above cluster explain may not have the granularity to catch this.
-        logger.info("Update rollup start time to $startTimeMillis")
-        val response = client().makeRequest(
-            "POST", "$INDEX_MANAGEMENT_INDEX/_update/${update.id}?wait_for_active_shards=$waitForActiveShards&refresh=true",
-            StringEntity(
-                "{\"doc\":{\"rollup\":{\"schedule\":{\"interval\":{\"start_time\":" +
-                    "\"$startTimeMillis\"}}}}}",
-                ContentType.APPLICATION_JSON
-            )
-        )
-
-        assertEquals("Request failed", RestStatus.OK, response.restStatus())
-    }
 
     protected fun updateSearchAllJobsClusterSetting(value: Boolean) {
         val formattedValue = "\"${value}\""

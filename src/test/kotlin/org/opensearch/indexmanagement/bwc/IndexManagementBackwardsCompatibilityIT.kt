@@ -136,7 +136,6 @@ class IndexManagementBackwardsCompatibilityIT : IndexManagementRestTestCase() {
         val createdVersion = responseBody["_version"] as Int
         assertNotEquals("Create policy response is missing id", NO_ID, createdId)
         assertTrue("Create policy response has incorrect version", createdVersion > 0)
-        Thread.sleep(10000)
     }
 
     @Throws(Exception::class)

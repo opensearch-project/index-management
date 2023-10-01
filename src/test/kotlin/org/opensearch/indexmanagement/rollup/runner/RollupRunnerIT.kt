@@ -267,8 +267,6 @@ class RollupRunnerIT : RollupRestTestCase() {
     // Setting the interval to something large to minimize this scenario.
     fun `test no-op execution when a full window of time to rollup is not available`() {
         val indexName = "test_index_runner_third"
-
-        // Define rollup
         var rollup = randomRollup().copy(
             enabled = true,
             jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
@@ -285,7 +283,6 @@ class RollupRunnerIT : RollupRestTestCase() {
 
         // Create source index
         createRollupSourceIndex(rollup)
-
         // Add a document using the rollup's DateHistogram source field to ensure a metadata document is created
         putDateDocumentInSourceIndex(rollup)
 
@@ -308,7 +305,6 @@ class RollupRunnerIT : RollupRestTestCase() {
             assertNotNull("Rollup metadata not found", previousRollupMetadata)
             assertEquals("Unexpected metadata status", RollupMetadata.Status.INIT, previousRollupMetadata!!.status)
         }
-
         assertNotNull("Previous rollup metadata was not saved", previousRollupMetadata)
 
         // Update rollup start time to run second execution
