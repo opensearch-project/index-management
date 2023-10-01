@@ -534,7 +534,7 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
     }
 
     @Suppress("UNCHECKED_CAST")
-    protected fun getIndexStateOfPattern(pattern: String): Set<String> {
+    protected fun getIndexNamesOfPattern(pattern: String): Set<String> {
         val request = Request("GET", "/_cluster/state")
         val response = client().performRequest(request)
 

@@ -241,7 +241,6 @@ class SMStateMachine(
                 metadataToSave.setNextDeletionTime(deletion.schedule.getNextExecutionTime(now))
             }
 
-            log.info("Policy change detected, update metadata: {}", metadataToSave)
             updateMetadata(metadataToSave.build())
         }
         return this

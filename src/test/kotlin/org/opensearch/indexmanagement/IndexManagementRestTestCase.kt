@@ -194,7 +194,7 @@ abstract class IndexManagementRestTestCase : ODFERestTestCase() {
         }
     }
 
-    open fun updateRollupStartTime(update: Rollup, desiredStartTimeMillis: Long? = null) {
+    protected fun updateRollupStartTime(update: Rollup, desiredStartTimeMillis: Long? = null) {
         // Before updating start time of a job always make sure there are no unassigned shards that could cause the config
         // index to move to a new node and negate this forced start
         if (isMultiNode) {

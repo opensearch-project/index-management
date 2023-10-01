@@ -141,12 +141,12 @@ class IndexStateManagementHistoryIT : IndexStateManagementRestTestCase() {
         )
         assertEquals(expectedHistory, actualHistory)
 
-        var historyIndexName = getIndexStateOfPattern(".opendistro-ism-managed-index-history")
+        var historyIndexName = getIndexNamesOfPattern(".opendistro-ism-managed-index-history")
         assert(historyIndexName.first().endsWith("-1"))
         // e.g.: .opendistro-ism-managed-index-history-2023.10.01-1
         updateClusterSetting(ManagedIndexSettings.HISTORY_MAX_DOCS.key, "1")
         waitFor {
-            historyIndexName = getIndexStateOfPattern(".opendistro-ism-managed-index-history")
+            historyIndexName = getIndexNamesOfPattern(".opendistro-ism-managed-index-history")
             assert(historyIndexName.first().endsWith("2"))
             // e.g.: .opendistro-ism-managed-index-history-2023.10.01-000002
         }
