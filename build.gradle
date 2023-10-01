@@ -576,10 +576,18 @@ integTest {
     }
 
     if (project.hasProperty('includeTests')) {
-        exclude "${project.property('includeTests')}"
+        String includeTests = project.property('includeTests')
+        println("Include tests ${includeTests}")
+        filter {
+            includeTestsMatching includeTests
+        }
     }
     if (project.hasProperty('excludeTests')) {
-        exclude "${project.property('excludeTests')}"
+        String excludeTests = project.property('excludeTests')
+        println("Exclude tests ${excludeTests}")
+        filter {
+            excludeTestsMatching excludeTests
+        }
     }
 }
 
