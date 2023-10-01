@@ -162,6 +162,7 @@ class IndexManagementBackwardsCompatibilityIT : IndexManagementRestTestCase() {
 
         assertEquals("Explain Index failed", RestStatus.OK, getResponse.restStatus())
         val responseBody = getResponse.asMap()
+        logger.info("Response body: $responseBody")
         assertTrue("Test index does not exist", responseBody.containsKey(INDEX_NAME))
         val responsePolicy = responseBody[INDEX_NAME] as Map<String, String>
         val responsePolicyId = responsePolicy["policy_id"]
