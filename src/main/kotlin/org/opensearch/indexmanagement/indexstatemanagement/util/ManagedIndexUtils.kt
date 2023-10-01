@@ -61,7 +61,7 @@ fun managedIndexConfigIndexRequest(
     uuid: String,
     policyID: String,
     jobInterval: Int,
-    policy: Policy? = null,
+    policy: Policy,
     jobJitter: Double?
 ): IndexRequest {
     val managedIndexConfig = ManagedIndexConfig(
@@ -74,8 +74,8 @@ fun managedIndexConfigIndexRequest(
         jobEnabledTime = Instant.now(),
         policyID = policyID,
         policy = policy,
-        policySeqNo = policy?.seqNo,
-        policyPrimaryTerm = policy?.primaryTerm,
+        policySeqNo = policy.seqNo,
+        policyPrimaryTerm = policy.primaryTerm,
         changePolicy = null,
         jobJitter = jobJitter
     )
@@ -400,25 +400,24 @@ fun ManagedIndexConfig.shouldChangePolicy(managedIndexMetaData: ManagedIndexMeta
         return true
     }
 
-    // we need this in so that we can change policy before the first transition happens so policy doesnt get completed
+    // we need this in so that we can change policy before the first transition happens so policy doesn't get completed
     // before we have a chance to change policy
     if (actionToExecute?.type == TransitionsAction.name) {
         return true
     }
 
-    if (managedIndexMetaData.actionMetaData?.name != TransitionsAction.name) {
-        return false
-    }
-
-    return true
+    // TODO actionToExecute is correlate to the actionMetadata?
+    // actionToExecute is found out by checking the metadata, it can be current unfinished one or the next
+    // actionMetadata has already been updated, it can be current unfinished one or the next
+    // In change policy context, we only accept unfinished transition or the new transition
+    return managedIndexMetaData.actionMetaData?.name == TransitionsAction.name
 }
 
-fun ManagedIndexMetaData.hasVersionConflict(managedIndexConfig: ManagedIndexConfig): Boolean =
+fun ManagedIndexMetaData.hasDifferentPolicyVersion(managedIndexConfig: ManagedIndexConfig): Boolean =
     this.policySeqNo != managedIndexConfig.policySeqNo || this.policyPrimaryTerm != managedIndexConfig.policyPrimaryTerm
 
 fun ManagedIndexConfig.hasDifferentJobInterval(jobInterval: Int): Boolean {
-    val schedule = this.schedule
-    when (schedule) {
+    when (val schedule = this.schedule) {
         is IntervalSchedule -> {
             return schedule.interval != jobInterval
         }

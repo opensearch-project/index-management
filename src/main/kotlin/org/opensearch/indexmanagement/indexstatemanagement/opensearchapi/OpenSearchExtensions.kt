@@ -67,7 +67,7 @@ fun getUuidsForClosedIndices(state: ClusterState, defaultIndexMetadataService: D
     indexMetadatas.forEach {
         // it.key is index name
         if (it.value.state == IndexMetadata.State.CLOSE) {
-            closeList.add(defaultIndexMetadataService.getCustomIndexUUID(it.value))
+            closeList.add(defaultIndexMetadataService.getIndexUUID(it.value))
         }
     }
     return closeList
