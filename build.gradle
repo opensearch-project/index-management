@@ -574,6 +574,13 @@ integTest {
     if (usingRemoteCluster) {
         exclude 'org/opensearch/indexmanagement/controlcenter/notification/filter/NotificationActionListenerIT.class'
     }
+
+    if (project.hasProperty('includeTests')) {
+        exclude "${project.property('includeTests')}"
+    }
+    if (project.hasProperty('excludeTests')) {
+        exclude "${project.property('excludeTests')}"
+    }
 }
 
 task integTestRemote(type: RestIntegTestTask) {
