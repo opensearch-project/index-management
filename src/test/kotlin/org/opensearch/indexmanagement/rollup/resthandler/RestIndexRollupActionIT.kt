@@ -31,10 +31,13 @@ import org.opensearch.indexmanagement.util._SEQ_NO
 import org.opensearch.core.rest.RestStatus
 import org.opensearch.test.OpenSearchTestCase
 import org.opensearch.test.junit.annotations.TestLogging
+import java.util.Locale
 
 @TestLogging(value = "level:DEBUG", reason = "Debugging tests")
 @Suppress("UNCHECKED_CAST")
 class RestIndexRollupActionIT : RollupRestTestCase() {
+
+    private val testName = javaClass.simpleName.lowercase(Locale.ROOT)
 
     @Throws(Exception::class)
     fun `test creating a rollup`() {
@@ -213,7 +216,7 @@ class RestIndexRollupActionIT : RollupRestTestCase() {
                     Dimension.Type.TERMS -> (it as Terms).copy(targetField = "some_other_target_field")
                 }
             }
-            val rollup = createRollup(rollup = randomRollup().copy(dimensions = dimensions))
+            val rollup = createRollup(rollup = randomRollup().copy(dimensions = dimensions), rollupId = "$testName-1")
             client().makeRequest(
                 "PUT",
                 "$ROLLUP_JOBS_BASE_URI/${rollup.id}?refresh=true&if_seq_no=${rollup.seqNo}&if_primary_term=${rollup.primaryTerm}",
@@ -254,7 +257,7 @@ class RestIndexRollupActionIT : RollupRestTestCase() {
                     }
                 )
             }
-            val rollup = createRollup(rollup = randomRollup().copy(metrics = metrics))
+            val rollup = createRollup(rollup = randomRollup().copy(metrics = metrics), rollupId = "$testName-2")
             client().makeRequest(
                 "PUT",
                 "$ROLLUP_JOBS_BASE_URI/${rollup.id}?refresh=true&if_seq_no=${rollup.seqNo}&if_primary_term=${rollup.primaryTerm}",
