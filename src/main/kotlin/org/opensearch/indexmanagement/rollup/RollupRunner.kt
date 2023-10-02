@@ -193,6 +193,7 @@ object RollupRunner :
     * */
     @Suppress("ReturnCount", "NestedBlockDepth", "ComplexMethod", "LongMethod", "ThrowsCount")
     private suspend fun runRollupJob(job: Rollup, context: JobExecutionContext, lock: LockModel) {
+        logger.debug("Running rollup job [${job.id}]")
         var updatableLock = lock
         try {
             when (val jobValidity = isJobValid(job)) {

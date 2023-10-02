@@ -196,7 +196,7 @@ class RollupMetadataService(val client: Client, val xContentRegistry: NamedXCont
 
             // Get the doc value field of the dateHistogram.sourceField for the first search hit converted to epoch millis
             // If the doc value is null or empty it will be treated the same as empty doc hits
-            val firstHitTimestampAsString: String? = response.hits.hits.first().field(dateHistogram.sourceField).getValue<String>()
+            val firstHitTimestampAsString: String = response.hits.hits.first().field(dateHistogram.sourceField).getValue<String>()
                 ?: return StartingTimeResult.NoDocumentsFound
             // Parse date and extract epochMillis
             val formatter = DateFormatter.forPattern(DATE_FIELD_STRICT_DATE_OPTIONAL_TIME_FORMAT)
@@ -204,11 +204,11 @@ class RollupMetadataService(val client: Client, val xContentRegistry: NamedXCont
             return StartingTimeResult.Success(getRoundedTime(epochMillis, dateHistogram))
         } catch (e: RemoteTransportException) {
             val unwrappedException = ExceptionsHelper.unwrapCause(e) as Exception
-            logger.debug("Error when getting initial start time for rollup [${rollup.id}]: $unwrappedException")
+            logger.error("Error when getting initial start time for rollup [{}]: {}", rollup.id, unwrappedException)
             return StartingTimeResult.Failure(unwrappedException)
         } catch (e: Exception) {
             // TODO: Catching general exceptions for now, can make more granular
-            logger.debug("Error when getting initial start time for rollup [${rollup.id}]: $e")
+            logger.error("Error when getting initial start time for rollup [{}]: {}", rollup.id, e)
             return StartingTimeResult.Failure(e)
         }
     }
@@ -261,7 +261,7 @@ class RollupMetadataService(val client: Client, val xContentRegistry: NamedXCont
     }
 
     // This updates the metadata for a continuous rollup after an execution of the composite search and ingestion of rollup data
-    fun getUpdatedContinuousMetadata(
+    private fun getUpdatedContinuousMetadata(
         rollup: Rollup,
         metadata: RollupMetadata,
         internalComposite: InternalComposite
@@ -305,11 +305,11 @@ class RollupMetadataService(val client: Client, val xContentRegistry: NamedXCont
             } else MetadataResult.NoMetadata
         } catch (e: RemoteTransportException) {
             val unwrappedException = ExceptionsHelper.unwrapCause(e) as Exception
-            logger.debug("$errorMessage: $unwrappedException")
+            logger.error("$errorMessage: $unwrappedException")
             return MetadataResult.Failure(errorMessage, unwrappedException)
         } catch (e: Exception) {
             // TODO: Catching general exceptions for now, can make more granular
-            logger.debug("$errorMessage: $e")
+            logger.error("$errorMessage: $e")
             return MetadataResult.Failure(errorMessage, e)
         }
     }
@@ -389,6 +389,7 @@ class RollupMetadataService(val client: Client, val xContentRegistry: NamedXCont
                     failureReason = "The create metadata call failed with a ${response.result?.lowercase} result"
                 }
             }
+            logger.debug("Metadata update successful {}", metadata)
             // TODO: Is seqno/prim and id returned for all?
             return MetadataResult.Success(
                 metadata.copy(
@@ -401,9 +402,11 @@ class RollupMetadataService(val client: Client, val xContentRegistry: NamedXCont
             )
         } catch (e: RemoteTransportException) {
             val unwrappedException = ExceptionsHelper.unwrapCause(e) as Exception
+            logger.error("Metadata update failed ${metadata.rollupID}", unwrappedException)
             return MetadataResult.Failure(errorMessage, unwrappedException)
         } catch (e: Exception) {
             // TODO: Catching general exceptions for now, can make more granular
+            logger.error("Metadata update failed ${metadata.rollupID}", e)
             return MetadataResult.Failure(errorMessage, e)
         }
     }

@@ -26,8 +26,11 @@ import org.opensearch.jobscheduler.spi.schedule.IntervalSchedule
 import org.opensearch.core.rest.RestStatus
 import java.time.Instant
 import java.time.temporal.ChronoUnit
+import java.util.Locale
 
 class RestStopRollupActionIT : RollupRestTestCase() {
+
+    private val testName = javaClass.simpleName.lowercase(Locale.ROOT)
 
     @After
     fun clearIndicesAfterEachTest() {
@@ -39,7 +42,7 @@ class RestStopRollupActionIT : RollupRestTestCase() {
 
     @Throws(Exception::class)
     fun `test stopping a started rollup`() {
-        val rollup = createRollup(randomRollup().copy(enabled = true, jobEnabledTime = randomInstant(), metadataID = null))
+        val rollup = createRollup(randomRollup().copy(enabled = true, jobEnabledTime = randomInstant(), metadataID = null), rollupId = "$testName-1")
         assertTrue("Rollup was not enabled", rollup.enabled)
 
         val response = client().makeRequest("POST", "$ROLLUP_JOBS_BASE_URI/${rollup.id}/_stop")
@@ -53,7 +56,7 @@ class RestStopRollupActionIT : RollupRestTestCase() {
 
     @Throws(Exception::class)
     fun `test stopping a stopped rollup`() {
-        val rollup = createRollup(randomRollup().copy(enabled = true, jobEnabledTime = randomInstant(), metadataID = null))
+        val rollup = createRollup(randomRollup().copy(enabled = true, jobEnabledTime = randomInstant(), metadataID = null), rollupId = "$testName-2")
         assertTrue("Rollup was not enabled", rollup.enabled)
 
         val response = client().makeRequest("POST", "$ROLLUP_JOBS_BASE_URI/${rollup.id}/_stop")
@@ -84,7 +87,8 @@ class RestStopRollupActionIT : RollupRestTestCase() {
                     enabled = true,
                     jobEnabledTime = Instant.now(),
                     metadataID = null
-                )
+                ),
+            rollupId = "$testName-3"
         )
         createRollupSourceIndex(rollup)
         updateRollupStartTime(rollup)
@@ -157,7 +161,8 @@ class RestStopRollupActionIT : RollupRestTestCase() {
                     enabled = true,
                     jobEnabledTime = Instant.now(),
                     metadataID = null
-                )
+                ),
+            rollupId = "$testName-4"
         )
 
         // Force rollup to execute which should fail as we did not create a source index
