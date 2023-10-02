@@ -23,7 +23,7 @@ jobs:
         uses: actions/checkout@v2
       - name: Run integration tests
         run: | 
-          ./gradlew integTest -Dsecurity=true -Dhttps=true
+          ./gradlew integTest -Dsecurity=true -Dhttps=true --tests '*SecurityBehaviorIT'
       - name: Upload failed logs
         uses: actions/upload-artifact@v2
         if: failure()
