@@ -34,8 +34,11 @@ import org.opensearch.core.rest.RestStatus
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 import java.util.Collections.emptyMap
+import java.util.Locale
 
 class RollupRunnerIT : RollupRestTestCase() {
+
+    private val testName = javaClass.simpleName.lowercase(Locale.ROOT)
 
     fun `test metadata is created for rollup job when none exists`() {
         val indexName = "test_index_runner_first"
@@ -148,6 +151,7 @@ class RollupRunnerIT : RollupRestTestCase() {
 
         // Define the rollup job
         var rollup = randomRollup().copy(
+            id = "$testName-1",
             enabled = true,
             jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
             jobEnabledTime = Instant.now(),
@@ -268,6 +272,7 @@ class RollupRunnerIT : RollupRestTestCase() {
     fun `test no-op execution when a full window of time to rollup is not available`() {
         val indexName = "test_index_runner_third"
         var rollup = randomRollup().copy(
+            id = "$testName-2",
             enabled = true,
             jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
             jobEnabledTime = Instant.now(),
@@ -324,6 +329,7 @@ class RollupRunnerIT : RollupRestTestCase() {
 
         // Define rollup
         var rollup = randomRollup().copy(
+            id = "$testName-3",
             enabled = true,
             jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
             jobEnabledTime = Instant.now(),
@@ -636,6 +642,7 @@ class RollupRunnerIT : RollupRestTestCase() {
         val delay: Long = 15000
         // Define rollup
         var rollup = randomRollup().copy(
+            id = "$testName-4",
             enabled = true,
             jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
             jobEnabledTime = Instant.now(),

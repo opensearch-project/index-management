@@ -16,6 +16,7 @@ import org.opensearch.test.junit.annotations.TestLogging
 @TestLogging(value = "level:DEBUG", reason = "Debugging tests")
 @Suppress("UNCHECKED_CAST")
 class RestDeleteRollupActionIT : RollupRestTestCase() {
+
     @Throws(Exception::class)
     fun `test deleting a rollup`() {
         val rollup = createRandomRollup()
