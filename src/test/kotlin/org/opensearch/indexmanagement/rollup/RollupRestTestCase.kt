@@ -37,8 +37,6 @@ import org.opensearch.indexmanagement.util._PRIMARY_TERM
 import org.opensearch.indexmanagement.util._SEQ_NO
 import org.opensearch.indexmanagement.waitFor
 import org.opensearch.core.rest.RestStatus
-import org.opensearch.test.OpenSearchTestCase
-import java.time.Duration
 import java.time.Instant
 
 abstract class RollupRestTestCase : IndexManagementRestTestCase() {
