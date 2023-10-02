@@ -40,7 +40,6 @@ import org.opensearch.indexmanagement.util._SEQ_NO
 import org.opensearch.indexmanagement.waitFor
 import org.opensearch.jobscheduler.spi.schedule.IntervalSchedule
 import org.opensearch.core.rest.RestStatus
-import org.opensearch.test.OpenSearchTestCase
 import java.time.Duration
 import java.time.Instant
 
@@ -112,7 +111,7 @@ abstract class RollupRestTestCase : IndexManagementRestTestCase() {
 
     protected fun createRollup(
         rollup: Rollup,
-        rollupId: String = OpenSearchTestCase.randomAlphaOfLength(10),
+        rollupId: String,
         refresh: Boolean = true,
         client: RestClient? = null
     ): Rollup {
@@ -150,7 +149,7 @@ abstract class RollupRestTestCase : IndexManagementRestTestCase() {
 
     protected fun createRandomRollup(refresh: Boolean = true): Rollup {
         val rollup = randomRollup()
-        val rollupId = createRollup(rollup, refresh = refresh).id
+        val rollupId = createRollup(rollup, rollupId = rollup.id, refresh = refresh).id
         return getRollup(rollupId = rollupId)
     }
 
