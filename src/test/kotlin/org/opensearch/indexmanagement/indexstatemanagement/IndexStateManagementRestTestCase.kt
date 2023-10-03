@@ -534,6 +534,17 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
     }
 
     @Suppress("UNCHECKED_CAST")
+    protected fun getIndexNamesOfPattern(pattern: String): Set<String> {
+        val request = Request("GET", "/_cluster/state")
+        val response = client().performRequest(request)
+
+        val responseMap = response.asMap()
+        val metadata = responseMap["metadata"] as Map<String, Any>
+        val indexMetaData = metadata["indices"] as Map<String, Any>
+        return indexMetaData.filter { it.key.startsWith(pattern) }.keys
+    }
+
+    @Suppress("UNCHECKED_CAST")
     protected fun getIndexBlocksWriteSetting(indexName: String): String {
         val indexSettings = getIndexSettings(indexName) as Map<String, Map<String, Map<String, Any?>>>
         return indexSettings[indexName]!!["settings"]!![IndexMetadata.SETTING_BLOCKS_WRITE] as String

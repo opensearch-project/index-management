@@ -24,7 +24,6 @@ import org.opensearch.core.rest.RestStatus
 abstract class LRONConfigRestTestCase : IndexManagementRestTestCase() {
     @Before
     fun prepareForIT() {
-        setDebugLogLevel()
         /* init cluster node ids in integ test */
         initNodeIdsInRestIT(client())
     }
@@ -47,22 +46,6 @@ abstract class LRONConfigRestTestCase : IndexManagementRestTestCase() {
 
     fun createLRONConfig(lronConfig: LRONConfig): Response {
         return client().makeRequest("POST", IndexManagementPlugin.LRON_BASE_URI, emptyMap(), lronConfig.toHttpEntity())
-    }
-
-    private fun setDebugLogLevel() {
-        client().makeRequest(
-            "PUT", "_cluster/settings",
-            StringEntity(
-                """
-                {
-                    "transient": {
-                        "logger.org.opensearch.indexmanagement.controlcenter.notification":"DEBUG"
-                    }
-                }
-                """.trimIndent(),
-                ContentType.APPLICATION_JSON
-            )
-        )
     }
 
     protected fun LRONConfig.toHttpEntity(): HttpEntity = StringEntity(toJsonString(), ContentType.APPLICATION_JSON)

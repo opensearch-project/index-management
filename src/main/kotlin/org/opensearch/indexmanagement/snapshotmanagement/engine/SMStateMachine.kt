@@ -39,7 +39,7 @@ class SMStateMachine(
     val indicesManager: IndexManagementIndices,
 ) {
 
-    val log: Logger = LogManager.getLogger("$javaClass [${job.policyName}]")
+    val log: Logger = LogManager.getLogger(javaClass)
 
     lateinit var currentState: SMState
     fun currentState(currentState: SMState): SMStateMachine {
@@ -62,7 +62,7 @@ class SMStateMachine(
                 val prevState = currentState
                 for (nextState in nextStates) {
                     currentState = nextState
-                    log.debug("Start executing $currentState.")
+                    log.debug("Start executing {}.", currentState)
                     log.debug(
                         "User and roles string from thread context: ${threadPool.threadContext.getTransient<String>(
                             ConfigConstants.OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT
@@ -99,7 +99,7 @@ class SMStateMachine(
                             break
                         }
                         is SMResult.Stay -> {
-                            log.debug("State [$currentState] has not finished.")
+                            log.debug("State [{}] has not finished.", currentState)
                             updateMetadata(
                                 result.metadataToSave
                                     .setCurrentState(prevState)
@@ -200,7 +200,7 @@ class SMStateMachine(
     suspend fun updateMetadata(md: SMMetadata) {
         indicesManager.checkAndUpdateIMConfigIndex(log)
         try {
-            log.debug("Update metadata: $md")
+            log.debug("Update metadata: {}", md)
             if (md == metadata) {
                 log.debug("Metadata not change, so don't need to update")
                 return

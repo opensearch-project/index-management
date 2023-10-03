@@ -273,8 +273,9 @@ class IndexStateManagementSecurityBehaviorIT : SecurityRestTestCase() {
         )
     }
 
-    private fun assertIndexRolledUp(indexName: String, policyId: String, rollup: ISMRollup) {
-        val rollupId = rollup.toRollup(indexName).id
+    private fun assertIndexRolledUp(indexName: String, policyId: String, ismRollup: ISMRollup) {
+        val rollup = ismRollup.toRollup(indexName)
+        val rollupId = rollup.id
         val managedIndexConfig = getExistingManagedIndexConfig(indexName)
 
         // Change the start time so that the policy will be initialized.
@@ -290,21 +291,20 @@ class IndexStateManagementSecurityBehaviorIT : SecurityRestTestCase() {
             )
         }
 
-        Thread.sleep(60000)
+        updateRollupStartTime(rollup)
+        waitFor(timeout = Instant.ofEpochSecond(60)) {
+            val rollupJob = getRollup(rollupId = rollupId)
+            assertNotNull("Rollup job doesn't have metadata set", rollupJob.metadataID)
+            val rollupMetadata = getRollupMetadata(rollupJob.metadataID!!)
+            assertEquals("Rollup is not finished", RollupMetadata.Status.FINISHED, rollupMetadata.status)
+        }
 
-        // Change the start time so that the rollup action will be attempted.
         updateManagedIndexConfigStartTime(managedIndexConfig)
         waitFor {
             assertEquals(
                 WaitForRollupCompletionStep.getJobCompletionMessage(rollupId, indexName),
                 getExplainManagedIndexMetaData(indexName).info?.get("message")
             )
-        }
-        val rollupJob = getRollup(rollupId = rollupId)
-        waitFor {
-            assertNotNull("Rollup job doesn't have metadata set", rollupJob.metadataID)
-            val rollupMetadata = getRollupMetadata(rollupJob.metadataID!!)
-            assertEquals("Rollup is not finished", RollupMetadata.Status.FINISHED, rollupMetadata.status)
         }
     }
 }
