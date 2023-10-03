@@ -455,7 +455,7 @@ class ManagedIndexCoordinator(
             .source(
                 SearchSourceBuilder().query(
                     QueryBuilders.existsQuery(ISM_TEMPLATE_FIELD)
-                ).size(MAX_HITS)
+                ).size(MAX_HITS).seqNoAndPrimaryTerm(true)
             )
             .indices(INDEX_MANAGEMENT_INDEX)
             .preference(Preference.PRIMARY_FIRST.type())
