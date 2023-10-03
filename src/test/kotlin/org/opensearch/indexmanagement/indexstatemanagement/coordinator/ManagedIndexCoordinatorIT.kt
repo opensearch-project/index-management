@@ -36,6 +36,8 @@ class ManagedIndexCoordinatorIT : IndexStateManagementRestTestCase() {
             assertEquals("Has incorrect policy_id", policyID, managedIndexConfig!!.policyID)
             assertEquals("Has incorrect index", index, managedIndexConfig.index)
             assertEquals("Has incorrect name", index, managedIndexConfig.name)
+            assertEquals("Has incorrect seq no", policy.seqNo, managedIndexConfig.policySeqNo)
+            assertEquals("Has incorrect primary term", policy.primaryTerm, managedIndexConfig.policyPrimaryTerm)
         }
     }
 
