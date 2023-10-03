@@ -380,7 +380,6 @@ class RolloverActionIT : IndexStateManagementRestTestCase() {
     }
 
     fun `test rollover pre check`() {
-        disableValidationService()
         // index-1 alias x
         // index-2 alias x is_write_index
         // manage index-1, expect it fail to rollover
