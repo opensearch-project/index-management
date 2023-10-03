@@ -28,7 +28,6 @@ import org.opensearch.indexmanagement.rollup.model.metric.Sum
 import org.opensearch.indexmanagement.rollup.model.metric.ValueCount
 import org.opensearch.indexmanagement.rollup.toJsonString
 import org.opensearch.indexmanagement.waitFor
-import java.lang.Thread.sleep
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 import java.util.Locale
@@ -150,9 +149,6 @@ class RollupActionIT : IndexStateManagementRestTestCase() {
     fun `test data stream rollup action with scripted targetIndex`() {
         val dataStreamName = "${testIndexName}_data_stream"
         val policyID = "${testIndexName}_rollup_policy"
-
-        sleep(10000)
-
         val rollup = ISMRollup(
             description = "data stream rollup",
             targetIndex = "rollup_{{ctx.source_index}}",
@@ -218,7 +214,7 @@ class RollupActionIT : IndexStateManagementRestTestCase() {
     fun `test rollup action failure`() {
         val indexName = "${testIndexName}_index_failure"
         val policyID = "${testIndexName}_policy_failure"
-        val rollup = ISMRollup(
+        val ismRollup = ISMRollup(
             description = "basic search test",
             targetIndex = "target_rollup_search",
             pageSize = 100,
@@ -237,8 +233,9 @@ class RollupActionIT : IndexStateManagementRestTestCase() {
                 )
             )
         )
-        val rollupId = rollup.toRollup(indexName).id
-        val actionConfig = RollupAction(rollup, 0)
+        val rollup = ismRollup.toRollup(indexName)
+        val rollupId = rollup.id
+        val actionConfig = RollupAction(ismRollup, 0)
         val states = listOf(
             State("rollup", listOf(actionConfig), listOf())
         )
@@ -263,7 +260,7 @@ class RollupActionIT : IndexStateManagementRestTestCase() {
         updateManagedIndexConfigStartTime(managedIndexConfig)
         waitFor { assertEquals(policyID, getExplainManagedIndexMetaData(indexName).policyID) }
 
-        // Change the start time so we attempt to create rollup step will execute
+        // Change the start time, so we attempt to create rollup step will execute
         updateManagedIndexConfigStartTime(managedIndexConfig)
         waitFor {
             assertEquals(
@@ -272,8 +269,7 @@ class RollupActionIT : IndexStateManagementRestTestCase() {
             )
         }
 
-        Thread.sleep(60000)
-
+        updateRollupStartTime(rollup)
         // Change the start time so wait for rollup step will execute
         updateManagedIndexConfigStartTime(managedIndexConfig)
         waitFor {
@@ -332,7 +328,7 @@ class RollupActionIT : IndexStateManagementRestTestCase() {
         updateManagedIndexConfigStartTime(managedIndexConfig)
         waitFor { assertEquals(policyID, getExplainManagedIndexMetaData(indexName).policyID) }
 
-        // Change the start time so we attempt to create rollup step will execute
+        // Change the start time, so we attempt to create rollup step will execute
         updateManagedIndexConfigStartTime(managedIndexConfig)
         waitFor {
             assertEquals(
@@ -345,7 +341,7 @@ class RollupActionIT : IndexStateManagementRestTestCase() {
     fun `test rollup action failure and retry failed step`() {
         val indexName = "${testIndexName}_index_retry"
         val policyID = "${testIndexName}_policy_retry"
-        val rollup = ISMRollup(
+        val ismRollup = ISMRollup(
             description = "basic search test",
             targetIndex = "target_rollup_search",
             pageSize = 100,
@@ -364,10 +360,11 @@ class RollupActionIT : IndexStateManagementRestTestCase() {
                 )
             )
         )
-        val rollupId = rollup.toRollup(indexName).id
+        val rollup = ismRollup.toRollup(indexName)
+        val rollupId = rollup.id
         val policyString = "{\"policy\":{\"description\":\"$testIndexName description\",\"default_state\":\"rollup\",\"states\":[{\"name\":\"rollup\"," +
             "\"actions\":[{\"retry\":{\"count\":2,\"backoff\":\"constant\",\"delay\":\"10ms\"},\"rollup\":{\"ism_rollup\":" +
-            "${rollup.toJsonString()}}}],\"transitions\":[]}]}}"
+            "${ismRollup.toJsonString()}}}],\"transitions\":[]}]}}"
 
         val sourceIndexMappingString = "\"properties\": {\"tpep_pickup_datetime\": { \"type\": \"date\" }, \"RatecodeID\": { \"type\": " +
             "\"keyword\" }, \"passenger_count\": { \"type\": \"integer\" }, \"total_amount\": " +
@@ -381,7 +378,7 @@ class RollupActionIT : IndexStateManagementRestTestCase() {
         updateManagedIndexConfigStartTime(managedIndexConfig)
         waitFor { assertEquals(policyID, getExplainManagedIndexMetaData(indexName).policyID) }
 
-        // Change the start time so we attempt to create rollup step will execute
+        // Change the start time, so we attempt to create rollup step will execute
         updateManagedIndexConfigStartTime(managedIndexConfig)
         waitFor {
             assertEquals(
@@ -399,8 +396,8 @@ class RollupActionIT : IndexStateManagementRestTestCase() {
             )
         }
 
-        // Wait for few seconds and change start time so wait for rollup step will execute again - job will be failed
-        Thread.sleep(60000)
+        // Wait for rollup step job failed
+        updateRollupStartTime(rollup)
         updateManagedIndexConfigStartTime(managedIndexConfig)
         waitFor {
             assertEquals(
@@ -410,8 +407,9 @@ class RollupActionIT : IndexStateManagementRestTestCase() {
         }
     }
 
-    private fun assertIndexRolledUp(indexName: String, policyId: String, rollup: ISMRollup) {
-        val rollupId = rollup.toRollup(indexName).id
+    private fun assertIndexRolledUp(indexName: String, policyId: String, ismRollup: ISMRollup) {
+        val rollup = ismRollup.toRollup(indexName)
+        val rollupId = rollup.id
         val managedIndexConfig = getExistingManagedIndexConfig(indexName)
 
         // Change the start time so that the policy will be initialized.
@@ -427,22 +425,20 @@ class RollupActionIT : IndexStateManagementRestTestCase() {
             )
         }
 
-        Thread.sleep(60000)
+        updateRollupStartTime(rollup)
+        waitFor(timeout = Instant.ofEpochSecond(60)) {
+            val rollupJob = getRollup(rollupId = rollupId)
+            assertNotNull("Rollup job doesn't have metadata set", rollupJob.metadataID)
+            val rollupMetadata = getRollupMetadata(rollupJob.metadataID!!)
+            assertEquals("Rollup is not finished", RollupMetadata.Status.FINISHED, rollupMetadata.status)
+        }
 
-        // Change the start time so that the rollup action will be attempted.
         updateManagedIndexConfigStartTime(managedIndexConfig)
         waitFor {
             assertEquals(
                 WaitForRollupCompletionStep.getJobCompletionMessage(rollupId, indexName),
                 getExplainManagedIndexMetaData(indexName).info?.get("message")
             )
-        }
-
-        val rollupJob = getRollup(rollupId = rollupId)
-        waitFor {
-            assertNotNull("Rollup job doesn't have metadata set", rollupJob.metadataID)
-            val rollupMetadata = getRollupMetadata(rollupJob.metadataID!!)
-            assertEquals("Rollup is not finished", RollupMetadata.Status.FINISHED, rollupMetadata.status)
         }
     }
 }
