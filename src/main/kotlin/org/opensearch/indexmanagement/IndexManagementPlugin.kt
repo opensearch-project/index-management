@@ -82,8 +82,6 @@ import org.opensearch.indexmanagement.indexstatemanagement.transport.action.remo
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.removepolicy.TransportRemovePolicyAction
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.retryfailedmanagedindex.RetryFailedManagedIndexAction
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.retryfailedmanagedindex.TransportRetryFailedManagedIndexAction
-import org.opensearch.indexmanagement.indexstatemanagement.transport.action.updateindexmetadata.TransportUpdateManagedIndexMetaDataAction
-import org.opensearch.indexmanagement.indexstatemanagement.transport.action.updateindexmetadata.UpdateManagedIndexMetaDataAction
 import org.opensearch.indexmanagement.indexstatemanagement.util.DEFAULT_INDEX_TYPE
 import org.opensearch.indexmanagement.indexstatemanagement.validation.ActionValidation
 import org.opensearch.indexmanagement.refreshanalyzer.RefreshSearchAnalyzerAction
@@ -500,10 +498,7 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
             ManagedIndexSettings.ROLLOVER_SKIP,
             ManagedIndexSettings.INDEX_STATE_MANAGEMENT_ENABLED,
             ManagedIndexSettings.ACTION_VALIDATION_ENABLED,
-            ManagedIndexSettings.METADATA_SERVICE_ENABLED,
             ManagedIndexSettings.AUTO_MANAGE,
-            ManagedIndexSettings.METADATA_SERVICE_STATUS,
-            ManagedIndexSettings.TEMPLATE_MIGRATION_CONTROL,
             ManagedIndexSettings.JITTER,
             ManagedIndexSettings.JOB_INTERVAL,
             ManagedIndexSettings.SWEEP_PERIOD,
@@ -540,7 +535,6 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
             LegacyOpenDistroManagedIndexSettings.ROLLOVER_ALIAS,
             LegacyOpenDistroManagedIndexSettings.ROLLOVER_SKIP,
             LegacyOpenDistroManagedIndexSettings.INDEX_STATE_MANAGEMENT_ENABLED,
-            LegacyOpenDistroManagedIndexSettings.METADATA_SERVICE_ENABLED,
             LegacyOpenDistroManagedIndexSettings.JOB_INTERVAL,
             LegacyOpenDistroManagedIndexSettings.SWEEP_PERIOD,
             LegacyOpenDistroManagedIndexSettings.COORDINATOR_BACKOFF_COUNT,
@@ -548,8 +542,6 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
             LegacyOpenDistroManagedIndexSettings.ALLOW_LIST,
             LegacyOpenDistroManagedIndexSettings.SNAPSHOT_DENY_LIST,
             LegacyOpenDistroManagedIndexSettings.AUTO_MANAGE,
-            LegacyOpenDistroManagedIndexSettings.METADATA_SERVICE_STATUS,
-            LegacyOpenDistroManagedIndexSettings.TEMPLATE_MIGRATION_CONTROL,
             LegacyOpenDistroManagedIndexSettings.RESTRICTED_INDEX_PATTERN,
             LegacyOpenDistroRollupSettings.ROLLUP_INGEST_BACKOFF_COUNT,
             LegacyOpenDistroRollupSettings.ROLLUP_INGEST_BACKOFF_MILLIS,
@@ -565,7 +557,6 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
 
     override fun getActions(): List<ActionPlugin.ActionHandler<out ActionRequest, out ActionResponse>> {
         return listOf(
-            ActionPlugin.ActionHandler(UpdateManagedIndexMetaDataAction.INSTANCE, TransportUpdateManagedIndexMetaDataAction::class.java),
             ActionPlugin.ActionHandler(RemovePolicyAction.INSTANCE, TransportRemovePolicyAction::class.java),
             ActionPlugin.ActionHandler(RefreshSearchAnalyzerAction.INSTANCE, TransportRefreshSearchAnalyzerAction::class.java),
             ActionPlugin.ActionHandler(AddPolicyAction.INSTANCE, TransportAddPolicyAction::class.java),

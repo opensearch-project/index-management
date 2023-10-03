@@ -119,8 +119,6 @@ class ManagedIndexCoordinator(
     private val ismIndices = indexManagementIndices
 
     private var scheduledFullSweep: Scheduler.Cancellable? = null
-    private var scheduledMoveMetadata: Scheduler.Cancellable? = null
-    private var scheduledTemplateMigration: Scheduler.Cancellable? = null
 
     @Volatile private var lastFullSweepTimeNano = System.nanoTime()
     @Volatile private var indexStateManagementEnabled = INDEX_STATE_MANAGEMENT_ENABLED.get(settings)
@@ -170,10 +168,6 @@ class ManagedIndexCoordinator(
     fun offClusterManager() {
         // Cancel background sweep when demoted from being cluster manager
         scheduledFullSweep?.cancel()
-
-        scheduledMoveMetadata?.cancel()
-
-        scheduledTemplateMigration?.cancel()
     }
 
     override fun clusterChanged(event: ClusterChangedEvent) {
@@ -206,8 +200,6 @@ class ManagedIndexCoordinator(
 
     override fun beforeStop() {
         scheduledFullSweep?.cancel()
-
-        scheduledMoveMetadata?.cancel()
     }
 
     private fun enable() {
@@ -229,8 +221,6 @@ class ManagedIndexCoordinator(
     private fun disable() {
         scheduledFullSweep?.cancel()
         indexStateManagementEnabled = false
-
-        scheduledMoveMetadata?.cancel()
     }
 
     private suspend fun reenableJobs() {

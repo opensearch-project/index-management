@@ -38,7 +38,6 @@ import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANA
 import org.opensearch.indexmanagement.indexstatemanagement.DefaultIndexMetadataService
 import org.opensearch.indexmanagement.indexstatemanagement.IndexMetadataProvider
 import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.buildMgetMetadataRequest
-import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.getManagedIndexMetadata
 import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.mgetResponseToMap
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.ISMStatusResponse
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.managedIndex.ManagedIndexAction
@@ -222,9 +221,6 @@ class TransportRetryFailedManagedIndexAction @Inject constructor(
         private fun onMgetMetadataResponse(mgetResponse: MultiGetResponse) {
             val metadataMap = mgetResponseToMap(mgetResponse)
             indicesToRetry.forEach { (indexUuid, indexName) ->
-                // indexMetaData and clusterStateMetadata will be null for non-default index types
-                val indexMetaData = indexUuidToIndexMetadata[indexUuid]
-                val clusterStateMetadata = indexMetaData?.getManagedIndexMetadata()
                 val mgetFailure = metadataMap[managedIndexMetadataID(indexUuid)]?.second
                 val managedIndexMetadata: ManagedIndexMetaData? = metadataMap[managedIndexMetadataID(indexUuid)]?.first
                 when {
@@ -233,11 +229,7 @@ class TransportRetryFailedManagedIndexAction @Inject constructor(
                     mgetFailure != null ->
                         failedIndices.add(FailedIndex(indexName, indexUuid, "Failed to get managed index metadata, $mgetFailure"))
                     managedIndexMetadata == null -> {
-                        if (clusterStateMetadata != null) {
-                            failedIndices.add(FailedIndex(indexName, indexUuid, "Cannot retry until metadata has finished migrating"))
-                        } else {
-                            failedIndices.add(FailedIndex(indexName, indexUuid, "This index has no metadata information"))
-                        }
+                        failedIndices.add(FailedIndex(indexName, indexUuid, "This index has no metadata information"))
                     }
                     !managedIndexMetadata.isFailed ->
                         failedIndices.add(FailedIndex(indexName, indexUuid, "This index is not in failed state."))

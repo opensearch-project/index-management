@@ -15,7 +15,6 @@ class ManagedIndexSettings {
     companion object {
         const val DEFAULT_ISM_ENABLED = true
         const val DEFAULT_ACTION_VALIDATION_ENABLED = false
-        const val DEFAULT_TEMPLATE_MIGRATION_TIMESTAMP = 0L
         const val DEFAULT_JOB_INTERVAL = 5
         const val DEFAULT_JITTER = 0.6
         const val DEFAULT_RESTRICTED_PATTERN = "\\.opendistro_security|\\.kibana.*|\\$INDEX_MANAGEMENT_INDEX"
@@ -32,35 +31,6 @@ class ManagedIndexSettings {
         val ACTION_VALIDATION_ENABLED: Setting<Boolean> = Setting.boolSetting(
             "plugins.index_state_management.action_validation.enabled",
             DEFAULT_ACTION_VALIDATION_ENABLED,
-            Setting.Property.NodeScope,
-            Setting.Property.Dynamic
-        )
-
-        // 0: migration is going on
-        // 1: migration succeed
-        // -1: migration failed
-        val METADATA_SERVICE_STATUS: Setting<Int> = Setting.intSetting(
-            "plugins.index_state_management.metadata_migration.status",
-            LegacyOpenDistroManagedIndexSettings.METADATA_SERVICE_STATUS,
-            Setting.Property.NodeScope,
-            Setting.Property.Dynamic
-        )
-
-        // 0: enabled, use onClusterManager time as ISM template last_updated_time
-        // -1: migration ended successfully
-        // -2: migration ended unsuccessfully
-        // >0: use this setting (epoch millis) as ISM template last_updated_time
-        val TEMPLATE_MIGRATION_CONTROL: Setting<Long> = Setting.longSetting(
-            "plugins.index_state_management.template_migration.control",
-            LegacyOpenDistroManagedIndexSettings.TEMPLATE_MIGRATION_CONTROL,
-            -2L,
-            Setting.Property.NodeScope,
-            Setting.Property.Dynamic
-        )
-
-        val METADATA_SERVICE_ENABLED: Setting<Boolean> = Setting.boolSetting(
-            "plugins.index_state_management.metadata_service.enabled",
-            LegacyOpenDistroManagedIndexSettings.METADATA_SERVICE_ENABLED,
             Setting.Property.NodeScope,
             Setting.Property.Dynamic
         )
