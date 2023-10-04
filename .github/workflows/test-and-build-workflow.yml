@@ -12,6 +12,7 @@ jobs:
     env:
       BUILD_ARGS: ${{ matrix.os_build_args }}
       WORKING_DIR: ${{ matrix.working_directory }}.
+      TEST_FILTER: ${{ matrix.test_filter }}
     strategy:
       # This setting says that all jobs should finish, even if one fails
       fail-fast: false
@@ -19,6 +20,7 @@ jobs:
       matrix:
         java: [11, 17]
         os: [ubuntu-latest, windows-latest, macos-latest]
+        feature: [ism, non-ism]
         include:
           - os: windows-latest
             os_build_args: -x integTest -x jacocoTestReport
@@ -26,6 +28,10 @@ jobs:
             os_java_options: -Xmx4096M
           - os: macos-latest
             os_build_args: -x integTest -x jacocoTestReport
+          - feature: ism
+            test_filter: -PincludeTests="org.opensearch.indexmanagement.indexstatemanagement*"
+          - feature: non-ism
+            test_filter: -PexcludeTests="org.opensearch.indexmanagement.indexstatemanagement*"
     runs-on: ${{ matrix.os }}
     steps:
       # This step uses the setup-java Github action: https://github.com/actions/setup-java
@@ -43,7 +49,7 @@ jobs:
         run: subst 'X:' .
       - name: Build with Gradle
         working-directory: ${{ env.WORKING_DIR }}
-        run: ./gradlew build ${{ env.BUILD_ARGS }}
+        run: ./gradlew build ${{ env.BUILD_ARGS }} ${{ env.TEST_FILTER }}
         env:
           _JAVA_OPTIONS: ${{ matrix.os_java_options }}
       - name: Upload failed logs
