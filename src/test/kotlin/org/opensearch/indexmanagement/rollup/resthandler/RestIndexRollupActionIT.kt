@@ -14,7 +14,6 @@ import org.opensearch.indexmanagement.common.model.dimension.Dimension
 import org.opensearch.indexmanagement.common.model.dimension.Histogram
 import org.opensearch.indexmanagement.common.model.dimension.Terms
 import org.opensearch.indexmanagement.makeRequest
-import org.opensearch.indexmanagement.rollup.RollupRestTestCase
 import org.opensearch.indexmanagement.rollup.model.RollupMetrics
 import org.opensearch.indexmanagement.rollup.model.metric.Average
 import org.opensearch.indexmanagement.rollup.model.metric.Max
@@ -35,7 +34,7 @@ import java.util.Locale
 
 @TestLogging(value = "level:DEBUG", reason = "Debugging tests")
 @Suppress("UNCHECKED_CAST")
-class RestIndexRollupActionIT : RollupRestTestCase() {
+class RestIndexRollupActionIT : RollupRestAPITestCase() {
 
     private val testName = javaClass.simpleName.lowercase(Locale.ROOT)
 
