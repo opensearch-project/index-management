@@ -26,7 +26,6 @@ class AllocationActionIT : IndexStateManagementRestTestCase() {
         val states = listOf(
             State("Allocate", listOf(actionConfig), listOf())
         )
-
         val policy = Policy(
             id = policyID,
             description = "$testIndexName description",
@@ -66,12 +65,10 @@ class AllocationActionIT : IndexStateManagementRestTestCase() {
         createIndex(indexName, null, null, "0")
 
         availableNodes.remove(getIndexShardNodes(indexName)[0])
-
         val actionConfig = AllocationAction(require = mapOf("_name" to availableNodes.first()), exclude = emptyMap(), include = emptyMap(), index = 0)
         val states = listOf(
             State("Allocate", listOf(actionConfig), listOf())
         )
-
         val policy = Policy(
             id = policyID,
             description = "$testIndexName description",
@@ -100,9 +97,6 @@ class AllocationActionIT : IndexStateManagementRestTestCase() {
             assertEquals(actionConfig.require["_name"], settings["index.routing.allocation.require._name"])
         }
 
-        // Third execution: Waits for allocation to complete, which will happen in this execution since index is small
-        updateManagedIndexConfigStartTime(managedIndexConfig)
-
         waitFor {
             assertEquals(availableNodes.first(), getIndexShardNodes(indexName)[0])
         }
@@ -117,12 +111,10 @@ class AllocationActionIT : IndexStateManagementRestTestCase() {
         createIndex(indexName, null, null, "0")
 
         val excludedNode = getIndexShardNodes(indexName)[0].toString()
-
         val actionConfig = AllocationAction(require = emptyMap(), exclude = mapOf("_name" to excludedNode), include = emptyMap(), index = 0)
         val states = listOf(
             State("Allocate", listOf(actionConfig), listOf())
         )
-
         val policy = Policy(
             id = policyID,
             description = "$testIndexName description",
@@ -151,9 +143,6 @@ class AllocationActionIT : IndexStateManagementRestTestCase() {
             assertEquals(actionConfig.exclude["_name"], settings["index.routing.allocation.exclude._name"])
         }
 
-        // Third execution: Waits for allocation to complete, which will happen in this execution since index is small
-        updateManagedIndexConfigStartTime(managedIndexConfig)
-
         waitFor {
             assertNotEquals(excludedNode, getIndexShardNodes(indexName)[0])
         }
@@ -169,7 +158,6 @@ class AllocationActionIT : IndexStateManagementRestTestCase() {
         createIndex(indexName, null, null, "0")
 
         availableNodes.remove(getIndexShardNodes(indexName)[0])
-
         val actionConfig = AllocationAction(require = emptyMap(), exclude = emptyMap(), include = mapOf("_name" to availableNodes.first()), index = 0)
         val states = listOf(
             State("Allocate", listOf(actionConfig), listOf())
@@ -203,9 +191,6 @@ class AllocationActionIT : IndexStateManagementRestTestCase() {
             assertEquals(actionConfig.include["_name"], settings["index.routing.allocation.include._name"])
         }
 
-        // Third execution: Waits for allocation to complete, which will happen in this execution since index is small
-        updateManagedIndexConfigStartTime(managedIndexConfig)
-
         waitFor {
             assertEquals(availableNodes.first(), getIndexShardNodes(indexName)[0])
         }
@@ -218,7 +203,6 @@ class AllocationActionIT : IndexStateManagementRestTestCase() {
         val states = listOf(
             State("Allocate", listOf(actionConfig), listOf())
         )
-
         val policy = Policy(
             id = policyID,
             description = "$testIndexName description",
