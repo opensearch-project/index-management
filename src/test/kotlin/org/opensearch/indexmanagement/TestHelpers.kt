@@ -114,17 +114,18 @@ fun <T> waitFor(
     timeout: Instant = Instant.ofEpochSecond(20),
     block: () -> T
 ): T {
+    var to = timeout
     if (isMultiNode) {
         // job scheduling could be skipped in multi-node tests
         // https://github.com/opensearch-project/job-scheduler/issues/173
-        timeout.plusSeconds(60)
+        to = timeout.plusSeconds(60)
     }
     val startTime = Instant.now().toEpochMilli()
     do {
         try {
             return block()
         } catch (e: Throwable) {
-            if ((Instant.now().toEpochMilli() - startTime) > timeout.toEpochMilli()) {
+            if ((Instant.now().toEpochMilli() - startTime) > to.toEpochMilli()) {
                 throw e
             } else {
                 Thread.sleep(100L)
