@@ -46,7 +46,7 @@ class WaitForTransformCompletionStepTests : OpenSearchTestCase() {
         null,
         ActionMetaData(
             AttemptCreateTransformJobStep.name, 1, 0, false, 0, null,
-            ActionProperties(transformActionProperties = TransformActionProperties(transformId, false))
+            ActionProperties(transformActionProperties = TransformActionProperties(transformId))
         ),
         null,
         null,
@@ -93,11 +93,6 @@ class WaitForTransformCompletionStepTests : OpenSearchTestCase() {
             WaitForTransformCompletionStep.getJobFailedMessage(transformId, indexName),
             updateManagedIndexMetaData.info?.get("message")
         )
-        assertEquals(
-            "Missing transform failed action property",
-            true,
-            updateManagedIndexMetaData.actionMetaData?.actionProperties?.transformActionProperties?.hasTransformFailed
-        )
     }
 
     fun `test process transform metadata STOPPED status`() {
@@ -110,11 +105,6 @@ class WaitForTransformCompletionStepTests : OpenSearchTestCase() {
             "Missing failure message",
             WaitForTransformCompletionStep.getJobFailedMessage(transformId, indexName),
             updateManagedIndexMetaData.info?.get("message")
-        )
-        assertEquals(
-            "Missing transform failed action property",
-            true,
-            updateManagedIndexMetaData.actionMetaData?.actionProperties?.transformActionProperties?.hasTransformFailed
         )
         assertEquals("Mismatch in cause", WaitForTransformCompletionStep.JOB_STOPPED_MESSAGE, updateManagedIndexMetaData.info?.get("cause"))
     }
@@ -134,10 +124,6 @@ class WaitForTransformCompletionStepTests : OpenSearchTestCase() {
             WaitForTransformCompletionStep.getJobProcessingMessage(transformId, indexName),
             updateManagedIndexMetaData.info?.get("message")
         )
-        assertNull(
-            "transform failed property is not null",
-            updateManagedIndexMetaData.actionMetaData?.actionProperties?.transformActionProperties?.hasTransformFailed
-        )
     }
 
     fun `test process transform metadata STARTED status`() {
@@ -151,10 +137,6 @@ class WaitForTransformCompletionStepTests : OpenSearchTestCase() {
             WaitForTransformCompletionStep.getJobProcessingMessage(transformId, indexName),
             updateManagedIndexMetaData.info?.get("message")
         )
-        assertNull(
-            "transform failed property is not null",
-            updateManagedIndexMetaData.actionMetaData?.actionProperties?.transformActionProperties?.hasTransformFailed
-        )
     }
 
     fun `test process transform metadata FINISHED status`() {
@@ -167,10 +149,6 @@ class WaitForTransformCompletionStepTests : OpenSearchTestCase() {
             "Missing processing message",
             WaitForTransformCompletionStep.getJobCompletionMessage(transformId, indexName),
             updateManagedIndexMetaData.info?.get("message")
-        )
-        assertNull(
-            "transform failed property is not null",
-            updateManagedIndexMetaData.actionMetaData?.actionProperties?.transformActionProperties?.hasTransformFailed
         )
     }
 

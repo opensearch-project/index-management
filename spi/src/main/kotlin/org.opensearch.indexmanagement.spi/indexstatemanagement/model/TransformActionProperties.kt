@@ -15,18 +15,15 @@ import org.opensearch.core.xcontent.XContentBuilder
 import org.opensearch.core.xcontent.XContentParser
 
 data class TransformActionProperties(
-    val transformId: String?,
-    val hasTransformFailed: Boolean?
+    val transformId: String?
 ) : Writeable, ToXContentFragment {
 
     override fun writeTo(out: StreamOutput) {
         out.writeOptionalString(transformId)
-        out.writeOptionalBoolean(hasTransformFailed)
     }
 
     override fun toXContent(builder: XContentBuilder, params: ToXContent.Params?): XContentBuilder {
         if (transformId != null) builder.field(Properties.TRANSFORM_ID.key, transformId)
-        if (hasTransformFailed != null) builder.field(Properties.HAS_TRANSFORM_FAILED.key, hasTransformFailed)
         return builder
     }
 
@@ -35,13 +32,11 @@ data class TransformActionProperties(
 
         fun fromStreamInput(sin: StreamInput): TransformActionProperties {
             val transformId: String? = sin.readOptionalString()
-            val hasTransformFailed: Boolean? = sin.readOptionalBoolean()
-            return TransformActionProperties(transformId, hasTransformFailed)
+            return TransformActionProperties(transformId)
         }
 
         fun parse(xcp: XContentParser): TransformActionProperties {
             var transformId: String? = null
-            var hasTransformFailed: Boolean? = null
 
             ensureExpectedToken(XContentParser.Token.START_OBJECT, xcp.currentToken(), xcp)
             while (xcp.nextToken() != XContentParser.Token.END_OBJECT) {
@@ -50,16 +45,14 @@ data class TransformActionProperties(
 
                 when (fieldName) {
                     Properties.TRANSFORM_ID.key -> transformId = xcp.text()
-                    Properties.HAS_TRANSFORM_FAILED.key -> hasTransformFailed = xcp.booleanValue()
                 }
             }
 
-            return TransformActionProperties(transformId, hasTransformFailed)
+            return TransformActionProperties(transformId)
         }
     }
 
     enum class Properties(val key: String) {
-        TRANSFORM_ID("transformId"),
-        HAS_TRANSFORM_FAILED("has_transform_failed")
+        TRANSFORM_ID("transform_id")
     }
 }

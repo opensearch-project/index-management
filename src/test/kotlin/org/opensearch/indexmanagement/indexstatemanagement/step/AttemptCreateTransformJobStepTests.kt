@@ -6,7 +6,6 @@
 package org.opensearch.indexmanagement.indexstatemanagement.step
 
 import org.opensearch.indexmanagement.indexstatemanagement.randomTransformActionConfig
-import org.opensearch.indexmanagement.indexstatemanagement.step.rollup.AttemptCreateRollupJobStep
 import org.opensearch.indexmanagement.indexstatemanagement.step.transform.AttemptCreateTransformJobStep
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ActionMetaData
@@ -32,8 +31,8 @@ class AttemptCreateTransformJobStepTests : OpenSearchTestCase() {
         null,
         null,
         ActionMetaData(
-            AttemptCreateRollupJobStep.name, 1, 0, false, 0, null,
-            ActionProperties(transformActionProperties = TransformActionProperties(transformId, false))
+            AttemptCreateTransformJobStep.name, 1, 0, false, 0, null,
+            ActionProperties(transformActionProperties = TransformActionProperties(transformId))
         ),
         null,
         null,
@@ -53,6 +52,10 @@ class AttemptCreateTransformJobStepTests : OpenSearchTestCase() {
             "Error message is not expected",
             AttemptCreateTransformJobStep.getFailedMessage(transformId, indexName),
             updatedManagedIndexMedaData.info?.get("message")
+        )
+        assertNull(
+            "TransformId in action properties is not cleaned up",
+            updatedManagedIndexMedaData.actionMetaData?.actionProperties?.transformActionProperties?.transformId
         )
     }
 

@@ -21,7 +21,6 @@ class WaitForTransformCompletionStep : Step(name) {
     private val logger = LogManager.getLogger(javaClass)
     private var stepStatus = StepStatus.STARTING
     private var info: Map<String, Any>? = null
-    private var hasTransformFailed: Boolean? = null
 
     override suspend fun execute(): Step {
         val context = this.context ?: return this
@@ -33,29 +32,40 @@ class WaitForTransformCompletionStep : Step(name) {
             logger.error("No transform job id passed down.")
             stepStatus = StepStatus.FAILED
             info = mapOf("message" to getMissingTransformJobMessage(indexName))
-        } else {
-            val explainTransformRequest = ExplainTransformRequest(listOf(transformJobId))
-            try {
-                val response: ExplainTransformResponse = context.client.suspendUntil {
-                    execute(ExplainTransformAction.INSTANCE, explainTransformRequest, it)
-                }
-                logger.info("Received the status for jobs [${response.getIdsToExplain().keys}]")
-                val metadata = response.getIdsToExplain()[transformJobId]?.metadata
-
-                if (metadata?.status == null) {
-                    logger.warn("Job $transformJobId has not started yet")
-                    stepStatus = StepStatus.CONDITION_NOT_MET
-                    info = mapOf("message" to getJobProcessingMessage(transformJobId, indexName))
-                } else {
-                    processTransformMetadataStatus(transformJobId, indexName, metadata)
-                }
-            } catch (e: RemoteTransportException) {
-                processFailure(transformJobId, indexName, e)
-            } catch (e: Exception) {
-                processFailure(transformJobId, indexName, e)
-            }
+            return this
         }
 
+        val explainTransformRequest = ExplainTransformRequest(listOf(transformJobId))
+        val response: ExplainTransformResponse
+        try {
+            response = context.client.suspendUntil {
+                execute(ExplainTransformAction.INSTANCE, explainTransformRequest, it)
+            }
+            logger.info("Received the status for jobs [${response.getIdsToExplain().keys}]")
+        } catch (e: RemoteTransportException) {
+            processFailure(transformJobId, indexName, e)
+            return this
+        } catch (e: Exception) {
+            processFailure(transformJobId, indexName, e)
+            return this
+        }
+
+        val explainTransform = response.getIdsToExplain()[transformJobId]
+        if (explainTransform == null) {
+            logger.warn("Job $transformJobId is not found, mark step as COMPLETED.")
+            stepStatus = StepStatus.COMPLETED
+            info = mapOf("message" to getJobNotFoundMessage(transformJobId, indexName))
+            return this
+        }
+
+        if (explainTransform.metadata?.status == null) {
+            logger.warn("Job $transformJobId has not started yet")
+            stepStatus = StepStatus.CONDITION_NOT_MET
+            info = mapOf("message" to getJobProcessingMessage(transformJobId, indexName))
+            return this
+        }
+
+        processTransformMetadataStatus(transformJobId, indexName, explainTransform.metadata)
         return this
     }
 
@@ -67,7 +77,6 @@ class WaitForTransformCompletionStep : Step(name) {
             }
             TransformMetadata.Status.FAILED -> {
                 stepStatus = StepStatus.FAILED
-                hasTransformFailed = true
                 info = mapOf("message" to getJobFailedMessage(transformJobId, indexName), "cause" to "${transformMetadata.failureReason}")
             }
             TransformMetadata.Status.FINISHED -> {
@@ -76,7 +85,6 @@ class WaitForTransformCompletionStep : Step(name) {
             }
             TransformMetadata.Status.STOPPED -> {
                 stepStatus = StepStatus.FAILED
-                hasTransformFailed = true
                 info = mapOf("message" to getJobFailedMessage(transformJobId, indexName), "cause" to JOB_STOPPED_MESSAGE)
             }
         }
@@ -100,7 +108,7 @@ class WaitForTransformCompletionStep : Step(name) {
             actionMetaData = currentActionMetadata?.copy(
                 actionProperties = currentActionProperties?.copy(
                     transformActionProperties = currentTransformActionProperties?.copy(
-                        hasTransformFailed = hasTransformFailed
+                        transformId = currentTransformActionProperties.transformId
                     )
                 )
             ),
@@ -120,5 +128,6 @@ class WaitForTransformCompletionStep : Step(name) {
         fun getJobCompletionMessage(transformJob: String, index: String) = "Transform job [$transformJob] completed [index=$index]"
         fun getJobFailedMessage(transformJob: String, index: String) = "Transform job [$transformJob] failed [index=$index]"
         fun getMissingTransformJobMessage(index: String) = "Transform job was not found [index=$index]"
+        fun getJobNotFoundMessage(transformJob: String, index: String) = "Transform job [$transformJob] is not found [index=$index]"
     }
 }

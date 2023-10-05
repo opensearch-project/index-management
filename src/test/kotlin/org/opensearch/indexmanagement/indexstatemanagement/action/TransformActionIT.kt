@@ -15,9 +15,11 @@ import org.opensearch.indexmanagement.indexstatemanagement.IndexStateManagementR
 import org.opensearch.indexmanagement.indexstatemanagement.model.ISMTemplate
 import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
 import org.opensearch.indexmanagement.indexstatemanagement.model.State
+import org.opensearch.indexmanagement.indexstatemanagement.model.Transition
 import org.opensearch.indexmanagement.indexstatemanagement.randomErrorNotification
 import org.opensearch.indexmanagement.indexstatemanagement.step.transform.AttemptCreateTransformJobStep
 import org.opensearch.indexmanagement.indexstatemanagement.step.transform.WaitForTransformCompletionStep
+import org.opensearch.indexmanagement.indexstatemanagement.step.transition.AttemptTransitionStep
 import org.opensearch.indexmanagement.makeRequest
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ActionRetry
 import org.opensearch.indexmanagement.transform.avgAggregation
@@ -148,6 +150,19 @@ class TransformActionIT : IndexStateManagementRestTestCase() {
         }
     }
 
+    fun `test policy succeeded when run the same transform job twice`() {
+        val indexName = "${testPrefix}_index_two_transforms"
+        val targetIndex = "${testPrefix}_target_two_transforms"
+        val policyId = "${testPrefix}_policy_two_transforms"
+
+        val ismTransform = prepareISMTransform(targetIndex)
+        val policy = preparePolicyContainingTransformTwice(indexName, ismTransform, policyId)
+        createPolicy(policy, policyId)
+        createIndex(indexName, policyId, mapping = SOURCE_INDEX_MAPPING)
+
+        assertIndexTransformSucceededTwice(indexName, policyId, ismTransform)
+    }
+
     // create an ISMTransform that matches SOURCE_INDEX_MAPPING
     private fun prepareISMTransform(targetIndex: String): ISMTransform {
         return ISMTransform(
@@ -173,6 +188,36 @@ class TransformActionIT : IndexStateManagementRestTestCase() {
         actionConfig.configRetry = ActionRetry(retry)
         val states = listOf(
             State("transform", listOf(actionConfig), listOf())
+        )
+        return Policy(
+            id = policyId,
+            description = "test description",
+            schemaVersion = 1L,
+            lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
+            errorNotification = randomErrorNotification(),
+            defaultState = states[0].name,
+            states = states,
+            ismTemplate = listOf(
+                ISMTemplate(
+                    indexPatterns = listOf(indexName),
+                    priority = 100,
+                    lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS)
+                )
+            )
+        )
+    }
+
+    private fun preparePolicyContainingTransformTwice(
+        indexName: String,
+        ismTransform: ISMTransform,
+        policyId: String,
+        retry: Long = 0
+    ): Policy {
+        val actionConfig = TransformAction(ismTransform, 0)
+        actionConfig.configRetry = ActionRetry(retry)
+        val states = listOf(
+            State("transform1", listOf(actionConfig), listOf(Transition(stateName = "transform2", conditions = null))),
+            State("transform2", listOf(actionConfig), listOf())
         )
         return Policy(
             id = policyId,
@@ -238,6 +283,76 @@ class TransformActionIT : IndexStateManagementRestTestCase() {
         }
 
         val transformJob = getTransform(transformId = transformId)
+        waitFor {
+            assertNotNull("Transform job doesn't have metadata set", transformJob.metadataId)
+            val transformMetadata = getTransformMetadata(transformJob.metadataId!!)
+            assertEquals("Transform is not finished", TransformMetadata.Status.FINISHED, transformMetadata.status)
+        }
+    }
+
+    private fun assertIndexTransformSucceededTwice(indexName: String, policyId: String, ismTransform: ISMTransform) {
+        val transformId = ismTransform.toTransform(indexName).id
+        val managedIndexConfig = getExistingManagedIndexConfig(indexName)
+
+        // Change the start time so that the policy will be initialized.
+        updateManagedIndexConfigStartTime(managedIndexConfig)
+        waitFor { assertEquals(policyId, getExplainManagedIndexMetaData(indexName).policyID) }
+
+        // Change the start time so that the transform action will be attempted.
+        updateManagedIndexConfigStartTime(managedIndexConfig)
+        waitFor {
+            assertEquals(
+                AttemptCreateTransformJobStep.getSuccessMessage(transformId, indexName),
+                getExplainManagedIndexMetaData(indexName).info?.get("message")
+            )
+        }
+        Thread.sleep(60000)
+
+        // Change the start time so that the transform action will be attempted.
+        updateManagedIndexConfigStartTime(managedIndexConfig)
+        waitFor {
+            assertEquals(
+                WaitForTransformCompletionStep.getJobCompletionMessage(transformId, indexName),
+                getExplainManagedIndexMetaData(indexName).info?.get("message")
+            )
+        }
+
+        var transformJob = getTransform(transformId = transformId)
+        waitFor {
+            assertNotNull("Transform job doesn't have metadata set", transformJob.metadataId)
+            val transformMetadata = getTransformMetadata(transformJob.metadataId!!)
+            assertEquals("Transform is not finished", TransformMetadata.Status.FINISHED, transformMetadata.status)
+        }
+
+        // Change the start time so that the transition attempted.
+        updateManagedIndexConfigStartTime(managedIndexConfig)
+        waitFor {
+            assertEquals(
+                AttemptTransitionStep.getSuccessMessage(indexName, "transform2"),
+                getExplainManagedIndexMetaData(indexName).info?.get("message")
+            )
+        }
+
+        // Change the start time so that the second transform action will be attempted.
+        updateManagedIndexConfigStartTime(managedIndexConfig)
+        waitFor {
+            assertEquals(
+                AttemptCreateTransformJobStep.getSuccessRestartMessage(transformId, indexName),
+                getExplainManagedIndexMetaData(indexName).info?.get("message")
+            )
+        }
+        Thread.sleep(60000)
+
+        // Change the start time so that the second transform action will be attempted.
+        updateManagedIndexConfigStartTime(managedIndexConfig)
+        waitFor {
+            assertEquals(
+                WaitForTransformCompletionStep.getJobCompletionMessage(transformId, indexName),
+                getExplainManagedIndexMetaData(indexName).info?.get("message")
+            )
+        }
+
+        transformJob = getTransform(transformId = transformId)
         waitFor {
             assertNotNull("Transform job doesn't have metadata set", transformJob.metadataId)
             val transformMetadata = getTransformMetadata(transformJob.metadataId!!)

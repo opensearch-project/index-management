@@ -35,14 +35,12 @@ class AttemptCreateTransformJobStep(
     private var stepStatus = StepStatus.STARTING
     private var info: Map<String, Any>? = null
     private var transformId: String? = null
-    private var hasTransformFailed: Boolean? = null
 
     override suspend fun execute(): Step {
         val context = this.context ?: return this
         val indexName = context.metadata.index
         val managedIndexMetadata = context.metadata
-        val previousRunTransformId = managedIndexMetadata.actionMetaData?.actionProperties?.transformActionProperties?.transformId
-        val hasPreviousTransformAttemptFailed = managedIndexMetadata.actionMetaData?.actionProperties?.transformActionProperties?.hasTransformFailed
+        val startedTransformId = managedIndexMetadata.actionMetaData?.actionProperties?.transformActionProperties?.transformId
 
         // Creating a transform job
         val transform = action.ismTransform.toTransform(indexName, context.user)
@@ -58,11 +56,13 @@ class AttemptCreateTransformJobStep(
             stepStatus = StepStatus.COMPLETED
             info = mapOf("message" to getSuccessMessage(transform.id, indexName))
         } catch (e: VersionConflictEngineException) {
-            val message = getFailedJobExistsMessage(transform.id, indexName)
+            val message = getTransformJobAlreadyExistsMessage(transform.id, indexName)
             logger.info(message)
-            if (transformId == previousRunTransformId && hasPreviousTransformAttemptFailed == true) {
+            if (startedTransformId == null) {
+                // restart the transform job when this is another execution of the same action in the ISM policy
                 startTransformJob(transform.id, context)
             } else {
+                // directly mark as complete when this is a retry of this step
                 stepStatus = StepStatus.COMPLETED
                 info = mapOf("info" to message)
             }
@@ -80,6 +80,7 @@ class AttemptCreateTransformJobStep(
     fun processFailure(transformId: String, indexName: String, e: Exception) {
         val message = getFailedMessage(transformId, indexName)
         logger.error(message, e)
+        this.transformId = null
         stepStatus = StepStatus.FAILED
         info = mapOf("message" to message, "cause" to "${e.message}")
     }
@@ -103,7 +104,7 @@ class AttemptCreateTransformJobStep(
 
     override fun getUpdatedManagedIndexMetadata(currentMetadata: ManagedIndexMetaData): ManagedIndexMetaData {
         val currentActionMetaData = currentMetadata.actionMetaData
-        val transformActionProperties = TransformActionProperties(transformId, hasTransformFailed)
+        val transformActionProperties = TransformActionProperties(transformId)
         return currentMetadata.copy(
             actionMetaData = currentActionMetaData?.copy(actionProperties = ActionProperties(transformActionProperties = transformActionProperties)),
             stepMetaData = StepMetaData(name, getStepStartTime(currentMetadata).toEpochMilli(), stepStatus),
@@ -117,7 +118,7 @@ class AttemptCreateTransformJobStep(
     companion object {
         const val name = "attempt_create_transform"
         fun getFailedMessage(transformId: String, index: String) = "Failed to create the transform job [$transformId] [index=$index]"
-        fun getFailedJobExistsMessage(transformId: String, index: String) =
+        fun getTransformJobAlreadyExistsMessage(transformId: String, index: String) =
             "Transform job [$transformId] already exists, skipping creation [index=$index]"
         fun getFailedToStartMessage(transformId: String, index: String) = "Failed to start the transform job [$transformId] [index=$index]"
         fun getSuccessMessage(transformId: String, index: String) = "Successfully created the transform job [$transformId] [index=$index]"
