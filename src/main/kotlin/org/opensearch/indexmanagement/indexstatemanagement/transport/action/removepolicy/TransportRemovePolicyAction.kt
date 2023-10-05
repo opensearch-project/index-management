@@ -48,7 +48,6 @@ import org.opensearch.indexmanagement.indexstatemanagement.util.DEFAULT_INDEX_TY
 import org.opensearch.indexmanagement.indexstatemanagement.util.FailedIndex
 import org.opensearch.indexmanagement.indexstatemanagement.util.deleteManagedIndexMetadataRequest
 import org.opensearch.indexmanagement.indexstatemanagement.util.deleteManagedIndexRequest
-import org.opensearch.indexmanagement.indexstatemanagement.util.removeClusterStateMetadatas
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ISMIndexMetadata
 import org.opensearch.indexmanagement.util.IndexManagementException
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.buildUser
@@ -352,8 +351,6 @@ class TransportRemovePolicyAction @Inject constructor(
 
                             // clean metadata for indicesToRemove
                             val indicesToRemoveMetadata = indicesToRemove.map { Index(it.value, it.key) }
-                            // best effort
-                            CoroutineScope(Dispatchers.IO).launch { removeClusterStateMetadatas(client, log, indicesToRemoveMetadata) }
                             removeMetadatas(indicesToRemoveMetadata)
                         }
 

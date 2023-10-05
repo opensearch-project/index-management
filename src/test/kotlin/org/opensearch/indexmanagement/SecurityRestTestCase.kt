@@ -54,9 +54,6 @@ abstract class SecurityRestTestCase : IndexManagementRestTestCase() {
             client: RestClient
         ) = super.createRollup(rollup, rollupId, refresh, client)
 
-        fun updateRollupStartTimeExt(update: Rollup, desiredStartTimeMillis: Long? = null) =
-            super.updateRollupStartTime(update, desiredStartTimeMillis)
-
         fun getRollupMetadataExt(
             metadataId: String,
             refresh: Boolean = true,
@@ -163,10 +160,6 @@ abstract class SecurityRestTestCase : IndexManagementRestTestCase() {
         val request = Request("PUT", "${IndexManagementPlugin.ROLLUP_JOBS_BASE_URI}/${rollup.id}?refresh=true")
         request.setJsonEntity(rollup.toJsonString())
         return executeRequest(request, expectedStatus, client)
-    }
-
-    protected fun updateRollupStartTime(update: Rollup, desiredStartTimeMillis: Long? = null) {
-        RollupRestTestCaseSecurityExtension.updateRollupStartTimeExt(update, desiredStartTimeMillis)
     }
 
     protected fun getRollupMetadata(

@@ -41,7 +41,6 @@ import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexCon
 import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
 import org.opensearch.indexmanagement.indexstatemanagement.model.coordinator.SweptManagedIndexConfig
 import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.buildMgetMetadataRequest
-import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.getManagedIndexMetadata
 import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.mgetResponseToMap
 import org.opensearch.indexmanagement.indexstatemanagement.resthandler.RestChangePolicyAction
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.ISMStatusResponse
@@ -268,9 +267,6 @@ class TransportChangePolicyAction @Inject constructor(
             val includedStates = changePolicy.include.map { it.state }.toSet()
 
             indicesToUpdate.forEach { (indexUuid, indexName) ->
-                // indexMetaData and clusterStateMetadata will be null for non-default index types
-                val indexMetaData = indexUuidToIndexMetadata[indexUuid]
-                val clusterStateMetadata = indexMetaData?.getManagedIndexMetadata()
                 val mgetFailure = metadataMap[indexUuid]?.second
                 val managedIndexMetadata: ManagedIndexMetaData? = metadataMap[managedIndexMetadataID(indexUuid)]?.first
 
@@ -296,25 +292,16 @@ class TransportChangePolicyAction @Inject constructor(
                                 RestChangePolicyAction.INDEX_IN_TRANSITION
                             )
                         )
-                    // else if there is no ManagedIndexMetaData yet then the managed index has not initialized and we can change the policy safely
+                    // else if there is no ManagedIndexMetaData yet then the managed index has not initialized, and we can change the policy safely
                     managedIndexMetadata == null -> {
-                        if (clusterStateMetadata != null) {
-                            failedIndices.add(
-                                FailedIndex(
-                                    indexName, indexUuid,
-                                    "Cannot change policy until metadata has finished migrating"
-                                )
-                            )
-                        } else {
-                            managedIndicesToUpdate.add(indexName to indexUuid)
-                        }
+                        managedIndicesToUpdate.add(indexName to indexUuid)
                     }
                     // else if the includedStates is empty (i.e. not being used) then we will always try to update the managed index
                     includedStates.isEmpty() -> managedIndicesToUpdate.add(indexName to indexUuid)
                     // else only update the managed index if its currently in one of the included states
                     includedStates.contains(managedIndexMetadata.stateMetaData?.name) ->
                         managedIndicesToUpdate.add(indexName to indexUuid)
-                    // else the managed index did not match any of the included state filters and we will not update it
+                    // else the managed index did not match any of the included state filters, and we will not update it
                     else -> log.debug("Skipping $indexName as it does not match any of the include state filters")
                 }
             }

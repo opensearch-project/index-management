@@ -149,6 +149,51 @@ abstract class SnapshotManagementRestTestCase : IndexManagementRestTestCase() {
         assertEquals("Request failed", RestStatus.OK, response.restStatus())
     }
 
+    /**
+     * This method updates the trigger time so snapshot creation can happen quickly
+     */
+    protected fun updateSMMetadata(update: SMPolicy, desiredStartTimeMillis: Long? = null) {
+        // Before updating start time of a job always make sure there are no unassigned shards that could cause the config
+        // index to move to a new node and negate this forced start
+        if (isMultiNode) {
+            waitFor {
+                try {
+                    client().makeRequest("GET", "_cluster/allocation/explain")
+                    fail("Expected 400 Bad Request when there are no unassigned shards to explain")
+                } catch (e: ResponseException) {
+                    assertEquals(RestStatus.BAD_REQUEST, e.response.restStatus())
+                }
+            }
+        }
+        val intervalSchedule = (update.jobSchedule as IntervalSchedule)
+        val millis = Duration.of(intervalSchedule.interval.toLong(), intervalSchedule.unit).minusSeconds(2).toMillis()
+        val startTimeMillis = desiredStartTimeMillis ?: (now().toEpochMilli() - millis)
+        val waitForActiveShards = if (isMultiNode) "all" else "1"
+        val response = client().makeRequest(
+            "POST", "$INDEX_MANAGEMENT_INDEX/_update/${update.metadataID}?wait_for_active_shards=$waitForActiveShards",
+            StringEntity(
+                """
+                    {
+                      "doc": {
+                        "sm_metadata": {
+                          "policy_seq_no":  ${update.seqNo},
+                          "policy_primary_term": ${update.primaryTerm},
+                          "creation": {
+                            "trigger": {
+                              "time": $startTimeMillis
+                            }
+                          }
+                        }
+                      }
+                    }
+                """.trimIndent(),
+                ContentType.APPLICATION_JSON
+            )
+        )
+
+        assertEquals("Request failed", RestStatus.OK, response.restStatus())
+    }
+
     fun parseExplainResponse(inputStream: InputStream): List<ExplainSMMetadata> {
         val parser = createParser(XContentType.JSON.xContent(), inputStream)
         // val parser = createParser(builder)

@@ -60,8 +60,6 @@ class ManagedIndexCoordinatorTests : OpenSearchAllocationTestCase() {
         settingSet.add(ManagedIndexSettings.JITTER)
         settingSet.add(ManagedIndexSettings.JOB_INTERVAL)
         settingSet.add(ManagedIndexSettings.INDEX_STATE_MANAGEMENT_ENABLED)
-        settingSet.add(ManagedIndexSettings.METADATA_SERVICE_STATUS)
-        settingSet.add(ManagedIndexSettings.TEMPLATE_MIGRATION_CONTROL)
         settingSet.add(ManagedIndexSettings.COORDINATOR_BACKOFF_COUNT)
         settingSet.add(ManagedIndexSettings.COORDINATOR_BACKOFF_MILLIS)
         settingSet.add(ManagedIndexSettings.RESTRICTED_INDEX_PATTERN)

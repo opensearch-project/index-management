@@ -29,7 +29,6 @@ class ForceMergeActionIT : IndexStateManagementRestTestCase() {
         // Create a Policy with one State that only preforms a force_merge Action
         val forceMergeActionConfig = ForceMergeAction(maxNumSegments = 1, index = 0)
         val states = listOf(State("ForceMergeState", listOf(forceMergeActionConfig), listOf()))
-
         val policy = Policy(
             id = policyID,
             description = "$testIndexName description",
@@ -45,7 +44,6 @@ class ForceMergeActionIT : IndexStateManagementRestTestCase() {
 
         // Add sample data to increase segment count, passing in a delay to ensure multiple segments get created
         insertSampleData(indexName, 3, 1000)
-
         waitFor { assertTrue("Segment count for [$indexName] was less than expected", validateSegmentCount(indexName, min = 2)) }
 
         val managedIndexConfig = getExistingManagedIndexConfig(indexName)
@@ -53,17 +51,14 @@ class ForceMergeActionIT : IndexStateManagementRestTestCase() {
         // Will change the startTime each execution so that it triggers in 2 seconds
         // First execution: Policy is initialized
         updateManagedIndexConfigStartTime(managedIndexConfig)
-
         waitFor { assertEquals(policyID, getExplainManagedIndexMetaData(indexName).policyID) }
 
         // Second execution: Index is set to read-only for force_merge
         updateManagedIndexConfigStartTime(managedIndexConfig)
-
         waitFor { assertEquals("true", getIndexBlocksWriteSetting(indexName)) }
 
         // Third execution: Force merge operation is kicked off
         updateManagedIndexConfigStartTime(managedIndexConfig)
-
         // verify we set maxNumSegments in action properties when kicking off force merge
         waitFor {
             assertEquals(
@@ -75,10 +70,9 @@ class ForceMergeActionIT : IndexStateManagementRestTestCase() {
 
         // Fourth execution: Waits for force merge to complete, which will happen in this execution since index is small
         updateManagedIndexConfigStartTime(managedIndexConfig)
-
         waitFor { assertTrue("Segment count for [$indexName] after force merge is incorrect", validateSegmentCount(indexName, min = 1, max = 1)) }
         // verify we reset actionproperties at end of forcemerge
-        waitFor { assertNull("maxNumSegments was not reset", getExplainManagedIndexMetaData(indexName).actionMetaData?.actionProperties) }
+        waitFor { assertNull("maxNumSegments was not reset", getExplainManagedIndexMetaData(indexName).actionMetaData?.actionProperties?.maxNumSegments) }
         // index should still be readonly after force merge finishes
         waitFor { assertEquals("true", getIndexBlocksWriteSetting(indexName)) }
     }
@@ -106,7 +100,6 @@ class ForceMergeActionIT : IndexStateManagementRestTestCase() {
 
         // Add sample data to increase segment count, passing in a delay to ensure multiple segments get created
         insertSampleData(indexName, 3, 1000)
-
         waitFor { assertTrue("Segment count for [$indexName] was less than expected", validateSegmentCount(indexName, min = 2)) }
 
         // Set index to read-only
@@ -117,26 +110,22 @@ class ForceMergeActionIT : IndexStateManagementRestTestCase() {
         // Will change the startTime each execution so that it triggers in 2 seconds
         // First execution: Policy is initialized
         updateManagedIndexConfigStartTime(managedIndexConfig)
-
         waitFor { assertEquals(policyID, getExplainManagedIndexMetaData(indexName).policyID) }
 
         // Second execution: Index was already read-only and should remain so for force_merge
         updateManagedIndexConfigStartTime(managedIndexConfig)
-
         waitFor { assertEquals(AttemptSetReadOnlyStep.getSuccessMessage(indexName), getExplainManagedIndexMetaData(indexName).info?.get("message")) }
-
         waitFor { assertEquals("true", getIndexBlocksWriteSetting(indexName)) }
 
         // Third execution: Force merge operation is kicked off
         updateManagedIndexConfigStartTime(managedIndexConfig)
-
         waitFor { assertEquals(AttemptCallForceMergeStep.getSuccessMessage(indexName), getExplainManagedIndexMetaData(indexName).info?.get("message")) }
 
         // Fourth execution: Waits for force merge to complete, which will happen in this execution since index is small
         updateManagedIndexConfigStartTime(managedIndexConfig)
-
         waitFor { assertEquals(WaitForForceMergeStep.getSuccessMessage(indexName), getExplainManagedIndexMetaData(indexName).info?.get("message")) }
         assertTrue("Segment count for [$indexName] after force merge is incorrect", validateSegmentCount(indexName, min = 1, max = 1))
+        waitFor { assertNull("maxNumSegments was not reset", getExplainManagedIndexMetaData(indexName).actionMetaData?.actionProperties?.maxNumSegments) }
         assertEquals("true", getIndexBlocksWriteSetting(indexName))
     }
 }
