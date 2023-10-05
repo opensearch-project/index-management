@@ -8,7 +8,6 @@ package org.opensearch.indexmanagement.rollup.resthandler
 import org.opensearch.client.ResponseException
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.ROLLUP_JOBS_BASE_URI
 import org.opensearch.indexmanagement.makeRequest
-import org.opensearch.indexmanagement.rollup.RollupRestTestCase
 import org.opensearch.indexmanagement.rollup.action.get.GetRollupsRequest.Companion.DEFAULT_SIZE
 import org.opensearch.indexmanagement.rollup.randomRollup
 import org.opensearch.core.rest.RestStatus
@@ -17,7 +16,7 @@ import java.util.Locale
 
 @TestLogging(value = "level:DEBUG", reason = "Debugging tests")
 @Suppress("UNCHECKED_CAST")
-class RestGetRollupActionIT : RollupRestTestCase() {
+class RestGetRollupActionIT : RollupRestAPITestCase() {
 
     private val testName = javaClass.simpleName.lowercase(Locale.ROOT)
 

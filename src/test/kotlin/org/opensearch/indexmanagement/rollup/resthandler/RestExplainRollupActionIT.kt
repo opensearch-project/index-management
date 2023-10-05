@@ -8,7 +8,6 @@ package org.opensearch.indexmanagement.rollup.resthandler
 import org.opensearch.client.ResponseException
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.ROLLUP_JOBS_BASE_URI
 import org.opensearch.indexmanagement.makeRequest
-import org.opensearch.indexmanagement.rollup.RollupRestTestCase
 import org.opensearch.indexmanagement.rollup.model.RollupMetadata
 import org.opensearch.indexmanagement.rollup.randomRollup
 import org.opensearch.indexmanagement.waitFor
@@ -20,7 +19,7 @@ import java.time.temporal.ChronoUnit
 
 @TestLogging(value = "level:DEBUG", reason = "Debugging tests")
 @Suppress("UNCHECKED_CAST")
-class RestExplainRollupActionIT : RollupRestTestCase() {
+class RestExplainRollupActionIT : RollupRestAPITestCase() {
 
     @Throws(Exception::class)
     fun `test explain rollup`() {
