@@ -8,6 +8,7 @@ package org.opensearch.indexmanagement.indexstatemanagement.action
 import org.apache.http.entity.ContentType
 import org.apache.http.entity.StringEntity
 import org.apache.logging.log4j.LogManager
+import org.junit.Assume
 import org.junit.Before
 import org.opensearch.action.admin.indices.alias.Alias
 import org.opensearch.cluster.metadata.IndexMetadata
@@ -36,6 +37,7 @@ import java.time.Instant
 import java.time.temporal.ChronoUnit
 
 class ShrinkActionIT : IndexStateManagementRestTestCase() {
+
     @Suppress("UnusedPrivateMember")
     @Before
     private fun disableJobIndexShardRelocation() {
@@ -63,22 +65,12 @@ class ShrinkActionIT : IndexStateManagementRestTestCase() {
 
     private val testIndexName = javaClass.simpleName.lowercase()
     private val testIndexSuffix = "_shrink_test"
-    fun `test basic workflow number of shards`() {
-        val logger = LogManager.getLogger(::ShrinkActionIT)
+
+    fun `test basic workflow`() {
         val indexName = "${testIndexName}_index_1"
         val policyID = "${testIndexName}_testPolicyName_1"
-
-        val shrinkAction = ShrinkAction(
-            numNewShards = 1,
-            maxShardSize = null,
-            percentageOfSourceShards = null,
-            targetIndexTemplate = Script(ScriptType.INLINE, Script.DEFAULT_TEMPLATE_LANG, "{{ctx.index}}$testIndexSuffix", mapOf()),
-            aliases = listOf(Alias("test-alias1"), Alias("test-alias2").filter(QueryBuilders.termQuery("foo", "bar")).writeIndex(true)),
-            forceUnsafe = true,
-            index = 0
-        )
+        val shrinkAction = randomShrinkAction()
         val states = listOf(State("ShrinkState", listOf(shrinkAction), listOf()))
-
         val policy = Policy(
             id = policyID,
             description = "$testIndexName description",
@@ -92,28 +84,83 @@ class ShrinkActionIT : IndexStateManagementRestTestCase() {
         createPolicy(policy, policyID)
         createIndex(indexName, policyID, null, "0", "3", "")
 
+        assertShrinkActionRun(indexName, policyID)
+    }
+
+    private fun randomShrinkAction(): ShrinkAction {
+        val newShards = 1
+        val newMaxShardSize = ByteSizeValue.parseBytesSizeValue("1GB", "test")
+        val newPercentageOfSourceShards = 0.5
+        val choice = randomInt(2)
+        val aliases = listOf(Alias("test-alias1"), Alias("test-alias2").filter(QueryBuilders.termQuery("foo", "bar")).writeIndex(true))
+        val targetIndexTemplate = Script(ScriptType.INLINE, Script.DEFAULT_TEMPLATE_LANG, "{{ctx.index}}$testIndexSuffix", mapOf())
+        return when (choice) {
+            0 -> ShrinkAction(
+                numNewShards = newShards,
+                maxShardSize = null,
+                percentageOfSourceShards = null,
+                targetIndexTemplate = targetIndexTemplate,
+                aliases = aliases,
+                forceUnsafe = true,
+                index = 0
+            )
+
+            1 -> ShrinkAction(
+                numNewShards = null,
+                maxShardSize = newMaxShardSize,
+                percentageOfSourceShards = null,
+                targetIndexTemplate = targetIndexTemplate,
+                aliases = aliases,
+                forceUnsafe = true,
+                index = 0
+            )
+
+            2 -> ShrinkAction(
+                numNewShards = null,
+                maxShardSize = null,
+                percentageOfSourceShards = newPercentageOfSourceShards,
+                targetIndexTemplate = targetIndexTemplate,
+                aliases = aliases,
+                forceUnsafe = true,
+                index = 0
+            )
+
+            else -> {
+                error("Invalid choice")
+            }
+        }
+    }
+
+    private fun assertShrinkActionRun(indexName: String, policyID: String, excludeNode: String? = null) {
         insertSampleData(indexName, 3)
 
         // Set the index as readonly to check that the setting is preserved after the shrink finishes
         updateIndexSetting(indexName, IndexMetadata.SETTING_BLOCKS_WRITE, "true")
+        logger.info("index settings: \n ${getFlatSettings(indexName)}")
 
-        // Will change the startTime each execution so that it triggers in 2 seconds
         // First execution: Policy is initialized
         val managedIndexConfig = getExistingManagedIndexConfig(indexName)
-
         updateManagedIndexConfigStartTime(managedIndexConfig)
-        waitFor(Instant.ofEpochSecond(60)) { assertEquals(policyID, getExplainManagedIndexMetaData(indexName).policyID) }
+        waitFor(Instant.ofEpochSecond(60)) {
+            assertEquals(policyID, getExplainManagedIndexMetaData(indexName).policyID)
+        }
+
         logger.info("before attempt move shards")
         // Starts AttemptMoveShardsStep
         updateManagedIndexConfigStartTime(managedIndexConfig)
-
         val targetIndexName = indexName + testIndexSuffix
         waitFor(Instant.ofEpochSecond(60)) {
-            assertEquals(targetIndexName, getExplainManagedIndexMetaData(indexName).actionMetaData!!.actionProperties!!.shrinkActionProperties!!.targetIndexName)
+            assertEquals(
+                targetIndexName,
+                getExplainManagedIndexMetaData(indexName).actionMetaData!!.actionProperties!!.shrinkActionProperties!!.targetIndexName
+            )
             assertEquals("true", getIndexBlocksWriteSetting(indexName))
-            assertNotNull("Couldn't find node to shrink onto.", getExplainManagedIndexMetaData(indexName).actionMetaData!!.actionProperties!!.shrinkActionProperties!!.nodeName)
+            val nodeName = getExplainManagedIndexMetaData(indexName).actionMetaData!!.actionProperties!!.shrinkActionProperties!!.nodeName
+            assertNotNull("Couldn't find node to shrink onto.", nodeName)
+            excludeNode ?: assertNotEquals(nodeName, excludeNode)
             val settings = getFlatSettings(indexName)
-            val nodeToShrink = getExplainManagedIndexMetaData(indexName).actionMetaData!!.actionProperties!!.shrinkActionProperties!!.nodeName
+            val nodeToShrink =
+                getExplainManagedIndexMetaData(indexName).actionMetaData!!.actionProperties!!.shrinkActionProperties!!.nodeName
             assertTrue(settings.containsKey("index.routing.allocation.require._name"))
             assertEquals(nodeToShrink, settings["index.routing.allocation.require._name"])
             assertEquals(
@@ -121,7 +168,9 @@ class ShrinkActionIT : IndexStateManagementRestTestCase() {
                 getExplainManagedIndexMetaData(indexName).info?.get("message")
             )
         }
-        val nodeToShrink = getExplainManagedIndexMetaData(indexName).actionMetaData!!.actionProperties!!.shrinkActionProperties!!.nodeName
+        val nodeToShrink =
+            getExplainManagedIndexMetaData(indexName).actionMetaData!!.actionProperties!!.shrinkActionProperties!!.nodeName
+
         // starts WaitForMoveShardsStep
         updateManagedIndexConfigStartTime(managedIndexConfig)
         waitFor(Instant.ofEpochSecond(60)) {
@@ -130,6 +179,7 @@ class ShrinkActionIT : IndexStateManagementRestTestCase() {
                 getExplainManagedIndexMetaData(indexName).info?.get("message")
             )
         }
+
         // Wait for move should finish before this. Starts AttemptShrinkStep
         updateManagedIndexConfigStartTime(managedIndexConfig)
         val instant: Instant = Instant.ofEpochSecond(50)
@@ -157,289 +207,34 @@ class ShrinkActionIT : IndexStateManagementRestTestCase() {
         }
     }
 
-    @Suppress("UNCHECKED_CAST")
-    fun `test basic workflow max shard size`() {
-        val logger = LogManager.getLogger(::ShrinkActionIT)
-        val indexName = "${testIndexName}_index_2"
-        val policyID = "${testIndexName}_testPolicyName_2"
-        val testMaxShardSize: ByteSizeValue = ByteSizeValue.parseBytesSizeValue("1GB", "test")
-        val shrinkAction = ShrinkAction(
-            numNewShards = null,
-            maxShardSize = testMaxShardSize,
-            percentageOfSourceShards = null,
-            targetIndexTemplate = Script(ScriptType.INLINE, Script.DEFAULT_TEMPLATE_LANG, "{{ctx.index}}$testIndexSuffix", mapOf()),
-            aliases = listOf(Alias("max-shard-alias")),
-            forceUnsafe = true,
-            index = 0
-        )
-        val states = listOf(State("ShrinkState", listOf(shrinkAction), listOf()))
-
-        val policy = Policy(
-            id = policyID,
-            description = "$testIndexName description",
-            schemaVersion = 11L,
-            lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
-            errorNotification = randomErrorNotification(),
-            defaultState = states[0].name,
-            states = states
-        )
-
-        createPolicy(policy, policyID)
-        createIndex(indexName, policyID, null, "0", "3", "")
-
-        insertSampleData(indexName, 3)
-
-        // Will change the startTime each execution so that it triggers in 2 seconds
-        // First execution: Policy is initialized
-        val managedIndexConfig = getExistingManagedIndexConfig(indexName)
-
-        updateManagedIndexConfigStartTime(managedIndexConfig)
-        waitFor(Instant.ofEpochSecond(60)) { assertEquals(policyID, getExplainManagedIndexMetaData(indexName).policyID) }
-        logger.info("before attempt move shards")
-        // Starts AttemptMoveShardsStep
-        updateManagedIndexConfigStartTime(managedIndexConfig)
-
-        val targetIndexName = indexName + testIndexSuffix
-        waitFor(Instant.ofEpochSecond(60)) {
-            assertEquals(targetIndexName, getExplainManagedIndexMetaData(indexName).actionMetaData!!.actionProperties!!.shrinkActionProperties!!.targetIndexName)
-            assertEquals("true", getIndexBlocksWriteSetting(indexName))
-            assertNotNull("Couldn't find node to shrink onto.", getExplainManagedIndexMetaData(indexName).actionMetaData!!.actionProperties!!.shrinkActionProperties!!.nodeName)
-            val settings = getFlatSettings(indexName)
-            val nodeToShrink = getExplainManagedIndexMetaData(indexName).actionMetaData!!.actionProperties!!.shrinkActionProperties!!.nodeName
-            assertTrue(settings.containsKey("index.routing.allocation.require._name"))
-            assertEquals(nodeToShrink, settings["index.routing.allocation.require._name"])
-            assertEquals(
-                AttemptMoveShardsStep.getSuccessMessage(nodeToShrink),
-                getExplainManagedIndexMetaData(indexName).info?.get("message")
-            )
-        }
-        val nodeToShrink = getExplainManagedIndexMetaData(indexName).actionMetaData!!.actionProperties!!.shrinkActionProperties!!.nodeName
-        // starts WaitForMoveShardsStep
-        updateManagedIndexConfigStartTime(managedIndexConfig)
-        waitFor(Instant.ofEpochSecond(60)) {
-            assertEquals(
-                WaitForMoveShardsStep.getSuccessMessage(nodeToShrink),
-                getExplainManagedIndexMetaData(indexName).info?.get("message")
-            )
-        }
-        // Wait for move should finish before this. Starts AttemptShrinkStep
-        updateManagedIndexConfigStartTime(managedIndexConfig)
-        waitFor(Instant.ofEpochSecond(50)) {
-            assertTrue("Target index is not created", indexExists(targetIndexName))
-            assertEquals(
-                AttemptShrinkStep.getSuccessMessage(targetIndexName),
-                getExplainManagedIndexMetaData(indexName).info?.get("message")
-            )
-        }
-
-        // starts WaitForShrinkStep
-        updateManagedIndexConfigStartTime(managedIndexConfig)
-        waitFor(Instant.ofEpochSecond(60)) {
-            // one primary and one replica
-            assertTrue(getIndexShards(targetIndexName).size == 2)
-            assertEquals(
-                WaitForShrinkStep.SUCCESS_MESSAGE,
-                getExplainManagedIndexMetaData(indexName).info?.get("message")
-            )
-            val indexSettings = getIndexSettings(indexName) as Map<String, Map<String, Map<String, Any?>>>
-            val writeBlock = indexSettings[indexName]!!["settings"]!![IndexMetadata.SETTING_BLOCKS_WRITE] as String?
-            assertNull("Write block setting was not reset after successful shrink", writeBlock)
-            val aliases = getAlias(targetIndexName, "")
-            assertTrue("Alias was not added to shrunken index", aliases.containsKey("max-shard-alias"))
-        }
-    }
-
-    @Suppress("UNCHECKED_CAST")
-    fun `test basic workflow percentage to decrease to`() {
-        val indexName = "${testIndexName}_index_3"
-        val policyID = "${testIndexName}_testPolicyName_3"
-        val shrinkAction = ShrinkAction(
-            numNewShards = null,
-            maxShardSize = null,
-            percentageOfSourceShards = 0.5,
-            targetIndexTemplate = Script(ScriptType.INLINE, Script.DEFAULT_TEMPLATE_LANG, "{{ctx.index}}$testIndexSuffix", mapOf()),
-            aliases = null,
-            forceUnsafe = true,
-            index = 0
-        )
-        val states = listOf(State("ShrinkState", listOf(shrinkAction), listOf()))
-
-        val policy = Policy(
-            id = policyID,
-            description = "$testIndexName description",
-            schemaVersion = 11L,
-            lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
-            errorNotification = randomErrorNotification(),
-            defaultState = states[0].name,
-            states = states
-        )
-
-        createPolicy(policy, policyID)
-        createIndex(indexName, policyID, null, "0", "3", "")
-
-        insertSampleData(indexName, 3)
-
-        // Will change the startTime each execution so that it triggers in 2 seconds
-        // First execution: Policy is initialized
-        val managedIndexConfig = getExistingManagedIndexConfig(indexName)
-
-        updateManagedIndexConfigStartTime(managedIndexConfig)
-        waitFor(Instant.ofEpochSecond(60)) { assertEquals(policyID, getExplainManagedIndexMetaData(indexName).policyID) }
-        // Starts AttemptMoveShardsStep
-        updateManagedIndexConfigStartTime(managedIndexConfig)
-
-        val targetIndexName = indexName + testIndexSuffix
-        waitFor(Instant.ofEpochSecond(60)) {
-            assertEquals(targetIndexName, getExplainManagedIndexMetaData(indexName).actionMetaData!!.actionProperties!!.shrinkActionProperties!!.targetIndexName)
-            assertEquals("true", getIndexBlocksWriteSetting(indexName))
-            assertNotNull("Couldn't find node to shrink onto.", getExplainManagedIndexMetaData(indexName).actionMetaData!!.actionProperties!!.shrinkActionProperties!!.nodeName)
-            val settings = getFlatSettings(indexName)
-            val nodeToShrink = getExplainManagedIndexMetaData(indexName).actionMetaData!!.actionProperties!!.shrinkActionProperties!!.nodeName
-            assertTrue(settings.containsKey("index.routing.allocation.require._name"))
-            assertEquals(nodeToShrink, settings["index.routing.allocation.require._name"])
-            assertEquals(
-                AttemptMoveShardsStep.getSuccessMessage(nodeToShrink),
-                getExplainManagedIndexMetaData(indexName).info?.get("message")
-            )
-        }
-
-        val nodeToShrink = getExplainManagedIndexMetaData(indexName).actionMetaData!!.actionProperties!!.shrinkActionProperties!!.nodeName
-
-        // starts WaitForMoveShardsStep
-        updateManagedIndexConfigStartTime(managedIndexConfig)
-        waitFor(Instant.ofEpochSecond(60)) {
-            assertEquals(
-                WaitForMoveShardsStep.getSuccessMessage(nodeToShrink),
-                getExplainManagedIndexMetaData(indexName).info?.get("message")
-            )
-        }
-        // Wait for move should finish before this. Starts AttemptShrinkStep
-        updateManagedIndexConfigStartTime(managedIndexConfig)
-        waitFor(Instant.ofEpochSecond(50)) {
-            assertTrue("Target index is not created", indexExists(targetIndexName))
-            assertEquals(
-                AttemptShrinkStep.getSuccessMessage(targetIndexName),
-                getExplainManagedIndexMetaData(indexName).info?.get("message")
-            )
-        }
-
-        // starts WaitForShrinkStep
-        updateManagedIndexConfigStartTime(managedIndexConfig)
-        waitFor(Instant.ofEpochSecond(60)) {
-            // one primary and one replica
-            assertTrue(getIndexShards(targetIndexName).size == 2)
-            assertEquals(
-                WaitForShrinkStep.SUCCESS_MESSAGE,
-                getExplainManagedIndexMetaData(indexName).info?.get("message")
-            )
-            val indexSettings = getIndexSettings(indexName) as Map<String, Map<String, Map<String, Any?>>>
-            val writeBlock = indexSettings[indexName]!!["settings"]!![IndexMetadata.SETTING_BLOCKS_WRITE] as String?
-            assertNull("Write block setting was not reset after successful shrink", writeBlock)
-        }
-    }
-
-    @Suppress("UNCHECKED_CAST")
-    fun `test allocation block picks correct node`() {
-        val logger = LogManager.getLogger(::ShrinkActionIT)
+    fun `test allocation block picks correct node with exclude node`() {
+        Assume.assumeTrue(isMultiNode)
         val nodes = getNodes()
-        if (nodes.size > 1) {
-            val indexName = "${testIndexName}_index_4"
-            val policyID = "${testIndexName}_testPolicyName_4"
-            val shrinkAction = ShrinkAction(
-                numNewShards = null,
-                maxShardSize = null,
-                percentageOfSourceShards = 0.5,
-                targetIndexTemplate = Script(ScriptType.INLINE, Script.DEFAULT_TEMPLATE_LANG, "{{ctx.index}}$testIndexSuffix", mapOf()),
-                aliases = null,
-                forceUnsafe = true,
-                index = 0
-            )
-            val states = listOf(State("ShrinkState", listOf(shrinkAction), listOf()))
+        val indexName = "${testIndexName}_index_4"
+        val policyID = "${testIndexName}_testPolicyName_4"
+        val shrinkAction = randomShrinkAction()
+        val states = listOf(State("ShrinkState", listOf(shrinkAction), listOf()))
+        val policy = Policy(
+            id = policyID,
+            description = "$testIndexName description",
+            schemaVersion = 11L,
+            lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
+            errorNotification = randomErrorNotification(),
+            defaultState = states[0].name,
+            states = states
+        )
 
-            val policy = Policy(
-                id = policyID,
-                description = "$testIndexName description",
-                schemaVersion = 11L,
-                lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
-                errorNotification = randomErrorNotification(),
-                defaultState = states[0].name,
-                states = states
-            )
-            createPolicy(policy, policyID)
-            createIndex(indexName, policyID, null, "0", "3", "")
-            val excludedNode = nodes.iterator().next()
-            logger.info("Excluded node: $excludedNode")
-            updateIndexSettings(
-                indexName,
-                Settings.builder().put("index.routing.allocation.exclude._name", excludedNode)
-            )
-            insertSampleData(indexName, 3)
-            // Will change the startTime each execution so that it triggers in 2 seconds
-            // First execution: Policy is initialized
-            val managedIndexConfig = getExistingManagedIndexConfig(indexName)
-            logger.info("index settings: \n ${getFlatSettings(indexName)}")
+        createPolicy(policy, policyID)
+        createIndex(indexName, policyID, null, "0", "3", "")
 
-            updateManagedIndexConfigStartTime(managedIndexConfig)
-            waitFor(Instant.ofEpochSecond(60)) { assertEquals(policyID, getExplainManagedIndexMetaData(indexName).policyID) }
-            // Starts AttemptMoveShardsStep
-            updateManagedIndexConfigStartTime(managedIndexConfig)
-            val targetIndexName = indexName + testIndexSuffix
-            waitFor(Instant.ofEpochSecond(60)) {
-                assertEquals(
-                    targetIndexName,
-                    getExplainManagedIndexMetaData(indexName).actionMetaData!!.actionProperties!!.shrinkActionProperties!!.targetIndexName
-                )
-                assertEquals("true", getIndexBlocksWriteSetting(indexName))
-                val nodeName =
-                    getExplainManagedIndexMetaData(indexName).actionMetaData!!.actionProperties!!.shrinkActionProperties!!.nodeName
-                assertNotNull("Couldn't find node to shrink onto.", nodeName)
-                assertNotEquals(nodeName, excludedNode)
-                val settings = getFlatSettings(indexName)
-                val nodeToShrink =
-                    getExplainManagedIndexMetaData(indexName).actionMetaData!!.actionProperties!!.shrinkActionProperties!!.nodeName
-                assertTrue(settings.containsKey("index.routing.allocation.require._name"))
-                assertEquals(nodeToShrink, settings["index.routing.allocation.require._name"])
-                assertEquals(
-                    AttemptMoveShardsStep.getSuccessMessage(nodeToShrink),
-                    getExplainManagedIndexMetaData(indexName).info?.get("message")
-                )
-            }
+        val excludedNode = nodes.iterator().next()
+        logger.info("Excluded node: $excludedNode")
+        updateIndexSettings(
+            indexName,
+            Settings.builder().put("index.routing.allocation.exclude._name", excludedNode)
+        )
 
-            val nodeToShrink =
-                getExplainManagedIndexMetaData(indexName).actionMetaData!!.actionProperties!!.shrinkActionProperties!!.nodeName
-
-            // starts WaitForMoveShardsStep
-            updateManagedIndexConfigStartTime(managedIndexConfig)
-            waitFor(Instant.ofEpochSecond(60)) {
-                assertEquals(
-                    WaitForMoveShardsStep.getSuccessMessage(nodeToShrink),
-                    getExplainManagedIndexMetaData(indexName).info?.get("message")
-                )
-            }
-            // Wait for move should finish before this. Starts AttemptShrinkStep
-            updateManagedIndexConfigStartTime(managedIndexConfig)
-            waitFor(Instant.ofEpochSecond(50)) {
-                assertTrue("Target index is not created", indexExists(targetIndexName))
-                assertEquals(
-                    AttemptShrinkStep.getSuccessMessage(targetIndexName),
-                    getExplainManagedIndexMetaData(indexName).info?.get("message")
-                )
-            }
-
-            // starts WaitForShrinkStep
-            updateManagedIndexConfigStartTime(managedIndexConfig)
-            waitFor(Instant.ofEpochSecond(60)) {
-                // one primary and one replica
-                assertTrue(getIndexShards(targetIndexName).size == 2)
-                assertEquals(
-                    WaitForShrinkStep.SUCCESS_MESSAGE,
-                    getExplainManagedIndexMetaData(indexName).info?.get("message")
-                )
-                val indexSettings = getIndexSettings(indexName) as Map<String, Map<String, Map<String, Any?>>>
-                val writeBlock = indexSettings[indexName]!!["settings"]!![IndexMetadata.SETTING_BLOCKS_WRITE] as String?
-                assertNull("Write block setting was not reset after successful shrink", writeBlock)
-            }
-        }
+        assertShrinkActionRun(indexName, policyID, excludedNode)
     }
 
     fun `test no-op with single source index primary shard`() {
@@ -500,99 +295,26 @@ class ShrinkActionIT : IndexStateManagementRestTestCase() {
         }
     }
 
-    @Suppress("UNCHECKED_CAST")
     fun `test shrink with replicas`() {
-        val logger = LogManager.getLogger(::ShrinkActionIT)
-        val nodes = getNodes()
-        if (nodes.size > 1) {
-            val indexName = "${testIndexName}_with_replicas"
-            val policyID = "${testIndexName}_with_replicas"
-            val shrinkAction = ShrinkAction(
-                numNewShards = null,
-                maxShardSize = null,
-                percentageOfSourceShards = 0.5,
-                targetIndexTemplate = Script(ScriptType.INLINE, Script.DEFAULT_TEMPLATE_LANG, "{{ctx.index}}$testIndexSuffix", mapOf()),
-                aliases = null,
-                forceUnsafe = false,
-                index = 0
-            )
-            val states = listOf(State("ShrinkState", listOf(shrinkAction), listOf()))
+        Assume.assumeTrue(isMultiNode)
 
-            val policy = Policy(
-                id = policyID,
-                description = "$testIndexName description",
-                schemaVersion = 11L,
-                lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
-                errorNotification = randomErrorNotification(),
-                defaultState = states[0].name,
-                states = states
-            )
-            createPolicy(policy, policyID)
-            createIndex(indexName, policyID, null, "1", "3", "")
-            insertSampleData(indexName, 3)
-            // Will change the startTime each execution so that it triggers in 2 seconds
-            // First execution: Policy is initialized
-            val managedIndexConfig = getExistingManagedIndexConfig(indexName)
-            logger.info("index settings: \n ${getFlatSettings(indexName)}")
+        val indexName = "${testIndexName}_with_replicas"
+        val policyID = "${testIndexName}_with_replicas"
+        val shrinkAction = randomShrinkAction()
+        val states = listOf(State("ShrinkState", listOf(shrinkAction), listOf()))
+        val policy = Policy(
+            id = policyID,
+            description = "$testIndexName description",
+            schemaVersion = 11L,
+            lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
+            errorNotification = randomErrorNotification(),
+            defaultState = states[0].name,
+            states = states
+        )
+        createPolicy(policy, policyID)
+        createIndex(indexName, policyID, null, "1", "3", "")
 
-            updateManagedIndexConfigStartTime(managedIndexConfig)
-            waitFor(Instant.ofEpochSecond(60)) { assertEquals(policyID, getExplainManagedIndexMetaData(indexName).policyID) }
-            // Starts AttemptMoveShardsStep
-            updateManagedIndexConfigStartTime(managedIndexConfig)
-            val targetIndexName = indexName + testIndexSuffix
-            waitFor(Instant.ofEpochSecond(60)) {
-                assertEquals(
-                    targetIndexName,
-                    getExplainManagedIndexMetaData(indexName).actionMetaData!!.actionProperties!!.shrinkActionProperties!!.targetIndexName
-                )
-                assertEquals("true", getIndexBlocksWriteSetting(indexName))
-                val nodeName =
-                    getExplainManagedIndexMetaData(indexName).actionMetaData!!.actionProperties!!.shrinkActionProperties!!.nodeName
-                assertNotNull("Couldn't find node to shrink onto.", nodeName)
-                val settings = getFlatSettings(indexName)
-                assertTrue(settings.containsKey("index.routing.allocation.require._name"))
-                assertEquals(nodeName, settings["index.routing.allocation.require._name"])
-                assertEquals(
-                    AttemptMoveShardsStep.getSuccessMessage(nodeName),
-                    getExplainManagedIndexMetaData(indexName).info?.get("message")
-                )
-            }
-
-            val nodeToShrink =
-                getExplainManagedIndexMetaData(indexName).actionMetaData!!.actionProperties!!.shrinkActionProperties!!.nodeName
-
-            // starts WaitForMoveShardsStep
-            updateManagedIndexConfigStartTime(managedIndexConfig)
-            waitFor(Instant.ofEpochSecond(60)) {
-                assertEquals(
-                    WaitForMoveShardsStep.getSuccessMessage(nodeToShrink),
-                    getExplainManagedIndexMetaData(indexName).info?.get("message")
-                )
-            }
-            // Wait for move should finish before this. Starts AttemptShrinkStep
-            updateManagedIndexConfigStartTime(managedIndexConfig)
-            waitFor(Instant.ofEpochSecond(50)) {
-                assertTrue("Target index is not created", indexExists(targetIndexName))
-                assertEquals(
-                    AttemptShrinkStep.getSuccessMessage(targetIndexName),
-                    getExplainManagedIndexMetaData(indexName).info?.get("message")
-                )
-            }
-
-            // starts WaitForShrinkStep
-            updateManagedIndexConfigStartTime(managedIndexConfig)
-            waitFor(Instant.ofEpochSecond(60)) {
-                // one primary and one replica
-                assertTrue(getIndexShards(targetIndexName).size == 2)
-                assertEquals(
-                    WaitForShrinkStep.SUCCESS_MESSAGE,
-                    getExplainManagedIndexMetaData(indexName).info?.get("message")
-                )
-                val indexSettings = getIndexSettings(indexName) as Map<String, Map<String, Map<String, Any?>>>
-                val writeBlock = indexSettings[indexName]!!["settings"]!![IndexMetadata.SETTING_BLOCKS_WRITE] as String?
-                assertNull("Write block setting was not reset after successful shrink", writeBlock)
-            }
-        }
+        assertShrinkActionRun(indexName, policyID)
     }
 
     fun `test retries from first step`() {
