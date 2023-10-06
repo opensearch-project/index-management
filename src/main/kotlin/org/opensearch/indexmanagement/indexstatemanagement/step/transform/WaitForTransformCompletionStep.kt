@@ -9,6 +9,7 @@ import org.apache.logging.log4j.LogManager
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepContext
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepMetaData
 import org.opensearch.indexmanagement.transform.action.explain.ExplainTransformAction
 import org.opensearch.indexmanagement.transform.action.explain.ExplainTransformRequest
@@ -16,6 +17,7 @@ import org.opensearch.indexmanagement.transform.action.explain.ExplainTransformR
 import org.opensearch.indexmanagement.transform.model.TransformMetadata
 import org.opensearch.transport.RemoteTransportException
 
+@Suppress("ReturnCount")
 class WaitForTransformCompletionStep : Step(name) {
 
     private val logger = LogManager.getLogger(javaClass)
@@ -35,22 +37,11 @@ class WaitForTransformCompletionStep : Step(name) {
             return this
         }
 
-        val explainTransformRequest = ExplainTransformRequest(listOf(transformJobId))
-        val response: ExplainTransformResponse
-        try {
-            response = context.client.suspendUntil {
-                execute(ExplainTransformAction.INSTANCE, explainTransformRequest, it)
-            }
-            logger.info("Received the status for jobs [${response.getIdsToExplain().keys}]")
-        } catch (e: RemoteTransportException) {
-            processFailure(transformJobId, indexName, e)
-            return this
-        } catch (e: Exception) {
-            processFailure(transformJobId, indexName, e)
-            return this
-        }
+        val explainTransformResponse = explainTransformJob(transformJobId, indexName, context)
+        // if explainTransform call failed, return early
+        explainTransformResponse ?: return this
 
-        val explainTransform = response.getIdsToExplain()[transformJobId]
+        val explainTransform = explainTransformResponse.getIdsToExplain()[transformJobId]
         if (explainTransform == null) {
             logger.warn("Job $transformJobId is not found, mark step as COMPLETED.")
             stepStatus = StepStatus.COMPLETED
@@ -67,6 +58,22 @@ class WaitForTransformCompletionStep : Step(name) {
 
         processTransformMetadataStatus(transformJobId, indexName, explainTransform.metadata)
         return this
+    }
+
+    private suspend fun explainTransformJob(transformJobId: String, indexName: String, context: StepContext): ExplainTransformResponse? {
+        val explainTransformRequest = ExplainTransformRequest(listOf(transformJobId))
+        try {
+            val response = context.client.suspendUntil {
+                execute(ExplainTransformAction.INSTANCE, explainTransformRequest, it)
+            }
+            logger.info("Received the status for jobs [${response.getIdsToExplain().keys}]")
+            return response
+        } catch (e: RemoteTransportException) {
+            processFailure(transformJobId, indexName, e)
+        } catch (e: Exception) {
+            processFailure(transformJobId, indexName, e)
+        }
+        return null
     }
 
     fun processTransformMetadataStatus(transformJobId: String, indexName: String, transformMetadata: TransformMetadata) {
