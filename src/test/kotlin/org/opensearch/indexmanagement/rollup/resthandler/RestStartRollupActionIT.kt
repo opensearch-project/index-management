@@ -14,7 +14,6 @@ import org.opensearch.indexmanagement.common.model.dimension.DateHistogram
 import org.opensearch.indexmanagement.indexstatemanagement.util.INDEX_HIDDEN
 import org.opensearch.indexmanagement.indexstatemanagement.util.INDEX_NUMBER_OF_SHARDS
 import org.opensearch.indexmanagement.makeRequest
-import org.opensearch.indexmanagement.rollup.RollupRestTestCase
 import org.opensearch.indexmanagement.rollup.model.Rollup
 import org.opensearch.indexmanagement.rollup.model.RollupMetadata
 import org.opensearch.indexmanagement.rollup.randomRollup
@@ -25,7 +24,7 @@ import java.time.Instant
 import java.time.temporal.ChronoUnit
 import java.util.Locale
 
-class RestStartRollupActionIT : RollupRestTestCase() {
+class RestStartRollupActionIT : RollupRestAPITestCase() {
 
     private val testName = javaClass.simpleName.lowercase(Locale.ROOT)
 
