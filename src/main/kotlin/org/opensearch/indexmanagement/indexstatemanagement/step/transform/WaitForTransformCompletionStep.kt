@@ -6,6 +6,7 @@
 package org.opensearch.indexmanagement.indexstatemanagement.step.transform
 
 import org.apache.logging.log4j.LogManager
+import org.opensearch.ExceptionsHelper
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
@@ -69,7 +70,7 @@ class WaitForTransformCompletionStep : Step(name) {
             logger.info("Received the status for jobs [${response.getIdsToExplain().keys}]")
             return response
         } catch (e: RemoteTransportException) {
-            processFailure(transformJobId, indexName, e)
+            processFailure(transformJobId, indexName, ExceptionsHelper.unwrapCause(e) as Exception)
         } catch (e: Exception) {
             processFailure(transformJobId, indexName, e)
         }
@@ -108,17 +109,8 @@ class WaitForTransformCompletionStep : Step(name) {
     }
 
     override fun getUpdatedManagedIndexMetadata(currentMetadata: ManagedIndexMetaData): ManagedIndexMetaData {
-        val currentActionMetadata = currentMetadata.actionMetaData
-        val currentActionProperties = currentActionMetadata?.actionProperties
-        val currentTransformActionProperties = currentActionProperties?.transformActionProperties
         return currentMetadata.copy(
-            actionMetaData = currentActionMetadata?.copy(
-                actionProperties = currentActionProperties?.copy(
-                    transformActionProperties = currentTransformActionProperties?.copy(
-                        transformId = currentTransformActionProperties.transformId
-                    )
-                )
-            ),
+            actionMetaData = currentMetadata.actionMetaData,
             stepMetaData = StepMetaData(name, getStepStartTime(currentMetadata).toEpochMilli(), stepStatus),
             transitionTo = null,
             info = info

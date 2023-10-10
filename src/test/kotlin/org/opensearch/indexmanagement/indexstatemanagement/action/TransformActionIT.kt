@@ -133,6 +133,7 @@ class TransformActionIT : IndexStateManagementRestTestCase() {
                 .addAggregator(avgAggregation())
                 .addAggregator(valueCountAggregation())
         )
+        val transform = ismTransform.toTransform(indexName)
         val policy = preparePolicyContainingTransform(indexName, ismTransform, policyId, retry = 1)
         createPolicy(policy, policyId)
         createIndex(indexName, policyId, mapping = SOURCE_INDEX_MAPPING)
@@ -140,11 +141,10 @@ class TransformActionIT : IndexStateManagementRestTestCase() {
         assertIndexTransformFailedInAttemptCreateTransformStep(indexName, policyId, ismTransform)
 
         // verify the wait for transform completion step will be retried and failed again.
-        Thread.sleep(60000)
         updateManagedIndexConfigStartTime(getExistingManagedIndexConfig(indexName))
         waitFor {
             assertEquals(
-                AttemptCreateTransformJobStep.getFailedMessage(ismTransform.toTransform(indexName).id, indexName),
+                AttemptCreateTransformJobStep.getFailedMessage(transform.id, indexName),
                 getExplainManagedIndexMetaData(indexName).info?.get("message")
             )
         }
@@ -255,7 +255,8 @@ class TransformActionIT : IndexStateManagementRestTestCase() {
     }
 
     private fun assertIndexTransformSucceeded(indexName: String, policyId: String, ismTransform: ISMTransform) {
-        val transformId = ismTransform.toTransform(indexName).id
+        val transform = ismTransform.toTransform(indexName)
+        val transformId = transform.id
         val managedIndexConfig = getExistingManagedIndexConfig(indexName)
 
         // Change the start time so that the policy will be initialized.
@@ -271,7 +272,7 @@ class TransformActionIT : IndexStateManagementRestTestCase() {
             )
         }
 
-        Thread.sleep(60000)
+        updateTransformStartTime(transform)
 
         // Change the start time so that the transform action will be attempted.
         updateManagedIndexConfigStartTime(managedIndexConfig)
@@ -291,7 +292,8 @@ class TransformActionIT : IndexStateManagementRestTestCase() {
     }
 
     private fun assertIndexTransformSucceededTwice(indexName: String, policyId: String, ismTransform: ISMTransform) {
-        val transformId = ismTransform.toTransform(indexName).id
+        val transform = ismTransform.toTransform(indexName)
+        val transformId = transform.id
         val managedIndexConfig = getExistingManagedIndexConfig(indexName)
 
         // Change the start time so that the policy will be initialized.
@@ -306,7 +308,7 @@ class TransformActionIT : IndexStateManagementRestTestCase() {
                 getExplainManagedIndexMetaData(indexName).info?.get("message")
             )
         }
-        Thread.sleep(60000)
+        updateTransformStartTime(transform)
 
         // Change the start time so that the transform action will be attempted.
         updateManagedIndexConfigStartTime(managedIndexConfig)
@@ -341,7 +343,7 @@ class TransformActionIT : IndexStateManagementRestTestCase() {
                 getExplainManagedIndexMetaData(indexName).info?.get("message")
             )
         }
-        Thread.sleep(60000)
+        updateTransformStartTime(transform)
 
         // Change the start time so that the second transform action will be attempted.
         updateManagedIndexConfigStartTime(managedIndexConfig)
