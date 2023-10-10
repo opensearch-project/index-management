@@ -190,19 +190,21 @@ class TransportExplainAction @Inject constructor(
                             }
 
                             parseSearchHits(response.hits.hits).forEach { managedIndex ->
-                                managedIndices.add(managedIndex.index)
-                                enabledState[managedIndex.index] = managedIndex.enabled
-                                managedIndicesMetaDataMap[managedIndex.index] = mapOf(
-                                    "index" to managedIndex.index,
-                                    "index_uuid" to managedIndex.indexUuid,
-                                    "policy_id" to managedIndex.policyID,
-                                    "enabled" to managedIndex.enabled.toString()
-                                )
-                                if (showPolicy) {
-                                    managedIndex.policy?.let { appliedPolicies[managedIndex.index] = it }
-                                }
-                                if (validateAction) {
-                                    managedIndex.policy?.let { policiesforValidation[managedIndex.index] = it }
+                                if (request.explainFilter.isValid(managedIndex)) {
+                                    managedIndices.add(managedIndex.index)
+                                    enabledState[managedIndex.index] = managedIndex.enabled
+                                    managedIndicesMetaDataMap[managedIndex.index] = mapOf(
+                                        "index" to managedIndex.index,
+                                        "index_uuid" to managedIndex.indexUuid,
+                                        "policy_id" to managedIndex.policyID,
+                                        "enabled" to managedIndex.enabled.toString()
+                                    )
+                                    if (showPolicy) {
+                                        managedIndex.policy?.let { appliedPolicies[managedIndex.index] = it }
+                                    }
+                                    if (validateAction) {
+                                        managedIndex.policy?.let { policiesforValidation[managedIndex.index] = it }
+                                    }
                                 }
                             }
 
