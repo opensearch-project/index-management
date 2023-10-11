@@ -40,6 +40,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.model.Transition
 import org.opensearch.indexmanagement.indexstatemanagement.model.coordinator.ClusterStateManagedIndexConfig
 import org.opensearch.indexmanagement.indexstatemanagement.model.coordinator.SweptManagedIndexConfig
 import org.opensearch.indexmanagement.common.model.notification.Channel
+import org.opensearch.indexmanagement.indexstatemanagement.action.TransformAction
 import org.opensearch.indexmanagement.indexstatemanagement.model.destination.Chime
 import org.opensearch.indexmanagement.indexstatemanagement.model.destination.CustomWebhook
 import org.opensearch.indexmanagement.indexstatemanagement.model.destination.Destination
@@ -49,6 +50,7 @@ import org.opensearch.indexmanagement.opensearchapi.string
 import org.opensearch.indexmanagement.rollup.randomISMRollup
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Action
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
+import org.opensearch.indexmanagement.transform.randomISMTransform
 import org.opensearch.jobscheduler.spi.schedule.CronSchedule
 import org.opensearch.jobscheduler.spi.schedule.IntervalSchedule
 import org.opensearch.jobscheduler.spi.schedule.Schedule
@@ -198,6 +200,10 @@ fun randomAllocationActionConfig(require: Map<String, String> = emptyMap(), excl
 
 fun randomRollupActionConfig(): RollupAction {
     return RollupAction(ismRollup = randomISMRollup(), index = 0)
+}
+
+fun randomTransformActionConfig(): TransformAction {
+    return TransformAction(ismTransform = randomISMTransform(), index = 0)
 }
 
 fun randomCloseActionConfig(): CloseAction {

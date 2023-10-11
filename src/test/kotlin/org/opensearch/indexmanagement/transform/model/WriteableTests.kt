@@ -8,6 +8,7 @@ package org.opensearch.indexmanagement.transform.model
 import org.opensearch.common.io.stream.BytesStreamOutput
 import org.opensearch.core.common.io.stream.StreamInput
 import org.opensearch.indexmanagement.transform.buildStreamInputForTransforms
+import org.opensearch.indexmanagement.transform.randomISMTransform
 import org.opensearch.indexmanagement.transform.randomTransform
 import org.opensearch.indexmanagement.transform.randomTransformMetadata
 import org.opensearch.test.OpenSearchTestCase
@@ -35,5 +36,12 @@ class WriteableTests : OpenSearchTestCase() {
         val streamedTransform = Transform(buildStreamInputForTransforms(out))
         @Suppress("DEPRECATION")
         assertTrue("roles field in transform model is deprecated and should be parsed to empty list.", streamedTransform.roles.isEmpty())
+    }
+
+    fun `test ism transform as stream`() {
+        val ismTransform = randomISMTransform()
+        val out = BytesStreamOutput().also { ismTransform.writeTo(it) }
+        val streamedISMTransform = ISMTransform(buildStreamInputForTransforms(out))
+        assertEquals("Round tripping ISMTransform stream doesn't work", ismTransform, streamedISMTransform)
     }
 }

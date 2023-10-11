@@ -42,6 +42,7 @@ import org.opensearch.common.regex.Regex
 import org.opensearch.common.settings.Settings
 import org.opensearch.common.unit.TimeValue
 import org.opensearch.commons.authuser.User
+import org.opensearch.core.xcontent.NamedXContentRegistry
 import org.opensearch.core.index.Index
 import org.opensearch.index.query.QueryBuilders
 import org.opensearch.indexmanagement.IndexManagementIndices
@@ -110,7 +111,8 @@ class ManagedIndexCoordinator(
     private val clusterService: ClusterService,
     private val threadPool: ThreadPool,
     indexManagementIndices: IndexManagementIndices,
-    private val indexMetadataProvider: IndexMetadataProvider
+    private val indexMetadataProvider: IndexMetadataProvider,
+    private val xContentRegistry: NamedXContentRegistry
 ) : ClusterStateListener,
     CoroutineScope by CoroutineScope(SupervisorJob() + Dispatchers.Default + CoroutineName("ManagedIndexCoordinator")),
     LifecycleListener() {
@@ -422,7 +424,7 @@ class ManagedIndexCoordinator(
 
         return try {
             val response: SearchResponse = client.suspendUntil { search(searchRequest, it) }
-            parseFromSearchResponse(response = response, parse = Policy.Companion::parse)
+            parseFromSearchResponse(response, xContentRegistry, Policy.Companion::parse)
         } catch (ex: IndexNotFoundException) {
             emptyList()
         } catch (ex: ClusterBlockException) {
@@ -603,7 +605,7 @@ class ManagedIndexCoordinator(
         }
         mRes.forEach {
             if (it.response.isExists) {
-                result[it.id] = contentParser(it.response.sourceAsBytesRef).parseWithType(
+                result[it.id] = contentParser(it.response.sourceAsBytesRef, xContentRegistry).parseWithType(
                     it.response.id, it.response.seqNo, it.response.primaryTerm, ManagedIndexConfig.Companion::parse
                 )
             }

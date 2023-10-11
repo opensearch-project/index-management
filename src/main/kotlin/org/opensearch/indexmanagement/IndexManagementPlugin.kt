@@ -453,7 +453,7 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
 
         val managedIndexCoordinator = ManagedIndexCoordinator(
             environment.settings(),
-            client, clusterService, threadPool, indexManagementIndices, indexMetadataProvider
+            client, clusterService, threadPool, indexManagementIndices, indexMetadataProvider, xContentRegistry
         )
 
         val smRunner = SMRunner.init(client, threadPool, settings, indexManagementIndices, clusterService)

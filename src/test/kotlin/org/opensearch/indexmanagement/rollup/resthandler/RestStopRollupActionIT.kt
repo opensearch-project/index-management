@@ -5,7 +5,6 @@
 
 package org.opensearch.indexmanagement.rollup.resthandler
 
-import org.junit.After
 import org.opensearch.client.ResponseException
 import org.opensearch.common.settings.Settings
 import org.opensearch.indexmanagement.IndexManagementIndices
@@ -17,7 +16,6 @@ import org.opensearch.indexmanagement.indexstatemanagement.util.INDEX_HIDDEN
 import org.opensearch.indexmanagement.indexstatemanagement.util.INDEX_NUMBER_OF_SHARDS
 import org.opensearch.indexmanagement.makeRequest
 import org.opensearch.indexmanagement.randomInstant
-import org.opensearch.indexmanagement.rollup.RollupRestTestCase
 import org.opensearch.indexmanagement.rollup.model.Rollup
 import org.opensearch.indexmanagement.rollup.model.RollupMetadata
 import org.opensearch.indexmanagement.rollup.randomRollup
@@ -28,17 +26,9 @@ import java.time.Instant
 import java.time.temporal.ChronoUnit
 import java.util.Locale
 
-class RestStopRollupActionIT : RollupRestTestCase() {
+class RestStopRollupActionIT : RollupRestAPITestCase() {
 
     private val testName = javaClass.simpleName.lowercase(Locale.ROOT)
-
-    @After
-    fun clearIndicesAfterEachTest() {
-        // Flaky could happen if config index not deleted
-        // metadata creation could cause the mapping to be auto set to
-        //  a wrong type, namely, [rollup_metadata.continuous.next_window_end_time] to long
-        wipeAllIndices()
-    }
 
     @Throws(Exception::class)
     fun `test stopping a started rollup`() {

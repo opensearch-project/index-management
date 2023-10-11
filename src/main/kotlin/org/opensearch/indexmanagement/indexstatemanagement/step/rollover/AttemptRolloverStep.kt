@@ -366,7 +366,7 @@ class AttemptRolloverStep(private val action: RolloverAction) : Step(name) {
         info = mutableInfo.toMap()
     }
 
-    override fun isIdempotent(): Boolean = false
+    override fun isIdempotent(): Boolean = true
 
     @Suppress("TooManyFunctions")
     companion object {
