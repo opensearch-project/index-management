@@ -9,6 +9,7 @@ import org.opensearch.common.io.stream.BytesStreamOutput
 import org.opensearch.core.common.io.stream.StreamInput
 import org.opensearch.common.unit.TimeValue
 import org.opensearch.indexmanagement.common.model.rest.SearchParams
+import org.opensearch.indexmanagement.indexstatemanagement.model.ExplainFilter
 import org.opensearch.indexmanagement.indexstatemanagement.util.DEFAULT_INDEX_TYPE
 import org.opensearch.test.OpenSearchTestCase
 
@@ -19,9 +20,10 @@ class ExplainRequestTests : OpenSearchTestCase() {
         val local = true
         val clusterManagerTimeout = TimeValue.timeValueSeconds(30)
         val params = SearchParams(0, 20, "sort-field", "asc", "*")
+        val filter = ExplainFilter()
         val showPolicy = false
         val showValidationResult = false
-        val req = ExplainRequest(indices, local, clusterManagerTimeout, params, showPolicy, showValidationResult, DEFAULT_INDEX_TYPE)
+        val req = ExplainRequest(indices, local, clusterManagerTimeout, params, filter, showPolicy, showValidationResult, DEFAULT_INDEX_TYPE)
 
         val out = BytesStreamOutput()
         req.writeTo(out)
@@ -36,9 +38,10 @@ class ExplainRequestTests : OpenSearchTestCase() {
         val local = true
         val clusterManagerTimeout = TimeValue.timeValueSeconds(30)
         val params = SearchParams(0, 20, "sort-field", "asc", "*")
+        val filter = ExplainFilter()
         val showPolicy = false
         val showValidationResult = false
-        val req = ExplainRequest(indices, local, clusterManagerTimeout, params, showPolicy, showValidationResult, "non-existent-index-type")
+        val req = ExplainRequest(indices, local, clusterManagerTimeout, params, filter, showPolicy, showValidationResult, "non-existent-index-type")
 
         val actualException: String? = req.validate()?.validationErrors()?.firstOrNull()
         val expectedException: String = ExplainRequest.MULTIPLE_INDICES_CUSTOM_INDEX_TYPE_ERROR

@@ -27,16 +27,16 @@ data class ExplainFilter(
 
     @Throws(IOException::class)
     constructor(sin: StreamInput) : this(
-        filterPolicyID = sin.readString(),
-        filterState = sin.readString(),
-        filterAction = sin.readString()
+        filterPolicyID = sin.readOptionalString(),
+        filterState = sin.readOptionalString(),
+        filterAction = sin.readOptionalString()
     )
 
     @Throws(IOException::class)
     override fun writeTo(out: StreamOutput) {
-        out.writeString(filterPolicyID)
-        out.writeString(filterState)
-        out.writeString(filterAction)
+        out.writeOptionalString(filterPolicyID)
+        out.writeOptionalString(filterState)
+        out.writeOptionalString(filterAction)
     }
 
     fun isValid(managedIndexConfig: ManagedIndexConfig): Boolean {
