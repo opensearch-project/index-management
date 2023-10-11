@@ -48,7 +48,7 @@ However, to build the `index management` plugin project, we also use the OpenSea
 
 ### Building from the command line
 
-1. `./gradlew build` builds and tests project.
+1. `./gradlew build` builds and tests project. 
 2. `./gradlew run` launches a single node cluster with the index management (and job-scheduler) plugin installed.
 3. `./gradlew run -PnumNodes=3` launches a multi-node cluster with the index management (and job-scheduler) plugin installed.
 4. `./gradlew integTest` launches a single node cluster with the index management (and job-scheduler) plugin installed and runs all integ tests.

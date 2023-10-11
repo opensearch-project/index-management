@@ -109,9 +109,6 @@ abstract class SecurityRestTestCase : IndexManagementRestTestCase() {
 
     private object TransformRestTestCaseExt : TransformRestTestCase() {
 
-        fun updateTransformStartTimeExt(update: Transform, desiredStartTimeMillis: Long? = null) =
-            super.updateTransformStartTime(update, desiredStartTimeMillis)
-
         fun createTransformExt(
             transform: Transform,
             transformId: String = randomAlphaOfLength(10),
@@ -309,9 +306,6 @@ abstract class SecurityRestTestCase : IndexManagementRestTestCase() {
         val request = Request(RestRequest.Method.GET.name, "${IndexManagementPlugin.ROLLUP_JOBS_BASE_URI}/$rollupId")
         executeRequest(request, expectedStatus, userClient)
     }
-
-    protected fun updateTransformStartTime(update: Transform, desiredStartTimeMillis: Long? = null) =
-        TransformRestTestCaseExt.updateTransformStartTimeExt(update, desiredStartTimeMillis)
 
     protected fun createTransform(
         transform: Transform,
