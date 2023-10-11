@@ -291,6 +291,7 @@ object ManagedIndexRunner :
             return
         }
 
+        val policy = managedIndexConfig.policy
         if (managedIndexMetaData.hasDifferentPolicyVersion(managedIndexConfig)) {
             val info = mapOf("message" to "There is a version conflict between your previous execution and your managed index")
             val result = updateManagedIndexMetaData(
@@ -301,11 +302,11 @@ object ManagedIndexRunner :
             )
             if (result.metadataSaved) {
                 disableManagedIndexConfig(managedIndexConfig)
+                publishErrorNotification(policy, managedIndexMetaData)
             }
             return
         }
 
-        val policy = managedIndexConfig.policy
         val state = policy.getStateToExecute(managedIndexMetaData)
         val action: Action? = state?.getActionToExecute(managedIndexMetaData, indexMetadataProvider)
         val stepContext = StepContext(
@@ -328,8 +329,10 @@ object ManagedIndexRunner :
                 managedIndexMetaData
                     .copy(actionMetaData = currentActionMetaData?.copy(failed = true), info = info)
             )
-            if (updated.metadataSaved)
+            if (updated.metadataSaved) {
                 disableManagedIndexConfig(managedIndexConfig)
+                publishErrorNotification(policy, managedIndexMetaData)
+            }
             return
         }
 
@@ -355,7 +358,10 @@ object ManagedIndexRunner :
                         policyRetryInfo = PolicyRetryInfoMetaData(true, 0), info = info
                     )
                 )
-                if (updated.metadataSaved) disableManagedIndexConfig(managedIndexConfig)
+                if (updated.metadataSaved) {
+                    disableManagedIndexConfig(managedIndexConfig)
+                    publishErrorNotification(policy, managedIndexMetaData)
+                }
                 return
             }
         }
@@ -369,7 +375,10 @@ object ManagedIndexRunner :
                     policyRetryInfo = PolicyRetryInfoMetaData(true, 0), info = info
                 )
             )
-            if (updated.metadataSaved) disableManagedIndexConfig(managedIndexConfig)
+            if (updated.metadataSaved) {
+                disableManagedIndexConfig(managedIndexConfig)
+                publishErrorNotification(policy, managedIndexMetaData)
+            }
             return
         }
 
@@ -382,7 +391,10 @@ object ManagedIndexRunner :
                     policyRetryInfo = PolicyRetryInfoMetaData(true, 0), info = info
                 )
             )
-            if (updated.metadataSaved) disableManagedIndexConfig(managedIndexConfig)
+            if (updated.metadataSaved) {
+                disableManagedIndexConfig(managedIndexConfig)
+                publishErrorNotification(policy, managedIndexMetaData)
+            }
             return
         }
 
