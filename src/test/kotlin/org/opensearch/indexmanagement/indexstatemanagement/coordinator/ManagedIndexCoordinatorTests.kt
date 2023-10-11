@@ -20,6 +20,7 @@ import org.opensearch.indexmanagement.IndexManagementIndices
 import org.opensearch.indexmanagement.indexstatemanagement.IndexMetadataProvider
 import org.opensearch.indexmanagement.indexstatemanagement.ManagedIndexCoordinator
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings
+import org.opensearch.search.SearchModule
 import org.opensearch.test.ClusterServiceUtils
 import org.opensearch.test.OpenSearchTestCase
 import org.opensearch.threadpool.Scheduler
@@ -68,7 +69,8 @@ class ManagedIndexCoordinatorTests : OpenSearchAllocationTestCase() {
         clusterService = Mockito.spy(originClusterService)
         indexMetadataProvider = IndexMetadataProvider(settings, client, clusterService, mutableMapOf())
         coordinator = ManagedIndexCoordinator(
-            settings, client, clusterService, threadPool, indexManagementIndices, indexMetadataProvider
+            settings, client, clusterService, threadPool, indexManagementIndices, indexMetadataProvider,
+            NamedXContentRegistry(SearchModule(Settings.EMPTY, emptyList()).namedXContents)
         )
     }
 

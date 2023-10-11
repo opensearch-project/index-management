@@ -23,6 +23,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.action.RolloverAction
 import org.opensearch.indexmanagement.indexstatemanagement.action.RollupActionParser
 import org.opensearch.indexmanagement.indexstatemanagement.action.ShrinkActionParser
 import org.opensearch.indexmanagement.indexstatemanagement.action.SnapshotActionParser
+import org.opensearch.indexmanagement.indexstatemanagement.action.TransformActionParser
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Action
 import org.opensearch.indexmanagement.spi.indexstatemanagement.ActionParser
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ActionRetry
@@ -49,7 +50,8 @@ class ISMActionsParser private constructor() {
         RollupActionParser(),
         RolloverActionParser(),
         ShrinkActionParser(),
-        SnapshotActionParser()
+        SnapshotActionParser(),
+        TransformActionParser(),
     )
 
     val customActionExtensionMap = mutableMapOf<String, String>()
