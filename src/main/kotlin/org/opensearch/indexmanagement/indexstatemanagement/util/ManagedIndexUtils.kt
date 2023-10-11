@@ -380,18 +380,16 @@ val ManagedIndexMetaData.isPolicyCompleted: Boolean
     get() = this.policyCompleted == true
 
 /**
- * We will change the policy if a change policy exists and if we are currently in
- * a Transitions action (which means we're safely at the end of a state). If a
- * transitionTo exists on the [ManagedIndexMetaData] it should still be fine to
- * change policy as we have not actually transitioned yet. If the next action is Transition
- * or if the rest API determined it was "safe", meaning the new policy has the same structure
+ * We will change the policy if a change policy exists and if we are currently in a Transitions action
+ * which means we're safely at the end of a state.
+ *
+ * If the next action is Transition or if the rest API determined it was "safe", meaning the new policy has the same structure
  * of the current state, it should be safe to immediately change (even in the middle of the state).
  *
- * @param managedIndexMetaData current [ManagedIndexMetaData]
  * @return {@code true} if we should change policy, {@code false} if not
  */
 @Suppress("ReturnCount")
-fun ManagedIndexConfig.shouldChangePolicy(managedIndexMetaData: ManagedIndexMetaData, actionToExecute: Action?): Boolean {
+fun ManagedIndexConfig.shouldChangePolicy(actionToExecute: Action?): Boolean {
     if (this.changePolicy == null) {
         return false
     }
@@ -400,17 +398,7 @@ fun ManagedIndexConfig.shouldChangePolicy(managedIndexMetaData: ManagedIndexMeta
         return true
     }
 
-    // we need this in so that we can change policy before the first transition happens so policy doesn't get completed
-    // before we have a chance to change policy
-    if (actionToExecute?.type == TransitionsAction.name) {
-        return true
-    }
-
-    // TODO actionToExecute is correlate to the actionMetadata?
-    // actionToExecute is found out by checking the metadata, it can be current unfinished one or the next
-    // actionMetadata has already been updated, it can be current unfinished one or the next
-    // In change policy context, we only accept unfinished transition or the new transition
-    return managedIndexMetaData.actionMetaData?.name == TransitionsAction.name
+    return actionToExecute?.type == TransitionsAction.name
 }
 
 fun ManagedIndexMetaData.hasDifferentPolicyVersion(managedIndexConfig: ManagedIndexConfig): Boolean =
@@ -426,13 +414,13 @@ fun ManagedIndexConfig.hasDifferentJobInterval(jobInterval: Int): Boolean {
 }
 
 /**
- * A policy is safe to change to a new policy when each policy has the current state
- * the [ManagedIndexConfig] is in and that state has the same actions in the same order.
+ * A policy is safe to change to a new policy when
+ * both policies have the current state the [ManagedIndexConfig] is in and that state has the same actions in the same order.
  * This allows simple things like configuration updates to happen which won't break the execution/contract
  * between [ManagedIndexMetaData] and [ManagedIndexConfig] as the metadata only knows about the current state.
- * We never consider a policy safe to immediately change if the ChangePolicy contains a state to transition to
- * as this could transition a user into a different state from the middle of the current state which we do not
- * want to allow.
+ *
+ * If the ChangePolicy contains a state to transition to, we don't consider it's safe to change here
+ * as this may transition a user into a different state from the middle of the current state.
  *
  * @param stateName the name of the state the [ManagedIndexConfig] is currently in
  * @param newPolicy the new (actual data model) policy we will eventually try to change to
@@ -441,20 +429,19 @@ fun ManagedIndexConfig.hasDifferentJobInterval(jobInterval: Int): Boolean {
  */
 @Suppress("ReturnCount")
 fun Policy.isSafeToChange(stateName: String?, newPolicy: Policy, changePolicy: ChangePolicy): Boolean {
-    // if stateName is null it means we either have not initialized the job (no metadata to pull stateName from)
+    // if stateName is null it means we either have not initialized the job
     // or we failed to load the initial policy, both cases its safe to change the policy
     if (stateName == null) return true
     if (changePolicy.state != null) return false
+
     val currentState = this.states.find { it.name == stateName }
     val newState = newPolicy.states.find { it.name == stateName }
     if (currentState == null || newState == null) {
         return false
     }
-
     if (currentState.actions.size != newState.actions.size) {
         return false
     }
-
     currentState.actions.forEachIndexed { index, action ->
         val newStateAction = newState.actions[index]
         if (action.type != newStateAction.type) return@isSafeToChange false
