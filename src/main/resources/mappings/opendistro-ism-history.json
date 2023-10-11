@@ -1,6 +1,6 @@
 {
   "_meta" : {
-    "schema_version": 6
+    "schema_version": 7
   },
   "dynamic": "strict",
   "properties": {
@@ -113,6 +113,10 @@
                   "type": "boolean"
                 },
                 "shrink_action_properties": {
+                  "type": "object",
+                  "enabled": false
+                },
+                "transform_action_properties": {
                   "type": "object",
                   "enabled": false
                 }
