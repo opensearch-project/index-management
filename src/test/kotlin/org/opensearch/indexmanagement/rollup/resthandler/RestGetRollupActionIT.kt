@@ -8,19 +8,21 @@ package org.opensearch.indexmanagement.rollup.resthandler
 import org.opensearch.client.ResponseException
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.ROLLUP_JOBS_BASE_URI
 import org.opensearch.indexmanagement.makeRequest
-import org.opensearch.indexmanagement.rollup.RollupRestTestCase
 import org.opensearch.indexmanagement.rollup.action.get.GetRollupsRequest.Companion.DEFAULT_SIZE
 import org.opensearch.indexmanagement.rollup.randomRollup
 import org.opensearch.core.rest.RestStatus
 import org.opensearch.test.junit.annotations.TestLogging
+import java.util.Locale
 
 @TestLogging(value = "level:DEBUG", reason = "Debugging tests")
 @Suppress("UNCHECKED_CAST")
-class RestGetRollupActionIT : RollupRestTestCase() {
+class RestGetRollupActionIT : RollupRestAPITestCase() {
+
+    private val testName = javaClass.simpleName.lowercase(Locale.ROOT)
 
     @Throws(Exception::class)
     fun `test getting a rollup`() {
-        var rollup = createRollup(randomRollup())
+        var rollup = createRollup(randomRollup(), rollupId = "$testName-1")
         val indexedRollup = getRollup(rollup.id)
         // Schema version and last updated time are updated during the creation so we need to update the original too for comparison
         // Job schedule interval will have a dynamic start time
@@ -48,7 +50,7 @@ class RestGetRollupActionIT : RollupRestTestCase() {
 
     @Throws(Exception::class)
     fun `test getting all rollups`() {
-        val rollups = randomList(1, 15) { createRollup(randomRollup()) }
+        val rollups = randomList(1, 15) { createRandomRollup() }
 
         // Using a larger response size than the default in case leftover rollups prevent the ones created in this test from being returned
         val res = client().makeRequest("GET", "$ROLLUP_JOBS_BASE_URI?size=100")
@@ -91,7 +93,7 @@ class RestGetRollupActionIT : RollupRestTestCase() {
     fun `test changing response size when getting rollups`() {
         // Ensure at least more rollup jobs than the default (20) exists
         val rollupCount = 25
-        repeat(rollupCount) { createRollup(randomRollup()) }
+        repeat(rollupCount) { createRandomRollup() }
 
         // The default response size is 20, so even though 25 rollup jobs were made, at most 20 will be returned
         var res = client().makeRequest("GET", ROLLUP_JOBS_BASE_URI)

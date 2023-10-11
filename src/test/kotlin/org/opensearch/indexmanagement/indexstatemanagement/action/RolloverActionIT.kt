@@ -27,6 +27,7 @@ import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ActionRetry
 import org.opensearch.indexmanagement.waitFor
 import org.opensearch.rest.RestRequest
 import org.opensearch.core.rest.RestStatus
+import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
 import org.opensearch.test.OpenSearchTestCase
 import java.time.Instant
 import java.time.temporal.ChronoUnit
@@ -380,7 +381,6 @@ class RolloverActionIT : IndexStateManagementRestTestCase() {
     }
 
     fun `test rollover pre check`() {
-        disableValidationService()
         // index-1 alias x
         // index-2 alias x is_write_index
         // manage index-1, expect it fail to rollover
@@ -733,5 +733,66 @@ class RolloverActionIT : IndexStateManagementRestTestCase() {
         }
         Assert.assertEquals(alias.containsKey("test_alias2"), true)
         Assert.assertEquals(alias.containsKey("test_alias3"), true)
+    }
+
+    fun `test rollover detects transient failure and continues executing`() {
+        val aliasName = "${testIndexName}_alias"
+        val indexNameBase = "${testIndexName}_index"
+        val firstIndex = "$indexNameBase-1"
+        val policyID = "${testIndexName}_testPolicyName_1"
+        val actionConfig = RolloverAction(null, 1, null, null, false, 0)
+        val states = listOf(State(name = "RolloverAction", actions = listOf(actionConfig), transitions = listOf()))
+        val policy = Policy(
+            id = policyID,
+            description = "$testIndexName description",
+            schemaVersion = 1L,
+            lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
+            errorNotification = randomErrorNotification(),
+            defaultState = states[0].name,
+            states = states
+        )
+
+        createPolicy(policy, policyID)
+        createIndex(firstIndex, policyID, aliasName)
+
+        val managedIndexConfig = getExistingManagedIndexConfig(firstIndex)
+
+        // Change the start time so the job will trigger in 2 seconds, this will trigger the first initialization of the policy
+        updateManagedIndexConfigStartTime(managedIndexConfig)
+        waitFor { assertEquals(policyID, getExplainManagedIndexMetaData(firstIndex).policyID) }
+
+        // Insert data to trigger rollover
+        insertSampleData(index = firstIndex, docCount = 5, delay = 0)
+        // Need to speed up to second execution where it will trigger the attempt rollover step
+        updateManagedIndexConfigStartTime(managedIndexConfig)
+        waitFor {
+            val info = getExplainManagedIndexMetaData(firstIndex).info as Map<String, Any?>
+            assertEquals("Index did not rollover.", AttemptRolloverStep.getSuccessMessage(firstIndex), info["message"])
+        }
+        // Manually produce transaction failure
+        val response = client().makeRequest(
+            "POST", "$INDEX_MANAGEMENT_INDEX/_update/${managedIndexConfig.id}%23metadata",
+            StringEntity(
+                "{\n" +
+                    "    \"script\": {\n" +
+                    "        \"source\": \"ctx._source.managed_index_metadata.step.step_status = params.step_status\",\n" +
+                    "        \"lang\": \"painless\",\n" +
+                    "        \"params\": {\n" +
+                    "            \"step_status\": \"starting\"\n" +
+                    "    }\n" +
+                    "  }\n" +
+                    "}",
+                ContentType.APPLICATION_JSON
+            )
+        )
+        assertEquals("Request failed", RestStatus.OK, response.restStatus())
+
+        // Execute again to see the transaction failure
+        updateManagedIndexConfigStartTime(managedIndexConfig)
+        waitFor {
+            val metadata = getExplainManagedIndexMetaData(firstIndex)
+            assertEquals("Executing the wrong step", "attempt_rollover", metadata.stepMetaData?.name)
+            assertEquals("rollover step did not continue executing after detecting the transient failure.", Step.StepStatus.COMPLETED, metadata.stepMetaData?.stepStatus)
+        }
     }
 }

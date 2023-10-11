@@ -14,7 +14,6 @@ import org.opensearch.indexmanagement.common.model.dimension.DateHistogram
 import org.opensearch.indexmanagement.indexstatemanagement.util.INDEX_HIDDEN
 import org.opensearch.indexmanagement.indexstatemanagement.util.INDEX_NUMBER_OF_SHARDS
 import org.opensearch.indexmanagement.makeRequest
-import org.opensearch.indexmanagement.rollup.RollupRestTestCase
 import org.opensearch.indexmanagement.rollup.model.Rollup
 import org.opensearch.indexmanagement.rollup.model.RollupMetadata
 import org.opensearch.indexmanagement.rollup.randomRollup
@@ -23,12 +22,15 @@ import org.opensearch.jobscheduler.spi.schedule.IntervalSchedule
 import org.opensearch.core.rest.RestStatus
 import java.time.Instant
 import java.time.temporal.ChronoUnit
+import java.util.Locale
 
-class RestStartRollupActionIT : RollupRestTestCase() {
+class RestStartRollupActionIT : RollupRestAPITestCase() {
+
+    private val testName = javaClass.simpleName.lowercase(Locale.ROOT)
 
     @Throws(Exception::class)
     fun `test starting a stopped rollup`() {
-        val rollup = createRollup(randomRollup().copy(enabled = false, jobEnabledTime = null, metadataID = null))
+        val rollup = createRollup(randomRollup().copy(enabled = false, jobEnabledTime = null, metadataID = null), rollupId = "$testName-1")
         assertTrue("Rollup was not disabled", !rollup.enabled)
 
         val response = client().makeRequest("POST", "$ROLLUP_JOBS_BASE_URI/${rollup.id}/_start")
@@ -44,7 +46,7 @@ class RestStartRollupActionIT : RollupRestTestCase() {
     @Throws(Exception::class)
     fun `test starting a started rollup doesnt change enabled time`() {
         // First create a non-started rollup
-        val rollup = createRollup(randomRollup().copy(enabled = false, jobEnabledTime = null, metadataID = null))
+        val rollup = createRollup(randomRollup().copy(enabled = false, jobEnabledTime = null, metadataID = null), rollupId = "$testName-2")
         assertTrue("Rollup was not disabled", !rollup.enabled)
 
         // Enable it to get the job enabled time

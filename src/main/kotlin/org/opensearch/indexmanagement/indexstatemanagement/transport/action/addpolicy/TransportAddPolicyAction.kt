@@ -34,8 +34,8 @@ import org.opensearch.common.settings.Settings
 import org.opensearch.common.unit.TimeValue
 import org.opensearch.commons.ConfigConstants
 import org.opensearch.commons.authuser.User
-import org.opensearch.core.xcontent.NamedXContentRegistry
 import org.opensearch.core.index.Index
+import org.opensearch.core.xcontent.NamedXContentRegistry
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
 import org.opensearch.indexmanagement.indexstatemanagement.DefaultIndexMetadataService
 import org.opensearch.indexmanagement.indexstatemanagement.IndexMetadataProvider
@@ -49,7 +49,6 @@ import org.opensearch.indexmanagement.indexstatemanagement.transport.action.mana
 import org.opensearch.indexmanagement.indexstatemanagement.util.DEFAULT_INDEX_TYPE
 import org.opensearch.indexmanagement.indexstatemanagement.util.FailedIndex
 import org.opensearch.indexmanagement.indexstatemanagement.util.managedIndexConfigIndexRequest
-import org.opensearch.indexmanagement.indexstatemanagement.util.removeClusterStateMetadatas
 import org.opensearch.indexmanagement.opensearchapi.IndexManagementSecurityContext
 import org.opensearch.indexmanagement.opensearchapi.parseFromGetResponse
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
@@ -61,6 +60,7 @@ import org.opensearch.indexmanagement.util.SecurityUtils.Companion.buildUser
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.userHasPermissionForResource
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.validateUserConfiguration
 import org.opensearch.core.rest.RestStatus
+import org.opensearch.indexmanagement.indexstatemanagement.util.deleteManagedIndexMetadataRequest
 import org.opensearch.tasks.Task
 import org.opensearch.transport.TransportService
 import java.time.Duration
@@ -126,7 +126,7 @@ class TransportAddPolicyAction @Inject constructor(
         }
 
         @Suppress("SpreadOperator")
-        fun getClusterState() {
+        private fun getClusterState() {
             startTime = Instant.now()
             CoroutineScope(Dispatchers.IO).launch {
                 val indexNameToMetadata: MutableMap<String, ISMIndexMetadata> = HashMap()
@@ -193,10 +193,6 @@ class TransportAddPolicyAction @Inject constructor(
                         clusterStateRequest,
                         object : ActionListener<ClusterStateResponse> {
                             override fun onResponse(response: ClusterStateResponse) {
-                                CoroutineScope(Dispatchers.IO).launch {
-                                    removeClusterStateMetadatas(client, log, indicesToAdd.map { Index(it.value, it.key) })
-                                }
-
                                 val defaultIndexMetadataService = indexMetadataProvider.services[DEFAULT_INDEX_TYPE] as DefaultIndexMetadataService
                                 getUuidsForClosedIndices(response.state, defaultIndexMetadataService).forEach {
                                     failedIndices.add(FailedIndex(indicesToAdd[it] as String, it, "This index is closed"))
@@ -346,6 +342,9 @@ class TransportAddPolicyAction @Inject constructor(
                                 }
                             }
                             actionListener.onResponse(ISMStatusResponse(indicesToAdd.size, failedIndices))
+
+                            // best effort to clean up ISM metadata
+                            removeMetadatas(indicesToAdd.map { Index(it.value, it.key) })
                         }
 
                         override fun onFailure(t: Exception) {
@@ -367,6 +366,23 @@ class TransportAddPolicyAction @Inject constructor(
 
         private fun onFailure(t: Exception) {
             actionListener.onFailure(ExceptionsHelper.unwrapCause(t) as Exception)
+        }
+
+        fun removeMetadatas(indices: List<Index>) {
+            val request = indices.map { deleteManagedIndexMetadataRequest(it.uuid) }
+            val bulkReq = BulkRequest().add(request)
+            client.bulk(
+                bulkReq,
+                object : ActionListener<BulkResponse> {
+                    override fun onResponse(response: BulkResponse) {
+                        log.debug("Successfully cleaned metadata for remove policy indices: {}", indices)
+                    }
+
+                    override fun onFailure(e: Exception) {
+                        log.error("Failed to clean metadata for remove policy indices.", e)
+                    }
+                }
+            )
         }
     }
 

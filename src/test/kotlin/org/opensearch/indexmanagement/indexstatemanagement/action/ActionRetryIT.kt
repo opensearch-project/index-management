@@ -24,7 +24,6 @@ class ActionRetryIT : IndexStateManagementRestTestCase() {
      * We are forcing RollOver to fail in this integration test.
      */
     fun `test failed action`() {
-        disableValidationService()
         val testPolicy = """
         {"policy":{"description":"Default policy","default_state":"Ingest","states":[
         {"name":"Ingest","actions":[{"retry":{"count":2,"backoff":"constant","delay":"1s"},"rollover":{"min_doc_count":100}}],"transitions":[{"state_name":"Search"}]},
@@ -96,7 +95,6 @@ class ActionRetryIT : IndexStateManagementRestTestCase() {
     }
 
     fun `test exponential backoff`() {
-        disableValidationService()
         val testPolicy = """
         {"policy":{"description":"Default policy","default_state":"Ingest","states":[
         {"name":"Ingest","actions":[{"retry":{"count":2,"backoff":"exponential","delay":"1m"},"rollover":{"min_doc_count":100}}],"transitions":[{"state_name":"Search"}]},

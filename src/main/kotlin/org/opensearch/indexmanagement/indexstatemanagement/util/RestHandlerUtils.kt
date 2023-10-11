@@ -6,11 +6,8 @@
 @file:Suppress("TopLevelPropertyNaming", "MatchingDeclarationName")
 package org.opensearch.indexmanagement.indexstatemanagement.util
 
-import org.apache.logging.log4j.Logger
 import org.opensearch.OpenSearchParseException
 import org.opensearch.action.support.clustermanager.ClusterManagerNodeRequest
-import org.opensearch.action.support.master.AcknowledgedResponse
-import org.opensearch.client.Client
 import org.opensearch.core.common.io.stream.StreamInput
 import org.opensearch.core.common.io.stream.StreamOutput
 import org.opensearch.core.common.io.stream.Writeable
@@ -20,15 +17,10 @@ import org.opensearch.core.xcontent.ToXContent
 import org.opensearch.core.xcontent.ToXContentFragment
 import org.opensearch.core.xcontent.XContentBuilder
 import org.opensearch.common.xcontent.XContentFactory
-import org.opensearch.core.index.Index
 import org.opensearch.indexmanagement.indexstatemanagement.model.ChangePolicy
 import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexConfig
-import org.opensearch.indexmanagement.indexstatemanagement.transport.action.updateindexmetadata.UpdateManagedIndexMetaDataAction
-import org.opensearch.indexmanagement.indexstatemanagement.transport.action.updateindexmetadata.UpdateManagedIndexMetaDataRequest
 import org.opensearch.indexmanagement.opensearchapi.optionalTimeField
-import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.rest.RestRequest
-import java.lang.Exception
 import java.time.Instant
 
 const val WITH_TYPE = "with_type"
@@ -119,20 +111,6 @@ fun getPartialChangePolicyBuilder(
         .optionalTimeField(ManagedIndexConfig.LAST_UPDATED_TIME_FIELD, Instant.now())
         .field(ManagedIndexConfig.CHANGE_POLICY_FIELD, changePolicy)
     return builder.endObject().endObject()
-}
-
-/**
- * Removes the managed index metadata from the cluster state for the the provided indices.
- */
-suspend fun removeClusterStateMetadatas(client: Client, logger: Logger, indices: List<Index>) {
-    val request = UpdateManagedIndexMetaDataRequest(indicesToRemoveManagedIndexMetaDataFrom = indices)
-
-    try {
-        val response: AcknowledgedResponse = client.suspendUntil { execute(UpdateManagedIndexMetaDataAction.INSTANCE, request, it) }
-        logger.debug("Cleaned cluster state metadata for $indices, ${response.isAcknowledged}")
-    } catch (e: Exception) {
-        logger.error("Failed to clean cluster state metadata for $indices")
-    }
 }
 
 const val MASTER_TIMEOUT_DEPRECATED_MESSAGE =

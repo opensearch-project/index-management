@@ -2,13 +2,13 @@ name: Docker Security Test Workflow
 on:
   pull_request:
     branches:
-      - "*"
+      - "**"
   push:
     branches:
-      - "*"
+      - "**"
 
 jobs:
-  test:
+  docker-test:
     # This job runs on Linux
     runs-on: ubuntu-latest
     steps:
@@ -73,7 +73,7 @@ jobs:
           if [ $security -gt 0 ]
           then
             echo "Security plugin is available"
-            ./gradlew integTest -Dtests.rest.cluster=localhost:9200 -Dtests.cluster=localhost:9200 -Dtests.clustername=docker-cluster -Dsecurity=true -Dhttps=true -Duser=admin -Dpassword=admin
+            ./gradlew integTest -Dtests.rest.cluster=localhost:9200 -Dtests.cluster=localhost:9200 -Dtests.clustername=docker-cluster -Dsecurity=true -Dhttps=true -Duser=admin -Dpassword=admin --tests '*SecurityBehaviorIT'
           else
             echo "Security plugin is NOT available skipping this run as tests without security have already been run"
           fi
@@ -83,3 +83,15 @@ jobs:
         with:
           name: logs
           path: build/testclusters/integTest-*/logs/*
+      - name: Collect docker logs on failure
+        uses: jwalton/gh-docker-logs@v2
+        with:
+          dest: './logs'
+      - name: Tar logs
+        run: tar cvzf ./logs.tgz ./logs
+      - name: Upload logs to GitHub
+        uses: actions/upload-artifact@v2
+        if: failure()
+        with:
+          name: logs.tgz
+          path: ./logs.tgz

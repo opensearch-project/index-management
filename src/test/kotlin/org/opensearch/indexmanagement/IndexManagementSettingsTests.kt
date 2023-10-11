@@ -41,7 +41,6 @@ class IndexManagementSettingsTests : OpenSearchTestCase() {
                     LegacyOpenDistroManagedIndexSettings.ROLLOVER_ALIAS,
                     LegacyOpenDistroManagedIndexSettings.ROLLOVER_SKIP,
                     LegacyOpenDistroManagedIndexSettings.INDEX_STATE_MANAGEMENT_ENABLED,
-                    LegacyOpenDistroManagedIndexSettings.METADATA_SERVICE_ENABLED,
                     LegacyOpenDistroManagedIndexSettings.JOB_INTERVAL,
                     LegacyOpenDistroManagedIndexSettings.SWEEP_PERIOD,
                     LegacyOpenDistroManagedIndexSettings.COORDINATOR_BACKOFF_COUNT,
@@ -78,7 +77,6 @@ class IndexManagementSettingsTests : OpenSearchTestCase() {
                     ManagedIndexSettings.POLICY_ID,
                     ManagedIndexSettings.ROLLOVER_ALIAS,
                     ManagedIndexSettings.INDEX_STATE_MANAGEMENT_ENABLED,
-                    ManagedIndexSettings.METADATA_SERVICE_ENABLED,
                     ManagedIndexSettings.JOB_INTERVAL,
                     ManagedIndexSettings.SWEEP_PERIOD,
                     ManagedIndexSettings.COORDINATOR_BACKOFF_COUNT,
@@ -159,7 +157,6 @@ class IndexManagementSettingsTests : OpenSearchTestCase() {
             .build()
 
         assertEquals(ManagedIndexSettings.INDEX_STATE_MANAGEMENT_ENABLED.get(settings), false)
-        assertEquals(ManagedIndexSettings.METADATA_SERVICE_ENABLED.get(settings), false)
         assertEquals(ManagedIndexSettings.JOB_INTERVAL.get(settings), 1)
         assertEquals(ManagedIndexSettings.SWEEP_PERIOD.get(settings), TimeValue.timeValueMinutes(6))
         assertEquals(ManagedIndexSettings.COORDINATOR_BACKOFF_MILLIS.get(settings), TimeValue.timeValueMillis(1))
@@ -186,7 +183,6 @@ class IndexManagementSettingsTests : OpenSearchTestCase() {
         assertSettingDeprecationsAndWarnings(
             arrayOf(
                 LegacyOpenDistroManagedIndexSettings.INDEX_STATE_MANAGEMENT_ENABLED,
-                LegacyOpenDistroManagedIndexSettings.METADATA_SERVICE_ENABLED,
                 LegacyOpenDistroManagedIndexSettings.JOB_INTERVAL,
                 LegacyOpenDistroManagedIndexSettings.SWEEP_PERIOD,
                 LegacyOpenDistroManagedIndexSettings.COORDINATOR_BACKOFF_MILLIS,

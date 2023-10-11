@@ -14,7 +14,7 @@ Content-Type: application/json
 DELETE localhost:9200/.opendistro-ism-config
 
 ### index sm
-PUT localhost:9200/_plugins/_sm/daily_snapshot
+POST localhost:9200/_plugins/_sm/policies/daily_snapshot
 Content-Type: application/json
 
 {
@@ -59,6 +59,22 @@ Content-Type: application/json
 #      "unit": "MINUTES"
 #    }
 #  },
+
+###
+POST localhost:9200/.opendistro-ism-config/_update/daily_snapshot-sm-metadata
+Content-Type: application/json
+
+{
+  "doc": {
+    "sm_metadata": {
+      "creation": {
+        "trigger": {
+          "time": 1234567
+        }
+      }
+    }
+  }
+}
 
 ### register repo
 PUT localhost:9200/_snapshot/repo

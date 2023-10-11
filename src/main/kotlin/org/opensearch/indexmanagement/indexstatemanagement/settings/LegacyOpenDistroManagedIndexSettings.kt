@@ -15,8 +15,6 @@ import java.util.function.Function
 class LegacyOpenDistroManagedIndexSettings {
     companion object {
         const val DEFAULT_ISM_ENABLED = true
-        const val DEFAULT_METADATA_SERVICE_STATUS = 0
-        const val DEFAULT_METADATA_SERVICE_ENABLED = true
         const val DEFAULT_JOB_INTERVAL = 5
         private val ALLOW_LIST_ALL = ISMActionsParser.instance.parsers.map { it.getActionType() }.toList()
         val ALLOW_LIST_NONE = emptyList<String>()
@@ -25,36 +23,6 @@ class LegacyOpenDistroManagedIndexSettings {
         val INDEX_STATE_MANAGEMENT_ENABLED: Setting<Boolean> = Setting.boolSetting(
             "opendistro.index_state_management.enabled",
             DEFAULT_ISM_ENABLED,
-            Setting.Property.NodeScope,
-            Setting.Property.Dynamic,
-            Setting.Property.Deprecated
-        )
-
-        // 0: migration is going on
-        // 1: migration succeed
-        // -1: migration failed
-        val METADATA_SERVICE_STATUS: Setting<Int> = Setting.intSetting(
-            "opendistro.index_state_management.metadata_migration.status",
-            DEFAULT_METADATA_SERVICE_STATUS,
-            Setting.Property.NodeScope,
-            Setting.Property.Dynamic
-        )
-
-        // 0: enabled, use onClusterManager time as ISM template last_updated_time
-        // -1: migration ended successfully
-        // -2: migration ended unsuccessfully
-        // >0: use this setting (epoch millis) as ISM template last_updated_time
-        val TEMPLATE_MIGRATION_CONTROL: Setting<Long> = Setting.longSetting(
-            "opendistro.index_state_management.template_migration.control",
-            ManagedIndexSettings.DEFAULT_TEMPLATE_MIGRATION_TIMESTAMP,
-            -2L,
-            Setting.Property.NodeScope,
-            Setting.Property.Dynamic
-        )
-
-        val METADATA_SERVICE_ENABLED: Setting<Boolean> = Setting.boolSetting(
-            "opendistro.index_state_management.metadata_service.enabled",
-            DEFAULT_METADATA_SERVICE_ENABLED,
             Setting.Property.NodeScope,
             Setting.Property.Dynamic,
             Setting.Property.Deprecated

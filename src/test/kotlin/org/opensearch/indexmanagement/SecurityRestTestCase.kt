@@ -54,9 +54,6 @@ abstract class SecurityRestTestCase : IndexManagementRestTestCase() {
             client: RestClient
         ) = super.createRollup(rollup, rollupId, refresh, client)
 
-        fun updateRollupStartTimeExt(update: Rollup, desiredStartTimeMillis: Long? = null) =
-            super.updateRollupStartTime(update, desiredStartTimeMillis)
-
         fun getRollupMetadataExt(
             metadataId: String,
             refresh: Boolean = true,
@@ -112,9 +109,6 @@ abstract class SecurityRestTestCase : IndexManagementRestTestCase() {
 
     private object TransformRestTestCaseExt : TransformRestTestCase() {
 
-        fun updateTransformStartTimeExt(update: Transform, desiredStartTimeMillis: Long? = null) =
-            super.updateTransformStartTime(update, desiredStartTimeMillis)
-
         fun createTransformExt(
             transform: Transform,
             transformId: String = randomAlphaOfLength(10),
@@ -163,10 +157,6 @@ abstract class SecurityRestTestCase : IndexManagementRestTestCase() {
         val request = Request("PUT", "${IndexManagementPlugin.ROLLUP_JOBS_BASE_URI}/${rollup.id}?refresh=true")
         request.setJsonEntity(rollup.toJsonString())
         return executeRequest(request, expectedStatus, client)
-    }
-
-    protected fun updateRollupStartTime(update: Rollup, desiredStartTimeMillis: Long? = null) {
-        RollupRestTestCaseSecurityExtension.updateRollupStartTimeExt(update, desiredStartTimeMillis)
     }
 
     protected fun getRollupMetadata(
@@ -316,9 +306,6 @@ abstract class SecurityRestTestCase : IndexManagementRestTestCase() {
         val request = Request(RestRequest.Method.GET.name, "${IndexManagementPlugin.ROLLUP_JOBS_BASE_URI}/$rollupId")
         executeRequest(request, expectedStatus, userClient)
     }
-
-    protected fun updateTransformStartTime(update: Transform, desiredStartTimeMillis: Long? = null) =
-        TransformRestTestCaseExt.updateTransformStartTimeExt(update, desiredStartTimeMillis)
 
     protected fun createTransform(
         transform: Transform,

@@ -56,15 +56,12 @@ import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndex
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.JOB_INTERVAL
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.ACTION_VALIDATION_ENABLED
 import org.opensearch.indexmanagement.indexstatemanagement.util.DEFAULT_INDEX_TYPE
-import org.opensearch.indexmanagement.indexstatemanagement.util.MetadataCheck
-import org.opensearch.indexmanagement.indexstatemanagement.util.checkMetadata
 import org.opensearch.indexmanagement.indexstatemanagement.util.deleteManagedIndexMetadataRequest
 import org.opensearch.indexmanagement.indexstatemanagement.util.deleteManagedIndexRequest
 import org.opensearch.indexmanagement.indexstatemanagement.util.getCompletedManagedIndexMetaData
 import org.opensearch.indexmanagement.indexstatemanagement.util.getStartingManagedIndexMetaData
 import org.opensearch.indexmanagement.indexstatemanagement.util.hasDifferentJobInterval
 import org.opensearch.indexmanagement.indexstatemanagement.util.hasTimedOut
-import org.opensearch.indexmanagement.indexstatemanagement.util.hasVersionConflict
 import org.opensearch.indexmanagement.indexstatemanagement.util.isAllowed
 import org.opensearch.indexmanagement.indexstatemanagement.util.isFailed
 import org.opensearch.indexmanagement.indexstatemanagement.util.isSafeToChange
@@ -98,6 +95,7 @@ import org.opensearch.jobscheduler.spi.ScheduledJobParameter
 import org.opensearch.jobscheduler.spi.ScheduledJobRunner
 import org.opensearch.jobscheduler.spi.schedule.IntervalSchedule
 import org.opensearch.core.rest.RestStatus
+import org.opensearch.indexmanagement.indexstatemanagement.util.hasVersionConflict
 import org.opensearch.script.Script
 import org.opensearch.script.ScriptService
 import org.opensearch.script.TemplateScript
@@ -300,13 +298,6 @@ object ManagedIndexRunner :
                 val message = "Failed to find IndexMetadata for ${managedIndexConfig.index}."
                 logger.warn(message)
                 publishErrorNotification(policy, managedIndexConfig, message)
-                return
-            }
-        } else {
-            val clusterStateMetadata = clusterStateIndexMetadata.getManagedIndexMetadata()
-            val metadataCheck = checkMetadata(clusterStateMetadata, managedIndexMetaData, managedIndexConfig.indexUuid, logger)
-            if (metadataCheck != MetadataCheck.SUCCESS) {
-                logger.info("Skipping execution while metadata status is $metadataCheck")
                 return
             }
         }
