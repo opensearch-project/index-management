@@ -26,6 +26,7 @@ import org.opensearch.indexmanagement.transform.avgAggregation
 import org.opensearch.indexmanagement.transform.maxAggregation
 import org.opensearch.indexmanagement.transform.minAggregation
 import org.opensearch.indexmanagement.transform.model.ISMTransform
+import org.opensearch.indexmanagement.transform.model.Transform
 import org.opensearch.indexmanagement.transform.model.TransformMetadata
 import org.opensearch.indexmanagement.transform.sumAggregation
 import org.opensearch.indexmanagement.transform.valueCountAggregation
@@ -274,6 +275,8 @@ class TransformActionIT : IndexStateManagementRestTestCase() {
 
         updateTransformStartTime(transform)
 
+        assertTransformCompleted(transform)
+
         // Change the start time so that the transform action will be attempted.
         updateManagedIndexConfigStartTime(managedIndexConfig)
         waitFor {
@@ -281,13 +284,6 @@ class TransformActionIT : IndexStateManagementRestTestCase() {
                 WaitForTransformCompletionStep.getJobCompletionMessage(transformId, indexName),
                 getExplainManagedIndexMetaData(indexName).info?.get("message")
             )
-        }
-
-        val transformJob = getTransform(transformId = transformId)
-        waitFor {
-            assertNotNull("Transform job doesn't have metadata set", transformJob.metadataId)
-            val transformMetadata = getTransformMetadata(transformJob.metadataId!!)
-            assertEquals("Transform is not finished", TransformMetadata.Status.FINISHED, transformMetadata.status)
         }
     }
 
@@ -308,7 +304,8 @@ class TransformActionIT : IndexStateManagementRestTestCase() {
                 getExplainManagedIndexMetaData(indexName).info?.get("message")
             )
         }
-        updateTransformStartTime(transform)
+
+        assertTransformCompleted(transform)
 
         // Change the start time so that the transform action will be attempted.
         updateManagedIndexConfigStartTime(managedIndexConfig)
@@ -317,13 +314,6 @@ class TransformActionIT : IndexStateManagementRestTestCase() {
                 WaitForTransformCompletionStep.getJobCompletionMessage(transformId, indexName),
                 getExplainManagedIndexMetaData(indexName).info?.get("message")
             )
-        }
-
-        var transformJob = getTransform(transformId = transformId)
-        waitFor {
-            assertNotNull("Transform job doesn't have metadata set", transformJob.metadataId)
-            val transformMetadata = getTransformMetadata(transformJob.metadataId!!)
-            assertEquals("Transform is not finished", TransformMetadata.Status.FINISHED, transformMetadata.status)
         }
 
         // Change the start time so that the transition attempted.
@@ -343,7 +333,8 @@ class TransformActionIT : IndexStateManagementRestTestCase() {
                 getExplainManagedIndexMetaData(indexName).info?.get("message")
             )
         }
-        updateTransformStartTime(transform)
+
+        assertTransformCompleted(transform)
 
         // Change the start time so that the second transform action will be attempted.
         updateManagedIndexConfigStartTime(managedIndexConfig)
@@ -353,9 +344,12 @@ class TransformActionIT : IndexStateManagementRestTestCase() {
                 getExplainManagedIndexMetaData(indexName).info?.get("message")
             )
         }
+    }
 
-        transformJob = getTransform(transformId = transformId)
-        waitFor {
+    private fun assertTransformCompleted(transform: Transform) {
+        updateTransformStartTime(transform)
+        waitFor(timeout = Instant.ofEpochSecond(60)) {
+            val transformJob = getTransform(transformId = transform.id)
             assertNotNull("Transform job doesn't have metadata set", transformJob.metadataId)
             val transformMetadata = getTransformMetadata(transformJob.metadataId!!)
             assertEquals("Transform is not finished", TransformMetadata.Status.FINISHED, transformMetadata.status)
