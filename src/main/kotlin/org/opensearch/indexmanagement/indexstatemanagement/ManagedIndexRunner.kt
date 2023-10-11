@@ -464,7 +464,7 @@ object ManagedIndexRunner :
     }
 
     private suspend fun initManagedIndex(managedIndexConfig: ManagedIndexConfig) {
-        var policy: Policy = managedIndexConfig.policy
+        val policy: Policy = managedIndexConfig.policy
         var metadata = getInitializedManagedIndexMetaData(managedIndexConfig, policy, policy.id)
 
         // User may change policy before first metadata initialization
@@ -472,14 +472,13 @@ object ManagedIndexRunner :
             val policyID = managedIndexConfig.changePolicy.policyID
             val newPolicy = getPolicy(policyID)
             if (newPolicy != null) {
-                policy = newPolicy
-                val saved = savePolicyToManagedIndexConfig(managedIndexConfig, policy)
+                val saved = savePolicyToManagedIndexConfig(managedIndexConfig, newPolicy)
                 if (!saved) {
                     logger.error("Failed to save policy to ManagedIndexConfig(${managedIndexConfig.index})")
                     return
                 }
             }
-            metadata = getInitializedManagedIndexMetaData(managedIndexConfig, policy, policyID)
+            metadata = getInitializedManagedIndexMetaData(managedIndexConfig, newPolicy, policyID)
         }
 
         updateManagedIndexMetaData(metadata, create = true)
