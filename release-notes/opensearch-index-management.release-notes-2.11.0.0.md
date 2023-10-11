@@ -18,4 +18,4 @@ Compatible with OpenSearch 2.10.0
 * Security test filtered. ([#969](https://github.com/opensearch-project/index-management/pull/969))
 
 ### Documentation
-* Added 2.11 release notes. ([#]())
+* Added 2.11 release notes. ([#1004](https://github.com/opensearch-project/index-management/pull/1004))
