@@ -758,19 +758,29 @@ object ManagedIndexRunner :
 
     private suspend fun publishErrorNotification(policy: Policy, metadata: ManagedIndexMetaData): ManagedIndexMetaData {
         return try {
-            // if the policy has no error_notification this will do nothing otherwise it will try to send the configured error message
-            policy.errorNotification?.run {
-                errorNotificationRetryPolicy.retry(logger) {
-                    val compiledMessage = compileTemplate(messageTemplate, metadata)
-                    destination?.buildLegacyBaseMessage(null, compiledMessage)?.publishLegacyNotification(client)
-                    channel?.sendNotification(client, ErrorNotification.CHANNEL_TITLE, metadata, compiledMessage, policy.user)
+            val errorNotification = policy.errorNotification
+            if (errorNotification != null) {
+                policy.errorNotification.run {
+                    errorNotificationRetryPolicy.retry(logger) {
+                        val compiledMessage = compileTemplate(messageTemplate, metadata)
+                        destination?.buildLegacyBaseMessage(null, compiledMessage)?.publishLegacyNotification(client)
+                        channel?.sendNotification(
+                            client,
+                            ErrorNotification.CHANNEL_TITLE,
+                            metadata,
+                            compiledMessage,
+                            policy.user
+                        )
+                    }
                 }
+                val message = "Successfully published error notification [index = ${metadata.index}]"
+                logger.info(message)
+                val mutableInfo = metadata.info?.toMutableMap() ?: mutableMapOf()
+                mutableInfo["error_notification"] = message
+                metadata.copy(info = mutableInfo.toMap())
+            } else {
+                return metadata
             }
-            val message = "Successfully published error notification [index = ${metadata.index}]"
-            logger.info(message)
-            val mutableInfo = metadata.info?.toMutableMap() ?: mutableMapOf()
-            mutableInfo["error_notification"] = message
-            metadata.copy(info = mutableInfo.toMap())
         } catch (e: Exception) {
             logger.error("Failed to publish error notification", e)
             val errorMessage = e.message ?: "Failed to publish error notification"
