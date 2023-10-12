@@ -301,7 +301,7 @@ class ManagedIndexCoordinator(
             // If there is a custom index uuid associated with the index, we do not auto manage it
             // This is because cold index uses custom uuid, and we do not auto manage cold-to-warm index
             val indexMetadata = clusterState.metadata.index(indexName)
-            val wasOffCluster = defaultIndexMetadataService.getCustomIndexUUID(indexMetadata) != indexMetadata.indexUUID
+            val wasOffCluster = defaultIndexMetadataService.getIndexUUID(indexMetadata) != indexMetadata.indexUUID
             val ismIndexMetadata = ismIndicesMetadata[indexName]
             // We try to find lookup name instead of using index name as datastream indices need the alias to match policy
             val lookupName = findIndexLookupName(indexName, clusterState)
