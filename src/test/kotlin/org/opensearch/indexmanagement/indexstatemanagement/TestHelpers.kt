@@ -325,8 +325,7 @@ fun randomManagedIndexConfig(
     schedule: Schedule = IntervalSchedule(Instant.ofEpochMilli(Instant.now().toEpochMilli()), 5, ChronoUnit.MINUTES),
     lastUpdatedTime: Instant = Instant.now().truncatedTo(ChronoUnit.MILLIS),
     enabledTime: Instant? = if (enabled) Instant.now().truncatedTo(ChronoUnit.MILLIS) else null,
-    policyID: String = OpenSearchRestTestCase.randomAlphaOfLength(10),
-    policy: Policy? = randomPolicy(),
+    policy: Policy = randomPolicy(),
     changePolicy: ChangePolicy? = randomChangePolicy(),
     jitter: Double? = 0.0
 ): ManagedIndexConfig {
@@ -338,10 +337,10 @@ fun randomManagedIndexConfig(
         jobSchedule = schedule,
         jobLastUpdatedTime = lastUpdatedTime,
         jobEnabledTime = enabledTime,
-        policyID = policy?.id ?: policyID,
-        policySeqNo = policy?.seqNo,
-        policyPrimaryTerm = policy?.primaryTerm,
-        policy = policy?.copy(seqNo = SequenceNumbers.UNASSIGNED_SEQ_NO, primaryTerm = SequenceNumbers.UNASSIGNED_PRIMARY_TERM),
+        policyID = policy.id,
+        policySeqNo = policy.seqNo,
+        policyPrimaryTerm = policy.primaryTerm,
+        policy = policy.copy(seqNo = SequenceNumbers.UNASSIGNED_SEQ_NO, primaryTerm = SequenceNumbers.UNASSIGNED_PRIMARY_TERM),
         changePolicy = changePolicy,
         jobJitter = jitter
     )

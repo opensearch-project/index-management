@@ -22,6 +22,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.model.Transition
 import org.opensearch.indexmanagement.indexstatemanagement.model.coordinator.SweptManagedIndexConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomChangePolicy
 import org.opensearch.indexmanagement.indexstatemanagement.randomClusterStateManagedIndexConfig
+import org.opensearch.indexmanagement.indexstatemanagement.randomPolicy
 import org.opensearch.indexmanagement.indexstatemanagement.randomSweptManagedIndexConfig
 import org.opensearch.indexmanagement.opensearchapi.parseWithType
 import org.opensearch.test.OpenSearchTestCase
@@ -34,7 +35,7 @@ class ManagedIndexUtilsTests : OpenSearchTestCase() {
         val index = randomAlphaOfLength(10)
         val uuid = randomAlphaOfLength(10)
         val policyID = randomAlphaOfLength(10)
-        val createRequest = managedIndexConfigIndexRequest(index, uuid, policyID, 5, jobJitter = 0.0)
+        val createRequest = managedIndexConfigIndexRequest(index, uuid, policyID, 5, randomPolicy(), jobJitter = 0.0)
 
         assertNotNull("IndexRequest not created", createRequest)
         assertEquals("Incorrect ism index used in request", INDEX_MANAGEMENT_INDEX, createRequest.index())
