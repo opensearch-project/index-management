@@ -7,12 +7,12 @@ package org.opensearch.indexmanagement.transform
 
 import org.apache.http.HttpEntity
 import org.apache.http.HttpHeaders
+import org.apache.http.entity.ContentType
 import org.apache.http.entity.ContentType.APPLICATION_JSON
 import org.apache.http.entity.StringEntity
 import org.apache.http.message.BasicHeader
 import org.junit.AfterClass
 import org.opensearch.client.Response
-import org.opensearch.client.ResponseException
 import org.opensearch.client.RestClient
 import org.opensearch.common.settings.Settings
 import org.opensearch.core.xcontent.NamedXContentRegistry
@@ -30,12 +30,8 @@ import org.opensearch.indexmanagement.transform.model.TransformMetadata
 import org.opensearch.indexmanagement.util._ID
 import org.opensearch.indexmanagement.util._PRIMARY_TERM
 import org.opensearch.indexmanagement.util._SEQ_NO
-import org.opensearch.indexmanagement.waitFor
-import org.opensearch.jobscheduler.spi.schedule.IntervalSchedule
 import org.opensearch.core.rest.RestStatus
 import org.opensearch.search.SearchModule
-import java.time.Duration
-import java.time.Instant
 
 abstract class TransformRestTestCase : IndexManagementRestTestCase() {
 
@@ -221,36 +217,7 @@ abstract class TransformRestTestCase : IndexManagementRestTestCase() {
         return continuousStats["documents_behind"] as Map<String, Long>
     }
 
-    protected fun updateTransformStartTime(update: Transform, desiredStartTimeMillis: Long? = null) {
-        // Before updating start time of a job always make sure there are no unassigned shards that could cause the config
-        // index to move to a new node and negate this forced start
-        if (isMultiNode) {
-            waitFor {
-                try {
-                    client().makeRequest("GET", "_cluster/allocation/explain")
-                    fail("Expected 400 Bad Request when there are no unassigned shards to explain")
-                } catch (e: ResponseException) {
-                    assertEquals(RestStatus.BAD_REQUEST, e.response.restStatus())
-                }
-            }
-        }
-        val intervalSchedule = (update.jobSchedule as IntervalSchedule)
-        val millis = Duration.of(intervalSchedule.interval.toLong(), intervalSchedule.unit).minusSeconds(2).toMillis()
-        val startTimeMillis = desiredStartTimeMillis ?: Instant.now().toEpochMilli() - millis
-        val waitForActiveShards = if (isMultiNode) "all" else "1"
-        val response = client().makeRequest(
-            "POST", "$INDEX_MANAGEMENT_INDEX/_update/${update.id}?wait_for_active_shards=$waitForActiveShards",
-            StringEntity(
-                "{\"doc\":{\"transform\":{\"schedule\":{\"interval\":{\"start_time\":" +
-                    "\"$startTimeMillis\"}}}}}",
-                APPLICATION_JSON
-            )
-        )
-
-        assertEquals("Request failed", RestStatus.OK, response.restStatus())
-    }
-
-    protected fun Transform.toHttpEntity(): HttpEntity = StringEntity(toJsonString(), APPLICATION_JSON)
+    protected fun Transform.toHttpEntity(): HttpEntity = StringEntity(toJsonString(), ContentType.APPLICATION_JSON)
 
     override fun xContentRegistry(): NamedXContentRegistry {
         return NamedXContentRegistry(SearchModule(Settings.EMPTY, emptyList()).namedXContents)
