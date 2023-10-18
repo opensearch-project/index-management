@@ -16,7 +16,7 @@ import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.spi.indexstatemanagement.IndexMetadataService
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ISMIndexMetadata
 
-class DefaultIndexMetadataService(val customUUIDSetting: String? = null) : IndexMetadataService {
+class DefaultIndexMetadataService(private val customUUIDSetting: String? = null) : IndexMetadataService {
 
     /**
      * Returns the default index metadata needed for ISM
@@ -39,7 +39,7 @@ class DefaultIndexMetadataService(val customUUIDSetting: String? = null) : Index
 
         response.state.metadata.indices.forEach {
             // TODO waiting to add document count until it is definitely needed
-            val uuid = getCustomIndexUUID(it.value)
+            val uuid = getIndexUUID(it.value)
             val indexMetadata = ISMIndexMetadata(uuid, it.value.creationDate, -1)
             indexNameToMetadata[it.key] = indexMetadata
         }
@@ -48,11 +48,10 @@ class DefaultIndexMetadataService(val customUUIDSetting: String? = null) : Index
     }
 
     /*
-     * If an extension wants Index Management to determine cluster state indices UUID based on a custom index setting if
-     * present of cluster state, the extension will override this customUUID setting. This allows an index to migrate off
-     * cluster and back while using this persistent uuid.
+     * This method prioritize the custom index setting provided by extension to decide the index UUID
+     * Custom index UUID is needed when index moved out of cluster and re-attach back, it will get a new UUID in cluster metadata
      */
-    fun getCustomIndexUUID(indexMetadata: IndexMetadata): String {
+    fun getIndexUUID(indexMetadata: IndexMetadata): String {
         return if (customUUIDSetting != null) {
             indexMetadata.settings.get(customUUIDSetting, indexMetadata.indexUUID)
         } else {

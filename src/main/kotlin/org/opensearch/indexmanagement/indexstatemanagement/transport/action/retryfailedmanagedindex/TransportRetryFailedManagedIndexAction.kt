@@ -167,7 +167,7 @@ class TransportRetryFailedManagedIndexAction @Inject constructor(
                             override fun onResponse(response: ClusterStateResponse) {
                                 val defaultIndexMetadataService = indexMetadataProvider.services[DEFAULT_INDEX_TYPE] as DefaultIndexMetadataService
                                 response.state.metadata.indices.forEach {
-                                    val indexUUID = defaultIndexMetadataService.getCustomIndexUUID(it.value)
+                                    val indexUUID = defaultIndexMetadataService.getIndexUUID(it.value)
                                     indexUuidToIndexMetadata[indexUUID] = it.value
                                 }
                                 processResponse()

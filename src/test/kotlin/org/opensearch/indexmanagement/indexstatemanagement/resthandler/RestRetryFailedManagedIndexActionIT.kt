@@ -22,6 +22,7 @@ import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedInde
 import org.opensearch.indexmanagement.waitFor
 import org.opensearch.rest.RestRequest
 import org.opensearch.core.rest.RestStatus
+import org.opensearch.indexmanagement.indexstatemanagement.step.forcemerge.AttemptSetReadOnlyStep
 import java.time.Instant
 import java.util.Locale
 
@@ -257,6 +258,7 @@ class RestRetryFailedManagedIndexActionIT : IndexStateManagementRestTestCase() {
         val action = randomForceMergeActionConfig(maxNumSegments = 1)
         action.configRetry = ActionRetry(0)
         val policy = randomPolicy(states = listOf(randomState(actions = listOf(action))))
+
         createPolicy(policy, policyId = policyID)
         createIndex(indexName, policyID)
 
@@ -264,13 +266,11 @@ class RestRetryFailedManagedIndexActionIT : IndexStateManagementRestTestCase() {
 
         // init policy on job
         updateManagedIndexConfigStartTime(managedIndexConfig)
-
         // verify we have policy
         waitFor { assertEquals(policyID, getExplainManagedIndexMetaData(indexName).policyID) }
 
         // speed up to execute set read only force merge step
         updateManagedIndexConfigStartTime(managedIndexConfig)
-
         waitFor {
             assertPredicatesOnMetaData(
                 listOf(
@@ -294,7 +294,6 @@ class RestRetryFailedManagedIndexActionIT : IndexStateManagementRestTestCase() {
 
         // speed up to execute attempt call force merge step
         updateManagedIndexConfigStartTime(managedIndexConfig)
-
         // verify failed and save the startTime
         var firstStartTime: Long = Long.MAX_VALUE
         waitFor {
@@ -331,7 +330,6 @@ class RestRetryFailedManagedIndexActionIT : IndexStateManagementRestTestCase() {
             FAILED_INDICES to emptyList<Map<String, Any>>()
         )
         assertAffectedIndicesResponseIsEqual(expectedErrorMessage, response.asMap())
-
         // verify actionStartTime was reset to null
         assertPredicatesOnMetaData(
             listOf(
@@ -348,7 +346,6 @@ class RestRetryFailedManagedIndexActionIT : IndexStateManagementRestTestCase() {
 
         // should execute and set the startTime again
         updateManagedIndexConfigStartTime(managedIndexConfig)
-
         // the new startTime should be greater than the first start time
         waitFor {
             assertPredicatesOnMetaData(
@@ -362,6 +359,10 @@ class RestRetryFailedManagedIndexActionIT : IndexStateManagementRestTestCase() {
                     )
                 ),
                 getExplainMap(indexName), false
+            )
+            assertEquals(
+                AttemptSetReadOnlyStep.getSuccessMessage(indexName),
+                getExplainManagedIndexMetaData(indexName).info?.get("message")
             )
         }
     }
