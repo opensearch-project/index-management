@@ -77,6 +77,9 @@ data class Transform(
         aggregations.aggregatorFactories.forEach {
             require(supportedAggregations.contains(it.type)) { "Unsupported aggregation [${it.type}]" }
         }
+        aggregations.pipelineAggregatorFactories.forEach {
+            require(supportedAggregations.contains(it.type)) { "Unsupported aggregation [${it.type}]" }
+        }
         when (jobSchedule) {
             is CronSchedule -> {
                 // Job scheduler already correctly throws errors for this
