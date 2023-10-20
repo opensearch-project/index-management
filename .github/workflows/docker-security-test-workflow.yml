@@ -64,9 +64,10 @@ jobs:
       - name: Run Index Management Test for security enabled test cases
         if: env.imagePresent == 'true'
         run: |
-          cluster_running=`curl -XGET https://localhost:9200/_cat/plugins -u admin:admin --insecure`
-          echo $cluster_running
-          security=`curl -XGET https://localhost:9200/_cat/plugins -u admin:admin --insecure |grep opensearch-security|wc -l`
+          container_id=`docker ps -q`
+          plugins=`docker exec $container_id /usr/share/opensearch/bin/opensearch-plugin list`
+          echo "plugins: $plugins"
+          security=`echo $plugins | grep opensearch-security | wc -l`
           echo $security
           if [ $security -gt 0 ]
           then
