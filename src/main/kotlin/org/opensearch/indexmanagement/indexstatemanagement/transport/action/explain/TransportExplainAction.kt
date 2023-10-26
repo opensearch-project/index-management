@@ -155,11 +155,24 @@ class TransportExplainAction @Inject constructor(
         private fun getSearchMetadataRequest(params: SearchParams, indexUUIDs: List<String>, searchSize: Int): SearchRequest {
             val sortBuilder = params.getSortBuilder()
 
-            val queryBuilder = QueryBuilders.boolQuery()
+            // change query builder based off of the given json body
+//            val queryBuilder = QueryBuilders.boolQuery()
+//                .must(
+//                    QueryBuilders
+//                        .queryStringQuery(params.queryString)
+//                        .defaultField(MANAGED_INDEX_NAME_KEYWORD_FIELD)
+//                        .defaultOperator(Operator.AND)
+//                ).filter(QueryBuilders.termsQuery(MANAGED_INDEX_INDEX_UUID_FIELD, indexUUIDs))
+
+            log.info("QUERY STRING: ${params.queryString} :: $params")
+
+            // can I string multiple bool queries together
+
+            val queryBuilder = request.explainFilter.convertToBoolQueryBuilder()
                 .must(
                     QueryBuilders
                         .queryStringQuery(params.queryString)
-                        .defaultField(MANAGED_INDEX_NAME_KEYWORD_FIELD)
+                        .field(MANAGED_INDEX_NAME_KEYWORD_FIELD)
                         .defaultOperator(Operator.AND)
                 ).filter(QueryBuilders.termsQuery(MANAGED_INDEX_INDEX_UUID_FIELD, indexUUIDs))
 
@@ -190,21 +203,19 @@ class TransportExplainAction @Inject constructor(
                             }
 
                             parseSearchHits(response.hits.hits).forEach { managedIndex ->
-                                if (request.explainFilter.isValid(managedIndex)) {
-                                    managedIndices.add(managedIndex.index)
-                                    enabledState[managedIndex.index] = managedIndex.enabled
-                                    managedIndicesMetaDataMap[managedIndex.index] = mapOf(
-                                        "index" to managedIndex.index,
-                                        "index_uuid" to managedIndex.indexUuid,
-                                        "policy_id" to managedIndex.policyID,
-                                        "enabled" to managedIndex.enabled.toString()
-                                    )
-                                    if (showPolicy) {
-                                        managedIndex.policy?.let { appliedPolicies[managedIndex.index] = it }
-                                    }
-                                    if (validateAction) {
-                                        managedIndex.policy?.let { policiesforValidation[managedIndex.index] = it }
-                                    }
+                                managedIndices.add(managedIndex.index)
+                                enabledState[managedIndex.index] = managedIndex.enabled
+                                managedIndicesMetaDataMap[managedIndex.index] = mapOf(
+                                    "index" to managedIndex.index,
+                                    "index_uuid" to managedIndex.indexUuid,
+                                    "policy_id" to managedIndex.policyID,
+                                    "enabled" to managedIndex.enabled.toString()
+                                )
+                                if (showPolicy) {
+                                    managedIndex.policy?.let { appliedPolicies[managedIndex.index] = it }
+                                }
+                                if (validateAction) {
+                                    managedIndex.policy?.let { policiesforValidation[managedIndex.index] = it }
                                 }
                             }
 
@@ -293,8 +304,28 @@ class TransportExplainAction @Inject constructor(
                 mgetMetadataReq,
                 object : ActionListener<MultiGetResponse> {
                     override fun onResponse(response: MultiGetResponse) {
-                        val metadataMap: Map<ManagedIndexMetadataDocUUID, ManagedIndexMetadataMap?> =
+                        var metadataMap: Map<ManagedIndexMetadataDocUUID, ManagedIndexMetadataMap?> =
                             response.responses.associate { it.id to getMetadata(it.response)?.toMap() }
+
+                        log.info("BEFORE METADATA MAP: $metadataMap")
+
+                        metadataMap = metadataMap.filter { (_, value) ->
+                            var ok = false
+
+                            if (value != null) {
+                                val metaData = ManagedIndexMetaData.fromMap(value)
+                                ok = request.explainFilter.validMetaData(metaData)
+                                if (!ok) {
+                                    indexNamesToUUIDs.remove(metaData.index)
+                                }
+                            }
+
+                            ok
+                        }
+
+                        log.info("FILTERED METADATA MAP: $metadataMap")
+                        log.info("FILTED INDEX NAMES TO UUID: $indexNamesToUUIDs")
+
                         buildResponse(indexNamesToUUIDs, metadataMap, clusterStateIndexMetadatas, threadContext)
                     }
 
