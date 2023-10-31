@@ -1,0 +1,47 @@
+name: Security test workflow
+# This workflow is triggered on pull requests to main
+on:
+  pull_request:
+    branches:
+      - "**"
+  push:
+    branches:
+      - "**"
+
+jobs:
+  Get-CI-Image-Tag:
+    uses: opensearch-project/opensearch-build/.github/workflows/get-ci-image-tag.yml@main
+    with:
+      product: opensearch
+
+  security-test:
+    needs: Get-CI-Image-Tag
+    # This job runs on Linux
+    runs-on: ubuntu-latest
+    container:
+      # using the same image which is used by opensearch-build team to build the OpenSearch Distribution
+      # this image tag is subject to change as more dependencies and updates will arrive over time
+      image: ${{ needs.Get-CI-Image-Tag.outputs.ci-image-version-linux }}
+      # need to switch to root so that github actions can install runner binary on container without permission issues.
+      options: --user root
+
+    steps:
+      # This step uses the setup-java Github action: https://github.com/actions/setup-java
+      - name: Set Up JDK
+        uses: actions/setup-java@v2
+        with:
+          distribution: temurin # Temurin is a distribution of adoptium
+          java-version: 17
+      # index-management
+      - name: Checkout Branch
+        uses: actions/checkout@v2
+      - name: Run integration tests
+        run: | 
+          chown -R 1000:1000 `pwd`
+          su `id -un 1000` -c "./gradlew integTest -Dsecurity=true -Dhttps=true --tests '*SecurityBehaviorIT'"
+      - name: Upload failed logs
+        uses: actions/upload-artifact@v2
+        if: failure()
+        with:
+          name: logs
+          path: build/testclusters/integTest-*/logs/*

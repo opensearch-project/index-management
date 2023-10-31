@@ -1,0 +1,98 @@
+name: Docker Security Test Workflow
+on:
+  pull_request:
+    branches:
+      - "**"
+  push:
+    branches:
+      - "**"
+
+jobs:
+  docker-test:
+    # This job runs on Linux
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set Up JDK
+        uses: actions/setup-java@v2
+        with:
+          distribution: temurin # Temurin is a distribution of adoptium
+          java-version: 17
+      - name: Checkout Branch
+        uses: actions/checkout@v2
+      - name: Build Index Management
+        run: ./gradlew assemble
+      - name: Pull and Run Docker
+        run: |
+          plugin=`basename $(ls build/distributions/*.zip)`
+          list_of_files=`ls`
+          list_of_all_files=`ls build/distributions/`
+          version=`echo $plugin|awk -F- '{print $4}'| cut -d. -f 1-3`
+          plugin_version=`echo $plugin|awk -F- '{print $4}'| cut -d. -f 1-4`
+          qualifier=`echo $plugin|awk -F- '{print $4}'| cut -d. -f 1-1`
+          candidate_version=`echo $plugin|awk -F- '{print $5}'| cut -d. -f 1-1`
+          if qualifier
+          then
+            docker_version=$version-$qualifier
+          else
+            docker_version=$version
+          fi
+
+          [[ -z $candidate_version ]] && candidate_version=$qualifier && qualifier=""
+
+          echo plugin version plugin_version qualifier candidate_version docker_version
+          echo "($plugin) ($version) ($plugin_version) ($qualifier) ($candidate_version) ($docker_version)"
+          echo $ls $list_of_all_files
+
+          if docker pull opensearchstaging/opensearch:$docker_version
+          then
+            echo "FROM opensearchstaging/opensearch:$docker_version" >> Dockerfile
+            echo "RUN if [ -d /usr/share/opensearch/plugins/opensearch-index-management ]; then /usr/share/opensearch/bin/opensearch-plugin remove opensearch-index-management; fi" >> Dockerfile
+            echo "ADD build/distributions/$plugin /tmp/" >> Dockerfile
+            echo "RUN /usr/share/opensearch/bin/opensearch-plugin install --batch file:/tmp/$plugin" >> Dockerfile
+            echo "RUN echo 'path.repo: ["/usr/share/opensearch/data/repo"]' >> /usr/share/opensearch/config/opensearch.yml" >> Dockerfile
+
+            docker build -t opensearch-index-management:test .
+            echo "imagePresent=true" >> $GITHUB_ENV
+          else
+            echo "imagePresent=false" >> $GITHUB_ENV
+          fi
+      - name: Run Docker Image
+        if: env.imagePresent == 'true'
+        run: |
+          cd ..
+          container_id=`docker run -p 9200:9200 -d -p 9600:9600 -e "discovery.type=single-node" opensearch-index-management:test`
+          sleep 120
+          echo `docker logs $container_id`
+      - name: Run Index Management Test for security enabled test cases
+        if: env.imagePresent == 'true'
+        run: |
+          container_id=`docker ps -q`
+          plugins=`docker exec $container_id /usr/share/opensearch/bin/opensearch-plugin list`
+          echo "plugins: $plugins"
+          security=`echo $plugins | grep opensearch-security | wc -l`
+          echo $security
+          if [ $security -gt 0 ]
+          then
+            echo "Security plugin is available"
+            ./gradlew integTest -Dtests.rest.cluster=localhost:9200 -Dtests.cluster=localhost:9200 -Dtests.clustername=docker-cluster -Dsecurity=true -Dhttps=true -Duser=admin -Dpassword=admin --tests '*SecurityBehaviorIT'
+          else
+            echo "Security plugin is NOT available skipping this run as tests without security have already been run"
+          fi
+      - name: Upload failed logs
+        uses: actions/upload-artifact@v2
+        if: failure()
+        with:
+          name: logs
+          path: build/testclusters/integTest-*/logs/*
+      - name: Collect docker logs on failure
+        uses: jwalton/gh-docker-logs@v2
+        with:
+          dest: './logs'
+      - name: Tar logs
+        run: tar cvzf ./logs.tgz ./logs
+      - name: Upload logs to GitHub
+        uses: actions/upload-artifact@v2
+        if: failure()
+        with:
+          name: logs.tgz
+          path: ./logs.tgz
