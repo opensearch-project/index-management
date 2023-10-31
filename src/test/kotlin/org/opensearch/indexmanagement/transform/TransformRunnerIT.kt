@@ -27,6 +27,7 @@ import org.opensearch.script.ScriptType
 import org.opensearch.search.aggregations.AggregationBuilders
 import org.opensearch.search.aggregations.AggregatorFactories
 import org.opensearch.search.aggregations.metrics.ScriptedMetricAggregationBuilder
+import org.opensearch.search.aggregations.pipeline.BucketScriptPipelineAggregationBuilder
 import java.lang.Integer.min
 import java.time.Instant
 import java.time.temporal.ChronoUnit
@@ -656,6 +657,51 @@ class TransformRunnerIT : TransformRestTestCase() {
 
         val transform = Transform(
             id = "id_6",
+            schemaVersion = 1L,
+            enabled = true,
+            enabledAt = Instant.now(),
+            updatedAt = Instant.now(),
+            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+            description = "test transform",
+            metadataId = null,
+            sourceIndex = "transform-source-index",
+            targetIndex = "transform-target-index",
+            roles = emptyList(),
+            pageSize = 1,
+            groups = listOf(
+                Terms(sourceField = "store_and_fwd_flag", targetField = "flag"),
+                Histogram(sourceField = "passenger_count", targetField = "count", interval = 2.0),
+                DateHistogram(sourceField = "tpep_pickup_datetime", targetField = "date", fixedInterval = "1d")
+            ),
+            aggregations = aggregatorFactories
+        ).let { createTransform(it, it.id) }
+
+        updateTransformStartTime(transform)
+
+        val metadata = waitFor {
+            val job = getTransform(transformId = transform.id)
+            assertNotNull("Transform job doesn't have metadata set", job.metadataId)
+            val transformMetadata = getTransformMetadata(job.metadataId!!)
+            assertEquals("Transform has not failed", TransformMetadata.Status.FAILED, transformMetadata.status)
+            transformMetadata
+        }
+
+        assertTrue("Expected failure message to be present", !metadata.failureReason.isNullOrBlank())
+    }
+
+    fun `test transform with invalid pipeline aggregation triggering search failure`() {
+        validateSourceIndex("transform-source-index")
+
+        val aggregatorFactories = AggregatorFactories.builder()
+        aggregatorFactories.addPipelineAggregator(
+            BucketScriptPipelineAggregationBuilder(
+                "test_pipeline_aggregation",
+                Script("1")
+            )
+        )
+
+        val transform = Transform(
+            id = "id_17",
             schemaVersion = 1L,
             enabled = true,
             enabledAt = Instant.now(),
