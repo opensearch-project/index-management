@@ -12,10 +12,12 @@ import org.opensearch.core.action.ActionListener
 import org.opensearch.action.bulk.BackoffPolicy
 import org.opensearch.action.search.SearchPhaseExecutionException
 import org.opensearch.action.search.SearchResponse
+import org.opensearch.action.search.TransportSearchAction.SEARCH_CANCEL_AFTER_TIME_INTERVAL_SETTING
 import org.opensearch.client.Client
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.core.common.breaker.CircuitBreakingException
 import org.opensearch.common.settings.Settings
+import org.opensearch.common.unit.TimeValue
 import org.opensearch.indexmanagement.opensearchapi.retry
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.rollup.model.Rollup
@@ -44,9 +46,15 @@ class RollupSearchService(
     @Volatile private var retrySearchPolicy =
         BackoffPolicy.constantBackoff(ROLLUP_SEARCH_BACKOFF_MILLIS.get(settings), ROLLUP_SEARCH_BACKOFF_COUNT.get(settings))
 
+    @Volatile private var cancelAfterTimeInterval = SEARCH_CANCEL_AFTER_TIME_INTERVAL_SETTING.get(settings)
+
     init {
         clusterService.clusterSettings.addSettingsUpdateConsumer(ROLLUP_SEARCH_BACKOFF_MILLIS, ROLLUP_SEARCH_BACKOFF_COUNT) { millis, count ->
             retrySearchPolicy = BackoffPolicy.constantBackoff(millis, count)
+        }
+
+        clusterService.clusterSettings.addSettingsUpdateConsumer(SEARCH_CANCEL_AFTER_TIME_INTERVAL_SETTING) {
+            cancelAfterTimeInterval = it
         }
     }
 
@@ -103,7 +111,12 @@ class RollupSearchService(
                             "Composite search failed for rollup, retrying [#${retryCount - 1}] -" +
                                 " reducing page size of composite aggregation from ${job.pageSize} to $pageSize"
                         )
-                        search(job.copy(pageSize = pageSize).getRollupSearchRequest(metadata), listener)
+
+                        val searchRequest = job.copy(pageSize = pageSize).getRollupSearchRequest(metadata)
+                        val timeoutMins = max(cancelAfterTimeInterval.minutes(), 10)
+                        searchRequest.cancelAfterTimeInterval = TimeValue.timeValueMinutes(timeoutMins)
+
+                        search(searchRequest, listener)
                     }
                 }
             )
