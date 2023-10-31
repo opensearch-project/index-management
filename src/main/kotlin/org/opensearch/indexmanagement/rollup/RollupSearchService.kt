@@ -22,6 +22,7 @@ import org.opensearch.indexmanagement.opensearchapi.retry
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.rollup.model.Rollup
 import org.opensearch.indexmanagement.rollup.model.RollupMetadata
+import org.opensearch.indexmanagement.rollup.settings.RollupSettings.Companion.MINIMUM_CANCEL_AFTER_TIME_INTERVAL_MINUTES
 import org.opensearch.indexmanagement.rollup.settings.RollupSettings.Companion.ROLLUP_SEARCH_BACKOFF_COUNT
 import org.opensearch.indexmanagement.rollup.settings.RollupSettings.Companion.ROLLUP_SEARCH_BACKOFF_MILLIS
 import org.opensearch.indexmanagement.rollup.util.getRollupSearchRequest
@@ -113,7 +114,7 @@ class RollupSearchService(
                         )
 
                         val searchRequest = job.copy(pageSize = pageSize).getRollupSearchRequest(metadata)
-                        val timeoutMins = max(cancelAfterTimeInterval.minutes(), 10)
+                        val timeoutMins = max(cancelAfterTimeInterval.minutes(), MINIMUM_CANCEL_AFTER_TIME_INTERVAL_MINUTES)
                         searchRequest.cancelAfterTimeInterval = TimeValue.timeValueMinutes(timeoutMins)
 
                         search(searchRequest, listener)
