@@ -9,7 +9,13 @@ on:
       - "**"
 
 jobs:
+  Get-CI-Image-Tag:
+    uses: opensearch-project/opensearch-build/.github/workflows/get-ci-image-tag.yml@main
+    with:
+      product: opensearch
+
   multi-node-test:
+    needs: Get-CI-Image-Tag
     env:
       TEST_FILTER: ${{ matrix.test_filter }}
     strategy:
@@ -23,6 +29,13 @@ jobs:
             test_filter: -PexcludeTests="org.opensearch.indexmanagement.indexstatemanagement*"
     # This job runs on Linux
     runs-on: ubuntu-latest
+    container:
+      # using the same image which is used by opensearch-build team to build the OpenSearch Distribution
+      # this image tag is subject to change as more dependencies and updates will arrive over time
+      image: ${{ needs.Get-CI-Image-Tag.outputs.ci-image-version-linux }}
+      # need to switch to root so that github actions can install runner binary on container without permission issues.
+      options: --user root
+
     steps:
       # This step uses the setup-java Github action: https://github.com/actions/setup-java
       - name: Set Up JDK
@@ -33,7 +46,9 @@ jobs:
       - name: Checkout Branch
         uses: actions/checkout@v2
       - name: Run integration tests with multi node config
-        run: ./gradlew integTest -PnumNodes=3 ${{ env.TEST_FILTER }}
+        run: |
+          chown -R 1000:1000 `pwd`
+          su `id -un 1000` -c "./gradlew integTest -PnumNodes=3 ${{ env.TEST_FILTER }}"
       - name: Upload failed logs
         uses: actions/upload-artifact@v2
         if: failure()
