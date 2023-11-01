@@ -28,6 +28,7 @@ class ShrinkAction(
     val percentageOfSourceShards: Double?,
     val targetIndexTemplate: Script?,
     val aliases: List<Alias>?,
+    val switchAliases: Boolean = false,
     val forceUnsafe: Boolean?,
     index: Int
 ) : Action(name, index) {
@@ -104,6 +105,7 @@ class ShrinkAction(
         if (percentageOfSourceShards != null) builder.field(PERCENTAGE_OF_SOURCE_SHARDS_FIELD, percentageOfSourceShards)
         if (targetIndexTemplate != null) builder.field(TARGET_INDEX_TEMPLATE_FIELD, targetIndexTemplate)
         if (aliases != null) { builder.aliasesField(aliases) }
+        builder.field(SWITCH_ALIASES, switchAliases)
         if (forceUnsafe != null) builder.field(FORCE_UNSAFE_FIELD, forceUnsafe)
         builder.endObject()
     }
@@ -120,6 +122,7 @@ class ShrinkAction(
         } else {
             out.writeBoolean(false)
         }
+        out.writeBoolean(switchAliases)
         out.writeOptionalBoolean(forceUnsafe)
         out.writeInt(actionIndex)
     }
@@ -131,6 +134,7 @@ class ShrinkAction(
         const val MAX_SHARD_SIZE_FIELD = "max_shard_size"
         const val TARGET_INDEX_TEMPLATE_FIELD = "target_index_name_template"
         const val ALIASES_FIELD = "aliases"
+        const val SWITCH_ALIASES = "switch_aliases"
         const val FORCE_UNSAFE_FIELD = "force_unsafe"
         const val LOCK_SOURCE_JOB_ID = "shrink-node_name"
         fun getSecurityFailureMessage(failure: String) = "Shrink action failed because of missing permissions: $failure"
