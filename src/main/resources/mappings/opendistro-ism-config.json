@@ -1,6 +1,6 @@
 {
   "_meta" : {
-    "schema_version": 20
+    "schema_version": 21
   },
   "dynamic": "strict",
   "properties": {
@@ -550,6 +550,9 @@
                     "aliases": {
                       "type": "object",
                       "enabled": false
+                    },
+                    "switch_aliases": {
+                      "type": "boolean"
                     },
                     "force_unsafe": {
                       "type": "boolean"

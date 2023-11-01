@@ -15,6 +15,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.action.ShrinkAction.C
 import org.opensearch.indexmanagement.indexstatemanagement.action.ShrinkAction.Companion.MAX_SHARD_SIZE_FIELD
 import org.opensearch.indexmanagement.indexstatemanagement.action.ShrinkAction.Companion.NUM_NEW_SHARDS_FIELD
 import org.opensearch.indexmanagement.indexstatemanagement.action.ShrinkAction.Companion.PERCENTAGE_OF_SOURCE_SHARDS_FIELD
+import org.opensearch.indexmanagement.indexstatemanagement.action.ShrinkAction.Companion.SWITCH_ALIASES
 import org.opensearch.indexmanagement.indexstatemanagement.action.ShrinkAction.Companion.TARGET_INDEX_TEMPLATE_FIELD
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Action
 import org.opensearch.indexmanagement.spi.indexstatemanagement.ActionParser
@@ -27,10 +28,11 @@ class ShrinkActionParser : ActionParser() {
         val percentageOfSourceShards = sin.readOptionalDouble()
         val targetIndexTemplate = if (sin.readBoolean()) Script(sin) else null
         val aliases = if (sin.readBoolean()) sin.readList(::Alias) else null
+        val switchAliases = sin.readBoolean()
         val forceUnsafe = sin.readOptionalBoolean()
         val index = sin.readInt()
 
-        return ShrinkAction(numNewShards, maxShardSize, percentageOfSourceShards, targetIndexTemplate, aliases, forceUnsafe, index)
+        return ShrinkAction(numNewShards, maxShardSize, percentageOfSourceShards, targetIndexTemplate, aliases, switchAliases, forceUnsafe, index)
     }
 
     @Suppress("NestedBlockDepth")
@@ -40,6 +42,7 @@ class ShrinkActionParser : ActionParser() {
         var percentageOfSourceShards: Double? = null
         var targetIndexTemplate: Script? = null
         var aliases: List<Alias>? = null
+        var switchAliases = false
         var forceUnsafe: Boolean? = null
 
         ensureExpectedToken(XContentParser.Token.START_OBJECT, xcp.currentToken(), xcp)
@@ -63,12 +66,13 @@ class ShrinkActionParser : ActionParser() {
                         }
                     }
                 }
+                SWITCH_ALIASES -> switchAliases = xcp.booleanValue()
                 FORCE_UNSAFE_FIELD -> forceUnsafe = xcp.booleanValue()
                 else -> throw IllegalArgumentException("Invalid field: [$fieldName] found in ShrinkAction.")
             }
         }
 
-        return ShrinkAction(numNewShards, maxShardSize, percentageOfSourceShards, targetIndexTemplate, aliases, forceUnsafe, index)
+        return ShrinkAction(numNewShards, maxShardSize, percentageOfSourceShards, targetIndexTemplate, aliases, switchAliases, forceUnsafe, index)
     }
 
     override fun getActionType(): String {
