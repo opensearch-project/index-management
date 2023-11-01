@@ -722,6 +722,7 @@ class TransformRunnerIT : TransformRestTestCase() {
                 ),
                 aggregations = aggregatorFactories
             ).let { createTransform(it, it.id) }
+            updateTransformStartTime(transform)
         }
     }
 
