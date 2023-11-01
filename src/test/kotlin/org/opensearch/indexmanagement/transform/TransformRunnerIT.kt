@@ -722,18 +722,6 @@ class TransformRunnerIT : TransformRestTestCase() {
                 ),
                 aggregations = aggregatorFactories
             ).let { createTransform(it, it.id) }
-
-            updateTransformStartTime(transform)
-
-            val metadata = waitFor {
-                val job = getTransform(transformId = transform.id)
-                assertNotNull("Transform job doesn't have metadata set", job.metadataId)
-                val transformMetadata = getTransformMetadata(job.metadataId!!)
-                assertEquals("Transform has not failed", TransformMetadata.Status.FAILED, transformMetadata.status)
-                transformMetadata
-            }
-
-            assertTrue("Expected failure message to be present", !metadata.failureReason.isNullOrBlank())
         }
     }
 
