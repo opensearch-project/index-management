@@ -47,6 +47,7 @@ import org.opensearch.indexmanagement.util.IndexUtils.Companion.LUCENE_MAX_CLAUS
 import org.opensearch.indexmanagement.util.IndexUtils.Companion.ODFE_MAGIC_NULL
 import org.opensearch.indexmanagement.util.IndexUtils.Companion.hashToFixedSize
 import org.opensearch.core.rest.RestStatus
+import org.opensearch.indexmanagement.transform.settings.TransformSettings.Companion.MINIMUM_CANCEL_AFTER_TIME_INTERVAL_SECONDS
 import org.opensearch.search.aggregations.Aggregation
 import org.opensearch.search.aggregations.bucket.composite.CompositeAggregation
 import org.opensearch.search.aggregations.bucket.composite.CompositeAggregationBuilder
@@ -187,7 +188,11 @@ class TransformSearchService(
             val searchStart = Instant.now().epochSecond
             val searchResponse = backoffPolicy.retryTransformSearch(logger, transformContext.transformLockManager) {
                 val pageSizeDecay = 2f.pow(retryAttempt++)
-                val searchRequestTimeoutInSeconds = transformContext.getMaxRequestTimeoutInSeconds()
+                val searchRequestTimeoutInSeconds = if (transformContext.getMaxRequestTimeoutInSeconds() == null) {
+                    MINIMUM_CANCEL_AFTER_TIME_INTERVAL_SECONDS
+                } else {
+                    max(transformContext.getMaxRequestTimeoutInSeconds()!!, MINIMUM_CANCEL_AFTER_TIME_INTERVAL_SECONDS)
+                }
 
                 client.suspendUntil { listener: ActionListener<SearchResponse> ->
                     // If the previous request of the current transform job execution was successful, take the page size of previous request.
