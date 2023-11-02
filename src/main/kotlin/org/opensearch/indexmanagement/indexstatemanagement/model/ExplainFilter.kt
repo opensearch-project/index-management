@@ -5,7 +5,6 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.model
 
-import org.apache.logging.log4j.LogManager
 import org.opensearch.core.common.io.stream.StreamInput
 import org.opensearch.core.common.io.stream.StreamOutput
 import org.opensearch.core.common.io.stream.Writeable
@@ -18,8 +17,6 @@ import org.opensearch.index.query.QueryBuilders
 import org.opensearch.indexmanagement.indexstatemanagement.util.MANAGED_INDEX_POLICY_ID_FIELD
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
 import java.io.IOException
-
-private val log = LogManager.getLogger(ExplainFilter::class.java)
 
 data class ExplainFilter(
     val policyID: String?,
@@ -67,30 +64,17 @@ data class ExplainFilter(
     }
 
     fun validMetaData(metaData: ManagedIndexMetaData): Boolean {
-        log.info("----FILTER---- $metaData") // : ${metaData.stateMetaData!!.name} ${metaData.actionMetaData!!.name} ${metaData.actionMetaData!!.failed}")
-
         val stateMetaData = metaData.stateMetaData
-        if (stateMetaData != null) {
-            log.info("STATE META DATA: ${stateMetaData.name} : $state")
-        }
-
         if (state != null && (stateMetaData == null || stateMetaData.name != state)) {
-            log.info("filter error on state")
             return false
         }
 
         val actionMetaData = metaData.actionMetaData
-        if (actionMetaData != null) {
-            log.info("ACTION META DATA: ${actionMetaData.name} : $actionType, ${actionMetaData.failed} : $failed")
-        }
-
         if (actionType != null && (actionMetaData == null || actionMetaData.name != actionType)) {
-            log.info("filter error on action")
             return false
         }
 
         if (failed != null && (actionMetaData == null || actionMetaData.failed != failed)) {
-            log.info("filter error on failed")
             return false
         }
 
@@ -102,7 +86,7 @@ data class ExplainFilter(
         const val POLICY_ID_FIELD = "policy_id"
         const val STATE_FIELD = "state"
         const val ACTION_FIELD = "action_type"
-        const val FAILURE_FIELD = "failure"
+        const val FAILED_FIELD = "failed"
 
         @JvmStatic
         @Throws(IOException::class)
@@ -128,14 +112,12 @@ data class ExplainFilter(
                                 POLICY_ID_FIELD -> policyID = xcp.text()
                                 STATE_FIELD -> state = xcp.text()
                                 ACTION_FIELD -> actionType = xcp.text()
-                                FAILURE_FIELD -> failed = xcp.booleanValue()
+                                FAILED_FIELD -> failed = xcp.booleanValue()
                             }
                         }
                     }
                 }
             }
-
-            log.info("[PARSE] pid: $policyID, s: $state, a: $actionType, f: $failed")
 
             return ExplainFilter(policyID, state, actionType, failed)
         }

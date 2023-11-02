@@ -307,8 +307,6 @@ class TransportExplainAction @Inject constructor(
                         var metadataMap: Map<ManagedIndexMetadataDocUUID, ManagedIndexMetadataMap?> =
                             response.responses.associate { it.id to getMetadata(it.response)?.toMap() }
 
-                        log.info("BEFORE METADATA MAP: $metadataMap")
-
                         metadataMap = metadataMap.filter { (_, value) ->
                             var ok = false
 
@@ -316,15 +314,14 @@ class TransportExplainAction @Inject constructor(
                                 val metaData = ManagedIndexMetaData.fromMap(value)
                                 ok = request.explainFilter.validMetaData(metaData)
                                 if (!ok) {
+                                    indexNames.remove(metaData.index)
                                     indexNamesToUUIDs.remove(metaData.index)
+                                    totalManagedIndices--
                                 }
                             }
 
                             ok
                         }
-
-                        log.info("FILTERED METADATA MAP: $metadataMap")
-                        log.info("FILTED INDEX NAMES TO UUID: $indexNamesToUUIDs")
 
                         buildResponse(indexNamesToUUIDs, metadataMap, clusterStateIndexMetadatas, threadContext)
                     }
