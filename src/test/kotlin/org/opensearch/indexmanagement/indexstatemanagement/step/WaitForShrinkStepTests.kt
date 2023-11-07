@@ -14,6 +14,7 @@ import com.nhaarman.mockitokotlin2.verify
 import com.nhaarman.mockitokotlin2.whenever
 import kotlinx.coroutines.runBlocking
 import org.mockito.ArgumentMatcher
+import org.mockito.Mockito.never
 import org.opensearch.action.admin.indices.alias.IndicesAliasesRequest
 import org.opensearch.action.support.master.AcknowledgedResponse
 import org.opensearch.client.AdminClient
@@ -46,10 +47,25 @@ class WaitForShrinkStepTests : OpenSearchTestCase() {
     private val ackedResponse = AcknowledgedResponse(true)
     private val unAckedResponse = AcknowledgedResponse(false)
 
+    private val shrinkActionWithoutAliasesSwitch = ShrinkAction(numNewShards = 1, maxShardSize = null, percentageOfSourceShards = null, aliases = null, switchAliases = false, forceUnsafe = false, index = 0, targetIndexTemplate = null)
+    private val shrinkStepWithoutAliasesSwitch = WaitForShrinkStep(shrinkActionWithoutAliasesSwitch)
+
     private val shrinkAction = ShrinkAction(numNewShards = 1, maxShardSize = null, percentageOfSourceShards = null, aliases = null, switchAliases = true, forceUnsafe = false, index = 0, targetIndexTemplate = null)
     private val waitForShrinkStep = WaitForShrinkStep(shrinkAction)
     private val managedIndexMetaData = ManagedIndexMetaData("source_index_name", "indexUuid", "policy_id", null, null, null, null, null, null, null, null, null, null, null)
     private val shrinkActionProperties = ShrinkActionProperties("node_name", "target_index_name", 1, 1234L, 1234L, 1234567L, 100000L, emptyMap())
+
+    fun `test switchAliases should succeed and move no aliases given aliases switch is disabled`() {
+        val client = getClient(getAdminClient(getIndicesAdminClient(ackedResponse, null)))
+        val context = StepContext(managedIndexMetaData, clusterService, client, null, null, scriptService, settings, lockService)
+
+        runBlocking {
+            val aliasesSwitched = shrinkStepWithoutAliasesSwitch.switchAliases(context, shrinkActionProperties)
+            assertTrue(aliasesSwitched)
+        }
+
+        verify(client.admin().indices(), never()).aliases(any(), any())
+    }
 
     fun `test switchAliases should move all aliases from a source index to a target index`() {
         val client = getClient(getAdminClient(getIndicesAdminClient(ackedResponse, null)))
