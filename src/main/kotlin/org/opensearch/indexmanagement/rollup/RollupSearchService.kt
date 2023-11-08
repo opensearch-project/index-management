@@ -114,7 +114,8 @@ class RollupSearchService(
                         )
 
                         val searchRequest = job.copy(pageSize = pageSize).getRollupSearchRequest(metadata)
-                        searchRequest.cancelAfterTimeInterval = TimeValue.timeValueMinutes(getCancelAfterTimeInterval(cancelAfterTimeInterval.minutes))
+                        val cancelTimeoutTimeValue = TimeValue.timeValueMinutes(getCancelAfterTimeInterval(cancelAfterTimeInterval.minutes))
+                        searchRequest.cancelAfterTimeInterval = cancelTimeoutTimeValue
 
                         search(searchRequest, listener)
                     }
