@@ -155,19 +155,6 @@ class TransportExplainAction @Inject constructor(
         private fun getSearchMetadataRequest(params: SearchParams, indexUUIDs: List<String>, searchSize: Int): SearchRequest {
             val sortBuilder = params.getSortBuilder()
 
-            // change query builder based off of the given json body
-//            val queryBuilder = QueryBuilders.boolQuery()
-//                .must(
-//                    QueryBuilders
-//                        .queryStringQuery(params.queryString)
-//                        .defaultField(MANAGED_INDEX_NAME_KEYWORD_FIELD)
-//                        .defaultOperator(Operator.AND)
-//                ).filter(QueryBuilders.termsQuery(MANAGED_INDEX_INDEX_UUID_FIELD, indexUUIDs))
-
-            log.info("QUERY STRING: ${params.queryString} :: $params")
-
-            // can I string multiple bool queries together
-
             val queryBuilder = request.explainFilter.convertToBoolQueryBuilder()
                 .must(
                     QueryBuilders
