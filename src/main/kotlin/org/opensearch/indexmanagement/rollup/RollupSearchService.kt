@@ -114,8 +114,7 @@ class RollupSearchService(
                         )
 
                         val searchRequest = job.copy(pageSize = pageSize).getRollupSearchRequest(metadata)
-                        val timeoutMins = max(cancelAfterTimeInterval.minutes(), MINIMUM_CANCEL_AFTER_TIME_INTERVAL_MINUTES)
-                        searchRequest.cancelAfterTimeInterval = TimeValue.timeValueMinutes(timeoutMins)
+                        searchRequest.cancelAfterTimeInterval = TimeValue.timeValueMinutes(getCancelAfterTimeInterval(cancelAfterTimeInterval.minutes))
 
                         search(searchRequest, listener)
                     }
@@ -145,6 +144,14 @@ class RollupSearchService(
             logger.error(e.message, e.cause)
             RollupSearchResult.Failure(cause = e)
         }
+    }
+
+    private fun getCancelAfterTimeInterval(givenInterval: Long): Long {
+        if(givenInterval == -1L) {
+            return givenInterval
+        }
+
+        return max(cancelAfterTimeInterval.minutes(), MINIMUM_CANCEL_AFTER_TIME_INTERVAL_MINUTES)
     }
 }
 
