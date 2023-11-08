@@ -34,10 +34,10 @@ data class ExplainFilter(
 
     @Throws(IOException::class)
     constructor(sin: StreamInput) : this(
-        policyID = sin.readString(),
-        state = sin.readString(),
-        actionType = sin.readString(),
-        failed = sin.readBoolean()
+        policyID = sin.readOptionalString(),
+        state = sin.readOptionalString(),
+        actionType = sin.readOptionalString(),
+        failed = sin.readOptionalBoolean()
     )
 
     @Throws(IOException::class)
@@ -64,21 +64,23 @@ data class ExplainFilter(
     }
 
     fun validMetaData(metaData: ManagedIndexMetaData): Boolean {
+        var ok = true
+
         val stateMetaData = metaData.stateMetaData
         if (state != null && (stateMetaData == null || stateMetaData.name != state)) {
-            return false
+            ok = false
         }
 
         val actionMetaData = metaData.actionMetaData
         if (actionType != null && (actionMetaData == null || actionMetaData.name != actionType)) {
-            return false
+            ok = false
         }
 
         if (failed != null && (actionMetaData == null || actionMetaData.failed != failed)) {
-            return false
+            ok = false
         }
 
-        return true
+        return ok
     }
 
     companion object {
