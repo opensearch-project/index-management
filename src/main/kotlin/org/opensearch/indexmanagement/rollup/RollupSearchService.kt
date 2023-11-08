@@ -147,7 +147,9 @@ class RollupSearchService(
     }
 
     private fun getCancelAfterTimeInterval(givenInterval: Long): Long {
-        if(givenInterval == -1L) {
+        // The default value for the cancelAfterTimeInterval is -1 and so, in this case
+        // we should ignore processing on the value
+        if (givenInterval == -1L) {
             return givenInterval
         }
 
