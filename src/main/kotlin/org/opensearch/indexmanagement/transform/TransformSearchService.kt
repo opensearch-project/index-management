@@ -188,11 +188,7 @@ class TransformSearchService(
             val searchStart = Instant.now().epochSecond
             val searchResponse = backoffPolicy.retryTransformSearch(logger, transformContext.transformLockManager) {
                 val pageSizeDecay = 2f.pow(retryAttempt++)
-                val searchRequestTimeoutInSeconds = if (transformContext.getMaxRequestTimeoutInSeconds() == null) {
-                    MINIMUM_CANCEL_AFTER_TIME_INTERVAL_SECONDS
-                } else {
-                    max(transformContext.getMaxRequestTimeoutInSeconds()!!, MINIMUM_CANCEL_AFTER_TIME_INTERVAL_SECONDS)
-                }
+                val searchRequestTimeoutInSeconds = getCancelAfterTimeInterval(transformContext.getMaxRequestTimeoutInSeconds())
 
                 client.suspendUntil { listener: ActionListener<SearchResponse> ->
                     // If the previous request of the current transform job execution was successful, take the page size of previous request.
@@ -227,6 +223,16 @@ class TransformSearchService(
         } catch (e: Exception) {
             throw TransformSearchServiceException(failedSearchErrorMessage, e)
         }
+    }
+
+    private fun getCancelAfterTimeInterval(givenInterval: Long?): Long? {
+        // The default value for the cancelAfterTimeInterval is -1 and so, in this case
+        // we should ignore processing on the value
+        if (givenInterval == null) {
+            return null
+        }
+
+        return max(givenInterval, MINIMUM_CANCEL_AFTER_TIME_INTERVAL_SECONDS)
     }
 
     companion object {
