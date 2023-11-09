@@ -101,7 +101,7 @@ class WaitForShrinkStep(private val action: ShrinkAction) : ShrinkStep(name, tru
         }
     }
 
-    private suspend fun switchAliases(context: StepContext, shrinkActionProperties: ShrinkActionProperties): Boolean {
+    suspend fun switchAliases(context: StepContext, shrinkActionProperties: ShrinkActionProperties): Boolean {
 
         val sourceIndexName = context.metadata.index
         val targetIndexName = shrinkActionProperties.targetIndexName
