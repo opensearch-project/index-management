@@ -8,6 +8,7 @@ package org.opensearch.indexmanagement.indexstatemanagement.settings
 import org.opensearch.common.settings.Setting
 import org.opensearch.common.unit.TimeValue
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
+import org.opensearch.indexmanagement.indexstatemanagement.ISMActionsParser
 import java.util.function.Function
 
 @Suppress("UtilityClassWithPublicConstructor")
@@ -19,6 +20,7 @@ class ManagedIndexSettings {
         const val DEFAULT_JITTER = 0.6
         const val DEFAULT_RESTRICTED_PATTERN = "\\.opendistro_security|\\.kibana.*|\\$INDEX_MANAGEMENT_INDEX"
         val ALLOW_LIST_NONE = emptyList<String>()
+        val ALLOW_LIST_ALL = ISMActionsParser.instance.parsers.map { it.getActionType() }.toList()
         val SNAPSHOT_DENY_LIST_NONE = emptyList<String>()
 
         val INDEX_STATE_MANAGEMENT_ENABLED: Setting<Boolean> = Setting.boolSetting(

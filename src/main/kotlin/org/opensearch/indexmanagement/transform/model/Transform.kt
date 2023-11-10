@@ -77,6 +77,9 @@ data class Transform(
         aggregations.aggregatorFactories.forEach {
             require(supportedAggregations.contains(it.type)) { "Unsupported aggregation [${it.type}]" }
         }
+        aggregations.pipelineAggregatorFactories.forEach {
+            require(supportedAggregations.contains(it.type)) { "Unsupported aggregation [${it.type}]" }
+        }
         when (jobSchedule) {
             is CronSchedule -> {
                 // Job scheduler already correctly throws errors for this
@@ -384,7 +387,7 @@ data class Transform(
             if (seqNo == SequenceNumbers.UNASSIGNED_SEQ_NO || primaryTerm == SequenceNumbers.UNASSIGNED_PRIMARY_TERM) {
                 // we instantiate the start time
                 if (schedule is IntervalSchedule) {
-                    schedule = IntervalSchedule(Instant.now(), schedule.interval, schedule.unit)
+                    schedule = IntervalSchedule(schedule.startTime, schedule.interval, schedule.unit)
                 }
 
                 // we clear out metadata if its a new job

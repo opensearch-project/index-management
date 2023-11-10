@@ -23,7 +23,8 @@ data class ActionProperties(
     val snapshotName: String? = null,
     val rollupId: String? = null,
     val hasRollupFailed: Boolean? = null,
-    val shrinkActionProperties: ShrinkActionProperties? = null
+    val shrinkActionProperties: ShrinkActionProperties? = null,
+    val transformActionProperties: TransformActionProperties? = null
 ) : Writeable, ToXContentFragment {
 
     override fun writeTo(out: StreamOutput) {
@@ -32,6 +33,7 @@ data class ActionProperties(
         out.writeOptionalString(rollupId)
         out.writeOptionalBoolean(hasRollupFailed)
         out.writeOptionalWriteable(shrinkActionProperties)
+        out.writeOptionalWriteable(transformActionProperties)
     }
 
     override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
@@ -40,6 +42,7 @@ data class ActionProperties(
         if (rollupId != null) builder.field(Properties.ROLLUP_ID.key, rollupId)
         if (hasRollupFailed != null) builder.field(Properties.HAS_ROLLUP_FAILED.key, hasRollupFailed)
         if (shrinkActionProperties != null) builder.addObject(ShrinkActionProperties.SHRINK_ACTION_PROPERTIES, shrinkActionProperties, params)
+        if (transformActionProperties != null) builder.addObject(TransformActionProperties.TRANSFORM_ACTION_PROPERTIES, transformActionProperties, params)
         return builder
     }
 
@@ -52,7 +55,8 @@ data class ActionProperties(
             val rollupId: String? = si.readOptionalString()
             val hasRollupFailed: Boolean? = si.readOptionalBoolean()
             val shrinkActionProperties: ShrinkActionProperties? = si.readOptionalWriteable { ShrinkActionProperties.fromStreamInput(it) }
-            return ActionProperties(maxNumSegments, snapshotName, rollupId, hasRollupFailed, shrinkActionProperties)
+            val transformActionProperties: TransformActionProperties? = si.readOptionalWriteable { TransformActionProperties.fromStreamInput(it) }
+            return ActionProperties(maxNumSegments, snapshotName, rollupId, hasRollupFailed, shrinkActionProperties, transformActionProperties)
         }
 
         fun parse(xcp: XContentParser): ActionProperties {
@@ -61,6 +65,7 @@ data class ActionProperties(
             var rollupId: String? = null
             var hasRollupFailed: Boolean? = null
             var shrinkActionProperties: ShrinkActionProperties? = null
+            var transformActionProperties: TransformActionProperties? = null
 
             ensureExpectedToken(Token.START_OBJECT, xcp.currentToken(), xcp)
             while (xcp.nextToken() != Token.END_OBJECT) {
@@ -75,10 +80,13 @@ data class ActionProperties(
                     ShrinkActionProperties.SHRINK_ACTION_PROPERTIES -> {
                         shrinkActionProperties = if (xcp.currentToken() == Token.VALUE_NULL) null else ShrinkActionProperties.parse(xcp)
                     }
+                    TransformActionProperties.TRANSFORM_ACTION_PROPERTIES -> {
+                        transformActionProperties = if (xcp.currentToken() == Token.VALUE_NULL) null else TransformActionProperties.parse(xcp)
+                    }
                 }
             }
 
-            return ActionProperties(maxNumSegments, snapshotName, rollupId, hasRollupFailed, shrinkActionProperties)
+            return ActionProperties(maxNumSegments, snapshotName, rollupId, hasRollupFailed, shrinkActionProperties, transformActionProperties)
         }
     }
 

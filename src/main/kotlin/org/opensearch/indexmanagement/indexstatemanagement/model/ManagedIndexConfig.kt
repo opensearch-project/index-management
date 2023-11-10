@@ -35,7 +35,7 @@ data class ManagedIndexConfig(
     val policyID: String,
     val policySeqNo: Long?,
     val policyPrimaryTerm: Long?,
-    val policy: Policy?,
+    val policy: Policy,
     val changePolicy: ChangePolicy?,
     val jobJitter: Double?
 ) : ScheduledJobParameter {
@@ -177,11 +177,13 @@ data class ManagedIndexConfig(
                 policyID = requireNotNull(policyID) { "ManagedIndexConfig policy id is null" },
                 policySeqNo = policySeqNo,
                 policyPrimaryTerm = policyPrimaryTerm,
-                policy = policy?.copy(
-                    id = policyID,
-                    seqNo = policySeqNo ?: SequenceNumbers.UNASSIGNED_SEQ_NO,
-                    primaryTerm = policyPrimaryTerm ?: SequenceNumbers.UNASSIGNED_PRIMARY_TERM
-                ),
+                policy = requireNotNull(
+                    policy?.copy(
+                        id = policyID,
+                        seqNo = policySeqNo ?: SequenceNumbers.UNASSIGNED_SEQ_NO,
+                        primaryTerm = policyPrimaryTerm ?: SequenceNumbers.UNASSIGNED_PRIMARY_TERM
+                    )
+                ) { "ManagedIndexConfig policy is null" },
                 changePolicy = changePolicy,
                 jobJitter = jitter
             )

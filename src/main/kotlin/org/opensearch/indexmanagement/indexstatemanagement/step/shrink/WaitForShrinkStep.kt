@@ -5,6 +5,8 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.step.shrink
 
+import org.opensearch.action.admin.indices.alias.IndicesAliasesRequest
+import org.opensearch.action.admin.indices.alias.IndicesAliasesRequest.AliasActions
 import org.opensearch.action.admin.indices.stats.IndicesStatsRequest
 import org.opensearch.action.admin.indices.stats.IndicesStatsResponse
 import org.opensearch.action.support.master.AcknowledgedResponse
@@ -12,13 +14,14 @@ import org.opensearch.client.Client
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.settings.Settings
 import org.opensearch.indexmanagement.indexstatemanagement.action.ShrinkAction
-import org.opensearch.indexmanagement.indexstatemanagement.util.resetReadOnlyAndRouting
 import org.opensearch.indexmanagement.indexstatemanagement.util.deleteShrinkLock
 import org.opensearch.indexmanagement.indexstatemanagement.util.getActionStartTime
 import org.opensearch.indexmanagement.indexstatemanagement.util.issueUpdateSettingsRequest
+import org.opensearch.indexmanagement.indexstatemanagement.util.resetReadOnlyAndRouting
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ActionProperties
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ShrinkActionProperties
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepContext
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepMetaData
 import java.time.Duration
@@ -45,8 +48,15 @@ class WaitForShrinkStep(private val action: ShrinkAction) : ShrinkStep(name, tru
         if (!deleteShrinkLock(localShrinkActionProperties, context.lockService, logger)) {
             logger.error("Failed to delete Shrink action lock on node [${localShrinkActionProperties.nodeName}]")
         }
-        stepStatus = StepStatus.COMPLETED
-        info = mapOf("message" to SUCCESS_MESSAGE)
+
+        if (switchAliases(context, localShrinkActionProperties)) {
+            stepStatus = StepStatus.COMPLETED
+            info = mapOf("message" to SUCCESS_MESSAGE)
+        } else {
+            stepStatus = StepStatus.FAILED
+            info = mapOf("message" to "Shrink failed due to aliases switch failure.")
+        }
+
         return this
     }
 
@@ -88,6 +98,64 @@ class WaitForShrinkStep(private val action: ShrinkAction) : ShrinkStep(name, tru
         } else {
             info = mapOf("message" to getDelayedMessage(targetIndex))
             stepStatus = StepStatus.CONDITION_NOT_MET
+        }
+    }
+
+    suspend fun switchAliases(context: StepContext, shrinkActionProperties: ShrinkActionProperties): Boolean {
+
+        val sourceIndexName = context.metadata.index
+        val targetIndexName = shrinkActionProperties.targetIndexName
+
+        if (!action.switchAliases) {
+            logger.info("Switch aliases disabled from [$sourceIndexName] to [$targetIndexName].")
+            return true
+        }
+
+        logger.info("Switching aliases from [$sourceIndexName] to [$targetIndexName].")
+
+        val targetIndexAliasesNames = context
+            .clusterService
+            .state()
+            .metadata()
+            .index(targetIndexName)
+            .aliases
+            .keys
+        val sourceIndexAliases = context
+            .clusterService
+            .state()
+            .metadata()
+            .index(sourceIndexName)
+            .aliases
+            .values
+
+        val req = IndicesAliasesRequest()
+        sourceIndexAliases.map { it.alias }.forEach { req.addAliasAction(AliasActions(AliasActions.Type.REMOVE).index(sourceIndexName).alias(it)) }
+
+        sourceIndexAliases
+            .filterNot { targetIndexAliasesNames.contains(it.alias) }
+            .map {
+                AliasActions(AliasActions.Type.ADD)
+                    .index(targetIndexName)
+                    .alias(it.alias)
+                    .filter(it.filter?.string())
+                    .indexRouting(it.indexRouting)
+                    .searchRouting(it.searchRouting)
+                    .isHidden(it.isHidden)
+                    .writeIndex(it.writeIndex())
+            }
+            .forEach { req.addAliasAction(it) }
+
+        return try {
+            val response: AcknowledgedResponse = context.client.admin().indices().suspendUntil { aliases(req, it) }
+            if (response.isAcknowledged) {
+                logger.info("Aliases switched successfully from [$sourceIndexName] to [$targetIndexName].")
+            } else {
+                logger.error("Switching aliases from [$sourceIndexName] to [$targetIndexName] failed.")
+            }
+            response.isAcknowledged
+        } catch (e: Exception) {
+            logger.error("Switching aliases from [$sourceIndexName] to [$targetIndexName] failed due to exception.", e)
+            false
         }
     }
 
