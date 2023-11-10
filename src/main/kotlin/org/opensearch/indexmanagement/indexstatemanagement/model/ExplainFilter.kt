@@ -5,6 +5,7 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.model
 
+import org.apache.logging.log4j.LogManager
 import org.opensearch.core.common.io.stream.StreamInput
 import org.opensearch.core.common.io.stream.StreamOutput
 import org.opensearch.core.common.io.stream.Writeable
@@ -18,19 +19,14 @@ import org.opensearch.indexmanagement.indexstatemanagement.util.MANAGED_INDEX_PO
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
 import java.io.IOException
 
+private val log = LogManager.getLogger(ExplainFilter::class.java)
+
 data class ExplainFilter(
     val policyID: String?,
     val state: String?,
     val actionType: String?,
     val failed: Boolean?
 ) : Writeable {
-
-    constructor() : this(
-        policyID = null,
-        state = null,
-        actionType = null,
-        failed = null
-    )
 
     @Throws(IOException::class)
     constructor(sin: StreamInput) : this(
@@ -63,24 +59,31 @@ data class ExplainFilter(
         return boolQuery
     }
 
-    fun validMetaData(metaData: ManagedIndexMetaData): Boolean {
-        var ok = true
+    fun byMetaData(metaData: ManagedIndexMetaData): Boolean {
+        var isValid = true
+
+        log.info(metaData)
 
         val stateMetaData = metaData.stateMetaData
         if (state != null && (stateMetaData == null || stateMetaData.name != state)) {
-            ok = false
+            isValid = false
         }
 
         val actionMetaData = metaData.actionMetaData
         if (actionType != null && (actionMetaData == null || actionMetaData.name != actionType)) {
-            ok = false
+            isValid = false
         }
 
-        if (failed != null && (actionMetaData == null || actionMetaData.failed != failed)) {
-            ok = false
+        val retryInfoMetaData = metaData.policyRetryInfo
+        if (failed != null && (actionMetaData == null || actionMetaData.failed != failed) &&
+            (retryInfoMetaData == null || retryInfoMetaData.failed != failed)
+        ) {
+            isValid = false
         }
 
-        return ok
+        log.info("IS VALID: $isValid")
+
+        return isValid
     }
 
     companion object {
@@ -124,4 +127,14 @@ data class ExplainFilter(
             return ExplainFilter(policyID, state, actionType, failed)
         }
     }
+}
+
+fun BoolQueryBuilder.filterByPolicyID(explainFilter: ExplainFilter?): BoolQueryBuilder {
+    if (explainFilter?.policyID != null) {
+        log.info("FILTER ON POLICY ID")
+
+        return this.filter(QueryBuilders.termsQuery(MANAGED_INDEX_POLICY_ID_FIELD, explainFilter.policyID))
+    }
+
+    return this
 }

@@ -155,13 +155,23 @@ class TransportExplainAction @Inject constructor(
         private fun getSearchMetadataRequest(params: SearchParams, indexUUIDs: List<String>, searchSize: Int): SearchRequest {
             val sortBuilder = params.getSortBuilder()
 
-            val queryBuilder = request.explainFilter.convertToBoolQueryBuilder()
-                .must(
-                    QueryBuilders
-                        .queryStringQuery(params.queryString)
-                        .field(MANAGED_INDEX_NAME_KEYWORD_FIELD)
-                        .defaultOperator(Operator.AND)
-                ).filter(QueryBuilders.termsQuery(MANAGED_INDEX_INDEX_UUID_FIELD, indexUUIDs))
+            var queryBuilder = QueryBuilders.boolQuery()
+
+            if (request.explainFilter != null) {
+                queryBuilder = request.explainFilter.convertToBoolQueryBuilder()
+            }
+
+            queryBuilder.must(
+                QueryBuilders
+                    .queryStringQuery(params.queryString)
+                    .field(MANAGED_INDEX_NAME_KEYWORD_FIELD)
+                    .defaultOperator(Operator.AND)
+            ).filter(QueryBuilders.termsQuery(MANAGED_INDEX_INDEX_UUID_FIELD, indexUUIDs))
+
+//            if (request.explainFilter != null) {
+//                queryBuilder.filter(QueryBuilders.termsQuery(MANAGED_INDEX_POLICY_ID_FIELD, request.explainFilter.policyID))
+//            }
+//                .filterByPolicyID(request.explainFilter)
 
             val searchSourceBuilder = SearchSourceBuilder()
                 .from(params.from)
@@ -294,20 +304,25 @@ class TransportExplainAction @Inject constructor(
                         var metadataMap: Map<ManagedIndexMetadataDocUUID, ManagedIndexMetadataMap?> =
                             response.responses.associate { it.id to getMetadata(it.response)?.toMap() }
 
-                        metadataMap = metadataMap.filter { (_, value) ->
-                            var ok = false
+                        log.info("METADATA MAP: $metadataMap")
 
-                            if (value != null) {
-                                val metaData = ManagedIndexMetaData.fromMap(value)
-                                ok = request.explainFilter.validMetaData(metaData)
-                                if (!ok) {
-                                    indexNames.remove(metaData.index)
-                                    indexNamesToUUIDs.remove(metaData.index)
-                                    totalManagedIndices--
+                        if (request.explainFilter != null) {
+                            metadataMap = metadataMap.filter { (_, value) ->
+                                var isValid = false
+
+                                if (value != null) {
+                                    val metaData = ManagedIndexMetaData.fromMap(value)
+
+                                    isValid = request.explainFilter.byMetaData(metaData)
+                                    if (!isValid) {
+                                        indexNames.remove(metaData.index)
+                                        indexNamesToUUIDs.remove(metaData.index)
+                                        totalManagedIndices--
+                                    }
                                 }
-                            }
 
-                            ok
+                                isValid
+                            }
                         }
 
                         buildResponse(indexNamesToUUIDs, metadataMap, clusterStateIndexMetadatas, threadContext)

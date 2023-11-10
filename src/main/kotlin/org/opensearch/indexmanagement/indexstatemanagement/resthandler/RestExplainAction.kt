@@ -86,7 +86,7 @@ class RestExplainAction : BaseRestHandler() {
             ensureExpectedToken(Token.START_OBJECT, xcp.nextToken(), xcp)
             ExplainFilter.parse(xcp)
         } else {
-            ExplainFilter()
+            null
         }
 
         val clusterManagerTimeout = parseClusterManagerTimeout(

@@ -22,8 +22,7 @@ import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedInde
 import java.io.ByteArrayInputStream
 import java.nio.charset.StandardCharsets
 
-data class
-StateMetaData(
+data class StateMetaData(
     val name: String,
     val startTime: Long
 ) : Writeable, ToXContentFragment {

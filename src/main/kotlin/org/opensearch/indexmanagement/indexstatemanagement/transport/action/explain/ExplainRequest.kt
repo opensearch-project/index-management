@@ -22,7 +22,7 @@ class ExplainRequest : ActionRequest {
     val local: Boolean
     val clusterManagerTimeout: TimeValue
     val searchParams: SearchParams
-    val explainFilter: ExplainFilter
+    val explainFilter: ExplainFilter?
     val showPolicy: Boolean
     val validateAction: Boolean
     val indexType: String
@@ -33,7 +33,7 @@ class ExplainRequest : ActionRequest {
         local: Boolean,
         clusterManagerTimeout: TimeValue,
         searchParams: SearchParams,
-        explainFilter: ExplainFilter,
+        explainFilter: ExplainFilter?,
         showPolicy: Boolean,
         validateAction: Boolean,
         indexType: String
@@ -77,7 +77,7 @@ class ExplainRequest : ActionRequest {
         out.writeBoolean(local)
         out.writeTimeValue(clusterManagerTimeout)
         searchParams.writeTo(out)
-        explainFilter.writeTo(out)
+        explainFilter?.writeTo(out)
         out.writeBoolean(showPolicy)
         out.writeBoolean(validateAction)
         out.writeString(indexType)

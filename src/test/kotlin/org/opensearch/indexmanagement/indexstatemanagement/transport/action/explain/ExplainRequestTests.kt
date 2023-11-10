@@ -9,7 +9,6 @@ import org.opensearch.common.io.stream.BytesStreamOutput
 import org.opensearch.core.common.io.stream.StreamInput
 import org.opensearch.common.unit.TimeValue
 import org.opensearch.indexmanagement.common.model.rest.SearchParams
-import org.opensearch.indexmanagement.indexstatemanagement.model.ExplainFilter
 import org.opensearch.indexmanagement.indexstatemanagement.util.DEFAULT_INDEX_TYPE
 import org.opensearch.test.OpenSearchTestCase
 
@@ -20,7 +19,7 @@ class ExplainRequestTests : OpenSearchTestCase() {
         val local = true
         val clusterManagerTimeout = TimeValue.timeValueSeconds(30)
         val params = SearchParams(0, 20, "sort-field", "asc", "*")
-        val filter = ExplainFilter()
+        val filter = null
         val showPolicy = false
         val showValidationResult = false
         val req = ExplainRequest(indices, local, clusterManagerTimeout, params, filter, showPolicy, showValidationResult, DEFAULT_INDEX_TYPE)
@@ -38,7 +37,7 @@ class ExplainRequestTests : OpenSearchTestCase() {
         val local = true
         val clusterManagerTimeout = TimeValue.timeValueSeconds(30)
         val params = SearchParams(0, 20, "sort-field", "asc", "*")
-        val filter = ExplainFilter()
+        val filter = null
         val showPolicy = false
         val showValidationResult = false
         val req = ExplainRequest(indices, local, clusterManagerTimeout, params, filter, showPolicy, showValidationResult, "non-existent-index-type")
