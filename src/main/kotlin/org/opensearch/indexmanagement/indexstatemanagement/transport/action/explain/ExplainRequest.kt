@@ -54,7 +54,7 @@ class ExplainRequest : ActionRequest {
         local = sin.readBoolean(),
         clusterManagerTimeout = sin.readTimeValue(),
         searchParams = SearchParams(sin),
-        explainFilter = ExplainFilter(sin),
+        explainFilter = sin.readOptionalWriteable(::ExplainFilter),
         showPolicy = sin.readBoolean(),
         validateAction = sin.readBoolean(),
         indexType = sin.readString()
@@ -77,7 +77,7 @@ class ExplainRequest : ActionRequest {
         out.writeBoolean(local)
         out.writeTimeValue(clusterManagerTimeout)
         searchParams.writeTo(out)
-        explainFilter?.writeTo(out)
+        out.writeOptionalWriteable(explainFilter)
         out.writeBoolean(showPolicy)
         out.writeBoolean(validateAction)
         out.writeString(indexType)

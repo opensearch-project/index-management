@@ -44,6 +44,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexCon
 import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
 import org.opensearch.indexmanagement.common.model.rest.SearchParams
 import org.opensearch.indexmanagement.indexstatemanagement.ManagedIndexRunner.actionValidation
+import org.opensearch.indexmanagement.indexstatemanagement.model.filterByPolicyID
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.managedIndex.ManagedIndexAction
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.managedIndex.ManagedIndexRequest
 import org.opensearch.indexmanagement.indexstatemanagement.util.DEFAULT_INDEX_TYPE
@@ -155,23 +156,14 @@ class TransportExplainAction @Inject constructor(
         private fun getSearchMetadataRequest(params: SearchParams, indexUUIDs: List<String>, searchSize: Int): SearchRequest {
             val sortBuilder = params.getSortBuilder()
 
-            var queryBuilder = QueryBuilders.boolQuery()
-
-            if (request.explainFilter != null) {
-                queryBuilder = request.explainFilter.convertToBoolQueryBuilder()
-            }
-
-            queryBuilder.must(
-                QueryBuilders
-                    .queryStringQuery(params.queryString)
-                    .field(MANAGED_INDEX_NAME_KEYWORD_FIELD)
-                    .defaultOperator(Operator.AND)
-            ).filter(QueryBuilders.termsQuery(MANAGED_INDEX_INDEX_UUID_FIELD, indexUUIDs))
-
-//            if (request.explainFilter != null) {
-//                queryBuilder.filter(QueryBuilders.termsQuery(MANAGED_INDEX_POLICY_ID_FIELD, request.explainFilter.policyID))
-//            }
-//                .filterByPolicyID(request.explainFilter)
+            val queryBuilder = QueryBuilders.boolQuery()
+                .must(
+                    QueryBuilders
+                        .queryStringQuery(params.queryString)
+                        .field(MANAGED_INDEX_NAME_KEYWORD_FIELD)
+                        .defaultOperator(Operator.AND)
+                ).filter(QueryBuilders.termsQuery(MANAGED_INDEX_INDEX_UUID_FIELD, indexUUIDs))
+                .filterByPolicyID(request.explainFilter)
 
             val searchSourceBuilder = SearchSourceBuilder()
                 .from(params.from)
@@ -304,20 +296,22 @@ class TransportExplainAction @Inject constructor(
                         var metadataMap: Map<ManagedIndexMetadataDocUUID, ManagedIndexMetadataMap?> =
                             response.responses.associate { it.id to getMetadata(it.response)?.toMap() }
 
-                        log.info("METADATA MAP: $metadataMap")
-
                         if (request.explainFilter != null) {
                             metadataMap = metadataMap.filter { (_, value) ->
-                                var isValid = false
+                                var isValid = true
 
                                 if (value != null) {
                                     val metaData = ManagedIndexMetaData.fromMap(value)
 
-                                    isValid = request.explainFilter.byMetaData(metaData)
-                                    if (!isValid) {
+                                    if (!request.explainFilter.byMetaData(metaData)) {
                                         indexNames.remove(metaData.index)
                                         indexNamesToUUIDs.remove(metaData.index)
-                                        totalManagedIndices--
+
+                                        if (managedIndices.contains(metaData.index)) {
+                                            totalManagedIndices--
+                                        }
+
+                                        isValid = false
                                     }
                                 }
 
