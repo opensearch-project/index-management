@@ -20,6 +20,7 @@ class RollupSettings {
         const val DEFAULT_RENEW_LOCK_RETRY_DELAY = 1000L
         const val DEFAULT_CLIENT_REQUEST_RETRY_COUNT = 3
         const val DEFAULT_CLIENT_REQUEST_RETRY_DELAY = 1000L
+        const val MINIMUM_CANCEL_AFTER_TIME_INTERVAL_MINUTES = 10L
 
         val ROLLUP_ENABLED: Setting<Boolean> = Setting.boolSetting(
             "plugins.rollup.enabled",
