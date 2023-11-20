@@ -1,6 +1,6 @@
 ## Version 2.11.0.0 2023-10-11
 
-Compatible with OpenSearch 2.10.0
+Compatible with OpenSearch 2.11.0
 
 ### Maintenance
 * Increment version to 2.11.0-SNAPSHOT. ([#922](https://github.com/opensearch-project/index-management/pull/922))
