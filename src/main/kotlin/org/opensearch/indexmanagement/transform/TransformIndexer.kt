@@ -63,6 +63,13 @@ class TransformIndexer(
                 throw TransformIndexException("Failed to create the target index")
             }
         }
+        if (clusterService.state().metadata.hasAlias(targetIndex)) {
+            // return error if no write index
+            val writeIndexMetadata = clusterService.state().metadata.indicesLookup[targetIndex]!!.writeIndex
+            if (writeIndexMetadata == null) {
+                throw TransformIndexException("Alias has no write index")
+            }
+        }
     }
 
     @Suppress("ThrowsCount", "RethrowCaughtException")
