@@ -639,7 +639,7 @@ class RollupRunnerIT : RollupRestTestCase() {
     // Tests that a continuous rollup will not be processed until the end of the interval plus delay passes
     fun `test delaying continuous execution`() {
         val indexName = "test_index_runner_eighth"
-        val delay: Long = 15000
+        val delay: Long = 7_500
         // Define rollup
         var rollup = randomRollup().copy(
             id = "$testName-4",
@@ -670,17 +670,22 @@ class RollupRunnerIT : RollupRestTestCase() {
         )
         rollup = createRollup(rollup = rollupNow, rollupId = rollupNow.id)
 
-        val nextExecutionTime1 = rollup.jobSchedule.getNextExecutionTime(null).toEpochMilli()
-        assertTrue("The first job execution time should be after [job start time] + [delay].", nextExecutionTime1 >= jobStartTime.toEpochMilli() + delay)
-        assertTrue("The first job execution time should not be delayed too much after [job start time] + [delay].", nextExecutionTime1 <= jobStartTime.toEpochMilli() + delay + 100)
+        val expectedFirstExecutionTime = rollup.jobSchedule.getNextExecutionTime(null).toEpochMilli()
+        assertTrue("The first job execution time should be equal [job start time] + [delay].", expectedFirstExecutionTime == jobStartTime.toEpochMilli() + delay)
 
-        waitFor {
-            assertTrue(Instant.now().toEpochMilli() >= nextExecutionTime1)
+        waitFor() {
+            assertTrue("Target rollup index was not created", indexExists(rollup.targetIndex))
+            val rollupJob = getRollup(rollupId = rollup.id)
+            assertNotNull("Rollup job doesn't have metadata set", rollupJob.metadataID)
+            val rollupMetadata = getRollupMetadata(rollupJob.metadataID!!)
+            assertNotNull("Rollup metadata not found", rollupMetadata)
         }
 
-        val nextExecutionTime2 = rollup.schedule.getNextExecutionTime(null).toEpochMilli()
-        assertTrue("The second job execution time should be not earlier than a minute after the first execution.", nextExecutionTime2 - nextExecutionTime1 >= 60000)
-        assertTrue("The second job execution time should not be too delayed after the first execution.", nextExecutionTime2 - nextExecutionTime1 <= 60000 + 100)
+        val now = Instant.now().toEpochMilli()
+        assertTrue("The first job execution must happen after [job start time] + [delay]", now > jobStartTime.toEpochMilli() + delay)
+
+        val secondExecutionTime = rollup.schedule.getNextExecutionTime(null).toEpochMilli()
+        assertTrue("The second job execution time should be not earlier than a minute after the first execution.", secondExecutionTime - expectedFirstExecutionTime == 60_000L)
     }
 
     fun `test non continuous delay does nothing`() {
