@@ -20,6 +20,8 @@ import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StateMetaDa
 import org.opensearch.indexmanagement.waitFor
 import org.opensearch.rest.RestRequest
 import org.opensearch.core.rest.RestStatus
+import org.opensearch.indexmanagement.indexstatemanagement.model.ExplainFilter
+import org.opensearch.indexmanagement.indexstatemanagement.toJsonString
 import java.time.Instant
 import java.util.Locale
 
@@ -351,6 +353,114 @@ class RestExplainActionIT : IndexStateManagementRestTestCase() {
             logger.info(getExplainMap(indexName, queryParams = SHOW_POLICY_QUERY_PARAM))
             assertResponseMap(expected, getExplainMap(indexName, queryParams = SHOW_POLICY_QUERY_PARAM))
         }
+    }
+
+    fun `test explain filter metadata filter`() {
+        // TODO: TEST ON INDEX WITH NULL POLICY: look at RestChangePolicyActionIT.kt
+//        val newPolicy = createPolicy(randomPolicy(states = listOf(updatedStateWithReadOnlyAction, stateWithDeleteAction)), "new_policy", true)
+
+        val indexName1 = "${testIndexName}_filter1"
+        val indexName2 = "${testIndexName}_filter2"
+        val indexName3 = "${testIndexName}_filter3"
+        val policy1 = createRandomPolicy()
+        val policy2 = createRandomPolicy() // create random policy with actions?
+
+        createIndex(indexName1, policy1.id)
+        createIndex(indexName2, policy1.id)
+        createIndex(indexName3, policy2.id)
+
+        val indexName1Map = indexName1 to mapOf<String, Any>(
+            explainResponseOpendistroPolicyIdSetting to policy1.id,
+            explainResponseOpenSearchPolicyIdSetting to policy1.id,
+            "index" to indexName1,
+            "index_uuid" to getUuid(indexName1),
+            "policy_id" to policy1.id,
+            "enabled" to true
+        )
+
+        val indexName2Map = indexName2 to mapOf<String, Any>(
+            explainResponseOpendistroPolicyIdSetting to policy1.id,
+            explainResponseOpenSearchPolicyIdSetting to policy1.id,
+            "index" to indexName2,
+            "index_uuid" to getUuid(indexName2),
+            "policy_id" to policy1.id,
+            "enabled" to true
+        )
+
+        val indexName3Map = indexName3 to mapOf<String, Any>(
+            explainResponseOpendistroPolicyIdSetting to policy2.id,
+            explainResponseOpenSearchPolicyIdSetting to policy2.id,
+            "index" to indexName3,
+            "index_uuid" to getUuid(indexName3),
+            "policy_id" to policy2.id,
+            "enabled" to true
+        )
+
+        val filterPolicy1 = ExplainFilter(
+            policyID = policy1.id,
+            state = policy1.states[0].name
+        )
+
+        val filterPolicy2 = ExplainFilter(
+            state = policy2.states[0].name,
+            failed = false
+        )
+
+        val resp1Expected = mapOf(
+            indexName1Map,
+            indexName2Map,
+            TOTAL_MANAGED_INDICES to 2
+        )
+
+        val resp2Expected = mapOf(
+            indexName3Map,
+            TOTAL_MANAGED_INDICES to 1
+        )
+
+        logger.info("Policy1: $policy1")
+        logger.info("Policy2: $policy2")
+
+        logger.info("filter policy 2: ${filterPolicy2.toJsonString()}")
+
+        val resp1 = client().makeRequest(
+            RestRequest.Method.POST.toString(),
+            RestExplainAction.EXPLAIN_BASE_URI, emptyMap(), filterPolicy1.toHttpEntity()
+        ).asMap()
+
+        val resp2 = client().makeRequest(
+            RestRequest.Method.POST.toString(),
+            RestExplainAction.EXPLAIN_BASE_URI, emptyMap(), filterPolicy2.toHttpEntity()
+        ).asMap()
+
+        logger.info("Result1: $resp1")
+        logger.info("Result2: $resp2")
+
+        // change the start time so the job will trigger in 2 seconds.
+        updateManagedIndexConfigStartTime(getExistingManagedIndexConfig(indexName1))
+        updateManagedIndexConfigStartTime(getExistingManagedIndexConfig(indexName2))
+        updateManagedIndexConfigStartTime(getExistingManagedIndexConfig(indexName3))
+
+        waitFor { assertResponseMap(resp1Expected, resp1) }
+        waitFor { assertResponseMap(resp2Expected, resp2) }
+    }
+
+    fun `test explain filter on failed index`() {
+        // FORCE A FAIL
+        val indexName = "${testIndexName}_filter_fail"
+//        val policy = createRandomPoliclicy()
+
+        updateManagedIndexConfigStartTime(getExistingManagedIndexConfig(indexName))
+//
+//        val resp = client().makeRequest(
+//                RestRequest.Method.POST.toString(),
+//                "$RestExplainAction.EXPLAIN_BASE_URI", emptyMap(), filterPolicy.toHttpEntity()
+//        ).asMap()
+//
+//        val expected = mapOf(
+//            TOTAL_MANAGED_INDICES to 0
+//        )
+//
+//        waitFor { assertResponseMap(expected, resp) }
     }
 
     @Suppress("UNCHECKED_CAST") // Do assertion of the response map here so we don't have many places to do suppression.
