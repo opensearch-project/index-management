@@ -387,7 +387,7 @@ data class Transform(
             if (seqNo == SequenceNumbers.UNASSIGNED_SEQ_NO || primaryTerm == SequenceNumbers.UNASSIGNED_PRIMARY_TERM) {
                 // we instantiate the start time
                 if (schedule is IntervalSchedule) {
-                    schedule = IntervalSchedule(schedule.startTime?: Instant.now(), schedule.interval, schedule.unit)
+                    schedule = IntervalSchedule(schedule.startTime ?: Instant.now(), schedule.interval, schedule.unit)
                 }
 
                 // we clear out metadata if its a new job
