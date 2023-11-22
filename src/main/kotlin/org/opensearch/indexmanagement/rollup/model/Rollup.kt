@@ -330,7 +330,7 @@ data class Rollup(
             // TODO: Make startTime public in Job Scheduler so we can just directly check the value
             if (seqNo == SequenceNumbers.UNASSIGNED_SEQ_NO || primaryTerm == SequenceNumbers.UNASSIGNED_PRIMARY_TERM) {
                 if (schedule is IntervalSchedule) {
-                    schedule = IntervalSchedule(schedule.startTime, schedule.interval, schedule.unit, schedule.delay ?: 0)
+                    schedule = IntervalSchedule(schedule.startTime?: Instant.now(), schedule.interval, schedule.unit, schedule.delay ?: 0)
                 }
             }
             return Rollup(
