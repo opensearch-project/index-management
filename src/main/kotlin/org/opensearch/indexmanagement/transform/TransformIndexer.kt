@@ -11,6 +11,8 @@ import org.opensearch.OpenSearchSecurityException
 import org.opensearch.action.DocWriteRequest
 import org.opensearch.action.admin.indices.create.CreateIndexRequest
 import org.opensearch.action.admin.indices.create.CreateIndexResponse
+import org.opensearch.action.admin.indices.mapping.get.GetMappingsRequest
+import org.opensearch.action.admin.indices.mapping.put.PutMappingRequest
 import org.opensearch.action.bulk.BackoffPolicy
 import org.opensearch.action.bulk.BulkItemResponse
 import org.opensearch.action.bulk.BulkRequest
@@ -26,6 +28,8 @@ import org.opensearch.indexmanagement.transform.settings.TransformSettings
 import org.opensearch.indexmanagement.transform.util.TransformContext
 import org.opensearch.core.rest.RestStatus
 import org.opensearch.transport.RemoteTransportException
+import org.opensearch.client.Requests.putMappingRequest
+import org.opensearch.action.support.master.AcknowledgedResponse
 
 @Suppress("ComplexMethod")
 class TransformIndexer(
@@ -63,12 +67,19 @@ class TransformIndexer(
                 throw TransformIndexException("Failed to create the target index")
             }
         }
+        val writeIndexMetadata = clusterService.state().metadata.indicesLookup[targetIndex]!!.writeIndex
         if (clusterService.state().metadata.hasAlias(targetIndex)) {
-            // return error if no write index
-            val writeIndexMetadata = clusterService.state().metadata.indicesLookup[targetIndex]!!.writeIndex
+            // return error if no write index with the alias
             if (writeIndexMetadata == null) {
-                throw TransformIndexException("Alias has no write index")
+                throw TransformIndexException("Target index alias has no write index")
             }
+        }
+        val putMappingReq = putMappingRequest(targetIndex).source(targetFieldMappings)
+        val mapResp : AcknowledgedResponse = client.admin().indices().suspendUntil {
+            putMapping(putMappingReq)
+        }
+        if (!mapResp.isAcknowledged) {
+            logger.error("Target index mapping request failed")
         }
     }
 
