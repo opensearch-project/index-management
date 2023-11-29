@@ -72,7 +72,9 @@ class TransformIndexer(
                 throw TransformIndexException("Target index alias has no write index")
             }
         }
-        val putMappingReq = PutMappingRequest(writeIndexMetadata.index.name).source(targetFieldMappings)
+        val putMappingReq = PutMappingRequest(
+            writeIndexMetadata?.index?.name ?: throw TransformIndexException("Target index alias has no write index!")
+        ).source(targetFieldMappings)
         val mapResp: AcknowledgedResponse = client.admin().indices().suspendUntil {
             putMapping(putMappingReq)
         }
