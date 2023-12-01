@@ -272,20 +272,22 @@ class RestRetryFailedManagedIndexActionIT : IndexStateManagementRestTestCase() {
         updateManagedIndexConfigStartTime(managedIndexConfig)
 
         waitFor {
+            val explainMap = getExplainMap(indexName)
+            logger.info("explain map: $explainMap")
+
             assertPredicatesOnMetaData(
                 listOf(
                     indexName to listOf(
-                        ActionMetaData.ACTION to fun(actionMetaDataMap: Any?): Boolean =
-                            assertActionEquals(
-                                ActionMetaData(
-                                    name = "force_merge", startTime = Instant.now().toEpochMilli(), failed = false,
-                                    index = 0, consumedRetries = 0, lastRetryTime = null, actionProperties = null
-                                ),
-                                actionMetaDataMap
-                            )
+                        ActionMetaData.ACTION to fun(actionMetaDataMap: Any?): Boolean = assertActionEquals(
+                            ActionMetaData(
+                                name = "force_merge", startTime = Instant.now().toEpochMilli(), failed = false,
+                                index = 0, consumedRetries = 0, lastRetryTime = null, actionProperties = null
+                            ),
+                            actionMetaDataMap
+                        )
                     )
                 ),
-                getExplainMap(indexName), false
+                explainMap, false
             )
         }
 
