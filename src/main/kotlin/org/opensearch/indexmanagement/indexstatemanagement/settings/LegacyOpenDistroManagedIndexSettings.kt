@@ -7,19 +7,16 @@ package org.opensearch.indexmanagement.indexstatemanagement.settings
 
 import org.opensearch.common.settings.Setting
 import org.opensearch.common.unit.TimeValue
-import org.opensearch.indexmanagement.indexstatemanagement.ISMActionsParser
+import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.DEFAULT_ISM_ENABLED
+import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.DEFAULT_JOB_INTERVAL
+import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.ALLOW_LIST_ALL
+import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.SNAPSHOT_DENY_LIST_NONE
 import java.util.concurrent.TimeUnit
 import java.util.function.Function
 
 @Suppress("UtilityClassWithPublicConstructor")
 class LegacyOpenDistroManagedIndexSettings {
     companion object {
-        const val DEFAULT_ISM_ENABLED = true
-        const val DEFAULT_JOB_INTERVAL = 5
-        private val ALLOW_LIST_ALL = ISMActionsParser.instance.parsers.map { it.getActionType() }.toList()
-        val ALLOW_LIST_NONE = emptyList<String>()
-        val SNAPSHOT_DENY_LIST_NONE = emptyList<String>()
-
         val INDEX_STATE_MANAGEMENT_ENABLED: Setting<Boolean> = Setting.boolSetting(
             "opendistro.index_state_management.enabled",
             DEFAULT_ISM_ENABLED,

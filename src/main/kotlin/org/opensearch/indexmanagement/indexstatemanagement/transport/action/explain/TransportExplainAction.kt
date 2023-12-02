@@ -201,10 +201,10 @@ class TransportExplainAction @Inject constructor(
                                     "enabled" to managedIndex.enabled.toString()
                                 )
                                 if (showPolicy) {
-                                    managedIndex.policy?.let { appliedPolicies[managedIndex.index] = it }
+                                    managedIndex.policy.let { appliedPolicies[managedIndex.index] = it }
                                 }
                                 if (validateAction) {
-                                    managedIndex.policy?.let { policiesforValidation[managedIndex.index] = it }
+                                    managedIndex.policy.let { policiesforValidation[managedIndex.index] = it }
                                 }
                             }
 

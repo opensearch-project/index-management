@@ -220,7 +220,10 @@ class RestChangePolicyActionIT : IndexStateManagementRestTestCase() {
         // Will use the unique generated description to ensure they are the same policies, the cached policy does not have
         // id, seqNo, primaryTerm on the policy itself so cannot directly compare
         // TODO: figure out why the newPolicy.lastUpdatedTime and cached policy lastUpdatedTime is off by a few milliseconds
-        assertEquals("Initialized policy is not the change policy", newPolicy.description, updatedManagedIndexConfig.policy?.description)
+        assertEquals(
+            "Initialized policy is not the change policy", newPolicy.description,
+            updatedManagedIndexConfig.policy.description
+        )
     }
 
     fun `test changing policy on a valid index and log pattern`() {
@@ -301,7 +304,7 @@ class RestChangePolicyActionIT : IndexStateManagementRestTestCase() {
         updateManagedIndexConfigStartTime(managedIndexConfig)
 
         // After first execution we should expect the change policy to still be null (since we haven't called it yet)
-        // and the initial policy should of been cached
+        // and the initial policy should have been cached
         val executedManagedIndexConfig: ManagedIndexConfig = waitFor {
             val config = getManagedIndexConfigByDocId(managedIndexConfig.id)
             assertNotNull("Executed managed index config is null", config)
@@ -346,7 +349,6 @@ class RestChangePolicyActionIT : IndexStateManagementRestTestCase() {
         // speed up to second execution we will have a ChangePolicy but not be in Transitions yet
         // which means we should still execute the ReadOnlyAction
         updateManagedIndexConfigStartTime(managedIndexConfig)
-
         waitFor {
             val config = getManagedIndexConfigByDocId(managedIndexConfig.id)
             assertNotNull("Next managed index config is null", config)
@@ -386,7 +388,6 @@ class RestChangePolicyActionIT : IndexStateManagementRestTestCase() {
 
         // speed up to third execution so that we try to move to transitions and trigger a change policy
         updateManagedIndexConfigStartTime(managedIndexConfig)
-
         val changedManagedIndexConfig: ManagedIndexConfig = waitFor {
             val config = getManagedIndexConfigByDocId(managedIndexConfig.id)
             assertNotNull("Changed managed index config is null", config)
@@ -512,9 +513,7 @@ class RestChangePolicyActionIT : IndexStateManagementRestTestCase() {
             RestRequest.Method.POST.toString(),
             "${RestChangePolicyAction.CHANGE_POLICY_BASE_URI}/$index", emptyMap(), changePolicy.toHttpEntity()
         )
-
         assertAffectedIndicesResponseIsEqual(mapOf(FAILURES to false, FAILED_INDICES to emptyList<Any>(), UPDATED_INDICES to 1), response.asMap())
-
         waitFor { assertNotNull(getExistingManagedIndexConfig(index).changePolicy) }
 
         // speed up to first execution where we initialize the policy on the job
@@ -529,7 +528,10 @@ class RestChangePolicyActionIT : IndexStateManagementRestTestCase() {
             // Will use the unique generated description to ensure they are the same policies, the cached policy does not have
             // id, seqNo, primaryTerm on the policy itself so cannot directly compare
             // TODO: figure out why the newPolicy.lastUpdatedTime and cached policy lastUpdatedTime is off by a few milliseconds
-            assertEquals("Initialized policy is not the change policy", newPolicy.description, config.policy?.description)
+            assertEquals(
+                "Initialized policy is not the change policy", newPolicy.description,
+                config.policy.description
+            )
             config
         }
 

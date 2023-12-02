@@ -21,8 +21,10 @@ import org.opensearch.indexmanagement.randomSchedule
 import org.opensearch.indexmanagement.randomUser
 import org.opensearch.indexmanagement.rollup.randomAfterKey
 import org.opensearch.indexmanagement.rollup.randomDimension
+import org.opensearch.indexmanagement.rollup.randomTermQuery
 import org.opensearch.indexmanagement.transform.model.ContinuousTransformStats
 import org.opensearch.indexmanagement.transform.model.ExplainTransform
+import org.opensearch.indexmanagement.transform.model.ISMTransform
 import org.opensearch.indexmanagement.transform.model.Transform
 import org.opensearch.indexmanagement.transform.model.TransformMetadata
 import org.opensearch.indexmanagement.transform.model.TransformStats
@@ -157,6 +159,17 @@ fun randomTransformMetadataStatus(): TransformMetadata.Status {
 fun randomExplainTransform(): ExplainTransform {
     val metadata = randomTransformMetadata()
     return ExplainTransform(metadataID = metadata.id, metadata = metadata)
+}
+
+fun randomISMTransform(): ISMTransform {
+    return ISMTransform(
+        description = OpenSearchRestTestCase.randomAlphaOfLength(10),
+        targetIndex = OpenSearchRestTestCase.randomAlphaOfLength(10).lowercase(Locale.ROOT),
+        pageSize = OpenSearchRestTestCase.randomIntBetween(1, 10000),
+        groups = randomGroups(),
+        dataSelectionQuery = randomTermQuery(),
+        aggregations = randomAggregationFactories()
+    )
 }
 
 fun Transform.toJsonString(params: ToXContent.Params = ToXContent.EMPTY_PARAMS): String = this.toXContent(XContentFactory.jsonBuilder(), params).string()

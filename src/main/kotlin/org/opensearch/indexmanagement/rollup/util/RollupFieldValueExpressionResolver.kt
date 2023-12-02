@@ -24,6 +24,7 @@ object RollupFieldValueExpressionResolver {
     private lateinit var scriptService: ScriptService
     private lateinit var clusterService: ClusterService
     lateinit var indexAliasUtils: IndexAliasUtils
+
     fun resolve(rollup: Rollup, fieldValue: String): String {
         val script = Script(ScriptType.INLINE, Script.DEFAULT_TEMPLATE_LANG, fieldValue, mapOf())
 

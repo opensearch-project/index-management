@@ -28,6 +28,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.util.INDEX_HIDDEN
 import org.opensearch.core.rest.RestStatus
 import org.opensearch.core.xcontent.MediaType
 import org.opensearch.indexmanagement.rollup.model.Rollup
+import org.opensearch.indexmanagement.transform.model.Transform
 import org.opensearch.jobscheduler.spi.schedule.IntervalSchedule
 import java.io.IOException
 import java.nio.file.Files
@@ -41,8 +42,8 @@ import javax.management.remote.JMXServiceURL
 
 abstract class IndexManagementRestTestCase : ODFERestTestCase() {
 
-    val configSchemaVersion = 19
-    val historySchemaVersion = 6
+    val configSchemaVersion = 21
+    val historySchemaVersion = 7
 
     // Having issues with tests leaking into other tests and mappings being incorrect and they are not caught by any pending task wait check as
     // they do not go through the pending task queue. Ideally this should probably be written in a way to wait for the
@@ -221,6 +222,35 @@ abstract class IndexManagementRestTestCase : ODFERestTestCase() {
             "POST", "${IndexManagementPlugin.INDEX_MANAGEMENT_INDEX}/_update/${update.id}?wait_for_active_shards=$waitForActiveShards&refresh=true",
             StringEntity(
                 "{\"doc\":{\"rollup\":{\"schedule\":{\"interval\":{\"start_time\":" +
+                    "\"$startTimeMillis\"}}}}}",
+                ContentType.APPLICATION_JSON
+            )
+        )
+
+        assertEquals("Request failed", RestStatus.OK, response.restStatus())
+    }
+
+    protected fun updateTransformStartTime(update: Transform, desiredStartTimeMillis: Long? = null) {
+        // Before updating start time of a job always make sure there are no unassigned shards that could cause the config
+        // index to move to a new node and negate this forced start
+        if (isMultiNode) {
+            waitFor {
+                try {
+                    client().makeRequest("GET", "_cluster/allocation/explain")
+                    fail("Expected 400 Bad Request when there are no unassigned shards to explain")
+                } catch (e: ResponseException) {
+                    assertEquals(RestStatus.BAD_REQUEST, e.response.restStatus())
+                }
+            }
+        }
+        val intervalSchedule = (update.jobSchedule as IntervalSchedule)
+        val millis = Duration.of(intervalSchedule.interval.toLong(), intervalSchedule.unit).minusSeconds(2).toMillis()
+        val startTimeMillis = desiredStartTimeMillis ?: (Instant.now().toEpochMilli() - millis)
+        val waitForActiveShards = if (isMultiNode) "all" else "1"
+        val response = client().makeRequest(
+            "POST", "${IndexManagementPlugin.INDEX_MANAGEMENT_INDEX}/_update/${update.id}?wait_for_active_shards=$waitForActiveShards",
+            StringEntity(
+                "{\"doc\":{\"transform\":{\"schedule\":{\"interval\":{\"start_time\":" +
                     "\"$startTimeMillis\"}}}}}",
                 ContentType.APPLICATION_JSON
             )
