@@ -11,12 +11,10 @@ import org.opensearch.indexmanagement.indexstatemanagement.IndexStateManagementR
 import org.opensearch.indexmanagement.indexstatemanagement.model.ChangePolicy
 import org.opensearch.indexmanagement.makeRequest
 import org.opensearch.indexmanagement.opensearchapi.toMap
-import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
-import org.opensearch.indexmanagement.spi.indexstatemanagement.model.PolicyRetryInfoMetaData
-import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StateMetaData
 import org.opensearch.indexmanagement.waitFor
 import org.opensearch.rest.RestRequest
 import org.opensearch.core.rest.RestStatus
+import org.opensearch.indexmanagement.indexstatemanagement.action.AllocationAction
 import org.opensearch.indexmanagement.indexstatemanagement.action.DeleteAction
 import org.opensearch.indexmanagement.indexstatemanagement.action.OpenAction
 import org.opensearch.indexmanagement.indexstatemanagement.action.ReadOnlyAction
@@ -27,7 +25,13 @@ import org.opensearch.indexmanagement.indexstatemanagement.randomState
 import org.opensearch.indexmanagement.indexstatemanagement.util.SHOW_POLICY_QUERY_PARAM
 import org.opensearch.indexmanagement.indexstatemanagement.util.TOTAL_MANAGED_INDICES
 import org.opensearch.indexmanagement.indexstatemanagement.util.XCONTENT_WITHOUT_TYPE_AND_USER
+import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ActionMetaData
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ActionRetry
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.PolicyRetryInfoMetaData
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StateMetaData
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepMetaData
 import java.time.Instant
 import java.util.Locale
 
@@ -500,22 +504,60 @@ class RestExplainActionIT : IndexStateManagementRestTestCase() {
     }
 
     fun `test explain filter on failed index`() {
-        // FORCE A FAIL
-        val indexName = "${testIndexName}_filter_fail"
-//        val policy = createRandomPoliclicy()
+        val indexName = "${testIndexName}_failed"
+        val config = AllocationAction(require = mapOf("..//" to "value"), exclude = emptyMap(), include = emptyMap(), index = 0)
+        config.configRetry = ActionRetry(0)
+        val states = listOf(
+            randomState().copy(
+                transitions = listOf(),
+                actions = listOf(config)
+            )
+        )
+        val invalidPolicy = randomPolicy().copy(
+            states = states,
+            defaultState = states[0].name
+        )
+        createPolicy(invalidPolicy, invalidPolicy.id)
+        createIndex(indexName, invalidPolicy.id)
 
-        updateManagedIndexConfigStartTime(getExistingManagedIndexConfig(indexName))
-//
-//        val resp = client().makeRequest(
-//                RestRequest.Method.POST.toString(),
-//                "$RestExplainAction.EXPLAIN_BASE_URI", emptyMap(), filterPolicy.toHttpEntity()
-//        ).asMap()
-//
-//        val expected = mapOf(
-//            TOTAL_MANAGED_INDICES to 0
-//        )
-//
-//        waitFor { assertResponseMap(expected, resp) }
+        val managedIndexConfig = getExistingManagedIndexConfig(indexName)
+        // change the start time so the job will trigger in 2 seconds.
+        updateManagedIndexConfigStartTime(managedIndexConfig)
+        waitFor { assertEquals(invalidPolicy.id, getExplainManagedIndexMetaData(indexName).policyID) }
+
+        // Change the start time so that we attempt allocation that is intended to fail
+        updateManagedIndexConfigStartTime(managedIndexConfig)
+        waitFor {
+            val explainFilter = ExplainFilter(
+                failed = true
+            )
+
+            val resp = client().makeRequest(
+                RestRequest.Method.POST.toString(),
+                RestExplainAction.EXPLAIN_BASE_URI, emptyMap(), explainFilter.toHttpEntity()
+            )
+
+            assertEquals("Unexpected RestStatus", RestStatus.OK, resp.restStatus())
+
+            assertPredicatesOnMetaData(
+                listOf(
+                    indexName to listOf(
+                        explainResponseOpendistroPolicyIdSetting to invalidPolicy.id::equals,
+                        explainResponseOpenSearchPolicyIdSetting to invalidPolicy.id::equals,
+                        ManagedIndexMetaData.INDEX to managedIndexConfig.index::equals,
+                        ManagedIndexMetaData.INDEX_UUID to managedIndexConfig.indexUuid::equals,
+                        ManagedIndexMetaData.POLICY_ID to managedIndexConfig.policyID::equals,
+                        ManagedIndexMetaData.INDEX_CREATION_DATE to fun(indexCreationDate: Any?): Boolean = (indexCreationDate as Long) > 1L,
+                        StepMetaData.STEP to fun(stepMetaDataMap: Any?): Boolean = assertStepEquals(
+                            StepMetaData("attempt_allocation", Instant.now().toEpochMilli(), Step.StepStatus.FAILED),
+                            stepMetaDataMap
+                        ),
+                        ManagedIndexMetaData.ENABLED to true::equals
+                    )
+                ),
+                resp.asMap(), false
+            )
+        }
     }
 
     @Suppress("UNCHECKED_CAST") // Do assertion of the response map here so we don't have many places to do suppression.
