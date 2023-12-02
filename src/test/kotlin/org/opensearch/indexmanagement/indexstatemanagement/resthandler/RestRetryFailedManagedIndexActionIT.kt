@@ -273,7 +273,6 @@ class RestRetryFailedManagedIndexActionIT : IndexStateManagementRestTestCase() {
 
         waitFor {
             val explainMap = getExplainMap(indexName)
-            logger.info("explain map: $explainMap")
 
             assertPredicatesOnMetaData(
                 listOf(

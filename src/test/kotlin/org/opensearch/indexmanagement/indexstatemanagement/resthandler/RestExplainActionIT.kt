@@ -321,10 +321,8 @@ class RestExplainActionIT : IndexStateManagementRestTestCase() {
 
         waitFor {
             val expectedInfoString = mapOf("message" to "Fail to load policy: ${changePolicy.policyID}").toString()
-            logger.info("updated config: $managedIndexConfig")
 
             val explainMap = getExplainMap(indexName)
-            logger.info("map: $explainMap")
             assertPredicatesOnMetaData(
                 listOf(
                     indexName to listOf(
