@@ -490,8 +490,6 @@ class RestExplainActionIT : IndexStateManagementRestTestCase() {
 
             assertEquals("Unexpected RestStatus", RestStatus.OK, resp.restStatus())
 
-            logger.info(resp.asMap())
-
             assertPredicatesOnMetaData(
                 listOf(
                     index2Predicates
@@ -501,8 +499,11 @@ class RestExplainActionIT : IndexStateManagementRestTestCase() {
         }
     }
 
-    fun `test explain filter on failed index`() {
-        val indexName = "${testIndexName}_failed"
+    fun `test explain filter failed index`() {
+        val indexName1 = "${testIndexName}_failed"
+        val indexName2 = "${testIndexName}_success"
+
+        // for failed index
         val config = AllocationAction(require = mapOf("..//" to "value"), exclude = emptyMap(), include = emptyMap(), index = 0)
         config.configRetry = ActionRetry(0)
         val states = listOf(
@@ -515,16 +516,27 @@ class RestExplainActionIT : IndexStateManagementRestTestCase() {
             states = states,
             defaultState = states[0].name
         )
-        createPolicy(invalidPolicy, invalidPolicy.id)
-        createIndex(indexName, invalidPolicy.id)
 
-        val managedIndexConfig = getExistingManagedIndexConfig(indexName)
+        // for successful index
+        val stateWithReadOnlyAction = randomState(actions = listOf(ReadOnlyAction(index = 0)))
+        val validPolicy = createPolicy(randomPolicy(states = listOf(stateWithReadOnlyAction)))
+
+        createPolicy(invalidPolicy, invalidPolicy.id)
+        createIndex(indexName1, invalidPolicy.id)
+        createIndex(indexName2, validPolicy.id)
+
+        val managedIndexConfig1 = getExistingManagedIndexConfig(indexName1)
+        val managedIndexConfig2 = getExistingManagedIndexConfig(indexName2)
+
         // change the start time so the job will trigger in 2 seconds.
-        updateManagedIndexConfigStartTime(managedIndexConfig)
-        waitFor { assertEquals(invalidPolicy.id, getExplainManagedIndexMetaData(indexName).policyID) }
+        updateManagedIndexConfigStartTime(managedIndexConfig1)
+        waitFor { assertEquals(invalidPolicy.id, getExplainManagedIndexMetaData(indexName1).policyID) }
+
+        updateManagedIndexConfigStartTime(managedIndexConfig2)
+        waitFor { assertEquals(validPolicy.id, getExplainManagedIndexMetaData(indexName2).policyID) }
 
         // Change the start time so that we attempt allocation that is intended to fail
-        updateManagedIndexConfigStartTime(managedIndexConfig)
+        updateManagedIndexConfigStartTime(managedIndexConfig1)
         waitFor {
             val explainFilter = ExplainFilter(
                 failed = true
@@ -539,15 +551,48 @@ class RestExplainActionIT : IndexStateManagementRestTestCase() {
 
             assertPredicatesOnMetaData(
                 listOf(
-                    indexName to listOf(
+                    indexName1 to listOf(
                         explainResponseOpendistroPolicyIdSetting to invalidPolicy.id::equals,
                         explainResponseOpenSearchPolicyIdSetting to invalidPolicy.id::equals,
-                        ManagedIndexMetaData.INDEX to managedIndexConfig.index::equals,
-                        ManagedIndexMetaData.INDEX_UUID to managedIndexConfig.indexUuid::equals,
-                        ManagedIndexMetaData.POLICY_ID to managedIndexConfig.policyID::equals,
+                        ManagedIndexMetaData.INDEX to managedIndexConfig1.index::equals,
+                        ManagedIndexMetaData.INDEX_UUID to managedIndexConfig1.indexUuid::equals,
+                        ManagedIndexMetaData.POLICY_ID to managedIndexConfig1.policyID::equals,
                         ManagedIndexMetaData.INDEX_CREATION_DATE to fun(indexCreationDate: Any?): Boolean = (indexCreationDate as Long) > 1L,
                         StepMetaData.STEP to fun(stepMetaDataMap: Any?): Boolean = assertStepEquals(
                             StepMetaData("attempt_allocation", Instant.now().toEpochMilli(), Step.StepStatus.FAILED),
+                            stepMetaDataMap
+                        ),
+                        ManagedIndexMetaData.ENABLED to true::equals
+                    )
+                ),
+                resp.asMap(), false
+            )
+        }
+
+        updateManagedIndexConfigStartTime(managedIndexConfig2)
+        waitFor {
+            val explainFilter = ExplainFilter(
+                failed = false
+            )
+
+            val resp = client().makeRequest(
+                RestRequest.Method.POST.toString(),
+                RestExplainAction.EXPLAIN_BASE_URI, emptyMap(), explainFilter.toHttpEntity()
+            )
+
+            assertEquals("Unexpected RestStatus", RestStatus.OK, resp.restStatus())
+
+            assertPredicatesOnMetaData(
+                listOf(
+                    indexName2 to listOf(
+                        explainResponseOpendistroPolicyIdSetting to validPolicy.id::equals,
+                        explainResponseOpenSearchPolicyIdSetting to validPolicy.id::equals,
+                        ManagedIndexMetaData.INDEX to managedIndexConfig2.index::equals,
+                        ManagedIndexMetaData.INDEX_UUID to managedIndexConfig2.indexUuid::equals,
+                        ManagedIndexMetaData.POLICY_ID to managedIndexConfig2.policyID::equals,
+                        ManagedIndexMetaData.INDEX_CREATION_DATE to fun(indexCreationDate: Any?): Boolean = (indexCreationDate as Long) > 1L,
+                        StepMetaData.STEP to fun(stepMetaDataMap: Any?): Boolean = assertStepEquals(
+                            StepMetaData("set_read_only", Instant.now().toEpochMilli(), Step.StepStatus.STARTING),
                             stepMetaDataMap
                         ),
                         ManagedIndexMetaData.ENABLED to true::equals
