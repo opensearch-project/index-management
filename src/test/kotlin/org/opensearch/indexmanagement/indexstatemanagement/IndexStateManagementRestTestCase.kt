@@ -19,6 +19,7 @@ import org.opensearch.client.Request
 import org.opensearch.client.Response
 import org.opensearch.client.ResponseException
 import org.opensearch.client.RestClient
+import org.opensearch.cluster.ClusterModule
 import org.opensearch.cluster.metadata.IndexMetadata
 import org.opensearch.common.settings.Settings
 import org.opensearch.common.unit.TimeValue
@@ -55,12 +56,15 @@ import org.opensearch.indexmanagement.spi.indexstatemanagement.model.PolicyRetry
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StateMetaData
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepMetaData
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ValidationResult
+import org.opensearch.indexmanagement.transform.model.Transform
+import org.opensearch.indexmanagement.transform.model.TransformMetadata
 import org.opensearch.indexmanagement.util._ID
 import org.opensearch.indexmanagement.util._PRIMARY_TERM
 import org.opensearch.indexmanagement.util._SEQ_NO
 import org.opensearch.indexmanagement.waitFor
 import org.opensearch.jobscheduler.spi.schedule.IntervalSchedule
 import org.opensearch.rest.RestRequest
+import org.opensearch.search.SearchModule
 import org.opensearch.core.rest.RestStatus
 import org.opensearch.indexmanagement.indexstatemanagement.model.ChangePolicy
 import org.opensearch.indexmanagement.indexstatemanagement.model.ExplainFilter
@@ -846,6 +850,63 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
         return metadata
     }
 
+    protected fun getTransform(
+        transformId: String,
+        header: BasicHeader = BasicHeader(HttpHeaders.CONTENT_TYPE, "application/json")
+    ): Transform {
+        val response = client().makeRequest("GET", "${IndexManagementPlugin.TRANSFORM_BASE_URI}/$transformId", null, header)
+        assertEquals("Unable to get transform $transformId", RestStatus.OK, response.restStatus())
+
+        val parser = createParser(XContentType.JSON.xContent(), response.entity.content)
+        ensureExpectedToken(Token.START_OBJECT, parser.nextToken(), parser)
+
+        lateinit var id: String
+        var primaryTerm = SequenceNumbers.UNASSIGNED_PRIMARY_TERM
+        var seqNo = SequenceNumbers.UNASSIGNED_SEQ_NO
+        lateinit var transform: Transform
+
+        while (parser.nextToken() != Token.END_OBJECT) {
+            parser.nextToken()
+
+            when (parser.currentName()) {
+                _ID -> id = parser.text()
+                _SEQ_NO -> seqNo = parser.longValue()
+                _PRIMARY_TERM -> primaryTerm = parser.longValue()
+                Transform.TRANSFORM_TYPE -> transform = Transform.parse(parser, id, seqNo, primaryTerm)
+            }
+        }
+        return transform
+    }
+
+    protected fun getTransformMetadata(
+        metadataId: String,
+        header: BasicHeader = BasicHeader(HttpHeaders.CONTENT_TYPE, "application/json")
+    ): TransformMetadata {
+        val response = client().makeRequest("GET", "$INDEX_MANAGEMENT_INDEX/_doc/$metadataId", null, header)
+        assertEquals("Unable to get transform metadata $metadataId", RestStatus.OK, response.restStatus())
+
+        val parser = createParser(XContentType.JSON.xContent(), response.entity.content)
+        ensureExpectedToken(Token.START_OBJECT, parser.nextToken(), parser)
+
+        lateinit var id: String
+        var primaryTerm = SequenceNumbers.UNASSIGNED_PRIMARY_TERM
+        var seqNo = SequenceNumbers.UNASSIGNED_SEQ_NO
+        lateinit var metadata: TransformMetadata
+
+        while (parser.nextToken() != Token.END_OBJECT) {
+            parser.nextToken()
+
+            when (parser.currentName()) {
+                _ID -> id = parser.text()
+                _SEQ_NO -> seqNo = parser.longValue()
+                _PRIMARY_TERM -> primaryTerm = parser.longValue()
+                TransformMetadata.TRANSFORM_METADATA_TYPE -> metadata = TransformMetadata.parse(parser, id, seqNo, primaryTerm)
+            }
+        }
+
+        return metadata
+    }
+
     protected fun deleteSnapshot(repository: String, snapshotName: String) {
         val response = client().makeRequest("DELETE", "_snapshot/$repository/$snapshotName")
         assertEquals("Unable to delete snapshot", RestStatus.OK, response.restStatus())
@@ -1082,5 +1143,14 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
         } catch (e: IOException) {
             throw OpenSearchParseException("Failed to parse content to list", e)
         }
+    }
+
+    override fun xContentRegistry(): NamedXContentRegistry {
+        return NamedXContentRegistry(
+            listOf(
+                ClusterModule.getNamedXWriteables(),
+                SearchModule(Settings.EMPTY, emptyList()).namedXContents
+            ).flatten()
+        )
     }
 }

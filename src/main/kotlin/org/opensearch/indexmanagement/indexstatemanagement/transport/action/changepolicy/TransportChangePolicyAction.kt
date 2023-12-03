@@ -238,7 +238,7 @@ class TransportChangePolicyAction @Inject constructor(
                             val clusterState = response.state
                             val defaultIndexMetadataService = indexMetadataProvider.services[DEFAULT_INDEX_TYPE] as DefaultIndexMetadataService
                             clusterState.metadata.indices.forEach {
-                                val indexUUID = defaultIndexMetadataService.getCustomIndexUUID(it.value)
+                                val indexUUID = defaultIndexMetadataService.getIndexUUID(it.value)
                                 indexUuidToIndexMetadata[indexUUID] = it.value
                             }
                             // ISMIndexMetadata from the default index metadata service uses lenient expand, we want to use strict expand, filter

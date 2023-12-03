@@ -95,7 +95,7 @@ import org.opensearch.jobscheduler.spi.ScheduledJobParameter
 import org.opensearch.jobscheduler.spi.ScheduledJobRunner
 import org.opensearch.jobscheduler.spi.schedule.IntervalSchedule
 import org.opensearch.core.rest.RestStatus
-import org.opensearch.indexmanagement.indexstatemanagement.util.hasVersionConflict
+import org.opensearch.indexmanagement.indexstatemanagement.util.hasDifferentPolicyVersion
 import org.opensearch.script.Script
 import org.opensearch.script.ScriptService
 import org.opensearch.script.TemplateScript
@@ -262,12 +262,11 @@ object ManagedIndexRunner :
         // Check the cluster state for the index metadata
         val clusterStateIndexMetadata = getIndexMetadata(managedIndexConfig.index)
         val defaultIndexMetadataService = indexMetadataProvider.services[DEFAULT_INDEX_TYPE] as DefaultIndexMetadataService
-        val clusterStateIndexUUID = clusterStateIndexMetadata?.let { defaultIndexMetadataService.getCustomIndexUUID(it) }
-        // If the index metadata is null, the index is not in the cluster state. If the index metadata is not null, but
-        // the cluster state index uuid differs from the one in the managed index config then the config is referring
-        // to a different index which does not exist in the cluster. We need to check all the extensions to confirm an index exists
+        val clusterStateIndexUUID = clusterStateIndexMetadata?.let { defaultIndexMetadataService.getIndexUUID(it) }
+        // If the index metadata is null, the index is not in the cluster state.
+        // If the index metadata is not null, and the index uuid differs from the one in the managed index config
+        // These mean this managed index could be a different index type and should use extensions to check
         if (clusterStateIndexMetadata == null || clusterStateIndexUUID != managedIndexConfig.indexUuid) {
-            // If the cluster state/default index type didn't have an index with a matching name and uuid combination, try all other index types
             val nonDefaultIndexTypes = indexMetadataProvider.services.keys.filter { it != DEFAULT_INDEX_TYPE }
             val multiTypeIndexNameToMetaData =
                 indexMetadataProvider.getMultiTypeISMIndexMetadata(nonDefaultIndexTypes, listOf(managedIndexConfig.index))
@@ -281,20 +280,19 @@ object ManagedIndexRunner :
             }
         }
 
-        // If policy or managedIndexMetaData is null then initialize
-        val policy = managedIndexConfig.policy
-        if (policy == null || managedIndexMetaData == null) {
-            initManagedIndex(managedIndexConfig, managedIndexMetaData)
+        if (managedIndexMetaData == null) {
+            initManagedIndex(managedIndexConfig)
             return
         }
 
-        // If the policy was completed or failed then return early and disable job so it stops scheduling work
+        // If the policy was completed or failed then return early and disable job, so it stops scheduling work
         if (managedIndexMetaData.policyCompleted == true || managedIndexMetaData.isFailed) {
             disableManagedIndexConfig(managedIndexConfig)
             return
         }
 
-        if (managedIndexMetaData.hasVersionConflict(managedIndexConfig)) {
+        val policy = managedIndexConfig.policy
+        if (managedIndexMetaData.hasDifferentPolicyVersion(managedIndexConfig)) {
             val info = mapOf("message" to "There is a version conflict between your previous execution and your managed index")
             val result = updateManagedIndexMetaData(
                 managedIndexMetaData.copy(
@@ -304,6 +302,7 @@ object ManagedIndexRunner :
             )
             if (result.metadataSaved) {
                 disableManagedIndexConfig(managedIndexConfig)
+                publishErrorNotification(policy, managedIndexMetaData)
             }
             return
         }
@@ -330,11 +329,14 @@ object ManagedIndexRunner :
                 managedIndexMetaData
                     .copy(actionMetaData = currentActionMetaData?.copy(failed = true), info = info)
             )
-            if (updated.metadataSaved) disableManagedIndexConfig(managedIndexConfig)
+            if (updated.metadataSaved) {
+                disableManagedIndexConfig(managedIndexConfig)
+                publishErrorNotification(policy, managedIndexMetaData)
+            }
             return
         }
 
-        if (managedIndexConfig.shouldChangePolicy(managedIndexMetaData, action)) {
+        if (managedIndexConfig.shouldChangePolicy(action)) {
             initChangePolicy(managedIndexConfig, managedIndexMetaData, action)
             return
         }
@@ -356,7 +358,10 @@ object ManagedIndexRunner :
                         policyRetryInfo = PolicyRetryInfoMetaData(true, 0), info = info
                     )
                 )
-                if (updated.metadataSaved) disableManagedIndexConfig(managedIndexConfig)
+                if (updated.metadataSaved) {
+                    disableManagedIndexConfig(managedIndexConfig)
+                    publishErrorNotification(policy, managedIndexMetaData)
+                }
                 return
             }
         }
@@ -370,12 +375,15 @@ object ManagedIndexRunner :
                     policyRetryInfo = PolicyRetryInfoMetaData(true, 0), info = info
                 )
             )
-            if (updated.metadataSaved) disableManagedIndexConfig(managedIndexConfig)
+            if (updated.metadataSaved) {
+                disableManagedIndexConfig(managedIndexConfig)
+                publishErrorNotification(policy, managedIndexMetaData)
+            }
             return
         }
 
         // If this action is not allowed and the step to be executed is the first step in the action then we will fail
-        // as this action has been removed from the AllowList, but if its not the first step we will let it finish as it's already inflight
+        // as this action has been removed from the AllowList, but if it's not the first step we will let it finish as it's already inflight
         if (action?.isAllowed(allowList) == false && step != null && action.isFirstStep(step.name) && action.type != TransitionsAction.name) {
             val info = mapOf("message" to "Attempted to execute action=${action.type} which is not allowed.")
             val updated = updateManagedIndexMetaData(
@@ -383,12 +391,15 @@ object ManagedIndexRunner :
                     policyRetryInfo = PolicyRetryInfoMetaData(true, 0), info = info
                 )
             )
-            if (updated.metadataSaved) disableManagedIndexConfig(managedIndexConfig)
+            if (updated.metadataSaved) {
+                disableManagedIndexConfig(managedIndexConfig)
+                publishErrorNotification(policy, managedIndexMetaData)
+            }
             return
         }
 
-        // If any of State, Action, Step components come back as null then we are moving to error in ManagedIndexMetaData
         val startingManagedIndexMetaData = managedIndexMetaData.getStartingManagedIndexMetaData(state, action, step)
+        // If any of State, Action, Step components come back as null, then we are moving to error in ManagedIndexMetaData
         val updateResult = updateManagedIndexMetaData(startingManagedIndexMetaData)
 
         @Suppress("ComplexCondition", "MaxLineLength")
@@ -402,7 +413,7 @@ object ManagedIndexRunner :
                     actionValidation.validate(action.type, stepContext.metadata.index)
                 }
                 if (validationResult.validationStatus == Validate.ValidationStatus.RE_VALIDATING) {
-                    logger.warn("Validation Status is: RE_VALIDATING. The action is {}, state is {}, step is {}.\", action.type, state.name, step.name")
+                    logger.warn("Validation Status is: RE_VALIDATING. The action is {}, state is {}, step is {}.", action.type, state.name, step.name)
                     publishErrorNotification(policy, managedIndexMetaData)
                     return
                 }
@@ -425,16 +436,7 @@ object ManagedIndexRunner :
             var executedManagedIndexMetaData = startingManagedIndexMetaData.getCompletedManagedIndexMetaData(action, step)
 
             if (executedManagedIndexMetaData.isFailed) {
-                try {
-                    // if the policy has no error_notification this will do nothing otherwise it will try to send the configured error message
-                    publishErrorNotification(policy, executedManagedIndexMetaData)
-                } catch (e: Exception) {
-                    logger.error("Failed to publish error notification", e)
-                    val errorMessage = e.message ?: "Failed to publish error notification"
-                    val mutableInfo = executedManagedIndexMetaData.info?.toMutableMap() ?: mutableMapOf()
-                    mutableInfo["errorNotificationFailure"] = errorMessage
-                    executedManagedIndexMetaData = executedManagedIndexMetaData.copy(info = mutableInfo.toMap())
-                }
+                executedManagedIndexMetaData = publishErrorNotification(policy, executedManagedIndexMetaData)
             }
 
             if (executedManagedIndexMetaData.isSuccessfulDelete) {
@@ -464,32 +466,25 @@ object ManagedIndexRunner :
         }
     }
 
-    private suspend fun initManagedIndex(managedIndexConfig: ManagedIndexConfig, managedIndexMetaData: ManagedIndexMetaData?) {
-        var policy: Policy? = managedIndexConfig.policy
-        val policyID = managedIndexConfig.changePolicy?.policyID ?: managedIndexConfig.policyID
-        // If policy does not currently exist, we need to save the policy on the ManagedIndexConfig for the first time
-        // or if a change policy exists then we will also execute the change as we are still in initialization phase
-        if (policy == null || managedIndexConfig.changePolicy != null) {
-            // Get the policy by the name unless a ChangePolicy exists then allow the change to happen during initialization
-            policy = getPolicy(policyID)
-            // Attempt to save the policy
-            if (policy != null) {
-                val saved = savePolicyToManagedIndexConfig(managedIndexConfig, policy)
-                // If we failed to save the policy, don't initialize ManagedIndexMetaData
-                if (!saved) return
+    private suspend fun initManagedIndex(managedIndexConfig: ManagedIndexConfig) {
+        val policy: Policy = managedIndexConfig.policy
+        var metadata = getInitializedManagedIndexMetaData(managedIndexConfig, policy, policy.id)
+
+        // User may change policy before first metadata initialization
+        if (managedIndexConfig.changePolicy != null) {
+            val policyID = managedIndexConfig.changePolicy.policyID
+            val newPolicy = getPolicy(policyID)
+            if (newPolicy != null) {
+                val saved = savePolicyToManagedIndexConfig(managedIndexConfig, newPolicy)
+                if (!saved) {
+                    logger.error("Failed to save policy to ManagedIndexConfig(${managedIndexConfig.index})")
+                    return
+                }
             }
-            // If we failed to get the policy then we will update the ManagedIndexMetaData with error info
+            metadata = getInitializedManagedIndexMetaData(managedIndexConfig, newPolicy, policyID)
         }
 
-        // at this point we either successfully saved the policy or we failed to get the policy
-        val updatedManagedIndexMetaData = if (policy == null) {
-            getFailedInitializedManagedIndexMetaData(managedIndexMetaData, managedIndexConfig, policyID)
-        } else {
-            // Initializing ManagedIndexMetaData for the first time
-            getInitializedManagedIndexMetaData(managedIndexMetaData, managedIndexConfig, policy)
-        }
-
-        updateManagedIndexMetaData(updatedManagedIndexMetaData, create = managedIndexMetaData == null)
+        updateManagedIndexMetaData(metadata, create = true)
     }
 
     @Suppress("ReturnCount", "BlockingMethodInNonBlockingContext")
@@ -568,44 +563,35 @@ object ManagedIndexRunner :
         }
     }
 
-    private suspend fun getFailedInitializedManagedIndexMetaData(
-        managedIndexMetaData: ManagedIndexMetaData?,
-        managedIndexConfig: ManagedIndexConfig,
-        policyID: String
-    ): ManagedIndexMetaData {
-        // we either haven't initialized any metadata yet or we have already initialized metadata but still have no policy
-        return managedIndexMetaData?.copy(
-            policyRetryInfo = PolicyRetryInfoMetaData(failed = true, consumedRetries = 0),
-            info = mapOf("message" to "Fail to load policy: $policyID")
-        ) ?: ManagedIndexMetaData(
-            index = managedIndexConfig.index,
-            indexUuid = managedIndexConfig.indexUuid,
-            policyID = policyID,
-            policySeqNo = null,
-            policyPrimaryTerm = null,
-            policyCompleted = false,
-            rolledOver = false,
-            indexCreationDate = getIndexCreationDate(managedIndexConfig),
-            transitionTo = null,
-            stateMetaData = null,
-            actionMetaData = null,
-            stepMetaData = null,
-            policyRetryInfo = PolicyRetryInfoMetaData(failed = true, consumedRetries = 0),
-            info = mapOf("message" to "Fail to load policy: $policyID")
-        )
-    }
-
     @Suppress("ComplexMethod")
     private suspend fun getInitializedManagedIndexMetaData(
-        managedIndexMetaData: ManagedIndexMetaData?,
         managedIndexConfig: ManagedIndexConfig,
-        policy: Policy
+        policy: Policy?,
+        policyID: String,
     ): ManagedIndexMetaData {
-        val state = managedIndexConfig.changePolicy?.state ?: policy.defaultState
-        val stateMetaData = StateMetaData(state, Instant.now().toEpochMilli())
-
-        return when {
-            managedIndexMetaData == null -> ManagedIndexMetaData(
+        val indexCreationDate = getIndexCreationDate(managedIndexConfig)
+        if (policy == null) {
+            // We check policy existence in change policy API, but it maybe deleted after that
+            return ManagedIndexMetaData(
+                index = managedIndexConfig.index,
+                indexUuid = managedIndexConfig.indexUuid,
+                policyID = policyID,
+                policySeqNo = null,
+                policyPrimaryTerm = null,
+                policyCompleted = false,
+                rolledOver = false,
+                indexCreationDate = indexCreationDate,
+                transitionTo = null,
+                stateMetaData = null,
+                actionMetaData = null,
+                stepMetaData = null,
+                policyRetryInfo = PolicyRetryInfoMetaData(failed = true, consumedRetries = 0),
+                info = mapOf("message" to "Fail to load policy: $policyID")
+            )
+        } else {
+            val state = managedIndexConfig.changePolicy?.state ?: policy.defaultState
+            val stateMetaData = StateMetaData(state, Instant.now().toEpochMilli())
+            return ManagedIndexMetaData(
                 index = managedIndexConfig.index,
                 indexUuid = managedIndexConfig.indexUuid,
                 policyID = policy.id,
@@ -613,7 +599,7 @@ object ManagedIndexRunner :
                 policyPrimaryTerm = policy.primaryTerm,
                 policyCompleted = false,
                 rolledOver = false,
-                indexCreationDate = getIndexCreationDate(managedIndexConfig),
+                indexCreationDate = indexCreationDate,
                 transitionTo = null,
                 stateMetaData = stateMetaData,
                 actionMetaData = null,
@@ -621,39 +607,6 @@ object ManagedIndexRunner :
                 policyRetryInfo = PolicyRetryInfoMetaData(failed = false, consumedRetries = 0),
                 info = mapOf("message" to "Successfully initialized policy: ${policy.id}")
             )
-            managedIndexMetaData.policySeqNo == null || managedIndexMetaData.policyPrimaryTerm == null ->
-                // If there is seqNo and PrimaryTerm it is first time populating Policy.
-                managedIndexMetaData.copy(
-                    policyID = policy.id,
-                    policySeqNo = policy.seqNo,
-                    policyPrimaryTerm = policy.primaryTerm,
-                    stateMetaData = stateMetaData,
-                    policyRetryInfo = PolicyRetryInfoMetaData(failed = false, consumedRetries = 0),
-                    info = mapOf("message" to "Successfully initialized policy: ${policy.id}")
-                )
-            // this is an edge case where a user deletes the job config or index and we already have a policySeqNo/primaryTerm
-            // in the metadata, in this case we just want to say we successfully initialized the policy again but we will not
-            // modify the state, action, etc. so it can resume where it left off
-            managedIndexMetaData.policySeqNo == policy.seqNo &&
-                managedIndexMetaData.policyPrimaryTerm == policy.primaryTerm &&
-                managedIndexMetaData.policyID == policy.id ->
-                // If existing PolicySeqNo and PolicyPrimaryTerm is equal to cached Policy then no issue.
-                managedIndexMetaData.copy(
-                    policyRetryInfo = PolicyRetryInfoMetaData(failed = false, consumedRetries = 0),
-                    info = mapOf("message" to "Successfully initialized policy: ${policy.id}")
-                )
-            else ->
-                // else this means we either tried to load a policy with a different id, seqno, or primaryterm from what is
-                // in the metadata and we cannot guarantee it will work with the current state in managedIndexMetaData
-                managedIndexMetaData.copy(
-                    policyRetryInfo = PolicyRetryInfoMetaData(failed = true, consumedRetries = 0),
-                    info = mapOf(
-                        "message" to "Fail to load policy: ${policy.id} with " +
-                            "seqNo ${policy.seqNo} and primaryTerm ${policy.primaryTerm} as it" +
-                            " does not match what's in the metadata [policyID=${managedIndexMetaData.policyID}," +
-                            " policySeqNo=${managedIndexMetaData.policySeqNo}, policyPrimaryTerm=${managedIndexMetaData.policyPrimaryTerm}]"
-                    )
-                )
         }
     }
 
@@ -717,17 +670,17 @@ object ManagedIndexRunner :
         managedIndexMetaData: ManagedIndexMetaData,
         actionToExecute: Action?
     ) {
-
-        // should never happen since we only call this if there is a changePolicy, but we'll do it to make changePolicy non null
         val changePolicy = managedIndexConfig.changePolicy
+        // should never happen since we only call this if there is a changePolicy, but we'll do it to make changePolicy non-null
         if (changePolicy == null) {
-            logger.debug("initChangePolicy was called with a null ChangePolicy, ManagedIndexConfig: $managedIndexConfig")
+            logger.debug(
+                "initChangePolicy was called with a null ChangePolicy, ManagedIndexConfig: {}",
+                managedIndexConfig
+            )
             return
         }
 
-        // get the policy we'll attempt to change to
         val policy = getPolicy(changePolicy.policyID)
-
         // update the ManagedIndexMetaData with new information
         val updatedManagedIndexMetaData = if (policy == null) {
             managedIndexMetaData.copy(
@@ -735,17 +688,18 @@ object ManagedIndexRunner :
                 policyRetryInfo = PolicyRetryInfoMetaData(failed = true, consumedRetries = 0)
             )
         } else {
-            // if the action to execute is transition then set the actionMetaData to a new transition metadata to reflect we are
-            // in transition (in case we triggered change policy from entering transition) or to reflect this is a new policy transition phase
-            val newTransitionMetaData = ActionMetaData(
-                TransitionsAction.name, Instant.now().toEpochMilli(), -1,
-                false, 0, 0, null
-            )
+            // 1. entering transition action in this run
+            // 2. has been in transition action
+            // Refresh the transition action metadata, meaning we start the transition for change policy
             val actionMetaData = if (actionToExecute?.type == TransitionsAction.name) {
-                newTransitionMetaData
+                ActionMetaData(
+                    TransitionsAction.name, Instant.now().toEpochMilli(), -1,
+                    false, 0, 0, null
+                )
             } else {
                 managedIndexMetaData.actionMetaData
             }
+
             managedIndexMetaData.copy(
                 info = mapOf("message" to "Attempting to change policy to ${policy.id}"),
                 transitionTo = changePolicy.state,
@@ -758,31 +712,32 @@ object ManagedIndexRunner :
             )
         }
 
-        // check if the safe flag was set by the Change Policy REST API, if it was then do a second validation
-        // before allowing a change to happen
+        /**
+         * The freshness of isSafe may change between runs, and we use it to decide whether to enter this method
+         * n [shouldChangePolicy]. So here we check the safeness again
+         */
         if (changePolicy.isSafe) {
-            // if policy is null then we are only updating error information in metadata so its fine to continue
+            // if policy is null then we are only updating error information in metadata, so it's fine to continue
             if (policy != null) {
-                // current policy being null should never happen as we have a check at the top of runner
-                // if it is unsafe to change then we set safe back to false so we don't keep doing this check every execution
-                if (managedIndexConfig.policy?.isSafeToChange(managedIndexMetaData.stateMetaData?.name, policy, changePolicy) != true) {
+                // if it is unsafe to change then we set safe back to false, so we don't keep doing this check every execution
+                if (!managedIndexConfig.policy.isSafeToChange(managedIndexMetaData.stateMetaData?.name, policy, changePolicy)) {
                     updateManagedIndexConfig(managedIndexConfig.copy(changePolicy = managedIndexConfig.changePolicy.copy(isSafe = false)))
                     return
                 }
             }
         }
 
-        /*
-        * Try to update the ManagedIndexMetaData in cluster state, we need to do this first before updating the
-        * ManagedIndexConfig because if this fails we can fail early and still retry this whole process on the next
-        * execution whereas if we do the update to ManagedIndexConfig first we lose the ChangePolicy on the job and
-        * could fail to update the ManagedIndexMetaData which would put us in a bad state
-        * */
+        /**
+         * Try to update the ManagedIndexMetaData, we need to do this first before updating the
+         * ManagedIndexConfig because if this fails we can fail early and still retry this whole process on the next
+         * execution whereas if we do the update to ManagedIndexConfig first we lose the ChangePolicy on the job and
+         * could fail to update the ManagedIndexMetaData which would put us in a bad state
+         */
         val updated = updateManagedIndexMetaData(updatedManagedIndexMetaData)
 
         if (!updated.metadataSaved || policy == null) return
 
-        // Change the policy and user stored on the job from changePolicy, this will also set the changePolicy to null on the job
+        // Change the policy and user stored on the job, this will also set the changePolicy to null on the job
         savePolicyToManagedIndexConfig(managedIndexConfig, policy.copy(user = changePolicy.user))
     }
 
@@ -801,13 +756,37 @@ object ManagedIndexRunner :
         }
     }
 
-    private suspend fun publishErrorNotification(policy: Policy, managedIndexMetaData: ManagedIndexMetaData) {
-        policy.errorNotification?.run {
-            errorNotificationRetryPolicy.retry(logger) {
-                val compiledMessage = compileTemplate(messageTemplate, managedIndexMetaData)
-                destination?.buildLegacyBaseMessage(null, compiledMessage)?.publishLegacyNotification(client)
-                channel?.sendNotification(client, ErrorNotification.CHANNEL_TITLE, managedIndexMetaData, compiledMessage, policy.user)
+    private suspend fun publishErrorNotification(policy: Policy, metadata: ManagedIndexMetaData): ManagedIndexMetaData {
+        return try {
+            val errorNotification = policy.errorNotification
+            if (errorNotification != null) {
+                policy.errorNotification.run {
+                    errorNotificationRetryPolicy.retry(logger) {
+                        val compiledMessage = compileTemplate(messageTemplate, metadata)
+                        destination?.buildLegacyBaseMessage(null, compiledMessage)?.publishLegacyNotification(client)
+                        channel?.sendNotification(
+                            client,
+                            ErrorNotification.CHANNEL_TITLE,
+                            metadata,
+                            compiledMessage,
+                            policy.user
+                        )
+                    }
+                }
+                val message = "Successfully published error notification [index = ${metadata.index}]"
+                logger.info(message)
+                val mutableInfo = metadata.info?.toMutableMap() ?: mutableMapOf()
+                mutableInfo["error_notification"] = message
+                metadata.copy(info = mutableInfo.toMap())
+            } else {
+                return metadata
             }
+        } catch (e: Exception) {
+            logger.error("Failed to publish error notification", e)
+            val errorMessage = e.message ?: "Failed to publish error notification"
+            val mutableInfo = metadata.info?.toMutableMap() ?: mutableMapOf()
+            mutableInfo["error_notification"] = errorMessage
+            metadata.copy(info = mutableInfo.toMap())
         }
     }
 

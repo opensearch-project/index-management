@@ -8,6 +8,7 @@ package org.opensearch.indexmanagement.indexstatemanagement.action
 import org.apache.hc.core5.http.ContentType
 import org.apache.hc.core5.http.io.entity.StringEntity
 import org.apache.logging.log4j.LogManager
+import org.junit.Assert
 import org.junit.Assume
 import org.junit.Before
 import org.opensearch.action.admin.indices.alias.Alias
@@ -17,6 +18,8 @@ import org.opensearch.cluster.routing.allocation.DiskThresholdSettings.CLUSTER_R
 import org.opensearch.cluster.routing.allocation.DiskThresholdSettings.CLUSTER_ROUTING_ALLOCATION_LOW_DISK_WATERMARK_SETTING
 import org.opensearch.common.settings.Settings
 import org.opensearch.core.common.unit.ByteSizeValue
+import org.opensearch.core.rest.RestStatus
+import org.opensearch.core.xcontent.MediaTypeRegistry
 import org.opensearch.index.query.QueryBuilders
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
 import org.opensearch.indexmanagement.indexstatemanagement.IndexStateManagementRestTestCase
@@ -30,7 +33,6 @@ import org.opensearch.indexmanagement.indexstatemanagement.step.shrink.WaitForSh
 import org.opensearch.indexmanagement.makeRequest
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
 import org.opensearch.indexmanagement.waitFor
-import org.opensearch.core.rest.RestStatus
 import org.opensearch.script.Script
 import org.opensearch.script.ScriptType
 import java.time.Instant
@@ -235,6 +237,143 @@ class ShrinkActionIT : IndexStateManagementRestTestCase() {
         )
 
         assertShrinkActionRun(indexName, policyID, excludedNode)
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    fun `test switch aliases`() {
+        val indexName = "${testIndexName}_index_4"
+        val aliasToSwitch = Alias("${indexName}_alias_to_switch")
+            .writeIndex(false)
+            .isHidden(false)
+            .filter("""{"term":{"switch":"switch"}}""")
+            .routing("1")
+
+        val aliasToOverride = Alias("${indexName}_alias_to_override")
+            .writeIndex(true)
+            .isHidden(false)
+            .filter("""{"term":{"overridden":"overridden"}}""")
+            .routing("2")
+
+        val aliasToAdd = Alias("${indexName}_alias_to_add")
+            .writeIndex(false)
+            .isHidden(false)
+            .filter("""{"term":{"add":"add"}}""")
+            .routing("3")
+
+        val policyID = "${testIndexName}_testPolicyName_3"
+
+        val shrinkAction = ShrinkAction(
+            numNewShards = null,
+            maxShardSize = null,
+            percentageOfSourceShards = 0.5,
+            targetIndexTemplate = Script(ScriptType.INLINE, Script.DEFAULT_TEMPLATE_LANG, "{{ctx.index}}$testIndexSuffix", mapOf()),
+            aliases = listOf(aliasToOverride, aliasToAdd),
+            switchAliases = true,
+            forceUnsafe = true,
+            index = 0
+        )
+        val states = listOf(State("ShrinkState", listOf(shrinkAction), listOf()))
+
+        val policy = Policy(
+            id = policyID,
+            description = "$testIndexName description",
+            schemaVersion = 11L,
+            lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
+            errorNotification = randomErrorNotification(),
+            defaultState = states[0].name,
+            states = states
+        )
+
+        createPolicy(policy, policyID)
+        createIndex(indexName, policyID, null, "0", "3", "")
+        changeAlias(
+            index = indexName, alias = aliasToSwitch.name(), action = "add", filter = aliasToSwitch.filter(), isWriteIndex = aliasToSwitch.writeIndex(), isHidden = aliasToSwitch.isHidden,
+            routing = aliasToSwitch.indexRouting().toInt(), indexRouting = aliasToSwitch.indexRouting().toInt(), searchRouting = aliasToSwitch.searchRouting().toInt()
+        )
+        changeAlias(
+            index = indexName, alias = aliasToOverride.name(), action = "add", filter = aliasToOverride.filter(), isWriteIndex = false, isHidden = aliasToOverride.isHidden,
+            routing = aliasToOverride.indexRouting().toInt(), indexRouting = aliasToOverride.indexRouting().toInt(), searchRouting = aliasToOverride.searchRouting().toInt()
+        )
+
+        insertSampleData(indexName, 3)
+
+        // Will change the startTime each execution so that it triggers in 2 seconds
+        // First execution: Policy is initialized
+        val managedIndexConfig = getExistingManagedIndexConfig(indexName)
+
+        updateManagedIndexConfigStartTime(managedIndexConfig)
+        waitFor(Instant.ofEpochSecond(60)) { assertEquals(policyID, getExplainManagedIndexMetaData(indexName).policyID) }
+        // Starts AttemptMoveShardsStep
+        updateManagedIndexConfigStartTime(managedIndexConfig)
+
+        val targetIndexName = indexName + testIndexSuffix
+        waitFor(Instant.ofEpochSecond(60)) {
+            assertEquals(targetIndexName, getExplainManagedIndexMetaData(indexName).actionMetaData!!.actionProperties!!.shrinkActionProperties!!.targetIndexName)
+            assertEquals("true", getIndexBlocksWriteSetting(indexName))
+            assertNotNull("Couldn't find node to shrink onto.", getExplainManagedIndexMetaData(indexName).actionMetaData!!.actionProperties!!.shrinkActionProperties!!.nodeName)
+            val settings = getFlatSettings(indexName)
+            val nodeToShrink = getExplainManagedIndexMetaData(indexName).actionMetaData!!.actionProperties!!.shrinkActionProperties!!.nodeName
+            assertTrue(settings.containsKey("index.routing.allocation.require._name"))
+            assertEquals(nodeToShrink, settings["index.routing.allocation.require._name"])
+            assertEquals(
+                AttemptMoveShardsStep.getSuccessMessage(nodeToShrink),
+                getExplainManagedIndexMetaData(indexName).info?.get("message")
+            )
+        }
+
+        val nodeToShrink = getExplainManagedIndexMetaData(indexName).actionMetaData!!.actionProperties!!.shrinkActionProperties!!.nodeName
+
+        // starts WaitForMoveShardsStep
+        updateManagedIndexConfigStartTime(managedIndexConfig)
+        waitFor(Instant.ofEpochSecond(60)) {
+            assertEquals(
+                WaitForMoveShardsStep.getSuccessMessage(nodeToShrink),
+                getExplainManagedIndexMetaData(indexName).info?.get("message")
+            )
+        }
+        // Wait for move should finish before this. Starts AttemptShrinkStep
+        updateManagedIndexConfigStartTime(managedIndexConfig)
+        waitFor(Instant.ofEpochSecond(50)) {
+            assertTrue("Target index is not created", indexExists(targetIndexName))
+            assertEquals(
+                AttemptShrinkStep.getSuccessMessage(targetIndexName),
+                getExplainManagedIndexMetaData(indexName).info?.get("message")
+            )
+        }
+
+        // starts WaitForShrinkStep
+        updateManagedIndexConfigStartTime(managedIndexConfig)
+        waitFor(Instant.ofEpochSecond(60)) {
+            val sourceIndexAliases = getAlias(indexName, "")
+            assertTrue("Source index aliases list must be empty after alias switch.", sourceIndexAliases.isEmpty())
+
+            val targetIndexAliases = getAlias(targetIndexName, "")
+            assertEquals("Target index aliases count is incorrect.", 3, targetIndexAliases.size)
+
+            assertTrue("Target index must contain shrink action alias.", targetIndexAliases.containsKey(aliasToAdd.name()))
+            assertAliasesEqual(aliasToAdd, targetIndexAliases[aliasToAdd.name()])
+
+            assertTrue("Target index must contain switched source index alias.", targetIndexAliases.containsKey(aliasToSwitch.name()))
+            assertAliasesEqual(aliasToSwitch, targetIndexAliases[aliasToSwitch.name()])
+
+            assertTrue("Target index must contain shrink action alias which overrides source index alias.", targetIndexAliases.containsKey(aliasToOverride.name()))
+            assertAliasesEqual(aliasToOverride, targetIndexAliases[aliasToOverride.name()])
+        }
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    private fun assertAliasesEqual(expectedAlas: Alias, actualAliasRaw: Any?) {
+        Assert.assertNotNull("Actual alias to compare must not be null.", actualAliasRaw)
+        val actualAlias = actualAliasRaw as Map<String, Any?>
+        assertEquals(expectedAlas.writeIndex() ?: false, actualAlias["is_write_index"] ?: false)
+        assertEquals(expectedAlas.isHidden ?: false, actualAlias["is_hidden"] ?: false)
+        assertEquals(expectedAlas.searchRouting(), actualAlias["search_routing"])
+        assertEquals(expectedAlas.indexRouting(), actualAlias["index_routing"])
+
+        val builder = MediaTypeRegistry.contentBuilder(MediaTypeRegistry.JSON)
+        builder.map(actualAlias["filter"] as Map<String, Any>)
+        val actualFilter = builder.toString()
+        assertEquals(expectedAlas.filter(), actualFilter)
     }
 
     fun `test no-op with single source index primary shard`() {
