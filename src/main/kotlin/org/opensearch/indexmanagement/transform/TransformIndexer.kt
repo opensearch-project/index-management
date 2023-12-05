@@ -65,20 +65,21 @@ class TransformIndexer(
                 throw TransformIndexException("Failed to create the target index")
             }
         }
-        val writeIndexMetadata = clusterService.state().metadata.indicesLookup[targetIndex]!!.writeIndex
         if (clusterService.state().metadata.hasAlias(targetIndex)) {
             // return error if no write index with the alias
+            val writeIndexMetadata = clusterService.state().metadata.indicesLookup[targetIndex]!!.writeIndex
             if (writeIndexMetadata == null) {
-                throw TransformIndexException("Target index alias has no write index")
+                throw TransformIndexException("target_index [$targetIndex] is an alias but doesn't have write index")
+            }
+            val putMappingReq = PutMappingRequest(writeIndexMetadata?.index?.name).source(targetFieldMappings)
+            val mapResp: AcknowledgedResponse = client.admin().indices().suspendUntil {
+                putMapping(putMappingReq)
+            }
+            if (!mapResp.isAcknowledged) {
+                logger.error("Target index mapping request failed")
             }
         }
-        val putMappingReq = PutMappingRequest(writeIndexMetadata?.index?.name).source(targetFieldMappings)
-        val mapResp: AcknowledgedResponse = client.admin().indices().suspendUntil {
-            putMapping(putMappingReq)
-        }
-        if (!mapResp.isAcknowledged) {
-            logger.error("Target index mapping request failed")
-        }
+
     }
 
     @Suppress("ThrowsCount", "RethrowCaughtException")
