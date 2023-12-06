@@ -71,7 +71,7 @@ class TransformIndexer(
             if (writeIndexMetadata == null) {
                 throw TransformIndexException("target_index [$targetIndex] is an alias but doesn't have write index")
             }
-            val putMappingReq = PutMappingRequest(writeIndexMetadata?.index?.name).source(targetFieldMappings)
+            val putMappingReq = PutMappingRequest(writeIndexMetadata.index?.name).source(targetFieldMappings)
             val mapResp: AcknowledgedResponse = client.admin().indices().suspendUntil {
                 putMapping(putMappingReq)
             }
@@ -79,7 +79,6 @@ class TransformIndexer(
                 logger.error("Target index mapping request failed")
             }
         }
-
     }
 
     @Suppress("ThrowsCount", "RethrowCaughtException")

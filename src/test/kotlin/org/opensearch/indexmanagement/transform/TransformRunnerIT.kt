@@ -22,6 +22,8 @@ import org.opensearch.indexmanagement.waitFor
 import org.opensearch.jobscheduler.spi.schedule.IntervalSchedule
 import org.opensearch.rest.RestRequest
 import org.opensearch.core.rest.RestStatus
+import org.opensearch.indexmanagement.indexstatemanagement.util.INDEX_NUMBER_OF_REPLICAS
+import org.opensearch.indexmanagement.indexstatemanagement.util.INDEX_NUMBER_OF_SHARDS
 import org.opensearch.script.Script
 import org.opensearch.script.ScriptType
 import org.opensearch.search.aggregations.AggregationBuilders
@@ -1430,6 +1432,52 @@ class TransformRunnerIT : TransformRestTestCase() {
         disableTransform(transform.id)
     }
 
+    fun `test transform with wildcard, aliased target index`() {
+        validateSourceIndex("source-index")
+
+        // create alias
+        val indexAlias = "wildcard_index_alias"
+        val resolvedTargetIndex = "resolved_target_index"
+        val builtSettings = Settings.builder().let {
+            it.put(INDEX_NUMBER_OF_REPLICAS, 1)
+            it.put(INDEX_NUMBER_OF_SHARDS, 1)
+            it
+        }.build()
+        val aliases = "\"$indexAlias\": { \"is_write_index\": true }"
+        createIndex(resolvedTargetIndex, builtSettings, null, aliases)
+
+        refreshAllIndices()
+
+        val transform = Transform(
+            id = "id_18",
+            schemaVersion = 1L,
+            enabled = true,
+            enabledAt = Instant.now(),
+            updatedAt = Instant.now(),
+            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+            description = "test transform",
+            metadataId = null,
+            sourceIndex = "source-index",
+            targetIndex = indexAlias,
+            roles = emptyList(),
+            pageSize = 100,
+            groups = listOf(
+                Terms(sourceField = "store_and_fwd_flag", targetField = "flag")
+            )
+        ).let { createTransform(it, it.id) }
+
+        updateTransformStartTime(transform)
+
+        waitFor { assertTrue("Target transform index was not created", indexExists(resolvedTargetIndex)) }
+
+        val metadata = waitFor {
+            val job = getTransform(transformId = transform.id)
+            assertNotNull("Transform job doesn't have metadata set", job.metadataId)
+            val transformMetadata = getTransformMetadata(job.metadataId!!)
+            assertEquals("Transform had not finished", TransformMetadata.Status.FINISHED, transformMetadata.status)
+            transformMetadata
+        }
+    }
     private fun getStrictMappings(): String {
         return """
             "dynamic": "strict",
