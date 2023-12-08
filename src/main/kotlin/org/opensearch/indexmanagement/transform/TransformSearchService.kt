@@ -63,11 +63,13 @@ import org.opensearch.search.aggregations.metrics.Percentiles
 import org.opensearch.search.aggregations.metrics.ScriptedMetric
 import org.opensearch.search.builder.SearchSourceBuilder
 import org.opensearch.transport.RemoteTransportException
+import java.sql.Time
 import java.time.Instant
 import java.util.concurrent.TimeUnit
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.pow
+import kotlin.time.Duration.Companion.seconds
 
 @Suppress("ThrowsCount", "TooManyFunctions")
 class TransformSearchService(
@@ -90,7 +92,6 @@ class TransformSearchService(
         }
 
         clusterService.clusterSettings.addSettingsUpdateConsumer(SEARCH_CANCEL_AFTER_TIME_INTERVAL_SETTING) {
-            logger.info("UPDATE SETTINGS: $it")
             cancelAfterTimeInterval = it
         }
     }
@@ -197,8 +198,12 @@ class TransformSearchService(
             val searchStart = Instant.now().epochSecond
             val searchResponse = backoffPolicy.retryTransformSearch(logger, transformContext.transformLockManager) {
                 val pageSizeDecay = 2f.pow(retryAttempt++)
-                val cancelTimeoutTimeValue = TimeValue.timeValueMinutes(getCancelAfterTimeInterval(cancelAfterTimeInterval.minutes))
-                val searchRequestTimeoutInSeconds = transformContext.getMaxRequestTimeoutInSeconds()?.let { min(it, cancelTimeoutTimeValue.seconds) }
+
+                var searchRequestTimeoutInSeconds = transformContext.getMaxRequestTimeoutInSeconds()
+                if (searchRequestTimeoutInSeconds == null) {
+                    val timeIntervalMinutes = TimeValue.timeValueMinutes(getCancelAfterTimeInterval(cancelAfterTimeInterval.minutes))
+                    searchRequestTimeoutInSeconds = timeIntervalMinutes.seconds
+                }
 
                 client.suspendUntil { listener: ActionListener<SearchResponse> ->
                     // If the previous request of the current transform job execution was successful, take the page size of previous request.
