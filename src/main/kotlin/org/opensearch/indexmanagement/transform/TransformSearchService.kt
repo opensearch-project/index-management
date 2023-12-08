@@ -200,8 +200,6 @@ class TransformSearchService(
                 val cancelTimeoutTimeValue = TimeValue.timeValueMinutes(getCancelAfterTimeInterval(cancelAfterTimeInterval.minutes))
                 val searchRequestTimeoutInSeconds = transformContext.getMaxRequestTimeoutInSeconds()?.let { min(it, cancelTimeoutTimeValue.seconds) }
 
-                logger.info("CANCEL AFTER TIMEOUT INTERVAL: $searchRequestTimeoutInSeconds")
-
                 client.suspendUntil { listener: ActionListener<SearchResponse> ->
                     // If the previous request of the current transform job execution was successful, take the page size of previous request.
                     // If not, calculate the page size.
