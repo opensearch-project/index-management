@@ -14,7 +14,7 @@ class TransformSettings {
     companion object {
         const val DEFAULT_RENEW_LOCK_RETRY_COUNT = 3
         const val DEFAULT_RENEW_LOCK_RETRY_DELAY = 1000L
-        const val MINIMUM_CANCEL_AFTER_TIME_INTERVAL_MINUTES = 10L
+        const val MINIMUM_CANCEL_AFTER_TIME_INTERVAL_SECONDS = 600L
 
         val TRANSFORM_JOB_SEARCH_BACKOFF_COUNT: Setting<Int> = Setting.intSetting(
             "plugins.transform.internal.search.backoff_count",

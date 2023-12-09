@@ -48,7 +48,7 @@ import org.opensearch.indexmanagement.util.IndexUtils.Companion.LUCENE_MAX_CLAUS
 import org.opensearch.indexmanagement.util.IndexUtils.Companion.ODFE_MAGIC_NULL
 import org.opensearch.indexmanagement.util.IndexUtils.Companion.hashToFixedSize
 import org.opensearch.core.rest.RestStatus
-import org.opensearch.indexmanagement.transform.settings.TransformSettings.Companion.MINIMUM_CANCEL_AFTER_TIME_INTERVAL_MINUTES
+import org.opensearch.indexmanagement.transform.settings.TransformSettings.Companion.MINIMUM_CANCEL_AFTER_TIME_INTERVAL_SECONDS
 import org.opensearch.search.aggregations.Aggregation
 import org.opensearch.search.aggregations.bucket.composite.CompositeAggregation
 import org.opensearch.search.aggregations.bucket.composite.CompositeAggregationBuilder
@@ -201,8 +201,7 @@ class TransformSearchService(
 
                 var searchRequestTimeoutInSeconds = transformContext.getMaxRequestTimeoutInSeconds()
                 if (searchRequestTimeoutInSeconds == null) {
-                    val timeIntervalMinutes = TimeValue.timeValueMinutes(getCancelAfterTimeInterval(cancelAfterTimeInterval.minutes))
-                    searchRequestTimeoutInSeconds = timeIntervalMinutes.seconds
+                    searchRequestTimeoutInSeconds = getCancelAfterTimeIntervalSeconds(cancelAfterTimeInterval.seconds)
                 }
 
                 client.suspendUntil { listener: ActionListener<SearchResponse> ->
@@ -240,14 +239,14 @@ class TransformSearchService(
         }
     }
 
-    private fun getCancelAfterTimeInterval(givenIntervalMinutes: Long): Long {
+    private fun getCancelAfterTimeIntervalSeconds(givenIntervalSeconds: Long): Long {
         // The default value for the cancelAfterTimeInterval is -1 and so, in this case
         // we should ignore processing on the value
-        if (givenIntervalMinutes == -1L) {
+        if (givenIntervalSeconds == -1L) {
             return -1
         }
 
-        return max(givenIntervalMinutes, MINIMUM_CANCEL_AFTER_TIME_INTERVAL_MINUTES)
+        return max(givenIntervalSeconds, MINIMUM_CANCEL_AFTER_TIME_INTERVAL_SECONDS)
     }
 
     companion object {
