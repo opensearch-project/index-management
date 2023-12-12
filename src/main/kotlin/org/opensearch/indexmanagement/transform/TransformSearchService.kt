@@ -63,13 +63,10 @@ import org.opensearch.search.aggregations.metrics.Percentiles
 import org.opensearch.search.aggregations.metrics.ScriptedMetric
 import org.opensearch.search.builder.SearchSourceBuilder
 import org.opensearch.transport.RemoteTransportException
-import java.sql.Time
 import java.time.Instant
 import java.util.concurrent.TimeUnit
 import kotlin.math.max
-import kotlin.math.min
 import kotlin.math.pow
-import kotlin.time.Duration.Companion.seconds
 
 @Suppress("ThrowsCount", "TooManyFunctions")
 class TransformSearchService(
