@@ -25,7 +25,8 @@ data class ExplainFilter(
     val state: String? = null,
     val actionType: String? = null,
     val failed: Boolean? = null
-) : ToXContentObject, Writeable {
+) : Writeable {
+
 
     @Throws(IOException::class)
     constructor(sin: StreamInput) : this(
@@ -34,19 +35,6 @@ data class ExplainFilter(
         actionType = sin.readOptionalString(),
         failed = sin.readOptionalBoolean()
     )
-
-    override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
-        builder.startObject()
-        builder.startObject(FILTER_FIELD)
-
-        if (policyID != null) builder.field(POLICY_ID_FIELD, policyID)
-        if (state != null) builder.field(STATE_FIELD, state)
-        if (actionType != null) builder.field(ACTION_FIELD, actionType)
-        if (failed != null) builder.field(FAILED_FIELD, failed)
-
-        builder.endObject()
-        return builder.endObject()
-    }
 
     @Throws(IOException::class)
     override fun writeTo(out: StreamOutput) {
