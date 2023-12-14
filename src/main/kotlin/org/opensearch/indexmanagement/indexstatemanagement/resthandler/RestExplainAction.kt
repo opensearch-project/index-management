@@ -9,8 +9,11 @@ import org.apache.logging.log4j.LogManager
 import org.opensearch.client.node.NodeClient
 import org.opensearch.core.common.Strings
 import org.opensearch.common.logging.DeprecationLogger
+import org.opensearch.core.xcontent.XContentParser.Token
+import org.opensearch.core.xcontent.XContentParserUtils.ensureExpectedToken
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.ISM_BASE_URI
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.LEGACY_ISM_BASE_URI
+import org.opensearch.indexmanagement.indexstatemanagement.model.ExplainFilter
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.explain.ExplainAction
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.explain.ExplainRequest
 import org.opensearch.indexmanagement.indexstatemanagement.util.DEFAULT_EXPLAIN_VALIDATE_ACTION
@@ -28,6 +31,7 @@ import org.opensearch.rest.RestHandler.ReplacedRoute
 import org.opensearch.rest.RestHandler.Route
 import org.opensearch.rest.RestRequest
 import org.opensearch.rest.RestRequest.Method.GET
+import org.opensearch.rest.RestRequest.Method.POST
 import org.opensearch.rest.action.RestToXContentListener
 
 private val log = LogManager.getLogger(RestExplainAction::class.java)
@@ -52,6 +56,14 @@ class RestExplainAction : BaseRestHandler() {
             ReplacedRoute(
                 GET, "$EXPLAIN_BASE_URI/{index}",
                 GET, "$LEGACY_EXPLAIN_BASE_URI/{index}"
+            ),
+            ReplacedRoute(
+                POST, EXPLAIN_BASE_URI,
+                POST, LEGACY_EXPLAIN_BASE_URI
+            ),
+            ReplacedRoute(
+                POST, "$EXPLAIN_BASE_URI/{index}",
+                POST, "$LEGACY_EXPLAIN_BASE_URI/{index}"
             )
         )
     }
@@ -69,6 +81,14 @@ class RestExplainAction : BaseRestHandler() {
 
         val indexType = request.param(TYPE_PARAM_KEY, DEFAULT_INDEX_TYPE)
 
+        val explainFilter = if (request.method() == RestRequest.Method.POST) {
+            val xcp = request.contentParser()
+            ensureExpectedToken(Token.START_OBJECT, xcp.nextToken(), xcp)
+            ExplainFilter.parse(xcp)
+        } else {
+            null
+        }
+
         val clusterManagerTimeout = parseClusterManagerTimeout(
             request, DeprecationLogger.getLogger(RestExplainAction::class.java), name
         )
@@ -78,6 +98,7 @@ class RestExplainAction : BaseRestHandler() {
             request.paramAsBoolean("local", false),
             clusterManagerTimeout,
             searchParams,
+            explainFilter,
             request.paramAsBoolean(SHOW_POLICY_QUERY_PARAM, DEFAULT_EXPLAIN_SHOW_POLICY),
             request.paramAsBoolean(SHOW_VALIDATE_ACTION, DEFAULT_EXPLAIN_VALIDATE_ACTION),
             indexType
