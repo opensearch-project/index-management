@@ -16,6 +16,7 @@ import org.opensearch.action.bulk.BackoffPolicy
 import org.opensearch.action.index.IndexRequest
 import org.opensearch.action.search.SearchRequest
 import org.opensearch.action.search.SearchResponse
+import org.opensearch.action.search.TransportSearchAction.SEARCH_CANCEL_AFTER_TIME_INTERVAL_SETTING
 import org.opensearch.client.Client
 import org.opensearch.cluster.metadata.IndexMetadata
 import org.opensearch.cluster.service.ClusterService
@@ -47,6 +48,7 @@ import org.opensearch.indexmanagement.util.IndexUtils.Companion.LUCENE_MAX_CLAUS
 import org.opensearch.indexmanagement.util.IndexUtils.Companion.ODFE_MAGIC_NULL
 import org.opensearch.indexmanagement.util.IndexUtils.Companion.hashToFixedSize
 import org.opensearch.core.rest.RestStatus
+import org.opensearch.indexmanagement.transform.settings.TransformSettings.Companion.MINIMUM_CANCEL_AFTER_TIME_INTERVAL_SECONDS
 import org.opensearch.search.aggregations.Aggregation
 import org.opensearch.search.aggregations.bucket.composite.CompositeAggregation
 import org.opensearch.search.aggregations.bucket.composite.CompositeAggregationBuilder
@@ -78,10 +80,16 @@ class TransformSearchService(
     @Volatile private var backoffPolicy =
         BackoffPolicy.constantBackoff(TRANSFORM_JOB_SEARCH_BACKOFF_MILLIS.get(settings), TRANSFORM_JOB_SEARCH_BACKOFF_COUNT.get(settings))
 
+    @Volatile private var cancelAfterTimeInterval = SEARCH_CANCEL_AFTER_TIME_INTERVAL_SETTING.get(settings)
+
     init {
         clusterService.clusterSettings.addSettingsUpdateConsumer(TRANSFORM_JOB_SEARCH_BACKOFF_MILLIS, TRANSFORM_JOB_SEARCH_BACKOFF_COUNT) {
                 millis, count ->
             backoffPolicy = BackoffPolicy.constantBackoff(millis, count)
+        }
+
+        clusterService.clusterSettings.addSettingsUpdateConsumer(SEARCH_CANCEL_AFTER_TIME_INTERVAL_SETTING) {
+            cancelAfterTimeInterval = it
         }
     }
 
@@ -187,7 +195,11 @@ class TransformSearchService(
             val searchStart = Instant.now().epochSecond
             val searchResponse = backoffPolicy.retryTransformSearch(logger, transformContext.transformLockManager) {
                 val pageSizeDecay = 2f.pow(retryAttempt++)
-                val searchRequestTimeoutInSeconds = transformContext.getMaxRequestTimeoutInSeconds()
+
+                var searchRequestTimeoutInSeconds = transformContext.getMaxRequestTimeoutInSeconds()
+                if (searchRequestTimeoutInSeconds == null) {
+                    searchRequestTimeoutInSeconds = getCancelAfterTimeIntervalSeconds(cancelAfterTimeInterval.seconds)
+                }
 
                 client.suspendUntil { listener: ActionListener<SearchResponse> ->
                     // If the previous request of the current transform job execution was successful, take the page size of previous request.
@@ -222,6 +234,16 @@ class TransformSearchService(
         } catch (e: Exception) {
             throw TransformSearchServiceException(failedSearchErrorMessage, e)
         }
+    }
+
+    private fun getCancelAfterTimeIntervalSeconds(givenIntervalSeconds: Long): Long {
+        // The default value for the cancelAfterTimeInterval is -1 and so, in this case
+        // we should ignore processing on the value
+        if (givenIntervalSeconds == -1L) {
+            return -1
+        }
+
+        return max(givenIntervalSeconds, MINIMUM_CANCEL_AFTER_TIME_INTERVAL_SECONDS)
     }
 
     companion object {
