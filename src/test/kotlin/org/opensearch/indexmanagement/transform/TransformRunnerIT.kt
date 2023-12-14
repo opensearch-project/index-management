@@ -1477,6 +1477,9 @@ class TransformRunnerIT : TransformRestTestCase() {
             assertEquals("Transform had not finished", TransformMetadata.Status.FINISHED, transformMetadata.status)
             transformMetadata
         }
+
+        // TODO - make sure we're written to the correct index!
+
     }
     private fun getStrictMappings(): String {
         return """
