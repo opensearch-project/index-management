@@ -1433,7 +1433,8 @@ class TransformRunnerIT : TransformRestTestCase() {
     }
 
     fun `test transform with wildcard, aliased target index`() {
-        validateSourceIndex("source-index")
+        val sourceIndex = "source-index"
+        validateSourceIndex(sourceIndex)
 
         // create alias
         val indexAlias = "wildcard_index_alias"
@@ -1459,7 +1460,7 @@ class TransformRunnerIT : TransformRestTestCase() {
             jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
             description = "test transform",
             metadataId = null,
-            sourceIndex = "source-index",
+            sourceIndex = sourceIndex,
             targetIndex = indexAlias,
             roles = emptyList(),
             pageSize = 100,
@@ -1473,22 +1474,20 @@ class TransformRunnerIT : TransformRestTestCase() {
 
         waitFor { assertTrue("Target transform index was not created", indexExists(resolvedTargetIndex)) }
 
-        val metadata = waitFor {
+        waitFor {
             val job = getTransform(transformId = transform.id)
             assertNotNull("Transform job doesn't have metadata set", job.metadataId)
             val transformMetadata = getTransformMetadata(job.metadataId!!)
             assertEquals("Transform had not finished", TransformMetadata.Status.FINISHED, transformMetadata.status)
-            transformMetadata
         }
-
         // TODO - make sure we've written to the correct index!
-        val sourceIndexMapping = client().makeRequest("GET", "/source-index/_mapping")
+        val sourceIndexMapping = client().makeRequest("GET", "/$sourceIndex/_mapping")
         val sourceIndexParserMap = createParser(XContentType.JSON.xContent(), sourceIndexMapping.entity.content).map() as Map<String, Map<String, Any>>
         val targetIndexMapping = client().makeRequest("GET", "/$indexAlias/_mapping")
         val targetIndexParserMap = createParser(XContentType.JSON.xContent(), targetIndexMapping.entity.content).map() as Map<String, Map<String, Any>>
 
         // how to check if the results are correctly written to the write index of the alias?
-        val sourcePickupDate = (((sourceIndexParserMap["source-index"]?.get("mappings") as Map<String, Any>)["properties"] as Map<String, Any>)["tpep_pickup_datetime"] as Map<String, Any>)["type"]
+        val sourcePickupDate = (((sourceIndexParserMap[sourceIndex]?.get("mappings") as Map<String, Any>)["properties"] as Map<String, Any>)["tpep_pickup_datetime"] as Map<String, Any>)["type"]
         val targetPickupDate = (((targetIndexParserMap[indexAlias]?.get("mappings") as Map<String, Any>)["properties"] as Map<String, Any>)["tpep_pickup_datetime"] as Map<String, Any>)["type"]
 
         assertEquals(sourcePickupDate, targetPickupDate)
@@ -1509,7 +1508,7 @@ class TransformRunnerIT : TransformRestTestCase() {
                 }
             }
             """
-        var rawRes = client().makeRequest(RestRequest.Method.POST.name, "/source-index/_search", emptyMap(), StringEntity(request, ContentType.APPLICATION_JSON))
+        var rawRes = client().makeRequest(RestRequest.Method.POST.name, "/$sourceIndex/_search", emptyMap(), StringEntity(request, ContentType.APPLICATION_JSON))
         assertTrue(rawRes.restStatus() == RestStatus.OK)
 
         var transformRes = client().makeRequest(RestRequest.Method.POST.name, "/$indexAlias/_search", emptyMap(), StringEntity(request, ContentType.APPLICATION_JSON))
@@ -1524,7 +1523,6 @@ class TransformRunnerIT : TransformRestTestCase() {
             assertEquals("Term pickup date bucket keys are not the same", rawAggBuckets[i]["key"], transformAggBuckets[i]["key"])
             assertEquals("Avg fare amounts are not the same", rawAggBuckets[i]["avgFareAmount"], transformAggBuckets[i]["avgFareAmount"])
         }
-
     }
     private fun getStrictMappings(): String {
         return """
