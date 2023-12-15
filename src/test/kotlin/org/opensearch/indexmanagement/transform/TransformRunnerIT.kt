@@ -1478,7 +1478,11 @@ class TransformRunnerIT : TransformRestTestCase() {
             transformMetadata
         }
 
-        // TODO - make sure we're written to the correct index!
+        // TODO - make sure we've written to the correct index!
+        val targetIndexMapping = client().makeRequest("GET", "/$indexAlias/_mapping")
+        val targetIndexParserMap = createParser(XContentType.JSON.xContent(), targetIndexMapping.entity.content).map() as Map<String, Map<String, Any>>
+
+        // how to check if the results are correctly written to the write index of the alias?
 
     }
     private fun getStrictMappings(): String {
