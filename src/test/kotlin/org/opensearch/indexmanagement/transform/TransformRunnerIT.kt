@@ -1432,6 +1432,7 @@ class TransformRunnerIT : TransformRestTestCase() {
         disableTransform(transform.id)
     }
 
+    @Suppress("UNCHECKED_CAST")
     fun `test transform with wildcard, aliased target index`() {
         val sourceIndex = "source-index"
         validateSourceIndex(sourceIndex)
