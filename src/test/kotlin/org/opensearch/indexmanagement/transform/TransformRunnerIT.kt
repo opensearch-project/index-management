@@ -1447,6 +1447,8 @@ class TransformRunnerIT : TransformRestTestCase() {
         createIndex(resolvedTargetIndex, builtSettings, null, aliases)
 
         refreshAllIndices()
+        val pickupDateTime = "tpep_pickup_datetime"
+        val fareAmount = "fare_amount"
 
         val transform = Transform(
             id = "id_18",
@@ -1462,8 +1464,9 @@ class TransformRunnerIT : TransformRestTestCase() {
             roles = emptyList(),
             pageSize = 100,
             groups = listOf(
-                Terms(sourceField = "store_and_fwd_flag", targetField = "flag")
-            )
+                Terms(sourceField = pickupDateTime, targetField = pickupDateTime)
+            ),
+            aggregations = AggregatorFactories.builder().addAggregator(AggregationBuilders.avg(fareAmount).field(fareAmount))
         ).let { createTransform(it, it.id) }
 
         updateTransformStartTime(transform)
@@ -1479,10 +1482,48 @@ class TransformRunnerIT : TransformRestTestCase() {
         }
 
         // TODO - make sure we've written to the correct index!
+        val sourceIndexMapping = client().makeRequest("GET", "/source-index/_mapping")
+        val sourceIndexParserMap = createParser(XContentType.JSON.xContent(), sourceIndexMapping.entity.content).map() as Map<String, Map<String, Any>>
         val targetIndexMapping = client().makeRequest("GET", "/$indexAlias/_mapping")
         val targetIndexParserMap = createParser(XContentType.JSON.xContent(), targetIndexMapping.entity.content).map() as Map<String, Map<String, Any>>
 
         // how to check if the results are correctly written to the write index of the alias?
+        val sourcePickupDate = (((sourceIndexParserMap["source-index"]?.get("mappings") as Map<String, Any>)["properties"] as Map<String, Any>)["tpep_pickup_datetime"] as Map<String, Any>)["type"]
+        val targetPickupDate = (((targetIndexParserMap[indexAlias]?.get("mappings") as Map<String, Any>)["properties"] as Map<String, Any>)["tpep_pickup_datetime"] as Map<String, Any>)["type"]
+
+        assertEquals(sourcePickupDate, targetPickupDate)
+
+        val pickupDateTimeTerm = "pickupDateTerm14"
+
+        val request = """
+            {
+                "size": 0,
+                "aggs": {
+                    "$pickupDateTimeTerm": {
+                        "terms": {
+                            "field": "$pickupDateTime", "order": { "_key": "asc" }
+                        },
+                        "aggs": {
+                          "avgFareAmount": { "avg": { "field": "$fareAmount" } } }
+                    }
+                }
+            }
+            """
+        var rawRes = client().makeRequest(RestRequest.Method.POST.name, "/source-index/_search", emptyMap(), StringEntity(request, ContentType.APPLICATION_JSON))
+        assertTrue(rawRes.restStatus() == RestStatus.OK)
+
+        var transformRes = client().makeRequest(RestRequest.Method.POST.name, "/$indexAlias/_search", emptyMap(), StringEntity(request, ContentType.APPLICATION_JSON))
+        assertTrue(transformRes.restStatus() == RestStatus.OK)
+
+        val rawAggBuckets = (rawRes.asMap()["aggregations"] as Map<String, Map<String, List<Map<String, Map<String, Any>>>>>)[pickupDateTimeTerm]!!["buckets"]!!
+        val transformAggBuckets = (transformRes.asMap()["aggregations"] as Map<String, Map<String, List<Map<String, Map<String, Any>>>>>)[pickupDateTimeTerm]!!["buckets"]!!
+        assertEquals("Different bucket sizes", rawAggBuckets.size, transformAggBuckets.size)
+
+        // Verify the values of keys and metrics in all buckets
+        for (i in rawAggBuckets.indices) {
+            assertEquals("Term pickup date bucket keys are not the same", rawAggBuckets[i]["key"], transformAggBuckets[i]["key"])
+            assertEquals("Avg fare amounts are not the same", rawAggBuckets[i]["avgFareAmount"], transformAggBuckets[i]["avgFareAmount"])
+        }
 
     }
     private fun getStrictMappings(): String {
