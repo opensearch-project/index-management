@@ -20,6 +20,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.randomChannel
 import org.opensearch.indexmanagement.indexstatemanagement.randomCloseActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomDeleteActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomDestination
+import org.opensearch.indexmanagement.indexstatemanagement.randomExplainFilter
 import org.opensearch.indexmanagement.indexstatemanagement.randomForceMergeActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomIndexPriorityActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomManagedIndexConfig
@@ -256,6 +257,14 @@ class XContentTests : OpenSearchTestCase() {
         val metadataString = metadata.toJsonString()
         val parsedMetaData = ManagedIndexMetaData.parse(parser(metadataString))
         assertEquals("Round tripping ManagedIndexMetaData doesn't work", metadata, parsedMetaData)
+    }
+
+    fun `test explain filter parsing`() {
+        val explainFilter = randomExplainFilter()
+
+        val explainFilterString = explainFilter.toJsonString()
+        val parsedExplainFilter = ExplainFilter.parse(parser(explainFilterString))
+        assertEquals("Round tripping ExplainFilter doesn't work", explainFilter, parsedExplainFilter)
     }
 
     fun `test change policy parsing`() {
