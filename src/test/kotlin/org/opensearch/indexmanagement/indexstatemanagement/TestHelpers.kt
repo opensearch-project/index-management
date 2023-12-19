@@ -31,6 +31,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.action.SnapshotAction
 import org.opensearch.indexmanagement.indexstatemanagement.model.ChangePolicy
 import org.opensearch.indexmanagement.indexstatemanagement.model.Conditions
 import org.opensearch.indexmanagement.indexstatemanagement.model.ErrorNotification
+import org.opensearch.indexmanagement.indexstatemanagement.model.ExplainFilter
 import org.opensearch.indexmanagement.indexstatemanagement.model.ISMTemplate
 import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexConfig
 import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
@@ -305,6 +306,15 @@ fun randomByteSizeValue(): ByteSizeValue =
  * End - Conditions helper functions
  */
 
+fun randomExplainFilter(
+    policyID: String? = if (OpenSearchRestTestCase.randomBoolean()) OpenSearchRestTestCase.randomAlphaOfLength(10) else null,
+    state: String? = if (OpenSearchRestTestCase.randomBoolean()) OpenSearchRestTestCase.randomAlphaOfLength(10) else null,
+    actionType: String? = if (OpenSearchRestTestCase.randomBoolean()) OpenSearchRestTestCase.randomAlphaOfLength(10) else null,
+    failed: Boolean? = if (OpenSearchRestTestCase.randomBoolean()) OpenSearchRestTestCase.randomBoolean() else null
+): ExplainFilter {
+    return ExplainFilter(policyID, state, actionType, failed)
+}
+
 fun randomChangePolicy(
     policyID: String = OpenSearchRestTestCase.randomAlphaOfLength(10),
     state: String? = if (OpenSearchRestTestCase.randomBoolean()) OpenSearchRestTestCase.randomAlphaOfLength(10) else null,
@@ -465,6 +475,11 @@ fun NotificationAction.toJsonString(): String {
 }
 
 fun AllocationAction.toJsonString(): String {
+    val builder = XContentFactory.jsonBuilder()
+    return this.toXContent(builder, ToXContent.EMPTY_PARAMS).string()
+}
+
+fun ExplainFilter.toJsonString(): String {
     val builder = XContentFactory.jsonBuilder()
     return this.toXContent(builder, ToXContent.EMPTY_PARAMS).string()
 }
