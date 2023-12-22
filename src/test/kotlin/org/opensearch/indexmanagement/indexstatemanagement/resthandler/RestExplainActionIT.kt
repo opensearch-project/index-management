@@ -500,6 +500,9 @@ class RestExplainActionIT : IndexStateManagementRestTestCase() {
 
         removePolicyFromIndex(indexName1)
         removePolicyFromIndex(indexName2)
+
+        // wait for job to finish
+        Thread.sleep(1000)
     }
 
     fun `test explain filter failed index`() {
@@ -607,6 +610,9 @@ class RestExplainActionIT : IndexStateManagementRestTestCase() {
 
         removePolicyFromIndex(indexName1)
         removePolicyFromIndex(indexName2)
+
+        // wait for job to finish
+        Thread.sleep(1000)
     }
 
     @Suppress("UNCHECKED_CAST") // Do assertion of the response map here so we don't have many places to do suppression.
