@@ -476,8 +476,6 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
 
     protected fun ExplainFilter.toHttpEntity(): HttpEntity = StringEntity(toJsonString(), APPLICATION_JSON)
 
-    protected fun ExplainFilter.toHttpEntity(): HttpEntity = StringEntity(toJsonString(), ContentType.APPLICATION_JSON)
-
     protected fun ChangePolicy.toHttpEntity(): HttpEntity {
         var string = "{\"${ChangePolicy.POLICY_ID_FIELD}\":\"$policyID\","
         if (state != null) {
