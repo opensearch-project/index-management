@@ -9,17 +9,29 @@ import org.opensearch.common.xcontent.XContentFactory
 import org.opensearch.indexmanagement.IndexManagementPlugin
 import org.opensearch.indexmanagement.indexstatemanagement.IndexStateManagementRestTestCase
 import org.opensearch.indexmanagement.indexstatemanagement.model.ChangePolicy
-import org.opensearch.indexmanagement.indexstatemanagement.util.SHOW_POLICY_QUERY_PARAM
-import org.opensearch.indexmanagement.indexstatemanagement.util.TOTAL_MANAGED_INDICES
-import org.opensearch.indexmanagement.indexstatemanagement.util.XCONTENT_WITHOUT_TYPE_AND_USER
 import org.opensearch.indexmanagement.makeRequest
 import org.opensearch.indexmanagement.opensearchapi.toMap
-import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
-import org.opensearch.indexmanagement.spi.indexstatemanagement.model.PolicyRetryInfoMetaData
-import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StateMetaData
 import org.opensearch.indexmanagement.waitFor
 import org.opensearch.rest.RestRequest
 import org.opensearch.core.rest.RestStatus
+import org.opensearch.indexmanagement.indexstatemanagement.action.AllocationAction
+import org.opensearch.indexmanagement.indexstatemanagement.action.DeleteAction
+import org.opensearch.indexmanagement.indexstatemanagement.action.OpenAction
+import org.opensearch.indexmanagement.indexstatemanagement.action.ReadOnlyAction
+import org.opensearch.indexmanagement.indexstatemanagement.model.ExplainFilter
+import org.opensearch.indexmanagement.indexstatemanagement.model.Transition
+import org.opensearch.indexmanagement.indexstatemanagement.randomPolicy
+import org.opensearch.indexmanagement.indexstatemanagement.randomState
+import org.opensearch.indexmanagement.indexstatemanagement.util.SHOW_POLICY_QUERY_PARAM
+import org.opensearch.indexmanagement.indexstatemanagement.util.TOTAL_MANAGED_INDICES
+import org.opensearch.indexmanagement.indexstatemanagement.util.XCONTENT_WITHOUT_TYPE_AND_USER
+import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ActionMetaData
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ActionRetry
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.PolicyRetryInfoMetaData
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StateMetaData
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepMetaData
 import java.time.Instant
 import java.util.Locale
 
@@ -309,6 +321,8 @@ class RestExplainActionIT : IndexStateManagementRestTestCase() {
 
         waitFor {
             val expectedInfoString = mapOf("message" to "Fail to load policy: ${changePolicy.policyID}").toString()
+
+            val explainMap = getExplainMap(indexName)
             assertPredicatesOnMetaData(
                 listOf(
                     indexName to listOf(
@@ -324,7 +338,7 @@ class RestExplainActionIT : IndexStateManagementRestTestCase() {
                         ManagedIndexMetaData.ENABLED to true::equals
                     )
                 ),
-                getExplainMap(indexName)
+                explainMap
             )
         }
     }
@@ -351,6 +365,248 @@ class RestExplainActionIT : IndexStateManagementRestTestCase() {
             logger.info(getExplainMap(indexName, queryParams = SHOW_POLICY_QUERY_PARAM))
             assertResponseMap(expected, getExplainMap(indexName, queryParams = SHOW_POLICY_QUERY_PARAM))
         }
+    }
+
+    fun `test explain filter`() {
+        val indexName1 = "${testIndexName}_filter1"
+        val indexName2 = "${testIndexName}_filter2"
+
+        val stateWithReadOnlyAction = randomState(actions = listOf(ReadOnlyAction(index = 0)))
+        val policy1 = createPolicy(randomPolicy(states = listOf(stateWithReadOnlyAction)))
+
+        val stateWithDeleteAction = randomState(actions = listOf(DeleteAction(index = 0)))
+        val updatedStateWithReadOnlyAction = stateWithReadOnlyAction.copy(
+            actions = listOf(stateWithReadOnlyAction.actions.first(), OpenAction(index = 1)),
+            transitions = listOf(Transition(stateWithDeleteAction.name, null))
+        )
+        val policy2 = createPolicy(randomPolicy(states = listOf(stateWithDeleteAction, updatedStateWithReadOnlyAction)))
+
+        createIndex(indexName1, policy1.id)
+        createIndex(indexName2, policy2.id)
+
+        val managedIndexConfig1 = getExistingManagedIndexConfig(indexName1)
+        val managedIndexConfig2 = getExistingManagedIndexConfig(indexName2)
+
+        // init policy on job
+        updateManagedIndexConfigStartTime(managedIndexConfig1)
+
+        // verify we have policy
+        waitFor { assertEquals(policy1.id, getExplainManagedIndexMetaData(indexName1).policyID) }
+
+        // do the same for index2
+        updateManagedIndexConfigStartTime(managedIndexConfig2)
+        waitFor { assertEquals(policy2.id, getExplainManagedIndexMetaData(indexName2).policyID) }
+
+        // speed up to execute set read only step
+        updateManagedIndexConfigStartTime(managedIndexConfig1)
+
+        val index1Predicates = indexName1 to listOf(
+            explainResponseOpendistroPolicyIdSetting to policy1.id::equals,
+            explainResponseOpenSearchPolicyIdSetting to policy1.id::equals,
+            ManagedIndexMetaData.INDEX to managedIndexConfig1.index::equals,
+            ManagedIndexMetaData.INDEX_UUID to managedIndexConfig1.indexUuid::equals,
+            ManagedIndexMetaData.POLICY_ID to managedIndexConfig1.policyID::equals,
+            ManagedIndexMetaData.POLICY_SEQ_NO to policy1.seqNo.toInt()::equals,
+            ManagedIndexMetaData.POLICY_PRIMARY_TERM to policy1.primaryTerm.toInt()::equals,
+            ManagedIndexMetaData.INDEX_CREATION_DATE to fun(indexCreationDate: Any?): Boolean = (indexCreationDate as Long) > 1L,
+            StateMetaData.STATE to fun(stateMetaDataMap: Any?): Boolean = assertStateEquals(
+                StateMetaData(policy1.defaultState, Instant.now().toEpochMilli()),
+                stateMetaDataMap
+            ),
+            ActionMetaData.ACTION to fun(actionMetaDataMap: Any?): Boolean = assertActionEquals(
+                ActionMetaData(
+                    name = "read_only", startTime = Instant.now().toEpochMilli(), failed = false,
+                    index = 0, consumedRetries = 0, lastRetryTime = null, actionProperties = null
+                ),
+                actionMetaDataMap
+            ),
+            PolicyRetryInfoMetaData.RETRY_INFO to fun(retryInfoMetaDataMap: Any?): Boolean =
+                assertRetryInfoEquals(PolicyRetryInfoMetaData(false, 0), retryInfoMetaDataMap),
+            ManagedIndexMetaData.ENABLED to true::equals
+        )
+
+        val index2Predicates = indexName2 to listOf(
+            explainResponseOpendistroPolicyIdSetting to policy2.id::equals,
+            explainResponseOpenSearchPolicyIdSetting to policy2.id::equals,
+            ManagedIndexMetaData.INDEX to managedIndexConfig2.index::equals,
+            ManagedIndexMetaData.INDEX_UUID to managedIndexConfig2.indexUuid::equals,
+            ManagedIndexMetaData.POLICY_ID to managedIndexConfig2.policyID::equals,
+            ManagedIndexMetaData.POLICY_SEQ_NO to policy2.seqNo.toInt()::equals,
+            ManagedIndexMetaData.POLICY_PRIMARY_TERM to policy2.primaryTerm.toInt()::equals,
+            ManagedIndexMetaData.INDEX_CREATION_DATE to fun(indexCreationDate: Any?): Boolean = (indexCreationDate as Long) > 1L,
+            StateMetaData.STATE to fun(stateMetaDataMap: Any?): Boolean = assertStateEquals(
+                StateMetaData(policy2.defaultState, Instant.now().toEpochMilli()),
+                stateMetaDataMap
+            ),
+            ActionMetaData.ACTION to fun(actionMetaDataMap: Any?): Boolean = assertActionEquals(
+                ActionMetaData(
+                    name = "delete", startTime = Instant.now().toEpochMilli(), failed = false,
+                    index = 0, consumedRetries = 0, lastRetryTime = null, actionProperties = null
+                ),
+                actionMetaDataMap
+            ),
+            PolicyRetryInfoMetaData.RETRY_INFO to fun(retryInfoMetaDataMap: Any?): Boolean =
+                assertRetryInfoEquals(PolicyRetryInfoMetaData(false, 0), retryInfoMetaDataMap),
+            ManagedIndexMetaData.ENABLED to true::equals
+        )
+
+        // check metadata for result from filtering on the first policy and its state
+        waitFor {
+            val filterPolicy = ExplainFilter(
+                policyID = policy1.id,
+                state = policy1.states[0].name,
+                failed = false
+            )
+
+            val resp = client().makeRequest(
+                RestRequest.Method.POST.toString(),
+                RestExplainAction.EXPLAIN_BASE_URI, emptyMap(), filterPolicy.toHttpEntity()
+            )
+
+            assertEquals("Unexpected RestStatus", RestStatus.OK, resp.restStatus())
+
+            assertPredicatesOnMetaData(
+                listOf(index1Predicates),
+                resp.asMap(), false
+            )
+        }
+
+        // check metadata on filtering for the delete action
+
+        // speed up to execute set read only step
+        updateManagedIndexConfigStartTime(managedIndexConfig1)
+        updateManagedIndexConfigStartTime(managedIndexConfig2)
+
+        waitFor {
+            val filterPolicy = ExplainFilter(
+                actionType = "delete",
+                failed = false
+            )
+
+            val resp = client().makeRequest(
+                RestRequest.Method.POST.toString(),
+                RestExplainAction.EXPLAIN_BASE_URI, emptyMap(), filterPolicy.toHttpEntity()
+            )
+
+            assertEquals("Unexpected RestStatus", RestStatus.OK, resp.restStatus())
+
+            assertPredicatesOnMetaData(
+                listOf(
+                    index2Predicates
+                ),
+                resp.asMap(), false
+            )
+        }
+
+        removePolicyFromIndex(indexName1)
+        removePolicyFromIndex(indexName2)
+    }
+
+    fun `test explain filter failed index`() {
+        val indexName1 = "${testIndexName}_failed"
+        val indexName2 = "${testIndexName}_success"
+
+        // for failed index
+        val config = AllocationAction(require = mapOf("..//" to "value"), exclude = emptyMap(), include = emptyMap(), index = 0)
+        config.configRetry = ActionRetry(0)
+        val states = listOf(
+            randomState().copy(
+                transitions = listOf(),
+                actions = listOf(config)
+            )
+        )
+        val invalidPolicy = randomPolicy().copy(
+            states = states,
+            defaultState = states[0].name
+        )
+
+        // for successful index
+        val stateWithReadOnlyAction = randomState(actions = listOf(ReadOnlyAction(index = 0)))
+        val validPolicy = createPolicy(randomPolicy(states = listOf(stateWithReadOnlyAction)))
+
+        createPolicy(invalidPolicy, invalidPolicy.id)
+        createIndex(indexName1, invalidPolicy.id)
+        createIndex(indexName2, validPolicy.id)
+
+        val managedIndexConfig1 = getExistingManagedIndexConfig(indexName1)
+        val managedIndexConfig2 = getExistingManagedIndexConfig(indexName2)
+
+        // change the start time so the job will trigger in 2 seconds.
+        updateManagedIndexConfigStartTime(managedIndexConfig1)
+        waitFor { assertEquals(invalidPolicy.id, getExplainManagedIndexMetaData(indexName1).policyID) }
+
+        updateManagedIndexConfigStartTime(managedIndexConfig2)
+        waitFor { assertEquals(validPolicy.id, getExplainManagedIndexMetaData(indexName2).policyID) }
+
+        // Change the start time so that we attempt allocation that is intended to fail
+        updateManagedIndexConfigStartTime(managedIndexConfig1)
+        waitFor {
+            val explainFilter = ExplainFilter(
+                failed = true
+            )
+
+            val resp = client().makeRequest(
+                RestRequest.Method.POST.toString(),
+                RestExplainAction.EXPLAIN_BASE_URI, emptyMap(), explainFilter.toHttpEntity()
+            )
+
+            assertEquals("Unexpected RestStatus", RestStatus.OK, resp.restStatus())
+
+            assertPredicatesOnMetaData(
+                listOf(
+                    indexName1 to listOf(
+                        explainResponseOpendistroPolicyIdSetting to invalidPolicy.id::equals,
+                        explainResponseOpenSearchPolicyIdSetting to invalidPolicy.id::equals,
+                        ManagedIndexMetaData.INDEX to managedIndexConfig1.index::equals,
+                        ManagedIndexMetaData.INDEX_UUID to managedIndexConfig1.indexUuid::equals,
+                        ManagedIndexMetaData.POLICY_ID to managedIndexConfig1.policyID::equals,
+                        ManagedIndexMetaData.INDEX_CREATION_DATE to fun(indexCreationDate: Any?): Boolean = (indexCreationDate as Long) > 1L,
+                        StepMetaData.STEP to fun(stepMetaDataMap: Any?): Boolean = assertStepEquals(
+                            StepMetaData("attempt_allocation", Instant.now().toEpochMilli(), Step.StepStatus.FAILED),
+                            stepMetaDataMap
+                        ),
+                        ManagedIndexMetaData.ENABLED to true::equals
+                    )
+                ),
+                resp.asMap(), false
+            )
+        }
+
+        updateManagedIndexConfigStartTime(managedIndexConfig2)
+        waitFor {
+            val explainFilter = ExplainFilter(
+                failed = false
+            )
+
+            val resp = client().makeRequest(
+                RestRequest.Method.POST.toString(),
+                RestExplainAction.EXPLAIN_BASE_URI, emptyMap(), explainFilter.toHttpEntity()
+            )
+
+            assertEquals("Unexpected RestStatus", RestStatus.OK, resp.restStatus())
+
+            assertPredicatesOnMetaData(
+                listOf(
+                    indexName2 to listOf(
+                        explainResponseOpendistroPolicyIdSetting to validPolicy.id::equals,
+                        explainResponseOpenSearchPolicyIdSetting to validPolicy.id::equals,
+                        ManagedIndexMetaData.INDEX to managedIndexConfig2.index::equals,
+                        ManagedIndexMetaData.INDEX_UUID to managedIndexConfig2.indexUuid::equals,
+                        ManagedIndexMetaData.POLICY_ID to managedIndexConfig2.policyID::equals,
+                        ManagedIndexMetaData.INDEX_CREATION_DATE to fun(indexCreationDate: Any?): Boolean = (indexCreationDate as Long) > 1L,
+                        StepMetaData.STEP to fun(stepMetaDataMap: Any?): Boolean = assertStepEquals(
+                            StepMetaData("set_read_only", Instant.now().toEpochMilli(), Step.StepStatus.STARTING),
+                            stepMetaDataMap
+                        ),
+                        ManagedIndexMetaData.ENABLED to true::equals
+                    )
+                ),
+                resp.asMap(), false
+            )
+        }
+
+        removePolicyFromIndex(indexName1)
+        removePolicyFromIndex(indexName2)
     }
 
     @Suppress("UNCHECKED_CAST") // Do assertion of the response map here so we don't have many places to do suppression.
