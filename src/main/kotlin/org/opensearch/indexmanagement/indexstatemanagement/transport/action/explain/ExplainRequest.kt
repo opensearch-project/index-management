@@ -12,6 +12,7 @@ import org.opensearch.core.common.io.stream.StreamInput
 import org.opensearch.core.common.io.stream.StreamOutput
 import org.opensearch.common.unit.TimeValue
 import org.opensearch.indexmanagement.common.model.rest.SearchParams
+import org.opensearch.indexmanagement.indexstatemanagement.model.ExplainFilter
 import org.opensearch.indexmanagement.indexstatemanagement.util.DEFAULT_INDEX_TYPE
 import java.io.IOException
 
@@ -21,6 +22,7 @@ class ExplainRequest : ActionRequest {
     val local: Boolean
     val clusterManagerTimeout: TimeValue
     val searchParams: SearchParams
+    val explainFilter: ExplainFilter?
     val showPolicy: Boolean
     val validateAction: Boolean
     val indexType: String
@@ -31,6 +33,7 @@ class ExplainRequest : ActionRequest {
         local: Boolean,
         clusterManagerTimeout: TimeValue,
         searchParams: SearchParams,
+        explainFilter: ExplainFilter?,
         showPolicy: Boolean,
         validateAction: Boolean,
         indexType: String
@@ -39,6 +42,7 @@ class ExplainRequest : ActionRequest {
         this.local = local
         this.clusterManagerTimeout = clusterManagerTimeout
         this.searchParams = searchParams
+        this.explainFilter = explainFilter
         this.showPolicy = showPolicy
         this.validateAction = validateAction
         this.indexType = indexType
@@ -50,6 +54,7 @@ class ExplainRequest : ActionRequest {
         local = sin.readBoolean(),
         clusterManagerTimeout = sin.readTimeValue(),
         searchParams = SearchParams(sin),
+        explainFilter = sin.readOptionalWriteable(::ExplainFilter),
         showPolicy = sin.readBoolean(),
         validateAction = sin.readBoolean(),
         indexType = sin.readString()
@@ -72,6 +77,7 @@ class ExplainRequest : ActionRequest {
         out.writeBoolean(local)
         out.writeTimeValue(clusterManagerTimeout)
         searchParams.writeTo(out)
+        out.writeOptionalWriteable(explainFilter)
         out.writeBoolean(showPolicy)
         out.writeBoolean(validateAction)
         out.writeString(indexType)
