@@ -70,11 +70,15 @@ class TransportGetSMPoliciesAction @Inject constructor(
     private suspend fun getAllPolicies(searchParams: SearchParams, user: User?): Pair<List<SMPolicy>, Long> {
         val searchRequest = getAllPoliciesRequest(searchParams, user)
         val searchResponse: SearchResponse = try {
-            client.suspendUntil { search(searchRequest, it) }
+        return try {
+            val searchResponse = client.suspendUntil { search(searchRequest, it) }
+            parseGetAllPoliciesResponse(searchResponse)
         } catch (e: IndexNotFoundException) {
-            throw OpenSearchStatusException("Snapshot management config index not found", RestStatus.NOT_FOUND)
+            // config index hasn't been initialized, catch this here and show empty result for policies
+            Pair(emptyList(), 0L)
+        } catch (e: Exception) {
+            throw e
         }
-        return parseGetAllPoliciesResponse(searchResponse)
     }
 
     private fun getAllPoliciesRequest(searchParams: SearchParams, user: User?): SearchRequest {
