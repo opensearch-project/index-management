@@ -69,7 +69,6 @@ class TransportGetSMPoliciesAction @Inject constructor(
 
     private suspend fun getAllPolicies(searchParams: SearchParams, user: User?): Pair<List<SMPolicy>, Long> {
         val searchRequest = getAllPoliciesRequest(searchParams, user)
-        val searchResponse: SearchResponse = try {
         return try {
             val searchResponse = client.suspendUntil { search(searchRequest, it) }
             parseGetAllPoliciesResponse(searchResponse)
