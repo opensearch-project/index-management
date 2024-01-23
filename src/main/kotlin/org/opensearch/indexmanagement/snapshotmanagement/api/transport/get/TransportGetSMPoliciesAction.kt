@@ -73,11 +73,14 @@ class TransportGetSMPoliciesAction @Inject constructor(
         return try {
             val searchResponse = client.suspendUntil { search(searchRequest, it) }
             parseGetAllPoliciesResponse(searchResponse)
-        } catch (e: IndexNotFoundException) {
-            // config index hasn't been initialized, catch this here and show empty result for policies
-            Pair(emptyList(), 0L)
         } catch (e: Exception) {
-            throw ExceptionsHelper.unwrapCause(e) as Exception
+            val unwrappedException = ExceptionsHelper.unwrapCause(e) as Exception
+            if (unwrappedException is IndexNotFoundException) {
+                // config index hasn't been initialized, catch this here and show empty result for policies
+                Pair(emptyList(), 0L)
+            } else {
+                throw unwrappedException
+            }
         }
     }
 
