@@ -509,7 +509,8 @@ def waitForClusterSetup(OpenSearchCluster cluster, Boolean securityEnabled) {
 
     Predicate pred = {
         String protocol = securityEnabled ? "https" : "http"
-        WaitForClusterYellow wait = new WaitForClusterYellow(protocol, cluster.getFirstNode().getHttpSocketURI(), cluster.nodes.size())
+        String host = System.getProperty("tests.cluster", cluster.getFirstNode().getHttpSocketURI())
+        WaitForClusterYellow wait = new WaitForClusterYellow(protocol, host, cluster.nodes.size())
         wait.setUsername(System.getProperty("user", "admin"))
         wait.setPassword(System.getProperty("password", "admin"))
         return wait.wait(180000)
