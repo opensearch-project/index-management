@@ -17,6 +17,7 @@ import org.opensearch.common.settings.Settings
 import org.opensearch.common.util.concurrent.ThreadContext
 import org.opensearch.commons.authuser.User
 import org.opensearch.index.IndexNotFoundException
+import org.opensearch.ExceptionsHelper
 import org.opensearch.index.query.BoolQueryBuilder
 import org.opensearch.index.query.ExistsQueryBuilder
 import org.opensearch.index.query.Operator
@@ -69,12 +70,18 @@ class TransportGetSMPoliciesAction @Inject constructor(
 
     private suspend fun getAllPolicies(searchParams: SearchParams, user: User?): Pair<List<SMPolicy>, Long> {
         val searchRequest = getAllPoliciesRequest(searchParams, user)
-        val searchResponse: SearchResponse = try {
-            client.suspendUntil { search(searchRequest, it) }
-        } catch (e: IndexNotFoundException) {
-            throw OpenSearchStatusException("Snapshot management config index not found", RestStatus.NOT_FOUND)
+        return try {
+            val searchResponse = client.suspendUntil { search(searchRequest, it) }
+            parseGetAllPoliciesResponse(searchResponse)
+        } catch (e: Exception) {
+            val unwrappedException = ExceptionsHelper.unwrapCause(e) as Exception
+            if (unwrappedException is IndexNotFoundException) {
+                // config index hasn't been initialized, catch this here and show empty result for policies
+                Pair(emptyList(), 0L)
+            } else {
+                throw unwrappedException
+            }
         }
-        return parseGetAllPoliciesResponse(searchResponse)
     }
 
     private fun getAllPoliciesRequest(searchParams: SearchParams, user: User?): SearchRequest {
