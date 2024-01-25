@@ -82,6 +82,20 @@ class RestGetSnapshotManagementIT : SnapshotManagementRestTestCase() {
 
     @Throws(Exception::class)
     @Suppress("UNCHECKED_CAST")
+    fun `test getting all snapshot management policies when config index doesn't exist`() {
+        val response = client().makeRequest(
+            "GET", IndexManagementPlugin.SM_POLICIES_URI, null,
+            BasicHeader(HttpHeaders.CONTENT_TYPE, "application/json")
+        )
+        val map = response.asMap()
+        val totalPolicies = map["total_policies"] as Int
+        val responsePolicies = map["policies"] as List<Map<String, Any?>>
+        assertTrue("Total policies is 0", totalPolicies == 0)
+        assertTrue("Response list of policies is empty", responsePolicies.isEmpty())
+    }
+
+    @Throws(Exception::class)
+    @Suppress("UNCHECKED_CAST")
     fun `test getting all snapshot management policies with search params`() {
         var policyID = 0
         val smPolicies = randomList(10, 10) { createSMPolicy(randomSMPolicy(policyName = (policyID++).toString())) }
