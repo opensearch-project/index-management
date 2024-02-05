@@ -18,3 +18,4 @@ This document contains a list of maintainers in this repo. See [opensearch-proje
 | Surya Sashank Nistala | [eirsep](https://github.com/eirsep)                   | Amazon      |
 | Thomas Hurney         | [AWSHurneyt](https://github.com/AWSHurneyt)           | Amazon      |
 | Joanne Wang           | [jowg-amazon](https://github.com/jowg-amazon)         | Amazon      |
+| Rohit Ashiwal         | [r1walz](https://github.com/r1walz)                   | Amazon      |
