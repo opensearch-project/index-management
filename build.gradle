@@ -527,7 +527,8 @@ integTest {
     systemProperty "https", System.getProperty("https")
     systemProperty "security", System.getProperty("security")
     systemProperty "user", System.getProperty("user", "admin")
-    systemProperty "password", System.getProperty("password", "admin")
+    // a remote cluster requires a custom password to be passed. This password must be a custom password.
+    systemProperty "password", usingRemoteCluster ? System.getProperty("password", "myStrongPassword123!") : "admin" // defaulting to admin since security plugin's demo config tool is not used
     // Tell the test JVM if the cluster JVM is running under a debugger so that tests can use longer timeouts for
     // requests. The 'doFirst' delays reading the debug setting on the cluster till execution time.
     doFirst {
