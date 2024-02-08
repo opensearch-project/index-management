@@ -11,6 +11,7 @@ import org.opensearch.OpenSearchSecurityException
 import org.opensearch.action.DocWriteRequest
 import org.opensearch.action.admin.indices.create.CreateIndexRequest
 import org.opensearch.action.admin.indices.create.CreateIndexResponse
+import org.opensearch.action.admin.indices.mapping.put.PutMappingRequest
 import org.opensearch.action.bulk.BackoffPolicy
 import org.opensearch.action.bulk.BulkItemResponse
 import org.opensearch.action.bulk.BulkRequest
@@ -26,6 +27,7 @@ import org.opensearch.indexmanagement.transform.settings.TransformSettings
 import org.opensearch.indexmanagement.transform.util.TransformContext
 import org.opensearch.core.rest.RestStatus
 import org.opensearch.transport.RemoteTransportException
+import org.opensearch.action.support.master.AcknowledgedResponse
 
 @Suppress("ComplexMethod")
 class TransformIndexer(
@@ -61,6 +63,20 @@ class TransformIndexer(
             if (!response.isAcknowledged) {
                 logger.error("Failed to create the target index $targetIndex")
                 throw TransformIndexException("Failed to create the target index")
+            }
+        }
+        if (clusterService.state().metadata.hasAlias(targetIndex)) {
+            // return error if no write index with the alias
+            val writeIndexMetadata = clusterService.state().metadata.indicesLookup[targetIndex]!!.writeIndex
+            if (writeIndexMetadata == null) {
+                throw TransformIndexException("target_index [$targetIndex] is an alias but doesn't have write index")
+            }
+            val putMappingReq = PutMappingRequest(writeIndexMetadata.index?.name).source(targetFieldMappings)
+            val mapResp: AcknowledgedResponse = client.admin().indices().suspendUntil {
+                putMapping(putMappingReq)
+            }
+            if (!mapResp.isAcknowledged) {
+                logger.error("Target index mapping request failed")
             }
         }
     }
