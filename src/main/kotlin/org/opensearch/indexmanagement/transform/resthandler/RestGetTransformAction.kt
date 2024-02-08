@@ -26,12 +26,11 @@ import org.opensearch.rest.action.RestToXContentListener
 import org.opensearch.search.fetch.subphase.FetchSourceContext
 
 class RestGetTransformAction : BaseRestHandler() {
-
     override fun routes(): List<Route> {
         return listOf(
             Route(GET, TRANSFORM_BASE_URI),
             Route(GET, "$TRANSFORM_BASE_URI/{transformID}"),
-            Route(HEAD, "$TRANSFORM_BASE_URI/{transformID}")
+            Route(HEAD, "$TRANSFORM_BASE_URI/{transformID}"),
         )
     }
 
@@ -48,13 +47,14 @@ class RestGetTransformAction : BaseRestHandler() {
         val sortDirection = request.param("sortDirection", DEFAULT_SORT_DIRECTION)
         return RestChannelConsumer { channel ->
             if (transformID == null || transformID.isEmpty()) {
-                val req = GetTransformsRequest(
-                    searchString,
-                    from,
-                    size,
-                    sortField,
-                    sortDirection
-                )
+                val req =
+                    GetTransformsRequest(
+                        searchString,
+                        from,
+                        size,
+                        sortField,
+                        sortDirection,
+                    )
                 client.execute(GetTransformsAction.INSTANCE, req, RestToXContentListener(channel))
             } else {
                 val req = GetTransformRequest(transformID, if (request.method() == HEAD) FetchSourceContext.DO_NOT_FETCH_SOURCE else null)

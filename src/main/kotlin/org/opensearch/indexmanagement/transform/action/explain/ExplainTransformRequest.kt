@@ -13,7 +13,6 @@ import org.opensearch.core.common.io.stream.StreamOutput
 import java.io.IOException
 
 class ExplainTransformRequest(val transformIDs: List<String>) : ActionRequest() {
-
     @Throws(IOException::class)
     constructor(sin: StreamInput) : this(transformIDs = sin.readStringArray().toList())
 

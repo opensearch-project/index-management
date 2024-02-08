@@ -17,9 +17,8 @@ import org.opensearch.indexmanagement.transform.model.ISMTransform
 
 class TransformAction(
     val ismTransform: ISMTransform,
-    index: Int
+    index: Int,
 ) : Action(name, index) {
-
     companion object {
         const val name = "transform"
         const val ISM_TRANSFORM_FIELD = "ism_transform"

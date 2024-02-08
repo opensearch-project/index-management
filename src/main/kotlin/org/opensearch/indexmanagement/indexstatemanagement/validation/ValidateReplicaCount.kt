@@ -3,11 +3,6 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-/*
- * Copyright OpenSearch Contributors
- * SPDX-License-Identifier: Apache-2.0
- */
-
 package org.opensearch.indexmanagement.indexstatemanagement.validation
 
 import org.apache.logging.log4j.LogManager
@@ -22,9 +17,8 @@ import org.opensearch.monitor.jvm.JvmService
 class ValidateReplicaCount(
     settings: Settings,
     clusterService: ClusterService,
-    jvmService: JvmService
+    jvmService: JvmService,
 ) : Validate(settings, clusterService, jvmService) {
-
     private val logger = LogManager.getLogger(javaClass)
 
     @Suppress("ReturnSuppressCount", "ReturnCount")
@@ -67,8 +61,11 @@ class ValidateReplicaCount(
     @Suppress("TooManyFunctions")
     companion object {
         const val name = "validate_replica_count"
+
         fun getFailedDataTooLargeMessage(index: String) = "Data too large and is over the allowed limit for index [index=$index]"
+
         fun getMaxNumberOfShardsExceededMessage(index: String) = "Maximum number of shards exceeded for index [index=$index]"
+
         fun getValidationPassedMessage(index: String) = "Replica Count validation passed for [index=$index]"
     }
 }

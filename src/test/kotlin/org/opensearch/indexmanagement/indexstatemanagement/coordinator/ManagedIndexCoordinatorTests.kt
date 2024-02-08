@@ -27,7 +27,6 @@ import org.opensearch.threadpool.Scheduler
 import org.opensearch.threadpool.ThreadPool
 
 class ManagedIndexCoordinatorTests : OpenSearchAllocationTestCase() {
-
     private lateinit var client: Client
     private lateinit var clusterService: ClusterService
     private lateinit var xContentRegistry: NamedXContentRegistry
@@ -68,10 +67,11 @@ class ManagedIndexCoordinatorTests : OpenSearchAllocationTestCase() {
         val originClusterService: ClusterService = ClusterServiceUtils.createClusterService(threadPool, discoveryNode, clusterSettings)
         clusterService = Mockito.spy(originClusterService)
         indexMetadataProvider = IndexMetadataProvider(settings, client, clusterService, mutableMapOf())
-        coordinator = ManagedIndexCoordinator(
-            settings, client, clusterService, threadPool, indexManagementIndices, indexMetadataProvider,
-            NamedXContentRegistry(SearchModule(Settings.EMPTY, emptyList()).namedXContents)
-        )
+        coordinator =
+            ManagedIndexCoordinator(
+                settings, client, clusterService, threadPool, indexManagementIndices, indexMetadataProvider,
+                NamedXContentRegistry(SearchModule(Settings.EMPTY, emptyList()).namedXContents),
+            )
     }
 
     fun `test after start`() {

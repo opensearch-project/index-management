@@ -19,7 +19,6 @@ import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepMetaDat
 import org.opensearch.transport.RemoteTransportException
 
 class AttemptSetIndexPriorityStep(private val action: IndexPriorityAction) : Step(name) {
-
     private val logger = LogManager.getLogger(javaClass)
     private var stepStatus = StepStatus.STARTING
     private var info: Map<String, Any>? = null
@@ -30,11 +29,13 @@ class AttemptSetIndexPriorityStep(private val action: IndexPriorityAction) : Ste
         val indexName = context.metadata.index
         val managedIndexMetaData = context.metadata
         try {
-            val updateSettingsRequest = UpdateSettingsRequest()
-                .indices(managedIndexMetaData.index)
-                .settings(Settings.builder().put(SETTING_PRIORITY, action.indexPriority))
-            val response: AcknowledgedResponse = context.client.admin().indices()
-                .suspendUntil { updateSettings(updateSettingsRequest, it) }
+            val updateSettingsRequest =
+                UpdateSettingsRequest()
+                    .indices(managedIndexMetaData.index)
+                    .settings(Settings.builder().put(SETTING_PRIORITY, action.indexPriority))
+            val response: AcknowledgedResponse =
+                context.client.admin().indices()
+                    .suspendUntil { updateSettings(updateSettingsRequest, it) }
 
             if (response.isAcknowledged) {
                 stepStatus = StepStatus.COMPLETED
@@ -68,7 +69,7 @@ class AttemptSetIndexPriorityStep(private val action: IndexPriorityAction) : Ste
         return currentMetadata.copy(
             stepMetaData = StepMetaData(name, getStepStartTime(currentMetadata).toEpochMilli(), stepStatus),
             transitionTo = null,
-            info = info
+            info = info,
         )
     }
 
@@ -76,7 +77,9 @@ class AttemptSetIndexPriorityStep(private val action: IndexPriorityAction) : Ste
 
     companion object {
         const val name = "attempt_set_index_priority"
+
         fun getFailedMessage(index: String, indexPriority: Int) = "Failed to set index priority to $indexPriority [index=$index]"
+
         fun getSuccessMessage(index: String, indexPriority: Int) = "Successfully set index priority to $indexPriority [index=$index]"
     }
 }

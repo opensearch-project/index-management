@@ -55,12 +55,12 @@ import org.opensearch.transport.TransportRequestHandler
 class RollupInterceptor(
     val clusterService: ClusterService,
     val settings: Settings,
-    val indexNameExpressionResolver: IndexNameExpressionResolver
+    val indexNameExpressionResolver: IndexNameExpressionResolver,
 ) : TransportInterceptor {
-
     private val logger = LogManager.getLogger(javaClass)
 
     @Volatile private var searchEnabled = RollupSettings.ROLLUP_SEARCH_ENABLED.get(settings)
+
     @Volatile private var searchAllJobs = RollupSettings.ROLLUP_SEARCH_ALL_JOBS.get(settings)
 
     init {
@@ -77,7 +77,7 @@ class RollupInterceptor(
         action: String,
         executor: String,
         forceExecution: Boolean,
-        actualHandler: TransportRequestHandler<T>
+        actualHandler: TransportRequestHandler<T>,
     ): TransportRequestHandler<T> {
         return object : TransportRequestHandler<T> {
             override fun messageReceived(request: T, channel: TransportChannel, task: Task) {
@@ -90,15 +90,18 @@ class RollupInterceptor(
                         }
 
                         val indices = request.indices().map { it.toString() }.toTypedArray()
-                        val concreteIndices = indexNameExpressionResolver
-                            .concreteIndexNames(clusterService.state(), request.indicesOptions(), *indices)
+                        val concreteIndices =
+                            indexNameExpressionResolver
+                                .concreteIndexNames(clusterService.state(), request.indicesOptions(), *indices)
                         // To extract fields from QueryStringQueryBuilder we need concrete source index name.
-                        val rollupJob = clusterService.state().metadata.index(index).getRollupJobs()?.get(0)
-                            ?: throw IllegalArgumentException("No rollup job associated with target_index")
-                        val queryFieldMappings = getQueryMetadata(
-                            request.source().query(),
-                            getConcreteSourceIndex(rollupJob.sourceIndex, indexNameExpressionResolver, clusterService.state())
-                        )
+                        val rollupJob =
+                            clusterService.state().metadata.index(index).getRollupJobs()?.get(0)
+                                ?: throw IllegalArgumentException("No rollup job associated with target_index")
+                        val queryFieldMappings =
+                            getQueryMetadata(
+                                request.source().query(),
+                                getConcreteSourceIndex(rollupJob.sourceIndex, indexNameExpressionResolver, clusterService.state()),
+                            )
                         val aggregationFieldMappings = getAggregationMetadata(request.source().aggregations()?.aggregatorFactories)
                         val fieldMappings = queryFieldMappings + aggregationFieldMappings
 
@@ -135,14 +138,15 @@ class RollupInterceptor(
     }
 
     /*
-    * Validate that all indices have rollup job which matches field mappings from request
-    * TODO return compiled list of issues here instead of just throwing exception
-    * */
+     * Validate that all indices have rollup job which matches field mappings from request
+     * TODO return compiled list of issues here instead of just throwing exception
+     * */
     private fun validateIndicies(concreteIndices: Array<String>, fieldMappings: Set<RollupFieldMapping>): Map<Rollup, Set<RollupFieldMapping>> {
         var allMatchingRollupJobs: Map<Rollup, Set<RollupFieldMapping>> = mapOf()
         for (concreteIndex in concreteIndices) {
-            val rollupJobs = clusterService.state().metadata.index(concreteIndex).getRollupJobs()
-                ?: throw IllegalArgumentException("Not all indices have rollup job")
+            val rollupJobs =
+                clusterService.state().metadata.index(concreteIndex).getRollupJobs()
+                    ?: throw IllegalArgumentException("Not all indices have rollup job")
 
             val (matchingRollupJobs, issues) = findMatchingRollupJobs(fieldMappings, rollupJobs)
             if (issues.isNotEmpty() || matchingRollupJobs.isEmpty()) {
@@ -156,7 +160,7 @@ class RollupInterceptor(
     @Suppress("ComplexMethod")
     private fun getAggregationMetadata(
         aggregationBuilders: Collection<AggregationBuilder>?,
-        fieldMappings: MutableSet<RollupFieldMapping> = mutableSetOf()
+        fieldMappings: MutableSet<RollupFieldMapping> = mutableSetOf(),
     ): Set<RollupFieldMapping> {
         aggregationBuilders?.forEach {
             when (it) {
@@ -197,7 +201,7 @@ class RollupInterceptor(
     private fun getQueryMetadata(
         query: QueryBuilder?,
         concreteSourceIndexName: String?,
-        fieldMappings: MutableSet<RollupFieldMapping> = mutableSetOf()
+        fieldMappings: MutableSet<RollupFieldMapping> = mutableSetOf(),
     ): Set<RollupFieldMapping> {
         if (query == null) {
             return fieldMappings
@@ -236,7 +240,7 @@ class RollupInterceptor(
                     query.zeroTermsQuery() != MatchQuery.DEFAULT_ZERO_TERMS_QUERY
                 ) {
                     throw IllegalArgumentException(
-                        "The ${query.name} query is currently not supported with analyzer/slop/zero_terms_query in rollups"
+                        "The ${query.name} query is currently not supported with analyzer/slop/zero_terms_query in rollups",
                     )
                 }
                 fieldMappings.add(RollupFieldMapping(RollupFieldMapping.Companion.FieldType.DIMENSION, query.fieldName(), Dimension.Type.TERMS.type))
@@ -265,23 +269,28 @@ class RollupInterceptor(
     @Suppress("ComplexMethod")
     private fun findMatchingRollupJobs(
         fieldMappings: Set<RollupFieldMapping>,
-        rollupJobs: List<Rollup>
+        rollupJobs: List<Rollup>,
     ): Pair<Map<Rollup, Set<RollupFieldMapping>>, Set<String>> {
-        val rollupFieldMappings = rollupJobs.map { rollup ->
-            rollup to rollup.populateFieldMappings()
-        }.toMap()
+        val rollupFieldMappings =
+            rollupJobs.map { rollup ->
+                rollup to rollup.populateFieldMappings()
+            }.toMap()
 
         val knownFieldMappings = mutableSetOf<RollupFieldMapping>()
         val unknownFields = mutableSetOf<String>()
 
         fieldMappings.forEach {
-            if (it.mappingType == UNKNOWN_MAPPING) unknownFields.add(it.fieldName)
-            else knownFieldMappings.add(it)
+            if (it.mappingType == UNKNOWN_MAPPING) {
+                unknownFields.add(it.fieldName)
+            } else {
+                knownFieldMappings.add(it)
+            }
         }
 
-        val potentialRollupFieldMappings = rollupFieldMappings.filterValues {
-            it.containsAll(knownFieldMappings) && it.map { rollupFieldMapping -> rollupFieldMapping.fieldName }.containsAll(unknownFields)
-        }
+        val potentialRollupFieldMappings =
+            rollupFieldMappings.filterValues {
+                it.containsAll(knownFieldMappings) && it.map { rollupFieldMapping -> rollupFieldMapping.fieldName }.containsAll(unknownFields)
+            }
 
         val issues = mutableSetOf<String>()
         if (potentialRollupFieldMappings.isEmpty()) {
@@ -294,8 +303,11 @@ class RollupInterceptor(
 
             // Adding to the issue if cannot find defined field mapping or if the field is missing
             fieldMappings.forEach {
-                if (!allFields.contains(it.fieldName)) issues.add(it.toIssue(true))
-                else if (it.mappingType != UNKNOWN_MAPPING && !allFieldMappings.contains(it)) issues.add(it.toIssue())
+                if (!allFields.contains(it.fieldName)) {
+                    issues.add(it.toIssue(true))
+                } else if (it.mappingType != UNKNOWN_MAPPING && !allFieldMappings.contains(it)) {
+                    issues.add(it.toIssue())
+                }
             }
         }
 
@@ -312,8 +324,11 @@ class RollupInterceptor(
 
         // Picking the job with largest rollup window for now
         return sortedRollups.reduce { matched, new ->
-            if (getEstimateRollupInterval(matched) > getEstimateRollupInterval(new)) matched
-            else new
+            if (getEstimateRollupInterval(matched) > getEstimateRollupInterval(new)) {
+                matched
+            } else {
+                new
+            }
         }
     }
 

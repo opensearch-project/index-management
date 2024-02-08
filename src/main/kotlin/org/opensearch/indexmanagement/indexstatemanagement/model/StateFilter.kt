@@ -14,10 +14,9 @@ import org.opensearch.core.xcontent.XContentParserUtils.ensureExpectedToken
 import java.io.IOException
 
 data class StateFilter(val state: String) : Writeable {
-
     @Throws(IOException::class)
     constructor(sin: StreamInput) : this(
-        state = sin.readString()
+        state = sin.readString(),
     )
 
     @Throws(IOException::class)

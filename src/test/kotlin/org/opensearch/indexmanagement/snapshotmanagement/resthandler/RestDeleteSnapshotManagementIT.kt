@@ -6,15 +6,14 @@
 package org.opensearch.indexmanagement.snapshotmanagement.resthandler
 
 import org.opensearch.client.ResponseException
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.indexmanagement.IndexManagementPlugin
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
 import org.opensearch.indexmanagement.makeRequest
 import org.opensearch.indexmanagement.snapshotmanagement.SnapshotManagementRestTestCase
 import org.opensearch.indexmanagement.snapshotmanagement.randomSMPolicy
-import org.opensearch.core.rest.RestStatus
 
 class RestDeleteSnapshotManagementIT : SnapshotManagementRestTestCase() {
-
     fun `test deleting a snapshot management policy`() {
         val smPolicy = createSMPolicy(randomSMPolicy())
         val deleteResponse = client().makeRequest("DELETE", "${IndexManagementPlugin.SM_POLICIES_URI}/${smPolicy.policyName}?refresh=true")

@@ -17,14 +17,13 @@ import java.io.IOException
 class ChangePolicyRequest(
     val indices: List<String>,
     val changePolicy: ChangePolicy,
-    val indexType: String
+    val indexType: String,
 ) : ActionRequest() {
-
     @Throws(IOException::class)
     constructor(sin: StreamInput) : this(
         indices = sin.readStringList(),
         changePolicy = ChangePolicy(sin),
-        indexType = sin.readString()
+        indexType = sin.readString(),
     )
 
     override fun validate(): ActionRequestValidationException? {
@@ -32,10 +31,11 @@ class ChangePolicyRequest(
         if (indices.isEmpty()) {
             validationException = ValidateActions.addValidationError("Missing indices", validationException)
         } else if (indexType != DEFAULT_INDEX_TYPE && indices.size > 1) {
-            validationException = ValidateActions.addValidationError(
-                MULTIPLE_INDICES_CUSTOM_INDEX_TYPE_ERROR,
-                validationException
-            )
+            validationException =
+                ValidateActions.addValidationError(
+                    MULTIPLE_INDICES_CUSTOM_INDEX_TYPE_ERROR,
+                    validationException,
+                )
         }
         return validationException
     }

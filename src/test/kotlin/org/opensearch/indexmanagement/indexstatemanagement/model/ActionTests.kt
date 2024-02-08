@@ -6,21 +6,21 @@
 package org.opensearch.indexmanagement.indexstatemanagement.model
 
 import org.opensearch.cluster.routing.allocation.DiskThresholdSettings
-import org.opensearch.core.common.io.stream.InputStreamStreamInput
-import org.opensearch.core.common.io.stream.OutputStreamStreamOutput
 import org.opensearch.common.settings.ClusterSettings
 import org.opensearch.common.settings.Settings
-import org.opensearch.core.common.unit.ByteSizeValue
 import org.opensearch.common.unit.TimeValue
 import org.opensearch.common.xcontent.LoggingDeprecationHandler
 import org.opensearch.common.xcontent.XContentFactory
 import org.opensearch.common.xcontent.XContentType
+import org.opensearch.core.common.io.stream.InputStreamStreamInput
+import org.opensearch.core.common.io.stream.OutputStreamStreamOutput
+import org.opensearch.core.common.unit.ByteSizeValue
 import org.opensearch.indexmanagement.indexstatemanagement.ISMActionsParser
 import org.opensearch.indexmanagement.indexstatemanagement.action.DeleteAction
 import org.opensearch.indexmanagement.indexstatemanagement.action.NotificationAction
 import org.opensearch.indexmanagement.indexstatemanagement.randomAllocationActionConfig
-import org.opensearch.indexmanagement.indexstatemanagement.randomChannel
 import org.opensearch.indexmanagement.indexstatemanagement.randomByteSizeValue
+import org.opensearch.indexmanagement.indexstatemanagement.randomChannel
 import org.opensearch.indexmanagement.indexstatemanagement.randomCloseActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomDeleteActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomDestination
@@ -50,7 +50,6 @@ import java.lang.Math.abs
 import kotlin.test.assertFailsWith
 
 class ActionTests : OpenSearchTestCase() {
-
     fun `test invalid timeout for delete action fails`() {
         assertFailsWith(IllegalArgumentException::class, "Expected IllegalArgumentException for invalid timeout") {
             ActionTimeout(timeout = TimeValue.parseTimeValue("invalidTimeout", "timeout_test"))
@@ -141,8 +140,8 @@ class ActionTests : OpenSearchTestCase() {
             (
                 require = mapOf("box_type" to "hot"),
                 include = mapOf(randomAlphaOfLengthBetween(1, 10) to randomAlphaOfLengthBetween(1, 10)),
-                exclude = mapOf(randomAlphaOfLengthBetween(1, 10) to randomAlphaOfLengthBetween(1, 10))
-            )
+                exclude = mapOf(randomAlphaOfLengthBetween(1, 10) to randomAlphaOfLengthBetween(1, 10)),
+            ),
         )
     }
 
@@ -163,17 +162,18 @@ class ActionTests : OpenSearchTestCase() {
     }
 
     fun `test action timeout and retry round trip`() {
-        val builder = XContentFactory.jsonBuilder()
-            .startObject()
-            .field(ActionTimeout.TIMEOUT_FIELD, randomTimeValueObject().stringRep)
-            .startObject(ActionRetry.RETRY_FIELD)
-            .field(ActionRetry.COUNT_FIELD, 1)
-            .field(ActionRetry.BACKOFF_FIELD, ActionRetry.Backoff.EXPONENTIAL)
-            .field(ActionRetry.DELAY_FIELD, TimeValue.timeValueMinutes(1))
-            .endObject()
-            .startObject(DeleteAction.name)
-            .endObject()
-            .endObject()
+        val builder =
+            XContentFactory.jsonBuilder()
+                .startObject()
+                .field(ActionTimeout.TIMEOUT_FIELD, randomTimeValueObject().stringRep)
+                .startObject(ActionRetry.RETRY_FIELD)
+                .field(ActionRetry.COUNT_FIELD, 1)
+                .field(ActionRetry.BACKOFF_FIELD, ActionRetry.Backoff.EXPONENTIAL)
+                .field(ActionRetry.DELAY_FIELD, TimeValue.timeValueMinutes(1))
+                .endObject()
+                .startObject(DeleteAction.name)
+                .endObject()
+                .endObject()
 
         val parser = XContentType.JSON.xContent().createParser(xContentRegistry(), LoggingDeprecationHandler.INSTANCE, builder.string())
         parser.nextToken()
@@ -185,9 +185,10 @@ class ActionTests : OpenSearchTestCase() {
     fun `test shrink disk threshold percentage settings`() {
         val rawPercentage = randomIntBetween(0, 100)
         val percentage = "$rawPercentage%"
-        val settings = Settings.builder().put(DiskThresholdSettings.CLUSTER_ROUTING_ALLOCATION_HIGH_DISK_WATERMARK_SETTING.key, percentage)
-            .put(DiskThresholdSettings.CLUSTER_ROUTING_ALLOCATION_DISK_FLOOD_STAGE_WATERMARK_SETTING.key, percentage)
-            .put(DiskThresholdSettings.CLUSTER_ROUTING_ALLOCATION_LOW_DISK_WATERMARK_SETTING.key, percentage).build()
+        val settings =
+            Settings.builder().put(DiskThresholdSettings.CLUSTER_ROUTING_ALLOCATION_HIGH_DISK_WATERMARK_SETTING.key, percentage)
+                .put(DiskThresholdSettings.CLUSTER_ROUTING_ALLOCATION_DISK_FLOOD_STAGE_WATERMARK_SETTING.key, percentage)
+                .put(DiskThresholdSettings.CLUSTER_ROUTING_ALLOCATION_LOW_DISK_WATERMARK_SETTING.key, percentage).build()
         val clusterSettings = ClusterSettings(settings, ClusterSettings.BUILT_IN_CLUSTER_SETTINGS.map { it }.toSet())
         val totalNodeBytes = randomByteSizeValue().bytes
         val thresholdBytes = getFreeBytesThresholdHigh(clusterSettings, totalNodeBytes)
@@ -199,9 +200,10 @@ class ActionTests : OpenSearchTestCase() {
 
     fun `test shrink disk threshold byte settings`() {
         val byteValue = randomByteSizeValue()
-        val settings = Settings.builder().put(DiskThresholdSettings.CLUSTER_ROUTING_ALLOCATION_HIGH_DISK_WATERMARK_SETTING.key, byteValue)
-            .put(DiskThresholdSettings.CLUSTER_ROUTING_ALLOCATION_DISK_FLOOD_STAGE_WATERMARK_SETTING.key, byteValue)
-            .put(DiskThresholdSettings.CLUSTER_ROUTING_ALLOCATION_LOW_DISK_WATERMARK_SETTING.key, byteValue).build()
+        val settings =
+            Settings.builder().put(DiskThresholdSettings.CLUSTER_ROUTING_ALLOCATION_HIGH_DISK_WATERMARK_SETTING.key, byteValue)
+                .put(DiskThresholdSettings.CLUSTER_ROUTING_ALLOCATION_DISK_FLOOD_STAGE_WATERMARK_SETTING.key, byteValue)
+                .put(DiskThresholdSettings.CLUSTER_ROUTING_ALLOCATION_LOW_DISK_WATERMARK_SETTING.key, byteValue).build()
         val clusterSettings = ClusterSettings(settings, ClusterSettings.BUILT_IN_CLUSTER_SETTINGS.map { it }.toSet())
         val thresholdBytes = getFreeBytesThresholdHigh(clusterSettings, randomByteSizeValue().bytes)
         assertEquals("Free bytes threshold not being calculated correctly for byte setting.", thresholdBytes, byteValue.bytes)

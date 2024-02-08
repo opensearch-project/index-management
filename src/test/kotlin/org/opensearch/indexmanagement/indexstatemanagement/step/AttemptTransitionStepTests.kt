@@ -12,7 +12,6 @@ import com.nhaarman.mockitokotlin2.mock
 import com.nhaarman.mockitokotlin2.whenever
 import kotlinx.coroutines.runBlocking
 import org.junit.Before
-import org.opensearch.core.action.ActionListener
 import org.opensearch.action.admin.indices.rollover.RolloverInfo
 import org.opensearch.action.admin.indices.stats.CommonStats
 import org.opensearch.action.admin.indices.stats.IndicesStatsResponse
@@ -25,6 +24,8 @@ import org.opensearch.cluster.metadata.Metadata
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.settings.ClusterSettings
 import org.opensearch.common.settings.Settings
+import org.opensearch.core.action.ActionListener
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.index.shard.DocsStats
 import org.opensearch.indexmanagement.indexstatemanagement.IndexMetadataProvider
 import org.opensearch.indexmanagement.indexstatemanagement.action.TransitionsAction
@@ -37,25 +38,26 @@ import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedInde
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepContext
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepMetaData
 import org.opensearch.jobscheduler.spi.utils.LockService
-import org.opensearch.core.rest.RestStatus
 import org.opensearch.script.ScriptService
 import org.opensearch.test.OpenSearchTestCase
 import org.opensearch.transport.RemoteTransportException
 import java.time.Instant
 
 class AttemptTransitionStepTests : OpenSearchTestCase() {
-
     private val indexName: String = "test"
     private val indexUUID: String = "indexUuid"
+
     @Suppress("UNCHECKED_CAST")
-    private val indexMetadata: IndexMetadata = mock {
-        on { rolloverInfos } doReturn mapOf<String, RolloverInfo>()
-        on { indexUUID } doReturn indexUUID
-    }
-    private val metadata: Metadata = mock {
-        on { index(any<String>()) } doReturn indexMetadata
-        on { hasIndex(indexName) } doReturn true
-    }
+    private val indexMetadata: IndexMetadata =
+        mock {
+            on { rolloverInfos } doReturn mapOf<String, RolloverInfo>()
+            on { indexUUID } doReturn indexUUID
+        }
+    private val metadata: Metadata =
+        mock {
+            on { index(any<String>()) } doReturn indexMetadata
+            on { hasIndex(indexName) } doReturn true
+        }
     private val clusterState: ClusterState = mock { on { metadata() } doReturn metadata }
     private val clusterService: ClusterService = mock { on { state() } doReturn clusterState }
     private val scriptService: ScriptService = mock()
@@ -142,14 +144,19 @@ class AttemptTransitionStepTests : OpenSearchTestCase() {
     }
 
     private fun getClient(adminClient: AdminClient): Client = mock { on { admin() } doReturn adminClient }
+
     private fun getAdminClient(indicesAdminClient: IndicesAdminClient): AdminClient = mock { on { indices() } doReturn indicesAdminClient }
+
     private fun getIndicesAdminClient(statsResponse: IndicesStatsResponse?, exception: Exception?): IndicesAdminClient {
         assertTrue("Must provide one and only one response or exception", (statsResponse != null).xor(exception != null))
         return mock {
             doAnswer { invocationOnMock ->
                 val listener = invocationOnMock.getArgument<ActionListener<IndicesStatsResponse>>(1)
-                if (statsResponse != null) listener.onResponse(statsResponse)
-                else listener.onFailure(exception)
+                if (statsResponse != null) {
+                    listener.onResponse(statsResponse)
+                } else {
+                    listener.onFailure(exception)
+                }
             }.whenever(this.mock).stats(any(), any())
         }
     }

@@ -33,7 +33,6 @@ import org.opensearch.indexmanagement.rollup.randomValueCount
 import org.opensearch.test.OpenSearchTestCase
 
 class WriteableTests : OpenSearchTestCase() {
-
     fun `test date histogram dimension as stream`() {
         val dateHistogram = randomDateHistogram()
         val out = BytesStreamOutput().also { dateHistogram.writeTo(it) }
@@ -115,10 +114,11 @@ class WriteableTests : OpenSearchTestCase() {
     }
 
     fun `test rollup roles field deprecation`() {
-        val rollup = randomRollup().copy(
-            delay = randomLongBetween(0, 60000000),
-            roles = listOf("I am deprecated")
-        )
+        val rollup =
+            randomRollup().copy(
+                delay = randomLongBetween(0, 60000000),
+                roles = listOf("I am deprecated"),
+            )
         val out = BytesStreamOutput().also { rollup.writeTo(it) }
         val sin = StreamInput.wrap(out.bytes().toBytesRef().bytes)
         val streamedRollup = Rollup(sin)

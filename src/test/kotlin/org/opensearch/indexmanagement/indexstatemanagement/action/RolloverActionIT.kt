@@ -10,9 +10,11 @@ import org.apache.hc.core5.http.io.entity.StringEntity
 import org.junit.Assert
 import org.opensearch.cluster.metadata.DataStream
 import org.opensearch.common.settings.Settings
+import org.opensearch.common.unit.TimeValue
 import org.opensearch.core.common.unit.ByteSizeUnit
 import org.opensearch.core.common.unit.ByteSizeValue
-import org.opensearch.common.unit.TimeValue
+import org.opensearch.core.rest.RestStatus
+import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
 import org.opensearch.indexmanagement.indexstatemanagement.IndexStateManagementRestTestCase
 import org.opensearch.indexmanagement.indexstatemanagement.model.ISMTemplate
 import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
@@ -26,15 +28,12 @@ import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ActionRetry
 import org.opensearch.indexmanagement.waitFor
 import org.opensearch.rest.RestRequest
-import org.opensearch.core.rest.RestStatus
-import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
 import org.opensearch.test.OpenSearchTestCase
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 import java.util.Locale
 
 class RolloverActionIT : IndexStateManagementRestTestCase() {
-
     private val testIndexName = javaClass.simpleName.lowercase(Locale.ROOT)
 
     fun `test rollover no condition`() {
@@ -44,15 +43,16 @@ class RolloverActionIT : IndexStateManagementRestTestCase() {
         val policyID = "${testIndexName}_testPolicyName_1"
         val actionConfig = RolloverAction(null, null, null, null, false, 0)
         val states = listOf(State(name = "RolloverAction", actions = listOf(actionConfig), transitions = listOf()))
-        val policy = Policy(
-            id = policyID,
-            description = "$testIndexName description",
-            schemaVersion = 1L,
-            lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
-            errorNotification = randomErrorNotification(),
-            defaultState = states[0].name,
-            states = states
-        )
+        val policy =
+            Policy(
+                id = policyID,
+                description = "$testIndexName description",
+                schemaVersion = 1L,
+                lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
+                errorNotification = randomErrorNotification(),
+                defaultState = states[0].name,
+                states = states,
+            )
 
         createPolicy(policy, policyID)
         // create index defaults
@@ -91,22 +91,23 @@ class RolloverActionIT : IndexStateManagementRestTestCase() {
                     "    \"$aliasName\": {\"is_write_index\": true}\n" +
                     "  }\n" +
                     "}",
-                ContentType.APPLICATION_JSON
-            )
+                ContentType.APPLICATION_JSON,
+            ),
         )
 
         val policyID = "${testIndexName}_bwc"
         val actionConfig = RolloverAction(null, null, null, null, false, 0)
         val states = listOf(State(name = "RolloverAction", actions = listOf(actionConfig), transitions = listOf()))
-        val policy = Policy(
-            id = policyID,
-            description = "$testIndexName description",
-            schemaVersion = 1L,
-            lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
-            errorNotification = randomErrorNotification(),
-            defaultState = states[0].name,
-            states = states
-        )
+        val policy =
+            Policy(
+                id = policyID,
+                description = "$testIndexName description",
+                schemaVersion = 1L,
+                lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
+                errorNotification = randomErrorNotification(),
+                defaultState = states[0].name,
+                states = states,
+            )
         createPolicy(policy, policyID)
 
         addPolicyToIndex(firstIndex, policyID)
@@ -135,15 +136,16 @@ class RolloverActionIT : IndexStateManagementRestTestCase() {
         val policyID = "${testIndexName}_testPolicyName_byte_1"
         val actionConfig = RolloverAction(ByteSizeValue(10, ByteSizeUnit.BYTES), 1000000, null, null, false, 0)
         val states = listOf(State(name = "RolloverAction", actions = listOf(actionConfig), transitions = listOf()))
-        val policy = Policy(
-            id = policyID,
-            description = "$testIndexName description",
-            schemaVersion = 1L,
-            lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
-            errorNotification = randomErrorNotification(),
-            defaultState = states[0].name,
-            states = states
-        )
+        val policy =
+            Policy(
+                id = policyID,
+                description = "$testIndexName description",
+                schemaVersion = 1L,
+                lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
+                errorNotification = randomErrorNotification(),
+                defaultState = states[0].name,
+                states = states,
+            )
 
         createPolicy(policy, policyID)
         // create index defaults
@@ -161,12 +163,12 @@ class RolloverActionIT : IndexStateManagementRestTestCase() {
             val info = getExplainManagedIndexMetaData(firstIndex).info as Map<String, Any?>
             assertEquals(
                 "Index rollover before it met the condition.",
-                AttemptRolloverStep.getPendingMessage(firstIndex), info["message"]
+                AttemptRolloverStep.getPendingMessage(firstIndex), info["message"],
             )
             val conditions = info["conditions"] as Map<String, Any?>
             assertEquals(
                 "Did not have exclusively min size and min doc count conditions",
-                setOf(RolloverAction.MIN_SIZE_FIELD, RolloverAction.MIN_DOC_COUNT_FIELD), conditions.keys
+                setOf(RolloverAction.MIN_SIZE_FIELD, RolloverAction.MIN_DOC_COUNT_FIELD), conditions.keys,
             )
             val minSize = conditions[RolloverAction.MIN_SIZE_FIELD] as Map<String, Any?>
             val minDocCount = conditions[RolloverAction.MIN_DOC_COUNT_FIELD] as Map<String, Any?>
@@ -186,7 +188,7 @@ class RolloverActionIT : IndexStateManagementRestTestCase() {
             val conditions = info["conditions"] as Map<String, Any?>
             assertEquals(
                 "Did not have exclusively min size and min doc count conditions",
-                setOf(RolloverAction.MIN_SIZE_FIELD, RolloverAction.MIN_DOC_COUNT_FIELD), conditions.keys
+                setOf(RolloverAction.MIN_SIZE_FIELD, RolloverAction.MIN_DOC_COUNT_FIELD), conditions.keys,
             )
             val minSize = conditions[RolloverAction.MIN_SIZE_FIELD] as Map<String, Any?>
             val minDocCount = conditions[RolloverAction.MIN_DOC_COUNT_FIELD] as Map<String, Any?>
@@ -207,15 +209,16 @@ class RolloverActionIT : IndexStateManagementRestTestCase() {
         val policyID = "${testIndexName}_primary_shard_1"
         val actionConfig = RolloverAction(null, null, null, ByteSizeValue(100, ByteSizeUnit.KB), false, 0)
         val states = listOf(State(name = "RolloverAction", actions = listOf(actionConfig), transitions = listOf()))
-        val policy = Policy(
-            id = policyID,
-            description = "$testIndexName description",
-            schemaVersion = 1L,
-            lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
-            errorNotification = randomErrorNotification(),
-            defaultState = states[0].name,
-            states = states
-        )
+        val policy =
+            Policy(
+                id = policyID,
+                description = "$testIndexName description",
+                schemaVersion = 1L,
+                lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
+                errorNotification = randomErrorNotification(),
+                defaultState = states[0].name,
+                states = states,
+            )
 
         createPolicy(policy, policyID)
         // create index defaults
@@ -225,7 +228,7 @@ class RolloverActionIT : IndexStateManagementRestTestCase() {
             alias = aliasName,
             replicas = "0",
             shards = "20",
-            settings = Settings.builder().put("store.stats_refresh_interval", "1s").build()
+            settings = Settings.builder().put("store.stats_refresh_interval", "1s").build(),
         )
 
         val managedIndexConfig = getExistingManagedIndexConfig(firstIndex)
@@ -258,12 +261,12 @@ class RolloverActionIT : IndexStateManagementRestTestCase() {
             val info = getExplainManagedIndexMetaData(firstIndex).info as Map<String, Any?>
             assertEquals(
                 "Index rollover before it met the condition.",
-                AttemptRolloverStep.getPendingMessage(firstIndex), info["message"]
+                AttemptRolloverStep.getPendingMessage(firstIndex), info["message"],
             )
             val conditions = info["conditions"] as Map<String, Any?>
             assertEquals(
                 "Did not have exclusively min primary shard size condition",
-                setOf(RolloverAction.MIN_PRIMARY_SHARD_SIZE_FIELD), conditions.keys
+                setOf(RolloverAction.MIN_PRIMARY_SHARD_SIZE_FIELD), conditions.keys,
             )
             val minPrimarySize = conditions[RolloverAction.MIN_PRIMARY_SHARD_SIZE_FIELD] as Map<String, Any?>
             assertEquals("Did not have min size condition", "100kb", minPrimarySize["condition"])
@@ -281,14 +284,15 @@ class RolloverActionIT : IndexStateManagementRestTestCase() {
             insertSampleData(index = firstIndex, docCount = 20, delay = 0, jsonString = "{ \"test_field\": \"${OpenSearchTestCase.randomAlphaOfLength(7000)}\" }", routing = "custom_routing")
             flush(firstIndex, true)
             forceMerge(firstIndex, "1")
-            val primaryShards = waitFor {
-                val primaryShards = (cat("shards/$firstIndex?format=json&bytes=b") as List<Map<String, Any>>).filter { it["prirep"] == "p" }
-                // TODO seeing flakyness of multiple shards over 100kb, log out shards to further debug
-                logger.info("cat shards result: $primaryShards")
-                val primaryShardsOver100KB = primaryShards.filter { (it["store"] as String).toInt() > 100000 }
-                assertTrue("Shard over 100kb is not exactly 1", primaryShardsOver100KB.size == 1)
-                primaryShards
-            }
+            val primaryShards =
+                waitFor {
+                    val primaryShards = (cat("shards/$firstIndex?format=json&bytes=b") as List<Map<String, Any>>).filter { it["prirep"] == "p" }
+                    // TODO seeing flakyness of multiple shards over 100kb, log out shards to further debug
+                    logger.info("cat shards result: $primaryShards")
+                    val primaryShardsOver100KB = primaryShards.filter { (it["store"] as String).toInt() > 100000 }
+                    assertTrue("Shard over 100kb is not exactly 1", primaryShardsOver100KB.size == 1)
+                    primaryShards
+                }
             primaryShardSizeBytes = primaryShards.maxOf { (it["store"] as String).toInt() }
         }
 
@@ -300,7 +304,7 @@ class RolloverActionIT : IndexStateManagementRestTestCase() {
             val conditions = info["conditions"] as Map<String, Any?>
             assertEquals(
                 "Did not have exclusively min primary shard size conditions",
-                setOf(RolloverAction.MIN_PRIMARY_SHARD_SIZE_FIELD), conditions.keys
+                setOf(RolloverAction.MIN_PRIMARY_SHARD_SIZE_FIELD), conditions.keys,
             )
             val minPrimaryShardSize = conditions[RolloverAction.MIN_PRIMARY_SHARD_SIZE_FIELD] as Map<String, Any?>
             assertEquals("Did not have min primary shard size condition", "100kb", minPrimaryShardSize["condition"])
@@ -317,15 +321,16 @@ class RolloverActionIT : IndexStateManagementRestTestCase() {
         val policyID = "${testIndexName}_testPolicyName_doc_1"
         val actionConfig = RolloverAction(null, 3, TimeValue.timeValueDays(2), null, false, 0)
         val states = listOf(State(name = "RolloverAction", actions = listOf(actionConfig), transitions = listOf()))
-        val policy = Policy(
-            id = policyID,
-            description = "$testIndexName description",
-            schemaVersion = 1L,
-            lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
-            errorNotification = randomErrorNotification(),
-            defaultState = states[0].name,
-            states = states
-        )
+        val policy =
+            Policy(
+                id = policyID,
+                description = "$testIndexName description",
+                schemaVersion = 1L,
+                lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
+                errorNotification = randomErrorNotification(),
+                defaultState = states[0].name,
+                states = states,
+            )
 
         createPolicy(policy, policyID)
         // create index defaults
@@ -343,12 +348,12 @@ class RolloverActionIT : IndexStateManagementRestTestCase() {
             val info = getExplainManagedIndexMetaData(firstIndex).info as Map<String, Any?>
             assertEquals(
                 "Index rollover before it met the condition.",
-                AttemptRolloverStep.getPendingMessage(firstIndex), info["message"]
+                AttemptRolloverStep.getPendingMessage(firstIndex), info["message"],
             )
             val conditions = info["conditions"] as Map<String, Any?>
             assertEquals(
                 "Did not have exclusively min age and min doc count conditions",
-                setOf(RolloverAction.MIN_INDEX_AGE_FIELD, RolloverAction.MIN_DOC_COUNT_FIELD), conditions.keys
+                setOf(RolloverAction.MIN_INDEX_AGE_FIELD, RolloverAction.MIN_DOC_COUNT_FIELD), conditions.keys,
             )
             val minAge = conditions[RolloverAction.MIN_INDEX_AGE_FIELD] as Map<String, Any?>
             val minDocCount = conditions[RolloverAction.MIN_DOC_COUNT_FIELD] as Map<String, Any?>
@@ -368,7 +373,7 @@ class RolloverActionIT : IndexStateManagementRestTestCase() {
             val conditions = info["conditions"] as Map<String, Any?>
             assertEquals(
                 "Did not have exclusively min age and min doc count conditions",
-                setOf(RolloverAction.MIN_INDEX_AGE_FIELD, RolloverAction.MIN_DOC_COUNT_FIELD), conditions.keys
+                setOf(RolloverAction.MIN_INDEX_AGE_FIELD, RolloverAction.MIN_DOC_COUNT_FIELD), conditions.keys,
             )
             val minAge = conditions[RolloverAction.MIN_INDEX_AGE_FIELD] as Map<String, Any?>
             val minDocCount = conditions[RolloverAction.MIN_DOC_COUNT_FIELD] as Map<String, Any?>
@@ -391,15 +396,16 @@ class RolloverActionIT : IndexStateManagementRestTestCase() {
         val actionConfig = RolloverAction(null, 3, TimeValue.timeValueDays(2), null, false, 0)
         actionConfig.configRetry = ActionRetry(0)
         val states = listOf(State(name = "RolloverAction", actions = listOf(actionConfig), transitions = listOf()))
-        val policy = Policy(
-            id = policyID,
-            description = "$testIndexName description",
-            schemaVersion = 1L,
-            lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
-            errorNotification = randomErrorNotification(),
-            defaultState = states[0].name,
-            states = states
-        )
+        val policy =
+            Policy(
+                id = policyID,
+                description = "$testIndexName description",
+                schemaVersion = 1L,
+                lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
+                errorNotification = randomErrorNotification(),
+                defaultState = states[0].name,
+                states = states,
+            )
         createPolicy(policy, policyID)
         createIndex(index1, policyID)
         changeAlias(index1, alias1, "add")
@@ -420,16 +426,17 @@ class RolloverActionIT : IndexStateManagementRestTestCase() {
             val info = getExplainManagedIndexMetaData(index1).info as Map<String, Any?>
             assertEquals(
                 "Index rollover not stopped by pre-check.",
-                AttemptRolloverStep.getFailedPreCheckMessage(index1), info["message"]
+                AttemptRolloverStep.getFailedPreCheckMessage(index1), info["message"],
             )
         }
 
         updateIndexSetting(index1, ManagedIndexSettings.ROLLOVER_SKIP.key, "true")
 
-        val response = client().makeRequest(
-            RestRequest.Method.POST.toString(),
-            "${RestRetryFailedManagedIndexAction.RETRY_BASE_URI}/$index1"
-        )
+        val response =
+            client().makeRequest(
+                RestRequest.Method.POST.toString(),
+                "${RestRetryFailedManagedIndexAction.RETRY_BASE_URI}/$index1",
+            )
         assertEquals("Unexpected RestStatus", RestStatus.OK, response.restStatus())
 
         updateManagedIndexConfigStartTime(managedIndexConfig)
@@ -437,7 +444,7 @@ class RolloverActionIT : IndexStateManagementRestTestCase() {
             val info = getExplainManagedIndexMetaData(index1).info as Map<String, Any?>
             assertEquals(
                 "Index rollover not skip.",
-                AttemptRolloverStep.getSkipRolloverMessage(index1), info["message"]
+                AttemptRolloverStep.getSkipRolloverMessage(index1), info["message"],
             )
         }
     }
@@ -449,16 +456,17 @@ class RolloverActionIT : IndexStateManagementRestTestCase() {
         // Create the rollover policy
         val rolloverAction = RolloverAction(null, null, null, null, false, 0)
         val states = listOf(State(name = "default", actions = listOf(rolloverAction), transitions = listOf()))
-        val policy = Policy(
-            id = policyID,
-            description = "rollover policy description",
-            schemaVersion = 1L,
-            lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
-            errorNotification = randomErrorNotification(),
-            defaultState = states[0].name,
-            states = states,
-            ismTemplate = listOf(ISMTemplate(listOf(dataStreamName), 100, Instant.now().truncatedTo(ChronoUnit.MILLIS)))
-        )
+        val policy =
+            Policy(
+                id = policyID,
+                description = "rollover policy description",
+                schemaVersion = 1L,
+                lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
+                errorNotification = randomErrorNotification(),
+                defaultState = states[0].name,
+                states = states,
+                ismTemplate = listOf(ISMTemplate(listOf(dataStreamName), 100, Instant.now().truncatedTo(ChronoUnit.MILLIS))),
+            )
         createPolicy(policy, policyID)
 
         // Create the data stream
@@ -466,7 +474,7 @@ class RolloverActionIT : IndexStateManagementRestTestCase() {
         client().makeRequest(
             "PUT",
             "/_index_template/rollover-data-stream-template",
-            StringEntity("{ \"index_patterns\": [ \"$dataStreamName\" ], \"data_stream\": { } }", ContentType.APPLICATION_JSON)
+            StringEntity("{ \"index_patterns\": [ \"$dataStreamName\" ], \"data_stream\": { } }", ContentType.APPLICATION_JSON),
         )
         client().makeRequest("PUT", "/_data_stream/$dataStreamName")
 
@@ -483,7 +491,7 @@ class RolloverActionIT : IndexStateManagementRestTestCase() {
             assertEquals(
                 "Data stream did not rollover.",
                 AttemptRolloverStep.getSuccessDataStreamRolloverMessage(dataStreamName, firstIndexName),
-                info["message"]
+                info["message"],
             )
             assertNull("Should not have conditions if none specified", info["conditions"])
         }
@@ -508,16 +516,17 @@ class RolloverActionIT : IndexStateManagementRestTestCase() {
         // Create the rollover policy
         val rolloverAction = RolloverAction(null, 3, TimeValue.timeValueDays(2), null, false, 0)
         val states = listOf(State(name = "default", actions = listOf(rolloverAction), transitions = listOf()))
-        val policy = Policy(
-            id = policyID,
-            description = "rollover policy description",
-            schemaVersion = 1L,
-            lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
-            errorNotification = randomErrorNotification(),
-            defaultState = states[0].name,
-            states = states,
-            ismTemplate = listOf(ISMTemplate(listOf(dataStreamName), 100, Instant.now().truncatedTo(ChronoUnit.MILLIS)))
-        )
+        val policy =
+            Policy(
+                id = policyID,
+                description = "rollover policy description",
+                schemaVersion = 1L,
+                lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
+                errorNotification = randomErrorNotification(),
+                defaultState = states[0].name,
+                states = states,
+                ismTemplate = listOf(ISMTemplate(listOf(dataStreamName), 100, Instant.now().truncatedTo(ChronoUnit.MILLIS))),
+            )
         createPolicy(policy, policyID)
 
         // Create the data stream
@@ -525,7 +534,7 @@ class RolloverActionIT : IndexStateManagementRestTestCase() {
         client().makeRequest(
             "PUT",
             "/_index_template/rollover-data-stream-template",
-            StringEntity("{ \"index_patterns\": [ \"$dataStreamName\" ], \"data_stream\": { } }", ContentType.APPLICATION_JSON)
+            StringEntity("{ \"index_patterns\": [ \"$dataStreamName\" ], \"data_stream\": { } }", ContentType.APPLICATION_JSON),
         )
         client().makeRequest("PUT", "/_data_stream/$dataStreamName")
 
@@ -543,14 +552,14 @@ class RolloverActionIT : IndexStateManagementRestTestCase() {
             assertEquals(
                 "Index rollover before it met the condition.",
                 AttemptRolloverStep.getPendingMessage(firstIndexName),
-                info["message"]
+                info["message"],
             )
 
             val conditions = info["conditions"] as Map<String, Any?>
             assertEquals(
                 "Did not have exclusively min age and min doc count conditions",
                 setOf(RolloverAction.MIN_INDEX_AGE_FIELD, RolloverAction.MIN_DOC_COUNT_FIELD),
-                conditions.keys
+                conditions.keys,
             )
 
             val minAge = conditions[RolloverAction.MIN_INDEX_AGE_FIELD] as Map<String, Any?>
@@ -571,14 +580,14 @@ class RolloverActionIT : IndexStateManagementRestTestCase() {
             assertEquals(
                 "Data stream did not rollover",
                 AttemptRolloverStep.getSuccessDataStreamRolloverMessage(dataStreamName, firstIndexName),
-                info["message"]
+                info["message"],
             )
 
             val conditions = info["conditions"] as Map<String, Any?>
             assertEquals(
                 "Did not have exclusively min age and min doc count conditions",
                 setOf(RolloverAction.MIN_INDEX_AGE_FIELD, RolloverAction.MIN_DOC_COUNT_FIELD),
-                conditions.keys
+                conditions.keys,
             )
 
             val minAge = conditions[RolloverAction.MIN_INDEX_AGE_FIELD] as Map<String, Any?>
@@ -603,15 +612,16 @@ class RolloverActionIT : IndexStateManagementRestTestCase() {
         val policyID = "${testIndexName}_testPolicyName_1"
         val actionConfig = RolloverAction(null, null, null, null, false, 0)
         val states = listOf(State(name = "RolloverAction", actions = listOf(actionConfig), transitions = listOf()))
-        val policy = Policy(
-            id = policyID,
-            description = "$testIndexName description",
-            schemaVersion = 1L,
-            lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
-            errorNotification = randomErrorNotification(),
-            defaultState = states[0].name,
-            states = states
-        )
+        val policy =
+            Policy(
+                id = policyID,
+                description = "$testIndexName description",
+                schemaVersion = 1L,
+                lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
+                errorNotification = randomErrorNotification(),
+                defaultState = states[0].name,
+                states = states,
+            )
 
         createPolicy(policy, policyID)
         // create index defaults
@@ -645,15 +655,16 @@ class RolloverActionIT : IndexStateManagementRestTestCase() {
         val policyID = "${testIndexName}_testPolicyName_doc_1"
         val actionConfig = RolloverAction(null, 3, TimeValue.timeValueDays(2), null, true, 0)
         val states = listOf(State(name = "RolloverAction", actions = listOf(actionConfig), transitions = listOf()))
-        val policy = Policy(
-            id = policyID,
-            description = "$testIndexName description",
-            schemaVersion = 1L,
-            lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
-            errorNotification = randomErrorNotification(),
-            defaultState = states[0].name,
-            states = states
-        )
+        val policy =
+            Policy(
+                id = policyID,
+                description = "$testIndexName description",
+                schemaVersion = 1L,
+                lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
+                errorNotification = randomErrorNotification(),
+                defaultState = states[0].name,
+                states = states,
+            )
 
         createPolicy(policy, policyID)
         // create index defaults
@@ -662,10 +673,11 @@ class RolloverActionIT : IndexStateManagementRestTestCase() {
         // Add a bunch of aliases
         changeAlias(
             firstIndex, "test_alias1", "add", routing = 0, searchRouting = 1, indexRouting = 2,
-            filter = """
-            { "term": { "user.id": "kimchy" } }
+            filter =
+            """
+                { "term": { "user.id": "kimchy" } }
             """.trimIndent(),
-            isHidden = false
+            isHidden = false,
         )
         changeAlias(firstIndex, "test_alias2", "add")
         changeAlias(firstIndex, "test_alias3", "add")
@@ -682,12 +694,12 @@ class RolloverActionIT : IndexStateManagementRestTestCase() {
             val info = getExplainManagedIndexMetaData(firstIndex).info as Map<String, Any?>
             assertEquals(
                 "Index rollover before it met the condition.",
-                AttemptRolloverStep.getPendingMessage(firstIndex), info["message"]
+                AttemptRolloverStep.getPendingMessage(firstIndex), info["message"],
             )
             val conditions = info["conditions"] as Map<String, Any?>
             assertEquals(
                 "Did not have exclusively min age and min doc count conditions",
-                setOf(RolloverAction.MIN_INDEX_AGE_FIELD, RolloverAction.MIN_DOC_COUNT_FIELD), conditions.keys
+                setOf(RolloverAction.MIN_INDEX_AGE_FIELD, RolloverAction.MIN_DOC_COUNT_FIELD), conditions.keys,
             )
             val minAge = conditions[RolloverAction.MIN_INDEX_AGE_FIELD] as Map<String, Any?>
             val minDocCount = conditions[RolloverAction.MIN_DOC_COUNT_FIELD] as Map<String, Any?>
@@ -709,7 +721,7 @@ class RolloverActionIT : IndexStateManagementRestTestCase() {
             val conditions = info["conditions"] as Map<String, Any?>
             assertEquals(
                 "Did not have exclusively min age and min doc count conditions",
-                setOf(RolloverAction.MIN_INDEX_AGE_FIELD, RolloverAction.MIN_DOC_COUNT_FIELD), conditions.keys
+                setOf(RolloverAction.MIN_INDEX_AGE_FIELD, RolloverAction.MIN_DOC_COUNT_FIELD), conditions.keys,
             )
             val minAge = conditions[RolloverAction.MIN_INDEX_AGE_FIELD] as Map<String, Any?>
             val minDocCount = conditions[RolloverAction.MIN_DOC_COUNT_FIELD] as Map<String, Any?>
@@ -742,15 +754,16 @@ class RolloverActionIT : IndexStateManagementRestTestCase() {
         val policyID = "${testIndexName}_testPolicyName_1"
         val actionConfig = RolloverAction(null, 1, null, null, false, 0)
         val states = listOf(State(name = "RolloverAction", actions = listOf(actionConfig), transitions = listOf()))
-        val policy = Policy(
-            id = policyID,
-            description = "$testIndexName description",
-            schemaVersion = 1L,
-            lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
-            errorNotification = randomErrorNotification(),
-            defaultState = states[0].name,
-            states = states
-        )
+        val policy =
+            Policy(
+                id = policyID,
+                description = "$testIndexName description",
+                schemaVersion = 1L,
+                lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
+                errorNotification = randomErrorNotification(),
+                defaultState = states[0].name,
+                states = states,
+            )
 
         createPolicy(policy, policyID)
         createIndex(firstIndex, policyID, aliasName)
@@ -770,21 +783,22 @@ class RolloverActionIT : IndexStateManagementRestTestCase() {
             assertEquals("Index did not rollover.", AttemptRolloverStep.getSuccessMessage(firstIndex), info["message"])
         }
         // Manually produce transaction failure
-        val response = client().makeRequest(
-            "POST", "$INDEX_MANAGEMENT_INDEX/_update/${managedIndexConfig.id}%23metadata",
-            StringEntity(
-                "{\n" +
-                    "    \"script\": {\n" +
-                    "        \"source\": \"ctx._source.managed_index_metadata.step.step_status = params.step_status\",\n" +
-                    "        \"lang\": \"painless\",\n" +
-                    "        \"params\": {\n" +
-                    "            \"step_status\": \"starting\"\n" +
-                    "    }\n" +
-                    "  }\n" +
-                    "}",
-                ContentType.APPLICATION_JSON
+        val response =
+            client().makeRequest(
+                "POST", "$INDEX_MANAGEMENT_INDEX/_update/${managedIndexConfig.id}%23metadata",
+                StringEntity(
+                    "{\n" +
+                        "    \"script\": {\n" +
+                        "        \"source\": \"ctx._source.managed_index_metadata.step.step_status = params.step_status\",\n" +
+                        "        \"lang\": \"painless\",\n" +
+                        "        \"params\": {\n" +
+                        "            \"step_status\": \"starting\"\n" +
+                        "    }\n" +
+                        "  }\n" +
+                        "}",
+                    ContentType.APPLICATION_JSON,
+                ),
             )
-        )
         assertEquals("Request failed", RestStatus.OK, response.restStatus())
 
         // Execute again to see the transaction failure

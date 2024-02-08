@@ -20,9 +20,8 @@ class NotificationAction(
     val destination: Destination?,
     val channel: Channel?,
     val messageTemplate: Script,
-    index: Int
+    index: Int,
 ) : Action(name, index) {
-
     init {
         require(destination != null || channel != null) { "Notification must contain a destination or channel" }
         require(destination == null || channel == null) { "Notification can only contain a single destination or channel" }

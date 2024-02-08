@@ -22,19 +22,21 @@ class CloseActionIT : IndexStateManagementRestTestCase() {
         val indexName = "${testIndexName}_index_1"
         val policyID = "${testIndexName}_testPolicyName_1"
         val actionConfig = CloseAction(0)
-        val states = listOf(
-            State("CloseState", listOf(actionConfig), listOf())
-        )
+        val states =
+            listOf(
+                State("CloseState", listOf(actionConfig), listOf()),
+            )
 
-        val policy = Policy(
-            id = policyID,
-            description = "$testIndexName description",
-            schemaVersion = 1L,
-            lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
-            errorNotification = randomErrorNotification(),
-            defaultState = states[0].name,
-            states = states
-        )
+        val policy =
+            Policy(
+                id = policyID,
+                description = "$testIndexName description",
+                schemaVersion = 1L,
+                lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
+                errorNotification = randomErrorNotification(),
+                defaultState = states[0].name,
+                states = states,
+            )
         createPolicy(policy, policyID)
         createIndex(indexName, policyID)
 
@@ -57,19 +59,21 @@ class CloseActionIT : IndexStateManagementRestTestCase() {
         val indexName = "${testIndexName}_index_2"
         val policyID = "${testIndexName}_testPolicyName_2"
         val actionConfig = CloseAction(0)
-        val states = listOf(
-            State("CloseState", listOf(actionConfig), listOf())
-        )
+        val states =
+            listOf(
+                State("CloseState", listOf(actionConfig), listOf()),
+            )
 
-        val policy = Policy(
-            id = policyID,
-            description = "$testIndexName description",
-            schemaVersion = 1L,
-            lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
-            errorNotification = randomErrorNotification(),
-            defaultState = states[0].name,
-            states = states
-        )
+        val policy =
+            Policy(
+                id = policyID,
+                description = "$testIndexName description",
+                schemaVersion = 1L,
+                lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
+                errorNotification = randomErrorNotification(),
+                defaultState = states[0].name,
+                states = states,
+            )
         createPolicy(policy, policyID)
         createIndex(indexName, policyID)
 
@@ -97,15 +101,16 @@ class CloseActionIT : IndexStateManagementRestTestCase() {
         val firstState = State("CloseState", listOf(actionConfig), listOf(Transition(stateName = secondState.name, conditions = null)))
         val states = listOf(firstState, secondState)
 
-        val policy = Policy(
-            id = policyID,
-            description = "$testIndexName description",
-            schemaVersion = 1L,
-            lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
-            errorNotification = randomErrorNotification(),
-            defaultState = states[0].name,
-            states = states
-        )
+        val policy =
+            Policy(
+                id = policyID,
+                description = "$testIndexName description",
+                schemaVersion = 1L,
+                lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
+                errorNotification = randomErrorNotification(),
+                defaultState = states[0].name,
+                states = states,
+            )
         createPolicy(policy, policyID)
         createIndex(indexName, policyID)
 

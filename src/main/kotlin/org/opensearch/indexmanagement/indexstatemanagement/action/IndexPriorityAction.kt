@@ -15,9 +15,8 @@ import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepContext
 
 class IndexPriorityAction(
     val indexPriority: Int,
-    index: Int
+    index: Int,
 ) : Action(name, index) {
-
     init {
         require(indexPriority >= 0) { "IndexPriorityAction index_priority value must be a non-negative number" }
     }

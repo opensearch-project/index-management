@@ -11,12 +11,12 @@ import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepContext
 
 class OpenAction(
-    index: Int
+    index: Int,
 ) : Action(name, index) {
-
     companion object {
         const val name = "open"
     }
+
     private val attemptOpenStep = AttemptOpenStep()
     private val steps = listOf(attemptOpenStep)
 

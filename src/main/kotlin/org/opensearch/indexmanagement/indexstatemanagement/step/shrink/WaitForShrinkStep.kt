@@ -28,7 +28,6 @@ import java.time.Duration
 import java.time.Instant
 
 class WaitForShrinkStep(private val action: ShrinkAction) : ShrinkStep(name, true, true, true) {
-
     @Suppress("ReturnCount")
     override suspend fun wrappedExecute(context: StepContext): WaitForShrinkStep {
         val indexName = context.metadata.index
@@ -74,7 +73,7 @@ class WaitForShrinkStep(private val action: ShrinkAction) : ShrinkStep(name, tru
         if (!response.isAcknowledged) {
             cleanupAndFail(
                 getFailureMessage(index),
-                "Shrink action to clear the allocation settings on index [$index] following shrinking."
+                "Shrink action to clear the allocation settings on index [$index] following shrinking.",
             )
             return false
         }
@@ -102,7 +101,6 @@ class WaitForShrinkStep(private val action: ShrinkAction) : ShrinkStep(name, tru
     }
 
     suspend fun switchAliases(context: StepContext, shrinkActionProperties: ShrinkActionProperties): Boolean {
-
         val sourceIndexName = context.metadata.index
         val targetIndexName = shrinkActionProperties.targetIndexName
 
@@ -113,20 +111,22 @@ class WaitForShrinkStep(private val action: ShrinkAction) : ShrinkStep(name, tru
 
         logger.info("Switching aliases from [$sourceIndexName] to [$targetIndexName].")
 
-        val targetIndexAliasesNames = context
-            .clusterService
-            .state()
-            .metadata()
-            .index(targetIndexName)
-            .aliases
-            .keys
-        val sourceIndexAliases = context
-            .clusterService
-            .state()
-            .metadata()
-            .index(sourceIndexName)
-            .aliases
-            .values
+        val targetIndexAliasesNames =
+            context
+                .clusterService
+                .state()
+                .metadata()
+                .index(targetIndexName)
+                .aliases
+                .keys
+        val sourceIndexAliases =
+            context
+                .clusterService
+                .state()
+                .metadata()
+                .index(sourceIndexName)
+                .aliases
+                .values
 
         val req = IndicesAliasesRequest()
         sourceIndexAliases.map { it.alias }.forEach { req.addAliasAction(AliasActions(AliasActions.Type.REMOVE).index(sourceIndexName).alias(it)) }
@@ -161,14 +161,16 @@ class WaitForShrinkStep(private val action: ShrinkAction) : ShrinkStep(name, tru
 
     override fun getUpdatedManagedIndexMetadata(currentMetadata: ManagedIndexMetaData): ManagedIndexMetaData {
         return currentMetadata.copy(
-            actionMetaData = currentMetadata.actionMetaData?.copy(
-                actionProperties = ActionProperties(
-                    shrinkActionProperties = shrinkActionProperties
-                )
+            actionMetaData =
+            currentMetadata.actionMetaData?.copy(
+                actionProperties =
+                ActionProperties(
+                    shrinkActionProperties = shrinkActionProperties,
+                ),
             ),
             stepMetaData = StepMetaData(name, getStepStartTime(currentMetadata).toEpochMilli(), stepStatus),
             transitionTo = null,
-            info = info
+            info = info,
         )
     }
 
@@ -178,8 +180,11 @@ class WaitForShrinkStep(private val action: ShrinkAction) : ShrinkStep(name, tru
         const val name = "wait_for_shrink_step"
         const val SUCCESS_MESSAGE = "Shrink finished successfully."
         const val GENERIC_FAILURE_MESSAGE = "Shrink failed while waiting for shards to start."
+
         fun getDelayedMessage(newIndex: String) = "Shrink delayed because $newIndex shards not in started state."
+
         fun getFailureMessage(newIndex: String) = "Shrink failed while waiting for $newIndex shards to start."
+
         fun getTimeoutFailure(newIndex: String) = "Shrink failed because it timed out while waiting for $newIndex shrink to finish."
     }
 }

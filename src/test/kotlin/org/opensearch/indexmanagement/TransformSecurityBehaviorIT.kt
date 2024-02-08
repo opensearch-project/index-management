@@ -15,13 +15,13 @@ import org.junit.After
 import org.junit.Before
 import org.opensearch.client.RestClient
 import org.opensearch.commons.rest.SecureRestClientBuilder
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.indexmanagement.common.model.dimension.Terms
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings
 import org.opensearch.indexmanagement.transform.model.Transform
 import org.opensearch.indexmanagement.transform.model.TransformMetadata
 import org.opensearch.indexmanagement.transform.randomTransform
 import org.opensearch.jobscheduler.spi.schedule.IntervalSchedule
-import org.opensearch.core.rest.RestStatus
 import org.opensearch.test.junit.annotations.TestLogging
 import java.time.Instant
 import java.time.temporal.ChronoUnit
@@ -42,27 +42,29 @@ class TransformSecurityBehaviorIT : SecurityRestTestCase() {
         updateClusterSetting(ManagedIndexSettings.JITTER.key, "0.0", false)
 
         // Init super transform user
-        val helpdeskClusterPermissions = listOf(
-            STOP_TRANSFORM,
-            EXPLAIN_INDEX,
-            TRANSFORM_ACTION,
-            GET_TRANSFORM,
-            EXPLAIN_TRANSFORM,
-            START_TRANSFORM,
-            DELETE_TRANSFORM,
-            HEALTH,
-            GET_TRANSFORMS
-        )
+        val helpdeskClusterPermissions =
+            listOf(
+                STOP_TRANSFORM,
+                EXPLAIN_INDEX,
+                TRANSFORM_ACTION,
+                GET_TRANSFORM,
+                EXPLAIN_TRANSFORM,
+                START_TRANSFORM,
+                DELETE_TRANSFORM,
+                HEALTH,
+                GET_TRANSFORMS,
+            )
 
-        val indexPermissions = listOf(
-            MANAGED_INDEX,
-            CREATE_INDEX,
-            WRITE_INDEX,
-            BULK_WRITE_INDEX,
-            GET_INDEX_MAPPING,
-            SEARCH_INDEX,
-            PUT_INDEX_MAPPING
-        )
+        val indexPermissions =
+            listOf(
+                MANAGED_INDEX,
+                CREATE_INDEX,
+                WRITE_INDEX,
+                BULK_WRITE_INDEX,
+                GET_INDEX_MAPPING,
+                SEARCH_INDEX,
+                PUT_INDEX_MAPPING,
+            )
         // In this test suite case john is a "super-user" which has all relevant privileges
         createUser(superTransformUser, password, listOf(HELPDESK))
         createRole(HELPDESK_ROLE, helpdeskClusterPermissions, indexPermissions, listOf(AIRLINE_INDEX_PATTERN))
@@ -73,7 +75,7 @@ class TransformSecurityBehaviorIT : SecurityRestTestCase() {
                 clusterHosts.toTypedArray(),
                 isHttps(),
                 superTransformUser,
-                password
+                password,
             ).setSocketTimeout(60000).setConnectionRequestTimeout(180000)
                 .build()
     }
@@ -282,9 +284,10 @@ class TransformSecurityBehaviorIT : SecurityRestTestCase() {
             targetIndex = targetIndex,
             roles = emptyList(),
             pageSize = 100,
-            groups = listOf(
-                Terms(sourceField = "store_and_fwd_flag", targetField = "flag")
-            )
+            groups =
+            listOf(
+                Terms(sourceField = "store_and_fwd_flag", targetField = "flag"),
+            ),
         )
     }
 

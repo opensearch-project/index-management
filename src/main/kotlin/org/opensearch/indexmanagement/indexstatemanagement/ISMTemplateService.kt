@@ -7,9 +7,9 @@ package org.opensearch.indexmanagement.indexstatemanagement
 
 import org.apache.lucene.util.automaton.Operations
 import org.opensearch.OpenSearchException
-import org.opensearch.core.common.Strings
 import org.opensearch.common.ValidationException
 import org.opensearch.common.regex.Regex
+import org.opensearch.core.common.Strings
 import org.opensearch.indexmanagement.indexstatemanagement.model.ISMTemplate
 import org.opensearch.indexmanagement.util.IndexManagementException
 
@@ -35,7 +35,7 @@ fun validateFormat(indexPatterns: List<String>): OpenSearchException? {
         if (!Strings.validFileNameExcludingAstrix(indexPattern)) {
             indexPatternFormatErrors.add(
                 "index_pattern [" + indexPattern + "] must not contain the following characters " +
-                    Strings.INVALID_FILENAME_CHARS
+                    Strings.INVALID_FILENAME_CHARS,
             )
         }
     }
@@ -90,7 +90,7 @@ fun overlapping(p1: List<String>, p2: List<String>): Boolean {
 fun Map<String, List<ISMTemplate>>.findConflictingPolicyTemplates(
     candidate: String,
     indexPatterns: List<String>,
-    priority: Int
+    priority: Int,
 ): Map<String, List<String>> {
     val overlappingTemplates = mutableMapOf<String, List<String>>()
 

@@ -11,9 +11,8 @@ import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepContext
 
 class ReadWriteAction(
-    index: Int
+    index: Int,
 ) : Action(name, index) {
-
     companion object {
         const val name = "read_write"
     }

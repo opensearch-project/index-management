@@ -5,6 +5,7 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.model
 
+import org.opensearch.commons.authuser.User
 import org.opensearch.core.common.io.stream.StreamInput
 import org.opensearch.core.common.io.stream.StreamOutput
 import org.opensearch.core.common.io.stream.Writeable
@@ -14,7 +15,6 @@ import org.opensearch.core.xcontent.XContentBuilder
 import org.opensearch.core.xcontent.XContentParser
 import org.opensearch.core.xcontent.XContentParser.Token
 import org.opensearch.core.xcontent.XContentParserUtils.ensureExpectedToken
-import org.opensearch.commons.authuser.User
 import org.opensearch.indexmanagement.indexstatemanagement.util.WITH_USER
 import org.opensearch.indexmanagement.opensearchapi.optionalUserField
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StateMetaData
@@ -35,18 +35,20 @@ data class ChangePolicy(
     val state: String?,
     val include: List<StateFilter>,
     val isSafe: Boolean,
-    val user: User? = null
+    val user: User? = null,
 ) : Writeable, ToXContentObject {
-
     @Throws(IOException::class)
     constructor(sin: StreamInput) : this(
         policyID = sin.readString(),
         state = sin.readOptionalString(),
         include = sin.readList(::StateFilter),
         isSafe = sin.readBoolean(),
-        user = if (sin.readBoolean()) {
+        user =
+        if (sin.readBoolean()) {
             User(sin)
-        } else null
+        } else {
+            null
+        },
     )
 
     override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
@@ -112,7 +114,7 @@ data class ChangePolicy(
                 state,
                 include.toList(),
                 isSafe,
-                user
+                user,
             )
         }
     }

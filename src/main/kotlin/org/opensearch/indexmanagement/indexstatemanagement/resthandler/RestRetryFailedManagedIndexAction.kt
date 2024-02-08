@@ -6,9 +6,9 @@
 package org.opensearch.indexmanagement.indexstatemanagement.resthandler
 
 import org.opensearch.client.node.NodeClient
-import org.opensearch.core.common.Strings
 import org.opensearch.common.logging.DeprecationLogger
 import org.opensearch.common.xcontent.XContentHelper
+import org.opensearch.core.common.Strings
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.ISM_BASE_URI
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.LEGACY_ISM_BASE_URI
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.retryfailedmanagedindex.RetryFailedManagedIndexAction
@@ -25,7 +25,6 @@ import org.opensearch.rest.RestRequest.Method.POST
 import org.opensearch.rest.action.RestToXContentListener
 
 class RestRetryFailedManagedIndexAction : BaseRestHandler() {
-
     override fun routes(): List<Route> {
         return emptyList()
     }
@@ -34,12 +33,12 @@ class RestRetryFailedManagedIndexAction : BaseRestHandler() {
         return listOf(
             ReplacedRoute(
                 POST, RETRY_BASE_URI,
-                POST, LEGACY_RETRY_BASE_URI
+                POST, LEGACY_RETRY_BASE_URI,
             ),
             ReplacedRoute(
                 POST, "$RETRY_BASE_URI/{index}",
-                POST, "$LEGACY_RETRY_BASE_URI/{index}"
-            )
+                POST, "$LEGACY_RETRY_BASE_URI/{index}",
+            ),
         )
     }
 
@@ -53,23 +52,26 @@ class RestRetryFailedManagedIndexAction : BaseRestHandler() {
         if (indices == null || indices.isEmpty()) {
             throw IllegalArgumentException("Missing indices")
         }
-        val body = if (request.hasContent()) {
-            XContentHelper.convertToMap(request.requiredContent(), false, request.mediaType).v2()
-        } else {
-            mapOf()
-        }
+        val body =
+            if (request.hasContent()) {
+                XContentHelper.convertToMap(request.requiredContent(), false, request.mediaType).v2()
+            } else {
+                mapOf()
+            }
 
         val indexType = request.param(TYPE_PARAM_KEY, DEFAULT_INDEX_TYPE)
 
-        val clusterManagerTimeout = parseClusterManagerTimeout(
-            request, DeprecationLogger.getLogger(RestRetryFailedManagedIndexAction::class.java), name
-        )
+        val clusterManagerTimeout =
+            parseClusterManagerTimeout(
+                request, DeprecationLogger.getLogger(RestRetryFailedManagedIndexAction::class.java), name,
+            )
 
-        val retryFailedRequest = RetryFailedManagedIndexRequest(
-            indices.toList(), body["state"] as String?,
-            clusterManagerTimeout,
-            indexType
-        )
+        val retryFailedRequest =
+            RetryFailedManagedIndexRequest(
+                indices.toList(), body["state"] as String?,
+                clusterManagerTimeout,
+                indexType,
+            )
 
         return RestChannelConsumer { channel ->
             client.execute(RetryFailedManagedIndexAction.INSTANCE, retryFailedRequest, RestToXContentListener(channel))

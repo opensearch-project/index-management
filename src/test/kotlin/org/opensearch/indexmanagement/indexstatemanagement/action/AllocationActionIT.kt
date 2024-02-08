@@ -23,18 +23,20 @@ class AllocationActionIT : IndexStateManagementRestTestCase() {
         val indexName = "${testIndexName}_index_1"
         val policyID = "${testIndexName}_testPolicyName_1"
         val actionConfig = AllocationAction(require = mapOf("box_type" to "hot"), exclude = emptyMap(), include = emptyMap(), index = 0)
-        val states = listOf(
-            State("Allocate", listOf(actionConfig), listOf())
-        )
-        val policy = Policy(
-            id = policyID,
-            description = "$testIndexName description",
-            schemaVersion = 1L,
-            lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
-            errorNotification = randomErrorNotification(),
-            defaultState = states[0].name,
-            states = states
-        )
+        val states =
+            listOf(
+                State("Allocate", listOf(actionConfig), listOf()),
+            )
+        val policy =
+            Policy(
+                id = policyID,
+                description = "$testIndexName description",
+                schemaVersion = 1L,
+                lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
+                errorNotification = randomErrorNotification(),
+                defaultState = states[0].name,
+                states = states,
+            )
         createPolicy(policy, policyID)
         createIndex(indexName, policyID)
         val managedIndexConfig = getExistingManagedIndexConfig(indexName)
@@ -66,18 +68,20 @@ class AllocationActionIT : IndexStateManagementRestTestCase() {
 
         availableNodes.remove(getIndexShardNodes(indexName)[0])
         val actionConfig = AllocationAction(require = mapOf("_name" to availableNodes.first()), exclude = emptyMap(), include = emptyMap(), index = 0)
-        val states = listOf(
-            State("Allocate", listOf(actionConfig), listOf())
-        )
-        val policy = Policy(
-            id = policyID,
-            description = "$testIndexName description",
-            schemaVersion = 1L,
-            lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
-            errorNotification = randomErrorNotification(),
-            defaultState = states[0].name,
-            states = states
-        )
+        val states =
+            listOf(
+                State("Allocate", listOf(actionConfig), listOf()),
+            )
+        val policy =
+            Policy(
+                id = policyID,
+                description = "$testIndexName description",
+                schemaVersion = 1L,
+                lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
+                errorNotification = randomErrorNotification(),
+                defaultState = states[0].name,
+                states = states,
+            )
         createPolicy(policy, policyID)
         addPolicyToIndex(policyID, indexName)
         val managedIndexConfig = getExistingManagedIndexConfig(indexName)
@@ -112,18 +116,20 @@ class AllocationActionIT : IndexStateManagementRestTestCase() {
 
         val excludedNode = getIndexShardNodes(indexName)[0].toString()
         val actionConfig = AllocationAction(require = emptyMap(), exclude = mapOf("_name" to excludedNode), include = emptyMap(), index = 0)
-        val states = listOf(
-            State("Allocate", listOf(actionConfig), listOf())
-        )
-        val policy = Policy(
-            id = policyID,
-            description = "$testIndexName description",
-            schemaVersion = 1L,
-            lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
-            errorNotification = randomErrorNotification(),
-            defaultState = states[0].name,
-            states = states
-        )
+        val states =
+            listOf(
+                State("Allocate", listOf(actionConfig), listOf()),
+            )
+        val policy =
+            Policy(
+                id = policyID,
+                description = "$testIndexName description",
+                schemaVersion = 1L,
+                lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
+                errorNotification = randomErrorNotification(),
+                defaultState = states[0].name,
+                states = states,
+            )
         createPolicy(policy, policyID)
         addPolicyToIndex(policyID, indexName)
         val managedIndexConfig = getExistingManagedIndexConfig(indexName)
@@ -159,19 +165,21 @@ class AllocationActionIT : IndexStateManagementRestTestCase() {
 
         availableNodes.remove(getIndexShardNodes(indexName)[0])
         val actionConfig = AllocationAction(require = emptyMap(), exclude = emptyMap(), include = mapOf("_name" to availableNodes.first()), index = 0)
-        val states = listOf(
-            State("Allocate", listOf(actionConfig), listOf())
-        )
+        val states =
+            listOf(
+                State("Allocate", listOf(actionConfig), listOf()),
+            )
 
-        val policy = Policy(
-            id = policyID,
-            description = "$testIndexName description",
-            schemaVersion = 1L,
-            lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
-            errorNotification = randomErrorNotification(),
-            defaultState = states[0].name,
-            states = states
-        )
+        val policy =
+            Policy(
+                id = policyID,
+                description = "$testIndexName description",
+                schemaVersion = 1L,
+                lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
+                errorNotification = randomErrorNotification(),
+                defaultState = states[0].name,
+                states = states,
+            )
         createPolicy(policy, policyID)
         addPolicyToIndex(policyID, indexName)
         val managedIndexConfig = getExistingManagedIndexConfig(indexName)
@@ -200,18 +208,20 @@ class AllocationActionIT : IndexStateManagementRestTestCase() {
         val indexName = "${testIndexName}_illegal_key"
         val policyID = "${testIndexName}_illegal_key"
         val actionConfig = AllocationAction(require = mapOf("..//" to "value"), exclude = emptyMap(), include = emptyMap(), index = 0)
-        val states = listOf(
-            State("Allocate", listOf(actionConfig), listOf())
-        )
-        val policy = Policy(
-            id = policyID,
-            description = "$testIndexName description",
-            schemaVersion = 1L,
-            lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
-            errorNotification = randomErrorNotification(),
-            defaultState = states[0].name,
-            states = states
-        )
+        val states =
+            listOf(
+                State("Allocate", listOf(actionConfig), listOf()),
+            )
+        val policy =
+            Policy(
+                id = policyID,
+                description = "$testIndexName description",
+                schemaVersion = 1L,
+                lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
+                errorNotification = randomErrorNotification(),
+                defaultState = states[0].name,
+                states = states,
+            )
         createPolicy(policy, policyID)
         createIndex(indexName, policyID, null, "0")
         val managedIndexConfig = getExistingManagedIndexConfig(indexName)

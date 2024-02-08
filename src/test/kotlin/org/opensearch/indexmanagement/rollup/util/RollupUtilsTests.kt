@@ -40,7 +40,6 @@ import org.opensearch.test.OpenSearchTestCase
 import org.opensearch.test.rest.OpenSearchRestTestCase
 
 class RollupUtilsTests : OpenSearchTestCase() {
-
     fun `test rewriteQueryBuilder term query`() {
         val termQuery = randomTermQuery()
         termQuery.queryName("dummy-query")
@@ -217,12 +216,13 @@ class RollupUtilsTests : OpenSearchTestCase() {
         val newDims = mutableListOf<Dimension>()
         // Make rollup dimensions and metrics contain the aggregation field name and aggregation metrics
         rollup.dimensions.forEach {
-            val dimToAdd = when (it) {
-                is DateHistogram -> it.copy(sourceField = aggField, targetField = aggField)
-                is Terms -> it.copy(sourceField = aggField, targetField = aggField)
-                is Histogram -> it.copy(sourceField = aggField, targetField = aggField)
-                else -> it
-            }
+            val dimToAdd =
+                when (it) {
+                    is DateHistogram -> it.copy(sourceField = aggField, targetField = aggField)
+                    is Terms -> it.copy(sourceField = aggField, targetField = aggField)
+                    is Histogram -> it.copy(sourceField = aggField, targetField = aggField)
+                    else -> it
+                }
             newDims.add(dimToAdd)
         }
         val newMetrics = mutableListOf(RollupMetrics(aggField, aggField, listOf(randomAverage(), randomMax(), randomMin(), randomSum(), randomValueCount())))

@@ -13,7 +13,6 @@ import java.time.temporal.ChronoUnit
 import kotlin.test.assertFailsWith
 
 class TransformTests : OpenSearchTestCase() {
-
     fun `test transform same indices`() {
         assertFailsWith(IllegalArgumentException::class, "Source and target index cannot be the same") {
             randomTransform().copy(sourceIndex = "dummy-index", targetIndex = "dummy-index")

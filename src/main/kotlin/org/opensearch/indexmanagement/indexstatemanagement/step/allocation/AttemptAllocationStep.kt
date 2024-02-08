@@ -16,7 +16,6 @@ import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedInde
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepMetaData
 
 class AttemptAllocationStep(private val action: AllocationAction) : Step(name) {
-
     private val logger = LogManager.getLogger(javaClass)
     private var stepStatus = StepStatus.STARTING
     private var info: Map<String, Any>? = null
@@ -25,9 +24,10 @@ class AttemptAllocationStep(private val action: AllocationAction) : Step(name) {
         val context = this.context ?: return this
         val indexName = context.metadata.index
         try {
-            val response: AcknowledgedResponse = context.client.admin()
-                .indices()
-                .suspendUntil { updateSettings(UpdateSettingsRequest(buildSettings(), indexName), it) }
+            val response: AcknowledgedResponse =
+                context.client.admin()
+                    .indices()
+                    .suspendUntil { updateSettings(UpdateSettingsRequest(buildSettings(), indexName), it) }
             handleResponse(response, indexName)
         } catch (e: Exception) {
             handleException(e, indexName)
@@ -68,7 +68,7 @@ class AttemptAllocationStep(private val action: AllocationAction) : Step(name) {
         return currentMetadata.copy(
             stepMetaData = StepMetaData(name, getStepStartTime(currentMetadata).toEpochMilli(), stepStatus),
             transitionTo = null,
-            info = info
+            info = info,
         )
     }
 
@@ -77,7 +77,9 @@ class AttemptAllocationStep(private val action: AllocationAction) : Step(name) {
     companion object {
         const val name = "attempt_allocation"
         private const val SETTINGS_PREFIX = "index.routing.allocation."
+
         fun getFailedMessage(index: String) = "Failed to update allocation setting [index=$index]"
+
         fun getSuccessMessage(index: String) = "Successfully updated allocation setting [index=$index]"
     }
 }

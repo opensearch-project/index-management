@@ -25,7 +25,6 @@ import org.opensearch.search.fetch.subphase.FetchSourceContext
 import org.opensearch.test.OpenSearchTestCase
 
 class RequestTests : OpenSearchTestCase() {
-
     fun `test delete single transform request`() {
         val id = "some_id"
         val req = DeleteTransformsRequest(listOf(id), false)
@@ -55,10 +54,11 @@ class RequestTests : OpenSearchTestCase() {
 
     fun `test index transform create request`() {
         val transform = randomTransform().copy(seqNo = SequenceNumbers.UNASSIGNED_SEQ_NO, primaryTerm = SequenceNumbers.UNASSIGNED_PRIMARY_TERM)
-        val req = IndexTransformRequest(
-            transform = transform,
-            refreshPolicy = WriteRequest.RefreshPolicy.IMMEDIATE
-        ).index(INDEX_MANAGEMENT_INDEX)
+        val req =
+            IndexTransformRequest(
+                transform = transform,
+                refreshPolicy = WriteRequest.RefreshPolicy.IMMEDIATE,
+            ).index(INDEX_MANAGEMENT_INDEX)
 
         val out = BytesStreamOutput().apply { req.writeTo(this) }
         val streamedReq = IndexTransformRequest(buildStreamInputForTransforms(out))
@@ -71,10 +71,11 @@ class RequestTests : OpenSearchTestCase() {
 
     fun `test index transform update request`() {
         val transform = randomTransform().copy(seqNo = 1L, primaryTerm = 2L)
-        val req = IndexTransformRequest(
-            transform = transform,
-            refreshPolicy = WriteRequest.RefreshPolicy.IMMEDIATE
-        ).index(INDEX_MANAGEMENT_INDEX)
+        val req =
+            IndexTransformRequest(
+                transform = transform,
+                refreshPolicy = WriteRequest.RefreshPolicy.IMMEDIATE,
+            ).index(INDEX_MANAGEMENT_INDEX)
 
         val out = BytesStreamOutput().apply { req.writeTo(this) }
         val streamedReq = IndexTransformRequest(buildStreamInputForTransforms(out))

@@ -6,6 +6,7 @@
 package org.opensearch.indexmanagement.snapshotmanagement.api.transport.get
 
 import org.apache.logging.log4j.LogManager
+import org.opensearch.ExceptionsHelper
 import org.opensearch.OpenSearchStatusException
 import org.opensearch.action.search.SearchRequest
 import org.opensearch.action.search.SearchResponse
@@ -16,8 +17,8 @@ import org.opensearch.common.inject.Inject
 import org.opensearch.common.settings.Settings
 import org.opensearch.common.util.concurrent.ThreadContext
 import org.opensearch.commons.authuser.User
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.index.IndexNotFoundException
-import org.opensearch.ExceptionsHelper
 import org.opensearch.index.query.BoolQueryBuilder
 import org.opensearch.index.query.ExistsQueryBuilder
 import org.opensearch.index.query.Operator
@@ -33,20 +34,20 @@ import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy
 import org.opensearch.indexmanagement.snapshotmanagement.settings.SnapshotManagementSettings.Companion.FILTER_BY_BACKEND_ROLES
 import org.opensearch.indexmanagement.snapshotmanagement.util.SM_POLICY_NAME_KEYWORD
 import org.opensearch.indexmanagement.util.SecurityUtils
-import org.opensearch.core.rest.RestStatus
 import org.opensearch.search.builder.SearchSourceBuilder
 import org.opensearch.transport.TransportService
 
-class TransportGetSMPoliciesAction @Inject constructor(
+class TransportGetSMPoliciesAction
+@Inject
+constructor(
     client: Client,
     transportService: TransportService,
     actionFilters: ActionFilters,
     val clusterService: ClusterService,
     val settings: Settings,
 ) : BaseTransportAction<GetSMPoliciesRequest, GetSMPoliciesResponse>(
-    GET_SM_POLICIES_ACTION_NAME, transportService, client, actionFilters, ::GetSMPoliciesRequest
+    GET_SM_POLICIES_ACTION_NAME, transportService, client, actionFilters, ::GetSMPoliciesRequest,
 ) {
-
     private val log = LogManager.getLogger(javaClass)
 
     @Volatile private var filterByEnabled = FILTER_BY_BACKEND_ROLES.get(settings)
@@ -60,7 +61,7 @@ class TransportGetSMPoliciesAction @Inject constructor(
     override suspend fun executeRequest(
         request: GetSMPoliciesRequest,
         user: User?,
-        threadContext: ThreadContext.StoredContext
+        threadContext: ThreadContext.StoredContext,
     ): GetSMPoliciesResponse {
         val searchParams = request.searchParams
         val (policies, totalPoliciesCount) = getAllPolicies(searchParams, user)
@@ -87,23 +88,25 @@ class TransportGetSMPoliciesAction @Inject constructor(
     private fun getAllPoliciesRequest(searchParams: SearchParams, user: User?): SearchRequest {
         val sortBuilder = searchParams.getSortBuilder()
 
-        val queryBuilder = BoolQueryBuilder()
-            .filter(ExistsQueryBuilder(SMPolicy.SM_TYPE))
-            .must(
-                QueryBuilders.queryStringQuery(searchParams.queryString)
-                    .defaultOperator(Operator.AND)
-                    .field(SM_POLICY_NAME_KEYWORD)
-            )
+        val queryBuilder =
+            BoolQueryBuilder()
+                .filter(ExistsQueryBuilder(SMPolicy.SM_TYPE))
+                .must(
+                    QueryBuilders.queryStringQuery(searchParams.queryString)
+                        .defaultOperator(Operator.AND)
+                        .field(SM_POLICY_NAME_KEYWORD),
+                )
 
         // Add user filter if enabled
         SecurityUtils.addUserFilter(user, queryBuilder, filterByEnabled, "sm_policy.user")
 
-        val searchSourceBuilder = SearchSourceBuilder()
-            .size(searchParams.size)
-            .from(searchParams.from)
-            .sort(sortBuilder)
-            .query(queryBuilder)
-            .seqNoAndPrimaryTerm(true)
+        val searchSourceBuilder =
+            SearchSourceBuilder()
+                .size(searchParams.size)
+                .from(searchParams.from)
+                .sort(sortBuilder)
+                .query(queryBuilder)
+                .seqNoAndPrimaryTerm(true)
         return SearchRequest(IndexManagementPlugin.INDEX_MANAGEMENT_INDEX).source(searchSourceBuilder)
     }
 

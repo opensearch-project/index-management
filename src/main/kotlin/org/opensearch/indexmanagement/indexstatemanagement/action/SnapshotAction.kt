@@ -17,9 +17,8 @@ import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepContext
 class SnapshotAction(
     val repository: String,
     val snapshot: String,
-    index: Int
+    index: Int,
 ) : Action(name, index) {
-
     companion object {
         const val name = "snapshot"
         const val REPOSITORY_FIELD = "repository"

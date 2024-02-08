@@ -24,16 +24,15 @@ data class SearchParams(
     val from: Int,
     val sortField: String,
     val sortOrder: String,
-    val queryString: String
+    val queryString: String,
 ) : Writeable {
-
     @Throws(IOException::class)
     constructor(sin: StreamInput) : this(
         size = sin.readInt(),
         from = sin.readInt(),
         sortField = sin.readString(),
         sortOrder = sin.readString(),
-        queryString = sin.readString()
+        queryString = sin.readString(),
     )
 
     @Throws(IOException::class)

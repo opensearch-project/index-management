@@ -13,13 +13,13 @@ import org.opensearch.core.xcontent.XContentParserUtils.ensureExpectedToken
 import java.io.IOException
 
 abstract class Metric(val type: Type) : ToXContentObject, Writeable {
-
     enum class Type(val type: String) {
         AVERAGE("avg"),
         SUM("sum"),
         MAX("max"),
         MIN("min"),
-        VALUE_COUNT("value_count");
+        VALUE_COUNT("value_count"),
+        ;
 
         override fun toString(): String {
             return type
@@ -37,14 +37,15 @@ abstract class Metric(val type: Type) : ToXContentObject, Writeable {
                 val fieldName = xcp.currentName()
                 xcp.nextToken()
 
-                metric = when (fieldName) {
-                    Type.AVERAGE.type -> Average.parse(xcp)
-                    Type.MAX.type -> Max.parse(xcp)
-                    Type.MIN.type -> Min.parse(xcp)
-                    Type.SUM.type -> Sum.parse(xcp)
-                    Type.VALUE_COUNT.type -> ValueCount.parse(xcp)
-                    else -> throw IllegalArgumentException("Invalid metric type [$fieldName] found in metrics")
-                }
+                metric =
+                    when (fieldName) {
+                        Type.AVERAGE.type -> Average.parse(xcp)
+                        Type.MAX.type -> Max.parse(xcp)
+                        Type.MIN.type -> Min.parse(xcp)
+                        Type.SUM.type -> Sum.parse(xcp)
+                        Type.VALUE_COUNT.type -> ValueCount.parse(xcp)
+                        else -> throw IllegalArgumentException("Invalid metric type [$fieldName] found in metrics")
+                    }
             }
 
             return requireNotNull(metric) { "Metric is null" }

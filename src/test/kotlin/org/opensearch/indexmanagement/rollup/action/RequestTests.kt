@@ -24,7 +24,6 @@ import org.opensearch.search.fetch.subphase.FetchSourceContext
 import org.opensearch.test.OpenSearchTestCase
 
 class RequestTests : OpenSearchTestCase() {
-
     fun `test delete rollup request`() {
         val id = "some_id"
         val req = DeleteRollupRequest(id).index(INDEX_MANAGEMENT_INDEX)
@@ -99,10 +98,11 @@ class RequestTests : OpenSearchTestCase() {
 
     fun `test index rollup post request`() {
         val rollup = randomRollup().copy(seqNo = SequenceNumbers.UNASSIGNED_SEQ_NO, primaryTerm = SequenceNumbers.UNASSIGNED_PRIMARY_TERM)
-        val req = IndexRollupRequest(
-            rollup = rollup,
-            refreshPolicy = WriteRequest.RefreshPolicy.IMMEDIATE
-        ).index(INDEX_MANAGEMENT_INDEX)
+        val req =
+            IndexRollupRequest(
+                rollup = rollup,
+                refreshPolicy = WriteRequest.RefreshPolicy.IMMEDIATE,
+            ).index(INDEX_MANAGEMENT_INDEX)
 
         val out = BytesStreamOutput().apply { req.writeTo(this) }
         val sin = StreamInput.wrap(out.bytes().toBytesRef().bytes)
@@ -116,10 +116,11 @@ class RequestTests : OpenSearchTestCase() {
 
     fun `test index rollup put request`() {
         val rollup = randomRollup().copy(seqNo = 1L, primaryTerm = 2L)
-        val req = IndexRollupRequest(
-            rollup = rollup,
-            refreshPolicy = WriteRequest.RefreshPolicy.IMMEDIATE
-        ).index(INDEX_MANAGEMENT_INDEX)
+        val req =
+            IndexRollupRequest(
+                rollup = rollup,
+                refreshPolicy = WriteRequest.RefreshPolicy.IMMEDIATE,
+            ).index(INDEX_MANAGEMENT_INDEX)
 
         val out = BytesStreamOutput().apply { req.writeTo(this) }
         val sin = StreamInput.wrap(out.bytes().toBytesRef().bytes)

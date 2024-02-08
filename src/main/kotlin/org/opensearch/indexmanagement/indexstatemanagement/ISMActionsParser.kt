@@ -30,29 +30,29 @@ import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ActionRetry
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ActionTimeout
 
 class ISMActionsParser private constructor() {
-
     private object HOLDER {
         val instance = ISMActionsParser()
     }
 
-    val parsers = mutableListOf(
-        AliasActionParser(),
-        AllocationActionParser(),
-        CloseActionParser(),
-        DeleteActionParser(),
-        ForceMergeActionParser(),
-        IndexPriorityActionParser(),
-        NotificationActionParser(),
-        OpenActionParser(),
-        ReadOnlyActionParser(),
-        ReadWriteActionParser(),
-        ReplicaCountActionParser(),
-        RollupActionParser(),
-        RolloverActionParser(),
-        ShrinkActionParser(),
-        SnapshotActionParser(),
-        TransformActionParser(),
-    )
+    val parsers =
+        mutableListOf(
+            AliasActionParser(),
+            AllocationActionParser(),
+            CloseActionParser(),
+            DeleteActionParser(),
+            ForceMergeActionParser(),
+            IndexPriorityActionParser(),
+            NotificationActionParser(),
+            OpenActionParser(),
+            ReadOnlyActionParser(),
+            ReadWriteActionParser(),
+            ReplicaCountActionParser(),
+            RollupActionParser(),
+            RolloverActionParser(),
+            ShrinkActionParser(),
+            SnapshotActionParser(),
+            TransformActionParser(),
+        )
 
     val customActionExtensionMap = mutableMapOf<String, String>()
 
@@ -132,6 +132,7 @@ class ISMActionsParser private constructor() {
 
     companion object {
         val instance: ISMActionsParser by lazy { HOLDER.instance }
+
         fun getDuplicateActionTypesMessage(actionType: String) = "Multiple action parsers attempted to register the same action type [$actionType]"
     }
 }

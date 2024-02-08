@@ -17,11 +17,11 @@ import org.opensearch.action.index.IndexRequest
 import org.opensearch.action.index.IndexResponse
 import org.opensearch.client.Client
 import org.opensearch.common.xcontent.LoggingDeprecationHandler
-import org.opensearch.core.xcontent.NamedXContentRegistry
-import org.opensearch.core.xcontent.ToXContent
 import org.opensearch.common.xcontent.XContentFactory
 import org.opensearch.common.xcontent.XContentHelper
 import org.opensearch.common.xcontent.XContentType
+import org.opensearch.core.xcontent.NamedXContentRegistry
+import org.opensearch.core.xcontent.ToXContent
 import org.opensearch.indexmanagement.IndexManagementPlugin
 import org.opensearch.indexmanagement.opensearchapi.parseWithType
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
@@ -36,7 +36,6 @@ import java.time.Instant
 
 @SuppressWarnings("ReturnCount")
 class TransformMetadataService(private val client: Client, val xContentRegistry: NamedXContentRegistry) {
-
     private val logger = LogManager.getLogger(javaClass)
 
     @Suppress("BlockingMethodInNonBlockingContext")
@@ -46,12 +45,13 @@ class TransformMetadataService(private val client: Client, val xContentRegistry:
             val getRequest = GetRequest(IndexManagementPlugin.INDEX_MANAGEMENT_INDEX, transform.metadataId).routing(transform.id)
             val response: GetResponse = client.suspendUntil { get(getRequest, it) }
             val metadataSource = response.sourceAsBytesRef
-            val transformMetadata = metadataSource?.let {
-                withContext(Dispatchers.IO) {
-                    val xcp = XContentHelper.createParser(xContentRegistry, LoggingDeprecationHandler.INSTANCE, metadataSource, XContentType.JSON)
-                    xcp.parseWithType(response.id, response.seqNo, response.primaryTerm, TransformMetadata.Companion::parse)
+            val transformMetadata =
+                metadataSource?.let {
+                    withContext(Dispatchers.IO) {
+                        val xcp = XContentHelper.createParser(xContentRegistry, LoggingDeprecationHandler.INSTANCE, metadataSource, XContentType.JSON)
+                        xcp.parseWithType(response.id, response.seqNo, response.primaryTerm, TransformMetadata.Companion::parse)
+                    }
                 }
-            }
             // TODO: Should we attempt to create a new document instead if failed to parse, the only reason this can happen is if someone deleted
             //  the metadata doc?
             transformMetadata ?: throw TransformMetadataException("Failed to parse the existing metadata document")
@@ -65,14 +65,15 @@ class TransformMetadataService(private val client: Client, val xContentRegistry:
         // Including timestamp in the metadata id to prevent clashes if the job was deleted but metadata is not deleted, in that case we want to
         // create a clean metadata doc
         val id = hashToFixedSize("TransformMetadata#${transform.id}#${transform.lastUpdateTime}")
-        val metadata = TransformMetadata(
-            id = id,
-            transformId = transform.id,
-            lastUpdatedAt = Instant.now(),
-            status = TransformMetadata.Status.INIT,
-            stats = TransformStats(0, 0, 0, 0, 0),
-            continuousStats = if (transform.continuous) ContinuousTransformStats(null, null) else null
-        )
+        val metadata =
+            TransformMetadata(
+                id = id,
+                transformId = transform.id,
+                lastUpdatedAt = Instant.now(),
+                status = TransformMetadata.Status.INIT,
+                stats = TransformStats(0, 0, 0, 0, 0),
+                continuousStats = if (transform.continuous) ContinuousTransformStats(null, null) else null,
+            )
         return writeMetadata(metadata)
     }
 
@@ -81,10 +82,11 @@ class TransformMetadataService(private val client: Client, val xContentRegistry:
         val errorMessage = "Failed to ${if (updating) "update" else "create"} metadata doc ${metadata.id} for transform job ${metadata.transformId}"
         try {
             val builder = metadata.toXContent(XContentFactory.jsonBuilder(), ToXContent.EMPTY_PARAMS)
-            val indexRequest = IndexRequest(IndexManagementPlugin.INDEX_MANAGEMENT_INDEX)
-                .source(builder)
-                .id(metadata.id)
-                .routing(metadata.transformId)
+            val indexRequest =
+                IndexRequest(IndexManagementPlugin.INDEX_MANAGEMENT_INDEX)
+                    .source(builder)
+                    .id(metadata.id)
+                    .routing(metadata.transformId)
             if (updating) {
                 indexRequest.setIfSeqNo(metadata.seqNo).setIfPrimaryTerm(metadata.primaryTerm)
             } else {

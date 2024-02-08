@@ -16,14 +16,15 @@ import org.opensearch.cluster.SnapshotsInProgress
 import org.opensearch.common.UUIDs
 import org.opensearch.common.unit.TimeValue
 import org.opensearch.common.xcontent.LoggingDeprecationHandler
+import org.opensearch.common.xcontent.XContentFactory
+import org.opensearch.common.xcontent.XContentType
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.core.xcontent.NamedXContentRegistry
 import org.opensearch.core.xcontent.ToXContent
-import org.opensearch.common.xcontent.XContentFactory
 import org.opensearch.core.xcontent.XContentParser
-import org.opensearch.common.xcontent.XContentType
-import org.opensearch.indexmanagement.opensearchapi.string
 import org.opensearch.index.seqno.SequenceNumbers
 import org.opensearch.indexmanagement.indexstatemanagement.randomChannel
+import org.opensearch.indexmanagement.opensearchapi.string
 import org.opensearch.indexmanagement.opensearchapi.toMap
 import org.opensearch.indexmanagement.randomCronSchedule
 import org.opensearch.indexmanagement.randomInstant
@@ -33,7 +34,6 @@ import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy
 import org.opensearch.jobscheduler.spi.schedule.CronSchedule
 import org.opensearch.jobscheduler.spi.schedule.IntervalSchedule
-import org.opensearch.core.rest.RestStatus
 import org.opensearch.snapshots.Snapshot
 import org.opensearch.snapshots.SnapshotId
 import org.opensearch.snapshots.SnapshotInfo
@@ -62,19 +62,23 @@ fun randomSMMetadata(
     return SMMetadata(
         policySeqNo = policySeqNo,
         policyPrimaryTerm = policyPrimaryTerm,
-        creation = SMMetadata.WorkflowMetadata(
+        creation =
+        SMMetadata.WorkflowMetadata(
             currentState = creationCurrentState,
-            trigger = SMMetadata.Trigger(
-                time = nextCreationTime
+            trigger =
+            SMMetadata.Trigger(
+                time = nextCreationTime,
             ),
             started = if (startedCreation != null) listOf(startedCreation) else null,
             latestExecution = creationLatestExecution,
             retry = creationRetryCount?.let { SMMetadata.Retry(it) },
         ),
-        deletion = SMMetadata.WorkflowMetadata(
+        deletion =
+        SMMetadata.WorkflowMetadata(
             currentState = deletionCurrentState,
-            trigger = SMMetadata.Trigger(
-                time = nextDeletionTime
+            trigger =
+            SMMetadata.Trigger(
+                time = nextDeletionTime,
             ),
             started = startedDeletion,
             latestExecution = deletionLatestExecution,
@@ -104,15 +108,16 @@ fun randomSMPolicy(
     deletionMaxAge: TimeValue? = null,
     deletionMinCount: Int = randomIntBetween(1, 5),
     deletionNull: Boolean = false,
-    snapshotConfig: MutableMap<String, Any> = mutableMapOf(
-        "repository" to "repo",
-    ),
+    snapshotConfig: MutableMap<String, Any> =
+        mutableMapOf(
+            "repository" to "repo",
+        ),
     dateFormat: String? = null,
     jobEnabledTime: Instant? = randomInstant(),
     jobSchedule: IntervalSchedule = IntervalSchedule(randomInstant(), 1, ChronoUnit.MINUTES),
     seqNo: Long = SequenceNumbers.UNASSIGNED_SEQ_NO,
     primaryTerm: Long = SequenceNumbers.UNASSIGNED_PRIMARY_TERM,
-    notificationConfig: NotificationConfig? = null
+    notificationConfig: NotificationConfig? = null,
 ): SMPolicy {
     if (dateFormat != null) {
         snapshotConfig["date_format"] = dateFormat
@@ -122,11 +127,13 @@ fun randomSMPolicy(
         schemaVersion = schemaVersion,
         jobEnabled = jobEnabled,
         jobLastUpdateTime = jobLastUpdateTime,
-        creation = SMPolicy.Creation(
+        creation =
+        SMPolicy.Creation(
             schedule = creationSchedule,
             timeLimit = creationTimeLimit,
         ),
-        deletion = randomPolicyDeletion(
+        deletion =
+        randomPolicyDeletion(
             deletionSchedule,
             deletionTimeLimit,
             deletionMaxCount,
@@ -155,11 +162,12 @@ fun randomPolicyDeletion(
     return SMPolicy.Deletion(
         schedule = deletionSchedule,
         timeLimit = deletionTimeLimit,
-        condition = SMPolicy.DeleteCondition(
+        condition =
+        SMPolicy.DeleteCondition(
             maxCount = deletionMaxCount,
             maxAge = deletionMaxAge,
             minCount = deletionMinCount,
-        )
+        ),
     )
 }
 
@@ -210,19 +218,20 @@ fun mockSnapshotInfo(
     policyName: String = "daily-snapshot",
     remoteStoreIndexShallowCopy: Boolean = randomBoolean(),
 ): SnapshotInfo {
-    val result = SnapshotInfo(
-        SnapshotId(name, UUIDs.randomBase64UUID()),
-        listOf("index1"),
-        listOf("ds-1"),
-        startTime,
-        reason,
-        endTime,
-        5,
-        emptyList(),
-        false,
-        mapOf("sm_policy" to policyName),
-        remoteStoreIndexShallowCopy
-    )
+    val result =
+        SnapshotInfo(
+            SnapshotId(name, UUIDs.randomBase64UUID()),
+            listOf("index1"),
+            listOf("ds-1"),
+            startTime,
+            reason,
+            endTime,
+            5,
+            emptyList(),
+            false,
+            mapOf("sm_policy" to policyName),
+            remoteStoreIndexShallowCopy,
+        )
     return result
 }
 
@@ -235,21 +244,22 @@ fun mockInProgressSnapshotInfo(
     name: String = randomAlphaOfLength(10),
     remoteStoreIndexShallowCopy: Boolean = randomBoolean(),
 ): SnapshotInfo {
-    val entry = SnapshotsInProgress.Entry(
-        Snapshot("repo", SnapshotId(name, UUIDs.randomBase64UUID())),
-        false,
-        false,
-        SnapshotsInProgress.State.SUCCESS,
-        emptyList(),
-        emptyList(),
-        randomNonNegativeLong(),
-        randomNonNegativeLong(),
-        mapOf(),
-        "",
-        mapOf("sm_policy" to "daily-snapshot"),
-        Version.CURRENT,
-        remoteStoreIndexShallowCopy
-    )
+    val entry =
+        SnapshotsInProgress.Entry(
+            Snapshot("repo", SnapshotId(name, UUIDs.randomBase64UUID())),
+            false,
+            false,
+            SnapshotsInProgress.State.SUCCESS,
+            emptyList(),
+            emptyList(),
+            randomNonNegativeLong(),
+            randomNonNegativeLong(),
+            mapOf(),
+            "",
+            mapOf("sm_policy" to "daily-snapshot"),
+            Version.CURRENT,
+            remoteStoreIndexShallowCopy,
+        )
     return SnapshotInfo(entry)
 }
 
@@ -264,8 +274,8 @@ fun mockSnapshotInfoList(num: Int, namePrefix: String = randomAlphaOfLength(10))
     for (i in 1..num) {
         result.add(
             mockSnapshotInfo(
-                name = namePrefix + i
-            )
+                name = namePrefix + i,
+            ),
         )
     }
     return result.toList()

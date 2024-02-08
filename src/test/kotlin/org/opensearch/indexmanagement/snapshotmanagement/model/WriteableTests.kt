@@ -13,7 +13,6 @@ import org.opensearch.indexmanagement.snapshotmanagement.randomSMPolicy
 import org.opensearch.test.OpenSearchTestCase
 
 class WriteableTests : OpenSearchTestCase() {
-
     fun `test sm policy as stream`() {
         val smPolicy = randomSMPolicy(notificationConfig = randomNotificationConfig())
         val out = BytesStreamOutput().also { smPolicy.writeTo(it) }

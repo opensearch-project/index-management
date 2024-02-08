@@ -15,7 +15,6 @@ import org.opensearch.indexmanagement.snapshotmanagement.toJsonString
 import org.opensearch.test.OpenSearchTestCase
 
 class XContentTests : OpenSearchTestCase() {
-
     fun `test sm policy parsing`() {
         val smPolicy = randomSMPolicy(notificationConfig = randomNotificationConfig())
         val smPolicyString = smPolicy.toJsonString()

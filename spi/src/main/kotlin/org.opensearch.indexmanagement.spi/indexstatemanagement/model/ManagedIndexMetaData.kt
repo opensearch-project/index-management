@@ -5,17 +5,17 @@
 
 package org.opensearch.indexmanagement.spi.indexstatemanagement.model
 
+import org.opensearch.common.xcontent.XContentFactory
+import org.opensearch.common.xcontent.XContentHelper
+import org.opensearch.common.xcontent.json.JsonXContent
 import org.opensearch.core.common.io.stream.StreamInput
 import org.opensearch.core.common.io.stream.StreamOutput
 import org.opensearch.core.common.io.stream.Writeable
 import org.opensearch.core.xcontent.ToXContent
 import org.opensearch.core.xcontent.ToXContentFragment
 import org.opensearch.core.xcontent.XContentBuilder
-import org.opensearch.common.xcontent.XContentFactory
-import org.opensearch.common.xcontent.XContentHelper
 import org.opensearch.core.xcontent.XContentParser
 import org.opensearch.core.xcontent.XContentParserUtils
-import org.opensearch.common.xcontent.json.JsonXContent
 import org.opensearch.index.seqno.SequenceNumbers
 import org.opensearch.indexmanagement.spi.indexstatemanagement.addObject
 import java.io.IOException
@@ -40,10 +40,9 @@ data class ManagedIndexMetaData(
     val primaryTerm: Long = SequenceNumbers.UNASSIGNED_PRIMARY_TERM,
     val rolledOverIndexName: String? = null,
 ) : Writeable, ToXContentFragment {
-
     @Suppress("ComplexMethod")
     fun toMap(): Map<String, String> {
-        val resultMap = mutableMapOf<String, String> ()
+        val resultMap = mutableMapOf<String, String>()
         resultMap[INDEX] = index
         resultMap[INDEX_UUID] = indexUuid
         resultMap[POLICY_ID] = policyID
@@ -199,11 +198,12 @@ data class ManagedIndexMetaData(
             val step: StepMetaData? = si.readOptionalWriteable { StepMetaData.fromStreamInput(it) }
             val retryInfo: PolicyRetryInfoMetaData? = si.readOptionalWriteable { PolicyRetryInfoMetaData.fromStreamInput(it) }
 
-            val info = if (si.readBoolean()) {
-                si.readMap()
-            } else {
-                null
-            }
+            val info =
+                if (si.readBoolean()) {
+                    si.readMap()
+                } else {
+                    null
+                }
 
             return ManagedIndexMetaData(
                 index = requireNotNull(index) { "$INDEX is null" },
@@ -220,7 +220,7 @@ data class ManagedIndexMetaData(
                 actionMetaData = action,
                 stepMetaData = step,
                 policyRetryInfo = retryInfo,
-                info = info
+                info = info,
             )
         }
 
@@ -232,7 +232,7 @@ data class ManagedIndexMetaData(
             xcp: XContentParser,
             id: String = NO_ID,
             seqNo: Long = SequenceNumbers.UNASSIGNED_SEQ_NO,
-            primaryTerm: Long = SequenceNumbers.UNASSIGNED_PRIMARY_TERM
+            primaryTerm: Long = SequenceNumbers.UNASSIGNED_PRIMARY_TERM,
         ): ManagedIndexMetaData {
             var index: String? = null
             var indexUuid: String? = null
@@ -314,7 +314,7 @@ data class ManagedIndexMetaData(
             xcp: XContentParser,
             id: String = NO_ID,
             seqNo: Long = SequenceNumbers.UNASSIGNED_SEQ_NO,
-            primaryTerm: Long = SequenceNumbers.UNASSIGNED_PRIMARY_TERM
+            primaryTerm: Long = SequenceNumbers.UNASSIGNED_PRIMARY_TERM,
         ): ManagedIndexMetaData {
             XContentParserUtils.ensureExpectedToken(XContentParser.Token.START_OBJECT, xcp.nextToken(), xcp)
             XContentParserUtils.ensureExpectedToken(XContentParser.Token.FIELD_NAME, xcp.nextToken(), xcp)
@@ -340,7 +340,7 @@ data class ManagedIndexMetaData(
                 actionMetaData = ActionMetaData.fromManagedIndexMetaDataMap(map),
                 stepMetaData = StepMetaData.fromManagedIndexMetaDataMap(map),
                 policyRetryInfo = PolicyRetryInfoMetaData.fromManagedIndexMetaDataMap(map),
-                info = map[INFO]?.let { XContentHelper.convertToMap(JsonXContent.jsonXContent, it, false) }
+                info = map[INFO]?.let { XContentHelper.convertToMap(JsonXContent.jsonXContent, it, false) },
             )
         }
     }

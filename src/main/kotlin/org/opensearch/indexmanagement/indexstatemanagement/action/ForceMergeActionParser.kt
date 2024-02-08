@@ -35,7 +35,7 @@ class ForceMergeActionParser : ActionParser() {
 
         return ForceMergeAction(
             requireNotNull(maxNumSegments) { "ForceMergeActionConfig maxNumSegments is null" },
-            index
+            index,
         )
     }
 

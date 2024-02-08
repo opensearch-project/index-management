@@ -37,9 +37,8 @@ data class ManagedIndexConfig(
     val policyPrimaryTerm: Long?,
     val policy: Policy,
     val changePolicy: ChangePolicy?,
-    val jobJitter: Double?
+    val jobJitter: Double?,
 ) : ScheduledJobParameter {
-
     init {
         if (enabled) {
             requireNotNull(jobEnabledTime) { "jobEnabledTime must be present if the job is enabled" }
@@ -109,7 +108,7 @@ data class ManagedIndexConfig(
             xcp: XContentParser,
             id: String = NO_ID,
             seqNo: Long = SequenceNumbers.UNASSIGNED_SEQ_NO,
-            primaryTerm: Long = SequenceNumbers.UNASSIGNED_PRIMARY_TERM
+            primaryTerm: Long = SequenceNumbers.UNASSIGNED_PRIMARY_TERM,
         ): ManagedIndexConfig {
             var name: String? = null
             var index: String? = null
@@ -177,15 +176,16 @@ data class ManagedIndexConfig(
                 policyID = requireNotNull(policyID) { "ManagedIndexConfig policy id is null" },
                 policySeqNo = policySeqNo,
                 policyPrimaryTerm = policyPrimaryTerm,
-                policy = requireNotNull(
+                policy =
+                requireNotNull(
                     policy?.copy(
                         id = policyID,
                         seqNo = policySeqNo ?: SequenceNumbers.UNASSIGNED_SEQ_NO,
-                        primaryTerm = policyPrimaryTerm ?: SequenceNumbers.UNASSIGNED_PRIMARY_TERM
-                    )
+                        primaryTerm = policyPrimaryTerm ?: SequenceNumbers.UNASSIGNED_PRIMARY_TERM,
+                    ),
                 ) { "ManagedIndexConfig policy is null" },
                 changePolicy = changePolicy,
-                jobJitter = jitter
+                jobJitter = jitter,
             )
         }
     }

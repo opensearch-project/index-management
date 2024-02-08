@@ -7,6 +7,7 @@ package org.opensearch.indexmanagement.transform.action
 
 import org.opensearch.common.io.stream.BytesStreamOutput
 import org.opensearch.core.common.io.stream.StreamInput
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.indexmanagement.transform.action.explain.ExplainTransformResponse
 import org.opensearch.indexmanagement.transform.action.get.GetTransformResponse
 import org.opensearch.indexmanagement.transform.action.get.GetTransformsResponse
@@ -15,12 +16,10 @@ import org.opensearch.indexmanagement.transform.action.preview.PreviewTransformR
 import org.opensearch.indexmanagement.transform.buildStreamInputForTransforms
 import org.opensearch.indexmanagement.transform.randomExplainTransform
 import org.opensearch.indexmanagement.transform.randomTransform
-import org.opensearch.core.rest.RestStatus
 import org.opensearch.test.OpenSearchTestCase
 import org.opensearch.test.OpenSearchTestCase.randomList
 
 class ResponseTests : OpenSearchTestCase() {
-
     fun `test explain transform response`() {
         val idsToExplain = randomList(10) { randomAlphaOfLength(10) to randomExplainTransform() }.toMap()
         val failedToExplain = randomList(10) { randomAlphaOfLength(10) to randomAlphaOfLength(10) }.toMap()
@@ -45,10 +44,11 @@ class ResponseTests : OpenSearchTestCase() {
     }
 
     fun `test preview transform response`() {
-        val documents = listOf(
-            mapOf("a" to mapOf<String, Any>("90.0" to 100), "b" to "id1", "c" to 100),
-            mapOf("a" to mapOf<String, Any>("90.0" to 50), "b" to "id2", "c" to 20)
-        )
+        val documents =
+            listOf(
+                mapOf("a" to mapOf<String, Any>("90.0" to 100), "b" to "id1", "c" to 100),
+                mapOf("a" to mapOf<String, Any>("90.0" to 50), "b" to "id2", "c" to 20),
+            )
         val res = PreviewTransformResponse(documents, RestStatus.OK)
         val out = BytesStreamOutput().apply { res.writeTo(this) }
         val sin = StreamInput.wrap(out.bytes().toBytesRef().bytes)

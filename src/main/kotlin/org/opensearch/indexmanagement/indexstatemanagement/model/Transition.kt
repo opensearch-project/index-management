@@ -5,11 +5,11 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.model
 
+import org.opensearch.common.unit.TimeValue
 import org.opensearch.core.common.io.stream.StreamInput
 import org.opensearch.core.common.io.stream.StreamOutput
 import org.opensearch.core.common.io.stream.Writeable
 import org.opensearch.core.common.unit.ByteSizeValue
-import org.opensearch.common.unit.TimeValue
 import org.opensearch.core.xcontent.ToXContent
 import org.opensearch.core.xcontent.ToXContentObject
 import org.opensearch.core.xcontent.XContentBuilder
@@ -22,9 +22,8 @@ import java.io.IOException
 
 data class Transition(
     val stateName: String,
-    val conditions: Conditions?
+    val conditions: Conditions?,
 ) : ToXContentObject, Writeable {
-
     override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
         builder.startObject()
             .field(STATE_NAME_FIELD, stateName)
@@ -35,7 +34,7 @@ data class Transition(
     @Throws(IOException::class)
     constructor(sin: StreamInput) : this(
         stateName = sin.readString(),
-        conditions = sin.readOptionalWriteable(::Conditions)
+        conditions = sin.readOptionalWriteable(::Conditions),
     )
 
     @Throws(IOException::class)
@@ -68,7 +67,7 @@ data class Transition(
 
             return Transition(
                 stateName = requireNotNull(name) { "Transition state name is null" },
-                conditions = conditions
+                conditions = conditions,
             )
         }
     }
@@ -79,9 +78,8 @@ data class Conditions(
     val docCount: Long? = null,
     val size: ByteSizeValue? = null,
     val cron: CronSchedule? = null,
-    val rolloverAge: TimeValue? = null
+    val rolloverAge: TimeValue? = null,
 ) : ToXContentObject, Writeable {
-
     init {
         val conditionsList = listOf(indexAge, docCount, size, cron, rolloverAge)
         require(conditionsList.filterNotNull().size == 1) { "Cannot provide more than one Transition condition" }
@@ -109,7 +107,7 @@ data class Conditions(
         docCount = sin.readOptionalLong(),
         size = sin.readOptionalWriteable(::ByteSizeValue),
         cron = sin.readOptionalWriteable(::CronSchedule),
-        rolloverAge = sin.readOptionalTimeValue()
+        rolloverAge = sin.readOptionalTimeValue(),
     )
 
     @Throws(IOException::class)

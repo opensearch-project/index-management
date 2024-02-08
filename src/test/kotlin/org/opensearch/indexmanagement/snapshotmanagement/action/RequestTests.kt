@@ -23,7 +23,6 @@ import org.opensearch.indexmanagement.snapshotmanagement.randomSMPolicy
 import org.opensearch.test.OpenSearchTestCase
 
 class RequestTests : OpenSearchTestCase() {
-
     fun `test delete sm policy request`() {
         val id = "some_id"
         val req = DeleteSMPolicyRequest(id).index(INDEX_MANAGEMENT_INDEX)

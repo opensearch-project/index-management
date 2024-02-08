@@ -8,6 +8,7 @@ package org.opensearch.indexmanagement.indexstatemanagement.step.forcemerge
 import org.apache.logging.log4j.LogManager
 import org.opensearch.action.admin.indices.stats.IndicesStatsRequest
 import org.opensearch.action.admin.indices.stats.IndicesStatsResponse
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.indexmanagement.indexstatemanagement.action.ForceMergeAction
 import org.opensearch.indexmanagement.opensearchapi.getUsefulCauseString
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
@@ -16,12 +17,10 @@ import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ActionPrope
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepContext
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepMetaData
-import org.opensearch.core.rest.RestStatus
 import java.time.Duration
 import java.time.Instant
 
 class WaitForForceMergeStep(private val action: ForceMergeAction) : Step(name, false) {
-
     private val logger = LogManager.getLogger(javaClass)
     private var stepStatus = StepStatus.STARTING
     private var info: Map<String, Any>? = null
@@ -62,7 +61,7 @@ class WaitForForceMergeStep(private val action: ForceMergeAction) : Step(name, f
             if (timeWaitingForForceMerge.seconds > timeoutInSeconds) {
                 logger.error(
                     "Force merge on [$indexName] timed out with" +
-                        " [$shardsStillMergingSegments] shards containing unmerged segments"
+                        " [$shardsStillMergingSegments] shards containing unmerged segments",
                 )
 
                 stepStatus = StepStatus.FAILED
@@ -70,7 +69,7 @@ class WaitForForceMergeStep(private val action: ForceMergeAction) : Step(name, f
             } else {
                 logger.debug(
                     "Force merge still running on [$indexName] with" +
-                        " [$shardsStillMergingSegments] shards containing unmerged segments"
+                        " [$shardsStillMergingSegments] shards containing unmerged segments",
                 )
 
                 stepStatus = StepStatus.CONDITION_NOT_MET
@@ -87,10 +86,11 @@ class WaitForForceMergeStep(private val action: ForceMergeAction) : Step(name, f
 
         if (actionProperties?.maxNumSegments == null) {
             stepStatus = StepStatus.FAILED
-            info = mapOf(
-                "message" to "Unable to retrieve [${ActionProperties.Properties.MAX_NUM_SEGMENTS.key}]" +
-                    " from ActionProperties=$actionProperties"
-            )
+            info =
+                mapOf(
+                    "message" to "Unable to retrieve [${ActionProperties.Properties.MAX_NUM_SEGMENTS.key}]" +
+                        " from ActionProperties=$actionProperties",
+                )
             return null
         }
 
@@ -117,10 +117,11 @@ class WaitForForceMergeStep(private val action: ForceMergeAction) : Step(name, f
             val message = getFailedSegmentCheckMessage(indexName)
             logger.warn("$message - ${statsResponse.status}")
             stepStatus = StepStatus.FAILED
-            info = mapOf(
-                "message" to message,
-                "shard_failures" to statsResponse.shardFailures.map { it.getUsefulCauseString() }
-            )
+            info =
+                mapOf(
+                    "message" to message,
+                    "shard_failures" to statsResponse.shardFailures.map { it.getUsefulCauseString() },
+                )
         } catch (e: Exception) {
             val message = getFailedSegmentCheckMessage(indexName)
             logger.error(message, e)
@@ -144,15 +145,19 @@ class WaitForForceMergeStep(private val action: ForceMergeAction) : Step(name, f
     override fun getUpdatedManagedIndexMetadata(currentMetadata: ManagedIndexMetaData): ManagedIndexMetaData {
         // if the step is completed set actionProperties back to null
         val currentActionMetaData = currentMetadata.actionMetaData
-        val updatedActionMetaData = currentActionMetaData?.let {
-            if (stepStatus != StepStatus.COMPLETED) it
-            else currentActionMetaData.copy(actionProperties = null)
-        }
+        val updatedActionMetaData =
+            currentActionMetaData?.let {
+                if (stepStatus != StepStatus.COMPLETED) {
+                    it
+                } else {
+                    currentActionMetaData.copy(actionProperties = null)
+                }
+            }
         return currentMetadata.copy(
             actionMetaData = updatedActionMetaData,
             stepMetaData = StepMetaData(name, getStepStartTime(currentMetadata).toEpochMilli(), stepStatus),
             transitionTo = null,
-            info = info
+            info = info,
         )
     }
 
@@ -161,9 +166,13 @@ class WaitForForceMergeStep(private val action: ForceMergeAction) : Step(name, f
     companion object {
         const val name = "wait_for_force_merge"
         const val FORCE_MERGE_TIMEOUT_IN_SECONDS = 43200L // 12 hours
+
         fun getFailedTimedOutMessage(index: String) = "Force merge timed out [index=$index]"
+
         fun getFailedSegmentCheckMessage(index: String) = "Failed to check segments when waiting for force merge to complete [index=$index]"
+
         fun getWaitingMessage(index: String) = "Waiting for force merge to complete [index=$index]"
+
         fun getSuccessMessage(index: String) = "Successfully confirmed segments force merged [index=$index]"
     }
 }

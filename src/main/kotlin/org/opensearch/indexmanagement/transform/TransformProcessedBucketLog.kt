@@ -9,7 +9,6 @@ import java.math.BigInteger
 import java.security.MessageDigest
 
 class TransformProcessedBucketLog {
-
     companion object {
         const val MAX_SIZE = 100_000_000
         const val HEX_RADIX = 16
@@ -38,8 +37,11 @@ class TransformProcessedBucketLog {
         val md5Crypt = MessageDigest.getInstance("MD5")
         bucket.entries.sortedBy { it.key }.onEach { entry ->
             md5Crypt.update(
-                if (entry.value == null) "null".toByteArray()
-                else entry.value.toString().toByteArray()
+                if (entry.value == null) {
+                    "null".toByteArray()
+                } else {
+                    entry.value.toString().toByteArray()
+                },
             )
         }
         return BigInteger(1, md5Crypt.digest()).toString(HEX_RADIX)

@@ -14,6 +14,7 @@ import org.apache.logging.log4j.LogManager
 import org.opensearch.ExceptionsHelper
 import org.opensearch.action.admin.indices.forcemerge.ForceMergeRequest
 import org.opensearch.action.admin.indices.forcemerge.ForceMergeResponse
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.indexmanagement.indexstatemanagement.action.ForceMergeAction
 import org.opensearch.indexmanagement.opensearchapi.getUsefulCauseString
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
@@ -21,12 +22,10 @@ import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ActionProperties
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepMetaData
-import org.opensearch.core.rest.RestStatus
 import org.opensearch.transport.RemoteTransportException
 import java.time.Instant
 
 class AttemptCallForceMergeStep(private val action: ForceMergeAction) : Step(name) {
-
     private val logger = LogManager.getLogger(javaClass)
     private var stepStatus = StepStatus.STARTING
     private var info: Map<String, Any>? = null
@@ -36,7 +35,6 @@ class AttemptCallForceMergeStep(private val action: ForceMergeAction) : Step(nam
         val context = this.context ?: return this
         val indexName = context.metadata.index
         try {
-
             val startTime = Instant.now().toEpochMilli()
             val request = ForceMergeRequest(indexName).maxNumSegments(action.maxNumSegments)
             var response: ForceMergeResponse? = null
@@ -66,11 +64,12 @@ class AttemptCallForceMergeStep(private val action: ForceMergeAction) : Step(nam
             } else {
                 // Otherwise the request to force merge encountered some problem
                 stepStatus = StepStatus.FAILED
-                info = mapOf(
-                    "message" to getFailedMessage(indexName),
-                    "status" to shadowedResponse.status,
-                    "shard_failures" to shadowedResponse.shardFailures.map { it.getUsefulCauseString() }
-                )
+                info =
+                    mapOf(
+                        "message" to getFailedMessage(indexName),
+                        "status" to shadowedResponse.status,
+                        "shard_failures" to shadowedResponse.shardFailures.map { it.getUsefulCauseString() },
+                    )
             }
         } catch (e: RemoteTransportException) {
             handleException(indexName, ExceptionsHelper.unwrapCause(e) as Exception)
@@ -99,7 +98,7 @@ class AttemptCallForceMergeStep(private val action: ForceMergeAction) : Step(nam
             actionMetaData = currentActionMetaData?.copy(actionProperties = ActionProperties(maxNumSegments = action.maxNumSegments)),
             stepMetaData = StepMetaData(name, getStepStartTime(currentMetadata).toEpochMilli(), stepStatus),
             transitionTo = null,
-            info = info
+            info = info,
         )
     }
 
@@ -109,8 +108,11 @@ class AttemptCallForceMergeStep(private val action: ForceMergeAction) : Step(nam
         const val name = "attempt_call_force_merge"
         const val FIVE_MINUTES_IN_MILLIS = 1000 * 60 * 5 // how long to wait for the force merge request before moving on
         const val FIVE_SECONDS_IN_MILLIS = 1000L * 5L // delay
+
         fun getFailedMessage(index: String) = "Failed to start force merge [index=$index]"
+
         fun getSuccessfulCallMessage(index: String) = "Successfully called force merge [index=$index]"
+
         fun getSuccessMessage(index: String) = "Successfully completed force merge [index=$index]"
     }
 }

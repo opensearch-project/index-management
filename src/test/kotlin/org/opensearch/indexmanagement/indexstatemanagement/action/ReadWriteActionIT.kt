@@ -16,33 +16,34 @@ import java.time.temporal.ChronoUnit
 import java.util.Locale
 
 class ReadWriteActionIT : IndexStateManagementRestTestCase() {
-
     private val testIndexName = javaClass.simpleName.lowercase(Locale.ROOT)
 
     fun `test basic workflow`() {
         val indexName = "${testIndexName}_index_1"
         val policyID = "${testIndexName}_testPolicyName_1"
         val actionConfig = ReadWriteAction(0)
-        val states = listOf(
-            State("ReadWriteState", listOf(actionConfig), listOf())
-        )
+        val states =
+            listOf(
+                State("ReadWriteState", listOf(actionConfig), listOf()),
+            )
 
-        val policy = Policy(
-            id = policyID,
-            description = "$testIndexName description",
-            schemaVersion = 1L,
-            lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
-            errorNotification = randomErrorNotification(),
-            defaultState = states[0].name,
-            states = states
-        )
+        val policy =
+            Policy(
+                id = policyID,
+                description = "$testIndexName description",
+                schemaVersion = 1L,
+                lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
+                errorNotification = randomErrorNotification(),
+                defaultState = states[0].name,
+                states = states,
+            )
 
         createPolicy(policy, policyID)
         createIndex(indexName, null)
         // Set index to read-only
         updateIndexSettings(
             indexName,
-            Settings.builder().put("index.blocks.write", true)
+            Settings.builder().put("index.blocks.write", true),
         )
 
         assertEquals("true", getIndexBlocksWriteSetting(indexName))

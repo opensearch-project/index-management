@@ -12,14 +12,14 @@ import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.settings.Settings
 import org.opensearch.indexmanagement.indexstatemanagement.step.transform.AttemptCreateTransformJobStep
 import org.opensearch.indexmanagement.indexstatemanagement.step.transform.WaitForTransformCompletionStep
-import org.opensearch.indexmanagement.transform.model.TransformMetadata
-import org.opensearch.indexmanagement.transform.model.TransformStats
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ActionMetaData
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ActionProperties
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepContext
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.TransformActionProperties
+import org.opensearch.indexmanagement.transform.model.TransformMetadata
+import org.opensearch.indexmanagement.transform.model.TransformStats
 import org.opensearch.indexmanagement.util.NO_ID
 import org.opensearch.jobscheduler.spi.utils.LockService
 import org.opensearch.script.ScriptService
@@ -27,38 +27,39 @@ import org.opensearch.test.OpenSearchTestCase
 import java.time.Instant
 
 class WaitForTransformCompletionStepTests : OpenSearchTestCase() {
-
     private val clusterService: ClusterService = mock()
     private val scriptService: ScriptService = mock()
     private val settings: Settings = Settings.EMPTY
     private val transformId: String = "dummy-id"
     private val indexName: String = "test"
-    private val metadata = ManagedIndexMetaData(
-        indexName,
-        "indexUuid",
-        "policy_id",
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        ActionMetaData(
-            AttemptCreateTransformJobStep.name, 1, 0, false, 0, null,
-            ActionProperties(transformActionProperties = TransformActionProperties(transformId))
-        ),
-        null,
-        null,
-        null
-    )
-    private val transformMetadata = TransformMetadata(
-        id = NO_ID,
-        transformId = transformId,
-        lastUpdatedAt = Instant.now(),
-        status = TransformMetadata.Status.FINISHED,
-        stats = TransformStats(1, 1, 1, 1, 1)
-    )
+    private val metadata =
+        ManagedIndexMetaData(
+            indexName,
+            "indexUuid",
+            "policy_id",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            ActionMetaData(
+                AttemptCreateTransformJobStep.name, 1, 0, false, 0, null,
+                ActionProperties(transformActionProperties = TransformActionProperties(transformId)),
+            ),
+            null,
+            null,
+            null,
+        )
+    private val transformMetadata =
+        TransformMetadata(
+            id = NO_ID,
+            transformId = transformId,
+            lastUpdatedAt = Instant.now(),
+            status = TransformMetadata.Status.FINISHED,
+            stats = TransformStats(1, 1, 1, 1, 1),
+        )
     private val client: Client = mock()
     private val step = WaitForTransformCompletionStep()
     private val lockService: LockService = LockService(mock(), clusterService)
@@ -78,7 +79,7 @@ class WaitForTransformCompletionStepTests : OpenSearchTestCase() {
         assertEquals(
             "Missing failure message",
             WaitForTransformCompletionStep.getMissingTransformJobMessage(indexName),
-            updatedManagedIndexMetaData.info?.get("message")
+            updatedManagedIndexMetaData.info?.get("message"),
         )
     }
 
@@ -91,7 +92,7 @@ class WaitForTransformCompletionStepTests : OpenSearchTestCase() {
         assertEquals(
             "Missing failure message",
             WaitForTransformCompletionStep.getJobFailedMessage(transformId, indexName),
-            updateManagedIndexMetaData.info?.get("message")
+            updateManagedIndexMetaData.info?.get("message"),
         )
     }
 
@@ -104,7 +105,7 @@ class WaitForTransformCompletionStepTests : OpenSearchTestCase() {
         assertEquals(
             "Missing failure message",
             WaitForTransformCompletionStep.getJobFailedMessage(transformId, indexName),
-            updateManagedIndexMetaData.info?.get("message")
+            updateManagedIndexMetaData.info?.get("message"),
         )
         assertEquals("Mismatch in cause", WaitForTransformCompletionStep.JOB_STOPPED_MESSAGE, updateManagedIndexMetaData.info?.get("cause"))
     }
@@ -117,12 +118,12 @@ class WaitForTransformCompletionStepTests : OpenSearchTestCase() {
         assertEquals(
             "Step status is not CONDITION_NOT_MET",
             Step.StepStatus.CONDITION_NOT_MET,
-            updateManagedIndexMetaData.stepMetaData?.stepStatus
+            updateManagedIndexMetaData.stepMetaData?.stepStatus,
         )
         assertEquals(
             "Missing processing message",
             WaitForTransformCompletionStep.getJobProcessingMessage(transformId, indexName),
-            updateManagedIndexMetaData.info?.get("message")
+            updateManagedIndexMetaData.info?.get("message"),
         )
     }
 
@@ -135,7 +136,7 @@ class WaitForTransformCompletionStepTests : OpenSearchTestCase() {
         assertEquals(
             "Missing processing message",
             WaitForTransformCompletionStep.getJobProcessingMessage(transformId, indexName),
-            updateManagedIndexMetaData.info?.get("message")
+            updateManagedIndexMetaData.info?.get("message"),
         )
     }
 
@@ -148,7 +149,7 @@ class WaitForTransformCompletionStepTests : OpenSearchTestCase() {
         assertEquals(
             "Missing processing message",
             WaitForTransformCompletionStep.getJobCompletionMessage(transformId, indexName),
-            updateManagedIndexMetaData.info?.get("message")
+            updateManagedIndexMetaData.info?.get("message"),
         )
     }
 
@@ -160,7 +161,7 @@ class WaitForTransformCompletionStepTests : OpenSearchTestCase() {
         assertEquals(
             "Mismatch in message",
             WaitForTransformCompletionStep.getFailedMessage(transformId, indexName),
-            updateManagedIndexMetaData.info?.get("message")
+            updateManagedIndexMetaData.info?.get("message"),
         )
         assertEquals("Step status is not FAILED", Step.StepStatus.FAILED, updateManagedIndexMetaData.stepMetaData?.stepStatus)
     }

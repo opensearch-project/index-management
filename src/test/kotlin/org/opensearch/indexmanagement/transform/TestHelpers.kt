@@ -7,13 +7,13 @@ package org.opensearch.indexmanagement.transform
 
 import org.opensearch.cluster.metadata.IndexMetadata
 import org.opensearch.common.io.stream.BytesStreamOutput
+import org.opensearch.common.settings.Settings
+import org.opensearch.common.xcontent.XContentFactory
 import org.opensearch.core.common.io.stream.NamedWriteableAwareStreamInput
 import org.opensearch.core.common.io.stream.NamedWriteableRegistry
-import org.opensearch.common.settings.Settings
-import org.opensearch.core.xcontent.ToXContent
-import org.opensearch.common.xcontent.XContentFactory
 import org.opensearch.core.index.Index
 import org.opensearch.core.index.shard.ShardId
+import org.opensearch.core.xcontent.ToXContent
 import org.opensearch.indexmanagement.common.model.dimension.Dimension
 import org.opensearch.indexmanagement.opensearchapi.string
 import org.opensearch.indexmanagement.randomInstant
@@ -43,21 +43,30 @@ fun randomGroups(): List<Dimension> {
     return dimensions
 }
 
-fun sumAggregation(): AggregationBuilder = AggregationBuilders.sum(
-    OpenSearchRestTestCase.randomAlphaOfLength(10)
-).field(OpenSearchRestTestCase.randomAlphaOfLength(10))
-fun maxAggregation(): AggregationBuilder = AggregationBuilders.max(
-    OpenSearchRestTestCase.randomAlphaOfLength(10)
-).field(OpenSearchRestTestCase.randomAlphaOfLength(10))
-fun minAggregation(): AggregationBuilder = AggregationBuilders.min(
-    OpenSearchRestTestCase.randomAlphaOfLength(10)
-).field(OpenSearchRestTestCase.randomAlphaOfLength(10))
-fun valueCountAggregation(): AggregationBuilder = AggregationBuilders.count(
-    OpenSearchRestTestCase.randomAlphaOfLength(10)
-).field(OpenSearchRestTestCase.randomAlphaOfLength(10))
-fun avgAggregation(): AggregationBuilder = AggregationBuilders.avg(
-    OpenSearchRestTestCase.randomAlphaOfLength(10)
-).field(OpenSearchRestTestCase.randomAlphaOfLength(10))
+fun sumAggregation(): AggregationBuilder =
+    AggregationBuilders.sum(
+        OpenSearchRestTestCase.randomAlphaOfLength(10),
+    ).field(OpenSearchRestTestCase.randomAlphaOfLength(10))
+
+fun maxAggregation(): AggregationBuilder =
+    AggregationBuilders.max(
+        OpenSearchRestTestCase.randomAlphaOfLength(10),
+    ).field(OpenSearchRestTestCase.randomAlphaOfLength(10))
+
+fun minAggregation(): AggregationBuilder =
+    AggregationBuilders.min(
+        OpenSearchRestTestCase.randomAlphaOfLength(10),
+    ).field(OpenSearchRestTestCase.randomAlphaOfLength(10))
+
+fun valueCountAggregation(): AggregationBuilder =
+    AggregationBuilders.count(
+        OpenSearchRestTestCase.randomAlphaOfLength(10),
+    ).field(OpenSearchRestTestCase.randomAlphaOfLength(10))
+
+fun avgAggregation(): AggregationBuilder =
+    AggregationBuilders.avg(
+        OpenSearchRestTestCase.randomAlphaOfLength(10),
+    ).field(OpenSearchRestTestCase.randomAlphaOfLength(10))
 
 fun randomAggregationBuilder(): AggregationBuilder {
     val aggregations = listOf(sumAggregation(), maxAggregation(), minAggregation(), valueCountAggregation(), avgAggregation())
@@ -93,7 +102,7 @@ fun randomTransform(): Transform {
         groups = randomGroups(),
         aggregations = randomAggregationFactories(),
         continuous = isContinuous,
-        user = randomUser()
+        user = randomUser(),
     )
 }
 
@@ -111,7 +120,7 @@ fun randomTransformMetadata(): TransformMetadata {
         failureReason = if (status == TransformMetadata.Status.FAILED) OpenSearchRestTestCase.randomAlphaOfLength(10) else null,
         stats = randomTransformStats(),
         shardIDToGlobalCheckpoint = if (isContinuous) randomShardIDToGlobalCheckpoint() else null,
-        continuousStats = if (isContinuous) randomContinuousStats() else null
+        continuousStats = if (isContinuous) randomContinuousStats() else null,
     )
 }
 
@@ -121,7 +130,7 @@ fun randomTransformStats(): TransformStats {
         documentsProcessed = OpenSearchRestTestCase.randomNonNegativeLong(),
         documentsIndexed = OpenSearchRestTestCase.randomNonNegativeLong(),
         indexTimeInMillis = OpenSearchRestTestCase.randomNonNegativeLong(),
-        searchTimeInMillis = OpenSearchRestTestCase.randomNonNegativeLong()
+        searchTimeInMillis = OpenSearchRestTestCase.randomNonNegativeLong(),
     )
 }
 
@@ -142,7 +151,7 @@ fun randomShardID(): ShardId {
 fun randomContinuousStats(): ContinuousTransformStats {
     return ContinuousTransformStats(
         lastTimestamp = randomInstant(),
-        documentsBehind = randomDocumentsBehind()
+        documentsBehind = randomDocumentsBehind(),
     )
 }
 
@@ -168,14 +177,15 @@ fun randomISMTransform(): ISMTransform {
         pageSize = OpenSearchRestTestCase.randomIntBetween(1, 10000),
         groups = randomGroups(),
         dataSelectionQuery = randomTermQuery(),
-        aggregations = randomAggregationFactories()
+        aggregations = randomAggregationFactories(),
     )
 }
 
 fun Transform.toJsonString(params: ToXContent.Params = ToXContent.EMPTY_PARAMS): String = this.toXContent(XContentFactory.jsonBuilder(), params).string()
 
-fun TransformMetadata.toJsonString(params: ToXContent.Params = ToXContent.EMPTY_PARAMS): String = this.toXContent(XContentFactory.jsonBuilder(), params)
-    .string()
+fun TransformMetadata.toJsonString(params: ToXContent.Params = ToXContent.EMPTY_PARAMS): String =
+    this.toXContent(XContentFactory.jsonBuilder(), params)
+        .string()
 
 // Builds the required stream input for transforms by wrapping the stream input with required NamedWriteableRegistry.
 fun buildStreamInputForTransforms(out: BytesStreamOutput): NamedWriteableAwareStreamInput {

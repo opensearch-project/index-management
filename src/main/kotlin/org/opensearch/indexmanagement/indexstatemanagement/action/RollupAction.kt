@@ -17,9 +17,8 @@ import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepContext
 
 class RollupAction(
     val ismRollup: ISMRollup,
-    index: Int
+    index: Int,
 ) : Action(name, index) {
-
     companion object {
         const val name = "rollup"
         const val ISM_ROLLUP_FIELD = "ism_rollup"

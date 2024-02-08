@@ -18,7 +18,6 @@ import org.opensearch.rest.RestRequest
 import org.opensearch.rest.action.RestToXContentListener
 
 class RestStartSMPolicyHandler : BaseRestHandler() {
-
     private val log = LogManager.getLogger(RestStartSMPolicyHandler::class.java)
 
     override fun getName(): String {
@@ -27,7 +26,7 @@ class RestStartSMPolicyHandler : BaseRestHandler() {
 
     override fun routes(): List<Route> {
         return listOf(
-            Route(RestRequest.Method.POST, "$SM_POLICIES_URI/{policyName}/_start")
+            Route(RestRequest.Method.POST, "$SM_POLICIES_URI/{policyName}/_start"),
         )
     }
 
@@ -39,7 +38,7 @@ class RestStartSMPolicyHandler : BaseRestHandler() {
         return RestChannelConsumer {
             client.execute(
                 SMActions.START_SM_POLICY_ACTION_TYPE,
-                indexReq, RestToXContentListener(it)
+                indexReq, RestToXContentListener(it),
             )
         }
     }

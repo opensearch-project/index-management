@@ -9,24 +9,25 @@ import org.opensearch.action.admin.indices.stats.IndicesStatsAction
 import org.opensearch.action.admin.indices.stats.IndicesStatsRequest
 import org.opensearch.action.admin.indices.stats.IndicesStatsResponse
 import org.opensearch.client.Client
+import org.opensearch.common.xcontent.LoggingDeprecationHandler
+import org.opensearch.common.xcontent.XContentFactory
+import org.opensearch.common.xcontent.XContentType
+import org.opensearch.commons.authuser.User
 import org.opensearch.core.common.bytes.BytesReference
 import org.opensearch.core.common.io.stream.StreamInput
 import org.opensearch.core.common.io.stream.StreamOutput
 import org.opensearch.core.common.io.stream.Writeable
-import org.opensearch.common.xcontent.LoggingDeprecationHandler
+import org.opensearch.core.index.shard.ShardId
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.core.xcontent.ToXContent
 import org.opensearch.core.xcontent.XContentBuilder
-import org.opensearch.common.xcontent.XContentFactory
 import org.opensearch.core.xcontent.XContentParser
 import org.opensearch.core.xcontent.XContentParser.Token
 import org.opensearch.core.xcontent.XContentParserUtils.ensureExpectedToken
-import org.opensearch.common.xcontent.XContentType
-import org.opensearch.commons.authuser.User
 import org.opensearch.index.query.AbstractQueryBuilder
 import org.opensearch.index.query.MatchAllQueryBuilder
 import org.opensearch.index.query.QueryBuilder
 import org.opensearch.index.seqno.SequenceNumbers
-import org.opensearch.core.index.shard.ShardId
 import org.opensearch.indexmanagement.common.model.dimension.DateHistogram
 import org.opensearch.indexmanagement.common.model.dimension.Dimension
 import org.opensearch.indexmanagement.common.model.dimension.Histogram
@@ -45,7 +46,6 @@ import org.opensearch.jobscheduler.spi.schedule.CronSchedule
 import org.opensearch.jobscheduler.spi.schedule.IntervalSchedule
 import org.opensearch.jobscheduler.spi.schedule.Schedule
 import org.opensearch.jobscheduler.spi.schedule.ScheduleParser
-import org.opensearch.core.rest.RestStatus
 import org.opensearch.search.aggregations.AggregatorFactories
 import java.io.IOException
 import java.time.Instant
@@ -70,9 +70,8 @@ data class Transform(
     val groups: List<Dimension>,
     val aggregations: AggregatorFactories.Builder = AggregatorFactories.builder(),
     val continuous: Boolean = false,
-    val user: User? = null
+    val user: User? = null,
 ) : ScheduledJobParameter, Writeable {
-
     init {
         aggregations.aggregatorFactories.forEach {
             require(supportedAggregations.contains(it.type)) { "Unsupported aggregation [${it.type}]" }
@@ -174,12 +173,12 @@ data class Transform(
             mutableMapOf(
                 TRANSFORM_DOC_ID_FIELD to this.id,
                 DOC_COUNT to docCount,
-                TRANSFORM_DOC_COUNT_FIELD to docCount
+                TRANSFORM_DOC_COUNT_FIELD to docCount,
             )
         } else {
             mutableMapOf(
                 DOC_COUNT to docCount,
-                TRANSFORM_DOC_COUNT_FIELD to docCount
+                TRANSFORM_DOC_COUNT_FIELD to docCount,
             )
         }
     }
@@ -187,21 +186,24 @@ data class Transform(
     suspend fun getContinuousStats(client: Client, metadata: TransformMetadata): ContinuousTransformStats? {
         val indicesStatsRequest = IndicesStatsRequest().indices(sourceIndex).clear()
         val response: IndicesStatsResponse = client.suspendUntil { execute(IndicesStatsAction.INSTANCE, indicesStatsRequest, it) }
-        val shardIDsToGlobalCheckpoint = if (response.status == RestStatus.OK) {
-            TransformSearchService.convertIndicesStatsResponse(response)
-        } else return null
+        val shardIDsToGlobalCheckpoint =
+            if (response.status == RestStatus.OK) {
+                TransformSearchService.convertIndicesStatsResponse(response)
+            } else {
+                return null
+            }
         return ContinuousTransformStats(
             metadata.continuousStats?.lastTimestamp,
             getDocumentsBehind(
                 metadata.shardIDToGlobalCheckpoint,
-                shardIDsToGlobalCheckpoint
-            )
+                shardIDsToGlobalCheckpoint,
+            ),
         )
     }
 
     private fun getDocumentsBehind(
         oldShardIDsToGlobalCheckpoint: Map<ShardId, Long>?,
-        newShardIDsToGlobalCheckpoint: Map<ShardId, Long>?
+        newShardIDsToGlobalCheckpoint: Map<ShardId, Long>?,
     ): MutableMap<String, Long> {
         val documentsBehind: MutableMap<String, Long> = HashMap()
         if (newShardIDsToGlobalCheckpoint == null) {
@@ -225,7 +227,8 @@ data class Transform(
         seqNo = sin.readLong(),
         primaryTerm = sin.readLong(),
         schemaVersion = sin.readLong(),
-        jobSchedule = sin.let {
+        jobSchedule =
+        sin.let {
             when (requireNotNull(sin.readEnum(ScheduleType::class.java)) { "ScheduleType cannot be null" }) {
                 ScheduleType.CRON -> CronSchedule(sin)
                 ScheduleType.INTERVAL -> IntervalSchedule(sin)
@@ -241,7 +244,8 @@ data class Transform(
         targetIndex = sin.readString(),
         roles = sin.readStringArray().toList(),
         pageSize = sin.readInt(),
-        groups = sin.let {
+        groups =
+        sin.let {
             val dimensionList = mutableListOf<Dimension>()
             val size = it.readVInt()
             repeat(size) { _ ->
@@ -251,21 +255,25 @@ data class Transform(
                         Dimension.Type.DATE_HISTOGRAM -> DateHistogram(sin)
                         Dimension.Type.TERMS -> Terms(sin)
                         Dimension.Type.HISTOGRAM -> Histogram(sin)
-                    }
+                    },
                 )
             }
             dimensionList.toList()
         },
         aggregations = requireNotNull(sin.readOptionalWriteable { AggregatorFactories.Builder(it) }) { "Aggregations cannot be null" },
         continuous = sin.readBoolean(),
-        user = if (sin.readBoolean()) {
+        user =
+        if (sin.readBoolean()) {
             User(sin)
-        } else null
+        } else {
+            null
+        },
     )
 
     companion object {
         enum class ScheduleType {
-            CRON, INTERVAL;
+            CRON,
+            INTERVAL,
         }
 
         val supportedAggregations = listOf("sum", "max", "min", "value_count", "avg", "scripted_metric", "percentiles")
@@ -292,6 +300,7 @@ data class Transform(
         const val MINIMUM_JOB_INTERVAL = 1
         const val TRANSFORM_DOC_ID_FIELD = "$TRANSFORM_TYPE._id"
         const val DOC_COUNT = "_doc_count"
+
         // Keeping the field in order to be backward compatible
         const val TRANSFORM_DOC_COUNT_FIELD = "$TRANSFORM_TYPE._doc_count"
         const val CONTINUOUS_FIELD = "continuous"
@@ -304,7 +313,7 @@ data class Transform(
             xcp: XContentParser,
             id: String = NO_ID,
             seqNo: Long = SequenceNumbers.UNASSIGNED_SEQ_NO,
-            primaryTerm: Long = SequenceNumbers.UNASSIGNED_PRIMARY_TERM
+            primaryTerm: Long = SequenceNumbers.UNASSIGNED_PRIMARY_TERM,
         ): Transform {
             var schedule: Schedule? = null
             var schemaVersion: Long = IndexUtils.DEFAULT_SCHEMA_VERSION
@@ -343,11 +352,12 @@ data class Transform(
                         val registry = xcp.xContentRegistry
                         val source = xcp.mapOrdered()
                         val xContentBuilder = XContentFactory.jsonBuilder().map(source)
-                        val sourceParser = XContentType.JSON.xContent().createParser(
-                            registry, LoggingDeprecationHandler.INSTANCE,
-                            BytesReference
-                                .bytes(xContentBuilder).streamInput()
-                        )
+                        val sourceParser =
+                            XContentType.JSON.xContent().createParser(
+                                registry, LoggingDeprecationHandler.INSTANCE,
+                                BytesReference
+                                    .bytes(xContentBuilder).streamInput(),
+                            )
                         dataSelectionQuery = AbstractQueryBuilder.parseInnerQueryBuilder(sourceParser)
                     }
                     TARGET_INDEX_FIELD -> targetIndex = xcp.text()
@@ -412,7 +422,7 @@ data class Transform(
                 groups = groups,
                 aggregations = aggregations,
                 continuous = continuous,
-                user = user
+                user = user,
             )
         }
     }

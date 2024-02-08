@@ -13,13 +13,13 @@ import org.opensearch.indexmanagement.snapshotmanagement.engine.states.WorkflowT
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata
 
 object CreationStartState : State {
-
     override val continuous: Boolean = true
 
     override suspend fun execute(context: SMStateMachine): SMResult {
-        val metadataToSave = SMMetadata.Builder(context.metadata)
-            .workflow(WorkflowType.CREATION)
-            .setCurrentState(SMState.CREATION_START)
+        val metadataToSave =
+            SMMetadata.Builder(context.metadata)
+                .workflow(WorkflowType.CREATION)
+                .setCurrentState(SMState.CREATION_START)
 
         return SMResult.Next(metadataToSave)
     }

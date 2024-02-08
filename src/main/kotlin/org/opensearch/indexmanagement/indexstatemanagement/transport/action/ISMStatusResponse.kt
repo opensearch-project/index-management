@@ -17,13 +17,12 @@ import org.opensearch.indexmanagement.indexstatemanagement.util.buildInvalidInde
 import java.io.IOException
 
 open class ISMStatusResponse : ActionResponse, ToXContentObject {
-
     val updated: Int
     val failedIndices: List<FailedIndex>
 
     constructor(
         updated: Int,
-        failedIndices: List<FailedIndex>
+        failedIndices: List<FailedIndex>,
     ) : super() {
         this.updated = updated
         this.failedIndices = failedIndices
@@ -32,7 +31,7 @@ open class ISMStatusResponse : ActionResponse, ToXContentObject {
     @Throws(IOException::class)
     constructor(sin: StreamInput) : this(
         updated = sin.readInt(),
-        failedIndices = sin.readList(::FailedIndex)
+        failedIndices = sin.readList(::FailedIndex),
     )
 
     override fun writeTo(out: StreamOutput) {

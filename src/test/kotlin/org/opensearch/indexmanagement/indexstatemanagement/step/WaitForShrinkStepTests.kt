@@ -37,7 +37,6 @@ import org.opensearch.script.ScriptService
 import org.opensearch.test.OpenSearchTestCase
 
 class WaitForShrinkStepTests : OpenSearchTestCase() {
-
     private val metadata: Metadata = mock {}
     private val clusterState: ClusterState = mock { on { metadata() } doReturn metadata }
     private val clusterService: ClusterService = mock { on { state() } doReturn clusterState }
@@ -71,14 +70,16 @@ class WaitForShrinkStepTests : OpenSearchTestCase() {
         val client = getClient(getAdminClient(getIndicesAdminClient(ackedResponse, null)))
         val context = StepContext(managedIndexMetaData, clusterService, client, null, null, scriptService, settings, lockService)
 
-        val targetIndexMetadata: IndexMetadata = mock {
-            on { aliases } doReturn mapOf("target-alias" to AliasMetadata.builder("target-alias").build())
-        }
+        val targetIndexMetadata: IndexMetadata =
+            mock {
+                on { aliases } doReturn mapOf("target-alias" to AliasMetadata.builder("target-alias").build())
+            }
         whenever(metadata.index("target_index_name")).doReturn(targetIndexMetadata)
 
-        val sourceIndexMetadata: IndexMetadata = mock {
-            on { aliases } doReturn mapOf("source-alias" to AliasMetadata.builder("source-alias").build())
-        }
+        val sourceIndexMetadata: IndexMetadata =
+            mock {
+                on { aliases } doReturn mapOf("source-alias" to AliasMetadata.builder("source-alias").build())
+            }
         whenever(metadata.index("source_index_name")).doReturn(sourceIndexMetadata)
 
         runBlocking {
@@ -86,20 +87,23 @@ class WaitForShrinkStepTests : OpenSearchTestCase() {
             assertTrue(aliasesSwitched)
         }
 
-        val argMatcher = ArgumentMatcher { request: IndicesAliasesRequest ->
-            val addToTarget = request.aliasActions
-                .filter { it.actionType() == IndicesAliasesRequest.AliasActions.Type.ADD }
-                .filter { it.indices().contentEquals(arrayOf("target_index_name")) }
-                .filter { it.aliases().contentEquals(arrayOf("source-alias")) }
-                .size == 1
-            val removeFromSource = request.aliasActions
-                .filter { it.actionType() == IndicesAliasesRequest.AliasActions.Type.REMOVE }
-                .filter { it.indices().contentEquals(arrayOf("source_index_name")) }
-                .filter { it.aliases().contentEquals(arrayOf("source-alias")) }
-                .size == 1
-            val onlyTwoActions = request.aliasActions.size == 2
-            addToTarget && removeFromSource && onlyTwoActions
-        }
+        val argMatcher =
+            ArgumentMatcher { request: IndicesAliasesRequest ->
+                val addToTarget =
+                    request.aliasActions
+                        .filter { it.actionType() == IndicesAliasesRequest.AliasActions.Type.ADD }
+                        .filter { it.indices().contentEquals(arrayOf("target_index_name")) }
+                        .filter { it.aliases().contentEquals(arrayOf("source-alias")) }
+                        .size == 1
+                val removeFromSource =
+                    request.aliasActions
+                        .filter { it.actionType() == IndicesAliasesRequest.AliasActions.Type.REMOVE }
+                        .filter { it.indices().contentEquals(arrayOf("source_index_name")) }
+                        .filter { it.aliases().contentEquals(arrayOf("source-alias")) }
+                        .size == 1
+                val onlyTwoActions = request.aliasActions.size == 2
+                addToTarget && removeFromSource && onlyTwoActions
+            }
         verify(client.admin().indices()).aliases(argThat(argMatcher), any())
     }
 
@@ -107,14 +111,16 @@ class WaitForShrinkStepTests : OpenSearchTestCase() {
         val client = getClient(getAdminClient(getIndicesAdminClient(ackedResponse, null)))
         val context = StepContext(managedIndexMetaData, clusterService, client, null, null, scriptService, settings, lockService)
 
-        val targetIndexMetadata: IndexMetadata = mock {
-            on { aliases } doReturn mapOf("conflict-alias" to AliasMetadata.builder("conflict-alias").build())
-        }
+        val targetIndexMetadata: IndexMetadata =
+            mock {
+                on { aliases } doReturn mapOf("conflict-alias" to AliasMetadata.builder("conflict-alias").build())
+            }
         whenever(metadata.index("target_index_name")).doReturn(targetIndexMetadata)
 
-        val sourceIndexMetadata: IndexMetadata = mock {
-            on { aliases } doReturn mapOf("conflict-alias" to AliasMetadata.builder("conflict-alias").build())
-        }
+        val sourceIndexMetadata: IndexMetadata =
+            mock {
+                on { aliases } doReturn mapOf("conflict-alias" to AliasMetadata.builder("conflict-alias").build())
+            }
         whenever(metadata.index("source_index_name")).doReturn(sourceIndexMetadata)
 
         runBlocking {
@@ -122,16 +128,18 @@ class WaitForShrinkStepTests : OpenSearchTestCase() {
             assertTrue(aliasesSwitched)
         }
 
-        val argMatcher = ArgumentMatcher { request: IndicesAliasesRequest ->
+        val argMatcher =
+            ArgumentMatcher { request: IndicesAliasesRequest ->
 
-            val removeFromSource = request.aliasActions
-                .filter { it.actionType() == IndicesAliasesRequest.AliasActions.Type.REMOVE }
-                .filter { it.indices().contentEquals(arrayOf("source_index_name")) }
-                .filter { it.aliases().contentEquals(arrayOf("conflict-alias")) }
-                .size == 1
-            val onlyOneAction = request.aliasActions.size == 1
-            removeFromSource && onlyOneAction
-        }
+                val removeFromSource =
+                    request.aliasActions
+                        .filter { it.actionType() == IndicesAliasesRequest.AliasActions.Type.REMOVE }
+                        .filter { it.indices().contentEquals(arrayOf("source_index_name")) }
+                        .filter { it.aliases().contentEquals(arrayOf("conflict-alias")) }
+                        .size == 1
+                val onlyOneAction = request.aliasActions.size == 1
+                removeFromSource && onlyOneAction
+            }
         verify(client.admin().indices()).aliases(argThat(argMatcher), any())
     }
 
@@ -139,14 +147,16 @@ class WaitForShrinkStepTests : OpenSearchTestCase() {
         val client = getClient(getAdminClient(getIndicesAdminClient(null, Exception())))
         val context = StepContext(managedIndexMetaData, clusterService, client, null, null, scriptService, settings, lockService)
 
-        val targetIndexMetadata: IndexMetadata = mock {
-            on { aliases } doReturn emptyMap()
-        }
+        val targetIndexMetadata: IndexMetadata =
+            mock {
+                on { aliases } doReturn emptyMap()
+            }
         whenever(metadata.index("target_index_name")).doReturn(targetIndexMetadata)
 
-        val sourceIndexMetadata: IndexMetadata = mock {
-            on { aliases } doReturn emptyMap()
-        }
+        val sourceIndexMetadata: IndexMetadata =
+            mock {
+                on { aliases } doReturn emptyMap()
+            }
         whenever(metadata.index("source_index_name")).doReturn(sourceIndexMetadata)
 
         runBlocking {
@@ -159,14 +169,16 @@ class WaitForShrinkStepTests : OpenSearchTestCase() {
         val client = getClient(getAdminClient(getIndicesAdminClient(unAckedResponse, null)))
         val context = StepContext(managedIndexMetaData, clusterService, client, null, null, scriptService, settings, lockService)
 
-        val targetIndexMetadata: IndexMetadata = mock {
-            on { aliases } doReturn emptyMap()
-        }
+        val targetIndexMetadata: IndexMetadata =
+            mock {
+                on { aliases } doReturn emptyMap()
+            }
         whenever(metadata.index("target_index_name")).doReturn(targetIndexMetadata)
 
-        val sourceIndexMetadata: IndexMetadata = mock {
-            on { aliases } doReturn emptyMap()
-        }
+        val sourceIndexMetadata: IndexMetadata =
+            mock {
+                on { aliases } doReturn emptyMap()
+            }
         whenever(metadata.index("source_index_name")).doReturn(sourceIndexMetadata)
 
         runBlocking {
@@ -176,14 +188,19 @@ class WaitForShrinkStepTests : OpenSearchTestCase() {
     }
 
     private fun getClient(adminClient: AdminClient): Client = mock { on { admin() } doReturn adminClient }
+
     private fun getAdminClient(indicesAdminClient: IndicesAdminClient): AdminClient = mock { on { indices() } doReturn indicesAdminClient }
+
     private fun getIndicesAdminClient(response: AcknowledgedResponse?, exception: Exception?): IndicesAdminClient {
         assertTrue("Must provide one and only one response or exception", (response != null).xor(exception != null))
         return mock {
             doAnswer { invocationOnMock ->
                 val listener = invocationOnMock.getArgument<ActionListener<AcknowledgedResponse>>(1)
-                if (response != null) listener.onResponse(response)
-                else listener.onFailure(exception)
+                if (response != null) {
+                    listener.onResponse(response)
+                } else {
+                    listener.onFailure(exception)
+                }
             }.whenever(this.mock).aliases(any(), any())
         }
     }

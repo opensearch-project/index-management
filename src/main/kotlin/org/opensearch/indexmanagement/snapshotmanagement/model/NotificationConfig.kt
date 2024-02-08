@@ -7,6 +7,9 @@ package org.opensearch.indexmanagement.snapshotmanagement.model
 
 import org.apache.logging.log4j.Logger
 import org.opensearch.client.Client
+import org.opensearch.commons.authuser.User
+import org.opensearch.commons.notifications.model.EventSource
+import org.opensearch.commons.notifications.model.SeverityType
 import org.opensearch.core.common.io.stream.StreamInput
 import org.opensearch.core.common.io.stream.StreamOutput
 import org.opensearch.core.common.io.stream.Writeable
@@ -16,9 +19,6 @@ import org.opensearch.core.xcontent.XContentBuilder
 import org.opensearch.core.xcontent.XContentParser
 import org.opensearch.core.xcontent.XContentParser.Token
 import org.opensearch.core.xcontent.XContentParserUtils.ensureExpectedToken
-import org.opensearch.commons.authuser.User
-import org.opensearch.commons.notifications.model.EventSource
-import org.opensearch.commons.notifications.model.SeverityType
 import org.opensearch.indexmanagement.common.model.notification.Channel
 import java.io.IOException
 
@@ -29,7 +29,6 @@ data class NotificationConfig(
     val channel: Channel,
     val conditions: Conditions,
 ) : ToXContentObject, Writeable {
-
     override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
         return builder.startObject()
             .field(CHANNEL_FIELD, channel)
@@ -40,7 +39,7 @@ data class NotificationConfig(
     @Throws(IOException::class)
     constructor(sin: StreamInput) : this(
         Channel(sin),
-        Conditions(sin)
+        Conditions(sin),
     )
 
     @Throws(IOException::class)
@@ -78,7 +77,7 @@ data class NotificationConfig(
         policyName: String,
         message: String,
         user: User?,
-        log: Logger
+        log: Logger,
     ) {
         if (this.conditions.timeLimitExceeded) {
             try {
@@ -130,7 +129,7 @@ data class NotificationConfig(
 
             return NotificationConfig(
                 channel = requireNotNull(channel) { "Snapshot Management notification channel must not be null" },
-                conditions = conditions ?: Conditions()
+                conditions = conditions ?: Conditions(),
             )
         }
     }
@@ -139,9 +138,8 @@ data class NotificationConfig(
         val creation: Boolean = true,
         val deletion: Boolean = false,
         val failure: Boolean = false,
-        val timeLimitExceeded: Boolean = false
+        val timeLimitExceeded: Boolean = false,
     ) : Writeable, ToXContent {
-
         override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
             return builder.startObject()
                 .field(CREATION_FIELD, creation)

@@ -14,9 +14,8 @@ import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepContext
 
 class TransitionsAction(
     val transitions: List<Transition>,
-    val indexMetadataProvider: IndexMetadataProvider
+    val indexMetadataProvider: IndexMetadataProvider,
 ) : Action(name, -1) {
-
     private val attemptTransitionStep = AttemptTransitionStep(this)
     private val steps = listOf(attemptTransitionStep)
 

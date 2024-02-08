@@ -19,10 +19,9 @@ import org.opensearch.rest.action.RestToXContentListener
 import java.io.IOException
 
 class RestStartTransformAction : BaseRestHandler() {
-
     override fun routes(): List<Route> {
         return listOf(
-            Route(POST, "$TRANSFORM_BASE_URI/{transformID}/_start")
+            Route(POST, "$TRANSFORM_BASE_URI/{transformID}/_start"),
         )
     }
 

@@ -8,8 +8,6 @@ package org.opensearch.indexmanagement.controlcenter.notification.filter
 import org.junit.Assert
 import org.junit.Before
 import org.mockito.Mockito
-import org.opensearch.core.action.ActionListener
-import org.opensearch.core.action.ActionResponse
 import org.opensearch.action.admin.indices.forcemerge.ForceMergeAction
 import org.opensearch.action.admin.indices.open.OpenIndexAction
 import org.opensearch.action.admin.indices.shrink.ResizeAction
@@ -18,11 +16,13 @@ import org.opensearch.client.Client
 import org.opensearch.cluster.OpenSearchAllocationTestCase
 import org.opensearch.cluster.metadata.IndexNameExpressionResolver
 import org.opensearch.cluster.service.ClusterService
+import org.opensearch.core.action.ActionListener
+import org.opensearch.core.action.ActionResponse
+import org.opensearch.core.tasks.TaskId
 import org.opensearch.core.xcontent.NamedXContentRegistry
 import org.opensearch.index.reindex.ReindexAction
 import org.opensearch.index.reindex.ReindexRequest
 import org.opensearch.tasks.Task
-import org.opensearch.core.tasks.TaskId
 import org.opensearch.threadpool.ThreadPool
 
 class IndexOperationActionFilterTests : OpenSearchAllocationTestCase() {
@@ -48,9 +48,10 @@ class IndexOperationActionFilterTests : OpenSearchAllocationTestCase() {
 
         val activeShardsObserver = ActiveShardsObserver(clusterService, client.threadPool())
 
-        filter = IndexOperationActionFilter(
-            this.client, clusterService, activeShardsObserver, indexNameExpressionResolver
-        )
+        filter =
+            IndexOperationActionFilter(
+                this.client, clusterService, activeShardsObserver, indexNameExpressionResolver,
+            )
     }
 
     fun `test wrapped listener for long running actions`() {
@@ -60,12 +61,13 @@ class IndexOperationActionFilterTests : OpenSearchAllocationTestCase() {
 
         val wrappedActions = listOf(ReindexAction.NAME, ResizeAction.NAME, ForceMergeAction.NAME, OpenIndexAction.NAME)
         for (action in wrappedActions) {
-            val newListener = filter.wrapActionListener(
-                task,
-                ReindexAction.NAME,
-                ReindexRequest(),
-                listener
-            )
+            val newListener =
+                filter.wrapActionListener(
+                    task,
+                    ReindexAction.NAME,
+                    ReindexRequest(),
+                    listener,
+                )
 
             Assert.assertNotSame(listener, newListener)
             Assert.assertTrue(newListener is NotificationActionListener<*, *>)
@@ -76,12 +78,13 @@ class IndexOperationActionFilterTests : OpenSearchAllocationTestCase() {
         val task = Mockito.mock(Task::class.java)
         Mockito.`when`(task.parentTaskId).thenReturn(TaskId.EMPTY_TASK_ID)
         val listener = TestActionListener<ActionResponse>()
-        val newListener = filter.wrapActionListener(
-            task,
-            "test",
-            ReindexRequest(),
-            listener
-        )
+        val newListener =
+            filter.wrapActionListener(
+                task,
+                "test",
+                ReindexRequest(),
+                listener,
+            )
 
         Assert.assertSame(listener, newListener)
     }
@@ -90,12 +93,13 @@ class IndexOperationActionFilterTests : OpenSearchAllocationTestCase() {
         val task = Mockito.mock(Task::class.java)
         Mockito.`when`(task.parentTaskId).thenReturn(TaskId("abc:1"))
         val listener = TestActionListener<ActionResponse>()
-        val newListener = filter.wrapActionListener(
-            task,
-            ReindexAction.NAME,
-            ReindexRequest(),
-            listener
-        )
+        val newListener =
+            filter.wrapActionListener(
+                task,
+                ReindexAction.NAME,
+                ReindexRequest(),
+                listener,
+            )
 
         Assert.assertSame(listener, newListener)
     }

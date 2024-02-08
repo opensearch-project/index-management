@@ -14,7 +14,6 @@ import org.opensearch.indexmanagement.spi.indexstatemanagement.StatusChecker
  * SPI for IndexManagement
  */
 interface IndexManagementExtension {
-
     /**
      * List of action parsers that are supported by the extension, each of the action parser will parse the policy action into the defined action.
      * The ActionParser provides the ability to parse the action

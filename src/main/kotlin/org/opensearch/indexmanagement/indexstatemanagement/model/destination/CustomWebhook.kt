@@ -32,9 +32,8 @@ data class CustomWebhook(
     val queryParams: Map<String, String>,
     val headerParams: Map<String, String>,
     val username: String?,
-    val password: String?
+    val password: String?,
 ) : ToXContent, Writeable {
-
     init {
         require(!(Strings.isNullOrEmpty(url) && Strings.isNullOrEmpty(host))) {
             "Url or Host name must be provided."
@@ -64,7 +63,7 @@ data class CustomWebhook(
         suppressWarning(sin.readMap()),
         suppressWarning(sin.readMap()),
         sin.readOptionalString(),
-        sin.readOptionalString()
+        sin.readOptionalString(),
     )
 
     override fun writeTo(out: StreamOutput) {

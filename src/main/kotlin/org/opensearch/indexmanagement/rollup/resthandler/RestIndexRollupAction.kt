@@ -7,6 +7,7 @@ package org.opensearch.indexmanagement.rollup.resthandler
 
 import org.opensearch.action.support.WriteRequest
 import org.opensearch.client.node.NodeClient
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.core.xcontent.ToXContent
 import org.opensearch.index.seqno.SequenceNumbers
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.LEGACY_ROLLUP_JOBS_BASE_URI
@@ -29,13 +30,11 @@ import org.opensearch.rest.RestHandler.Route
 import org.opensearch.rest.RestRequest
 import org.opensearch.rest.RestRequest.Method.PUT
 import org.opensearch.rest.RestResponse
-import org.opensearch.core.rest.RestStatus
 import org.opensearch.rest.action.RestResponseListener
 import java.io.IOException
 import java.time.Instant
 
 class RestIndexRollupAction : BaseRestHandler() {
-
     override fun routes(): List<Route> {
         return emptyList()
     }
@@ -44,12 +43,12 @@ class RestIndexRollupAction : BaseRestHandler() {
         return listOf(
             ReplacedRoute(
                 PUT, ROLLUP_JOBS_BASE_URI,
-                PUT, LEGACY_ROLLUP_JOBS_BASE_URI
+                PUT, LEGACY_ROLLUP_JOBS_BASE_URI,
             ),
             ReplacedRoute(
                 PUT, "$ROLLUP_JOBS_BASE_URI/{rollupID}",
-                PUT, "$LEGACY_ROLLUP_JOBS_BASE_URI/{rollupID}"
-            )
+                PUT, "$LEGACY_ROLLUP_JOBS_BASE_URI/{rollupID}",
+            ),
         )
     }
 
@@ -67,21 +66,22 @@ class RestIndexRollupAction : BaseRestHandler() {
         val seqNo = request.paramAsLong(IF_SEQ_NO, SequenceNumbers.UNASSIGNED_SEQ_NO)
         val primaryTerm = request.paramAsLong(IF_PRIMARY_TERM, SequenceNumbers.UNASSIGNED_PRIMARY_TERM)
         val xcp = request.contentParser()
-        val rollup = xcp.parseWithType(id = id, seqNo = seqNo, primaryTerm = primaryTerm, parse = Rollup.Companion::parse)
-            .copy(jobLastUpdatedTime = Instant.now())
-        val refreshPolicy = if (request.hasParam(REFRESH)) {
-            WriteRequest.RefreshPolicy.parse(request.param(REFRESH))
-        } else {
-            WriteRequest.RefreshPolicy.IMMEDIATE
-        }
+        val rollup =
+            xcp.parseWithType(id = id, seqNo = seqNo, primaryTerm = primaryTerm, parse = Rollup.Companion::parse)
+                .copy(jobLastUpdatedTime = Instant.now())
+        val refreshPolicy =
+            if (request.hasParam(REFRESH)) {
+                WriteRequest.RefreshPolicy.parse(request.param(REFRESH))
+            } else {
+                WriteRequest.RefreshPolicy.IMMEDIATE
+            }
         val indexRollupRequest = IndexRollupRequest(rollup, refreshPolicy)
         return RestChannelConsumer { channel ->
             client.execute(IndexRollupAction.INSTANCE, indexRollupRequest, indexRollupResponse(channel))
         }
     }
 
-    private fun indexRollupResponse(channel: RestChannel):
-        RestResponseListener<IndexRollupResponse> {
+    private fun indexRollupResponse(channel: RestChannel): RestResponseListener<IndexRollupResponse> {
         return object : RestResponseListener<IndexRollupResponse>(channel) {
             @Throws(Exception::class)
             override fun buildResponse(response: IndexRollupResponse): RestResponse {

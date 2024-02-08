@@ -6,7 +6,6 @@
 package org.opensearch.indexmanagement.indexstatemanagement
 
 import org.apache.logging.log4j.LogManager
-import org.opensearch.core.action.ActionListener
 import org.opensearch.action.DocWriteRequest
 import org.opensearch.action.admin.cluster.state.ClusterStateRequest
 import org.opensearch.action.admin.cluster.state.ClusterStateResponse
@@ -22,8 +21,9 @@ import org.opensearch.client.Client
 import org.opensearch.cluster.LocalNodeClusterManagerListener
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.settings.Settings
-import org.opensearch.core.xcontent.ToXContent
 import org.opensearch.common.xcontent.XContentFactory
+import org.opensearch.core.action.ActionListener
+import org.opensearch.core.xcontent.ToXContent
 import org.opensearch.indexmanagement.IndexManagementIndices
 import org.opensearch.indexmanagement.IndexManagementPlugin
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings
@@ -46,18 +46,23 @@ class IndexStateManagementHistory(
     private val client: Client,
     private val threadPool: ThreadPool,
     private val clusterService: ClusterService,
-    private val indexManagementIndices: IndexManagementIndices
+    private val indexManagementIndices: IndexManagementIndices,
 ) : LocalNodeClusterManagerListener {
-
     private val logger = LogManager.getLogger(javaClass)
     private var scheduledRollover: Scheduler.Cancellable? = null
 
     @Volatile private var historyEnabled = ManagedIndexSettings.HISTORY_ENABLED.get(settings)
+
     @Volatile private var historyMaxDocs = ManagedIndexSettings.HISTORY_MAX_DOCS.get(settings)
+
     @Volatile private var historyMaxAge = ManagedIndexSettings.HISTORY_INDEX_MAX_AGE.get(settings)
+
     @Volatile private var historyRolloverCheckPeriod = ManagedIndexSettings.HISTORY_ROLLOVER_CHECK_PERIOD.get(settings)
+
     @Volatile private var historyRetentionPeriod = ManagedIndexSettings.HISTORY_RETENTION_PERIOD.get(settings)
+
     @Volatile private var historyNumberOfShards = ManagedIndexSettings.HISTORY_NUMBER_OF_SHARDS.get(settings)
+
     @Volatile private var historyNumberOfReplicas = ManagedIndexSettings.HISTORY_NUMBER_OF_REPLICAS.get(settings)
 
     init {
@@ -87,10 +92,11 @@ class IndexStateManagementHistory(
             // try to rollover immediately as we might be restarting the cluster
             if (historyEnabled) rolloverHistoryIndex()
             // schedule the next rollover for approx MAX_AGE later
-            scheduledRollover = threadPool.scheduleWithFixedDelay(
-                { rolloverAndDeleteHistoryIndex() },
-                historyRolloverCheckPeriod, ThreadPool.Names.MANAGEMENT
-            )
+            scheduledRollover =
+                threadPool.scheduleWithFixedDelay(
+                    { rolloverAndDeleteHistoryIndex() },
+                    historyRolloverCheckPeriod, ThreadPool.Names.MANAGEMENT,
+                )
         } catch (e: Exception) {
             // This should be run on cluster startup
             logger.error("Error creating ISM history index.", e)
@@ -104,10 +110,11 @@ class IndexStateManagementHistory(
     private fun rescheduleRollover() {
         if (clusterService.state().nodes.isLocalNodeElectedClusterManager) {
             scheduledRollover?.cancel()
-            scheduledRollover = threadPool.scheduleWithFixedDelay(
-                { rolloverAndDeleteHistoryIndex() },
-                historyRolloverCheckPeriod, ThreadPool.Names.MANAGEMENT
-            )
+            scheduledRollover =
+                threadPool.scheduleWithFixedDelay(
+                    { rolloverAndDeleteHistoryIndex() },
+                    historyRolloverCheckPeriod, ThreadPool.Names.MANAGEMENT,
+                )
         }
     }
 
@@ -137,7 +144,7 @@ class IndexStateManagementHistory(
                 Settings.builder()
                     .put(INDEX_HIDDEN, true)
                     .put(INDEX_NUMBER_OF_SHARDS, historyNumberOfShards)
-                    .put(INDEX_NUMBER_OF_REPLICAS, historyNumberOfReplicas)
+                    .put(INDEX_NUMBER_OF_REPLICAS, historyNumberOfReplicas),
             )
         request.addMaxIndexDocsCondition(historyMaxDocs)
         request.addMaxIndexAgeCondition(historyMaxAge)
@@ -150,7 +157,7 @@ class IndexStateManagementHistory(
                     } else {
                         logger.info(
                             "${IndexManagementIndices.HISTORY_WRITE_INDEX_ALIAS} not rolled over. " +
-                                "Conditions were: ${response.conditionStatus}"
+                                "Conditions were: ${response.conditionStatus}",
                         )
                     }
                 }
@@ -158,19 +165,19 @@ class IndexStateManagementHistory(
                 override fun onFailure(e: Exception) {
                     logger.error("${IndexManagementIndices.HISTORY_WRITE_INDEX_ALIAS} roll over failed.", e)
                 }
-            }
+            },
         )
     }
 
     @Suppress("SpreadOperator", "NestedBlockDepth", "ComplexMethod")
     private fun deleteOldHistoryIndex() {
-
-        val clusterStateRequest = ClusterStateRequest()
-            .clear()
-            .indices(IndexManagementIndices.HISTORY_ALL)
-            .metadata(true)
-            .local(true)
-            .indicesOptions(IndicesOptions.strictExpand())
+        val clusterStateRequest =
+            ClusterStateRequest()
+                .clear()
+                .indices(IndexManagementIndices.HISTORY_ALL)
+                .metadata(true)
+                .local(true)
+                .indicesOptions(IndicesOptions.strictExpand())
 
         client.admin().cluster().state(
             clusterStateRequest,
@@ -188,7 +195,7 @@ class IndexStateManagementHistory(
                 override fun onFailure(exception: Exception) {
                     logger.error("Error fetching cluster state ${exception.message}")
                 }
-            }
+            },
         )
     }
 
@@ -199,10 +206,11 @@ class IndexStateManagementHistory(
             val creationTime = indexMetaData.creationDate
 
             if ((Instant.now().toEpochMilli() - creationTime) > historyRetentionPeriod.millis) {
-                val alias = indexMetaData.aliases.firstNotNullOfOrNull {
-                        alias ->
-                    IndexManagementIndices.HISTORY_WRITE_INDEX_ALIAS == alias.value.alias
-                }
+                val alias =
+                    indexMetaData.aliases.firstNotNullOfOrNull {
+                            alias ->
+                        IndexManagementIndices.HISTORY_WRITE_INDEX_ALIAS == alias.value.alias
+                    }
                 if (alias != null && historyEnabled) {
                     // If index has write alias and history is enable, don't delete the index.
                     continue
@@ -227,11 +235,12 @@ class IndexStateManagementHistory(
                             deleteOldHistoryIndex(indicesToDelete)
                         }
                     }
+
                     override fun onFailure(exception: Exception) {
                         logger.error("Error deleting old history indices ${exception.message}")
                         deleteOldHistoryIndex(indicesToDelete)
                     }
-                }
+                },
             )
         }
     }
@@ -248,10 +257,11 @@ class IndexStateManagementHistory(
                             logger.error("could not delete one or more ISM history index. $index.")
                         }
                     }
+
                     override fun onFailure(exception: Exception) {
                         logger.debug("Exception ${exception.message} while deleting the index $index")
                     }
-                }
+                },
             )
         }
     }
@@ -268,9 +278,10 @@ class IndexStateManagementHistory(
             return // we can't continue to add the history documents below as it would potentially create dynamic mappings
         }
 
-        val docWriteRequest: List<DocWriteRequest<*>> = managedIndexMetaData
-            .filter { shouldAddManagedIndexMetaDataToHistory(it) }
-            .map { createManagedIndexMetaDataHistoryIndexRequest(it) }
+        val docWriteRequest: List<DocWriteRequest<*>> =
+            managedIndexMetaData
+                .filter { shouldAddManagedIndexMetaDataToHistory(it) }
+                .map { createManagedIndexMetaDataHistoryIndexRequest(it) }
 
         if (docWriteRequest.isNotEmpty()) {
             val bulkRequest = BulkRequest().add(docWriteRequest)
@@ -298,9 +309,10 @@ class IndexStateManagementHistory(
     }
 
     private fun createManagedIndexMetaDataHistoryIndexRequest(managedIndexMetaData: ManagedIndexMetaData): IndexRequest {
-        val builder = XContentFactory.jsonBuilder()
-            .startObject()
-            .startObject(IndexManagementPlugin.INDEX_STATE_MANAGEMENT_HISTORY_TYPE)
+        val builder =
+            XContentFactory.jsonBuilder()
+                .startObject()
+                .startObject(IndexManagementPlugin.INDEX_STATE_MANAGEMENT_HISTORY_TYPE)
         managedIndexMetaData.toXContent(builder, ToXContent.EMPTY_PARAMS)
         builder
             .field("history_timestamp", Instant.now().toEpochMilli())

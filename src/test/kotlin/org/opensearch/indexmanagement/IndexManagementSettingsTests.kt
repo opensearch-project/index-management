@@ -16,7 +16,6 @@ import org.opensearch.indexmanagement.snapshotmanagement.settings.SnapshotManage
 import org.opensearch.test.OpenSearchTestCase
 
 class IndexManagementSettingsTests : OpenSearchTestCase() {
-
     private lateinit var plugin: IndexManagementPlugin
 
     @Before
@@ -55,9 +54,9 @@ class IndexManagementSettingsTests : OpenSearchTestCase() {
                     LegacyOpenDistroRollupSettings.ROLLUP_INDEX,
                     LegacyOpenDistroRollupSettings.ROLLUP_ENABLED,
                     LegacyOpenDistroRollupSettings.ROLLUP_SEARCH_ENABLED,
-                    LegacyOpenDistroRollupSettings.ROLLUP_DASHBOARDS
-                )
-            )
+                    LegacyOpenDistroRollupSettings.ROLLUP_DASHBOARDS,
+                ),
+            ),
         )
     }
 
@@ -93,16 +92,16 @@ class IndexManagementSettingsTests : OpenSearchTestCase() {
                     RollupSettings.ROLLUP_SEARCH_ENABLED,
                     RollupSettings.ROLLUP_SEARCH_ALL_JOBS,
                     RollupSettings.ROLLUP_DASHBOARDS,
-                    SnapshotManagementSettings.FILTER_BY_BACKEND_ROLES
-                )
-            )
+                    SnapshotManagementSettings.FILTER_BY_BACKEND_ROLES,
+                ),
+            ),
         )
     }
 
     fun testLegacyOpenDistroSettingsFallback() {
         assertEquals(
             ManagedIndexSettings.INDEX_STATE_MANAGEMENT_ENABLED.get(Settings.EMPTY),
-            LegacyOpenDistroManagedIndexSettings.INDEX_STATE_MANAGEMENT_ENABLED.get(Settings.EMPTY)
+            LegacyOpenDistroManagedIndexSettings.INDEX_STATE_MANAGEMENT_ENABLED.get(Settings.EMPTY),
         )
     }
 
@@ -113,48 +112,51 @@ class IndexManagementSettingsTests : OpenSearchTestCase() {
     }
 
     fun testIndexSettingLegacyFallback() {
-        var settings = Settings.builder()
-            .put("index.opendistro.index_state_management.rollover_skip", true)
-            .build()
+        var settings =
+            Settings.builder()
+                .put("index.opendistro.index_state_management.rollover_skip", true)
+                .build()
         assertEquals(ManagedIndexSettings.ROLLOVER_SKIP.get(settings), true)
 
-        settings = Settings.builder()
-            .put("index.opendistro.index_state_management.rollover_skip", true)
-            .put("index.plugins.index_state_management.rollover_skip", false)
-            .build()
+        settings =
+            Settings.builder()
+                .put("index.opendistro.index_state_management.rollover_skip", true)
+                .put("index.plugins.index_state_management.rollover_skip", false)
+                .build()
         assertEquals(ManagedIndexSettings.ROLLOVER_SKIP.get(settings), false)
 
         assertSettingDeprecationsAndWarnings(
-            arrayOf(LegacyOpenDistroManagedIndexSettings.ROLLOVER_SKIP)
+            arrayOf(LegacyOpenDistroManagedIndexSettings.ROLLOVER_SKIP),
         )
     }
 
     fun testSettingsGetValueWithLegacyFallback() {
-        val settings = Settings.builder()
-            .put("opendistro.index_state_management.enabled", false)
-            .put("opendistro.index_state_management.metadata_service.enabled", false)
-            .put("opendistro.index_state_management.job_interval", 1)
-            .put("opendistro.index_state_management.coordinator.sweep_period", "6m")
-            .put("opendistro.index_state_management.coordinator.backoff_millis", "1ms")
-            .put("opendistro.index_state_management.coordinator.backoff_count", 1)
-            .put("opendistro.index_state_management.history.enabled", false)
-            .put("opendistro.index_state_management.history.max_docs", 1L)
-            .put("opendistro.index_state_management.history.max_age", "1m")
-            .put("opendistro.index_state_management.history.rollover_check_period", "1m")
-            .put("opendistro.index_state_management.history.rollover_retention_period", "1m")
-            .put("opendistro.index_state_management.history.number_of_shards", 2)
-            .put("opendistro.index_state_management.history.number_of_replicas", 2)
-            .putList("opendistro.index_state_management.allow_list", listOf("1"))
-            .putList("opendistro.index_state_management.snapshot.deny_list", listOf("1"))
-            .put("opendistro.index_state_management.restricted_index_pattern", "blocked_index_pattern")
-            .put("opendistro.rollup.enabled", false)
-            .put("opendistro.rollup.search.enabled", false)
-            .put("opendistro.rollup.ingest.backoff_millis", "1ms")
-            .put("opendistro.rollup.ingest.backoff_count", 1)
-            .put("opendistro.rollup.search.backoff_millis", "1ms")
-            .put("opendistro.rollup.search.backoff_count", 1)
-            .put("opendistro.rollup.dashboards.enabled", false)
-            .build()
+        val settings =
+            Settings.builder()
+                .put("opendistro.index_state_management.enabled", false)
+                .put("opendistro.index_state_management.metadata_service.enabled", false)
+                .put("opendistro.index_state_management.job_interval", 1)
+                .put("opendistro.index_state_management.coordinator.sweep_period", "6m")
+                .put("opendistro.index_state_management.coordinator.backoff_millis", "1ms")
+                .put("opendistro.index_state_management.coordinator.backoff_count", 1)
+                .put("opendistro.index_state_management.history.enabled", false)
+                .put("opendistro.index_state_management.history.max_docs", 1L)
+                .put("opendistro.index_state_management.history.max_age", "1m")
+                .put("opendistro.index_state_management.history.rollover_check_period", "1m")
+                .put("opendistro.index_state_management.history.rollover_retention_period", "1m")
+                .put("opendistro.index_state_management.history.number_of_shards", 2)
+                .put("opendistro.index_state_management.history.number_of_replicas", 2)
+                .putList("opendistro.index_state_management.allow_list", listOf("1"))
+                .putList("opendistro.index_state_management.snapshot.deny_list", listOf("1"))
+                .put("opendistro.index_state_management.restricted_index_pattern", "blocked_index_pattern")
+                .put("opendistro.rollup.enabled", false)
+                .put("opendistro.rollup.search.enabled", false)
+                .put("opendistro.rollup.ingest.backoff_millis", "1ms")
+                .put("opendistro.rollup.ingest.backoff_count", 1)
+                .put("opendistro.rollup.search.backoff_millis", "1ms")
+                .put("opendistro.rollup.search.backoff_count", 1)
+                .put("opendistro.rollup.dashboards.enabled", false)
+                .build()
 
         assertEquals(ManagedIndexSettings.INDEX_STATE_MANAGEMENT_ENABLED.get(settings), false)
         assertEquals(ManagedIndexSettings.JOB_INTERVAL.get(settings), 1)
@@ -203,8 +205,8 @@ class IndexManagementSettingsTests : OpenSearchTestCase() {
                 LegacyOpenDistroRollupSettings.ROLLUP_INGEST_BACKOFF_COUNT,
                 LegacyOpenDistroRollupSettings.ROLLUP_SEARCH_BACKOFF_MILLIS,
                 LegacyOpenDistroRollupSettings.ROLLUP_SEARCH_BACKOFF_COUNT,
-                LegacyOpenDistroRollupSettings.ROLLUP_DASHBOARDS
-            )
+                LegacyOpenDistroRollupSettings.ROLLUP_DASHBOARDS,
+            ),
         )
     }
 }

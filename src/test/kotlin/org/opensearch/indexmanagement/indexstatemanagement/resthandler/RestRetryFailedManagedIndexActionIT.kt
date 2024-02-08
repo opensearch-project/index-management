@@ -6,11 +6,13 @@
 package org.opensearch.indexmanagement.indexstatemanagement.resthandler
 
 import org.opensearch.client.ResponseException
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.indexmanagement.indexstatemanagement.IndexStateManagementRestTestCase
 import org.opensearch.indexmanagement.indexstatemanagement.action.AllocationAction
 import org.opensearch.indexmanagement.indexstatemanagement.randomForceMergeActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomPolicy
 import org.opensearch.indexmanagement.indexstatemanagement.randomState
+import org.opensearch.indexmanagement.indexstatemanagement.step.forcemerge.AttemptSetReadOnlyStep
 import org.opensearch.indexmanagement.indexstatemanagement.util.FAILED_INDICES
 import org.opensearch.indexmanagement.indexstatemanagement.util.FAILURES
 import org.opensearch.indexmanagement.indexstatemanagement.util.UPDATED_INDICES
@@ -21,13 +23,10 @@ import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ActionRetry
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.waitFor
 import org.opensearch.rest.RestRequest
-import org.opensearch.core.rest.RestStatus
-import org.opensearch.indexmanagement.indexstatemanagement.step.forcemerge.AttemptSetReadOnlyStep
 import java.time.Instant
 import java.util.Locale
 
 class RestRetryFailedManagedIndexActionIT : IndexStateManagementRestTestCase() {
-
     private val testIndexName = javaClass.simpleName.lowercase(Locale.ROOT)
 
     fun `test missing indices`() {
@@ -37,16 +36,19 @@ class RestRetryFailedManagedIndexActionIT : IndexStateManagementRestTestCase() {
         } catch (e: ResponseException) {
             assertEquals("Unexpected RestStatus", RestStatus.BAD_REQUEST, e.response.restStatus())
             val actualMessage = e.response.asMap()
-            val expectedErrorMessage = mapOf(
-                "error" to mapOf(
-                    "root_cause" to listOf<Map<String, Any>>(
-                        mapOf("type" to "illegal_argument_exception", "reason" to "Missing indices")
-                    ),
-                    "type" to "illegal_argument_exception",
-                    "reason" to "Missing indices"
-                ),
-                "status" to 400
-            )
+            val expectedErrorMessage =
+                mapOf(
+                    "error" to
+                        mapOf(
+                            "root_cause" to
+                                listOf<Map<String, Any>>(
+                                    mapOf("type" to "illegal_argument_exception", "reason" to "Missing indices"),
+                                ),
+                            "type" to "illegal_argument_exception",
+                            "reason" to "Missing indices",
+                        ),
+                    "status" to 400,
+                )
             assertEquals(expectedErrorMessage, actualMessage)
         }
     }
@@ -62,28 +64,31 @@ class RestRetryFailedManagedIndexActionIT : IndexStateManagementRestTestCase() {
         createIndex(indexName2, null)
         createIndex(indexName3, null)
 
-        val response = client().makeRequest(
-            RestRequest.Method.POST.toString(),
-            "${RestRetryFailedManagedIndexAction.RETRY_BASE_URI}/$indexName,$indexName1"
-        )
+        val response =
+            client().makeRequest(
+                RestRequest.Method.POST.toString(),
+                "${RestRetryFailedManagedIndexAction.RETRY_BASE_URI}/$indexName,$indexName1",
+            )
         assertEquals("Unexpected RestStatus", RestStatus.OK, response.restStatus())
         val actualMessage = response.asMap()
-        val expectedErrorMessage = mapOf(
-            FAILURES to true,
-            UPDATED_INDICES to 0,
-            FAILED_INDICES to listOf(
-                mapOf(
-                    "index_name" to indexName,
-                    "index_uuid" to getUuid(indexName),
-                    "reason" to "This index is not being managed."
-                ),
-                mapOf(
-                    "index_name" to indexName1,
-                    "index_uuid" to getUuid(indexName1),
-                    "reason" to "This index has no metadata information"
-                )
+        val expectedErrorMessage =
+            mapOf(
+                FAILURES to true,
+                UPDATED_INDICES to 0,
+                FAILED_INDICES to
+                    listOf(
+                        mapOf(
+                            "index_name" to indexName,
+                            "index_uuid" to getUuid(indexName),
+                            "reason" to "This index is not being managed.",
+                        ),
+                        mapOf(
+                            "index_name" to indexName1,
+                            "index_uuid" to getUuid(indexName1),
+                            "reason" to "This index has no metadata information",
+                        ),
+                    ),
             )
-        )
         assertAffectedIndicesResponseIsEqual(expectedErrorMessage, actualMessage)
     }
 
@@ -98,57 +103,63 @@ class RestRetryFailedManagedIndexActionIT : IndexStateManagementRestTestCase() {
         createIndex(indexName2, policy.id)
         createIndex(indexName3, null)
 
-        val response = client().makeRequest(
-            RestRequest.Method.POST.toString(),
-            "${RestRetryFailedManagedIndexAction.RETRY_BASE_URI}/$indexName*"
-        )
+        val response =
+            client().makeRequest(
+                RestRequest.Method.POST.toString(),
+                "${RestRetryFailedManagedIndexAction.RETRY_BASE_URI}/$indexName*",
+            )
         assertEquals("Unexpected RestStatus", RestStatus.OK, response.restStatus())
 
         val actualMessage = response.asMap()
-        val expectedErrorMessage = mapOf(
-            FAILURES to true,
-            UPDATED_INDICES to 0,
-            FAILED_INDICES to listOf(
-                mapOf(
-                    "index_name" to indexName,
-                    "index_uuid" to getUuid(indexName),
-                    "reason" to "This index is not being managed."
-                ),
-                mapOf(
-                    "index_name" to indexName1,
-                    "index_uuid" to getUuid(indexName1),
-                    "reason" to "This index is not being managed."
-                ),
-                mapOf(
-                    "index_name" to indexName2,
-                    "index_uuid" to getUuid(indexName2),
-                    "reason" to "This index has no metadata information"
-                )
+        val expectedErrorMessage =
+            mapOf(
+                FAILURES to true,
+                UPDATED_INDICES to 0,
+                FAILED_INDICES to
+                    listOf(
+                        mapOf(
+                            "index_name" to indexName,
+                            "index_uuid" to getUuid(indexName),
+                            "reason" to "This index is not being managed.",
+                        ),
+                        mapOf(
+                            "index_name" to indexName1,
+                            "index_uuid" to getUuid(indexName1),
+                            "reason" to "This index is not being managed.",
+                        ),
+                        mapOf(
+                            "index_name" to indexName2,
+                            "index_uuid" to getUuid(indexName2),
+                            "reason" to "This index has no metadata information",
+                        ),
+                    ),
             )
-        )
         assertAffectedIndicesResponseIsEqual(expectedErrorMessage, actualMessage)
     }
 
     fun `test index not being managed`() {
         val indexName = "${testIndexName}_games"
         createIndex(indexName, null)
-        val response = client().makeRequest(
-            RestRequest.Method.POST.toString(),
-            "${RestRetryFailedManagedIndexAction.RETRY_BASE_URI}/$indexName"
-        )
+        val response =
+            client().makeRequest(
+                RestRequest.Method.POST.toString(),
+                "${RestRetryFailedManagedIndexAction.RETRY_BASE_URI}/$indexName",
+            )
         assertEquals("Unexpected RestStatus", RestStatus.OK, response.restStatus())
         val actualMessage = response.asMap()
-        val expectedErrorMessage = mapOf(
-            FAILURES to true,
-            UPDATED_INDICES to 0,
-            FAILED_INDICES to listOf(
-                mapOf(
-                    "index_name" to indexName,
-                    "index_uuid" to getUuid(indexName),
-                    "reason" to "This index is not being managed."
-                )
+        val expectedErrorMessage =
+            mapOf(
+                FAILURES to true,
+                UPDATED_INDICES to 0,
+                FAILED_INDICES to
+                    listOf(
+                        mapOf(
+                            "index_name" to indexName,
+                            "index_uuid" to getUuid(indexName),
+                            "reason" to "This index is not being managed.",
+                        ),
+                    ),
             )
-        )
         assertAffectedIndicesResponseIsEqual(expectedErrorMessage, actualMessage)
     }
 
@@ -157,23 +168,26 @@ class RestRetryFailedManagedIndexActionIT : IndexStateManagementRestTestCase() {
         val policy = createRandomPolicy()
         createIndex(indexName, policy.id)
 
-        val response = client().makeRequest(
-            RestRequest.Method.POST.toString(),
-            "${RestRetryFailedManagedIndexAction.RETRY_BASE_URI}/$indexName"
-        )
+        val response =
+            client().makeRequest(
+                RestRequest.Method.POST.toString(),
+                "${RestRetryFailedManagedIndexAction.RETRY_BASE_URI}/$indexName",
+            )
         assertEquals("Unexpected RestStatus", RestStatus.OK, response.restStatus())
         val actualMessage = response.asMap()
-        val expectedErrorMessage = mapOf(
-            FAILURES to true,
-            UPDATED_INDICES to 0,
-            FAILED_INDICES to listOf(
-                mapOf(
-                    "index_name" to indexName,
-                    "index_uuid" to getUuid(indexName),
-                    "reason" to "This index has no metadata information"
-                )
+        val expectedErrorMessage =
+            mapOf(
+                FAILURES to true,
+                UPDATED_INDICES to 0,
+                FAILED_INDICES to
+                    listOf(
+                        mapOf(
+                            "index_name" to indexName,
+                            "index_uuid" to getUuid(indexName),
+                            "reason" to "This index has no metadata information",
+                        ),
+                    ),
             )
-        )
         assertAffectedIndicesResponseIsEqual(expectedErrorMessage, actualMessage)
     }
 
@@ -187,23 +201,26 @@ class RestRetryFailedManagedIndexActionIT : IndexStateManagementRestTestCase() {
         updateManagedIndexConfigStartTime(managedIndexConfig)
 
         waitFor {
-            val response = client().makeRequest(
-                RestRequest.Method.POST.toString(),
-                "${RestRetryFailedManagedIndexAction.RETRY_BASE_URI}/$indexName"
-            )
+            val response =
+                client().makeRequest(
+                    RestRequest.Method.POST.toString(),
+                    "${RestRetryFailedManagedIndexAction.RETRY_BASE_URI}/$indexName",
+                )
             assertEquals("Unexpected RestStatus", RestStatus.OK, response.restStatus())
             val actualMessage = response.asMap()
-            val expectedErrorMessage = mapOf(
-                FAILURES to true,
-                UPDATED_INDICES to 0,
-                FAILED_INDICES to listOf(
-                    mapOf(
-                        "index_name" to indexName,
-                        "index_uuid" to getUuid(indexName),
-                        "reason" to "This index is not in failed state."
-                    )
+            val expectedErrorMessage =
+                mapOf(
+                    FAILURES to true,
+                    UPDATED_INDICES to 0,
+                    FAILED_INDICES to
+                        listOf(
+                            mapOf(
+                                "index_name" to indexName,
+                                "index_uuid" to getUuid(indexName),
+                                "reason" to "This index is not in failed state.",
+                            ),
+                        ),
                 )
-            )
             assertAffectedIndicesResponseIsEqual(expectedErrorMessage, actualMessage)
         }
     }
@@ -212,16 +229,18 @@ class RestRetryFailedManagedIndexActionIT : IndexStateManagementRestTestCase() {
         val indexName = "${testIndexName}_blueberry"
         val config = AllocationAction(require = mapOf("..//" to "value"), exclude = emptyMap(), include = emptyMap(), index = 0)
         config.configRetry = ActionRetry(0)
-        val states = listOf(
-            randomState().copy(
-                transitions = listOf(),
-                actions = listOf(config)
+        val states =
+            listOf(
+                randomState().copy(
+                    transitions = listOf(),
+                    actions = listOf(config),
+                ),
             )
-        )
-        val invalidPolicy = randomPolicy().copy(
-            states = states,
-            defaultState = states[0].name
-        )
+        val invalidPolicy =
+            randomPolicy().copy(
+                states = states,
+                defaultState = states[0].name,
+            )
         createPolicy(invalidPolicy, invalidPolicy.id)
         createIndex(indexName, invalidPolicy.id)
 
@@ -237,17 +256,19 @@ class RestRetryFailedManagedIndexActionIT : IndexStateManagementRestTestCase() {
         }
 
         waitFor {
-            val response = client().makeRequest(
-                RestRequest.Method.POST.toString(),
-                "${RestRetryFailedManagedIndexAction.RETRY_BASE_URI}/$indexName"
-            )
+            val response =
+                client().makeRequest(
+                    RestRequest.Method.POST.toString(),
+                    "${RestRetryFailedManagedIndexAction.RETRY_BASE_URI}/$indexName",
+                )
             assertEquals("Unexpected RestStatus", RestStatus.OK, response.restStatus())
             val actualMessage = response.asMap()
-            val expectedErrorMessage = mapOf(
-                UPDATED_INDICES to 1,
-                FAILURES to false,
-                FAILED_INDICES to emptyList<Map<String, Any>>()
-            )
+            val expectedErrorMessage =
+                mapOf(
+                    UPDATED_INDICES to 1,
+                    FAILURES to false,
+                    FAILED_INDICES to emptyList<Map<String, Any>>(),
+                )
             assertAffectedIndicesResponseIsEqual(expectedErrorMessage, actualMessage)
         }
     }
@@ -276,17 +297,21 @@ class RestRetryFailedManagedIndexActionIT : IndexStateManagementRestTestCase() {
 
             assertPredicatesOnMetaData(
                 listOf(
-                    indexName to listOf(
-                        ActionMetaData.ACTION to fun(actionMetaDataMap: Any?): Boolean = assertActionEquals(
-                            ActionMetaData(
-                                name = "force_merge", startTime = Instant.now().toEpochMilli(), failed = false,
-                                index = 0, consumedRetries = 0, lastRetryTime = null, actionProperties = null
-                            ),
-                            actionMetaDataMap
-                        )
-                    )
+                    indexName to
+                        listOf(
+                            ActionMetaData.ACTION to
+
+                                fun(actionMetaDataMap: Any?): Boolean =
+                                    assertActionEquals(
+                                        ActionMetaData(
+                                            name = "force_merge", startTime = Instant.now().toEpochMilli(), failed = false,
+                                            index = 0, consumedRetries = 0, lastRetryTime = null, actionProperties = null,
+                                        ),
+                                        actionMetaDataMap,
+                                    ),
+                        ),
                 ),
-                explainMap, false
+                explainMap, false,
             )
         }
 
@@ -300,49 +325,57 @@ class RestRetryFailedManagedIndexActionIT : IndexStateManagementRestTestCase() {
         waitFor {
             assertPredicatesOnMetaData(
                 listOf(
-                    indexName to listOf(
-                        ActionMetaData.ACTION to fun(actionMetaDataMap: Any?): Boolean {
-                            @Suppress("UNCHECKED_CAST")
-                            actionMetaDataMap as Map<String, Any>
-                            firstStartTime = actionMetaDataMap[ManagedIndexMetaData.START_TIME] as Long
-                            return assertActionEquals(
-                                ActionMetaData(
-                                    name = "force_merge", startTime = Instant.now().toEpochMilli(), failed = true,
-                                    index = 0, consumedRetries = 0, lastRetryTime = null, actionProperties = null
-                                ),
-                                actionMetaDataMap
-                            )
-                        }
-                    )
+                    indexName to
+                        listOf(
+                            ActionMetaData.ACTION to
+
+                                fun(actionMetaDataMap: Any?): Boolean {
+                                    @Suppress("UNCHECKED_CAST")
+                                    actionMetaDataMap as Map<String, Any>
+                                    firstStartTime = actionMetaDataMap[ManagedIndexMetaData.START_TIME] as Long
+                                    return assertActionEquals(
+                                        ActionMetaData(
+                                            name = "force_merge", startTime = Instant.now().toEpochMilli(), failed = true,
+                                            index = 0, consumedRetries = 0, lastRetryTime = null, actionProperties = null,
+                                        ),
+                                        actionMetaDataMap,
+                                    )
+                                },
+                        ),
                 ),
-                getExplainMap(indexName), false
+                getExplainMap(indexName), false,
             )
         }
 
         // retry
-        val response = client().makeRequest(
-            RestRequest.Method.POST.toString(),
-            "${RestRetryFailedManagedIndexAction.RETRY_BASE_URI}/$indexName"
-        )
+        val response =
+            client().makeRequest(
+                RestRequest.Method.POST.toString(),
+                "${RestRetryFailedManagedIndexAction.RETRY_BASE_URI}/$indexName",
+            )
         assertEquals("Unexpected RestStatus", RestStatus.OK, response.restStatus())
-        val expectedErrorMessage = mapOf(
-            UPDATED_INDICES to 1,
-            FAILURES to false,
-            FAILED_INDICES to emptyList<Map<String, Any>>()
-        )
+        val expectedErrorMessage =
+            mapOf(
+                UPDATED_INDICES to 1,
+                FAILURES to false,
+                FAILED_INDICES to emptyList<Map<String, Any>>(),
+            )
         assertAffectedIndicesResponseIsEqual(expectedErrorMessage, response.asMap())
         // verify actionStartTime was reset to null
         assertPredicatesOnMetaData(
             listOf(
-                indexName to listOf(
-                    ActionMetaData.ACTION to fun(actionMetaDataMap: Any?): Boolean {
-                        @Suppress("UNCHECKED_CAST")
-                        actionMetaDataMap as Map<String, Any>
-                        return actionMetaDataMap[ManagedIndexMetaData.START_TIME] as Long? == null
-                    }
-                )
+                indexName to
+                    listOf(
+                        ActionMetaData.ACTION to
+
+                            fun(actionMetaDataMap: Any?): Boolean {
+                                @Suppress("UNCHECKED_CAST")
+                                actionMetaDataMap as Map<String, Any>
+                                return actionMetaDataMap[ManagedIndexMetaData.START_TIME] as Long? == null
+                            },
+                    ),
             ),
-            getExplainMap(indexName), false
+            getExplainMap(indexName), false,
         )
 
         // should execute and set the startTime again
@@ -351,19 +384,22 @@ class RestRetryFailedManagedIndexActionIT : IndexStateManagementRestTestCase() {
         waitFor {
             assertPredicatesOnMetaData(
                 listOf(
-                    indexName to listOf(
-                        ActionMetaData.ACTION to fun(actionMetaDataMap: Any?): Boolean {
-                            @Suppress("UNCHECKED_CAST")
-                            actionMetaDataMap as Map<String, Any>
-                            return actionMetaDataMap[ManagedIndexMetaData.START_TIME] as Long > firstStartTime
-                        }
-                    )
+                    indexName to
+                        listOf(
+                            ActionMetaData.ACTION to
+
+                                fun(actionMetaDataMap: Any?): Boolean {
+                                    @Suppress("UNCHECKED_CAST")
+                                    actionMetaDataMap as Map<String, Any>
+                                    return actionMetaDataMap[ManagedIndexMetaData.START_TIME] as Long > firstStartTime
+                                },
+                        ),
                 ),
-                getExplainMap(indexName), false
+                getExplainMap(indexName), false,
             )
             assertEquals(
                 AttemptSetReadOnlyStep.getSuccessMessage(indexName),
-                getExplainManagedIndexMetaData(indexName).info?.get("message")
+                getExplainManagedIndexMetaData(indexName).info?.get("message"),
             )
         }
     }

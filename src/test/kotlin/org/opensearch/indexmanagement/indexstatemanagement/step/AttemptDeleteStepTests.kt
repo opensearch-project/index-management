@@ -11,13 +11,13 @@ import com.nhaarman.mockitokotlin2.mock
 import com.nhaarman.mockitokotlin2.whenever
 import kotlinx.coroutines.runBlocking
 import org.mockito.Mockito.doAnswer
-import org.opensearch.core.action.ActionListener
 import org.opensearch.action.support.master.AcknowledgedResponse
 import org.opensearch.client.AdminClient
 import org.opensearch.client.Client
 import org.opensearch.client.IndicesAdminClient
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.settings.Settings
+import org.opensearch.core.action.ActionListener
 import org.opensearch.indexmanagement.indexstatemanagement.step.delete.AttemptDeleteStep
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
@@ -28,7 +28,6 @@ import org.opensearch.snapshots.SnapshotInProgressException
 import org.opensearch.test.OpenSearchTestCase
 
 class AttemptDeleteStepTests : OpenSearchTestCase() {
-
     private val clusterService: ClusterService = mock()
     private val scriptService: ScriptService = mock()
     private val settings: Settings = Settings.EMPTY
@@ -92,14 +91,19 @@ class AttemptDeleteStepTests : OpenSearchTestCase() {
     }
 
     private fun getClient(adminClient: AdminClient): Client = mock { on { admin() } doReturn adminClient }
+
     private fun getAdminClient(indicesAdminClient: IndicesAdminClient): AdminClient = mock { on { indices() } doReturn indicesAdminClient }
+
     private fun getIndicesAdminClient(acknowledgedResponse: AcknowledgedResponse?, exception: Exception?): IndicesAdminClient {
         assertTrue("Must provide one and only one response or exception", (acknowledgedResponse != null).xor(exception != null))
         return mock {
             doAnswer { invocationOnMock ->
                 val listener = invocationOnMock.getArgument<ActionListener<AcknowledgedResponse>>(1)
-                if (acknowledgedResponse != null) listener.onResponse(acknowledgedResponse)
-                else listener.onFailure(exception)
+                if (acknowledgedResponse != null) {
+                    listener.onResponse(acknowledgedResponse)
+                } else {
+                    listener.onFailure(exception)
+                }
             }.whenever(this.mock).delete(any(), any())
         }
     }

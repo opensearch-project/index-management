@@ -18,7 +18,6 @@ import org.opensearch.script.ScriptService
 import org.opensearch.script.TemplateScript
 
 class AttemptNotificationStep(private val action: NotificationAction) : Step(name) {
-
     private val logger = LogManager.getLogger(javaClass)
     private var stepStatus = StepStatus.STARTING
     private var info: Map<String, Any>? = null
@@ -55,7 +54,7 @@ class AttemptNotificationStep(private val action: NotificationAction) : Step(nam
         return currentMetadata.copy(
             stepMetaData = StepMetaData(name, getStepStartTime(currentMetadata).toEpochMilli(), stepStatus),
             transitionTo = null,
-            info = info
+            info = info,
         )
     }
 
@@ -70,7 +69,9 @@ class AttemptNotificationStep(private val action: NotificationAction) : Step(nam
     companion object {
         const val name = "attempt_notification"
         const val CHANNEL_TITLE = "Index Management-ISM-Notification Action"
+
         fun getFailedMessage(index: String) = "Failed to send notification [index=$index]"
+
         fun getSuccessMessage(index: String) = "Successfully sent notification [index=$index]"
     }
 }

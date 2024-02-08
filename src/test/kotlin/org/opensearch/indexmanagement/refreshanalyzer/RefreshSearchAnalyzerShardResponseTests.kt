@@ -12,7 +12,6 @@ import org.opensearch.core.index.shard.ShardId
 import org.opensearch.test.OpenSearchTestCase
 
 class RefreshSearchAnalyzerShardResponseTests : OpenSearchTestCase() {
-
     fun `test shard refresh response parsing`() {
         val reloadedAnalyzers = listOf("analyzer1", "analyzer2")
         val refreshShardResponse = RefreshSearchAnalyzerShardResponse(ShardId(Index("testIndex", "qwerty"), 0), reloadedAnalyzers)

@@ -5,6 +5,7 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.model
 
+import org.opensearch.commons.authuser.User
 import org.opensearch.core.common.io.stream.StreamInput
 import org.opensearch.core.common.io.stream.StreamOutput
 import org.opensearch.core.common.io.stream.Writeable
@@ -14,7 +15,6 @@ import org.opensearch.core.xcontent.XContentBuilder
 import org.opensearch.core.xcontent.XContentParser
 import org.opensearch.core.xcontent.XContentParser.Token
 import org.opensearch.core.xcontent.XContentParserUtils.ensureExpectedToken
-import org.opensearch.commons.authuser.User
 import org.opensearch.index.seqno.SequenceNumbers
 import org.opensearch.indexmanagement.indexstatemanagement.util.WITH_TYPE
 import org.opensearch.indexmanagement.indexstatemanagement.util.WITH_USER
@@ -39,9 +39,8 @@ data class Policy(
     val defaultState: String,
     val states: List<State>,
     val ismTemplate: List<ISMTemplate>? = null,
-    val user: User? = null
+    val user: User? = null,
 ) : ToXContentObject, Writeable {
-
     init {
         val distinctStateNames = states.map { it.name }.distinct()
         states.forEach { state ->
@@ -89,12 +88,18 @@ data class Policy(
         errorNotification = sin.readOptionalWriteable(::ErrorNotification),
         defaultState = sin.readString(),
         states = sin.readList(::State),
-        ismTemplate = if (sin.readBoolean()) {
+        ismTemplate =
+        if (sin.readBoolean()) {
             sin.readList(::ISMTemplate)
-        } else null,
-        user = if (sin.readBoolean()) {
+        } else {
+            null
+        },
+        user =
+        if (sin.readBoolean()) {
             User(sin)
-        } else null
+        } else {
+            null
+        },
     )
 
     @Throws(IOException::class)
@@ -164,7 +169,7 @@ data class Policy(
             xcp: XContentParser,
             id: String = NO_ID,
             seqNo: Long = SequenceNumbers.UNASSIGNED_SEQ_NO,
-            primaryTerm: Long = SequenceNumbers.UNASSIGNED_PRIMARY_TERM
+            primaryTerm: Long = SequenceNumbers.UNASSIGNED_PRIMARY_TERM,
         ): Policy {
             var description: String? = null
             var defaultState: String? = null
@@ -225,7 +230,7 @@ data class Policy(
                 defaultState = requireNotNull(defaultState) { "$DEFAULT_STATE_FIELD is null" },
                 states = states.toList(),
                 ismTemplate = ismTemplates,
-                user = user
+                user = user,
             )
         }
     }

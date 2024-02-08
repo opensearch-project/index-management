@@ -19,9 +19,10 @@ import org.opensearch.client.Request
 import org.opensearch.client.Response
 import org.opensearch.client.ResponseException
 import org.opensearch.client.RestClient
-import org.opensearch.core.common.Strings
 import org.opensearch.common.settings.Settings
 import org.opensearch.common.xcontent.XContentType
+import org.opensearch.core.common.Strings
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.indexmanagement.indexstatemanagement.IndexStateManagementRestTestCase
 import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexConfig
 import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
@@ -39,19 +40,16 @@ import org.opensearch.indexmanagement.transform.TransformRestTestCase
 import org.opensearch.indexmanagement.transform.model.Transform
 import org.opensearch.indexmanagement.transform.toJsonString
 import org.opensearch.rest.RestRequest
-import org.opensearch.core.rest.RestStatus
 import org.opensearch.test.OpenSearchTestCase
 import java.util.Locale
 
 abstract class SecurityRestTestCase : IndexManagementRestTestCase() {
-
     private object RollupRestTestCaseSecurityExtension : RollupRestTestCase() {
-
         fun createRollupExt(
             rollup: Rollup,
             rollupId: String,
             refresh: Boolean,
-            client: RestClient
+            client: RestClient,
         ) = super.createRollup(rollup, rollupId, refresh, client)
 
         fun getRollupMetadataExt(
@@ -71,7 +69,6 @@ abstract class SecurityRestTestCase : IndexManagementRestTestCase() {
     }
 
     private object IndexStateManagementRestTestCaseExt : IndexStateManagementRestTestCase() {
-
         fun createPolicyExt(
             policy: Policy,
             policyId: String = OpenSearchTestCase.randomAlphaOfLength(10),
@@ -83,7 +80,7 @@ abstract class SecurityRestTestCase : IndexManagementRestTestCase() {
             policyString: String,
             policyId: String,
             refresh: Boolean = true,
-            client: RestClient
+            client: RestClient,
         ) = super.createPolicyJson(policyString, policyId, refresh, client)
 
         fun updateManagedIndexConfigStartTimeExt(update: ManagedIndexConfig, desiredStartTimeMillis: Long? = null, retryOnConflict: Int = 0) = super.updateManagedIndexConfigStartTime(update, desiredStartTimeMillis, retryOnConflict)
@@ -108,7 +105,6 @@ abstract class SecurityRestTestCase : IndexManagementRestTestCase() {
     }
 
     private object TransformRestTestCaseExt : TransformRestTestCase() {
-
         fun createTransformExt(
             transform: Transform,
             transformId: String = randomAlphaOfLength(10),
@@ -119,7 +115,7 @@ abstract class SecurityRestTestCase : IndexManagementRestTestCase() {
         fun getTransformExt(
             transformId: String,
             header: BasicHeader = BasicHeader(HttpHeaders.CONTENT_TYPE, "application/json"),
-            userClient: RestClient? = null
+            userClient: RestClient? = null,
         ) = super.getTransform(transformId, header, userClient)
 
         fun getTransformMetadataExt(metadataId: String) = super.getTransformMetadata(metadataId)
@@ -127,23 +123,25 @@ abstract class SecurityRestTestCase : IndexManagementRestTestCase() {
 
     protected fun updateClusterSetting(key: String, value: String, escapeValue: Boolean = true) {
         val formattedValue = if (escapeValue) "\"$value\"" else value
-        val request = """
+        val request =
+            """
             {
                 "persistent": {
                     "$key": $formattedValue
                 }
             }
-        """.trimIndent()
-        val res = client().makeRequest(
-            "PUT", "_cluster/settings", emptyMap(),
-            StringEntity(request, ContentType.APPLICATION_JSON)
-        )
+            """.trimIndent()
+        val res =
+            client().makeRequest(
+                "PUT", "_cluster/settings", emptyMap(),
+                StringEntity(request, ContentType.APPLICATION_JSON),
+            )
         assertEquals("Request failed", RestStatus.OK, res.restStatus())
     }
 
     protected fun createRollup(
         rollup: Rollup,
-        client: RestClient
+        client: RestClient,
     ): Rollup {
         return RollupRestTestCaseSecurityExtension.createRollupExt(rollup, rollup.id, true, client)
     }
@@ -151,9 +149,8 @@ abstract class SecurityRestTestCase : IndexManagementRestTestCase() {
     protected fun createRollupAndCheckStatus(
         rollup: Rollup,
         expectedStatus: RestStatus,
-        client: RestClient
+        client: RestClient,
     ): Response {
-
         val request = Request("PUT", "${IndexManagementPlugin.ROLLUP_JOBS_BASE_URI}/${rollup.id}?refresh=true")
         request.setJsonEntity(rollup.toJsonString())
         return executeRequest(request, expectedStatus, client)
@@ -217,7 +214,7 @@ abstract class SecurityRestTestCase : IndexManagementRestTestCase() {
         policyString: String,
         policyId: String,
         refresh: Boolean = true,
-        client: RestClient
+        client: RestClient,
     ): Response {
         return IndexStateManagementRestTestCaseExt.createPolicyJsonExt(policyString, policyId, refresh, client)
     }
@@ -228,11 +225,12 @@ abstract class SecurityRestTestCase : IndexManagementRestTestCase() {
     }
 
     protected fun addPolicyToIndex(index: String, policyId: String, expectedStatus: RestStatus, client: RestClient) {
-        val body = """
+        val body =
+            """
             {
               "policy_id": "$policyId"
             }
-        """.trimIndent()
+            """.trimIndent()
         val request = Request("POST", "/_opendistro/_ism/add/$index")
         request.setJsonEntity(body)
         executeRequest(request, expectedStatus, client)
@@ -244,13 +242,14 @@ abstract class SecurityRestTestCase : IndexManagementRestTestCase() {
 
     protected fun createIndex(indexName: String, sourceIndexMappingString: String?, client: RestClient) {
         val waitForActiveShards = if (isMultiNode) "all" else "1"
-        val builtSettings = Settings.builder().let {
-            it.putNull(ManagedIndexSettings.ROLLOVER_ALIAS.key)
-            it.put(INDEX_NUMBER_OF_REPLICAS, "1")
-            it.put(INDEX_NUMBER_OF_SHARDS, "1")
-            it.put("index.write.wait_for_active_shards", waitForActiveShards)
-            it
-        }.build()
+        val builtSettings =
+            Settings.builder().let {
+                it.putNull(ManagedIndexSettings.ROLLOVER_ALIAS.key)
+                it.put(INDEX_NUMBER_OF_REPLICAS, "1")
+                it.put(INDEX_NUMBER_OF_SHARDS, "1")
+                it.put("index.write.wait_for_active_shards", waitForActiveShards)
+                it
+            }.build()
 
         val request = Request("PUT", "/$indexName")
         var entity = "{\"settings\": " + Strings.toString(XContentType.JSON, builtSettings)
@@ -278,11 +277,11 @@ abstract class SecurityRestTestCase : IndexManagementRestTestCase() {
         userClient: RestClient,
         user: String,
         expectedNumberOfPolicies: Int?,
-        expectedStatus: RestStatus = RestStatus.OK
+        expectedStatus: RestStatus = RestStatus.OK,
     ): Response? {
         val response = executeRequest(request = Request(RestRequest.Method.GET.name, IndexManagementPlugin.POLICY_BASE_URI), expectedStatus, userClient)
         assertEquals(
-            "User $user not able to see all policies", expectedNumberOfPolicies, response.asMap()["total_policies"]
+            "User $user not able to see all policies", expectedNumberOfPolicies, response.asMap()["total_policies"],
         )
         return response
     }
@@ -317,7 +316,7 @@ abstract class SecurityRestTestCase : IndexManagementRestTestCase() {
     protected fun createTransformAndCheckStatus(
         transform: Transform,
         expectedStatus: RestStatus,
-        client: RestClient
+        client: RestClient,
     ): Response {
         val request = Request(RestRequest.Method.PUT.name, "${IndexManagementPlugin.TRANSFORM_BASE_URI}/${transform.id}?refresh=true")
         request.setJsonEntity(transform.toJsonString())
@@ -327,7 +326,7 @@ abstract class SecurityRestTestCase : IndexManagementRestTestCase() {
     protected fun createPolicyAndCheckStatus(
         policy: Policy,
         expectedStatus: RestStatus,
-        client: RestClient
+        client: RestClient,
     ): Response {
         val request = Request("PUT", "${IndexManagementPlugin.POLICY_BASE_URI}/${policy.id}?refresh=true")
         request.setJsonEntity(policy.toJsonString())
@@ -337,7 +336,7 @@ abstract class SecurityRestTestCase : IndexManagementRestTestCase() {
     protected fun getTransform(
         transformId: String,
         header: BasicHeader = BasicHeader(HttpHeaders.CONTENT_TYPE, "application/json"),
-        client: RestClient
+        client: RestClient,
     ) = TransformRestTestCaseExt.getTransformExt(transformId, header, client)
 
     protected fun getTransformMetadata(metadataId: String) = TransformRestTestCaseExt.getTransformMetadataExt(metadataId)
@@ -370,13 +369,14 @@ abstract class SecurityRestTestCase : IndexManagementRestTestCase() {
     protected fun executeRequest(
         request: Request,
         expectedRestStatus: RestStatus? = null,
-        client: RestClient
+        client: RestClient,
     ): Response {
-        val response = try {
-            client.performRequest(request)
-        } catch (exception: ResponseException) {
-            exception.response
-        }
+        val response =
+            try {
+                client.performRequest(request)
+            } catch (exception: ResponseException) {
+                exception.response
+            }
         if (expectedRestStatus != null) {
             assertEquals(expectedRestStatus.status, response.statusLine.statusCode)
         }
@@ -385,13 +385,14 @@ abstract class SecurityRestTestCase : IndexManagementRestTestCase() {
 
     protected fun createUser(name: String, pwd: String = "Test123!", backendRoles: List<String> = listOf()) {
         val backendRolesStr = backendRoles.joinToString { "\"$it\"" }
-        val json = """
+        val json =
+            """
             {
                 "password": "$pwd",
                 "backend_roles": [$backendRolesStr],
                 "attributes":{}
             }
-        """.trimIndent()
+            """.trimIndent()
         val request = Request(RestRequest.Method.PUT.name, "_plugins/_security/api/internalusers/$name")
         request.setJsonEntity(json)
 
@@ -405,7 +406,7 @@ abstract class SecurityRestTestCase : IndexManagementRestTestCase() {
         clusterPermissions: List<String> = emptyList(),
         indexPermissions: List<String> = emptyList(),
         backendRoles: List<String> = emptyList(),
-        indexPatterns: List<String> = emptyList()
+        indexPatterns: List<String> = emptyList(),
     ) {
         createUser(user, password, backendRoles)
         createRole(role, clusterPermissions, indexPermissions, indexPatterns)
@@ -418,11 +419,12 @@ abstract class SecurityRestTestCase : IndexManagementRestTestCase() {
         indexPermissions: List<String>,
         indexPatterns: List<String>,
     ) {
-        val response = try {
-            client().performRequest(Request("GET", "/_plugins/_security/api/roles/$name"))
-        } catch (ex: ResponseException) {
-            ex.response
-        }
+        val response =
+            try {
+                client().performRequest(Request("GET", "/_plugins/_security/api/roles/$name"))
+            } catch (ex: ResponseException) {
+                ex.response
+            }
         // If role already exist, do nothing
         if (response.statusLine.statusCode == RestStatus.OK.status) {
             return
@@ -432,7 +434,8 @@ abstract class SecurityRestTestCase : IndexManagementRestTestCase() {
         val indexPatternsStr = indexPatterns.joinToString { "\"$it\"" }
         val clusterPermissionsStr = clusterPermissions.joinToString { "\"$it\"" }
         val indexPermissionsStr = indexPermissions.joinToString { "\"$it\"" }
-        val entity = """
+        val entity =
+            """
             {
                 "cluster_permissions": [$clusterPermissionsStr],
                 "index_permissions": [
@@ -445,7 +448,7 @@ abstract class SecurityRestTestCase : IndexManagementRestTestCase() {
                 ],
                 "tenant_permissions": []
             }
-        """.trimIndent()
+            """.trimIndent()
 
         request.setJsonEntity(entity)
         executeRequest(request, RestStatus.CREATED, client())
@@ -454,25 +457,27 @@ abstract class SecurityRestTestCase : IndexManagementRestTestCase() {
     protected fun assignRoleToUsers(role: String, users: List<String>) {
         val request = Request("PUT", "/_plugins/_security/api/rolesmapping/$role")
         val usersStr = users.joinToString { "\"$it\"" }
-        val entity = """
+        val entity =
+            """
             {
                 "backend_roles": [],
                 "hosts": [],
                 "users": [$usersStr]
             }
-        """.trimIndent()
+            """.trimIndent()
         request.setJsonEntity(entity)
         client().performRequest(request)
     }
 
     protected fun setFilterByBackendRole(filter: Boolean) {
-        val setting = """
+        val setting =
+            """
             {
                 "persistent": {
                     "plugins.index_management.filter_by_backend_roles": "$filter"
                 } 
             }
-        """.trimIndent()
+            """.trimIndent()
         val request = Request(RestRequest.Method.PUT.name, "_cluster/settings")
         request.setJsonEntity(setting)
         executeRequest(request, RestStatus.OK, client())

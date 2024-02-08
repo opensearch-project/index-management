@@ -16,17 +16,17 @@ import org.opensearch.client.Request
 import org.opensearch.client.RequestOptions
 import org.opensearch.client.Response
 import org.opensearch.client.ResponseException
-import org.opensearch.core.common.Strings
 import org.opensearch.client.RestClient
 import org.opensearch.client.WarningsHandler
 import org.opensearch.common.io.PathUtils
 import org.opensearch.common.settings.Settings
 import org.opensearch.common.xcontent.XContentType
+import org.opensearch.core.common.Strings
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.core.xcontent.DeprecationHandler
+import org.opensearch.core.xcontent.MediaType
 import org.opensearch.core.xcontent.NamedXContentRegistry
 import org.opensearch.indexmanagement.indexstatemanagement.util.INDEX_HIDDEN
-import org.opensearch.core.rest.RestStatus
-import org.opensearch.core.xcontent.MediaType
 import org.opensearch.indexmanagement.rollup.model.Rollup
 import org.opensearch.indexmanagement.transform.model.Transform
 import org.opensearch.jobscheduler.spi.schedule.IntervalSchedule
@@ -34,14 +34,13 @@ import java.io.IOException
 import java.nio.file.Files
 import java.time.Duration
 import java.time.Instant
-import java.util.*
+import java.util.Date
 import javax.management.MBeanServerInvocationHandler
 import javax.management.ObjectName
 import javax.management.remote.JMXConnectorFactory
 import javax.management.remote.JMXServiceURL
 
 abstract class IndexManagementRestTestCase : ODFERestTestCase() {
-
     val configSchemaVersion = 21
     val historySchemaVersion = 7
 
@@ -52,7 +51,7 @@ abstract class IndexManagementRestTestCase : ODFERestTestCase() {
     fun setAutoCreateIndex() {
         client().makeRequest(
             "PUT", "_cluster/settings",
-            StringEntity("""{"persistent":{"action.auto_create_index":"-.opendistro-*,*"}}""", ContentType.APPLICATION_JSON)
+            StringEntity("""{"persistent":{"action.auto_create_index":"-.opendistro-*,*"}}""", ContentType.APPLICATION_JSON),
         )
     }
 
@@ -83,8 +82,8 @@ abstract class IndexManagementRestTestCase : ODFERestTestCase() {
                     }
                 }
                 """.trimIndent(),
-                ContentType.APPLICATION_JSON
-            )
+                ContentType.APPLICATION_JSON,
+            ),
         )
     }
 
@@ -92,6 +91,7 @@ abstract class IndexManagementRestTestCase : ODFERestTestCase() {
     protected val isDebuggingRemoteCluster = System.getProperty("cluster.debug", "false")!!.toBoolean()
 
     protected val isLocalTest = clusterName() == "integTest"
+
     private fun clusterName(): String {
         return System.getProperty("tests.clustername")
     }
@@ -218,14 +218,15 @@ abstract class IndexManagementRestTestCase : ODFERestTestCase() {
         // During this period, this update got missed
         // Since from the log, this happens very fast (within 0.1~0.2s), the above cluster explain may not have the granularity to catch this.
         logger.info("Update rollup start time to $startTimeMillis")
-        val response = client().makeRequest(
-            "POST", "${IndexManagementPlugin.INDEX_MANAGEMENT_INDEX}/_update/${update.id}?wait_for_active_shards=$waitForActiveShards&refresh=true",
-            StringEntity(
-                "{\"doc\":{\"rollup\":{\"schedule\":{\"interval\":{\"start_time\":" +
-                    "\"$startTimeMillis\"}}}}}",
-                ContentType.APPLICATION_JSON
+        val response =
+            client().makeRequest(
+                "POST", "${IndexManagementPlugin.INDEX_MANAGEMENT_INDEX}/_update/${update.id}?wait_for_active_shards=$waitForActiveShards&refresh=true",
+                StringEntity(
+                    "{\"doc\":{\"rollup\":{\"schedule\":{\"interval\":{\"start_time\":" +
+                        "\"$startTimeMillis\"}}}}}",
+                    ContentType.APPLICATION_JSON,
+                ),
             )
-        )
 
         assertEquals("Request failed", RestStatus.OK, response.restStatus())
     }
@@ -247,23 +248,26 @@ abstract class IndexManagementRestTestCase : ODFERestTestCase() {
         val millis = Duration.of(intervalSchedule.interval.toLong(), intervalSchedule.unit).minusSeconds(2).toMillis()
         val startTimeMillis = desiredStartTimeMillis ?: (Instant.now().toEpochMilli() - millis)
         val waitForActiveShards = if (isMultiNode) "all" else "1"
-        val response = client().makeRequest(
-            "POST", "${IndexManagementPlugin.INDEX_MANAGEMENT_INDEX}/_update/${update.id}?wait_for_active_shards=$waitForActiveShards",
-            StringEntity(
-                "{\"doc\":{\"transform\":{\"schedule\":{\"interval\":{\"start_time\":" +
-                    "\"$startTimeMillis\"}}}}}",
-                ContentType.APPLICATION_JSON
+        val response =
+            client().makeRequest(
+                "POST", "${IndexManagementPlugin.INDEX_MANAGEMENT_INDEX}/_update/${update.id}?wait_for_active_shards=$waitForActiveShards",
+                StringEntity(
+                    "{\"doc\":{\"transform\":{\"schedule\":{\"interval\":{\"start_time\":" +
+                        "\"$startTimeMillis\"}}}}}",
+                    ContentType.APPLICATION_JSON,
+                ),
             )
-        )
 
         assertEquals("Request failed", RestStatus.OK, response.restStatus())
     }
 
     override fun preserveIndicesUponCompletion(): Boolean = true
+
     companion object {
         val isMultiNode = System.getProperty("cluster.number_of_nodes", "1").toInt() > 1
         val isBWCTest = System.getProperty("tests.plugin_bwc_version", "0") != "0"
         protected val defaultKeepIndexSet = setOf(".opendistro_security")
+
         /**
          * We override preserveIndicesUponCompletion to true and use this function to clean up indices
          * Meant to be used in @After or @AfterClass of your feature test suite
@@ -289,7 +293,7 @@ abstract class IndexManagementRestTestCase : ODFERestTestCase() {
             val xContentType = MediaType.fromMediaType(response.entity.contentType)
             xContentType.xContent().createParser(
                 NamedXContentRegistry.EMPTY, DeprecationHandler.THROW_UNSUPPORTED_OPERATION,
-                response.entity.content
+                response.entity.content,
             ).use { parser ->
                 for (index in parser.list()) {
                     val jsonObject: Map<*, *> = index as java.util.HashMap<*, *>
@@ -358,7 +362,7 @@ abstract class IndexManagementRestTestCase : ODFERestTestCase() {
             val xContentType = MediaType.fromMediaType(response.entity.contentType)
             xContentType.xContent().createParser(
                 NamedXContentRegistry.EMPTY, DeprecationHandler.THROW_UNSUPPORTED_OPERATION,
-                response.entity.content
+                response.entity.content,
             ).use { parser ->
                 for (index in parser.list()) {
                     val jsonObject: Map<*, *> = index as java.util.HashMap<*, *>
@@ -378,18 +382,20 @@ abstract class IndexManagementRestTestCase : ODFERestTestCase() {
             var sessionId: String?
 
             fun getExecutionData(reset: Boolean): ByteArray?
+
             fun dump(reset: Boolean)
+
             fun reset()
         }
 
         /*
-        * We need to be able to dump the jacoco coverage before the cluster shuts down.
-        * The new internal testing framework removed some gradle tasks we were listening to,
-        * to choose a good time to do it. This will dump the executionData to file after each test.
-        * TODO: This is also currently just overwriting integTest.exec with the updated execData without
-        *   resetting after writing each time. This can be improved to either write an exec file per test
-        *   or by letting jacoco append to the file.
-        * */
+         * We need to be able to dump the jacoco coverage before the cluster shuts down.
+         * The new internal testing framework removed some gradle tasks we were listening to,
+         * to choose a good time to do it. This will dump the executionData to file after each test.
+         * TODO: This is also currently just overwriting integTest.exec with the updated execData without
+         *   resetting after writing each time. This can be improved to either write an exec file per test
+         *   or by letting jacoco append to the file.
+         * */
         @JvmStatic
         @AfterClass
         fun dumpCoverage() {
@@ -398,12 +404,13 @@ abstract class IndexManagementRestTestCase : ODFERestTestCase() {
             val jacocoBuildPath = System.getProperty("jacoco.dir") ?: return
             val serverUrl = "service:jmx:rmi:///jndi/rmi://127.0.0.1:7777/jmxrmi"
             JMXConnectorFactory.connect(JMXServiceURL(serverUrl)).use { connector ->
-                val proxy = MBeanServerInvocationHandler.newProxyInstance(
-                    connector.mBeanServerConnection,
-                    ObjectName("org.jacoco:type=Runtime"),
-                    IProxy::class.java,
-                    false
-                )
+                val proxy =
+                    MBeanServerInvocationHandler.newProxyInstance(
+                        connector.mBeanServerConnection,
+                        ObjectName("org.jacoco:type=Runtime"),
+                        IProxy::class.java,
+                        false,
+                    )
                 proxy.getExecutionData(false)?.let {
                     val path = PathUtils.get("$jacocoBuildPath/integTest.exec")
                     Files.write(path, it)

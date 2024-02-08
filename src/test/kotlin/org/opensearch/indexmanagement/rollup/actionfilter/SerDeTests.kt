@@ -10,7 +10,6 @@ import org.opensearch.indexmanagement.rollup.randomISMFieldCaps
 import org.opensearch.test.OpenSearchTestCase
 
 class SerDeTests : OpenSearchTestCase() {
-
     fun `test round trip empty`() {
         val fieldCaps = FieldCapabilitiesResponse(arrayOf(), mapOf())
         val roundTripFromFieldCaps = ISMFieldCapabilitiesResponse.fromFieldCapabilitiesResponse(fieldCaps).toFieldCapabilitiesResponse()

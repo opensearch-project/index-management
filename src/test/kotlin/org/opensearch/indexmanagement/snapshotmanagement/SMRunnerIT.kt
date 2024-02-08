@@ -5,27 +5,27 @@
 
 package org.opensearch.indexmanagement.snapshotmanagement
 
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.SM_POLICIES_URI
 import org.opensearch.indexmanagement.makeRequest
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata
 import org.opensearch.indexmanagement.waitFor
 import org.opensearch.jobscheduler.spi.schedule.CronSchedule
 import org.opensearch.jobscheduler.spi.schedule.IntervalSchedule
-import org.opensearch.core.rest.RestStatus
 import java.time.Instant.now
 import java.time.temporal.ChronoUnit
 
 class SMRunnerIT : SnapshotManagementRestTestCase() {
-
     fun `test overall workflow`() {
         createRepository("repo")
 
-        val smPolicy = randomSMPolicy(
-            creationSchedule = CronSchedule("* * * * *", randomZone()),
-            jobSchedule = IntervalSchedule(now(), 1, ChronoUnit.MINUTES),
-            jobEnabled = true,
-            jobEnabledTime = now(),
-        )
+        val smPolicy =
+            randomSMPolicy(
+                creationSchedule = CronSchedule("* * * * *", randomZone()),
+                jobSchedule = IntervalSchedule(now(), 1, ChronoUnit.MINUTES),
+                jobEnabled = true,
+                jobEnabledTime = now(),
+            )
         val policyName = smPolicy.policyName
         val response = client().makeRequest("POST", "$SM_POLICIES_URI/$policyName", emptyMap(), smPolicy.toHttpEntity())
         assertEquals("Create SM policy failed", RestStatus.CREATED, response.restStatus())

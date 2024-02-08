@@ -50,9 +50,8 @@ import org.opensearch.transport.RemoteTransportException
 class RollupMapperService(
     val client: Client,
     val clusterService: ClusterService,
-    private val indexNameExpressionResolver: IndexNameExpressionResolver
+    private val indexNameExpressionResolver: IndexNameExpressionResolver,
 ) {
-
     private val logger = LogManager.getLogger(javaClass)
 
     /**
@@ -69,7 +68,7 @@ class RollupMapperService(
     private suspend fun validateAndAttemptToUpdateTargetIndex(
         rollup: Rollup,
         targetIndexResolvedName: String,
-        hasLegacyPlugin: Boolean
+        hasLegacyPlugin: Boolean,
     ): RollupJobValidationResult {
         if (rollup.isTargetIndexAlias()) {
             val aliasValidationResult = validateTargetIndexAlias(rollup, targetIndexResolvedName)
@@ -94,7 +93,6 @@ class RollupMapperService(
      */
     @Suppress("ReturnCount")
     suspend fun validateTargetIndexAlias(rollup: Rollup, targetIndexResolvedName: String): RollupJobValidationResult {
-
         val errorMessage: String
 
         if (!RollupFieldValueExpressionResolver.indexAliasUtils.hasAlias(targetIndexResolvedName)) {
@@ -180,16 +178,19 @@ class RollupMapperService(
     }
 
     suspend fun addRollupSettingToIndex(targetIndexResolvedName: String, hasLegacyPlugin: Boolean): Boolean {
-        val settings = if (hasLegacyPlugin) {
-            Settings.builder().put(LegacyOpenDistroRollupSettings.ROLLUP_INDEX.key, true).build()
-        } else {
-            Settings.builder().put(RollupSettings.ROLLUP_INDEX.key, true).build()
-        }
-        val resp: AcknowledgedResponse = client.admin().indices().suspendUntil {
-            updateSettings(UpdateSettingsRequest(settings, targetIndexResolvedName), it)
-        }
+        val settings =
+            if (hasLegacyPlugin) {
+                Settings.builder().put(LegacyOpenDistroRollupSettings.ROLLUP_INDEX.key, true).build()
+            } else {
+                Settings.builder().put(RollupSettings.ROLLUP_INDEX.key, true).build()
+            }
+        val resp: AcknowledgedResponse =
+            client.admin().indices().suspendUntil {
+                updateSettings(UpdateSettingsRequest(settings, targetIndexResolvedName), it)
+            }
         return resp.isAcknowledged
     }
+
     @Suppress("ReturnCount")
     suspend fun prepareTargetIndex(rollup: Rollup, targetIndexResolvedName: String, hasLegacyPlugin: Boolean): RollupJobValidationResult {
         var errorMessage = ""
@@ -203,9 +204,10 @@ class RollupMapperService(
             // 2. Put rollup target_index mappings
             val putMappingRequest: PutMappingRequest =
                 PutMappingRequest(targetIndexResolvedName).source(IndexManagementIndices.rollupTargetMappings, XContentType.JSON)
-            val respMappings: AcknowledgedResponse = client.admin().indices().suspendUntil {
-                putMapping(putMappingRequest, it)
-            }
+            val respMappings: AcknowledgedResponse =
+                client.admin().indices().suspendUntil {
+                    putMapping(putMappingRequest, it)
+                }
             if (!respMappings.isAcknowledged) {
                 return RollupJobValidationResult.Invalid("Failed to put initial rollup mappings for target index [$targetIndexResolvedName]")
             }
@@ -227,14 +229,16 @@ class RollupMapperService(
     }
 
     private suspend fun createTargetIndex(targetIndexName: String, hasLegacyPlugin: Boolean): CreateIndexResponse {
-        val settings = if (hasLegacyPlugin) {
-            Settings.builder().put(LegacyOpenDistroRollupSettings.ROLLUP_INDEX.key, true).build()
-        } else {
-            Settings.builder().put(RollupSettings.ROLLUP_INDEX.key, true).build()
-        }
-        val request = CreateIndexRequest(targetIndexName)
-            .settings(settings)
-            .mapping(IndexManagementIndices.rollupTargetMappings)
+        val settings =
+            if (hasLegacyPlugin) {
+                Settings.builder().put(LegacyOpenDistroRollupSettings.ROLLUP_INDEX.key, true).build()
+            } else {
+                Settings.builder().put(RollupSettings.ROLLUP_INDEX.key, true).build()
+            }
+        val request =
+            CreateIndexRequest(targetIndexName)
+                .settings(settings)
+                .mapping(IndexManagementIndices.rollupTargetMappings)
         // TODO: Perhaps we can do better than this for mappings... as it'll be dynamic for rest
         //  Can we read in the actual mappings from the source index and use that?
         //  Can it have issues with metrics? i.e. an int mapping with 3, 5, 6 added up and divided by 3 for avg is 14/3 = 4.6666
@@ -271,11 +275,12 @@ class RollupMapperService(
     @Suppress("ReturnCount", "ComplexMethod")
     private suspend fun isSourceIndexMappingsValid(index: String, rollup: Rollup): RollupJobValidationResult {
         try {
-            val res = when (val getMappingsResult = getMappings(index)) {
-                is GetMappingsResult.Success -> getMappingsResult.response
-                is GetMappingsResult.Failure ->
-                    return RollupJobValidationResult.Failure(getMappingsResult.message, getMappingsResult.cause)
-            }
+            val res =
+                when (val getMappingsResult = getMappings(index)) {
+                    is GetMappingsResult.Success -> getMappingsResult.response
+                    is GetMappingsResult.Failure ->
+                        return RollupJobValidationResult.Failure(getMappingsResult.message, getMappingsResult.cause)
+                }
 
             val indexTypeMappings = res.mappings[index]
             if (indexTypeMappings == null) {
@@ -287,8 +292,9 @@ class RollupMapperService(
             val issues = mutableSetOf<String>()
             // Validate source fields in dimensions
             rollup.dimensions.forEach { dimension ->
-                if (!isFieldInMappings(dimension.sourceField, indexMappingSource))
+                if (!isFieldInMappings(dimension.sourceField, indexMappingSource)) {
                     issues.add("missing field ${dimension.sourceField}")
+                }
 
                 when (dimension) {
                     is DateHistogram -> {
@@ -305,8 +311,9 @@ class RollupMapperService(
 
             // Validate source fields in metrics
             rollup.metrics.forEach { metric ->
-                if (!isFieldInMappings(metric.sourceField, indexMappingSource))
+                if (!isFieldInMappings(metric.sourceField, indexMappingSource)) {
                     issues.add("missing field ${metric.sourceField}")
+                }
 
                 // TODO: Validate field type for metrics,
                 //  are all Numeric field types valid?
@@ -337,11 +344,12 @@ class RollupMapperService(
     }
 
     private suspend fun jobExistsInRollupIndex(rollup: Rollup, targetIndexResolvedName: String): RollupJobValidationResult {
-        val res = when (val getMappingsResult = getMappings(targetIndexResolvedName)) {
-            is GetMappingsResult.Success -> getMappingsResult.response
-            is GetMappingsResult.Failure ->
-                return RollupJobValidationResult.Failure(getMappingsResult.message, getMappingsResult.cause)
-        }
+        val res =
+            when (val getMappingsResult = getMappings(targetIndexResolvedName)) {
+                is GetMappingsResult.Success -> getMappingsResult.response
+                is GetMappingsResult.Failure ->
+                    return RollupJobValidationResult.Failure(getMappingsResult.message, getMappingsResult.cause)
+            }
 
         val indexMapping: MappingMetadata? = res.mappings[targetIndexResolvedName]
 
@@ -389,12 +397,14 @@ class RollupMapperService(
     private suspend fun updateRollupIndexMappings(rollup: Rollup, targetIndexResolvedName: String): RollupJobValidationResult {
         val errorMessage = "Failed to update mappings of target index [$targetIndexResolvedName] with rollup job"
         try {
-            val response = withContext(Dispatchers.IO) {
-                val resp: AcknowledgedResponse = client.suspendUntil {
-                    execute(UpdateRollupMappingAction.INSTANCE, UpdateRollupMappingRequest(rollup), it)
+            val response =
+                withContext(Dispatchers.IO) {
+                    val resp: AcknowledgedResponse =
+                        client.suspendUntil {
+                            execute(UpdateRollupMappingAction.INSTANCE, UpdateRollupMappingRequest(rollup), it)
+                        }
+                    resp.isAcknowledged
                 }
-                resp.isAcknowledged
-            }
 
             if (!response) {
                 // TODO: when this happens is it failure or invalid?
@@ -417,6 +427,7 @@ class RollupMapperService(
 
     sealed class GetMappingsResult {
         data class Success(val response: GetMappingsResponse) : GetMappingsResult()
+
         data class Failure(val message: String = "An error occurred when getting mappings", val cause: Exception) : GetMappingsResult()
     }
 }

@@ -9,10 +9,10 @@ import org.opensearch.indexmanagement.snapshotmanagement.api.transport.SMActions
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.SMActions.DELETE_SM_POLICY_ACTION_TYPE
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.SMActions.EXPLAIN_SM_POLICY_ACTION_NAME
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.SMActions.EXPLAIN_SM_POLICY_ACTION_TYPE
-import org.opensearch.indexmanagement.snapshotmanagement.api.transport.SMActions.GET_SM_POLICY_ACTION_NAME
-import org.opensearch.indexmanagement.snapshotmanagement.api.transport.SMActions.GET_SM_POLICY_ACTION_TYPE
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.SMActions.GET_SM_POLICIES_ACTION_NAME
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.SMActions.GET_SM_POLICIES_ACTION_TYPE
+import org.opensearch.indexmanagement.snapshotmanagement.api.transport.SMActions.GET_SM_POLICY_ACTION_NAME
+import org.opensearch.indexmanagement.snapshotmanagement.api.transport.SMActions.GET_SM_POLICY_ACTION_TYPE
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.SMActions.INDEX_SM_POLICY_ACTION_NAME
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.SMActions.INDEX_SM_POLICY_ACTION_TYPE
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.SMActions.START_SM_POLICY_ACTION_NAME
@@ -22,7 +22,6 @@ import org.opensearch.indexmanagement.snapshotmanagement.api.transport.SMActions
 import org.opensearch.test.OpenSearchTestCase
 
 class ActionTests : OpenSearchTestCase() {
-
     fun `test delete action name`() {
         assertNotNull(DELETE_SM_POLICY_ACTION_TYPE.name())
         assertEquals(DELETE_SM_POLICY_ACTION_TYPE.name(), DELETE_SM_POLICY_ACTION_NAME)

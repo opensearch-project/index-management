@@ -16,8 +16,8 @@ import org.opensearch.indexmanagement.spi.indexstatemanagement.Action
 import org.opensearch.indexmanagement.spi.indexstatemanagement.ActionParser
 
 class AliasActionParser : ActionParser() {
-
     private val logger = LogManager.getLogger(javaClass)
+
     override fun fromStreamInput(sin: StreamInput): Action {
         val actions = sin.readList(IndicesAliasesRequest::AliasActions)
         val index = sin.readInt()

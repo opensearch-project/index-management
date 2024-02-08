@@ -23,9 +23,8 @@ import java.time.Instant
 data class ISMTemplate(
     val indexPatterns: List<String>,
     val priority: Int,
-    val lastUpdatedTime: Instant
+    val lastUpdatedTime: Instant,
 ) : ToXContentObject, Writeable {
-
     init {
         require(priority >= 0) { "Requires priority to be >= 0" }
         require(indexPatterns.isNotEmpty()) { "Requires at least one index pattern" }
@@ -43,7 +42,7 @@ data class ISMTemplate(
     constructor(sin: StreamInput) : this(
         sin.readStringList(),
         sin.readInt(),
-        sin.readInstant()
+        sin.readInstant(),
     )
 
     @Throws(IOException::class)
@@ -86,7 +85,7 @@ data class ISMTemplate(
             return ISMTemplate(
                 indexPatterns = indexPatterns,
                 priority = priority,
-                lastUpdatedTime = lastUpdatedTime ?: Instant.now()
+                lastUpdatedTime = lastUpdatedTime ?: Instant.now(),
             )
         }
     }

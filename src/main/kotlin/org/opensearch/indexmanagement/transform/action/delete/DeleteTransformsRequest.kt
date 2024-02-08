@@ -14,13 +14,12 @@ import java.io.IOException
 
 class DeleteTransformsRequest(
     val ids: List<String>,
-    val force: Boolean
+    val force: Boolean,
 ) : ActionRequest() {
-
     @Throws(IOException::class)
     constructor(sin: StreamInput) : this(
         ids = sin.readStringList(),
-        force = sin.readBoolean()
+        force = sin.readBoolean(),
     )
 
     override fun validate(): ActionRequestValidationException? {

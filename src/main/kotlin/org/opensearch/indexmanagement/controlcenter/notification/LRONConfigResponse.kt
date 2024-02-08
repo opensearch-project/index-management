@@ -20,12 +20,12 @@ import java.io.IOException
 
 class LRONConfigResponse(
     val id: String,
-    val lronConfig: LRONConfig
+    val lronConfig: LRONConfig,
 ) : ActionResponse(), ToXContentObject {
     @Throws(IOException::class)
     constructor(sin: StreamInput) : this(
         id = sin.readString(),
-        lronConfig = LRONConfig(sin)
+        lronConfig = LRONConfig(sin),
     )
 
     override fun writeTo(out: StreamOutput) {
@@ -37,7 +37,7 @@ class LRONConfigResponse(
         builder.startObject()
             .field(_ID, id)
 
-        /* drop user info in rest layer. only keep user info in transport layer */
+        // drop user info in rest layer. only keep user info in transport layer
         val lronConfigParams = ToXContent.MapParams(mapOf(WITH_TYPE to "false", WITH_USER to "false", WITH_PRIORITY to "false"))
         builder.field(LRONConfig.LRON_CONFIG_FIELD, lronConfig, lronConfigParams)
 

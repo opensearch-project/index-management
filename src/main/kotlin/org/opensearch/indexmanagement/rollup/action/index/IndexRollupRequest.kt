@@ -27,7 +27,7 @@ class IndexRollupRequest : IndexRequest {
 
     constructor(
         rollup: Rollup,
-        refreshPolicy: WriteRequest.RefreshPolicy
+        refreshPolicy: WriteRequest.RefreshPolicy,
     ) {
         this.rollup = rollup
         if (rollup.seqNo == SequenceNumbers.UNASSIGNED_SEQ_NO || rollup.primaryTerm == SequenceNumbers.UNASSIGNED_PRIMARY_TERM) {

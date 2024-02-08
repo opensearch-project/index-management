@@ -8,7 +8,6 @@ package org.opensearch.indexmanagement.spi.indexstatemanagement
 import org.opensearch.cluster.ClusterState
 
 interface StatusChecker {
-
     /**
      * checks and returns the status of the extension
      */
@@ -19,7 +18,8 @@ interface StatusChecker {
 
 enum class Status(private val value: String) {
     ENABLED("enabled"),
-    DISABLED("disabled");
+    DISABLED("disabled"),
+    ;
 
     override fun toString(): String {
         return value

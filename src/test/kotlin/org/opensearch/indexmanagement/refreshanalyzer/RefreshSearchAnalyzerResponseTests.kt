@@ -11,7 +11,6 @@ import org.opensearch.core.index.shard.ShardId
 import org.opensearch.test.OpenSearchTestCase
 
 class RefreshSearchAnalyzerResponseTests : OpenSearchTestCase() {
-
     fun `test get successful refresh details`() {
         val index1 = "index1"
         val index2 = "index2"

@@ -15,7 +15,6 @@ import org.opensearch.test.OpenSearchTestCase
  * alerting so all plugins can consume and use.
  */
 class DestinationTests : OpenSearchTestCase() {
-
     fun `test chime destination`() {
         val chime = Chime("http://abc.com")
         assertEquals("Url is manipulated", chime.url, "http://abc.com")

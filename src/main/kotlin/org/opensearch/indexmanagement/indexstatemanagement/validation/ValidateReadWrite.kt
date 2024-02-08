@@ -3,11 +3,6 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-/*
- * Copyright OpenSearch Contributors
- * SPDX-License-Identifier: Apache-2.0
- */
-
 package org.opensearch.indexmanagement.indexstatemanagement.validation
 
 import org.apache.logging.log4j.LogManager
@@ -21,9 +16,8 @@ import org.opensearch.monitor.jvm.JvmService
 class ValidateReadWrite(
     settings: Settings,
     clusterService: ClusterService,
-    jvmService: JvmService
+    jvmService: JvmService,
 ) : Validate(settings, clusterService, jvmService) {
-
     private val logger = LogManager.getLogger(javaClass)
 
     @Suppress("ReturnSuppressCount", "ReturnCount")
@@ -51,7 +45,9 @@ class ValidateReadWrite(
     companion object {
         const val name = "validate_read_write"
         const val settingKey = "read_only_allow_delete"
+
         fun getReadOnlyAllowDeleteBlockMessage(index: String) = "read_only_allow_delete block is not null for index [index=$index]"
+
         fun getValidationPassedMessage(index: String) = "read_write validation passed for [index=$index]"
     }
 }

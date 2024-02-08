@@ -9,11 +9,11 @@ import org.apache.logging.log4j.LogManager
 import org.opensearch.action.admin.indices.mapping.get.GetMappingsRequest
 import org.opensearch.action.admin.indices.mapping.get.GetMappingsResponse
 import org.opensearch.client.Client
-import org.opensearch.core.common.bytes.BytesReference
 import org.opensearch.common.xcontent.LoggingDeprecationHandler
 import org.opensearch.common.xcontent.XContentFactory
 import org.opensearch.common.xcontent.XContentHelper
 import org.opensearch.common.xcontent.XContentType
+import org.opensearch.core.common.bytes.BytesReference
 import org.opensearch.core.xcontent.NamedXContentRegistry
 import org.opensearch.core.xcontent.XContentBuilder
 import org.opensearch.core.xcontent.XContentParser
@@ -63,9 +63,10 @@ object TargetIndexMappingService {
     suspend fun getTargetMappingsForDates(transform: Transform): Map<String, Any> {
         val sourceIndex = transform.sourceIndex
         try {
-            val result: GetMappingsResponse = client.admin().indices().suspendUntil {
-                getMappings(GetMappingsRequest().indices(sourceIndex), it)
-            } ?: error("GetMappingResponse for [$transform.sourceIndex] was null")
+            val result: GetMappingsResponse =
+                client.admin().indices().suspendUntil {
+                    getMappings(GetMappingsRequest().indices(sourceIndex), it)
+                } ?: error("GetMappingResponse for [$transform.sourceIndex] was null")
 
             val sourceIndexMapping = result.mappings[sourceIndex]?.sourceAsMap
 
@@ -115,12 +116,13 @@ object TargetIndexMappingService {
         val byteBuffer = ByteBuffer.wrap(dynamicMappings.toByteArray(StandardCharsets.UTF_8))
         val bytesReference = BytesReference.fromByteBuffer(byteBuffer)
 
-        val xcp = XContentHelper.createParser(
-            NamedXContentRegistry.EMPTY,
-            LoggingDeprecationHandler.INSTANCE,
-            bytesReference,
-            XContentType.JSON
-        )
+        val xcp =
+            XContentHelper.createParser(
+                NamedXContentRegistry.EMPTY,
+                LoggingDeprecationHandler.INSTANCE,
+                bytesReference,
+                XContentType.JSON,
+            )
         loop@while (!xcp.isClosed) {
             val token = xcp.currentToken()
             val fieldName = xcp.currentName()
@@ -223,7 +225,6 @@ object TargetIndexMappingService {
     ) {
         val iterator = aggBuilders.iterator()
         while (iterator.hasNext()) {
-
             val aggBuilder = iterator.next()
             val targetIdxFieldName = aggBuilder.name
             val fullPath = parentPath?.plus(".")?.plus(targetIdxFieldName) ?: targetIdxFieldName
@@ -246,5 +247,6 @@ object TargetIndexMappingService {
             mapDateAggregation(aggBuilder.subAggregations, sourceIndexMapping, targetIndexMapping, fullPath)
         }
     }
+
     private fun isFieldInMappings(fieldName: String, mappings: Map<*, *>) = IndexUtils.getFieldFromMappings(fieldName, mappings) != null
 }

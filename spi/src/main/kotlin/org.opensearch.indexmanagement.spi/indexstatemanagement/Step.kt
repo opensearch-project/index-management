@@ -16,7 +16,6 @@ import java.time.Instant
 import java.util.Locale
 
 abstract class Step(val name: String, val isSafeToDisableOn: Boolean = true) {
-
     var context: StepContext? = null
         private set
 
@@ -56,7 +55,8 @@ abstract class Step(val name: String, val isSafeToDisableOn: Boolean = true) {
         STARTING("starting"),
         CONDITION_NOT_MET("condition_not_met"),
         FAILED("failed"),
-        COMPLETED("completed");
+        COMPLETED("completed"),
+        ;
 
         override fun toString(): String {
             return status

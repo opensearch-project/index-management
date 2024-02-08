@@ -29,22 +29,22 @@ import java.time.Instant
 import java.time.temporal.ChronoUnit
 
 class ManagedIndexRunnerIT : IndexStateManagementRestTestCase() {
-
     fun `test version conflict fails job`() {
         val indexName = "version_conflict_index"
         val policyID = "version_conflict_policy"
         val actionConfig = OpenAction(0)
         val states = listOf(State("OpenState", listOf(actionConfig), listOf()))
 
-        val policy = Policy(
-            id = policyID,
-            description = "$indexName description",
-            schemaVersion = 1L,
-            lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
-            errorNotification = randomErrorNotification(),
-            defaultState = states[0].name,
-            states = states
-        )
+        val policy =
+            Policy(
+                id = policyID,
+                description = "$indexName description",
+                schemaVersion = 1L,
+                lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
+                errorNotification = randomErrorNotification(),
+                defaultState = states[0].name,
+                states = states,
+            )
 
         createPolicy(policy, policyID)
         createIndex(indexName, policyID)
@@ -66,14 +66,19 @@ class ManagedIndexRunnerIT : IndexStateManagementRestTestCase() {
         waitFor {
             assertPredicatesOnMetaData(
                 listOf(
-                    indexName to listOf(
-                        PolicyRetryInfoMetaData.RETRY_INFO to fun(retryInfoMetaDataMap: Any?): Boolean =
-                            assertRetryInfoEquals(PolicyRetryInfoMetaData(true, 0), retryInfoMetaDataMap),
-                        ManagedIndexMetaData.INFO to fun(info: Any?): Boolean = expectedInfoString == info.toString()
-                    )
+                    indexName to
+                        listOf(
+                            PolicyRetryInfoMetaData.RETRY_INFO to
+
+                                fun(retryInfoMetaDataMap: Any?): Boolean =
+                                    assertRetryInfoEquals(PolicyRetryInfoMetaData(true, 0), retryInfoMetaDataMap),
+                            ManagedIndexMetaData.INFO to
+
+                                fun(info: Any?): Boolean = expectedInfoString == info.toString(),
+                        ),
                 ),
                 getExplainMap(indexName),
-                strict = false
+                strict = false,
             )
         }
     }
@@ -88,7 +93,7 @@ class ManagedIndexRunnerIT : IndexStateManagementRestTestCase() {
 
         assertEquals(
             "Created managed index did not default to ${ManagedIndexSettings.DEFAULT_JOB_INTERVAL} minutes",
-            ManagedIndexSettings.DEFAULT_JOB_INTERVAL, (managedIndexConfig.jobSchedule as IntervalSchedule).interval
+            ManagedIndexSettings.DEFAULT_JOB_INTERVAL, (managedIndexConfig.jobSchedule as IntervalSchedule).interval,
         )
 
         // init policy
@@ -118,7 +123,7 @@ class ManagedIndexRunnerIT : IndexStateManagementRestTestCase() {
 
         assertEquals(
             "New managed index did not have updated job schedule interval",
-            newJobInterval, (newManagedIndexConfig.jobSchedule as IntervalSchedule).interval
+            newJobInterval, (newManagedIndexConfig.jobSchedule as IntervalSchedule).interval,
         )
 
         // init new policy
@@ -133,14 +138,16 @@ class ManagedIndexRunnerIT : IndexStateManagementRestTestCase() {
     fun `test allow list fails execution`() {
         val indexName = "allow_list_index"
 
-        val firstState = randomState(
-            name = "first_state", actions = listOf(randomReadOnlyActionConfig()),
-            transitions = listOf(randomTransition(stateName = "second_state", conditions = null))
-        )
-        val secondState = randomState(
-            name = "second_state", actions = listOf(randomReadWriteActionConfig()),
-            transitions = listOf(randomTransition(stateName = "first_state", conditions = null))
-        )
+        val firstState =
+            randomState(
+                name = "first_state", actions = listOf(randomReadOnlyActionConfig()),
+                transitions = listOf(randomTransition(stateName = "second_state", conditions = null)),
+            )
+        val secondState =
+            randomState(
+                name = "second_state", actions = listOf(randomReadWriteActionConfig()),
+                transitions = listOf(randomTransition(stateName = "first_state", conditions = null)),
+            )
         val randomPolicy = randomPolicy(id = "allow_policy", states = listOf(firstState, secondState))
 
         val createdPolicy = createPolicy(randomPolicy, "allow_policy")
@@ -169,9 +176,10 @@ class ManagedIndexRunnerIT : IndexStateManagementRestTestCase() {
         waitFor { assertEquals(AttemptTransitionStep.getSuccessMessage(indexName, firstState.name), getExplainManagedIndexMetaData(indexName).info?.get("message")) }
 
         // remove read_only from the allowlist
-        val allowedActions = ISMActionsParser.instance.parsers.map { it.getActionType() }.toList()
-            .filter { actionType -> actionType != ReadOnlyAction.name }
-            .joinToString(prefix = "[", postfix = "]") { string -> "\"$string\"" }
+        val allowedActions =
+            ISMActionsParser.instance.parsers.map { it.getActionType() }.toList()
+                .filter { actionType -> actionType != ReadOnlyAction.name }
+                .joinToString(prefix = "[", postfix = "]") { string -> "\"$string\"" }
         updateClusterSetting(ManagedIndexSettings.ALLOW_LIST.key, allowedActions, escapeValue = false)
 
         // speed up to fifth execution that should try to set index to read only and fail because the action is not allowed
@@ -187,7 +195,7 @@ class ManagedIndexRunnerIT : IndexStateManagementRestTestCase() {
 
         val managedIndexConfig = getExistingManagedIndexConfig(indexName)
         assertEquals(
-            "Created managed index did not default to 0.0", 0.0, managedIndexConfig.jitter
+            "Created managed index did not default to 0.0", 0.0, managedIndexConfig.jitter,
         )
 
         waitFor {
@@ -207,7 +215,7 @@ class ManagedIndexRunnerIT : IndexStateManagementRestTestCase() {
 
         val newManagedIndexConfig = getExistingManagedIndexConfig(newIndexName)
         assertEquals(
-            "New managed index did not have updated jitter", newJitter, newManagedIndexConfig.jitter
+            "New managed index did not have updated jitter", newJitter, newManagedIndexConfig.jitter,
         )
 
         waitFor {

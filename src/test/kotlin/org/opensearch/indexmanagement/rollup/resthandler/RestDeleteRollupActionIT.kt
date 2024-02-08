@@ -6,15 +6,14 @@
 package org.opensearch.indexmanagement.rollup.resthandler
 
 import org.opensearch.client.ResponseException
-import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.ROLLUP_JOBS_BASE_URI
-import org.opensearch.indexmanagement.makeRequest
 import org.opensearch.core.rest.RestStatus
+import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.ROLLUP_JOBS_BASE_URI
 import org.opensearch.indexmanagement.indexstatemanagement.wait
+import org.opensearch.indexmanagement.makeRequest
 import org.opensearch.test.junit.annotations.TestLogging
 
 @TestLogging(value = "level:DEBUG", reason = "Debugging tests")
 class RestDeleteRollupActionIT : RollupRestAPITestCase() {
-
     @Throws(Exception::class)
     fun `test deleting a rollup`() {
         val rollup = createRandomRollup()

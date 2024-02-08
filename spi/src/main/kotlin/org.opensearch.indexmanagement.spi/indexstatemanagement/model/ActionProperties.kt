@@ -16,17 +16,17 @@ import org.opensearch.core.xcontent.XContentParser.Token
 import org.opensearch.core.xcontent.XContentParserUtils.ensureExpectedToken
 import org.opensearch.indexmanagement.spi.indexstatemanagement.addObject
 
-/** Properties that will persist across steps of a single Action. Will be stored in the [ActionMetaData]. */
 // TODO: Create namespaces to group properties together
+
+/** Properties that will persist across steps of a single Action. Will be stored in the [ActionMetaData]. */
 data class ActionProperties(
     val maxNumSegments: Int? = null,
     val snapshotName: String? = null,
     val rollupId: String? = null,
     val hasRollupFailed: Boolean? = null,
     val shrinkActionProperties: ShrinkActionProperties? = null,
-    val transformActionProperties: TransformActionProperties? = null
+    val transformActionProperties: TransformActionProperties? = null,
 ) : Writeable, ToXContentFragment {
-
     override fun writeTo(out: StreamOutput) {
         out.writeOptionalInt(maxNumSegments)
         out.writeOptionalString(snapshotName)
@@ -94,6 +94,6 @@ data class ActionProperties(
         MAX_NUM_SEGMENTS("max_num_segments"),
         SNAPSHOT_NAME("snapshot_name"),
         ROLLUP_ID("rollup_id"),
-        HAS_ROLLUP_FAILED("has_rollup_failed")
+        HAS_ROLLUP_FAILED("has_rollup_failed"),
     }
 }

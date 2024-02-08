@@ -19,7 +19,6 @@ import org.opensearch.jobscheduler.spi.ScheduledJobParameter
 import org.opensearch.jobscheduler.spi.ScheduledJobRunner
 
 object IndexManagementRunner : ScheduledJobRunner {
-
     private val logger = LogManager.getLogger(javaClass)
 
     override fun runJob(job: ScheduledJobParameter, context: JobExecutionContext) {

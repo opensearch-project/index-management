@@ -17,12 +17,13 @@ import java.io.IOException
 abstract class Dimension(
     val type: Type,
     open val sourceField: String,
-    open val targetField: String
+    open val targetField: String,
 ) : ToXContentObject, Writeable {
     enum class Type(val type: String) {
         DATE_HISTOGRAM("date_histogram"),
         TERMS("terms"),
-        HISTOGRAM("histogram");
+        HISTOGRAM("histogram"),
+        ;
 
         override fun toString(): String {
             return type
@@ -59,12 +60,13 @@ abstract class Dimension(
                 val fieldName = xcp.currentName()
                 xcp.nextToken()
 
-                dimension = when (fieldName) {
-                    Type.DATE_HISTOGRAM.type -> DateHistogram.parse(xcp)
-                    Type.TERMS.type -> Terms.parse(xcp)
-                    Type.HISTOGRAM.type -> Histogram.parse(xcp)
-                    else -> throw IllegalArgumentException("Invalid dimension type [$fieldName] found in dimensions")
-                }
+                dimension =
+                    when (fieldName) {
+                        Type.DATE_HISTOGRAM.type -> DateHistogram.parse(xcp)
+                        Type.TERMS.type -> Terms.parse(xcp)
+                        Type.HISTOGRAM.type -> Histogram.parse(xcp)
+                        else -> throw IllegalArgumentException("Invalid dimension type [$fieldName] found in dimensions")
+                    }
             }
 
             return requireNotNull(dimension) { "Dimension cannot be null" }

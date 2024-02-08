@@ -32,34 +32,37 @@ class NotificationActionIT : IndexStateManagementRestTestCase() {
         val policyID = "${testIndexName}_testPolicyName"
         val notificationIndex = "notification_index"
         val clusterUri = System.getProperty("tests.rest.cluster").split(",")[0]
-        val destination = Destination(
-            type = DestinationType.CUSTOM_WEBHOOK,
-            chime = null,
-            slack = null,
-            customWebhook = CustomWebhook(
-                url = "$protocol://$clusterUri/$notificationIndex/_doc",
-                scheme = null,
-                host = null,
-                port = -1,
-                path = null,
-                queryParams = emptyMap(),
-                headerParams = mapOf("Content-Type" to "application/json"),
-                username = if (securityEnabled()) "admin" else null,
-                password = if (securityEnabled()) "admin" else null
+        val destination =
+            Destination(
+                type = DestinationType.CUSTOM_WEBHOOK,
+                chime = null,
+                slack = null,
+                customWebhook =
+                CustomWebhook(
+                    url = "$protocol://$clusterUri/$notificationIndex/_doc",
+                    scheme = null,
+                    host = null,
+                    port = -1,
+                    path = null,
+                    queryParams = emptyMap(),
+                    headerParams = mapOf("Content-Type" to "application/json"),
+                    username = if (securityEnabled()) "admin" else null,
+                    password = if (securityEnabled()) "admin" else null,
+                ),
             )
-        )
         val messageTemplate = Script(ScriptType.INLINE, Script.DEFAULT_TEMPLATE_LANG, "{ \"testing\": 5 }", emptyMap())
         val actionConfig = NotificationAction(destination = destination, channel = null, messageTemplate = messageTemplate, index = 0)
         val states = listOf(State(name = "NotificationState", actions = listOf(actionConfig), transitions = emptyList()))
-        val policy = Policy(
-            id = policyID,
-            description = "$testIndexName description",
-            schemaVersion = 1L,
-            lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
-            errorNotification = randomErrorNotification(),
-            defaultState = states[0].name,
-            states = states
-        )
+        val policy =
+            Policy(
+                id = policyID,
+                description = "$testIndexName description",
+                schemaVersion = 1L,
+                lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
+                errorNotification = randomErrorNotification(),
+                defaultState = states[0].name,
+                states = states,
+            )
 
         createPolicy(policy, policyID)
         createIndex(indexName, policyID)
@@ -78,7 +81,7 @@ class NotificationActionIT : IndexStateManagementRestTestCase() {
             (
                 client().makeRequest("GET", "$notificationIndex/_search")
                     .asMap() as Map<String, Map<String, Map<String, Any>>>
-                )["hits"]!!["total"]!!["value"]
+                )["hits"]!!["total"]!!["value"],
         )
 
         // Speed up to second execution where it will trigger the first execution of the action which
@@ -92,7 +95,7 @@ class NotificationActionIT : IndexStateManagementRestTestCase() {
                 (
                     client().makeRequest("GET", "$notificationIndex/_search")
                         .asMap() as Map<String, Map<String, Map<String, Any>>>
-                    )["hits"]!!["total"]!!["value"]
+                    )["hits"]!!["total"]!!["value"],
             )
         }
     }

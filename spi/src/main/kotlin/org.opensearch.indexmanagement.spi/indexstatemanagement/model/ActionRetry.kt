@@ -6,10 +6,10 @@
 package org.opensearch.indexmanagement.spi.indexstatemanagement.model
 
 import org.apache.logging.log4j.LogManager
+import org.opensearch.common.unit.TimeValue
 import org.opensearch.core.common.io.stream.StreamInput
 import org.opensearch.core.common.io.stream.StreamOutput
 import org.opensearch.core.common.io.stream.Writeable
-import org.opensearch.common.unit.TimeValue
 import org.opensearch.core.xcontent.ToXContent
 import org.opensearch.core.xcontent.ToXContentFragment
 import org.opensearch.core.xcontent.XContentBuilder
@@ -23,10 +23,11 @@ import kotlin.math.pow
 data class ActionRetry(
     val count: Long,
     val backoff: Backoff = Backoff.EXPONENTIAL,
-    val delay: TimeValue = TimeValue.timeValueMinutes(1)
+    val delay: TimeValue = TimeValue.timeValueMinutes(1),
 ) : ToXContentFragment, Writeable {
-
-    init { require(count >= 0) { "Count for ActionRetry must be a non-negative number" } }
+    init {
+        require(count >= 0) { "Count for ActionRetry must be a non-negative number" }
+    }
 
     override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
         builder
@@ -42,7 +43,7 @@ data class ActionRetry(
     constructor(sin: StreamInput) : this(
         count = sin.readLong(),
         backoff = sin.readEnum(Backoff::class.java),
-        delay = sin.readTimeValue()
+        delay = sin.readTimeValue(),
     )
 
     @Throws(IOException::class)
@@ -80,7 +81,7 @@ data class ActionRetry(
             return ActionRetry(
                 count = requireNotNull(count) { "ActionRetry count is null" },
                 backoff = backoff,
-                delay = delay
+                delay = delay,
             )
         }
     }
@@ -90,20 +91,21 @@ data class ActionRetry(
             "exponential",
             { consumedRetries, timeValue ->
                 (2.0.pow(consumedRetries - 1)).toLong() * timeValue.millis
-            }
+            },
         ),
         CONSTANT(
             "constant",
             { _, timeValue ->
                 timeValue.millis
-            }
+            },
         ),
         LINEAR(
             "linear",
             { consumedRetries, timeValue ->
                 consumedRetries * timeValue.millis
-            }
-        );
+            },
+        ),
+        ;
 
         private val logger = LogManager.getLogger(javaClass)
 
@@ -120,8 +122,9 @@ data class ActionRetry(
 
             if (actionMetaData.consumedRetries > 0) {
                 if (actionMetaData.lastRetryTime != null) {
-                    val remainingTime = getNextRetryTime(actionMetaData.consumedRetries, actionRetry.delay) -
-                        (Instant.now().toEpochMilli() - actionMetaData.lastRetryTime)
+                    val remainingTime =
+                        getNextRetryTime(actionMetaData.consumedRetries, actionRetry.delay) -
+                            (Instant.now().toEpochMilli() - actionMetaData.lastRetryTime)
 
                     return Pair(remainingTime > 0, remainingTime)
                 }

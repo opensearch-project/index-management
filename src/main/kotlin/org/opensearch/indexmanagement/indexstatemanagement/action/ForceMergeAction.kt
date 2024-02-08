@@ -17,9 +17,8 @@ import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepContext
 
 class ForceMergeAction(
     val maxNumSegments: Int,
-    index: Int
+    index: Int,
 ) : Action(name, index) {
-
     init {
         require(maxNumSegments > 0) { "Force merge {$MAX_NUM_SEGMENTS_FIELD} must be greater than 0" }
     }
@@ -30,11 +29,12 @@ class ForceMergeAction(
 
     // Using a LinkedHashMap here to maintain order of steps for getSteps() while providing a convenient way to
     // get the current Step object using the current step's name in getStepToExecute()
-    private val stepNameToStep: LinkedHashMap<String, Step> = linkedMapOf(
-        AttemptSetReadOnlyStep.name to attemptSetReadOnlyStep,
-        AttemptCallForceMergeStep.name to attemptCallForceMergeStep,
-        WaitForForceMergeStep.name to waitForForceMergeStep
-    )
+    private val stepNameToStep: LinkedHashMap<String, Step> =
+        linkedMapOf(
+            AttemptSetReadOnlyStep.name to attemptSetReadOnlyStep,
+            AttemptCallForceMergeStep.name to attemptCallForceMergeStep,
+            WaitForForceMergeStep.name to waitForForceMergeStep,
+        )
 
     @Suppress("ReturnCount")
     override fun getStepToExecute(context: StepContext): Step {

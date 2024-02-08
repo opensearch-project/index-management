@@ -20,7 +20,6 @@ import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepMetaDat
 import org.opensearch.transport.RemoteTransportException
 
 class AttemptSetReadOnlyStep(private val action: ForceMergeAction) : Step(name) {
-
     private val logger = LogManager.getLogger(javaClass)
     private var stepStatus = StepStatus.STARTING
     private var info: Map<String, Any>? = null
@@ -44,11 +43,13 @@ class AttemptSetReadOnlyStep(private val action: ForceMergeAction) : Step(name) 
     @Suppress("TooGenericExceptionCaught")
     private suspend fun setIndexToReadOnly(indexName: String, context: StepContext): Boolean {
         try {
-            val updateSettingsRequest = UpdateSettingsRequest()
-                .indices(indexName)
-                .settings(Settings.builder().put(SETTING_BLOCKS_WRITE, true))
-            val response: AcknowledgedResponse = context.client.admin().indices()
-                .suspendUntil { updateSettings(updateSettingsRequest, it) }
+            val updateSettingsRequest =
+                UpdateSettingsRequest()
+                    .indices(indexName)
+                    .settings(Settings.builder().put(SETTING_BLOCKS_WRITE, true))
+            val response: AcknowledgedResponse =
+                context.client.admin().indices()
+                    .suspendUntil { updateSettings(updateSettingsRequest, it) }
 
             if (response.isAcknowledged) {
                 return true
@@ -82,14 +83,16 @@ class AttemptSetReadOnlyStep(private val action: ForceMergeAction) : Step(name) 
         currentMetadata.copy(
             stepMetaData = StepMetaData(name, getStepStartTime(currentMetadata).toEpochMilli(), stepStatus),
             transitionTo = null,
-            info = info
+            info = info,
         )
 
     override fun isIdempotent() = true
 
     companion object {
         const val name = "attempt_set_read_only"
+
         fun getFailedMessage(index: String) = "Failed to set index to read-only [index=$index]"
+
         fun getSuccessMessage(index: String) = "Successfully set index to read-only [index=$index]"
     }
 }

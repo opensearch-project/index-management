@@ -13,7 +13,6 @@ import org.opensearch.ExceptionsHelper
 import org.opensearch.OpenSearchSecurityException
 import org.opensearch.OpenSearchStatusException
 import org.opensearch.OpenSearchTimeoutException
-import org.opensearch.core.action.ActionListener
 import org.opensearch.action.admin.cluster.state.ClusterStateRequest
 import org.opensearch.action.admin.cluster.state.ClusterStateResponse
 import org.opensearch.action.bulk.BulkRequest
@@ -34,7 +33,9 @@ import org.opensearch.common.settings.Settings
 import org.opensearch.common.unit.TimeValue
 import org.opensearch.commons.ConfigConstants
 import org.opensearch.commons.authuser.User
+import org.opensearch.core.action.ActionListener
 import org.opensearch.core.index.Index
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.core.xcontent.NamedXContentRegistry
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
 import org.opensearch.indexmanagement.indexstatemanagement.DefaultIndexMetadataService
@@ -48,6 +49,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.transport.action.mana
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.managedIndex.ManagedIndexRequest
 import org.opensearch.indexmanagement.indexstatemanagement.util.DEFAULT_INDEX_TYPE
 import org.opensearch.indexmanagement.indexstatemanagement.util.FailedIndex
+import org.opensearch.indexmanagement.indexstatemanagement.util.deleteManagedIndexMetadataRequest
 import org.opensearch.indexmanagement.indexstatemanagement.util.managedIndexConfigIndexRequest
 import org.opensearch.indexmanagement.opensearchapi.IndexManagementSecurityContext
 import org.opensearch.indexmanagement.opensearchapi.parseFromGetResponse
@@ -59,8 +61,6 @@ import org.opensearch.indexmanagement.util.IndexUtils
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.buildUser
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.userHasPermissionForResource
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.validateUserConfiguration
-import org.opensearch.core.rest.RestStatus
-import org.opensearch.indexmanagement.indexstatemanagement.util.deleteManagedIndexMetadataRequest
 import org.opensearch.tasks.Task
 import org.opensearch.transport.TransportService
 import java.time.Duration
@@ -69,20 +69,23 @@ import java.time.Instant
 private val log = LogManager.getLogger(TransportAddPolicyAction::class.java)
 
 @Suppress("SpreadOperator", "ReturnCount", "LongParameterList")
-class TransportAddPolicyAction @Inject constructor(
+class TransportAddPolicyAction
+@Inject
+constructor(
     val client: NodeClient,
     transportService: TransportService,
     actionFilters: ActionFilters,
     val settings: Settings,
     val clusterService: ClusterService,
     val xContentRegistry: NamedXContentRegistry,
-    val indexMetadataProvider: IndexMetadataProvider
+    val indexMetadataProvider: IndexMetadataProvider,
 ) : HandledTransportAction<AddPolicyRequest, ISMStatusResponse>(
-    AddPolicyAction.NAME, transportService, actionFilters, ::AddPolicyRequest
+    AddPolicyAction.NAME, transportService, actionFilters, ::AddPolicyRequest,
 ) {
-
     @Volatile private var jobInterval = ManagedIndexSettings.JOB_INTERVAL.get(settings)
+
     @Volatile private var jobJitter = ManagedIndexSettings.JITTER.get(settings)
+
     @Volatile private var filterByEnabled = IndexManagementSettings.FILTER_BY_BACKEND_ROLES.get(settings)
 
     init {
@@ -116,8 +119,8 @@ class TransportAddPolicyAction @Inject constructor(
         fun start() {
             log.debug(
                 "User and roles string from thread context: ${client.threadPool().threadContext.getTransient<String>(
-                    ConfigConstants.OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT
-                )}"
+                    ConfigConstants.OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT,
+                )}",
             )
             if (!validateUserConfiguration(user, filterByEnabled, actionListener)) {
                 return
@@ -180,13 +183,14 @@ class TransportAddPolicyAction @Inject constructor(
             // Do another cluster state request to fail closed indices
             if (request.indexType == DEFAULT_INDEX_TYPE) {
                 val strictExpandOptions = IndicesOptions.strictExpand()
-                val clusterStateRequest = ClusterStateRequest()
-                    .clear()
-                    .indices(*indicesToAdd.values.toTypedArray())
-                    .metadata(true)
-                    .local(false)
-                    .waitForTimeout(TimeValue.timeValueMillis(ADD_POLICY_TIMEOUT_IN_MILLIS))
-                    .indicesOptions(strictExpandOptions)
+                val clusterStateRequest =
+                    ClusterStateRequest()
+                        .clear()
+                        .indices(*indicesToAdd.values.toTypedArray())
+                        .metadata(true)
+                        .local(false)
+                        .waitForTimeout(TimeValue.timeValueMillis(ADD_POLICY_TIMEOUT_IN_MILLIS))
+                        .indicesOptions(strictExpandOptions)
                 client.admin()
                     .cluster()
                     .state(
@@ -204,7 +208,7 @@ class TransportAddPolicyAction @Inject constructor(
                             override fun onFailure(t: Exception) {
                                 actionListener.onFailure(ExceptionsHelper.unwrapCause(t) as Exception)
                             }
-                        }
+                        },
                     )
             } else {
                 getPolicy()
@@ -240,7 +244,7 @@ class TransportAddPolicyAction @Inject constructor(
             IndexUtils.checkAndUpdateConfigIndexMapping(
                 clusterService.state(),
                 client.admin().indices(),
-                ActionListener.wrap(::onUpdateMapping, ::onFailure)
+                ActionListener.wrap(::onUpdateMapping, ::onFailure),
             )
         }
 
@@ -254,8 +258,8 @@ class TransportAddPolicyAction @Inject constructor(
                 actionListener.onFailure(
                     OpenSearchStatusException(
                         "Unable to create or update $INDEX_MANAGEMENT_INDEX with newest mapping.",
-                        RestStatus.INTERNAL_SERVER_ERROR
-                    )
+                        RestStatus.INTERNAL_SERVER_ERROR,
+                    ),
                 )
             }
         }
@@ -287,8 +291,8 @@ class TransportAddPolicyAction @Inject constructor(
                                 failedIndices.add(
                                     FailedIndex(
                                         indicesToAdd[docId] as String, docId,
-                                        "This index already has a policy, use the update policy API to update index policies"
-                                    )
+                                        "This index already has a policy, use the update policy API to update index policies",
+                                    ),
                                 )
                                 indicesToAdd.remove(docId)
                             }
@@ -300,7 +304,7 @@ class TransportAddPolicyAction @Inject constructor(
                     override fun onFailure(t: Exception) {
                         actionListener.onFailure(ExceptionsHelper.unwrapCause(t) as Exception)
                     }
-                }
+                },
             )
         }
 
@@ -321,7 +325,7 @@ class TransportAddPolicyAction @Inject constructor(
                 val bulkReq = BulkRequest().timeout(TimeValue.timeValueMillis(bulkReqTimeout))
                 indicesToAdd.forEach { (uuid, name) ->
                     bulkReq.add(
-                        managedIndexConfigIndexRequest(name, uuid, request.policyID, jobInterval, policy = policy.copy(user = this.user), jobJitter)
+                        managedIndexConfigIndexRequest(name, uuid, request.policyID, jobInterval, policy = policy.copy(user = this.user), jobJitter),
                     )
                 }
 
@@ -335,8 +339,8 @@ class TransportAddPolicyAction @Inject constructor(
                                     failedIndices.add(
                                         FailedIndex(
                                             indicesToAdd[docId] as String, docId,
-                                            "Failed to add policy due to: ${it.failureMessage}"
-                                        )
+                                            "Failed to add policy due to: ${it.failureMessage}",
+                                        ),
                                     )
                                     indicesToAdd.remove(docId)
                                 }
@@ -357,7 +361,7 @@ class TransportAddPolicyAction @Inject constructor(
                                 actionListener.onFailure(ExceptionsHelper.unwrapCause(t) as Exception)
                             }
                         }
-                    }
+                    },
                 )
             } else {
                 actionListener.onResponse(ISMStatusResponse(0, failedIndices))
@@ -381,7 +385,7 @@ class TransportAddPolicyAction @Inject constructor(
                     override fun onFailure(e: Exception) {
                         log.error("Failed to clean metadata for remove policy indices.", e)
                     }
-                }
+                },
             )
         }
     }

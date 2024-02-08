@@ -11,7 +11,6 @@ import java.io.IOException
 
 @Suppress("SpreadOperator")
 class ManagedIndexRequest : BroadcastRequest<ManagedIndexRequest> {
-
     constructor(vararg indices: String) : super(*indices)
 
     @Throws(IOException::class)

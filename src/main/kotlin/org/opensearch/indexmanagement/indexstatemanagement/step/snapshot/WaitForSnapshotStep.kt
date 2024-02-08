@@ -20,7 +20,6 @@ import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepMetaDat
 import org.opensearch.transport.RemoteTransportException
 
 class WaitForSnapshotStep(private val action: SnapshotAction) : Step(name) {
-
     private val logger = LogManager.getLogger(javaClass)
     private var stepStatus = StepStatus.STARTING
     private var info: Map<String, Any>? = null
@@ -34,15 +33,17 @@ class WaitForSnapshotStep(private val action: SnapshotAction) : Step(name) {
 
         try {
             val snapshotName = getSnapshotName(managedIndexMetadata, indexName) ?: return this
-            val request = SnapshotsStatusRequest()
-                .snapshots(arrayOf(snapshotName))
-                .repository(repository)
+            val request =
+                SnapshotsStatusRequest()
+                    .snapshots(arrayOf(snapshotName))
+                    .repository(repository)
             val response: SnapshotsStatusResponse = context.client.admin().cluster().suspendUntil { snapshotsStatus(request, it) }
-            val status: SnapshotStatus? = response
-                .snapshots
-                .find { snapshotStatus ->
-                    snapshotStatus.snapshot.snapshotId.name == snapshotName && snapshotStatus.snapshot.repository == repository
-                }
+            val status: SnapshotStatus? =
+                response
+                    .snapshots
+                    .find { snapshotStatus ->
+                        snapshotStatus.snapshot.snapshotId.name == snapshotName && snapshotStatus.snapshot.repository == repository
+                    }
             if (status != null) {
                 when (status.state) {
                     State.INIT, State.STARTED -> {
@@ -101,7 +102,7 @@ class WaitForSnapshotStep(private val action: SnapshotAction) : Step(name) {
         return currentMetadata.copy(
             stepMetaData = StepMetaData(name, getStepStartTime(currentMetadata).toEpochMilli(), stepStatus),
             transitionTo = null,
-            info = info
+            info = info,
         )
     }
 
@@ -109,11 +110,16 @@ class WaitForSnapshotStep(private val action: SnapshotAction) : Step(name) {
 
     companion object {
         const val name = "wait_for_snapshot"
+
         fun getFailedMessage(index: String) = "Failed to get status of snapshot [index=$index]"
+
         fun getFailedExistsMessage(index: String) = "Snapshot doesn't exist [index=$index]"
+
         fun getFailedActionPropertiesMessage(index: String, actionProperties: ActionProperties?) =
             "Unable to retrieve [${ActionProperties.Properties.SNAPSHOT_NAME.key}] from ActionProperties=$actionProperties [index=$index]"
+
         fun getSuccessMessage(index: String) = "Successfully created snapshot [index=$index]"
+
         fun getSnapshotInProgressMessage(index: String) = "Snapshot currently in progress [index=$index]"
     }
 }

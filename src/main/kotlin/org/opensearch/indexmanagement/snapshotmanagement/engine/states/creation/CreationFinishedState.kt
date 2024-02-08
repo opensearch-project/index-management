@@ -19,7 +19,6 @@ import org.opensearch.snapshots.SnapshotState
 import java.time.Instant.now
 
 object CreationFinishedState : State {
-
     override val continuous = true
 
     @Suppress("ReturnCount", "LongMethod", "NestedBlockDepth")
@@ -29,8 +28,9 @@ object CreationFinishedState : State {
         val metadata = context.metadata
         val log = context.log
 
-        var metadataBuilder = SMMetadata.Builder(metadata)
-            .workflow(WorkflowType.CREATION)
+        var metadataBuilder =
+            SMMetadata.Builder(metadata)
+                .workflow(WorkflowType.CREATION)
 
         metadata.creation.started?.first()?.let { snapshotName ->
             if (metadata.creation.latestExecution == null) {
@@ -40,11 +40,12 @@ object CreationFinishedState : State {
                 return@let
             }
 
-            val getSnapshotsResult = client.getSnapshots(
-                job, snapshotName, metadataBuilder, log,
-                getSnapshotMissingMessageInCreationWorkflow(snapshotName),
-                getSnapshotExceptionInCreationWorkflow(snapshotName),
-            )
+            val getSnapshotsResult =
+                client.getSnapshots(
+                    job, snapshotName, metadataBuilder, log,
+                    getSnapshotMissingMessageInCreationWorkflow(snapshotName),
+                    getSnapshotExceptionInCreationWorkflow(snapshotName),
+                )
             metadataBuilder = getSnapshotsResult.metadataBuilder
             if (getSnapshotsResult.failed) {
                 return SMResult.Fail(metadataBuilder, WorkflowType.CREATION)
@@ -77,7 +78,7 @@ object CreationFinishedState : State {
                     job.creation.timeLimit?.let { timeLimit ->
                         if (timeLimit.isExceed(metadata.creation.latestExecution.startTime)) {
                             return timeLimitExceeded(
-                                timeLimit, metadataBuilder, WorkflowType.CREATION, log
+                                timeLimit, metadataBuilder, WorkflowType.CREATION, log,
                             )
                         }
                     }
@@ -97,10 +98,11 @@ object CreationFinishedState : State {
 
             // if now is after next creation time, update nextCreationTime to next execution schedule
             // TODO may want to notify user that we skipped the execution because snapshot creation time is longer than execution schedule
-            val result = tryUpdatingNextExecutionTime(
-                metadataBuilder, metadata.creation.trigger.time, job.creation.schedule,
-                WorkflowType.CREATION, log
-            )
+            val result =
+                tryUpdatingNextExecutionTime(
+                    metadataBuilder, metadata.creation.trigger.time, job.creation.schedule,
+                    WorkflowType.CREATION, log,
+                )
             if (result.updated) {
                 metadataBuilder = result.metadataBuilder
             }
@@ -115,8 +117,10 @@ object CreationFinishedState : State {
 
     private fun getSnapshotCreationSucceedMessage(snapshotName: String) =
         "Snapshot $snapshotName creation has finished successfully."
+
     private fun getSnapshotMissingMessageInCreationWorkflow(snapshotName: String) =
         "Snapshot $snapshotName not found while checking if it has been created."
+
     private fun getSnapshotExceptionInCreationWorkflow(snapshotName: String) =
         "Caught exception while getting started creation snapshot [$snapshotName]."
 }

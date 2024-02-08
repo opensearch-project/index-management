@@ -14,20 +14,20 @@ import org.opensearch.core.common.io.stream.StreamOutput
 import java.io.IOException
 
 class DeletePolicyRequest(val policyID: String, val refreshPolicy: WriteRequest.RefreshPolicy) : ActionRequest() {
-
     @Throws(IOException::class)
     constructor(sin: StreamInput) : this(
         policyID = sin.readString(),
-        refreshPolicy = sin.readEnum(WriteRequest.RefreshPolicy::class.java)
+        refreshPolicy = sin.readEnum(WriteRequest.RefreshPolicy::class.java),
     )
 
     override fun validate(): ActionRequestValidationException? {
         var validationException: ActionRequestValidationException? = null
         if (policyID.isBlank()) {
-            validationException = ValidateActions.addValidationError(
-                "Missing policy ID",
-                validationException
-            )
+            validationException =
+                ValidateActions.addValidationError(
+                    "Missing policy ID",
+                    validationException,
+                )
         }
         return validationException
     }

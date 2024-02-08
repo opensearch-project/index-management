@@ -17,13 +17,12 @@ import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy
 import java.time.Instant.now
 
 class IndexSMPolicyRequest : IndexRequest {
-
     var policy: SMPolicy
 
     constructor(
         policy: SMPolicy,
         create: Boolean,
-        refreshPolicy: WriteRequest.RefreshPolicy
+        refreshPolicy: WriteRequest.RefreshPolicy,
     ) : super() {
         this.policy = policy
         this.create(create)
@@ -36,8 +35,9 @@ class IndexSMPolicyRequest : IndexRequest {
 
     override fun validate(): ActionRequestValidationException? {
         var validationException: ActionRequestValidationException? = null
-        val invalidSeqNumPrimaryTerm = this.ifSeqNo() == SequenceNumbers.UNASSIGNED_SEQ_NO ||
-            this.ifPrimaryTerm() == SequenceNumbers.UNASSIGNED_PRIMARY_TERM
+        val invalidSeqNumPrimaryTerm =
+            this.ifSeqNo() == SequenceNumbers.UNASSIGNED_SEQ_NO ||
+                this.ifPrimaryTerm() == SequenceNumbers.UNASSIGNED_PRIMARY_TERM
         if (this.opType() != DocWriteRequest.OpType.CREATE && invalidSeqNumPrimaryTerm) {
             validationException = ValidateActions.addValidationError(SEQ_NUM_PRIMARY_TERM_UPDATE_ERROR, validationException)
         }

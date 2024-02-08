@@ -14,13 +14,13 @@ import java.io.IOException
 class IndexLRONConfigRequest(
     val lronConfig: LRONConfig,
     val isUpdate: Boolean = false,
-    val dryRun: Boolean = false
+    val dryRun: Boolean = false,
 ) : ActionRequest() {
     @Throws(IOException::class)
     constructor(sin: StreamInput) : this(
         lronConfig = LRONConfig(sin),
         isUpdate = sin.readBoolean(),
-        dryRun = sin.readBoolean()
+        dryRun = sin.readBoolean(),
     )
 
     override fun validate() = null

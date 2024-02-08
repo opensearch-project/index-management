@@ -17,7 +17,6 @@ import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepMetaDat
 import org.opensearch.transport.RemoteTransportException
 
 class WaitForRollupCompletionStep : Step(name) {
-
     private val logger = LogManager.getLogger(javaClass)
     private var stepStatus = StepStatus.STARTING
     private var info: Map<String, Any>? = null
@@ -102,14 +101,16 @@ class WaitForRollupCompletionStep : Step(name) {
         val currentActionMetaData = currentMetadata.actionMetaData
         val currentActionProperties = currentActionMetaData?.actionProperties
         return currentMetadata.copy(
-            actionMetaData = currentActionMetaData?.copy(
-                actionProperties = currentActionProperties?.copy(
-                    hasRollupFailed = hasRollupFailed
-                )
+            actionMetaData =
+            currentActionMetaData?.copy(
+                actionProperties =
+                currentActionProperties?.copy(
+                    hasRollupFailed = hasRollupFailed,
+                ),
             ),
             stepMetaData = StepMetaData(name, getStepStartTime(currentMetadata).toEpochMilli(), stepStatus),
             transitionTo = null,
-            info = info
+            info = info,
         )
     }
 
@@ -118,10 +119,15 @@ class WaitForRollupCompletionStep : Step(name) {
     companion object {
         const val name = "wait_for_rollup_completion"
         const val JOB_STOPPED_MESSAGE = "Rollup job was stopped"
+
         fun getFailedMessage(rollupJob: String, index: String) = "Failed to get the status of rollup job [$rollupJob] [index=$index]"
+
         fun getJobProcessingMessage(rollupJob: String, index: String) = "Rollup job [$rollupJob] is still processing [index=$index]"
+
         fun getJobCompletionMessage(rollupJob: String, index: String) = "Rollup job [$rollupJob] completed [index=$index]"
+
         fun getJobFailedMessage(rollupJob: String, index: String) = "Rollup job [$rollupJob] failed [index=$index]"
+
         fun getMissingRollupJobMessage(index: String) = "Rollup job was not found [index=$index]"
     }
 }

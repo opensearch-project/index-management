@@ -21,7 +21,6 @@ import org.opensearch.rest.action.RestToXContentListener
 import java.io.IOException
 
 class RestDeleteRollupAction : BaseRestHandler() {
-
     override fun routes(): List<Route> {
         return emptyList()
     }
@@ -30,8 +29,8 @@ class RestDeleteRollupAction : BaseRestHandler() {
         return listOf(
             ReplacedRoute(
                 DELETE, "$ROLLUP_JOBS_BASE_URI/{rollupID}",
-                DELETE, "$LEGACY_ROLLUP_JOBS_BASE_URI/{rollupID}"
-            )
+                DELETE, "$LEGACY_ROLLUP_JOBS_BASE_URI/{rollupID}",
+            ),
         )
     }
 
@@ -43,8 +42,9 @@ class RestDeleteRollupAction : BaseRestHandler() {
         val refreshPolicy = RefreshPolicy.parse(request.param(REFRESH, RefreshPolicy.IMMEDIATE.value))
         return RestChannelConsumer { channel ->
             channel.newBuilder()
-            val deleteRollupRequest = DeleteRollupRequest(rollupID)
-                .setRefreshPolicy(refreshPolicy)
+            val deleteRollupRequest =
+                DeleteRollupRequest(rollupID)
+                    .setRefreshPolicy(refreshPolicy)
             client.execute(DeleteRollupAction.INSTANCE, deleteRollupRequest, RestToXContentListener(channel))
         }
     }

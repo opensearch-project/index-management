@@ -16,7 +16,6 @@ import org.opensearch.indexmanagement.transform.action.stop.StopTransformAction
 import org.opensearch.test.OpenSearchTestCase
 
 class ActionTests : OpenSearchTestCase() {
-
     fun `test delete transform name`() {
         assertNotNull(DeleteTransformsAction.INSTANCE.name())
         assertEquals(DeleteTransformsAction.INSTANCE.name(), DeleteTransformsAction.NAME)

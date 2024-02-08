@@ -12,7 +12,6 @@ import org.opensearch.test.OpenSearchTestCase
 import kotlin.test.assertFailsWith
 
 class DimensionTests : OpenSearchTestCase() {
-
     fun `test date histogram empty fields`() {
         assertFailsWith(IllegalArgumentException::class, "Source and target field must not be empty") {
             randomDateHistogram().copy(sourceField = "", targetField = "")

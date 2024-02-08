@@ -9,7 +9,6 @@ import org.apache.logging.log4j.LogManager
 import org.opensearch.ExceptionsHelper
 import org.opensearch.OpenSearchStatusException
 import org.opensearch.ResourceAlreadyExistsException
-import org.opensearch.core.action.ActionListener
 import org.opensearch.action.DocWriteRequest
 import org.opensearch.action.index.IndexRequest
 import org.opensearch.action.index.IndexResponse
@@ -26,10 +25,12 @@ import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.ValidationException
 import org.opensearch.common.inject.Inject
 import org.opensearch.common.settings.Settings
-import org.opensearch.core.xcontent.NamedXContentRegistry
 import org.opensearch.common.xcontent.XContentFactory
 import org.opensearch.commons.ConfigConstants
 import org.opensearch.commons.authuser.User
+import org.opensearch.core.action.ActionListener
+import org.opensearch.core.rest.RestStatus
+import org.opensearch.core.xcontent.NamedXContentRegistry
 import org.opensearch.index.query.QueryBuilders
 import org.opensearch.index.seqno.SequenceNumbers
 import org.opensearch.indexmanagement.IndexManagementIndices
@@ -49,7 +50,6 @@ import org.opensearch.indexmanagement.util.IndexManagementException
 import org.opensearch.indexmanagement.util.IndexUtils
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.buildUser
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.validateUserConfiguration
-import org.opensearch.core.rest.RestStatus
 import org.opensearch.search.builder.SearchSourceBuilder
 import org.opensearch.tasks.Task
 import org.opensearch.transport.TransportService
@@ -57,7 +57,9 @@ import org.opensearch.transport.TransportService
 private val log = LogManager.getLogger(TransportIndexPolicyAction::class.java)
 
 @Suppress("LongParameterList")
-class TransportIndexPolicyAction @Inject constructor(
+class TransportIndexPolicyAction
+@Inject
+constructor(
     val client: NodeClient,
     transportService: TransportService,
     actionFilters: ActionFilters,
@@ -67,9 +69,8 @@ class TransportIndexPolicyAction @Inject constructor(
     val xContentRegistry: NamedXContentRegistry,
     var awarenessReplicaBalance: AwarenessReplicaBalance,
 ) : HandledTransportAction<IndexPolicyRequest, IndexPolicyResponse>(
-    IndexPolicyAction.NAME, transportService, actionFilters, ::IndexPolicyRequest
+    IndexPolicyAction.NAME, transportService, actionFilters, ::IndexPolicyRequest,
 ) {
-
     @Volatile
     private var filterByEnabled = IndexManagementSettings.FILTER_BY_BACKEND_ROLES.get(settings)
 
@@ -87,32 +88,34 @@ class TransportIndexPolicyAction @Inject constructor(
         private val client: NodeClient,
         private val actionListener: ActionListener<IndexPolicyResponse>,
         private val request: IndexPolicyRequest,
-        private val user: User? = buildUser(client.threadPool().threadContext)
+        private val user: User? = buildUser(client.threadPool().threadContext),
     ) {
         fun start() {
             validate()
             log.debug(
                 "User and roles string from thread context: ${client.threadPool().threadContext.getTransient<String>(
-                    ConfigConstants.OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT
-                )}"
+                    ConfigConstants.OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT,
+                )}",
             )
             client.threadPool().threadContext.stashContext().use {
                 if (!validateUserConfiguration(user, filterByEnabled, actionListener)) {
                     return
                 }
-                ismIndices.checkAndUpdateIMConfigIndex(object : ActionListener<AcknowledgedResponse> {
-                    override fun onResponse(response: AcknowledgedResponse) {
-                        onCreateMappingsResponse(response)
-                    }
-
-                    override fun onFailure(t: Exception) {
-                        if (t is ResourceAlreadyExistsException) {
-                            actionListener.onFailure(OpenSearchStatusException(t.localizedMessage, RestStatus.CONFLICT))
-                        } else {
-                            actionListener.onFailure(ExceptionsHelper.unwrapCause(t) as Exception)
+                ismIndices.checkAndUpdateIMConfigIndex(
+                    object : ActionListener<AcknowledgedResponse> {
+                        override fun onResponse(response: AcknowledgedResponse) {
+                            onCreateMappingsResponse(response)
                         }
-                    }
-                })
+
+                        override fun onFailure(t: Exception) {
+                            if (t is ResourceAlreadyExistsException) {
+                                actionListener.onFailure(OpenSearchStatusException(t.localizedMessage, RestStatus.CONFLICT))
+                            } else {
+                                actionListener.onFailure(ExceptionsHelper.unwrapCause(t) as Exception)
+                            }
+                        }
+                    },
+                )
             }
         }
 
@@ -143,15 +146,17 @@ class TransportIndexPolicyAction @Inject constructor(
                 val reqTemplates = request.policy.ismTemplate
                 if (reqTemplates != null) {
                     validateISMTemplates(reqTemplates)
-                } else putPolicy()
+                } else {
+                    putPolicy()
+                }
             } else {
                 log.error("Unable to create or update ${IndexManagementPlugin.INDEX_MANAGEMENT_INDEX} with newest mapping.")
 
                 actionListener.onFailure(
                     OpenSearchStatusException(
                         "Unable to create or update ${IndexManagementPlugin.INDEX_MANAGEMENT_INDEX} with newest mapping.",
-                        RestStatus.INTERNAL_SERVER_ERROR
-                    )
+                        RestStatus.INTERNAL_SERVER_ERROR,
+                    ),
                 )
             }
         }
@@ -174,14 +179,15 @@ class TransportIndexPolicyAction @Inject constructor(
                 return
             }
 
-            val searchRequest = SearchRequest()
-                .source(
-                    SearchSourceBuilder().query(
-                        QueryBuilders.existsQuery(ISM_TEMPLATE_FIELD)
-                    ).size(MAX_HITS).seqNoAndPrimaryTerm(true)
-                )
-                .indices(IndexManagementPlugin.INDEX_MANAGEMENT_INDEX)
-                .preference(Preference.PRIMARY_FIRST.type())
+            val searchRequest =
+                SearchRequest()
+                    .source(
+                        SearchSourceBuilder().query(
+                            QueryBuilders.existsQuery(ISM_TEMPLATE_FIELD),
+                        ).size(MAX_HITS).seqNoAndPrimaryTerm(true),
+                    )
+                    .indices(IndexManagementPlugin.INDEX_MANAGEMENT_INDEX)
+                    .preference(Preference.PRIMARY_FIRST.type())
 
             client.search(
                 searchRequest,
@@ -191,8 +197,9 @@ class TransportIndexPolicyAction @Inject constructor(
                         val policyToTemplateMap: Map<String, List<ISMTemplate>> =
                             policies.map { it.id to it.ismTemplate }.toMap().filterNotNullValues()
                         ismTemplateList.forEach {
-                            val conflictingPolicyTemplates = policyToTemplateMap
-                                .findConflictingPolicyTemplates(request.policyID, it.indexPatterns, it.priority)
+                            val conflictingPolicyTemplates =
+                                policyToTemplateMap
+                                    .findConflictingPolicyTemplates(request.policyID, it.indexPatterns, it.priority)
                             if (conflictingPolicyTemplates.isNotEmpty()) {
                                 val errorMessage =
                                     "New policy ${request.policyID} has an ISM template with index pattern ${it.indexPatterns} " +
@@ -201,9 +208,9 @@ class TransportIndexPolicyAction @Inject constructor(
                                 actionListener.onFailure(
                                     IndexManagementException.wrap(
                                         IllegalArgumentException(
-                                            errorMessage
-                                        )
-                                    )
+                                            errorMessage,
+                                        ),
+                                    ),
                                 )
                                 return
                             }
@@ -215,20 +222,22 @@ class TransportIndexPolicyAction @Inject constructor(
                     override fun onFailure(t: Exception) {
                         actionListener.onFailure(ExceptionsHelper.unwrapCause(t) as Exception)
                     }
-                }
+                },
             )
         }
 
         private fun putPolicy() {
-            val policy = request.policy.copy(
-                schemaVersion = IndexUtils.indexManagementConfigSchemaVersion, user = this.user
-            )
+            val policy =
+                request.policy.copy(
+                    schemaVersion = IndexUtils.indexManagementConfigSchemaVersion, user = this.user,
+                )
 
-            val indexRequest = IndexRequest(IndexManagementPlugin.INDEX_MANAGEMENT_INDEX)
-                .setRefreshPolicy(request.refreshPolicy)
-                .source(policy.toXContent(XContentFactory.jsonBuilder()))
-                .id(request.policyID)
-                .timeout(IndexRequest.DEFAULT_TIMEOUT)
+            val indexRequest =
+                IndexRequest(IndexManagementPlugin.INDEX_MANAGEMENT_INDEX)
+                    .setRefreshPolicy(request.refreshPolicy)
+                    .source(policy.toXContent(XContentFactory.jsonBuilder()))
+                    .id(request.policyID)
+                    .timeout(IndexRequest.DEFAULT_TIMEOUT)
 
             if (request.seqNo == SequenceNumbers.UNASSIGNED_SEQ_NO || request.primaryTerm == SequenceNumbers.UNASSIGNED_PRIMARY_TERM) {
                 indexRequest.opType(DocWriteRequest.OpType.CREATE)
@@ -246,8 +255,8 @@ class TransportIndexPolicyAction @Inject constructor(
                             actionListener.onFailure(
                                 OpenSearchStatusException(
                                     failureReasons.toString(),
-                                    response.status()
-                                )
+                                    response.status(),
+                                ),
                             )
                             return
                         }
@@ -258,8 +267,8 @@ class TransportIndexPolicyAction @Inject constructor(
                                 response.primaryTerm,
                                 response.seqNo,
                                 request.policy,
-                                response.status()
-                            )
+                                response.status(),
+                            ),
                         )
                     }
 
@@ -268,7 +277,7 @@ class TransportIndexPolicyAction @Inject constructor(
                         //  provide a direct message asking user to use seqNo and primaryTerm
                         actionListener.onFailure(ExceptionsHelper.unwrapCause(t) as Exception)
                     }
-                }
+                },
             )
         }
 

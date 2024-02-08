@@ -19,12 +19,12 @@ data class BucketsToTransform(
 
 fun BucketsToTransform.initializeShardsToSearch(
     originalGlobalCheckpoints: Map<ShardId, Long>?,
-    currentShardIdToGlobalCheckpoint: Map<ShardId, Long>
+    currentShardIdToGlobalCheckpoint: Map<ShardId, Long>,
 ): BucketsToTransform {
     val shardsToSearch = getShardsToSearch(originalGlobalCheckpoints, currentShardIdToGlobalCheckpoint).iterator()
     return this.copy(
         shardsToSearch = shardsToSearch,
-        currentShard = if (shardsToSearch.hasNext()) shardsToSearch.next() else null
+        currentShard = if (shardsToSearch.hasNext()) shardsToSearch.next() else null,
     )
 }
 
@@ -43,7 +43,7 @@ private fun getShardsToSearch(oldShardIDToMaxSeqNo: Map<ShardId, Long>?, newShar
 data class BucketSearchResult(
     val modifiedBuckets: MutableSet<Map<String, Any>>,
     val afterKey: Map<String, Any>? = null,
-    val searchTimeInMillis: Long = 0
+    val searchTimeInMillis: Long = 0,
 )
 
 data class ShardNewDocuments(val shardId: ShardId, val from: Long?, val to: Long)

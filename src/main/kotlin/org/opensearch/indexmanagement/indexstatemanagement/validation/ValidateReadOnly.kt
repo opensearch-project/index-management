@@ -3,11 +3,6 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-/*
- * Copyright OpenSearch Contributors
- * SPDX-License-Identifier: Apache-2.0
- */
-
 package org.opensearch.indexmanagement.indexstatemanagement.validation
 
 import org.apache.logging.log4j.LogManager
@@ -22,9 +17,8 @@ import org.opensearch.monitor.jvm.JvmService
 class ValidateReadOnly(
     settings: Settings,
     clusterService: ClusterService,
-    jvmService: JvmService
+    jvmService: JvmService,
 ) : Validate(settings, clusterService, jvmService) {
-
     private val logger = LogManager.getLogger(javaClass)
 
     @Suppress("ReturnSuppressCount", "ReturnCount")
@@ -64,8 +58,11 @@ class ValidateReadOnly(
     companion object {
         const val name = "validate_read_only"
         const val settingKey = "read_only_allow_delete"
+
         fun getReadOnlyAllowDeleteBlockMessage(index: String) = "read_only_allow_delete block is not null for index [index=$index]"
+
         fun getFailedDataTooLargeMessage(index: String) = "Data too large and is over the allowed limit for index [index=$index]"
+
         fun getValidationPassedMessage(index: String) = "validate_read_only action validation passed for [index=$index]"
     }
 }

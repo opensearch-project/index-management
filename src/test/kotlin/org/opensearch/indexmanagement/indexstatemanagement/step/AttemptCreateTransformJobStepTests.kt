@@ -15,29 +15,29 @@ import org.opensearch.indexmanagement.spi.indexstatemanagement.model.TransformAc
 import org.opensearch.test.OpenSearchTestCase
 
 class AttemptCreateTransformJobStepTests : OpenSearchTestCase() {
-
     private val transformAction = randomTransformActionConfig()
     private val indexName = "test"
     private val transformId: String = transformAction.ismTransform.toTransform(indexName).id
-    private val metadata = ManagedIndexMetaData(
-        indexName,
-        "indexUuid",
-        "policy_id",
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        ActionMetaData(
-            AttemptCreateTransformJobStep.name, 1, 0, false, 0, null,
-            ActionProperties(transformActionProperties = TransformActionProperties(transformId))
-        ),
-        null,
-        null,
-        null
-    )
+    private val metadata =
+        ManagedIndexMetaData(
+            indexName,
+            "indexUuid",
+            "policy_id",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            ActionMetaData(
+                AttemptCreateTransformJobStep.name, 1, 0, false, 0, null,
+                ActionProperties(transformActionProperties = TransformActionProperties(transformId)),
+            ),
+            null,
+            null,
+            null,
+        )
     private val step = AttemptCreateTransformJobStep(transformAction)
 
     fun `test process failure`() {
@@ -46,16 +46,16 @@ class AttemptCreateTransformJobStepTests : OpenSearchTestCase() {
         assertEquals(
             "Step status is not FAILED",
             Step.StepStatus.FAILED,
-            updatedManagedIndexMedaData.stepMetaData?.stepStatus
+            updatedManagedIndexMedaData.stepMetaData?.stepStatus,
         )
         assertEquals(
             "Error message is not expected",
             AttemptCreateTransformJobStep.getFailedMessage(transformId, indexName),
-            updatedManagedIndexMedaData.info?.get("message")
+            updatedManagedIndexMedaData.info?.get("message"),
         )
         assertNull(
             "TransformId in action properties is not cleaned up",
-            updatedManagedIndexMedaData.actionMetaData?.actionProperties?.transformActionProperties?.transformId
+            updatedManagedIndexMedaData.actionMetaData?.actionProperties?.transformActionProperties?.transformId,
         )
     }
 

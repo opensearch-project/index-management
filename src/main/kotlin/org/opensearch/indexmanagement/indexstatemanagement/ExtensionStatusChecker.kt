@@ -14,7 +14,6 @@ import org.opensearch.indexmanagement.spi.indexstatemanagement.StatusChecker
  * not as a health check denoting availability.
  */
 class ExtensionStatusChecker(private val extensionCheckers: Map<String, StatusChecker>, val clusterService: ClusterService) {
-
     fun isEnabled(extensionName: String?): Boolean {
         val checker = extensionCheckers[extensionName] ?: return true
         val clusterState = clusterService.state()

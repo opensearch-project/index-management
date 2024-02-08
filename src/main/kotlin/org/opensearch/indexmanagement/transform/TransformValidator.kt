@@ -31,10 +31,10 @@ class TransformValidator(
     private val clusterService: ClusterService,
     private val client: Client,
     val settings: Settings,
-    private val jvmService: JvmService
+    private val jvmService: JvmService,
 ) {
-
     @Volatile private var circuitBreakerEnabled = TransformSettings.TRANSFORM_CIRCUIT_BREAKER_ENABLED.get(settings)
+
     @Volatile private var circuitBreakerJvmThreshold = TransformSettings.TRANSFORM_CIRCUIT_BREAKER_JVM_THRESHOLD.get(settings)
 
     init {
@@ -45,6 +45,7 @@ class TransformValidator(
             circuitBreakerJvmThreshold = it
         }
     }
+
     /**
      * // TODO: When FGAC is supported in transform should check the user has the correct permissions
      * Validates the provided transform. Validation checks include the following:
@@ -63,9 +64,10 @@ class TransformValidator(
                 indexNameExpressionResolver.concreteIndexNames(clusterService.state(), IndicesOptions.lenientExpand(), true, transform.sourceIndex)
             if (concreteIndices.isEmpty()) return TransformValidationResult(false, listOf("No specified source index exist in the cluster"))
 
-            val request = ClusterHealthRequest()
-                .indices(*concreteIndices)
-                .waitForYellowStatus()
+            val request =
+                ClusterHealthRequest()
+                    .indices(*concreteIndices)
+                    .waitForYellowStatus()
             val response: ClusterHealthResponse = client.suspendUntil { execute(ClusterHealthAction.INSTANCE, request, it) }
             if (response.isTimedOut) {
                 issues.add("Cannot determine that the requested source indices are healthy")

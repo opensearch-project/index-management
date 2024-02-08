@@ -6,13 +6,13 @@
 package org.opensearch.indexmanagement.rollup.resthandler
 
 import org.opensearch.client.ResponseException
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.ROLLUP_JOBS_BASE_URI
 import org.opensearch.indexmanagement.makeRequest
 import org.opensearch.indexmanagement.rollup.model.RollupMetadata
 import org.opensearch.indexmanagement.rollup.randomRollup
 import org.opensearch.indexmanagement.waitFor
 import org.opensearch.jobscheduler.spi.schedule.IntervalSchedule
-import org.opensearch.core.rest.RestStatus
 import org.opensearch.test.junit.annotations.TestLogging
 import java.time.Instant
 import java.time.temporal.ChronoUnit
@@ -20,17 +20,17 @@ import java.time.temporal.ChronoUnit
 @TestLogging(value = "level:DEBUG", reason = "Debugging tests")
 @Suppress("UNCHECKED_CAST")
 class RestExplainRollupActionIT : RollupRestAPITestCase() {
-
     @Throws(Exception::class)
     fun `test explain rollup`() {
-        val rollup = randomRollup().copy(
-            id = "test_explain_rollup",
-            continuous = false,
-            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
-            enabled = true,
-            jobEnabledTime = Instant.now(),
-            metadataID = null
-        ).let { createRollup(it, it.id) }
+        val rollup =
+            randomRollup().copy(
+                id = "test_explain_rollup",
+                continuous = false,
+                jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+                enabled = true,
+                jobEnabledTime = Instant.now(),
+                metadataID = null,
+            ).let { createRollup(it, it.id) }
         createRollupSourceIndex(rollup)
         updateRollupStartTime(rollup)
 

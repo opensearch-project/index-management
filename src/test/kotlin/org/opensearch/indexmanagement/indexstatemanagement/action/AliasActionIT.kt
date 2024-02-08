@@ -27,15 +27,16 @@ class AliasActionIT : IndexStateManagementRestTestCase() {
         val actionConfig = AliasAction(actions = actions, index = 0)
         val states = listOf(State("alias", listOf(actionConfig), listOf()))
 
-        val policy = Policy(
-            id = policyID,
-            description = "$testIndexName description",
-            schemaVersion = 1L,
-            lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
-            errorNotification = randomErrorNotification(),
-            defaultState = states[0].name,
-            states = states
-        )
+        val policy =
+            Policy(
+                id = policyID,
+                description = "$testIndexName description",
+                schemaVersion = 1L,
+                lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
+                errorNotification = randomErrorNotification(),
+                defaultState = states[0].name,
+                states = states,
+            )
         createPolicy(policy, policyID)
         createIndex(indexName, policyID)
         val managedIndexConfig = getExistingManagedIndexConfig(indexName)
@@ -70,15 +71,16 @@ class AliasActionIT : IndexStateManagementRestTestCase() {
         val actionConfig = AliasAction(actions = actions, index = 0)
         val states = listOf(State("alias", listOf(actionConfig), listOf()))
 
-        val policy = Policy(
-            id = policyID,
-            description = "$testIndexName description",
-            schemaVersion = 1L,
-            lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
-            errorNotification = randomErrorNotification(),
-            defaultState = states[0].name,
-            states = states
-        )
+        val policy =
+            Policy(
+                id = policyID,
+                description = "$testIndexName description",
+                schemaVersion = 1L,
+                lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
+                errorNotification = randomErrorNotification(),
+                defaultState = states[0].name,
+                states = states,
+            )
         createPolicy(policy, policyID)
         createIndex(indexName, policyID)
         val managedIndexConfig = getExistingManagedIndexConfig(indexName)
@@ -113,15 +115,16 @@ class AliasActionIT : IndexStateManagementRestTestCase() {
         val actionConfig = AliasAction(actions = actions, index = 0)
         val states = listOf(State("alias", listOf(actionConfig), listOf()))
 
-        val policy = Policy(
-            id = policyID,
-            description = "$testIndexName description",
-            schemaVersion = 1L,
-            lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
-            errorNotification = randomErrorNotification(),
-            defaultState = states[0].name,
-            states = states
-        )
+        val policy =
+            Policy(
+                id = policyID,
+                description = "$testIndexName description",
+                schemaVersion = 1L,
+                lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
+                errorNotification = randomErrorNotification(),
+                defaultState = states[0].name,
+                states = states,
+            )
         createPolicy(policy, policyID)
         createIndex(indexName, policyID, aliasName)
         val managedIndexConfig = getExistingManagedIndexConfig(indexName)

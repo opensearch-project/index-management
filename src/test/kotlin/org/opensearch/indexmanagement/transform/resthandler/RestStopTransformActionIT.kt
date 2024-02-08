@@ -6,6 +6,7 @@
 package org.opensearch.indexmanagement.transform.resthandler
 
 import org.opensearch.client.ResponseException
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.TRANSFORM_BASE_URI
 import org.opensearch.indexmanagement.common.model.dimension.DateHistogram
 import org.opensearch.indexmanagement.common.model.dimension.Terms
@@ -16,7 +17,6 @@ import org.opensearch.indexmanagement.transform.model.TransformMetadata
 import org.opensearch.indexmanagement.transform.randomTransform
 import org.opensearch.indexmanagement.waitFor
 import org.opensearch.jobscheduler.spi.schedule.IntervalSchedule
-import org.opensearch.core.rest.RestStatus
 import org.opensearch.search.aggregations.AggregatorFactories
 import org.opensearch.test.junit.annotations.TestLogging
 import java.time.Instant
@@ -25,7 +25,6 @@ import java.time.temporal.ChronoUnit
 @TestLogging(value = "level:DEBUG", reason = "Debugging tests")
 @Suppress("UNCHECKED_CAST")
 class RestStopTransformActionIT : TransformRestTestCase() {
-
     @Throws(Exception::class)
     fun `test stopping a stopped Transform`() {
         val transform = createTransform(randomTransform().copy(enabled = true, enabledAt = randomInstant(), metadataId = null))
@@ -51,16 +50,17 @@ class RestStopTransformActionIT : TransformRestTestCase() {
     @Throws(Exception::class)
     fun `test stopping a finished transform`() {
         // Create a transform that finishes
-        val transform = createTransform(
-            randomTransform()
-                .copy(
-                    jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
-                    enabled = true,
-                    enabledAt = Instant.now(),
-                    metadataId = null,
-                    continuous = false
-                )
-        )
+        val transform =
+            createTransform(
+                randomTransform()
+                    .copy(
+                        jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+                        enabled = true,
+                        enabledAt = Instant.now(),
+                        metadataId = null,
+                        continuous = false,
+                    ),
+            )
         updateTransformStartTime(transform)
 
         // Assert it finished
@@ -89,13 +89,14 @@ class RestStopTransformActionIT : TransformRestTestCase() {
     @Throws(Exception::class)
     fun `test stopping a failed transform`() {
         // Create a transform that will fail because no source index
-        val transform = randomTransform().copy(
-            id = "test_stopping_a_failed_transform",
-            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
-            enabled = true,
-            enabledAt = Instant.now(),
-            metadataId = null
-        ).let { createTransform(it, it.id) }
+        val transform =
+            randomTransform().copy(
+                id = "test_stopping_a_failed_transform",
+                jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+                enabled = true,
+                enabledAt = Instant.now(),
+                metadataId = null,
+            ).let { createTransform(it, it.id) }
         deleteIndex(transform.sourceIndex)
         updateTransformStartTime(transform)
 
@@ -127,25 +128,27 @@ class RestStopTransformActionIT : TransformRestTestCase() {
     @Throws(Exception::class)
     fun `test stopping a running transform`() {
         generateNYCTaxiData("source_test_stop_running_transform")
-        val transform = randomTransform().copy(
-            id = "test_stop_running_transform",
-            schemaVersion = 1L,
-            enabled = true,
-            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
-            updatedAt = Instant.now(),
-            enabledAt = Instant.now(),
-            description = "basic search test",
-            sourceIndex = "source_test_stop_running_transform",
-            targetIndex = "target_test_stop_running_transform",
-            metadataId = null,
-            roles = emptyList(),
-            pageSize = 1,
-            groups = listOf(
-                DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "1m"),
-                Terms(sourceField = "store_and_fwd_flag", targetField = "flag")
-            ),
-            aggregations = AggregatorFactories.builder()
-        ).let { createTransform(it, it.id) }
+        val transform =
+            randomTransform().copy(
+                id = "test_stop_running_transform",
+                schemaVersion = 1L,
+                enabled = true,
+                jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+                updatedAt = Instant.now(),
+                enabledAt = Instant.now(),
+                description = "basic search test",
+                sourceIndex = "source_test_stop_running_transform",
+                targetIndex = "target_test_stop_running_transform",
+                metadataId = null,
+                roles = emptyList(),
+                pageSize = 1,
+                groups =
+                listOf(
+                    DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "1m"),
+                    Terms(sourceField = "store_and_fwd_flag", targetField = "flag"),
+                ),
+                aggregations = AggregatorFactories.builder(),
+            ).let { createTransform(it, it.id) }
 
         updateTransformStartTime(transform)
 

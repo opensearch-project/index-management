@@ -13,7 +13,6 @@ import org.opensearch.core.common.io.stream.StreamOutput
 import java.io.IOException
 
 class DeleteRollupRequest : DeleteRequest {
-
     @Throws(IOException::class)
     constructor(sin: StreamInput) : super(sin)
 

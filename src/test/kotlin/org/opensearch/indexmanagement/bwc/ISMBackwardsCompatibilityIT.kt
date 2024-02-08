@@ -16,13 +16,13 @@ import org.opensearch.indexmanagement.waitFor
 import java.util.Locale
 
 class ISMBackwardsCompatibilityIT : IndexStateManagementRestTestCase() {
-
     private val testIndexName = javaClass.simpleName.lowercase(Locale.ROOT)
 
     private enum class ClusterType {
         OLD,
         MIXED,
-        UPGRADED;
+        UPGRADED,
+        ;
 
         companion object {
             fun parse(value: String): ClusterType {
@@ -137,7 +137,8 @@ class ISMBackwardsCompatibilityIT : IndexStateManagementRestTestCase() {
     }
 
     private fun createRolloverPolicy(policyID: String) {
-        val policy = """
+        val policy =
+            """
             {
               "policy": {
                 "policy_id": "$policyID",
@@ -161,7 +162,7 @@ class ISMBackwardsCompatibilityIT : IndexStateManagementRestTestCase() {
                 ]
               }
             }
-        """.trimIndent()
+            """.trimIndent()
         createPolicyJson(policy, policyID)
     }
 
@@ -174,12 +175,12 @@ class ISMBackwardsCompatibilityIT : IndexStateManagementRestTestCase() {
             val info = getExplainManagedIndexMetaData(index).info as Map<String, Any?>
             assertEquals(
                 "Index rollover before it met the condition.",
-                AttemptRolloverStep.getPendingMessage(index), info["message"]
+                AttemptRolloverStep.getPendingMessage(index), info["message"],
             )
             val conditions = info["conditions"] as Map<String, Any?>
             assertEquals(
                 "Did not have exclusively min age and min doc count conditions",
-                setOf(RolloverAction.MIN_INDEX_AGE_FIELD, RolloverAction.MIN_DOC_COUNT_FIELD), conditions.keys
+                setOf(RolloverAction.MIN_INDEX_AGE_FIELD, RolloverAction.MIN_DOC_COUNT_FIELD), conditions.keys,
             )
             val minAge = conditions[RolloverAction.MIN_INDEX_AGE_FIELD] as Map<String, Any?>
             val minDocCount = conditions[RolloverAction.MIN_DOC_COUNT_FIELD] as Map<String, Any?>
@@ -202,7 +203,7 @@ class ISMBackwardsCompatibilityIT : IndexStateManagementRestTestCase() {
             val conditions = info["conditions"] as Map<String, Any?>
             assertEquals(
                 "Did not have exclusively min age and min doc count conditions",
-                setOf(RolloverAction.MIN_INDEX_AGE_FIELD, RolloverAction.MIN_DOC_COUNT_FIELD), conditions.keys
+                setOf(RolloverAction.MIN_INDEX_AGE_FIELD, RolloverAction.MIN_DOC_COUNT_FIELD), conditions.keys,
             )
             val minAge = conditions[RolloverAction.MIN_INDEX_AGE_FIELD] as Map<String, Any?>
             val minDocCount = conditions[RolloverAction.MIN_DOC_COUNT_FIELD] as Map<String, Any?>

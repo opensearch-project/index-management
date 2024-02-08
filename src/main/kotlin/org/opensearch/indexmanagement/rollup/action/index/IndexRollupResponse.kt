@@ -8,6 +8,7 @@ package org.opensearch.indexmanagement.rollup.action.index
 import org.opensearch.core.action.ActionResponse
 import org.opensearch.core.common.io.stream.StreamInput
 import org.opensearch.core.common.io.stream.StreamOutput
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.core.xcontent.ToXContent
 import org.opensearch.core.xcontent.ToXContentObject
 import org.opensearch.core.xcontent.XContentBuilder
@@ -18,7 +19,6 @@ import org.opensearch.indexmanagement.util._ID
 import org.opensearch.indexmanagement.util._PRIMARY_TERM
 import org.opensearch.indexmanagement.util._SEQ_NO
 import org.opensearch.indexmanagement.util._VERSION
-import org.opensearch.core.rest.RestStatus
 import java.io.IOException
 
 class IndexRollupResponse : ActionResponse, ToXContentObject {
@@ -35,7 +35,7 @@ class IndexRollupResponse : ActionResponse, ToXContentObject {
         seqNo: Long,
         primaryTerm: Long,
         status: RestStatus,
-        rollup: Rollup
+        rollup: Rollup,
     ) : super() {
         this.id = id
         this.version = version
@@ -52,7 +52,7 @@ class IndexRollupResponse : ActionResponse, ToXContentObject {
         seqNo = sin.readLong(),
         primaryTerm = sin.readLong(),
         status = sin.readEnum(RestStatus::class.java),
-        rollup = Rollup(sin)
+        rollup = Rollup(sin),
     )
 
     @Throws(IOException::class)

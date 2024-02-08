@@ -26,9 +26,8 @@ import java.io.IOException
 data class State(
     val name: String,
     val actions: List<Action>,
-    val transitions: List<Transition>
+    val transitions: List<Transition>,
 ) : ToXContentObject, Writeable {
-
     init {
         require(name.isNotBlank()) { "State must contain a valid name" }
         var hasDelete = false
@@ -58,7 +57,7 @@ data class State(
     constructor(sin: StreamInput) : this(
         sin.readString(),
         sin.readList { ISMActionsParser.instance.fromStreamInput(it) },
-        sin.readList(::Transition)
+        sin.readList(::Transition),
     )
 
     @Throws(IOException::class)
@@ -70,7 +69,7 @@ data class State(
 
     fun getActionToExecute(
         managedIndexMetaData: ManagedIndexMetaData,
-        indexMetadataProvider: IndexMetadataProvider
+        indexMetadataProvider: IndexMetadataProvider,
     ): Action? {
         var actionConfig: Action?
         val actionMetaData = managedIndexMetaData.actionMetaData
@@ -83,9 +82,10 @@ data class State(
             actionConfig = TransitionsAction(this.transitions, indexMetadataProvider)
         } else {
             // Get the current actionConfig that is in the ManagedIndexMetaData
-            actionConfig = this.actions.filterIndexed { index, config ->
-                index == actionMetaData.index && config.type == actionMetaData.name
-            }.firstOrNull()
+            actionConfig =
+                this.actions.filterIndexed { index, config ->
+                    index == actionMetaData.index && config.type == actionMetaData.name
+                }.firstOrNull()
             if (actionConfig == null) return null
 
             val stepMetaData = managedIndexMetaData.stepMetaData
@@ -140,7 +140,7 @@ data class State(
             return State(
                 name = requireNotNull(name) { "State name is null" },
                 actions = actions.toList(),
-                transitions = transitions.toList()
+                transitions = transitions.toList(),
             )
         }
     }

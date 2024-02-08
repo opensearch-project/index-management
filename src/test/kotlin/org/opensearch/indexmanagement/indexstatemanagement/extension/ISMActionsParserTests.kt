@@ -7,9 +7,9 @@ package org.opensearch.indexmanagement.indexstatemanagement.extension
 
 import org.junit.After
 import org.opensearch.common.xcontent.LoggingDeprecationHandler
-import org.opensearch.core.xcontent.ToXContent
 import org.opensearch.common.xcontent.XContentFactory
 import org.opensearch.common.xcontent.XContentType
+import org.opensearch.core.xcontent.ToXContent
 import org.opensearch.indexmanagement.indexstatemanagement.ISMActionsParser
 import org.opensearch.indexmanagement.opensearchapi.convertToMap
 import org.opensearch.indexmanagement.opensearchapi.string
@@ -17,7 +17,6 @@ import org.opensearch.test.OpenSearchTestCase
 import kotlin.test.assertFailsWith
 
 class ISMActionsParserTests : OpenSearchTestCase() {
-
     val extensionName = "testExtension"
 
     /*

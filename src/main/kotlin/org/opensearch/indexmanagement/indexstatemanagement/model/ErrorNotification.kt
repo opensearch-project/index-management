@@ -22,9 +22,8 @@ import java.io.IOException
 data class ErrorNotification(
     val destination: Destination?,
     val channel: Channel?,
-    val messageTemplate: Script
+    val messageTemplate: Script,
 ) : ToXContentObject, Writeable {
-
     init {
         require(destination != null || channel != null) { "ErrorNotification must contain a destination or channel" }
         require(destination == null || channel == null) { "ErrorNotification can only contain a single destination or channel" }
@@ -44,7 +43,7 @@ data class ErrorNotification(
     constructor(sin: StreamInput) : this(
         sin.readOptionalWriteable(::Destination),
         sin.readOptionalWriteable(::Channel),
-        Script(sin)
+        Script(sin),
     )
 
     @Throws(IOException::class)
@@ -84,7 +83,7 @@ data class ErrorNotification(
             return ErrorNotification(
                 destination = destination,
                 channel = channel,
-                messageTemplate = requireNotNull(messageTemplate) { "ErrorNotification message template is null" }
+                messageTemplate = requireNotNull(messageTemplate) { "ErrorNotification message template is null" },
             )
         }
     }

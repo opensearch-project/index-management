@@ -6,15 +6,14 @@
 package org.opensearch.indexmanagement.snapshotmanagement.resthandler
 
 import org.opensearch.client.ResponseException
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.indexmanagement.IndexManagementPlugin
 import org.opensearch.indexmanagement.makeRequest
 import org.opensearch.indexmanagement.snapshotmanagement.SnapshotManagementRestTestCase
 import org.opensearch.indexmanagement.snapshotmanagement.randomSMPolicy
-import org.opensearch.core.rest.RestStatus
 import java.time.Instant
 
 class RestStartSnapshotManagementIT : SnapshotManagementRestTestCase() {
-
     fun `test starting a stopped snapshot management policy`() {
         val smPolicy = createSMPolicy(randomSMPolicy().copy(jobEnabled = false, jobEnabledTime = null))
         assertFalse("Snapshot management policy was not disabled", smPolicy.jobEnabled)

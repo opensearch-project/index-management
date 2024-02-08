@@ -26,7 +26,6 @@ import org.opensearch.rest.action.RestToXContentListener
 import java.io.IOException
 
 class RestChangePolicyAction : BaseRestHandler() {
-
     override fun routes(): List<Route> {
         return emptyList()
     }
@@ -35,12 +34,12 @@ class RestChangePolicyAction : BaseRestHandler() {
         return listOf(
             ReplacedRoute(
                 POST, CHANGE_POLICY_BASE_URI,
-                POST, LEGACY_CHANGE_POLICY_BASE_URI
+                POST, LEGACY_CHANGE_POLICY_BASE_URI,
             ),
             ReplacedRoute(
                 POST, "$CHANGE_POLICY_BASE_URI/{index}",
-                POST, "$LEGACY_CHANGE_POLICY_BASE_URI/{index}"
-            )
+                POST, "$LEGACY_CHANGE_POLICY_BASE_URI/{index}",
+            ),
         )
     }
 

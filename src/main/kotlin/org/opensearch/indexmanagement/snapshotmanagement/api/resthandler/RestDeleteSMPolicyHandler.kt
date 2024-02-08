@@ -18,14 +18,13 @@ import org.opensearch.rest.RestRequest
 import org.opensearch.rest.action.RestToXContentListener
 
 class RestDeleteSMPolicyHandler : BaseRestHandler() {
-
     override fun getName(): String {
         return "snapshot_management_delete_policy_rest_handler"
     }
 
     override fun routes(): List<Route> {
         return listOf(
-            Route(RestRequest.Method.DELETE, "$SM_POLICIES_URI/{policyName}")
+            Route(RestRequest.Method.DELETE, "$SM_POLICIES_URI/{policyName}"),
         )
     }
 
@@ -35,17 +34,18 @@ class RestDeleteSMPolicyHandler : BaseRestHandler() {
             throw IllegalArgumentException("Missing policy name")
         }
 
-        val refreshPolicy = if (request.hasParam(REFRESH)) {
-            WriteRequest.RefreshPolicy.parse(request.param(REFRESH))
-        } else {
-            WriteRequest.RefreshPolicy.IMMEDIATE
-        }
+        val refreshPolicy =
+            if (request.hasParam(REFRESH)) {
+                WriteRequest.RefreshPolicy.parse(request.param(REFRESH))
+            } else {
+                WriteRequest.RefreshPolicy.IMMEDIATE
+            }
 
         return RestChannelConsumer {
             client.execute(
                 SMActions.DELETE_SM_POLICY_ACTION_TYPE,
                 DeleteSMPolicyRequest(smPolicyNameToDocId(policyName)).setRefreshPolicy(refreshPolicy),
-                RestToXContentListener(it)
+                RestToXContentListener(it),
             )
         }
     }

@@ -16,33 +16,36 @@ import java.io.IOException
 
 class GetLRONConfigRequest(
     val docId: String? = null,
-    val searchParams: SearchParams? = null
+    val searchParams: SearchParams? = null,
 ) : ActionRequest() {
     @Throws(IOException::class)
     constructor(sin: StreamInput) : this(
         docId = sin.readOptionalString(),
-        searchParams = sin.readOptionalWriteable(::SearchParams)
+        searchParams = sin.readOptionalWriteable(::SearchParams),
     )
 
     override fun validate(): ActionRequestValidationException? {
         var validationException: ActionRequestValidationException? = null
         if (null == docId && null == searchParams) {
-            validationException = ValidateActions.addValidationError(
-                "GetLRONConfigRequest must contain docId or searchParams",
-                validationException
-            )
+            validationException =
+                ValidateActions.addValidationError(
+                    "GetLRONConfigRequest must contain docId or searchParams",
+                    validationException,
+                )
         }
         if (null != docId && null != searchParams) {
-            validationException = ValidateActions.addValidationError(
-                "Get LRONConfig requires either docId or searchParams to be specified",
-                validationException
-            )
+            validationException =
+                ValidateActions.addValidationError(
+                    "Get LRONConfig requires either docId or searchParams to be specified",
+                    validationException,
+                )
         }
         if (null != docId && !docId.startsWith(LRON_DOC_ID_PREFIX)) {
-            validationException = ValidateActions.addValidationError(
-                "Invalid LRONConfig ID",
-                validationException
-            )
+            validationException =
+                ValidateActions.addValidationError(
+                    "Invalid LRONConfig ID",
+                    validationException,
+                )
         }
         return validationException
     }

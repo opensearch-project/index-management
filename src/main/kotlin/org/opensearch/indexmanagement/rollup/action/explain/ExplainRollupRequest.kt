@@ -13,7 +13,6 @@ import org.opensearch.core.common.io.stream.StreamOutput
 import java.io.IOException
 
 class ExplainRollupRequest : ActionRequest {
-
     val rollupIDs: List<String>
 
     @Throws(IOException::class)

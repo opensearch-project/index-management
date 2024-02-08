@@ -14,7 +14,6 @@ import org.opensearch.cluster.OpenSearchAllocationTestCase
 import org.opensearch.indexmanagement.indexstatemanagement.SkipExecution
 
 class SkipExecutionTests : OpenSearchAllocationTestCase() {
-
     private lateinit var client: Client
     private lateinit var skip: SkipExecution
 

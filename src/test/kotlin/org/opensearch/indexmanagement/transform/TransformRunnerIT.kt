@@ -11,6 +11,7 @@ import org.opensearch.client.Request
 import org.opensearch.client.RequestOptions
 import org.opensearch.common.settings.Settings
 import org.opensearch.common.xcontent.XContentType
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.index.query.TermQueryBuilder
 import org.opensearch.indexmanagement.common.model.dimension.DateHistogram
 import org.opensearch.indexmanagement.common.model.dimension.Histogram
@@ -21,7 +22,6 @@ import org.opensearch.indexmanagement.transform.model.TransformMetadata
 import org.opensearch.indexmanagement.waitFor
 import org.opensearch.jobscheduler.spi.schedule.IntervalSchedule
 import org.opensearch.rest.RestRequest
-import org.opensearch.core.rest.RestStatus
 import org.opensearch.script.Script
 import org.opensearch.script.ScriptType
 import org.opensearch.search.aggregations.AggregationBuilders
@@ -34,39 +34,41 @@ import java.time.temporal.ChronoUnit
 import kotlin.test.assertFailsWith
 
 class TransformRunnerIT : TransformRestTestCase() {
-
     fun `test transform`() {
         validateSourceIndex("transform-source-index")
 
-        val transform = Transform(
-            id = "id_1",
-            schemaVersion = 1L,
-            enabled = true,
-            enabledAt = Instant.now(),
-            updatedAt = Instant.now(),
-            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
-            description = "test transform",
-            metadataId = null,
-            sourceIndex = "transform-source-index",
-            targetIndex = "transform-target-index",
-            roles = emptyList(),
-            pageSize = 1,
-            groups = listOf(
-                Terms(sourceField = "store_and_fwd_flag", targetField = "flag")
-            )
-        ).let { createTransform(it, it.id) }
+        val transform =
+            Transform(
+                id = "id_1",
+                schemaVersion = 1L,
+                enabled = true,
+                enabledAt = Instant.now(),
+                updatedAt = Instant.now(),
+                jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+                description = "test transform",
+                metadataId = null,
+                sourceIndex = "transform-source-index",
+                targetIndex = "transform-target-index",
+                roles = emptyList(),
+                pageSize = 1,
+                groups =
+                listOf(
+                    Terms(sourceField = "store_and_fwd_flag", targetField = "flag"),
+                ),
+            ).let { createTransform(it, it.id) }
 
         updateTransformStartTime(transform)
 
         waitFor { assertTrue("Target transform index was not created", indexExists(transform.targetIndex)) }
 
-        val metadata = waitFor {
-            val job = getTransform(transformId = transform.id)
-            assertNotNull("Transform job doesn't have metadata set", job.metadataId)
-            val transformMetadata = getTransformMetadata(job.metadataId!!)
-            assertEquals("Transform has not finished", TransformMetadata.Status.FINISHED, transformMetadata.status)
-            transformMetadata
-        }
+        val metadata =
+            waitFor {
+                val job = getTransform(transformId = transform.id)
+                assertNotNull("Transform job doesn't have metadata set", job.metadataId)
+                val transformMetadata = getTransformMetadata(job.metadataId!!)
+                assertEquals("Transform has not finished", TransformMetadata.Status.FINISHED, transformMetadata.status)
+                transformMetadata
+            }
 
         assertEquals("More than expected pages processed", 3L, metadata.stats.pagesProcessed)
         assertEquals("More than expected documents indexed", 2L, metadata.stats.documentsIndexed)
@@ -79,34 +81,37 @@ class TransformRunnerIT : TransformRestTestCase() {
     fun `test transform with data filter`() {
         validateSourceIndex("transform-source-index")
 
-        val transform = Transform(
-            id = "id_2",
-            schemaVersion = 1L,
-            enabled = true,
-            enabledAt = Instant.now(),
-            updatedAt = Instant.now(),
-            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
-            description = "test transform",
-            metadataId = null,
-            sourceIndex = "transform-source-index",
-            targetIndex = "transform-target-index",
-            roles = emptyList(),
-            pageSize = 1,
-            groups = listOf(
-                Terms(sourceField = "store_and_fwd_flag", targetField = "flag")
-            ),
-            dataSelectionQuery = TermQueryBuilder("store_and_fwd_flag", "N")
-        ).let { createTransform(it, it.id) }
+        val transform =
+            Transform(
+                id = "id_2",
+                schemaVersion = 1L,
+                enabled = true,
+                enabledAt = Instant.now(),
+                updatedAt = Instant.now(),
+                jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+                description = "test transform",
+                metadataId = null,
+                sourceIndex = "transform-source-index",
+                targetIndex = "transform-target-index",
+                roles = emptyList(),
+                pageSize = 1,
+                groups =
+                listOf(
+                    Terms(sourceField = "store_and_fwd_flag", targetField = "flag"),
+                ),
+                dataSelectionQuery = TermQueryBuilder("store_and_fwd_flag", "N"),
+            ).let { createTransform(it, it.id) }
 
         updateTransformStartTime(transform)
 
-        val metadata = waitFor {
-            val job = getTransform(transformId = transform.id)
-            assertNotNull("Transform job doesn't have metadata set", job.metadataId)
-            val transformMetadata = getTransformMetadata(job.metadataId!!)
-            assertEquals("Transform has not finished", TransformMetadata.Status.FINISHED, transformMetadata.status)
-            transformMetadata
-        }
+        val metadata =
+            waitFor {
+                val job = getTransform(transformId = transform.id)
+                assertNotNull("Transform job doesn't have metadata set", job.metadataId)
+                val transformMetadata = getTransformMetadata(job.metadataId!!)
+                assertEquals("Transform has not finished", TransformMetadata.Status.FINISHED, transformMetadata.status)
+                transformMetadata
+            }
 
         assertEquals("More than expected pages processed", 2L, metadata.stats.pagesProcessed)
         assertEquals("More than expected documents indexed", 1L, metadata.stats.documentsIndexed)
@@ -124,13 +129,14 @@ class TransformRunnerIT : TransformRestTestCase() {
 
         updateTransformStartTime(transform)
 
-        val metadata = waitFor {
-            val job = getTransform(transformId = transform.id)
-            assertNotNull("Transform job doesn't have metadata set", job.metadataId)
-            val transformMetadata = getTransformMetadata(job.metadataId!!)
-            assertEquals("Transform has not failed", TransformMetadata.Status.FAILED, transformMetadata.status)
-            transformMetadata
-        }
+        val metadata =
+            waitFor {
+                val job = getTransform(transformId = transform.id)
+                assertNotNull("Transform job doesn't have metadata set", job.metadataId)
+                val transformMetadata = getTransformMetadata(job.metadataId!!)
+                assertEquals("Transform has not failed", TransformMetadata.Status.FAILED, transformMetadata.status)
+                transformMetadata
+            }
 
         assertTrue("Expected failure message to be present", !metadata.failureReason.isNullOrBlank())
     }
@@ -153,55 +159,58 @@ class TransformRunnerIT : TransformRestTestCase() {
                         ScriptType.INLINE,
                         Script.DEFAULT_SCRIPT_LANG,
                         "state.sum += doc[\"total_amount\"].value; state.count += doc[\"passenger_count\"].value",
-                        emptyMap()
-                    )
+                        emptyMap(),
+                    ),
                 )
                 .combineScript(
                     Script(
                         ScriptType.INLINE,
                         Script.DEFAULT_SCRIPT_LANG,
                         "def d = new long[2]; d[0] = state.sum; d[1] = state.count; return d",
-                        emptyMap()
-                    )
+                        emptyMap(),
+                    ),
                 )
                 .reduceScript(
                     Script(
                         ScriptType.INLINE,
                         Script.DEFAULT_SCRIPT_LANG,
                         "double sum = 0; double count = 0; for (a in states) { sum += a[0]; count += a[1]; } return sum/count",
-                        emptyMap()
-                    )
-                )
+                        emptyMap(),
+                    ),
+                ),
         )
 
-        val transform = Transform(
-            id = "id_4",
-            schemaVersion = 1L,
-            enabled = true,
-            enabledAt = Instant.now(),
-            updatedAt = Instant.now(),
-            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
-            description = "test transform",
-            metadataId = null,
-            sourceIndex = "transform-source-index",
-            targetIndex = "transform-target-index",
-            roles = emptyList(),
-            pageSize = 1,
-            groups = listOf(
-                Terms(sourceField = "store_and_fwd_flag", targetField = "flag")
-            ),
-            aggregations = aggregatorFactories
-        ).let { createTransform(it, it.id) }
+        val transform =
+            Transform(
+                id = "id_4",
+                schemaVersion = 1L,
+                enabled = true,
+                enabledAt = Instant.now(),
+                updatedAt = Instant.now(),
+                jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+                description = "test transform",
+                metadataId = null,
+                sourceIndex = "transform-source-index",
+                targetIndex = "transform-target-index",
+                roles = emptyList(),
+                pageSize = 1,
+                groups =
+                listOf(
+                    Terms(sourceField = "store_and_fwd_flag", targetField = "flag"),
+                ),
+                aggregations = aggregatorFactories,
+            ).let { createTransform(it, it.id) }
 
         updateTransformStartTime(transform)
 
-        val metadata = waitFor {
-            val job = getTransform(transformId = transform.id)
-            assertNotNull("Transform job doesn't have metadata set", job.metadataId)
-            val transformMetadata = getTransformMetadata(job.metadataId!!)
-            assertEquals("Transform has not finished", TransformMetadata.Status.FINISHED, transformMetadata.status)
-            transformMetadata
-        }
+        val metadata =
+            waitFor {
+                val job = getTransform(transformId = transform.id)
+                assertNotNull("Transform job doesn't have metadata set", job.metadataId)
+                val transformMetadata = getTransformMetadata(job.metadataId!!)
+                assertEquals("Transform has not finished", TransformMetadata.Status.FINISHED, transformMetadata.status)
+                transformMetadata
+            }
 
         assertEquals("More than expected pages processed", 3L, metadata.stats.pagesProcessed)
         assertEquals("More than expected documents indexed", 2L, metadata.stats.documentsIndexed)
@@ -221,24 +230,26 @@ class TransformRunnerIT : TransformRestTestCase() {
 
         validateSourceIndex(sourceIdxTestName)
 
-        val transform = Transform(
-            id = "id_13",
-            schemaVersion = 1L,
-            enabled = true,
-            enabledAt = Instant.now(),
-            updatedAt = Instant.now(),
-            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
-            description = "test transform doc values must be the same",
-            metadataId = null,
-            sourceIndex = sourceIdxTestName,
-            targetIndex = targetIdxTestName,
-            roles = emptyList(),
-            pageSize = 1,
-            groups = listOf(
-                Terms(sourceField = storeAndForwardTerm, targetField = storeAndForwardTerm)
-            ),
-            aggregations = AggregatorFactories.builder().addAggregator(AggregationBuilders.avg(fareAmount).field(fareAmount))
-        ).let { createTransform(it, it.id) }
+        val transform =
+            Transform(
+                id = "id_13",
+                schemaVersion = 1L,
+                enabled = true,
+                enabledAt = Instant.now(),
+                updatedAt = Instant.now(),
+                jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+                description = "test transform doc values must be the same",
+                metadataId = null,
+                sourceIndex = sourceIdxTestName,
+                targetIndex = targetIdxTestName,
+                roles = emptyList(),
+                pageSize = 1,
+                groups =
+                listOf(
+                    Terms(sourceField = storeAndForwardTerm, targetField = storeAndForwardTerm),
+                ),
+                aggregations = AggregatorFactories.builder().addAggregator(AggregationBuilders.avg(fareAmount).field(fareAmount)),
+            ).let { createTransform(it, it.id) }
 
         updateTransformStartTime(transform)
 
@@ -252,20 +263,21 @@ class TransformRunnerIT : TransformRestTestCase() {
             val transformMetadata = getTransformMetadata(transformJob.metadataId!!)
             assertEquals("Transform is not finished", TransformMetadata.Status.FINISHED, transformMetadata.status)
 
-            val req = """
-            {
-                "size": 0,
-                "aggs": {
-                    "$avgAmountPerFlag": {
-                        "terms": {
-                            "field": "$storeAndForwardTerm", "order": { "_key": "asc" }
-                        },
-                        "aggs": {
-                          "avg": { "avg": { "field": "$fareAmount" } } }
+            val req =
+                """
+                {
+                    "size": 0,
+                    "aggs": {
+                        "$avgAmountPerFlag": {
+                            "terms": {
+                                "field": "$storeAndForwardTerm", "order": { "_key": "asc" }
+                            },
+                            "aggs": {
+                              "avg": { "avg": { "field": "$fareAmount" } } }
+                        }
                     }
                 }
-            }
-            """.trimIndent()
+                """.trimIndent()
 
             var rawRes = client().makeRequest(RestRequest.Method.POST.name, "/$sourceIdxTestName/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
             assertTrue(rawRes.restStatus() == RestStatus.OK)
@@ -281,7 +293,7 @@ class TransformRunnerIT : TransformRestTestCase() {
                 val transformAggBucket = transformAggBuckets[idx]
                 assertEquals(
                     "The doc_count had a different value raw[$rawAggBucket] transform[$transformAggBucket]",
-                    rawAggBucket["doc_count"]!!, transformAggBucket["doc_count"]!!
+                    rawAggBucket["doc_count"]!!, transformAggBucket["doc_count"]!!,
                 )
             }
         }
@@ -298,24 +310,26 @@ class TransformRunnerIT : TransformRestTestCase() {
 
         validateSourceIndex(sourceIdxTestName)
 
-        val transform = Transform(
-            id = "id_14",
-            schemaVersion = 1L,
-            enabled = true,
-            enabledAt = Instant.now(),
-            updatedAt = Instant.now(),
-            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
-            description = "test transform doc values must be the same",
-            metadataId = null,
-            sourceIndex = sourceIdxTestName,
-            targetIndex = targetIdxTestName,
-            roles = emptyList(),
-            pageSize = 1,
-            groups = listOf(
-                Terms(sourceField = pickupDateTime, targetField = pickupDateTime)
-            ),
-            aggregations = AggregatorFactories.builder().addAggregator(AggregationBuilders.avg(fareAmount).field(fareAmount))
-        ).let { createTransform(it, it.id) }
+        val transform =
+            Transform(
+                id = "id_14",
+                schemaVersion = 1L,
+                enabled = true,
+                enabledAt = Instant.now(),
+                updatedAt = Instant.now(),
+                jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+                description = "test transform doc values must be the same",
+                metadataId = null,
+                sourceIndex = sourceIdxTestName,
+                targetIndex = targetIdxTestName,
+                roles = emptyList(),
+                pageSize = 1,
+                groups =
+                listOf(
+                    Terms(sourceField = pickupDateTime, targetField = pickupDateTime),
+                ),
+                aggregations = AggregatorFactories.builder().addAggregator(AggregationBuilders.avg(fareAmount).field(fareAmount)),
+            ).let { createTransform(it, it.id) }
 
         updateTransformStartTime(transform)
 
@@ -389,24 +403,26 @@ class TransformRunnerIT : TransformRestTestCase() {
         val avgFareAmountAgg = AggregationBuilders.avg(fareAmount).field(fareAmount)
         val maxDateAggBuilder = AggregationBuilders.max(pickupDateTime).field(pickupDateTime)
 
-        val transform = Transform(
-            id = "id_15",
-            schemaVersion = 1L,
-            enabled = true,
-            enabledAt = Instant.now(),
-            updatedAt = Instant.now(),
-            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
-            description = "test transform doc values must be the same",
-            metadataId = null,
-            sourceIndex = sourceIdxTestName,
-            targetIndex = targetIdxTestName,
-            roles = emptyList(),
-            pageSize = 1,
-            groups = listOf(
-                Terms(sourceField = storeAndForward, targetField = storeAndForward)
-            ),
-            aggregations = AggregatorFactories.builder().addAggregator(avgFareAmountAgg).addAggregator(maxDateAggBuilder)
-        ).let { createTransform(it, it.id) }
+        val transform =
+            Transform(
+                id = "id_15",
+                schemaVersion = 1L,
+                enabled = true,
+                enabledAt = Instant.now(),
+                updatedAt = Instant.now(),
+                jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+                description = "test transform doc values must be the same",
+                metadataId = null,
+                sourceIndex = sourceIdxTestName,
+                targetIndex = targetIdxTestName,
+                roles = emptyList(),
+                pageSize = 1,
+                groups =
+                listOf(
+                    Terms(sourceField = storeAndForward, targetField = storeAndForward),
+                ),
+                aggregations = AggregatorFactories.builder().addAggregator(avgFareAmountAgg).addAggregator(maxDateAggBuilder),
+            ).let { createTransform(it, it.id) }
         updateTransformStartTime(transform)
 
         waitFor {
@@ -482,24 +498,26 @@ class TransformRunnerIT : TransformRestTestCase() {
         val avgFareAmountAgg = AggregationBuilders.avg(fareAmount).field(fareAmount)
         val countDateAggBuilder = AggregationBuilders.count(pickupDateTime).field(pickupDateTime)
 
-        val transform = Transform(
-            id = "id_16",
-            schemaVersion = 1L,
-            enabled = true,
-            enabledAt = Instant.now(),
-            updatedAt = Instant.now(),
-            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
-            description = "test transform doc values must be the same",
-            metadataId = null,
-            sourceIndex = sourceIdxTestName,
-            targetIndex = targetIdxTestName,
-            roles = emptyList(),
-            pageSize = 1,
-            groups = listOf(
-                Terms(sourceField = pickupDateTime, targetField = pickupDateTimeTerm)
-            ),
-            aggregations = AggregatorFactories.builder().addAggregator(avgFareAmountAgg).addAggregator(countDateAggBuilder)
-        ).let { createTransform(it, it.id) }
+        val transform =
+            Transform(
+                id = "id_16",
+                schemaVersion = 1L,
+                enabled = true,
+                enabledAt = Instant.now(),
+                updatedAt = Instant.now(),
+                jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+                description = "test transform doc values must be the same",
+                metadataId = null,
+                sourceIndex = sourceIdxTestName,
+                targetIndex = targetIdxTestName,
+                roles = emptyList(),
+                pageSize = 1,
+                groups =
+                listOf(
+                    Terms(sourceField = pickupDateTime, targetField = pickupDateTimeTerm),
+                ),
+                aggregations = AggregatorFactories.builder().addAggregator(avgFareAmountAgg).addAggregator(countDateAggBuilder),
+            ).let { createTransform(it, it.id) }
         updateTransformStartTime(transform)
 
         waitFor {
@@ -592,33 +610,36 @@ class TransformRunnerIT : TransformRestTestCase() {
         waitFor {
             assertTrue("Strict target index not created", indexExists("transform-target-strict-index"))
         }
-        val transform = Transform(
-            id = "id_5",
-            schemaVersion = 1L,
-            enabled = true,
-            enabledAt = Instant.now(),
-            updatedAt = Instant.now(),
-            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
-            description = "test transform",
-            metadataId = null,
-            sourceIndex = "transform-source-index",
-            targetIndex = "transform-target-strict-index",
-            roles = emptyList(),
-            pageSize = 1,
-            groups = listOf(
-                Terms(sourceField = "store_and_fwd_flag", targetField = "flag")
-            )
-        ).let { createTransform(it, it.id) }
+        val transform =
+            Transform(
+                id = "id_5",
+                schemaVersion = 1L,
+                enabled = true,
+                enabledAt = Instant.now(),
+                updatedAt = Instant.now(),
+                jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+                description = "test transform",
+                metadataId = null,
+                sourceIndex = "transform-source-index",
+                targetIndex = "transform-target-strict-index",
+                roles = emptyList(),
+                pageSize = 1,
+                groups =
+                listOf(
+                    Terms(sourceField = "store_and_fwd_flag", targetField = "flag"),
+                ),
+            ).let { createTransform(it, it.id) }
 
         updateTransformStartTime(transform)
 
-        val metadata = waitFor {
-            val job = getTransform(transformId = transform.id)
-            assertNotNull("Transform job doesn't have metadata set", job.metadataId)
-            val transformMetadata = getTransformMetadata(job.metadataId!!)
-            assertEquals("Transform has not failed", TransformMetadata.Status.FAILED, transformMetadata.status)
-            transformMetadata
-        }
+        val metadata =
+            waitFor {
+                val job = getTransform(transformId = transform.id)
+                assertNotNull("Transform job doesn't have metadata set", job.metadataId)
+                val transformMetadata = getTransformMetadata(job.metadataId!!)
+                assertEquals("Transform has not failed", TransformMetadata.Status.FAILED, transformMetadata.status)
+                transformMetadata
+            }
 
         assertTrue("Expected failure message to be present", !metadata.failureReason.isNullOrBlank())
     }
@@ -635,57 +656,60 @@ class TransformRunnerIT : TransformRestTestCase() {
                         ScriptType.INLINE,
                         Script.DEFAULT_SCRIPT_LANG,
                         "state.sum += doc[\"random_field\"].value; state.count += doc[\"passenger_count\"].value",
-                        emptyMap()
-                    )
+                        emptyMap(),
+                    ),
                 )
                 .combineScript(
                     Script(
                         ScriptType.INLINE,
                         Script.DEFAULT_SCRIPT_LANG,
                         "def d = new long[2]; d[0] = state.sum; d[1] = state.count; return d",
-                        emptyMap()
-                    )
+                        emptyMap(),
+                    ),
                 )
                 .reduceScript(
                     Script(
                         ScriptType.INLINE,
                         Script.DEFAULT_SCRIPT_LANG,
                         "double sum = 0; double count = 0; for (a in states) { sum += a[0]; count += a[1]; } return sum/count",
-                        emptyMap()
-                    )
-                )
+                        emptyMap(),
+                    ),
+                ),
         )
 
-        val transform = Transform(
-            id = "id_6",
-            schemaVersion = 1L,
-            enabled = true,
-            enabledAt = Instant.now(),
-            updatedAt = Instant.now(),
-            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
-            description = "test transform",
-            metadataId = null,
-            sourceIndex = "transform-source-index",
-            targetIndex = "transform-target-index",
-            roles = emptyList(),
-            pageSize = 1,
-            groups = listOf(
-                Terms(sourceField = "store_and_fwd_flag", targetField = "flag"),
-                Histogram(sourceField = "passenger_count", targetField = "count", interval = 2.0),
-                DateHistogram(sourceField = "tpep_pickup_datetime", targetField = "date", fixedInterval = "1d")
-            ),
-            aggregations = aggregatorFactories
-        ).let { createTransform(it, it.id) }
+        val transform =
+            Transform(
+                id = "id_6",
+                schemaVersion = 1L,
+                enabled = true,
+                enabledAt = Instant.now(),
+                updatedAt = Instant.now(),
+                jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+                description = "test transform",
+                metadataId = null,
+                sourceIndex = "transform-source-index",
+                targetIndex = "transform-target-index",
+                roles = emptyList(),
+                pageSize = 1,
+                groups =
+                listOf(
+                    Terms(sourceField = "store_and_fwd_flag", targetField = "flag"),
+                    Histogram(sourceField = "passenger_count", targetField = "count", interval = 2.0),
+                    DateHistogram(sourceField = "tpep_pickup_datetime", targetField = "date", fixedInterval = "1d"),
+                ),
+                aggregations = aggregatorFactories,
+            ).let { createTransform(it, it.id) }
 
         updateTransformStartTime(transform)
 
-        val metadata = waitFor {
-            val job = getTransform(transformId = transform.id)
-            assertNotNull("Transform job doesn't have metadata set", job.metadataId)
-            val transformMetadata = getTransformMetadata(job.metadataId!!)
-            assertEquals("Transform has not failed", TransformMetadata.Status.FAILED, transformMetadata.status)
-            transformMetadata
-        }
+        val metadata =
+            waitFor {
+                val job = getTransform(transformId = transform.id)
+                assertNotNull("Transform job doesn't have metadata set", job.metadataId)
+                val transformMetadata = getTransformMetadata(job.metadataId!!)
+                assertEquals("Transform has not failed", TransformMetadata.Status.FAILED, transformMetadata.status)
+                transformMetadata
+            }
 
         assertTrue("Expected failure message to be present", !metadata.failureReason.isNullOrBlank())
     }
@@ -698,30 +722,32 @@ class TransformRunnerIT : TransformRestTestCase() {
             aggregatorFactories.addPipelineAggregator(
                 BucketScriptPipelineAggregationBuilder(
                     "test_pipeline_aggregation",
-                    Script("1")
-                )
+                    Script("1"),
+                ),
             )
 
-            val transform = Transform(
-                id = "id_17",
-                schemaVersion = 1L,
-                enabled = true,
-                enabledAt = Instant.now(),
-                updatedAt = Instant.now(),
-                jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
-                description = "test transform",
-                metadataId = null,
-                sourceIndex = "transform-source-index",
-                targetIndex = "transform-target-index",
-                roles = emptyList(),
-                pageSize = 1,
-                groups = listOf(
-                    Terms(sourceField = "store_and_fwd_flag", targetField = "flag"),
-                    Histogram(sourceField = "passenger_count", targetField = "count", interval = 2.0),
-                    DateHistogram(sourceField = "tpep_pickup_datetime", targetField = "date", fixedInterval = "1d")
-                ),
-                aggregations = aggregatorFactories
-            ).let { createTransform(it, it.id) }
+            val transform =
+                Transform(
+                    id = "id_17",
+                    schemaVersion = 1L,
+                    enabled = true,
+                    enabledAt = Instant.now(),
+                    updatedAt = Instant.now(),
+                    jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+                    description = "test transform",
+                    metadataId = null,
+                    sourceIndex = "transform-source-index",
+                    targetIndex = "transform-target-index",
+                    roles = emptyList(),
+                    pageSize = 1,
+                    groups =
+                    listOf(
+                        Terms(sourceField = "store_and_fwd_flag", targetField = "flag"),
+                        Histogram(sourceField = "passenger_count", targetField = "count", interval = 2.0),
+                        DateHistogram(sourceField = "tpep_pickup_datetime", targetField = "date", fixedInterval = "1d"),
+                    ),
+                    aggregations = aggregatorFactories,
+                ).let { createTransform(it, it.id) }
             updateTransformStartTime(transform)
         }
     }
@@ -744,8 +770,8 @@ class TransformRunnerIT : TransformRestTestCase() {
                     }
                 }
                 """.trimIndent(),
-                ContentType.APPLICATION_JSON
-            )
+                ContentType.APPLICATION_JSON,
+            ),
         )
         client().makeRequest("PUT", "/_data_stream/$dataStreamName")
 
@@ -756,35 +782,38 @@ class TransformRunnerIT : TransformRestTestCase() {
         client().makeRequest("POST", "/$dataStreamName/_rollover")
 
         // Create the transform job.
-        val transform = Transform(
-            id = "id_7",
-            schemaVersion = 1L,
-            enabled = true,
-            enabledAt = Instant.now(),
-            updatedAt = Instant.now(),
-            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
-            description = "test transform",
-            metadataId = null,
-            sourceIndex = dataStreamName,
-            targetIndex = "transform-target-index",
-            roles = emptyList(),
-            pageSize = 100,
-            groups = listOf(
-                Terms(sourceField = "store_and_fwd_flag", targetField = "flag")
-            )
-        ).let { createTransform(it, it.id) }
+        val transform =
+            Transform(
+                id = "id_7",
+                schemaVersion = 1L,
+                enabled = true,
+                enabledAt = Instant.now(),
+                updatedAt = Instant.now(),
+                jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+                description = "test transform",
+                metadataId = null,
+                sourceIndex = dataStreamName,
+                targetIndex = "transform-target-index",
+                roles = emptyList(),
+                pageSize = 100,
+                groups =
+                listOf(
+                    Terms(sourceField = "store_and_fwd_flag", targetField = "flag"),
+                ),
+            ).let { createTransform(it, it.id) }
 
         updateTransformStartTime(transform)
 
         waitFor { assertTrue("Target transform index was not created", indexExists(transform.targetIndex)) }
 
-        val metadata = waitFor {
-            val job = getTransform(transformId = transform.id)
-            assertNotNull("Transform job doesn't have metadata set", job.metadataId)
-            val transformMetadata = getTransformMetadata(job.metadataId!!)
-            assertEquals("Transform has not finished", TransformMetadata.Status.FINISHED, transformMetadata.status)
-            transformMetadata
-        }
+        val metadata =
+            waitFor {
+                val job = getTransform(transformId = transform.id)
+                assertNotNull("Transform job doesn't have metadata set", job.metadataId)
+                val transformMetadata = getTransformMetadata(job.metadataId!!)
+                assertEquals("Transform has not finished", TransformMetadata.Status.FINISHED, transformMetadata.status)
+                transformMetadata
+            }
 
         assertEquals("More than expected pages processed", 2L, metadata.stats.pagesProcessed)
         assertEquals("More than expected documents indexed", 2L, metadata.stats.documentsIndexed)
@@ -797,40 +826,43 @@ class TransformRunnerIT : TransformRestTestCase() {
     fun `test no-op execution when no buckets have been modified`() {
         validateSourceIndex("transform-no-op-source-index")
 
-        val transform = Transform(
-            id = "id_8",
-            schemaVersion = 1L,
-            enabled = true,
-            enabledAt = Instant.now(),
-            updatedAt = Instant.now(),
-            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
-            description = "test transform",
-            metadataId = null,
-            sourceIndex = "transform-no-op-source-index",
-            targetIndex = "transform-no-op-target-index",
-            roles = emptyList(),
-            pageSize = 100,
-            groups = listOf(
-                Terms(sourceField = "store_and_fwd_flag", targetField = "flag"),
-                Histogram(sourceField = "trip_distance", targetField = "distance", interval = 0.1)
-            ),
-            continuous = true
-        ).let { createTransform(it, it.id) }
+        val transform =
+            Transform(
+                id = "id_8",
+                schemaVersion = 1L,
+                enabled = true,
+                enabledAt = Instant.now(),
+                updatedAt = Instant.now(),
+                jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+                description = "test transform",
+                metadataId = null,
+                sourceIndex = "transform-no-op-source-index",
+                targetIndex = "transform-no-op-target-index",
+                roles = emptyList(),
+                pageSize = 100,
+                groups =
+                listOf(
+                    Terms(sourceField = "store_and_fwd_flag", targetField = "flag"),
+                    Histogram(sourceField = "trip_distance", targetField = "distance", interval = 0.1),
+                ),
+                continuous = true,
+            ).let { createTransform(it, it.id) }
 
         updateTransformStartTime(transform)
 
         waitFor { assertTrue("Target transform index was not created", indexExists(transform.targetIndex)) }
 
-        val firstIterationMetadata = waitFor {
-            val job = getTransform(transformId = transform.id)
-            assertNotNull("Transform job doesn't have metadata set", job.metadataId)
-            val transformMetadata = getTransformMetadata(job.metadataId!!)
-            assertEquals("Transform did not complete iteration or had incorrect number of documents processed", 5000, transformMetadata.stats.documentsProcessed)
-            assertEquals("Transform did not complete iteration", null, transformMetadata.afterKey)
-            assertNotNull("Continuous stats were not updated", transformMetadata.continuousStats)
-            assertNotNull("Continuous stats were set, but lastTimestamp was not", transformMetadata.continuousStats!!.lastTimestamp)
-            transformMetadata
-        }
+        val firstIterationMetadata =
+            waitFor {
+                val job = getTransform(transformId = transform.id)
+                assertNotNull("Transform job doesn't have metadata set", job.metadataId)
+                val transformMetadata = getTransformMetadata(job.metadataId!!)
+                assertEquals("Transform did not complete iteration or had incorrect number of documents processed", 5000, transformMetadata.stats.documentsProcessed)
+                assertEquals("Transform did not complete iteration", null, transformMetadata.afterKey)
+                assertNotNull("Continuous stats were not updated", transformMetadata.continuousStats)
+                assertNotNull("Continuous stats were set, but lastTimestamp was not", transformMetadata.continuousStats!!.lastTimestamp)
+                transformMetadata
+            }
 
         assertEquals("Not the expected transform status", TransformMetadata.Status.STARTED, firstIterationMetadata.status)
         assertEquals("Not the expected pages processed", 3L, firstIterationMetadata.stats.pagesProcessed)
@@ -841,13 +873,14 @@ class TransformRunnerIT : TransformRestTestCase() {
 
         updateTransformStartTime(transform)
 
-        val secondIterationMetadata = waitFor {
-            val job = getTransform(transformId = transform.id)
-            assertNotNull("Transform job doesn't have metadata set", job.metadataId)
-            val transformMetadata = getTransformMetadata(job.metadataId!!)
-            assertTrue("Transform did not complete iteration or update timestamp", transformMetadata.continuousStats!!.lastTimestamp!! > firstIterationMetadata.continuousStats!!.lastTimestamp)
-            transformMetadata
-        }
+        val secondIterationMetadata =
+            waitFor {
+                val job = getTransform(transformId = transform.id)
+                assertNotNull("Transform job doesn't have metadata set", job.metadataId)
+                val transformMetadata = getTransformMetadata(job.metadataId!!)
+                assertTrue("Transform did not complete iteration or update timestamp", transformMetadata.continuousStats!!.lastTimestamp!! > firstIterationMetadata.continuousStats!!.lastTimestamp)
+                transformMetadata
+            }
 
         assertEquals("Transform did not have null afterKey after iteration", null, secondIterationMetadata.afterKey)
         assertEquals("Not the expected transform status", TransformMetadata.Status.STARTED, firstIterationMetadata.status)
@@ -866,38 +899,41 @@ class TransformRunnerIT : TransformRestTestCase() {
         val aggregatorFactories = AggregatorFactories.builder()
         aggregatorFactories.addAggregator(AggregationBuilders.sum("revenue").field("total_amount"))
 
-        val transform = Transform(
-            id = "id_9",
-            schemaVersion = 1L,
-            enabled = true,
-            enabledAt = Instant.now(),
-            updatedAt = Instant.now(),
-            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
-            description = "test transform",
-            metadataId = null,
-            sourceIndex = "continuous-transform-source-index",
-            targetIndex = "continuous-transform-target-index",
-            roles = emptyList(),
-            pageSize = 100,
-            groups = listOf(
-                Terms(sourceField = "store_and_fwd_flag", targetField = "flag")
-            ),
-            continuous = true,
-            aggregations = aggregatorFactories
-        ).let { createTransform(it, it.id) }
+        val transform =
+            Transform(
+                id = "id_9",
+                schemaVersion = 1L,
+                enabled = true,
+                enabledAt = Instant.now(),
+                updatedAt = Instant.now(),
+                jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+                description = "test transform",
+                metadataId = null,
+                sourceIndex = "continuous-transform-source-index",
+                targetIndex = "continuous-transform-target-index",
+                roles = emptyList(),
+                pageSize = 100,
+                groups =
+                listOf(
+                    Terms(sourceField = "store_and_fwd_flag", targetField = "flag"),
+                ),
+                continuous = true,
+                aggregations = aggregatorFactories,
+            ).let { createTransform(it, it.id) }
 
         updateTransformStartTime(transform)
 
         waitFor { assertTrue("Target transform index was not created", indexExists(transform.targetIndex)) }
 
-        val firstIterationMetadata = waitFor {
-            val job = getTransform(transformId = transform.id)
-            assertNotNull("Transform job doesn't have metadata set", job.metadataId)
-            val transformMetadata = getTransformMetadata(job.metadataId!!)
-            assertEquals("Transform did not complete iteration or had incorrect number of documents processed", 5000, transformMetadata.stats.documentsProcessed)
-            assertEquals("Transform did not complete iteration", null, transformMetadata.afterKey)
-            transformMetadata
-        }
+        val firstIterationMetadata =
+            waitFor {
+                val job = getTransform(transformId = transform.id)
+                assertNotNull("Transform job doesn't have metadata set", job.metadataId)
+                val transformMetadata = getTransformMetadata(job.metadataId!!)
+                assertEquals("Transform did not complete iteration or had incorrect number of documents processed", 5000, transformMetadata.stats.documentsProcessed)
+                assertEquals("Transform did not complete iteration", null, transformMetadata.afterKey)
+                transformMetadata
+            }
 
         assertEquals("Not the expected transform status", TransformMetadata.Status.STARTED, firstIterationMetadata.status)
         assertEquals("Not the expected pages processed", 2L, firstIterationMetadata.stats.pagesProcessed)
@@ -906,21 +942,24 @@ class TransformRunnerIT : TransformRestTestCase() {
         assertTrue("Doesn't capture indexed time", firstIterationMetadata.stats.indexTimeInMillis > 0)
         assertTrue("Didn't capture search time", firstIterationMetadata.stats.searchTimeInMillis > 0)
 
-        var hits = waitFor {
-            val response = client().makeRequest(
-                "GET", "continuous-transform-target-index/_search",
-                StringEntity("{}", ContentType.APPLICATION_JSON)
-            )
-            assertEquals("Request failed", RestStatus.OK, response.restStatus())
-            val responseHits = response.asMap().getValue("hits") as Map<*, *>
-            val totalDocs = (responseHits["hits"] as ArrayList<*>).fold(0) { sum, bucket ->
-                val docCount = ((bucket as Map<*, *>)["_source"] as Map<*, *>)["_doc_count"] as Int
-                sum + docCount
-            }
-            assertEquals("Not all documents included in the transform target index", 5000, totalDocs)
+        var hits =
+            waitFor {
+                val response =
+                    client().makeRequest(
+                        "GET", "continuous-transform-target-index/_search",
+                        StringEntity("{}", ContentType.APPLICATION_JSON),
+                    )
+                assertEquals("Request failed", RestStatus.OK, response.restStatus())
+                val responseHits = response.asMap().getValue("hits") as Map<*, *>
+                val totalDocs =
+                    (responseHits["hits"] as ArrayList<*>).fold(0) { sum, bucket ->
+                        val docCount = ((bucket as Map<*, *>)["_source"] as Map<*, *>)["_doc_count"] as Int
+                        sum + docCount
+                    }
+                assertEquals("Not all documents included in the transform target index", 5000, totalDocs)
 
-            responseHits["hits"] as ArrayList<*>
-        }
+                responseHits["hits"] as ArrayList<*>
+            }
         hits.forEach {
             val bucket = ((it as Map<*, *>)["_source"] as Map<*, *>)
             if (bucket["flag"] == "N") {
@@ -940,15 +979,16 @@ class TransformRunnerIT : TransformRestTestCase() {
 
         updateTransformStartTime(transform)
 
-        val secondIterationMetadata = waitFor {
-            val job = getTransform(transformId = transform.id)
-            assertNotNull("Transform job doesn't have metadata set", job.metadataId)
-            val transformMetadata = getTransformMetadata(job.metadataId!!)
-            // As the new documents all fall into the same buckets as the last, all of the documents are processed again
-            assertEquals("Transform did not complete iteration or had incorrect number of documents processed", 15000, transformMetadata.stats.documentsProcessed)
-            assertEquals("Transform did not have null afterKey after iteration", null, transformMetadata.afterKey)
-            transformMetadata
-        }
+        val secondIterationMetadata =
+            waitFor {
+                val job = getTransform(transformId = transform.id)
+                assertNotNull("Transform job doesn't have metadata set", job.metadataId)
+                val transformMetadata = getTransformMetadata(job.metadataId!!)
+                // As the new documents all fall into the same buckets as the last, all of the documents are processed again
+                assertEquals("Transform did not complete iteration or had incorrect number of documents processed", 15000, transformMetadata.stats.documentsProcessed)
+                assertEquals("Transform did not have null afterKey after iteration", null, transformMetadata.afterKey)
+                transformMetadata
+            }
 
         assertEquals("Not the expected transform status", TransformMetadata.Status.STARTED, secondIterationMetadata.status)
         assertEquals("More than expected pages processed", 4L, secondIterationMetadata.stats.pagesProcessed)
@@ -957,21 +997,24 @@ class TransformRunnerIT : TransformRestTestCase() {
         assertTrue("Doesn't capture indexed time", secondIterationMetadata.stats.indexTimeInMillis > firstIterationMetadata.stats.indexTimeInMillis)
         assertTrue("Didn't capture search time", secondIterationMetadata.stats.searchTimeInMillis > firstIterationMetadata.stats.searchTimeInMillis)
 
-        hits = waitFor {
-            val response = client().makeRequest(
-                "GET", "continuous-transform-target-index/_search",
-                StringEntity("{}", ContentType.APPLICATION_JSON)
-            )
-            assertEquals("Request failed", RestStatus.OK, response.restStatus())
-            val responseHits = response.asMap().getValue("hits") as Map<*, *>
-            val totalDocs = (responseHits["hits"] as ArrayList<*>).fold(0) { sum, bucket ->
-                val docCount = ((bucket as Map<*, *>)["_source"] as Map<*, *>)["_doc_count"] as Int
-                sum + docCount
-            }
-            assertEquals("Not all documents included in the transform target index", 10000, totalDocs)
+        hits =
+            waitFor {
+                val response =
+                    client().makeRequest(
+                        "GET", "continuous-transform-target-index/_search",
+                        StringEntity("{}", ContentType.APPLICATION_JSON),
+                    )
+                assertEquals("Request failed", RestStatus.OK, response.restStatus())
+                val responseHits = response.asMap().getValue("hits") as Map<*, *>
+                val totalDocs =
+                    (responseHits["hits"] as ArrayList<*>).fold(0) { sum, bucket ->
+                        val docCount = ((bucket as Map<*, *>)["_source"] as Map<*, *>)["_doc_count"] as Int
+                        sum + docCount
+                    }
+                assertEquals("Not all documents included in the transform target index", 10000, totalDocs)
 
-            responseHits["hits"] as ArrayList<*>
-        }
+                responseHits["hits"] as ArrayList<*>
+            }
         hits.forEach {
             val bucket = ((it as Map<*, *>)["_source"] as Map<*, *>)
             if (bucket["flag"] == "N") {
@@ -994,38 +1037,41 @@ class TransformRunnerIT : TransformRestTestCase() {
         val aggregatorFactories = AggregatorFactories.builder()
         aggregatorFactories.addAggregator(AggregationBuilders.sum("twice_id_sum").field("twice_id"))
 
-        val transform = Transform(
-            id = "id_10",
-            schemaVersion = 1L,
-            enabled = true,
-            enabledAt = Instant.now(),
-            updatedAt = Instant.now(),
-            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
-            description = "test transform",
-            metadataId = null,
-            sourceIndex = sourceIndex,
-            targetIndex = "modified-bucket-target-index",
-            roles = emptyList(),
-            pageSize = 100,
-            groups = listOf(
-                Histogram(sourceField = "iterating_id", targetField = "id_group", interval = 5.0)
-            ),
-            continuous = true,
-            aggregations = aggregatorFactories
-        ).let { createTransform(it, it.id) }
+        val transform =
+            Transform(
+                id = "id_10",
+                schemaVersion = 1L,
+                enabled = true,
+                enabledAt = Instant.now(),
+                updatedAt = Instant.now(),
+                jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+                description = "test transform",
+                metadataId = null,
+                sourceIndex = sourceIndex,
+                targetIndex = "modified-bucket-target-index",
+                roles = emptyList(),
+                pageSize = 100,
+                groups =
+                listOf(
+                    Histogram(sourceField = "iterating_id", targetField = "id_group", interval = 5.0),
+                ),
+                continuous = true,
+                aggregations = aggregatorFactories,
+            ).let { createTransform(it, it.id) }
 
         updateTransformStartTime(transform)
 
         waitFor { assertTrue("Target transform index was not created", indexExists(transform.targetIndex)) }
 
-        val firstIterationMetadata = waitFor {
-            val job = getTransform(transformId = transform.id)
-            assertNotNull("Transform job doesn't have metadata set", job.metadataId)
-            val transformMetadata = getTransformMetadata(job.metadataId!!)
-            assertEquals("Transform did not complete iteration or had incorrect number of documents processed", 48, transformMetadata.stats.documentsProcessed)
-            assertEquals("Transform did not complete iteration", null, transformMetadata.afterKey)
-            transformMetadata
-        }
+        val firstIterationMetadata =
+            waitFor {
+                val job = getTransform(transformId = transform.id)
+                assertNotNull("Transform job doesn't have metadata set", job.metadataId)
+                val transformMetadata = getTransformMetadata(job.metadataId!!)
+                assertEquals("Transform did not complete iteration or had incorrect number of documents processed", 48, transformMetadata.stats.documentsProcessed)
+                assertEquals("Transform did not complete iteration", null, transformMetadata.afterKey)
+                transformMetadata
+            }
 
         assertEquals("Not the expected transform status", TransformMetadata.Status.STARTED, firstIterationMetadata.status)
         assertEquals("Not the expected pages processed", 2L, firstIterationMetadata.stats.pagesProcessed)
@@ -1035,21 +1081,24 @@ class TransformRunnerIT : TransformRestTestCase() {
         assertTrue("Didn't capture search time", firstIterationMetadata.stats.searchTimeInMillis > 0)
 
         // Get all of the buckets
-        var hits = waitFor {
-            val response = client().makeRequest(
-                "GET", "${transform.targetIndex}/_search",
-                StringEntity("{\"size\": 25}", ContentType.APPLICATION_JSON)
-            )
-            assertEquals("Request failed", RestStatus.OK, response.restStatus())
-            val responseHits = response.asMap().getValue("hits") as Map<*, *>
-            val totalDocs = (responseHits["hits"] as ArrayList<*>).fold(0) { sum, bucket ->
-                val docCount = ((bucket as Map<*, *>)["_source"] as Map<*, *>)["_doc_count"] as Int
-                sum + docCount
-            }
-            assertEquals("Not all documents included in the transform target index", 48, totalDocs)
+        var hits =
+            waitFor {
+                val response =
+                    client().makeRequest(
+                        "GET", "${transform.targetIndex}/_search",
+                        StringEntity("{\"size\": 25}", ContentType.APPLICATION_JSON),
+                    )
+                assertEquals("Request failed", RestStatus.OK, response.restStatus())
+                val responseHits = response.asMap().getValue("hits") as Map<*, *>
+                val totalDocs =
+                    (responseHits["hits"] as ArrayList<*>).fold(0) { sum, bucket ->
+                        val docCount = ((bucket as Map<*, *>)["_source"] as Map<*, *>)["_doc_count"] as Int
+                        sum + docCount
+                    }
+                assertEquals("Not all documents included in the transform target index", 48, totalDocs)
 
-            responseHits["hits"] as ArrayList<*>
-        }
+                responseHits["hits"] as ArrayList<*>
+            }
 
         // Validate the buckets include the correct information
         hits.forEach {
@@ -1076,15 +1125,16 @@ class TransformRunnerIT : TransformRestTestCase() {
 
         updateTransformStartTime(transform)
 
-        val secondIterationMetadata = waitFor {
-            val job = getTransform(transformId = transform.id)
-            assertNotNull("Transform job doesn't have metadata set", job.metadataId)
-            val transformMetadata = getTransformMetadata(job.metadataId!!)
-            // As the ids 45-47 will be processed a second time when the bucket is recalculated, this number is greater than 100
-            assertEquals("Transform did not complete iteration or had incorrect number of documents processed", 103L, transformMetadata.stats.documentsProcessed)
-            assertEquals("Transform did not have null afterKey after iteration", null, transformMetadata.afterKey)
-            transformMetadata
-        }
+        val secondIterationMetadata =
+            waitFor {
+                val job = getTransform(transformId = transform.id)
+                assertNotNull("Transform job doesn't have metadata set", job.metadataId)
+                val transformMetadata = getTransformMetadata(job.metadataId!!)
+                // As the ids 45-47 will be processed a second time when the bucket is recalculated, this number is greater than 100
+                assertEquals("Transform did not complete iteration or had incorrect number of documents processed", 103L, transformMetadata.stats.documentsProcessed)
+                assertEquals("Transform did not have null afterKey after iteration", null, transformMetadata.afterKey)
+                transformMetadata
+            }
 
         assertEquals("Not the expected transform status", TransformMetadata.Status.STARTED, secondIterationMetadata.status)
         assertEquals("More than expected pages processed", 4L, secondIterationMetadata.stats.pagesProcessed)
@@ -1095,21 +1145,24 @@ class TransformRunnerIT : TransformRestTestCase() {
 
         disableTransform(transform.id)
 
-        hits = waitFor {
-            val response = client().makeRequest(
-                "GET", "${transform.targetIndex}/_search",
-                StringEntity("{\"size\": 25}", ContentType.APPLICATION_JSON)
-            )
-            assertEquals("Request failed", RestStatus.OK, response.restStatus())
-            val responseHits = response.asMap().getValue("hits") as Map<*, *>
-            val totalDocs = (responseHits["hits"] as ArrayList<*>).fold(0) { sum, bucket ->
-                val docCount = ((bucket as Map<*, *>)["_source"] as Map<*, *>)["_doc_count"] as Int
-                sum + docCount
-            }
-            assertEquals("Not all documents included in the transform target index", 100, totalDocs)
+        hits =
+            waitFor {
+                val response =
+                    client().makeRequest(
+                        "GET", "${transform.targetIndex}/_search",
+                        StringEntity("{\"size\": 25}", ContentType.APPLICATION_JSON),
+                    )
+                assertEquals("Request failed", RestStatus.OK, response.restStatus())
+                val responseHits = response.asMap().getValue("hits") as Map<*, *>
+                val totalDocs =
+                    (responseHits["hits"] as ArrayList<*>).fold(0) { sum, bucket ->
+                        val docCount = ((bucket as Map<*, *>)["_source"] as Map<*, *>)["_doc_count"] as Int
+                        sum + docCount
+                    }
+                assertEquals("Not all documents included in the transform target index", 100, totalDocs)
 
-            responseHits["hits"] as ArrayList<*>
-        }
+                responseHits["hits"] as ArrayList<*>
+            }
 
         hits.forEach {
             val bucket = ((it as Map<*, *>)["_source"] as Map<*, *>)
@@ -1124,45 +1177,48 @@ class TransformRunnerIT : TransformRestTestCase() {
         validateSourceIndex("wildcard-source-2")
         validateSourceIndex("wildcard-source-3")
 
-        val transform = Transform(
-            id = "id_11",
-            schemaVersion = 1L,
-            enabled = true,
-            enabledAt = Instant.now(),
-            updatedAt = Instant.now(),
-            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
-            description = "test transform",
-            metadataId = null,
-            sourceIndex = "wildcard-s*e-*",
-            targetIndex = "wildcard-target-index",
-            roles = emptyList(),
-            pageSize = 100,
-            groups = listOf(
-                Terms(sourceField = "store_and_fwd_flag", targetField = "flag")
-            ),
-            continuous = true
-        ).let { createTransform(it, it.id) }
+        val transform =
+            Transform(
+                id = "id_11",
+                schemaVersion = 1L,
+                enabled = true,
+                enabledAt = Instant.now(),
+                updatedAt = Instant.now(),
+                jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+                description = "test transform",
+                metadataId = null,
+                sourceIndex = "wildcard-s*e-*",
+                targetIndex = "wildcard-target-index",
+                roles = emptyList(),
+                pageSize = 100,
+                groups =
+                listOf(
+                    Terms(sourceField = "store_and_fwd_flag", targetField = "flag"),
+                ),
+                continuous = true,
+            ).let { createTransform(it, it.id) }
 
         updateTransformStartTime(transform)
 
         waitFor { assertTrue("Target transform index was not created", indexExists(transform.targetIndex)) }
 
-        val firstIterationMetadata = waitFor {
-            val job = getTransform(transformId = transform.id)
-            assertNotNull("Transform job doesn't have metadata set", job.metadataId)
-            val transformMetadata = getTransformMetadata(job.metadataId!!)
-            assertEquals("Transform did not complete iteration or had incorrect number of documents processed", 15000, transformMetadata.stats.documentsProcessed)
-            assertEquals("Transform did not complete iteration", null, transformMetadata.afterKey)
-            assertNotNull("Continuous stats were not updated", transformMetadata.continuousStats)
-            assertNotNull("Continuous stats were set, but lastTimestamp was not", transformMetadata.continuousStats!!.lastTimestamp)
-            assertEquals("Not the expected transform status", TransformMetadata.Status.STARTED, transformMetadata.status)
-            assertEquals("Not the expected pages processed", 6L, transformMetadata.stats.pagesProcessed)
-            assertEquals("Not the expected documents indexed", 2L, transformMetadata.stats.documentsIndexed)
-            assertEquals("Not the expected documents processed", 15000L, transformMetadata.stats.documentsProcessed)
-            assertTrue("Doesn't capture indexed time", transformMetadata.stats.indexTimeInMillis > 0)
-            assertTrue("Didn't capture search time", transformMetadata.stats.searchTimeInMillis > 0)
-            transformMetadata
-        }
+        val firstIterationMetadata =
+            waitFor {
+                val job = getTransform(transformId = transform.id)
+                assertNotNull("Transform job doesn't have metadata set", job.metadataId)
+                val transformMetadata = getTransformMetadata(job.metadataId!!)
+                assertEquals("Transform did not complete iteration or had incorrect number of documents processed", 15000, transformMetadata.stats.documentsProcessed)
+                assertEquals("Transform did not complete iteration", null, transformMetadata.afterKey)
+                assertNotNull("Continuous stats were not updated", transformMetadata.continuousStats)
+                assertNotNull("Continuous stats were set, but lastTimestamp was not", transformMetadata.continuousStats!!.lastTimestamp)
+                assertEquals("Not the expected transform status", TransformMetadata.Status.STARTED, transformMetadata.status)
+                assertEquals("Not the expected pages processed", 6L, transformMetadata.stats.pagesProcessed)
+                assertEquals("Not the expected documents indexed", 2L, transformMetadata.stats.documentsIndexed)
+                assertEquals("Not the expected documents processed", 15000L, transformMetadata.stats.documentsProcessed)
+                assertTrue("Doesn't capture indexed time", transformMetadata.stats.indexTimeInMillis > 0)
+                assertTrue("Didn't capture search time", transformMetadata.stats.searchTimeInMillis > 0)
+                transformMetadata
+            }
 
         waitFor {
             val documentsBehind = getTransformDocumentsBehind(transform.id)
@@ -1210,39 +1266,42 @@ class TransformRunnerIT : TransformRestTestCase() {
         val aggregatorFactories = AggregatorFactories.builder()
         aggregatorFactories.addAggregator(AggregationBuilders.sum("twice_id_sum").field("twice_id"))
 
-        val transform = Transform(
-            id = "id_12",
-            schemaVersion = 1L,
-            enabled = true,
-            enabledAt = Instant.now(),
-            updatedAt = Instant.now(),
-            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
-            description = "test transform",
-            metadataId = null,
-            sourceIndex = sourceIndex,
-            targetIndex = "null-bucket-target-index",
-            roles = emptyList(),
-            pageSize = 100,
-            groups = listOf(
-                Histogram(sourceField = "iterating_id", targetField = "id_group", interval = 5.0),
-                Terms(sourceField = "term_id", targetField = "id_term")
-            ),
-            continuous = true,
-            aggregations = aggregatorFactories
-        ).let { createTransform(it, it.id) }
+        val transform =
+            Transform(
+                id = "id_12",
+                schemaVersion = 1L,
+                enabled = true,
+                enabledAt = Instant.now(),
+                updatedAt = Instant.now(),
+                jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+                description = "test transform",
+                metadataId = null,
+                sourceIndex = sourceIndex,
+                targetIndex = "null-bucket-target-index",
+                roles = emptyList(),
+                pageSize = 100,
+                groups =
+                listOf(
+                    Histogram(sourceField = "iterating_id", targetField = "id_group", interval = 5.0),
+                    Terms(sourceField = "term_id", targetField = "id_term"),
+                ),
+                continuous = true,
+                aggregations = aggregatorFactories,
+            ).let { createTransform(it, it.id) }
 
         updateTransformStartTime(transform)
 
         waitFor { assertTrue("Target transform index was not created", indexExists(transform.targetIndex)) }
 
-        val firstIterationMetadata = waitFor {
-            val job = getTransform(transformId = transform.id)
-            assertNotNull("Transform job doesn't have metadata set", job.metadataId)
-            val transformMetadata = getTransformMetadata(job.metadataId!!)
-            assertEquals("Transform did not complete iteration or had incorrect number of documents processed", 52, transformMetadata.stats.documentsProcessed)
-            assertEquals("Transform did not complete iteration", null, transformMetadata.afterKey)
-            transformMetadata
-        }
+        val firstIterationMetadata =
+            waitFor {
+                val job = getTransform(transformId = transform.id)
+                assertNotNull("Transform job doesn't have metadata set", job.metadataId)
+                val transformMetadata = getTransformMetadata(job.metadataId!!)
+                assertEquals("Transform did not complete iteration or had incorrect number of documents processed", 52, transformMetadata.stats.documentsProcessed)
+                assertEquals("Transform did not complete iteration", null, transformMetadata.afterKey)
+                transformMetadata
+            }
 
         assertEquals("Not the expected transform status", TransformMetadata.Status.STARTED, firstIterationMetadata.status)
         assertEquals("Not the expected pages processed", 2L, firstIterationMetadata.stats.pagesProcessed)
@@ -1252,21 +1311,24 @@ class TransformRunnerIT : TransformRestTestCase() {
         assertTrue("Didn't capture search time", firstIterationMetadata.stats.searchTimeInMillis > 0)
 
         // Get all the buckets
-        var hits = waitFor {
-            val response = client().makeRequest(
-                "GET", "${transform.targetIndex}/_search",
-                StringEntity("{\"size\": 25}", ContentType.APPLICATION_JSON)
-            )
-            assertEquals("Request failed", RestStatus.OK, response.restStatus())
-            val responseHits = response.asMap().getValue("hits") as Map<*, *>
-            val totalDocs = (responseHits["hits"] as ArrayList<*>).fold(0) { sum, bucket ->
-                val docCount = ((bucket as Map<*, *>)["_source"] as Map<*, *>)["_doc_count"] as Int
-                sum + docCount
-            }
-            assertEquals("Not all documents included in the transform target index", 52, totalDocs)
+        var hits =
+            waitFor {
+                val response =
+                    client().makeRequest(
+                        "GET", "${transform.targetIndex}/_search",
+                        StringEntity("{\"size\": 25}", ContentType.APPLICATION_JSON),
+                    )
+                assertEquals("Request failed", RestStatus.OK, response.restStatus())
+                val responseHits = response.asMap().getValue("hits") as Map<*, *>
+                val totalDocs =
+                    (responseHits["hits"] as ArrayList<*>).fold(0) { sum, bucket ->
+                        val docCount = ((bucket as Map<*, *>)["_source"] as Map<*, *>)["_doc_count"] as Int
+                        sum + docCount
+                    }
+                assertEquals("Not all documents included in the transform target index", 52, totalDocs)
 
-            responseHits["hits"] as ArrayList<*>
-        }
+                responseHits["hits"] as ArrayList<*>
+            }
 
         // Validate the buckets include the correct information
         hits.forEach {
@@ -1308,14 +1370,15 @@ class TransformRunnerIT : TransformRestTestCase() {
 
         updateTransformStartTime(transform)
 
-        val secondIterationMetadata = waitFor {
-            val job = getTransform(transformId = transform.id)
-            assertNotNull("Transform job doesn't have metadata set", job.metadataId)
-            val transformMetadata = getTransformMetadata(job.metadataId!!)
-            assertEquals("Transform did not complete iteration or had incorrect number of documents processed", 104L, transformMetadata.stats.documentsProcessed)
-            assertEquals("Transform did not have null afterKey after iteration", null, transformMetadata.afterKey)
-            transformMetadata
-        }
+        val secondIterationMetadata =
+            waitFor {
+                val job = getTransform(transformId = transform.id)
+                assertNotNull("Transform job doesn't have metadata set", job.metadataId)
+                val transformMetadata = getTransformMetadata(job.metadataId!!)
+                assertEquals("Transform did not complete iteration or had incorrect number of documents processed", 104L, transformMetadata.stats.documentsProcessed)
+                assertEquals("Transform did not have null afterKey after iteration", null, transformMetadata.afterKey)
+                transformMetadata
+            }
 
         assertEquals("Not the expected transform status", TransformMetadata.Status.STARTED, secondIterationMetadata.status)
         assertEquals("More than expected pages processed", 4L, secondIterationMetadata.stats.pagesProcessed)
@@ -1326,21 +1389,24 @@ class TransformRunnerIT : TransformRestTestCase() {
 
         disableTransform(transform.id)
 
-        hits = waitFor {
-            val response = client().makeRequest(
-                "GET", "${transform.targetIndex}/_search",
-                StringEntity("{\"size\": 40}", ContentType.APPLICATION_JSON)
-            )
-            assertEquals("Request failed", RestStatus.OK, response.restStatus())
-            val responseHits = response.asMap().getValue("hits") as Map<*, *>
-            val totalDocs = (responseHits["hits"] as ArrayList<*>).fold(0) { sum, bucket ->
-                val docCount = ((bucket as Map<*, *>)["_source"] as Map<*, *>)["_doc_count"] as Int
-                sum + docCount
-            }
-            assertEquals("Not all documents included in the transform target index", 88, totalDocs)
+        hits =
+            waitFor {
+                val response =
+                    client().makeRequest(
+                        "GET", "${transform.targetIndex}/_search",
+                        StringEntity("{\"size\": 40}", ContentType.APPLICATION_JSON),
+                    )
+                assertEquals("Request failed", RestStatus.OK, response.restStatus())
+                val responseHits = response.asMap().getValue("hits") as Map<*, *>
+                val totalDocs =
+                    (responseHits["hits"] as ArrayList<*>).fold(0) { sum, bucket ->
+                        val docCount = ((bucket as Map<*, *>)["_source"] as Map<*, *>)["_doc_count"] as Int
+                        sum + docCount
+                    }
+                assertEquals("Not all documents included in the transform target index", 88, totalDocs)
 
-            responseHits["hits"] as ArrayList<*>
-        }
+                responseHits["hits"] as ArrayList<*>
+            }
 
         // Validate the buckets include the correct information
         hits.forEach {
@@ -1367,58 +1433,61 @@ class TransformRunnerIT : TransformRestTestCase() {
     }
 
     fun `test continuous transform with a lot of buckets`() {
-
         // Create index with high cardinality fields
         val sourceIndex = "index_with_lots_of_buckets"
 
         val requestBody: StringBuilder = StringBuilder(100000)
         for (i in 1..2000) {
-            val docPayload: String = """
-            {
-              "id1": "$i",
-              "id2": "${i + 1}"
-            }
-            """.trimIndent().replace(Regex("[\n\r\\s]"), "")
+            val docPayload: String =
+                """
+                {
+                  "id1": "$i",
+                  "id2": "${i + 1}"
+                }
+                """.trimIndent().replace(Regex("[\n\r\\s]"), "")
 
             requestBody.append("{\"create\":{}}\n").append(docPayload).append('\n')
         }
 
         createIndexAndBulkInsert(sourceIndex, Settings.EMPTY, null, null, requestBody.toString())
         // Source index will have total of 2000 buckets
-        val transform = Transform(
-            id = "transform_index_with_lots_of_buckets",
-            schemaVersion = 1L,
-            enabled = true,
-            enabledAt = Instant.now(),
-            updatedAt = Instant.now(),
-            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
-            description = "test transform",
-            metadataId = null,
-            sourceIndex = "index_with_lots_of_buckets",
-            targetIndex = "index_with_lots_of_buckets_transformed",
-            roles = emptyList(),
-            pageSize = 1000,
-            groups = listOf(
-                Terms(sourceField = "id1.keyword", targetField = "id1"),
-                Terms(sourceField = "id2.keyword", targetField = "id2")
-            ),
-            continuous = true
-        ).let { createTransform(it, it.id) }
+        val transform =
+            Transform(
+                id = "transform_index_with_lots_of_buckets",
+                schemaVersion = 1L,
+                enabled = true,
+                enabledAt = Instant.now(),
+                updatedAt = Instant.now(),
+                jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+                description = "test transform",
+                metadataId = null,
+                sourceIndex = "index_with_lots_of_buckets",
+                targetIndex = "index_with_lots_of_buckets_transformed",
+                roles = emptyList(),
+                pageSize = 1000,
+                groups =
+                listOf(
+                    Terms(sourceField = "id1.keyword", targetField = "id1"),
+                    Terms(sourceField = "id2.keyword", targetField = "id2"),
+                ),
+                continuous = true,
+            ).let { createTransform(it, it.id) }
 
         updateTransformStartTime(transform)
 
         waitFor { assertTrue("Target transform index was not created", indexExists(transform.targetIndex)) }
 
-        val firstIterationMetadata = waitFor {
-            val job = getTransform(transformId = transform.id)
-            assertNotNull("Transform job doesn't have metadata set", job.metadataId)
-            val transformMetadata = getTransformMetadata(job.metadataId!!)
-            assertEquals("Transform did not complete iteration or had incorrect number of documents processed", 2000, transformMetadata.stats.documentsProcessed)
-            assertEquals("Transform did not complete iteration", null, transformMetadata.afterKey)
-            assertNotNull("Continuous stats were not updated", transformMetadata.continuousStats)
-            assertNotNull("Continuous stats were set, but lastTimestamp was not", transformMetadata.continuousStats!!.lastTimestamp)
-            transformMetadata
-        }
+        val firstIterationMetadata =
+            waitFor {
+                val job = getTransform(transformId = transform.id)
+                assertNotNull("Transform job doesn't have metadata set", job.metadataId)
+                val transformMetadata = getTransformMetadata(job.metadataId!!)
+                assertEquals("Transform did not complete iteration or had incorrect number of documents processed", 2000, transformMetadata.stats.documentsProcessed)
+                assertEquals("Transform did not complete iteration", null, transformMetadata.afterKey)
+                assertNotNull("Continuous stats were not updated", transformMetadata.continuousStats)
+                assertNotNull("Continuous stats were set, but lastTimestamp was not", transformMetadata.continuousStats!!.lastTimestamp)
+                transformMetadata
+            }
 
         assertEquals("Not the expected transform status", TransformMetadata.Status.STARTED, firstIterationMetadata.status)
         assertEquals("Not the expected pages processed", 7, firstIterationMetadata.stats.pagesProcessed)
@@ -1449,7 +1518,6 @@ class TransformRunnerIT : TransformRestTestCase() {
     }
 
     private fun createIndexAndBulkInsert(name: String, settings: Settings?, mapping: String?, aliases: String?, bulkData: String) {
-
         if (settings != null || mapping != null || aliases != null) {
             createIndex(name, settings, mapping, aliases)
         }

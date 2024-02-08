@@ -24,7 +24,6 @@ class OpenIndexRespParser(
     val indexNameExpressionResolver: IndexNameExpressionResolver,
     val clusterService: ClusterService,
 ) : ResponseParser<OpenIndexResponse> {
-
     private var totalWaitTime: TimeValue = NotificationActionListener.MAX_WAIT_TIME
     private val indexNameWithCluster = getIndexName(request, clusterService)
 
@@ -39,8 +38,8 @@ class OpenIndexRespParser(
                 ActionRespParseResult(
                     OperationResult.FAILED,
                     buildNotificationMessage(null, ex),
-                    buildNotificationTitle(OperationResult.FAILED)
-                )
+                    buildNotificationTitle(OperationResult.FAILED),
+                ),
             )
             return
         }
@@ -68,8 +67,8 @@ class OpenIndexRespParser(
                             ActionRespParseResult(
                                 if (shardsAcknowledged) OperationResult.COMPLETE else OperationResult.TIMEOUT,
                                 buildNotificationMessage(response, isTimeout = !shardsAcknowledged),
-                                buildNotificationTitle(if (shardsAcknowledged) OperationResult.COMPLETE else OperationResult.TIMEOUT)
-                            )
+                                buildNotificationTitle(if (shardsAcknowledged) OperationResult.COMPLETE else OperationResult.TIMEOUT),
+                            ),
                         )
                     },
                     { e: Exception ->
@@ -78,18 +77,18 @@ class OpenIndexRespParser(
                             ActionRespParseResult(
                                 OperationResult.FAILED,
                                 buildNotificationMessage(response, e),
-                                buildNotificationTitle(OperationResult.FAILED)
-                            )
+                                buildNotificationTitle(OperationResult.FAILED),
+                            ),
                         )
-                    }
+                    },
                 )
             } else {
                 callback.accept(
                     ActionRespParseResult(
                         OperationResult.TIMEOUT,
                         buildNotificationMessage(response, isTimeout = true),
-                        buildNotificationTitle(OperationResult.TIMEOUT)
-                    )
+                        buildNotificationTitle(OperationResult.TIMEOUT),
+                    ),
                 )
             }
         } else {
@@ -97,8 +96,8 @@ class OpenIndexRespParser(
                 ActionRespParseResult(
                     OperationResult.COMPLETE,
                     buildNotificationMessage(response),
-                    buildNotificationTitle(OperationResult.COMPLETE)
-                )
+                    buildNotificationTitle(OperationResult.COMPLETE),
+                ),
             )
         }
     }
@@ -110,16 +109,18 @@ class OpenIndexRespParser(
     ): String {
         val indexes = indexNameWithCluster + if (request.indices().size == 1) " has" else " have"
 
-        return if (isTimeout)
+        return if (isTimeout) {
             "Opening the index $indexes taken more than ${totalWaitTime.toHumanReadableString(1)} to complete. " +
                 "To see the latest status, use `GET /${request.indices().joinToString(",")}/_recovery`"
-        else if (exception != null)
-            if (exception is OpenSearchException)
+        } else if (exception != null) {
+            if (exception is OpenSearchException) {
                 "index [" + exception.index.name + "] ${exception.message}."
-            else
+            } else {
                 exception.message ?: ""
-        else
+            }
+        } else {
             "$indexes been set to open."
+        }
     }
 
     override fun buildNotificationTitle(operationResult: OperationResult): String {
@@ -130,9 +131,10 @@ class OpenIndexRespParser(
                 else -> "timed out to open"
             }
 
-        return if (request.indices().size == 1)
+        return if (request.indices().size == 1) {
             "$indexNameWithCluster has $result"
-        else
+        } else {
             "${request.indices().size} indexes from [${clusterService.clusterName.value()}] have $result"
+        }
     }
 }

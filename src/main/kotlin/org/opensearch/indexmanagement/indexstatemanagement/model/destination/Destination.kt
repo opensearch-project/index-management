@@ -5,6 +5,10 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.model.destination
 
+import org.opensearch.commons.destination.message.LegacyBaseMessage
+import org.opensearch.commons.destination.message.LegacyChimeMessage
+import org.opensearch.commons.destination.message.LegacyCustomWebhookMessage
+import org.opensearch.commons.destination.message.LegacySlackMessage
 import org.opensearch.core.common.io.stream.StreamInput
 import org.opensearch.core.common.io.stream.StreamOutput
 import org.opensearch.core.common.io.stream.Writeable
@@ -14,10 +18,6 @@ import org.opensearch.core.xcontent.XContentBuilder
 import org.opensearch.core.xcontent.XContentParser
 import org.opensearch.core.xcontent.XContentParser.Token
 import org.opensearch.core.xcontent.XContentParserUtils.ensureExpectedToken
-import org.opensearch.commons.destination.message.LegacyBaseMessage
-import org.opensearch.commons.destination.message.LegacyChimeMessage
-import org.opensearch.commons.destination.message.LegacyCustomWebhookMessage
-import org.opensearch.commons.destination.message.LegacySlackMessage
 import org.opensearch.indexmanagement.opensearchapi.convertToMap
 import java.io.IOException
 
@@ -31,9 +31,8 @@ data class Destination(
     val type: DestinationType,
     val chime: Chime?,
     val slack: Slack?,
-    val customWebhook: CustomWebhook?
+    val customWebhook: CustomWebhook?,
 ) : ToXContentObject, Writeable {
-
     override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
         builder.startObject()
             .field(type.value, constructResponseForDestinationType(type))
@@ -46,7 +45,7 @@ data class Destination(
         sin.readEnum(DestinationType::class.java),
         sin.readOptionalWriteable(::Chime),
         sin.readOptionalWriteable(::Slack),
-        sin.readOptionalWriteable(::CustomWebhook)
+        sin.readOptionalWriteable(::CustomWebhook),
     )
 
     @Throws(IOException::class)
@@ -83,18 +82,19 @@ data class Destination(
                 }
             }
 
-            val type = when {
-                chime != null -> DestinationType.CHIME
-                slack != null -> DestinationType.SLACK
-                customWebhook != null -> DestinationType.CUSTOM_WEBHOOK
-                else -> throw IllegalArgumentException("Must specify a destination type")
-            }
+            val type =
+                when {
+                    chime != null -> DestinationType.CHIME
+                    slack != null -> DestinationType.SLACK
+                    customWebhook != null -> DestinationType.CUSTOM_WEBHOOK
+                    else -> throw IllegalArgumentException("Must specify a destination type")
+                }
 
             return Destination(
                 type,
                 chime,
                 slack,
-                customWebhook
+                customWebhook,
             )
         }
     }
@@ -105,23 +105,26 @@ data class Destination(
         when (type) {
             DestinationType.CHIME -> {
                 val messageContent = chime?.constructMessageContent(compiledSubject, compiledMessage)
-                destinationMessage = LegacyChimeMessage.Builder("chime_message")
-                    .withUrl(chime?.url)
-                    .withMessage(messageContent)
-                    .build()
+                destinationMessage =
+                    LegacyChimeMessage.Builder("chime_message")
+                        .withUrl(chime?.url)
+                        .withMessage(messageContent)
+                        .build()
             }
             DestinationType.SLACK -> {
                 val messageContent = slack?.constructMessageContent(compiledSubject, compiledMessage)
-                destinationMessage = LegacySlackMessage.Builder("slack_message")
-                    .withUrl(slack?.url)
-                    .withMessage(messageContent)
-                    .build()
+                destinationMessage =
+                    LegacySlackMessage.Builder("slack_message")
+                        .withUrl(slack?.url)
+                        .withMessage(messageContent)
+                        .build()
             }
             DestinationType.CUSTOM_WEBHOOK -> {
-                destinationMessage = LegacyCustomWebhookMessage.Builder("custom_webhook")
-                    .withUrl(getLegacyCustomWebhookMessageURL(customWebhook, compiledMessage))
-                    .withHeaderParams(customWebhook?.headerParams)
-                    .withMessage(compiledMessage).build()
+                destinationMessage =
+                    LegacyCustomWebhookMessage.Builder("custom_webhook")
+                        .withUrl(getLegacyCustomWebhookMessageURL(customWebhook, compiledMessage))
+                        .withHeaderParams(customWebhook?.headerParams)
+                        .withMessage(compiledMessage).build()
             }
         }
         return destinationMessage

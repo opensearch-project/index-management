@@ -29,15 +29,16 @@ class ForceMergeActionIT : IndexStateManagementRestTestCase() {
         // Create a Policy with one State that only preforms a force_merge Action
         val forceMergeActionConfig = ForceMergeAction(maxNumSegments = 1, index = 0)
         val states = listOf(State("ForceMergeState", listOf(forceMergeActionConfig), listOf()))
-        val policy = Policy(
-            id = policyID,
-            description = "$testIndexName description",
-            schemaVersion = 1L,
-            lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
-            errorNotification = randomErrorNotification(),
-            defaultState = states[0].name,
-            states = states
-        )
+        val policy =
+            Policy(
+                id = policyID,
+                description = "$testIndexName description",
+                schemaVersion = 1L,
+                lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
+                errorNotification = randomErrorNotification(),
+                defaultState = states[0].name,
+                states = states,
+            )
 
         createPolicy(policy, policyID)
         createIndex(indexName, policyID)
@@ -64,7 +65,7 @@ class ForceMergeActionIT : IndexStateManagementRestTestCase() {
             assertEquals(
                 "maxNumSegments not set in ActionProperties",
                 forceMergeActionConfig.maxNumSegments,
-                getExplainManagedIndexMetaData(indexName).actionMetaData?.actionProperties?.maxNumSegments
+                getExplainManagedIndexMetaData(indexName).actionMetaData?.actionProperties?.maxNumSegments,
             )
         }
 
@@ -85,15 +86,16 @@ class ForceMergeActionIT : IndexStateManagementRestTestCase() {
         val forceMergeActionConfig = ForceMergeAction(maxNumSegments = 1, index = 0)
         val states = listOf(State("ForceMergeState", listOf(forceMergeActionConfig), listOf()))
 
-        val policy = Policy(
-            id = policyID,
-            description = "$testIndexName description",
-            schemaVersion = 1L,
-            lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
-            errorNotification = randomErrorNotification(),
-            defaultState = states[0].name,
-            states = states
-        )
+        val policy =
+            Policy(
+                id = policyID,
+                description = "$testIndexName description",
+                schemaVersion = 1L,
+                lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
+                errorNotification = randomErrorNotification(),
+                defaultState = states[0].name,
+                states = states,
+            )
 
         createPolicy(policy, policyID)
         createIndex(indexName, policyID)

@@ -13,13 +13,13 @@ import org.opensearch.indexmanagement.snapshotmanagement.engine.states.WorkflowT
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata
 
 object DeletionStartState : State {
-
     override val continuous: Boolean = true
 
     override suspend fun execute(context: SMStateMachine): SMResult {
-        val metadataToSave = SMMetadata.Builder(context.metadata)
-            .workflow(WorkflowType.DELETION)
-            .setCurrentState(SMState.DELETION_START)
+        val metadataToSave =
+            SMMetadata.Builder(context.metadata)
+                .workflow(WorkflowType.DELETION)
+                .setCurrentState(SMState.DELETION_START)
 
         return SMResult.Next(metadataToSave)
     }

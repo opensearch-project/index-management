@@ -7,6 +7,7 @@ package org.opensearch.indexmanagement.rollup.resthandler
 
 import org.opensearch.client.ResponseException
 import org.opensearch.common.settings.Settings
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.indexmanagement.IndexManagementIndices
 import org.opensearch.indexmanagement.IndexManagementPlugin
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.ROLLUP_JOBS_BASE_URI
@@ -19,13 +20,11 @@ import org.opensearch.indexmanagement.rollup.model.RollupMetadata
 import org.opensearch.indexmanagement.rollup.randomRollup
 import org.opensearch.indexmanagement.waitFor
 import org.opensearch.jobscheduler.spi.schedule.IntervalSchedule
-import org.opensearch.core.rest.RestStatus
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 import java.util.Locale
 
 class RestStartRollupActionIT : RollupRestAPITestCase() {
-
     private val testName = javaClass.simpleName.lowercase(Locale.ROOT)
 
     @Throws(Exception::class)
@@ -81,24 +80,25 @@ class RestStartRollupActionIT : RollupRestAPITestCase() {
 
     @Throws(Exception::class)
     fun `test starting a failed rollup`() {
-        val rollup = Rollup(
-            id = "restart_failed_rollup",
-            schemaVersion = 1L,
-            enabled = true,
-            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
-            jobLastUpdatedTime = Instant.now(),
-            jobEnabledTime = Instant.now(),
-            description = "basic search test",
-            sourceIndex = "source_restart_failed_rollup",
-            targetIndex = "target_restart_failed_rollup",
-            metadataID = null,
-            roles = emptyList(),
-            pageSize = 10,
-            delay = 0,
-            continuous = false,
-            dimensions = listOf(DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "1h")),
-            metrics = emptyList()
-        ).let { createRollup(it, it.id) }
+        val rollup =
+            Rollup(
+                id = "restart_failed_rollup",
+                schemaVersion = 1L,
+                enabled = true,
+                jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+                jobLastUpdatedTime = Instant.now(),
+                jobEnabledTime = Instant.now(),
+                description = "basic search test",
+                sourceIndex = "source_restart_failed_rollup",
+                targetIndex = "target_restart_failed_rollup",
+                metadataID = null,
+                roles = emptyList(),
+                pageSize = 10,
+                delay = 0,
+                continuous = false,
+                dimensions = listOf(DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "1h")),
+                metrics = emptyList(),
+            ).let { createRollup(it, it.id) }
 
         // This should fail because we did not create a source index
         updateRollupStartTime(rollup)
@@ -143,24 +143,25 @@ class RestStartRollupActionIT : RollupRestAPITestCase() {
     @Throws(Exception::class)
     fun `test starting a finished rollup`() {
         generateNYCTaxiData("source_restart_finished_rollup")
-        val rollup = Rollup(
-            id = "restart_finished_rollup",
-            schemaVersion = 1L,
-            enabled = true,
-            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
-            jobLastUpdatedTime = Instant.now(),
-            jobEnabledTime = Instant.now(),
-            description = "basic search test",
-            sourceIndex = "source_restart_finished_rollup",
-            targetIndex = "target_restart_finished_rollup",
-            metadataID = null,
-            roles = emptyList(),
-            pageSize = 10,
-            delay = 0,
-            continuous = false,
-            dimensions = listOf(DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "1h")),
-            metrics = emptyList()
-        ).let { createRollup(it, it.id) }
+        val rollup =
+            Rollup(
+                id = "restart_finished_rollup",
+                schemaVersion = 1L,
+                enabled = true,
+                jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+                jobLastUpdatedTime = Instant.now(),
+                jobEnabledTime = Instant.now(),
+                description = "basic search test",
+                sourceIndex = "source_restart_finished_rollup",
+                targetIndex = "target_restart_finished_rollup",
+                metadataID = null,
+                roles = emptyList(),
+                pageSize = 10,
+                delay = 0,
+                continuous = false,
+                dimensions = listOf(DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "1h")),
+                metrics = emptyList(),
+            ).let { createRollup(it, it.id) }
 
         updateRollupStartTime(rollup)
         var firstRollupsIndexed = 0L
@@ -201,31 +202,33 @@ class RestStartRollupActionIT : RollupRestAPITestCase() {
         // setup ism-config index with multiple primary shards
         deleteIndex(IndexManagementPlugin.INDEX_MANAGEMENT_INDEX)
         val mapping = IndexManagementIndices.indexManagementMappings.trim().trimStart('{').trimEnd('}')
-        val settings = Settings.builder()
-            .put(INDEX_HIDDEN, true)
-            .put(INDEX_NUMBER_OF_SHARDS, 5)
-            .build()
+        val settings =
+            Settings.builder()
+                .put(INDEX_HIDDEN, true)
+                .put(INDEX_NUMBER_OF_SHARDS, 5)
+                .build()
         createIndex(IndexManagementPlugin.INDEX_MANAGEMENT_INDEX, settings, mapping)
         assertIndexExists(IndexManagementPlugin.INDEX_MANAGEMENT_INDEX)
 
-        val rollup = Rollup(
-            id = "multi_shard_start",
-            schemaVersion = 1L,
-            enabled = true,
-            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
-            jobLastUpdatedTime = Instant.now(),
-            jobEnabledTime = Instant.now(),
-            description = "basic search test",
-            sourceIndex = "source_multi_shard_start",
-            targetIndex = "target_multi_shard_start",
-            metadataID = null,
-            roles = emptyList(),
-            pageSize = 10,
-            delay = 0,
-            continuous = false,
-            dimensions = listOf(DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "1h")),
-            metrics = emptyList()
-        ).let { createRollup(it, it.id) }
+        val rollup =
+            Rollup(
+                id = "multi_shard_start",
+                schemaVersion = 1L,
+                enabled = true,
+                jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+                jobLastUpdatedTime = Instant.now(),
+                jobEnabledTime = Instant.now(),
+                description = "basic search test",
+                sourceIndex = "source_multi_shard_start",
+                targetIndex = "target_multi_shard_start",
+                metadataID = null,
+                roles = emptyList(),
+                pageSize = 10,
+                delay = 0,
+                continuous = false,
+                dimensions = listOf(DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "1h")),
+                metrics = emptyList(),
+            ).let { createRollup(it, it.id) }
 
         // The updateRollupStartTime call can be missed if the job scheduler hasn't started listening to the new index yet,
         // sleep a bit to let it initialize

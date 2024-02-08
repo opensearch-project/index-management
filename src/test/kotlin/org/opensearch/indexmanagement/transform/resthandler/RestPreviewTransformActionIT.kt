@@ -9,6 +9,7 @@ import org.junit.AfterClass
 import org.junit.Before
 import org.opensearch.client.ResponseException
 import org.opensearch.common.time.DateFormatter
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.index.IndexNotFoundException
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.TRANSFORM_BASE_URI
 import org.opensearch.indexmanagement.common.model.dimension.Terms
@@ -17,7 +18,6 @@ import org.opensearch.indexmanagement.transform.TransformRestTestCase
 import org.opensearch.indexmanagement.transform.model.Transform
 import org.opensearch.indexmanagement.transform.randomTransform
 import org.opensearch.jobscheduler.spi.schedule.IntervalSchedule
-import org.opensearch.core.rest.RestStatus
 import org.opensearch.search.aggregations.AggregationBuilders
 import org.opensearch.search.aggregations.AggregatorFactories
 import java.time.Instant
@@ -27,17 +27,19 @@ import java.time.temporal.ChronoUnit
 
 @Suppress("UNCHECKED_CAST")
 class RestPreviewTransformActionIT : TransformRestTestCase() {
-
-    private val factories = AggregatorFactories.builder()
-        .addAggregator(AggregationBuilders.sum("revenue").field("total_amount"))
-        .addAggregator(AggregationBuilders.percentiles("passengerCount").field("passenger_count").percentiles(90.0, 95.0))
-    private val transform = randomTransform().copy(
-        sourceIndex = sourceIndex,
-        groups = listOf(
-            Terms(sourceField = "store_and_fwd_flag", targetField = "flag")
-        ),
-        aggregations = factories
-    )
+    private val factories =
+        AggregatorFactories.builder()
+            .addAggregator(AggregationBuilders.sum("revenue").field("total_amount"))
+            .addAggregator(AggregationBuilders.percentiles("passengerCount").field("passenger_count").percentiles(90.0, 95.0))
+    private val transform =
+        randomTransform().copy(
+            sourceIndex = sourceIndex,
+            groups =
+            listOf(
+                Terms(sourceField = "store_and_fwd_flag", targetField = "flag"),
+            ),
+            aggregations = factories,
+        )
 
     @Before
     fun setupData() {
@@ -63,12 +65,13 @@ class RestPreviewTransformActionIT : TransformRestTestCase() {
     }
 
     fun `test preview`() {
-        val response = client().makeRequest(
-            "POST",
-            "$TRANSFORM_BASE_URI/_preview",
-            emptyMap(),
-            transform.toHttpEntity()
-        )
+        val response =
+            client().makeRequest(
+                "POST",
+                "$TRANSFORM_BASE_URI/_preview",
+                emptyMap(),
+                transform.toHttpEntity(),
+            )
         val expectedKeys = setOf("revenue", "passengerCount", "flag", "transform._doc_count", "_doc_count")
         assertEquals("Preview transform failed", RestStatus.OK, response.restStatus())
         val transformedDocs = response.asMap()["documents"] as List<Map<String, Any>>
@@ -80,31 +83,34 @@ class RestPreviewTransformActionIT : TransformRestTestCase() {
         val pickupDateTime = "tpep_pickup_datetime"
         val fareAmount = "fare_amount"
 
-        val transform = Transform(
-            id = "id_14",
-            schemaVersion = 1L,
-            enabled = true,
-            enabledAt = Instant.now(),
-            updatedAt = Instant.now(),
-            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
-            description = "test transform doc values must be the same",
-            metadataId = null,
-            sourceIndex = sourceIndex,
-            targetIndex = targetIdxTestName,
-            roles = emptyList(),
-            pageSize = 1,
-            groups = listOf(
-                Terms(sourceField = pickupDateTime, targetField = pickupDateTime)
-            ),
-            aggregations = AggregatorFactories.builder().addAggregator(AggregationBuilders.avg(fareAmount).field(fareAmount))
-        ).let { createTransform(it, it.id) }
+        val transform =
+            Transform(
+                id = "id_14",
+                schemaVersion = 1L,
+                enabled = true,
+                enabledAt = Instant.now(),
+                updatedAt = Instant.now(),
+                jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+                description = "test transform doc values must be the same",
+                metadataId = null,
+                sourceIndex = sourceIndex,
+                targetIndex = targetIdxTestName,
+                roles = emptyList(),
+                pageSize = 1,
+                groups =
+                listOf(
+                    Terms(sourceField = pickupDateTime, targetField = pickupDateTime),
+                ),
+                aggregations = AggregatorFactories.builder().addAggregator(AggregationBuilders.avg(fareAmount).field(fareAmount)),
+            ).let { createTransform(it, it.id) }
 
-        val response = client().makeRequest(
-            "POST",
-            "$TRANSFORM_BASE_URI/_preview",
-            emptyMap(),
-            transform.toHttpEntity()
-        )
+        val response =
+            client().makeRequest(
+                "POST",
+                "$TRANSFORM_BASE_URI/_preview",
+                emptyMap(),
+                transform.toHttpEntity(),
+            )
         val expectedKeys = setOf("fare_amount", "tpep_pickup_datetime", "transform._doc_count", "_doc_count")
         assertEquals("Preview transform failed", RestStatus.OK, response.restStatus())
         val transformedDocs = response.asMap()["documents"] as List<Map<String, Any>>
@@ -116,18 +122,20 @@ class RestPreviewTransformActionIT : TransformRestTestCase() {
     }
 
     fun `test mismatched columns`() {
-        val factories = AggregatorFactories.builder()
-            .addAggregator(AggregationBuilders.sum("revenue").field("total_amountdzdfd"))
-        val transform = transform.copy(
-            groups = listOf(Terms(sourceField = "non-existent", targetField = "non-existent")),
-            aggregations = factories
-        )
+        val factories =
+            AggregatorFactories.builder()
+                .addAggregator(AggregationBuilders.sum("revenue").field("total_amountdzdfd"))
+        val transform =
+            transform.copy(
+                groups = listOf(Terms(sourceField = "non-existent", targetField = "non-existent")),
+                aggregations = factories,
+            )
         try {
             client().makeRequest(
                 "POST",
                 "$TRANSFORM_BASE_URI/_preview",
                 emptyMap(),
-                transform.toHttpEntity()
+                transform.toHttpEntity(),
             )
             fail("expected exception")
         } catch (e: ResponseException) {
@@ -142,7 +150,7 @@ class RestPreviewTransformActionIT : TransformRestTestCase() {
                 "POST",
                 "$TRANSFORM_BASE_URI/_preview",
                 emptyMap(),
-                transform.toHttpEntity()
+                transform.toHttpEntity(),
             )
             fail("expected exception")
         } catch (e: ResponseException) {
