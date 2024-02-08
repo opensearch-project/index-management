@@ -14,10 +14,10 @@ import org.opensearch.indexmanagement.indexstatemanagement.randomErrorNotificati
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings
 import org.opensearch.indexmanagement.indexstatemanagement.step.readonly.SetReadOnlyStep
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
-import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StateMetaData
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ActionMetaData
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.PolicyRetryInfoMetaData
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StateMetaData
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepMetaData
 import org.opensearch.indexmanagement.waitFor
 import java.time.Instant
@@ -32,7 +32,7 @@ class IndexStateManagementHistoryIT : IndexStateManagementRestTestCase() {
         val policyID = "${testIndexName}_testPolicyName_1"
         val actionConfig = ReadOnlyAction(0)
         val states = listOf(
-            State("ReadOnlyState", listOf(actionConfig), listOf())
+            State("ReadOnlyState", listOf(actionConfig), listOf()),
         )
         val policy = Policy(
             id = policyID,
@@ -41,7 +41,7 @@ class IndexStateManagementHistoryIT : IndexStateManagementRestTestCase() {
             lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
             errorNotification = randomErrorNotification(),
             defaultState = states[0].name,
-            states = states
+            states = states,
         )
 
         createPolicy(policy, policyID)
@@ -76,7 +76,7 @@ class IndexStateManagementHistoryIT : IndexStateManagementRestTestCase() {
             actionMetaData = ActionMetaData(ReadOnlyAction.name, actualHistory.actionMetaData!!.startTime, 0, false, 0, 0, null),
             stepMetaData = StepMetaData("set_read_only", actualHistory.stepMetaData!!.startTime, Step.StepStatus.COMPLETED),
             policyRetryInfo = PolicyRetryInfoMetaData(false, 0),
-            info = mapOf("message" to SetReadOnlyStep.getSuccessMessage(indexName))
+            info = mapOf("message" to SetReadOnlyStep.getSuccessMessage(indexName)),
         )
         assertEquals(expectedHistory, actualHistory)
 
@@ -88,7 +88,7 @@ class IndexStateManagementHistoryIT : IndexStateManagementRestTestCase() {
         val policyID = "${testIndexName}_testPolicyName_2"
         val actionConfig = ReadOnlyAction(0)
         val states = listOf(
-            State("ReadOnlyState", listOf(actionConfig), listOf())
+            State("ReadOnlyState", listOf(actionConfig), listOf()),
         )
         val policy = Policy(
             id = policyID,
@@ -97,7 +97,7 @@ class IndexStateManagementHistoryIT : IndexStateManagementRestTestCase() {
             lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
             errorNotification = randomErrorNotification(),
             defaultState = states[0].name,
-            states = states
+            states = states,
         )
 
         createPolicy(policy, policyID)
@@ -137,7 +137,7 @@ class IndexStateManagementHistoryIT : IndexStateManagementRestTestCase() {
             actionMetaData = ActionMetaData(ReadOnlyAction.name, actualHistory.actionMetaData!!.startTime, 0, false, 0, 0, null),
             stepMetaData = StepMetaData("set_read_only", actualHistory.stepMetaData!!.startTime, Step.StepStatus.COMPLETED),
             policyRetryInfo = PolicyRetryInfoMetaData(false, 0),
-            info = mapOf("message" to SetReadOnlyStep.getSuccessMessage(indexName))
+            info = mapOf("message" to SetReadOnlyStep.getSuccessMessage(indexName)),
         )
         assertEquals(expectedHistory, actualHistory)
 
@@ -168,7 +168,7 @@ class IndexStateManagementHistoryIT : IndexStateManagementRestTestCase() {
             lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
             errorNotification = randomErrorNotification(),
             defaultState = states[0].name,
-            states = states
+            states = states,
         )
 
         createPolicy(policy, policyID)

@@ -81,7 +81,7 @@ class SampleCustomActionParser : ActionParser() {
             return currentMetadata.copy(
                 stepMetaData = StepMetaData(name, getStepStartTime(currentMetadata).toEpochMilli(), stepStatus),
                 transitionTo = null,
-                info = null
+                info = null,
             )
         }
 

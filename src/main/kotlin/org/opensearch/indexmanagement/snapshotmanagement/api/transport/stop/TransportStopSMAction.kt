@@ -18,6 +18,7 @@ import org.opensearch.common.inject.Inject
 import org.opensearch.common.settings.Settings
 import org.opensearch.common.util.concurrent.ThreadContext
 import org.opensearch.commons.authuser.User
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.index.engine.VersionConflictEngineException
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
@@ -27,7 +28,6 @@ import org.opensearch.indexmanagement.snapshotmanagement.getSMPolicy
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy
 import org.opensearch.indexmanagement.snapshotmanagement.settings.SnapshotManagementSettings.Companion.FILTER_BY_BACKEND_ROLES
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.verifyUserHasPermissionForResource
-import org.opensearch.core.rest.RestStatus
 import org.opensearch.transport.TransportService
 import java.time.Instant
 
@@ -38,7 +38,7 @@ class TransportStopSMAction @Inject constructor(
     val clusterService: ClusterService,
     val settings: Settings,
 ) : BaseTransportAction<StopSMRequest, AcknowledgedResponse>(
-    SMActions.STOP_SM_POLICY_ACTION_NAME, transportService, client, actionFilters, ::StopSMRequest
+    SMActions.STOP_SM_POLICY_ACTION_NAME, transportService, client, actionFilters, ::StopSMRequest,
 ) {
 
     private val log = LogManager.getLogger(javaClass)
@@ -54,7 +54,7 @@ class TransportStopSMAction @Inject constructor(
     override suspend fun executeRequest(
         request: StopSMRequest,
         user: User?,
-        threadContext: ThreadContext.StoredContext
+        threadContext: ThreadContext.StoredContext,
     ): AcknowledgedResponse {
         val smPolicy = client.getSMPolicy(request.id())
 
@@ -75,9 +75,9 @@ class TransportStopSMAction @Inject constructor(
                 SMPolicy.SM_TYPE to mapOf(
                     SMPolicy.ENABLED_FIELD to false,
                     SMPolicy.ENABLED_TIME_FIELD to null,
-                    SMPolicy.LAST_UPDATED_TIME_FIELD to now
-                )
-            )
+                    SMPolicy.LAST_UPDATED_TIME_FIELD to now,
+                ),
+            ),
         )
         val updateResponse: UpdateResponse = try {
             client.suspendUntil { update(updateRequest, it) }

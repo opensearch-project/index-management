@@ -18,7 +18,7 @@ import java.io.IOException
 class RestDeleteLRONConfigAction : BaseRestHandler() {
     override fun routes(): List<RestHandler.Route> {
         return listOf(
-            RestHandler.Route(RestRequest.Method.DELETE, "${IndexManagementPlugin.LRON_BASE_URI}/{id}")
+            RestHandler.Route(RestRequest.Method.DELETE, "${IndexManagementPlugin.LRON_BASE_URI}/{id}"),
         )
     }
 

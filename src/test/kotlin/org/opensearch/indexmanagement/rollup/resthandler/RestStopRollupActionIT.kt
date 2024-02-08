@@ -7,6 +7,7 @@ package org.opensearch.indexmanagement.rollup.resthandler
 
 import org.opensearch.client.ResponseException
 import org.opensearch.common.settings.Settings
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.indexmanagement.IndexManagementIndices
 import org.opensearch.indexmanagement.IndexManagementPlugin
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.ROLLUP_JOBS_BASE_URI
@@ -21,7 +22,6 @@ import org.opensearch.indexmanagement.rollup.model.RollupMetadata
 import org.opensearch.indexmanagement.rollup.randomRollup
 import org.opensearch.indexmanagement.waitFor
 import org.opensearch.jobscheduler.spi.schedule.IntervalSchedule
-import org.opensearch.core.rest.RestStatus
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 import java.util.Locale
@@ -76,9 +76,9 @@ class RestStopRollupActionIT : RollupRestAPITestCase() {
                     jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
                     enabled = true,
                     jobEnabledTime = Instant.now(),
-                    metadataID = null
+                    metadataID = null,
                 ),
-            rollupId = "$testName-3"
+            rollupId = "$testName-3",
         )
         createRollupSourceIndex(rollup)
         updateRollupStartTime(rollup)
@@ -115,7 +115,7 @@ class RestStopRollupActionIT : RollupRestAPITestCase() {
             jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
             enabled = true,
             jobEnabledTime = Instant.now(),
-            metadataID = null
+            metadataID = null,
         ).let { createRollup(it, it.id) }
         updateRollupStartTime(rollup)
 
@@ -150,9 +150,9 @@ class RestStopRollupActionIT : RollupRestAPITestCase() {
                     jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
                     enabled = true,
                     jobEnabledTime = Instant.now(),
-                    metadataID = null
+                    metadataID = null,
                 ),
-            rollupId = "$testName-4"
+            rollupId = "$testName-4",
         )
 
         // Force rollup to execute which should fail as we did not create a source index
@@ -213,9 +213,9 @@ class RestStopRollupActionIT : RollupRestAPITestCase() {
             dimensions = listOf(
                 DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "1h"),
                 Terms("RatecodeID", "RatecodeID"),
-                Terms("PULocationID", "PULocationID")
+                Terms("PULocationID", "PULocationID"),
             ),
-            metrics = emptyList()
+            metrics = emptyList(),
         ).let { createRollup(it, it.id) }
 
         updateRollupStartTime(rollup)
@@ -280,9 +280,9 @@ class RestStopRollupActionIT : RollupRestAPITestCase() {
             dimensions = listOf(
                 DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "1h"),
                 Terms("RatecodeID", "RatecodeID"),
-                Terms("PULocationID", "PULocationID")
+                Terms("PULocationID", "PULocationID"),
             ),
-            metrics = emptyList()
+            metrics = emptyList(),
         ).let { createRollup(it, it.id) }
 
         // The updateRollupStartTime call can be missed if the job scheduler hasn't started listening to the new index yet,

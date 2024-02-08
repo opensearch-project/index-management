@@ -5,13 +5,13 @@
 
 package org.opensearch.indexmanagement.snapshotmanagement.engine.states
 
+import org.opensearch.indexmanagement.snapshotmanagement.engine.states.creation.CreatingState
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.creation.CreationConditionMetState
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.creation.CreationFinishedState
-import org.opensearch.indexmanagement.snapshotmanagement.engine.states.creation.CreatingState
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.creation.CreationStartState
+import org.opensearch.indexmanagement.snapshotmanagement.engine.states.deletion.DeletingState
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.deletion.DeletionConditionMetState
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.deletion.DeletionFinishedState
-import org.opensearch.indexmanagement.snapshotmanagement.engine.states.deletion.DeletingState
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.deletion.DeletionStartState
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata
 

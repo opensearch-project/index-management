@@ -20,35 +20,35 @@ class TransformSettings {
             "plugins.transform.internal.search.backoff_count",
             5,
             Setting.Property.NodeScope,
-            Setting.Property.Dynamic
+            Setting.Property.Dynamic,
         )
 
         val TRANSFORM_JOB_SEARCH_BACKOFF_MILLIS: Setting<TimeValue> = Setting.positiveTimeSetting(
             "plugins.transform.internal.search.backoff_millis",
             TimeValue.timeValueMillis(1000),
             Setting.Property.NodeScope,
-            Setting.Property.Dynamic
+            Setting.Property.Dynamic,
         )
 
         val TRANSFORM_JOB_INDEX_BACKOFF_COUNT: Setting<Int> = Setting.intSetting(
             "plugins.transform.internal.index.backoff_count",
             5,
             Setting.Property.NodeScope,
-            Setting.Property.Dynamic
+            Setting.Property.Dynamic,
         )
 
         val TRANSFORM_JOB_INDEX_BACKOFF_MILLIS: Setting<TimeValue> = Setting.positiveTimeSetting(
             "plugins.transform.internal.index.backoff_millis",
             TimeValue.timeValueMillis(1000),
             Setting.Property.NodeScope,
-            Setting.Property.Dynamic
+            Setting.Property.Dynamic,
         )
 
         val TRANSFORM_CIRCUIT_BREAKER_ENABLED: Setting<Boolean> = Setting.boolSetting(
             "plugins.transform.circuit_breaker.enabled",
             true,
             Setting.Property.NodeScope,
-            Setting.Property.Dynamic
+            Setting.Property.Dynamic,
         )
 
         val TRANSFORM_CIRCUIT_BREAKER_JVM_THRESHOLD: Setting<Int> = Setting.intSetting(
@@ -57,7 +57,7 @@ class TransformSettings {
             0,
             100,
             Setting.Property.NodeScope,
-            Setting.Property.Dynamic
+            Setting.Property.Dynamic,
         )
     }
 }

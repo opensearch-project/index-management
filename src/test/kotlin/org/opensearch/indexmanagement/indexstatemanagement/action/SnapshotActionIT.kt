@@ -28,7 +28,7 @@ class SnapshotActionIT : IndexStateManagementRestTestCase() {
         val snapshot = "snapshot"
         val actionConfig = SnapshotAction(repository, snapshot, 0)
         val states = listOf(
-            State("Snapshot", listOf(actionConfig), listOf())
+            State("Snapshot", listOf(actionConfig), listOf()),
         )
 
         createRepository(repository)
@@ -40,7 +40,7 @@ class SnapshotActionIT : IndexStateManagementRestTestCase() {
             lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
             errorNotification = randomErrorNotification(),
             defaultState = states[0].name,
-            states = states
+            states = states,
         )
         createPolicy(policy, policyID)
         createIndex(indexName, policyID)
@@ -65,7 +65,7 @@ class SnapshotActionIT : IndexStateManagementRestTestCase() {
         val repository = "repository"
         val actionConfig = SnapshotAction(repository, "{{ctx.index}}", 0)
         val states = listOf(
-            State("Snapshot", listOf(actionConfig), listOf())
+            State("Snapshot", listOf(actionConfig), listOf()),
         )
 
         createRepository(repository)
@@ -77,7 +77,7 @@ class SnapshotActionIT : IndexStateManagementRestTestCase() {
             lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
             errorNotification = randomErrorNotification(),
             defaultState = states[0].name,
-            states = states
+            states = states,
         )
         createPolicy(policy, policyID)
         createIndex(indexName, policyID)
@@ -102,7 +102,7 @@ class SnapshotActionIT : IndexStateManagementRestTestCase() {
         val repository = "repository"
         val actionConfig = SnapshotAction(repository, "{{ctx.someField}}", 0)
         val states = listOf(
-            State("Snapshot", listOf(actionConfig), listOf())
+            State("Snapshot", listOf(actionConfig), listOf()),
         )
 
         createRepository(repository)
@@ -114,7 +114,7 @@ class SnapshotActionIT : IndexStateManagementRestTestCase() {
             lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
             errorNotification = randomErrorNotification(),
             defaultState = states[0].name,
-            states = states
+            states = states,
         )
         createPolicy(policy, policyID)
         createIndex(indexName, policyID)
@@ -140,7 +140,7 @@ class SnapshotActionIT : IndexStateManagementRestTestCase() {
         val snapshot = "snapshot_success_test"
         val actionConfig = SnapshotAction(repository, snapshot, 0)
         val states = listOf(
-            State("Snapshot", listOf(actionConfig), listOf())
+            State("Snapshot", listOf(actionConfig), listOf()),
         )
 
         createRepository(repository)
@@ -152,7 +152,7 @@ class SnapshotActionIT : IndexStateManagementRestTestCase() {
             lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
             errorNotification = randomErrorNotification(),
             defaultState = states[0].name,
-            states = states
+            states = states,
         )
         createPolicy(policy, policyID)
         createIndex(indexName, policyID)
@@ -174,7 +174,7 @@ class SnapshotActionIT : IndexStateManagementRestTestCase() {
         // verify we set snapshotName in action properties
         waitFor {
             assert(
-                getExplainManagedIndexMetaData(indexName).actionMetaData?.actionProperties?.snapshotName?.contains(snapshot) == true
+                getExplainManagedIndexMetaData(indexName).actionMetaData?.actionProperties?.snapshotName?.contains(snapshot) == true,
             )
         }
 
@@ -189,7 +189,7 @@ class SnapshotActionIT : IndexStateManagementRestTestCase() {
         val snapshot = "-"
         val actionConfig = SnapshotAction(repository, "", 0)
         val states = listOf(
-            State("Snapshot", listOf(actionConfig), listOf())
+            State("Snapshot", listOf(actionConfig), listOf()),
         )
 
         createRepository(repository)
@@ -201,7 +201,7 @@ class SnapshotActionIT : IndexStateManagementRestTestCase() {
             lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
             errorNotification = randomErrorNotification(),
             defaultState = states[0].name,
-            states = states
+            states = states,
         )
         createPolicy(policy, policyID)
         createIndex(indexName, policyID)
@@ -223,7 +223,7 @@ class SnapshotActionIT : IndexStateManagementRestTestCase() {
         // verify we set snapshotName in action properties
         waitFor {
             assert(
-                getExplainManagedIndexMetaData(indexName).actionMetaData?.actionProperties?.snapshotName?.contains(snapshot) == true
+                getExplainManagedIndexMetaData(indexName).actionMetaData?.actionProperties?.snapshotName?.contains(snapshot) == true,
             )
         }
 
@@ -238,7 +238,7 @@ class SnapshotActionIT : IndexStateManagementRestTestCase() {
         val snapshot = "snapshot_failed_test"
         val actionConfig = SnapshotAction(repository, snapshot, 0)
         val states = listOf(
-            State("Snapshot", listOf(actionConfig), listOf())
+            State("Snapshot", listOf(actionConfig), listOf()),
         )
 
         createRepository(repository)
@@ -250,7 +250,7 @@ class SnapshotActionIT : IndexStateManagementRestTestCase() {
             lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
             errorNotification = randomErrorNotification(),
             defaultState = states[0].name,
-            states = states
+            states = states,
         )
         createPolicy(policy, policyID)
         createIndex(indexName, policyID)
@@ -291,7 +291,7 @@ class SnapshotActionIT : IndexStateManagementRestTestCase() {
         val repository = "hello-world"
         val actionConfig = SnapshotAction(repository, "snapshot", 0)
         val states = listOf(
-            State("Snapshot", listOf(actionConfig), listOf())
+            State("Snapshot", listOf(actionConfig), listOf()),
         )
 
         createRepository(repository)
@@ -303,7 +303,7 @@ class SnapshotActionIT : IndexStateManagementRestTestCase() {
             lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
             errorNotification = randomErrorNotification(),
             defaultState = states[0].name,
-            states = states
+            states = states,
         )
         createPolicy(policy, policyID)
         createIndex(indexName, policyID)

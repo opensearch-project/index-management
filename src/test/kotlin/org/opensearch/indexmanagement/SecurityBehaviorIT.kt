@@ -15,8 +15,8 @@ import org.junit.After
 import org.junit.Before
 import org.opensearch.client.RestClient
 import org.opensearch.commons.rest.SecureRestClientBuilder
-import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings
 import org.opensearch.core.rest.RestStatus
+import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings
 import org.opensearch.test.junit.annotations.TestLogging
 
 @TestLogging("level:DEBUG", reason = "Debug for tests.")
@@ -34,7 +34,7 @@ class SecurityBehaviorIT : SecurityRestTestCase() {
             WRITE_POLICY,
             GET_POLICY,
             GET_POLICIES,
-            EXPLAIN_INDEX
+            EXPLAIN_INDEX,
         )
 
         val indexPermissions = listOf(
@@ -44,7 +44,7 @@ class SecurityBehaviorIT : SecurityRestTestCase() {
             BULK_WRITE_INDEX,
             GET_INDEX_MAPPING,
             SEARCH_INDEX,
-            PUT_INDEX_MAPPING
+            PUT_INDEX_MAPPING,
         )
         // In this test suite case john is a "super-user" which has all relevant privileges
         createUser(john, password, listOf(HELPDESK))
@@ -74,7 +74,7 @@ class SecurityBehaviorIT : SecurityRestTestCase() {
             EXPLAIN_INDEX,
             GET_POLICY,
             WRITE_POLICY,
-            GET_POLICIES
+            GET_POLICIES,
         )
 
         val indexPermissions = listOf(
@@ -82,7 +82,7 @@ class SecurityBehaviorIT : SecurityRestTestCase() {
             CREATE_INDEX,
             GET_INDEX_MAPPING,
             SEARCH_INDEX,
-            PUT_INDEX_MAPPING
+            PUT_INDEX_MAPPING,
         )
         // Jane is phone operator; Phone operators can search availability indexes
         createUserWithCustomRole(
@@ -92,7 +92,7 @@ class SecurityBehaviorIT : SecurityRestTestCase() {
             phoneOperatorClusterPermissions,
             indexPermissions,
             listOf(PHONE_OPERATOR),
-            listOf(AVAILABILITY_INDEX_PATTERN)
+            listOf(AVAILABILITY_INDEX_PATTERN),
         )
 
         val jillClient =

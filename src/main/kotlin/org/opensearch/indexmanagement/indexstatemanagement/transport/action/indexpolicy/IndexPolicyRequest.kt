@@ -28,7 +28,7 @@ class IndexPolicyRequest : ActionRequest {
         policy: Policy,
         seqNo: Long,
         primaryTerm: Long,
-        refreshPolicy: WriteRequest.RefreshPolicy
+        refreshPolicy: WriteRequest.RefreshPolicy,
     ) : super() {
         this.policyID = policyID
         this.policy = policy
@@ -43,7 +43,7 @@ class IndexPolicyRequest : ActionRequest {
         policy = Policy(sin),
         seqNo = sin.readLong(),
         primaryTerm = sin.readLong(),
-        refreshPolicy = sin.readEnum(WriteRequest.RefreshPolicy::class.java)
+        refreshPolicy = sin.readEnum(WriteRequest.RefreshPolicy::class.java),
     )
 
     override fun validate(): ActionRequestValidationException? {

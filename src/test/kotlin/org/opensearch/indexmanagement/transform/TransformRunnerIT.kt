@@ -11,6 +11,7 @@ import org.opensearch.client.Request
 import org.opensearch.client.RequestOptions
 import org.opensearch.common.settings.Settings
 import org.opensearch.common.xcontent.XContentType
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.index.query.TermQueryBuilder
 import org.opensearch.indexmanagement.common.model.dimension.DateHistogram
 import org.opensearch.indexmanagement.common.model.dimension.Histogram
@@ -21,7 +22,6 @@ import org.opensearch.indexmanagement.transform.model.TransformMetadata
 import org.opensearch.indexmanagement.waitFor
 import org.opensearch.jobscheduler.spi.schedule.IntervalSchedule
 import org.opensearch.rest.RestRequest
-import org.opensearch.core.rest.RestStatus
 import org.opensearch.script.Script
 import org.opensearch.script.ScriptType
 import org.opensearch.search.aggregations.AggregationBuilders
@@ -52,8 +52,8 @@ class TransformRunnerIT : TransformRestTestCase() {
             roles = emptyList(),
             pageSize = 1,
             groups = listOf(
-                Terms(sourceField = "store_and_fwd_flag", targetField = "flag")
-            )
+                Terms(sourceField = "store_and_fwd_flag", targetField = "flag"),
+            ),
         ).let { createTransform(it, it.id) }
 
         updateTransformStartTime(transform)
@@ -93,9 +93,9 @@ class TransformRunnerIT : TransformRestTestCase() {
             roles = emptyList(),
             pageSize = 1,
             groups = listOf(
-                Terms(sourceField = "store_and_fwd_flag", targetField = "flag")
+                Terms(sourceField = "store_and_fwd_flag", targetField = "flag"),
             ),
-            dataSelectionQuery = TermQueryBuilder("store_and_fwd_flag", "N")
+            dataSelectionQuery = TermQueryBuilder("store_and_fwd_flag", "N"),
         ).let { createTransform(it, it.id) }
 
         updateTransformStartTime(transform)
@@ -153,25 +153,25 @@ class TransformRunnerIT : TransformRestTestCase() {
                         ScriptType.INLINE,
                         Script.DEFAULT_SCRIPT_LANG,
                         "state.sum += doc[\"total_amount\"].value; state.count += doc[\"passenger_count\"].value",
-                        emptyMap()
-                    )
+                        emptyMap(),
+                    ),
                 )
                 .combineScript(
                     Script(
                         ScriptType.INLINE,
                         Script.DEFAULT_SCRIPT_LANG,
                         "def d = new long[2]; d[0] = state.sum; d[1] = state.count; return d",
-                        emptyMap()
-                    )
+                        emptyMap(),
+                    ),
                 )
                 .reduceScript(
                     Script(
                         ScriptType.INLINE,
                         Script.DEFAULT_SCRIPT_LANG,
                         "double sum = 0; double count = 0; for (a in states) { sum += a[0]; count += a[1]; } return sum/count",
-                        emptyMap()
-                    )
-                )
+                        emptyMap(),
+                    ),
+                ),
         )
 
         val transform = Transform(
@@ -188,9 +188,9 @@ class TransformRunnerIT : TransformRestTestCase() {
             roles = emptyList(),
             pageSize = 1,
             groups = listOf(
-                Terms(sourceField = "store_and_fwd_flag", targetField = "flag")
+                Terms(sourceField = "store_and_fwd_flag", targetField = "flag"),
             ),
-            aggregations = aggregatorFactories
+            aggregations = aggregatorFactories,
         ).let { createTransform(it, it.id) }
 
         updateTransformStartTime(transform)
@@ -235,9 +235,9 @@ class TransformRunnerIT : TransformRestTestCase() {
             roles = emptyList(),
             pageSize = 1,
             groups = listOf(
-                Terms(sourceField = storeAndForwardTerm, targetField = storeAndForwardTerm)
+                Terms(sourceField = storeAndForwardTerm, targetField = storeAndForwardTerm),
             ),
-            aggregations = AggregatorFactories.builder().addAggregator(AggregationBuilders.avg(fareAmount).field(fareAmount))
+            aggregations = AggregatorFactories.builder().addAggregator(AggregationBuilders.avg(fareAmount).field(fareAmount)),
         ).let { createTransform(it, it.id) }
 
         updateTransformStartTime(transform)
@@ -281,7 +281,7 @@ class TransformRunnerIT : TransformRestTestCase() {
                 val transformAggBucket = transformAggBuckets[idx]
                 assertEquals(
                     "The doc_count had a different value raw[$rawAggBucket] transform[$transformAggBucket]",
-                    rawAggBucket["doc_count"]!!, transformAggBucket["doc_count"]!!
+                    rawAggBucket["doc_count"]!!, transformAggBucket["doc_count"]!!,
                 )
             }
         }
@@ -312,9 +312,9 @@ class TransformRunnerIT : TransformRestTestCase() {
             roles = emptyList(),
             pageSize = 1,
             groups = listOf(
-                Terms(sourceField = pickupDateTime, targetField = pickupDateTime)
+                Terms(sourceField = pickupDateTime, targetField = pickupDateTime),
             ),
-            aggregations = AggregatorFactories.builder().addAggregator(AggregationBuilders.avg(fareAmount).field(fareAmount))
+            aggregations = AggregatorFactories.builder().addAggregator(AggregationBuilders.avg(fareAmount).field(fareAmount)),
         ).let { createTransform(it, it.id) }
 
         updateTransformStartTime(transform)
@@ -403,9 +403,9 @@ class TransformRunnerIT : TransformRestTestCase() {
             roles = emptyList(),
             pageSize = 1,
             groups = listOf(
-                Terms(sourceField = storeAndForward, targetField = storeAndForward)
+                Terms(sourceField = storeAndForward, targetField = storeAndForward),
             ),
-            aggregations = AggregatorFactories.builder().addAggregator(avgFareAmountAgg).addAggregator(maxDateAggBuilder)
+            aggregations = AggregatorFactories.builder().addAggregator(avgFareAmountAgg).addAggregator(maxDateAggBuilder),
         ).let { createTransform(it, it.id) }
         updateTransformStartTime(transform)
 
@@ -496,9 +496,9 @@ class TransformRunnerIT : TransformRestTestCase() {
             roles = emptyList(),
             pageSize = 1,
             groups = listOf(
-                Terms(sourceField = pickupDateTime, targetField = pickupDateTimeTerm)
+                Terms(sourceField = pickupDateTime, targetField = pickupDateTimeTerm),
             ),
-            aggregations = AggregatorFactories.builder().addAggregator(avgFareAmountAgg).addAggregator(countDateAggBuilder)
+            aggregations = AggregatorFactories.builder().addAggregator(avgFareAmountAgg).addAggregator(countDateAggBuilder),
         ).let { createTransform(it, it.id) }
         updateTransformStartTime(transform)
 
@@ -606,8 +606,8 @@ class TransformRunnerIT : TransformRestTestCase() {
             roles = emptyList(),
             pageSize = 1,
             groups = listOf(
-                Terms(sourceField = "store_and_fwd_flag", targetField = "flag")
-            )
+                Terms(sourceField = "store_and_fwd_flag", targetField = "flag"),
+            ),
         ).let { createTransform(it, it.id) }
 
         updateTransformStartTime(transform)
@@ -635,25 +635,25 @@ class TransformRunnerIT : TransformRestTestCase() {
                         ScriptType.INLINE,
                         Script.DEFAULT_SCRIPT_LANG,
                         "state.sum += doc[\"random_field\"].value; state.count += doc[\"passenger_count\"].value",
-                        emptyMap()
-                    )
+                        emptyMap(),
+                    ),
                 )
                 .combineScript(
                     Script(
                         ScriptType.INLINE,
                         Script.DEFAULT_SCRIPT_LANG,
                         "def d = new long[2]; d[0] = state.sum; d[1] = state.count; return d",
-                        emptyMap()
-                    )
+                        emptyMap(),
+                    ),
                 )
                 .reduceScript(
                     Script(
                         ScriptType.INLINE,
                         Script.DEFAULT_SCRIPT_LANG,
                         "double sum = 0; double count = 0; for (a in states) { sum += a[0]; count += a[1]; } return sum/count",
-                        emptyMap()
-                    )
-                )
+                        emptyMap(),
+                    ),
+                ),
         )
 
         val transform = Transform(
@@ -672,9 +672,9 @@ class TransformRunnerIT : TransformRestTestCase() {
             groups = listOf(
                 Terms(sourceField = "store_and_fwd_flag", targetField = "flag"),
                 Histogram(sourceField = "passenger_count", targetField = "count", interval = 2.0),
-                DateHistogram(sourceField = "tpep_pickup_datetime", targetField = "date", fixedInterval = "1d")
+                DateHistogram(sourceField = "tpep_pickup_datetime", targetField = "date", fixedInterval = "1d"),
             ),
-            aggregations = aggregatorFactories
+            aggregations = aggregatorFactories,
         ).let { createTransform(it, it.id) }
 
         updateTransformStartTime(transform)
@@ -698,8 +698,8 @@ class TransformRunnerIT : TransformRestTestCase() {
             aggregatorFactories.addPipelineAggregator(
                 BucketScriptPipelineAggregationBuilder(
                     "test_pipeline_aggregation",
-                    Script("1")
-                )
+                    Script("1"),
+                ),
             )
 
             val transform = Transform(
@@ -718,9 +718,9 @@ class TransformRunnerIT : TransformRestTestCase() {
                 groups = listOf(
                     Terms(sourceField = "store_and_fwd_flag", targetField = "flag"),
                     Histogram(sourceField = "passenger_count", targetField = "count", interval = 2.0),
-                    DateHistogram(sourceField = "tpep_pickup_datetime", targetField = "date", fixedInterval = "1d")
+                    DateHistogram(sourceField = "tpep_pickup_datetime", targetField = "date", fixedInterval = "1d"),
                 ),
-                aggregations = aggregatorFactories
+                aggregations = aggregatorFactories,
             ).let { createTransform(it, it.id) }
             updateTransformStartTime(transform)
         }
@@ -744,8 +744,8 @@ class TransformRunnerIT : TransformRestTestCase() {
                     }
                 }
                 """.trimIndent(),
-                ContentType.APPLICATION_JSON
-            )
+                ContentType.APPLICATION_JSON,
+            ),
         )
         client().makeRequest("PUT", "/_data_stream/$dataStreamName")
 
@@ -770,8 +770,8 @@ class TransformRunnerIT : TransformRestTestCase() {
             roles = emptyList(),
             pageSize = 100,
             groups = listOf(
-                Terms(sourceField = "store_and_fwd_flag", targetField = "flag")
-            )
+                Terms(sourceField = "store_and_fwd_flag", targetField = "flag"),
+            ),
         ).let { createTransform(it, it.id) }
 
         updateTransformStartTime(transform)
@@ -812,9 +812,9 @@ class TransformRunnerIT : TransformRestTestCase() {
             pageSize = 100,
             groups = listOf(
                 Terms(sourceField = "store_and_fwd_flag", targetField = "flag"),
-                Histogram(sourceField = "trip_distance", targetField = "distance", interval = 0.1)
+                Histogram(sourceField = "trip_distance", targetField = "distance", interval = 0.1),
             ),
-            continuous = true
+            continuous = true,
         ).let { createTransform(it, it.id) }
 
         updateTransformStartTime(transform)
@@ -880,10 +880,10 @@ class TransformRunnerIT : TransformRestTestCase() {
             roles = emptyList(),
             pageSize = 100,
             groups = listOf(
-                Terms(sourceField = "store_and_fwd_flag", targetField = "flag")
+                Terms(sourceField = "store_and_fwd_flag", targetField = "flag"),
             ),
             continuous = true,
-            aggregations = aggregatorFactories
+            aggregations = aggregatorFactories,
         ).let { createTransform(it, it.id) }
 
         updateTransformStartTime(transform)
@@ -909,7 +909,7 @@ class TransformRunnerIT : TransformRestTestCase() {
         var hits = waitFor {
             val response = client().makeRequest(
                 "GET", "continuous-transform-target-index/_search",
-                StringEntity("{}", ContentType.APPLICATION_JSON)
+                StringEntity("{}", ContentType.APPLICATION_JSON),
             )
             assertEquals("Request failed", RestStatus.OK, response.restStatus())
             val responseHits = response.asMap().getValue("hits") as Map<*, *>
@@ -960,7 +960,7 @@ class TransformRunnerIT : TransformRestTestCase() {
         hits = waitFor {
             val response = client().makeRequest(
                 "GET", "continuous-transform-target-index/_search",
-                StringEntity("{}", ContentType.APPLICATION_JSON)
+                StringEntity("{}", ContentType.APPLICATION_JSON),
             )
             assertEquals("Request failed", RestStatus.OK, response.restStatus())
             val responseHits = response.asMap().getValue("hits") as Map<*, *>
@@ -1008,10 +1008,10 @@ class TransformRunnerIT : TransformRestTestCase() {
             roles = emptyList(),
             pageSize = 100,
             groups = listOf(
-                Histogram(sourceField = "iterating_id", targetField = "id_group", interval = 5.0)
+                Histogram(sourceField = "iterating_id", targetField = "id_group", interval = 5.0),
             ),
             continuous = true,
-            aggregations = aggregatorFactories
+            aggregations = aggregatorFactories,
         ).let { createTransform(it, it.id) }
 
         updateTransformStartTime(transform)
@@ -1038,7 +1038,7 @@ class TransformRunnerIT : TransformRestTestCase() {
         var hits = waitFor {
             val response = client().makeRequest(
                 "GET", "${transform.targetIndex}/_search",
-                StringEntity("{\"size\": 25}", ContentType.APPLICATION_JSON)
+                StringEntity("{\"size\": 25}", ContentType.APPLICATION_JSON),
             )
             assertEquals("Request failed", RestStatus.OK, response.restStatus())
             val responseHits = response.asMap().getValue("hits") as Map<*, *>
@@ -1098,7 +1098,7 @@ class TransformRunnerIT : TransformRestTestCase() {
         hits = waitFor {
             val response = client().makeRequest(
                 "GET", "${transform.targetIndex}/_search",
-                StringEntity("{\"size\": 25}", ContentType.APPLICATION_JSON)
+                StringEntity("{\"size\": 25}", ContentType.APPLICATION_JSON),
             )
             assertEquals("Request failed", RestStatus.OK, response.restStatus())
             val responseHits = response.asMap().getValue("hits") as Map<*, *>
@@ -1138,9 +1138,9 @@ class TransformRunnerIT : TransformRestTestCase() {
             roles = emptyList(),
             pageSize = 100,
             groups = listOf(
-                Terms(sourceField = "store_and_fwd_flag", targetField = "flag")
+                Terms(sourceField = "store_and_fwd_flag", targetField = "flag"),
             ),
-            continuous = true
+            continuous = true,
         ).let { createTransform(it, it.id) }
 
         updateTransformStartTime(transform)
@@ -1225,10 +1225,10 @@ class TransformRunnerIT : TransformRestTestCase() {
             pageSize = 100,
             groups = listOf(
                 Histogram(sourceField = "iterating_id", targetField = "id_group", interval = 5.0),
-                Terms(sourceField = "term_id", targetField = "id_term")
+                Terms(sourceField = "term_id", targetField = "id_term"),
             ),
             continuous = true,
-            aggregations = aggregatorFactories
+            aggregations = aggregatorFactories,
         ).let { createTransform(it, it.id) }
 
         updateTransformStartTime(transform)
@@ -1255,7 +1255,7 @@ class TransformRunnerIT : TransformRestTestCase() {
         var hits = waitFor {
             val response = client().makeRequest(
                 "GET", "${transform.targetIndex}/_search",
-                StringEntity("{\"size\": 25}", ContentType.APPLICATION_JSON)
+                StringEntity("{\"size\": 25}", ContentType.APPLICATION_JSON),
             )
             assertEquals("Request failed", RestStatus.OK, response.restStatus())
             val responseHits = response.asMap().getValue("hits") as Map<*, *>
@@ -1329,7 +1329,7 @@ class TransformRunnerIT : TransformRestTestCase() {
         hits = waitFor {
             val response = client().makeRequest(
                 "GET", "${transform.targetIndex}/_search",
-                StringEntity("{\"size\": 40}", ContentType.APPLICATION_JSON)
+                StringEntity("{\"size\": 40}", ContentType.APPLICATION_JSON),
             )
             assertEquals("Request failed", RestStatus.OK, response.restStatus())
             val responseHits = response.asMap().getValue("hits") as Map<*, *>
@@ -1367,7 +1367,6 @@ class TransformRunnerIT : TransformRestTestCase() {
     }
 
     fun `test continuous transform with a lot of buckets`() {
-
         // Create index with high cardinality fields
         val sourceIndex = "index_with_lots_of_buckets"
 
@@ -1400,9 +1399,9 @@ class TransformRunnerIT : TransformRestTestCase() {
             pageSize = 1000,
             groups = listOf(
                 Terms(sourceField = "id1.keyword", targetField = "id1"),
-                Terms(sourceField = "id2.keyword", targetField = "id2")
+                Terms(sourceField = "id2.keyword", targetField = "id2"),
             ),
-            continuous = true
+            continuous = true,
         ).let { createTransform(it, it.id) }
 
         updateTransformStartTime(transform)
@@ -1449,7 +1448,6 @@ class TransformRunnerIT : TransformRestTestCase() {
     }
 
     private fun createIndexAndBulkInsert(name: String, settings: Settings?, mapping: String?, aliases: String?, bulkData: String) {
-
         if (settings != null || mapping != null || aliases != null) {
             createIndex(name, settings, mapping, aliases)
         }

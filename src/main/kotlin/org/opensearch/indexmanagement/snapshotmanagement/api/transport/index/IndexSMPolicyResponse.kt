@@ -8,6 +8,7 @@ package org.opensearch.indexmanagement.snapshotmanagement.api.transport.index
 import org.opensearch.core.action.ActionResponse
 import org.opensearch.core.common.io.stream.StreamInput
 import org.opensearch.core.common.io.stream.StreamOutput
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.core.xcontent.ToXContent
 import org.opensearch.core.xcontent.ToXContentObject
 import org.opensearch.core.xcontent.XContentBuilder
@@ -18,7 +19,6 @@ import org.opensearch.indexmanagement.util._ID
 import org.opensearch.indexmanagement.util._PRIMARY_TERM
 import org.opensearch.indexmanagement.util._SEQ_NO
 import org.opensearch.indexmanagement.util._VERSION
-import org.opensearch.core.rest.RestStatus
 
 class IndexSMPolicyResponse(
     val id: String,
@@ -26,7 +26,7 @@ class IndexSMPolicyResponse(
     val seqNo: Long,
     val primaryTerm: Long,
     val policy: SMPolicy,
-    val status: RestStatus
+    val status: RestStatus,
 ) : ActionResponse(), ToXContentObject {
 
     constructor(sin: StreamInput) : this(
@@ -35,7 +35,7 @@ class IndexSMPolicyResponse(
         seqNo = sin.readLong(),
         primaryTerm = sin.readLong(),
         policy = SMPolicy(sin),
-        status = sin.readEnum(RestStatus::class.java)
+        status = sin.readEnum(RestStatus::class.java),
     )
 
     override fun writeTo(out: StreamOutput) {

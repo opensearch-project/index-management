@@ -32,7 +32,7 @@ class ExplainResponseTests : OpenSearchTestCase() {
             actionMetaData = null,
             stepMetaData = null,
             policyRetryInfo = null,
-            info = null
+            info = null,
         )
         val validationResult = ValidationResult("test", Validate.ValidationStatus.FAILED)
         val validationResults = listOf(validationResult)

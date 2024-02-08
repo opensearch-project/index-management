@@ -8,6 +8,7 @@ package org.opensearch.indexmanagement.transform.action.get
 import org.opensearch.core.action.ActionResponse
 import org.opensearch.core.common.io.stream.StreamInput
 import org.opensearch.core.common.io.stream.StreamOutput
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.core.xcontent.ToXContent
 import org.opensearch.core.xcontent.ToXContentObject
 import org.opensearch.core.xcontent.XContentBuilder
@@ -18,7 +19,6 @@ import org.opensearch.indexmanagement.util._ID
 import org.opensearch.indexmanagement.util._PRIMARY_TERM
 import org.opensearch.indexmanagement.util._SEQ_NO
 import org.opensearch.indexmanagement.util._VERSION
-import org.opensearch.core.rest.RestStatus
 import java.io.IOException
 
 class GetTransformResponse(
@@ -27,7 +27,7 @@ class GetTransformResponse(
     val seqNo: Long,
     val primaryTerm: Long,
     val status: RestStatus,
-    val transform: Transform?
+    val transform: Transform?,
 ) : ActionResponse(), ToXContentObject {
 
     @Throws(IOException::class)
@@ -37,7 +37,7 @@ class GetTransformResponse(
         seqNo = sin.readLong(),
         primaryTerm = sin.readLong(),
         status = sin.readEnum(RestStatus::class.java),
-        transform = if (sin.readBoolean()) Transform(sin) else null
+        transform = if (sin.readBoolean()) Transform(sin) else null,
     )
 
     override fun writeTo(out: StreamOutput) {

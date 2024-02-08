@@ -23,13 +23,14 @@ import org.opensearch.cluster.ClusterModule
 import org.opensearch.cluster.metadata.IndexMetadata
 import org.opensearch.common.settings.Settings
 import org.opensearch.common.unit.TimeValue
-import org.opensearch.core.xcontent.DeprecationHandler
 import org.opensearch.common.xcontent.LoggingDeprecationHandler
+import org.opensearch.common.xcontent.XContentType
+import org.opensearch.common.xcontent.json.JsonXContent.jsonXContent
+import org.opensearch.core.rest.RestStatus
+import org.opensearch.core.xcontent.DeprecationHandler
 import org.opensearch.core.xcontent.NamedXContentRegistry
 import org.opensearch.core.xcontent.XContentParser.Token
 import org.opensearch.core.xcontent.XContentParserUtils.ensureExpectedToken
-import org.opensearch.common.xcontent.XContentType
-import org.opensearch.common.xcontent.json.JsonXContent.jsonXContent
 import org.opensearch.index.seqno.SequenceNumbers
 import org.opensearch.indexmanagement.IndexManagementIndices
 import org.opensearch.indexmanagement.IndexManagementPlugin
@@ -38,7 +39,13 @@ import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_STAT
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.ISM_BASE_URI
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.POLICY_BASE_URI
 import org.opensearch.indexmanagement.IndexManagementRestTestCase
+import org.opensearch.indexmanagement.indexstatemanagement.model.ChangePolicy
+import org.opensearch.indexmanagement.indexstatemanagement.model.ExplainFilter
+import org.opensearch.indexmanagement.indexstatemanagement.model.ISMTemplate
+import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexConfig
+import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
 import org.opensearch.indexmanagement.indexstatemanagement.model.Policy.Companion.POLICY_TYPE
+import org.opensearch.indexmanagement.indexstatemanagement.model.StateFilter
 import org.opensearch.indexmanagement.indexstatemanagement.resthandler.RestExplainAction
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings
 import org.opensearch.indexmanagement.indexstatemanagement.util.FAILED_INDICES
@@ -50,6 +57,7 @@ import org.opensearch.indexmanagement.makeRequest
 import org.opensearch.indexmanagement.opensearchapi.parseWithType
 import org.opensearch.indexmanagement.rollup.model.Rollup
 import org.opensearch.indexmanagement.rollup.model.RollupMetadata
+import org.opensearch.indexmanagement.rollup.randomTermQuery
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ActionMetaData
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.PolicyRetryInfoMetaData
@@ -65,14 +73,6 @@ import org.opensearch.indexmanagement.waitFor
 import org.opensearch.jobscheduler.spi.schedule.IntervalSchedule
 import org.opensearch.rest.RestRequest
 import org.opensearch.search.SearchModule
-import org.opensearch.core.rest.RestStatus
-import org.opensearch.indexmanagement.indexstatemanagement.model.ChangePolicy
-import org.opensearch.indexmanagement.indexstatemanagement.model.ExplainFilter
-import org.opensearch.indexmanagement.indexstatemanagement.model.ISMTemplate
-import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexConfig
-import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
-import org.opensearch.indexmanagement.indexstatemanagement.model.StateFilter
-import org.opensearch.indexmanagement.rollup.randomTermQuery
 import org.opensearch.test.OpenSearchTestCase
 import java.io.IOException
 import java.time.Duration
@@ -107,7 +107,7 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
         policy: Policy,
         policyId: String = OpenSearchTestCase.randomAlphaOfLength(10),
         refresh: Boolean = true,
-        userClient: RestClient? = null
+        userClient: RestClient? = null,
     ): Policy {
         val response = createPolicyJson(policy.toJsonString(), policyId, refresh, userClient)
 
@@ -115,14 +115,14 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
             .createParser(
                 NamedXContentRegistry.EMPTY,
                 LoggingDeprecationHandler.INSTANCE,
-                response.entity.content
+                response.entity.content,
             ).map()
         val createdId = policyJson["_id"] as String
         assertEquals("policy ids are not the same", policyId, createdId)
         return policy.copy(
             id = createdId,
             seqNo = (policyJson["_seq_no"] as Int).toLong(),
-            primaryTerm = (policyJson["_primary_term"] as Int).toLong()
+            primaryTerm = (policyJson["_primary_term"] as Int).toLong(),
         )
     }
 
@@ -130,7 +130,7 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
         policyString: String,
         policyId: String,
         refresh: Boolean = true,
-        userClient: RestClient? = null
+        userClient: RestClient? = null,
     ): Response {
         val client = userClient ?: client()
         val response = client
@@ -138,7 +138,7 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
                 "PUT",
                 "$POLICY_BASE_URI/$policyId?refresh=$refresh",
                 emptyMap(),
-                StringEntity(policyString, APPLICATION_JSON)
+                StringEntity(policyString, APPLICATION_JSON),
             )
         assertEquals("Unable to create a new policy", RestStatus.CREATED, response.restStatus())
         return response
@@ -152,7 +152,7 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
 
     protected fun getPolicy(
         policyId: String,
-        header: BasicHeader = BasicHeader(HttpHeaders.CONTENT_TYPE, "application/json")
+        header: BasicHeader = BasicHeader(HttpHeaders.CONTENT_TYPE, "application/json"),
     ): Policy {
         val response = client().makeRequest("GET", "$POLICY_BASE_URI/$policyId", null, header)
         assertEquals("Unable to get policy $policyId", RestStatus.OK, response.restStatus())
@@ -217,7 +217,7 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
 
     protected fun createDataStream(
         dataStream: String,
-        template: StringEntity? = null
+        template: StringEntity? = null,
     ) {
         val dataStreamTemplate = template ?: StringEntity(
             """
@@ -226,12 +226,12 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
                 "index_patterns": ["$dataStream"]
             }
             """.trimIndent(),
-            APPLICATION_JSON
+            APPLICATION_JSON,
         )
         val res = client().makeRequest(
             "PUT",
             "/_index_template/transform-data-stream-template",
-            dataStreamTemplate
+            dataStreamTemplate,
         )
         assertEquals("Unexpected RestStatus", RestStatus.OK, res.restStatus())
         val response = client().makeRequest("PUT", "/_data_stream/$dataStream")
@@ -247,16 +247,20 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
         searchRouting: Int = randomInt(),
         indexRouting: Int = randomInt(),
         filter: String = randomTermQuery().toString(),
-        isHidden: Boolean = randomBoolean()
+        isHidden: Boolean = randomBoolean(),
     ) {
         val isWriteIndexField = if (isWriteIndex) "\",\"is_write_index\": \"$isWriteIndex" else ""
-        val params = if (action == "add" && routing != null) """
+        val params = if (action == "add" && routing != null) {
+            """
             ,"routing": $routing,
             "search_routing": $searchRouting,
             "index_routing": $indexRouting,
             "filter": $filter,
             "is_hidden": $isHidden
-        """.trimIndent() else ""
+            """.trimIndent()
+        } else {
+            ""
+        }
         val body = """
             {
               "actions": [
@@ -281,7 +285,7 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
 
     protected fun addPolicyToIndex(
         index: String,
-        policyID: String
+        policyID: String,
     ) {
         val body = """
             {
@@ -312,7 +316,7 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
         """.trimIndent()
         val res = client().makeRequest(
             "PUT", "_cluster/settings", emptyMap(),
-            StringEntity(request, APPLICATION_JSON)
+            StringEntity(request, APPLICATION_JSON),
         )
         assertEquals("Request failed", RestStatus.OK, res.restStatus())
     }
@@ -328,7 +332,7 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
     protected fun updateIndexSetting(
         index: String,
         key: String,
-        value: String
+        value: String,
     ) {
         val body = """
             {
@@ -337,14 +341,14 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
         """.trimIndent()
         val res = client().makeRequest(
             "PUT", "$index/_settings", emptyMap(),
-            StringEntity(body, APPLICATION_JSON)
+            StringEntity(body, APPLICATION_JSON),
         )
         assertEquals("Update index setting failed", RestStatus.OK, res.restStatus())
     }
 
     protected fun getIndexSetting(index: String) {
         val res = client().makeRequest(
-            "GET", "$index/_settings", emptyMap()
+            "GET", "$index/_settings", emptyMap(),
         )
         assertEquals("Update index setting failed", RestStatus.OK, res.restStatus())
     }
@@ -362,7 +366,7 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
         """.trimIndent()
         val response = client().makeRequest(
             "POST", "$INDEX_MANAGEMENT_INDEX/_search", emptyMap(),
-            StringEntity(request, APPLICATION_JSON)
+            StringEntity(request, APPLICATION_JSON),
         )
         assertEquals("Request failed", RestStatus.OK, response.restStatus())
         val searchResponse = SearchResponse.fromXContent(createParser(jsonXContent, response.entity.content))
@@ -402,7 +406,7 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
         """.trimIndent()
         val response = client().makeRequest(
             "POST", "${IndexManagementIndices.HISTORY_ALL}/_search", emptyMap(),
-            StringEntity(request, APPLICATION_JSON)
+            StringEntity(request, APPLICATION_JSON),
         )
         assertEquals("Request failed", RestStatus.OK, response.restStatus())
         return SearchResponse.fromXContent(createParser(jsonXContent, response.entity.content))
@@ -434,7 +438,7 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
                     client().makeRequest(
                         "GET",
                         "_cluster/allocation/explain",
-                        StringEntity("{ \"index\": \"$INDEX_MANAGEMENT_INDEX\" }", APPLICATION_JSON)
+                        StringEntity("{ \"index\": \"$INDEX_MANAGEMENT_INDEX\" }", APPLICATION_JSON),
                     )
                     fail("Expected 400 Bad Request when there are no unassigned shards to explain")
                 } catch (e: ResponseException) {
@@ -452,8 +456,8 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
             StringEntity(
                 "{\"doc\":{\"managed_index\":{\"schedule\":{\"interval\":{\"start_time\":" +
                     "\"$startTimeMillis\"}}}}}",
-                APPLICATION_JSON
-            )
+                APPLICATION_JSON,
+            ),
         )
 
         assertEquals("Request failed", RestStatus.OK, response.restStatus())
@@ -464,8 +468,8 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
             "POST", "$INDEX_MANAGEMENT_INDEX/_update/${update.id}",
             StringEntity(
                 "{\"doc\":{\"managed_index\":{\"policy_seq_no\":\"${update.policySeqNo}\"}}}",
-                APPLICATION_JSON
-            )
+                APPLICATION_JSON,
+            ),
         )
         assertEquals("Request failed", RestStatus.OK, response.restStatus())
     }
@@ -634,7 +638,7 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
             .makeRequest(
                 "GET",
                 "_cat/nodes?format=json",
-                emptyMap()
+                emptyMap(),
             )
         assertEquals("Unable to get nodes", RestStatus.OK, response.restStatus())
         try {
@@ -711,21 +715,21 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
         val response = client().performRequest(
             Request(
                 "POST",
-                "/$alias/_rollover"
-            )
+                "/$alias/_rollover",
+            ),
         )
         assertEquals(response.statusLine.statusCode, RestStatus.OK.status)
     }
 
     protected fun createRepository(
-        repository: String
+        repository: String,
     ) {
         val response = client()
             .makeRequest(
                 "PUT",
                 "_snapshot/$repository",
                 emptyMap(),
-                StringEntity("{\"type\":\"fs\", \"settings\": {\"location\": \"$repository\"}}", APPLICATION_JSON)
+                StringEntity("{\"type\":\"fs\", \"settings\": {\"location\": \"$repository\"}}", APPLICATION_JSON),
             )
         assertEquals("Unable to create a new repository", RestStatus.OK, response.restStatus())
     }
@@ -735,7 +739,7 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
             .makeRequest(
                 "GET",
                 "_cat/shards/$target?format=json",
-                emptyMap()
+                emptyMap(),
             )
         assertEquals("Unable to get allocation info", RestStatus.OK, response.restStatus())
         try {
@@ -752,7 +756,7 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
             .makeRequest(
                 "GET",
                 "_cat/$endpoint",
-                emptyMap()
+                emptyMap(),
             )
         assertEquals("Unable to get cat info", RestStatus.OK, response.restStatus())
         try {
@@ -781,7 +785,7 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
             .makeRequest(
                 "GET",
                 "_cat/snapshots/$repository?format=json",
-                emptyMap()
+                emptyMap(),
             )
         assertEquals("Unable to get a snapshot", RestStatus.OK, response.restStatus())
         try {
@@ -795,7 +799,7 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
 
     protected fun getRollup(
         rollupId: String,
-        header: BasicHeader = BasicHeader(HttpHeaders.CONTENT_TYPE, "application/json")
+        header: BasicHeader = BasicHeader(HttpHeaders.CONTENT_TYPE, "application/json"),
     ): Rollup {
         val response = client().makeRequest("GET", "${IndexManagementPlugin.ROLLUP_JOBS_BASE_URI}/$rollupId", null, header)
         assertEquals("Unable to get rollup $rollupId", RestStatus.OK, response.restStatus())
@@ -823,7 +827,7 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
 
     protected fun getRollupMetadata(
         metadataId: String,
-        header: BasicHeader = BasicHeader(HttpHeaders.CONTENT_TYPE, "application/json")
+        header: BasicHeader = BasicHeader(HttpHeaders.CONTENT_TYPE, "application/json"),
     ): RollupMetadata {
         val response = client().makeRequest("GET", "$INDEX_MANAGEMENT_INDEX/_doc/$metadataId", null, header)
         assertEquals("Unable to get rollup metadata $metadataId", RestStatus.OK, response.restStatus())
@@ -852,7 +856,7 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
 
     protected fun getTransform(
         transformId: String,
-        header: BasicHeader = BasicHeader(HttpHeaders.CONTENT_TYPE, "application/json")
+        header: BasicHeader = BasicHeader(HttpHeaders.CONTENT_TYPE, "application/json"),
     ): Transform {
         val response = client().makeRequest("GET", "${IndexManagementPlugin.TRANSFORM_BASE_URI}/$transformId", null, header)
         assertEquals("Unable to get transform $transformId", RestStatus.OK, response.restStatus())
@@ -880,7 +884,7 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
 
     protected fun getTransformMetadata(
         metadataId: String,
-        header: BasicHeader = BasicHeader(HttpHeaders.CONTENT_TYPE, "application/json")
+        header: BasicHeader = BasicHeader(HttpHeaders.CONTENT_TYPE, "application/json"),
     ): TransformMetadata {
         val response = client().makeRequest("GET", "$INDEX_MANAGEMENT_INDEX/_doc/$metadataId", null, header)
         assertEquals("Unable to get transform metadata $metadataId", RestStatus.OK, response.restStatus())
@@ -915,13 +919,13 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
     @Suppress("UNCHECKED_CAST")
     protected fun assertSnapshotExists(
         repository: String,
-        snapshot: String
+        snapshot: String,
     ) = require(getSnapshotsList(repository).any { element -> (element as Map<String, String>)["id"]!!.startsWith(snapshot) }) { "No snapshot found with id: $snapshot" }
 
     @Suppress("UNCHECKED_CAST")
     protected fun assertSnapshotFinishedWithSuccess(
         repository: String,
-        snapshot: String
+        snapshot: String,
     ) = require(getSnapshotsList(repository).any { element -> (element as Map<String, String>)["id"]!!.startsWith(snapshot) && "SUCCESS" == element["status"] }) { "Snapshot didn't finish with success." }
 
     /**
@@ -980,7 +984,7 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
     protected fun assertPredicatesOnMetaData(
         indexPredicates: List<Pair<String, List<Pair<String, (Any?) -> Boolean>>>>,
         response: Map<String, Any?>,
-        strict: Boolean = true
+        strict: Boolean = true,
     ) {
         indexPredicates.forEach { (index, predicates) ->
             assertTrue("The index: $index was not found in the response: $response", response.containsKey(index))
@@ -1037,7 +1041,7 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
     @Suppress("UNCHECKED_CAST")
     protected fun assertPredicatesOnISMTemplatesMap(
         templatePredicates: List<Pair<String, List<Pair<String, (Any?) -> Boolean>>>>, // response map name: predicate
-        response: Map<String, Any?>
+        response: Map<String, Any?>,
     ) {
         val templates = response["ism_templates"] as ArrayList<Map<String, Any?>>
 
@@ -1078,8 +1082,8 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
                     "  }, \n" +
                     "  \"order\": $order\n" +
                     "}",
-                APPLICATION_JSON
-            )
+                APPLICATION_JSON,
+            ),
         )
         assertEquals("Request failed", RestStatus.OK, response.restStatus())
     }
@@ -1092,8 +1096,8 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
                     "  \"index_patterns\": [\"$indexPatterns\"],\n" +
                     "  \"order\": $order\n" +
                     "}",
-                APPLICATION_JSON
-            )
+                APPLICATION_JSON,
+            ),
         )
         assertEquals("Request failed", RestStatus.OK, response.restStatus())
     }
@@ -1115,8 +1119,8 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
                     "    }\n" +
                     "  }\n" +
                     "}",
-                APPLICATION_JSON
-            )
+                APPLICATION_JSON,
+            ),
         )
         assertEquals("Request failed", RestStatus.OK, response.restStatus())
     }
@@ -1137,7 +1141,7 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
                 .createParser(
                     NamedXContentRegistry.EMPTY,
                     DeprecationHandler.THROW_UNSUPPORTED_OPERATION,
-                    response.entity.content
+                    response.entity.content,
                 )
                 .use { parser -> parser.list() }
         } catch (e: IOException) {
@@ -1149,8 +1153,8 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
         return NamedXContentRegistry(
             listOf(
                 ClusterModule.getNamedXWriteables(),
-                SearchModule(Settings.EMPTY, emptyList()).namedXContents
-            ).flatten()
+                SearchModule(Settings.EMPTY, emptyList()).namedXContents,
+            ).flatten(),
         )
     }
 }

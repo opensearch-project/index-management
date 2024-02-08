@@ -7,7 +7,6 @@ package org.opensearch.indexmanagement.refreshanalyzer
 
 import org.apache.logging.log4j.LogManager
 import org.opensearch.action.support.ActionFilters
-import org.opensearch.core.action.support.DefaultShardOperationFailedException
 import org.opensearch.action.support.broadcast.node.TransportBroadcastByNodeAction
 import org.opensearch.cluster.ClusterState
 import org.opensearch.cluster.block.ClusterBlockException
@@ -17,6 +16,7 @@ import org.opensearch.cluster.routing.ShardRouting
 import org.opensearch.cluster.routing.ShardsIterator
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.inject.Inject
+import org.opensearch.core.action.support.DefaultShardOperationFailedException
 import org.opensearch.core.common.io.stream.StreamInput
 import org.opensearch.core.common.io.stream.Writeable
 import org.opensearch.index.analysis.AnalysisRegistry
@@ -30,7 +30,8 @@ class TransportRefreshSearchAnalyzerAction :
     TransportBroadcastByNodeAction<
         RefreshSearchAnalyzerRequest,
         RefreshSearchAnalyzerResponse,
-        RefreshSearchAnalyzerShardResponse> {
+        RefreshSearchAnalyzerShardResponse,
+        > {
 
     private val log = LogManager.getLogger(javaClass)
 
@@ -41,7 +42,7 @@ class TransportRefreshSearchAnalyzerAction :
         indicesService: IndicesService,
         actionFilters: ActionFilters,
         analysisRegistry: AnalysisRegistry,
-        indexNameExpressionResolver: IndexNameExpressionResolver?
+        indexNameExpressionResolver: IndexNameExpressionResolver?,
     ) : super(
         RefreshSearchAnalyzerAction.NAME,
         clusterService,
@@ -49,7 +50,7 @@ class TransportRefreshSearchAnalyzerAction :
         actionFilters,
         indexNameExpressionResolver,
         Writeable.Reader { RefreshSearchAnalyzerRequest() },
-        ThreadPool.Names.MANAGEMENT
+        ThreadPool.Names.MANAGEMENT,
     ) {
         this.analysisRegistry = analysisRegistry
         this.indicesService = indicesService
@@ -70,7 +71,7 @@ class TransportRefreshSearchAnalyzerAction :
         failedShards: Int,
         shardResponses: List<RefreshSearchAnalyzerShardResponse>,
         shardFailures: List<DefaultShardOperationFailedException>,
-        clusterState: ClusterState
+        clusterState: ClusterState,
     ): RefreshSearchAnalyzerResponse {
         return RefreshSearchAnalyzerResponse(totalShards, successfulShards, failedShards, shardFailures, shardResponses)
     }
@@ -86,7 +87,7 @@ class TransportRefreshSearchAnalyzerAction :
         val reloadedAnalyzers: List<String> = indexShard.mapperService().reloadSearchAnalyzers(analysisRegistry)
         log.info(
             "Reload successful, index: ${shardRouting.shardId().index.name}, shard: ${shardRouting.shardId().id}, " +
-                "is_primary: ${shardRouting.primary()}"
+                "is_primary: ${shardRouting.primary()}",
         )
         return RefreshSearchAnalyzerShardResponse(shardRouting.shardId(), reloadedAnalyzers)
     }
@@ -102,8 +103,7 @@ class TransportRefreshSearchAnalyzerAction :
         return state.blocks().globalBlockedException(ClusterBlockLevel.METADATA_WRITE)
     }
 
-    override fun checkRequestBlock(state: ClusterState, request: RefreshSearchAnalyzerRequest?, concreteIndices: Array<String?>?):
-        ClusterBlockException? {
+    override fun checkRequestBlock(state: ClusterState, request: RefreshSearchAnalyzerRequest?, concreteIndices: Array<String?>?): ClusterBlockException? {
         return state.blocks().indicesBlockedException(ClusterBlockLevel.METADATA_WRITE, concreteIndices)
     }
 }

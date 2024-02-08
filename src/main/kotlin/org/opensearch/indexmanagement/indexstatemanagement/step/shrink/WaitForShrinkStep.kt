@@ -74,7 +74,7 @@ class WaitForShrinkStep(private val action: ShrinkAction) : ShrinkStep(name, tru
         if (!response.isAcknowledged) {
             cleanupAndFail(
                 getFailureMessage(index),
-                "Shrink action to clear the allocation settings on index [$index] following shrinking."
+                "Shrink action to clear the allocation settings on index [$index] following shrinking.",
             )
             return false
         }
@@ -102,7 +102,6 @@ class WaitForShrinkStep(private val action: ShrinkAction) : ShrinkStep(name, tru
     }
 
     suspend fun switchAliases(context: StepContext, shrinkActionProperties: ShrinkActionProperties): Boolean {
-
         val sourceIndexName = context.metadata.index
         val targetIndexName = shrinkActionProperties.targetIndexName
 
@@ -163,12 +162,12 @@ class WaitForShrinkStep(private val action: ShrinkAction) : ShrinkStep(name, tru
         return currentMetadata.copy(
             actionMetaData = currentMetadata.actionMetaData?.copy(
                 actionProperties = ActionProperties(
-                    shrinkActionProperties = shrinkActionProperties
-                )
+                    shrinkActionProperties = shrinkActionProperties,
+                ),
             ),
             stepMetaData = StepMetaData(name, getStepStartTime(currentMetadata).toEpochMilli(), stepStatus),
             transitionTo = null,
-            info = info
+            info = info,
         )
     }
 

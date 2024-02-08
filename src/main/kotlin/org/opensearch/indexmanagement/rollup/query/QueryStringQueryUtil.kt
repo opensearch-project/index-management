@@ -24,7 +24,7 @@ object QueryStringQueryUtil {
 
     fun rewriteQueryStringQuery(
         queryBuilder: QueryBuilder,
-        concreteIndexName: String
+        concreteIndexName: String,
     ): QueryStringQueryBuilder {
         val qsqBuilder = queryBuilder as QueryStringQueryBuilder
         // Parse query_string query and extract all discovered fields
@@ -126,7 +126,7 @@ object QueryStringQueryUtil {
             } else {
                 val resolvedFields = QueryParserHelper.resolveMappingFields(
                     context,
-                    QueryParserHelper.parseFieldsAndWeights(defaultFields)
+                    QueryParserHelper.parseFieldsAndWeights(defaultFields),
                 )
                 otherFields = resolvedFields
                 QueryStringQueryParserExt(context, resolvedFields, isLenient)
@@ -156,11 +156,17 @@ object QueryStringQueryUtil {
         queryParser.phraseSlop = qsqBuilder.phraseSlop()
         queryParser.setQuoteFieldSuffix(qsqBuilder.quoteFieldSuffix())
         queryParser.allowLeadingWildcard =
-            if (qsqBuilder.allowLeadingWildcard() == null) context.queryStringAllowLeadingWildcard()
-            else qsqBuilder.allowLeadingWildcard()
+            if (qsqBuilder.allowLeadingWildcard() == null) {
+                context.queryStringAllowLeadingWildcard()
+            } else {
+                qsqBuilder.allowLeadingWildcard()
+            }
         queryParser.setAnalyzeWildcard(
-            if (qsqBuilder.analyzeWildcard() == null) context.queryStringAnalyzeWildcard()
-            else qsqBuilder.analyzeWildcard()
+            if (qsqBuilder.analyzeWildcard() == null) {
+                context.queryStringAnalyzeWildcard()
+            } else {
+                qsqBuilder.analyzeWildcard()
+            },
         )
         queryParser.enablePositionIncrements = qsqBuilder.enablePositionIncrements()
         queryParser.setFuzziness(qsqBuilder.fuzziness())
@@ -185,7 +191,7 @@ object QueryStringQueryUtil {
     @Suppress("EmptyCatchBlock", "LoopWithTooManyJumpStatements")
     fun resolveMatchPatternFields(
         context: QueryShardContext,
-        pattern: String = "*"
+        pattern: String = "*",
     ): Map<String, Float> {
         val allFields = context.simpleMatchToIndexNames(pattern)
         val fields: MutableMap<String, Float> = HashMap()

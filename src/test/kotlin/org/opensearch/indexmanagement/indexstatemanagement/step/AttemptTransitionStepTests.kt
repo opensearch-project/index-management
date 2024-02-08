@@ -12,7 +12,6 @@ import com.nhaarman.mockitokotlin2.mock
 import com.nhaarman.mockitokotlin2.whenever
 import kotlinx.coroutines.runBlocking
 import org.junit.Before
-import org.opensearch.core.action.ActionListener
 import org.opensearch.action.admin.indices.rollover.RolloverInfo
 import org.opensearch.action.admin.indices.stats.CommonStats
 import org.opensearch.action.admin.indices.stats.IndicesStatsResponse
@@ -25,6 +24,8 @@ import org.opensearch.cluster.metadata.Metadata
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.settings.ClusterSettings
 import org.opensearch.common.settings.Settings
+import org.opensearch.core.action.ActionListener
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.index.shard.DocsStats
 import org.opensearch.indexmanagement.indexstatemanagement.IndexMetadataProvider
 import org.opensearch.indexmanagement.indexstatemanagement.action.TransitionsAction
@@ -37,7 +38,6 @@ import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedInde
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepContext
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepMetaData
 import org.opensearch.jobscheduler.spi.utils.LockService
-import org.opensearch.core.rest.RestStatus
 import org.opensearch.script.ScriptService
 import org.opensearch.test.OpenSearchTestCase
 import org.opensearch.transport.RemoteTransportException
@@ -47,6 +47,7 @@ class AttemptTransitionStepTests : OpenSearchTestCase() {
 
     private val indexName: String = "test"
     private val indexUUID: String = "indexUuid"
+
     @Suppress("UNCHECKED_CAST")
     private val indexMetadata: IndexMetadata = mock {
         on { rolloverInfos } doReturn mapOf<String, RolloverInfo>()
@@ -148,8 +149,11 @@ class AttemptTransitionStepTests : OpenSearchTestCase() {
         return mock {
             doAnswer { invocationOnMock ->
                 val listener = invocationOnMock.getArgument<ActionListener<IndicesStatsResponse>>(1)
-                if (statsResponse != null) listener.onResponse(statsResponse)
-                else listener.onFailure(exception)
+                if (statsResponse != null) {
+                    listener.onResponse(statsResponse)
+                } else {
+                    listener.onFailure(exception)
+                }
             }.whenever(this.mock).stats(any(), any())
         }
     }

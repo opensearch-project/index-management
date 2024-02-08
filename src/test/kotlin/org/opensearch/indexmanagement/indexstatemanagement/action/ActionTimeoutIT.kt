@@ -43,7 +43,7 @@ class ActionTimeoutIT : IndexStateManagementRestTestCase() {
             assertEquals(
                 "Should be attempting to rollover",
                 getExplainManagedIndexMetaData(indexName).info?.get("message"),
-                AttemptRolloverStep.getPendingMessage(indexName)
+                AttemptRolloverStep.getPendingMessage(indexName),
             )
         }
 
@@ -57,14 +57,14 @@ class ActionTimeoutIT : IndexStateManagementRestTestCase() {
                             assertActionEquals(
                                 ActionMetaData(
                                     name = RolloverAction.name, startTime = Instant.now().toEpochMilli(), index = 0,
-                                    failed = true, consumedRetries = 0, lastRetryTime = null, actionProperties = null
+                                    failed = true, consumedRetries = 0, lastRetryTime = null, actionProperties = null,
                                 ),
-                                actionMetaDataMap
-                            )
-                    )
+                                actionMetaDataMap,
+                            ),
+                    ),
                 ),
                 getExplainMap(indexName),
-                strict = false
+                strict = false,
             )
         }
     }
@@ -98,7 +98,7 @@ class ActionTimeoutIT : IndexStateManagementRestTestCase() {
             assertPredicatesOnMetaData(
                 listOf(indexName to listOf(ManagedIndexMetaData.INFO to fun(info: Any?): Boolean = expectedOpenInfoString == info.toString())),
                 getExplainMap(indexName),
-                strict = false
+                strict = false,
             )
         }
 
@@ -112,7 +112,7 @@ class ActionTimeoutIT : IndexStateManagementRestTestCase() {
             assertEquals(
                 "Should be attempting to rollover",
                 getExplainManagedIndexMetaData(indexName).info?.get("message"),
-                AttemptRolloverStep.getPendingMessage(indexName)
+                AttemptRolloverStep.getPendingMessage(indexName),
             )
         }
     }

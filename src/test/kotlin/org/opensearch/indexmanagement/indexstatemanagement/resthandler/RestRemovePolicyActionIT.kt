@@ -7,6 +7,7 @@ package org.opensearch.indexmanagement.indexstatemanagement.resthandler
 
 import org.opensearch.client.ResponseException
 import org.opensearch.cluster.metadata.IndexMetadata
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.indexmanagement.indexstatemanagement.IndexStateManagementRestTestCase
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings
 import org.opensearch.indexmanagement.indexstatemanagement.util.FAILED_INDICES
@@ -15,7 +16,6 @@ import org.opensearch.indexmanagement.indexstatemanagement.util.UPDATED_INDICES
 import org.opensearch.indexmanagement.makeRequest
 import org.opensearch.indexmanagement.waitFor
 import org.opensearch.rest.RestRequest.Method.POST
-import org.opensearch.core.rest.RestStatus
 
 class RestRemovePolicyActionIT : IndexStateManagementRestTestCase() {
 
@@ -29,12 +29,12 @@ class RestRemovePolicyActionIT : IndexStateManagementRestTestCase() {
             val expectedErrorMessage = mapOf(
                 "error" to mapOf(
                     "root_cause" to listOf<Map<String, Any>>(
-                        mapOf("type" to "illegal_argument_exception", "reason" to "Missing indices")
+                        mapOf("type" to "illegal_argument_exception", "reason" to "Missing indices"),
                     ),
                     "type" to "illegal_argument_exception",
-                    "reason" to "Missing indices"
+                    "reason" to "Missing indices",
                 ),
-                "status" to 400
+                "status" to 400,
             )
             assertEquals(expectedErrorMessage, actualMessage)
         }
@@ -48,7 +48,7 @@ class RestRemovePolicyActionIT : IndexStateManagementRestTestCase() {
 
         val response = client().makeRequest(
             POST.toString(),
-            "${RestRemovePolicyAction.REMOVE_POLICY_BASE_URI}/$index"
+            "${RestRemovePolicyAction.REMOVE_POLICY_BASE_URI}/$index",
         )
         assertEquals("Unexpected RestStatus", RestStatus.OK, response.restStatus())
         val actualMessage = response.asMap()
@@ -59,9 +59,9 @@ class RestRemovePolicyActionIT : IndexStateManagementRestTestCase() {
                 mapOf(
                     "index_name" to index,
                     "index_uuid" to getUuid(index),
-                    "reason" to "This index is closed"
-                )
-            )
+                    "reason" to "This index is closed",
+                ),
+            ),
         )
 
         assertAffectedIndicesResponseIsEqual(expectedMessage, actualMessage)
@@ -74,7 +74,7 @@ class RestRemovePolicyActionIT : IndexStateManagementRestTestCase() {
 
         val response = client().makeRequest(
             POST.toString(),
-            "${RestRemovePolicyAction.REMOVE_POLICY_BASE_URI}/$index"
+            "${RestRemovePolicyAction.REMOVE_POLICY_BASE_URI}/$index",
         )
         assertEquals("Unexpected RestStatus", RestStatus.OK, response.restStatus())
         val actualMessage = response.asMap()
@@ -85,9 +85,9 @@ class RestRemovePolicyActionIT : IndexStateManagementRestTestCase() {
                 mapOf(
                     "index_name" to index,
                     "index_uuid" to getUuid(index),
-                    "reason" to "This index does not have a policy to remove"
-                )
-            )
+                    "reason" to "This index does not have a policy to remove",
+                ),
+            ),
         )
 
         assertAffectedIndicesResponseIsEqual(expectedMessage, actualMessage)
@@ -104,7 +104,7 @@ class RestRemovePolicyActionIT : IndexStateManagementRestTestCase() {
 
         val response = client().makeRequest(
             POST.toString(),
-            "${RestRemovePolicyAction.REMOVE_POLICY_BASE_URI}/$indexOne,$indexTwo"
+            "${RestRemovePolicyAction.REMOVE_POLICY_BASE_URI}/$indexOne,$indexTwo",
         )
         assertEquals("Unexpected RestStatus", RestStatus.OK, response.restStatus())
         val actualMessage = response.asMap()
@@ -115,14 +115,14 @@ class RestRemovePolicyActionIT : IndexStateManagementRestTestCase() {
                 mapOf(
                     "index_name" to indexOne,
                     "index_uuid" to getUuid(indexOne),
-                    "reason" to "This index is closed"
+                    "reason" to "This index is closed",
                 ),
                 mapOf(
                     "index_name" to indexTwo,
                     "index_uuid" to getUuid(indexTwo),
-                    "reason" to "This index does not have a policy to remove"
-                )
-            )
+                    "reason" to "This index does not have a policy to remove",
+                ),
+            ),
         )
 
         assertAffectedIndicesResponseIsEqual(expectedMessage, actualMessage)
@@ -142,7 +142,7 @@ class RestRemovePolicyActionIT : IndexStateManagementRestTestCase() {
 
         val response = client().makeRequest(
             POST.toString(),
-            "${RestRemovePolicyAction.REMOVE_POLICY_BASE_URI}/$indexPattern*"
+            "${RestRemovePolicyAction.REMOVE_POLICY_BASE_URI}/$indexPattern*",
         )
         assertEquals("Unexpected RestStatus", RestStatus.OK, response.restStatus())
         val actualMessage = response.asMap()
@@ -153,14 +153,14 @@ class RestRemovePolicyActionIT : IndexStateManagementRestTestCase() {
                 mapOf(
                     "index_name" to indexOne,
                     "index_uuid" to getUuid(indexOne),
-                    "reason" to "This index is closed"
+                    "reason" to "This index is closed",
                 ),
                 mapOf(
                     "index_name" to indexTwo,
                     "index_uuid" to getUuid(indexTwo),
-                    "reason" to "This index does not have a policy to remove"
-                )
-            )
+                    "reason" to "This index does not have a policy to remove",
+                ),
+            ),
         )
 
         assertAffectedIndicesResponseIsEqual(expectedMessage, actualMessage)
@@ -188,14 +188,14 @@ class RestRemovePolicyActionIT : IndexStateManagementRestTestCase() {
 
         val response = client().makeRequest(
             POST.toString(),
-            "${RestRemovePolicyAction.REMOVE_POLICY_BASE_URI}/$indexPattern"
+            "${RestRemovePolicyAction.REMOVE_POLICY_BASE_URI}/$indexPattern",
         )
         assertEquals("Unexpected RestStatus", RestStatus.OK, response.restStatus())
         val actualMessage = response.asMap()
         val expectedMessage = mapOf(
             UPDATED_INDICES to 4,
             FAILURES to false,
-            FAILED_INDICES to emptyList<Any>()
+            FAILED_INDICES to emptyList<Any>(),
         )
         assertAffectedIndicesResponseIsEqual(expectedMessage, actualMessage)
 

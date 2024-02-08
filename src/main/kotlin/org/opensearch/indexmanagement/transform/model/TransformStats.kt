@@ -20,7 +20,7 @@ data class TransformStats(
     val documentsProcessed: Long,
     val documentsIndexed: Long,
     val indexTimeInMillis: Long,
-    val searchTimeInMillis: Long
+    val searchTimeInMillis: Long,
 ) : ToXContentObject, Writeable {
 
     @Throws(IOException::class)
@@ -29,7 +29,7 @@ data class TransformStats(
         documentsProcessed = sin.readLong(),
         documentsIndexed = sin.readLong(),
         indexTimeInMillis = sin.readLong(),
-        searchTimeInMillis = sin.readLong()
+        searchTimeInMillis = sin.readLong(),
     )
 
     override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
@@ -86,7 +86,7 @@ data class TransformStats(
                 documentsProcessed = requireNotNull(documentsProcessed) { "Documents processed must not be null" },
                 documentsIndexed = requireNotNull(documentsIndexed) { "Documents indexed must not be null" },
                 indexTimeInMillis = requireNotNull(indexTimeInMillis) { "Index time in millis must not be null" },
-                searchTimeInMillis = requireNotNull(searchTimeInMillis) { "Search time in millis must not be null" }
+                searchTimeInMillis = requireNotNull(searchTimeInMillis) { "Search time in millis must not be null" },
             )
         }
     }

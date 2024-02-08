@@ -17,13 +17,13 @@ import org.opensearch.action.admin.indices.alias.IndicesAliasesRequest
 import org.opensearch.client.ResponseException
 import org.opensearch.client.RestClient
 import org.opensearch.commons.rest.SecureRestClientBuilder
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
 import org.opensearch.indexmanagement.indexstatemanagement.action.AliasAction
 import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
 import org.opensearch.indexmanagement.indexstatemanagement.model.State
 import org.opensearch.indexmanagement.indexstatemanagement.randomErrorNotification
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.addpolicy.AddPolicyAction
-import org.opensearch.core.rest.RestStatus
 import org.opensearch.test.OpenSearchTestCase
 import org.opensearch.test.junit.annotations.TestLogging
 import java.time.Instant
@@ -39,12 +39,13 @@ class PolicySecurityBehaviorIT : SecurityRestTestCase() {
 
     private val permittedIndicesPrefix = "permitted-index"
     private val permittedIndicesPattern = "permitted-index*"
+
     @Before
     fun setupUsersAndRoles() {
 //        updateClusterSetting(ManagedIndexSettings.JITTER.key, "0.0", false)
 
         val custerPermissions = listOf(
-            AddPolicyAction.NAME
+            AddPolicyAction.NAME,
         )
 
         val indexPermissions = listOf(
@@ -54,7 +55,7 @@ class PolicySecurityBehaviorIT : SecurityRestTestCase() {
             BULK_WRITE_INDEX,
             GET_INDEX_MAPPING,
             SEARCH_INDEX,
-            PUT_INDEX_MAPPING
+            PUT_INDEX_MAPPING,
         )
         createUser(ismUser, password, listOf(HELPDESK))
         createRole(HELPDESK_ROLE, custerPermissions, indexPermissions, listOf(permittedIndicesPattern))
@@ -76,7 +77,6 @@ class PolicySecurityBehaviorIT : SecurityRestTestCase() {
     }
 
     fun `test add policy`() {
-
         val notPermittedIndexPrefix = OpenSearchTestCase.randomAlphaOfLength(10).lowercase(Locale.getDefault())
         val policyId = OpenSearchTestCase.randomAlphaOfLength(10)
 
@@ -101,7 +101,7 @@ class PolicySecurityBehaviorIT : SecurityRestTestCase() {
                 lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
                 errorNotification = randomErrorNotification(),
                 defaultState = "alias",
-                states = states
+                states = states,
             )
             createPolicy(policy, policy.id, true, client())
             // Call AddPolicyAction as user

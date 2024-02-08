@@ -7,6 +7,7 @@ package org.opensearch.indexmanagement.indexstatemanagement.resthandler
 
 import org.opensearch.client.ResponseException
 import org.opensearch.common.settings.Settings
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.indexmanagement.indexstatemanagement.IndexStateManagementRestTestCase
 import org.opensearch.indexmanagement.indexstatemanagement.action.ReadOnlyAction
 import org.opensearch.indexmanagement.indexstatemanagement.model.ISMTemplate
@@ -18,7 +19,6 @@ import org.opensearch.indexmanagement.indexstatemanagement.util.INDEX_HIDDEN
 import org.opensearch.indexmanagement.randomInstant
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.waitFor
-import org.opensearch.core.rest.RestStatus
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 import java.util.Locale
@@ -91,7 +91,7 @@ class ISMTemplateRestAPIIT : IndexStateManagementRestTestCase() {
 
         val action = ReadOnlyAction(0)
         val states = listOf(
-            State("ReadOnlyState", listOf(action), listOf())
+            State("ReadOnlyState", listOf(action), listOf()),
         )
         val policy = Policy(
             id = policyID,
@@ -101,7 +101,7 @@ class ISMTemplateRestAPIIT : IndexStateManagementRestTestCase() {
             errorNotification = randomErrorNotification(),
             defaultState = states[0].name,
             states = states,
-            ismTemplate = listOf(ismTemp)
+            ismTemplate = listOf(ismTemp),
         )
         createPolicy(policy, policyID)
 
@@ -121,11 +121,11 @@ class ISMTemplateRestAPIIT : IndexStateManagementRestTestCase() {
                 indexName1 to listOf(
                     explainResponseOpendistroPolicyIdSetting to fun(policyID: Any?): Boolean = policyID == null,
                     explainResponseOpenSearchPolicyIdSetting to fun(policyID: Any?): Boolean = policyID == null,
-                    ManagedIndexMetaData.ENABLED to fun(enabled: Any?): Boolean = enabled == null
-                )
+                    ManagedIndexMetaData.ENABLED to fun(enabled: Any?): Boolean = enabled == null,
+                ),
             ),
             getExplainMap(indexName1),
-            true
+            true,
         )
         assertNull(getManagedIndexConfig(indexName1))
 
@@ -135,11 +135,11 @@ class ISMTemplateRestAPIIT : IndexStateManagementRestTestCase() {
                 indexName1 to listOf(
                     explainResponseOpendistroPolicyIdSetting to fun(policyID: Any?): Boolean = policyID == null,
                     explainResponseOpenSearchPolicyIdSetting to fun(policyID: Any?): Boolean = policyID == null,
-                    ManagedIndexMetaData.ENABLED to fun(enabled: Any?): Boolean = enabled == null
-                )
+                    ManagedIndexMetaData.ENABLED to fun(enabled: Any?): Boolean = enabled == null,
+                ),
             ),
             getExplainMap(indexName1),
-            true
+            true,
         )
         assertNull(getManagedIndexConfig(indexName3))
     }

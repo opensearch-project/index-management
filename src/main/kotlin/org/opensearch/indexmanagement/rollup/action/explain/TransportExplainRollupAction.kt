@@ -8,7 +8,6 @@ package org.opensearch.indexmanagement.rollup.action.explain
 import org.apache.logging.log4j.LogManager
 import org.opensearch.ExceptionsHelper
 import org.opensearch.ResourceNotFoundException
-import org.opensearch.core.action.ActionListener
 import org.opensearch.action.search.SearchRequest
 import org.opensearch.action.search.SearchResponse
 import org.opensearch.action.support.ActionFilters
@@ -18,6 +17,7 @@ import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.inject.Inject
 import org.opensearch.common.settings.Settings
 import org.opensearch.commons.ConfigConstants
+import org.opensearch.core.action.ActionListener
 import org.opensearch.index.query.BoolQueryBuilder
 import org.opensearch.index.query.IdsQueryBuilder
 import org.opensearch.index.query.WildcardQueryBuilder
@@ -42,9 +42,9 @@ class TransportExplainRollupAction @Inject constructor(
     val client: Client,
     val settings: Settings,
     val clusterService: ClusterService,
-    actionFilters: ActionFilters
+    actionFilters: ActionFilters,
 ) : HandledTransportAction<ExplainRollupRequest, ExplainRollupResponse>(
-    ExplainRollupAction.NAME, transportService, actionFilters, ::ExplainRollupRequest
+    ExplainRollupAction.NAME, transportService, actionFilters, ::ExplainRollupRequest,
 ) {
 
     @Volatile private var filterByEnabled = IndexManagementSettings.FILTER_BY_BACKEND_ROLES.get(settings)
@@ -61,8 +61,8 @@ class TransportExplainRollupAction @Inject constructor(
     override fun doExecute(task: Task, request: ExplainRollupRequest, actionListener: ActionListener<ExplainRollupResponse>) {
         log.debug(
             "User and roles string from thread context: ${client.threadPool().threadContext.getTransient<String>(
-                ConfigConstants.OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT
-            )}"
+                ConfigConstants.OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT,
+            )}",
         )
         val ids = request.rollupIDs
         // Instantiate concrete ids to metadata map by removing wildcard matches
@@ -105,7 +105,8 @@ class TransportExplainRollupAction @Inject constructor(
                                             val metadata = contentParser(it.sourceRef)
                                                 .parseWithType(it.id, it.seqNo, it.primaryTerm, RollupMetadata.Companion::parse)
                                             idsToExplain.computeIfPresent(metadata.rollupID) { _,
-                                                explainRollup ->
+                                                                                               explainRollup,
+                                                ->
                                                 explainRollup.copy(metadata = metadata)
                                             }
                                         }
@@ -124,7 +125,7 @@ class TransportExplainRollupAction @Inject constructor(
                                         else -> actionListener.onFailure(e)
                                     }
                                 }
-                            }
+                            },
                         )
                     }
 
@@ -139,7 +140,7 @@ class TransportExplainRollupAction @Inject constructor(
                             else -> actionListener.onFailure(e)
                         }
                     }
-                }
+                },
             )
         }
     }

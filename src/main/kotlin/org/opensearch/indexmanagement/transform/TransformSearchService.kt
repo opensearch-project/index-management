@@ -8,7 +8,6 @@ package org.opensearch.indexmanagement.transform
 import org.apache.logging.log4j.LogManager
 import org.opensearch.ExceptionsHelper
 import org.opensearch.OpenSearchSecurityException
-import org.opensearch.core.action.ActionListener
 import org.opensearch.action.admin.indices.stats.IndicesStatsAction
 import org.opensearch.action.admin.indices.stats.IndicesStatsRequest
 import org.opensearch.action.admin.indices.stats.IndicesStatsResponse
@@ -23,14 +22,16 @@ import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.settings.Settings
 import org.opensearch.common.unit.TimeValue
 import org.opensearch.common.xcontent.XContentType
+import org.opensearch.core.action.ActionListener
 import org.opensearch.core.index.Index
+import org.opensearch.core.index.shard.ShardId
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.index.query.BoolQueryBuilder
 import org.opensearch.index.query.ExistsQueryBuilder
 import org.opensearch.index.query.QueryBuilder
 import org.opensearch.index.query.QueryBuilders
 import org.opensearch.index.query.RangeQueryBuilder
 import org.opensearch.index.seqno.SequenceNumbers
-import org.opensearch.core.index.shard.ShardId
 import org.opensearch.indexmanagement.common.model.dimension.Dimension
 import org.opensearch.indexmanagement.opensearchapi.retry
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
@@ -41,14 +42,13 @@ import org.opensearch.indexmanagement.transform.model.Transform
 import org.opensearch.indexmanagement.transform.model.TransformSearchResult
 import org.opensearch.indexmanagement.transform.model.TransformStats
 import org.opensearch.indexmanagement.transform.opensearchapi.retryTransformSearch
+import org.opensearch.indexmanagement.transform.settings.TransformSettings.Companion.MINIMUM_CANCEL_AFTER_TIME_INTERVAL_SECONDS
 import org.opensearch.indexmanagement.transform.settings.TransformSettings.Companion.TRANSFORM_JOB_SEARCH_BACKOFF_COUNT
 import org.opensearch.indexmanagement.transform.settings.TransformSettings.Companion.TRANSFORM_JOB_SEARCH_BACKOFF_MILLIS
 import org.opensearch.indexmanagement.transform.util.TransformContext
 import org.opensearch.indexmanagement.util.IndexUtils.Companion.LUCENE_MAX_CLAUSES
 import org.opensearch.indexmanagement.util.IndexUtils.Companion.ODFE_MAGIC_NULL
 import org.opensearch.indexmanagement.util.IndexUtils.Companion.hashToFixedSize
-import org.opensearch.core.rest.RestStatus
-import org.opensearch.indexmanagement.transform.settings.TransformSettings.Companion.MINIMUM_CANCEL_AFTER_TIME_INTERVAL_SECONDS
 import org.opensearch.search.aggregations.Aggregation
 import org.opensearch.search.aggregations.bucket.composite.CompositeAggregation
 import org.opensearch.search.aggregations.bucket.composite.CompositeAggregationBuilder
@@ -72,7 +72,7 @@ import kotlin.math.pow
 class TransformSearchService(
     val settings: Settings,
     val clusterService: ClusterService,
-    private val client: Client
+    private val client: Client,
 ) {
 
     private var logger = LogManager.getLogger(javaClass)
@@ -127,7 +127,7 @@ class TransformSearchService(
         transform: Transform,
         afterKey: Map<String, Any>?,
         currentShard: ShardNewDocuments,
-        transformContext: TransformContext
+        transformContext: TransformContext,
     ): BucketSearchResult {
         try {
             var retryAttempt = 0
@@ -143,7 +143,7 @@ class TransformSearchService(
                     if (retryAttempt > 1) {
                         logger.debug(
                             "Attempt [${retryAttempt - 1}] to get modified buckets for transform [${transform.id}]. Attempting " +
-                                "again with reduced page size [$pageSize]"
+                                "again with reduced page size [$pageSize]",
                         )
                     }
                     if (searchRequestTimeoutInSeconds == null) {
@@ -182,14 +182,15 @@ class TransformSearchService(
         transform: Transform,
         afterKey: Map<String, Any>? = null,
         modifiedBuckets: MutableSet<Map<String, Any>>? = null,
-        transformContext: TransformContext
+        transformContext: TransformContext,
     ): TransformSearchResult {
         try {
             var pageSize: Int =
-                if (modifiedBuckets.isNullOrEmpty())
+                if (modifiedBuckets.isNullOrEmpty()) {
                     transform.pageSize
-                else
+                } else {
                     modifiedBuckets.size
+                }
 
             var retryAttempt = 0
             val searchStart = Instant.now().epochSecond
@@ -208,7 +209,7 @@ class TransformSearchService(
                     if (retryAttempt > 1) {
                         logger.debug(
                             "Attempt [${retryAttempt - 1}] of composite search failed for transform [${transform.id}]. Attempting " +
-                                "again with reduced page size [$pageSize]"
+                                "again with reduced page size [$pageSize]",
                         )
                     }
                     val request = getSearchServiceRequest(transform, afterKey, pageSize, modifiedBuckets, searchRequestTimeoutInSeconds)
@@ -222,7 +223,7 @@ class TransformSearchService(
                 transform,
                 searchResponse,
                 modifiedBuckets = modifiedBuckets,
-                targetIndexDateFieldMappings = transformContext.getTargetIndexDateFieldMappings()
+                targetIndexDateFieldMappings = transformContext.getTargetIndexDateFieldMappings(),
             )
         } catch (e: TransformSearchServiceException) {
             throw e
@@ -258,7 +259,7 @@ class TransformSearchService(
             afterKey: Map<String, Any>? = null,
             pageSize: Int,
             modifiedBuckets: MutableSet<Map<String, Any>>? = null,
-            timeoutInSeconds: Long? = null
+            timeoutInSeconds: Long? = null,
         ): SearchRequest {
             val sources = mutableListOf<CompositeValuesSourceBuilder<*>>()
             transform.groups.forEach { group -> sources.add(group.toSourceBuilder().missingBucket(true)) }
@@ -277,7 +278,7 @@ class TransformSearchService(
         private fun getQueryWithModifiedBuckets(
             originalQuery: QueryBuilder,
             modifiedBuckets: MutableSet<Map<String, Any>>,
-            groups: List<Dimension>
+            groups: List<Dimension>,
         ): QueryBuilder {
             val query: BoolQueryBuilder = QueryBuilders.boolQuery().must(originalQuery).minimumShouldMatch(1)
             modifiedBuckets.forEach { bucket ->
@@ -315,7 +316,7 @@ class TransformSearchService(
             index: String,
             query: QueryBuilder,
             aggregationBuilder: CompositeAggregationBuilder,
-            timeoutInSeconds: Long? = null
+            timeoutInSeconds: Long? = null,
         ): SearchRequest {
             val searchSourceBuilder = SearchSourceBuilder()
                 .trackTotalHits(false)
@@ -336,7 +337,7 @@ class TransformSearchService(
             afterKey: Map<String, Any>? = null,
             pageSize: Int,
             currentShard: ShardNewDocuments,
-            timeoutInSeconds: Long?
+            timeoutInSeconds: Long?,
         ): SearchRequest {
             val rangeQuery = getSeqNoRangeQuery(currentShard.from, currentShard.to)
             val query = QueryBuilders.boolQuery().filter(rangeQuery).must(transform.dataSelectionQuery)
@@ -395,7 +396,7 @@ class TransformSearchService(
         // Gathers and returns from the bucket search response the modified buckets from the query, the afterkey, and the search time
         private fun convertBucketSearchResponse(
             transform: Transform,
-            searchResponse: SearchResponse
+            searchResponse: SearchResponse,
         ): BucketSearchResult {
             val aggs = searchResponse.aggregations.get(transform.id) as CompositeAggregation
             val modifiedBuckets = aggs.buckets.map { it.key }.toMutableSet()
@@ -428,7 +429,7 @@ class TransformSearchService(
                     aggregation.aggregation()
                 }
                 else -> throw TransformSearchServiceException(
-                    "Found aggregation [${aggregation.name}] of type [${aggregation.type}] in composite result that is not currently supported"
+                    "Found aggregation [${aggregation.name}] of type [${aggregation.type}] in composite result that is not currently supported",
                 )
             }
         }

@@ -11,12 +11,12 @@ import org.opensearch.action.admin.cluster.snapshots.create.CreateSnapshotReques
 import org.opensearch.action.admin.cluster.snapshots.create.CreateSnapshotResponse
 import org.opensearch.client.ClusterAdminClient
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
-import org.opensearch.indexmanagement.snapshotmanagement.engine.SMStateMachine
-import org.opensearch.indexmanagement.snapshotmanagement.generateSnapshotName
 import org.opensearch.indexmanagement.snapshotmanagement.addSMPolicyInSnapshotMetadata
+import org.opensearch.indexmanagement.snapshotmanagement.engine.SMStateMachine
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.SMResult
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.State
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.WorkflowType
+import org.opensearch.indexmanagement.snapshotmanagement.generateSnapshotName
 import org.opensearch.indexmanagement.snapshotmanagement.getSnapshots
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata
 import org.opensearch.snapshots.ConcurrentSnapshotExecutionException
@@ -58,7 +58,7 @@ object CreatingState : State {
             if (snapshotName != null) {
                 log.info("Already created snapshot [$snapshotName] during this execution period starting at $latestExecutionStartTime.")
                 metadataBuilder.setLatestExecution(
-                    status = SMMetadata.LatestExecution.Status.IN_PROGRESS
+                    status = SMMetadata.LatestExecution.Status.IN_PROGRESS,
                 ).setCreationStarted(snapshotName)
                 return SMResult.Next(metadataBuilder)
             }

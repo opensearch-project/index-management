@@ -15,35 +15,36 @@ import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.opensearch.ExceptionsHelper
 import org.opensearch.OpenSearchException
-import org.opensearch.core.action.ActionListener
 import org.opensearch.action.admin.indices.alias.Alias
 import org.opensearch.action.bulk.BackoffPolicy
 import org.opensearch.action.get.GetResponse
 import org.opensearch.action.search.SearchResponse
 import org.opensearch.client.OpenSearchClient
-import org.opensearch.core.common.io.stream.StreamInput
-import org.opensearch.core.common.io.stream.StreamOutput
-import org.opensearch.core.common.io.stream.Writeable
 import org.opensearch.common.settings.Settings
 import org.opensearch.common.unit.TimeValue
 import org.opensearch.common.util.concurrent.ThreadContext
 import org.opensearch.common.xcontent.LoggingDeprecationHandler
 import org.opensearch.common.xcontent.XContentHelper
-import org.opensearch.core.xcontent.XContentParserUtils
-import org.opensearch.core.xcontent.XContentParserUtils.ensureExpectedToken
 import org.opensearch.common.xcontent.XContentType
 import org.opensearch.commons.InjectSecurity
 import org.opensearch.commons.authuser.User
 import org.opensearch.commons.notifications.NotificationsPluginInterface
+import org.opensearch.core.action.ActionListener
 import org.opensearch.core.action.support.DefaultShardOperationFailedException
 import org.opensearch.core.common.bytes.BytesReference
+import org.opensearch.core.common.io.stream.StreamInput
+import org.opensearch.core.common.io.stream.StreamOutput
+import org.opensearch.core.common.io.stream.Writeable
 import org.opensearch.core.concurrency.OpenSearchRejectedExecutionException
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.core.xcontent.MediaType
 import org.opensearch.core.xcontent.NamedXContentRegistry
 import org.opensearch.core.xcontent.ToXContent
 import org.opensearch.core.xcontent.XContentBuilder
 import org.opensearch.core.xcontent.XContentParser
 import org.opensearch.core.xcontent.XContentParser.Token
+import org.opensearch.core.xcontent.XContentParserUtils
+import org.opensearch.core.xcontent.XContentParserUtils.ensureExpectedToken
 import org.opensearch.index.seqno.SequenceNumbers
 import org.opensearch.indexmanagement.indexstatemanagement.action.ShrinkAction
 import org.opensearch.indexmanagement.indexstatemanagement.model.ISMTemplate
@@ -53,7 +54,6 @@ import org.opensearch.indexmanagement.util.NO_ID
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.DEFAULT_INJECT_ROLES
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.INTERNAL_REQUEST
 import org.opensearch.jobscheduler.spi.utils.LockService
-import org.opensearch.core.rest.RestStatus
 import org.opensearch.transport.RemoteTransportException
 import java.io.IOException
 import java.time.Instant
@@ -69,14 +69,14 @@ fun contentParser(bytesReference: BytesReference, xContentRegistry: NamedXConten
         xContentRegistry,
         LoggingDeprecationHandler.INSTANCE,
         bytesReference,
-        XContentType.JSON
+        XContentType.JSON,
     )
 }
 
 /** Convert an object to maps and lists representation */
 fun ToXContent.convertToMap(): Map<String, Any> {
     val bytesReference = org.opensearch.core.xcontent.XContentHelper.toXContent(
-        this, XContentType.JSON, ToXContent.EMPTY_PARAMS, false
+        this, XContentType.JSON, ToXContent.EMPTY_PARAMS, false,
     )
     return XContentHelper.convertToMap(bytesReference, false, XContentType.JSON as (MediaType)).v2()
 }
@@ -126,7 +126,7 @@ fun XContentBuilder.optionalUserField(name: String, user: User?): XContentBuilde
 fun <T> parseFromSearchResponse(
     response: SearchResponse,
     xContentRegistry: NamedXContentRegistry = NamedXContentRegistry.EMPTY,
-    parse: (xcp: XContentParser, id: String, seqNo: Long, primaryTerm: Long) -> T
+    parse: (xcp: XContentParser, id: String, seqNo: Long, primaryTerm: Long) -> T,
 ): List<T> {
     return response.hits.hits.map {
         val id = it.id
@@ -143,13 +143,13 @@ fun <T> parseFromSearchResponse(
 fun <T> parseFromGetResponse(
     response: GetResponse,
     xContentRegistry: NamedXContentRegistry = NamedXContentRegistry.EMPTY,
-    parse: (xcp: XContentParser, id: String, seqNo: Long, primaryTerm: Long) -> T
+    parse: (xcp: XContentParser, id: String, seqNo: Long, primaryTerm: Long) -> T,
 ): T {
     val xcp = XContentHelper.createParser(
         xContentRegistry,
         LoggingDeprecationHandler.INSTANCE,
         response.sourceAsBytesRef,
-        XContentType.JSON
+        XContentType.JSON,
     )
     return xcp.parseWithType(response.id, response.seqNo, response.primaryTerm, parse)
 }
@@ -169,7 +169,7 @@ fun <T> parseFromGetResponse(
 suspend fun <T> BackoffPolicy.retry(
     logger: Logger,
     retryOn: List<RestStatus> = emptyList(),
-    block: suspend (backoff: TimeValue) -> T
+    block: suspend (backoff: TimeValue) -> T,
 ): T {
     val iter = iterator()
     var backoff: TimeValue = TimeValue.ZERO
@@ -267,7 +267,7 @@ fun <T> XContentParser.parseWithType(
     id: String = NO_ID,
     seqNo: Long = SequenceNumbers.UNASSIGNED_SEQ_NO,
     primaryTerm: Long = SequenceNumbers.UNASSIGNED_PRIMARY_TERM,
-    parse: (xcp: XContentParser, id: String, seqNo: Long, primaryTerm: Long) -> T
+    parse: (xcp: XContentParser, id: String, seqNo: Long, primaryTerm: Long) -> T,
 ): T {
     ensureExpectedToken(Token.START_OBJECT, nextToken(), this)
     ensureExpectedToken(Token.FIELD_NAME, nextToken(), this)
@@ -281,7 +281,7 @@ class IndexManagementSecurityContext(
     private val id: String,
     settings: Settings,
     private val threadContext: ThreadContext,
-    private val user: User?
+    private val user: User?,
 ) : ThreadContextElement<Unit> {
 
     companion object Key : CoroutineContext.Key<IndexManagementSecurityContext>
@@ -312,7 +312,7 @@ class IndexManagementSecurityContext(
 
 suspend fun <T> withClosableContext(
     context: IndexManagementSecurityContext,
-    block: suspend CoroutineScope.() -> T
+    block: suspend CoroutineScope.() -> T,
 ): T {
     try {
         return withContext(context) { block() }
@@ -322,7 +322,11 @@ suspend fun <T> withClosableContext(
 }
 
 fun XContentBuilder.optionalField(name: String, value: Any?): XContentBuilder {
-    return if (value != null) { this.field(name, value) } else this
+    return if (value != null) {
+        this.field(name, value)
+    } else {
+        this
+    }
 }
 
 fun XContentBuilder.optionalInfoField(name: String, info: SMMetadata.Info?): XContentBuilder {
@@ -332,7 +336,9 @@ fun XContentBuilder.optionalInfoField(name: String, info: SMMetadata.Info?): XCo
         } else {
             this
         }
-    } else this
+    } else {
+        this
+    }
 }
 
 inline fun <T> XContentParser.nullValueHandler(block: XContentParser.() -> T): T? {
@@ -350,7 +356,11 @@ inline fun <T> XContentParser.parseArray(block: XContentParser.() -> T): List<T>
 
 // similar to readOptionalWriteable
 fun <T> StreamInput.readOptionalValue(reader: Writeable.Reader<T>): T? {
-    return if (readBoolean()) { reader.read(this) } else null
+    return if (readBoolean()) {
+        reader.read(this)
+    } else {
+        null
+    }
 }
 
 fun <T> StreamOutput.writeOptionalValue(value: T, writer: Writeable.Writer<T>) {

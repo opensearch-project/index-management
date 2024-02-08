@@ -17,7 +17,7 @@ import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepContext
 
 class RollupAction(
     val ismRollup: ISMRollup,
-    index: Int
+    index: Int,
 ) : Action(name, index) {
 
     companion object {

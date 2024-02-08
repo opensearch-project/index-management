@@ -46,22 +46,22 @@ class RollupActionIT : IndexStateManagementRestTestCase() {
             dimensions = listOf(
                 DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "1h"),
                 Terms("RatecodeID", "RatecodeID"),
-                Terms("PULocationID", "PULocationID")
+                Terms("PULocationID", "PULocationID"),
             ),
             metrics = listOf(
                 RollupMetrics(
                     sourceField = "passenger_count", targetField = "passenger_count",
                     metrics = listOf(
                         Sum(), Min(), Max(),
-                        ValueCount(), Average()
-                    )
+                        ValueCount(), Average(),
+                    ),
                 ),
-                RollupMetrics(sourceField = "total_amount", targetField = "total_amount", metrics = listOf(Max(), Min()))
-            )
+                RollupMetrics(sourceField = "total_amount", targetField = "total_amount", metrics = listOf(Max(), Min())),
+            ),
         )
         val actionConfig = RollupAction(rollup, 0)
         val states = listOf(
-            State("rollup", listOf(actionConfig), listOf())
+            State("rollup", listOf(actionConfig), listOf()),
         )
         val sourceIndexMappingString = "\"properties\": {\"tpep_pickup_datetime\": { \"type\": \"date\" }, \"RatecodeID\": { \"type\": " +
             "\"keyword\" }, \"PULocationID\": { \"type\": \"keyword\" }, \"passenger_count\": { \"type\": \"integer\" }, \"total_amount\": " +
@@ -73,7 +73,7 @@ class RollupActionIT : IndexStateManagementRestTestCase() {
             lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
             errorNotification = randomErrorNotification(),
             defaultState = states[0].name,
-            states = states
+            states = states,
         )
         createPolicy(policy, policyID)
         createIndex(indexName, policyID, mapping = sourceIndexMappingString)
@@ -92,20 +92,20 @@ class RollupActionIT : IndexStateManagementRestTestCase() {
             dimensions = listOf(
                 DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "1h"),
                 Terms("RatecodeID", "RatecodeID"),
-                Terms("PULocationID", "PULocationID")
+                Terms("PULocationID", "PULocationID"),
             ),
             metrics = listOf(
                 RollupMetrics(
                     sourceField = "passenger_count",
                     targetField = "passenger_count",
-                    metrics = listOf(Sum(), Min(), Max(), ValueCount(), Average())
+                    metrics = listOf(Sum(), Min(), Max(), ValueCount(), Average()),
                 ),
                 RollupMetrics(
                     sourceField = "total_amount",
                     targetField = "total_amount",
-                    metrics = listOf(Max(), Min())
-                )
-            )
+                    metrics = listOf(Max(), Min()),
+                ),
+            ),
         )
 
         // Create an ISM policy to rollup backing indices of a data stream.
@@ -119,7 +119,7 @@ class RollupActionIT : IndexStateManagementRestTestCase() {
             errorNotification = randomErrorNotification(),
             defaultState = states[0].name,
             states = states,
-            ismTemplate = listOf(ISMTemplate(listOf(dataStreamName), 100, Instant.now().truncatedTo(ChronoUnit.MILLIS)))
+            ismTemplate = listOf(ISMTemplate(listOf(dataStreamName), 100, Instant.now().truncatedTo(ChronoUnit.MILLIS))),
         )
         createPolicy(policy, policyID)
 
@@ -136,8 +136,8 @@ class RollupActionIT : IndexStateManagementRestTestCase() {
                     "\"index_patterns\": [ \"$dataStreamName\" ], " +
                     "\"data_stream\": { \"timestamp_field\": { \"name\": \"tpep_pickup_datetime\" } }, " +
                     "\"template\": { \"mappings\": { $sourceIndexMappingString } } }",
-                ContentType.APPLICATION_JSON
-            )
+                ContentType.APPLICATION_JSON,
+            ),
         )
         client().makeRequest("PUT", "/_data_stream/$dataStreamName")
 
@@ -156,20 +156,20 @@ class RollupActionIT : IndexStateManagementRestTestCase() {
             dimensions = listOf(
                 DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "1h"),
                 Terms("RatecodeID", "RatecodeID"),
-                Terms("PULocationID", "PULocationID")
+                Terms("PULocationID", "PULocationID"),
             ),
             metrics = listOf(
                 RollupMetrics(
                     sourceField = "passenger_count",
                     targetField = "passenger_count",
-                    metrics = listOf(Sum(), Min(), Max(), ValueCount(), Average())
+                    metrics = listOf(Sum(), Min(), Max(), ValueCount(), Average()),
                 ),
                 RollupMetrics(
                     sourceField = "total_amount",
                     targetField = "total_amount",
-                    metrics = listOf(Max(), Min())
-                )
-            )
+                    metrics = listOf(Max(), Min()),
+                ),
+            ),
         )
 
         // Create an ISM policy to rollup backing indices of a data stream.
@@ -183,7 +183,7 @@ class RollupActionIT : IndexStateManagementRestTestCase() {
             errorNotification = randomErrorNotification(),
             defaultState = states[0].name,
             states = states,
-            ismTemplate = listOf(ISMTemplate(listOf(dataStreamName), 100, Instant.now().truncatedTo(ChronoUnit.MILLIS)))
+            ismTemplate = listOf(ISMTemplate(listOf(dataStreamName), 100, Instant.now().truncatedTo(ChronoUnit.MILLIS))),
         )
         createPolicy(policy, policyID)
 
@@ -200,8 +200,8 @@ class RollupActionIT : IndexStateManagementRestTestCase() {
                     "\"index_patterns\": [ \"$dataStreamName\" ], " +
                     "\"data_stream\": { \"timestamp_field\": { \"name\": \"tpep_pickup_datetime\" } }, " +
                     "\"template\": { \"mappings\": { $sourceIndexMappingString } } }",
-                ContentType.APPLICATION_JSON
-            )
+                ContentType.APPLICATION_JSON,
+            ),
         )
         client().makeRequest("PUT", "/_data_stream/$dataStreamName")
 
@@ -221,23 +221,23 @@ class RollupActionIT : IndexStateManagementRestTestCase() {
             dimensions = listOf(
                 DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "1h"),
                 Terms("RatecodeID", "RatecodeID"),
-                Terms("PULocationID", "PULocationID")
+                Terms("PULocationID", "PULocationID"),
             ),
             metrics = listOf(
                 RollupMetrics(
                     sourceField = "passenger_count", targetField = "passenger_count",
                     metrics = listOf(
                         Sum(), Min(), Max(),
-                        ValueCount(), Average()
-                    )
-                )
-            )
+                        ValueCount(), Average(),
+                    ),
+                ),
+            ),
         )
         val rollup = ismRollup.toRollup(indexName)
         val rollupId = rollup.id
         val actionConfig = RollupAction(ismRollup, 0)
         val states = listOf(
-            State("rollup", listOf(actionConfig), listOf())
+            State("rollup", listOf(actionConfig), listOf()),
         )
         val sourceIndexMappingString = "\"properties\": {\"tpep_pickup_datetime\": { \"type\": \"date\" }, \"RatecodeID\": { \"type\": " +
             "\"keyword\" }, \"passenger_count\": { \"type\": \"integer\" }, \"total_amount\": " +
@@ -249,7 +249,7 @@ class RollupActionIT : IndexStateManagementRestTestCase() {
             lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
             errorNotification = randomErrorNotification(),
             defaultState = states[0].name,
-            states = states
+            states = states,
         )
         createPolicy(policy, policyID)
         createIndex(indexName, policyID, mapping = sourceIndexMappingString)
@@ -265,7 +265,7 @@ class RollupActionIT : IndexStateManagementRestTestCase() {
         waitFor {
             assertEquals(
                 AttemptCreateRollupJobStep.getSuccessMessage(rollupId, indexName),
-                getExplainManagedIndexMetaData(indexName).info?.get("message")
+                getExplainManagedIndexMetaData(indexName).info?.get("message"),
             )
         }
 
@@ -275,7 +275,7 @@ class RollupActionIT : IndexStateManagementRestTestCase() {
         waitFor {
             assertEquals(
                 WaitForRollupCompletionStep.getJobFailedMessage(rollupId, indexName),
-                getExplainManagedIndexMetaData(indexName).info?.get("message")
+                getExplainManagedIndexMetaData(indexName).info?.get("message"),
             )
         }
     }
@@ -290,22 +290,22 @@ class RollupActionIT : IndexStateManagementRestTestCase() {
             dimensions = listOf(
                 DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "1h"),
                 Terms("RatecodeID", "RatecodeID"),
-                Terms("PULocationID", "PULocationID")
+                Terms("PULocationID", "PULocationID"),
             ),
             metrics = listOf(
                 RollupMetrics(
                     sourceField = "passenger_count", targetField = "passenger_count",
                     metrics = listOf(
                         Sum(), Min(), Max(),
-                        ValueCount(), Average()
-                    )
-                )
-            )
+                        ValueCount(), Average(),
+                    ),
+                ),
+            ),
         )
         val rollupId = rollup.toRollup(indexName).id
         val actionConfig = RollupAction(rollup, 0)
         val states = listOf(
-            State("rollup", listOf(actionConfig), listOf())
+            State("rollup", listOf(actionConfig), listOf()),
         )
         val sourceIndexMappingString = "\"properties\": {\"tpep_pickup_datetime\": { \"type\": \"date\" }, \"RatecodeID\": { \"type\": " +
             "\"keyword\" }, \"passenger_count\": { \"type\": \"integer\" }, \"total_amount\": " +
@@ -317,7 +317,7 @@ class RollupActionIT : IndexStateManagementRestTestCase() {
             lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
             errorNotification = randomErrorNotification(),
             defaultState = states[0].name,
-            states = states
+            states = states,
         )
         createPolicy(policy, policyID)
         createIndex(indexName, policyID, mapping = sourceIndexMappingString)
@@ -333,7 +333,7 @@ class RollupActionIT : IndexStateManagementRestTestCase() {
         waitFor {
             assertEquals(
                 AttemptCreateRollupJobStep.getFailedMessage(rollupId, indexName),
-                getExplainManagedIndexMetaData(indexName).info?.get("message")
+                getExplainManagedIndexMetaData(indexName).info?.get("message"),
             )
         }
     }
@@ -348,17 +348,17 @@ class RollupActionIT : IndexStateManagementRestTestCase() {
             dimensions = listOf(
                 DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "1h"),
                 Terms("RatecodeID", "RatecodeID"),
-                Terms("PULocationID", "PULocationID")
+                Terms("PULocationID", "PULocationID"),
             ),
             metrics = listOf(
                 RollupMetrics(
                     sourceField = "passenger_count", targetField = "passenger_count",
                     metrics = listOf(
                         Sum(), Min(), Max(),
-                        ValueCount(), Average()
-                    )
-                )
-            )
+                        ValueCount(), Average(),
+                    ),
+                ),
+            ),
         )
         val rollup = ismRollup.toRollup(indexName)
         val rollupId = rollup.id
@@ -383,7 +383,7 @@ class RollupActionIT : IndexStateManagementRestTestCase() {
         waitFor {
             assertEquals(
                 AttemptCreateRollupJobStep.getSuccessMessage(rollupId, indexName),
-                getExplainManagedIndexMetaData(indexName).info?.get("message")
+                getExplainManagedIndexMetaData(indexName).info?.get("message"),
             )
         }
 
@@ -392,7 +392,7 @@ class RollupActionIT : IndexStateManagementRestTestCase() {
         waitFor {
             assertEquals(
                 WaitForRollupCompletionStep.getJobProcessingMessage(rollupId, indexName),
-                getExplainManagedIndexMetaData(indexName).info?.get("message")
+                getExplainManagedIndexMetaData(indexName).info?.get("message"),
             )
         }
 
@@ -402,7 +402,7 @@ class RollupActionIT : IndexStateManagementRestTestCase() {
         waitFor {
             assertEquals(
                 WaitForRollupCompletionStep.getJobFailedMessage(rollupId, indexName),
-                getExplainManagedIndexMetaData(indexName).info?.get("message")
+                getExplainManagedIndexMetaData(indexName).info?.get("message"),
             )
         }
     }
@@ -421,7 +421,7 @@ class RollupActionIT : IndexStateManagementRestTestCase() {
         waitFor {
             assertEquals(
                 AttemptCreateRollupJobStep.getSuccessMessage(rollupId, indexName),
-                getExplainManagedIndexMetaData(indexName).info?.get("message")
+                getExplainManagedIndexMetaData(indexName).info?.get("message"),
             )
         }
 
@@ -437,7 +437,7 @@ class RollupActionIT : IndexStateManagementRestTestCase() {
         waitFor {
             assertEquals(
                 WaitForRollupCompletionStep.getJobCompletionMessage(rollupId, indexName),
-                getExplainManagedIndexMetaData(indexName).info?.get("message")
+                getExplainManagedIndexMetaData(indexName).info?.get("message"),
             )
         }
     }

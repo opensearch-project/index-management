@@ -32,7 +32,7 @@ data class CustomWebhook(
     val queryParams: Map<String, String>,
     val headerParams: Map<String, String>,
     val username: String?,
-    val password: String?
+    val password: String?,
 ) : ToXContent, Writeable {
 
     init {
@@ -64,7 +64,7 @@ data class CustomWebhook(
         suppressWarning(sin.readMap()),
         suppressWarning(sin.readMap()),
         sin.readOptionalString(),
-        sin.readOptionalString()
+        sin.readOptionalString(),
     )
 
     override fun writeTo(out: StreamOutput) {

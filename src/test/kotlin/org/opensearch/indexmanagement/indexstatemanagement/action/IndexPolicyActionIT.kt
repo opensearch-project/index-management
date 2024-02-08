@@ -40,13 +40,13 @@ class IndexPolicyActionIT : IndexStateManagementRestTestCase() {
             lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
             errorNotification = randomErrorNotification(),
             defaultState = states[0].name,
-            states = states
+            states = states,
         )
         client().makeRequest(
             "PUT",
             "${IndexManagementPlugin.POLICY_BASE_URI}/init-index",
             emptyMap(),
-            StringEntity(policy.toJsonString(), ContentType.APPLICATION_JSON)
+            StringEntity(policy.toJsonString(), ContentType.APPLICATION_JSON),
         )
 
         updateClusterSetting(AwarenessAllocationDecider.CLUSTER_ROUTING_ALLOCATION_AWARENESS_FORCE_GROUP_SETTING.key + "zone.values", "a, b")
@@ -56,7 +56,7 @@ class IndexPolicyActionIT : IndexStateManagementRestTestCase() {
             "PUT",
             "${IndexManagementPlugin.POLICY_BASE_URI}/$policyID",
             emptyMap(),
-            StringEntity(policy.toJsonString(), ContentType.APPLICATION_JSON)
+            StringEntity(policy.toJsonString(), ContentType.APPLICATION_JSON),
         )
 
         actionConfig = ReplicaCountAction(4, 0)
@@ -68,16 +68,16 @@ class IndexPolicyActionIT : IndexStateManagementRestTestCase() {
             lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
             errorNotification = randomErrorNotification(),
             defaultState = states[0].name,
-            states = states
+            states = states,
         )
         Assert.assertThrows(
-            ResponseException::class.java
+            ResponseException::class.java,
         ) {
             client().makeRequest(
                 "PUT",
                 "${IndexManagementPlugin.POLICY_BASE_URI}/$policyID",
                 emptyMap(),
-                StringEntity(policy.toJsonString(), ContentType.APPLICATION_JSON)
+                StringEntity(policy.toJsonString(), ContentType.APPLICATION_JSON),
             )
         }
 

@@ -10,10 +10,10 @@ import org.apache.logging.log4j.Logger
 import org.opensearch.OpenSearchException
 import org.opensearch.action.bulk.BackoffPolicy
 import org.opensearch.common.unit.TimeValue
-import org.opensearch.indexmanagement.opensearchapi.isRetryable
-import org.opensearch.indexmanagement.transform.util.TransformLockManager
 import org.opensearch.core.rest.RestStatus
 import org.opensearch.core.tasks.TaskCancelledException
+import org.opensearch.indexmanagement.opensearchapi.isRetryable
+import org.opensearch.indexmanagement.transform.util.TransformLockManager
 import java.util.regex.Pattern
 
 /**
@@ -39,7 +39,7 @@ suspend fun <T> BackoffPolicy.retryTransformSearch(
     logger: Logger,
     transformLockManager: TransformLockManager,
     retryOn: List<RestStatus> = emptyList(),
-    block: suspend (backoff: TimeValue) -> T
+    block: suspend (backoff: TimeValue) -> T,
 ): T {
     val iter = iterator()
     var backoff: TimeValue = TimeValue.ZERO

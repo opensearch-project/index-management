@@ -13,11 +13,12 @@ import org.opensearch.action.admin.indices.rollover.RolloverRequest
 import org.opensearch.action.admin.indices.rollover.RolloverResponse
 import org.opensearch.action.admin.indices.stats.IndicesStatsRequest
 import org.opensearch.action.admin.indices.stats.IndicesStatsResponse
-import org.opensearch.core.common.unit.ByteSizeValue
 import org.opensearch.action.support.master.AcknowledgedResponse
 import org.opensearch.client.Client
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.unit.TimeValue
+import org.opensearch.core.common.unit.ByteSizeValue
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.index.IndexNotFoundException
 import org.opensearch.indexmanagement.indexstatemanagement.action.RolloverAction
 import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.getRolloverAlias
@@ -29,7 +30,6 @@ import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepContext
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepMetaData
-import org.opensearch.core.rest.RestStatus
 import org.opensearch.transport.RemoteTransportException
 import java.time.Instant
 
@@ -94,34 +94,34 @@ class AttemptRolloverStep(private val action: RolloverAction) : Step(name) {
                 RolloverAction.MIN_INDEX_AGE_FIELD to mapOf(
                     "condition" to it.toString(),
                     "current" to indexAgeTimeValue.toString(),
-                    "creationDate" to indexCreationDate
+                    "creationDate" to indexCreationDate,
                 )
             },
             action.minDocs?.let {
                 RolloverAction.MIN_DOC_COUNT_FIELD to mapOf(
                     "condition" to it,
-                    "current" to numDocs
+                    "current" to numDocs,
                 )
             },
             action.minSize?.let {
                 RolloverAction.MIN_SIZE_FIELD to mapOf(
                     "condition" to it.toString(),
-                    "current" to indexSize.toString()
+                    "current" to indexSize.toString(),
                 )
             },
             action.minPrimaryShardSize?.let {
                 RolloverAction.MIN_PRIMARY_SHARD_SIZE_FIELD to mapOf(
                     "condition" to it.toString(),
                     "current" to largestPrimaryShardSize.toString(),
-                    "shard" to largestPrimaryShard?.shardRouting?.id()
+                    "shard" to largestPrimaryShard?.shardRouting?.id(),
                 )
-            }
+            },
         ).toMap()
 
         if (action.evaluateConditions(indexAgeTimeValue, numDocs, indexSize, largestPrimaryShardSize)) {
             logger.info(
                 "$indexName rollover conditions evaluated to true [indexCreationDate=$indexCreationDate," +
-                    " numDocs=$numDocs, indexSize=${indexSize.bytes}, primaryShardSize=${largestPrimaryShardSize.bytes}]"
+                    " numDocs=$numDocs, indexSize=${indexSize.bytes}, primaryShardSize=${largestPrimaryShardSize.bytes}]",
             )
             executeRollover(context, rolloverTarget, isDataStream, conditions)
             copyAlias(clusterService, indexName, context.client, rolloverTarget, context.metadata)
@@ -201,7 +201,7 @@ class AttemptRolloverStep(private val action: RolloverAction) : Step(name) {
             stepStatus = StepStatus.FAILED
             info = mapOf(
                 "message" to message,
-                "shard_failures" to statsResponse.shardFailures.map { it.getUsefulCauseString() }
+                "shard_failures" to statsResponse.shardFailures.map { it.getUsefulCauseString() },
             )
         } catch (e: RemoteTransportException) {
             handleException(indexName, ExceptionsHelper.unwrapCause(e) as Exception)
@@ -217,7 +217,7 @@ class AttemptRolloverStep(private val action: RolloverAction) : Step(name) {
         context: StepContext,
         rolloverTarget: String,
         isDataStream: Boolean,
-        conditions: Map<String, Map<String, Any?>>
+        conditions: Map<String, Map<String, Any?>>,
     ) {
         val indexName = context.metadata.index
         try {
@@ -242,7 +242,7 @@ class AttemptRolloverStep(private val action: RolloverAction) : Step(name) {
                 stepStatus = StepStatus.COMPLETED
                 info = listOfNotNull(
                     "message" to message,
-                    if (conditions.isEmpty()) null else "conditions" to conditions // don't show empty conditions object if no conditions specified
+                    if (conditions.isEmpty()) null else "conditions" to conditions, // don't show empty conditions object if no conditions specified
                 ).toMap()
             } else {
                 val message = when {
@@ -255,7 +255,7 @@ class AttemptRolloverStep(private val action: RolloverAction) : Step(name) {
                 stepStatus = StepStatus.FAILED
                 info = listOfNotNull(
                     "message" to message,
-                    if (conditions.isEmpty()) null else "conditions" to conditions // don't show empty conditions object if no conditions specified
+                    if (conditions.isEmpty()) null else "conditions" to conditions, // don't show empty conditions object if no conditions specified
                 ).toMap()
             }
         } catch (e: RemoteTransportException) {
@@ -280,7 +280,7 @@ class AttemptRolloverStep(private val action: RolloverAction) : Step(name) {
         indexName: String,
         client: Client,
         rolloverTarget: String,
-        metadata: ManagedIndexMetaData
+        metadata: ManagedIndexMetaData,
     ) {
         if (!action.copyAlias) return
 
@@ -295,7 +295,7 @@ class AttemptRolloverStep(private val action: RolloverAction) : Step(name) {
             stepStatus = StepStatus.COMPLETED
             info = listOfNotNull(
                 "message" to getCopyAliasRolledOverIndexNotFoundMessage(indexName),
-                if (conditions != null) "conditions" to conditions else null
+                if (conditions != null) "conditions" to conditions else null,
             ).toMap()
             return
         }
@@ -325,13 +325,13 @@ class AttemptRolloverStep(private val action: RolloverAction) : Step(name) {
                 stepStatus = StepStatus.COMPLETED
                 info = listOfNotNull(
                     "message" to getSuccessCopyAliasMessage(indexName, rolledOverIndexName),
-                    if (conditions != null) "conditions" to conditions else null
+                    if (conditions != null) "conditions" to conditions else null,
                 ).toMap()
             } else {
                 stepStatus = StepStatus.FAILED
                 info = listOfNotNull(
                     "message" to getCopyAliasNotAckMessage(indexName, rolledOverIndexName),
-                    if (conditions != null) "conditions" to conditions else null
+                    if (conditions != null) "conditions" to conditions else null,
                 ).toMap()
             }
         } catch (e: IndexNotFoundException) {
@@ -339,7 +339,7 @@ class AttemptRolloverStep(private val action: RolloverAction) : Step(name) {
             stepStatus = StepStatus.FAILED
             info = listOfNotNull(
                 "message" to getCopyAliasIndexNotFoundMessage(rolledOverIndexName),
-                if (conditions != null) "conditions" to conditions else null
+                if (conditions != null) "conditions" to conditions else null,
             ).toMap()
         } catch (e: Exception) {
             handleException(indexName, e, getFailedCopyAliasMessage(indexName, rolledOverIndexName), conditions)
@@ -352,7 +352,7 @@ class AttemptRolloverStep(private val action: RolloverAction) : Step(name) {
             rolledOver = if (currentMetadata.rolledOver == true) true else stepStatus == StepStatus.COMPLETED,
             rolledOverIndexName = if (currentMetadata.rolledOverIndexName != null) currentMetadata.rolledOverIndexName else newIndex,
             transitionTo = null,
-            info = info
+            info = info,
         )
     }
 

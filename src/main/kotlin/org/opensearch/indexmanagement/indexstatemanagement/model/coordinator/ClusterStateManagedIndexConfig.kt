@@ -21,5 +21,5 @@ data class ClusterStateManagedIndexConfig(
     val seqNo: Long = SequenceNumbers.UNASSIGNED_SEQ_NO,
     val primaryTerm: Long = SequenceNumbers.UNASSIGNED_PRIMARY_TERM,
     val uuid: String,
-    val policyID: String
+    val policyID: String,
 )

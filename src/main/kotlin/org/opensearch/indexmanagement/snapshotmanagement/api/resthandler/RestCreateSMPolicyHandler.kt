@@ -18,7 +18,7 @@ class RestCreateSMPolicyHandler : RestBaseIndexSMPolicyHandler() {
 
     override fun routes(): List<Route> {
         return listOf(
-            Route(RestRequest.Method.POST, "$SM_POLICIES_URI/{policyName}")
+            Route(RestRequest.Method.POST, "$SM_POLICIES_URI/{policyName}"),
         )
     }
 

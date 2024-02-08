@@ -6,7 +6,6 @@
 package org.opensearch.indexmanagement.indexstatemanagement.transport.action.updateindexmetadata
 
 import org.apache.logging.log4j.LogManager
-import org.opensearch.core.action.ActionListener
 import org.opensearch.action.support.ActionFilters
 import org.opensearch.action.support.clustermanager.TransportClusterManagerNodeAction
 import org.opensearch.action.support.master.AcknowledgedResponse
@@ -23,6 +22,7 @@ import org.opensearch.cluster.metadata.Metadata
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.Priority
 import org.opensearch.common.inject.Inject
+import org.opensearch.core.action.ActionListener
 import org.opensearch.core.common.io.stream.StreamInput
 import org.opensearch.core.common.io.stream.Writeable
 import org.opensearch.core.index.Index
@@ -38,7 +38,7 @@ class TransportUpdateManagedIndexMetaDataAction @Inject constructor(
     transportService: TransportService,
     actionFilters: ActionFilters,
     val indexMetadataProvider: IndexMetadataProvider,
-    indexNameExpressionResolver: IndexNameExpressionResolver
+    indexNameExpressionResolver: IndexNameExpressionResolver,
 ) : TransportClusterManagerNodeAction<UpdateManagedIndexMetaDataRequest, AcknowledgedResponse>(
     UpdateManagedIndexMetaDataAction.INSTANCE.name(),
     transportService,
@@ -46,7 +46,7 @@ class TransportUpdateManagedIndexMetaDataAction @Inject constructor(
     threadPool,
     actionFilters,
     Writeable.Reader { UpdateManagedIndexMetaDataRequest(it) },
-    indexNameExpressionResolver
+    indexNameExpressionResolver,
 ) {
 
     private val log = LogManager.getLogger(javaClass)
@@ -79,7 +79,7 @@ class TransportUpdateManagedIndexMetaDataAction @Inject constructor(
     override fun masterOperation(
         request: UpdateManagedIndexMetaDataRequest,
         state: ClusterState,
-        listener: ActionListener<AcknowledgedResponse>
+        listener: ActionListener<AcknowledgedResponse>,
     ) {
         clusterService.submitStateUpdateTask(
             IndexManagementPlugin.OLD_PLUGIN_NAME,
@@ -91,7 +91,7 @@ class TransportUpdateManagedIndexMetaDataAction @Inject constructor(
 
                 override fun clusterStateProcessed(source: String, oldState: ClusterState, newState: ClusterState) =
                     listener.onResponse(AcknowledgedResponse(true))
-            }
+            },
         )
     }
 
@@ -126,7 +126,7 @@ class TransportUpdateManagedIndexMetaDataAction @Inject constructor(
                 if (currentState.metadata.hasIndex(pair.first.name)) {
                     metaDataBuilder.put(
                         IndexMetadata.builder(currentState.metadata.index(pair.first))
-                            .putCustom(ManagedIndexMetaData.MANAGED_INDEX_METADATA_TYPE, pair.second.toMap())
+                            .putCustom(ManagedIndexMetaData.MANAGED_INDEX_METADATA_TYPE, pair.second.toMap()),
                     )
                 } else {
                     log.debug("No IndexMetadata found for [${pair.first.name}] when updating ManagedIndexMetaData")
@@ -152,7 +152,7 @@ class TransportUpdateManagedIndexMetaDataAction @Inject constructor(
     companion object {
         data class ManagedIndexMetaDataTask(
             val indicesToAddManagedIndexMetaDataTo: List<Pair<Index, ManagedIndexMetaData>>,
-            val indicesToRemoveManagedIndexMetaDataFrom: List<Index>
+            val indicesToRemoveManagedIndexMetaDataFrom: List<Index>,
         )
     }
 }

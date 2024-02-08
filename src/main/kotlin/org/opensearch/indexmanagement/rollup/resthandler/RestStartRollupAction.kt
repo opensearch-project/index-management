@@ -30,8 +30,8 @@ class RestStartRollupAction : BaseRestHandler() {
         return listOf(
             ReplacedRoute(
                 POST, "$ROLLUP_JOBS_BASE_URI/{rollupID}/_start",
-                POST, "$LEGACY_ROLLUP_JOBS_BASE_URI/{rollupID}/_start"
-            )
+                POST, "$LEGACY_ROLLUP_JOBS_BASE_URI/{rollupID}/_start",
+            ),
         )
     }
 

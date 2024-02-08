@@ -27,7 +27,7 @@ class IndexTransformRequest : IndexRequest {
 
     constructor(
         transform: Transform,
-        refreshPolicy: WriteRequest.RefreshPolicy
+        refreshPolicy: WriteRequest.RefreshPolicy,
     ) {
         this.transform = transform
         if (transform.seqNo == SequenceNumbers.UNASSIGNED_SEQ_NO || transform.primaryTerm == SequenceNumbers.UNASSIGNED_PRIMARY_TERM) {

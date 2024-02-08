@@ -25,7 +25,7 @@ class RestDeleteSMPolicyHandler : BaseRestHandler() {
 
     override fun routes(): List<Route> {
         return listOf(
-            Route(RestRequest.Method.DELETE, "$SM_POLICIES_URI/{policyName}")
+            Route(RestRequest.Method.DELETE, "$SM_POLICIES_URI/{policyName}"),
         )
     }
 
@@ -45,7 +45,7 @@ class RestDeleteSMPolicyHandler : BaseRestHandler() {
             client.execute(
                 SMActions.DELETE_SM_POLICY_ACTION_TYPE,
                 DeleteSMPolicyRequest(smPolicyNameToDocId(policyName)).setRefreshPolicy(refreshPolicy),
-                RestToXContentListener(it)
+                RestToXContentListener(it),
             )
         }
     }

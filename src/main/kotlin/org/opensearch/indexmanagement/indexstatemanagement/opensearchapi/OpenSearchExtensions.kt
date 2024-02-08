@@ -20,12 +20,12 @@ import org.opensearch.client.Client
 import org.opensearch.cluster.ClusterState
 import org.opensearch.cluster.metadata.IndexMetadata
 import org.opensearch.common.xcontent.LoggingDeprecationHandler
+import org.opensearch.common.xcontent.XContentHelper
+import org.opensearch.common.xcontent.XContentType
 import org.opensearch.core.xcontent.NamedXContentRegistry
 import org.opensearch.core.xcontent.ToXContent
 import org.opensearch.core.xcontent.ToXContentFragment
 import org.opensearch.core.xcontent.XContentBuilder
-import org.opensearch.common.xcontent.XContentHelper
-import org.opensearch.common.xcontent.XContentType
 import org.opensearch.index.IndexNotFoundException
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
 import org.opensearch.indexmanagement.indexstatemanagement.DefaultIndexMetadataService
@@ -105,7 +105,7 @@ suspend fun Client.getManagedIndexMetadata(indexUUID: String): Pair<ManagedIndex
             val xcp = XContentHelper.createParser(
                 NamedXContentRegistry.EMPTY,
                 LoggingDeprecationHandler.INSTANCE,
-                getResponse.sourceAsBytesRef, XContentType.JSON
+                getResponse.sourceAsBytesRef, XContentType.JSON,
             )
             ManagedIndexMetaData.parseWithType(xcp, getResponse.id, getResponse.seqNo, getResponse.primaryTerm)
         }
@@ -135,8 +135,8 @@ suspend fun Client.mgetManagedIndexMetadata(indexUuids: List<String>): List<Pair
     indexUuids.forEach {
         mgetRequest.add(
             MultiGetRequest.Item(
-                INDEX_MANAGEMENT_INDEX, managedIndexMetadataID(it)
-            ).routing(it)
+                INDEX_MANAGEMENT_INDEX, managedIndexMetadataID(it),
+            ).routing(it),
         )
     }
     var mgetMetadataList = listOf<Pair<ManagedIndexMetaData?, Exception?>?>()

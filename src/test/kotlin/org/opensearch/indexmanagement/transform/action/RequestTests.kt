@@ -57,7 +57,7 @@ class RequestTests : OpenSearchTestCase() {
         val transform = randomTransform().copy(seqNo = SequenceNumbers.UNASSIGNED_SEQ_NO, primaryTerm = SequenceNumbers.UNASSIGNED_PRIMARY_TERM)
         val req = IndexTransformRequest(
             transform = transform,
-            refreshPolicy = WriteRequest.RefreshPolicy.IMMEDIATE
+            refreshPolicy = WriteRequest.RefreshPolicy.IMMEDIATE,
         ).index(INDEX_MANAGEMENT_INDEX)
 
         val out = BytesStreamOutput().apply { req.writeTo(this) }
@@ -73,7 +73,7 @@ class RequestTests : OpenSearchTestCase() {
         val transform = randomTransform().copy(seqNo = 1L, primaryTerm = 2L)
         val req = IndexTransformRequest(
             transform = transform,
-            refreshPolicy = WriteRequest.RefreshPolicy.IMMEDIATE
+            refreshPolicy = WriteRequest.RefreshPolicy.IMMEDIATE,
         ).index(INDEX_MANAGEMENT_INDEX)
 
         val out = BytesStreamOutput().apply { req.writeTo(this) }

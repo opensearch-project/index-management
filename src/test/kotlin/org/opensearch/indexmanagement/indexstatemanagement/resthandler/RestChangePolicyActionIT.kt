@@ -8,6 +8,7 @@ package org.opensearch.indexmanagement.indexstatemanagement.resthandler
 import org.junit.Before
 import org.opensearch.client.ResponseException
 import org.opensearch.common.settings.Settings
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
 import org.opensearch.indexmanagement.indexstatemanagement.IndexStateManagementRestTestCase
 import org.opensearch.indexmanagement.indexstatemanagement.action.DeleteAction
@@ -33,7 +34,6 @@ import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedInde
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StateMetaData
 import org.opensearch.indexmanagement.waitFor
 import org.opensearch.rest.RestRequest
-import org.opensearch.core.rest.RestStatus
 import java.time.Instant
 import java.util.Locale
 
@@ -59,12 +59,12 @@ class RestChangePolicyActionIT : IndexStateManagementRestTestCase() {
             val expectedErrorMessage = mapOf(
                 "error" to mapOf(
                     "root_cause" to listOf<Map<String, Any>>(
-                        mapOf("type" to "illegal_argument_exception", "reason" to "Missing index")
+                        mapOf("type" to "illegal_argument_exception", "reason" to "Missing index"),
                     ),
                     "type" to "illegal_argument_exception",
-                    "reason" to "Missing index"
+                    "reason" to "Missing index",
                 ),
-                "status" to 400
+                "status" to 400,
             )
             assertEquals(expectedErrorMessage, actualMessage)
         }
@@ -77,7 +77,7 @@ class RestChangePolicyActionIT : IndexStateManagementRestTestCase() {
             createPolicy(policy, policy.id)
             client().makeRequest(
                 RestRequest.Method.POST.toString(),
-                "${RestChangePolicyAction.CHANGE_POLICY_BASE_URI}/other_index", emptyMap(), changePolicy.toHttpEntity()
+                "${RestChangePolicyAction.CHANGE_POLICY_BASE_URI}/other_index", emptyMap(), changePolicy.toHttpEntity(),
             )
             fail("Expected a failure.")
         } catch (e: ResponseException) {
@@ -92,7 +92,7 @@ class RestChangePolicyActionIT : IndexStateManagementRestTestCase() {
             val changePolicy = ChangePolicy("some_id", null, emptyList(), false)
             client().makeRequest(
                 RestRequest.Method.POST.toString(),
-                "${RestChangePolicyAction.CHANGE_POLICY_BASE_URI}/other_index", emptyMap(), changePolicy.toHttpEntity()
+                "${RestChangePolicyAction.CHANGE_POLICY_BASE_URI}/other_index", emptyMap(), changePolicy.toHttpEntity(),
             )
             fail("Expected a failure.")
         } catch (e: ResponseException) {
@@ -107,17 +107,17 @@ class RestChangePolicyActionIT : IndexStateManagementRestTestCase() {
                             "index" to ".opendistro-ism-config",
                             "resource.type" to "index_expression",
                             "resource.id" to ".opendistro-ism-config",
-                            "reason" to "no such index [.opendistro-ism-config]"
-                        )
+                            "reason" to "no such index [.opendistro-ism-config]",
+                        ),
                     ),
                     "type" to "index_not_found_exception",
                     "index_uuid" to "_na_",
                     "index" to ".opendistro-ism-config",
                     "resource.type" to "index_expression",
                     "resource.id" to ".opendistro-ism-config",
-                    "reason" to "no such index [.opendistro-ism-config]"
+                    "reason" to "no such index [.opendistro-ism-config]",
                 ),
-                "status" to 404
+                "status" to 404,
             )
             assertEquals(expectedErrorMessage, actualMessage)
         }
@@ -129,7 +129,7 @@ class RestChangePolicyActionIT : IndexStateManagementRestTestCase() {
             val changePolicy = ChangePolicy(policy.id, null, emptyList(), false)
             client().makeRequest(
                 RestRequest.Method.POST.toString(),
-                "${RestChangePolicyAction.CHANGE_POLICY_BASE_URI}/this_does_not_exist", emptyMap(), changePolicy.toHttpEntity()
+                "${RestChangePolicyAction.CHANGE_POLICY_BASE_URI}/this_does_not_exist", emptyMap(), changePolicy.toHttpEntity(),
             )
             fail("Expected a failure.")
         } catch (e: ResponseException) {
@@ -144,17 +144,17 @@ class RestChangePolicyActionIT : IndexStateManagementRestTestCase() {
                             "index" to "this_does_not_exist",
                             "resource.type" to "index_or_alias",
                             "resource.id" to "this_does_not_exist",
-                            "reason" to "no such index [this_does_not_exist]"
-                        )
+                            "reason" to "no such index [this_does_not_exist]",
+                        ),
                     ),
                     "type" to "index_not_found_exception",
                     "index_uuid" to "_na_",
                     "index" to "this_does_not_exist",
                     "resource.type" to "index_or_alias",
                     "resource.id" to "this_does_not_exist",
-                    "reason" to "no such index [this_does_not_exist]"
+                    "reason" to "no such index [this_does_not_exist]",
                 ),
-                "status" to 404
+                "status" to 404,
             )
             assertEquals(expectedErrorMessage, actualMessage)
         }
@@ -166,7 +166,7 @@ class RestChangePolicyActionIT : IndexStateManagementRestTestCase() {
         val changePolicy = ChangePolicy(policy.id, null, emptyList(), false)
         val response = client().makeRequest(
             RestRequest.Method.POST.toString(),
-            "${RestChangePolicyAction.CHANGE_POLICY_BASE_URI}/movies", emptyMap(), changePolicy.toHttpEntity()
+            "${RestChangePolicyAction.CHANGE_POLICY_BASE_URI}/movies", emptyMap(), changePolicy.toHttpEntity(),
         )
         val expectedResponse = mapOf(
             FAILURES to true,
@@ -174,10 +174,10 @@ class RestChangePolicyActionIT : IndexStateManagementRestTestCase() {
                 mapOf(
                     "index_name" to "movies",
                     "index_uuid" to getUuid("movies"),
-                    "reason" to INDEX_NOT_MANAGED
-                )
+                    "reason" to INDEX_NOT_MANAGED,
+                ),
             ),
-            UPDATED_INDICES to 0
+            UPDATED_INDICES to 0,
         )
         assertAffectedIndicesResponseIsEqual(expectedResponse, response.asMap())
     }
@@ -196,7 +196,7 @@ class RestChangePolicyActionIT : IndexStateManagementRestTestCase() {
         val changePolicy = ChangePolicy(newPolicy.id, null, emptyList(), false)
         val response = client().makeRequest(
             RestRequest.Method.POST.toString(),
-            "${RestChangePolicyAction.CHANGE_POLICY_BASE_URI}/$index", emptyMap(), changePolicy.toHttpEntity()
+            "${RestChangePolicyAction.CHANGE_POLICY_BASE_URI}/$index", emptyMap(), changePolicy.toHttpEntity(),
         )
 
         assertAffectedIndicesResponseIsEqual(mapOf(FAILURES to false, FAILED_INDICES to emptyList<Any>(), UPDATED_INDICES to 1), response.asMap())
@@ -237,7 +237,7 @@ class RestChangePolicyActionIT : IndexStateManagementRestTestCase() {
         val changePolicy = ChangePolicy(newPolicy.id, null, emptyList(), false)
         val response = client().makeRequest(
             RestRequest.Method.POST.toString(),
-            "${RestChangePolicyAction.CHANGE_POLICY_BASE_URI}/$index,movi*", emptyMap(), changePolicy.toHttpEntity()
+            "${RestChangePolicyAction.CHANGE_POLICY_BASE_URI}/$index,movi*", emptyMap(), changePolicy.toHttpEntity(),
         )
         val expectedResponse = mapOf(
             FAILURES to true,
@@ -245,20 +245,20 @@ class RestChangePolicyActionIT : IndexStateManagementRestTestCase() {
                 mapOf(
                     "index_name" to "movies",
                     "index_uuid" to getUuid("movies"),
-                    "reason" to INDEX_NOT_MANAGED
+                    "reason" to INDEX_NOT_MANAGED,
                 ),
                 mapOf(
                     "index_name" to "movies_1",
                     "index_uuid" to getUuid("movies_1"),
-                    "reason" to INDEX_NOT_MANAGED
+                    "reason" to INDEX_NOT_MANAGED,
                 ),
                 mapOf(
                     "index_name" to "movies_2",
                     "index_uuid" to getUuid("movies_2"),
-                    "reason" to INDEX_NOT_MANAGED
-                )
+                    "reason" to INDEX_NOT_MANAGED,
+                ),
             ),
-            UPDATED_INDICES to 1
+            UPDATED_INDICES to 1,
         )
         assertAffectedIndicesResponseIsEqual(expectedResponse, response.asMap())
 
@@ -281,7 +281,7 @@ class RestChangePolicyActionIT : IndexStateManagementRestTestCase() {
         val stateWithDeleteAction = randomState(actions = listOf(DeleteAction(index = 0)))
         val updatedStateWithReadOnlyAction = stateWithReadOnlyAction.copy(
             actions = listOf(stateWithReadOnlyAction.actions.first(), OpenAction(index = 1)),
-            transitions = listOf(Transition(stateWithDeleteAction.name, null))
+            transitions = listOf(Transition(stateWithDeleteAction.name, null)),
         )
         val newPolicy = createPolicy(randomPolicy(states = listOf(updatedStateWithReadOnlyAction, stateWithDeleteAction)), "new_policy", true)
         val indexName = "${testIndexName}_mouse"
@@ -290,7 +290,7 @@ class RestChangePolicyActionIT : IndexStateManagementRestTestCase() {
         // Set index to read-write
         updateIndexSettings(
             index,
-            Settings.builder().put("index.blocks.write", false)
+            Settings.builder().put("index.blocks.write", false),
         )
 
         val managedIndexConfig = getExistingManagedIndexConfig(index)
@@ -324,22 +324,22 @@ class RestChangePolicyActionIT : IndexStateManagementRestTestCase() {
                         ManagedIndexMetaData.INDEX_UUID to executedManagedIndexConfig.indexUuid::equals,
                         ManagedIndexMetaData.POLICY_ID to executedManagedIndexConfig.policyID::equals,
                         StateMetaData.STATE to fun(stateMetaDataMap: Any?): Boolean =
-                            assertStateEquals(StateMetaData(policy.defaultState, Instant.now().toEpochMilli()), stateMetaDataMap)
-                    )
+                            assertStateEquals(StateMetaData(policy.defaultState, Instant.now().toEpochMilli()), stateMetaDataMap),
+                    ),
                 ),
-                explainResponseMap, false
+                explainResponseMap, false,
             )
         }
 
         val changePolicy = ChangePolicy(newPolicy.id, null, emptyList(), false)
         val response = client().makeRequest(
             RestRequest.Method.POST.toString(),
-            "${RestChangePolicyAction.CHANGE_POLICY_BASE_URI}/$index", emptyMap(), changePolicy.toHttpEntity()
+            "${RestChangePolicyAction.CHANGE_POLICY_BASE_URI}/$index", emptyMap(), changePolicy.toHttpEntity(),
         )
         val expectedResponse = mapOf(
             FAILURES to false,
             FAILED_INDICES to emptyList<Any>(),
-            UPDATED_INDICES to 1
+            UPDATED_INDICES to 1,
         )
         assertAffectedIndicesResponseIsEqual(expectedResponse, response.asMap())
 
@@ -374,13 +374,13 @@ class RestChangePolicyActionIT : IndexStateManagementRestTestCase() {
                             assertActionEquals(
                                 ActionMetaData(
                                     name = ReadOnlyAction.name, startTime = Instant.now().toEpochMilli(), index = 0,
-                                    failed = false, consumedRetries = 0, lastRetryTime = null, actionProperties = null
+                                    failed = false, consumedRetries = 0, lastRetryTime = null, actionProperties = null,
                                 ),
-                                actionMetaDataMap
-                            )
-                    )
+                                actionMetaDataMap,
+                            ),
+                    ),
                 ),
-                getExplainMap(index), false
+                getExplainMap(index), false,
             )
         }
 
@@ -413,13 +413,13 @@ class RestChangePolicyActionIT : IndexStateManagementRestTestCase() {
                             assertActionEquals(
                                 ActionMetaData(
                                     name = TransitionsAction.name, startTime = Instant.now().toEpochMilli(), index = 0,
-                                    failed = false, consumedRetries = 0, lastRetryTime = null, actionProperties = null
+                                    failed = false, consumedRetries = 0, lastRetryTime = null, actionProperties = null,
                                 ),
-                                actionMetaDataMap
-                            )
-                    )
+                                actionMetaDataMap,
+                            ),
+                    ),
                 ),
-                getExplainMap(index), false
+                getExplainMap(index), false,
             )
         }
     }
@@ -471,12 +471,12 @@ class RestChangePolicyActionIT : IndexStateManagementRestTestCase() {
         val changePolicy = ChangePolicy(newPolicy.id, null, listOf(StateFilter(state = firstState.name)), false)
         val response = client().makeRequest(
             RestRequest.Method.POST.toString(),
-            "${RestChangePolicyAction.CHANGE_POLICY_BASE_URI}/$firstIndex,$secondIndex", emptyMap(), changePolicy.toHttpEntity()
+            "${RestChangePolicyAction.CHANGE_POLICY_BASE_URI}/$firstIndex,$secondIndex", emptyMap(), changePolicy.toHttpEntity(),
         )
         val expectedResponse = mapOf(
             FAILURES to false,
             FAILED_INDICES to emptyList<Any>(),
-            UPDATED_INDICES to 1
+            UPDATED_INDICES to 1,
         )
         // TODO flaky part, log for more info
         val responseMap = response.asMap()
@@ -510,7 +510,7 @@ class RestChangePolicyActionIT : IndexStateManagementRestTestCase() {
         val changePolicy = ChangePolicy(newPolicy.id, "some_other_state", emptyList(), false)
         val response = client().makeRequest(
             RestRequest.Method.POST.toString(),
-            "${RestChangePolicyAction.CHANGE_POLICY_BASE_URI}/$index", emptyMap(), changePolicy.toHttpEntity()
+            "${RestChangePolicyAction.CHANGE_POLICY_BASE_URI}/$index", emptyMap(), changePolicy.toHttpEntity(),
         )
 
         assertAffectedIndicesResponseIsEqual(mapOf(FAILURES to false, FAILED_INDICES to emptyList<Any>(), UPDATED_INDICES to 1), response.asMap())
@@ -541,10 +541,10 @@ class RestChangePolicyActionIT : IndexStateManagementRestTestCase() {
                         ManagedIndexMetaData.INDEX_UUID to updatedManagedIndexConfig.indexUuid::equals,
                         ManagedIndexMetaData.POLICY_ID to newPolicy.id::equals,
                         StateMetaData.STATE to fun(stateMetaDataMap: Any?): Boolean =
-                            assertStateEquals(StateMetaData("some_other_state", Instant.now().toEpochMilli()), stateMetaDataMap)
-                    )
+                            assertStateEquals(StateMetaData("some_other_state", Instant.now().toEpochMilli()), stateMetaDataMap),
+                    ),
                 ),
-                getExplainMap(index), false
+                getExplainMap(index), false,
             )
         }
     }
@@ -577,25 +577,25 @@ class RestChangePolicyActionIT : IndexStateManagementRestTestCase() {
             assertEquals(RolloverAction.name, getExplainManagedIndexMetaData(indexName).actionMetaData?.name)
             assertEquals(
                 AttemptRolloverStep.getPendingMessage(indexName),
-                getExplainManagedIndexMetaData(indexName).info?.get("message")
+                getExplainManagedIndexMetaData(indexName).info?.get("message"),
             )
         }
 
         val newStateWithReadOnlyAction = randomState(
             name = stateWithReadOnlyAction.name,
-            actions = listOf(RolloverAction(index = 0, minDocs = 5, minAge = null, minSize = null, minPrimaryShardSize = null))
+            actions = listOf(RolloverAction(index = 0, minDocs = 5, minAge = null, minSize = null, minPrimaryShardSize = null)),
         )
         val newRandomPolicy = randomPolicy(states = listOf(newStateWithReadOnlyAction))
         val newPolicy = createPolicy(newRandomPolicy)
         val changePolicy = ChangePolicy(newPolicy.id, null, emptyList(), false)
         val response = client().makeRequest(
             RestRequest.Method.POST.toString(),
-            "${RestChangePolicyAction.CHANGE_POLICY_BASE_URI}/$index", emptyMap(), changePolicy.toHttpEntity()
+            "${RestChangePolicyAction.CHANGE_POLICY_BASE_URI}/$index", emptyMap(), changePolicy.toHttpEntity(),
         )
         val expectedResponse = mapOf(
             FAILURES to false,
             FAILED_INDICES to emptyList<Any>(),
-            UPDATED_INDICES to 1
+            UPDATED_INDICES to 1,
         )
         assertAffectedIndicesResponseIsEqual(expectedResponse, response.asMap())
 
@@ -619,7 +619,7 @@ class RestChangePolicyActionIT : IndexStateManagementRestTestCase() {
         waitFor {
             assertEquals(
                 AttemptRolloverStep.getSuccessMessage(indexName),
-                getExplainManagedIndexMetaData(indexName).info?.get("message")
+                getExplainManagedIndexMetaData(indexName).info?.get("message"),
             )
         }
     }

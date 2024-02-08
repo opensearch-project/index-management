@@ -20,8 +20,8 @@ import org.opensearch.indexmanagement.IndexManagementIndices
 import org.opensearch.indexmanagement.indexstatemanagement.IndexMetadataProvider
 import org.opensearch.indexmanagement.indexstatemanagement.ManagedIndexCoordinator
 import org.opensearch.indexmanagement.indexstatemanagement.MetadataService
-import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings
 import org.opensearch.indexmanagement.indexstatemanagement.migration.ISMTemplateService
+import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings
 import org.opensearch.search.SearchModule
 import org.opensearch.test.ClusterServiceUtils
 import org.opensearch.test.OpenSearchTestCase
@@ -78,7 +78,7 @@ class ManagedIndexCoordinatorTests : OpenSearchAllocationTestCase() {
         indexMetadataProvider = IndexMetadataProvider(settings, client, clusterService, mutableMapOf())
         coordinator = ManagedIndexCoordinator(
             settings, client, clusterService, threadPool, indexManagementIndices, metadataService,
-            templateService, indexMetadataProvider, NamedXContentRegistry(SearchModule(Settings.EMPTY, emptyList()).namedXContents)
+            templateService, indexMetadataProvider, NamedXContentRegistry(SearchModule(Settings.EMPTY, emptyList()).namedXContents),
         )
     }
 

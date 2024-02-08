@@ -19,10 +19,13 @@ data class RollupFieldMapping(val fieldType: FieldType, val fieldName: String, v
     }
 
     fun toIssue(isFieldMissing: Boolean = false): String {
-        return if (isFieldMissing || mappingType == UNKNOWN_MAPPING) return "missing field $fieldName"
-        else when (fieldType) {
-            FieldType.METRIC -> "missing $mappingType aggregation on $fieldName"
-            else -> "missing $mappingType grouping on $fieldName"
+        return if (isFieldMissing || mappingType == UNKNOWN_MAPPING) {
+            return "missing field $fieldName"
+        } else {
+            when (fieldType) {
+                FieldType.METRIC -> "missing $mappingType aggregation on $fieldName"
+                else -> "missing $mappingType grouping on $fieldName"
+            }
         }
     }
 
@@ -30,7 +33,8 @@ data class RollupFieldMapping(val fieldType: FieldType, val fieldName: String, v
         const val UNKNOWN_MAPPING = "unknown"
         enum class FieldType(val type: String) {
             DIMENSION(DIMENSIONS_FIELD),
-            METRIC(METRICS_FIELD);
+            METRIC(METRICS_FIELD),
+            ;
 
             override fun toString(): String {
                 return type

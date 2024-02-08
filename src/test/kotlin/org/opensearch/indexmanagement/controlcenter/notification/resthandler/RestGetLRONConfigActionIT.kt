@@ -7,6 +7,7 @@ package org.opensearch.indexmanagement.controlcenter.notification.resthandler
 
 import org.junit.Assert
 import org.opensearch.client.ResponseException
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.indexmanagement.IndexManagementPlugin
 import org.opensearch.indexmanagement.controlcenter.notification.getResourceURI
 import org.opensearch.indexmanagement.controlcenter.notification.model.LRONConfig
@@ -16,7 +17,6 @@ import org.opensearch.indexmanagement.controlcenter.notification.randomTaskId
 import org.opensearch.indexmanagement.controlcenter.notification.util.getDocID
 import org.opensearch.indexmanagement.makeRequest
 import org.opensearch.indexmanagement.opensearchapi.convertToMap
-import org.opensearch.core.rest.RestStatus
 import org.opensearch.test.OpenSearchTestCase
 
 @Suppress("UNCHECKED_CAST")
@@ -34,7 +34,7 @@ class RestGetLRONConfigActionIT : LRONConfigRestTestCase() {
         Assert.assertEquals(
             "not same LRONConfig",
             lronConfigMap.filterKeys { it != LRONConfig.USER_FIELD && it != LRONConfig.PRIORITY_FIELD },
-            responseBody["lron_config"] as Map<String, Any>
+            responseBody["lron_config"] as Map<String, Any>,
         )
     }
 
@@ -71,7 +71,7 @@ class RestGetLRONConfigActionIT : LRONConfigRestTestCase() {
             assertEquals(
                 "different lronConfigResponse",
                 lronConfigResponse[LRONConfig.LRON_CONFIG_FIELD],
-                resLRONConfigResponse!![LRONConfig.LRON_CONFIG_FIELD]
+                resLRONConfigResponse!![LRONConfig.LRON_CONFIG_FIELD],
             )
         }
     }
@@ -82,7 +82,7 @@ class RestGetLRONConfigActionIT : LRONConfigRestTestCase() {
             client().makeRequest(
                 "GET",
                 getResourceURI(lronConfig.taskId, lronConfig.actionName),
-                mapOf("size" to "10")
+                mapOf("size" to "10"),
             )
             Assert.fail("Expected 400 BAD_REQUEST")
         } catch (e: ResponseException) {

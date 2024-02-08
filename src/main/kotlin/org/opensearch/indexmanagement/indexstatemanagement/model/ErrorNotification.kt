@@ -22,7 +22,7 @@ import java.io.IOException
 data class ErrorNotification(
     val destination: Destination?,
     val channel: Channel?,
-    val messageTemplate: Script
+    val messageTemplate: Script,
 ) : ToXContentObject, Writeable {
 
     init {
@@ -44,7 +44,7 @@ data class ErrorNotification(
     constructor(sin: StreamInput) : this(
         sin.readOptionalWriteable(::Destination),
         sin.readOptionalWriteable(::Channel),
-        Script(sin)
+        Script(sin),
     )
 
     @Throws(IOException::class)
@@ -84,7 +84,7 @@ data class ErrorNotification(
             return ErrorNotification(
                 destination = destination,
                 channel = channel,
-                messageTemplate = requireNotNull(messageTemplate) { "ErrorNotification message template is null" }
+                messageTemplate = requireNotNull(messageTemplate) { "ErrorNotification message template is null" },
             )
         }
     }

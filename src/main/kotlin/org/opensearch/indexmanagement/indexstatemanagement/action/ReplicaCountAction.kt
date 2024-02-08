@@ -15,7 +15,7 @@ import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepContext
 
 class ReplicaCountAction(
     val numOfReplicas: Int,
-    index: Int
+    index: Int,
 ) : Action(name, index) {
 
     init {

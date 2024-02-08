@@ -22,7 +22,7 @@ class RestStopTransformAction : BaseRestHandler() {
 
     override fun routes(): List<Route> {
         return listOf(
-            Route(POST, "$TRANSFORM_BASE_URI/{transformID}/_stop")
+            Route(POST, "$TRANSFORM_BASE_URI/{transformID}/_stop"),
         )
     }
 
