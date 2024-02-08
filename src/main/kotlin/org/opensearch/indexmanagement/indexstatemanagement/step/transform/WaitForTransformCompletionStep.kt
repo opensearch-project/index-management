@@ -20,7 +20,6 @@ import org.opensearch.transport.RemoteTransportException
 
 @Suppress("ReturnCount")
 class WaitForTransformCompletionStep : Step(name) {
-
     private val logger = LogManager.getLogger(javaClass)
     private var stepStatus = StepStatus.STARTING
     private var info: Map<String, Any>? = null
@@ -64,9 +63,10 @@ class WaitForTransformCompletionStep : Step(name) {
     private suspend fun explainTransformJob(transformJobId: String, indexName: String, context: StepContext): ExplainTransformResponse? {
         val explainTransformRequest = ExplainTransformRequest(listOf(transformJobId))
         try {
-            val response = context.client.suspendUntil {
-                execute(ExplainTransformAction.INSTANCE, explainTransformRequest, it)
-            }
+            val response =
+                context.client.suspendUntil {
+                    execute(ExplainTransformAction.INSTANCE, explainTransformRequest, it)
+                }
             logger.info("Received the status for jobs [${response.getIdsToExplain().keys}]")
             return response
         } catch (e: RemoteTransportException) {
@@ -113,7 +113,7 @@ class WaitForTransformCompletionStep : Step(name) {
             actionMetaData = currentMetadata.actionMetaData,
             stepMetaData = StepMetaData(name, getStepStartTime(currentMetadata).toEpochMilli(), stepStatus),
             transitionTo = null,
-            info = info
+            info = info,
         )
     }
 
@@ -122,11 +122,17 @@ class WaitForTransformCompletionStep : Step(name) {
     companion object {
         const val name = "wait_for_transform_completion"
         const val JOB_STOPPED_MESSAGE = "Transform job was stopped"
+
         fun getFailedMessage(transformJob: String, index: String) = "Failed to get the status of transform job [$transformJob] [index=$index]"
+
         fun getJobProcessingMessage(transformJob: String, index: String) = "Transform job [$transformJob] is still processing [index=$index]"
+
         fun getJobCompletionMessage(transformJob: String, index: String) = "Transform job [$transformJob] completed [index=$index]"
+
         fun getJobFailedMessage(transformJob: String, index: String) = "Transform job [$transformJob] failed [index=$index]"
+
         fun getMissingTransformJobMessage(index: String) = "Transform job was not found [index=$index]"
+
         fun getJobNotFoundMessage(transformJob: String, index: String) = "Transform job [$transformJob] is not found [index=$index]"
     }
 }

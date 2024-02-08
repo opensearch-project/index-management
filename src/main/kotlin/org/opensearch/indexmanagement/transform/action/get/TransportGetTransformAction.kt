@@ -8,7 +8,6 @@ package org.opensearch.indexmanagement.transform.action.get
 import org.apache.logging.log4j.LogManager
 import org.opensearch.ExceptionsHelper
 import org.opensearch.OpenSearchStatusException
-import org.opensearch.core.action.ActionListener
 import org.opensearch.action.get.GetRequest
 import org.opensearch.action.get.GetResponse
 import org.opensearch.action.support.ActionFilters
@@ -17,29 +16,31 @@ import org.opensearch.client.Client
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.inject.Inject
 import org.opensearch.common.settings.Settings
-import org.opensearch.core.xcontent.NamedXContentRegistry
 import org.opensearch.commons.ConfigConstants
+import org.opensearch.core.action.ActionListener
+import org.opensearch.core.rest.RestStatus
+import org.opensearch.core.xcontent.NamedXContentRegistry
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
 import org.opensearch.indexmanagement.opensearchapi.parseFromGetResponse
 import org.opensearch.indexmanagement.settings.IndexManagementSettings
 import org.opensearch.indexmanagement.transform.model.Transform
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.buildUser
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.userHasPermissionForResource
-import org.opensearch.core.rest.RestStatus
 import org.opensearch.tasks.Task
 import org.opensearch.transport.TransportService
 
-class TransportGetTransformAction @Inject constructor(
+class TransportGetTransformAction
+@Inject
+constructor(
     transportService: TransportService,
     val client: Client,
     val settings: Settings,
     val clusterService: ClusterService,
     actionFilters: ActionFilters,
-    val xContentRegistry: NamedXContentRegistry
+    val xContentRegistry: NamedXContentRegistry,
 ) : HandledTransportAction<GetTransformRequest, GetTransformResponse> (
-    GetTransformAction.NAME, transportService, actionFilters, ::GetTransformRequest
+    GetTransformAction.NAME, transportService, actionFilters, ::GetTransformRequest,
 ) {
-
     @Volatile private var filterByEnabled = IndexManagementSettings.FILTER_BY_BACKEND_ROLES.get(settings)
     private val log = LogManager.getLogger(javaClass)
 
@@ -53,8 +54,8 @@ class TransportGetTransformAction @Inject constructor(
     override fun doExecute(task: Task, request: GetTransformRequest, listener: ActionListener<GetTransformResponse>) {
         log.debug(
             "User and roles string from thread context: ${client.threadPool().threadContext.getTransient<String>(
-                ConfigConstants.OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT
-            )}"
+                ConfigConstants.OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT,
+            )}",
         )
         val user = buildUser(client.threadPool().threadContext)
         val getRequest = GetRequest(INDEX_MANAGEMENT_INDEX, request.id).preference(request.preference)
@@ -81,19 +82,20 @@ class TransportGetTransformAction @Inject constructor(
                             }
 
                             // if HEAD request don't return the transform
-                            val transformResponse = if (request.srcContext != null && !request.srcContext.fetchSource()) {
-                                GetTransformResponse(response.id, response.version, response.seqNo, response.primaryTerm, RestStatus.OK, null)
-                            } else {
-                                GetTransformResponse(response.id, response.version, response.seqNo, response.primaryTerm, RestStatus.OK, transform)
-                            }
+                            val transformResponse =
+                                if (request.srcContext != null && !request.srcContext.fetchSource()) {
+                                    GetTransformResponse(response.id, response.version, response.seqNo, response.primaryTerm, RestStatus.OK, null)
+                                } else {
+                                    GetTransformResponse(response.id, response.version, response.seqNo, response.primaryTerm, RestStatus.OK, transform)
+                                }
                             listener.onResponse(transformResponse)
                         } catch (e: Exception) {
                             listener.onFailure(
                                 OpenSearchStatusException(
                                     "Failed to parse transform",
                                     RestStatus.INTERNAL_SERVER_ERROR,
-                                    ExceptionsHelper.unwrapCause(e)
-                                )
+                                    ExceptionsHelper.unwrapCause(e),
+                                ),
                             )
                         }
                     }
@@ -101,7 +103,7 @@ class TransportGetTransformAction @Inject constructor(
                     override fun onFailure(e: Exception) {
                         listener.onFailure(e)
                     }
-                }
+                },
             )
         }
     }

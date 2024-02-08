@@ -15,13 +15,12 @@ import java.io.IOException
 
 data class ExplainRollup(
     val metadataID: String? = null,
-    val metadata: RollupMetadata? = null
+    val metadata: RollupMetadata? = null,
 ) : ToXContentObject, Writeable {
-
     @Throws(IOException::class)
     constructor(sin: StreamInput) : this(
         metadataID = sin.readOptionalString(),
-        metadata = if (sin.readBoolean()) RollupMetadata(sin) else null
+        metadata = if (sin.readBoolean()) RollupMetadata(sin) else null,
     )
 
     @Throws(IOException::class)

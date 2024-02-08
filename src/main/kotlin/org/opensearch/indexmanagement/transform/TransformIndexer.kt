@@ -19,34 +19,34 @@ import org.opensearch.action.index.IndexRequest
 import org.opensearch.client.Client
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.settings.Settings
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.indexmanagement.opensearchapi.retry
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.transform.exceptions.TransformIndexException
 import org.opensearch.indexmanagement.transform.settings.TransformSettings
 import org.opensearch.indexmanagement.transform.util.TransformContext
-import org.opensearch.core.rest.RestStatus
 import org.opensearch.transport.RemoteTransportException
 
 @Suppress("ComplexMethod")
 class TransformIndexer(
     settings: Settings,
     private val clusterService: ClusterService,
-    private val client: Client
+    private val client: Client,
 ) {
-
     private val logger = LogManager.getLogger(javaClass)
 
     @Volatile
-    private var backoffPolicy = BackoffPolicy.constantBackoff(
-        TransformSettings.TRANSFORM_JOB_INDEX_BACKOFF_MILLIS.get(settings),
-        TransformSettings.TRANSFORM_JOB_INDEX_BACKOFF_COUNT.get(settings)
-    )
+    private var backoffPolicy =
+        BackoffPolicy.constantBackoff(
+            TransformSettings.TRANSFORM_JOB_INDEX_BACKOFF_MILLIS.get(settings),
+            TransformSettings.TRANSFORM_JOB_INDEX_BACKOFF_COUNT.get(settings),
+        )
 
     init {
         // To update the retry policy with updated settings
         clusterService.clusterSettings.addSettingsUpdateConsumer(
             TransformSettings.TRANSFORM_JOB_INDEX_BACKOFF_MILLIS,
-            TransformSettings.TRANSFORM_JOB_INDEX_BACKOFF_COUNT
+            TransformSettings.TRANSFORM_JOB_INDEX_BACKOFF_COUNT,
         ) { millis, count ->
             backoffPolicy = BackoffPolicy.constantBackoff(millis, count)
         }
@@ -88,9 +88,10 @@ class TransformIndexer(
                             nonRetryableFailures.add(failedResponse)
                         }
                     }
-                    updatableDocsToIndex = retryableFailures.map { failure ->
-                        updatableDocsToIndex[failure.itemId] as IndexRequest
-                    }
+                    updatableDocsToIndex =
+                        retryableFailures.map { failure ->
+                            updatableDocsToIndex[failure.itemId] as IndexRequest
+                        }
                     if (updatableDocsToIndex.isNotEmpty()) {
                         throw ExceptionsHelper.convertToOpenSearchException(retryableFailures.first().failure.cause)
                     }

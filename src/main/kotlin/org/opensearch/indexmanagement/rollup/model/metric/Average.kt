@@ -14,7 +14,6 @@ import org.opensearch.core.xcontent.XContentParser.Token
 import org.opensearch.core.xcontent.XContentParserUtils.ensureExpectedToken
 
 class Average() : Metric(Type.AVERAGE) {
-
     @Suppress("UNUSED_PARAMETER")
     constructor(sin: StreamInput) : this()
 

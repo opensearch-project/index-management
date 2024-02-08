@@ -7,6 +7,7 @@ package org.opensearch.indexmanagement.snapshotmanagement.resthandler
 
 import org.opensearch.client.ResponseException
 import org.opensearch.common.xcontent.XContentType
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.SM_POLICIES_URI
 import org.opensearch.indexmanagement.indexstatemanagement.util.XCONTENT_WITHOUT_TYPE_AND_USER
@@ -20,11 +21,9 @@ import org.opensearch.indexmanagement.util.IndexUtils
 import org.opensearch.indexmanagement.util.NO_ID
 import org.opensearch.indexmanagement.util._ID
 import org.opensearch.indexmanagement.util._SEQ_NO
-import org.opensearch.core.rest.RestStatus
 import java.time.Instant
 
 class RestIndexSnapshotManagementIT : SnapshotManagementRestTestCase() {
-
     @Suppress("UNCHECKED_CAST")
     fun `test creating a snapshot management policy`() {
         var smPolicy = randomSMPolicy()
@@ -37,21 +36,23 @@ class RestIndexSnapshotManagementIT : SnapshotManagementRestTestCase() {
         assertEquals("Incorrect Location header", "$SM_POLICIES_URI/${smPolicy.policyName}", response.getHeader("Location"))
         val responseSMPolicy = responseBody[SM_TYPE] as Map<String, Any>
         // During indexing, we update these two fields so we need to override them here before the equality check
-        smPolicy = smPolicy.copy(
-            jobLastUpdateTime = Instant.ofEpochMilli(responseSMPolicy[SMPolicy.LAST_UPDATED_TIME_FIELD] as Long),
-            schemaVersion = IndexUtils.indexManagementConfigSchemaVersion
-        )
+        smPolicy =
+            smPolicy.copy(
+                jobLastUpdateTime = Instant.ofEpochMilli(responseSMPolicy[SMPolicy.LAST_UPDATED_TIME_FIELD] as Long),
+                schemaVersion = IndexUtils.indexManagementConfigSchemaVersion,
+            )
         assertEquals("Created and returned snapshot management policies differ", smPolicy.toMap(XCONTENT_WITHOUT_TYPE_AND_USER), responseSMPolicy)
     }
 
     @Suppress("UNCHECKED_CAST")
     fun `test updating a snapshot management policy with correct seq_no and primary_term`() {
         val smPolicy = createSMPolicy(randomSMPolicy())
-        val updateResponse = client().makeRequest(
-            "PUT",
-            "$SM_POLICIES_URI/${smPolicy.policyName}?refresh=true&if_seq_no=${smPolicy.seqNo}&if_primary_term=${smPolicy.primaryTerm}",
-            emptyMap(), smPolicy.toHttpEntity()
-        )
+        val updateResponse =
+            client().makeRequest(
+                "PUT",
+                "$SM_POLICIES_URI/${smPolicy.policyName}?refresh=true&if_seq_no=${smPolicy.seqNo}&if_primary_term=${smPolicy.primaryTerm}",
+                emptyMap(), smPolicy.toHttpEntity(),
+            )
 
         assertEquals("Update snapshot management policy failed", RestStatus.OK, updateResponse.restStatus())
         val responseBody = updateResponse.asMap()
@@ -72,7 +73,7 @@ class RestIndexSnapshotManagementIT : SnapshotManagementRestTestCase() {
             client().makeRequest(
                 "PUT",
                 "$SM_POLICIES_URI/${smPolicy.policyName}?refresh=true&if_seq_no=10251989&if_primary_term=2342",
-                emptyMap(), smPolicy.toHttpEntity()
+                emptyMap(), smPolicy.toHttpEntity(),
             )
             fail("expected 409 ResponseException")
         } catch (e: ResponseException) {
@@ -82,7 +83,7 @@ class RestIndexSnapshotManagementIT : SnapshotManagementRestTestCase() {
             client().makeRequest(
                 "PUT",
                 "$SM_POLICIES_URI/${smPolicy.policyName}?refresh=true",
-                emptyMap(), smPolicy.toHttpEntity()
+                emptyMap(), smPolicy.toHttpEntity(),
             )
             fail("expected exception")
         } catch (e: ResponseException) {
@@ -96,7 +97,7 @@ class RestIndexSnapshotManagementIT : SnapshotManagementRestTestCase() {
             client().makeRequest(
                 "PUT",
                 "$SM_POLICIES_URI/${smPolicy.policyName}?refresh=true&if_seq_no=10251989&if_primary_term=2342",
-                emptyMap(), smPolicy.toHttpEntity()
+                emptyMap(), smPolicy.toHttpEntity(),
             )
             fail("expected exception")
         } catch (e: ResponseException) {
@@ -135,10 +136,11 @@ class RestIndexSnapshotManagementIT : SnapshotManagementRestTestCase() {
         val response = client().makeRequest("GET", "/$INDEX_MANAGEMENT_INDEX/_mapping")
         val parserMap = createParser(XContentType.JSON.xContent(), response.entity.content).map() as Map<String, Map<String, Any>>
         val mappingsMap = parserMap[INDEX_MANAGEMENT_INDEX]!!["mappings"] as Map<String, Any>
-        val expected = createParser(
-            XContentType.JSON.xContent(),
-            javaClass.classLoader.getResource("mappings/opendistro-ism-config.json").readText()
-        )
+        val expected =
+            createParser(
+                XContentType.JSON.xContent(),
+                javaClass.classLoader.getResource("mappings/opendistro-ism-config.json").readText(),
+            )
         val expectedMap = expected.map()
 
         assertEquals("Mappings are different", expectedMap, mappingsMap)

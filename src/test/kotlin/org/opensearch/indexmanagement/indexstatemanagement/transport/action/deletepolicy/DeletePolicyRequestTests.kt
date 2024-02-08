@@ -11,7 +11,6 @@ import org.opensearch.core.common.io.stream.StreamInput
 import org.opensearch.test.OpenSearchTestCase
 
 class DeletePolicyRequestTests : OpenSearchTestCase() {
-
     fun `test delete policy request`() {
         val policyID = "policyID"
         val refreshPolicy = WriteRequest.RefreshPolicy.IMMEDIATE

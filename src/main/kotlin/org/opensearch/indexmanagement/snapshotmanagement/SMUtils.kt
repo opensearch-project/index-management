@@ -4,6 +4,7 @@
  */
 
 @file:Suppress("TooManyFunctions")
+
 package org.opensearch.indexmanagement.snapshotmanagement
 
 import org.apache.logging.log4j.LogManager
@@ -17,15 +18,17 @@ import org.opensearch.action.get.GetResponse
 import org.opensearch.action.index.IndexRequest
 import org.opensearch.action.index.IndexResponse
 import org.opensearch.client.Client
-import org.opensearch.core.common.Strings
 import org.opensearch.common.time.DateFormatter
+import org.opensearch.common.time.DateFormatters
 import org.opensearch.common.unit.TimeValue
 import org.opensearch.common.xcontent.LoggingDeprecationHandler
-import org.opensearch.core.xcontent.NamedXContentRegistry
-import org.opensearch.core.xcontent.ToXContent
 import org.opensearch.common.xcontent.XContentFactory
 import org.opensearch.common.xcontent.XContentHelper
 import org.opensearch.common.xcontent.XContentType
+import org.opensearch.core.common.Strings
+import org.opensearch.core.rest.RestStatus
+import org.opensearch.core.xcontent.NamedXContentRegistry
+import org.opensearch.core.xcontent.ToXContent
 import org.opensearch.index.IndexNotFoundException
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
 import org.opensearch.indexmanagement.opensearchapi.parseWithType
@@ -39,11 +42,10 @@ import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy.Companio
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy.Companion.SM_DOC_ID_SUFFIX
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy.Companion.SM_METADATA_ID_SUFFIX
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy.Companion.SM_TYPE
-import org.opensearch.snapshots.SnapshotsService
 import org.opensearch.jobscheduler.spi.schedule.Schedule
-import org.opensearch.core.rest.RestStatus
 import org.opensearch.snapshots.SnapshotInfo
 import org.opensearch.snapshots.SnapshotMissingException
+import org.opensearch.snapshots.SnapshotsService
 import org.opensearch.transport.RemoteTransportException
 import java.time.Instant
 import java.time.Instant.now
@@ -51,13 +53,15 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
 import java.util.Locale
-import org.opensearch.common.time.DateFormatters
 
 private val log = LogManager.getLogger("o.i.s.SnapshotManagementHelper")
 
 fun smPolicyNameToDocId(policyName: String) = "$policyName$SM_DOC_ID_SUFFIX"
+
 fun smDocIdToPolicyName(docId: String) = docId.substringBeforeLast(SM_DOC_ID_SUFFIX)
+
 fun smPolicyNameToMetadataDocId(policyName: String) = "$policyName$SM_METADATA_ID_SUFFIX"
+
 fun smMetadataDocIdToPolicyName(docId: String) = docId.substringBeforeLast(SM_METADATA_ID_SUFFIX)
 
 @Suppress("RethrowCaughtException", "ThrowsCount")
@@ -128,12 +132,13 @@ suspend fun Client.indexMetadata(
     primaryTerm: Long,
     create: Boolean = false,
 ): IndexResponse {
-    val indexReq = IndexRequest(INDEX_MANAGEMENT_INDEX).create(create)
-        .id(smPolicyNameToMetadataDocId(smDocIdToPolicyName(id)))
-        .source(metadata.toXContent(XContentFactory.jsonBuilder(), ToXContent.EMPTY_PARAMS))
-        .setIfSeqNo(seqNo)
-        .setIfPrimaryTerm(primaryTerm)
-        .routing(id)
+    val indexReq =
+        IndexRequest(INDEX_MANAGEMENT_INDEX).create(create)
+            .id(smPolicyNameToMetadataDocId(smDocIdToPolicyName(id)))
+            .source(metadata.toXContent(XContentFactory.jsonBuilder(), ToXContent.EMPTY_PARAMS))
+            .setIfSeqNo(seqNo)
+            .setIfPrimaryTerm(primaryTerm)
+            .routing(id)
 
     return suspendUntil { index(indexReq, it) }
 }
@@ -144,14 +149,15 @@ fun generateSnapshotName(policy: SMPolicy): String {
     if (dateFormat == null) {
         dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
     }
-    val dateValue = if (policy.snapshotConfig[DATE_FORMAT_TIMEZONE_FIELD] != null) {
-        generateFormatDate(
-            dateFormat,
-            ZoneId.of(policy.snapshotConfig[DATE_FORMAT_TIMEZONE_FIELD] as String),
-        )
-    } else {
-        generateFormatDate(dateFormat)
-    }.lowercase()
+    val dateValue =
+        if (policy.snapshotConfig[DATE_FORMAT_TIMEZONE_FIELD] != null) {
+            generateFormatDate(
+                dateFormat,
+                ZoneId.of(policy.snapshotConfig[DATE_FORMAT_TIMEZONE_FIELD] as String),
+            )
+        } else {
+            generateFormatDate(dateFormat)
+        }.lowercase()
     result += "-$dateValue"
     return result + "-${getRandomString(RANDOM_STRING_LENGTH)}"
 }
@@ -214,9 +220,10 @@ fun List<SnapshotInfo>.filterBySMPolicyInSnapshotMetadata(policyName: String): L
  */
 suspend fun Client.getSnapshots(name: String, repo: String): List<SnapshotInfo> {
     try {
-        val req = GetSnapshotsRequest()
-            .snapshots(arrayOf(name))
-            .repository(repo)
+        val req =
+            GetSnapshotsRequest()
+                .snapshots(arrayOf(name))
+                .repository(repo)
         val res: GetSnapshotsResponse = admin().cluster().suspendUntil { getSnapshots(req, it) }
         return res.snapshots
     } catch (ex: RemoteTransportException) {
@@ -237,23 +244,24 @@ suspend fun Client.getSnapshots(
     snapshotMissingMsg: String?,
     exceptionMsg: String,
 ): GetSnapshotsResult {
-    val snapshots = try {
-        getSnapshots(
-            name,
-            job.snapshotConfig["repository"] as String
-        )
-    } catch (ex: SnapshotMissingException) {
-        snapshotMissingMsg?.let { log.warn(snapshotMissingMsg) }
-        return GetSnapshotsResult(false, emptyList(), metadataBuilder)
-    } catch (ex: Exception) {
-        log.error(exceptionMsg, ex)
-        metadataBuilder.setLatestExecution(
-            status = SMMetadata.LatestExecution.Status.RETRYING,
-            message = exceptionMsg,
-            cause = ex,
-        )
-        return GetSnapshotsResult(true, emptyList(), metadataBuilder)
-    }.filterBySMPolicyInSnapshotMetadata(job.policyName)
+    val snapshots =
+        try {
+            getSnapshots(
+                name,
+                job.snapshotConfig["repository"] as String,
+            )
+        } catch (ex: SnapshotMissingException) {
+            snapshotMissingMsg?.let { log.warn(snapshotMissingMsg) }
+            return GetSnapshotsResult(false, emptyList(), metadataBuilder)
+        } catch (ex: Exception) {
+            log.error(exceptionMsg, ex)
+            metadataBuilder.setLatestExecution(
+                status = SMMetadata.LatestExecution.Status.RETRYING,
+                message = exceptionMsg,
+                cause = ex,
+            )
+            return GetSnapshotsResult(true, emptyList(), metadataBuilder)
+        }.filterBySMPolicyInSnapshotMetadata(job.policyName)
 
     return GetSnapshotsResult(false, snapshots, metadataBuilder)
 }
@@ -269,7 +277,7 @@ fun tryUpdatingNextExecutionTime(
     nextTime: Instant,
     schedule: Schedule,
     workflowType: WorkflowType,
-    log: Logger
+    log: Logger,
 ): UpdateNextExecutionTimeResult {
     val now = now()
     return if (!now.isBefore(nextTime)) {
@@ -322,7 +330,7 @@ fun validateSMPolicyName(policyName: String) {
     }
     if (!Strings.validFileName(policyName)) {
         errorMessages.add(
-            "Policy name must not contain the following characters " + Strings.INVALID_FILENAME_CHARS + "."
+            "Policy name must not contain the following characters " + Strings.INVALID_FILENAME_CHARS + ".",
         )
     }
     if (errorMessages.isNotEmpty()) {
@@ -352,13 +360,14 @@ fun timeLimitExceeded(
 }
 
 fun getTimeLimitExceededMessage(timeLimit: TimeValue, workflow: WorkflowType): String {
-    val workflowStr = when (workflow) {
-        WorkflowType.CREATION -> {
-            "creation"
+    val workflowStr =
+        when (workflow) {
+            WorkflowType.CREATION -> {
+                "creation"
+            }
+            WorkflowType.DELETION -> {
+                "deletion"
+            }
         }
-        WorkflowType.DELETION -> {
-            "deletion"
-        }
-    }
     return "Time limit $timeLimit exceeded during snapshot $workflowStr step"
 }

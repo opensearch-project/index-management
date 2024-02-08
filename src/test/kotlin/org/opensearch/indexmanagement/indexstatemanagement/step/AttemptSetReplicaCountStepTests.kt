@@ -11,13 +11,13 @@ import com.nhaarman.mockitokotlin2.mock
 import com.nhaarman.mockitokotlin2.whenever
 import kotlinx.coroutines.runBlocking
 import org.mockito.Mockito.doAnswer
-import org.opensearch.core.action.ActionListener
 import org.opensearch.action.support.master.AcknowledgedResponse
 import org.opensearch.client.AdminClient
 import org.opensearch.client.Client
 import org.opensearch.client.IndicesAdminClient
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.settings.Settings
+import org.opensearch.core.action.ActionListener
 import org.opensearch.indexmanagement.indexstatemanagement.action.ReplicaCountAction
 import org.opensearch.indexmanagement.indexstatemanagement.step.replicacount.AttemptReplicaCountStep
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
@@ -29,7 +29,6 @@ import org.opensearch.test.OpenSearchTestCase
 import org.opensearch.transport.RemoteTransportException
 
 class AttemptSetReplicaCountStepTests : OpenSearchTestCase() {
-
     private val clusterService: ClusterService = mock()
     private val scriptService: ScriptService = mock()
     private val settings: Settings = Settings.EMPTY
@@ -82,14 +81,19 @@ class AttemptSetReplicaCountStepTests : OpenSearchTestCase() {
     }
 
     private fun getClient(adminClient: AdminClient): Client = mock { on { admin() } doReturn adminClient }
+
     private fun getAdminClient(indicesAdminClient: IndicesAdminClient): AdminClient = mock { on { indices() } doReturn indicesAdminClient }
+
     private fun getIndicesAdminClient(replicaResponse: AcknowledgedResponse?, exception: Exception?): IndicesAdminClient {
         assertTrue("Must provide one and only one response or exception", (replicaResponse != null).xor(exception != null))
         return mock {
             doAnswer { invocationOnMock ->
                 val listener = invocationOnMock.getArgument<ActionListener<AcknowledgedResponse>>(1)
-                if (replicaResponse != null) listener.onResponse(replicaResponse)
-                else listener.onFailure(exception)
+                if (replicaResponse != null) {
+                    listener.onResponse(replicaResponse)
+                } else {
+                    listener.onFailure(exception)
+                }
             }.whenever(this.mock).updateSettings(any(), any())
         }
     }

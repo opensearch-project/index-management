@@ -18,7 +18,6 @@ import org.opensearch.rest.RestRequest.Method.GET
 import org.opensearch.rest.action.RestToXContentListener
 
 class RestExplainSMPolicyHandler : BaseRestHandler() {
-
     private val log = LogManager.getLogger(RestExplainSMPolicyHandler::class.java)
 
     override fun getName(): String {
@@ -27,7 +26,7 @@ class RestExplainSMPolicyHandler : BaseRestHandler() {
 
     override fun routes(): List<Route> {
         return listOf(
-            Route(GET, "$SM_POLICIES_URI/{policyName}/_explain")
+            Route(GET, "$SM_POLICIES_URI/{policyName}/_explain"),
         )
     }
 
@@ -40,7 +39,7 @@ class RestExplainSMPolicyHandler : BaseRestHandler() {
             client.execute(
                 SMActions.EXPLAIN_SM_POLICY_ACTION_TYPE,
                 ExplainSMPolicyRequest(policyNames),
-                RestToXContentListener(it)
+                RestToXContentListener(it),
             )
         }
     }

@@ -5,17 +5,17 @@
 
 package org.opensearch.indexmanagement.spi.indexstatemanagement.model
 
+import org.opensearch.common.xcontent.LoggingDeprecationHandler
+import org.opensearch.common.xcontent.XContentType
 import org.opensearch.core.common.Strings
 import org.opensearch.core.common.io.stream.StreamInput
 import org.opensearch.core.common.io.stream.StreamOutput
 import org.opensearch.core.common.io.stream.Writeable
-import org.opensearch.common.xcontent.LoggingDeprecationHandler
 import org.opensearch.core.xcontent.NamedXContentRegistry
 import org.opensearch.core.xcontent.ToXContent
 import org.opensearch.core.xcontent.ToXContentFragment
 import org.opensearch.core.xcontent.XContentBuilder
 import org.opensearch.core.xcontent.XContentParser
-import org.opensearch.common.xcontent.XContentType
 import org.opensearch.core.xcontent.XContentParserUtils
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData.Companion.NAME
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData.Companion.START_TIME
@@ -29,9 +29,8 @@ data class ActionMetaData(
     val failed: Boolean,
     val consumedRetries: Int,
     val lastRetryTime: Long?,
-    val actionProperties: ActionProperties?
+    val actionProperties: ActionProperties?,
 ) : Writeable, ToXContentFragment {
-
     override fun writeTo(out: StreamOutput) {
         out.writeString(name)
         out.writeOptionalLong(startTime)
@@ -89,7 +88,7 @@ data class ActionMetaData(
                 requireNotNull(failed) { "$FAILED is null" },
                 requireNotNull(consumedRetries) { "$CONSUMED_RETRIES is null" },
                 lastRetryTime,
-                actionProperties
+                actionProperties,
             )
         }
 
@@ -139,7 +138,7 @@ data class ActionMetaData(
                 requireNotNull(failed) { "$FAILED is null" },
                 requireNotNull(consumedRetries) { "$CONSUMED_RETRIES is null" },
                 lastRetryTime,
-                actionProperties
+                actionProperties,
             )
         }
     }

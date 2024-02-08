@@ -18,7 +18,6 @@ import org.opensearch.rest.RestRequest.Method.GET
 import org.opensearch.rest.action.RestToXContentListener
 
 class RestExplainTransformAction : BaseRestHandler() {
-
     override fun routes(): List<Route> {
         return listOf(Route(GET, "$TRANSFORM_BASE_URI/{transformID}/_explain"))
     }

@@ -7,7 +7,6 @@ package org.opensearch.indexmanagement.controlcenter.notification.action.get
 
 import org.apache.logging.log4j.LogManager
 import org.opensearch.ExceptionsHelper
-import org.opensearch.core.action.ActionListener
 import org.opensearch.action.search.SearchRequest
 import org.opensearch.action.search.SearchResponse
 import org.opensearch.action.support.ActionFilters
@@ -18,8 +17,9 @@ import org.opensearch.common.inject.Inject
 import org.opensearch.common.xcontent.LoggingDeprecationHandler
 import org.opensearch.common.xcontent.XContentHelper
 import org.opensearch.common.xcontent.XContentType
-import org.opensearch.core.xcontent.NamedXContentRegistry
 import org.opensearch.commons.ConfigConstants
+import org.opensearch.core.action.ActionListener
+import org.opensearch.core.xcontent.NamedXContentRegistry
 import org.opensearch.index.IndexNotFoundException
 import org.opensearch.index.query.QueryBuilders
 import org.opensearch.indexmanagement.IndexManagementPlugin
@@ -31,13 +31,15 @@ import org.opensearch.search.builder.SearchSourceBuilder
 import org.opensearch.tasks.Task
 import org.opensearch.transport.TransportService
 
-class TransportGetLRONConfigAction @Inject constructor(
+class TransportGetLRONConfigAction
+@Inject
+constructor(
     val client: NodeClient,
     transportService: TransportService,
     actionFilters: ActionFilters,
     val xContentRegistry: NamedXContentRegistry,
 ) : HandledTransportAction<GetLRONConfigRequest, GetLRONConfigResponse>(
-    GetLRONConfigAction.NAME, transportService, actionFilters, ::GetLRONConfigRequest
+    GetLRONConfigAction.NAME, transportService, actionFilters, ::GetLRONConfigRequest,
 ) {
     private val log = LogManager.getLogger(javaClass)
 
@@ -48,13 +50,13 @@ class TransportGetLRONConfigAction @Inject constructor(
     inner class GetLRONConfigHandler(
         private val client: NodeClient,
         private val actionListener: ActionListener<GetLRONConfigResponse>,
-        private val request: GetLRONConfigRequest
+        private val request: GetLRONConfigRequest,
     ) {
         fun start() {
             log.debug(
                 "User and roles string from thread context: ${client.threadPool().threadContext.getTransient<String>(
-                    ConfigConstants.OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT
-                )}"
+                    ConfigConstants.OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT,
+                )}",
             )
             client.threadPool().threadContext.stashContext().use {
                 if (null != request.docId) {
@@ -70,7 +72,7 @@ class TransportGetLRONConfigAction @Inject constructor(
                             override fun onFailure(e: Exception) {
                                 actionListener.onFailure(ExceptionsHelper.unwrapCause(e) as Exception)
                             }
-                        }
+                        },
                     )
                 } else {
                     doSearch()
@@ -81,36 +83,41 @@ class TransportGetLRONConfigAction @Inject constructor(
         private fun doSearch() {
             val params = request.searchParams
             val sortBuilder = params!!.getSortBuilder()
-            val queryBuilder = QueryBuilders.boolQuery()
-                .must(QueryBuilders.existsQuery("lron_config"))
-                .must(QueryBuilders.queryStringQuery(params.queryString))
+            val queryBuilder =
+                QueryBuilders.boolQuery()
+                    .must(QueryBuilders.existsQuery("lron_config"))
+                    .must(QueryBuilders.queryStringQuery(params.queryString))
 
-            val searchSourceBuilder = SearchSourceBuilder()
-                .query(queryBuilder)
-                .sort(sortBuilder)
-                .from(params.from)
-                .size(params.size)
+            val searchSourceBuilder =
+                SearchSourceBuilder()
+                    .query(queryBuilder)
+                    .sort(sortBuilder)
+                    .from(params.from)
+                    .size(params.size)
 
-            val searchRequest = SearchRequest()
-                .source(searchSourceBuilder)
-                .indices(IndexManagementPlugin.CONTROL_CENTER_INDEX)
-                .preference(Preference.PRIMARY_FIRST.type())
+            val searchRequest =
+                SearchRequest()
+                    .source(searchSourceBuilder)
+                    .indices(IndexManagementPlugin.CONTROL_CENTER_INDEX)
+                    .preference(Preference.PRIMARY_FIRST.type())
 
             client.search(
                 searchRequest,
                 object : ActionListener<SearchResponse> {
                     override fun onResponse(response: SearchResponse) {
                         val totalNumber = response.hits.totalHits?.value ?: 0
-                        val lronConfigResponses = response.hits.hits.map {
-                            val xcp = XContentHelper.createParser(
-                                xContentRegistry,
-                                LoggingDeprecationHandler.INSTANCE, it.sourceRef, XContentType.JSON
-                            )
-                            LRONConfigResponse(
-                                id = it.id,
-                                lronConfig = xcp.parseWithType(id = it.id, parse = LRONConfig.Companion::parse)
-                            )
-                        }
+                        val lronConfigResponses =
+                            response.hits.hits.map {
+                                val xcp =
+                                    XContentHelper.createParser(
+                                        xContentRegistry,
+                                        LoggingDeprecationHandler.INSTANCE, it.sourceRef, XContentType.JSON,
+                                    )
+                                LRONConfigResponse(
+                                    id = it.id,
+                                    lronConfig = xcp.parseWithType(id = it.id, parse = LRONConfig.Companion::parse),
+                                )
+                            }
                         actionListener.onResponse(GetLRONConfigResponse(lronConfigResponses, totalNumber.toInt()))
                     }
 
@@ -122,7 +129,7 @@ class TransportGetLRONConfigAction @Inject constructor(
                         }
                         actionListener.onFailure(ExceptionsHelper.unwrapCause(e) as Exception)
                     }
-                }
+                },
             )
         }
     }

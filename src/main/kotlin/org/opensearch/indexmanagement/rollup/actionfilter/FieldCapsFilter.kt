@@ -6,9 +6,7 @@
 package org.opensearch.indexmanagement.rollup.actionfilter
 
 import org.apache.logging.log4j.LogManager
-import org.opensearch.core.action.ActionListener
 import org.opensearch.action.ActionRequest
-import org.opensearch.core.action.ActionResponse
 import org.opensearch.action.fieldcaps.FieldCapabilities
 import org.opensearch.action.fieldcaps.FieldCapabilitiesRequest
 import org.opensearch.action.fieldcaps.FieldCapabilitiesResponse
@@ -18,6 +16,8 @@ import org.opensearch.action.support.IndicesOptions
 import org.opensearch.cluster.metadata.IndexNameExpressionResolver
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.settings.Settings
+import org.opensearch.core.action.ActionListener
+import org.opensearch.core.action.ActionResponse
 import org.opensearch.indexmanagement.GuiceHolder
 import org.opensearch.indexmanagement.rollup.model.Rollup
 import org.opensearch.indexmanagement.rollup.model.RollupFieldMapping
@@ -35,9 +35,8 @@ private val logger = LogManager.getLogger(FieldCapsFilter::class.java)
 class FieldCapsFilter(
     val clusterService: ClusterService,
     val settings: Settings,
-    private val indexNameExpressionResolver: IndexNameExpressionResolver
+    private val indexNameExpressionResolver: IndexNameExpressionResolver,
 ) : ActionFilter {
-
     @Volatile private var shouldIntercept = RollupSettings.ROLLUP_DASHBOARDS.get(settings)
 
     init {
@@ -51,15 +50,16 @@ class FieldCapsFilter(
         action: String,
         request: Request,
         listener: ActionListener<Response>,
-        chain: ActionFilterChain<Request, Response>
+        chain: ActionFilterChain<Request, Response>,
     ) {
         if (request is FieldCapabilitiesRequest && shouldIntercept) {
             val indices = request.indices().map { it.toString() }.toTypedArray()
             val rollupIndices = mutableSetOf<String>()
             val nonRollupIndices = mutableSetOf<String>()
-            val remoteClusterIndices = GuiceHolder.remoteClusterService.groupIndices(request.indicesOptions(), indices) { idx: String? ->
-                indexNameExpressionResolver.hasIndexAbstraction(idx, clusterService.state())
-            }
+            val remoteClusterIndices =
+                GuiceHolder.remoteClusterService.groupIndices(request.indicesOptions(), indices) { idx: String? ->
+                    indexNameExpressionResolver.hasIndexAbstraction(idx, clusterService.state())
+                }
             val localIndices = remoteClusterIndices.remove(RemoteClusterAware.LOCAL_CLUSTER_GROUP_KEY)
 
             localIndices?.let {
@@ -112,7 +112,7 @@ class FieldCapsFilter(
                     override fun onFailure(e: Exception) {
                         listener.onFailure(e)
                     }
-                }
+                },
             )
         } else {
             chain.proceed(task, action, request, listener)
@@ -168,7 +168,7 @@ class FieldCapsFilter(
     private fun rewriteResponse(
         indices: Array<String>,
         fields: Map<String, Map<String, FieldCapabilities>>,
-        rollupIndices: Set<String>
+        rollupIndices: Set<String>,
     ): ActionResponse {
         val filteredIndicesFields = expandIndicesInFields(indices, fields)
         val rollupIndicesFields = populateRollupIndicesFields(rollupIndices)
@@ -189,12 +189,13 @@ class FieldCapsFilter(
                 response[fieldName] = mutableMapOf()
             }
             val isSearchable = fieldMapping.fieldType == RollupFieldMapping.Companion.FieldType.DIMENSION
-            response[fieldName]!![type] = FieldCapabilities(
-                fieldName, type, isSearchable, true,
-                fieldMappingIndexMap.getValue(fieldMapping)
-                    .toTypedArray(),
-                null, null, mapOf<String, Set<String>>()
-            )
+            response[fieldName]!![type] =
+                FieldCapabilities(
+                    fieldName, type, isSearchable, true,
+                    fieldMappingIndexMap.getValue(fieldMapping)
+                        .toTypedArray(),
+                    null, null, mapOf<String, Set<String>>(),
+                )
         }
 
         return response
@@ -202,12 +203,13 @@ class FieldCapsFilter(
 
     private fun populateSourceFieldMappingsForRollupJob(rollup: Rollup): Set<RollupFieldMapping> {
         val rollupFieldMappings = rollup.populateFieldMappings()
-        val sourceIndices = indexNameExpressionResolver.concreteIndexNames(
-            clusterService.state(),
-            IndicesOptions.lenientExpand(),
-            true,
-            rollup.sourceIndex
-        )
+        val sourceIndices =
+            indexNameExpressionResolver.concreteIndexNames(
+                clusterService.state(),
+                IndicesOptions.lenientExpand(),
+                true,
+                rollup.sourceIndex,
+            )
         sourceIndices.forEach {
             val mappings = clusterService.state().metadata.index(it).mapping()?.sourceAsMap ?: return rollupFieldMappings
             rollupFieldMappings.forEach { fieldMapping ->
@@ -254,7 +256,7 @@ class FieldCapsFilter(
 
     private fun expandIndicesInFields(
         indices: Array<String>,
-        fields: Map<String, Map<String, FieldCapabilities>>
+        fields: Map<String, Map<String, FieldCapabilities>>,
     ): Map<String, Map<String, FieldCapabilities>> {
         val expandedResponse = mutableMapOf<String, MutableMap<String, FieldCapabilities>>()
         fields.keys.forEach { field ->
@@ -264,12 +266,13 @@ class FieldCapsFilter(
                 }
                 val fieldCaps = fields.getValue(field).getValue(type)
                 val rewrittenIndices = if (fieldCaps.indices() != null && fieldCaps.indices().isNotEmpty()) fieldCaps.indices() else indices
-                expandedResponse[field]!![type] = FieldCapabilities(
-                    fieldCaps.name, fieldCaps.type, fieldCaps.isSearchable,
-                    fieldCaps
-                        .isAggregatable,
-                    rewrittenIndices, fieldCaps.nonSearchableIndices(), fieldCaps.nonAggregatableIndices(), fieldCaps.meta()
-                )
+                expandedResponse[field]!![type] =
+                    FieldCapabilities(
+                        fieldCaps.name, fieldCaps.type, fieldCaps.isSearchable,
+                        fieldCaps
+                            .isAggregatable,
+                        rewrittenIndices, fieldCaps.nonSearchableIndices(), fieldCaps.nonAggregatableIndices(), fieldCaps.meta(),
+                    )
             }
         }
 
@@ -278,7 +281,7 @@ class FieldCapsFilter(
 
     private fun mergeFields(
         f1: Map<String, Map<String, FieldCapabilities>>,
-        f2: Map<String, Map<String, FieldCapabilities>>
+        f2: Map<String, Map<String, FieldCapabilities>>,
     ): Map<String, Map<String, FieldCapabilities>> {
         val mergedResponses = mutableMapOf<String, Map<String, FieldCapabilities>>()
         val fields = f1.keys.union(f2.keys)
@@ -320,13 +323,14 @@ class FieldCapsFilter(
         val indices = fc1.indices() + fc2.indices()
         val nonAggregatableIndices = mergeNonAggregatableIndices(fc1, fc2)
         val nonSearchableIndices = mergeNonSearchableIndices(fc1, fc2)
-        val meta = (fc1.meta().keys + fc2.meta().keys)
-            .associateWith {
-                val data = mutableSetOf<String>()
-                data.addAll(fc1.meta().getOrDefault(it, mutableSetOf()))
-                data.addAll(fc2.meta().getOrDefault(it, mutableSetOf()))
-                data
-            }
+        val meta =
+            (fc1.meta().keys + fc2.meta().keys)
+                .associateWith {
+                    val data = mutableSetOf<String>()
+                    data.addAll(fc1.meta().getOrDefault(it, mutableSetOf()))
+                    data.addAll(fc2.meta().getOrDefault(it, mutableSetOf()))
+                    data
+                }
 
         return FieldCapabilities(name, type, isSearchable, isAggregatable, indices, nonSearchableIndices, nonAggregatableIndices, meta)
     }

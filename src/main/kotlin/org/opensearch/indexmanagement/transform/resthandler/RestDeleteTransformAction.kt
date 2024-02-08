@@ -20,10 +20,9 @@ import org.opensearch.rest.action.RestToXContentListener
 import java.io.IOException
 
 class RestDeleteTransformAction : BaseRestHandler() {
-
     override fun routes(): List<RestHandler.Route> {
         return listOf(
-            Route(DELETE, "$TRANSFORM_BASE_URI/{transformID}")
+            Route(DELETE, "$TRANSFORM_BASE_URI/{transformID}"),
         )
     }
 

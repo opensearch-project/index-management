@@ -23,7 +23,6 @@ import org.opensearch.indexmanagement.controlcenter.notification.filter.Operatio
 import kotlin.Exception
 
 class OpenRespParserTests : BaseRespParserTests() {
-
     private lateinit var activeShardsObserver: ActiveShardsObserver
     private lateinit var indexNameExpressionResolver: IndexNameExpressionResolver
 

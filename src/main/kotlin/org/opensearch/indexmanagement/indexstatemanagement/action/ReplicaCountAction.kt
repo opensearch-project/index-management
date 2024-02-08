@@ -15,9 +15,8 @@ import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepContext
 
 class ReplicaCountAction(
     val numOfReplicas: Int,
-    index: Int
+    index: Int,
 ) : Action(name, index) {
-
     init {
         require(numOfReplicas >= 0) { "ReplicaCountAction number_of_replicas value must be a non-negative number" }
     }

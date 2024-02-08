@@ -11,6 +11,7 @@ import org.opensearch.action.admin.indices.stats.IndicesStatsRequest
 import org.opensearch.action.admin.indices.stats.IndicesStatsResponse
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.core.common.unit.ByteSizeValue
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.indexmanagement.indexstatemanagement.IndexMetadataProvider
 import org.opensearch.indexmanagement.indexstatemanagement.action.TransitionsAction
 import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.getOldestRolloverTime
@@ -22,12 +23,10 @@ import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepMetaData
-import org.opensearch.core.rest.RestStatus
 import org.opensearch.transport.RemoteTransportException
 import java.time.Instant
 
 class AttemptTransitionStep(private val action: TransitionsAction) : Step(name) {
-
     private val logger = LogManager.getLogger(javaClass)
     private var stateName: String? = null
     private var stepStatus = StepStatus.STARTING
@@ -76,8 +75,9 @@ class AttemptTransitionStep(private val action: TransitionsAction) : Step(name) 
 
             if (transitions.any { it.hasStatsConditions() }) {
                 if (inCluster) {
-                    val statsRequest = IndicesStatsRequest()
-                        .indices(indexName).clear().docs(true)
+                    val statsRequest =
+                        IndicesStatsRequest()
+                            .indices(indexName).clear().docs(true)
                     val statsResponse: IndicesStatsResponse =
                         context.client.admin().indices().suspendUntil { stats(statsRequest, it) }
 
@@ -85,10 +85,11 @@ class AttemptTransitionStep(private val action: TransitionsAction) : Step(name) 
                         val message = getFailedStatsMessage(indexName)
                         logger.warn("$message - ${statsResponse.status}")
                         stepStatus = StepStatus.FAILED
-                        info = mapOf(
-                            "message" to message,
-                            "shard_failures" to statsResponse.shardFailures.map { it.getUsefulCauseString() }
-                        )
+                        info =
+                            mapOf(
+                                "message" to message,
+                                "shard_failures" to statsResponse.shardFailures.map { it.getUsefulCauseString() },
+                            )
                         return this
                     }
                     numDocs = statsResponse.primaries.getDocs()?.count ?: 0
@@ -99,15 +100,16 @@ class AttemptTransitionStep(private val action: TransitionsAction) : Step(name) 
             }
 
             // Find the first transition that evaluates to true and get the state to transition to, otherwise return null if none are true
-            stateName = transitions.find {
-                it.evaluateConditions(indexCreationDateInstant, numDocs, indexSize, stepStartTime, rolloverDate)
-            }?.stateName
+            stateName =
+                transitions.find {
+                    it.evaluateConditions(indexCreationDateInstant, numDocs, indexSize, stepStartTime, rolloverDate)
+                }?.stateName
             val message: String
             val stateName = stateName // shadowed on purpose to prevent var from changing
             if (stateName != null) {
                 logger.info(
                     "$indexName transition conditions evaluated to true [indexCreationDate=$indexCreationDate," +
-                        " numDocs=$numDocs, indexSize=${indexSize?.bytes},stepStartTime=${stepStartTime.toEpochMilli()}]"
+                        " numDocs=$numDocs, indexSize=${indexSize?.bytes},stepStartTime=${stepStartTime.toEpochMilli()}]",
                 )
                 stepStatus = StepStatus.COMPLETED
                 message = getSuccessMessage(indexName, stateName)
@@ -140,7 +142,7 @@ class AttemptTransitionStep(private val action: TransitionsAction) : Step(name) 
             policyCompleted = policyCompleted,
             transitionTo = stateName,
             stepMetaData = StepMetaData(name, getStepStartTime(currentMetadata).toEpochMilli(), stepStatus),
-            info = info
+            info = info,
         )
     }
 
@@ -150,7 +152,7 @@ class AttemptTransitionStep(private val action: TransitionsAction) : Step(name) 
         indexMetadataProvider: IndexMetadataProvider,
         clusterService: ClusterService,
         indexName: String,
-        inCluster: Boolean
+        inCluster: Boolean,
     ): Long {
         try {
             // If we do have an index creation date cached already then use that
@@ -164,9 +166,10 @@ class AttemptTransitionStep(private val action: TransitionsAction) : Step(name) 
                 val nonDefaultIndexTypes = indexMetadataProvider.services.keys.filter { it != DEFAULT_INDEX_TYPE }
                 val multiTypeIndexNameToMetaData = indexMetadataProvider.getMultiTypeISMIndexMetadata(nonDefaultIndexTypes, listOf(indexName))
                 // the managedIndexConfig.indexUuid should be unique across all index types
-                val indexCreationDate = multiTypeIndexNameToMetaData.values.firstOrNull {
-                    it[indexName]?.indexUuid == metadata.indexUuid
-                }?.get(indexName)?.indexCreationDate
+                val indexCreationDate =
+                    multiTypeIndexNameToMetaData.values.firstOrNull {
+                        it[indexName]?.indexUuid == metadata.indexUuid
+                    }?.get(indexName)?.indexCreationDate
                 indexCreationDate ?: -1
             }
         } catch (e: Exception) {
@@ -180,11 +183,16 @@ class AttemptTransitionStep(private val action: TransitionsAction) : Step(name) 
 
     companion object {
         const val name = "attempt_transition_step"
+
         fun getFailedMessage(index: String) = "Failed to transition index [index=$index]"
+
         fun getFailedStatsMessage(index: String) = "Failed to get stats information for the index [index=$index]"
+
         fun getFailedRolloverDateMessage(index: String) =
             "Failed to transition index as min_rollover_age condition was used, but the index has never been rolled over [index=$index]"
+
         fun getEvaluatingMessage(index: String) = "Evaluating transition conditions [index=$index]"
+
         fun getSuccessMessage(index: String, state: String) = "Transitioning to $state [index=$index]"
     }
 }

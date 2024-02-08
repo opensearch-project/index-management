@@ -55,7 +55,6 @@ import kotlin.math.sqrt
 
 @SuppressWarnings("TooManyFunctions")
 class AttemptMoveShardsStep(private val action: ShrinkAction) : ShrinkStep(name, false, false, false) {
-
     @Suppress("ReturnCount")
     override suspend fun wrappedExecute(context: StepContext): AttemptMoveShardsStep {
         val client = context.client
@@ -74,7 +73,7 @@ class AttemptMoveShardsStep(private val action: ShrinkAction) : ShrinkStep(name,
                 action.targetIndexTemplate,
                 context.metadata,
                 indexName + DEFAULT_TARGET_SUFFIX,
-                context.scriptService
+                context.scriptService,
             )
         if (targetIndexNameIsInvalid(context.clusterService, shrinkTargetIndexName)) return this
 
@@ -84,8 +83,9 @@ class AttemptMoveShardsStep(private val action: ShrinkAction) : ShrinkStep(name,
         val (statsStore, statsDocs, shardStats) = getIndexStats(indexName, client) ?: return this
         val indexSize = statsStore.sizeInBytes
         // Get stats of current and target shards
-        val numOriginalShards = context.clusterService.state().metadata.indices[indexName]?.numberOfShards
-            ?: error("numOriginalShards should not be null")
+        val numOriginalShards =
+            context.clusterService.state().metadata.indices[indexName]?.numberOfShards
+                ?: error("numOriginalShards should not be null")
         val numTargetShards = getNumTargetShards(numOriginalShards, indexSize)
 
         if (shouldFailTooManyDocuments(statsDocs, numTargetShards)) return this
@@ -119,18 +119,20 @@ class AttemptMoveShardsStep(private val action: ShrinkAction) : ShrinkStep(name,
         }
 
         // Iterate through the suitable nodes and try to acquire a lock on one
-        val (lock, nodeName) = acquireLockFromNodeList(context.lockService, suitableNodes, interval, indexName)
-            ?: return this
-        shrinkActionProperties = ShrinkActionProperties(
-            nodeName,
-            shrinkTargetIndexName,
-            numTargetShards,
-            lock.primaryTerm,
-            lock.seqNo,
-            lock.lockTime.epochSecond,
-            lock.lockDurationSeconds,
-            originalIndexSettings
-        )
+        val (lock, nodeName) =
+            acquireLockFromNodeList(context.lockService, suitableNodes, interval, indexName)
+                ?: return this
+        shrinkActionProperties =
+            ShrinkActionProperties(
+                nodeName,
+                shrinkTargetIndexName,
+                numTargetShards,
+                lock.primaryTerm,
+                lock.seqNo,
+                lock.lockTime.epochSecond,
+                lock.lockDurationSeconds,
+                originalIndexSettings,
+            )
 
         setToReadOnlyAndMoveIndexToNode(context, nodeName, lock)
         info = mapOf("message" to getSuccessMessage(nodeName))
@@ -142,19 +144,20 @@ class AttemptMoveShardsStep(private val action: ShrinkAction) : ShrinkStep(name,
 
     private suspend fun getIndexStats(
         indexName: String,
-        client: Client
+        client: Client,
     ): Triple<StoreStats, DocsStats, Array<ShardStats>>? {
         val statsRequest = IndicesStatsRequest().indices(indexName)
-        val statsResponse: IndicesStatsResponse = client.admin().indices().suspendUntil {
-            stats(statsRequest, it)
-        }
+        val statsResponse: IndicesStatsResponse =
+            client.admin().indices().suspendUntil {
+                stats(statsRequest, it)
+            }
         val statsStore = statsResponse.total.store
         val statsDocs = statsResponse.total.docs
         val statsShards = statsResponse.shards
         if (statsStore == null || statsDocs == null || statsShards == null) {
             setStepFailed(
                 FAILURE_MESSAGE,
-                "Failed to move shards in shrink action as IndicesStatsResponse was missing some stats."
+                "Failed to move shards in shrink action as IndicesStatsResponse was missing some stats.",
             )
             return null
         }
@@ -174,15 +177,17 @@ class AttemptMoveShardsStep(private val action: ShrinkAction) : ShrinkStep(name,
         template: Script?,
         managedIndexMetaData: ManagedIndexMetaData,
         defaultValue: String,
-        scriptService: ScriptService
+        scriptService: ScriptService,
     ): String {
         if (template == null) return defaultValue
-        val contextMap = managedIndexMetaData.convertToMap().filterKeys { key ->
-            key in ALLOWED_TEMPLATE_FIELDS
-        }
-        val compiledValue = scriptService.compile(template, TemplateScript.CONTEXT)
-            .newInstance(template.params + mapOf("ctx" to contextMap))
-            .execute()
+        val contextMap =
+            managedIndexMetaData.convertToMap().filterKeys { key ->
+                key in ALLOWED_TEMPLATE_FIELDS
+            }
+        val compiledValue =
+            scriptService.compile(template, TemplateScript.CONTEXT)
+                .newInstance(template.params + mapOf("ctx" to contextMap))
+                .execute()
         return compiledValue.ifBlank { defaultValue }
     }
 
@@ -245,12 +250,13 @@ class AttemptMoveShardsStep(private val action: ShrinkAction) : ShrinkStep(name,
     private suspend fun setToReadOnlyAndMoveIndexToNode(
         stepContext: StepContext,
         node: String,
-        lock: LockModel
+        lock: LockModel,
     ): Boolean {
-        val updateSettings = Settings.builder()
-            .put(SETTING_BLOCKS_WRITE, true)
-            .put(ROUTING_SETTING, node)
-            .build()
+        val updateSettings =
+            Settings.builder()
+                .put(SETTING_BLOCKS_WRITE, true)
+                .put(ROUTING_SETTING, node)
+                .build()
         val lockService = stepContext.lockService
         var response: AcknowledgedResponse? = null
         val isUpdateAcknowledged: Boolean
@@ -277,13 +283,14 @@ class AttemptMoveShardsStep(private val action: ShrinkAction) : ShrinkStep(name,
         lockService: LockService,
         suitableNodes: List<String>,
         jobIntervalSeconds: Long?,
-        indexName: String
+        indexName: String,
     ): Pair<LockModel, String>? {
         for (nodeName in suitableNodes) {
             val lockID = getShrinkJobID(nodeName)
-            val lock: LockModel? = lockService.suspendUntil {
-                acquireLockWithId(INDEX_MANAGEMENT_INDEX, getShrinkLockDuration(jobIntervalSeconds), lockID, it)
-            }
+            val lock: LockModel? =
+                lockService.suspendUntil {
+                    acquireLockWithId(INDEX_MANAGEMENT_INDEX, getShrinkLockDuration(jobIntervalSeconds), lockID, it)
+                }
             if (lock != null) {
                 return lock to nodeName
             } else {
@@ -302,28 +309,31 @@ class AttemptMoveShardsStep(private val action: ShrinkAction) : ShrinkStep(name,
     private suspend fun findSuitableNodes(
         stepContext: StepContext,
         shardStats: Array<ShardStats>,
-        indexSizeInBytes: Long
+        indexSizeInBytes: Long,
     ): List<String> {
         val nodesStatsReq = NodesStatsRequest().addMetric(FS_METRIC)
-        val nodeStatsResponse: NodesStatsResponse = stepContext.client.admin().cluster().suspendUntil {
-            nodesStats(nodesStatsReq, it)
-        }
+        val nodeStatsResponse: NodesStatsResponse =
+            stepContext.client.admin().cluster().suspendUntil {
+                nodesStats(nodesStatsReq, it)
+            }
         val nodesList = nodeStatsResponse.nodes.filter { it.node.isDataNode }
         val suitableNodes: ArrayList<String> = ArrayList()
 
         // Sort in increasing order of keys, in our case this is memory remaining
-        val comparator = kotlin.Comparator { o1: Tuple<Long, String>, o2: Tuple<Long, String> ->
-            o1.v1().compareTo(o2.v1())
-        }
+        val comparator =
+            kotlin.Comparator { o1: Tuple<Long, String>, o2: Tuple<Long, String> ->
+                o1.v1().compareTo(o2.v1())
+            }
         val nodesWithSpace = PriorityQueue(comparator)
         for (node in nodesList) {
             // Gets the amount of disk space in the node which will be free below the high watermark level after adding 2*indexSizeInBytes,
             // as the source index is duplicated during the shrink
-            val remainingDiskSpace = getNodeFreeDiskSpaceAfterShrink(
-                node,
-                indexSizeInBytes,
-                stepContext.clusterService.clusterSettings
-            )
+            val remainingDiskSpace =
+                getNodeFreeDiskSpaceAfterShrink(
+                    node,
+                    indexSizeInBytes,
+                    stepContext.clusterService.clusterSettings,
+                )
             if (remainingDiskSpace > 0L) {
                 nodesWithSpace.add(Tuple(remainingDiskSpace, node.node.name))
             }
@@ -333,10 +343,11 @@ class AttemptMoveShardsStep(private val action: ShrinkAction) : ShrinkStep(name,
             logger.info("No node has enough disk space for shrink action.")
             return suitableNodes
         }
-        val shardIdToNodeList: Map<Int, Set<String>> = getShardIdToNodeNameSet(
-            shardStats,
-            stepContext.clusterService.state().nodes
-        )
+        val shardIdToNodeList: Map<Int, Set<String>> =
+            getShardIdToNodeNameSet(
+                shardStats,
+                stepContext.clusterService.state().nodes,
+            )
         // For each node, do a dry run of moving all shards to the node to make sure that there aren't any other blockers
         // to the allocation.
         for (sizeNodeTuple in nodesWithSpace) {
@@ -348,29 +359,35 @@ class AttemptMoveShardsStep(private val action: ShrinkAction) : ShrinkStep(name,
                 val shardId = shard.shardRouting.shardId()
                 val currentShardNode = stepContext.clusterService.state().nodes[shard.shardRouting.currentNodeId()]
                 // Don't attempt a dry run for shards which have a copy already on that node
-                if (shardIdToNodeList[shardId.id]?.contains(targetNodeName) == true || requestedShardIds.contains(
-                        shardId.id
+                if (shardIdToNodeList[shardId.id]?.contains(targetNodeName) == true ||
+                    requestedShardIds.contains(
+                        shardId.id,
                     )
-                ) continue
+                ) {
+                    continue
+                }
                 clusterRerouteRequest.add(
-                    MoveAllocationCommand(indexName, shardId.id, currentShardNode.name, targetNodeName)
+                    MoveAllocationCommand(indexName, shardId.id, currentShardNode.name, targetNodeName),
                 )
                 requestedShardIds.add(shardId.id)
             }
             val clusterRerouteResponse: ClusterRerouteResponse =
                 stepContext.client.admin().cluster().suspendUntil { reroute(clusterRerouteRequest, it) }
             val numOfDecisions = clusterRerouteResponse.explanations.explanations().size
-            val numNoDecisions = clusterRerouteResponse.explanations.explanations().count {
-                it.decisions().type().equals((Decision.Type.NO))
-            }
-            val numYesDecisions = clusterRerouteResponse.explanations.explanations().count {
-                it.decisions().type().equals((Decision.Type.YES))
-            }
-            val numThrottleDecisions = clusterRerouteResponse.explanations.explanations().count {
-                it.decisions().type().equals((Decision.Type.THROTTLE))
-            }
+            val numNoDecisions =
+                clusterRerouteResponse.explanations.explanations().count {
+                    it.decisions().type().equals((Decision.Type.NO))
+                }
+            val numYesDecisions =
+                clusterRerouteResponse.explanations.explanations().count {
+                    it.decisions().type().equals((Decision.Type.YES))
+                }
+            val numThrottleDecisions =
+                clusterRerouteResponse.explanations.explanations().count {
+                    it.decisions().type().equals((Decision.Type.THROTTLE))
+                }
             logger.debug(
-                getShardMovingDecisionInfo(numNoDecisions, numYesDecisions, numThrottleDecisions, targetNodeName)
+                getShardMovingDecisionInfo(numNoDecisions, numYesDecisions, numThrottleDecisions, targetNodeName),
             )
             // NO decision type is not counted; YES and THROTTLE decision type are available for shrink.
             if (numOfDecisions - numNoDecisions >= requestedShardIds.size) {
@@ -447,20 +464,23 @@ class AttemptMoveShardsStep(private val action: ShrinkAction) : ShrinkStep(name,
     override fun getUpdatedManagedIndexMetadata(currentMetadata: ManagedIndexMetaData): ManagedIndexMetaData {
         val currentActionMetaData = currentMetadata.actionMetaData
         // If we succeeded because there was only one source primary shard, we no-op by skipping to the last step
-        val stepMetaData = if (info?.get("message") == ONE_PRIMARY_SHARD_MESSAGE) {
-            StepMetaData(WaitForShrinkStep.name, getStepStartTime(currentMetadata).toEpochMilli(), stepStatus)
-        } else {
-            StepMetaData(name, getStepStartTime(currentMetadata).toEpochMilli(), stepStatus)
-        }
+        val stepMetaData =
+            if (info?.get("message") == ONE_PRIMARY_SHARD_MESSAGE) {
+                StepMetaData(WaitForShrinkStep.name, getStepStartTime(currentMetadata).toEpochMilli(), stepStatus)
+            } else {
+                StepMetaData(name, getStepStartTime(currentMetadata).toEpochMilli(), stepStatus)
+            }
         return currentMetadata.copy(
-            actionMetaData = currentActionMetaData?.copy(
-                actionProperties = ActionProperties(
-                    shrinkActionProperties = shrinkActionProperties
-                )
+            actionMetaData =
+            currentActionMetaData?.copy(
+                actionProperties =
+                ActionProperties(
+                    shrinkActionProperties = shrinkActionProperties,
+                ),
             ),
             stepMetaData = stepMetaData,
             transitionTo = null,
-            info = info
+            info = info,
         )
     }
 
@@ -488,20 +508,23 @@ class AttemptMoveShardsStep(private val action: ShrinkAction) : ShrinkStep(name,
         private const val JOB_INTERVAL_LOCK_MULTIPLIER = 3
         private const val LOCK_BUFFER_SECONDS = 1800
         private const val MAXIMUM_DOCS_PER_SHARD = 0x80000000 // The maximum number of documents per shard is 2^31
+
         fun getSuccessMessage(node: String) = "Successfully initialized moving the shards to $node for a shrink action."
+
         fun getIndexExistsMessage(newIndex: String) = "Shrink failed because $newIndex already exists."
+
         fun getShardMovingDecisionInfo(
             noCount: Int,
             yesCount: Int,
             throttleCount: Int,
-            node: String
+            node: String,
         ) = "Shard moving decisions on node $node, NO: $noCount, YES: $yesCount, THROTTLE: $throttleCount."
 
         // If we couldn't get the job interval for the lock, use the default of 12 hours.
         // Lock is 3x + 30 minutes the job interval to allow the next step's execution to extend the lock without losing it.
         // If user sets maximum jitter, it could be 2x the job interval before the next step is executed.
         private fun getShrinkLockDuration(
-            jobInterval: Long?
+            jobInterval: Long?,
         ) = jobInterval?.let { (it * JOB_INTERVAL_LOCK_MULTIPLIER) + LOCK_BUFFER_SECONDS }
             ?: DEFAULT_LOCK_INTERVAL
 

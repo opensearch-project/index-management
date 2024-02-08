@@ -13,11 +13,12 @@ import org.opensearch.action.admin.indices.rollover.RolloverRequest
 import org.opensearch.action.admin.indices.rollover.RolloverResponse
 import org.opensearch.action.admin.indices.stats.IndicesStatsRequest
 import org.opensearch.action.admin.indices.stats.IndicesStatsResponse
-import org.opensearch.core.common.unit.ByteSizeValue
 import org.opensearch.action.support.master.AcknowledgedResponse
 import org.opensearch.client.Client
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.unit.TimeValue
+import org.opensearch.core.common.unit.ByteSizeValue
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.index.IndexNotFoundException
 import org.opensearch.indexmanagement.indexstatemanagement.action.RolloverAction
 import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.getRolloverAlias
@@ -29,13 +30,11 @@ import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepContext
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepMetaData
-import org.opensearch.core.rest.RestStatus
 import org.opensearch.transport.RemoteTransportException
 import java.time.Instant
 
 @Suppress("ReturnCount")
 class AttemptRolloverStep(private val action: RolloverAction) : Step(name) {
-
     private val logger = LogManager.getLogger(javaClass)
     private var stepStatus = StepStatus.STARTING
     private var info: Map<String, Any>? = null
@@ -77,51 +76,57 @@ class AttemptRolloverStep(private val action: RolloverAction) : Step(name) {
         statsResponse ?: return this
 
         val indexCreationDate = clusterService.state().metadata().index(indexName).creationDate
-        val indexAgeTimeValue = if (indexCreationDate == -1L) {
-            logger.warn("$indexName had an indexCreationDate=-1L, cannot use for comparison")
-            // since we cannot use for comparison, we can set it to 0 as minAge will never be <= 0
-            TimeValue.timeValueMillis(0)
-        } else {
-            TimeValue.timeValueMillis(Instant.now().toEpochMilli() - indexCreationDate)
-        }
+        val indexAgeTimeValue =
+            if (indexCreationDate == -1L) {
+                logger.warn("$indexName had an indexCreationDate=-1L, cannot use for comparison")
+                // since we cannot use for comparison, we can set it to 0 as minAge will never be <= 0
+                TimeValue.timeValueMillis(0)
+            } else {
+                TimeValue.timeValueMillis(Instant.now().toEpochMilli() - indexCreationDate)
+            }
         val numDocs = statsResponse.primaries.docs?.count ?: 0
         val indexSize = ByteSizeValue(statsResponse.primaries.docs?.totalSizeInBytes ?: 0)
         val largestPrimaryShard = statsResponse.shards.maxByOrNull { it.stats.docs?.totalSizeInBytes ?: 0 }
         val largestPrimaryShardSize = ByteSizeValue(largestPrimaryShard?.stats?.docs?.totalSizeInBytes ?: 0)
 
-        val conditions = listOfNotNull(
-            action.minAge?.let {
-                RolloverAction.MIN_INDEX_AGE_FIELD to mapOf(
-                    "condition" to it.toString(),
-                    "current" to indexAgeTimeValue.toString(),
-                    "creationDate" to indexCreationDate
-                )
-            },
-            action.minDocs?.let {
-                RolloverAction.MIN_DOC_COUNT_FIELD to mapOf(
-                    "condition" to it,
-                    "current" to numDocs
-                )
-            },
-            action.minSize?.let {
-                RolloverAction.MIN_SIZE_FIELD to mapOf(
-                    "condition" to it.toString(),
-                    "current" to indexSize.toString()
-                )
-            },
-            action.minPrimaryShardSize?.let {
-                RolloverAction.MIN_PRIMARY_SHARD_SIZE_FIELD to mapOf(
-                    "condition" to it.toString(),
-                    "current" to largestPrimaryShardSize.toString(),
-                    "shard" to largestPrimaryShard?.shardRouting?.id()
-                )
-            }
-        ).toMap()
+        val conditions =
+            listOfNotNull(
+                action.minAge?.let {
+                    RolloverAction.MIN_INDEX_AGE_FIELD to
+                        mapOf(
+                            "condition" to it.toString(),
+                            "current" to indexAgeTimeValue.toString(),
+                            "creationDate" to indexCreationDate,
+                        )
+                },
+                action.minDocs?.let {
+                    RolloverAction.MIN_DOC_COUNT_FIELD to
+                        mapOf(
+                            "condition" to it,
+                            "current" to numDocs,
+                        )
+                },
+                action.minSize?.let {
+                    RolloverAction.MIN_SIZE_FIELD to
+                        mapOf(
+                            "condition" to it.toString(),
+                            "current" to indexSize.toString(),
+                        )
+                },
+                action.minPrimaryShardSize?.let {
+                    RolloverAction.MIN_PRIMARY_SHARD_SIZE_FIELD to
+                        mapOf(
+                            "condition" to it.toString(),
+                            "current" to largestPrimaryShardSize.toString(),
+                            "shard" to largestPrimaryShard?.shardRouting?.id(),
+                        )
+                },
+            ).toMap()
 
         if (action.evaluateConditions(indexAgeTimeValue, numDocs, indexSize, largestPrimaryShardSize)) {
             logger.info(
                 "$indexName rollover conditions evaluated to true [indexCreationDate=$indexCreationDate," +
-                    " numDocs=$numDocs, indexSize=${indexSize.bytes}, primaryShardSize=${largestPrimaryShardSize.bytes}]"
+                    " numDocs=$numDocs, indexSize=${indexSize.bytes}, primaryShardSize=${largestPrimaryShardSize.bytes}]",
             )
             executeRollover(context, rolloverTarget, isDataStream, conditions)
             copyAlias(clusterService, indexName, context.client, rolloverTarget, context.metadata)
@@ -139,10 +144,11 @@ class AttemptRolloverStep(private val action: RolloverAction) : Step(name) {
         val indexAbstraction = metadata.indicesLookup[indexName]
         val isDataStreamIndex = indexAbstraction?.parentDataStream != null
 
-        val rolloverTarget = when {
-            isDataStreamIndex -> indexAbstraction?.parentDataStream?.name
-            else -> metadata.index(indexName).getRolloverAlias()
-        }
+        val rolloverTarget =
+            when {
+                isDataStreamIndex -> indexAbstraction?.parentDataStream?.name
+                else -> metadata.index(indexName).getRolloverAlias()
+            }
 
         if (rolloverTarget == null) {
             val message = getFailedNoValidAliasMessage(indexName)
@@ -188,8 +194,9 @@ class AttemptRolloverStep(private val action: RolloverAction) : Step(name) {
     private suspend fun getIndexStatsOrUpdateInfo(context: StepContext): IndicesStatsResponse? {
         val indexName = context.metadata.index
         try {
-            val statsRequest = IndicesStatsRequest()
-                .indices(indexName).clear().docs(true)
+            val statsRequest =
+                IndicesStatsRequest()
+                    .indices(indexName).clear().docs(true)
             val statsResponse: IndicesStatsResponse = context.client.admin().indices().suspendUntil { stats(statsRequest, it) }
 
             if (statsResponse.status == RestStatus.OK) {
@@ -199,10 +206,11 @@ class AttemptRolloverStep(private val action: RolloverAction) : Step(name) {
             val message = getFailedEvaluateMessage(indexName)
             logger.warn("$message - ${statsResponse.status}")
             stepStatus = StepStatus.FAILED
-            info = mapOf(
-                "message" to message,
-                "shard_failures" to statsResponse.shardFailures.map { it.getUsefulCauseString() }
-            )
+            info =
+                mapOf(
+                    "message" to message,
+                    "shard_failures" to statsResponse.shardFailures.map { it.getUsefulCauseString() },
+                )
         } catch (e: RemoteTransportException) {
             handleException(indexName, ExceptionsHelper.unwrapCause(e) as Exception)
         } catch (e: Exception) {
@@ -217,7 +225,7 @@ class AttemptRolloverStep(private val action: RolloverAction) : Step(name) {
         context: StepContext,
         rolloverTarget: String,
         isDataStream: Boolean,
-        conditions: Map<String, Map<String, Any?>>
+        conditions: Map<String, Map<String, Any?>>,
     ) {
         val indexName = context.metadata.index
         try {
@@ -231,32 +239,36 @@ class AttemptRolloverStep(private val action: RolloverAction) : Step(name) {
             // 1. IndexAbstraction.Type.DATA_STREAM - the new index is added to the data stream indicated by the 'rolloverTarget'
             // 2. IndexAbstraction.Type.ALIAS - the new index is added to the alias indicated by the 'rolloverTarget'
             if (response.isAcknowledged) {
-                val message = when {
-                    isDataStream -> getSuccessDataStreamRolloverMessage(rolloverTarget, indexName)
-                    else -> getSuccessMessage(indexName)
-                }
+                val message =
+                    when {
+                        isDataStream -> getSuccessDataStreamRolloverMessage(rolloverTarget, indexName)
+                        else -> getSuccessMessage(indexName)
+                    }
 
                 // Save newIndex later to metadata to be reused in case of failures
                 newIndex = response.newIndex
 
                 stepStatus = StepStatus.COMPLETED
-                info = listOfNotNull(
-                    "message" to message,
-                    if (conditions.isEmpty()) null else "conditions" to conditions // don't show empty conditions object if no conditions specified
-                ).toMap()
+                info =
+                    listOfNotNull(
+                        "message" to message,
+                        if (conditions.isEmpty()) null else "conditions" to conditions, // don't show empty conditions object if no conditions specified
+                    ).toMap()
             } else {
-                val message = when {
-                    isDataStream -> getFailedDataStreamRolloverMessage(rolloverTarget)
+                val message =
+                    when {
+                        isDataStream -> getFailedDataStreamRolloverMessage(rolloverTarget)
 
-                    // If the alias update response was NOT acknowledged, then the new index was created but we failed to swap the alias
-                    else -> getFailedAliasUpdateMessage(indexName, response.newIndex)
-                }
+                        // If the alias update response was NOT acknowledged, then the new index was created but we failed to swap the alias
+                        else -> getFailedAliasUpdateMessage(indexName, response.newIndex)
+                    }
                 logger.warn(message)
                 stepStatus = StepStatus.FAILED
-                info = listOfNotNull(
-                    "message" to message,
-                    if (conditions.isEmpty()) null else "conditions" to conditions // don't show empty conditions object if no conditions specified
-                ).toMap()
+                info =
+                    listOfNotNull(
+                        "message" to message,
+                        if (conditions.isEmpty()) null else "conditions" to conditions, // don't show empty conditions object if no conditions specified
+                    ).toMap()
             }
         } catch (e: RemoteTransportException) {
             handleException(indexName, ExceptionsHelper.unwrapCause(e) as Exception)
@@ -280,7 +292,7 @@ class AttemptRolloverStep(private val action: RolloverAction) : Step(name) {
         indexName: String,
         client: Client,
         rolloverTarget: String,
-        metadata: ManagedIndexMetaData
+        metadata: ManagedIndexMetaData,
     ) {
         if (!action.copyAlias) return
 
@@ -293,10 +305,11 @@ class AttemptRolloverStep(private val action: RolloverAction) : Step(name) {
             // ISM cannot auto recover from this case, so the status is COMPLETED
             logger.error("$indexName rolled over but cannot find the rolledOverIndexName to copy aliases to")
             stepStatus = StepStatus.COMPLETED
-            info = listOfNotNull(
-                "message" to getCopyAliasRolledOverIndexNotFoundMessage(indexName),
-                if (conditions != null) "conditions" to conditions else null
-            ).toMap()
+            info =
+                listOfNotNull(
+                    "message" to getCopyAliasRolledOverIndexNotFoundMessage(indexName),
+                    if (conditions != null) "conditions" to conditions else null,
+                ).toMap()
             return
         }
 
@@ -308,12 +321,13 @@ class AttemptRolloverStep(private val action: RolloverAction) : Step(name) {
             if (aliasName == rolloverTarget) continue
 
             val aliasMetadata = alias.value
-            val aliasAction = AliasActions(AliasActions.Type.ADD).index(rolledOverIndexName)
-                .alias(aliasMetadata.alias)
-                .filter(aliasMetadata.filter?.toString())
-                .searchRouting(aliasMetadata.searchRouting)
-                .indexRouting(aliasMetadata.indexRouting)
-                .isHidden(aliasMetadata.isHidden)
+            val aliasAction =
+                AliasActions(AliasActions.Type.ADD).index(rolledOverIndexName)
+                    .alias(aliasMetadata.alias)
+                    .filter(aliasMetadata.filter?.toString())
+                    .searchRouting(aliasMetadata.searchRouting)
+                    .indexRouting(aliasMetadata.indexRouting)
+                    .isHidden(aliasMetadata.isHidden)
             aliasActions.add(aliasAction)
         }
         val aliasReq = IndicesAliasesRequest()
@@ -323,24 +337,27 @@ class AttemptRolloverStep(private val action: RolloverAction) : Step(name) {
             val aliasRes: AcknowledgedResponse = client.admin().indices().suspendUntil { aliases(aliasReq, it) }
             if (aliasRes.isAcknowledged) {
                 stepStatus = StepStatus.COMPLETED
-                info = listOfNotNull(
-                    "message" to getSuccessCopyAliasMessage(indexName, rolledOverIndexName),
-                    if (conditions != null) "conditions" to conditions else null
-                ).toMap()
+                info =
+                    listOfNotNull(
+                        "message" to getSuccessCopyAliasMessage(indexName, rolledOverIndexName),
+                        if (conditions != null) "conditions" to conditions else null,
+                    ).toMap()
             } else {
                 stepStatus = StepStatus.FAILED
-                info = listOfNotNull(
-                    "message" to getCopyAliasNotAckMessage(indexName, rolledOverIndexName),
-                    if (conditions != null) "conditions" to conditions else null
-                ).toMap()
+                info =
+                    listOfNotNull(
+                        "message" to getCopyAliasNotAckMessage(indexName, rolledOverIndexName),
+                        if (conditions != null) "conditions" to conditions else null,
+                    ).toMap()
             }
         } catch (e: IndexNotFoundException) {
             logger.error("Index not found while copying alias from $indexName to $rolledOverIndexName", e)
             stepStatus = StepStatus.FAILED
-            info = listOfNotNull(
-                "message" to getCopyAliasIndexNotFoundMessage(rolledOverIndexName),
-                if (conditions != null) "conditions" to conditions else null
-            ).toMap()
+            info =
+                listOfNotNull(
+                    "message" to getCopyAliasIndexNotFoundMessage(rolledOverIndexName),
+                    if (conditions != null) "conditions" to conditions else null,
+                ).toMap()
         } catch (e: Exception) {
             handleException(indexName, e, getFailedCopyAliasMessage(indexName, rolledOverIndexName), conditions)
         }
@@ -352,7 +369,7 @@ class AttemptRolloverStep(private val action: RolloverAction) : Step(name) {
             rolledOver = if (currentMetadata.rolledOver == true) true else stepStatus == StepStatus.COMPLETED,
             rolledOverIndexName = if (currentMetadata.rolledOverIndexName != null) currentMetadata.rolledOverIndexName else newIndex,
             transitionTo = null,
-            info = info
+            info = info,
         )
     }
 
@@ -371,28 +388,44 @@ class AttemptRolloverStep(private val action: RolloverAction) : Step(name) {
     @Suppress("TooManyFunctions")
     companion object {
         const val name = "attempt_rollover"
+
         fun getFailedMessage(index: String) = "Failed to rollover index [index=$index]"
+
         fun getFailedAliasUpdateMessage(index: String, newIndex: String) =
             "New index created, but failed to update alias [index=$index, newIndex=$newIndex]"
+
         fun getFailedDataStreamRolloverMessage(dataStream: String) = "Failed to rollover data stream [data_stream=$dataStream]"
+
         fun getFailedNoValidAliasMessage(index: String) = "Missing rollover_alias index setting [index=$index]"
+
         fun getFailedEvaluateMessage(index: String) = "Failed to evaluate conditions for rollover [index=$index]"
+
         fun getPendingMessage(index: String) = "Pending rollover of index [index=$index]"
+
         fun getSuccessMessage(index: String) = "Successfully rolled over index [index=$index]"
+
         fun getSuccessDataStreamRolloverMessage(dataStream: String, index: String) =
             "Successfully rolled over data stream [data_stream=$dataStream index=$index]"
+
         fun getFailedPreCheckMessage(index: String) = "Missing alias or not the write index when rollover [index=$index]"
+
         fun getSkipRolloverMessage(index: String) = "Skipped rollover action for [index=$index]"
+
         fun getAlreadyRolledOverMessage(index: String, alias: String) =
             "This index has already been rolled over using this alias, treating as a success [index=$index, alias=$alias]"
+
         fun getSuccessCopyAliasMessage(index: String, newIndex: String) =
             "Successfully rolled over and copied alias from [index=$index] to [index=$newIndex]"
+
         fun getFailedCopyAliasMessage(index: String, newIndex: String) =
             "Successfully rolled over but failed to copied alias from [index=$index] to [index=$newIndex]"
+
         fun getCopyAliasNotAckMessage(index: String, newIndex: String) =
             "Successfully rolled over but copy alias from [index=$index] to [index=$newIndex] is not acknowledged"
+
         fun getCopyAliasIndexNotFoundMessage(newIndex: String?) =
             "Successfully rolled over but new index [index=$newIndex] not found during copy alias"
+
         fun getCopyAliasRolledOverIndexNotFoundMessage(index: String?) =
             "Successfully rolled over [index=$index] but ISM cannot find rolled over index from metadata to copy aliases to, please manually copy"
     }

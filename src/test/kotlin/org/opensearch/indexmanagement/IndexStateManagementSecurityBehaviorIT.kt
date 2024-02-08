@@ -15,6 +15,7 @@ import org.junit.After
 import org.junit.Before
 import org.opensearch.client.RestClient
 import org.opensearch.commons.rest.SecureRestClientBuilder
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.indexmanagement.common.model.dimension.DateHistogram
 import org.opensearch.indexmanagement.common.model.dimension.Terms
 import org.opensearch.indexmanagement.indexstatemanagement.action.RollupAction
@@ -33,7 +34,6 @@ import org.opensearch.indexmanagement.rollup.model.metric.Max
 import org.opensearch.indexmanagement.rollup.model.metric.Min
 import org.opensearch.indexmanagement.rollup.model.metric.Sum
 import org.opensearch.indexmanagement.rollup.model.metric.ValueCount
-import org.opensearch.core.rest.RestStatus
 import org.opensearch.test.junit.annotations.TestLogging
 import java.time.Instant
 import java.time.temporal.ChronoUnit
@@ -41,7 +41,6 @@ import java.util.Locale
 
 @TestLogging("level:DEBUG", reason = "Debug for tests.")
 class IndexStateManagementSecurityBehaviorIT : SecurityRestTestCase() {
-
     private val testIndexName = javaClass.simpleName.lowercase(Locale.ROOT)
     private val password = "Test123sdfsdfds435346FDGDFGDFG2342&^%#$@#35!"
 
@@ -56,28 +55,30 @@ class IndexStateManagementSecurityBehaviorIT : SecurityRestTestCase() {
     fun setupUsersAndRoles() {
         updateClusterSetting(ManagedIndexSettings.JITTER.key, "0.0", false)
 
-        val helpdeskClusterPermissions = listOf(
-            WRITE_POLICY,
-            DELETE_POLICY,
-            ADD_POLICY,
-            GET_POLICY,
-            GET_POLICIES,
-            EXPLAIN_INDEX,
-            INDEX_ROLLUP,
-            GET_ROLLUP,
-            EXPLAIN_ROLLUP,
-            UPDATE_ROLLUP,
-        )
+        val helpdeskClusterPermissions =
+            listOf(
+                WRITE_POLICY,
+                DELETE_POLICY,
+                ADD_POLICY,
+                GET_POLICY,
+                GET_POLICIES,
+                EXPLAIN_INDEX,
+                INDEX_ROLLUP,
+                GET_ROLLUP,
+                EXPLAIN_ROLLUP,
+                UPDATE_ROLLUP,
+            )
 
-        val indexPermissions = listOf(
-            MANAGED_INDEX,
-            CREATE_INDEX,
-            WRITE_INDEX,
-            BULK_WRITE_INDEX,
-            GET_INDEX_MAPPING,
-            SEARCH_INDEX,
-            PUT_INDEX_MAPPING
-        )
+        val indexPermissions =
+            listOf(
+                MANAGED_INDEX,
+                CREATE_INDEX,
+                WRITE_INDEX,
+                BULK_WRITE_INDEX,
+                GET_INDEX_MAPPING,
+                SEARCH_INDEX,
+                PUT_INDEX_MAPPING,
+            )
         // In this test suite case john is a "super-user" which has all relevant privileges
         createUser(superIsmUser, password, listOf(HELPDESK))
         createRole(HELPDESK_ROLE, helpdeskClusterPermissions, indexPermissions, listOf(AIRLINE_INDEX_PATTERN))
@@ -85,7 +86,7 @@ class IndexStateManagementSecurityBehaviorIT : SecurityRestTestCase() {
 
         superUserClient =
             SecureRestClientBuilder(clusterHosts.toTypedArray(), isHttps(), superIsmUser, password).setSocketTimeout(
-                60000
+                60000,
             ).setConnectionRequestTimeout(180000)
                 .build()
     }
@@ -119,9 +120,10 @@ class IndexStateManagementSecurityBehaviorIT : SecurityRestTestCase() {
             val rollup = createISMRollup(targetIdxRollup)
 
             val actionConfig = RollupAction(rollup, 0)
-            val states = listOf(
-                State("rollup", listOf(actionConfig), listOf())
-            )
+            val states =
+                listOf(
+                    State("rollup", listOf(actionConfig), listOf()),
+                )
 
             val policy = createPolicyWithRollupStep(policyID, states, indexName)
 
@@ -204,7 +206,7 @@ class IndexStateManagementSecurityBehaviorIT : SecurityRestTestCase() {
     fun `test delete policy`() {
         createTestUserWithRole(
             listOf(EXPLAIN_INDEX, GET_POLICY, EXPLAIN_INDEX),
-            listOf(GET_INDEX_MAPPING, SEARCH_INDEX)
+            listOf(GET_INDEX_MAPPING, SEARCH_INDEX),
         )
 
         testClient =
@@ -240,18 +242,20 @@ class IndexStateManagementSecurityBehaviorIT : SecurityRestTestCase() {
         states: List<State>,
         indexName: String,
     ): Policy {
-        val policy = Policy(
-            id = policyID,
-            description = "$testIndexName description",
-            schemaVersion = 1L,
-            lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
-            errorNotification = randomErrorNotification(),
-            defaultState = states[0].name,
-            states = states,
-            ismTemplate = listOf(
-                ISMTemplate(listOf("$indexName*"), 100, Instant.now().truncatedTo(ChronoUnit.MILLIS))
+        val policy =
+            Policy(
+                id = policyID,
+                description = "$testIndexName description",
+                schemaVersion = 1L,
+                lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
+                errorNotification = randomErrorNotification(),
+                defaultState = states[0].name,
+                states = states,
+                ismTemplate =
+                listOf(
+                    ISMTemplate(listOf("$indexName*"), 100, Instant.now().truncatedTo(ChronoUnit.MILLIS)),
+                ),
             )
-        )
         return policy
     }
 
@@ -260,25 +264,28 @@ class IndexStateManagementSecurityBehaviorIT : SecurityRestTestCase() {
             description = "basic search test",
             targetIndex = targetIdxRollup,
             pageSize = 100,
-            dimensions = listOf(
+            dimensions =
+            listOf(
                 DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "1h"),
                 Terms("RatecodeID", "RatecodeID"),
-                Terms("PULocationID", "PULocationID")
+                Terms("PULocationID", "PULocationID"),
             ),
-            metrics = listOf(
+            metrics =
+            listOf(
                 RollupMetrics(
                     sourceField = "passenger_count", targetField = "passenger_count",
-                    metrics = listOf(
+                    metrics =
+                    listOf(
                         Sum(), Min(), Max(),
-                        ValueCount(), Average()
-                    )
+                        ValueCount(), Average(),
+                    ),
                 ),
                 RollupMetrics(
                     sourceField = "total_amount",
                     targetField = "total_amount",
-                    metrics = listOf(Max(), Min())
-                )
-            )
+                    metrics = listOf(Max(), Min()),
+                ),
+            ),
         )
     }
 
@@ -296,7 +303,7 @@ class IndexStateManagementSecurityBehaviorIT : SecurityRestTestCase() {
         waitFor {
             assertEquals(
                 AttemptCreateRollupJobStep.getSuccessMessage(rollupId, indexName),
-                getExplainManagedIndexMetaData(indexName).info?.get("message")
+                getExplainManagedIndexMetaData(indexName).info?.get("message"),
             )
         }
 
@@ -312,7 +319,7 @@ class IndexStateManagementSecurityBehaviorIT : SecurityRestTestCase() {
         waitFor {
             assertEquals(
                 WaitForRollupCompletionStep.getJobCompletionMessage(rollupId, indexName),
-                getExplainManagedIndexMetaData(indexName).info?.get("message")
+                getExplainManagedIndexMetaData(indexName).info?.get("message"),
             )
         }
     }

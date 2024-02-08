@@ -15,6 +15,7 @@ import org.junit.After
 import org.junit.Before
 import org.opensearch.client.RestClient
 import org.opensearch.commons.rest.SecureRestClientBuilder
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.indexmanagement.common.model.dimension.DateHistogram
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings
 import org.opensearch.indexmanagement.rollup.model.Rollup
@@ -27,7 +28,6 @@ import org.opensearch.indexmanagement.rollup.model.metric.Sum
 import org.opensearch.indexmanagement.rollup.model.metric.ValueCount
 import org.opensearch.indexmanagement.rollup.randomRollup
 import org.opensearch.jobscheduler.spi.schedule.IntervalSchedule
-import org.opensearch.core.rest.RestStatus
 import org.opensearch.test.junit.annotations.TestLogging
 import java.time.Instant
 import java.time.temporal.ChronoUnit
@@ -48,24 +48,25 @@ class RollupSecurityBehaviorIT : SecurityRestTestCase() {
         updateClusterSetting(ManagedIndexSettings.JITTER.key, "0.0", false)
 
         // Init super transform user
-        val helpdeskClusterPermissions = listOf(
-            INDEX_ROLLUP,
-            GET_ROLLUP,
-            EXPLAIN_ROLLUP,
-            UPDATE_ROLLUP,
-            DELETE_ROLLUP
+        val helpdeskClusterPermissions =
+            listOf(
+                INDEX_ROLLUP,
+                GET_ROLLUP,
+                EXPLAIN_ROLLUP,
+                UPDATE_ROLLUP,
+                DELETE_ROLLUP,
+            )
 
-        )
-
-        val indexPermissions = listOf(
-            MANAGED_INDEX,
-            CREATE_INDEX,
-            WRITE_INDEX,
-            BULK_WRITE_INDEX,
-            GET_INDEX_MAPPING,
-            SEARCH_INDEX,
-            PUT_INDEX_MAPPING
-        )
+        val indexPermissions =
+            listOf(
+                MANAGED_INDEX,
+                CREATE_INDEX,
+                WRITE_INDEX,
+                BULK_WRITE_INDEX,
+                GET_INDEX_MAPPING,
+                SEARCH_INDEX,
+                PUT_INDEX_MAPPING,
+            )
         // In this test suite case john is a "super-user" which has all relevant privileges
         createUser(superRollupUser, password, listOf(HELPDESK))
         createRole(HELPDESK_ROLE, helpdeskClusterPermissions, indexPermissions, listOf(AIRLINE_INDEX_PATTERN))
@@ -73,7 +74,7 @@ class RollupSecurityBehaviorIT : SecurityRestTestCase() {
 
         superUserClient =
             SecureRestClientBuilder(clusterHosts.toTypedArray(), isHttps(), superRollupUser, password).setSocketTimeout(
-                60000
+                60000,
             ).setConnectionRequestTimeout(180000)
                 .build()
     }
@@ -233,13 +234,14 @@ class RollupSecurityBehaviorIT : SecurityRestTestCase() {
         delay = 0,
         continuous = false,
         dimensions = listOf(DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "1h")),
-        metrics = listOf(
+        metrics =
+        listOf(
             RollupMetrics(
                 sourceField = "passenger_count",
                 targetField = "passenger_count",
-                metrics = listOf(Sum(), Min(), Max(), ValueCount(), Average())
-            )
-        )
+                metrics = listOf(Sum(), Min(), Max(), ValueCount(), Average()),
+            ),
+        ),
     )
 
     private fun createTestUserWithRole(clusterPermissions: List<String>, indexPermissions: List<String>) {

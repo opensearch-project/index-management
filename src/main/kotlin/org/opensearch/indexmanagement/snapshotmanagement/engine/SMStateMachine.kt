@@ -10,21 +10,21 @@ import org.apache.logging.log4j.Logger
 import org.opensearch.action.bulk.BackoffPolicy
 import org.opensearch.client.Client
 import org.opensearch.common.settings.Settings
-import org.opensearch.commons.ConfigConstants
-import org.opensearch.indexmanagement.opensearchapi.IndexManagementSecurityContext
-import org.opensearch.indexmanagement.opensearchapi.withClosableContext
 import org.opensearch.common.unit.TimeValue
+import org.opensearch.commons.ConfigConstants
 import org.opensearch.indexmanagement.IndexManagementIndices
+import org.opensearch.indexmanagement.opensearchapi.IndexManagementSecurityContext
 import org.opensearch.indexmanagement.opensearchapi.retry
+import org.opensearch.indexmanagement.opensearchapi.withClosableContext
 import org.opensearch.indexmanagement.snapshotmanagement.SnapshotManagementException
 import org.opensearch.indexmanagement.snapshotmanagement.SnapshotManagementException.ExceptionKey
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.SMResult
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.SMState
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.WorkflowType
 import org.opensearch.indexmanagement.snapshotmanagement.indexMetadata
-import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata.LatestExecution.Status.TIME_LIMIT_EXCEEDED
+import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy
 import org.opensearch.indexmanagement.util.OpenForTesting
 import org.opensearch.threadpool.ThreadPool
 import java.time.Instant.now
@@ -38,10 +38,10 @@ class SMStateMachine(
     val threadPool: ThreadPool,
     val indicesManager: IndexManagementIndices,
 ) {
-
     val log: Logger = LogManager.getLogger(javaClass)
 
     lateinit var currentState: SMState
+
     fun currentState(currentState: SMState): SMStateMachine {
         this.currentState = currentState
         return this
@@ -65,25 +65,26 @@ class SMStateMachine(
                     log.debug("Start executing {}.", currentState)
                     log.debug(
                         "User and roles string from thread context: ${threadPool.threadContext.getTransient<String>(
-                            ConfigConstants.OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT
-                        )}"
+                            ConfigConstants.OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT,
+                        )}",
                     )
-                    result = withClosableContext(
-                        IndexManagementSecurityContext(
-                            job.id, settings, threadPool.threadContext, job.user
-                        )
-                    ) {
-                        log.debug(
-                            "User and roles string from thread context: ${threadPool.threadContext.getTransient<String>(
-                                ConfigConstants.OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT
-                            )}"
-                        )
-                        currentState.instance.execute(this@SMStateMachine) as SMResult
-                    }
+                    result =
+                        withClosableContext(
+                            IndexManagementSecurityContext(
+                                job.id, settings, threadPool.threadContext, job.user,
+                            ),
+                        ) {
+                            log.debug(
+                                "User and roles string from thread context: ${threadPool.threadContext.getTransient<String>(
+                                    ConfigConstants.OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT,
+                                )}",
+                            )
+                            currentState.instance.execute(this@SMStateMachine) as SMResult
+                        }
                     log.debug(
                         "User and roles string from thread context: ${threadPool.threadContext.getTransient<String>(
-                            ConfigConstants.OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT
-                        )}"
+                            ConfigConstants.OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT,
+                        )}",
                     )
 
                     when (result) {
@@ -93,7 +94,7 @@ class SMStateMachine(
                                 result.metadataToSave
                                     .setCurrentState(currentState)
                                     .resetRetry()
-                                    .build()
+                                    .build(),
                             )
                             // break the nextStates loop, to avoid executing other lateral states
                             break
@@ -104,7 +105,7 @@ class SMStateMachine(
                                 result.metadataToSave
                                     .setCurrentState(prevState)
                                     .resetRetry()
-                                    .build()
+                                    .build(),
                             )
                             // can still execute other lateral states if exists
                         }
@@ -145,7 +146,7 @@ class SMStateMachine(
                     job.policyName,
                     message,
                     job.user,
-                    log
+                    log,
                 )
             } else {
                 job.notificationConfig?.sendFailureNotification(client, job.policyName, message, job.user, log)
@@ -156,14 +157,15 @@ class SMStateMachine(
     private fun handleRetry(result: SMResult.Fail, prevState: SMState): SMMetadata.Builder {
         val metadataBuilder = result.metadataToSave.setCurrentState(prevState)
         val metadata = result.metadataToSave.build()
-        val retry = when (result.workflowType) {
-            WorkflowType.CREATION -> {
-                metadata.creation.retry
+        val retry =
+            when (result.workflowType) {
+                WorkflowType.CREATION -> {
+                    metadata.creation.retry
+                }
+                WorkflowType.DELETION -> {
+                    metadata.deletion?.retry
+                }
             }
-            WorkflowType.DELETION -> {
-                metadata.deletion?.retry
-            }
-        }
         val retryCount: Int
         if (retry == null) {
             log.warn("Starting to retry state [$currentState], remaining count 3.")
@@ -178,7 +180,7 @@ class SMStateMachine(
                 log.warn(errorMessage)
                 metadataBuilder.setLatestExecution(
                     status = SMMetadata.LatestExecution.Status.FAILED,
-                    endTime = now()
+                    endTime = now(),
                 ).resetWorkflow()
             }
         }
@@ -197,6 +199,7 @@ class SMStateMachine(
      */
     private var metadataSeqNo: Long = metadata.seqNo
     private var metadataPrimaryTerm: Long = metadata.primaryTerm
+
     suspend fun updateMetadata(md: SMMetadata) {
         indicesManager.checkAndUpdateIMConfigIndex(log)
         try {
@@ -220,9 +223,10 @@ class SMStateMachine(
         // TODO SM save a copy to history
     }
 
-    private val updateMetaDataRetryPolicy = BackoffPolicy.exponentialBackoff(
-        TimeValue.timeValueMillis(EXPONENTIAL_BACKOFF_MILLIS), MAX_NUMBER_OF_RETRIES
-    )
+    private val updateMetaDataRetryPolicy =
+        BackoffPolicy.exponentialBackoff(
+            TimeValue.timeValueMillis(EXPONENTIAL_BACKOFF_MILLIS), MAX_NUMBER_OF_RETRIES,
+        )
 
     /**
      * Handle the policy change before job running
@@ -232,9 +236,10 @@ class SMStateMachine(
     suspend fun handlePolicyChange(): SMStateMachine {
         if (job.seqNo > metadata.policySeqNo || job.primaryTerm > metadata.policyPrimaryTerm) {
             val now = now()
-            val metadataToSave = SMMetadata.Builder(metadata)
-                .setSeqNoPrimaryTerm(job.seqNo, job.primaryTerm)
-                .setNextCreationTime(job.creation.schedule.getNextExecutionTime(now))
+            val metadataToSave =
+                SMMetadata.Builder(metadata)
+                    .setSeqNoPrimaryTerm(job.seqNo, job.primaryTerm)
+                    .setNextCreationTime(job.creation.schedule.getNextExecutionTime(now))
 
             val deletion = job.deletion
             deletion?.let {

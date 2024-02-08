@@ -6,11 +6,11 @@
 package org.opensearch.indexmanagement.indexstatemanagement.transport.action.getpolicy
 
 import org.opensearch.common.io.stream.BytesStreamOutput
-import org.opensearch.core.common.io.stream.StreamInput
-import org.opensearch.core.xcontent.ToXContent
 import org.opensearch.common.xcontent.XContentFactory
 import org.opensearch.common.xcontent.XContentHelper
 import org.opensearch.common.xcontent.json.JsonXContent
+import org.opensearch.core.common.io.stream.StreamInput
+import org.opensearch.core.xcontent.ToXContent
 import org.opensearch.indexmanagement.indexstatemanagement.ISMActionsParser
 import org.opensearch.indexmanagement.indexstatemanagement.action.IndexPriorityAction
 import org.opensearch.indexmanagement.indexstatemanagement.extension.SampleCustomActionParser
@@ -24,7 +24,6 @@ import java.time.Instant
 import java.time.temporal.ChronoUnit
 
 class GetPolicyResponseTests : OpenSearchTestCase() {
-
     fun `test get policy response`() {
         val id = "id"
         val version: Long = 1
@@ -32,15 +31,16 @@ class GetPolicyResponseTests : OpenSearchTestCase() {
         val seqNo: Long = 456
         val actionConfig = IndexPriorityAction(50, 0)
         val states = listOf(State(name = "SetPriorityState", actions = listOf(actionConfig), transitions = listOf()))
-        val policy = Policy(
-            id = "policyID",
-            description = "description",
-            schemaVersion = 1L,
-            lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
-            errorNotification = randomErrorNotification(),
-            defaultState = states[0].name,
-            states = states
-        )
+        val policy =
+            Policy(
+                id = "policyID",
+                description = "description",
+                schemaVersion = 1L,
+                lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
+                errorNotification = randomErrorNotification(),
+                defaultState = states[0].name,
+                states = states,
+            )
         val res = GetPolicyResponse(id, version, seqNo, primaryTerm, policy)
 
         val out = BytesStreamOutput()
@@ -66,15 +66,16 @@ class GetPolicyResponseTests : OpenSearchTestCase() {
         val policyID = "policyID"
         val action = SampleCustomActionParser.SampleCustomAction(someInt = randomInt(), index = 0)
         val states = listOf(State(name = "CustomState", actions = listOf(action), transitions = listOf()))
-        val policy = Policy(
-            id = policyID,
-            description = "description",
-            schemaVersion = 1L,
-            lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
-            errorNotification = randomErrorNotification(),
-            defaultState = states[0].name,
-            states = states
-        )
+        val policy =
+            Policy(
+                id = policyID,
+                description = "description",
+                schemaVersion = 1L,
+                lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
+                errorNotification = randomErrorNotification(),
+                defaultState = states[0].name,
+                states = states,
+            )
         val res = GetPolicyResponse(id, version, seqNo, primaryTerm, policy)
 
         val responseString = res.toXContent(XContentFactory.jsonBuilder(), ToXContent.EMPTY_PARAMS).string()

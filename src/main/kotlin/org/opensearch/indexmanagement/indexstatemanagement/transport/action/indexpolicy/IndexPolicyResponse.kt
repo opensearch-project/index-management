@@ -8,6 +8,7 @@ package org.opensearch.indexmanagement.indexstatemanagement.transport.action.ind
 import org.opensearch.core.action.ActionResponse
 import org.opensearch.core.common.io.stream.StreamInput
 import org.opensearch.core.common.io.stream.StreamOutput
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.core.xcontent.ToXContent
 import org.opensearch.core.xcontent.ToXContentObject
 import org.opensearch.core.xcontent.XContentBuilder
@@ -18,11 +19,9 @@ import org.opensearch.indexmanagement.util._ID
 import org.opensearch.indexmanagement.util._PRIMARY_TERM
 import org.opensearch.indexmanagement.util._SEQ_NO
 import org.opensearch.indexmanagement.util._VERSION
-import org.opensearch.core.rest.RestStatus
 import java.io.IOException
 
 class IndexPolicyResponse : ActionResponse, ToXContentObject {
-
     val id: String
     val version: Long
     val primaryTerm: Long
@@ -36,7 +35,7 @@ class IndexPolicyResponse : ActionResponse, ToXContentObject {
         primaryTerm: Long,
         seqNo: Long,
         policy: Policy,
-        status: RestStatus
+        status: RestStatus,
     ) : super() {
         this.id = id
         this.version = version
@@ -53,7 +52,7 @@ class IndexPolicyResponse : ActionResponse, ToXContentObject {
         primaryTerm = sin.readLong(),
         seqNo = sin.readLong(),
         policy = Policy(sin),
-        status = sin.readEnum(RestStatus::class.java)
+        status = sin.readEnum(RestStatus::class.java),
     )
 
     @Throws(IOException::class)

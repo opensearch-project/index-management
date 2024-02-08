@@ -18,9 +18,8 @@ import org.opensearch.monitor.jvm.JvmService
 class ValidateTransition(
     settings: Settings,
     clusterService: ClusterService,
-    jvmService: JvmService
+    jvmService: JvmService,
 ) : Validate(settings, clusterService, jvmService) {
-
     private val logger = LogManager.getLogger(javaClass)
 
     @Suppress("ReturnSuppressCount", "ReturnCount")
@@ -64,8 +63,11 @@ class ValidateTransition(
     @Suppress("TooManyFunctions")
     companion object {
         const val name = "validate_transition"
+
         fun getNoIndexMessage(index: String) = "Index [index=$index] does not exist for transition"
+
         fun getIndexNotValidMessage(index: String) = "Index [index=$index] is not valid for transition"
+
         fun getValidationPassedMessage(index: String) = "Transition action validation passed for [index=$index]"
     }
 }

@@ -11,12 +11,12 @@ import org.opensearch.action.admin.cluster.snapshots.create.CreateSnapshotReques
 import org.opensearch.action.admin.cluster.snapshots.create.CreateSnapshotResponse
 import org.opensearch.client.ClusterAdminClient
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
-import org.opensearch.indexmanagement.snapshotmanagement.engine.SMStateMachine
-import org.opensearch.indexmanagement.snapshotmanagement.generateSnapshotName
 import org.opensearch.indexmanagement.snapshotmanagement.addSMPolicyInSnapshotMetadata
+import org.opensearch.indexmanagement.snapshotmanagement.engine.SMStateMachine
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.SMResult
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.State
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.WorkflowType
+import org.opensearch.indexmanagement.snapshotmanagement.generateSnapshotName
 import org.opensearch.indexmanagement.snapshotmanagement.getSnapshots
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata
 import org.opensearch.snapshots.ConcurrentSnapshotExecutionException
@@ -25,7 +25,6 @@ import org.opensearch.transport.RemoteTransportException
 import java.time.Instant
 
 object CreatingState : State {
-
     override val continuous: Boolean = false
 
     @Suppress("ReturnCount")
@@ -35,18 +34,20 @@ object CreatingState : State {
         val metadata = context.metadata
         val log = context.log
 
-        var metadataBuilder = SMMetadata.Builder(metadata)
-            .workflow(WorkflowType.CREATION)
+        var metadataBuilder =
+            SMMetadata.Builder(metadata)
+                .workflow(WorkflowType.CREATION)
 
         var snapshotName: String? = metadata.creation.started?.first()
 
         // Check if there's already a snapshot created by SM in current execution period.
         // So that this State can be executed idempotent.
         if (snapshotName == null) {
-            val getSnapshotsResult = client.getSnapshots(
-                job, job.policyName + "*", metadataBuilder,
-                log, null, SNAPSHOT_ERROR_MESSAGE,
-            )
+            val getSnapshotsResult =
+                client.getSnapshots(
+                    job, job.policyName + "*", metadataBuilder,
+                    log, null, SNAPSHOT_ERROR_MESSAGE,
+                )
             metadataBuilder = getSnapshotsResult.metadataBuilder
             if (getSnapshotsResult.failed) {
                 return SMResult.Fail(metadataBuilder, WorkflowType.CREATION)
@@ -58,7 +59,7 @@ object CreatingState : State {
             if (snapshotName != null) {
                 log.info("Already created snapshot [$snapshotName] during this execution period starting at $latestExecutionStartTime.")
                 metadataBuilder.setLatestExecution(
-                    status = SMMetadata.LatestExecution.Status.IN_PROGRESS
+                    status = SMMetadata.LatestExecution.Status.IN_PROGRESS,
                 ).setCreationStarted(snapshotName)
                 return SMResult.Next(metadataBuilder)
             }
@@ -66,9 +67,10 @@ object CreatingState : State {
 
         snapshotName = generateSnapshotName(job)
         try {
-            val req = CreateSnapshotRequest(job.snapshotConfig["repository"] as String, snapshotName)
-                .source(addSMPolicyInSnapshotMetadata(job.snapshotConfig, job.policyName))
-                .waitForCompletion(false)
+            val req =
+                CreateSnapshotRequest(job.snapshotConfig["repository"] as String, snapshotName)
+                    .source(addSMPolicyInSnapshotMetadata(job.snapshotConfig, job.policyName))
+                    .waitForCompletion(false)
             client.admin().cluster().suspendUntil<ClusterAdminClient, CreateSnapshotResponse> { createSnapshot(req, it) }
 
             metadataBuilder.setLatestExecution(
@@ -104,10 +106,13 @@ object CreatingState : State {
     }
 
     const val CONCURRENT_SNAPSHOT_MESSAGE = "Concurrent snapshot exception happened, retrying..."
+
     private fun getSnapshotCreationStartedMessage(snapshotName: String) =
         "Snapshot $snapshotName creation has been started and waiting for completion."
+
     private const val SNAPSHOT_ERROR_MESSAGE =
         "Caught exception while getting snapshots to decide if snapshot has been created in previous execution period."
+
     private fun getCreateSnapshotErrorMessage(snapshotName: String) =
         "Caught exception while creating snapshot $snapshotName."
 

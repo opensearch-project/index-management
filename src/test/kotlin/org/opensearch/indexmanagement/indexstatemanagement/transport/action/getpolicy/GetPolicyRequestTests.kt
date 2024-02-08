@@ -11,7 +11,6 @@ import org.opensearch.search.fetch.subphase.FetchSourceContext
 import org.opensearch.test.OpenSearchTestCase
 
 class GetPolicyRequestTests : OpenSearchTestCase() {
-
     fun `test get policy request`() {
         val policyID = "policyID"
         val version: Long = 123

@@ -4,6 +4,7 @@
  */
 
 @file:JvmName("NotificationUtils")
+
 package org.opensearch.indexmanagement.indexstatemanagement.util
 
 import org.opensearch.client.Client
@@ -15,11 +16,11 @@ import org.opensearch.commons.notifications.action.LegacyPublishNotificationRequ
 import org.opensearch.commons.notifications.action.LegacyPublishNotificationResponse
 import org.opensearch.commons.notifications.model.EventSource
 import org.opensearch.commons.notifications.model.SeverityType
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.indexmanagement.common.model.notification.Channel
 import org.opensearch.indexmanagement.common.model.notification.validateResponseStatus
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
-import org.opensearch.core.rest.RestStatus
 
 /**
  * Extension function for publishing a notification to a legacy destination.
@@ -31,13 +32,14 @@ import org.opensearch.core.rest.RestStatus
  */
 suspend fun LegacyBaseMessage.publishLegacyNotification(client: Client) {
     val baseMessage = this
-    val res: LegacyPublishNotificationResponse = NotificationsPluginInterface.suspendUntil {
-        this.publishLegacyNotification(
-            (client as NodeClient),
-            LegacyPublishNotificationRequest(baseMessage),
-            it
-        )
-    }
+    val res: LegacyPublishNotificationResponse =
+        NotificationsPluginInterface.suspendUntil {
+            this.publishLegacyNotification(
+                (client as NodeClient),
+                LegacyPublishNotificationRequest(baseMessage),
+                it,
+            )
+        }
     validateResponseStatus(RestStatus.fromCode(res.destinationResponse.statusCode), res.destinationResponse.responseContent)
 }
 
@@ -50,7 +52,7 @@ suspend fun Channel.sendNotification(
     title: String,
     managedIndexMetaData: ManagedIndexMetaData,
     compiledMessage: String,
-    user: User?
+    user: User?,
 ) {
     val eventSource = managedIndexMetaData.getEventSource(title)
     this.sendNotification(client, eventSource, compiledMessage, user)

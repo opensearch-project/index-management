@@ -24,22 +24,23 @@ import org.opensearch.test.OpenSearchTestCase
 import java.time.Instant
 
 class WaitForRollupCompletionStepTests : OpenSearchTestCase() {
-
     private val clusterService: ClusterService = mock()
     private val scriptService: ScriptService = mock()
     private val settings: Settings = Settings.EMPTY
     private val rollupId: String = "dummy-id"
     private val indexName: String = "test"
-    private val metadata = ManagedIndexMetaData(
-        indexName, "indexUuid", "policy_id", null, null, null, null, null, null, null,
-        ActionMetaData
-        (WaitForRollupCompletionStep.name, 1, 0, false, 0, null, ActionProperties(rollupId = rollupId)),
-        null, null, null
-    )
-    private val rollupMetadata = RollupMetadata(
-        rollupID = rollupId, lastUpdatedTime = Instant.now(), status = RollupMetadata.Status.FINISHED,
-        stats = RollupStats(1, 1, 1, 1, 1)
-    )
+    private val metadata =
+        ManagedIndexMetaData(
+            indexName, "indexUuid", "policy_id", null, null, null, null, null, null, null,
+            ActionMetaData
+            (WaitForRollupCompletionStep.name, 1, 0, false, 0, null, ActionProperties(rollupId = rollupId)),
+            null, null, null,
+        )
+    private val rollupMetadata =
+        RollupMetadata(
+            rollupID = rollupId, lastUpdatedTime = Instant.now(), status = RollupMetadata.Status.FINISHED,
+            stats = RollupStats(1, 1, 1, 1, 1),
+        )
     private val client: Client = mock()
     private val step = WaitForRollupCompletionStep()
     private val lockService: LockService = LockService(mock(), clusterService)
@@ -59,7 +60,7 @@ class WaitForRollupCompletionStepTests : OpenSearchTestCase() {
         assertEquals(
             "Missing failure message",
             WaitForRollupCompletionStep.getMissingRollupJobMessage(indexName),
-            updatedManagedIndexMetaData.info?.get("message")
+            updatedManagedIndexMetaData.info?.get("message"),
         )
     }
 
@@ -72,7 +73,7 @@ class WaitForRollupCompletionStepTests : OpenSearchTestCase() {
         assertEquals(
             "Missing failure message",
             WaitForRollupCompletionStep.getJobFailedMessage(rollupId, indexName),
-            updateManagedIndexMetaData.info?.get("message")
+            updateManagedIndexMetaData.info?.get("message"),
         )
         assertEquals("Missing rollup failed action property", true, updateManagedIndexMetaData.actionMetaData?.actionProperties?.hasRollupFailed)
     }
@@ -86,7 +87,7 @@ class WaitForRollupCompletionStepTests : OpenSearchTestCase() {
         assertEquals(
             "Missing failure message",
             WaitForRollupCompletionStep.getJobFailedMessage(rollupId, indexName),
-            updateManagedIndexMetaData.info?.get("message")
+            updateManagedIndexMetaData.info?.get("message"),
         )
         assertEquals("Missing rollup failed action property", true, updateManagedIndexMetaData.actionMetaData?.actionProperties?.hasRollupFailed)
         assertEquals("Mismatch in cause", WaitForRollupCompletionStep.JOB_STOPPED_MESSAGE, updateManagedIndexMetaData.info?.get("cause"))
@@ -101,7 +102,7 @@ class WaitForRollupCompletionStepTests : OpenSearchTestCase() {
         assertEquals(
             "Missing processing message",
             WaitForRollupCompletionStep.getJobProcessingMessage(rollupId, indexName),
-            updateManagedIndexMetaData.info?.get("message")
+            updateManagedIndexMetaData.info?.get("message"),
         )
         assertNull("rollup failed property is not null", updateManagedIndexMetaData.actionMetaData?.actionProperties?.hasRollupFailed)
     }
@@ -115,7 +116,7 @@ class WaitForRollupCompletionStepTests : OpenSearchTestCase() {
         assertEquals(
             "Missing processing message",
             WaitForRollupCompletionStep.getJobProcessingMessage(rollupId, indexName),
-            updateManagedIndexMetaData.info?.get("message")
+            updateManagedIndexMetaData.info?.get("message"),
         )
         assertNull("rollup failed property is not null", updateManagedIndexMetaData.actionMetaData?.actionProperties?.hasRollupFailed)
     }
@@ -129,7 +130,7 @@ class WaitForRollupCompletionStepTests : OpenSearchTestCase() {
         assertEquals(
             "Missing processing message",
             WaitForRollupCompletionStep.getJobCompletionMessage(rollupId, indexName),
-            updateManagedIndexMetaData.info?.get("message")
+            updateManagedIndexMetaData.info?.get("message"),
         )
         assertNull("rollup failed property is not null", updateManagedIndexMetaData.actionMetaData?.actionProperties?.hasRollupFailed)
     }
@@ -143,7 +144,7 @@ class WaitForRollupCompletionStepTests : OpenSearchTestCase() {
         assertEquals(
             "Missing processing message",
             WaitForRollupCompletionStep.getJobProcessingMessage(rollupId, indexName),
-            updateManagedIndexMetaData.info?.get("message")
+            updateManagedIndexMetaData.info?.get("message"),
         )
         assertNull("rollup failed property is not null", updateManagedIndexMetaData.actionMetaData?.actionProperties?.hasRollupFailed)
     }
@@ -156,7 +157,7 @@ class WaitForRollupCompletionStepTests : OpenSearchTestCase() {
         assertEquals(
             "Mismatch in message",
             WaitForRollupCompletionStep.getFailedMessage(rollupId, indexName),
-            updateManagedIndexMetaData.info?.get("message")
+            updateManagedIndexMetaData.info?.get("message"),
         )
         assertEquals("Step status is not FAILED", Step.StepStatus.FAILED, updateManagedIndexMetaData.stepMetaData?.stepStatus)
     }

@@ -6,7 +6,6 @@
 package org.opensearch.indexmanagement.rollup.action.mapping
 
 import org.apache.logging.log4j.LogManager
-import org.opensearch.core.action.ActionListener
 import org.opensearch.action.admin.indices.mapping.put.PutMappingRequest
 import org.opensearch.action.support.ActionFilters
 import org.opensearch.action.support.clustermanager.TransportClusterManagerNodeAction
@@ -17,14 +16,15 @@ import org.opensearch.cluster.block.ClusterBlockException
 import org.opensearch.cluster.block.ClusterBlockLevel
 import org.opensearch.cluster.metadata.IndexNameExpressionResolver
 import org.opensearch.cluster.service.ClusterService
-import org.opensearch.core.common.bytes.BytesReference
 import org.opensearch.common.inject.Inject
-import org.opensearch.core.common.io.stream.StreamInput
-import org.opensearch.core.common.io.stream.Writeable
-import org.opensearch.core.xcontent.MediaType
 import org.opensearch.common.xcontent.XContentFactory
 import org.opensearch.common.xcontent.XContentHelper
 import org.opensearch.common.xcontent.XContentType
+import org.opensearch.core.action.ActionListener
+import org.opensearch.core.common.bytes.BytesReference
+import org.opensearch.core.common.io.stream.StreamInput
+import org.opensearch.core.common.io.stream.Writeable
+import org.opensearch.core.xcontent.MediaType
 import org.opensearch.indexmanagement.indexstatemanagement.util.XCONTENT_WITHOUT_TYPE
 import org.opensearch.indexmanagement.rollup.util.RollupFieldValueExpressionResolver
 import org.opensearch.indexmanagement.util.IndexUtils.Companion._META
@@ -32,13 +32,15 @@ import org.opensearch.threadpool.ThreadPool
 import org.opensearch.transport.TransportService
 import java.lang.Exception
 
-class TransportUpdateRollupMappingAction @Inject constructor(
+class TransportUpdateRollupMappingAction
+@Inject
+constructor(
     threadPool: ThreadPool,
     clusterService: ClusterService,
     transportService: TransportService,
     actionFilters: ActionFilters,
     indexNameExpressionResolver: IndexNameExpressionResolver,
-    val client: Client
+    val client: Client,
 ) : TransportClusterManagerNodeAction<UpdateRollupMappingRequest, AcknowledgedResponse>(
     UpdateRollupMappingAction.INSTANCE.name(),
     transportService,
@@ -46,9 +48,8 @@ class TransportUpdateRollupMappingAction @Inject constructor(
     threadPool,
     actionFilters,
     Writeable.Reader { UpdateRollupMappingRequest(it) },
-    indexNameExpressionResolver
+    indexNameExpressionResolver,
 ) {
-
     private val log = LogManager.getLogger(javaClass)
 
     override fun checkBlock(request: UpdateRollupMappingRequest, state: ClusterState): ClusterBlockException? {
@@ -60,7 +61,7 @@ class TransportUpdateRollupMappingAction @Inject constructor(
     override fun clusterManagerOperation(
         request: UpdateRollupMappingRequest,
         state: ClusterState,
-        listener: ActionListener<AcknowledgedResponse>
+        listener: ActionListener<AcknowledgedResponse>,
     ) {
         val targetIndexResolvedName = RollupFieldValueExpressionResolver.resolve(request.rollup, request.rollup.targetIndex)
         val index = state.metadata.index(targetIndexResolvedName)
@@ -79,11 +80,12 @@ class TransportUpdateRollupMappingAction @Inject constructor(
             return listener.onFailure(IllegalStateException("Could not find source for index mapping [$index]"))
         }
 
-        val rollup = XContentHelper.convertToMap(
-            BytesReference.bytes(request.rollup.toXContent(XContentFactory.jsonBuilder(), XCONTENT_WITHOUT_TYPE)),
-            false,
-            XContentType.JSON as (MediaType)
-        ).v2()
+        val rollup =
+            XContentHelper.convertToMap(
+                BytesReference.bytes(request.rollup.toXContent(XContentFactory.jsonBuilder(), XCONTENT_WITHOUT_TYPE)),
+                false,
+                XContentType.JSON as (MediaType),
+            ).v2()
         val metaMappings = mutableMapOf<String, Any>()
         // TODO: Clean this up
         val meta = source[_META]
@@ -104,7 +106,7 @@ class TransportUpdateRollupMappingAction @Inject constructor(
                 if ((rollups as Map<*, *>).containsKey(request.rollup.id)) {
                     log.debug("Meta rollup mappings already contain rollup ${request.rollup.id} for index [$index]")
                     return listener.onFailure(
-                        IllegalStateException("Meta rollup mappings already contain rollup ${request.rollup.id} for index [$index]")
+                        IllegalStateException("Meta rollup mappings already contain rollup ${request.rollup.id} for index [$index]"),
                     )
                 }
 
@@ -128,7 +130,7 @@ class TransportUpdateRollupMappingAction @Inject constructor(
                 override fun onFailure(e: Exception) {
                     listener.onFailure(e)
                 }
-            }
+            },
         )
     }
 

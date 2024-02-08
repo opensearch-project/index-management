@@ -27,7 +27,6 @@ class IndexMetadataProvider(
     val clusterService: ClusterService,
     val services: MutableMap<String, IndexMetadataService>,
 ) {
-
     @Volatile private var restrictedIndexPattern = ManagedIndexSettings.RESTRICTED_INDEX_PATTERN.get(settings)
 
     init {
@@ -57,17 +56,18 @@ class IndexMetadataProvider(
      */
     suspend fun getMultiTypeISMIndexMetadata(
         types: List<String> = services.keys.toList(),
-        indexNames: List<String>
-    ): Map<String, Map<String, ISMIndexMetadata>> = coroutineScope {
-        if (types.any { it != DEFAULT_INDEX_TYPE } && indexNames.size > 1) throw IllegalArgumentException(MULTIPLE_INDICES_CUSTOM_INDEX_TYPE_ERROR)
-        val requests = ArrayList<Deferred<Pair<String, Map<String, ISMIndexMetadata>>>>()
-        // Start all index metadata requests at the same time
-        types.forEach { type ->
-            requests.add(async { type to getISMIndexMetadataByType(type, indexNames) })
+        indexNames: List<String>,
+    ): Map<String, Map<String, ISMIndexMetadata>> =
+        coroutineScope {
+            if (types.any { it != DEFAULT_INDEX_TYPE } && indexNames.size > 1) throw IllegalArgumentException(MULTIPLE_INDICES_CUSTOM_INDEX_TYPE_ERROR)
+            val requests = ArrayList<Deferred<Pair<String, Map<String, ISMIndexMetadata>>>>()
+            // Start all index metadata requests at the same time
+            types.forEach { type ->
+                requests.add(async { type to getISMIndexMetadataByType(type, indexNames) })
+            }
+            // Wait for all index metadata responses, and return
+            requests.awaitAll().toMap()
         }
-        // Wait for all index metadata responses, and return
-        requests.awaitAll().toMap()
-    }
 
     fun addMetadataServices(newServices: Map<String, IndexMetadataService>) {
         val duplicateIndexType = newServices.keys.firstOrNull { services.containsKey(it) }
@@ -77,17 +77,18 @@ class IndexMetadataProvider(
         services.putAll(newServices)
     }
 
-    suspend fun getAllISMIndexMetadata(): Set<ISMIndexMetadata> = coroutineScope {
-        val metadata = mutableSetOf<ISMIndexMetadata>()
-        val requests = ArrayList<Deferred<Map<String, ISMIndexMetadata>>>()
-        services.forEach { (_, service) ->
-            requests.add(async { service.getMetadataForAllIndices(client, clusterService) })
+    suspend fun getAllISMIndexMetadata(): Set<ISMIndexMetadata> =
+        coroutineScope {
+            val metadata = mutableSetOf<ISMIndexMetadata>()
+            val requests = ArrayList<Deferred<Map<String, ISMIndexMetadata>>>()
+            services.forEach { (_, service) ->
+                requests.add(async { service.getMetadataForAllIndices(client, clusterService) })
+            }
+
+            requests.awaitAll().forEach { metadata.addAll(it.values) }
+
+            metadata
         }
-
-        requests.awaitAll().forEach { metadata.addAll(it.values) }
-
-        metadata
-    }
 
     fun getIndexMetadataWriteOverrideSettings(): List<String> {
         return services.values.mapNotNull { it.getIndexMetadataWriteOverrideSetting() }
@@ -96,7 +97,9 @@ class IndexMetadataProvider(
     companion object {
         const val EVALUATION_FAILURE_MESSAGE = "Matches restricted index pattern defined in the cluster setting"
         const val MULTIPLE_INDICES_CUSTOM_INDEX_TYPE_ERROR = "Cannot get metadata for more than one index name/pattern when using a custom index type"
+
         fun getTypeNotRecognizedMessage(indexType: String) = "Index type [type=$indexType] was not recognized when trying to get index metadata"
+
         fun getDuplicateServicesMessage(indexType: String) = "Multiple metadata services attempted to assign a service to the index type [$indexType]"
     }
 }

@@ -13,9 +13,9 @@ import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.inject.Inject
 import org.opensearch.common.settings.Settings
 import org.opensearch.common.util.concurrent.ThreadContext
-import org.opensearch.core.xcontent.ToXContent
 import org.opensearch.common.xcontent.XContentFactory
 import org.opensearch.commons.authuser.User
+import org.opensearch.core.xcontent.ToXContent
 import org.opensearch.indexmanagement.IndexManagementIndices
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
@@ -26,7 +26,9 @@ import org.opensearch.indexmanagement.util.IndexUtils
 import org.opensearch.indexmanagement.util.SecurityUtils
 import org.opensearch.transport.TransportService
 
-class TransportIndexSMPolicyAction @Inject constructor(
+class TransportIndexSMPolicyAction
+@Inject
+constructor(
     client: Client,
     transportService: TransportService,
     private val indexManagementIndices: IndexManagementIndices,
@@ -34,9 +36,8 @@ class TransportIndexSMPolicyAction @Inject constructor(
     val clusterService: ClusterService,
     val settings: Settings,
 ) : BaseTransportAction<IndexSMPolicyRequest, IndexSMPolicyResponse>(
-    INDEX_SM_POLICY_ACTION_NAME, transportService, client, actionFilters, ::IndexSMPolicyRequest
+    INDEX_SM_POLICY_ACTION_NAME, transportService, client, actionFilters, ::IndexSMPolicyRequest,
 ) {
-
     private val log = LogManager.getLogger(javaClass)
 
     @Volatile private var filterByEnabled = FILTER_BY_BACKEND_ROLES.get(settings)
@@ -50,7 +51,7 @@ class TransportIndexSMPolicyAction @Inject constructor(
     override suspend fun executeRequest(
         request: IndexSMPolicyRequest,
         user: User?,
-        threadContext: ThreadContext.StoredContext
+        threadContext: ThreadContext.StoredContext,
     ): IndexSMPolicyResponse {
         // If filterBy is enabled and security is disabled or if filter by is enabled and backend role are empty an exception will be thrown
         SecurityUtils.validateUserConfiguration(user, filterByEnabled)
@@ -63,10 +64,11 @@ class TransportIndexSMPolicyAction @Inject constructor(
 
     private suspend fun indexSMPolicy(request: IndexSMPolicyRequest, user: User?): IndexSMPolicyResponse {
         val policy = request.policy.copy(schemaVersion = IndexUtils.indexManagementConfigSchemaVersion, user = user)
-        val indexReq = request.index(INDEX_MANAGEMENT_INDEX)
-            .source(policy.toXContent(XContentFactory.jsonBuilder(), ToXContent.EMPTY_PARAMS))
-            .id(policy.id)
-            .routing(policy.id) // by default routed by id
+        val indexReq =
+            request.index(INDEX_MANAGEMENT_INDEX)
+                .source(policy.toXContent(XContentFactory.jsonBuilder(), ToXContent.EMPTY_PARAMS))
+                .id(policy.id)
+                .routing(policy.id) // by default routed by id
         val indexRes: IndexResponse = client.suspendUntil { index(indexReq, it) }
 
         return IndexSMPolicyResponse(indexRes.id, indexRes.version, indexRes.seqNo, indexRes.primaryTerm, policy, indexRes.status())

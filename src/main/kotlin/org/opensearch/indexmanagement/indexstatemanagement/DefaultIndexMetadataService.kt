@@ -17,7 +17,6 @@ import org.opensearch.indexmanagement.spi.indexstatemanagement.IndexMetadataServ
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ISMIndexMetadata
 
 class DefaultIndexMetadataService(private val customUUIDSetting: String? = null) : IndexMetadataService {
-
     /**
      * Returns the default index metadata needed for ISM
      */
@@ -27,13 +26,14 @@ class DefaultIndexMetadataService(private val customUUIDSetting: String? = null)
 
         // We want to go through all cluster indices - open/closed/hidden
         val lenientExpandOptions = IndicesOptions.lenientExpandHidden()
-        val clusterStateRequest = ClusterStateRequest()
-            .clear()
-            .indices(*indices.toTypedArray())
-            .metadata(true)
-            .local(false)
-            .waitForTimeout(TimeValue.timeValueMillis(DEFAULT_GET_METADATA_TIMEOUT_IN_MILLIS))
-            .indicesOptions(lenientExpandOptions)
+        val clusterStateRequest =
+            ClusterStateRequest()
+                .clear()
+                .indices(*indices.toTypedArray())
+                .metadata(true)
+                .local(false)
+                .waitForTimeout(TimeValue.timeValueMillis(DEFAULT_GET_METADATA_TIMEOUT_IN_MILLIS))
+                .indicesOptions(lenientExpandOptions)
 
         val response: ClusterStateResponse = client.suspendUntil { client.admin().cluster().state(clusterStateRequest, it) }
 

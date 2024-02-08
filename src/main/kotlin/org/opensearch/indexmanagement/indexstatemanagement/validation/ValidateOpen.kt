@@ -3,11 +3,6 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-/*
- * Copyright OpenSearch Contributors
- * SPDX-License-Identifier: Apache-2.0
- */
-
 package org.opensearch.indexmanagement.indexstatemanagement.validation
 
 import org.apache.logging.log4j.LogManager
@@ -21,9 +16,8 @@ import org.opensearch.monitor.jvm.JvmService
 class ValidateOpen(
     settings: Settings,
     clusterService: ClusterService,
-    jvmService: JvmService
+    jvmService: JvmService,
 ) : Validate(settings, clusterService, jvmService) {
-
     private val logger = LogManager.getLogger(javaClass)
 
     @Suppress("ReturnSuppressCount", "ReturnCount")
@@ -65,8 +59,11 @@ class ValidateOpen(
     @Suppress("TooManyFunctions")
     companion object {
         const val name = "validate_open"
+
         fun getReadOnlyAllowDeleteBlockMessage(index: String) = "read_only_allow_delete block is not null for index [index=$index]"
+
         fun getMaxNumberOfShardsExceededMessage(index: String) = "Maximum number of shards exceeded for index [index=$index]"
+
         fun getValidationPassedMessage(index: String) = "Open action validation passed for [index=$index]"
     }
 }

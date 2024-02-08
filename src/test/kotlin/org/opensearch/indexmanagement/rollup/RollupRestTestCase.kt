@@ -5,24 +5,25 @@
 
 package org.opensearch.indexmanagement.rollup
 
-import org.junit.After
+import org.apache.hc.core5.http.ContentType
 import org.apache.hc.core5.http.HttpEntity
 import org.apache.hc.core5.http.HttpHeaders
-import org.apache.hc.core5.http.ContentType
 import org.apache.hc.core5.http.HttpStatus
 import org.apache.hc.core5.http.io.entity.StringEntity
 import org.apache.hc.core5.http.message.BasicHeader
+import org.junit.After
 import org.junit.AfterClass
 import org.opensearch.client.Request
 import org.opensearch.client.Response
 import org.opensearch.client.RestClient
 import org.opensearch.common.settings.Settings
 import org.opensearch.common.xcontent.LoggingDeprecationHandler
+import org.opensearch.common.xcontent.XContentType
+import org.opensearch.common.xcontent.json.JsonXContent
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.core.xcontent.NamedXContentRegistry
 import org.opensearch.core.xcontent.XContentParser.Token
 import org.opensearch.core.xcontent.XContentParserUtils.ensureExpectedToken
-import org.opensearch.common.xcontent.XContentType
-import org.opensearch.common.xcontent.json.JsonXContent
 import org.opensearch.index.seqno.SequenceNumbers
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.ROLLUP_JOBS_BASE_URI
@@ -36,11 +37,9 @@ import org.opensearch.indexmanagement.util._ID
 import org.opensearch.indexmanagement.util._PRIMARY_TERM
 import org.opensearch.indexmanagement.util._SEQ_NO
 import org.opensearch.indexmanagement.waitFor
-import org.opensearch.core.rest.RestStatus
 import java.time.Instant
 
 abstract class RollupRestTestCase : IndexManagementRestTestCase() {
-
     companion object {
         @AfterClass
         @JvmStatic fun clearIndicesAfterClass() {
@@ -91,19 +90,20 @@ abstract class RollupRestTestCase : IndexManagementRestTestCase() {
         rollup: Rollup,
         rollupId: String,
         refresh: Boolean = true,
-        client: RestClient? = null
+        client: RestClient? = null,
     ): Rollup {
         val response = createRollupJson(rollup.toJsonString(), rollupId, refresh, client)
 
-        val rollupJson = JsonXContent.jsonXContent
-            .createParser(NamedXContentRegistry.EMPTY, LoggingDeprecationHandler.INSTANCE, response.entity.content)
-            .map()
+        val rollupJson =
+            JsonXContent.jsonXContent
+                .createParser(NamedXContentRegistry.EMPTY, LoggingDeprecationHandler.INSTANCE, response.entity.content)
+                .map()
         val createdId = rollupJson["_id"] as String
         assertEquals("Rollup ids are not the same", rollupId, createdId)
         return rollup.copy(
             id = createdId,
             seqNo = (rollupJson["_seq_no"] as Int).toLong(),
-            primaryTerm = (rollupJson["_primary_term"] as Int).toLong()
+            primaryTerm = (rollupJson["_primary_term"] as Int).toLong(),
         )
     }
 
@@ -111,16 +111,17 @@ abstract class RollupRestTestCase : IndexManagementRestTestCase() {
         rollupString: String,
         rollupId: String,
         refresh: Boolean = true,
-        userClient: RestClient? = null
+        userClient: RestClient? = null,
     ): Response {
         val client = userClient ?: client()
-        val response = client
-            .makeRequest(
-                "PUT",
-                "$ROLLUP_JOBS_BASE_URI/$rollupId?refresh=$refresh",
-                emptyMap(),
-                StringEntity(rollupString, ContentType.APPLICATION_JSON)
-            )
+        val response =
+            client
+                .makeRequest(
+                    "PUT",
+                    "$ROLLUP_JOBS_BASE_URI/$rollupId?refresh=$refresh",
+                    emptyMap(),
+                    StringEntity(rollupString, ContentType.APPLICATION_JSON),
+                )
         assertEquals("Unable to create a new rollup", RestStatus.CREATED, response.restStatus())
         return response
     }
@@ -136,11 +137,12 @@ abstract class RollupRestTestCase : IndexManagementRestTestCase() {
         var mappingString = ""
         var addCommaPrefix = false
         rollup.dimensions.forEach {
-            val fieldType = when (it.type) {
-                Dimension.Type.DATE_HISTOGRAM -> "date"
-                Dimension.Type.HISTOGRAM -> "long"
-                Dimension.Type.TERMS -> "keyword"
-            }
+            val fieldType =
+                when (it.type) {
+                    Dimension.Type.DATE_HISTOGRAM -> "date"
+                    Dimension.Type.HISTOGRAM -> "long"
+                    Dimension.Type.TERMS -> "keyword"
+                }
             val string = "${if (addCommaPrefix) "," else ""}\"${it.sourceField}\":{\"type\": \"$fieldType\"}"
             addCommaPrefix = true
             mappingString += string
@@ -160,15 +162,17 @@ abstract class RollupRestTestCase : IndexManagementRestTestCase() {
 
     protected fun putDateDocumentInSourceIndex(rollup: Rollup) {
         val dateHistogram = rollup.dimensions.first()
-        val request = """
+        val request =
+            """
             {
               "${dateHistogram.sourceField}" : "${Instant.now()}"
             }
-        """.trimIndent()
-        val response = client().makeRequest(
-            "POST", "${rollup.sourceIndex}/_doc?refresh=true",
-            emptyMap(), StringEntity(request, ContentType.APPLICATION_JSON)
-        )
+            """.trimIndent()
+        val response =
+            client().makeRequest(
+                "POST", "${rollup.sourceIndex}/_doc?refresh=true",
+                emptyMap(), StringEntity(request, ContentType.APPLICATION_JSON),
+            )
         assertEquals("Request failed", RestStatus.CREATED, response.restStatus())
     }
 
@@ -249,22 +253,25 @@ abstract class RollupRestTestCase : IndexManagementRestTestCase() {
 
     protected fun updateSearchAllJobsClusterSetting(value: Boolean) {
         val formattedValue = "\"${value}\""
-        val request = """
+        val request =
+            """
             {
                 "persistent": {
                     "${RollupSettings.ROLLUP_SEARCH_ALL_JOBS.key}": $formattedValue
                 }
             }
-        """.trimIndent()
-        val res = client().makeRequest(
-            "PUT", "_cluster/settings", emptyMap(),
-            StringEntity(request, ContentType.APPLICATION_JSON)
-        )
+            """.trimIndent()
+        val res =
+            client().makeRequest(
+                "PUT", "_cluster/settings", emptyMap(),
+                StringEntity(request, ContentType.APPLICATION_JSON),
+            )
         assertEquals("Request failed", RestStatus.OK, res.restStatus())
     }
 
     protected fun createSampleIndexForQSQTest(index: String) {
-        val mapping = """
+        val mapping =
+            """
             "properties": {
                 "event_ts": {
                     "type": "date"
@@ -299,11 +306,12 @@ abstract class RollupRestTestCase : IndexManagementRestTestCase() {
                 }
                         
             }
-        """.trimIndent()
+            """.trimIndent()
         createIndex(index, Settings.EMPTY, mapping)
 
         for (i in 1..5) {
-            val doc = """
+            val doc =
+                """
                 {
                     "event_ts": "2019-01-01T12:10:30Z",
                     "test.fff": "12345",
@@ -315,11 +323,12 @@ abstract class RollupRestTestCase : IndexManagementRestTestCase() {
                     "state_ordinal": ${i % 3},
                     "earnings": $i
                 }
-            """.trimIndent()
+                """.trimIndent()
             indexDoc(index, "$i", doc)
         }
         for (i in 6..8) {
-            val doc = """
+            val doc =
+                """
                 {
                     "event_ts": "2019-01-01T12:10:30Z",
                     "state": "TA",
@@ -329,11 +338,12 @@ abstract class RollupRestTestCase : IndexManagementRestTestCase() {
                     "abc test": 123,
                     "earnings": $i
                 }
-            """.trimIndent()
+                """.trimIndent()
             indexDoc(index, "$i", doc)
         }
         for (i in 9..11) {
-            val doc = """
+            val doc =
+                """
                 {
                     "event_ts": "2019-01-02T12:10:30Z",
                     "state": "CA",
@@ -343,7 +353,7 @@ abstract class RollupRestTestCase : IndexManagementRestTestCase() {
                     "abc test": 123,                                 
                     "earnings": $i
                 }
-            """.trimIndent()
+                """.trimIndent()
             indexDoc(index, "$i", doc)
         }
     }

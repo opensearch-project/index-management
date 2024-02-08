@@ -24,8 +24,9 @@ class AttemptOpenStep : Step(name) {
         val context = this.context ?: return this
         val indexName = context.metadata.index
         try {
-            val openIndexRequest = OpenIndexRequest()
-                .indices(indexName)
+            val openIndexRequest =
+                OpenIndexRequest()
+                    .indices(indexName)
 
             val response: OpenIndexResponse = context.client.admin().indices().suspendUntil { open(openIndexRequest, it) }
             if (response.isAcknowledged) {
@@ -45,6 +46,7 @@ class AttemptOpenStep : Step(name) {
 
         return this
     }
+
     private fun handleException(indexName: String, e: Exception) {
         val message = getFailedMessage(indexName)
         logger.error(message, e)
@@ -59,7 +61,7 @@ class AttemptOpenStep : Step(name) {
         return currentMetadata.copy(
             stepMetaData = StepMetaData(name, getStepStartTime(currentMetadata).toEpochMilli(), stepStatus),
             transitionTo = null,
-            info = info
+            info = info,
         )
     }
 
@@ -67,7 +69,9 @@ class AttemptOpenStep : Step(name) {
 
     companion object {
         const val name = "attempt_open"
+
         fun getFailedMessage(indexName: String) = "Failed to open index [index=$indexName]"
+
         fun getSuccessMessage(indexName: String) = "Successfully opened index [index=$indexName]"
     }
 }

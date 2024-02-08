@@ -11,13 +11,13 @@ import com.nhaarman.mockitokotlin2.doReturn
 import com.nhaarman.mockitokotlin2.mock
 import com.nhaarman.mockitokotlin2.whenever
 import kotlinx.coroutines.runBlocking
-import org.opensearch.core.action.ActionListener
 import org.opensearch.action.admin.indices.close.CloseIndexResponse
 import org.opensearch.client.AdminClient
 import org.opensearch.client.Client
 import org.opensearch.client.IndicesAdminClient
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.settings.Settings
+import org.opensearch.core.action.ActionListener
 import org.opensearch.indexmanagement.indexstatemanagement.step.close.AttemptCloseStep
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
@@ -30,7 +30,6 @@ import org.opensearch.transport.RemoteTransportException
 import kotlin.IllegalArgumentException
 
 class AttemptCloseStepTests : OpenSearchTestCase() {
-
     private val clusterService: ClusterService = mock()
     private val scriptService: ScriptService = mock()
     private val settings: Settings = Settings.EMPTY
@@ -122,14 +121,19 @@ class AttemptCloseStepTests : OpenSearchTestCase() {
     }
 
     private fun getClient(adminClient: AdminClient): Client = mock { on { admin() } doReturn adminClient }
+
     private fun getAdminClient(indicesAdminClient: IndicesAdminClient): AdminClient = mock { on { indices() } doReturn indicesAdminClient }
+
     private fun getIndicesAdminClient(closeIndexResponse: CloseIndexResponse?, exception: Exception?): IndicesAdminClient {
         assertTrue("Must provide one and only one response or exception", (closeIndexResponse != null).xor(exception != null))
         return mock {
             doAnswer { invocationOnMock ->
                 val listener = invocationOnMock.getArgument<ActionListener<CloseIndexResponse>>(1)
-                if (closeIndexResponse != null) listener.onResponse(closeIndexResponse)
-                else listener.onFailure(exception)
+                if (closeIndexResponse != null) {
+                    listener.onResponse(closeIndexResponse)
+                } else {
+                    listener.onFailure(exception)
+                }
             }.whenever(this.mock).close(any(), any())
         }
     }

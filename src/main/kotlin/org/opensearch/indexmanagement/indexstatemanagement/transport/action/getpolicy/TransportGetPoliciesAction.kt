@@ -7,7 +7,6 @@ package org.opensearch.indexmanagement.indexstatemanagement.transport.action.get
 
 import org.apache.logging.log4j.LogManager
 import org.opensearch.ExceptionsHelper
-import org.opensearch.core.action.ActionListener
 import org.opensearch.action.search.SearchRequest
 import org.opensearch.action.search.SearchResponse
 import org.opensearch.action.support.ActionFilters
@@ -17,8 +16,9 @@ import org.opensearch.cluster.routing.Preference
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.inject.Inject
 import org.opensearch.common.settings.Settings
-import org.opensearch.core.xcontent.NamedXContentRegistry
 import org.opensearch.commons.ConfigConstants
+import org.opensearch.core.action.ActionListener
+import org.opensearch.core.xcontent.NamedXContentRegistry
 import org.opensearch.index.IndexNotFoundException
 import org.opensearch.index.query.Operator
 import org.opensearch.index.query.QueryBuilders
@@ -34,17 +34,18 @@ import org.opensearch.transport.TransportService
 
 private val log = LogManager.getLogger(TransportGetPoliciesAction::class.java)
 
-class TransportGetPoliciesAction @Inject constructor(
+class TransportGetPoliciesAction
+@Inject
+constructor(
     transportService: TransportService,
     val client: Client,
     actionFilters: ActionFilters,
     val clusterService: ClusterService,
     val settings: Settings,
-    val xContentRegistry: NamedXContentRegistry
+    val xContentRegistry: NamedXContentRegistry,
 ) : HandledTransportAction<GetPoliciesRequest, GetPoliciesResponse>(
-    GetPoliciesAction.NAME, transportService, actionFilters, ::GetPoliciesRequest
+    GetPoliciesAction.NAME, transportService, actionFilters, ::GetPoliciesRequest,
 ) {
-
     @Volatile private var filterByEnabled = IndexManagementSettings.FILTER_BY_BACKEND_ROLES.get(settings)
 
     init {
@@ -56,20 +57,21 @@ class TransportGetPoliciesAction @Inject constructor(
     override fun doExecute(
         task: Task,
         getPoliciesRequest: GetPoliciesRequest,
-        actionListener: ActionListener<GetPoliciesResponse>
+        actionListener: ActionListener<GetPoliciesResponse>,
     ) {
         log.debug(
             "User and roles string from thread context: ${client.threadPool().threadContext.getTransient<String>(
-                ConfigConstants.OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT
-            )}"
+                ConfigConstants.OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT,
+            )}",
         )
         val params = getPoliciesRequest.searchParams
         val user = buildUser(client.threadPool().threadContext)
 
         val sortBuilder = params.getSortBuilder()
 
-        val queryBuilder = QueryBuilders.boolQuery()
-            .must(QueryBuilders.existsQuery("policy"))
+        val queryBuilder =
+            QueryBuilders.boolQuery()
+                .must(QueryBuilders.existsQuery("policy"))
 
         // Add user filter if enabled
         addUserFilter(user, queryBuilder, filterByEnabled, "policy.user")
@@ -78,20 +80,22 @@ class TransportGetPoliciesAction @Inject constructor(
             QueryBuilders
                 .queryStringQuery(params.queryString)
                 .defaultOperator(Operator.AND)
-                .field("policy.policy_id.keyword")
+                .field("policy.policy_id.keyword"),
         )
 
-        val searchSourceBuilder = SearchSourceBuilder()
-            .query(queryBuilder)
-            .sort(sortBuilder)
-            .from(params.from)
-            .size(params.size)
-            .seqNoAndPrimaryTerm(true)
+        val searchSourceBuilder =
+            SearchSourceBuilder()
+                .query(queryBuilder)
+                .sort(sortBuilder)
+                .from(params.from)
+                .size(params.size)
+                .seqNoAndPrimaryTerm(true)
 
-        val searchRequest = SearchRequest()
-            .source(searchSourceBuilder)
-            .indices(INDEX_MANAGEMENT_INDEX)
-            .preference(Preference.PRIMARY_FIRST.type())
+        val searchRequest =
+            SearchRequest()
+                .source(searchSourceBuilder)
+                .indices(INDEX_MANAGEMENT_INDEX)
+                .preference(Preference.PRIMARY_FIRST.type())
 
         client.threadPool().threadContext.stashContext().use {
             client.search(
@@ -111,7 +115,7 @@ class TransportGetPoliciesAction @Inject constructor(
                         }
                         actionListener.onFailure(ExceptionsHelper.unwrapCause(t) as Exception)
                     }
-                }
+                },
             )
         }
     }

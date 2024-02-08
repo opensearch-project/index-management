@@ -5,13 +5,13 @@
 
 package org.opensearch.indexmanagement.snapshotmanagement.engine.states
 
+import org.opensearch.indexmanagement.snapshotmanagement.engine.states.creation.CreatingState
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.creation.CreationConditionMetState
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.creation.CreationFinishedState
-import org.opensearch.indexmanagement.snapshotmanagement.engine.states.creation.CreatingState
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.creation.CreationStartState
+import org.opensearch.indexmanagement.snapshotmanagement.engine.states.deletion.DeletingState
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.deletion.DeletionConditionMetState
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.deletion.DeletionFinishedState
-import org.opensearch.indexmanagement.snapshotmanagement.engine.states.deletion.DeletingState
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.deletion.DeletionStartState
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata
 
@@ -47,7 +47,9 @@ enum class WorkflowType {
  */
 sealed class SMResult : State.Result {
     data class Next(val metadataToSave: SMMetadata.Builder) : SMResult()
+
     data class Stay(val metadataToSave: SMMetadata.Builder) : SMResult()
+
     data class Fail(
         val metadataToSave: SMMetadata.Builder,
         val workflowType: WorkflowType,
@@ -56,20 +58,23 @@ sealed class SMResult : State.Result {
 }
 
 // TODO SM enhance transition with predicate
+
 /**
  * Transitions from current to next state vertically.
  * If there are multiple next states in lateral, these would be executed in sequence in order.
  */
-val creationTransitions: Map<SMState, List<SMState>> = mapOf(
-    SMState.CREATION_START to listOf(SMState.CREATION_CONDITION_MET),
-    SMState.CREATION_CONDITION_MET to listOf(SMState.CREATING),
-    SMState.CREATING to listOf(SMState.CREATION_FINISHED),
-    SMState.CREATION_FINISHED to listOf(SMState.CREATION_START),
-)
+val creationTransitions: Map<SMState, List<SMState>> =
+    mapOf(
+        SMState.CREATION_START to listOf(SMState.CREATION_CONDITION_MET),
+        SMState.CREATION_CONDITION_MET to listOf(SMState.CREATING),
+        SMState.CREATING to listOf(SMState.CREATION_FINISHED),
+        SMState.CREATION_FINISHED to listOf(SMState.CREATION_START),
+    )
 
-val deletionTransitions: Map<SMState, List<SMState>> = mapOf(
-    SMState.DELETION_START to listOf(SMState.DELETION_CONDITION_MET),
-    SMState.DELETION_CONDITION_MET to listOf(SMState.DELETING),
-    SMState.DELETING to listOf(SMState.DELETION_FINISHED),
-    SMState.DELETION_FINISHED to listOf(SMState.DELETION_START),
-)
+val deletionTransitions: Map<SMState, List<SMState>> =
+    mapOf(
+        SMState.DELETION_START to listOf(SMState.DELETION_CONDITION_MET),
+        SMState.DELETION_CONDITION_MET to listOf(SMState.DELETING),
+        SMState.DELETING to listOf(SMState.DELETION_FINISHED),
+        SMState.DELETION_FINISHED to listOf(SMState.DELETION_START),
+    )

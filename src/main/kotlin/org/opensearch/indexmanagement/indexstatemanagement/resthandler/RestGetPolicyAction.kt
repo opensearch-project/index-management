@@ -29,7 +29,6 @@ import org.opensearch.search.fetch.subphase.FetchSourceContext
 private val log = LogManager.getLogger(RestGetPolicyAction::class.java)
 
 class RestGetPolicyAction : BaseRestHandler() {
-
     override fun routes(): List<Route> {
         return emptyList()
     }
@@ -38,16 +37,16 @@ class RestGetPolicyAction : BaseRestHandler() {
         return listOf(
             ReplacedRoute(
                 GET, POLICY_BASE_URI,
-                GET, LEGACY_POLICY_BASE_URI
+                GET, LEGACY_POLICY_BASE_URI,
             ),
             ReplacedRoute(
                 GET, "$POLICY_BASE_URI/{policyID}",
-                GET, "$LEGACY_POLICY_BASE_URI/{policyID}"
+                GET, "$LEGACY_POLICY_BASE_URI/{policyID}",
             ),
             ReplacedRoute(
                 HEAD, "$POLICY_BASE_URI/{policyID}",
-                HEAD, "$LEGACY_POLICY_BASE_URI/{policyID}"
-            )
+                HEAD, "$LEGACY_POLICY_BASE_URI/{policyID}",
+            ),
         )
     }
 

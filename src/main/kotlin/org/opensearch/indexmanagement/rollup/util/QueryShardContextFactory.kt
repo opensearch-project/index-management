@@ -9,15 +9,15 @@ import org.opensearch.Version
 import org.opensearch.client.Client
 import org.opensearch.cluster.metadata.IndexMetadata
 import org.opensearch.cluster.service.ClusterService
-import org.opensearch.core.common.io.stream.NamedWriteableRegistry
 import org.opensearch.common.regex.Regex
 import org.opensearch.common.settings.IndexScopedSettings
 import org.opensearch.common.settings.Settings
 import org.opensearch.common.settings.SettingsModule
 import org.opensearch.common.util.BigArrays
+import org.opensearch.core.common.io.stream.NamedWriteableRegistry
+import org.opensearch.core.index.Index
 import org.opensearch.core.xcontent.NamedXContentRegistry
 import org.opensearch.env.Environment
-import org.opensearch.core.index.Index
 import org.opensearch.index.IndexSettings
 import org.opensearch.index.mapper.MapperService
 import org.opensearch.index.query.QueryShardContext
@@ -48,7 +48,7 @@ object QueryShardContextFactory {
         scriptService: ScriptService,
         xContentRegistry: NamedXContentRegistry,
         namedWriteableRegistry: NamedWriteableRegistry,
-        environment: Environment
+        environment: Environment,
     ) {
         this.client = client
         this.clusterService = clusterService
@@ -61,8 +61,9 @@ object QueryShardContextFactory {
     private fun getIndexSettingsAndMetadata(indexName: String?): Triple<Index?, Settings?, IndexMetadata?> {
         val index: Index?
         val indexSettings: Settings?
-        val indexMetadata = clusterService.state().metadata.index(indexName)
-            ?: throw IllegalArgumentException("Can't find IndexMetadata for index: [$indexName]")
+        val indexMetadata =
+            clusterService.state().metadata.index(indexName)
+                ?: throw IllegalArgumentException("Can't find IndexMetadata for index: [$indexName]")
         index = indexMetadata.index
         indexSettings = indexMetadata.settings
         return Triple(index, indexSettings, indexMetadata)
@@ -70,18 +71,20 @@ object QueryShardContextFactory {
 
     fun createShardContext(indexName: String?): QueryShardContext {
         val (index, indexSettings, indexMetadata) = getIndexSettingsAndMetadata(indexName)
-        val nodeSettings = Settings.builder()
-            .put("node.name", "dummyNodeName")
-            .put(Environment.PATH_HOME_SETTING.key, environment.tmpDir())
-            .build()
+        val nodeSettings =
+            Settings.builder()
+                .put("node.name", "dummyNodeName")
+                .put(Environment.PATH_HOME_SETTING.key, environment.tmpDir())
+                .build()
         val pluginsService =
             PluginsService(nodeSettings, null, null, null, listOf())
         val additionalSettings = pluginsService.pluginSettings
-        val settingsModule = SettingsModule(
-            nodeSettings,
-            additionalSettings,
-            pluginsService.pluginSettingsFilter, emptySet()
-        )
+        val settingsModule =
+            SettingsModule(
+                nodeSettings,
+                additionalSettings,
+                pluginsService.pluginSettingsFilter, emptySet(),
+            )
         val indexScopedSettings: IndexScopedSettings = settingsModule.indexScopedSettings
         val idxSettings = newIndexSettings(index, indexSettings, indexScopedSettings)
         val indicesModule = IndicesModule(pluginsService.filterPlugins(MapperPlugin::class.java))
@@ -89,16 +92,17 @@ object QueryShardContextFactory {
         val analysisModule = AnalysisModule(environment, emptyList())
         val indexAnalyzers = analysisModule.analysisRegistry.build(idxSettings)
         val similarityService = SimilarityService(idxSettings, null, emptyMap())
-        val mapperService = MapperService(
-            idxSettings,
-            indexAnalyzers,
-            xContentRegistry,
-            similarityService,
-            mapperRegistry,
-            { createShardContext(null) },
-            { false },
-            scriptService
-        )
+        val mapperService =
+            MapperService(
+                idxSettings,
+                indexAnalyzers,
+                xContentRegistry,
+                similarityService,
+                mapperRegistry,
+                { createShardContext(null) },
+                { false },
+                scriptService,
+            )
         // In order to be able to call toQuery method on QueryBuilder, we need to setup mappings in MapperService
         mapperService.merge("_doc", indexMetadata?.mapping()?.source(), MapperService.MergeReason.MAPPING_UPDATE)
 
@@ -119,17 +123,18 @@ object QueryShardContextFactory {
             null,
             { pattern -> Regex.simpleMatch(pattern, index?.name) },
             { true },
-            null
+            null,
         )
     }
 
     private fun newIndexSettings(index: Index?, settings: Settings?, indexScopedSettings: IndexScopedSettings?): IndexSettings? {
-        val build = Settings.builder()
-            .put(IndexMetadata.SETTING_VERSION_CREATED, Version.CURRENT)
-            .put(IndexMetadata.SETTING_NUMBER_OF_REPLICAS, 1)
-            .put(IndexMetadata.SETTING_NUMBER_OF_SHARDS, 1)
-            .put(settings)
-            .build()
+        val build =
+            Settings.builder()
+                .put(IndexMetadata.SETTING_VERSION_CREATED, Version.CURRENT)
+                .put(IndexMetadata.SETTING_NUMBER_OF_REPLICAS, 1)
+                .put(IndexMetadata.SETTING_NUMBER_OF_SHARDS, 1)
+                .put(settings)
+                .build()
         val metadata = IndexMetadata.builder(index?.name).settings(build).build()
         return IndexSettings(metadata, Settings.EMPTY, indexScopedSettings)
     }

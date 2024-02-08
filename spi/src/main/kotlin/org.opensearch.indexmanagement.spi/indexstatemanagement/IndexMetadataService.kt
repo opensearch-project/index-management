@@ -21,7 +21,6 @@ import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ISMIndexMet
  * else uses the default i.e cluster state
  */
 interface IndexMetadataService {
-
     /**
      * Returns the index metadata needed for ISM
      */

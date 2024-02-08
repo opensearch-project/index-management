@@ -17,7 +17,6 @@ import org.opensearch.snapshots.SnapshotInProgressException
 import org.opensearch.transport.RemoteTransportException
 
 class AttemptCloseStep : Step(name) {
-
     private val logger = LogManager.getLogger(javaClass)
     private var stepStatus = StepStatus.STARTING
     private var info: Map<String, Any>? = null
@@ -26,11 +25,13 @@ class AttemptCloseStep : Step(name) {
         val context = this.context ?: return this
         val indexName = context.metadata.index
         try {
-            val closeIndexRequest = CloseIndexRequest()
-                .indices(indexName)
+            val closeIndexRequest =
+                CloseIndexRequest()
+                    .indices(indexName)
 
-            val response: CloseIndexResponse = context.client.admin().indices()
-                .suspendUntil { close(closeIndexRequest, it) }
+            val response: CloseIndexResponse =
+                context.client.admin().indices()
+                    .suspendUntil { close(closeIndexRequest, it) }
 
             if (response.isAcknowledged) {
                 stepStatus = StepStatus.COMPLETED
@@ -78,7 +79,7 @@ class AttemptCloseStep : Step(name) {
         return currentMetadata.copy(
             stepMetaData = StepMetaData(name, getStepStartTime(currentMetadata).toEpochMilli(), stepStatus),
             transitionTo = null,
-            info = info
+            info = info,
         )
     }
 
@@ -86,8 +87,11 @@ class AttemptCloseStep : Step(name) {
 
     companion object {
         const val name = "attempt_close"
+
         fun getFailedMessage(index: String) = "Failed to close index [index=$index]"
+
         fun getSuccessMessage(index: String) = "Successfully closed index [index=$index]"
+
         fun getSnapshotMessage(index: String) = "Index had snapshot in progress, retrying closing [index=$index]"
     }
 }

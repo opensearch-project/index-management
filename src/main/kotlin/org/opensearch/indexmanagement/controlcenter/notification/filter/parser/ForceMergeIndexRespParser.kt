@@ -16,7 +16,6 @@ import java.util.function.Consumer
 
 class ForceMergeIndexRespParser(val request: ForceMergeRequest, val clusterService: ClusterService) :
     ResponseParser<ForceMergeResponse> {
-
     private val indexNameWithCluster = getIndexName(request, clusterService)
 
     override fun parseAndSendNotification(
@@ -29,8 +28,8 @@ class ForceMergeIndexRespParser(val request: ForceMergeRequest, val clusterServi
                 ActionRespParseResult(
                     OperationResult.FAILED,
                     buildNotificationMessage(null, ex),
-                    buildNotificationTitle(OperationResult.FAILED)
-                )
+                    buildNotificationTitle(OperationResult.FAILED),
+                ),
             )
             return
         }
@@ -43,16 +42,16 @@ class ForceMergeIndexRespParser(val request: ForceMergeRequest, val clusterServi
                 ActionRespParseResult(
                     OperationResult.FAILED,
                     buildNotificationMessage(response),
-                    buildNotificationTitle(OperationResult.FAILED)
-                )
+                    buildNotificationTitle(OperationResult.FAILED),
+                ),
             )
         } else {
             callback.accept(
                 ActionRespParseResult(
                     OperationResult.COMPLETE,
                     buildNotificationMessage(response),
-                    buildNotificationTitle(OperationResult.COMPLETE)
-                )
+                    buildNotificationTitle(OperationResult.COMPLETE),
+                ),
             )
         }
     }
@@ -63,16 +62,18 @@ class ForceMergeIndexRespParser(val request: ForceMergeRequest, val clusterServi
         isTimeout: Boolean,
     ): String {
         return if (exception != null) {
-            if (exception is OpenSearchException)
+            if (exception is OpenSearchException) {
                 "index [" + exception.index.name + "] ${exception.message}."
-            else
+            } else {
                 exception.message ?: ""
-        } else if (response != null && !response.shardFailures.isNullOrEmpty())
+            }
+        } else if (response != null && !response.shardFailures.isNullOrEmpty()) {
             response.shardFailures.joinToString(",") { "index [${it.index()}] shard [${it.shardId()}] ${it.reason()}" }
-        else if (request.indices().size == 1)
+        } else if (request.indices().size == 1) {
             "The force merge operation on $indexNameWithCluster ${NotificationActionListener.COMPLETED}"
-        else
+        } else {
             "$indexNameWithCluster have been merged."
+        }
     }
 
     override fun buildNotificationTitle(operationResult: OperationResult): String {

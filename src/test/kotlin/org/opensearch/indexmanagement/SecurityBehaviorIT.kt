@@ -15,8 +15,8 @@ import org.junit.After
 import org.junit.Before
 import org.opensearch.client.RestClient
 import org.opensearch.commons.rest.SecureRestClientBuilder
-import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings
 import org.opensearch.core.rest.RestStatus
+import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings
 import org.opensearch.test.junit.annotations.TestLogging
 
 @TestLogging("level:DEBUG", reason = "Debug for tests.")
@@ -30,22 +30,24 @@ class SecurityBehaviorIT : SecurityRestTestCase() {
     fun setupUsersAndRoles() {
         updateClusterSetting(ManagedIndexSettings.JITTER.key, "0.0", false)
 
-        val helpdeskClusterPermissions = listOf(
-            WRITE_POLICY,
-            GET_POLICY,
-            GET_POLICIES,
-            EXPLAIN_INDEX
-        )
+        val helpdeskClusterPermissions =
+            listOf(
+                WRITE_POLICY,
+                GET_POLICY,
+                GET_POLICIES,
+                EXPLAIN_INDEX,
+            )
 
-        val indexPermissions = listOf(
-            MANAGED_INDEX,
-            CREATE_INDEX,
-            WRITE_INDEX,
-            BULK_WRITE_INDEX,
-            GET_INDEX_MAPPING,
-            SEARCH_INDEX,
-            PUT_INDEX_MAPPING
-        )
+        val indexPermissions =
+            listOf(
+                MANAGED_INDEX,
+                CREATE_INDEX,
+                WRITE_INDEX,
+                BULK_WRITE_INDEX,
+                GET_INDEX_MAPPING,
+                SEARCH_INDEX,
+                PUT_INDEX_MAPPING,
+            )
         // In this test suite case john is a "super-user" which has all relevant privileges
         createUser(john, password, listOf(HELPDESK))
         createRole(HELPDESK_ROLE, helpdeskClusterPermissions, indexPermissions, listOf(AIRLINE_INDEX_PATTERN))
@@ -71,20 +73,22 @@ class SecurityBehaviorIT : SecurityRestTestCase() {
         // Create jill without assigning a role
         createUser(jill, password, listOf(HELPDESK))
 
-        val phoneOperatorClusterPermissions = listOf(
-            EXPLAIN_INDEX,
-            GET_POLICY,
-            WRITE_POLICY,
-            GET_POLICIES
-        )
+        val phoneOperatorClusterPermissions =
+            listOf(
+                EXPLAIN_INDEX,
+                GET_POLICY,
+                WRITE_POLICY,
+                GET_POLICIES,
+            )
 
-        val indexPermissions = listOf(
-            MANAGED_INDEX,
-            CREATE_INDEX,
-            GET_INDEX_MAPPING,
-            SEARCH_INDEX,
-            PUT_INDEX_MAPPING
-        )
+        val indexPermissions =
+            listOf(
+                MANAGED_INDEX,
+                CREATE_INDEX,
+                GET_INDEX_MAPPING,
+                SEARCH_INDEX,
+                PUT_INDEX_MAPPING,
+            )
         // Jane is phone operator; Phone operators can search availability indexes
         createUserWithCustomRole(
             jane,
@@ -93,7 +97,7 @@ class SecurityBehaviorIT : SecurityRestTestCase() {
             phoneOperatorClusterPermissions,
             indexPermissions,
             listOf(PHONE_OPERATOR),
-            listOf(AVAILABILITY_INDEX_PATTERN)
+            listOf(AVAILABILITY_INDEX_PATTERN),
         )
 
         val jillClient =

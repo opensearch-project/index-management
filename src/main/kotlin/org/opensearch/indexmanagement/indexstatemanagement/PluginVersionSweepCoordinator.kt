@@ -69,20 +69,21 @@ class PluginVersionSweepCoordinator(
         if (!isIndexStateManagementEnabled()) return
         // Cancel existing background sweep
         scheduledSkipExecution?.cancel()
-        val scheduledJob = Runnable {
-            launch {
-                try {
-                    if (!skipExecution.flag) {
-                        logger.info("Canceling sweep ism plugin version job")
-                        scheduledSkipExecution?.cancel()
-                    } else {
-                        skipExecution.sweepISMPluginVersion()
+        val scheduledJob =
+            Runnable {
+                launch {
+                    try {
+                        if (!skipExecution.flag) {
+                            logger.info("Canceling sweep ism plugin version job")
+                            scheduledSkipExecution?.cancel()
+                        } else {
+                            skipExecution.sweepISMPluginVersion()
+                        }
+                    } catch (e: Exception) {
+                        logger.error("Failed to sweep ism plugin version", e)
                     }
-                } catch (e: Exception) {
-                    logger.error("Failed to sweep ism plugin version", e)
                 }
             }
-        }
         scheduledSkipExecution =
             threadPool.scheduleWithFixedDelay(scheduledJob, sweepSkipPeriod, ThreadPool.Names.MANAGEMENT)
     }

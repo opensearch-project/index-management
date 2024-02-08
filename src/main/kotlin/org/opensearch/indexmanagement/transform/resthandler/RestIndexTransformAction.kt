@@ -7,6 +7,7 @@ package org.opensearch.indexmanagement.transform.resthandler
 
 import org.opensearch.action.support.WriteRequest
 import org.opensearch.client.node.NodeClient
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.core.xcontent.ToXContent
 import org.opensearch.index.seqno.SequenceNumbers
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.TRANSFORM_BASE_URI
@@ -27,17 +28,15 @@ import org.opensearch.rest.RestHandler
 import org.opensearch.rest.RestRequest
 import org.opensearch.rest.RestRequest.Method.PUT
 import org.opensearch.rest.RestResponse
-import org.opensearch.core.rest.RestStatus
 import org.opensearch.rest.action.RestResponseListener
 import java.io.IOException
 import java.time.Instant
 
 class RestIndexTransformAction : BaseRestHandler() {
-
     override fun routes(): List<RestHandler.Route> {
         return listOf(
             RestHandler.Route(PUT, TRANSFORM_BASE_URI),
-            RestHandler.Route(PUT, "$TRANSFORM_BASE_URI/{transformID}")
+            RestHandler.Route(PUT, "$TRANSFORM_BASE_URI/{transformID}"),
         )
     }
 
@@ -55,21 +54,22 @@ class RestIndexTransformAction : BaseRestHandler() {
         val seqNo = request.paramAsLong(IF_SEQ_NO, SequenceNumbers.UNASSIGNED_SEQ_NO)
         val primaryTerm = request.paramAsLong(IF_PRIMARY_TERM, SequenceNumbers.UNASSIGNED_PRIMARY_TERM)
         val xcp = request.contentParser()
-        val transform = xcp.parseWithType(id = id, seqNo = seqNo, primaryTerm = primaryTerm, parse = Transform.Companion::parse)
-            .copy(updatedAt = Instant.now())
-        val refreshPolicy = if (request.hasParam(REFRESH)) {
-            WriteRequest.RefreshPolicy.parse(request.param(REFRESH))
-        } else {
-            WriteRequest.RefreshPolicy.IMMEDIATE
-        }
+        val transform =
+            xcp.parseWithType(id = id, seqNo = seqNo, primaryTerm = primaryTerm, parse = Transform.Companion::parse)
+                .copy(updatedAt = Instant.now())
+        val refreshPolicy =
+            if (request.hasParam(REFRESH)) {
+                WriteRequest.RefreshPolicy.parse(request.param(REFRESH))
+            } else {
+                WriteRequest.RefreshPolicy.IMMEDIATE
+            }
         val indexTransformRequest = IndexTransformRequest(transform, refreshPolicy)
         return RestChannelConsumer { channel ->
             client.execute(IndexTransformAction.INSTANCE, indexTransformRequest, indexTransformResponse(channel))
         }
     }
 
-    private fun indexTransformResponse(channel: RestChannel):
-        RestResponseListener<IndexTransformResponse> {
+    private fun indexTransformResponse(channel: RestChannel): RestResponseListener<IndexTransformResponse> {
         return object : RestResponseListener<IndexTransformResponse>(channel) {
             @Throws(Exception::class)
             override fun buildResponse(response: IndexTransformResponse): RestResponse {

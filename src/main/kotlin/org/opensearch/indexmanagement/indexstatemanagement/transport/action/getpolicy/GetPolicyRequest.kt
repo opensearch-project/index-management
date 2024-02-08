@@ -14,7 +14,6 @@ import org.opensearch.search.fetch.subphase.FetchSourceContext
 import java.io.IOException
 
 class GetPolicyRequest : ActionRequest {
-
     val policyID: String
     val version: Long
     val fetchSrcContext: FetchSourceContext
@@ -22,7 +21,7 @@ class GetPolicyRequest : ActionRequest {
     constructor(
         policyID: String,
         version: Long,
-        fetchSrcContext: FetchSourceContext
+        fetchSrcContext: FetchSourceContext,
     ) : super() {
         this.policyID = policyID
         this.version = version
@@ -33,16 +32,17 @@ class GetPolicyRequest : ActionRequest {
     constructor(sin: StreamInput) : this(
         policyID = sin.readString(),
         version = sin.readLong(),
-        fetchSrcContext = FetchSourceContext(sin)
+        fetchSrcContext = FetchSourceContext(sin),
     )
 
     override fun validate(): ActionRequestValidationException? {
         var validationException: ActionRequestValidationException? = null
         if (policyID.isBlank()) {
-            validationException = ValidateActions.addValidationError(
-                "Missing policy ID",
-                validationException
-            )
+            validationException =
+                ValidateActions.addValidationError(
+                    "Missing policy ID",
+                    validationException,
+                )
         }
         return validationException
     }

@@ -15,7 +15,6 @@ import java.time.temporal.ChronoUnit
 import java.util.Locale
 
 class ReplicaCountActionIT : IndexStateManagementRestTestCase() {
-
     private val testIndexName = javaClass.simpleName.lowercase(Locale.ROOT)
 
     fun `test basic replica count`() {
@@ -23,15 +22,16 @@ class ReplicaCountActionIT : IndexStateManagementRestTestCase() {
         val policyID = "${testIndexName}_testPolicyName_1"
         val actionConfig = ReplicaCountAction(10, 0)
         val states = listOf(State(name = "ReplicaCountState", actions = listOf(actionConfig), transitions = listOf()))
-        val policy = Policy(
-            id = policyID,
-            description = "$testIndexName description",
-            schemaVersion = 1L,
-            lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
-            errorNotification = randomErrorNotification(),
-            defaultState = states[0].name,
-            states = states
-        )
+        val policy =
+            Policy(
+                id = policyID,
+                description = "$testIndexName description",
+                schemaVersion = 1L,
+                lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
+                errorNotification = randomErrorNotification(),
+                defaultState = states[0].name,
+                states = states,
+            )
 
         createPolicy(policy, policyID)
         // create index defaults to 1 replica

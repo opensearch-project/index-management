@@ -17,7 +17,6 @@ import org.opensearch.snapshots.SnapshotInProgressException
 import org.opensearch.transport.RemoteTransportException
 
 class AttemptDeleteStep : Step(name) {
-
     private val logger = LogManager.getLogger(javaClass)
     private var stepStatus = StepStatus.STARTING
     private var info: Map<String, Any>? = null
@@ -26,8 +25,9 @@ class AttemptDeleteStep : Step(name) {
         val context = this.context ?: return this
         val indexName = context.metadata.index
         try {
-            val response: AcknowledgedResponse = context.client.admin().indices()
-                .suspendUntil { delete(DeleteIndexRequest(indexName), it) }
+            val response: AcknowledgedResponse =
+                context.client.admin().indices()
+                    .suspendUntil { delete(DeleteIndexRequest(indexName), it) }
 
             if (response.isAcknowledged) {
                 stepStatus = StepStatus.COMPLETED
@@ -75,7 +75,7 @@ class AttemptDeleteStep : Step(name) {
         return currentMetadata.copy(
             stepMetaData = StepMetaData(name, getStepStartTime(currentMetadata).toEpochMilli(), stepStatus),
             transitionTo = null,
-            info = info
+            info = info,
         )
     }
 
@@ -83,8 +83,11 @@ class AttemptDeleteStep : Step(name) {
 
     companion object {
         const val name = "attempt_delete"
+
         fun getFailedMessage(indexName: String) = "Failed to delete index [index=$indexName]"
+
         fun getSuccessMessage(indexName: String) = "Successfully deleted index [index=$indexName]"
+
         fun getSnapshotMessage(indexName: String) = "Index had snapshot in progress, retrying deletion [index=$indexName]"
     }
 }

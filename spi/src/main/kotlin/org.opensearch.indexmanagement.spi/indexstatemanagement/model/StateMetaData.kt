@@ -5,18 +5,18 @@
 
 package org.opensearch.indexmanagement.spi.indexstatemanagement.model
 
+import org.opensearch.common.xcontent.LoggingDeprecationHandler
+import org.opensearch.common.xcontent.XContentType
 import org.opensearch.core.common.Strings
 import org.opensearch.core.common.io.stream.StreamInput
 import org.opensearch.core.common.io.stream.StreamOutput
 import org.opensearch.core.common.io.stream.Writeable
-import org.opensearch.common.xcontent.LoggingDeprecationHandler
 import org.opensearch.core.xcontent.NamedXContentRegistry
 import org.opensearch.core.xcontent.ToXContent
 import org.opensearch.core.xcontent.ToXContentFragment
 import org.opensearch.core.xcontent.XContentBuilder
 import org.opensearch.core.xcontent.XContentParser
 import org.opensearch.core.xcontent.XContentParserUtils
-import org.opensearch.common.xcontent.XContentType
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData.Companion.NAME
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData.Companion.START_TIME
 import java.io.ByteArrayInputStream
@@ -24,9 +24,8 @@ import java.nio.charset.StandardCharsets
 
 data class StateMetaData(
     val name: String,
-    val startTime: Long
+    val startTime: Long,
 ) : Writeable, ToXContentFragment {
-
     override fun writeTo(out: StreamOutput) {
         out.writeString(name)
         out.writeLong(startTime)
@@ -49,7 +48,7 @@ data class StateMetaData(
 
             return StateMetaData(
                 requireNotNull(name) { "$NAME is null" },
-                requireNotNull(startTime) { "$START_TIME is null" }
+                requireNotNull(startTime) { "$START_TIME is null" },
             )
         }
 
@@ -82,7 +81,7 @@ data class StateMetaData(
 
             return StateMetaData(
                 requireNotNull(name) { "$NAME is null" },
-                requireNotNull(startTime) { "$START_TIME is null" }
+                requireNotNull(startTime) { "$START_TIME is null" },
             )
         }
     }

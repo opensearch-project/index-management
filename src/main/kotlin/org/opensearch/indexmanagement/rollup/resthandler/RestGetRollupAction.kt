@@ -27,7 +27,6 @@ import org.opensearch.rest.action.RestToXContentListener
 import org.opensearch.search.fetch.subphase.FetchSourceContext
 
 class RestGetRollupAction : BaseRestHandler() {
-
     override fun routes(): List<Route> {
         return emptyList()
     }
@@ -36,16 +35,16 @@ class RestGetRollupAction : BaseRestHandler() {
         return listOf(
             ReplacedRoute(
                 GET, ROLLUP_JOBS_BASE_URI,
-                GET, LEGACY_ROLLUP_JOBS_BASE_URI
+                GET, LEGACY_ROLLUP_JOBS_BASE_URI,
             ),
             ReplacedRoute(
                 GET, "$ROLLUP_JOBS_BASE_URI/{rollupID}",
-                GET, "$LEGACY_ROLLUP_JOBS_BASE_URI/{rollupID}"
+                GET, "$LEGACY_ROLLUP_JOBS_BASE_URI/{rollupID}",
             ),
             ReplacedRoute(
                 HEAD, "$ROLLUP_JOBS_BASE_URI/{rollupID}",
-                HEAD, "$LEGACY_ROLLUP_JOBS_BASE_URI/{rollupID}"
-            )
+                HEAD, "$LEGACY_ROLLUP_JOBS_BASE_URI/{rollupID}",
+            ),
         )
     }
 
@@ -62,13 +61,14 @@ class RestGetRollupAction : BaseRestHandler() {
         val sortDirection = request.param("sortDirection", DEFAULT_SORT_DIRECTION)
         return RestChannelConsumer { channel ->
             if (rollupID == null || rollupID.isEmpty()) {
-                val req = GetRollupsRequest(
-                    searchString,
-                    from,
-                    size,
-                    sortField,
-                    sortDirection
-                )
+                val req =
+                    GetRollupsRequest(
+                        searchString,
+                        from,
+                        size,
+                        sortField,
+                        sortDirection,
+                    )
                 client.execute(GetRollupsAction.INSTANCE, req, RestToXContentListener(channel))
             } else {
                 val req = GetRollupRequest(rollupID, if (request.method() == HEAD) FetchSourceContext.DO_NOT_FETCH_SOURCE else null)

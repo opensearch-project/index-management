@@ -11,24 +11,25 @@ import org.opensearch.cluster.metadata.IndexMetadata
 import org.opensearch.test.OpenSearchTestCase
 
 class ExtensionsTests : OpenSearchTestCase() {
-
     fun `test getting oldest rollover time`() {
-        val noRolloverMetadata = IndexMetadata
-            .Builder("foo-index")
-            .settings(settings(Version.CURRENT))
-            .numberOfShards(1)
-            .numberOfReplicas(1)
-            .build()
+        val noRolloverMetadata =
+            IndexMetadata
+                .Builder("foo-index")
+                .settings(settings(Version.CURRENT))
+                .numberOfShards(1)
+                .numberOfReplicas(1)
+                .build()
 
         assertNull(noRolloverMetadata.getOldestRolloverTime())
         val oldest = RolloverInfo("bar-alias", emptyList(), 17L)
 
-        val metadata = IndexMetadata
-            .Builder(noRolloverMetadata)
-            .putRolloverInfo(RolloverInfo("foo-alias", emptyList(), 42L))
-            .putRolloverInfo(oldest)
-            .putRolloverInfo(RolloverInfo("baz-alias", emptyList(), 134345L))
-            .build()
+        val metadata =
+            IndexMetadata
+                .Builder(noRolloverMetadata)
+                .putRolloverInfo(RolloverInfo("foo-alias", emptyList(), 42L))
+                .putRolloverInfo(oldest)
+                .putRolloverInfo(RolloverInfo("baz-alias", emptyList(), 134345L))
+                .build()
 
         assertEquals("Did not get the oldest rollover time", oldest.time, metadata.getOldestRolloverTime()?.toEpochMilli())
     }

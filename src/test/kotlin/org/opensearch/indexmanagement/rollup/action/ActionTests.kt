@@ -14,7 +14,6 @@ import org.opensearch.indexmanagement.rollup.action.stop.StopRollupAction
 import org.opensearch.test.OpenSearchTestCase
 
 class ActionTests : OpenSearchTestCase() {
-
     fun `test delete action name`() {
         assertNotNull(DeleteRollupAction.INSTANCE.name())
         assertEquals(DeleteRollupAction.INSTANCE.name(), DeleteRollupAction.NAME)

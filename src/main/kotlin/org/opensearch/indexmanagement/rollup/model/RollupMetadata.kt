@@ -26,13 +26,12 @@ import java.util.Locale
 
 data class ContinuousMetadata(
     val nextWindowStartTime: Instant,
-    val nextWindowEndTime: Instant
+    val nextWindowEndTime: Instant,
 ) : ToXContentObject, Writeable {
-
     @Throws(IOException::class)
     constructor(sin: StreamInput) : this(
         nextWindowStartTime = sin.readInstant(),
-        nextWindowEndTime = sin.readInstant()
+        nextWindowEndTime = sin.readInstant(),
     )
 
     override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
@@ -73,7 +72,7 @@ data class ContinuousMetadata(
 
             return ContinuousMetadata(
                 nextWindowStartTime = requireNotNull(windowStartTime) { "Next window start time must not be null for a continuous job" },
-                nextWindowEndTime = requireNotNull(windowEndTime) { "Next window end time must not be null for a continuous job" }
+                nextWindowEndTime = requireNotNull(windowEndTime) { "Next window end time must not be null for a continuous job" },
             )
         }
     }
@@ -84,16 +83,15 @@ data class RollupStats(
     val documentsProcessed: Long,
     val rollupsIndexed: Long,
     val indexTimeInMillis: Long,
-    val searchTimeInMillis: Long
+    val searchTimeInMillis: Long,
 ) : ToXContentObject, Writeable {
-
     @Throws(IOException::class)
     constructor(sin: StreamInput) : this(
         pagesProcessed = sin.readLong(),
         documentsProcessed = sin.readLong(),
         rollupsIndexed = sin.readLong(),
         indexTimeInMillis = sin.readLong(),
-        searchTimeInMillis = sin.readLong()
+        searchTimeInMillis = sin.readLong(),
     )
 
     override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
@@ -150,7 +148,7 @@ data class RollupStats(
                 documentsProcessed = requireNotNull(documentsProcessed) { "Documents processed must not be null" },
                 rollupsIndexed = requireNotNull(rollupsIndexed) { "Rollups indexed must not be null" },
                 indexTimeInMillis = requireNotNull(indexTimeInMillis) { "Index time in millis must not be null" },
-                searchTimeInMillis = requireNotNull(searchTimeInMillis) { "Search time in millis must not be null" }
+                searchTimeInMillis = requireNotNull(searchTimeInMillis) { "Search time in millis must not be null" },
             )
         }
     }
@@ -166,16 +164,16 @@ data class RollupMetadata(
     val continuous: ContinuousMetadata? = null,
     val status: Status,
     val failureReason: String? = null,
-    val stats: RollupStats
+    val stats: RollupStats,
 ) : ToXContentObject, Writeable {
-
     enum class Status(val type: String) {
         INIT("init"),
         STARTED("started"),
         STOPPED("stopped"),
         FINISHED("finished"),
         FAILED("failed"),
-        RETRY("retry");
+        RETRY("retry"),
+        ;
 
         override fun toString(): String {
             return type
@@ -193,7 +191,7 @@ data class RollupMetadata(
         continuous = if (sin.readBoolean()) ContinuousMetadata(sin) else null,
         status = sin.readEnum(Status::class.java),
         failureReason = sin.readOptionalString(),
-        stats = RollupStats(sin)
+        stats = RollupStats(sin),
     )
 
     override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
@@ -245,7 +243,7 @@ data class RollupMetadata(
             xcp: XContentParser,
             id: String = NO_ID,
             seqNo: Long = SequenceNumbers.UNASSIGNED_SEQ_NO,
-            primaryTerm: Long = SequenceNumbers.UNASSIGNED_PRIMARY_TERM
+            primaryTerm: Long = SequenceNumbers.UNASSIGNED_PRIMARY_TERM,
         ): RollupMetadata {
             var rollupID: String? = null
             var afterKey: Map<String, Any>? = null
@@ -281,7 +279,7 @@ data class RollupMetadata(
                 continuous = continuous,
                 status = requireNotNull(status) { "Status must not be null" },
                 failureReason = failureReason,
-                stats = requireNotNull(stats) { "Stats must not be null" }
+                stats = requireNotNull(stats) { "Stats must not be null" },
             )
         }
 
@@ -293,23 +291,26 @@ data class RollupMetadata(
 
 fun RollupMetadata.incrementStats(response: SearchResponse, internalComposite: InternalComposite): RollupMetadata {
     return this.copy(
-        stats = this.stats.copy(
+        stats =
+        this.stats.copy(
             pagesProcessed = stats.pagesProcessed + 1L,
-            documentsProcessed = stats.documentsProcessed +
+            documentsProcessed =
+            stats.documentsProcessed +
                 internalComposite.buckets.fold(0L) { acc, internalBucket -> acc + internalBucket.docCount },
-            searchTimeInMillis = stats.searchTimeInMillis + response.took.millis
-        )
+            searchTimeInMillis = stats.searchTimeInMillis + response.took.millis,
+        ),
     )
 }
 
 fun RollupMetadata.mergeStats(stats: RollupStats): RollupMetadata {
     return this.copy(
-        stats = this.stats.copy(
+        stats =
+        this.stats.copy(
             pagesProcessed = this.stats.pagesProcessed + stats.pagesProcessed,
             documentsProcessed = this.stats.documentsProcessed + stats.documentsProcessed,
             rollupsIndexed = this.stats.rollupsIndexed + stats.rollupsIndexed,
             indexTimeInMillis = this.stats.indexTimeInMillis + stats.indexTimeInMillis,
-            searchTimeInMillis = this.stats.searchTimeInMillis + stats.searchTimeInMillis
-        )
+            searchTimeInMillis = this.stats.searchTimeInMillis + stats.searchTimeInMillis,
+        ),
     )
 }

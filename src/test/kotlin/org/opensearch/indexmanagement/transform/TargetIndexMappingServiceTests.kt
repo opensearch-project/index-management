@@ -9,7 +9,6 @@ import org.junit.Assert
 import org.opensearch.test.OpenSearchTestCase
 
 class TargetIndexMappingServiceTests : OpenSearchTestCase() {
-
     fun `test create target index mapping fields mapped correctly`() {
         val expectedResult = """{"_meta":{"schema_version":1},"dynamic_templates":[{"strings":{"match_mapping_type":"string","mapping":{"type":"keyword"}}}],"properties":{"tpep_pickup_datetime":{"type":"date"}}}"""
         val dateFieldMap = mapOf("tpep_pickup_datetime" to mapOf("type" to "date"))

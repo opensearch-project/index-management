@@ -18,7 +18,6 @@ import org.opensearch.script.ScriptType
 import org.opensearch.script.TemplateScript
 
 object RollupFieldValueExpressionResolver {
-
     private val validTopContextFields = setOf(Rollup.SOURCE_INDEX_FIELD)
 
     private lateinit var scriptService: ScriptService
@@ -28,13 +27,15 @@ object RollupFieldValueExpressionResolver {
     fun resolve(rollup: Rollup, fieldValue: String): String {
         val script = Script(ScriptType.INLINE, Script.DEFAULT_TEMPLATE_LANG, fieldValue, mapOf())
 
-        val contextMap = rollup.toXContent(XContentFactory.jsonBuilder(), XCONTENT_WITHOUT_TYPE)
-            .toMap()
-            .filterKeys { key -> key in validTopContextFields }
+        val contextMap =
+            rollup.toXContent(XContentFactory.jsonBuilder(), XCONTENT_WITHOUT_TYPE)
+                .toMap()
+                .filterKeys { key -> key in validTopContextFields }
 
-        var compiledValue = scriptService.compile(script, TemplateScript.CONTEXT)
-            .newInstance(script.params + mapOf("ctx" to contextMap))
-            .execute()
+        var compiledValue =
+            scriptService.compile(script, TemplateScript.CONTEXT)
+                .newInstance(script.params + mapOf("ctx" to contextMap))
+                .execute()
 
         if (indexAliasUtils.isAlias(compiledValue)) {
             compiledValue = indexAliasUtils.getWriteIndexNameForAlias(compiledValue)
@@ -56,7 +57,6 @@ object RollupFieldValueExpressionResolver {
     }
 
     open class IndexAliasUtils(val clusterService: ClusterService) {
-
         open fun hasAlias(index: String): Boolean {
             val aliases = this.clusterService.state().metadata().indices[index]?.aliases
             if (aliases != null) {

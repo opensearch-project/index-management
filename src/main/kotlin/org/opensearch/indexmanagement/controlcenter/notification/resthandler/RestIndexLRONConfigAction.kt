@@ -6,10 +6,10 @@
 package org.opensearch.indexmanagement.controlcenter.notification.resthandler
 
 import org.opensearch.client.node.NodeClient
+import org.opensearch.indexmanagement.IndexManagementPlugin
 import org.opensearch.indexmanagement.controlcenter.notification.action.index.IndexLRONConfigAction
 import org.opensearch.indexmanagement.controlcenter.notification.action.index.IndexLRONConfigRequest
 import org.opensearch.indexmanagement.controlcenter.notification.model.LRONConfig
-import org.opensearch.indexmanagement.IndexManagementPlugin
 import org.opensearch.indexmanagement.controlcenter.notification.util.getDocID
 import org.opensearch.indexmanagement.opensearchapi.parseWithType
 import org.opensearch.indexmanagement.util.DRY_RUN
@@ -21,11 +21,10 @@ import org.opensearch.rest.action.RestToXContentListener
 import java.io.IOException
 
 class RestIndexLRONConfigAction : BaseRestHandler() {
-
     override fun routes(): List<RestHandler.Route> {
         return listOf(
             RestHandler.Route(RestRequest.Method.POST, IndexManagementPlugin.LRON_BASE_URI),
-            RestHandler.Route(RestRequest.Method.PUT, "${IndexManagementPlugin.LRON_BASE_URI}/{id}")
+            RestHandler.Route(RestRequest.Method.PUT, "${IndexManagementPlugin.LRON_BASE_URI}/{id}"),
         )
     }
 

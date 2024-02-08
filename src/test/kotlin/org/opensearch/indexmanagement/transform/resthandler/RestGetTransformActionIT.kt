@@ -6,35 +6,35 @@
 package org.opensearch.indexmanagement.transform.resthandler
 
 import org.opensearch.client.ResponseException
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.TRANSFORM_BASE_URI
 import org.opensearch.indexmanagement.common.model.dimension.Dimension
 import org.opensearch.indexmanagement.makeRequest
 import org.opensearch.indexmanagement.transform.TransformRestTestCase
 import org.opensearch.indexmanagement.transform.action.get.GetTransformsRequest.Companion.DEFAULT_SIZE
 import org.opensearch.indexmanagement.transform.randomTransform
-import org.opensearch.core.rest.RestStatus
 import org.opensearch.test.OpenSearchTestCase
 import org.opensearch.test.junit.annotations.TestLogging
 
 @TestLogging(value = "level:DEBUG", reason = "Debugging tests")
 @Suppress("UNCHECKED_CAST")
 class RestGetTransformActionIT : TransformRestTestCase() {
-
     @Throws(Exception::class)
     fun `test getting a transform`() {
         var transform = createTransform(randomTransform())
         val indexedTransform = getTransform(transform.id)
 
-        transform = transform.copy(
-            schemaVersion = indexedTransform.schemaVersion,
-            updatedAt = indexedTransform.updatedAt,
-            jobSchedule = indexedTransform.jobSchedule,
-            metadataId = null,
-            // Roles are deprecated and will not be returned
-            roles = listOf(),
-            // User information is not returned as part of REST output
-            user = null
-        )
+        transform =
+            transform.copy(
+                schemaVersion = indexedTransform.schemaVersion,
+                updatedAt = indexedTransform.updatedAt,
+                jobSchedule = indexedTransform.jobSchedule,
+                metadataId = null,
+                // Roles are deprecated and will not be returned
+                roles = listOf(),
+                // User information is not returned as part of REST output
+                user = null,
+            )
         assertEquals("Indexed and retrieved transform differ", transform, indexedTransform)
     }
 

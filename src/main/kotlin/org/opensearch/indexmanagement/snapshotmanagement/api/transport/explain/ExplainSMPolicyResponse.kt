@@ -29,14 +29,15 @@ class ExplainSMPolicyResponse : ActionResponse, ToXContentObject {
 
     @Throws(IOException::class)
     constructor(sin: StreamInput) : this(
-        policiesToExplain = sin.let {
+        policiesToExplain =
+        sin.let {
             val policiesToExplain = mutableMapOf<String, ExplainSMPolicy?>()
             val size = it.readVInt()
             repeat(size) { _ ->
                 policiesToExplain[it.readString()] = sin.readOptionalValue(::ExplainSMPolicy)
             }
             policiesToExplain.toMap()
-        }
+        },
     )
 
     @Throws(IOException::class)

@@ -22,7 +22,6 @@ import org.opensearch.indexmanagement.util._VERSION
 import java.io.IOException
 
 class GetPolicyResponse : ActionResponse, ToXContentObject {
-
     val id: String
     val version: Long
     val seqNo: Long
@@ -34,7 +33,7 @@ class GetPolicyResponse : ActionResponse, ToXContentObject {
         version: Long,
         seqNo: Long,
         primaryTerm: Long,
-        policy: Policy?
+        policy: Policy?,
     ) : super() {
         this.id = id
         this.version = version
@@ -49,7 +48,7 @@ class GetPolicyResponse : ActionResponse, ToXContentObject {
         version = sin.readLong(),
         seqNo = sin.readLong(),
         primaryTerm = sin.readLong(),
-        policy = sin.readOptionalWriteable(::Policy)
+        policy = sin.readOptionalWriteable(::Policy),
     )
 
     override fun writeTo(out: StreamOutput) {

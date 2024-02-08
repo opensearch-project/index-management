@@ -27,14 +27,15 @@ class ExplainRollupResponse : ActionResponse, ToXContentObject {
 
     @Throws(IOException::class)
     constructor(sin: StreamInput) : this(
-        idsToExplain = sin.let {
+        idsToExplain =
+        sin.let {
             val idsToExplain = mutableMapOf<String, ExplainRollup?>()
             val size = it.readVInt()
             repeat(size) { _ ->
                 idsToExplain[it.readString()] = if (sin.readBoolean()) ExplainRollup(it) else null
             }
             idsToExplain.toMap()
-        }
+        },
     )
 
     @Throws(IOException::class)

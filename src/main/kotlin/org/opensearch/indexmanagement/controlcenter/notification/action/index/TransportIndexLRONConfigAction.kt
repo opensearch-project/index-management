@@ -8,7 +8,6 @@ package org.opensearch.indexmanagement.controlcenter.notification.action.index
 import org.apache.logging.log4j.LogManager
 import org.opensearch.ExceptionsHelper
 import org.opensearch.OpenSearchStatusException
-import org.opensearch.core.action.ActionListener
 import org.opensearch.action.DocWriteRequest
 import org.opensearch.action.index.IndexRequest
 import org.opensearch.action.index.IndexResponse
@@ -22,6 +21,8 @@ import org.opensearch.common.inject.Inject
 import org.opensearch.common.xcontent.XContentFactory
 import org.opensearch.commons.ConfigConstants
 import org.opensearch.commons.authuser.User
+import org.opensearch.core.action.ActionListener
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.core.xcontent.NamedXContentRegistry
 import org.opensearch.indexmanagement.IndexManagementPlugin
 import org.opensearch.indexmanagement.controlcenter.notification.ControlCenterIndices
@@ -29,12 +30,13 @@ import org.opensearch.indexmanagement.controlcenter.notification.LRONConfigRespo
 import org.opensearch.indexmanagement.controlcenter.notification.util.getDocID
 import org.opensearch.indexmanagement.controlcenter.notification.util.getPriority
 import org.opensearch.indexmanagement.util.SecurityUtils
-import org.opensearch.core.rest.RestStatus
 import org.opensearch.tasks.Task
 import org.opensearch.transport.TransportService
 
 @Suppress("LongParameterList")
-class TransportIndexLRONConfigAction @Inject constructor(
+class TransportIndexLRONConfigAction
+@Inject
+constructor(
     val client: NodeClient,
     transportService: TransportService,
     actionFilters: ActionFilters,
@@ -42,7 +44,7 @@ class TransportIndexLRONConfigAction @Inject constructor(
     val controlCenterIndices: ControlCenterIndices,
     val xContentRegistry: NamedXContentRegistry,
 ) : HandledTransportAction<IndexLRONConfigRequest, LRONConfigResponse>(
-    IndexLRONConfigAction.NAME, transportService, actionFilters, ::IndexLRONConfigRequest
+    IndexLRONConfigAction.NAME, transportService, actionFilters, ::IndexLRONConfigRequest,
 ) {
     private val log = LogManager.getLogger(javaClass)
 
@@ -55,22 +57,22 @@ class TransportIndexLRONConfigAction @Inject constructor(
         private val actionListener: ActionListener<LRONConfigResponse>,
         private val request: IndexLRONConfigRequest,
         private val user: User? = SecurityUtils.buildUser(client.threadPool().threadContext),
-        private val docId: String = getDocID(request.lronConfig.taskId, request.lronConfig.actionName)
+        private val docId: String = getDocID(request.lronConfig.taskId, request.lronConfig.actionName),
     ) {
         fun start() {
             log.debug(
                 "User and roles string from thread context: ${client.threadPool().threadContext.getTransient<String>(
-                    ConfigConstants.OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT
-                )}"
+                    ConfigConstants.OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT,
+                )}",
             )
             client.threadPool().threadContext.stashContext().use {
-                /* we use dryRun to help check permission and do request validation */
+                // we use dryRun to help check permission and do request validation
                 if (request.dryRun) {
                     validate()
                     return
                 }
                 controlCenterIndices.checkAndUpdateControlCenterIndex(
-                    ActionListener.wrap(::onCreateMappingsResponse, actionListener::onFailure)
+                    ActionListener.wrap(::onCreateMappingsResponse, actionListener::onFailure),
                 )
             }
         }
@@ -87,7 +89,7 @@ class TransportIndexLRONConfigAction @Inject constructor(
         }
 
         private fun validate() {
-            /* check whether the node id in task id exists */
+            // check whether the node id in task id exists
             if (null != request.lronConfig.taskId && null == clusterService.state().nodes.get(request.lronConfig.taskId.nodeId)) {
                 actionListener.onFailure(IllegalArgumentException("Illegal taskID. NodeID not exists."))
                 return
@@ -96,21 +98,23 @@ class TransportIndexLRONConfigAction @Inject constructor(
         }
 
         private fun putLRONConfig() {
-            val lronConfig = request.lronConfig.copy(
-                user = this.user,
-                priority = getPriority(request.lronConfig.taskId, request.lronConfig.actionName)
-            )
+            val lronConfig =
+                request.lronConfig.copy(
+                    user = this.user,
+                    priority = getPriority(request.lronConfig.taskId, request.lronConfig.actionName),
+                )
 
             if (request.dryRun) {
                 actionListener.onResponse(LRONConfigResponse(docId, lronConfig))
                 return
             }
 
-            val indexRequest = IndexRequest(IndexManagementPlugin.CONTROL_CENTER_INDEX)
-                .setRefreshPolicy(WriteRequest.RefreshPolicy.IMMEDIATE)
-                .source(lronConfig.toXContent(XContentFactory.jsonBuilder()))
-                .id(docId)
-                .timeout(IndexRequest.DEFAULT_TIMEOUT)
+            val indexRequest =
+                IndexRequest(IndexManagementPlugin.CONTROL_CENTER_INDEX)
+                    .setRefreshPolicy(WriteRequest.RefreshPolicy.IMMEDIATE)
+                    .source(lronConfig.toXContent(XContentFactory.jsonBuilder()))
+                    .id(docId)
+                    .timeout(IndexRequest.DEFAULT_TIMEOUT)
             if (!request.isUpdate) {
                 indexRequest.opType(DocWriteRequest.OpType.CREATE)
             }
@@ -126,8 +130,8 @@ class TransportIndexLRONConfigAction @Inject constructor(
                             actionListener.onResponse(
                                 LRONConfigResponse(
                                     response.id,
-                                    lronConfig
-                                )
+                                    lronConfig,
+                                ),
                             )
                         }
                     }
@@ -135,7 +139,7 @@ class TransportIndexLRONConfigAction @Inject constructor(
                     override fun onFailure(e: Exception) {
                         actionListener.onFailure(ExceptionsHelper.unwrapCause(e) as Exception)
                     }
-                }
+                },
             )
         }
     }

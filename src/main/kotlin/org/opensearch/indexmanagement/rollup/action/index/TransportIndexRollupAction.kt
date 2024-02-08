@@ -7,7 +7,6 @@ package org.opensearch.indexmanagement.rollup.action.index
 
 import org.apache.logging.log4j.LogManager
 import org.opensearch.OpenSearchStatusException
-import org.opensearch.core.action.ActionListener
 import org.opensearch.action.DocWriteRequest
 import org.opensearch.action.get.GetRequest
 import org.opensearch.action.get.GetResponse
@@ -20,11 +19,13 @@ import org.opensearch.client.Client
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.inject.Inject
 import org.opensearch.common.settings.Settings
-import org.opensearch.core.xcontent.NamedXContentRegistry
-import org.opensearch.core.xcontent.ToXContent
 import org.opensearch.common.xcontent.XContentFactory.jsonBuilder
 import org.opensearch.commons.ConfigConstants
 import org.opensearch.commons.authuser.User
+import org.opensearch.core.action.ActionListener
+import org.opensearch.core.rest.RestStatus
+import org.opensearch.core.xcontent.NamedXContentRegistry
+import org.opensearch.core.xcontent.ToXContent
 import org.opensearch.indexmanagement.IndexManagementIndices
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
 import org.opensearch.indexmanagement.rollup.model.Rollup
@@ -35,24 +36,24 @@ import org.opensearch.indexmanagement.util.IndexUtils
 import org.opensearch.indexmanagement.util.SecurityUtils
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.buildUser
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.validateUserConfiguration
-import org.opensearch.core.rest.RestStatus
 import org.opensearch.tasks.Task
 import org.opensearch.transport.TransportService
 
 // TODO: Field and mappings validations of source and target index, i.e. reject a histogram agg on example_field if its not possible
 @Suppress("LongParameterList")
-class TransportIndexRollupAction @Inject constructor(
+class TransportIndexRollupAction
+@Inject
+constructor(
     transportService: TransportService,
     val client: Client,
     actionFilters: ActionFilters,
     val indexManagementIndices: IndexManagementIndices,
     val clusterService: ClusterService,
     val settings: Settings,
-    val xContentRegistry: NamedXContentRegistry
+    val xContentRegistry: NamedXContentRegistry,
 ) : HandledTransportAction<IndexRollupRequest, IndexRollupResponse>(
-    IndexRollupAction.NAME, transportService, actionFilters, ::IndexRollupRequest
+    IndexRollupAction.NAME, transportService, actionFilters, ::IndexRollupRequest,
 ) {
-
     @Volatile private var filterByEnabled = IndexManagementSettings.FILTER_BY_BACKEND_ROLES.get(settings)
 
     init {
@@ -71,14 +72,13 @@ class TransportIndexRollupAction @Inject constructor(
         private val client: Client,
         private val actionListener: ActionListener<IndexRollupResponse>,
         private val request: IndexRollupRequest,
-        private val user: User? = buildUser(client.threadPool().threadContext, request.rollup.user)
+        private val user: User? = buildUser(client.threadPool().threadContext, request.rollup.user),
     ) {
-
         fun start() {
             log.debug(
                 "User and roles string from thread context: ${client.threadPool().threadContext.getTransient<String>(
-                    ConfigConstants.OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT
-                )}"
+                    ConfigConstants.OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT,
+                )}",
             )
             client.threadPool().threadContext.stashContext().use {
                 if (!validateUserConfiguration(user, filterByEnabled, actionListener)) {
@@ -96,8 +96,8 @@ class TransportIndexRollupAction @Inject constructor(
                         return actionListener.onFailure(
                             OpenSearchStatusException(
                                 "target_index value is invalid: ${request.rollup.targetIndex}",
-                                RestStatus.BAD_REQUEST
-                            )
+                                RestStatus.BAD_REQUEST,
+                            ),
                         )
                     }
                     putRollup()
@@ -141,8 +141,8 @@ class TransportIndexRollupAction @Inject constructor(
                 return actionListener.onFailure(
                     OpenSearchStatusException(
                         "target_index value is invalid: ${request.rollup.targetIndex}",
-                        RestStatus.BAD_REQUEST
-                    )
+                        RestStatus.BAD_REQUEST,
+                    ),
                 )
             }
             putRollup()
@@ -176,8 +176,8 @@ class TransportIndexRollupAction @Inject constructor(
                             actionListener.onResponse(
                                 IndexRollupResponse(
                                     response.id, response.version, response.seqNo, response.primaryTerm, status,
-                                    rollup.copy(seqNo = response.seqNo, primaryTerm = response.primaryTerm)
-                                )
+                                    rollup.copy(seqNo = response.seqNo, primaryTerm = response.primaryTerm),
+                                ),
                             )
                         }
                     }
@@ -185,7 +185,7 @@ class TransportIndexRollupAction @Inject constructor(
                     override fun onFailure(e: Exception) {
                         actionListener.onFailure(e)
                     }
-                }
+                },
             )
         }
 

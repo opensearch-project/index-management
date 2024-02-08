@@ -14,26 +14,26 @@ import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ValidationR
 import org.opensearch.test.OpenSearchTestCase
 
 class ExplainResponseTests : OpenSearchTestCase() {
-
     fun `test explain response`() {
         val indexNames = listOf("index1")
         val indexPolicyIDs = listOf("policyID1")
-        val metadata = ManagedIndexMetaData(
-            index = "index1",
-            indexUuid = randomAlphaOfLength(10),
-            policyID = "policyID1",
-            policySeqNo = randomNonNegativeLong(),
-            policyPrimaryTerm = randomNonNegativeLong(),
-            policyCompleted = null,
-            rolledOver = null,
-            indexCreationDate = null,
-            transitionTo = randomAlphaOfLength(10),
-            stateMetaData = null,
-            actionMetaData = null,
-            stepMetaData = null,
-            policyRetryInfo = null,
-            info = null
-        )
+        val metadata =
+            ManagedIndexMetaData(
+                index = "index1",
+                indexUuid = randomAlphaOfLength(10),
+                policyID = "policyID1",
+                policySeqNo = randomNonNegativeLong(),
+                policyPrimaryTerm = randomNonNegativeLong(),
+                policyCompleted = null,
+                rolledOver = null,
+                indexCreationDate = null,
+                transitionTo = randomAlphaOfLength(10),
+                stateMetaData = null,
+                actionMetaData = null,
+                stepMetaData = null,
+                policyRetryInfo = null,
+                info = null,
+            )
         val validationResult = ValidationResult("test", Validate.ValidationStatus.FAILED)
         val validationResults = listOf(validationResult)
         val indexMetadatas = listOf(metadata)

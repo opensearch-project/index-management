@@ -5,18 +5,19 @@
 
 package org.opensearch.indexmanagement.snapshotmanagement
 
+import org.apache.hc.core5.http.ContentType
 import org.apache.hc.core5.http.HttpEntity
 import org.apache.hc.core5.http.HttpHeaders
-import org.apache.hc.core5.http.ContentType
 import org.apache.hc.core5.http.io.entity.StringEntity
 import org.apache.hc.core5.http.message.BasicHeader
 import org.junit.After
 import org.junit.Before
 import org.opensearch.client.Response
 import org.opensearch.client.ResponseException
+import org.opensearch.common.xcontent.XContentType
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.core.xcontent.XContentParser
 import org.opensearch.core.xcontent.XContentParserUtils.ensureExpectedToken
-import org.opensearch.common.xcontent.XContentType
 import org.opensearch.index.seqno.SequenceNumbers
 import org.opensearch.indexmanagement.IndexManagementPlugin
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
@@ -29,14 +30,12 @@ import org.opensearch.indexmanagement.util._PRIMARY_TERM
 import org.opensearch.indexmanagement.util._SEQ_NO
 import org.opensearch.indexmanagement.waitFor
 import org.opensearch.jobscheduler.spi.schedule.IntervalSchedule
-import org.opensearch.core.rest.RestStatus
 import java.io.InputStream
 import java.time.Duration
 import java.time.Instant
 import java.time.Instant.now
 
 abstract class SnapshotManagementRestTestCase : IndexManagementRestTestCase() {
-
     @After
     fun clearIndicesAfterEachTest() {
         wipeAllIndices()
@@ -68,13 +67,14 @@ abstract class SnapshotManagementRestTestCase : IndexManagementRestTestCase() {
         smPolicyName: String,
         refresh: Boolean = true,
     ): Response {
-        val response = client()
-            .makeRequest(
-                "POST",
-                "${IndexManagementPlugin.SM_POLICIES_URI}/$smPolicyName?refresh=$refresh",
-                emptyMap(),
-                StringEntity(smPolicyString, ContentType.APPLICATION_JSON)
-            )
+        val response =
+            client()
+                .makeRequest(
+                    "POST",
+                    "${IndexManagementPlugin.SM_POLICIES_URI}/$smPolicyName?refresh=$refresh",
+                    emptyMap(),
+                    StringEntity(smPolicyString, ContentType.APPLICATION_JSON),
+                )
         assertEquals("Unable to create a new snapshot management policy", RestStatus.CREATED, response.restStatus())
         return response
     }
@@ -138,13 +138,14 @@ abstract class SnapshotManagementRestTestCase : IndexManagementRestTestCase() {
         val millis = Duration.of(intervalSchedule.interval.toLong(), intervalSchedule.unit).minusSeconds(2).toMillis()
         val startTimeMillis = desiredStartTimeMillis ?: (now().toEpochMilli() - millis)
         val waitForActiveShards = if (isMultiNode) "all" else "1"
-        val response = client().makeRequest(
-            "POST", "$INDEX_MANAGEMENT_INDEX/_update/${update.id}?wait_for_active_shards=$waitForActiveShards",
-            StringEntity(
-                "{\"doc\":{\"sm_policy\":{\"schedule\":{\"interval\":{\"start_time\":\"$startTimeMillis\"}}}}}",
-                ContentType.APPLICATION_JSON
+        val response =
+            client().makeRequest(
+                "POST", "$INDEX_MANAGEMENT_INDEX/_update/${update.id}?wait_for_active_shards=$waitForActiveShards",
+                StringEntity(
+                    "{\"doc\":{\"sm_policy\":{\"schedule\":{\"interval\":{\"start_time\":\"$startTimeMillis\"}}}}}",
+                    ContentType.APPLICATION_JSON,
+                ),
             )
-        )
 
         assertEquals("Request failed", RestStatus.OK, response.restStatus())
     }
@@ -169,10 +170,11 @@ abstract class SnapshotManagementRestTestCase : IndexManagementRestTestCase() {
         val millis = Duration.of(intervalSchedule.interval.toLong(), intervalSchedule.unit).minusSeconds(2).toMillis()
         val startTimeMillis = desiredStartTimeMillis ?: (now().toEpochMilli() - millis)
         val waitForActiveShards = if (isMultiNode) "all" else "1"
-        val response = client().makeRequest(
-            "POST", "$INDEX_MANAGEMENT_INDEX/_update/${update.metadataID}?wait_for_active_shards=$waitForActiveShards",
-            StringEntity(
-                """
+        val response =
+            client().makeRequest(
+                "POST", "$INDEX_MANAGEMENT_INDEX/_update/${update.metadataID}?wait_for_active_shards=$waitForActiveShards",
+                StringEntity(
+                    """
                     {
                       "doc": {
                         "sm_metadata": {
@@ -186,10 +188,10 @@ abstract class SnapshotManagementRestTestCase : IndexManagementRestTestCase() {
                         }
                       }
                     }
-                """.trimIndent(),
-                ContentType.APPLICATION_JSON
+                    """.trimIndent(),
+                    ContentType.APPLICATION_JSON,
+                ),
             )
-        )
 
         assertEquals("Request failed", RestStatus.OK, response.restStatus())
     }
@@ -259,15 +261,16 @@ abstract class SnapshotManagementRestTestCase : IndexManagementRestTestCase() {
     }
 
     protected fun createRepository(
-        repository: String
+        repository: String,
     ) {
-        val response = client()
-            .makeRequest(
-                "PUT",
-                "_snapshot/$repository",
-                emptyMap(),
-                StringEntity("{\"type\":\"fs\", \"settings\": {\"location\": \"$repository\"}}", ContentType.APPLICATION_JSON)
-            )
+        val response =
+            client()
+                .makeRequest(
+                    "PUT",
+                    "_snapshot/$repository",
+                    emptyMap(),
+                    StringEntity("{\"type\":\"fs\", \"settings\": {\"location\": \"$repository\"}}", ContentType.APPLICATION_JSON),
+                )
         assertEquals("Unable to create a new repository", RestStatus.OK, response.restStatus())
     }
 }

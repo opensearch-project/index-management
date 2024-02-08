@@ -11,7 +11,6 @@ import org.opensearch.indexmanagement.indexstatemanagement.util.FailedIndex
 import org.opensearch.test.OpenSearchTestCase
 
 class ISMStatusResponseTests : OpenSearchTestCase() {
-
     fun `test ISM status response`() {
         val updated = 1
         val failedIndex = FailedIndex("index", "uuid", "reason")

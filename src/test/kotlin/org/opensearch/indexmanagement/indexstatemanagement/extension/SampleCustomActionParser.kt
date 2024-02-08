@@ -44,8 +44,8 @@ class SampleCustomActionParser : ActionParser() {
     override fun getActionType(): String {
         return SampleCustomAction.name
     }
-    class SampleCustomAction(val someInt: Int, index: Int) : Action(name, index) {
 
+    class SampleCustomAction(val someInt: Int, index: Int) : Action(name, index) {
         private val sampleCustomStep = SampleCustomStep()
         private val steps = listOf(sampleCustomStep)
 
@@ -69,6 +69,7 @@ class SampleCustomActionParser : ActionParser() {
             const val SOME_INT_FIELD = "some_int_field"
         }
     }
+
     class SampleCustomStep : Step(name) {
         private var stepStatus = StepStatus.STARTING
 
@@ -81,7 +82,7 @@ class SampleCustomActionParser : ActionParser() {
             return currentMetadata.copy(
                 stepMetaData = StepMetaData(name, getStepStartTime(currentMetadata).toEpochMilli(), stepStatus),
                 transitionTo = null,
-                info = null
+                info = null,
             )
         }
 

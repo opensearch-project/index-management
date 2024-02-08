@@ -7,15 +7,14 @@ package org.opensearch.indexmanagement.rollup.actionfilter
 
 import org.opensearch.client.ResponseException
 import org.opensearch.common.settings.Settings
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.indexmanagement.makeRequest
 import org.opensearch.indexmanagement.rollup.RollupRestTestCase
 import org.opensearch.indexmanagement.rollup.settings.RollupSettings
-import org.opensearch.core.rest.RestStatus
 
 // TODO: Add assertions on fields
 @Suppress("UNCHECKED_CAST")
 class FieldCapsFilterIT : RollupRestTestCase() {
-
     fun `test field caps interception`() {
         createIndex("raw-data", Settings.EMPTY, """"properties":{"field-1":{"type":"boolean"},"field-2":{"type":"integer"},"field-3":{"type":"float"},"field-4":{"type":"keyword"},"field-5":{"type":"date","format":"yyyy-MM-dd HH:mm:ss"},"field-6":{"type":"text","fields":{"field-6-1":{"type":"keyword"}}},"field-7":{"properties":{"field-7-1":{"type":"geo_point"}}}}""")
         createIndex("rollup-data", Settings.builder().put(RollupSettings.ROLLUP_INDEX.key, true).build(), """"properties":{"field-1":{"type":"keyword"}}""")

@@ -13,18 +13,18 @@ import org.junit.AfterClass
 import org.junit.Before
 import org.opensearch.client.Response
 import org.opensearch.client.ResponseException
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.indexmanagement.IndexManagementPlugin
 import org.opensearch.indexmanagement.IndexManagementRestTestCase
 import org.opensearch.indexmanagement.controlcenter.notification.initNodeIdsInRestIT
 import org.opensearch.indexmanagement.controlcenter.notification.model.LRONConfig
 import org.opensearch.indexmanagement.controlcenter.notification.toJsonString
 import org.opensearch.indexmanagement.makeRequest
-import org.opensearch.core.rest.RestStatus
 
 abstract class LRONConfigRestTestCase : IndexManagementRestTestCase() {
     @Before
     fun prepareForIT() {
-        /* init cluster node ids in integ test */
+        // init cluster node ids in integ test
         initNodeIdsInRestIT(client())
     }
 
@@ -35,11 +35,11 @@ abstract class LRONConfigRestTestCase : IndexManagementRestTestCase() {
                 "POST",
                 "${IndexManagementPlugin.CONTROL_CENTER_INDEX}/_delete_by_query",
                 mapOf("refresh" to "true"),
-                StringEntity("""{"query": {"match_all": {}}}""", ContentType.APPLICATION_JSON)
+                StringEntity("""{"query": {"match_all": {}}}""", ContentType.APPLICATION_JSON),
             )
         } catch (e: ResponseException) {
             logger.info(e.response.asMap())
-            /* ignore if the index has not been created */
+            // ignore if the index has not been created
             assertEquals("Unexpected status", RestStatus.NOT_FOUND, e.response.restStatus())
         }
     }
@@ -56,7 +56,7 @@ abstract class LRONConfigRestTestCase : IndexManagementRestTestCase() {
             try {
                 adminClient().makeRequest("DELETE", IndexManagementPlugin.CONTROL_CENTER_INDEX, emptyMap())
             } catch (e: ResponseException) {
-                /* ignore if the index has not been created */
+                // ignore if the index has not been created
                 assertEquals("Unexpected status", RestStatus.NOT_FOUND, RestStatus.fromCode(e.response.statusLine.statusCode))
             }
         }

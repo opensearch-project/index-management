@@ -13,7 +13,6 @@ import org.opensearch.indexmanagement.indexstatemanagement.util.DEFAULT_INDEX_TY
 import org.opensearch.test.OpenSearchTestCase
 
 class ChangePolicyRequestTests : OpenSearchTestCase() {
-
     fun `test change policy request`() {
         val indices = listOf("index1", "index2")
         val stateFilter = StateFilter("state1")

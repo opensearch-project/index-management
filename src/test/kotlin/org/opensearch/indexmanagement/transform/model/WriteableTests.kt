@@ -14,7 +14,6 @@ import org.opensearch.indexmanagement.transform.randomTransformMetadata
 import org.opensearch.test.OpenSearchTestCase
 
 class WriteableTests : OpenSearchTestCase() {
-
     fun `test transform metadata as stream`() {
         val transformMetadata = randomTransformMetadata()
         val out = BytesStreamOutput().also { transformMetadata.writeTo(it) }

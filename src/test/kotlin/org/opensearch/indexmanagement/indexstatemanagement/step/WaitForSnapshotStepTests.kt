@@ -11,7 +11,6 @@ import com.nhaarman.mockitokotlin2.doReturn
 import com.nhaarman.mockitokotlin2.mock
 import com.nhaarman.mockitokotlin2.whenever
 import kotlinx.coroutines.runBlocking
-import org.opensearch.core.action.ActionListener
 import org.opensearch.action.admin.cluster.snapshots.status.SnapshotStatus
 import org.opensearch.action.admin.cluster.snapshots.status.SnapshotsStatusResponse
 import org.opensearch.client.AdminClient
@@ -20,6 +19,7 @@ import org.opensearch.client.ClusterAdminClient
 import org.opensearch.cluster.SnapshotsInProgress
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.settings.Settings
+import org.opensearch.core.action.ActionListener
 import org.opensearch.indexmanagement.indexstatemanagement.action.SnapshotAction
 import org.opensearch.indexmanagement.indexstatemanagement.step.snapshot.WaitForSnapshotStep
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
@@ -35,7 +35,6 @@ import org.opensearch.test.OpenSearchTestCase
 import org.opensearch.transport.RemoteTransportException
 
 class WaitForSnapshotStepTests : OpenSearchTestCase() {
-
     private val clusterService: ClusterService = mock()
     private val scriptService: ScriptService = mock()
     private val settings: Settings = Settings.EMPTY
@@ -188,14 +187,19 @@ class WaitForSnapshotStepTests : OpenSearchTestCase() {
     }
 
     private fun getClient(adminClient: AdminClient): Client = mock { on { admin() } doReturn adminClient }
+
     private fun getAdminClient(clusterAdminClient: ClusterAdminClient): AdminClient = mock { on { cluster() } doReturn clusterAdminClient }
+
     private fun getClusterAdminClient(snapshotsStatusResponse: SnapshotsStatusResponse?, exception: Exception?): ClusterAdminClient {
         assertTrue("Must provide one and only one response or exception", (snapshotsStatusResponse != null).xor(exception != null))
         return mock {
             doAnswer { invocationOnMock ->
                 val listener = invocationOnMock.getArgument<ActionListener<SnapshotsStatusResponse>>(1)
-                if (snapshotsStatusResponse != null) listener.onResponse(snapshotsStatusResponse)
-                else listener.onFailure(exception)
+                if (snapshotsStatusResponse != null) {
+                    listener.onResponse(snapshotsStatusResponse)
+                } else {
+                    listener.onFailure(exception)
+                }
             }.whenever(this.mock).snapshotsStatus(any(), any())
         }
     }

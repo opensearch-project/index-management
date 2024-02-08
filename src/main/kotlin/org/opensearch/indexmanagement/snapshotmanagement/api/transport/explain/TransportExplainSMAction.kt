@@ -15,9 +15,10 @@ import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.inject.Inject
 import org.opensearch.common.settings.Settings
 import org.opensearch.common.util.concurrent.ThreadContext
+import org.opensearch.commons.authuser.User
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.core.xcontent.XContentParser
 import org.opensearch.core.xcontent.XContentParserUtils.ensureExpectedToken
-import org.opensearch.commons.authuser.User
 import org.opensearch.index.IndexNotFoundException
 import org.opensearch.index.query.BoolQueryBuilder
 import org.opensearch.index.query.ExistsQueryBuilder
@@ -39,21 +40,21 @@ import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy.Companio
 import org.opensearch.indexmanagement.snapshotmanagement.settings.SnapshotManagementSettings.Companion.FILTER_BY_BACKEND_ROLES
 import org.opensearch.indexmanagement.snapshotmanagement.smMetadataDocIdToPolicyName
 import org.opensearch.indexmanagement.util.SecurityUtils
-import org.opensearch.core.rest.RestStatus
 import org.opensearch.search.builder.SearchSourceBuilder
 import org.opensearch.search.fetch.subphase.FetchSourceContext
 import org.opensearch.transport.TransportService
 
-class TransportExplainSMAction @Inject constructor(
+class TransportExplainSMAction
+@Inject
+constructor(
     client: Client,
     transportService: TransportService,
     actionFilters: ActionFilters,
     val clusterService: ClusterService,
     val settings: Settings,
 ) : BaseTransportAction<ExplainSMPolicyRequest, ExplainSMPolicyResponse>(
-    SMActions.EXPLAIN_SM_POLICY_ACTION_NAME, transportService, client, actionFilters, ::ExplainSMPolicyRequest
+    SMActions.EXPLAIN_SM_POLICY_ACTION_NAME, transportService, client, actionFilters, ::ExplainSMPolicyRequest,
 ) {
-
     private val log = LogManager.getLogger(javaClass)
 
     @Volatile private var filterByEnabled = FILTER_BY_BACKEND_ROLES.get(settings)
@@ -67,7 +68,7 @@ class TransportExplainSMAction @Inject constructor(
     override suspend fun executeRequest(
         request: ExplainSMPolicyRequest,
         user: User?,
-        threadContext: ThreadContext.StoredContext
+        threadContext: ThreadContext.StoredContext,
     ): ExplainSMPolicyResponse {
         val policyNames = request.policyNames.toSet()
 
@@ -80,14 +81,15 @@ class TransportExplainSMAction @Inject constructor(
     private suspend fun getPolicyEnabledStatus(policyNames: Set<String>, user: User?): Map<String, Boolean> {
         // Search the config index for SM policies
         val searchRequest = getPolicyEnabledSearchRequest(policyNames, user)
-        val searchResponse: SearchResponse = try {
-            client.suspendUntil { search(searchRequest, it) }
-        } catch (e: IndexNotFoundException) {
-            throw OpenSearchStatusException("Snapshot management config index not found", RestStatus.NOT_FOUND)
-        } catch (e: Exception) {
-            log.error("Failed to search for snapshot management policy", e)
-            throw OpenSearchStatusException("Failed to search for snapshot management policy", RestStatus.INTERNAL_SERVER_ERROR)
-        }
+        val searchResponse: SearchResponse =
+            try {
+                client.suspendUntil { search(searchRequest, it) }
+            } catch (e: IndexNotFoundException) {
+                throw OpenSearchStatusException("Snapshot management config index not found", RestStatus.NOT_FOUND)
+            } catch (e: Exception) {
+                log.error("Failed to search for snapshot management policy", e)
+                throw OpenSearchStatusException("Failed to search for snapshot management policy", RestStatus.INTERNAL_SERVER_ERROR)
+            }
 
         // Parse each returned policy to get the job enabled status
         return try {
@@ -107,10 +109,11 @@ class TransportExplainSMAction @Inject constructor(
         SecurityUtils.addUserFilter(user, queryBuilder, filterByEnabled, "sm_policy.user")
 
         // Only return the name and enabled field
-        val includes = arrayOf(
-            "${SMPolicy.SM_TYPE}.$NAME_FIELD",
-            "${SMPolicy.SM_TYPE}.$ENABLED_FIELD"
-        )
+        val includes =
+            arrayOf(
+                "${SMPolicy.SM_TYPE}.$NAME_FIELD",
+                "${SMPolicy.SM_TYPE}.$ENABLED_FIELD",
+            )
         val fetchSourceContext = FetchSourceContext(true, includes, arrayOf())
         val searchSourceBuilder = SearchSourceBuilder().size(MAX_HITS).query(queryBuilder).fetchSource(fetchSourceContext)
         return SearchRequest(INDEX_MANAGEMENT_INDEX).source(searchSourceBuilder)
@@ -133,11 +136,12 @@ class TransportExplainSMAction @Inject constructor(
 
     private suspend fun getSMMetadata(policyNames: Set<String>): Map<String, SMMetadata> {
         val searchRequest = getSMMetadataSearchRequest(policyNames)
-        val searchResponse: SearchResponse = try {
-            client.suspendUntil { search(searchRequest, it) }
-        } catch (e: IndexNotFoundException) {
-            throw OpenSearchStatusException("Snapshot management config index not found", RestStatus.NOT_FOUND)
-        }
+        val searchResponse: SearchResponse =
+            try {
+                client.suspendUntil { search(searchRequest, it) }
+            } catch (e: IndexNotFoundException) {
+                throw OpenSearchStatusException("Snapshot management config index not found", RestStatus.NOT_FOUND)
+            }
 
         return try {
             searchResponse.hits.hits.associate {
@@ -183,9 +187,10 @@ class TransportExplainSMAction @Inject constructor(
     }
 
     private fun buildExplainResponse(namesToEnabled: Map<String, Boolean>, namesToMetadata: Map<String, SMMetadata>): ExplainSMPolicyResponse {
-        val policiesToExplain = namesToEnabled.entries.associate { (policyName, enabled) ->
-            policyName to ExplainSMPolicy(namesToMetadata[policyName], enabled)
-        }
+        val policiesToExplain =
+            namesToEnabled.entries.associate { (policyName, enabled) ->
+                policyName to ExplainSMPolicy(namesToMetadata[policyName], enabled)
+            }
         log.debug("Explain response: $policiesToExplain")
         return ExplainSMPolicyResponse(policiesToExplain)
     }

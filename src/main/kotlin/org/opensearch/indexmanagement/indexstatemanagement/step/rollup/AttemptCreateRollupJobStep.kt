@@ -27,7 +27,6 @@ import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepMetaDat
 import org.opensearch.transport.RemoteTransportException
 
 class AttemptCreateRollupJobStep(private val action: RollupAction) : Step(name) {
-
     private val logger = LogManager.getLogger(javaClass)
     private var stepStatus = StepStatus.STARTING
     private var info: Map<String, Any>? = null
@@ -103,7 +102,7 @@ class AttemptCreateRollupJobStep(private val action: RollupAction) : Step(name) 
             actionMetaData = currentActionMetaData?.copy(actionProperties = ActionProperties(rollupId = rollupId)),
             stepMetaData = StepMetaData(name, getStepStartTime(currentMetadata).toEpochMilli(), stepStatus),
             transitionTo = null,
-            info = info
+            info = info,
         )
     }
 
@@ -111,10 +110,15 @@ class AttemptCreateRollupJobStep(private val action: RollupAction) : Step(name) 
 
     companion object {
         const val name = "attempt_create_rollup"
+
         fun getFailedMessage(rollupId: String, index: String) = "Failed to create the rollup job [$rollupId] [index=$index]"
+
         fun getFailedJobExistsMessage(rollupId: String, index: String) = "Rollup job [$rollupId] already exists, skipping creation [index=$index]"
+
         fun getFailedToStartMessage(rollupId: String, index: String) = "Failed to start the rollup job [$rollupId] [index=$index]"
+
         fun getSuccessMessage(rollupId: String, index: String) = "Successfully created the rollup job [$rollupId] [index=$index]"
+
         fun getSuccessRestartMessage(rollupId: String, index: String) = "Successfully restarted the rollup job [$rollupId] [index=$index]"
     }
 }

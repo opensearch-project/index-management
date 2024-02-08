@@ -23,9 +23,8 @@ import java.io.IOException
 
 data class Terms(
     override val sourceField: String,
-    override val targetField: String
+    override val targetField: String,
 ) : Dimension(Type.TERMS, sourceField, targetField) {
-
     init {
         require(sourceField.isNotEmpty() && targetField.isNotEmpty()) { "Source and target field must not be empty" }
     }
@@ -33,7 +32,7 @@ data class Terms(
     @Throws(IOException::class)
     constructor(sin: StreamInput) : this(
         sourceField = sin.readString(),
-        targetField = sin.readString()
+        targetField = sin.readString(),
     )
 
     override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
@@ -72,7 +71,7 @@ data class Terms(
     // TODO missing terms field
     fun getRewrittenAggregation(
         aggregationBuilder: TermsAggregationBuilder,
-        subAggregations: AggregatorFactories.Builder
+        subAggregations: AggregatorFactories.Builder,
     ): TermsAggregationBuilder =
         TermsAggregationBuilder(aggregationBuilder.name)
             .also { aggregationBuilder.collectMode()?.apply { it.collectMode(this) } }
@@ -114,7 +113,7 @@ data class Terms(
             ensureExpectedToken(
                 Token.START_OBJECT,
                 xcp.currentToken(),
-                xcp
+                xcp,
             )
             while (xcp.nextToken() != Token.END_OBJECT) {
                 val fieldName = xcp.currentName()
@@ -129,7 +128,7 @@ data class Terms(
             if (targetField == null) targetField = sourceField
             return Terms(
                 requireNotNull(sourceField) { "Source field cannot be null" },
-                requireNotNull(targetField) { "Target field cannot be null" }
+                requireNotNull(targetField) { "Target field cannot be null" },
             )
         }
 

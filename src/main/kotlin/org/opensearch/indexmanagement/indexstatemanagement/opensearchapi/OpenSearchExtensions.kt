@@ -20,12 +20,12 @@ import org.opensearch.client.Client
 import org.opensearch.cluster.ClusterState
 import org.opensearch.cluster.metadata.IndexMetadata
 import org.opensearch.common.xcontent.LoggingDeprecationHandler
+import org.opensearch.common.xcontent.XContentHelper
+import org.opensearch.common.xcontent.XContentType
 import org.opensearch.core.xcontent.NamedXContentRegistry
 import org.opensearch.core.xcontent.ToXContent
 import org.opensearch.core.xcontent.ToXContentFragment
 import org.opensearch.core.xcontent.XContentBuilder
-import org.opensearch.common.xcontent.XContentHelper
-import org.opensearch.common.xcontent.XContentType
 import org.opensearch.index.IndexNotFoundException
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
 import org.opensearch.indexmanagement.indexstatemanagement.DefaultIndexMetadataService
@@ -85,21 +85,24 @@ fun <K, V> Map<K, V?>.filterNotNullValues(): Map<K, V> =
 @Suppress("ReturnCount")
 suspend fun Client.getManagedIndexMetadata(indexUUID: String): Pair<ManagedIndexMetaData?, Boolean> {
     try {
-        val getRequest = GetRequest(INDEX_MANAGEMENT_INDEX, managedIndexMetadataID(indexUUID))
-            .routing(indexUUID)
+        val getRequest =
+            GetRequest(INDEX_MANAGEMENT_INDEX, managedIndexMetadataID(indexUUID))
+                .routing(indexUUID)
         val getResponse: GetResponse = this.suspendUntil { get(getRequest, it) }
         if (!getResponse.isExists || getResponse.isSourceEmpty) {
             return Pair(null, true)
         }
 
-        val metadata = withContext(Dispatchers.IO) {
-            val xcp = XContentHelper.createParser(
-                NamedXContentRegistry.EMPTY,
-                LoggingDeprecationHandler.INSTANCE,
-                getResponse.sourceAsBytesRef, XContentType.JSON
-            )
-            ManagedIndexMetaData.parseWithType(xcp, getResponse.id, getResponse.seqNo, getResponse.primaryTerm)
-        }
+        val metadata =
+            withContext(Dispatchers.IO) {
+                val xcp =
+                    XContentHelper.createParser(
+                        NamedXContentRegistry.EMPTY,
+                        LoggingDeprecationHandler.INSTANCE,
+                        getResponse.sourceAsBytesRef, XContentType.JSON,
+                    )
+                ManagedIndexMetaData.parseWithType(xcp, getResponse.id, getResponse.seqNo, getResponse.primaryTerm)
+            }
         return Pair(metadata, true)
     } catch (e: Exception) {
         when (e) {
@@ -126,8 +129,8 @@ suspend fun Client.mgetManagedIndexMetadata(indexUuids: List<String>): List<Pair
     indexUuids.forEach {
         mgetRequest.add(
             MultiGetRequest.Item(
-                INDEX_MANAGEMENT_INDEX, managedIndexMetadataID(it)
-            ).routing(it)
+                INDEX_MANAGEMENT_INDEX, managedIndexMetadataID(it),
+            ).routing(it),
         )
     }
     var mgetMetadataList = listOf<Pair<ManagedIndexMetaData?, Exception?>?>()

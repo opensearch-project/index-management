@@ -27,9 +27,8 @@ data class SweptManagedIndexConfig(
     val uuid: String,
     val policyID: String,
     val policy: Policy?,
-    val changePolicy: ChangePolicy?
+    val changePolicy: ChangePolicy?,
 ) {
-
     companion object {
         @Suppress("ComplexMethod", "UNUSED_PARAMETER")
         @JvmStatic
@@ -66,7 +65,7 @@ data class SweptManagedIndexConfig(
                 uuid,
                 policyID,
                 policy,
-                changePolicy
+                changePolicy,
             )
         }
     }

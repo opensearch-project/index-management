@@ -9,7 +9,6 @@ import org.opensearch.indexmanagement.rollup.model.RollupFieldMapping.Companion.
 import org.opensearch.test.OpenSearchTestCase
 
 class RollupFieldMappingTests : OpenSearchTestCase() {
-
     fun `test toIssue`() {
         var fieldMapping = RollupFieldMapping(RollupFieldMapping.Companion.FieldType.DIMENSION, "dummy-field", "terms")
         var actual = fieldMapping.toIssue()

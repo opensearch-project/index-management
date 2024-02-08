@@ -7,6 +7,7 @@ package org.opensearch.indexmanagement.snapshotmanagement.api.resthandler
 
 import org.opensearch.action.support.WriteRequest
 import org.opensearch.client.node.NodeClient
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.core.xcontent.ToXContent
 import org.opensearch.index.seqno.SequenceNumbers
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.SM_POLICIES_URI
@@ -23,26 +24,26 @@ import org.opensearch.rest.BaseRestHandler
 import org.opensearch.rest.BytesRestResponse
 import org.opensearch.rest.RestRequest
 import org.opensearch.rest.RestResponse
-import org.opensearch.core.rest.RestStatus
 import org.opensearch.rest.action.RestResponseListener
 import java.time.Instant
 
 abstract class RestBaseIndexSMPolicyHandler : BaseRestHandler() {
-
     protected fun prepareIndexRequest(request: RestRequest, client: NodeClient, create: Boolean): RestChannelConsumer {
         val policyName = request.getValidSMPolicyName()
 
         val seqNo = request.paramAsLong(IF_SEQ_NO, SequenceNumbers.UNASSIGNED_SEQ_NO)
         val primaryTerm = request.paramAsLong(IF_PRIMARY_TERM, SequenceNumbers.UNASSIGNED_PRIMARY_TERM)
         val xcp = request.contentParser()
-        val policy = SMPolicy.parse(xcp, id = smPolicyNameToDocId(policyName), seqNo = seqNo, primaryTerm = primaryTerm)
-            .copy(jobLastUpdateTime = Instant.now())
+        val policy =
+            SMPolicy.parse(xcp, id = smPolicyNameToDocId(policyName), seqNo = seqNo, primaryTerm = primaryTerm)
+                .copy(jobLastUpdateTime = Instant.now())
 
-        val refreshPolicy = if (request.hasParam(REFRESH)) {
-            WriteRequest.RefreshPolicy.parse(request.param(REFRESH))
-        } else {
-            WriteRequest.RefreshPolicy.IMMEDIATE
-        }
+        val refreshPolicy =
+            if (request.hasParam(REFRESH)) {
+                WriteRequest.RefreshPolicy.parse(request.param(REFRESH))
+            } else {
+                WriteRequest.RefreshPolicy.IMMEDIATE
+            }
 
         return RestChannelConsumer {
             client.execute(
@@ -57,7 +58,7 @@ abstract class RestBaseIndexSMPolicyHandler : BaseRestHandler() {
                         }
                         return restResponse
                     }
-                }
+                },
             )
         }
     }

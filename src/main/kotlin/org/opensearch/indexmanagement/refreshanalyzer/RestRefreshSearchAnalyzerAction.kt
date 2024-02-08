@@ -18,7 +18,6 @@ import org.opensearch.rest.action.RestToXContentListener
 import java.io.IOException
 
 class RestRefreshSearchAnalyzerAction : BaseRestHandler() {
-
     override fun getName(): String = "refresh_search_analyzer_action"
 
     override fun routes(): List<Route> {
@@ -29,12 +28,12 @@ class RestRefreshSearchAnalyzerAction : BaseRestHandler() {
         return listOf(
             ReplacedRoute(
                 POST, REFRESH_SEARCH_ANALYZER_BASE_URI,
-                POST, LEGACY_REFRESH_SEARCH_ANALYZER_BASE_URI
+                POST, LEGACY_REFRESH_SEARCH_ANALYZER_BASE_URI,
             ),
             ReplacedRoute(
                 POST, "$REFRESH_SEARCH_ANALYZER_BASE_URI/{index}",
-                POST, "$LEGACY_REFRESH_SEARCH_ANALYZER_BASE_URI/{index}"
-            )
+                POST, "$LEGACY_REFRESH_SEARCH_ANALYZER_BASE_URI/{index}",
+            ),
         )
     }
 
@@ -49,8 +48,9 @@ class RestRefreshSearchAnalyzerAction : BaseRestHandler() {
             throw IllegalArgumentException("Missing indices")
         }
 
-        val refreshSearchAnalyzerRequest: RefreshSearchAnalyzerRequest = RefreshSearchAnalyzerRequest()
-            .indices(*indices)
+        val refreshSearchAnalyzerRequest: RefreshSearchAnalyzerRequest =
+            RefreshSearchAnalyzerRequest()
+                .indices(*indices)
 
         return RestChannelConsumer { channel ->
             client.execute(RefreshSearchAnalyzerAction.INSTANCE, refreshSearchAnalyzerRequest, RestToXContentListener(channel))

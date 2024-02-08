@@ -6,6 +6,7 @@
 package org.opensearch.indexmanagement.transform.resthandler
 
 import org.opensearch.client.ResponseException
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.TRANSFORM_BASE_URI
 import org.opensearch.indexmanagement.common.model.dimension.DateHistogram
 import org.opensearch.indexmanagement.common.model.dimension.Terms
@@ -15,7 +16,6 @@ import org.opensearch.indexmanagement.transform.model.TransformMetadata
 import org.opensearch.indexmanagement.transform.randomTransform
 import org.opensearch.indexmanagement.waitFor
 import org.opensearch.jobscheduler.spi.schedule.IntervalSchedule
-import org.opensearch.core.rest.RestStatus
 import org.opensearch.search.aggregations.AggregatorFactories
 import org.opensearch.test.junit.annotations.TestLogging
 import java.time.Instant
@@ -24,7 +24,6 @@ import java.time.temporal.ChronoUnit
 @TestLogging(value = "level:DEBUG", reason = "Debugging tests")
 @Suppress("UNCHECKED_CAST")
 class RestStartTransformActionIT : TransformRestTestCase() {
-
     @Throws(Exception::class)
     fun `test starting a stopped transform`() {
         val transform = createTransform(randomTransform().copy(enabled = false, enabledAt = null, metadataId = null))
@@ -77,25 +76,27 @@ class RestStartTransformActionIT : TransformRestTestCase() {
 
     @Throws(Exception::class)
     fun `test starting a failed transform`() {
-        val transform = randomTransform().copy(
-            id = "restart_failed_transform",
-            schemaVersion = 1L,
-            enabled = true,
-            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
-            updatedAt = Instant.now(),
-            enabledAt = Instant.now(),
-            description = "basic search test",
-            sourceIndex = "source_restart_failed_transform",
-            targetIndex = "target_restart_failed_transform",
-            metadataId = null,
-            roles = emptyList(),
-            pageSize = 10,
-            groups = listOf(
-                Terms(sourceField = "store_and_fwd_flag", targetField = "flag"),
-                DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "1h")
-            ),
-            aggregations = AggregatorFactories.builder()
-        ).let { createTransform(it, it.id) }
+        val transform =
+            randomTransform().copy(
+                id = "restart_failed_transform",
+                schemaVersion = 1L,
+                enabled = true,
+                jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+                updatedAt = Instant.now(),
+                enabledAt = Instant.now(),
+                description = "basic search test",
+                sourceIndex = "source_restart_failed_transform",
+                targetIndex = "target_restart_failed_transform",
+                metadataId = null,
+                roles = emptyList(),
+                pageSize = 10,
+                groups =
+                listOf(
+                    Terms(sourceField = "store_and_fwd_flag", targetField = "flag"),
+                    DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "1h"),
+                ),
+                aggregations = AggregatorFactories.builder(),
+            ).let { createTransform(it, it.id) }
 
         // This should fail because source index is deleted
         deleteIndex(transform.sourceIndex)
@@ -148,25 +149,27 @@ class RestStartTransformActionIT : TransformRestTestCase() {
     fun `test starting a finished transform`() {
         generateNYCTaxiData("source_restart_finished_transform")
         assertIndexExists("source_restart_finished_transform")
-        val transform = randomTransform().copy(
-            id = "restart_finished_transform",
-            schemaVersion = 1L,
-            enabled = true,
-            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
-            updatedAt = Instant.now(),
-            enabledAt = Instant.now(),
-            description = "basic search test",
-            sourceIndex = "source_restart_finished_transform",
-            targetIndex = "target_restart_finished_transform",
-            metadataId = null,
-            roles = emptyList(),
-            pageSize = 10,
-            groups = listOf(
-                Terms(sourceField = "store_and_fwd_flag", targetField = "flag")
-            ),
-            aggregations = AggregatorFactories.builder(),
-            continuous = false
-        ).let { createTransform(it, it.id) }
+        val transform =
+            randomTransform().copy(
+                id = "restart_finished_transform",
+                schemaVersion = 1L,
+                enabled = true,
+                jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+                updatedAt = Instant.now(),
+                enabledAt = Instant.now(),
+                description = "basic search test",
+                sourceIndex = "source_restart_finished_transform",
+                targetIndex = "target_restart_finished_transform",
+                metadataId = null,
+                roles = emptyList(),
+                pageSize = 10,
+                groups =
+                listOf(
+                    Terms(sourceField = "store_and_fwd_flag", targetField = "flag"),
+                ),
+                aggregations = AggregatorFactories.builder(),
+                continuous = false,
+            ).let { createTransform(it, it.id) }
 
         updateTransformStartTime(transform)
         var firstTransformsIndexed = 0L

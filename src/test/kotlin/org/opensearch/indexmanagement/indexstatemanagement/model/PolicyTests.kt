@@ -12,7 +12,6 @@ import org.opensearch.test.OpenSearchTestCase
 import kotlin.test.assertFailsWith
 
 class PolicyTests : OpenSearchTestCase() {
-
     fun `test invalid default state`() {
         assertFailsWith(IllegalArgumentException::class, "Expected IllegalArgumentException for invalid default state") {
             randomPolicy().copy(defaultState = "definitely not this")

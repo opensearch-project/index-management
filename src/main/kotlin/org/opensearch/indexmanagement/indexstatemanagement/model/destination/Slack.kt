@@ -24,7 +24,6 @@ import java.io.IOException
  * alerting so all plugins can consume and use.
  */
 data class Slack(val url: String) : ToXContent, Writeable {
-
     override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
         return builder.startObject(TYPE)
             .field(URL, url)
@@ -33,7 +32,7 @@ data class Slack(val url: String) : ToXContent, Writeable {
 
     @Throws(IOException::class)
     constructor(sin: StreamInput) : this(
-        sin.readString()
+        sin.readString(),
     )
 
     @Throws(IOException::class)

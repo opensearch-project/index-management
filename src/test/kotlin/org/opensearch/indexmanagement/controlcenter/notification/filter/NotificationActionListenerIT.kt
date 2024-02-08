@@ -17,19 +17,18 @@ import org.opensearch.client.Response
 import org.opensearch.client.ResponseException
 import org.opensearch.client.RestClient
 import org.opensearch.common.settings.Settings
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.index.reindex.ReindexAction
 import org.opensearch.indexmanagement.IndexManagementPlugin
 import org.opensearch.indexmanagement.IndexManagementRestTestCase
 import org.opensearch.indexmanagement.controlcenter.notification.util.supportedActions
 import org.opensearch.indexmanagement.makeRequest
 import org.opensearch.indexmanagement.waitFor
-import org.opensearch.core.rest.RestStatus
 import java.net.InetAddress
 import java.net.InetSocketAddress
 import java.time.Instant
 
 class NotificationActionListenerIT : IndexManagementRestTestCase() {
-
     private val notificationConfId = "test-notification-id"
     private val notificationIndex = "test-notification-index"
 
@@ -41,19 +40,21 @@ class NotificationActionListenerIT : IndexManagementRestTestCase() {
         server = HttpServer.create(InetSocketAddress(InetAddress.getLoopbackAddress(), 0), 0)
         logger.info("starting mock server at {}", server.address.hostString)
 
-        val httpHandler = HttpHandler {
-            val msg = String(it.requestBody.readAllBytes())
-            logger.info(msg)
-            val res = client.makeRequest(
-                "POST", "$notificationIndex/_doc?refresh=true",
-                StringEntity("""{"msg": "${msg.replace(System.lineSeparator(), " ")}"}""", ContentType.APPLICATION_JSON)
-            )
-            logger.info(res.restStatus())
+        val httpHandler =
+            HttpHandler {
+                val msg = String(it.requestBody.readAllBytes())
+                logger.info(msg)
+                val res =
+                    client.makeRequest(
+                        "POST", "$notificationIndex/_doc?refresh=true",
+                        StringEntity("""{"msg": "${msg.replace(System.lineSeparator(), " ")}"}""", ContentType.APPLICATION_JSON),
+                    )
+                logger.info(res.restStatus())
 
-            it.sendResponseHeaders(200, "ack".toByteArray().size.toLong())
-            it.responseBody.write("ack".toByteArray())
-            it.close()
-        }
+                it.sendResponseHeaders(200, "ack".toByteArray().size.toLong())
+                it.responseBody.write("ack".toByteArray())
+                it.close()
+            }
 
         server.createContext("/notification", httpHandler)
         server.createContext("/notification2", httpHandler)
@@ -78,22 +79,22 @@ class NotificationActionListenerIT : IndexManagementRestTestCase() {
             "POST", "/_plugins/_notifications/configs",
             StringEntity(
                 """
-                    {
-                      "config_id": "$notificationConfId",
-                      "name": "test-webhook",
-                      "config": {
-                        "name": "Sample webhook Channel",
-                        "description": "This is a webhook channel",
-                        "config_type": "webhook",
-                        "is_enabled": true,
-                        "webhook": {
-                          "url": "http://${server.address.hostString}:${server.address.port}/notification"
-                        }
-                      }
+                {
+                  "config_id": "$notificationConfId",
+                  "name": "test-webhook",
+                  "config": {
+                    "name": "Sample webhook Channel",
+                    "description": "This is a webhook channel",
+                    "config_type": "webhook",
+                    "is_enabled": true,
+                    "webhook": {
+                      "url": "http://${server.address.hostString}:${server.address.port}/notification"
                     }
+                  }
+                }
                 """.trimIndent(),
-                ContentType.APPLICATION_JSON
-            )
+                ContentType.APPLICATION_JSON,
+            ),
         )
 
         supportedActions.forEach { action ->
@@ -112,8 +113,8 @@ class NotificationActionListenerIT : IndexManagementRestTestCase() {
                         }
                     }
                     """.trimIndent(),
-                    ContentType.APPLICATION_JSON
-                )
+                    ContentType.APPLICATION_JSON,
+                ),
             )
         }
     }
@@ -122,9 +123,10 @@ class NotificationActionListenerIT : IndexManagementRestTestCase() {
     fun `test notify for force merge`() {
         insertSampleData("source-index", 10)
 
-        val response = client.makeRequest(
-            "POST", "source-index/_forcemerge"
-        )
+        val response =
+            client.makeRequest(
+                "POST", "source-index/_forcemerge",
+            )
 
         Assert.assertTrue(response.restStatus() == RestStatus.OK)
 
@@ -135,7 +137,7 @@ class NotificationActionListenerIT : IndexManagementRestTestCase() {
                 (
                     client.makeRequest("GET", "$notificationIndex/_search?q=msg:merge")
                         .asMap() as Map<String, Map<String, Map<String, Any>>>
-                    )["hits"]!!["total"]!!["value"]
+                    )["hits"]!!["total"]!!["value"],
             )
         }
     }
@@ -145,19 +147,20 @@ class NotificationActionListenerIT : IndexManagementRestTestCase() {
         insertSampleData("source-index", 10)
         updateIndexSettings("source-index", Settings.builder().put("index.blocks.write", true))
 
-        val response = client.makeRequest(
-            "POST", "source-index/_split/test-split",
-            StringEntity(
-                """
-                {
-                    "settings":{
-                        "index.number_of_shards": 2
+        val response =
+            client.makeRequest(
+                "POST", "source-index/_split/test-split",
+                StringEntity(
+                    """
+                    {
+                        "settings":{
+                            "index.number_of_shards": 2
+                        }
                     }
-                }
-                """.trimIndent(),
-                ContentType.APPLICATION_JSON
+                    """.trimIndent(),
+                    ContentType.APPLICATION_JSON,
+                ),
             )
-        )
 
         Assert.assertTrue(response.restStatus() == RestStatus.OK)
 
@@ -168,7 +171,7 @@ class NotificationActionListenerIT : IndexManagementRestTestCase() {
                 (
                     client.makeRequest("GET", "$notificationIndex/_search?q=msg:Split")
                         .asMap() as Map<String, Map<String, Map<String, Any>>>
-                    )["hits"]!!["total"]!!["value"]
+                    )["hits"]!!["total"]!!["value"],
             )
         }
     }
@@ -179,9 +182,10 @@ class NotificationActionListenerIT : IndexManagementRestTestCase() {
 
         closeIndex("source-index")
 
-        val response = client.makeRequest(
-            "POST", "source-index/_open"
-        )
+        val response =
+            client.makeRequest(
+                "POST", "source-index/_open",
+            )
 
         Assert.assertTrue(response.restStatus() == RestStatus.OK)
 
@@ -192,7 +196,7 @@ class NotificationActionListenerIT : IndexManagementRestTestCase() {
                 (
                     client.makeRequest("GET", "$notificationIndex/_search?q=msg:Open")
                         .asMap() as Map<String, Map<String, Map<String, Any>>>
-                    )["hits"]!!["total"]!!["value"]
+                    )["hits"]!!["total"]!!["value"],
             )
         }
     }
@@ -210,7 +214,7 @@ class NotificationActionListenerIT : IndexManagementRestTestCase() {
                 (
                     client.makeRequest("GET", "$notificationIndex/_search?q=msg:reindex")
                         .asMap() as Map<String, Map<String, Map<String, Any>>>
-                    )["hits"]!!["total"]!!["value"]
+                    )["hits"]!!["total"]!!["value"],
             )
         }
     }
@@ -223,49 +227,51 @@ class NotificationActionListenerIT : IndexManagementRestTestCase() {
             "POST", "/_plugins/_notifications/configs",
             StringEntity(
                 """
-                    {
-                      "config_id": "config_id",
-                      "name": "test-webhook2",
-                      "config": {
-                        "name": "Sample webhook Channel2",
-                        "description": "This is a webhook channel2",
-                        "config_type": "webhook",
-                        "is_enabled": true,
-                        "webhook": {
-                          "url": "http://${server.address.hostString}:${server.address.port}/notification2"
-                        }
-                      }
-                    }
-                """.trimIndent(),
-                ContentType.APPLICATION_JSON
-            )
-        )
-
-        val response = client.makeRequest(
-            "POST", "_reindex?wait_for_completion=false",
-            StringEntity(
-                """
                 {
-                  "source": {
-                    "index": "source-index"
-                  },
-                  "dest": {
-                    "index": "reindex-dest"
+                  "config_id": "config_id",
+                  "name": "test-webhook2",
+                  "config": {
+                    "name": "Sample webhook Channel2",
+                    "description": "This is a webhook channel2",
+                    "config_type": "webhook",
+                    "is_enabled": true,
+                    "webhook": {
+                      "url": "http://${server.address.hostString}:${server.address.port}/notification2"
+                    }
                   }
                 }
                 """.trimIndent(),
-                ContentType.APPLICATION_JSON
-            )
+                ContentType.APPLICATION_JSON,
+            ),
         )
+
+        val response =
+            client.makeRequest(
+                "POST", "_reindex?wait_for_completion=false",
+                StringEntity(
+                    """
+                    {
+                      "source": {
+                        "index": "source-index"
+                      },
+                      "dest": {
+                        "index": "reindex-dest"
+                      }
+                    }
+                    """.trimIndent(),
+                    ContentType.APPLICATION_JSON,
+                ),
+            )
 
         Assert.assertTrue(response.restStatus() == RestStatus.OK)
         val taskId = response.asMap()["task"] as String
         logger.info("task id {}", taskId)
 
-        val policyResponse = client.makeRequest(
-            "POST", "_plugins/_im/lron",
-            StringEntity(
-                """
+        val policyResponse =
+            client.makeRequest(
+                "POST", "_plugins/_im/lron",
+                StringEntity(
+                    """
                     {
                         "lron_config": {
                             "action_name": "${ReindexAction.NAME}",
@@ -277,10 +283,10 @@ class NotificationActionListenerIT : IndexManagementRestTestCase() {
                             ]
                         }
                     }
-                """.trimIndent(),
-                ContentType.APPLICATION_JSON
+                    """.trimIndent(),
+                    ContentType.APPLICATION_JSON,
+                ),
             )
-        )
         val id = policyResponse.asMap()["_id"] as String
         logger.info("policy id {}", id)
 
@@ -291,15 +297,16 @@ class NotificationActionListenerIT : IndexManagementRestTestCase() {
                 (
                     client.makeRequest("GET", "$notificationIndex/_search?q=msg:Reindex")
                         .asMap() as Map<String, Map<String, Map<String, Any>>>
-                    )["hits"]!!["total"]!!["value"]
+                    )["hits"]!!["total"]!!["value"],
             )
 
             // runtime policy been removed
-            val res = try {
-                client.makeRequest("GET", "_plugins/_im/lron/${id.replace("/", "%2F")}")
-            } catch (e: ResponseException) {
-                e.response
-            }
+            val res =
+                try {
+                    client.makeRequest("GET", "_plugins/_im/lron/${id.replace("/", "%2F")}")
+                } catch (e: ResponseException) {
+                    e.response
+                }
             assertEquals(RestStatus.NOT_FOUND.status, res.statusLine.statusCode)
         }
     }
@@ -315,20 +322,20 @@ class NotificationActionListenerIT : IndexManagementRestTestCase() {
             "POST", "_plugins/_im/lron",
             StringEntity(
                 """
-                    {
-                        "lron_config": {
-                            "action_name": "${ReindexAction.NAME}",
-                            "task_id": "$taskId",
-                            "channels": [
-                                {
-                                    "id": "$notificationConfId"
-                                }
-                            ]
-                        }
+                {
+                    "lron_config": {
+                        "action_name": "${ReindexAction.NAME}",
+                        "task_id": "$taskId",
+                        "channels": [
+                            {
+                                "id": "$notificationConfId"
+                            }
+                        ]
                     }
+                }
                 """.trimIndent(),
-                ContentType.APPLICATION_JSON
-            )
+                ContentType.APPLICATION_JSON,
+            ),
         )
 
         waitFor(Instant.ofEpochSecond(60)) {
@@ -338,7 +345,7 @@ class NotificationActionListenerIT : IndexManagementRestTestCase() {
                 (
                     client.makeRequest("GET", "$notificationIndex/_search?q=msg:Reindex")
                         .asMap() as Map<String, Map<String, Map<String, Any>>>
-                    )["hits"]!!["total"]!!["value"]
+                    )["hits"]!!["total"]!!["value"],
             )
         }
     }
@@ -355,7 +362,7 @@ class NotificationActionListenerIT : IndexManagementRestTestCase() {
                 (
                     client.makeRequest("GET", "$notificationIndex/_search?q=msg:Close")
                         .asMap() as Map<String, Map<String, Map<String, Any>>>
-                    )["hits"]!!["total"]!!["value"]
+                    )["hits"]!!["total"]!!["value"],
             )
         }
     }
@@ -368,9 +375,10 @@ class NotificationActionListenerIT : IndexManagementRestTestCase() {
         // remove notification policy
         client.makeRequest("DELETE", "_plugins/_im/lron/LRON:${OpenIndexAction.NAME.replace("/", "%2F")}")
 
-        val response = client.makeRequest(
-            "POST", "source-index/_open"
-        )
+        val response =
+            client.makeRequest(
+                "POST", "source-index/_open",
+            )
 
         Assert.assertTrue(response.restStatus() == RestStatus.OK)
 
@@ -382,7 +390,7 @@ class NotificationActionListenerIT : IndexManagementRestTestCase() {
                 (
                     client.makeRequest("GET", "$notificationIndex/_search?q=msg:Open")
                         .asMap() as Map<String, Map<String, Map<String, Any>>>
-                    )["hits"]!!["total"]!!["value"]
+                    )["hits"]!!["total"]!!["value"],
             )
         }
     }
@@ -395,9 +403,10 @@ class NotificationActionListenerIT : IndexManagementRestTestCase() {
         // delete system index
         client.makeRequest("DELETE", IndexManagementPlugin.CONTROL_CENTER_INDEX)
 
-        val response = client.makeRequest(
-            "POST", "source-index/_open"
-        )
+        val response =
+            client.makeRequest(
+                "POST", "source-index/_open",
+            )
 
         Assert.assertTrue(response.restStatus() == RestStatus.OK)
 
@@ -409,7 +418,7 @@ class NotificationActionListenerIT : IndexManagementRestTestCase() {
                 (
                     client.makeRequest("GET", "$notificationIndex/_search?q=msg:Open")
                         .asMap() as Map<String, Map<String, Map<String, Any>>>
-                    )["hits"]!!["total"]!!["value"]
+                    )["hits"]!!["total"]!!["value"],
             )
         }
     }
@@ -427,23 +436,23 @@ class NotificationActionListenerIT : IndexManagementRestTestCase() {
             "POST", "_plugins/_im/lron",
             StringEntity(
                 """
-                    {
-                        "lron_config": {
-                            "task_id": "$taskId",
-                            "lron_condition": {
-                                "failure": true,
-                                "success": false
-                            },
-                            "channels": [
-                                {
-                                    "id": "$notificationConfId"
-                                }
-                            ]
-                        }
+                {
+                    "lron_config": {
+                        "task_id": "$taskId",
+                        "lron_condition": {
+                            "failure": true,
+                            "success": false
+                        },
+                        "channels": [
+                            {
+                                "id": "$notificationConfId"
+                            }
+                        ]
                     }
+                }
                 """.trimIndent(),
-                ContentType.APPLICATION_JSON
-            )
+                ContentType.APPLICATION_JSON,
+            ),
         )
 
         waitFor(Instant.ofEpochSecond(60)) {
@@ -453,7 +462,7 @@ class NotificationActionListenerIT : IndexManagementRestTestCase() {
                 (
                     client.makeRequest("GET", "$notificationIndex/_search?q=msg:reindex")
                         .asMap() as Map<String, Map<String, Map<String, Any>>>
-                    )["hits"]!!["total"]!!["value"]
+                    )["hits"]!!["total"]!!["value"],
             )
 
             try {
@@ -469,10 +478,11 @@ class NotificationActionListenerIT : IndexManagementRestTestCase() {
         insertSampleData("source-index", 10)
         createIndex("reindex-dest", Settings.EMPTY)
 
-        val response = client.makeRequest(
-            "POST", "_reindex?wait_for_completion=false",
-            StringEntity(
-                """
+        val response =
+            client.makeRequest(
+                "POST", "_reindex?wait_for_completion=false",
+                StringEntity(
+                    """
                     {
                       "source": {
                         "index": "source-index"
@@ -481,10 +491,10 @@ class NotificationActionListenerIT : IndexManagementRestTestCase() {
                         "index": "reindex-dest"
                       }
                     }
-                """.trimIndent(),
-                ContentType.APPLICATION_JSON
+                    """.trimIndent(),
+                    ContentType.APPLICATION_JSON,
+                ),
             )
-        )
         return response
     }
 }

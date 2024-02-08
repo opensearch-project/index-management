@@ -7,6 +7,7 @@ package org.opensearch.indexmanagement.rollup.resthandler
 
 import org.opensearch.client.ResponseException
 import org.opensearch.common.xcontent.XContentType
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.ROLLUP_JOBS_BASE_URI
 import org.opensearch.indexmanagement.common.model.dimension.DateHistogram
@@ -27,7 +28,6 @@ import org.opensearch.indexmanagement.rollup.randomRollupMetrics
 import org.opensearch.indexmanagement.util.NO_ID
 import org.opensearch.indexmanagement.util._ID
 import org.opensearch.indexmanagement.util._SEQ_NO
-import org.opensearch.core.rest.RestStatus
 import org.opensearch.test.OpenSearchTestCase
 import org.opensearch.test.junit.annotations.TestLogging
 import java.util.Locale
@@ -35,7 +35,6 @@ import java.util.Locale
 @TestLogging(value = "level:DEBUG", reason = "Debugging tests")
 @Suppress("UNCHECKED_CAST")
 class RestIndexRollupActionIT : RollupRestAPITestCase() {
-
     private val testName = javaClass.simpleName.lowercase(Locale.ROOT)
 
     @Throws(Exception::class)
@@ -79,11 +78,12 @@ class RestIndexRollupActionIT : RollupRestAPITestCase() {
         val response = client().makeRequest("GET", "/$INDEX_MANAGEMENT_INDEX/_mapping")
         val parserMap = createParser(XContentType.JSON.xContent(), response.entity.content).map() as Map<String, Map<String, Any>>
         val mappingsMap = parserMap[INDEX_MANAGEMENT_INDEX]!!["mappings"] as Map<String, Any>
-        val expected = createParser(
-            XContentType.JSON.xContent(),
-            javaClass.classLoader.getResource("mappings/opendistro-ism-config.json")
-                .readText()
-        )
+        val expected =
+            createParser(
+                XContentType.JSON.xContent(),
+                javaClass.classLoader.getResource("mappings/opendistro-ism-config.json")
+                    .readText(),
+            )
         val expectedMap = expected.map()
 
         assertEquals("Mappings are different", expectedMap, mappingsMap)
@@ -97,7 +97,7 @@ class RestIndexRollupActionIT : RollupRestAPITestCase() {
             client().makeRequest(
                 "PUT",
                 "$ROLLUP_JOBS_BASE_URI/${rollup.id}?refresh=true&if_seq_no=10251989&if_primary_term=2342",
-                emptyMap(), rollup.toHttpEntity()
+                emptyMap(), rollup.toHttpEntity(),
             )
             fail("expected 409 ResponseException")
         } catch (e: ResponseException) {
@@ -108,11 +108,12 @@ class RestIndexRollupActionIT : RollupRestAPITestCase() {
     @Throws(Exception::class)
     fun `test update rollup with correct seq_no and primary_term`() {
         val rollup = createRandomRollup()
-        val updateResponse = client().makeRequest(
-            "PUT",
-            "$ROLLUP_JOBS_BASE_URI/${rollup.id}?refresh=true&if_seq_no=${rollup.seqNo}&if_primary_term=${rollup.primaryTerm}",
-            emptyMap(), rollup.toHttpEntity()
-        )
+        val updateResponse =
+            client().makeRequest(
+                "PUT",
+                "$ROLLUP_JOBS_BASE_URI/${rollup.id}?refresh=true&if_seq_no=${rollup.seqNo}&if_primary_term=${rollup.primaryTerm}",
+                emptyMap(), rollup.toHttpEntity(),
+            )
 
         assertEquals("Update rollup failed", RestStatus.OK, updateResponse.restStatus())
         val responseBody = updateResponse.asMap()
@@ -130,22 +131,25 @@ class RestIndexRollupActionIT : RollupRestAPITestCase() {
             client().makeRequest(
                 "PUT",
                 "$ROLLUP_JOBS_BASE_URI/${rollup.id}?refresh=true&if_seq_no=${rollup.seqNo}&if_primary_term=${rollup.primaryTerm}",
-                emptyMap(), rollup.copy(sourceIndex = "something_different").toHttpEntity()
+                emptyMap(), rollup.copy(sourceIndex = "something_different").toHttpEntity(),
             )
             fail("Expected 400 Method BAD_REQUEST response")
         } catch (e: ResponseException) {
             assertEquals("Unexpected status", RestStatus.BAD_REQUEST, e.response.restStatus())
             val actualMessage = e.response.asMap()
-            val expectedErrorMessage = mapOf(
-                "error" to mapOf(
-                    "root_cause" to listOf<Map<String, Any>>(
-                        mapOf("type" to "status_exception", "reason" to "Not allowed to modify [source_index]")
-                    ),
-                    "type" to "status_exception",
-                    "reason" to "Not allowed to modify [source_index]"
-                ),
-                "status" to 400
-            )
+            val expectedErrorMessage =
+                mapOf(
+                    "error" to
+                        mapOf(
+                            "root_cause" to
+                                listOf<Map<String, Any>>(
+                                    mapOf("type" to "status_exception", "reason" to "Not allowed to modify [source_index]"),
+                                ),
+                            "type" to "status_exception",
+                            "reason" to "Not allowed to modify [source_index]",
+                        ),
+                    "status" to 400,
+                )
             assertEquals(expectedErrorMessage, actualMessage)
         }
     }
@@ -157,22 +161,25 @@ class RestIndexRollupActionIT : RollupRestAPITestCase() {
             client().makeRequest(
                 "PUT",
                 "$ROLLUP_JOBS_BASE_URI/${rollup.id}?refresh=true&if_seq_no=${rollup.seqNo}&if_primary_term=${rollup.primaryTerm}",
-                emptyMap(), rollup.copy(targetIndex = "something_different").toHttpEntity()
+                emptyMap(), rollup.copy(targetIndex = "something_different").toHttpEntity(),
             )
             fail("Expected 400 Method BAD_REQUEST response")
         } catch (e: ResponseException) {
             assertEquals("Unexpected status", RestStatus.BAD_REQUEST, e.response.restStatus())
             val actualMessage = e.response.asMap()
-            val expectedErrorMessage = mapOf(
-                "error" to mapOf(
-                    "root_cause" to listOf<Map<String, Any>>(
-                        mapOf("type" to "status_exception", "reason" to "Not allowed to modify [target_index]")
-                    ),
-                    "type" to "status_exception",
-                    "reason" to "Not allowed to modify [target_index]"
-                ),
-                "status" to 400
-            )
+            val expectedErrorMessage =
+                mapOf(
+                    "error" to
+                        mapOf(
+                            "root_cause" to
+                                listOf<Map<String, Any>>(
+                                    mapOf("type" to "status_exception", "reason" to "Not allowed to modify [target_index]"),
+                                ),
+                            "type" to "status_exception",
+                            "reason" to "Not allowed to modify [target_index]",
+                        ),
+                    "status" to 400,
+                )
             assertEquals(expectedErrorMessage, actualMessage)
         }
     }
@@ -184,22 +191,25 @@ class RestIndexRollupActionIT : RollupRestAPITestCase() {
             client().makeRequest(
                 "PUT",
                 "$ROLLUP_JOBS_BASE_URI/${rollup.id}?refresh=true&if_seq_no=${rollup.seqNo}&if_primary_term=${rollup.primaryTerm}",
-                emptyMap(), rollup.copy(continuous = !rollup.continuous).toHttpEntity()
+                emptyMap(), rollup.copy(continuous = !rollup.continuous).toHttpEntity(),
             )
             fail("Expected 400 Method BAD_REQUEST response")
         } catch (e: ResponseException) {
             assertEquals("Unexpected status", RestStatus.BAD_REQUEST, e.response.restStatus())
             val actualMessage = e.response.asMap()
-            val expectedErrorMessage = mapOf(
-                "error" to mapOf(
-                    "root_cause" to listOf<Map<String, Any>>(
-                        mapOf("type" to "status_exception", "reason" to "Not allowed to modify [continuous]")
-                    ),
-                    "type" to "status_exception",
-                    "reason" to "Not allowed to modify [continuous]"
-                ),
-                "status" to 400
-            )
+            val expectedErrorMessage =
+                mapOf(
+                    "error" to
+                        mapOf(
+                            "root_cause" to
+                                listOf<Map<String, Any>>(
+                                    mapOf("type" to "status_exception", "reason" to "Not allowed to modify [continuous]"),
+                                ),
+                            "type" to "status_exception",
+                            "reason" to "Not allowed to modify [continuous]",
+                        ),
+                    "status" to 400,
+                )
             assertEquals(expectedErrorMessage, actualMessage)
         }
     }
@@ -208,33 +218,37 @@ class RestIndexRollupActionIT : RollupRestAPITestCase() {
     fun `test updating rollup dimensions`() {
         try {
             val dimensions = randomRollupDimensions()
-            val newDimensions: List<Dimension> = dimensions.map {
-                when (it.type) {
-                    Dimension.Type.DATE_HISTOGRAM -> (it as DateHistogram).copy(timezone = OpenSearchTestCase.randomZone())
-                    Dimension.Type.HISTOGRAM -> (it as Histogram).copy(interval = 5.5)
-                    Dimension.Type.TERMS -> (it as Terms).copy(targetField = "some_other_target_field")
+            val newDimensions: List<Dimension> =
+                dimensions.map {
+                    when (it.type) {
+                        Dimension.Type.DATE_HISTOGRAM -> (it as DateHistogram).copy(timezone = OpenSearchTestCase.randomZone())
+                        Dimension.Type.HISTOGRAM -> (it as Histogram).copy(interval = 5.5)
+                        Dimension.Type.TERMS -> (it as Terms).copy(targetField = "some_other_target_field")
+                    }
                 }
-            }
             val rollup = createRollup(rollup = randomRollup().copy(dimensions = dimensions), rollupId = "$testName-1")
             client().makeRequest(
                 "PUT",
                 "$ROLLUP_JOBS_BASE_URI/${rollup.id}?refresh=true&if_seq_no=${rollup.seqNo}&if_primary_term=${rollup.primaryTerm}",
-                emptyMap(), rollup.copy(dimensions = newDimensions).toHttpEntity()
+                emptyMap(), rollup.copy(dimensions = newDimensions).toHttpEntity(),
             )
             fail("Expected 400 Method BAD_REQUEST response")
         } catch (e: ResponseException) {
             assertEquals("Unexpected status", RestStatus.BAD_REQUEST, e.response.restStatus())
             val actualMessage = e.response.asMap()
-            val expectedErrorMessage = mapOf(
-                "error" to mapOf(
-                    "root_cause" to listOf<Map<String, Any>>(
-                        mapOf("type" to "status_exception", "reason" to "Not allowed to modify [dimensions]")
-                    ),
-                    "type" to "status_exception",
-                    "reason" to "Not allowed to modify [dimensions]"
-                ),
-                "status" to 400
-            )
+            val expectedErrorMessage =
+                mapOf(
+                    "error" to
+                        mapOf(
+                            "root_cause" to
+                                listOf<Map<String, Any>>(
+                                    mapOf("type" to "status_exception", "reason" to "Not allowed to modify [dimensions]"),
+                                ),
+                            "type" to "status_exception",
+                            "reason" to "Not allowed to modify [dimensions]",
+                        ),
+                    "status" to 400,
+                )
             assertEquals(expectedErrorMessage, actualMessage)
         }
     }
@@ -243,39 +257,44 @@ class RestIndexRollupActionIT : RollupRestAPITestCase() {
     fun `test updating rollup metrics`() {
         try {
             val metrics = listOf(randomRollupMetrics(), randomRollupMetrics())
-            val newMetrics: List<RollupMetrics> = metrics.map {
-                it.copy(
-                    metrics = it.metrics.map {
-                        when (it.type) {
-                            Metric.Type.AVERAGE -> Max()
-                            Metric.Type.MAX -> Min()
-                            Metric.Type.MIN -> Sum()
-                            Metric.Type.SUM -> ValueCount()
-                            Metric.Type.VALUE_COUNT -> Average()
-                        }
-                    }
-                )
-            }
+            val newMetrics: List<RollupMetrics> =
+                metrics.map {
+                    it.copy(
+                        metrics =
+                        it.metrics.map {
+                            when (it.type) {
+                                Metric.Type.AVERAGE -> Max()
+                                Metric.Type.MAX -> Min()
+                                Metric.Type.MIN -> Sum()
+                                Metric.Type.SUM -> ValueCount()
+                                Metric.Type.VALUE_COUNT -> Average()
+                            }
+                        },
+                    )
+                }
             val rollup = createRollup(rollup = randomRollup().copy(metrics = metrics), rollupId = "$testName-2")
             client().makeRequest(
                 "PUT",
                 "$ROLLUP_JOBS_BASE_URI/${rollup.id}?refresh=true&if_seq_no=${rollup.seqNo}&if_primary_term=${rollup.primaryTerm}",
-                emptyMap(), rollup.copy(metrics = newMetrics).toHttpEntity()
+                emptyMap(), rollup.copy(metrics = newMetrics).toHttpEntity(),
             )
             fail("Expected 400 Method BAD_REQUEST response")
         } catch (e: ResponseException) {
             assertEquals("Unexpected status", RestStatus.BAD_REQUEST, e.response.restStatus())
             val actualMessage = e.response.asMap()
-            val expectedErrorMessage = mapOf(
-                "error" to mapOf(
-                    "root_cause" to listOf<Map<String, Any>>(
-                        mapOf("type" to "status_exception", "reason" to "Not allowed to modify [metrics]")
-                    ),
-                    "type" to "status_exception",
-                    "reason" to "Not allowed to modify [metrics]"
-                ),
-                "status" to 400
-            )
+            val expectedErrorMessage =
+                mapOf(
+                    "error" to
+                        mapOf(
+                            "root_cause" to
+                                listOf<Map<String, Any>>(
+                                    mapOf("type" to "status_exception", "reason" to "Not allowed to modify [metrics]"),
+                                ),
+                            "type" to "status_exception",
+                            "reason" to "Not allowed to modify [metrics]",
+                        ),
+                    "status" to 400,
+                )
             assertEquals(expectedErrorMessage, actualMessage)
         }
     }

@@ -5,19 +5,20 @@
 
 package org.opensearch.indexmanagement.transform
 
+import org.apache.hc.core5.http.ContentType
 import org.apache.hc.core5.http.HttpEntity
 import org.apache.hc.core5.http.HttpHeaders
-import org.apache.hc.core5.http.ContentType
 import org.apache.hc.core5.http.io.entity.StringEntity
 import org.apache.hc.core5.http.message.BasicHeader
 import org.junit.AfterClass
 import org.opensearch.client.Response
 import org.opensearch.client.RestClient
 import org.opensearch.common.settings.Settings
+import org.opensearch.common.xcontent.XContentType
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.core.xcontent.NamedXContentRegistry
 import org.opensearch.core.xcontent.XContentParser
 import org.opensearch.core.xcontent.XContentParserUtils.ensureExpectedToken
-import org.opensearch.common.xcontent.XContentType
 import org.opensearch.index.seqno.SequenceNumbers
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.TRANSFORM_BASE_URI
@@ -29,11 +30,9 @@ import org.opensearch.indexmanagement.transform.model.TransformMetadata
 import org.opensearch.indexmanagement.util._ID
 import org.opensearch.indexmanagement.util._PRIMARY_TERM
 import org.opensearch.indexmanagement.util._SEQ_NO
-import org.opensearch.core.rest.RestStatus
 import org.opensearch.search.SearchModule
 
 abstract class TransformRestTestCase : IndexManagementRestTestCase() {
-
     companion object {
         @AfterClass
         @JvmStatic fun clearIndicesAfterClass() {
@@ -45,21 +44,22 @@ abstract class TransformRestTestCase : IndexManagementRestTestCase() {
         transform: Transform,
         transformId: String = randomAlphaOfLength(10),
         refresh: Boolean = true,
-        client: RestClient? = null
+        client: RestClient? = null,
     ): Transform {
         if (!indexExists(transform.sourceIndex)) {
             createTransformSourceIndex(transform)
         }
         val response = createTransformJson(transform.toJsonString(), transformId, refresh, client)
 
-        val transformJson = createParser(XContentType.JSON.xContent(), response.entity.content)
-            .map()
+        val transformJson =
+            createParser(XContentType.JSON.xContent(), response.entity.content)
+                .map()
         val createdId = transformJson["_id"] as String
         assertEquals("Transform ids are not the same", transformId, createdId)
         return transform.copy(
             id = createdId,
             seqNo = (transformJson["_seq_no"] as Int).toLong(),
-            primaryTerm = (transformJson["_primary_term"] as Int).toLong()
+            primaryTerm = (transformJson["_primary_term"] as Int).toLong(),
         )
     }
 
@@ -67,27 +67,29 @@ abstract class TransformRestTestCase : IndexManagementRestTestCase() {
         transformString: String,
         transformId: String,
         refresh: Boolean = true,
-        userClient: RestClient? = null
+        userClient: RestClient? = null,
     ): Response {
         val client = userClient ?: client()
-        val response = client
-            .makeRequest(
-                "PUT",
-                "$TRANSFORM_BASE_URI/$transformId?refresh=$refresh",
-                emptyMap(),
-                StringEntity(transformString, ContentType.APPLICATION_JSON)
-            )
+        val response =
+            client
+                .makeRequest(
+                    "PUT",
+                    "$TRANSFORM_BASE_URI/$transformId?refresh=$refresh",
+                    emptyMap(),
+                    StringEntity(transformString, ContentType.APPLICATION_JSON),
+                )
         assertEquals("Unable to create a new transform", RestStatus.CREATED, response.restStatus())
         return response
     }
 
     protected fun disableTransform(transformId: String) {
-        val response = client()
-            .makeRequest(
-                "POST",
-                "$TRANSFORM_BASE_URI/$transformId/_stop",
-                emptyMap()
-            )
+        val response =
+            client()
+                .makeRequest(
+                    "POST",
+                    "$TRANSFORM_BASE_URI/$transformId/_stop",
+                    emptyMap(),
+                )
         assertEquals("Unable to disable transform $transformId", RestStatus.OK, response.restStatus())
     }
 
@@ -101,11 +103,12 @@ abstract class TransformRestTestCase : IndexManagementRestTestCase() {
         var mappingString = ""
         var addCommaPrefix = false
         transform.groups.forEach {
-            val fieldType = when (it.type) {
-                Dimension.Type.DATE_HISTOGRAM -> "date"
-                Dimension.Type.HISTOGRAM -> "long"
-                Dimension.Type.TERMS -> "keyword"
-            }
+            val fieldType =
+                when (it.type) {
+                    Dimension.Type.DATE_HISTOGRAM -> "date"
+                    Dimension.Type.HISTOGRAM -> "long"
+                    Dimension.Type.TERMS -> "keyword"
+                }
             val string = "${if (addCommaPrefix) "," else ""}\"${it.sourceField}\":{\"type\": \"$fieldType\"}"
             addCommaPrefix = true
             mappingString += string
@@ -115,9 +118,10 @@ abstract class TransformRestTestCase : IndexManagementRestTestCase() {
     }
 
     protected fun getTransformMetadata(metadataId: String): TransformMetadata {
-        val response = client().makeRequest(
-            "GET", "$INDEX_MANAGEMENT_INDEX/_doc/$metadataId", null, BasicHeader(HttpHeaders.CONTENT_TYPE, "application/json")
-        )
+        val response =
+            client().makeRequest(
+                "GET", "$INDEX_MANAGEMENT_INDEX/_doc/$metadataId", null, BasicHeader(HttpHeaders.CONTENT_TYPE, "application/json"),
+            )
         assertEquals("Unable to get transform metadata $metadataId", RestStatus.OK, response.restStatus())
 
         val parser = createParser(XContentType.JSON.xContent(), response.entity.content)
@@ -145,7 +149,7 @@ abstract class TransformRestTestCase : IndexManagementRestTestCase() {
     protected fun getTransform(
         transformId: String,
         header: BasicHeader = BasicHeader(HttpHeaders.CONTENT_TYPE, "application/json"),
-        userClient: RestClient? = null
+        userClient: RestClient? = null,
     ): Transform {
         val client = userClient ?: client()
         val response = client.makeRequest("GET", "$TRANSFORM_BASE_URI/$transformId", null, header)

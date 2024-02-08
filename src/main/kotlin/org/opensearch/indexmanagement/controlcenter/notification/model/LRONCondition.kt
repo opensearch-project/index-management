@@ -19,9 +19,8 @@ import java.io.IOException
 
 data class LRONCondition(
     val success: Boolean = DEFAULT_ENABLED,
-    val failure: Boolean = DEFAULT_ENABLED
+    val failure: Boolean = DEFAULT_ENABLED,
 ) : ToXContentObject, Writeable {
-
     fun toXContent(builder: XContentBuilder): XContentBuilder {
         return toXContent(builder, ToXContent.EMPTY_PARAMS)
     }
@@ -36,7 +35,7 @@ data class LRONCondition(
     @Throws(IOException::class)
     constructor(sin: StreamInput) : this(
         success = sin.readBoolean(),
-        failure = sin.readBoolean()
+        failure = sin.readBoolean(),
     )
 
     @Throws(IOException::class)
@@ -62,7 +61,7 @@ data class LRONCondition(
             xcp: XContentParser,
             id: String = NO_ID,
             seqNo: Long = SequenceNumbers.UNASSIGNED_SEQ_NO,
-            primaryTerm: Long = SequenceNumbers.UNASSIGNED_PRIMARY_TERM
+            primaryTerm: Long = SequenceNumbers.UNASSIGNED_PRIMARY_TERM,
         ): LRONCondition {
             return parse(xcp)
         }
@@ -88,7 +87,7 @@ data class LRONCondition(
 
             return LRONCondition(
                 success = success,
-                failure = failure
+                failure = failure,
             )
         }
     }

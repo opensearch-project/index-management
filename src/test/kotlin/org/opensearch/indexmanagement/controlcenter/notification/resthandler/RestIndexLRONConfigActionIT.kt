@@ -12,6 +12,7 @@ import kotlinx.coroutines.runBlocking
 import org.junit.Assert
 import org.opensearch.client.ResponseException
 import org.opensearch.common.xcontent.XContentType
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.indexmanagement.IndexManagementPlugin
 import org.opensearch.indexmanagement.controlcenter.notification.getResourceURI
 import org.opensearch.indexmanagement.controlcenter.notification.model.LRONConfig
@@ -24,7 +25,6 @@ import org.opensearch.indexmanagement.indexstatemanagement.randomChannel
 import org.opensearch.indexmanagement.makeRequest
 import org.opensearch.indexmanagement.opensearchapi.convertToMap
 import org.opensearch.indexmanagement.util.DRY_RUN
-import org.opensearch.core.rest.RestStatus
 import java.util.concurrent.Executors
 
 @Suppress("UNCHECKED_CAST")
@@ -40,7 +40,7 @@ class RestIndexLRONConfigActionIT : LRONConfigRestTestCase() {
         Assert.assertEquals(
             "not same LRONConfig",
             lronConfigMap.filterKeys { it != LRONConfig.USER_FIELD && it != LRONConfig.PRIORITY_FIELD },
-            responseBody["lron_config"] as Map<String, Any>
+            responseBody["lron_config"] as Map<String, Any>,
         )
     }
 
@@ -51,7 +51,7 @@ class RestIndexLRONConfigActionIT : LRONConfigRestTestCase() {
                 "POST",
                 getResourceURI(lronConfig.taskId, lronConfig.actionName),
                 emptyMap(),
-                lronConfig.toHttpEntity()
+                lronConfig.toHttpEntity(),
             )
             fail("Expected 405 METHOD_NOT_ALLOWED")
         } catch (e: ResponseException) {
@@ -74,21 +74,23 @@ class RestIndexLRONConfigActionIT : LRONConfigRestTestCase() {
         val lronConfig = randomLRONConfig(taskId = randomTaskId(nodeId = nodeIdsInRestIT.random()))
         createLRONConfig(lronConfig)
 
-        val newLRONConfig = LRONConfig(
-            lronCondition = randomLRONCondition(),
-            taskId = lronConfig.taskId,
-            actionName = lronConfig.actionName,
-            channels = List(10) { randomChannel() },
-            user = null,
-            priority = null
-        )
+        val newLRONConfig =
+            LRONConfig(
+                lronCondition = randomLRONCondition(),
+                taskId = lronConfig.taskId,
+                actionName = lronConfig.actionName,
+                channels = List(10) { randomChannel() },
+                user = null,
+                priority = null,
+            )
 
-        val response = client().makeRequest(
-            "PUT",
-            getResourceURI(lronConfig.taskId, lronConfig.actionName),
-            emptyMap(),
-            newLRONConfig.toHttpEntity()
-        )
+        val response =
+            client().makeRequest(
+                "PUT",
+                getResourceURI(lronConfig.taskId, lronConfig.actionName),
+                emptyMap(),
+                newLRONConfig.toHttpEntity(),
+            )
 
         assertEquals("update LRONConfig failed", RestStatus.OK, response.restStatus())
         val responseBody = response.asMap()
@@ -98,25 +100,26 @@ class RestIndexLRONConfigActionIT : LRONConfigRestTestCase() {
         Assert.assertEquals(
             "not same LRONConfig",
             newLRONConfigMap.filterKeys { it != LRONConfig.USER_FIELD && it != LRONConfig.PRIORITY_FIELD },
-            responseBody["lron_config"] as Map<String, Any>
+            responseBody["lron_config"] as Map<String, Any>,
         )
     }
 
     fun `test create LRONConfig using PUT`() {
         val lronConfig = randomLRONConfig(taskId = randomTaskId(nodeId = nodeIdsInRestIT.random()))
-        val response = client().makeRequest(
-            "PUT",
-            getResourceURI(lronConfig.taskId, lronConfig.actionName),
-            emptyMap(),
-            lronConfig.toHttpEntity()
-        )
+        val response =
+            client().makeRequest(
+                "PUT",
+                getResourceURI(lronConfig.taskId, lronConfig.actionName),
+                emptyMap(),
+                lronConfig.toHttpEntity(),
+            )
         assertEquals("autocreate LRONConfig failed", RestStatus.OK, response.restStatus())
         val responseBody = response.asMap()
         val lronConfigMap = lronConfig.convertToMap()[LRONConfig.LRON_CONFIG_FIELD] as Map<String, Any>
         Assert.assertEquals(
             "not same LRONConfig",
             lronConfigMap.filterKeys { it != LRONConfig.USER_FIELD && it != LRONConfig.PRIORITY_FIELD },
-            responseBody["lron_config"] as Map<String, Any>
+            responseBody["lron_config"] as Map<String, Any>,
         )
     }
 
@@ -127,7 +130,7 @@ class RestIndexLRONConfigActionIT : LRONConfigRestTestCase() {
                 "PUT",
                 IndexManagementPlugin.LRON_BASE_URI,
                 emptyMap(),
-                lronConfig.toHttpEntity()
+                lronConfig.toHttpEntity(),
             )
             fail("Expected 405 METHOD_NOT_ALLOWED")
         } catch (e: ResponseException) {
@@ -137,18 +140,18 @@ class RestIndexLRONConfigActionIT : LRONConfigRestTestCase() {
 
     fun `test creating LRONConfig dryRun`() {
         val lronConfig = randomLRONConfig(taskId = randomTaskId(nodeId = nodeIdsInRestIT.random()))
-        /* first use POST and PUT to create, then try to get */
+        // first use POST and PUT to create, then try to get
         client().makeRequest(
             "POST",
             IndexManagementPlugin.LRON_BASE_URI,
             mapOf(DRY_RUN to "true"),
-            lronConfig.toHttpEntity()
+            lronConfig.toHttpEntity(),
         )
         client().makeRequest(
             "PUT",
             getResourceURI(lronConfig.taskId, lronConfig.actionName),
             mapOf(DRY_RUN to "true"),
-            lronConfig.toHttpEntity()
+            lronConfig.toHttpEntity(),
         )
         try {
             client().makeRequest("GET", getResourceURI(lronConfig.taskId, lronConfig.actionName))
@@ -165,11 +168,12 @@ class RestIndexLRONConfigActionIT : LRONConfigRestTestCase() {
         var response = createLRONConfig(lronConfig)
         assertEquals("Create LRONConfig failed", RestStatus.OK, response.restStatus())
         removeControlCenterIndex()
-        response = client().makeRequest(
-            "PUT",
-            getResourceURI(lronConfig.taskId, lronConfig.actionName),
-            lronConfig.toHttpEntity()
-        )
+        response =
+            client().makeRequest(
+                "PUT",
+                getResourceURI(lronConfig.taskId, lronConfig.actionName),
+                lronConfig.toHttpEntity(),
+            )
         assertEquals("Create LRONConfig failed", RestStatus.OK, response.restStatus())
     }
 
@@ -181,11 +185,12 @@ class RestIndexLRONConfigActionIT : LRONConfigRestTestCase() {
         val response = client().makeRequest("GET", "/${IndexManagementPlugin.CONTROL_CENTER_INDEX}/_mapping")
         val parserMap = createParser(XContentType.JSON.xContent(), response.entity.content).map() as Map<String, Map<String, Any>>
         val mappingsMap = parserMap[IndexManagementPlugin.CONTROL_CENTER_INDEX]!!["mappings"] as Map<String, Any>
-        val expected = createParser(
-            XContentType.JSON.xContent(),
-            javaClass.classLoader.getResource("mappings/opensearch-control-center.json")!!
-                .readText()
-        )
+        val expected =
+            createParser(
+                XContentType.JSON.xContent(),
+                javaClass.classLoader.getResource("mappings/opensearch-control-center.json")!!
+                    .readText(),
+            )
         val expectedMap = expected.map()
 
         assertEquals("Mappings are different", expectedMap, mappingsMap)
@@ -199,11 +204,12 @@ class RestIndexLRONConfigActionIT : LRONConfigRestTestCase() {
         try {
             runBlocking {
                 val dispatcher = threadPool.asCoroutineDispatcher()
-                val responses = lronConfigs.map {
-                    async(dispatcher) {
-                        createLRONConfig(it)
-                    }
-                }.awaitAll()
+                val responses =
+                    lronConfigs.map {
+                        async(dispatcher) {
+                            createLRONConfig(it)
+                        }
+                    }.awaitAll()
                 responses.forEach { assertEquals("Create LRONConfig failed", RestStatus.OK, it.restStatus()) }
             }
         } finally {

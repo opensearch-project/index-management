@@ -11,22 +11,22 @@ import kotlinx.coroutines.launch
 import org.apache.logging.log4j.LogManager
 import org.opensearch.ExceptionsHelper
 import org.opensearch.ResourceNotFoundException
-import org.opensearch.core.action.ActionListener
 import org.opensearch.action.search.SearchRequest
 import org.opensearch.action.search.SearchResponse
 import org.opensearch.action.support.ActionFilters
 import org.opensearch.action.support.HandledTransportAction
 import org.opensearch.client.Client
 import org.opensearch.cluster.service.ClusterService
-import org.opensearch.core.common.bytes.BytesReference
 import org.opensearch.common.inject.Inject
 import org.opensearch.common.settings.Settings
 import org.opensearch.common.xcontent.LoggingDeprecationHandler
-import org.opensearch.core.xcontent.NamedXContentRegistry
 import org.opensearch.common.xcontent.XContentHelper
-import org.opensearch.core.xcontent.XContentParser
 import org.opensearch.common.xcontent.XContentType
 import org.opensearch.commons.ConfigConstants
+import org.opensearch.core.action.ActionListener
+import org.opensearch.core.common.bytes.BytesReference
+import org.opensearch.core.xcontent.NamedXContentRegistry
+import org.opensearch.core.xcontent.XContentParser
 import org.opensearch.index.query.BoolQueryBuilder
 import org.opensearch.index.query.IdsQueryBuilder
 import org.opensearch.index.query.WildcardQueryBuilder
@@ -43,17 +43,18 @@ import org.opensearch.tasks.Task
 import org.opensearch.transport.RemoteTransportException
 import org.opensearch.transport.TransportService
 
-class TransportExplainTransformAction @Inject constructor(
+class TransportExplainTransformAction
+@Inject
+constructor(
     transportService: TransportService,
     val client: Client,
     actionFilters: ActionFilters,
     val clusterService: ClusterService,
     val settings: Settings,
-    val xContentRegistry: NamedXContentRegistry
+    val xContentRegistry: NamedXContentRegistry,
 ) : HandledTransportAction<ExplainTransformRequest, ExplainTransformResponse>(
-    ExplainTransformAction.NAME, transportService, actionFilters, ::ExplainTransformRequest
+    ExplainTransformAction.NAME, transportService, actionFilters, ::ExplainTransformRequest,
 ) {
-
     @Volatile private var filterByEnabled = IndexManagementSettings.FILTER_BY_BACKEND_ROLES.get(settings)
 
     init {
@@ -68,19 +69,21 @@ class TransportExplainTransformAction @Inject constructor(
     override fun doExecute(task: Task, request: ExplainTransformRequest, actionListener: ActionListener<ExplainTransformResponse>) {
         log.debug(
             "User and roles string from thread context: ${client.threadPool().threadContext.getTransient<String>(
-                ConfigConstants.OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT
-            )}"
+                ConfigConstants.OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT,
+            )}",
         )
         val ids = request.transformIDs
         // Instantiate concrete ids to metadata map by removing wildcard matches
-        val idsToExplain: MutableMap<String, ExplainTransform?> = ids.filter { !it.contains("*") }
-            .map { it to null }.toMap(mutableMapOf())
+        val idsToExplain: MutableMap<String, ExplainTransform?> =
+            ids.filter { !it.contains("*") }
+                .map { it to null }.toMap(mutableMapOf())
         val failedToExplain: MutableMap<String, String> = mutableMapOf()
-        val queryBuilder = BoolQueryBuilder().minimumShouldMatch(1).apply {
-            ids.forEach {
-                this.should(WildcardQueryBuilder("${ Transform.TRANSFORM_TYPE}.${Transform.TRANSFORM_ID_FIELD}.keyword", "*$it*"))
+        val queryBuilder =
+            BoolQueryBuilder().minimumShouldMatch(1).apply {
+                ids.forEach {
+                    this.should(WildcardQueryBuilder("${ Transform.TRANSFORM_TYPE}.${Transform.TRANSFORM_ID_FIELD}.keyword", "*$it*"))
+                }
             }
-        }
         val user = buildUser(client.threadPool().threadContext)
         addUserFilter(user, queryBuilder, filterByEnabled, "transform.user")
 
@@ -105,8 +108,9 @@ class TransportExplainTransformAction @Inject constructor(
                         }
 
                         val metadataIds = idsToExplain.values.mapNotNull { it?.metadataID }
-                        val metadataSearchRequest = SearchRequest(INDEX_MANAGEMENT_INDEX)
-                            .source(SearchSourceBuilder().query(IdsQueryBuilder().addIds(*metadataIds.toTypedArray())))
+                        val metadataSearchRequest =
+                            SearchRequest(INDEX_MANAGEMENT_INDEX)
+                                .source(SearchSourceBuilder().query(IdsQueryBuilder().addIds(*metadataIds.toTypedArray())))
                         client.search(
                             metadataSearchRequest,
                             object : ActionListener<SearchResponse> {
@@ -114,8 +118,9 @@ class TransportExplainTransformAction @Inject constructor(
                                     CoroutineScope(Dispatchers.IO).launch {
                                         response.hits.hits.forEach {
                                             try {
-                                                val metadata = contentParser(it.sourceRef)
-                                                    .parseWithType(it.id, it.seqNo, it.primaryTerm, TransformMetadata.Companion::parse)
+                                                val metadata =
+                                                    contentParser(it.sourceRef)
+                                                        .parseWithType(it.id, it.seqNo, it.primaryTerm, TransformMetadata.Companion::parse)
 
                                                 val transform = metadataIdToTransform[metadata.id]
                                                 // Only add continuous stats for continuous transforms which have not failed
@@ -157,15 +162,16 @@ class TransportExplainTransformAction @Inject constructor(
                                     } else {
                                         idsToExplain.computeIfPresent(metadata.transformId) { _, explainTransform ->
                                             explainTransform.copy(
-                                                metadata = metadata.copy(
+                                                metadata =
+                                                metadata.copy(
                                                     shardIDToGlobalCheckpoint = null,
-                                                    continuousStats = continuousStats
-                                                )
+                                                    continuousStats = continuousStats,
+                                                ),
                                             )
                                         }
                                     }
                                 }
-                            }
+                            },
                         )
                     }
 
@@ -181,7 +187,7 @@ class TransportExplainTransformAction @Inject constructor(
                             else -> actionListener.onFailure(e)
                         }
                     }
-                }
+                },
             )
         }
     }
@@ -189,7 +195,7 @@ class TransportExplainTransformAction @Inject constructor(
     private fun contentParser(bytesReference: BytesReference): XContentParser {
         return XContentHelper.createParser(
             xContentRegistry,
-            LoggingDeprecationHandler.INSTANCE, bytesReference, XContentType.JSON
+            LoggingDeprecationHandler.INSTANCE, bytesReference, XContentType.JSON,
         )
     }
 }

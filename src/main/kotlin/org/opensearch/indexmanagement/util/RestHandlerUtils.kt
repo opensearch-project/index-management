@@ -4,6 +4,7 @@
  */
 
 @file:Suppress("TopLevelPropertyNaming", "MatchingDeclarationName")
+
 package org.opensearch.indexmanagement.util
 
 import org.opensearch.indexmanagement.common.model.rest.DEFAULT_PAGINATION_FROM

@@ -25,7 +25,6 @@ import java.time.temporal.ChronoUnit
 import kotlin.test.assertFailsWith
 
 class ManagedIndexCoordinatorIT : IndexStateManagementRestTestCase() {
-
     fun `test creating index with valid policy_id`() {
         val policy = createRandomPolicy()
         val (index, policyID) = createIndex(policyID = policy.id)
@@ -77,7 +76,7 @@ class ManagedIndexCoordinatorIT : IndexStateManagementRestTestCase() {
             assertPredicatesOnMetaData(
                 listOf(index to listOf(ManagedIndexMetaData.POLICY_ID to policy.id::equals)),
                 getExplainMap(index),
-                false
+                false,
             )
         }
 
@@ -89,16 +88,23 @@ class ManagedIndexCoordinatorIT : IndexStateManagementRestTestCase() {
         waitFor {
             assertPredicatesOnMetaData(
                 listOf(
-                    index to listOf(
-                        explainResponseOpendistroPolicyIdSetting to fun(policyID: Any?): Boolean =
-                            policyID == null,
-                        explainResponseOpenSearchPolicyIdSetting to fun(policyID: Any?): Boolean =
-                            policyID == null,
-                        ManagedIndexMetaData.ENABLED to fun(enabled: Any?): Boolean = enabled == null
-                    )
+                    index to
+                        listOf(
+                            explainResponseOpendistroPolicyIdSetting to
+
+                                fun(policyID: Any?): Boolean =
+                                    policyID == null,
+                            explainResponseOpenSearchPolicyIdSetting to
+
+                                fun(policyID: Any?): Boolean =
+                                    policyID == null,
+                            ManagedIndexMetaData.ENABLED to
+
+                                fun(enabled: Any?): Boolean = enabled == null,
+                        ),
                 ),
                 getExplainMap(index),
-                true
+                true,
             )
         }
     }
@@ -118,7 +124,7 @@ class ManagedIndexCoordinatorIT : IndexStateManagementRestTestCase() {
             assertPredicatesOnMetaData(
                 listOf(index to listOf(ManagedIndexMetaData.POLICY_ID to policy.id::equals)),
                 getExplainMap(index),
-                false
+                false,
             )
         }
 
@@ -141,15 +147,16 @@ class ManagedIndexCoordinatorIT : IndexStateManagementRestTestCase() {
         val rolloverActionConfig = RolloverAction(index = 0, minDocs = 5, minAge = null, minSize = null, minPrimaryShardSize = null)
         val states =
             listOf(State(name = "RolloverState", actions = listOf(rolloverActionConfig), transitions = listOf()))
-        val policy = Policy(
-            id = policyID,
-            description = "$policyID description",
-            schemaVersion = 1L,
-            lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
-            errorNotification = randomErrorNotification(),
-            defaultState = states[0].name,
-            states = states
-        )
+        val policy =
+            Policy(
+                id = policyID,
+                description = "$policyID description",
+                schemaVersion = 1L,
+                lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
+                errorNotification = randomErrorNotification(),
+                defaultState = states[0].name,
+                states = states,
+            )
 
         createPolicy(policy, policyID)
         createIndex(indexName, policyID, "some_alias")
@@ -173,11 +180,12 @@ class ManagedIndexCoordinatorIT : IndexStateManagementRestTestCase() {
         updateManagedIndexConfigStartTime(managedIndexConfig)
 
         // Confirm job was disabled
-        val disabledManagedIndexConfig: ManagedIndexConfig = waitFor {
-            val config = getManagedIndexConfigByDocId(managedIndexConfig.id)
-            assertEquals("ManagedIndexConfig was not disabled", false, config!!.enabled)
-            config
-        }
+        val disabledManagedIndexConfig: ManagedIndexConfig =
+            waitFor {
+                val config = getManagedIndexConfigByDocId(managedIndexConfig.id)
+                assertEquals("ManagedIndexConfig was not disabled", false, config!!.enabled)
+                config
+            }
 
         // Speed up to next execution and confirm that Explain API still shows information of policy initialization
         updateManagedIndexConfigStartTime(disabledManagedIndexConfig)
@@ -186,14 +194,17 @@ class ManagedIndexCoordinatorIT : IndexStateManagementRestTestCase() {
             val expectedInfoString = mapOf("message" to "Successfully initialized policy: $policyID").toString()
             assertPredicatesOnMetaData(
                 listOf(
-                    indexName to listOf(
-                        ManagedIndexMetaData.INDEX to indexName::equals,
-                        ManagedIndexMetaData.POLICY_ID to policyID::equals,
-                        ManagedIndexMetaData.INFO to fun(info: Any?): Boolean = expectedInfoString == info.toString()
-                    )
+                    indexName to
+                        listOf(
+                            ManagedIndexMetaData.INDEX to indexName::equals,
+                            ManagedIndexMetaData.POLICY_ID to policyID::equals,
+                            ManagedIndexMetaData.INFO to
+
+                                fun(info: Any?): Boolean = expectedInfoString == info.toString(),
+                        ),
                 ),
                 getExplainMap(indexName),
-                false
+                false,
             )
         }
 
@@ -201,18 +212,19 @@ class ManagedIndexCoordinatorIT : IndexStateManagementRestTestCase() {
         updateClusterSetting(ManagedIndexSettings.INDEX_STATE_MANAGEMENT_ENABLED.key, "true")
 
         // Confirm job was re-enabled
-        val enabledManagedIndexConfig: ManagedIndexConfig = waitFor {
-            val config = getManagedIndexConfigByDocId(disabledManagedIndexConfig.id)
-            assertEquals("ManagedIndexConfig was not re-enabled", true, config!!.enabled)
-            config
-        }
+        val enabledManagedIndexConfig: ManagedIndexConfig =
+            waitFor {
+                val config = getManagedIndexConfigByDocId(disabledManagedIndexConfig.id)
+                assertEquals("ManagedIndexConfig was not re-enabled", true, config!!.enabled)
+                config
+            }
 
         updateManagedIndexConfigStartTime(enabledManagedIndexConfig, retryOnConflict = 4)
 
         waitFor {
             assertEquals(
                 AttemptRolloverStep.getSuccessMessage(indexName),
-                getExplainManagedIndexMetaData(indexName).info?.get("message")
+                getExplainManagedIndexMetaData(indexName).info?.get("message"),
             )
         }
     }
@@ -224,24 +236,26 @@ class ManagedIndexCoordinatorIT : IndexStateManagementRestTestCase() {
         // Create a policy with one State that performs force_merge and another State that deletes the index
         val forceMergeActionConfig = ForceMergeAction(index = 0, maxNumSegments = 1)
         val deleteActionConfig = DeleteAction(index = 0)
-        val states = listOf(
-            State(
-                name = "ForceMergeState",
-                actions = listOf(forceMergeActionConfig),
-                transitions = listOf(Transition(stateName = "DeleteState", conditions = null))
-            ),
-            State(name = "DeleteState", actions = listOf(deleteActionConfig), transitions = listOf())
-        )
+        val states =
+            listOf(
+                State(
+                    name = "ForceMergeState",
+                    actions = listOf(forceMergeActionConfig),
+                    transitions = listOf(Transition(stateName = "DeleteState", conditions = null)),
+                ),
+                State(name = "DeleteState", actions = listOf(deleteActionConfig), transitions = listOf()),
+            )
 
-        val policy = Policy(
-            id = policyID,
-            description = "$policyID description",
-            schemaVersion = 1L,
-            lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
-            errorNotification = randomErrorNotification(),
-            defaultState = states[0].name,
-            states = states
-        )
+        val policy =
+            Policy(
+                id = policyID,
+                description = "$policyID description",
+                schemaVersion = 1L,
+                lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
+                errorNotification = randomErrorNotification(),
+                defaultState = states[0].name,
+                states = states,
+            )
 
         createPolicy(policy, policyID)
         createIndex(indexName, policyID)
@@ -252,7 +266,7 @@ class ManagedIndexCoordinatorIT : IndexStateManagementRestTestCase() {
         waitFor {
             assertTrue(
                 "Segment count for [$indexName] was less than expected",
-                validateSegmentCount(indexName, min = 2)
+                validateSegmentCount(indexName, min = 2),
             )
         }
 
@@ -279,7 +293,7 @@ class ManagedIndexCoordinatorIT : IndexStateManagementRestTestCase() {
             assertEquals(
                 "maxNumSegments not set in ActionProperties",
                 forceMergeActionConfig.maxNumSegments,
-                getExplainManagedIndexMetaData(indexName).actionMetaData?.actionProperties?.maxNumSegments
+                getExplainManagedIndexMetaData(indexName).actionMetaData?.actionProperties?.maxNumSegments,
             )
         }
 
@@ -293,7 +307,7 @@ class ManagedIndexCoordinatorIT : IndexStateManagementRestTestCase() {
         waitFor {
             assertEquals(
                 WaitForForceMergeStep.getSuccessMessage(indexName),
-                getExplainManagedIndexMetaData(indexName).info?.get("message")
+                getExplainManagedIndexMetaData(indexName).info?.get("message"),
             )
         }
 
@@ -303,7 +317,7 @@ class ManagedIndexCoordinatorIT : IndexStateManagementRestTestCase() {
         // Validate segments were merged
         assertTrue(
             "Segment count for [$indexName] after force merge is incorrect",
-            validateSegmentCount(indexName, min = 1, max = 1)
+            validateSegmentCount(indexName, min = 1, max = 1),
         )
 
         // Fifth execution: Attempt transition, which is safe to disable on, so job should be disabled
@@ -313,16 +327,17 @@ class ManagedIndexCoordinatorIT : IndexStateManagementRestTestCase() {
         waitFor {
             assertEquals(
                 WaitForForceMergeStep.getSuccessMessage(indexName),
-                getExplainManagedIndexMetaData(indexName).info?.get("message")
+                getExplainManagedIndexMetaData(indexName).info?.get("message"),
             )
         }
 
         // Confirm job was disabled
-        val disabledManagedIndexConfig: ManagedIndexConfig = waitFor {
-            val config = getExistingManagedIndexConfig(indexName)
-            assertEquals("ManagedIndexConfig was not disabled", false, config.enabled)
-            config
-        }
+        val disabledManagedIndexConfig: ManagedIndexConfig =
+            waitFor {
+                val config = getExistingManagedIndexConfig(indexName)
+                assertEquals("ManagedIndexConfig was not disabled", false, config.enabled)
+                config
+            }
 
         // Speed up to next execution to confirm Explain API still shows information of the last executed step (WaitForForceMergeStep)
         updateManagedIndexConfigStartTime(disabledManagedIndexConfig)
@@ -331,14 +346,17 @@ class ManagedIndexCoordinatorIT : IndexStateManagementRestTestCase() {
             val expectedInfoString = mapOf("message" to WaitForForceMergeStep.getSuccessMessage(indexName)).toString()
             assertPredicatesOnMetaData(
                 listOf(
-                    indexName to listOf(
-                        ManagedIndexMetaData.INDEX to indexName::equals,
-                        ManagedIndexMetaData.POLICY_ID to policyID::equals,
-                        ManagedIndexMetaData.INFO to fun(info: Any?): Boolean = expectedInfoString == info.toString()
-                    )
+                    indexName to
+                        listOf(
+                            ManagedIndexMetaData.INDEX to indexName::equals,
+                            ManagedIndexMetaData.POLICY_ID to policyID::equals,
+                            ManagedIndexMetaData.INFO to
+
+                                fun(info: Any?): Boolean = expectedInfoString == info.toString(),
+                        ),
                 ),
                 getExplainMap(indexName),
-                false
+                false,
             )
         }
     }

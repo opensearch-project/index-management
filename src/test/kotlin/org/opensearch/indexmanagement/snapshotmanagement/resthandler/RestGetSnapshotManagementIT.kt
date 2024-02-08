@@ -8,6 +8,7 @@ package org.opensearch.indexmanagement.snapshotmanagement.resthandler
 import org.apache.hc.core5.http.HttpHeaders
 import org.apache.hc.core5.http.message.BasicHeader
 import org.opensearch.client.ResponseException
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.indexmanagement.IndexManagementPlugin
 import org.opensearch.indexmanagement.makeRequest
 import org.opensearch.indexmanagement.opensearchapi.convertToMap
@@ -16,22 +17,21 @@ import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy.Companion.ENABLED_TIME_FIELD
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy.Companion.SM_TYPE
 import org.opensearch.indexmanagement.snapshotmanagement.randomSMPolicy
-import org.opensearch.core.rest.RestStatus
 
 class RestGetSnapshotManagementIT : SnapshotManagementRestTestCase() {
-
     fun `test getting a snapshot management policy`() {
         var smPolicy = createSMPolicy(randomSMPolicy().copy(jobEnabled = false, jobEnabledTime = null))
         val indexedSMPolicy = getSMPolicy(smPolicy.policyName)
         // Schema version and last updated time are updated during the creation so we need to update the original too for comparison
         // Job schedule interval will have a dynamic start time
-        smPolicy = smPolicy.copy(
-            id = indexedSMPolicy.id,
-            seqNo = indexedSMPolicy.seqNo,
-            primaryTerm = indexedSMPolicy.primaryTerm,
-            jobLastUpdateTime = indexedSMPolicy.jobLastUpdateTime,
-            jobSchedule = indexedSMPolicy.jobSchedule
-        )
+        smPolicy =
+            smPolicy.copy(
+                id = indexedSMPolicy.id,
+                seqNo = indexedSMPolicy.seqNo,
+                primaryTerm = indexedSMPolicy.primaryTerm,
+                jobLastUpdateTime = indexedSMPolicy.jobLastUpdateTime,
+                jobSchedule = indexedSMPolicy.jobSchedule,
+            )
         assertEquals("Indexed and retrieved snapshot management policies differ", smPolicy, indexedSMPolicy)
     }
 
@@ -60,10 +60,11 @@ class RestGetSnapshotManagementIT : SnapshotManagementRestTestCase() {
     @Suppress("UNCHECKED_CAST")
     fun `test getting all snapshot management policies`() {
         val smPolicies = randomList(1, 15) { createSMPolicy(randomSMPolicy()) }
-        val response = client().makeRequest(
-            "GET", IndexManagementPlugin.SM_POLICIES_URI, null,
-            BasicHeader(HttpHeaders.CONTENT_TYPE, "application/json")
-        )
+        val response =
+            client().makeRequest(
+                "GET", IndexManagementPlugin.SM_POLICIES_URI, null,
+                BasicHeader(HttpHeaders.CONTENT_TYPE, "application/json"),
+            )
         val map = response.asMap()
         val totalPolicies = map["total_policies"] as Int
         val responsePolicies = map["policies"] as List<Map<String, Any?>>
@@ -83,10 +84,11 @@ class RestGetSnapshotManagementIT : SnapshotManagementRestTestCase() {
     @Throws(Exception::class)
     @Suppress("UNCHECKED_CAST")
     fun `test getting all snapshot management policies when config index doesn't exist`() {
-        val response = client().makeRequest(
-            "GET", IndexManagementPlugin.SM_POLICIES_URI, null,
-            BasicHeader(HttpHeaders.CONTENT_TYPE, "application/json")
-        )
+        val response =
+            client().makeRequest(
+                "GET", IndexManagementPlugin.SM_POLICIES_URI, null,
+                BasicHeader(HttpHeaders.CONTENT_TYPE, "application/json"),
+            )
         val map = response.asMap()
         val totalPolicies = map["total_policies"] as Int
         val responsePolicies = map["policies"] as List<Map<String, Any?>>

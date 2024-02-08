@@ -5,8 +5,8 @@
 
 package org.opensearch.indexmanagement.refreshanalyzer
 
-import org.opensearch.core.action.support.DefaultShardOperationFailedException
 import org.opensearch.action.support.broadcast.BroadcastResponse
+import org.opensearch.core.action.support.DefaultShardOperationFailedException
 import org.opensearch.core.common.io.stream.StreamInput
 import org.opensearch.core.common.io.stream.StreamOutput
 import org.opensearch.core.xcontent.ConstructingObjectParser
@@ -17,7 +17,6 @@ import java.io.IOException
 import java.util.function.Function
 
 class RefreshSearchAnalyzerResponse : BroadcastResponse {
-
     private lateinit var shardResponses: MutableList<RefreshSearchAnalyzerShardResponse>
     private lateinit var shardFailures: MutableList<DefaultShardOperationFailedException>
 
@@ -32,9 +31,9 @@ class RefreshSearchAnalyzerResponse : BroadcastResponse {
         successfulShards: Int,
         failedShards: Int,
         shardFailures: List<DefaultShardOperationFailedException>,
-        shardResponses: List<RefreshSearchAnalyzerShardResponse>
+        shardResponses: List<RefreshSearchAnalyzerShardResponse>,
     ) : super(
-        totalShards, successfulShards, failedShards, shardFailures
+        totalShards, successfulShards, failedShards, shardFailures,
     ) {
         this.shardResponses = shardResponses.toMutableList()
         this.shardFailures = shardFailures.toMutableList()
@@ -74,16 +73,18 @@ class RefreshSearchAnalyzerResponse : BroadcastResponse {
     }
 
     companion object {
-        private val PARSER = ConstructingObjectParser<RefreshSearchAnalyzerResponse, Void>(
-            "_refresh_search_analyzers", true,
-            Function { arg: Array<Any> ->
-                val response = arg[0] as RefreshSearchAnalyzerResponse
-                RefreshSearchAnalyzerResponse(
-                    response.totalShards, response.successfulShards, response.failedShards,
-                    response.shardFailures, response.shardResponses
-                )
-            }
-        )
+        private val PARSER =
+            ConstructingObjectParser<RefreshSearchAnalyzerResponse, Void>(
+                "_refresh_search_analyzers", true,
+                Function { arg: Array<Any> ->
+                    val response = arg[0] as RefreshSearchAnalyzerResponse
+                    RefreshSearchAnalyzerResponse(
+                        response.totalShards, response.successfulShards, response.failedShards,
+                        response.shardFailures, response.shardResponses,
+                    )
+                },
+            )
+
         init {
             declareBroadcastFields(PARSER)
         }

@@ -27,7 +27,6 @@ import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepContext
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepMetaData
 
 class AttemptShrinkStep(private val action: ShrinkAction) : ShrinkStep(name, true, true, false) {
-
     @Suppress("ReturnCount")
     override suspend fun wrappedExecute(context: StepContext): AttemptShrinkStep {
         val indexName = context.metadata.index
@@ -57,9 +56,10 @@ class AttemptShrinkStep(private val action: ShrinkAction) : ShrinkStep(name, tru
     private suspend fun isNodeStillSuitable(nodeName: String, indexName: String, context: StepContext): Boolean {
         // Get the size of the index
         val statsRequest = IndicesStatsRequest().indices(indexName)
-        val statsResponse: IndicesStatsResponse = context.client.admin().indices().suspendUntil {
-            stats(statsRequest, it)
-        }
+        val statsResponse: IndicesStatsResponse =
+            context.client.admin().indices().suspendUntil {
+                stats(statsRequest, it)
+            }
         val statsStore = statsResponse.total.store
         if (statsStore == null) {
             cleanupAndFail(FAILURE_MESSAGE, "Shrink action failed as indices stats request was missing store stats.")
@@ -85,9 +85,10 @@ class AttemptShrinkStep(private val action: ShrinkAction) : ShrinkStep(name, tru
 
     // Set index write block again before sending shrink request, in case of write block flipped by other processes in previous steps.
     private suspend fun confirmIndexWriteBlock(stepContext: StepContext, indexName: String): Boolean {
-        val updateSettings = Settings.builder()
-            .put(IndexMetadata.SETTING_BLOCKS_WRITE, true)
-            .build()
+        val updateSettings =
+            Settings.builder()
+                .put(IndexMetadata.SETTING_BLOCKS_WRITE, true)
+                .build()
         var response: AcknowledgedResponse? = null
         val isUpdateAcknowledged: Boolean
 
@@ -110,7 +111,7 @@ class AttemptShrinkStep(private val action: ShrinkAction) : ShrinkStep(name, tru
             Settings.builder()
                 .put(AttemptMoveShardsStep.ROUTING_SETTING, shrinkActionProperties.nodeName)
                 .put(INDEX_NUMBER_OF_SHARDS, shrinkActionProperties.targetNumShards)
-                .build()
+                .build(),
         )
         action.aliases?.forEach { req.targetIndexRequest.alias(it) }
         val resizeResponse: ResizeResponse = context.client.admin().indices().suspendUntil { resizeIndex(req, it) }
@@ -123,14 +124,16 @@ class AttemptShrinkStep(private val action: ShrinkAction) : ShrinkStep(name, tru
 
     override fun getUpdatedManagedIndexMetadata(currentMetadata: ManagedIndexMetaData): ManagedIndexMetaData {
         return currentMetadata.copy(
-            actionMetaData = currentMetadata.actionMetaData?.copy(
-                actionProperties = ActionProperties(
-                    shrinkActionProperties = shrinkActionProperties
-                )
+            actionMetaData =
+            currentMetadata.actionMetaData?.copy(
+                actionProperties =
+                ActionProperties(
+                    shrinkActionProperties = shrinkActionProperties,
+                ),
             ),
             stepMetaData = StepMetaData(name, getStepStartTime(currentMetadata).toEpochMilli(), stepStatus),
             transitionTo = null,
-            info = info
+            info = info,
         )
     }
 
@@ -142,6 +145,7 @@ class AttemptShrinkStep(private val action: ShrinkAction) : ShrinkStep(name, tru
         const val WRITE_BLOCK_FAILED_MESSAGE = "Failed to set write block before sending shrink request."
         const val NOT_ENOUGH_SPACE_FAILURE_MESSAGE = "Shrink failed as the selected node no longer had enough free space to shrink to."
         const val INDEX_HEALTH_NOT_GREEN_MESSAGE = "Shrink delayed because index health is not green."
+
         fun getSuccessMessage(newIndex: String) = "Shrink started. $newIndex currently being populated."
     }
 }

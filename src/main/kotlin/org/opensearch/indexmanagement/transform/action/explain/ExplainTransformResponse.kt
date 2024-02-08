@@ -16,16 +16,16 @@ import java.io.IOException
 
 class ExplainTransformResponse(
     val idsToExplain: Map<String, ExplainTransform?>,
-    private val failedToExplain: Map<String, String>
+    private val failedToExplain: Map<String, String>,
 ) : ActionResponse(), ToXContentObject {
-
     internal fun getIdsToExplain(): Map<String, ExplainTransform?> {
         return this.idsToExplain
     }
 
     @Throws(IOException::class)
     constructor(sin: StreamInput) : this(
-        idsToExplain = sin.let {
+        idsToExplain =
+        sin.let {
             val idsToExplain = mutableMapOf<String, ExplainTransform?>()
             val size = it.readVInt()
             repeat(size) { _ ->
@@ -33,7 +33,7 @@ class ExplainTransformResponse(
             }
             idsToExplain.toMap()
         },
-        failedToExplain = sin.readMap({ it.readString() }, { it.readString() })
+        failedToExplain = sin.readMap({ it.readString() }, { it.readString() }),
     )
 
     @Throws(IOException::class)
@@ -47,7 +47,7 @@ class ExplainTransformResponse(
         out.writeMap(
             failedToExplain,
             { writer, value: String -> writer.writeString(value) },
-            { writer, value: String -> writer.writeString(value) }
+            { writer, value: String -> writer.writeString(value) },
         )
     }
 

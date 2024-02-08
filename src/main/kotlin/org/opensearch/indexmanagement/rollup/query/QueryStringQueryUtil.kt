@@ -21,10 +21,9 @@ import org.opensearch.indexmanagement.common.model.dimension.Dimension
 import org.opensearch.indexmanagement.rollup.util.QueryShardContextFactory
 
 object QueryStringQueryUtil {
-
     fun rewriteQueryStringQuery(
         queryBuilder: QueryBuilder,
-        concreteIndexName: String
+        concreteIndexName: String,
     ): QueryStringQueryBuilder {
         val qsqBuilder = queryBuilder as QueryStringQueryBuilder
         // Parse query_string query and extract all discovered fields
@@ -53,28 +52,29 @@ object QueryStringQueryUtil {
                 newFields.put("${it.key}.${Dimension.Type.TERMS.type}", it.value)
             }
         }
-        var retVal = QueryStringQueryBuilder(newQueryString)
-            .rewrite(qsqBuilder.rewrite())
-            .fuzzyRewrite(qsqBuilder.fuzzyRewrite())
-            .autoGenerateSynonymsPhraseQuery(qsqBuilder.autoGenerateSynonymsPhraseQuery())
-            .allowLeadingWildcard(qsqBuilder.allowLeadingWildcard())
-            .analyzeWildcard(qsqBuilder.analyzeWildcard())
-            .defaultOperator(qsqBuilder.defaultOperator())
-            .escape(qsqBuilder.escape())
-            .fuzziness(qsqBuilder.fuzziness())
-            .lenient(qsqBuilder.lenient())
-            .enablePositionIncrements(qsqBuilder.enablePositionIncrements())
-            .fuzzyMaxExpansions(qsqBuilder.fuzzyMaxExpansions())
-            .fuzzyPrefixLength(qsqBuilder.fuzzyPrefixLength())
-            .queryName(qsqBuilder.queryName())
-            .quoteAnalyzer(qsqBuilder.quoteAnalyzer())
-            .analyzer(qsqBuilder.analyzer())
-            .minimumShouldMatch(qsqBuilder.minimumShouldMatch())
-            .timeZone(qsqBuilder.timeZone())
-            .phraseSlop(qsqBuilder.phraseSlop())
-            .quoteFieldSuffix(qsqBuilder.quoteFieldSuffix())
-            .boost(qsqBuilder.boost())
-            .fuzzyTranspositions(qsqBuilder.fuzzyTranspositions())
+        var retVal =
+            QueryStringQueryBuilder(newQueryString)
+                .rewrite(qsqBuilder.rewrite())
+                .fuzzyRewrite(qsqBuilder.fuzzyRewrite())
+                .autoGenerateSynonymsPhraseQuery(qsqBuilder.autoGenerateSynonymsPhraseQuery())
+                .allowLeadingWildcard(qsqBuilder.allowLeadingWildcard())
+                .analyzeWildcard(qsqBuilder.analyzeWildcard())
+                .defaultOperator(qsqBuilder.defaultOperator())
+                .escape(qsqBuilder.escape())
+                .fuzziness(qsqBuilder.fuzziness())
+                .lenient(qsqBuilder.lenient())
+                .enablePositionIncrements(qsqBuilder.enablePositionIncrements())
+                .fuzzyMaxExpansions(qsqBuilder.fuzzyMaxExpansions())
+                .fuzzyPrefixLength(qsqBuilder.fuzzyPrefixLength())
+                .queryName(qsqBuilder.queryName())
+                .quoteAnalyzer(qsqBuilder.quoteAnalyzer())
+                .analyzer(qsqBuilder.analyzer())
+                .minimumShouldMatch(qsqBuilder.minimumShouldMatch())
+                .timeZone(qsqBuilder.timeZone())
+                .phraseSlop(qsqBuilder.phraseSlop())
+                .quoteFieldSuffix(qsqBuilder.quoteFieldSuffix())
+                .boost(qsqBuilder.boost())
+                .fuzzyTranspositions(qsqBuilder.fuzzyTranspositions())
 
         if (newDefaultField != null) {
             retVal = retVal.defaultField(newDefaultField)
@@ -113,35 +113,40 @@ object QueryStringQueryUtil {
         } else if (qsqBuilder.fields().size > 0) {
             val resolvedFields = QueryParserHelper.resolveMappingFields(context, qsqBuilder.fields())
             otherFields = resolvedFields
-            queryParser = if (QueryParserHelper.hasAllFieldsWildcard(qsqBuilder.fields().keys)) {
-                QueryStringQueryParserExt(context, resolvedFields, if (qsqBuilder.lenient() == null) true else qsqBuilder.lenient())
-            } else {
-                QueryStringQueryParserExt(context, resolvedFields, isLenient)
-            }
+            queryParser =
+                if (QueryParserHelper.hasAllFieldsWildcard(qsqBuilder.fields().keys)) {
+                    QueryStringQueryParserExt(context, resolvedFields, if (qsqBuilder.lenient() == null) true else qsqBuilder.lenient())
+                } else {
+                    QueryStringQueryParserExt(context, resolvedFields, isLenient)
+                }
         } else {
             val defaultFields: List<String> = context.defaultFields()
-            queryParser = if (QueryParserHelper.hasAllFieldsWildcard(defaultFields)) {
-                otherFields = resolveMatchPatternFields(context)
-                QueryStringQueryParserExt(context, if (qsqBuilder.lenient() == null) true else qsqBuilder.lenient())
-            } else {
-                val resolvedFields = QueryParserHelper.resolveMappingFields(
-                    context,
-                    QueryParserHelper.parseFieldsAndWeights(defaultFields)
-                )
-                otherFields = resolvedFields
-                QueryStringQueryParserExt(context, resolvedFields, isLenient)
-            }
+            queryParser =
+                if (QueryParserHelper.hasAllFieldsWildcard(defaultFields)) {
+                    otherFields = resolveMatchPatternFields(context)
+                    QueryStringQueryParserExt(context, if (qsqBuilder.lenient() == null) true else qsqBuilder.lenient())
+                } else {
+                    val resolvedFields =
+                        QueryParserHelper.resolveMappingFields(
+                            context,
+                            QueryParserHelper.parseFieldsAndWeights(defaultFields),
+                        )
+                    otherFields = resolvedFields
+                    QueryStringQueryParserExt(context, resolvedFields, isLenient)
+                }
         }
 
         if (qsqBuilder.analyzer() != null) {
-            val namedAnalyzer: NamedAnalyzer = context.getIndexAnalyzers().get(qsqBuilder.analyzer())
-                ?: throw QueryShardException(context, "[query_string] analyzer [$qsqBuilder.analyzer] not found")
+            val namedAnalyzer: NamedAnalyzer =
+                context.getIndexAnalyzers().get(qsqBuilder.analyzer())
+                    ?: throw QueryShardException(context, "[query_string] analyzer [$qsqBuilder.analyzer] not found")
             queryParser.setForceAnalyzer(namedAnalyzer)
         }
 
         if (qsqBuilder.quoteAnalyzer() != null) {
-            val forceQuoteAnalyzer: NamedAnalyzer = context.getIndexAnalyzers().get(qsqBuilder.quoteAnalyzer())
-                ?: throw QueryShardException(context, "[query_string] quote_analyzer [$qsqBuilder.quoteAnalyzer] not found")
+            val forceQuoteAnalyzer: NamedAnalyzer =
+                context.getIndexAnalyzers().get(qsqBuilder.quoteAnalyzer())
+                    ?: throw QueryShardException(context, "[query_string] quote_analyzer [$qsqBuilder.quoteAnalyzer] not found")
             queryParser.setForceQuoteAnalyzer(forceQuoteAnalyzer)
         }
 
@@ -156,11 +161,17 @@ object QueryStringQueryUtil {
         queryParser.phraseSlop = qsqBuilder.phraseSlop()
         queryParser.setQuoteFieldSuffix(qsqBuilder.quoteFieldSuffix())
         queryParser.allowLeadingWildcard =
-            if (qsqBuilder.allowLeadingWildcard() == null) context.queryStringAllowLeadingWildcard()
-            else qsqBuilder.allowLeadingWildcard()
+            if (qsqBuilder.allowLeadingWildcard() == null) {
+                context.queryStringAllowLeadingWildcard()
+            } else {
+                qsqBuilder.allowLeadingWildcard()
+            }
         queryParser.setAnalyzeWildcard(
-            if (qsqBuilder.analyzeWildcard() == null) context.queryStringAnalyzeWildcard()
-            else qsqBuilder.analyzeWildcard()
+            if (qsqBuilder.analyzeWildcard() == null) {
+                context.queryStringAnalyzeWildcard()
+            } else {
+                qsqBuilder.analyzeWildcard()
+            },
         )
         queryParser.enablePositionIncrements = qsqBuilder.enablePositionIncrements()
         queryParser.setFuzziness(qsqBuilder.fuzziness())
@@ -185,7 +196,7 @@ object QueryStringQueryUtil {
     @Suppress("EmptyCatchBlock", "LoopWithTooManyJumpStatements")
     fun resolveMatchPatternFields(
         context: QueryShardContext,
-        pattern: String = "*"
+        pattern: String = "*",
     ): Map<String, Float> {
         val allFields = context.simpleMatchToIndexNames(pattern)
         val fields: MutableMap<String, Float> = HashMap()

@@ -13,7 +13,6 @@ import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 
 class ISMTemplateTests : OpenSearchTestCase() {
-
     fun `test basic`() {
         val expectedISMTemplate = randomISMTemplate()
 

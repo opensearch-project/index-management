@@ -8,7 +8,6 @@ package org.opensearch.indexmanagement.transform.action.stop
 import org.apache.logging.log4j.LogManager
 import org.opensearch.ExceptionsHelper
 import org.opensearch.OpenSearchStatusException
-import org.opensearch.core.action.ActionListener
 import org.opensearch.action.DocWriteResponse
 import org.opensearch.action.get.GetRequest
 import org.opensearch.action.get.GetResponse
@@ -22,10 +21,12 @@ import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.inject.Inject
 import org.opensearch.common.settings.Settings
 import org.opensearch.common.xcontent.LoggingDeprecationHandler
-import org.opensearch.core.xcontent.NamedXContentRegistry
 import org.opensearch.common.xcontent.XContentHelper
 import org.opensearch.common.xcontent.XContentType
 import org.opensearch.commons.ConfigConstants
+import org.opensearch.core.action.ActionListener
+import org.opensearch.core.rest.RestStatus
+import org.opensearch.core.xcontent.NamedXContentRegistry
 import org.opensearch.indexmanagement.IndexManagementPlugin
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
 import org.opensearch.indexmanagement.opensearchapi.parseFromGetResponse
@@ -35,7 +36,6 @@ import org.opensearch.indexmanagement.transform.model.Transform
 import org.opensearch.indexmanagement.transform.model.TransformMetadata
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.buildUser
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.userHasPermissionForResource
-import org.opensearch.core.rest.RestStatus
 import org.opensearch.tasks.Task
 import org.opensearch.transport.TransportService
 import java.time.Instant
@@ -53,17 +53,18 @@ import java.time.Instant
  * The inverse (job: successful and metadata: fail) will end up with a disabled job and a metadata that potentially
  * says STARTED still which is wrong.
  */
-class TransportStopTransformAction @Inject constructor(
+class TransportStopTransformAction
+@Inject
+constructor(
     transportService: TransportService,
     val client: Client,
     val settings: Settings,
     val clusterService: ClusterService,
     actionFilters: ActionFilters,
-    val xContentRegistry: NamedXContentRegistry
+    val xContentRegistry: NamedXContentRegistry,
 ) : HandledTransportAction<StopTransformRequest, AcknowledgedResponse>(
-    StopTransformAction.NAME, transportService, actionFilters, ::StopTransformRequest
+    StopTransformAction.NAME, transportService, actionFilters, ::StopTransformRequest,
 ) {
-
     @Volatile private var filterByEnabled = IndexManagementSettings.FILTER_BY_BACKEND_ROLES.get(settings)
 
     init {
@@ -78,8 +79,8 @@ class TransportStopTransformAction @Inject constructor(
         log.debug("Executing StopTransformAction on ${request.id()}")
         log.debug(
             "User and roles string from thread context: ${client.threadPool().threadContext.getTransient<String>(
-                ConfigConstants.OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT
-            )}"
+                ConfigConstants.OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT,
+            )}",
         )
         val getRequest = GetRequest(INDEX_MANAGEMENT_INDEX, request.id())
         val user = buildUser(client.threadPool().threadContext)
@@ -115,7 +116,7 @@ class TransportStopTransformAction @Inject constructor(
                     override fun onFailure(e: Exception) {
                         actionListener.onFailure(ExceptionsHelper.unwrapCause(e) as Exception)
                     }
-                }
+                },
             )
         }
     }
@@ -123,7 +124,7 @@ class TransportStopTransformAction @Inject constructor(
     private fun retrieveAndUpdateTransformMetadata(
         transform: Transform,
         request: StopTransformRequest,
-        actionListener: ActionListener<AcknowledgedResponse>
+        actionListener: ActionListener<AcknowledgedResponse>,
     ) {
         val req = GetRequest(IndexManagementPlugin.INDEX_MANAGEMENT_INDEX, transform.metadataId).routing(transform.id)
         client.get(
@@ -134,13 +135,15 @@ class TransportStopTransformAction @Inject constructor(
                         // If there is no metadata there is nothing to stop, proceed to disable job
                         updateTransformJob(transform, request, actionListener)
                     } else {
-                        val metadata = response.sourceAsBytesRef?.let {
-                            val xcp = XContentHelper.createParser(
-                                NamedXContentRegistry.EMPTY,
-                                LoggingDeprecationHandler.INSTANCE, it, XContentType.JSON
-                            )
-                            xcp.parseWithType(response.id, response.seqNo, response.primaryTerm, TransformMetadata.Companion::parse)
-                        }
+                        val metadata =
+                            response.sourceAsBytesRef?.let {
+                                val xcp =
+                                    XContentHelper.createParser(
+                                        NamedXContentRegistry.EMPTY,
+                                        LoggingDeprecationHandler.INSTANCE, it, XContentType.JSON,
+                                    )
+                                xcp.parseWithType(response.id, response.seqNo, response.primaryTerm, TransformMetadata.Companion::parse)
+                            }
                         if (metadata == null) {
                             // If there is no metadata there is nothing to stop, proceed to disable job
                             updateTransformJob(transform, request, actionListener)
@@ -153,7 +156,7 @@ class TransportStopTransformAction @Inject constructor(
                 override fun onFailure(e: Exception) {
                     actionListener.onFailure(ExceptionsHelper.unwrapCause(e) as Exception)
                 }
-            }
+            },
         )
     }
 
@@ -168,24 +171,27 @@ class TransportStopTransformAction @Inject constructor(
         transform: Transform,
         metadata: TransformMetadata,
         request: StopTransformRequest,
-        actionListener: ActionListener<AcknowledgedResponse>
+        actionListener: ActionListener<AcknowledgedResponse>,
     ) {
         val now = Instant.now().toEpochMilli()
-        val updatedStatus = when (metadata.status) {
-            TransformMetadata.Status.STARTED, TransformMetadata.Status.INIT, TransformMetadata.Status.STOPPED -> TransformMetadata.Status.STOPPED
-            TransformMetadata.Status.FINISHED, TransformMetadata.Status.FAILED -> metadata.status
-        }
+        val updatedStatus =
+            when (metadata.status) {
+                TransformMetadata.Status.STARTED, TransformMetadata.Status.INIT, TransformMetadata.Status.STOPPED -> TransformMetadata.Status.STOPPED
+                TransformMetadata.Status.FINISHED, TransformMetadata.Status.FAILED -> metadata.status
+            }
 
-        val updateRequest = UpdateRequest(IndexManagementPlugin.INDEX_MANAGEMENT_INDEX, transform.metadataId)
-            .doc(
-                mapOf(
-                    TransformMetadata.TRANSFORM_METADATA_TYPE to mapOf(
-                        TransformMetadata.STATUS_FIELD to updatedStatus.type,
-                        TransformMetadata.LAST_UPDATED_AT_FIELD to now
-                    )
+        val updateRequest =
+            UpdateRequest(IndexManagementPlugin.INDEX_MANAGEMENT_INDEX, transform.metadataId)
+                .doc(
+                    mapOf(
+                        TransformMetadata.TRANSFORM_METADATA_TYPE to
+                            mapOf(
+                                TransformMetadata.STATUS_FIELD to updatedStatus.type,
+                                TransformMetadata.LAST_UPDATED_AT_FIELD to now,
+                            ),
+                    ),
                 )
-            )
-            .routing(transform.id)
+                .routing(transform.id)
         client.update(
             updateRequest,
             object : ActionListener<UpdateResponse> {
@@ -200,7 +206,7 @@ class TransportStopTransformAction @Inject constructor(
                 override fun onFailure(e: Exception) {
                     actionListener.onFailure(ExceptionsHelper.unwrapCause(e) as Exception)
                 }
-            }
+            },
         )
     }
 
@@ -209,11 +215,12 @@ class TransportStopTransformAction @Inject constructor(
         request.index(IndexManagementPlugin.INDEX_MANAGEMENT_INDEX).setIfSeqNo(transform.seqNo).setIfPrimaryTerm(transform.primaryTerm)
             .doc(
                 mapOf(
-                    Transform.TRANSFORM_TYPE to mapOf(
-                        Transform.ENABLED_FIELD to false,
-                        Transform.ENABLED_AT_FIELD to null, Transform.UPDATED_AT_FIELD to now
-                    )
-                )
+                    Transform.TRANSFORM_TYPE to
+                        mapOf(
+                            Transform.ENABLED_FIELD to false,
+                            Transform.ENABLED_AT_FIELD to null, Transform.UPDATED_AT_FIELD to now,
+                        ),
+                ),
             )
         client.update(
             request,
@@ -221,10 +228,11 @@ class TransportStopTransformAction @Inject constructor(
                 override fun onResponse(response: UpdateResponse) {
                     actionListener.onResponse(AcknowledgedResponse(response.result == DocWriteResponse.Result.UPDATED))
                 }
+
                 override fun onFailure(e: Exception) {
                     actionListener.onFailure(ExceptionsHelper.unwrapCause(e) as Exception)
                 }
-            }
+            },
         )
     }
 }

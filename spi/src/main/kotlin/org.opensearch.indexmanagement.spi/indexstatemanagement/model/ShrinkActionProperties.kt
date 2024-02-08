@@ -23,9 +23,8 @@ data class ShrinkActionProperties(
     val lockEpochSecond: Long,
     val lockDurationSecond: Long,
     // Used to store the original index allocation and write block setting to reapply after shrink
-    val originalIndexSettings: Map<String, String>
+    val originalIndexSettings: Map<String, String>,
 ) : Writeable, ToXContentFragment {
-
     override fun writeTo(out: StreamOutput) {
         out.writeString(nodeName)
         out.writeString(targetIndexName)
@@ -63,7 +62,7 @@ data class ShrinkActionProperties(
             val originalIndexSettings: Map<String, String> = si.readMap({ it.readString() }, { it.readString() })
 
             return ShrinkActionProperties(
-                nodeName, targetIndexName, targetNumShards, lockPrimaryTerm, lockSeqNo, lockEpochSecond, lockDurationSecond, originalIndexSettings
+                nodeName, targetIndexName, targetNumShards, lockPrimaryTerm, lockSeqNo, lockEpochSecond, lockDurationSecond, originalIndexSettings,
             )
         }
 
@@ -102,7 +101,7 @@ data class ShrinkActionProperties(
                 requireNotNull(lockSeqNo),
                 requireNotNull(lockEpochSecond),
                 requireNotNull(lockDurationSecond),
-                requireNotNull(originalIndexSettings)
+                requireNotNull(originalIndexSettings),
             )
         }
     }
@@ -115,6 +114,6 @@ data class ShrinkActionProperties(
         LOCK_PRIMARY_TERM("lock_primary_term"),
         LOCK_EPOCH_SECOND("lock_epoch_second"),
         LOCK_DURATION_SECOND("lock_duration_second"),
-        ORIGINAL_INDEX_SETTINGS("original_index_settings")
+        ORIGINAL_INDEX_SETTINGS("original_index_settings"),
     }
 }

@@ -13,18 +13,17 @@ import org.opensearch.indexmanagement.common.model.rest.SearchParams
 import java.io.IOException
 
 class GetPoliciesRequest : ActionRequest {
-
     val searchParams: SearchParams
 
     constructor(
-        searchParams: SearchParams
+        searchParams: SearchParams,
     ) : super() {
         this.searchParams = searchParams
     }
 
     @Throws(IOException::class)
     constructor(sin: StreamInput) : this(
-        searchParams = SearchParams(sin)
+        searchParams = SearchParams(sin),
     )
 
     override fun validate(): ActionRequestValidationException? {

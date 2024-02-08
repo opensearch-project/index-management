@@ -17,47 +17,46 @@ import java.time.temporal.ChronoUnit
 import kotlin.test.assertFailsWith
 
 class ISMRollupTests : OpenSearchTestCase() {
-
     fun `test ism rollup requires only one date histogram and it should be first dimension`() {
-        assertFailsWith(IllegalArgumentException:: class, "The first dimension must be a date histogram") {
+        assertFailsWith(IllegalArgumentException::class, "The first dimension must be a date histogram") {
             randomISMRollup().copy(dimensions = listOf(randomTerms(), randomDateHistogram()))
         }
 
-        assertFailsWith(IllegalArgumentException:: class, "Requires one date histogram in dimensions") {
+        assertFailsWith(IllegalArgumentException::class, "Requires one date histogram in dimensions") {
             randomISMRollup().copy(dimensions = listOf())
         }
 
-        assertFailsWith(IllegalArgumentException:: class, "Requires one date histogram in dimensions") {
+        assertFailsWith(IllegalArgumentException::class, "Requires one date histogram in dimensions") {
             randomISMRollup().copy(dimensions = listOf(randomTerms()))
         }
 
-        assertFailsWith(IllegalArgumentException:: class, "Requires only one date histogram in dimensions") {
+        assertFailsWith(IllegalArgumentException::class, "Requires only one date histogram in dimensions") {
             randomISMRollup().copy(dimensions = listOf(randomDateHistogram(), randomDateHistogram()))
         }
     }
 
     fun `test ism rollup requires non empty description`() {
-        assertFailsWith(IllegalArgumentException:: class, "Requires non empty description") {
+        assertFailsWith(IllegalArgumentException::class, "Requires non empty description") {
             randomISMRollup().copy(description = "")
         }
     }
 
     fun `test ism rollup requires non empty target index`() {
-        assertFailsWith(IllegalArgumentException:: class, "Requires non empty target index") {
+        assertFailsWith(IllegalArgumentException::class, "Requires non empty target index") {
             randomISMRollup().copy(targetIndex = "")
         }
     }
 
     fun `test ism rollup requires page size to be between 1 and 10K`() {
-        assertFailsWith(IllegalArgumentException:: class, "Page size cannot be less than 1") {
+        assertFailsWith(IllegalArgumentException::class, "Page size cannot be less than 1") {
             randomISMRollup().copy(pageSize = -1)
         }
 
-        assertFailsWith(IllegalArgumentException:: class, "Page size cannot be less than 1") {
+        assertFailsWith(IllegalArgumentException::class, "Page size cannot be less than 1") {
             randomISMRollup().copy(pageSize = 0)
         }
 
-        assertFailsWith(IllegalArgumentException:: class, "Page size cannot be greater than 10000") {
+        assertFailsWith(IllegalArgumentException::class, "Page size cannot be greater than 10000") {
             randomISMRollup().copy(pageSize = 10001)
         }
     }

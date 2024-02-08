@@ -44,7 +44,6 @@ data class SMMetadata(
     val seqNo: Long = SequenceNumbers.UNASSIGNED_SEQ_NO,
     val primaryTerm: Long = SequenceNumbers.UNASSIGNED_PRIMARY_TERM,
 ) : Writeable, ToXContentObject {
-
     override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
         builder.startObject()
         if (params.paramAsBoolean(WITH_TYPE, true)) builder.startObject(SM_METADATA_TYPE)
@@ -68,7 +67,7 @@ data class SMMetadata(
             xcp: XContentParser,
             id: String = NO_ID,
             seqNo: Long = SequenceNumbers.UNASSIGNED_SEQ_NO,
-            primaryTerm: Long = SequenceNumbers.UNASSIGNED_PRIMARY_TERM
+            primaryTerm: Long = SequenceNumbers.UNASSIGNED_PRIMARY_TERM,
         ): SMMetadata {
             var policySeqNo: Long? = null
             var policyPrimaryTerm: Long? = null
@@ -96,7 +95,7 @@ data class SMMetadata(
                 deletion = deletion,
                 id = id,
                 seqNo = seqNo,
-                primaryTerm = primaryTerm
+                primaryTerm = primaryTerm,
             )
         }
 
@@ -138,7 +137,6 @@ data class SMMetadata(
         val latestExecution: LatestExecution? = null,
         val retry: Retry? = null,
     ) : Writeable, ToXContentObject {
-
         override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
             return builder.startObject()
                 .field(CURRENT_STATE_FIELD, currentState.toString())
@@ -209,7 +207,6 @@ data class SMMetadata(
         val endTime: Instant? = null,
         val info: Info? = null,
     ) : Writeable, ToXContentObject {
-
         override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
             return builder.startObject()
                 .field(STATUS_FIELD, status.toString())
@@ -288,7 +285,6 @@ data class SMMetadata(
         val message: String? = null,
         val cause: String? = null,
     ) : Writeable, ToXContentObject {
-
         override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
             return builder.startObject()
                 .optionalField(MESSAGE_FIELD, message)
@@ -342,7 +338,6 @@ data class SMMetadata(
     data class Trigger(
         val time: Instant,
     ) : Writeable, ToXContentObject {
-
         override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
             return builder.startObject()
                 .optionalTimeField(TIME_FIELD, time)
@@ -372,7 +367,7 @@ data class SMMetadata(
         }
 
         constructor(sin: StreamInput) : this(
-            time = sin.readInstant()
+            time = sin.readInstant(),
         )
 
         override fun writeTo(out: StreamOutput) {
@@ -383,7 +378,6 @@ data class SMMetadata(
     data class Retry(
         val count: Int,
     ) : Writeable, ToXContentObject {
-
         override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
             return builder.startObject()
                 .field(COUNT_FIELD, count)
@@ -408,13 +402,13 @@ data class SMMetadata(
                 }
 
                 return Retry(
-                    count = requireNotNull(count) { "count field in Retry must not be null." }
+                    count = requireNotNull(count) { "count field in Retry must not be null." },
                 )
             }
         }
 
         constructor(sin: StreamInput) : this(
-            count = sin.readInt()
+            count = sin.readInt(),
         )
 
         override fun writeTo(out: StreamOutput) {
@@ -430,10 +424,10 @@ data class SMMetadata(
     class Builder(
         private var metadata: SMMetadata,
     ) {
-
         fun build() = metadata
 
         private lateinit var workflowType: WorkflowType
+
         fun workflow(workflowType: WorkflowType): Builder {
             this.workflowType = workflowType
             return this
@@ -442,18 +436,22 @@ data class SMMetadata(
         fun setCurrentState(state: SMState): Builder {
             when (workflowType) {
                 WorkflowType.CREATION -> {
-                    metadata = metadata.copy(
-                        creation = metadata.creation.copy(
-                            currentState = state
+                    metadata =
+                        metadata.copy(
+                            creation =
+                            metadata.creation.copy(
+                                currentState = state,
+                            ),
                         )
-                    )
                 }
                 WorkflowType.DELETION -> {
-                    metadata = metadata.copy(
-                        deletion = metadata.deletion?.copy(
-                            currentState = state
+                    metadata =
+                        metadata.copy(
+                            deletion =
+                            metadata.deletion?.copy(
+                                currentState = state,
+                            ),
                         )
-                    )
                 }
             }
             return this
@@ -481,27 +479,31 @@ data class SMMetadata(
                 }
             }
 
-            metadata = metadata.copy(
-                creation = metadata.creation.copy(
-                    currentState = creationCurrentState,
-                    started = startedCreation,
-                    retry = creationRetry,
-                ),
-                deletion = deletionCurrentState?.let {
-                    metadata.deletion?.copy(
-                        currentState = it,
-                        started = startedDeletion,
-                        retry = deletionRetry,
-                    )
-                },
-            )
+            metadata =
+                metadata.copy(
+                    creation =
+                    metadata.creation.copy(
+                        currentState = creationCurrentState,
+                        started = startedCreation,
+                        retry = creationRetry,
+                    ),
+                    deletion =
+                    deletionCurrentState?.let {
+                        metadata.deletion?.copy(
+                            currentState = it,
+                            started = startedDeletion,
+                            retry = deletionRetry,
+                        )
+                    },
+                )
             return this
         }
 
         fun resetDeletion(): Builder {
-            metadata = metadata.copy(
-                deletion = null
-            )
+            metadata =
+                metadata.copy(
+                    deletion = null,
+                )
             return this
         }
 
@@ -514,49 +516,55 @@ data class SMMetadata(
             message: String? = null,
             updateCause: Boolean = true,
             cause: Exception? = null,
-            endTime: Instant? = null
+            endTime: Instant? = null,
         ): Builder {
             val messageWithTime = if (message != null) preFixTimeStamp(message) else null
             val causeWithTime = if (cause != null) preFixTimeStamp(SnapshotManagementException.getUserErrorMessage(cause).message) else null
+
             fun getUpdatedWorkflowMetadata(workflowMetadata: WorkflowMetadata): WorkflowMetadata {
                 // if started is null, we need to override the previous latestExecution
                 //  w/ a newly initialized one
                 if (workflowMetadata.started == null) {
                     return workflowMetadata.copy(
-                        latestExecution = LatestExecution.init(
+                        latestExecution =
+                        LatestExecution.init(
                             status = status,
-                            info = Info(
+                            info =
+                            Info(
                                 message = messageWithTime,
                                 cause = causeWithTime,
-                            )
-                        )
+                            ),
+                        ),
                     )
                 } else {
                     // if started is not null, latestExecution should never be null
                     return workflowMetadata.copy(
-                        latestExecution = workflowMetadata.latestExecution?.copy(
+                        latestExecution =
+                        workflowMetadata.latestExecution?.copy(
                             status = status,
-                            info = Info(
+                            info =
+                            Info(
                                 message = if (updateMessage) messageWithTime else metadata.creation.latestExecution?.info?.message,
                                 cause = if (updateCause) causeWithTime else metadata.creation.latestExecution?.info?.cause,
                             ),
                             endTime = endTime,
+                        ),
+                    )
+                }
+            }
+            metadata =
+                when (workflowType) {
+                    WorkflowType.CREATION -> {
+                        metadata.copy(
+                            creation = getUpdatedWorkflowMetadata(metadata.creation),
                         )
-                    )
+                    }
+                    WorkflowType.DELETION -> {
+                        metadata.copy(
+                            deletion = metadata.deletion?.let { getUpdatedWorkflowMetadata(it) },
+                        )
+                    }
                 }
-            }
-            metadata = when (workflowType) {
-                WorkflowType.CREATION -> {
-                    metadata.copy(
-                        creation = getUpdatedWorkflowMetadata(metadata.creation)
-                    )
-                }
-                WorkflowType.DELETION -> {
-                    metadata.copy(
-                        deletion = metadata.deletion?.let { getUpdatedWorkflowMetadata(it) }
-                    )
-                }
-            }
             return this
         }
 
@@ -589,18 +597,22 @@ data class SMMetadata(
         fun setRetry(count: Int): Builder {
             when (workflowType) {
                 WorkflowType.CREATION -> {
-                    metadata = metadata.copy(
-                        creation = metadata.creation.copy(
-                            retry = Retry(count = count)
+                    metadata =
+                        metadata.copy(
+                            creation =
+                            metadata.creation.copy(
+                                retry = Retry(count = count),
+                            ),
                         )
-                    )
                 }
                 WorkflowType.DELETION -> {
-                    metadata = metadata.copy(
-                        deletion = metadata.deletion?.copy(
-                            retry = Retry(count = count)
+                    metadata =
+                        metadata.copy(
+                            deletion =
+                            metadata.deletion?.copy(
+                                retry = Retry(count = count),
+                            ),
                         )
-                    )
                 }
             }
             return this
@@ -611,20 +623,24 @@ data class SMMetadata(
             when (workflowType) {
                 WorkflowType.CREATION -> {
                     if (metadata.creation.retry != null) {
-                        metadata = metadata.copy(
-                            creation = metadata.creation.copy(
-                                retry = null
+                        metadata =
+                            metadata.copy(
+                                creation =
+                                metadata.creation.copy(
+                                    retry = null,
+                                ),
                             )
-                        )
                     }
                 }
                 WorkflowType.DELETION -> {
                     if (metadata.deletion?.retry != null) {
-                        metadata = metadata.copy(
-                            deletion = metadata.deletion?.copy(
-                                retry = null
+                        metadata =
+                            metadata.copy(
+                                deletion =
+                                metadata.deletion?.copy(
+                                    retry = null,
+                                ),
                             )
-                        )
                     }
                 }
             }
@@ -632,62 +648,75 @@ data class SMMetadata(
         }
 
         fun setSeqNoPrimaryTerm(seqNo: Long, primaryTerm: Long): Builder {
-            metadata = metadata.copy(
-                policySeqNo = seqNo,
-                policyPrimaryTerm = primaryTerm,
-            )
+            metadata =
+                metadata.copy(
+                    policySeqNo = seqNo,
+                    policyPrimaryTerm = primaryTerm,
+                )
             return this
         }
 
         fun setNextCreationTime(time: Instant): Builder {
-            metadata = metadata.copy(
-                creation = metadata.creation.copy(
-                    trigger = metadata.creation.trigger.copy(
-                        time = time
-                    )
+            metadata =
+                metadata.copy(
+                    creation =
+                    metadata.creation.copy(
+                        trigger =
+                        metadata.creation.trigger.copy(
+                            time = time,
+                        ),
+                    ),
                 )
-            )
             return this
         }
 
         fun setCreationStarted(snapshot: String?): Builder {
-            metadata = metadata.copy(
-                creation = metadata.creation.copy(
-                    started = if (snapshot == null) null else listOf(snapshot),
+            metadata =
+                metadata.copy(
+                    creation =
+                    metadata.creation.copy(
+                        started = if (snapshot == null) null else listOf(snapshot),
+                    ),
                 )
-            )
             return this
         }
 
         fun setNextDeletionTime(time: Instant): Builder {
             val deletion = metadata.deletion
             if (deletion != null) {
-                metadata = metadata.copy(
-                    deletion = deletion.copy(
-                        trigger = deletion.trigger.copy(
-                            time = time
-                        )
-                    )
-                )
-            } else {
-                metadata = metadata.copy(
-                    deletion = WorkflowMetadata(
-                        SMState.DELETION_START,
-                        Trigger(
-                            time = time
+                metadata =
+                    metadata.copy(
+                        deletion =
+                        deletion.copy(
+                            trigger =
+                            deletion.trigger.copy(
+                                time = time,
+                            ),
                         ),
                     )
-                )
+            } else {
+                metadata =
+                    metadata.copy(
+                        deletion =
+                        WorkflowMetadata(
+                            SMState.DELETION_START,
+                            Trigger(
+                                time = time,
+                            ),
+                        ),
+                    )
             }
             return this
         }
 
         fun setDeletionStarted(snapshots: List<String>?): Builder {
-            metadata = metadata.copy(
-                deletion = metadata.deletion?.copy(
-                    started = snapshots,
+            metadata =
+                metadata.copy(
+                    deletion =
+                    metadata.deletion?.copy(
+                        started = snapshots,
+                    ),
                 )
-            )
             return this
         }
     }

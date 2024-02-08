@@ -5,6 +5,7 @@
 
 package org.opensearch.indexmanagement.rollup.model
 
+import org.opensearch.commons.authuser.User
 import org.opensearch.core.common.io.stream.StreamInput
 import org.opensearch.core.common.io.stream.StreamOutput
 import org.opensearch.core.common.io.stream.Writeable
@@ -13,7 +14,6 @@ import org.opensearch.core.xcontent.XContentBuilder
 import org.opensearch.core.xcontent.XContentParser
 import org.opensearch.core.xcontent.XContentParser.Token
 import org.opensearch.core.xcontent.XContentParserUtils.ensureExpectedToken
-import org.opensearch.commons.authuser.User
 import org.opensearch.index.seqno.SequenceNumbers
 import org.opensearch.indexmanagement.common.model.dimension.DateHistogram
 import org.opensearch.indexmanagement.common.model.dimension.Dimension
@@ -54,9 +54,8 @@ data class Rollup(
     val continuous: Boolean,
     val dimensions: List<Dimension>,
     val metrics: List<RollupMetrics>,
-    val user: User? = null
+    val user: User? = null,
 ) : ScheduledJobParameter, Writeable {
-
     init {
         if (enabled) {
             requireNotNull(jobEnabledTime) { "Job enabled time must be present if the job is enabled" }
@@ -65,17 +64,18 @@ data class Rollup(
         }
         // Copy the delay parameter of the job into the job scheduler for continuous jobs only
         if (jobSchedule.delay != delay && continuous) {
-            jobSchedule = when (jobSchedule) {
-                is CronSchedule -> {
-                    val cronSchedule = jobSchedule as CronSchedule
-                    CronSchedule(cronSchedule.cronExpression, cronSchedule.timeZone, delay ?: 0)
+            jobSchedule =
+                when (jobSchedule) {
+                    is CronSchedule -> {
+                        val cronSchedule = jobSchedule as CronSchedule
+                        CronSchedule(cronSchedule.cronExpression, cronSchedule.timeZone, delay ?: 0)
+                    }
+                    is IntervalSchedule -> {
+                        val intervalSchedule = jobSchedule as IntervalSchedule
+                        IntervalSchedule(intervalSchedule.startTime, intervalSchedule.interval, intervalSchedule.unit, delay ?: 0)
+                    }
+                    else -> jobSchedule
                 }
-                is IntervalSchedule -> {
-                    val intervalSchedule = jobSchedule as IntervalSchedule
-                    IntervalSchedule(intervalSchedule.startTime, intervalSchedule.interval, intervalSchedule.unit, delay ?: 0)
-                }
-                else -> jobSchedule
-            }
         }
         when (jobSchedule) {
             is CronSchedule -> {
@@ -116,7 +116,8 @@ data class Rollup(
         primaryTerm = sin.readLong(),
         enabled = sin.readBoolean(),
         schemaVersion = sin.readLong(),
-        jobSchedule = sin.let {
+        jobSchedule =
+        sin.let {
             when (requireNotNull(sin.readEnum(ScheduleType::class.java)) { "ScheduleType cannot be null" }) {
                 ScheduleType.CRON -> CronSchedule(sin)
                 ScheduleType.INTERVAL -> IntervalSchedule(sin)
@@ -132,7 +133,8 @@ data class Rollup(
         pageSize = sin.readInt(),
         delay = sin.readOptionalLong(),
         continuous = sin.readBoolean(),
-        dimensions = sin.let {
+        dimensions =
+        sin.let {
             val dimensionsList = mutableListOf<Dimension>()
             val size = it.readVInt()
             repeat(size) { _ ->
@@ -142,15 +144,18 @@ data class Rollup(
                         Dimension.Type.DATE_HISTOGRAM -> DateHistogram(sin)
                         Dimension.Type.TERMS -> Terms(sin)
                         Dimension.Type.HISTOGRAM -> Histogram(sin)
-                    }
+                    },
                 )
             }
             dimensionsList.toList()
         },
         metrics = sin.readList(::RollupMetrics),
-        user = if (sin.readBoolean()) {
+        user =
+        if (sin.readBoolean()) {
             User(sin)
-        } else null
+        } else {
+            null
+        },
     )
 
     override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
@@ -216,8 +221,10 @@ data class Rollup(
     companion object {
         // TODO: Move this enum to Job Scheduler plugin
         enum class ScheduleType {
-            CRON, INTERVAL;
+            CRON,
+            INTERVAL,
         }
+
         const val ROLLUP_LOCK_DURATION_SECONDS = 1800L // 30 minutes
         const val ROLLUP_TYPE = "rollup"
         const val ROLLUP_ID_FIELD = "rollup_id"
@@ -241,9 +248,10 @@ data class Rollup(
         const val MINIMUM_PAGE_SIZE = 1
         const val MAXIMUM_PAGE_SIZE = 10_000
         const val ROLLUP_DOC_ID_FIELD = "$ROLLUP_TYPE.$_ID"
+
         /*
-        *  _doc_count has to be in root of document so that core's aggregator would pick it up and use it
-        * */
+         *  _doc_count has to be in root of document so that core's aggregator would pick it up and use it
+         * */
         const val ROLLUP_DOC_COUNT_FIELD = "_doc_count"
         const val ROLLUP_DOC_SCHEMA_VERSION_FIELD = "$ROLLUP_TYPE._$SCHEMA_VERSION_FIELD"
         const val USER_FIELD = "user"
@@ -256,7 +264,7 @@ data class Rollup(
             xcp: XContentParser,
             id: String = NO_ID,
             seqNo: Long = SequenceNumbers.UNASSIGNED_SEQ_NO,
-            primaryTerm: Long = SequenceNumbers.UNASSIGNED_PRIMARY_TERM
+            primaryTerm: Long = SequenceNumbers.UNASSIGNED_PRIMARY_TERM,
         ): Rollup {
             var schedule: Schedule? = null
             var schemaVersion: Long = IndexUtils.DEFAULT_SCHEMA_VERSION
@@ -281,7 +289,9 @@ data class Rollup(
                 xcp.nextToken()
 
                 when (fieldName) {
-                    ROLLUP_ID_FIELD -> { requireNotNull(xcp.text()) { "The rollup_id field is null" } /* Just used for searching */ }
+                    ROLLUP_ID_FIELD -> {
+                        requireNotNull(xcp.text()) { "The rollup_id field is null" } // Just used for searching
+                    }
                     ENABLED_FIELD -> enabled = xcp.booleanValue()
                     SCHEDULE_FIELD -> schedule = ScheduleParser.parse(xcp)
                     SCHEMA_VERSION_FIELD -> schemaVersion = xcp.longValue()
@@ -351,7 +361,7 @@ data class Rollup(
                 continuous = continuous,
                 dimensions = dimensions,
                 metrics = metrics,
-                user = user
+                user = user,
             )
         }
     }
@@ -359,6 +369,8 @@ data class Rollup(
 
 sealed class RollupJobValidationResult {
     object Valid : RollupJobValidationResult()
+
     data class Invalid(val reason: String) : RollupJobValidationResult()
+
     data class Failure(val message: String, val e: Exception? = null) : RollupJobValidationResult()
 }

@@ -27,7 +27,6 @@ import java.time.Instant
 import java.time.Instant.now
 
 object DeletingState : State {
-
     override val continuous: Boolean = false
 
     @Suppress("ReturnCount", "SpreadOperator")
@@ -37,38 +36,43 @@ object DeletingState : State {
         val metadata = context.metadata
         val log = context.log
 
-        var metadataBuilder = SMMetadata.Builder(metadata)
-            .workflow(WorkflowType.DELETION)
+        var metadataBuilder =
+            SMMetadata.Builder(metadata)
+                .workflow(WorkflowType.DELETION)
 
         if (job.deletion == null) {
             log.warn("Policy deletion config becomes null before trying to delete old snapshots. Reset.")
             return SMResult.Fail(
-                metadataBuilder.resetDeletion(), WorkflowType.DELETION, forceReset = true
+                metadataBuilder.resetDeletion(), WorkflowType.DELETION, forceReset = true,
             )
         }
 
         val snapshotsToDelete: List<String>
 
-        val getSnapshotsRes = client.getSnapshots(
-            job, job.policyName + "*", metadataBuilder, log,
-            getSnapshotsMissingMessage(),
-            getSnapshotsErrorMessage(),
-        )
+        val getSnapshotsRes =
+            client.getSnapshots(
+                job, job.policyName + "*", metadataBuilder, log,
+                getSnapshotsMissingMessage(),
+                getSnapshotsErrorMessage(),
+            )
         metadataBuilder = getSnapshotsRes.metadataBuilder
-        if (getSnapshotsRes.failed)
+        if (getSnapshotsRes.failed) {
             return SMResult.Fail(metadataBuilder, WorkflowType.DELETION)
+        }
         val getSnapshots = getSnapshotsRes.snapshots
 
-        snapshotsToDelete = filterByDeleteCondition(
-            getSnapshots.filter { it.state() != SnapshotState.IN_PROGRESS },
-            job.deletion.condition, log
-        )
+        snapshotsToDelete =
+            filterByDeleteCondition(
+                getSnapshots.filter { it.state() != SnapshotState.IN_PROGRESS },
+                job.deletion.condition, log,
+            )
         if (snapshotsToDelete.isNotEmpty()) {
             try {
-                val req = DeleteSnapshotRequest(
-                    job.snapshotConfig["repository"] as String,
-                    *snapshotsToDelete.toTypedArray()
-                )
+                val req =
+                    DeleteSnapshotRequest(
+                        job.snapshotConfig["repository"] as String,
+                        *snapshotsToDelete.toTypedArray(),
+                    )
                 client.admin().cluster().suspendUntil<ClusterAdminClient, AcknowledgedResponse> { deleteSnapshot(req, it) }
 
                 metadataBuilder.setLatestExecution(
@@ -105,8 +109,11 @@ object DeletingState : State {
 
     private fun getSnapshotDeletionStartedMessage(snapshotNames: List<String>) =
         "Snapshots $snapshotNames deletion has been started and waiting for completion."
+
     private fun getSnapshotsMissingMessage() = "No snapshots found under policy while getting snapshots to decide which snapshots to delete."
+
     private fun getSnapshotsErrorMessage() = "Caught exception while getting snapshots to decide which snapshots to delete."
+
     private fun getDeleteSnapshotErrorMessage(snapshotNames: List<String>) = "Caught exception while deleting snapshot $snapshotNames."
 
     /**

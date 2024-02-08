@@ -8,6 +8,7 @@ package org.opensearch.indexmanagement.rollup.runner
 import org.apache.hc.core5.http.ContentType
 import org.apache.hc.core5.http.io.entity.StringEntity
 import org.opensearch.common.settings.Settings
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.indexmanagement.IndexManagementPlugin
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.ROLLUP_JOBS_BASE_URI
 import org.opensearch.indexmanagement.common.model.dimension.DateHistogram
@@ -30,28 +31,27 @@ import org.opensearch.indexmanagement.rollup.settings.RollupSettings.Companion.R
 import org.opensearch.indexmanagement.waitFor
 import org.opensearch.jobscheduler.spi.schedule.IntervalSchedule
 import org.opensearch.rest.RestRequest
-import org.opensearch.core.rest.RestStatus
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 import java.util.Collections.emptyMap
 import java.util.Locale
 
 class RollupRunnerIT : RollupRestTestCase() {
-
     private val testName = javaClass.simpleName.lowercase(Locale.ROOT)
 
     fun `test metadata is created for rollup job when none exists`() {
         val indexName = "test_index_runner_first"
 
         // Define rollup
-        var rollup = randomRollup().copy(
-            enabled = true,
-            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
-            jobEnabledTime = Instant.now(),
-            sourceIndex = indexName,
-            metadataID = null,
-            continuous = false
-        )
+        var rollup =
+            randomRollup().copy(
+                enabled = true,
+                jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+                jobEnabledTime = Instant.now(),
+                sourceIndex = indexName,
+                metadataID = null,
+                continuous = false,
+            )
 
         // Create source index
         createRollupSourceIndex(rollup)
@@ -85,26 +85,28 @@ class RollupRunnerIT : RollupRestTestCase() {
 
         generateNYCTaxiData(sourceIdxTestName)
 
-        val rollup = Rollup(
-            id = "rollup_test",
-            schemaVersion = 1L,
-            enabled = true,
-            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
-            jobLastUpdatedTime = Instant.now(),
-            jobEnabledTime = Instant.now(),
-            description = "basic stats test",
-            sourceIndex = sourceIdxTestName,
-            targetIndex = targetIdxTestName,
-            metadataID = null,
-            roles = emptyList(),
-            pageSize = 100,
-            delay = 0,
-            continuous = false,
-            dimensions = listOf(DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "1h")),
-            metrics = listOf(
-                RollupMetrics(sourceField = propertyName, targetField = propertyName, metrics = listOf(Average()))
-            )
-        ).let { createRollup(it, it.id) }
+        val rollup =
+            Rollup(
+                id = "rollup_test",
+                schemaVersion = 1L,
+                enabled = true,
+                jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+                jobLastUpdatedTime = Instant.now(),
+                jobEnabledTime = Instant.now(),
+                description = "basic stats test",
+                sourceIndex = sourceIdxTestName,
+                targetIndex = targetIdxTestName,
+                metadataID = null,
+                roles = emptyList(),
+                pageSize = 100,
+                delay = 0,
+                continuous = false,
+                dimensions = listOf(DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "1h")),
+                metrics =
+                listOf(
+                    RollupMetrics(sourceField = propertyName, targetField = propertyName, metrics = listOf(Average())),
+                ),
+            ).let { createRollup(it, it.id) }
 
         updateRollupStartTime(rollup)
 
@@ -117,21 +119,22 @@ class RollupRunnerIT : RollupRestTestCase() {
             assertEquals("Rollup is not finished", RollupMetadata.Status.FINISHED, rollupMetadata.status)
 
             // Term query
-            val req = """
-            {
-                "size": 0,
-                "query": {
-                  "match_all": {}
-                },
-                "aggs": {
-                    "$avgMetricName": {
-                        "avg": {
-                            "field": "$propertyName"
+            val req =
+                """
+                {
+                    "size": 0,
+                    "query": {
+                      "match_all": {}
+                    },
+                    "aggs": {
+                        "$avgMetricName": {
+                            "avg": {
+                                "field": "$propertyName"
+                            }
                         }
                     }
                 }
-            }
-            """.trimIndent()
+                """.trimIndent()
             var rawRes = client().makeRequest(RestRequest.Method.POST.name, "/$sourceIdxTestName/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
             assertTrue(rawRes.restStatus() == RestStatus.OK)
             var rollupRes = client().makeRequest(RestRequest.Method.POST.name, "/$targetIdxTestName/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
@@ -141,7 +144,7 @@ class RollupRunnerIT : RollupRestTestCase() {
             assertEquals(
                 "Source and rollup index did not return same avg results",
                 rawAggRes.getValue(avgMetricName)["value"],
-                rollupAggRes.getValue(avgMetricName)["value"]
+                rollupAggRes.getValue(avgMetricName)["value"],
             )
         }
     }
@@ -150,16 +153,17 @@ class RollupRunnerIT : RollupRestTestCase() {
         val dataStreamName = "test-data-stream"
 
         // Define the rollup job
-        var rollup = randomRollup().copy(
-            id = "$testName-1",
-            enabled = true,
-            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
-            jobEnabledTime = Instant.now(),
-            sourceIndex = dataStreamName,
-            targetIndex = "$dataStreamName-rollup",
-            metadataID = null,
-            continuous = false
-        )
+        var rollup =
+            randomRollup().copy(
+                id = "$testName-1",
+                enabled = true,
+                jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+                jobEnabledTime = Instant.now(),
+                sourceIndex = dataStreamName,
+                targetIndex = "$dataStreamName-rollup",
+                metadataID = null,
+                continuous = false,
+            )
 
         // Create the source data stream
         client().makeRequest(
@@ -170,8 +174,8 @@ class RollupRunnerIT : RollupRestTestCase() {
                     "\"index_patterns\": [ \"$dataStreamName\" ], " +
                     "\"data_stream\": { }, " +
                     "\"template\": { \"mappings\": { ${createRollupMappingString(rollup)} } } }",
-                ContentType.APPLICATION_JSON
-            )
+                ContentType.APPLICATION_JSON,
+            ),
         )
         client().makeRequest("PUT", "/_data_stream/$dataStreamName")
 
@@ -201,16 +205,17 @@ class RollupRunnerIT : RollupRestTestCase() {
         val indexName = "test_index_runner_second"
 
         // Define rollup
-        var rollup = randomRollup().copy(
-            id = "metadata_set_failed_id_doc_not_exist",
-            enabled = true,
-            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
-            jobEnabledTime = Instant.now(),
-            sourceIndex = indexName,
-            targetIndex = "${indexName}_target",
-            metadataID = null,
-            continuous = false
-        )
+        var rollup =
+            randomRollup().copy(
+                id = "metadata_set_failed_id_doc_not_exist",
+                enabled = true,
+                jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+                jobEnabledTime = Instant.now(),
+                sourceIndex = indexName,
+                targetIndex = "${indexName}_target",
+                metadataID = null,
+                continuous = false,
+            )
 
         // Create source index
         createRollupSourceIndex(rollup)
@@ -227,17 +232,18 @@ class RollupRunnerIT : RollupRestTestCase() {
         updateRollupStartTime(rollup)
 
         var previousRollupMetadata: RollupMetadata? = null
-        rollup = waitFor {
-            val rollupJob = getRollup(rollupId = rollup.id)
-            assertNotNull("Rollup job not found", rollupJob)
-            assertNotNull("Rollup job doesn't have metadata set", rollupJob.metadataID)
-            assertFalse("Rollup job is still enabled", rollupJob.enabled)
+        rollup =
+            waitFor {
+                val rollupJob = getRollup(rollupId = rollup.id)
+                assertNotNull("Rollup job not found", rollupJob)
+                assertNotNull("Rollup job doesn't have metadata set", rollupJob.metadataID)
+                assertFalse("Rollup job is still enabled", rollupJob.enabled)
 
-            previousRollupMetadata = getRollupMetadata(rollupJob.metadataID!!)
-            assertNotNull("Rollup metadata not found", previousRollupMetadata)
-            assertEquals("Unexpected metadata status", RollupMetadata.Status.FINISHED, previousRollupMetadata!!.status)
-            rollupJob
-        }
+                previousRollupMetadata = getRollupMetadata(rollupJob.metadataID!!)
+                assertNotNull("Rollup metadata not found", previousRollupMetadata)
+                assertEquals("Unexpected metadata status", RollupMetadata.Status.FINISHED, previousRollupMetadata!!.status)
+                rollupJob
+            }
         // Delete rollup metadata
         assertNotNull("Previous rollup metadata was not saved", previousRollupMetadata)
         deleteRollupMetadata(previousRollupMetadata!!.id)
@@ -246,7 +252,7 @@ class RollupRunnerIT : RollupRestTestCase() {
         client().makeRequest(
             "PUT",
             "$ROLLUP_JOBS_BASE_URI/${rollup.id}?if_seq_no=${rollup.seqNo}&if_primary_term=${rollup.primaryTerm}",
-            emptyMap(), rollup.copy(enabled = true, jobEnabledTime = Instant.now()).toHttpEntity()
+            emptyMap(), rollup.copy(enabled = true, jobEnabledTime = Instant.now()).toHttpEntity(),
         )
 
         updateRollupStartTime(rollup)
@@ -271,20 +277,22 @@ class RollupRunnerIT : RollupRestTestCase() {
     // Setting the interval to something large to minimize this scenario.
     fun `test no-op execution when a full window of time to rollup is not available`() {
         val indexName = "test_index_runner_third"
-        var rollup = randomRollup().copy(
-            id = "$testName-2",
-            enabled = true,
-            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
-            jobEnabledTime = Instant.now(),
-            sourceIndex = indexName,
-            metadataID = null,
-            continuous = true,
-            dimensions = listOf(
-                randomCalendarDateHistogram().copy(
-                    calendarInterval = "1y"
-                )
+        var rollup =
+            randomRollup().copy(
+                id = "$testName-2",
+                enabled = true,
+                jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+                jobEnabledTime = Instant.now(),
+                sourceIndex = indexName,
+                metadataID = null,
+                continuous = true,
+                dimensions =
+                listOf(
+                    randomCalendarDateHistogram().copy(
+                        calendarInterval = "1y",
+                    ),
+                ),
             )
-        )
 
         // Create source index
         createRollupSourceIndex(rollup)
@@ -328,15 +336,16 @@ class RollupRunnerIT : RollupRestTestCase() {
         val indexName = "test_index_runner_fourth"
 
         // Define rollup
-        var rollup = randomRollup().copy(
-            id = "$testName-3",
-            enabled = true,
-            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
-            jobEnabledTime = Instant.now(),
-            sourceIndex = indexName,
-            metadataID = null,
-            continuous = true
-        )
+        var rollup =
+            randomRollup().copy(
+                id = "$testName-3",
+                enabled = true,
+                jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+                jobEnabledTime = Instant.now(),
+                sourceIndex = indexName,
+                metadataID = null,
+                continuous = true,
+            )
 
         // Create rollup job
         rollup = createRollup(rollup = rollup, rollupId = rollup.id)
@@ -367,100 +376,109 @@ class RollupRunnerIT : RollupRestTestCase() {
 
         generateNYCTaxiData("source_runner_fifth")
 
-        val rollup = Rollup(
-            id = "basic_stats_check_runner_fifth",
-            schemaVersion = 1L,
-            enabled = true,
-            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
-            jobLastUpdatedTime = Instant.now(),
-            jobEnabledTime = Instant.now(),
-            description = "basic stats test",
-            sourceIndex = "source_runner_fifth",
-            targetIndex = "target_runner_fifth",
-            metadataID = null,
-            roles = emptyList(),
-            pageSize = 100,
-            delay = 0,
-            continuous = false,
-            dimensions = listOf(DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "1h")),
-            metrics = listOf(
-                RollupMetrics(sourceField = "passenger_count", targetField = "passenger_count", metrics = listOf(Sum(), Min(), Max(), ValueCount(), Average()))
-            )
-        ).let { createRollup(it, it.id) }
+        val rollup =
+            Rollup(
+                id = "basic_stats_check_runner_fifth",
+                schemaVersion = 1L,
+                enabled = true,
+                jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+                jobLastUpdatedTime = Instant.now(),
+                jobEnabledTime = Instant.now(),
+                description = "basic stats test",
+                sourceIndex = "source_runner_fifth",
+                targetIndex = "target_runner_fifth",
+                metadataID = null,
+                roles = emptyList(),
+                pageSize = 100,
+                delay = 0,
+                continuous = false,
+                dimensions = listOf(DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "1h")),
+                metrics =
+                listOf(
+                    RollupMetrics(sourceField = "passenger_count", targetField = "passenger_count", metrics = listOf(Sum(), Min(), Max(), ValueCount(), Average())),
+                ),
+            ).let { createRollup(it, it.id) }
 
-        val secondRollup = Rollup(
-            id = "all_inclusive_intervals_runner_fifth",
-            schemaVersion = 1L,
-            enabled = true,
-            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
-            jobLastUpdatedTime = Instant.now(),
-            jobEnabledTime = Instant.now(),
-            description = "basic stats test",
-            sourceIndex = "source_runner_fifth",
-            targetIndex = "target_runner_fifth",
-            metadataID = null,
-            roles = emptyList(),
-            pageSize = 100,
-            delay = 0,
-            continuous = false,
-            dimensions = listOf(DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "100d")),
-            metrics = listOf(
-                RollupMetrics(sourceField = "passenger_count", targetField = "passenger_count", metrics = listOf(Sum(), Min(), Max(), ValueCount(), Average()))
-            )
-        ).let { createRollup(it, it.id) }
+        val secondRollup =
+            Rollup(
+                id = "all_inclusive_intervals_runner_fifth",
+                schemaVersion = 1L,
+                enabled = true,
+                jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+                jobLastUpdatedTime = Instant.now(),
+                jobEnabledTime = Instant.now(),
+                description = "basic stats test",
+                sourceIndex = "source_runner_fifth",
+                targetIndex = "target_runner_fifth",
+                metadataID = null,
+                roles = emptyList(),
+                pageSize = 100,
+                delay = 0,
+                continuous = false,
+                dimensions = listOf(DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "100d")),
+                metrics =
+                listOf(
+                    RollupMetrics(sourceField = "passenger_count", targetField = "passenger_count", metrics = listOf(Sum(), Min(), Max(), ValueCount(), Average())),
+                ),
+            ).let { createRollup(it, it.id) }
 
-        val thirdRollup = Rollup(
-            id = "second_interval_runner_fifth",
-            schemaVersion = 1L,
-            enabled = true,
-            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
-            jobLastUpdatedTime = Instant.now(),
-            jobEnabledTime = Instant.now(),
-            description = "basic 1s test",
-            sourceIndex = "source_runner_fifth",
-            targetIndex = "target_runner_fifth",
-            metadataID = null,
-            roles = emptyList(),
-            pageSize = 100,
-            delay = 0,
-            continuous = false,
-            dimensions = listOf(DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "1s")),
-            metrics = listOf(
-                RollupMetrics(sourceField = "passenger_count", targetField = "passenger_count", metrics = listOf(Sum(), Min(), Max(), ValueCount(), Average()))
-            )
-        ).let { createRollup(it, it.id) }
+        val thirdRollup =
+            Rollup(
+                id = "second_interval_runner_fifth",
+                schemaVersion = 1L,
+                enabled = true,
+                jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+                jobLastUpdatedTime = Instant.now(),
+                jobEnabledTime = Instant.now(),
+                description = "basic 1s test",
+                sourceIndex = "source_runner_fifth",
+                targetIndex = "target_runner_fifth",
+                metadataID = null,
+                roles = emptyList(),
+                pageSize = 100,
+                delay = 0,
+                continuous = false,
+                dimensions = listOf(DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "1s")),
+                metrics =
+                listOf(
+                    RollupMetrics(sourceField = "passenger_count", targetField = "passenger_count", metrics = listOf(Sum(), Min(), Max(), ValueCount(), Average())),
+                ),
+            ).let { createRollup(it, it.id) }
 
         updateRollupStartTime(rollup)
 
         waitFor { assertTrue("Target rollup index was not created", indexExists(rollup.targetIndex)) }
 
-        val finishedRollup = waitFor() {
-            val rollupJob = getRollup(rollupId = rollup.id)
-            assertNotNull("Rollup job doesn't have metadata set", rollupJob.metadataID)
-            val rollupMetadata = getRollupMetadata(rollupJob.metadataID!!)
-            assertEquals("Rollup is not finished", RollupMetadata.Status.FINISHED, rollupMetadata.status)
-            rollupJob
-        }
+        val finishedRollup =
+            waitFor {
+                val rollupJob = getRollup(rollupId = rollup.id)
+                assertNotNull("Rollup job doesn't have metadata set", rollupJob.metadataID)
+                val rollupMetadata = getRollupMetadata(rollupJob.metadataID!!)
+                assertEquals("Rollup is not finished", RollupMetadata.Status.FINISHED, rollupMetadata.status)
+                rollupJob
+            }
 
         updateRollupStartTime(secondRollup)
 
-        val secondFinishedRollup = waitFor() {
-            val rollupJob = getRollup(rollupId = secondRollup.id)
-            assertNotNull("Rollup job doesn't have metadata set", rollupJob.metadataID)
-            val rollupMetadata = getRollupMetadata(rollupJob.metadataID!!)
-            assertEquals("Rollup is not finished", RollupMetadata.Status.FINISHED, rollupMetadata.status)
-            rollupJob
-        }
+        val secondFinishedRollup =
+            waitFor {
+                val rollupJob = getRollup(rollupId = secondRollup.id)
+                assertNotNull("Rollup job doesn't have metadata set", rollupJob.metadataID)
+                val rollupMetadata = getRollupMetadata(rollupJob.metadataID!!)
+                assertEquals("Rollup is not finished", RollupMetadata.Status.FINISHED, rollupMetadata.status)
+                rollupJob
+            }
 
         updateRollupStartTime(thirdRollup)
 
-        val thirdFinishedRollup = waitFor() {
-            val rollupJob = getRollup(rollupId = thirdRollup.id)
-            assertNotNull("Rollup job doesn't have metadata set", rollupJob.metadataID)
-            val rollupMetadata = getRollupMetadata(rollupJob.metadataID!!)
-            assertEquals("Rollup is not finished $rollupMetadata", RollupMetadata.Status.FINISHED, rollupMetadata.status)
-            rollupJob
-        }
+        val thirdFinishedRollup =
+            waitFor {
+                val rollupJob = getRollup(rollupId = thirdRollup.id)
+                assertNotNull("Rollup job doesn't have metadata set", rollupJob.metadataID)
+                val rollupMetadata = getRollupMetadata(rollupJob.metadataID!!)
+                assertEquals("Rollup is not finished $rollupMetadata", RollupMetadata.Status.FINISHED, rollupMetadata.status)
+                rollupJob
+            }
 
         refreshAllIndices()
 
@@ -510,52 +528,56 @@ class RollupRunnerIT : RollupRestTestCase() {
         // to rollup a single document per execution which gives us enough time to change the pageSize to something large
         generateNYCTaxiData("source_runner_sixth")
 
-        val rollup = Rollup(
-            id = "page_size_runner_sixth",
-            schemaVersion = 1L,
-            enabled = true,
-            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
-            jobLastUpdatedTime = Instant.now(),
-            jobEnabledTime = Instant.now(),
-            description = "basic change of page size",
-            sourceIndex = "source_runner_sixth",
-            targetIndex = "target_runner_sixth",
-            metadataID = null,
-            roles = emptyList(),
-            pageSize = 1,
-            delay = 0,
-            continuous = false,
-            dimensions = listOf(DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "1s")),
-            metrics = listOf(
-                RollupMetrics(sourceField = "passenger_count", targetField = "passenger_count", metrics = listOf(Sum(), Min(), Max(), ValueCount(), Average()))
-            )
-        ).let { createRollup(it, it.id) }
+        val rollup =
+            Rollup(
+                id = "page_size_runner_sixth",
+                schemaVersion = 1L,
+                enabled = true,
+                jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+                jobLastUpdatedTime = Instant.now(),
+                jobEnabledTime = Instant.now(),
+                description = "basic change of page size",
+                sourceIndex = "source_runner_sixth",
+                targetIndex = "target_runner_sixth",
+                metadataID = null,
+                roles = emptyList(),
+                pageSize = 1,
+                delay = 0,
+                continuous = false,
+                dimensions = listOf(DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "1s")),
+                metrics =
+                listOf(
+                    RollupMetrics(sourceField = "passenger_count", targetField = "passenger_count", metrics = listOf(Sum(), Min(), Max(), ValueCount(), Average())),
+                ),
+            ).let { createRollup(it, it.id) }
 
         updateRollupStartTime(rollup)
 
         waitFor { assertTrue("Target rollup index was not created", indexExists(rollup.targetIndex)) }
 
-        val startedRollup = waitFor {
-            val rollupJob = getRollup(rollupId = rollup.id)
-            assertNotNull("Rollup job doesn't have metadata set", rollupJob.metadataID)
-            val rollupMetadata = getRollupMetadata(rollupJob.metadataID!!)
-            assertEquals("Rollup is not started", RollupMetadata.Status.STARTED, rollupMetadata.status)
-            rollupJob
-        }
+        val startedRollup =
+            waitFor {
+                val rollupJob = getRollup(rollupId = rollup.id)
+                assertNotNull("Rollup job doesn't have metadata set", rollupJob.metadataID)
+                val rollupMetadata = getRollupMetadata(rollupJob.metadataID!!)
+                assertEquals("Rollup is not started", RollupMetadata.Status.STARTED, rollupMetadata.status)
+                rollupJob
+            }
 
         client().makeRequest(
             "PUT",
             "$ROLLUP_JOBS_BASE_URI/${startedRollup.id}?if_seq_no=${startedRollup.seqNo}&if_primary_term=${startedRollup.primaryTerm}",
-            emptyMap(), rollup.copy(pageSize = 1000).toHttpEntity()
+            emptyMap(), rollup.copy(pageSize = 1000).toHttpEntity(),
         )
 
-        val finishedRollup = waitFor {
-            val rollupJob = getRollup(rollupId = rollup.id)
-            assertNotNull("Rollup job doesn't have metadata set", rollupJob.metadataID)
-            val rollupMetadata = getRollupMetadata(rollupJob.metadataID!!)
-            assertEquals("Rollup is not started", RollupMetadata.Status.FINISHED, rollupMetadata.status)
-            rollupJob
-        }
+        val finishedRollup =
+            waitFor {
+                val rollupJob = getRollup(rollupId = rollup.id)
+                assertNotNull("Rollup job doesn't have metadata set", rollupJob.metadataID)
+                val rollupMetadata = getRollupMetadata(rollupJob.metadataID!!)
+                assertEquals("Rollup is not started", RollupMetadata.Status.FINISHED, rollupMetadata.status)
+                rollupJob
+            }
 
         val rollupMetadataID = finishedRollup.metadataID!!
         val rollupMetadata = getRollupMetadata(rollupMetadataID)
@@ -569,24 +591,25 @@ class RollupRunnerIT : RollupRestTestCase() {
         // Set the search max buckets to 50 and rollup search retry count to 0 so it won't retry on failure. This is to confirm first that yes we do get an error and moved into failed state.
         client().makeRequest("PUT", "/_cluster/settings", StringEntity("""{"persistent":{"search.max_buckets":"50", "${ROLLUP_SEARCH_BACKOFF_COUNT.key}": 0 }}""", ContentType.APPLICATION_JSON))
 
-        val rollup = Rollup(
-            id = "page_size_no_retry_first_runner_seventh",
-            schemaVersion = 1L,
-            enabled = true,
-            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
-            jobLastUpdatedTime = Instant.now(),
-            jobEnabledTime = Instant.now(),
-            description = "basic page size",
-            sourceIndex = "source_runner_seventh",
-            targetIndex = "target_runner_seventh",
-            metadataID = null,
-            roles = emptyList(),
-            pageSize = 100,
-            delay = 0,
-            continuous = false,
-            dimensions = listOf(DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "1m")),
-            metrics = listOf(RollupMetrics(sourceField = "passenger_count", targetField = "passenger_count", metrics = listOf(Sum(), Min(), Max(), ValueCount(), Average())))
-        ).let { createRollup(it, it.id) }
+        val rollup =
+            Rollup(
+                id = "page_size_no_retry_first_runner_seventh",
+                schemaVersion = 1L,
+                enabled = true,
+                jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+                jobLastUpdatedTime = Instant.now(),
+                jobEnabledTime = Instant.now(),
+                description = "basic page size",
+                sourceIndex = "source_runner_seventh",
+                targetIndex = "target_runner_seventh",
+                metadataID = null,
+                roles = emptyList(),
+                pageSize = 100,
+                delay = 0,
+                continuous = false,
+                dimensions = listOf(DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "1m")),
+                metrics = listOf(RollupMetrics(sourceField = "passenger_count", targetField = "passenger_count", metrics = listOf(Sum(), Min(), Max(), ValueCount(), Average()))),
+            ).let { createRollup(it, it.id) }
 
         updateRollupStartTime(rollup)
 
@@ -604,24 +627,25 @@ class RollupRunnerIT : RollupRestTestCase() {
 
         client().makeRequest("PUT", "/_cluster/settings", StringEntity("""{"persistent":{"search.max_buckets":"50", "${ROLLUP_SEARCH_BACKOFF_COUNT.key}": 5 }}""", ContentType.APPLICATION_JSON))
 
-        val secondRollup = Rollup(
-            id = "page_size_with_retry_second_runner_seventh",
-            schemaVersion = 1L,
-            enabled = true,
-            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
-            jobLastUpdatedTime = Instant.now(),
-            jobEnabledTime = Instant.now(),
-            description = "basic page size",
-            sourceIndex = "source_runner_seventh",
-            targetIndex = "new_target_runner_seventh",
-            metadataID = null,
-            roles = emptyList(),
-            pageSize = 100,
-            delay = 0,
-            continuous = false,
-            dimensions = listOf(DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "1m")),
-            metrics = listOf(RollupMetrics(sourceField = "passenger_count", targetField = "passenger_count", metrics = listOf(Sum(), Min(), Max(), ValueCount(), Average())))
-        ).let { createRollup(it, it.id) }
+        val secondRollup =
+            Rollup(
+                id = "page_size_with_retry_second_runner_seventh",
+                schemaVersion = 1L,
+                enabled = true,
+                jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+                jobLastUpdatedTime = Instant.now(),
+                jobEnabledTime = Instant.now(),
+                description = "basic page size",
+                sourceIndex = "source_runner_seventh",
+                targetIndex = "new_target_runner_seventh",
+                metadataID = null,
+                roles = emptyList(),
+                pageSize = 100,
+                delay = 0,
+                continuous = false,
+                dimensions = listOf(DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "1m")),
+                metrics = listOf(RollupMetrics(sourceField = "passenger_count", targetField = "passenger_count", metrics = listOf(Sum(), Min(), Max(), ValueCount(), Average()))),
+            ).let { createRollup(it, it.id) }
 
         updateRollupStartTime(secondRollup)
 
@@ -641,21 +665,23 @@ class RollupRunnerIT : RollupRestTestCase() {
         val indexName = "test_index_runner_eighth"
         val delay: Long = 7_500
         // Define rollup
-        var rollup = randomRollup().copy(
-            id = "$testName-4",
-            enabled = true,
-            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
-            jobEnabledTime = Instant.now(),
-            sourceIndex = indexName,
-            metadataID = null,
-            continuous = true,
-            delay = delay,
-            dimensions = listOf(
-                randomCalendarDateHistogram().copy(
-                    calendarInterval = "5s"
-                )
+        var rollup =
+            randomRollup().copy(
+                id = "$testName-4",
+                enabled = true,
+                jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+                jobEnabledTime = Instant.now(),
+                sourceIndex = indexName,
+                metadataID = null,
+                continuous = true,
+                delay = delay,
+                dimensions =
+                listOf(
+                    randomCalendarDateHistogram().copy(
+                        calendarInterval = "5s",
+                    ),
+                ),
             )
-        )
 
         // Create source index
         createRollupSourceIndex(rollup)
@@ -664,16 +690,17 @@ class RollupRunnerIT : RollupRestTestCase() {
 
         // Create rollup job
         val jobStartTime = Instant.now()
-        val rollupNow = rollup.copy(
-            jobSchedule = IntervalSchedule(jobStartTime, 1, ChronoUnit.MINUTES),
-            jobEnabledTime = jobStartTime
-        )
+        val rollupNow =
+            rollup.copy(
+                jobSchedule = IntervalSchedule(jobStartTime, 1, ChronoUnit.MINUTES),
+                jobEnabledTime = jobStartTime,
+            )
         rollup = createRollup(rollup = rollupNow, rollupId = rollupNow.id)
 
         val expectedFirstExecutionTime = rollup.jobSchedule.getNextExecutionTime(null).toEpochMilli()
         assertTrue("The first job execution time should be equal [job start time] + [delay].", expectedFirstExecutionTime == jobStartTime.toEpochMilli() + delay)
 
-        waitFor() {
+        waitFor {
             assertTrue("Target rollup index was not created", indexExists(rollup.targetIndex))
             val rollupJob = getRollup(rollupId = rollup.id)
             assertNotNull("Rollup job doesn't have metadata set", rollupJob.metadataID)
@@ -694,26 +721,28 @@ class RollupRunnerIT : RollupRestTestCase() {
         // Setting the delay to this time so most of the data records would be excluded if delay were applied
         val goalDateMS: Long = Instant.parse("2018-11-30T00:00:00Z").toEpochMilli()
         val testDelay: Long = Instant.now().toEpochMilli() - goalDateMS
-        val rollup = Rollup(
-            id = "non_continuous_delay_stats_check",
-            schemaVersion = 1L,
-            enabled = true,
-            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
-            jobLastUpdatedTime = Instant.now(),
-            jobEnabledTime = Instant.now(),
-            description = "basic delay test",
-            sourceIndex = "source_runner_ninth",
-            targetIndex = "target_runner_ninth",
-            metadataID = null,
-            roles = emptyList(),
-            pageSize = 100,
-            delay = testDelay,
-            continuous = false,
-            dimensions = listOf(DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "1h")),
-            metrics = listOf(
-                RollupMetrics(sourceField = "passenger_count", targetField = "passenger_count", metrics = listOf(Sum(), Min(), Max(), ValueCount(), Average()))
-            )
-        ).let { createRollup(it, it.id) }
+        val rollup =
+            Rollup(
+                id = "non_continuous_delay_stats_check",
+                schemaVersion = 1L,
+                enabled = true,
+                jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+                jobLastUpdatedTime = Instant.now(),
+                jobEnabledTime = Instant.now(),
+                description = "basic delay test",
+                sourceIndex = "source_runner_ninth",
+                targetIndex = "target_runner_ninth",
+                metadataID = null,
+                roles = emptyList(),
+                pageSize = 100,
+                delay = testDelay,
+                continuous = false,
+                dimensions = listOf(DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "1h")),
+                metrics =
+                listOf(
+                    RollupMetrics(sourceField = "passenger_count", targetField = "passenger_count", metrics = listOf(Sum(), Min(), Max(), ValueCount(), Average())),
+                ),
+            ).let { createRollup(it, it.id) }
 
         val now = Instant.now()
         val intervalMillis = (rollup.schedule as IntervalSchedule).interval * 60 * 1000
@@ -725,13 +754,14 @@ class RollupRunnerIT : RollupRestTestCase() {
 
         updateRollupStartTime(rollup)
 
-        val finishedRollup = waitFor {
-            val rollupJob = getRollup(rollupId = rollup.id)
-            assertNotNull("Rollup job doesn't have metadata set", rollupJob.metadataID)
-            val rollupMetadata = getRollupMetadata(rollupJob.metadataID!!)
-            assertEquals("Rollup is not finished $rollupMetadata", RollupMetadata.Status.FINISHED, rollupMetadata.status)
-            rollupJob
-        }
+        val finishedRollup =
+            waitFor {
+                val rollupJob = getRollup(rollupId = rollup.id)
+                assertNotNull("Rollup job doesn't have metadata set", rollupJob.metadataID)
+                val rollupMetadata = getRollupMetadata(rollupJob.metadataID!!)
+                assertEquals("Rollup is not finished $rollupMetadata", RollupMetadata.Status.FINISHED, rollupMetadata.status)
+                rollupJob
+            }
 
         refreshAllIndices()
 
@@ -757,37 +787,40 @@ class RollupRunnerIT : RollupRestTestCase() {
         // Setting the delay to this time so most of the data records are excluded
         val goalDateMS: Long = Instant.parse("2018-11-30T00:00:00Z").toEpochMilli()
         val testDelay: Long = Instant.now().toEpochMilli() - goalDateMS
-        val rollup = Rollup(
-            id = "continuous_delay_stats_check",
-            schemaVersion = 1L,
-            enabled = true,
-            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
-            jobLastUpdatedTime = Instant.now(),
-            jobEnabledTime = Instant.now(),
-            description = "basic delay test",
-            sourceIndex = "source_runner_tenth",
-            targetIndex = "target_runner_tenth",
-            metadataID = null,
-            roles = emptyList(),
-            pageSize = 100,
-            delay = testDelay,
-            continuous = true,
-            dimensions = listOf(DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "1h")),
-            metrics = listOf(
-                RollupMetrics(sourceField = "passenger_count", targetField = "passenger_count", metrics = listOf(Sum(), Min(), Max(), ValueCount(), Average()))
-            )
-        ).let { createRollup(it, it.id) }
+        val rollup =
+            Rollup(
+                id = "continuous_delay_stats_check",
+                schemaVersion = 1L,
+                enabled = true,
+                jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+                jobLastUpdatedTime = Instant.now(),
+                jobEnabledTime = Instant.now(),
+                description = "basic delay test",
+                sourceIndex = "source_runner_tenth",
+                targetIndex = "target_runner_tenth",
+                metadataID = null,
+                roles = emptyList(),
+                pageSize = 100,
+                delay = testDelay,
+                continuous = true,
+                dimensions = listOf(DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "1h")),
+                metrics =
+                listOf(
+                    RollupMetrics(sourceField = "passenger_count", targetField = "passenger_count", metrics = listOf(Sum(), Min(), Max(), ValueCount(), Average())),
+                ),
+            ).let { createRollup(it, it.id) }
 
         updateRollupStartTime(rollup, Instant.now().minusMillis(testDelay).minusMillis(55000).toEpochMilli())
 
-        val finishedRollup = waitFor {
-            val rollupJob = getRollup(rollupId = rollup.id)
-            assertNotNull("Rollup job doesn't have metadata set", rollupJob.metadataID)
-            val rollupMetadata = getRollupMetadata(rollupJob.metadataID!!)
-            assertEquals("Rollup is not started $rollupMetadata", RollupMetadata.Status.STARTED, rollupMetadata.status)
-            assertTrue("Continuous rollup did not process history", rollupMetadata.continuous!!.nextWindowEndTime.toEpochMilli() > goalDateMS)
-            rollupJob
-        }
+        val finishedRollup =
+            waitFor {
+                val rollupJob = getRollup(rollupId = rollup.id)
+                assertNotNull("Rollup job doesn't have metadata set", rollupJob.metadataID)
+                val rollupMetadata = getRollupMetadata(rollupJob.metadataID!!)
+                assertEquals("Rollup is not started $rollupMetadata", RollupMetadata.Status.STARTED, rollupMetadata.status)
+                assertTrue("Continuous rollup did not process history", rollupMetadata.continuous!!.nextWindowEndTime.toEpochMilli() > goalDateMS)
+                rollupJob
+            }
 
         refreshAllIndices()
 
@@ -812,58 +845,63 @@ class RollupRunnerIT : RollupRestTestCase() {
         // Create index with alias, without mappings
         val indexAlias = "alias_as_target_index"
         val backingIndex = "backing_target_index"
-        val builtSettings = Settings.builder().let {
-            it.put(INDEX_NUMBER_OF_REPLICAS, "1")
-            it.put(INDEX_NUMBER_OF_SHARDS, "1")
-            it
-        }.build()
+        val builtSettings =
+            Settings.builder().let {
+                it.put(INDEX_NUMBER_OF_REPLICAS, "1")
+                it.put(INDEX_NUMBER_OF_SHARDS, "1")
+                it
+            }.build()
         val aliases = "\"$indexAlias\": { \"is_write_index\": true }"
         createIndex(backingIndex, builtSettings, null, aliases)
 
         refreshAllIndices()
 
-        val rollup = Rollup(
-            id = "runner_with_alias_as_target",
-            schemaVersion = 1L,
-            enabled = true,
-            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
-            jobLastUpdatedTime = Instant.now(),
-            jobEnabledTime = Instant.now(),
-            description = "basic change of page size",
-            sourceIndex = "source_runner_sixth_eleventh_1",
-            targetIndex = indexAlias,
-            metadataID = null,
-            roles = emptyList(),
-            pageSize = 1000,
-            delay = 0,
-            continuous = false,
-            dimensions = listOf(
-                DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "1s"),
-                Terms("RatecodeID", "RatecodeID"),
-                Terms("PULocationID", "PULocationID")
-            ),
-            metrics = listOf(
-                RollupMetrics(
-                    sourceField = "passenger_count",
-                    targetField = "passenger_count",
-                    metrics = listOf(Sum(), Min(), Max(), ValueCount(), Average())
-                )
-            )
-        ).let { createRollup(it, it.id) }
+        val rollup =
+            Rollup(
+                id = "runner_with_alias_as_target",
+                schemaVersion = 1L,
+                enabled = true,
+                jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+                jobLastUpdatedTime = Instant.now(),
+                jobEnabledTime = Instant.now(),
+                description = "basic change of page size",
+                sourceIndex = "source_runner_sixth_eleventh_1",
+                targetIndex = indexAlias,
+                metadataID = null,
+                roles = emptyList(),
+                pageSize = 1000,
+                delay = 0,
+                continuous = false,
+                dimensions =
+                listOf(
+                    DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "1s"),
+                    Terms("RatecodeID", "RatecodeID"),
+                    Terms("PULocationID", "PULocationID"),
+                ),
+                metrics =
+                listOf(
+                    RollupMetrics(
+                        sourceField = "passenger_count",
+                        targetField = "passenger_count",
+                        metrics = listOf(Sum(), Min(), Max(), ValueCount(), Average()),
+                    ),
+                ),
+            ).let { createRollup(it, it.id) }
 
         // First run, backing index is empty: no mappings, no rollup_index setting, no rollupjobs in _META
         updateRollupStartTime(rollup)
 
         waitFor { assertTrue("Target rollup index was not created", indexExists(backingIndex)) }
 
-        var startedRollup = waitFor {
-            val rollupJob = getRollup(rollupId = rollup.id)
-            assertNotNull("Rollup job doesn't have metadata set", rollupJob.metadataID)
-            val rollupMetadata = getRollupMetadata(rollupJob.metadataID!!)
-            assertEquals("Rollup is not finished", RollupMetadata.Status.FINISHED, rollupMetadata.status)
-            assertTrue("Rollup is not disabled", !rollupJob.enabled)
-            rollupJob
-        }
+        var startedRollup =
+            waitFor {
+                val rollupJob = getRollup(rollupId = rollup.id)
+                assertNotNull("Rollup job doesn't have metadata set", rollupJob.metadataID)
+                val rollupMetadata = getRollupMetadata(rollupJob.metadataID!!)
+                assertEquals("Rollup is not finished", RollupMetadata.Status.FINISHED, rollupMetadata.status)
+                assertTrue("Rollup is not disabled", !rollupJob.enabled)
+                rollupJob
+            }
         var rollupMetadataID = startedRollup.metadataID!!
         var rollupMetadata = getRollupMetadata(rollupMetadataID)
         assertTrue("Did not process any doc during rollup", rollupMetadata.stats.documentsProcessed > 0)
@@ -872,18 +910,19 @@ class RollupRunnerIT : RollupRestTestCase() {
         client().makeRequest(
             "PUT",
             "$ROLLUP_JOBS_BASE_URI/${startedRollup.id}?if_seq_no=${startedRollup.seqNo}&if_primary_term=${startedRollup.primaryTerm}",
-            emptyMap(), rollup.copy(enabled = true).toHttpEntity()
+            emptyMap(), rollup.copy(enabled = true).toHttpEntity(),
         )
         // Second run, backing index is setup just like any other rollup index
         updateRollupStartTime(rollup)
 
-        startedRollup = waitFor {
-            val rollupJob = getRollup(rollupId = rollup.id)
-            assertNotNull("Rollup job doesn't have metadata set", rollupJob.metadataID)
-            val rollupMetadata1 = getRollupMetadata(rollupJob.metadataID!!)
-            assertEquals("Rollup is not finished", RollupMetadata.Status.FINISHED, rollupMetadata1.status)
-            rollupJob
-        }
+        startedRollup =
+            waitFor {
+                val rollupJob = getRollup(rollupId = rollup.id)
+                assertNotNull("Rollup job doesn't have metadata set", rollupJob.metadataID)
+                val rollupMetadata1 = getRollupMetadata(rollupJob.metadataID!!)
+                assertEquals("Rollup is not finished", RollupMetadata.Status.FINISHED, rollupMetadata1.status)
+                rollupJob
+            }
 
         rollupMetadataID = startedRollup.metadataID!!
         rollupMetadata = getRollupMetadata(rollupMetadataID)
@@ -898,58 +937,63 @@ class RollupRunnerIT : RollupRestTestCase() {
         val indexAlias = "alias_as_target_index_2"
         val backingIndex1 = "backing_target_index1-000001"
         val backingIndex2 = "backing_target_index1-000002"
-        val builtSettings = Settings.builder().let {
-            it.put(INDEX_NUMBER_OF_REPLICAS, "1")
-            it.put(INDEX_NUMBER_OF_SHARDS, "1")
-            it
-        }.build()
+        val builtSettings =
+            Settings.builder().let {
+                it.put(INDEX_NUMBER_OF_REPLICAS, "1")
+                it.put(INDEX_NUMBER_OF_SHARDS, "1")
+                it
+            }.build()
         val aliases = "\"$indexAlias\": { \"is_write_index\": true }"
         createIndex(backingIndex1, builtSettings, null, aliases)
 
         refreshAllIndices()
 
-        val rollup = Rollup(
-            id = "page_size_runner_sixth_2",
-            schemaVersion = 1L,
-            enabled = true,
-            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
-            jobLastUpdatedTime = Instant.now(),
-            jobEnabledTime = Instant.now(),
-            description = "basic change of page size",
-            sourceIndex = "source_runner_sixth_29932",
-            targetIndex = indexAlias,
-            metadataID = null,
-            roles = emptyList(),
-            pageSize = 1000,
-            delay = 0,
-            continuous = false,
-            dimensions = listOf(
-                DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "1s"),
-                Terms("RatecodeID", "RatecodeID"),
-                Terms("PULocationID", "PULocationID")
-            ),
-            metrics = listOf(
-                RollupMetrics(
-                    sourceField = "passenger_count",
-                    targetField = "passenger_count",
-                    metrics = listOf(Sum(), Min(), Max(), ValueCount(), Average())
-                )
-            )
-        ).let { createRollup(it, it.id) }
+        val rollup =
+            Rollup(
+                id = "page_size_runner_sixth_2",
+                schemaVersion = 1L,
+                enabled = true,
+                jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+                jobLastUpdatedTime = Instant.now(),
+                jobEnabledTime = Instant.now(),
+                description = "basic change of page size",
+                sourceIndex = "source_runner_sixth_29932",
+                targetIndex = indexAlias,
+                metadataID = null,
+                roles = emptyList(),
+                pageSize = 1000,
+                delay = 0,
+                continuous = false,
+                dimensions =
+                listOf(
+                    DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "1s"),
+                    Terms("RatecodeID", "RatecodeID"),
+                    Terms("PULocationID", "PULocationID"),
+                ),
+                metrics =
+                listOf(
+                    RollupMetrics(
+                        sourceField = "passenger_count",
+                        targetField = "passenger_count",
+                        metrics = listOf(Sum(), Min(), Max(), ValueCount(), Average()),
+                    ),
+                ),
+            ).let { createRollup(it, it.id) }
 
         // First run, backing index is empty: no mappings, no rollup_index setting, no rollupjobs in _META
         updateRollupStartTime(rollup)
 
         waitFor { assertTrue("Target rollup index was not created", indexExists(backingIndex1)) }
 
-        var startedRollup = waitFor {
-            val rollupJob = getRollup(rollupId = rollup.id)
-            assertNotNull("Rollup job doesn't have metadata set", rollupJob.metadataID)
-            val rollupMetadata = getRollupMetadata(rollupJob.metadataID!!)
-            assertEquals("Rollup is not finished", RollupMetadata.Status.FINISHED, rollupMetadata.status)
-            assertTrue("Rollup is not disabled", !rollupJob.enabled)
-            rollupJob
-        }
+        var startedRollup =
+            waitFor {
+                val rollupJob = getRollup(rollupId = rollup.id)
+                assertNotNull("Rollup job doesn't have metadata set", rollupJob.metadataID)
+                val rollupMetadata = getRollupMetadata(rollupJob.metadataID!!)
+                assertEquals("Rollup is not finished", RollupMetadata.Status.FINISHED, rollupMetadata.status)
+                assertTrue("Rollup is not disabled", !rollupJob.enabled)
+                rollupJob
+            }
         var rollupMetadataID = startedRollup.metadataID!!
         var rollupMetadata = getRollupMetadata(rollupMetadataID)
         assertTrue("Did not process any doc during rollup", rollupMetadata.stats.documentsProcessed > 0)
@@ -963,18 +1007,19 @@ class RollupRunnerIT : RollupRestTestCase() {
         client().makeRequest(
             "PUT",
             "$ROLLUP_JOBS_BASE_URI/${startedRollup.id}?if_seq_no=${startedRollup.seqNo}&if_primary_term=${startedRollup.primaryTerm}",
-            emptyMap(), rollup.copy(enabled = true).toHttpEntity()
+            emptyMap(), rollup.copy(enabled = true).toHttpEntity(),
         )
         // Second run, backing index is setup just like any other rollup index
         updateRollupStartTime(rollup)
 
-        startedRollup = waitFor {
-            val rollupJob = getRollup(rollupId = rollup.id)
-            assertNotNull("Rollup job doesn't have metadata set", rollupJob.metadataID)
-            val rollupMetadata1 = getRollupMetadata(rollupJob.metadataID!!)
-            assertEquals("Rollup is not finished", RollupMetadata.Status.FINISHED, rollupMetadata1.status)
-            rollupJob
-        }
+        startedRollup =
+            waitFor {
+                val rollupJob = getRollup(rollupId = rollup.id)
+                assertNotNull("Rollup job doesn't have metadata set", rollupJob.metadataID)
+                val rollupMetadata1 = getRollupMetadata(rollupJob.metadataID!!)
+                assertEquals("Rollup is not finished", RollupMetadata.Status.FINISHED, rollupMetadata1.status)
+                rollupJob
+            }
 
         rollupMetadataID = startedRollup.metadataID!!
         rollupMetadata = getRollupMetadata(rollupMetadataID)
@@ -993,77 +1038,84 @@ class RollupRunnerIT : RollupRestTestCase() {
         val indexAlias = "alias_as_target_index_failed"
         val backingIndex1 = "backing_target_index1_f-000001"
         val backingIndex2 = "backing_target_index1_f-000002"
-        val builtSettings = Settings.builder().let {
-            it.put(INDEX_NUMBER_OF_REPLICAS, "1")
-            it.put(INDEX_NUMBER_OF_SHARDS, "1")
-            it
-        }.build()
+        val builtSettings =
+            Settings.builder().let {
+                it.put(INDEX_NUMBER_OF_REPLICAS, "1")
+                it.put(INDEX_NUMBER_OF_SHARDS, "1")
+                it
+            }.build()
         val aliases = "\"$indexAlias\": { \"is_write_index\": true }"
         createIndex(backingIndex1, builtSettings, null, aliases)
 
         refreshAllIndices()
 
-        val job1 = Rollup(
-            id = "rollup_with1_alias_1",
-            schemaVersion = 1L,
-            enabled = true,
-            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
-            jobLastUpdatedTime = Instant.now(),
-            jobEnabledTime = Instant.now(),
-            description = "basic change of page size",
-            sourceIndex = "source_runner_sixth_2123",
-            targetIndex = indexAlias,
-            metadataID = null,
-            roles = emptyList(),
-            pageSize = 1000,
-            delay = 0,
-            continuous = false,
-            dimensions = listOf(
-                DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "1s"),
-                Terms("RatecodeID", "RatecodeID"),
-                Terms("PULocationID", "PULocationID")
-            ),
-            metrics = listOf(
-                RollupMetrics(
-                    sourceField = "passenger_count",
-                    targetField = "passenger_count",
-                    metrics = listOf(Sum(), Min(), Max(), ValueCount(), Average())
-                )
-            )
-        ).let { createRollup(it, it.id) }
+        val job1 =
+            Rollup(
+                id = "rollup_with1_alias_1",
+                schemaVersion = 1L,
+                enabled = true,
+                jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+                jobLastUpdatedTime = Instant.now(),
+                jobEnabledTime = Instant.now(),
+                description = "basic change of page size",
+                sourceIndex = "source_runner_sixth_2123",
+                targetIndex = indexAlias,
+                metadataID = null,
+                roles = emptyList(),
+                pageSize = 1000,
+                delay = 0,
+                continuous = false,
+                dimensions =
+                listOf(
+                    DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "1s"),
+                    Terms("RatecodeID", "RatecodeID"),
+                    Terms("PULocationID", "PULocationID"),
+                ),
+                metrics =
+                listOf(
+                    RollupMetrics(
+                        sourceField = "passenger_count",
+                        targetField = "passenger_count",
+                        metrics = listOf(Sum(), Min(), Max(), ValueCount(), Average()),
+                    ),
+                ),
+            ).let { createRollup(it, it.id) }
 
         // First run, backing index is empty: no mappings, no rollup_index setting, no rollupjobs in _META
         updateRollupStartTime(job1)
 
         waitFor { assertTrue("Target rollup index was not created", indexExists(backingIndex1)) }
 
-        var startedRollup1 = waitFor {
-            val rollupJob = getRollup(rollupId = job1.id)
-            assertNotNull("Rollup job doesn't have metadata set", rollupJob.metadataID)
-            val rollupMetadata = getRollupMetadata(rollupJob.metadataID!!)
-            assertEquals("Rollup is not finished", RollupMetadata.Status.FINISHED, rollupMetadata.status)
-            assertTrue("Rollup is not disabled", !rollupJob.enabled)
-            rollupJob
-        }
+        var startedRollup1 =
+            waitFor {
+                val rollupJob = getRollup(rollupId = job1.id)
+                assertNotNull("Rollup job doesn't have metadata set", rollupJob.metadataID)
+                val rollupMetadata = getRollupMetadata(rollupJob.metadataID!!)
+                assertEquals("Rollup is not finished", RollupMetadata.Status.FINISHED, rollupMetadata.status)
+                assertTrue("Rollup is not disabled", !rollupJob.enabled)
+                rollupJob
+            }
         var rollupMetadataID = startedRollup1.metadataID!!
         var rollupMetadata = getRollupMetadata(rollupMetadataID)
         assertTrue("Did not process any doc during rollup", rollupMetadata.stats.documentsProcessed > 0)
 
         // Run job #2 on same target_index
-        val job2 = job1.copy(id = "some_other_job_999", targetIndex = backingIndex1)
-            .let { createRollup(it, it.id) }
+        val job2 =
+            job1.copy(id = "some_other_job_999", targetIndex = backingIndex1)
+                .let { createRollup(it, it.id) }
 
         // Job2 First run, it should add itself to _meta in the same index job1 did.
         updateRollupStartTime(job2)
 
-        var startedRollup2 = waitFor {
-            val rollupJob = getRollup(rollupId = job2.id)
-            assertNotNull("Rollup job doesn't have metadata set", rollupJob.metadataID)
-            val rollupMetadata1 = getRollupMetadata(rollupJob.metadataID!!)
-            assertEquals("Rollup is not finished", RollupMetadata.Status.FINISHED, rollupMetadata1.status)
-            assertTrue("Rollup is not disabled", !rollupJob.enabled)
-            rollupJob
-        }
+        var startedRollup2 =
+            waitFor {
+                val rollupJob = getRollup(rollupId = job2.id)
+                assertNotNull("Rollup job doesn't have metadata set", rollupJob.metadataID)
+                val rollupMetadata1 = getRollupMetadata(rollupJob.metadataID!!)
+                assertEquals("Rollup is not finished", RollupMetadata.Status.FINISHED, rollupMetadata1.status)
+                assertTrue("Rollup is not disabled", !rollupJob.enabled)
+                rollupJob
+            }
         rollupMetadataID = startedRollup2.metadataID!!
         rollupMetadata = getRollupMetadata(rollupMetadataID)
         assertTrue("Did not process any doc during rollup", rollupMetadata.stats.documentsProcessed > 0)
@@ -1079,18 +1131,19 @@ class RollupRunnerIT : RollupRestTestCase() {
         client().makeRequest(
             "PUT",
             "$ROLLUP_JOBS_BASE_URI/${startedRollup1.id}?if_seq_no=${startedRollup1.seqNo}&if_primary_term=${startedRollup1.primaryTerm}",
-            emptyMap(), job1.copy(enabled = true).toHttpEntity()
+            emptyMap(), job1.copy(enabled = true).toHttpEntity(),
         )
         // Second run, backing index is setup just like any other rollup index
         updateRollupStartTime(job1)
 
-        startedRollup1 = waitFor {
-            val rollupJob = getRollup(rollupId = job1.id)
-            assertNotNull("Rollup job doesn't have metadata set", rollupJob.metadataID)
-            val rollupMetadata1 = getRollupMetadata(rollupJob.metadataID!!)
-            assertEquals("Rollup is not finished", RollupMetadata.Status.FAILED, rollupMetadata1.status)
-            rollupJob
-        }
+        startedRollup1 =
+            waitFor {
+                val rollupJob = getRollup(rollupId = job1.id)
+                assertNotNull("Rollup job doesn't have metadata set", rollupJob.metadataID)
+                val rollupMetadata1 = getRollupMetadata(rollupJob.metadataID!!)
+                assertEquals("Rollup is not finished", RollupMetadata.Status.FAILED, rollupMetadata1.status)
+                rollupJob
+            }
 
         rollupMetadataID = startedRollup1.metadataID!!
         rollupMetadata = getRollupMetadata(rollupMetadataID)
@@ -1104,77 +1157,84 @@ class RollupRunnerIT : RollupRestTestCase() {
         // Create index with alias, without mappings
         val indexAlias = "alias_as_target_index_failed_1"
         val backingIndex1 = "backing-000001"
-        val builtSettings = Settings.builder().let {
-            it.put(INDEX_NUMBER_OF_REPLICAS, "1")
-            it.put(INDEX_NUMBER_OF_SHARDS, "1")
-            it
-        }.build()
+        val builtSettings =
+            Settings.builder().let {
+                it.put(INDEX_NUMBER_OF_REPLICAS, "1")
+                it.put(INDEX_NUMBER_OF_SHARDS, "1")
+                it
+            }.build()
         val aliases = "\"$indexAlias\": { \"is_write_index\": true }"
         createIndex(backingIndex1, builtSettings, null, aliases)
 
         refreshAllIndices()
 
-        val job1 = Rollup(
-            id = "rollup_with_alias_11",
-            schemaVersion = 1L,
-            enabled = true,
-            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
-            jobLastUpdatedTime = Instant.now(),
-            jobEnabledTime = Instant.now(),
-            description = "basic change of page size",
-            sourceIndex = "source_runner_sixth_2209",
-            targetIndex = indexAlias,
-            metadataID = null,
-            roles = emptyList(),
-            pageSize = 1000,
-            delay = 0,
-            continuous = false,
-            dimensions = listOf(
-                DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "1s"),
-                Terms("RatecodeID", "RatecodeID"),
-                Terms("PULocationID", "PULocationID")
-            ),
-            metrics = listOf(
-                RollupMetrics(
-                    sourceField = "passenger_count",
-                    targetField = "passenger_count",
-                    metrics = listOf(Sum(), Min(), Max(), ValueCount(), Average())
-                )
-            )
-        ).let { createRollup(it, it.id) }
+        val job1 =
+            Rollup(
+                id = "rollup_with_alias_11",
+                schemaVersion = 1L,
+                enabled = true,
+                jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+                jobLastUpdatedTime = Instant.now(),
+                jobEnabledTime = Instant.now(),
+                description = "basic change of page size",
+                sourceIndex = "source_runner_sixth_2209",
+                targetIndex = indexAlias,
+                metadataID = null,
+                roles = emptyList(),
+                pageSize = 1000,
+                delay = 0,
+                continuous = false,
+                dimensions =
+                listOf(
+                    DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "1s"),
+                    Terms("RatecodeID", "RatecodeID"),
+                    Terms("PULocationID", "PULocationID"),
+                ),
+                metrics =
+                listOf(
+                    RollupMetrics(
+                        sourceField = "passenger_count",
+                        targetField = "passenger_count",
+                        metrics = listOf(Sum(), Min(), Max(), ValueCount(), Average()),
+                    ),
+                ),
+            ).let { createRollup(it, it.id) }
 
         // First run, backing index is empty: no mappings, no rollup_index setting, no rollupjobs in _META
         updateRollupStartTime(job1)
 
         waitFor { assertTrue("Target rollup index was not created", indexExists(backingIndex1)) }
 
-        val startedRollup1 = waitFor {
-            val rollupJob = getRollup(rollupId = job1.id)
-            assertNotNull("Rollup job doesn't have metadata set", rollupJob.metadataID)
-            val rollupMetadata = getRollupMetadata(rollupJob.metadataID!!)
-            assertEquals("Rollup is not finished", RollupMetadata.Status.FINISHED, rollupMetadata.status)
-            assertTrue("Rollup is not disabled", !rollupJob.enabled)
-            rollupJob
-        }
+        val startedRollup1 =
+            waitFor {
+                val rollupJob = getRollup(rollupId = job1.id)
+                assertNotNull("Rollup job doesn't have metadata set", rollupJob.metadataID)
+                val rollupMetadata = getRollupMetadata(rollupJob.metadataID!!)
+                assertEquals("Rollup is not finished", RollupMetadata.Status.FINISHED, rollupMetadata.status)
+                assertTrue("Rollup is not disabled", !rollupJob.enabled)
+                rollupJob
+            }
         var rollupMetadataID = startedRollup1.metadataID!!
         var rollupMetadata = getRollupMetadata(rollupMetadataID)
         assertTrue("Did not process any doc during rollup", rollupMetadata.stats.documentsProcessed > 0)
 
         // Run job #2 on same target_index alias
-        val job2 = job1.copy(id = "some_other_job_9991", targetIndex = indexAlias)
-            .let { createRollup(it, it.id) }
+        val job2 =
+            job1.copy(id = "some_other_job_9991", targetIndex = indexAlias)
+                .let { createRollup(it, it.id) }
 
         // Job2 First run, it should fail because job1 already wrote to backing index
         updateRollupStartTime(job2)
 
-        val startedRollup2 = waitFor {
-            val rollupJob = getRollup(rollupId = job2.id)
-            assertNotNull("Rollup job doesn't have metadata set", rollupJob.metadataID)
-            val rollupMetadata1 = getRollupMetadata(rollupJob.metadataID!!)
-            assertEquals("Rollup is not finished", RollupMetadata.Status.FAILED, rollupMetadata1.status)
-            assertTrue("Rollup is not disabled", !rollupJob.enabled)
-            rollupJob
-        }
+        val startedRollup2 =
+            waitFor {
+                val rollupJob = getRollup(rollupId = job2.id)
+                assertNotNull("Rollup job doesn't have metadata set", rollupJob.metadataID)
+                val rollupMetadata1 = getRollupMetadata(rollupJob.metadataID!!)
+                assertEquals("Rollup is not finished", RollupMetadata.Status.FAILED, rollupMetadata1.status)
+                assertTrue("Rollup is not disabled", !rollupJob.enabled)
+                rollupJob
+            }
         rollupMetadataID = startedRollup2.metadataID!!
         rollupMetadata = getRollupMetadata(rollupMetadataID)
         assertEquals("More than one rollup jobs present on the backing index of the target alias, cannot perform rollup to this target alias [$indexAlias].", rollupMetadata.failureReason)
@@ -1187,11 +1247,12 @@ class RollupRunnerIT : RollupRestTestCase() {
         val indexAlias = "alias_as_target_index_failed_19941"
         val backingIndex1 = "backing-99000001"
         val backingIndex2 = "backing-99000002"
-        val builtSettings = Settings.builder().let {
-            it.put(INDEX_NUMBER_OF_REPLICAS, "1")
-            it.put(INDEX_NUMBER_OF_SHARDS, "1")
-            it
-        }.build()
+        val builtSettings =
+            Settings.builder().let {
+                it.put(INDEX_NUMBER_OF_REPLICAS, "1")
+                it.put(INDEX_NUMBER_OF_SHARDS, "1")
+                it
+            }.build()
         var aliases = "\"$indexAlias\": { \"is_write_index\": true }"
         createIndex(backingIndex1, builtSettings, null, aliases)
         aliases = "\"$indexAlias\": {}"
@@ -1199,48 +1260,52 @@ class RollupRunnerIT : RollupRestTestCase() {
 
         refreshAllIndices()
 
-        val job1 = Rollup(
-            id = "rollup_with_alias_99243411",
-            schemaVersion = 1L,
-            enabled = true,
-            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
-            jobLastUpdatedTime = Instant.now(),
-            jobEnabledTime = Instant.now(),
-            description = "basic change of page size",
-            sourceIndex = "source_runner_sixth_1532209",
-            targetIndex = indexAlias,
-            metadataID = null,
-            roles = emptyList(),
-            pageSize = 1000,
-            delay = 0,
-            continuous = false,
-            dimensions = listOf(
-                DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "1s"),
-                Terms("RatecodeID", "RatecodeID"),
-                Terms("PULocationID", "PULocationID")
-            ),
-            metrics = listOf(
-                RollupMetrics(
-                    sourceField = "passenger_count",
-                    targetField = "passenger_count",
-                    metrics = listOf(Sum(), Min(), Max(), ValueCount(), Average())
-                )
-            )
-        ).let { createRollup(it, it.id) }
+        val job1 =
+            Rollup(
+                id = "rollup_with_alias_99243411",
+                schemaVersion = 1L,
+                enabled = true,
+                jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+                jobLastUpdatedTime = Instant.now(),
+                jobEnabledTime = Instant.now(),
+                description = "basic change of page size",
+                sourceIndex = "source_runner_sixth_1532209",
+                targetIndex = indexAlias,
+                metadataID = null,
+                roles = emptyList(),
+                pageSize = 1000,
+                delay = 0,
+                continuous = false,
+                dimensions =
+                listOf(
+                    DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "1s"),
+                    Terms("RatecodeID", "RatecodeID"),
+                    Terms("PULocationID", "PULocationID"),
+                ),
+                metrics =
+                listOf(
+                    RollupMetrics(
+                        sourceField = "passenger_count",
+                        targetField = "passenger_count",
+                        metrics = listOf(Sum(), Min(), Max(), ValueCount(), Average()),
+                    ),
+                ),
+            ).let { createRollup(it, it.id) }
 
         // First run, backing index is empty: no mappings, no rollup_index setting, no rollupjobs in _META
         updateRollupStartTime(job1)
 
         waitFor { assertTrue("Target rollup index was not created", indexExists(backingIndex1)) }
 
-        var startedRollup1 = waitFor {
-            val rollupJob = getRollup(rollupId = job1.id)
-            assertNotNull("Rollup job doesn't have metadata set", rollupJob.metadataID)
-            val rollupMetadata = getRollupMetadata(rollupJob.metadataID!!)
-            assertEquals("Rollup is not finished", RollupMetadata.Status.FAILED, rollupMetadata.status)
-            assertTrue("Rollup is not disabled", !rollupJob.enabled)
-            rollupJob
-        }
+        var startedRollup1 =
+            waitFor {
+                val rollupJob = getRollup(rollupId = job1.id)
+                assertNotNull("Rollup job doesn't have metadata set", rollupJob.metadataID)
+                val rollupMetadata = getRollupMetadata(rollupJob.metadataID!!)
+                assertEquals("Rollup is not finished", RollupMetadata.Status.FAILED, rollupMetadata.status)
+                assertTrue("Rollup is not disabled", !rollupJob.enabled)
+                rollupJob
+            }
         var rollupMetadataID = startedRollup1.metadataID!!
         var rollupMetadata = getRollupMetadata(rollupMetadataID)
         assertEquals("Backing index [$backingIndex2] has to have owner rollup job with id:[${startedRollup1.id}]", rollupMetadata.failureReason)
@@ -1262,7 +1327,7 @@ class RollupRunnerIT : RollupRestTestCase() {
                   "itemPrice": {
                     "type": "float"
                   }
-                }"""
+                }""",
         )
 
         indexDoc(index, "1", """{"purchaseDate": 1683149130000.6497, "itemName": "shoes", "itemPrice": 100.5}""".trimIndent())
@@ -1271,33 +1336,36 @@ class RollupRunnerIT : RollupRestTestCase() {
 
         refreshAllIndices()
 
-        val job = Rollup(
-            id = "rollup_with_alias_992434131",
-            schemaVersion = 1L,
-            enabled = true,
-            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.DAYS),
-            jobLastUpdatedTime = Instant.now(),
-            jobEnabledTime = Instant.now(),
-            description = "basic change of page size",
-            sourceIndex = index,
-            targetIndex = rollupIndex,
-            metadataID = null,
-            roles = emptyList(),
-            pageSize = 1000,
-            delay = 0,
-            continuous = true,
-            dimensions = listOf(
-                DateHistogram(sourceField = "purchaseDate", fixedInterval = "5d"),
-                Terms("itemName", "itemName"),
-            ),
-            metrics = listOf(
-                RollupMetrics(
-                    sourceField = "itemPrice",
-                    targetField = "itemPrice",
-                    metrics = listOf(Sum(), Min(), Max(), ValueCount(), Average())
-                )
-            )
-        ).let { createRollup(it, it.id) }
+        val job =
+            Rollup(
+                id = "rollup_with_alias_992434131",
+                schemaVersion = 1L,
+                enabled = true,
+                jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.DAYS),
+                jobLastUpdatedTime = Instant.now(),
+                jobEnabledTime = Instant.now(),
+                description = "basic change of page size",
+                sourceIndex = index,
+                targetIndex = rollupIndex,
+                metadataID = null,
+                roles = emptyList(),
+                pageSize = 1000,
+                delay = 0,
+                continuous = true,
+                dimensions =
+                listOf(
+                    DateHistogram(sourceField = "purchaseDate", fixedInterval = "5d"),
+                    Terms("itemName", "itemName"),
+                ),
+                metrics =
+                listOf(
+                    RollupMetrics(
+                        sourceField = "itemPrice",
+                        targetField = "itemPrice",
+                        metrics = listOf(Sum(), Min(), Max(), ValueCount(), Average()),
+                    ),
+                ),
+            ).let { createRollup(it, it.id) }
 
         updateRollupStartTime(job)
 
@@ -1319,29 +1387,32 @@ class RollupRunnerIT : RollupRestTestCase() {
         val maxMetricName = "min_message_bytes_in"
 
         generateMessageLogsData(sourceIdxTestName)
-        val rollup = Rollup(
-            id = "rollup_test_max",
-            schemaVersion = 1L,
-            enabled = true,
-            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
-            jobLastUpdatedTime = Instant.now(),
-            jobEnabledTime = Instant.now(),
-            description = "basic stats test",
-            sourceIndex = sourceIdxTestName,
-            targetIndex = targetIdxTestName,
-            metadataID = null,
-            roles = emptyList(),
-            pageSize = 100,
-            delay = 0,
-            continuous = false,
-            dimensions = listOf(
-                DateHistogram(sourceField = "message.timestamp_received", targetField = "message.timestamp_received", fixedInterval = "10m"),
-                Terms("message.plugin", "message.plugin")
-            ),
-            metrics = listOf(
-                RollupMetrics(sourceField = propertyName, targetField = propertyName, metrics = listOf(Max()))
-            )
-        ).let { createRollup(it, it.id) }
+        val rollup =
+            Rollup(
+                id = "rollup_test_max",
+                schemaVersion = 1L,
+                enabled = true,
+                jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+                jobLastUpdatedTime = Instant.now(),
+                jobEnabledTime = Instant.now(),
+                description = "basic stats test",
+                sourceIndex = sourceIdxTestName,
+                targetIndex = targetIdxTestName,
+                metadataID = null,
+                roles = emptyList(),
+                pageSize = 100,
+                delay = 0,
+                continuous = false,
+                dimensions =
+                listOf(
+                    DateHistogram(sourceField = "message.timestamp_received", targetField = "message.timestamp_received", fixedInterval = "10m"),
+                    Terms("message.plugin", "message.plugin"),
+                ),
+                metrics =
+                listOf(
+                    RollupMetrics(sourceField = propertyName, targetField = propertyName, metrics = listOf(Max())),
+                ),
+            ).let { createRollup(it, it.id) }
 
         updateRollupStartTime(rollup)
 
@@ -1354,21 +1425,22 @@ class RollupRunnerIT : RollupRestTestCase() {
             assertEquals("Rollup is not finished", RollupMetadata.Status.FINISHED, rollupMetadata.status)
 
             // Term query
-            val req = """
-            {
-                "size": 0,
-                "query": {
-                  "match_all": {}
-                },
-                "aggs": {
-                    "$maxMetricName": {
-                        "max": {
-                            "field": "$propertyName"
+            val req =
+                """
+                {
+                    "size": 0,
+                    "query": {
+                      "match_all": {}
+                    },
+                    "aggs": {
+                        "$maxMetricName": {
+                            "max": {
+                                "field": "$propertyName"
+                            }
                         }
                     }
                 }
-            }
-            """.trimIndent()
+                """.trimIndent()
             var rawRes = client().makeRequest(RestRequest.Method.POST.name, "/$sourceIdxTestName/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
             assertTrue(rawRes.restStatus() == RestStatus.OK)
             var rollupRes = client().makeRequest(RestRequest.Method.POST.name, "/$targetIdxTestName/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
@@ -1378,7 +1450,7 @@ class RollupRunnerIT : RollupRestTestCase() {
             assertEquals(
                 "Source and rollup index did not return same max results",
                 rawAggRes.getValue(maxMetricName)["value"],
-                rollupAggRes.getValue(maxMetricName)["value"]
+                rollupAggRes.getValue(maxMetricName)["value"],
             )
         }
     }

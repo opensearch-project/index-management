@@ -21,7 +21,6 @@ import org.opensearch.rest.action.RestToXContentListener
 import java.io.IOException
 
 class RestStartRollupAction : BaseRestHandler() {
-
     override fun routes(): List<Route> {
         return emptyList()
     }
@@ -30,8 +29,8 @@ class RestStartRollupAction : BaseRestHandler() {
         return listOf(
             ReplacedRoute(
                 POST, "$ROLLUP_JOBS_BASE_URI/{rollupID}/_start",
-                POST, "$LEGACY_ROLLUP_JOBS_BASE_URI/{rollupID}/_start"
-            )
+                POST, "$LEGACY_ROLLUP_JOBS_BASE_URI/{rollupID}/_start",
+            ),
         )
     }
 

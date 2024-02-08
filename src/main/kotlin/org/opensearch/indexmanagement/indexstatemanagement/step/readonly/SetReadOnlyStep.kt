@@ -18,7 +18,6 @@ import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepMetaDat
 import org.opensearch.transport.RemoteTransportException
 
 class SetReadOnlyStep : Step(name) {
-
     private val logger = LogManager.getLogger(javaClass)
     private var stepStatus = StepStatus.STARTING
     private var info: Map<String, Any>? = null
@@ -27,11 +26,13 @@ class SetReadOnlyStep : Step(name) {
         val context = this.context ?: return this
         val indexName = context.metadata.index
         try {
-            val updateSettingsRequest = UpdateSettingsRequest()
-                .indices(indexName)
-                .settings(Settings.builder().put(SETTING_BLOCKS_WRITE, true))
-            val response: AcknowledgedResponse = context.client.admin().indices()
-                .suspendUntil { updateSettings(updateSettingsRequest, it) }
+            val updateSettingsRequest =
+                UpdateSettingsRequest()
+                    .indices(indexName)
+                    .settings(Settings.builder().put(SETTING_BLOCKS_WRITE, true))
+            val response: AcknowledgedResponse =
+                context.client.admin().indices()
+                    .suspendUntil { updateSettings(updateSettingsRequest, it) }
 
             if (response.isAcknowledged) {
                 stepStatus = StepStatus.COMPLETED
@@ -65,7 +66,7 @@ class SetReadOnlyStep : Step(name) {
         return currentMetadata.copy(
             stepMetaData = StepMetaData(name, getStepStartTime(currentMetadata).toEpochMilli(), stepStatus),
             transitionTo = null,
-            info = info
+            info = info,
         )
     }
 
@@ -73,7 +74,9 @@ class SetReadOnlyStep : Step(name) {
 
     companion object {
         const val name = "set_read_only"
+
         fun getFailedMessage(index: String) = "Failed to set index to read-only [index=$index]"
+
         fun getSuccessMessage(index: String) = "Successfully set index to read-only [index=$index]"
     }
 }

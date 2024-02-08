@@ -7,6 +7,12 @@ package org.opensearch.indexmanagement.common.model.notification
 
 import org.opensearch.client.Client
 import org.opensearch.client.node.NodeClient
+import org.opensearch.commons.ConfigConstants
+import org.opensearch.commons.authuser.User
+import org.opensearch.commons.notifications.NotificationsPluginInterface
+import org.opensearch.commons.notifications.action.SendNotificationResponse
+import org.opensearch.commons.notifications.model.ChannelMessage
+import org.opensearch.commons.notifications.model.EventSource
 import org.opensearch.core.common.io.stream.StreamInput
 import org.opensearch.core.common.io.stream.StreamOutput
 import org.opensearch.core.common.io.stream.Writeable
@@ -14,18 +20,11 @@ import org.opensearch.core.xcontent.ToXContent
 import org.opensearch.core.xcontent.XContentBuilder
 import org.opensearch.core.xcontent.XContentParser
 import org.opensearch.core.xcontent.XContentParserUtils.ensureExpectedToken
-import org.opensearch.commons.ConfigConstants
-import org.opensearch.commons.authuser.User
-import org.opensearch.commons.notifications.NotificationsPluginInterface
-import org.opensearch.commons.notifications.action.SendNotificationResponse
-import org.opensearch.commons.notifications.model.ChannelMessage
-import org.opensearch.commons.notifications.model.EventSource
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.generateUserString
 import java.io.IOException
 
 data class Channel(val id: String) : ToXContent, Writeable {
-
     init {
         require(id.isNotEmpty()) { "Channel ID cannot be empty" }
     }
@@ -38,7 +37,7 @@ data class Channel(val id: String) : ToXContent, Writeable {
 
     @Throws(IOException::class)
     constructor(sin: StreamInput) : this(
-        sin.readString()
+        sin.readString(),
     )
 
     @Throws(IOException::class)
@@ -77,21 +76,22 @@ data class Channel(val id: String) : ToXContent, Writeable {
         client: Client,
         eventSource: EventSource,
         message: String,
-        user: User?
+        user: User?,
     ) {
         val channel = this
         client.threadPool().threadContext.stashContext().use {
             // We need to set the user context information in the thread context for notification plugin to correctly resolve the user object
             client.threadPool().threadContext.putTransient(ConfigConstants.OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT, generateUserString(user))
-            val res: SendNotificationResponse = NotificationsPluginInterface.suspendUntil {
-                this.sendNotification(
-                    (client as NodeClient),
-                    eventSource,
-                    ChannelMessage(message, null, null),
-                    listOf(channel.id),
-                    it
-                )
-            }
+            val res: SendNotificationResponse =
+                NotificationsPluginInterface.suspendUntil {
+                    this.sendNotification(
+                        (client as NodeClient),
+                        eventSource,
+                        ChannelMessage(message, null, null),
+                        listOf(channel.id),
+                        it,
+                    )
+                }
             validateResponseStatus(res.getStatus(), res.notificationEvent.eventSource.referenceId)
         }
     }

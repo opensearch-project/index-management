@@ -20,11 +20,12 @@ class ActionTimeoutIT : IndexStateManagementRestTestCase() {
     fun `test failed action`() {
         val indexName = "${testIndexName}_index_1"
         val policyID = "${testIndexName}_testPolicyName_1"
-        val testPolicy = """
-        {"policy":{"description":"Default policy","default_state":"rolloverstate","states":[
-        {"name":"rolloverstate","actions":[{"timeout":"1s","rollover":{"min_doc_count":100}}],
-        "transitions":[]}]}}
-        """.trimIndent()
+        val testPolicy =
+            """
+            {"policy":{"description":"Default policy","default_state":"rolloverstate","states":[
+            {"name":"rolloverstate","actions":[{"timeout":"1s","rollover":{"min_doc_count":100}}],
+            "transitions":[]}]}}
+            """.trimIndent()
 
         createPolicyJson(testPolicy, policyID)
 
@@ -43,7 +44,7 @@ class ActionTimeoutIT : IndexStateManagementRestTestCase() {
             assertEquals(
                 "Should be attempting to rollover",
                 getExplainManagedIndexMetaData(indexName).info?.get("message"),
-                AttemptRolloverStep.getPendingMessage(indexName)
+                AttemptRolloverStep.getPendingMessage(indexName),
             )
         }
 
@@ -52,19 +53,22 @@ class ActionTimeoutIT : IndexStateManagementRestTestCase() {
         waitFor {
             assertPredicatesOnMetaData(
                 listOf(
-                    indexName to listOf(
-                        ActionMetaData.ACTION to fun(actionMetaDataMap: Any?): Boolean =
-                            assertActionEquals(
-                                ActionMetaData(
-                                    name = RolloverAction.name, startTime = Instant.now().toEpochMilli(), index = 0,
-                                    failed = true, consumedRetries = 0, lastRetryTime = null, actionProperties = null
-                                ),
-                                actionMetaDataMap
-                            )
-                    )
+                    indexName to
+                        listOf(
+                            ActionMetaData.ACTION to
+
+                                fun(actionMetaDataMap: Any?): Boolean =
+                                    assertActionEquals(
+                                        ActionMetaData(
+                                            name = RolloverAction.name, startTime = Instant.now().toEpochMilli(), index = 0,
+                                            failed = true, consumedRetries = 0, lastRetryTime = null, actionProperties = null,
+                                        ),
+                                        actionMetaDataMap,
+                                    ),
+                        ),
                 ),
                 getExplainMap(indexName),
-                strict = false
+                strict = false,
             )
         }
     }
@@ -73,11 +77,12 @@ class ActionTimeoutIT : IndexStateManagementRestTestCase() {
     fun `test action timeout doesn't bleed over into next action`() {
         val indexName = "${testIndexName}_index_2"
         val policyID = "${testIndexName}_testPolicyName_2"
-        val testPolicy = """
-        {"policy":{"description":"Default policy","default_state":"rolloverstate","states":[
-        {"name":"rolloverstate","actions":[{"timeout": "5s","open":{}},{"timeout":"1s","rollover":{"min_doc_count":100}}],
-        "transitions":[]}]}}
-        """.trimIndent()
+        val testPolicy =
+            """
+            {"policy":{"description":"Default policy","default_state":"rolloverstate","states":[
+            {"name":"rolloverstate","actions":[{"timeout": "5s","open":{}},{"timeout":"1s","rollover":{"min_doc_count":100}}],
+            "transitions":[]}]}}
+            """.trimIndent()
 
         createPolicyJson(testPolicy, policyID)
 
@@ -96,9 +101,16 @@ class ActionTimeoutIT : IndexStateManagementRestTestCase() {
         val expectedOpenInfoString = mapOf("message" to AttemptOpenStep.getSuccessMessage(indexName)).toString()
         waitFor {
             assertPredicatesOnMetaData(
-                listOf(indexName to listOf(ManagedIndexMetaData.INFO to fun(info: Any?): Boolean = expectedOpenInfoString == info.toString())),
+                listOf(
+                    indexName to
+                        listOf(
+                            ManagedIndexMetaData.INFO to
+
+                                fun(info: Any?): Boolean = expectedOpenInfoString == info.toString(),
+                        ),
+                ),
                 getExplainMap(indexName),
-                strict = false
+                strict = false,
             )
         }
 
@@ -112,7 +124,7 @@ class ActionTimeoutIT : IndexStateManagementRestTestCase() {
             assertEquals(
                 "Should be attempting to rollover",
                 getExplainManagedIndexMetaData(indexName).info?.get("message"),
-                AttemptRolloverStep.getPendingMessage(indexName)
+                AttemptRolloverStep.getPendingMessage(indexName),
             )
         }
     }

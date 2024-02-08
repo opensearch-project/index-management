@@ -8,7 +8,6 @@ package org.opensearch.indexmanagement.indexstatemanagement.transport.action.get
 import org.apache.logging.log4j.LogManager
 import org.opensearch.ExceptionsHelper
 import org.opensearch.OpenSearchStatusException
-import org.opensearch.core.action.ActionListener
 import org.opensearch.action.get.GetRequest
 import org.opensearch.action.get.GetResponse
 import org.opensearch.action.support.ActionFilters
@@ -17,32 +16,34 @@ import org.opensearch.client.node.NodeClient
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.inject.Inject
 import org.opensearch.common.settings.Settings
-import org.opensearch.core.xcontent.NamedXContentRegistry
 import org.opensearch.commons.ConfigConstants
 import org.opensearch.commons.authuser.User
+import org.opensearch.core.action.ActionListener
+import org.opensearch.core.rest.RestStatus
+import org.opensearch.core.xcontent.NamedXContentRegistry
 import org.opensearch.indexmanagement.IndexManagementPlugin
 import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
 import org.opensearch.indexmanagement.opensearchapi.parseFromGetResponse
 import org.opensearch.indexmanagement.settings.IndexManagementSettings.Companion.FILTER_BY_BACKEND_ROLES
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.buildUser
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.userHasPermissionForResource
-import org.opensearch.core.rest.RestStatus
 import org.opensearch.tasks.Task
 import org.opensearch.transport.TransportService
 import java.lang.IllegalArgumentException
 
 @Suppress("ReturnCount")
-class TransportGetPolicyAction @Inject constructor(
+class TransportGetPolicyAction
+@Inject
+constructor(
     val client: NodeClient,
     transportService: TransportService,
     actionFilters: ActionFilters,
     val clusterService: ClusterService,
     val settings: Settings,
-    val xContentRegistry: NamedXContentRegistry
+    val xContentRegistry: NamedXContentRegistry,
 ) : HandledTransportAction<GetPolicyRequest, GetPolicyResponse>(
-    GetPolicyAction.NAME, transportService, actionFilters, ::GetPolicyRequest
+    GetPolicyAction.NAME, transportService, actionFilters, ::GetPolicyRequest,
 ) {
-
     @Volatile private var filterByEnabled = FILTER_BY_BACKEND_ROLES.get(settings)
     private val log = LogManager.getLogger(javaClass)
 
@@ -60,16 +61,17 @@ class TransportGetPolicyAction @Inject constructor(
         private val client: NodeClient,
         private val actionListener: ActionListener<GetPolicyResponse>,
         private val request: GetPolicyRequest,
-        private val user: User? = buildUser(client.threadPool().threadContext)
+        private val user: User? = buildUser(client.threadPool().threadContext),
     ) {
         fun start() {
             log.debug(
                 "User and roles string from thread context: ${client.threadPool().threadContext.getTransient<String>(
-                    ConfigConstants.OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT
-                )}"
+                    ConfigConstants.OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT,
+                )}",
             )
-            val getRequest = GetRequest(IndexManagementPlugin.INDEX_MANAGEMENT_INDEX, request.policyID)
-                .version(request.version)
+            val getRequest =
+                GetRequest(IndexManagementPlugin.INDEX_MANAGEMENT_INDEX, request.policyID)
+                    .version(request.version)
 
             client.threadPool().threadContext.stashContext().use {
                 client.get(
@@ -82,7 +84,7 @@ class TransportGetPolicyAction @Inject constructor(
                         override fun onFailure(t: Exception) {
                             actionListener.onFailure(ExceptionsHelper.unwrapCause(t) as Exception)
                         }
-                    }
+                    },
                 )
             }
         }
@@ -104,11 +106,12 @@ class TransportGetPolicyAction @Inject constructor(
                 return
             } else {
                 // if HEAD request don't return the policy
-                val policyResponse = if (!request.fetchSrcContext.fetchSource()) {
-                    GetPolicyResponse(response.id, response.version, response.seqNo, response.primaryTerm, null)
-                } else {
-                    GetPolicyResponse(response.id, response.version, response.seqNo, response.primaryTerm, policy)
-                }
+                val policyResponse =
+                    if (!request.fetchSrcContext.fetchSource()) {
+                        GetPolicyResponse(response.id, response.version, response.seqNo, response.primaryTerm, null)
+                    } else {
+                        GetPolicyResponse(response.id, response.version, response.seqNo, response.primaryTerm, policy)
+                    }
                 actionListener.onResponse(policyResponse)
             }
         }

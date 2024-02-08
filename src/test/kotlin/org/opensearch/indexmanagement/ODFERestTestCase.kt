@@ -21,7 +21,6 @@ import org.opensearch.test.rest.OpenSearchRestTestCase
 import java.io.IOException
 
 abstract class ODFERestTestCase : OpenSearchRestTestCase() {
-
     fun isHttps(): Boolean = System.getProperty("https", "false")!!.toBoolean()
 
     fun securityEnabled(): Boolean = System.getProperty("security", "false")!!.toBoolean()

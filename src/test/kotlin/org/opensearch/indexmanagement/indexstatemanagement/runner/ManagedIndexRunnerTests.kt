@@ -28,7 +28,6 @@ import org.opensearch.threadpool.ThreadPool
 
 @ThreadLeakScope(ThreadLeakScope.Scope.NONE)
 class ManagedIndexRunnerTests : OpenSearchTestCase() {
-
     private lateinit var client: Client
     private lateinit var clusterService: ClusterService
     private lateinit var xContentRegistry: NamedXContentRegistry
@@ -68,13 +67,14 @@ class ManagedIndexRunnerTests : OpenSearchTestCase() {
 
         Mockito.`when`(environment.settings()).thenReturn(settings)
 
-        runner = ManagedIndexRunner
-            .registerClusterService(clusterService)
-            .registerNamedXContentRegistry(xContentRegistry)
-            .registerScriptService(scriptService)
-            .registerSettings(environment.settings())
-            .registerConsumers()
-            .registerHistoryIndex(indexStateManagementHistory)
-            .registerSkipFlag(skipFlag)
+        runner =
+            ManagedIndexRunner
+                .registerClusterService(clusterService)
+                .registerNamedXContentRegistry(xContentRegistry)
+                .registerScriptService(scriptService)
+                .registerSettings(environment.settings())
+                .registerConsumers()
+                .registerHistoryIndex(indexStateManagementHistory)
+                .registerSkipFlag(skipFlag)
     }
 }

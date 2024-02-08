@@ -7,6 +7,7 @@ package org.opensearch.indexmanagement.snapshotmanagement.resthandler
 
 import org.opensearch.client.ResponseException
 import org.opensearch.common.xcontent.XContentType
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
 import org.opensearch.indexmanagement.snapshotmanagement.SnapshotManagementRestTestCase
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.explain.ExplainSMPolicyResponse
@@ -16,21 +17,20 @@ import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy
 import org.opensearch.indexmanagement.snapshotmanagement.randomSMPolicy
 import org.opensearch.indexmanagement.waitFor
 import org.opensearch.jobscheduler.spi.schedule.IntervalSchedule
-import org.opensearch.core.rest.RestStatus
 import java.time.Instant.now
 import java.time.temporal.ChronoUnit
 
 @Suppress("UNCHECKED_CAST")
 class RestExplainSnapshotManagementIT : SnapshotManagementRestTestCase() {
-
     fun `test explaining a snapshot management policy`() {
-        val smPolicy = createSMPolicy(
-            randomSMPolicy().copy(
-                jobEnabled = true,
-                jobEnabledTime = now(),
-                jobSchedule = IntervalSchedule(now(), 1, ChronoUnit.MINUTES),
+        val smPolicy =
+            createSMPolicy(
+                randomSMPolicy().copy(
+                    jobEnabled = true,
+                    jobEnabledTime = now(),
+                    jobSchedule = IntervalSchedule(now(), 1, ChronoUnit.MINUTES),
+                ),
             )
-        )
         updateSMPolicyStartTime(smPolicy)
         waitFor(timeout = timeout) {
             val explainResponse = explainSMPolicy(smPolicy.policyName)
@@ -67,13 +67,14 @@ class RestExplainSnapshotManagementIT : SnapshotManagementRestTestCase() {
     }
 
     fun `test explain all with list of policy names`() {
-        val smPolicies = randomList(2, 3) {
-            createSMPolicy(
-                randomSMPolicy(
-                    jobEnabled = true,
+        val smPolicies =
+            randomList(2, 3) {
+                createSMPolicy(
+                    randomSMPolicy(
+                        jobEnabled = true,
+                    ),
                 )
-            )
-        }
+            }
         // if this proves to be flaky, just index the metadata directly instead of executing to generate metadata
         smPolicies.forEach { updateSMPolicyStartTime(it) }
         waitFor(timeout = timeout) {
@@ -95,13 +96,14 @@ class RestExplainSnapshotManagementIT : SnapshotManagementRestTestCase() {
     }
 
     fun `test explain all with empty policy name`() {
-        val smPolicies = randomList(2, 3) {
-            createSMPolicy(
-                randomSMPolicy(
-                    jobEnabled = true,
+        val smPolicies =
+            randomList(2, 3) {
+                createSMPolicy(
+                    randomSMPolicy(
+                        jobEnabled = true,
+                    ),
                 )
-            )
-        }
+            }
         // if this proves to be flaky, just index the metadata directly instead of executing to generate metadata
         smPolicies.forEach { updateSMPolicyStartTime(it) }
         waitFor(timeout = timeout) {

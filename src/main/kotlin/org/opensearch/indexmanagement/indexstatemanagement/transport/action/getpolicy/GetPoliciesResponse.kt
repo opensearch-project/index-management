@@ -21,13 +21,12 @@ import org.opensearch.indexmanagement.util._SEQ_NO
 import java.io.IOException
 
 class GetPoliciesResponse : ActionResponse, ToXContentObject {
-
     val policies: List<Policy>
     val totalPolicies: Int
 
     constructor(
         policies: List<Policy>,
-        totalPolicies: Int
+        totalPolicies: Int,
     ) : super() {
         this.policies = policies
         this.totalPolicies = totalPolicies
@@ -36,7 +35,7 @@ class GetPoliciesResponse : ActionResponse, ToXContentObject {
     @Throws(IOException::class)
     constructor(sin: StreamInput) : this(
         policies = sin.readList(::Policy),
-        totalPolicies = sin.readInt()
+        totalPolicies = sin.readInt(),
     )
 
     override fun writeTo(out: StreamOutput) {

@@ -11,7 +11,6 @@ import org.opensearch.indexmanagement.indexstatemanagement.util.DEFAULT_INDEX_TY
 import org.opensearch.test.OpenSearchTestCase
 
 class RemovePolicyRequestTests : OpenSearchTestCase() {
-
     fun `test remove policy request`() {
         val indices = listOf("index1", "index2")
         val req = RemovePolicyRequest(indices, DEFAULT_INDEX_TYPE)

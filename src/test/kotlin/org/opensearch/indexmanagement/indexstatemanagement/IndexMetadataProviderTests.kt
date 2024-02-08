@@ -20,7 +20,6 @@ import org.opensearch.test.OpenSearchTestCase
 import org.opensearch.test.rest.OpenSearchRestTestCase
 
 class IndexMetadataProviderTests : OpenSearchTestCase() {
-
     private val clusterService: ClusterService = mock()
     private val client: Client = mock()
     private val settings: Settings = Settings.EMPTY
@@ -42,8 +41,8 @@ class IndexMetadataProviderTests : OpenSearchTestCase() {
             "Should not manage index management config index",
             indexEvaluator.isUnManageableIndex(
                 IndexManagementPlugin
-                    .INDEX_MANAGEMENT_INDEX
-            )
+                    .INDEX_MANAGEMENT_INDEX,
+            ),
         )
         assertTrue("Should not manage kibana index", indexEvaluator.isUnManageableIndex(".kibana_1242142_user"))
 

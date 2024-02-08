@@ -19,7 +19,6 @@ import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepMetaDat
 import org.opensearch.transport.RemoteTransportException
 
 class AttemptReplicaCountStep(private val action: ReplicaCountAction) : Step(name) {
-
     private val logger = LogManager.getLogger(javaClass)
     private var stepStatus = StepStatus.STARTING
     private var info: Map<String, Any>? = null
@@ -29,11 +28,13 @@ class AttemptReplicaCountStep(private val action: ReplicaCountAction) : Step(nam
         val context = this.context ?: return this
         val indexName = context.metadata.index
         try {
-            val updateSettingsRequest = UpdateSettingsRequest()
-                .indices(indexName)
-                .settings(Settings.builder().put(SETTING_NUMBER_OF_REPLICAS, numOfReplicas))
-            val response: AcknowledgedResponse = context.client.admin().indices()
-                .suspendUntil { updateSettings(updateSettingsRequest, it) }
+            val updateSettingsRequest =
+                UpdateSettingsRequest()
+                    .indices(indexName)
+                    .settings(Settings.builder().put(SETTING_NUMBER_OF_REPLICAS, numOfReplicas))
+            val response: AcknowledgedResponse =
+                context.client.admin().indices()
+                    .suspendUntil { updateSettings(updateSettingsRequest, it) }
 
             if (response.isAcknowledged) {
                 stepStatus = StepStatus.COMPLETED
@@ -67,7 +68,7 @@ class AttemptReplicaCountStep(private val action: ReplicaCountAction) : Step(nam
         return currentMetadata.copy(
             stepMetaData = StepMetaData(name, getStepStartTime(currentMetadata).toEpochMilli(), stepStatus),
             transitionTo = null,
-            info = info
+            info = info,
         )
     }
 
@@ -75,7 +76,9 @@ class AttemptReplicaCountStep(private val action: ReplicaCountAction) : Step(nam
 
     companion object {
         const val name = "attempt_set_replica_count"
+
         fun getFailedMessage(index: String, numOfReplicas: Int) = "Failed to set number_of_replicas to $numOfReplicas [index=$index]"
+
         fun getSuccessMessage(index: String, numOfReplicas: Int) = "Successfully set number_of_replicas to $numOfReplicas [index=$index]"
     }
 }

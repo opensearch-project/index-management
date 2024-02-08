@@ -9,6 +9,7 @@ import org.apache.hc.core5.http.ContentType
 import org.apache.hc.core5.http.io.entity.StringEntity
 import org.junit.Assert
 import org.opensearch.client.ResponseException
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.indexmanagement.common.model.dimension.DateHistogram
 import org.opensearch.indexmanagement.common.model.dimension.Terms
 import org.opensearch.indexmanagement.makeRequest
@@ -23,46 +24,48 @@ import org.opensearch.indexmanagement.rollup.model.metric.Sum
 import org.opensearch.indexmanagement.rollup.model.metric.ValueCount
 import org.opensearch.indexmanagement.waitFor
 import org.opensearch.jobscheduler.spi.schedule.IntervalSchedule
-import org.opensearch.core.rest.RestStatus
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 
 @Suppress("UNCHECKED_CAST")
 class RollupInterceptorIT : RollupRestTestCase() {
-
     fun `test roll up search`() {
         generateNYCTaxiData("source_rollup_search")
-        val rollup = Rollup(
-            id = "basic_term_query_rollup_search",
-            enabled = true,
-            schemaVersion = 1L,
-            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
-            jobLastUpdatedTime = Instant.now(),
-            jobEnabledTime = Instant.now(),
-            description = "basic search test",
-            sourceIndex = "source_rollup_search",
-            targetIndex = "target_rollup_search",
-            metadataID = null,
-            roles = emptyList(),
-            pageSize = 10,
-            delay = 0,
-            continuous = false,
-            dimensions = listOf(
-                DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "1h"),
-                Terms("RatecodeID", "RatecodeID"),
-                Terms("PULocationID", "PULocationID")
-            ),
-            metrics = listOf(
-                RollupMetrics(
-                    sourceField = "passenger_count", targetField = "passenger_count",
-                    metrics = listOf(
-                        Sum(), Min(), Max(),
-                        ValueCount(), Average()
-                    )
+        val rollup =
+            Rollup(
+                id = "basic_term_query_rollup_search",
+                enabled = true,
+                schemaVersion = 1L,
+                jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+                jobLastUpdatedTime = Instant.now(),
+                jobEnabledTime = Instant.now(),
+                description = "basic search test",
+                sourceIndex = "source_rollup_search",
+                targetIndex = "target_rollup_search",
+                metadataID = null,
+                roles = emptyList(),
+                pageSize = 10,
+                delay = 0,
+                continuous = false,
+                dimensions =
+                listOf(
+                    DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "1h"),
+                    Terms("RatecodeID", "RatecodeID"),
+                    Terms("PULocationID", "PULocationID"),
                 ),
-                RollupMetrics(sourceField = "total_amount", targetField = "total_amount", metrics = listOf(Max(), Min()))
-            )
-        ).let { createRollup(it, it.id) }
+                metrics =
+                listOf(
+                    RollupMetrics(
+                        sourceField = "passenger_count", targetField = "passenger_count",
+                        metrics =
+                        listOf(
+                            Sum(), Min(), Max(),
+                            ValueCount(), Average(),
+                        ),
+                    ),
+                    RollupMetrics(sourceField = "total_amount", targetField = "total_amount", metrics = listOf(Max(), Min())),
+                ),
+            ).let { createRollup(it, it.id) }
 
         updateRollupStartTime(rollup)
 
@@ -76,7 +79,8 @@ class RollupInterceptorIT : RollupRestTestCase() {
         refreshAllIndices()
 
         // Term query
-        var req = """
+        var req =
+            """
             {
                 "size": 0,
                 "query": {
@@ -92,7 +96,7 @@ class RollupInterceptorIT : RollupRestTestCase() {
                     }
                 }
             }
-        """.trimIndent()
+            """.trimIndent()
         var rawRes = client().makeRequest("POST", "/source_rollup_search/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
         assertTrue(rawRes.restStatus() == RestStatus.OK)
         var rollupRes = client().makeRequest("POST", "/target_rollup_search/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
@@ -102,11 +106,12 @@ class RollupInterceptorIT : RollupRestTestCase() {
         assertEquals(
             "Source and rollup index did not return same min results",
             rawAggRes.getValue("min_passenger_count")["value"],
-            rollupAggRes.getValue("min_passenger_count")["value"]
+            rollupAggRes.getValue("min_passenger_count")["value"],
         )
 
         // Terms query
-        req = """
+        req =
+            """
             {
                 "size": 0,
                 "query": {
@@ -122,7 +127,7 @@ class RollupInterceptorIT : RollupRestTestCase() {
                     }
                 }
             }
-        """.trimIndent()
+            """.trimIndent()
         rawRes = client().makeRequest("POST", "/source_rollup_search/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
         assertTrue(rawRes.restStatus() == RestStatus.OK)
         rollupRes = client().makeRequest("POST", "/target_rollup_search/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
@@ -132,11 +137,12 @@ class RollupInterceptorIT : RollupRestTestCase() {
         assertEquals(
             "Source and rollup index did not return same min results",
             rawAggRes.getValue("min_passenger_count")["value"],
-            rollupAggRes.getValue("min_passenger_count")["value"]
+            rollupAggRes.getValue("min_passenger_count")["value"],
         )
 
         // Range query
-        req = """
+        req =
+            """
             {
                 "size": 0,
                 "query": {
@@ -152,7 +158,7 @@ class RollupInterceptorIT : RollupRestTestCase() {
                     }
                 }
             }
-        """.trimIndent()
+            """.trimIndent()
         rawRes = client().makeRequest("POST", "/source_rollup_search/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
         assertTrue(rawRes.restStatus() == RestStatus.OK)
         rollupRes = client().makeRequest("POST", "/target_rollup_search/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
@@ -162,11 +168,12 @@ class RollupInterceptorIT : RollupRestTestCase() {
         assertEquals(
             "Source and rollup index did not return same min results",
             rawAggRes.getValue("min_passenger_count")["value"],
-            rollupAggRes.getValue("min_passenger_count")["value"]
+            rollupAggRes.getValue("min_passenger_count")["value"],
         )
 
         // Bool query
-        req = """
+        req =
+            """
             {
                 "size": 0,
                 "query": {
@@ -185,7 +192,7 @@ class RollupInterceptorIT : RollupRestTestCase() {
                     }
                 }
             }
-        """.trimIndent()
+            """.trimIndent()
         rawRes = client().makeRequest("POST", "/source_rollup_search/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
         assertTrue(rawRes.restStatus() == RestStatus.OK)
         rollupRes = client().makeRequest("POST", "/target_rollup_search/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
@@ -195,11 +202,12 @@ class RollupInterceptorIT : RollupRestTestCase() {
         assertEquals(
             "Source and rollup index did not return same min results",
             rawAggRes.getValue("min_passenger_count")["value"],
-            rollupAggRes.getValue("min_passenger_count")["value"]
+            rollupAggRes.getValue("min_passenger_count")["value"],
         )
 
         // Boost query
-        req = """
+        req =
+            """
             {
                 "size": 0,
                 "query": {
@@ -217,7 +225,7 @@ class RollupInterceptorIT : RollupRestTestCase() {
                     }
                 }
             }
-        """.trimIndent()
+            """.trimIndent()
         rawRes = client().makeRequest("POST", "/source_rollup_search/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
         assertTrue(rawRes.restStatus() == RestStatus.OK)
         rollupRes = client().makeRequest("POST", "/target_rollup_search/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
@@ -227,11 +235,12 @@ class RollupInterceptorIT : RollupRestTestCase() {
         assertEquals(
             "Source and rollup index did not return same min results",
             rawAggRes.getValue("min_passenger_count")["value"],
-            rollupAggRes.getValue("min_passenger_count")["value"]
+            rollupAggRes.getValue("min_passenger_count")["value"],
         )
 
         // Const score query
-        req = """
+        req =
+            """
             {
                 "size": 0,
                 "query": {
@@ -248,7 +257,7 @@ class RollupInterceptorIT : RollupRestTestCase() {
                     }
                 }
             }
-        """.trimIndent()
+            """.trimIndent()
         rawRes = client().makeRequest("POST", "/source_rollup_search/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
         assertTrue(rawRes.restStatus() == RestStatus.OK)
         rollupRes = client().makeRequest("POST", "/target_rollup_search/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
@@ -258,11 +267,12 @@ class RollupInterceptorIT : RollupRestTestCase() {
         assertEquals(
             "Source and rollup index did not return same min results",
             rawAggRes.getValue("min_passenger_count")["value"],
-            rollupAggRes.getValue("min_passenger_count")["value"]
+            rollupAggRes.getValue("min_passenger_count")["value"],
         )
 
         // Dis max query
-        req = """
+        req =
+            """
             {
                 "size": 0,
                 "query": {
@@ -282,7 +292,7 @@ class RollupInterceptorIT : RollupRestTestCase() {
                     }
                 }
             }
-        """.trimIndent()
+            """.trimIndent()
         rawRes = client().makeRequest("POST", "/source_rollup_search/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
         assertTrue(rawRes.restStatus() == RestStatus.OK)
         rollupRes = client().makeRequest("POST", "/target_rollup_search/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
@@ -292,11 +302,12 @@ class RollupInterceptorIT : RollupRestTestCase() {
         assertEquals(
             "Source and rollup index did not return same min results",
             rawAggRes.getValue("min_passenger_count")["value"],
-            rollupAggRes.getValue("min_passenger_count")["value"]
+            rollupAggRes.getValue("min_passenger_count")["value"],
         )
 
         // Match phrase query
-        req = """
+        req =
+            """
             {
                 "size": 0,
                 "query": {
@@ -312,7 +323,7 @@ class RollupInterceptorIT : RollupRestTestCase() {
                     }
                 }
             }
-        """.trimIndent()
+            """.trimIndent()
         rawRes = client().makeRequest("POST", "/source_rollup_search/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
         assertTrue(rawRes.restStatus() == RestStatus.OK)
         rollupRes = client().makeRequest("POST", "/target_rollup_search/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
@@ -322,11 +333,12 @@ class RollupInterceptorIT : RollupRestTestCase() {
         assertEquals(
             "Source and rollup index did not return same min results",
             rawAggRes.getValue("min_passenger_count")["value"],
-            rollupAggRes.getValue("min_passenger_count")["value"]
+            rollupAggRes.getValue("min_passenger_count")["value"],
         )
 
         // Unsupported query
-        req = """
+        req =
+            """
             {
                 "size": 0,
                 "query": {
@@ -342,7 +354,7 @@ class RollupInterceptorIT : RollupRestTestCase() {
                     }
                 }
             }
-        """.trimIndent()
+            """.trimIndent()
         try {
             client().makeRequest("POST", "/target_rollup_search/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
             fail("Expected 400 Method BAD_REQUEST response")
@@ -350,13 +362,14 @@ class RollupInterceptorIT : RollupRestTestCase() {
             assertEquals(
                 "Wrong error message",
                 "The match query is currently not supported in rollups",
-                (e.response.asMap() as Map<String, Map<String, Map<String, String>>>)["error"]!!["caused_by"]!!["reason"]
+                (e.response.asMap() as Map<String, Map<String, Map<String, String>>>)["error"]!!["caused_by"]!!["reason"],
             )
             assertEquals("Unexpected status", RestStatus.BAD_REQUEST, e.response.restStatus())
         }
 
         // No valid job for rollup search
-        req = """
+        req =
+            """
             {
                 "size": 0,
                 "query": {
@@ -373,7 +386,7 @@ class RollupInterceptorIT : RollupRestTestCase() {
                     }
                 }
             }
-        """.trimIndent()
+            """.trimIndent()
         try {
             client().makeRequest("POST", "/target_rollup_search/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
             fail("Expected 400 Method BAD_REQUEST response")
@@ -382,13 +395,14 @@ class RollupInterceptorIT : RollupRestTestCase() {
                 "Wrong error message",
                 "Could not find a rollup job that can answer this query because [missing field RateCodeID, missing field timestamp, " +
                     "missing sum aggregation on total_amount]",
-                (e.response.asMap() as Map<String, Map<String, Map<String, String>>>)["error"]!!["caused_by"]!!["reason"]
+                (e.response.asMap() as Map<String, Map<String, Map<String, String>>>)["error"]!!["caused_by"]!!["reason"],
             )
             assertEquals("Unexpected status", RestStatus.BAD_REQUEST, e.response.restStatus())
         }
 
         // No query just aggregations
-        req = """
+        req =
+            """
             {
                 "size": 0,
                 "aggs": {
@@ -419,7 +433,7 @@ class RollupInterceptorIT : RollupRestTestCase() {
                     }
                 }
             }
-        """.trimIndent()
+            """.trimIndent()
         rawRes = client().makeRequest("POST", "/source_rollup_search/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
         assertTrue(rawRes.restStatus() == RestStatus.OK)
         rollupRes = client().makeRequest("POST", "/target_rollup_search/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
@@ -433,12 +447,13 @@ class RollupInterceptorIT : RollupRestTestCase() {
         assertEquals("Source and rollup index did not return same avg results", rawAggRes["avg"]!!["value"], rollupAggRes["avg"]!!["value"])
 
         // Invalid size in search - size > 0
-        req = """
+        req =
+            """
             {
                 "size": 3,
                 "aggs": { "sum": { "sum": { "field": "passenger_count" } } }
             }
-        """.trimIndent()
+            """.trimIndent()
         try {
             client().makeRequest("POST", "/target_rollup_search/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
             fail("Expected 400 Method BAD_REQUEST response")
@@ -446,7 +461,7 @@ class RollupInterceptorIT : RollupRestTestCase() {
             assertEquals(
                 "Wrong error message",
                 "Rollup search must have size explicitly set to 0, but found 3",
-                (e.response.asMap() as Map<String, Map<String, Map<String, String>>>)["error"]!!["caused_by"]!!["reason"]
+                (e.response.asMap() as Map<String, Map<String, Map<String, String>>>)["error"]!!["caused_by"]!!["reason"],
             )
             assertEquals("Unexpected status", RestStatus.BAD_REQUEST, e.response.restStatus())
         }
@@ -460,7 +475,7 @@ class RollupInterceptorIT : RollupRestTestCase() {
             assertEquals(
                 "Wrong error message",
                 "Rollup search must have size explicitly set to 0, but found -1",
-                (e.response.asMap() as Map<String, Map<String, Map<String, String>>>)["error"]!!["caused_by"]!!["reason"]
+                (e.response.asMap() as Map<String, Map<String, Map<String, String>>>)["error"]!!["caused_by"]!!["reason"],
             )
             assertEquals("Unexpected status", RestStatus.BAD_REQUEST, e.response.restStatus())
         }
@@ -468,37 +483,41 @@ class RollupInterceptorIT : RollupRestTestCase() {
 
     fun `test bucket and sub aggregations have correct values`() {
         generateNYCTaxiData("source_rollup_bucket_and_sub")
-        val rollup = Rollup(
-            id = "basic_term_query_rollup_bucket_and_sub",
-            enabled = true,
-            schemaVersion = 1L,
-            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
-            jobLastUpdatedTime = Instant.now(),
-            jobEnabledTime = Instant.now(),
-            description = "basic search test",
-            sourceIndex = "source_rollup_bucket_and_sub",
-            targetIndex = "target_rollup_bucket_and_sub",
-            metadataID = null,
-            roles = emptyList(),
-            pageSize = 10,
-            delay = 0,
-            continuous = false,
-            dimensions = listOf(
-                DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "1h"),
-                Terms("RatecodeID", "RatecodeID"),
-                Terms("PULocationID", "PULocationID")
-            ),
-            metrics = listOf(
-                RollupMetrics(
-                    sourceField = "passenger_count", targetField = "passenger_count",
-                    metrics = listOf(
-                        Sum(), Min(), Max(),
-                        ValueCount(), Average()
-                    )
+        val rollup =
+            Rollup(
+                id = "basic_term_query_rollup_bucket_and_sub",
+                enabled = true,
+                schemaVersion = 1L,
+                jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+                jobLastUpdatedTime = Instant.now(),
+                jobEnabledTime = Instant.now(),
+                description = "basic search test",
+                sourceIndex = "source_rollup_bucket_and_sub",
+                targetIndex = "target_rollup_bucket_and_sub",
+                metadataID = null,
+                roles = emptyList(),
+                pageSize = 10,
+                delay = 0,
+                continuous = false,
+                dimensions =
+                listOf(
+                    DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "1h"),
+                    Terms("RatecodeID", "RatecodeID"),
+                    Terms("PULocationID", "PULocationID"),
                 ),
-                RollupMetrics(sourceField = "total_amount", targetField = "total_amount", metrics = listOf(Max(), Min()))
-            )
-        ).let { createRollup(it, it.id) }
+                metrics =
+                listOf(
+                    RollupMetrics(
+                        sourceField = "passenger_count", targetField = "passenger_count",
+                        metrics =
+                        listOf(
+                            Sum(), Min(), Max(),
+                            ValueCount(), Average(),
+                        ),
+                    ),
+                    RollupMetrics(sourceField = "total_amount", targetField = "total_amount", metrics = listOf(Max(), Min())),
+                ),
+            ).let { createRollup(it, it.id) }
 
         updateRollupStartTime(rollup)
 
@@ -512,7 +531,8 @@ class RollupInterceptorIT : RollupRestTestCase() {
         refreshAllIndices()
 
         // No query just bucket and sub metric aggregations
-        val req = """
+        val req =
+            """
             {
                 "size": 0,
                 "aggs": {
@@ -528,7 +548,7 @@ class RollupInterceptorIT : RollupRestTestCase() {
                     }
                 }
             }
-        """.trimIndent()
+            """.trimIndent()
         val rawRes = client().makeRequest("POST", "/source_rollup_bucket_and_sub/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
         assertTrue(rawRes.restStatus() == RestStatus.OK)
         val rollupRes = client().makeRequest("POST", "/target_rollup_bucket_and_sub/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
@@ -541,60 +561,64 @@ class RollupInterceptorIT : RollupRestTestCase() {
             val rollupAggBucket = rollupAggBuckets[idx]
             assertEquals(
                 "The sum aggregation had a different value raw[$rawAggBucket] rollup[$rollupAggBucket]",
-                rawAggBucket["sum"]!!["value"], rollupAggBucket["sum"]!!["value"]
+                rawAggBucket["sum"]!!["value"], rollupAggBucket["sum"]!!["value"],
             )
             assertEquals(
                 "The max aggregation had a different value raw[$rawAggBucket] rollup[$rollupAggBucket]",
-                rawAggBucket["max"]!!["value"], rollupAggBucket["max"]!!["value"]
+                rawAggBucket["max"]!!["value"], rollupAggBucket["max"]!!["value"],
             )
             assertEquals(
                 "The min aggregation had a different value raw[$rawAggBucket] rollup[$rollupAggBucket]",
-                rawAggBucket["min"]!!["value"], rollupAggBucket["min"]!!["value"]
+                rawAggBucket["min"]!!["value"], rollupAggBucket["min"]!!["value"],
             )
             assertEquals(
                 "The value_count aggregation had a different value raw[$rawAggBucket] rollup[$rollupAggBucket]",
-                rawAggBucket["value_count"]!!["value"], rollupAggBucket["value_count"]!!["value"]
+                rawAggBucket["value_count"]!!["value"], rollupAggBucket["value_count"]!!["value"],
             )
             assertEquals(
                 "The avg aggregation had a different value raw[$rawAggBucket] rollup[$rollupAggBucket]",
-                rawAggBucket["avg"]!!["value"], rollupAggBucket["avg"]!!["value"]
+                rawAggBucket["avg"]!!["value"], rollupAggBucket["avg"]!!["value"],
             )
         }
     }
 
     fun `test continuous rollup search`() {
         generateNYCTaxiData("source_continuous_rollup_search")
-        val rollup = Rollup(
-            id = "basic_term_query_continuous_rollup_search",
-            enabled = true,
-            schemaVersion = 1L,
-            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
-            jobLastUpdatedTime = Instant.now(),
-            jobEnabledTime = Instant.now(),
-            description = "basic search test",
-            sourceIndex = "source_continuous_rollup_search",
-            targetIndex = "target_continuous_rollup_search",
-            metadataID = null,
-            roles = emptyList(),
-            pageSize = 10,
-            delay = 0,
-            continuous = true,
-            dimensions = listOf(
-                DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "7d"),
-                Terms("RatecodeID", "RatecodeID"),
-                Terms("PULocationID", "PULocationID")
-            ),
-            metrics = listOf(
-                RollupMetrics(
-                    sourceField = "passenger_count", targetField = "passenger_count",
-                    metrics = listOf(
-                        Sum(), Min(), Max(),
-                        ValueCount(), Average()
-                    )
+        val rollup =
+            Rollup(
+                id = "basic_term_query_continuous_rollup_search",
+                enabled = true,
+                schemaVersion = 1L,
+                jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+                jobLastUpdatedTime = Instant.now(),
+                jobEnabledTime = Instant.now(),
+                description = "basic search test",
+                sourceIndex = "source_continuous_rollup_search",
+                targetIndex = "target_continuous_rollup_search",
+                metadataID = null,
+                roles = emptyList(),
+                pageSize = 10,
+                delay = 0,
+                continuous = true,
+                dimensions =
+                listOf(
+                    DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "7d"),
+                    Terms("RatecodeID", "RatecodeID"),
+                    Terms("PULocationID", "PULocationID"),
                 ),
-                RollupMetrics(sourceField = "total_amount", targetField = "total_amount", metrics = listOf(Max(), Min()))
-            )
-        ).let { createRollup(it, it.id) }
+                metrics =
+                listOf(
+                    RollupMetrics(
+                        sourceField = "passenger_count", targetField = "passenger_count",
+                        metrics =
+                        listOf(
+                            Sum(), Min(), Max(),
+                            ValueCount(), Average(),
+                        ),
+                    ),
+                    RollupMetrics(sourceField = "total_amount", targetField = "total_amount", metrics = listOf(Max(), Min())),
+                ),
+            ).let { createRollup(it, it.id) }
 
         updateRollupStartTime(rollup)
 
@@ -607,14 +631,15 @@ class RollupInterceptorIT : RollupRestTestCase() {
             // if the nextWindowStartTime is after 2019-01-02T00:00:00Z then all data has been rolled up
             assertTrue(
                 "Rollup has not caught up yet, docs processed: ${rollupMetadata.stats.documentsProcessed}",
-                rollupMetadata.continuous!!.nextWindowStartTime.isAfter(Instant.parse("2019-01-02T00:00:00Z"))
+                rollupMetadata.continuous!!.nextWindowStartTime.isAfter(Instant.parse("2019-01-02T00:00:00Z")),
             )
         }
 
         refreshAllIndices()
 
         // Term query
-        val req = """
+        val req =
+            """
             {
                 "size": 0,
                 "query": {
@@ -630,7 +655,7 @@ class RollupInterceptorIT : RollupRestTestCase() {
                     }
                 }
             }
-        """.trimIndent()
+            """.trimIndent()
         val rawRes = client().makeRequest("POST", "/source_continuous_rollup_search/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
         assertTrue(rawRes.restStatus() == RestStatus.OK)
         val rollupRes = client().makeRequest("POST", "/target_continuous_rollup_search/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
@@ -640,7 +665,7 @@ class RollupInterceptorIT : RollupRestTestCase() {
         assertEquals(
             "Source and rollup index did not return same min results",
             rawAggRes.getValue("min_passenger_count")["value"],
-            rollupAggRes.getValue("min_passenger_count")["value"]
+            rollupAggRes.getValue("min_passenger_count")["value"],
         )
     }
 
@@ -648,37 +673,41 @@ class RollupInterceptorIT : RollupRestTestCase() {
         generateNYCTaxiData("source_rollup_search_all_jobs_1")
         generateNYCTaxiData("source_rollup_search_all_jobs_2")
         val targetIndex = "target_rollup_search_all_jobs"
-        val rollupHourly = Rollup(
-            id = "hourly_basic_term_query_rollup_search_all",
-            enabled = true,
-            schemaVersion = 1L,
-            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
-            jobLastUpdatedTime = Instant.now(),
-            jobEnabledTime = Instant.now(),
-            description = "basic search test",
-            sourceIndex = "source_rollup_search_all_jobs_1",
-            targetIndex = targetIndex,
-            metadataID = null,
-            roles = emptyList(),
-            pageSize = 10,
-            delay = 0,
-            continuous = false,
-            dimensions = listOf(
-                DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "1h"),
-                Terms("RatecodeID", "RatecodeID"),
-                Terms("PULocationID", "PULocationID")
-            ),
-            metrics = listOf(
-                RollupMetrics(
-                    sourceField = "passenger_count", targetField = "passenger_count",
-                    metrics = listOf(
-                        Sum(), Min(), Max(),
-                        ValueCount(), Average()
-                    )
+        val rollupHourly =
+            Rollup(
+                id = "hourly_basic_term_query_rollup_search_all",
+                enabled = true,
+                schemaVersion = 1L,
+                jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+                jobLastUpdatedTime = Instant.now(),
+                jobEnabledTime = Instant.now(),
+                description = "basic search test",
+                sourceIndex = "source_rollup_search_all_jobs_1",
+                targetIndex = targetIndex,
+                metadataID = null,
+                roles = emptyList(),
+                pageSize = 10,
+                delay = 0,
+                continuous = false,
+                dimensions =
+                listOf(
+                    DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "1h"),
+                    Terms("RatecodeID", "RatecodeID"),
+                    Terms("PULocationID", "PULocationID"),
                 ),
-                RollupMetrics(sourceField = "total_amount", targetField = "total_amount", metrics = listOf(Max(), Min()))
-            )
-        ).let { createRollup(it, it.id) }
+                metrics =
+                listOf(
+                    RollupMetrics(
+                        sourceField = "passenger_count", targetField = "passenger_count",
+                        metrics =
+                        listOf(
+                            Sum(), Min(), Max(),
+                            ValueCount(), Average(),
+                        ),
+                    ),
+                    RollupMetrics(sourceField = "total_amount", targetField = "total_amount", metrics = listOf(Max(), Min())),
+                ),
+            ).let { createRollup(it, it.id) }
 
         updateRollupStartTime(rollupHourly)
 
@@ -689,36 +718,40 @@ class RollupInterceptorIT : RollupRestTestCase() {
             assertEquals("Rollup is not finished", RollupMetadata.Status.FINISHED, rollupMetadata.status)
         }
 
-        val rollupMinutely = Rollup(
-            id = "minutely_basic_term_query_rollup_search_all",
-            enabled = true,
-            schemaVersion = 1L,
-            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
-            jobLastUpdatedTime = Instant.now(),
-            jobEnabledTime = Instant.now(),
-            description = "basic search test",
-            sourceIndex = "source_rollup_search_all_jobs_2",
-            targetIndex = targetIndex,
-            metadataID = null,
-            roles = emptyList(),
-            pageSize = 10,
-            delay = 0,
-            continuous = false,
-            dimensions = listOf(
-                DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "1m"),
-                Terms("RatecodeID", "RatecodeID")
-            ),
-            metrics = listOf(
-                RollupMetrics(
-                    sourceField = "passenger_count", targetField = "passenger_count",
-                    metrics = listOf(
-                        Sum(), Min(), Max(),
-                        ValueCount(), Average()
-                    )
+        val rollupMinutely =
+            Rollup(
+                id = "minutely_basic_term_query_rollup_search_all",
+                enabled = true,
+                schemaVersion = 1L,
+                jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+                jobLastUpdatedTime = Instant.now(),
+                jobEnabledTime = Instant.now(),
+                description = "basic search test",
+                sourceIndex = "source_rollup_search_all_jobs_2",
+                targetIndex = targetIndex,
+                metadataID = null,
+                roles = emptyList(),
+                pageSize = 10,
+                delay = 0,
+                continuous = false,
+                dimensions =
+                listOf(
+                    DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "1m"),
+                    Terms("RatecodeID", "RatecodeID"),
                 ),
-                RollupMetrics(sourceField = "total_amount", targetField = "total_amount", metrics = listOf(Max(), Min()))
-            )
-        ).let { createRollup(it, it.id) }
+                metrics =
+                listOf(
+                    RollupMetrics(
+                        sourceField = "passenger_count", targetField = "passenger_count",
+                        metrics =
+                        listOf(
+                            Sum(), Min(), Max(),
+                            ValueCount(), Average(),
+                        ),
+                    ),
+                    RollupMetrics(sourceField = "total_amount", targetField = "total_amount", metrics = listOf(Max(), Min())),
+                ),
+            ).let { createRollup(it, it.id) }
 
         updateRollupStartTime(rollupMinutely)
 
@@ -731,7 +764,8 @@ class RollupInterceptorIT : RollupRestTestCase() {
 
         refreshAllIndices()
 
-        val req = """
+        val req =
+            """
             {
                 "size": 0,
                 "query": {
@@ -743,7 +777,7 @@ class RollupInterceptorIT : RollupRestTestCase() {
                     "value_count_passenger_count": { "value_count": { "field": "passenger_count" } }
                 }
             }
-        """.trimIndent()
+            """.trimIndent()
         val rawRes1 = client().makeRequest("POST", "/source_rollup_search_all_jobs_1/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
         assertTrue(rawRes1.restStatus() == RestStatus.OK)
         val rawRes2 = client().makeRequest("POST", "/source_rollup_search_all_jobs_2/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
@@ -757,16 +791,16 @@ class RollupInterceptorIT : RollupRestTestCase() {
         // When the cluster setting to search all jobs is off, the aggregations will be the same for searching a single job as for searching both
         assertEquals(
             "Searching single rollup job and rollup target index did not return the same max results",
-            rawAgg1Res.getValue("max_passenger_count")["value"], rollupAggResSingle.getValue("max_passenger_count")["value"]
+            rawAgg1Res.getValue("max_passenger_count")["value"], rollupAggResSingle.getValue("max_passenger_count")["value"],
         )
         assertEquals(
             "Searching single rollup job and rollup target index did not return the same sum results",
-            rawAgg1Res.getValue("sum_passenger_count")["value"], rollupAggResSingle.getValue("sum_passenger_count")["value"]
+            rawAgg1Res.getValue("sum_passenger_count")["value"], rollupAggResSingle.getValue("sum_passenger_count")["value"],
         )
         val trueAggCount = rawAgg1Res.getValue("value_count_passenger_count")["value"] as Int + rawAgg2Res.getValue("value_count_passenger_count")["value"] as Int
         assertEquals(
             "Searching single rollup job and rollup target index did not return the same value count results",
-            rawAgg1Res.getValue("value_count_passenger_count")["value"], rollupAggResSingle.getValue("value_count_passenger_count")["value"]
+            rawAgg1Res.getValue("value_count_passenger_count")["value"], rollupAggResSingle.getValue("value_count_passenger_count")["value"],
         )
 
         val trueAggSum = rawAgg1Res.getValue("sum_passenger_count")["value"] as Double + rawAgg2Res.getValue("sum_passenger_count")["value"] as Double
@@ -779,15 +813,15 @@ class RollupInterceptorIT : RollupRestTestCase() {
         // With search all jobs setting on, the sum, and value_count will now be equal to the sum of the single job search results
         assertEquals(
             "Searching single rollup job and rollup target index did not return the same sum results",
-            rawAgg1Res.getValue("max_passenger_count")["value"], rollupAggResAll.getValue("max_passenger_count")["value"]
+            rawAgg1Res.getValue("max_passenger_count")["value"], rollupAggResAll.getValue("max_passenger_count")["value"],
         )
         assertEquals(
             "Searching rollup target index did not return the sum for all of the rollup jobs on the index",
-            trueAggSum, rollupAggResAll.getValue("sum_passenger_count")["value"]
+            trueAggSum, rollupAggResAll.getValue("sum_passenger_count")["value"],
         )
         assertEquals(
             "Searching rollup target index did not return the value count for all of the rollup jobs on the index",
-            trueAggCount, rollupAggResAll.getValue("value_count_passenger_count")["value"]
+            trueAggCount, rollupAggResAll.getValue("value_count_passenger_count")["value"],
         )
     }
 
@@ -798,37 +832,41 @@ class RollupInterceptorIT : RollupRestTestCase() {
         generateNYCTaxiData(sourceIndex2)
         val targetIndex1 = "target_rollup_search_multi_jobs1"
         val targetIndex2 = "target_rollup_search_multi_jobs2"
-        val rollupHourly1 = Rollup(
-            id = "hourly_basic_term_query_rollup_search_multi_1",
-            enabled = true,
-            schemaVersion = 1L,
-            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
-            jobLastUpdatedTime = Instant.now(),
-            jobEnabledTime = Instant.now(),
-            description = "basic search test",
-            sourceIndex = sourceIndex1,
-            targetIndex = targetIndex1,
-            metadataID = null,
-            roles = emptyList(),
-            pageSize = 10,
-            delay = 0,
-            continuous = false,
-            dimensions = listOf(
-                DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "1h"),
-                Terms("RatecodeID", "RatecodeID"),
-                Terms("PULocationID", "PULocationID")
-            ),
-            metrics = listOf(
-                RollupMetrics(
-                    sourceField = "passenger_count", targetField = "passenger_count",
-                    metrics = listOf(
-                        Sum(), Min(), Max(),
-                        ValueCount(), Average()
-                    )
+        val rollupHourly1 =
+            Rollup(
+                id = "hourly_basic_term_query_rollup_search_multi_1",
+                enabled = true,
+                schemaVersion = 1L,
+                jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+                jobLastUpdatedTime = Instant.now(),
+                jobEnabledTime = Instant.now(),
+                description = "basic search test",
+                sourceIndex = sourceIndex1,
+                targetIndex = targetIndex1,
+                metadataID = null,
+                roles = emptyList(),
+                pageSize = 10,
+                delay = 0,
+                continuous = false,
+                dimensions =
+                listOf(
+                    DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "1h"),
+                    Terms("RatecodeID", "RatecodeID"),
+                    Terms("PULocationID", "PULocationID"),
                 ),
-                RollupMetrics(sourceField = "total_amount", targetField = "total_amount", metrics = listOf(Max(), Min()))
-            )
-        ).let { createRollup(it, it.id) }
+                metrics =
+                listOf(
+                    RollupMetrics(
+                        sourceField = "passenger_count", targetField = "passenger_count",
+                        metrics =
+                        listOf(
+                            Sum(), Min(), Max(),
+                            ValueCount(), Average(),
+                        ),
+                    ),
+                    RollupMetrics(sourceField = "total_amount", targetField = "total_amount", metrics = listOf(Max(), Min())),
+                ),
+            ).let { createRollup(it, it.id) }
 
         updateRollupStartTime(rollupHourly1)
 
@@ -839,37 +877,41 @@ class RollupInterceptorIT : RollupRestTestCase() {
             assertEquals("Rollup is not finished", RollupMetadata.Status.FINISHED, rollupMetadata.status)
         }
 
-        val rollupHourly2 = Rollup(
-            id = "hourly_basic_term_query_rollup_search_multi_2",
-            enabled = true,
-            schemaVersion = 1L,
-            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
-            jobLastUpdatedTime = Instant.now(),
-            jobEnabledTime = Instant.now(),
-            description = "basic search test",
-            sourceIndex = sourceIndex2,
-            targetIndex = targetIndex2,
-            metadataID = null,
-            roles = emptyList(),
-            pageSize = 10,
-            delay = 0,
-            continuous = false,
-            dimensions = listOf(
-                DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "1h"),
-                Terms("RatecodeID", "RatecodeID"),
-                Terms("PULocationID", "PULocationID")
-            ),
-            metrics = listOf(
-                RollupMetrics(
-                    sourceField = "passenger_count", targetField = "passenger_count",
-                    metrics = listOf(
-                        Sum(), Min(), Max(),
-                        ValueCount(), Average()
-                    )
+        val rollupHourly2 =
+            Rollup(
+                id = "hourly_basic_term_query_rollup_search_multi_2",
+                enabled = true,
+                schemaVersion = 1L,
+                jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+                jobLastUpdatedTime = Instant.now(),
+                jobEnabledTime = Instant.now(),
+                description = "basic search test",
+                sourceIndex = sourceIndex2,
+                targetIndex = targetIndex2,
+                metadataID = null,
+                roles = emptyList(),
+                pageSize = 10,
+                delay = 0,
+                continuous = false,
+                dimensions =
+                listOf(
+                    DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "1h"),
+                    Terms("RatecodeID", "RatecodeID"),
+                    Terms("PULocationID", "PULocationID"),
                 ),
-                RollupMetrics(sourceField = "total_amount", targetField = "total_amount", metrics = listOf(Max(), Min()))
-            )
-        ).let { createRollup(it, it.id) }
+                metrics =
+                listOf(
+                    RollupMetrics(
+                        sourceField = "passenger_count", targetField = "passenger_count",
+                        metrics =
+                        listOf(
+                            Sum(), Min(), Max(),
+                            ValueCount(), Average(),
+                        ),
+                    ),
+                    RollupMetrics(sourceField = "total_amount", targetField = "total_amount", metrics = listOf(Max(), Min())),
+                ),
+            ).let { createRollup(it, it.id) }
 
         updateRollupStartTime(rollupHourly2)
 
@@ -882,7 +924,8 @@ class RollupInterceptorIT : RollupRestTestCase() {
 
         refreshAllIndices()
 
-        val req = """
+        val req =
+            """
             {
                 "size": 0,
                 "query": {
@@ -894,7 +937,7 @@ class RollupInterceptorIT : RollupRestTestCase() {
                     "value_count_passenger_count": { "value_count": { "field": "passenger_count" } }
                 }
             }
-        """.trimIndent()
+            """.trimIndent()
         val rawRes1 = client().makeRequest("POST", "/$sourceIndex1/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
         assertTrue(rawRes1.restStatus() == RestStatus.OK)
         val rawRes2 = client().makeRequest("POST", "/$sourceIndex2/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
@@ -908,16 +951,16 @@ class RollupInterceptorIT : RollupRestTestCase() {
         // When the cluster setting to search all jobs is off, the aggregations will be the same for searching a single job as for searching both
         assertEquals(
             "Searching single rollup job and rollup target index did not return the same max results",
-            rawAgg1Res.getValue("max_passenger_count")["value"], rollupAggResMulti.getValue("max_passenger_count")["value"]
+            rawAgg1Res.getValue("max_passenger_count")["value"], rollupAggResMulti.getValue("max_passenger_count")["value"],
         )
         assertEquals(
             "Searching single rollup job and rollup target index did not return the same sum results",
-            rawAgg1Res.getValue("sum_passenger_count")["value"], rollupAggResMulti.getValue("sum_passenger_count")["value"]
+            rawAgg1Res.getValue("sum_passenger_count")["value"], rollupAggResMulti.getValue("sum_passenger_count")["value"],
         )
         val trueAggCount = rawAgg1Res.getValue("value_count_passenger_count")["value"] as Int + rawAgg2Res.getValue("value_count_passenger_count")["value"] as Int
         assertEquals(
             "Searching single rollup job and rollup target index did not return the same value count results",
-            rawAgg1Res.getValue("value_count_passenger_count")["value"], rollupAggResMulti.getValue("value_count_passenger_count")["value"]
+            rawAgg1Res.getValue("value_count_passenger_count")["value"], rollupAggResMulti.getValue("value_count_passenger_count")["value"],
         )
 
         val trueAggSum = rawAgg1Res.getValue("sum_passenger_count")["value"] as Double + rawAgg2Res.getValue("sum_passenger_count")["value"] as Double
@@ -930,15 +973,15 @@ class RollupInterceptorIT : RollupRestTestCase() {
         // With search all jobs setting on, the sum, and value_count will now be equal to the sum of the single job search results
         assertEquals(
             "Searching single rollup job and rollup target index did not return the same sum results",
-            rawAgg1Res.getValue("max_passenger_count")["value"], rollupAggResAll.getValue("max_passenger_count")["value"]
+            rawAgg1Res.getValue("max_passenger_count")["value"], rollupAggResAll.getValue("max_passenger_count")["value"],
         )
         assertEquals(
             "Searching rollup target index did not return the sum for all of the rollup jobs on the index",
-            trueAggSum, rollupAggResAll.getValue("sum_passenger_count")["value"]
+            trueAggSum, rollupAggResAll.getValue("sum_passenger_count")["value"],
         )
         assertEquals(
             "Searching rollup target index did not return the value count for all of the rollup jobs on the index",
-            trueAggCount, rollupAggResAll.getValue("value_count_passenger_count")["value"]
+            trueAggCount, rollupAggResAll.getValue("value_count_passenger_count")["value"],
         )
     }
 
@@ -949,36 +992,40 @@ class RollupInterceptorIT : RollupRestTestCase() {
         generateNYCTaxiData(sourceIndex2)
         val targetIndex1 = "target_rollup_search_multi_failed_jobs1"
         val targetIndex2 = "target_rollup_search_multi_failed_jobs2"
-        val rollupJob1 = Rollup(
-            id = "hourly_basic_term_query_rollup_search_failed_1",
-            enabled = true,
-            schemaVersion = 1L,
-            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
-            jobLastUpdatedTime = Instant.now(),
-            jobEnabledTime = Instant.now(),
-            description = "basic search test",
-            sourceIndex = sourceIndex1,
-            targetIndex = targetIndex1,
-            metadataID = null,
-            roles = emptyList(),
-            pageSize = 10,
-            delay = 0,
-            continuous = false,
-            dimensions = listOf(
-                DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "1h"),
-                Terms("VendorID", "VendorID"),
-            ),
-            metrics = listOf(
-                RollupMetrics(
-                    sourceField = "fare_amount", targetField = "fare_amount",
-                    metrics = listOf(
-                        Sum(), Min(), Max(),
-                        ValueCount(), Average()
-                    )
+        val rollupJob1 =
+            Rollup(
+                id = "hourly_basic_term_query_rollup_search_failed_1",
+                enabled = true,
+                schemaVersion = 1L,
+                jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+                jobLastUpdatedTime = Instant.now(),
+                jobEnabledTime = Instant.now(),
+                description = "basic search test",
+                sourceIndex = sourceIndex1,
+                targetIndex = targetIndex1,
+                metadataID = null,
+                roles = emptyList(),
+                pageSize = 10,
+                delay = 0,
+                continuous = false,
+                dimensions =
+                listOf(
+                    DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "1h"),
+                    Terms("VendorID", "VendorID"),
                 ),
-                RollupMetrics(sourceField = "improvement_surcharge", targetField = "improvement_surcharge", metrics = listOf(Max(), Min()))
-            )
-        ).let { createRollup(it, it.id) }
+                metrics =
+                listOf(
+                    RollupMetrics(
+                        sourceField = "fare_amount", targetField = "fare_amount",
+                        metrics =
+                        listOf(
+                            Sum(), Min(), Max(),
+                            ValueCount(), Average(),
+                        ),
+                    ),
+                    RollupMetrics(sourceField = "improvement_surcharge", targetField = "improvement_surcharge", metrics = listOf(Max(), Min())),
+                ),
+            ).let { createRollup(it, it.id) }
 
         updateRollupStartTime(rollupJob1)
 
@@ -989,37 +1036,41 @@ class RollupInterceptorIT : RollupRestTestCase() {
             assertEquals("Rollup is not finished", RollupMetadata.Status.FINISHED, rollupMetadata.status)
         }
 
-        val rollupJob2 = Rollup(
-            id = "hourly_basic_term_query_rollup_search_failed_2",
-            enabled = true,
-            schemaVersion = 1L,
-            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
-            jobLastUpdatedTime = Instant.now(),
-            jobEnabledTime = Instant.now(),
-            description = "basic search test",
-            sourceIndex = sourceIndex2,
-            targetIndex = targetIndex2,
-            metadataID = null,
-            roles = emptyList(),
-            pageSize = 10,
-            delay = 0,
-            continuous = false,
-            dimensions = listOf(
-                DateHistogram(sourceField = "tpep_dropoff_datetime", fixedInterval = "1h"),
-                Terms("RatecodeID", "RatecodeID"),
-                Terms("PULocationID", "PULocationID")
-            ),
-            metrics = listOf(
-                RollupMetrics(
-                    sourceField = "passenger_count", targetField = "passenger_count",
-                    metrics = listOf(
-                        Sum(), Min(), Max(),
-                        ValueCount(), Average()
-                    )
+        val rollupJob2 =
+            Rollup(
+                id = "hourly_basic_term_query_rollup_search_failed_2",
+                enabled = true,
+                schemaVersion = 1L,
+                jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+                jobLastUpdatedTime = Instant.now(),
+                jobEnabledTime = Instant.now(),
+                description = "basic search test",
+                sourceIndex = sourceIndex2,
+                targetIndex = targetIndex2,
+                metadataID = null,
+                roles = emptyList(),
+                pageSize = 10,
+                delay = 0,
+                continuous = false,
+                dimensions =
+                listOf(
+                    DateHistogram(sourceField = "tpep_dropoff_datetime", fixedInterval = "1h"),
+                    Terms("RatecodeID", "RatecodeID"),
+                    Terms("PULocationID", "PULocationID"),
                 ),
-                RollupMetrics(sourceField = "total_amount", targetField = "total_amount", metrics = listOf(Max(), Min()))
-            )
-        ).let { createRollup(it, it.id) }
+                metrics =
+                listOf(
+                    RollupMetrics(
+                        sourceField = "passenger_count", targetField = "passenger_count",
+                        metrics =
+                        listOf(
+                            Sum(), Min(), Max(),
+                            ValueCount(), Average(),
+                        ),
+                    ),
+                    RollupMetrics(sourceField = "total_amount", targetField = "total_amount", metrics = listOf(Max(), Min())),
+                ),
+            ).let { createRollup(it, it.id) }
 
         updateRollupStartTime(rollupJob2)
 
@@ -1032,7 +1083,8 @@ class RollupInterceptorIT : RollupRestTestCase() {
 
         refreshAllIndices()
 
-        val req = """
+        val req =
+            """
             {
                 "size": 0,
                 "query": {
@@ -1044,7 +1096,7 @@ class RollupInterceptorIT : RollupRestTestCase() {
                     "value_count_passenger_count": { "value_count": { "field": "passenger_count" } }
                 }
             }
-        """.trimIndent()
+            """.trimIndent()
         // Search 1 non-rollup index and 1 rollup
         val searchResult1 = client().makeRequest("POST", "/$sourceIndex2,$targetIndex2/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
         assertTrue(searchResult1.restStatus() == RestStatus.OK)
@@ -1053,12 +1105,11 @@ class RollupInterceptorIT : RollupRestTestCase() {
         assertEquals(1, failures?.size)
         assertEquals(
             "Searching multiple indices where one is rollup and other is not, didn't return failure",
-            "illegal_argument_exception", failures?.get(0)?.get("type") ?: "Didn't find failure type in search response"
-
+            "illegal_argument_exception", failures?.get(0)?.get("type") ?: "Didn't find failure type in search response",
         )
         assertEquals(
             "Searching multiple indices where one is rollup and other is not, didn't return failure",
-            "Not all indices have rollup job", failures?.get(0)?.get("reason") ?: "Didn't find failure reason in search response"
+            "Not all indices have rollup job", failures?.get(0)?.get("reason") ?: "Didn't find failure reason in search response",
         )
 
         // Search 2 rollups with different mappings
@@ -1067,13 +1118,13 @@ class RollupInterceptorIT : RollupRestTestCase() {
                 "POST",
                 "/$targetIndex1,$targetIndex2/_search",
                 emptyMap(),
-                StringEntity(req, ContentType.APPLICATION_JSON)
+                StringEntity(req, ContentType.APPLICATION_JSON),
             )
         } catch (e: ResponseException) {
             assertEquals(
                 "Searching multiple rollup indices which weren't created by same rollup job, didn't return failure",
                 "Could not find a rollup job that can answer this query because [missing field RatecodeID, missing field passenger_count]",
-                (e.response.asMap() as Map<String, Map<String, Map<String, String>>>)["error"]!!["caused_by"]!!["reason"]
+                (e.response.asMap() as Map<String, Map<String, Map<String, String>>>)["error"]!!["caused_by"]!!["reason"],
             )
             assertEquals("Unexpected status", RestStatus.BAD_REQUEST, e.response.restStatus())
         }
@@ -1085,39 +1136,43 @@ class RollupInterceptorIT : RollupRestTestCase() {
 
         createSampleIndexForQSQTest(sourceIndex)
 
-        val rollup = Rollup(
-            id = "basic_query_string_query_rollup_search111",
-            enabled = true,
-            schemaVersion = 1L,
-            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
-            jobLastUpdatedTime = Instant.now(),
-            jobEnabledTime = Instant.now(),
-            description = "basic search test",
-            sourceIndex = sourceIndex,
-            targetIndex = targetIndex,
-            metadataID = null,
-            roles = emptyList(),
-            pageSize = 10,
-            delay = 0,
-            continuous = false,
-            dimensions = listOf(
-                DateHistogram(sourceField = "event_ts", fixedInterval = "1h"),
-                Terms("state", "state"),
-                Terms("state_ext", "state_ext"),
-                Terms("state_ext2", "state_ext2"),
-                Terms("state_ordinal", "state_ordinal"),
-                Terms("abc test", "abc test"),
-            ),
-            metrics = listOf(
-                RollupMetrics(
-                    sourceField = "earnings", targetField = "earnings",
-                    metrics = listOf(
-                        Sum(), Min(), Max(),
-                        ValueCount(), Average()
-                    )
-                )
-            )
-        ).let { createRollup(it, it.id) }
+        val rollup =
+            Rollup(
+                id = "basic_query_string_query_rollup_search111",
+                enabled = true,
+                schemaVersion = 1L,
+                jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+                jobLastUpdatedTime = Instant.now(),
+                jobEnabledTime = Instant.now(),
+                description = "basic search test",
+                sourceIndex = sourceIndex,
+                targetIndex = targetIndex,
+                metadataID = null,
+                roles = emptyList(),
+                pageSize = 10,
+                delay = 0,
+                continuous = false,
+                dimensions =
+                listOf(
+                    DateHistogram(sourceField = "event_ts", fixedInterval = "1h"),
+                    Terms("state", "state"),
+                    Terms("state_ext", "state_ext"),
+                    Terms("state_ext2", "state_ext2"),
+                    Terms("state_ordinal", "state_ordinal"),
+                    Terms("abc test", "abc test"),
+                ),
+                metrics =
+                listOf(
+                    RollupMetrics(
+                        sourceField = "earnings", targetField = "earnings",
+                        metrics =
+                        listOf(
+                            Sum(), Min(), Max(),
+                            ValueCount(), Average(),
+                        ),
+                    ),
+                ),
+            ).let { createRollup(it, it.id) }
 
         updateRollupStartTime(rollup)
 
@@ -1131,7 +1186,8 @@ class RollupInterceptorIT : RollupRestTestCase() {
         refreshAllIndices()
 
         // Term query
-        var req = """
+        var req =
+            """
             {
                 "size": 0,
                 "query": {
@@ -1149,7 +1205,7 @@ class RollupInterceptorIT : RollupRestTestCase() {
                     }
                 }
             }
-        """.trimIndent()
+            """.trimIndent()
         var rawRes = client().makeRequest("POST", "/$sourceIndex/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
         assertTrue(rawRes.restStatus() == RestStatus.OK)
         var rollupRes = client().makeRequest("POST", "/$targetIndex/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
@@ -1159,11 +1215,12 @@ class RollupInterceptorIT : RollupRestTestCase() {
         assertEquals(
             "Source and rollup index did not return same min results",
             rawAggRes.getValue("earnings_total")["value"],
-            rollupAggRes.getValue("earnings_total")["value"]
+            rollupAggRes.getValue("earnings_total")["value"],
         )
 
         // Fuzzy query
-        req = """
+        req =
+            """
             {
                 "size": 0,
                 "query": {
@@ -1179,7 +1236,7 @@ class RollupInterceptorIT : RollupRestTestCase() {
                     }
                 }
             }
-        """.trimIndent()
+            """.trimIndent()
         rawRes = client().makeRequest("POST", "/$sourceIndex/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
         assertTrue(rawRes.restStatus() == RestStatus.OK)
         rollupRes = client().makeRequest("POST", "/$targetIndex/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
@@ -1189,10 +1246,11 @@ class RollupInterceptorIT : RollupRestTestCase() {
         assertEquals(
             "Source and rollup index did not return same min results",
             rawAggRes.getValue("earnings_total")["value"],
-            rollupAggRes.getValue("earnings_total")["value"]
+            rollupAggRes.getValue("earnings_total")["value"],
         )
         // Prefix query
-        req = """
+        req =
+            """
             {
                 "size": 0,
                 "query": {
@@ -1208,7 +1266,7 @@ class RollupInterceptorIT : RollupRestTestCase() {
                     }
                 }
             }
-        """.trimIndent()
+            """.trimIndent()
         rawRes = client().makeRequest("POST", "/$sourceIndex/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
         assertTrue(rawRes.restStatus() == RestStatus.OK)
         rollupRes = client().makeRequest("POST", "/$targetIndex/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
@@ -1218,10 +1276,11 @@ class RollupInterceptorIT : RollupRestTestCase() {
         assertEquals(
             "Source and rollup index did not return same min results",
             rawAggRes.getValue("earnings_total")["value"],
-            rollupAggRes.getValue("earnings_total")["value"]
+            rollupAggRes.getValue("earnings_total")["value"],
         )
         // Regex query
-        req = """
+        req =
+            """
             {
                 "size": 0,
                 "query": {
@@ -1237,7 +1296,7 @@ class RollupInterceptorIT : RollupRestTestCase() {
                     }
                 }
             }
-        """.trimIndent()
+            """.trimIndent()
         rawRes = client().makeRequest("POST", "/$sourceIndex/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
         assertTrue(rawRes.restStatus() == RestStatus.OK)
         rollupRes = client().makeRequest("POST", "/$targetIndex/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
@@ -1247,10 +1306,11 @@ class RollupInterceptorIT : RollupRestTestCase() {
         assertEquals(
             "Source and rollup index did not return same min results",
             rawAggRes.getValue("earnings_total")["value"],
-            rollupAggRes.getValue("earnings_total")["value"]
+            rollupAggRes.getValue("earnings_total")["value"],
         )
         // Range query
-        req = """
+        req =
+            """
             {
                 "size": 0,
                 "query": {
@@ -1266,7 +1326,7 @@ class RollupInterceptorIT : RollupRestTestCase() {
                     }
                 }
             }
-        """.trimIndent()
+            """.trimIndent()
         rawRes = client().makeRequest("POST", "/$sourceIndex/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
         assertTrue(rawRes.restStatus() == RestStatus.OK)
         rollupRes = client().makeRequest("POST", "/$targetIndex/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
@@ -1276,10 +1336,11 @@ class RollupInterceptorIT : RollupRestTestCase() {
         assertEquals(
             "Source and rollup index did not return same min results",
             rawAggRes.getValue("earnings_total")["value"],
-            rollupAggRes.getValue("earnings_total")["value"]
+            rollupAggRes.getValue("earnings_total")["value"],
         )
         // Query with field prefix
-        req = """
+        req =
+            """
             {
                 "size": 0,
                 "query": {
@@ -1296,7 +1357,7 @@ class RollupInterceptorIT : RollupRestTestCase() {
                     }
                 }
             }
-        """.trimIndent()
+            """.trimIndent()
         rawRes = client().makeRequest("POST", "/$sourceIndex/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
         assertTrue(rawRes.restStatus() == RestStatus.OK)
         rollupRes = client().makeRequest("POST", "/$targetIndex/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
@@ -1306,11 +1367,12 @@ class RollupInterceptorIT : RollupRestTestCase() {
         assertEquals(
             "Source and rollup index did not return same min results",
             rawAggRes.getValue("earnings_total")["value"],
-            rollupAggRes.getValue("earnings_total")["value"]
+            rollupAggRes.getValue("earnings_total")["value"],
         )
 
         // Using ALL_MATCH_PATTERN for default_field but rollup job didn't include all fields
-        req = """
+        req =
+            """
             {
                 "size": 0,
                 "query": {
@@ -1328,19 +1390,20 @@ class RollupInterceptorIT : RollupRestTestCase() {
                     }
                 }
             }
-        """.trimIndent()
+            """.trimIndent()
         try {
             client().makeRequest("POST", "/$targetIndex/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
         } catch (e: ResponseException) {
             assertTrue(
                 e.message?.contains(
-                    "[missing terms grouping on earnings, missing terms grouping on event_ts, missing field test.vvv, missing field test.fff]"
-                ) ?: false
+                    "[missing terms grouping on earnings, missing terms grouping on event_ts, missing field test.vvv, missing field test.fff]",
+                ) ?: false,
             )
         }
 
         // Using ALL_MATCH_PATTERN in one of fields in "fields" array but rollup job didn't include all fields
-        req = """
+        req =
+            """
             {
                 "size": 0,
                 "query": {
@@ -1358,19 +1421,20 @@ class RollupInterceptorIT : RollupRestTestCase() {
                     }
                 }
             }
-        """.trimIndent()
+            """.trimIndent()
         try {
             client().makeRequest("POST", "/$targetIndex/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
         } catch (e: ResponseException) {
             assertTrue(
                 e.message?.contains(
-                    "[missing terms grouping on earnings, missing terms grouping on event_ts, missing field test.vvv, missing field test.fff]"
-                ) ?: false
+                    "[missing terms grouping on earnings, missing terms grouping on event_ts, missing field test.vvv, missing field test.fff]",
+                ) ?: false,
             )
         }
 
         // field from "fields" list is missing in rollup
-        req = """
+        req =
+            """
             {
                 "size": 0,
                 "query": {
@@ -1388,7 +1452,7 @@ class RollupInterceptorIT : RollupRestTestCase() {
                     }
                 }
             }
-        """.trimIndent()
+            """.trimIndent()
         try {
             client().makeRequest("POST", "/$targetIndex/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
         } catch (e: ResponseException) {
@@ -1396,7 +1460,8 @@ class RollupInterceptorIT : RollupRestTestCase() {
         }
 
         // no fields or default_field present. Fallback on index setting [index.query.default_field] default value: "*"
-        req = """
+        req =
+            """
             {
                 "size": 0,
                 "query": {
@@ -1413,14 +1478,14 @@ class RollupInterceptorIT : RollupRestTestCase() {
                     }
                 }
             }
-        """.trimIndent()
+            """.trimIndent()
         try {
             client().makeRequest("POST", "/$targetIndex/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
         } catch (e: ResponseException) {
             assertTrue(
                 e.message?.contains(
-                    "[missing terms grouping on earnings, missing terms grouping on event_ts, missing field test.vvv, missing field test.fff]"
-                ) ?: false
+                    "[missing terms grouping on earnings, missing terms grouping on event_ts, missing field test.vvv, missing field test.fff]",
+                ) ?: false,
             )
         }
 
@@ -1437,11 +1502,12 @@ class RollupInterceptorIT : RollupRestTestCase() {
                     }
                 }
                 """.trimIndent(),
-                ContentType.APPLICATION_JSON
-            )
+                ContentType.APPLICATION_JSON,
+            ),
         )
         //
-        req = """
+        req =
+            """
             {
                 "size": 0,
                 "query": {
@@ -1458,7 +1524,7 @@ class RollupInterceptorIT : RollupRestTestCase() {
                     }
                 }
             }
-        """.trimIndent()
+            """.trimIndent()
         rawRes = client().makeRequest("POST", "/$sourceIndex/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
         assertTrue(rawRes.restStatus() == RestStatus.OK)
         rollupRes = client().makeRequest("POST", "/$targetIndex/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
@@ -1468,11 +1534,12 @@ class RollupInterceptorIT : RollupRestTestCase() {
         assertEquals(
             "Source and rollup index did not return same min results",
             rawAggRes.getValue("earnings_total")["value"],
-            rollupAggRes.getValue("earnings_total")["value"]
+            rollupAggRes.getValue("earnings_total")["value"],
         )
 
         // prefix pattern in "default_field" field
-        req = """
+        req =
+            """
             {
                 "size": 0,
                 "query": {
@@ -1490,7 +1557,7 @@ class RollupInterceptorIT : RollupRestTestCase() {
                     }
                 }
             }
-        """.trimIndent()
+            """.trimIndent()
         rawRes = client().makeRequest("POST", "/$sourceIndex/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
         assertTrue(rawRes.restStatus() == RestStatus.OK)
         rollupRes = client().makeRequest("POST", "/$targetIndex/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
@@ -1500,11 +1567,12 @@ class RollupInterceptorIT : RollupRestTestCase() {
         assertEquals(
             "Source and rollup index did not return same min results",
             rawAggRes.getValue("earnings_total")["value"],
-            rollupAggRes.getValue("earnings_total")["value"]
+            rollupAggRes.getValue("earnings_total")["value"],
         )
 
         // field with space in query:
-        req = """
+        req =
+            """
             {
                 "size": 0,
                 "query": {
@@ -1521,7 +1589,7 @@ class RollupInterceptorIT : RollupRestTestCase() {
                     }
                 }
             }
-        """.trimIndent()
+            """.trimIndent()
         rawRes = client().makeRequest("POST", "/$sourceIndex/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
         assertTrue(rawRes.restStatus() == RestStatus.OK)
         rollupRes = client().makeRequest("POST", "/$targetIndex/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
@@ -1531,11 +1599,12 @@ class RollupInterceptorIT : RollupRestTestCase() {
         assertEquals(
             "Source and rollup index did not return same min results",
             rawAggRes.getValue("earnings_total")["value"],
-            rollupAggRes.getValue("earnings_total")["value"]
+            rollupAggRes.getValue("earnings_total")["value"],
         )
 
         // _exists_:field
-        req = """
+        req =
+            """
             {
                 "size": 0,
                 "query": {
@@ -1552,7 +1621,7 @@ class RollupInterceptorIT : RollupRestTestCase() {
                     }
                 }
             }
-        """.trimIndent()
+            """.trimIndent()
         rawRes = client().makeRequest("POST", "/$sourceIndex/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
         assertTrue(rawRes.restStatus() == RestStatus.OK)
         rollupRes = client().makeRequest("POST", "/$targetIndex/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
@@ -1562,7 +1631,7 @@ class RollupInterceptorIT : RollupRestTestCase() {
         assertEquals(
             "Source and rollup index did not return same min results",
             rawAggRes.getValue("earnings_total")["value"],
-            rollupAggRes.getValue("earnings_total")["value"]
+            rollupAggRes.getValue("earnings_total")["value"],
         )
     }
 
@@ -1570,37 +1639,41 @@ class RollupInterceptorIT : RollupRestTestCase() {
         val sourceIndex = "source_rollup_search_qsq_2"
         val targetIndex = "target_rollup_qsq_search_2"
         generateNYCTaxiData(sourceIndex)
-        val rollup = Rollup(
-            id = "basic_query_string_query_rollup_search_2",
-            enabled = true,
-            schemaVersion = 1L,
-            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
-            jobLastUpdatedTime = Instant.now(),
-            jobEnabledTime = Instant.now(),
-            description = "basic search test",
-            sourceIndex = sourceIndex,
-            targetIndex = targetIndex,
-            metadataID = null,
-            roles = emptyList(),
-            pageSize = 10,
-            delay = 0,
-            continuous = false,
-            dimensions = listOf(
-                DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "1h"),
-                Terms("RatecodeID", "RatecodeID"),
-                Terms("PULocationID", "PULocationID")
-            ),
-            metrics = listOf(
-                RollupMetrics(
-                    sourceField = "passenger_count", targetField = "passenger_count",
-                    metrics = listOf(
-                        Sum(), Min(), Max(),
-                        ValueCount(), Average()
-                    )
+        val rollup =
+            Rollup(
+                id = "basic_query_string_query_rollup_search_2",
+                enabled = true,
+                schemaVersion = 1L,
+                jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+                jobLastUpdatedTime = Instant.now(),
+                jobEnabledTime = Instant.now(),
+                description = "basic search test",
+                sourceIndex = sourceIndex,
+                targetIndex = targetIndex,
+                metadataID = null,
+                roles = emptyList(),
+                pageSize = 10,
+                delay = 0,
+                continuous = false,
+                dimensions =
+                listOf(
+                    DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "1h"),
+                    Terms("RatecodeID", "RatecodeID"),
+                    Terms("PULocationID", "PULocationID"),
                 ),
-                RollupMetrics(sourceField = "total_amount", targetField = "total_amount", metrics = listOf(Max(), Min()))
-            )
-        ).let { createRollup(it, it.id) }
+                metrics =
+                listOf(
+                    RollupMetrics(
+                        sourceField = "passenger_count", targetField = "passenger_count",
+                        metrics =
+                        listOf(
+                            Sum(), Min(), Max(),
+                            ValueCount(), Average(),
+                        ),
+                    ),
+                    RollupMetrics(sourceField = "total_amount", targetField = "total_amount", metrics = listOf(Max(), Min())),
+                ),
+            ).let { createRollup(it, it.id) }
 
         updateRollupStartTime(rollup)
 
@@ -1614,7 +1687,8 @@ class RollupInterceptorIT : RollupRestTestCase() {
         refreshAllIndices()
 
         // Invalid query
-        var req = """
+        var req =
+            """
             {
                 "size": 0,
                 "query": {
@@ -1630,7 +1704,7 @@ class RollupInterceptorIT : RollupRestTestCase() {
                     }
                 }
             }
-        """.trimIndent()
+            """.trimIndent()
         try {
             client().makeRequest("POST", "/$targetIndex/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
             fail("search should've failed due to incorrect query")
@@ -1643,37 +1717,41 @@ class RollupInterceptorIT : RollupRestTestCase() {
         val sourceIndex = "source_rollup_search_qsq"
         val targetIndex = "target_rollup_qsq_search"
         generateNYCTaxiData(sourceIndex)
-        val rollup = Rollup(
-            id = "basic_query_string_query_rollup_search",
-            enabled = true,
-            schemaVersion = 1L,
-            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
-            jobLastUpdatedTime = Instant.now(),
-            jobEnabledTime = Instant.now(),
-            description = "basic search test",
-            sourceIndex = sourceIndex,
-            targetIndex = targetIndex,
-            metadataID = null,
-            roles = emptyList(),
-            pageSize = 10,
-            delay = 0,
-            continuous = false,
-            dimensions = listOf(
-                DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "1h"),
-                Terms("RatecodeID", "RatecodeID"),
-                Terms("PULocationID", "PULocationID")
-            ),
-            metrics = listOf(
-                RollupMetrics(
-                    sourceField = "passenger_count", targetField = "passenger_count",
-                    metrics = listOf(
-                        Sum(), Min(), Max(),
-                        ValueCount(), Average()
-                    )
+        val rollup =
+            Rollup(
+                id = "basic_query_string_query_rollup_search",
+                enabled = true,
+                schemaVersion = 1L,
+                jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+                jobLastUpdatedTime = Instant.now(),
+                jobEnabledTime = Instant.now(),
+                description = "basic search test",
+                sourceIndex = sourceIndex,
+                targetIndex = targetIndex,
+                metadataID = null,
+                roles = emptyList(),
+                pageSize = 10,
+                delay = 0,
+                continuous = false,
+                dimensions =
+                listOf(
+                    DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "1h"),
+                    Terms("RatecodeID", "RatecodeID"),
+                    Terms("PULocationID", "PULocationID"),
                 ),
-                RollupMetrics(sourceField = "total_amount", targetField = "total_amount", metrics = listOf(Max(), Min()))
-            )
-        ).let { createRollup(it, it.id) }
+                metrics =
+                listOf(
+                    RollupMetrics(
+                        sourceField = "passenger_count", targetField = "passenger_count",
+                        metrics =
+                        listOf(
+                            Sum(), Min(), Max(),
+                            ValueCount(), Average(),
+                        ),
+                    ),
+                    RollupMetrics(sourceField = "total_amount", targetField = "total_amount", metrics = listOf(Max(), Min())),
+                ),
+            ).let { createRollup(it, it.id) }
 
         updateRollupStartTime(rollup)
 
@@ -1687,7 +1765,8 @@ class RollupInterceptorIT : RollupRestTestCase() {
         refreshAllIndices()
 
         // Term query
-        var req = """
+        var req =
+            """
             {
                 "size": 0,
                 "query": {
@@ -1703,7 +1782,7 @@ class RollupInterceptorIT : RollupRestTestCase() {
                     }
                 }
             }
-        """.trimIndent()
+            """.trimIndent()
         try {
             client().makeRequest("POST", "/$targetIndex/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
             fail("search should've failed due to incorrect query")
@@ -1718,39 +1797,43 @@ class RollupInterceptorIT : RollupRestTestCase() {
 
         createSampleIndexForQSQTest(sourceIndex)
 
-        val rollup = Rollup(
-            id = "basic_query_string_query_rollup_search98243",
-            enabled = true,
-            schemaVersion = 1L,
-            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
-            jobLastUpdatedTime = Instant.now(),
-            jobEnabledTime = Instant.now(),
-            description = "basic search test",
-            sourceIndex = "source_111*",
-            targetIndex = targetIndex,
-            metadataID = null,
-            roles = emptyList(),
-            pageSize = 10,
-            delay = 0,
-            continuous = false,
-            dimensions = listOf(
-                DateHistogram(sourceField = "event_ts", fixedInterval = "1h"),
-                Terms("state", "state"),
-                Terms("state_ext", "state_ext"),
-                Terms("state_ext2", "state_ext2"),
-                Terms("state_ordinal", "state_ordinal"),
-                Terms("abc test", "abc test"),
-            ),
-            metrics = listOf(
-                RollupMetrics(
-                    sourceField = "earnings", targetField = "earnings",
-                    metrics = listOf(
-                        Sum(), Min(), Max(),
-                        ValueCount(), Average()
-                    )
-                )
-            )
-        ).let { createRollup(it, it.id) }
+        val rollup =
+            Rollup(
+                id = "basic_query_string_query_rollup_search98243",
+                enabled = true,
+                schemaVersion = 1L,
+                jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+                jobLastUpdatedTime = Instant.now(),
+                jobEnabledTime = Instant.now(),
+                description = "basic search test",
+                sourceIndex = "source_111*",
+                targetIndex = targetIndex,
+                metadataID = null,
+                roles = emptyList(),
+                pageSize = 10,
+                delay = 0,
+                continuous = false,
+                dimensions =
+                listOf(
+                    DateHistogram(sourceField = "event_ts", fixedInterval = "1h"),
+                    Terms("state", "state"),
+                    Terms("state_ext", "state_ext"),
+                    Terms("state_ext2", "state_ext2"),
+                    Terms("state_ordinal", "state_ordinal"),
+                    Terms("abc test", "abc test"),
+                ),
+                metrics =
+                listOf(
+                    RollupMetrics(
+                        sourceField = "earnings", targetField = "earnings",
+                        metrics =
+                        listOf(
+                            Sum(), Min(), Max(),
+                            ValueCount(), Average(),
+                        ),
+                    ),
+                ),
+            ).let { createRollup(it, it.id) }
 
         updateRollupStartTime(rollup)
 
@@ -1764,7 +1847,8 @@ class RollupInterceptorIT : RollupRestTestCase() {
         refreshAllIndices()
 
         // Term query
-        var req = """
+        var req =
+            """
             {
                 "size": 0,
                 "query": {
@@ -1782,7 +1866,7 @@ class RollupInterceptorIT : RollupRestTestCase() {
                     }
                 }
             }
-        """.trimIndent()
+            """.trimIndent()
         var rawRes = client().makeRequest("POST", "/$sourceIndex/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
         assertTrue(rawRes.restStatus() == RestStatus.OK)
         var rollupRes = client().makeRequest("POST", "/$targetIndex/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
@@ -1792,7 +1876,7 @@ class RollupInterceptorIT : RollupRestTestCase() {
         assertEquals(
             "Source and rollup index did not return same min results",
             rawAggRes.getValue("earnings_total")["value"],
-            rollupAggRes.getValue("earnings_total")["value"]
+            rollupAggRes.getValue("earnings_total")["value"],
         )
     }
 
@@ -1802,39 +1886,43 @@ class RollupInterceptorIT : RollupRestTestCase() {
 
         createSampleIndexForQSQTest(sourceIndex)
 
-        val rollup = Rollup(
-            id = "basic_query_string_query_rollup_search982499",
-            enabled = true,
-            schemaVersion = 1L,
-            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
-            jobLastUpdatedTime = Instant.now(),
-            jobEnabledTime = Instant.now(),
-            description = "basic search test",
-            sourceIndex = "source_999*",
-            targetIndex = targetIndex,
-            metadataID = null,
-            roles = emptyList(),
-            pageSize = 10,
-            delay = 0,
-            continuous = false,
-            dimensions = listOf(
-                DateHistogram(sourceField = "event_ts", fixedInterval = "1h"),
-                Terms("state", "state"),
-                Terms("state_ext", "state_ext"),
-                Terms("state_ext2", "state_ext2"),
-                Terms("state_ordinal", "state_ordinal"),
-                Terms("abc test", "abc test"),
-            ),
-            metrics = listOf(
-                RollupMetrics(
-                    sourceField = "earnings", targetField = "earnings",
-                    metrics = listOf(
-                        Sum(), Min(), Max(),
-                        ValueCount(), Average()
-                    )
-                )
-            )
-        ).let { createRollup(it, it.id) }
+        val rollup =
+            Rollup(
+                id = "basic_query_string_query_rollup_search982499",
+                enabled = true,
+                schemaVersion = 1L,
+                jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+                jobLastUpdatedTime = Instant.now(),
+                jobEnabledTime = Instant.now(),
+                description = "basic search test",
+                sourceIndex = "source_999*",
+                targetIndex = targetIndex,
+                metadataID = null,
+                roles = emptyList(),
+                pageSize = 10,
+                delay = 0,
+                continuous = false,
+                dimensions =
+                listOf(
+                    DateHistogram(sourceField = "event_ts", fixedInterval = "1h"),
+                    Terms("state", "state"),
+                    Terms("state_ext", "state_ext"),
+                    Terms("state_ext2", "state_ext2"),
+                    Terms("state_ordinal", "state_ordinal"),
+                    Terms("abc test", "abc test"),
+                ),
+                metrics =
+                listOf(
+                    RollupMetrics(
+                        sourceField = "earnings", targetField = "earnings",
+                        metrics =
+                        listOf(
+                            Sum(), Min(), Max(),
+                            ValueCount(), Average(),
+                        ),
+                    ),
+                ),
+            ).let { createRollup(it, it.id) }
 
         updateRollupStartTime(rollup)
 
@@ -1850,7 +1938,8 @@ class RollupInterceptorIT : RollupRestTestCase() {
         deleteIndex(sourceIndex)
 
         // Term query
-        var req = """
+        var req =
+            """
             {
                 "size": 0,
                 "query": {
@@ -1868,7 +1957,7 @@ class RollupInterceptorIT : RollupRestTestCase() {
                     }
                 }
             }
-        """.trimIndent()
+            """.trimIndent()
         try {
             client().makeRequest("POST", "/$targetIndex/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
             fail("Failure was expected when searching rollup index using qsq query when sourceIndex does not exist!")

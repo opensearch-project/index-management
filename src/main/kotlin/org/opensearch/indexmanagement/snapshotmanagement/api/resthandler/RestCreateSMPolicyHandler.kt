@@ -11,14 +11,13 @@ import org.opensearch.rest.RestHandler.Route
 import org.opensearch.rest.RestRequest
 
 class RestCreateSMPolicyHandler : RestBaseIndexSMPolicyHandler() {
-
     override fun getName(): String {
         return "snapshot_management_create_policy_rest_handler"
     }
 
     override fun routes(): List<Route> {
         return listOf(
-            Route(RestRequest.Method.POST, "$SM_POLICIES_URI/{policyName}")
+            Route(RestRequest.Method.POST, "$SM_POLICIES_URI/{policyName}"),
         )
     }
 

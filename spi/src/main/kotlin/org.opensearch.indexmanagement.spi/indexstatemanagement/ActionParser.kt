@@ -9,7 +9,6 @@ import org.opensearch.core.common.io.stream.StreamInput
 import org.opensearch.core.xcontent.XContentParser
 
 abstract class ActionParser(var customAction: Boolean = false) {
-
     /**
      * The action type parser will parse
      */

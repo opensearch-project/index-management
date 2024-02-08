@@ -17,7 +17,6 @@ import org.opensearch.indexmanagement.snapshotmanagement.tryUpdatingNextExecutio
 import java.time.Instant.now
 
 object DeletionFinishedState : State {
-
     override val continuous = true
 
     @Suppress("ReturnCount", "NestedBlockDepth")
@@ -27,8 +26,9 @@ object DeletionFinishedState : State {
         val metadata = context.metadata
         val log = context.log
 
-        var metadataBuilder = SMMetadata.Builder(metadata)
-            .workflow(WorkflowType.DELETION)
+        var metadataBuilder =
+            SMMetadata.Builder(metadata)
+                .workflow(WorkflowType.DELETION)
 
         metadata.deletion?.started?.let { snapshotsStartedDeletion ->
             if (metadata.deletion.latestExecution == null) {
@@ -38,14 +38,16 @@ object DeletionFinishedState : State {
                 return@let
             }
 
-            val getSnapshotsRes = client.getSnapshots(
-                job, "${job.policyName}*", metadataBuilder, log,
-                getSnapshotMissingMessageInDeletionWorkflow(),
-                getSnapshotExceptionInDeletionWorkflow(snapshotsStartedDeletion),
-            )
+            val getSnapshotsRes =
+                client.getSnapshots(
+                    job, "${job.policyName}*", metadataBuilder, log,
+                    getSnapshotMissingMessageInDeletionWorkflow(),
+                    getSnapshotExceptionInDeletionWorkflow(snapshotsStartedDeletion),
+                )
             metadataBuilder = getSnapshotsRes.metadataBuilder
-            if (getSnapshotsRes.failed)
+            if (getSnapshotsRes.failed) {
                 return SMResult.Fail(metadataBuilder, WorkflowType.DELETION)
+            }
             val getSnapshots = getSnapshotsRes.snapshots
 
             val existingSnapshotsNameSet = getSnapshots.map { it.snapshotId().name }.toSet()
@@ -71,9 +73,10 @@ object DeletionFinishedState : State {
             // if now is after next deletion time, update next execution schedule
             // TODO may want to notify user that we skipped the execution because snapshot deletion time is longer than execution schedule
             job.deletion?.let {
-                val result = tryUpdatingNextExecutionTime(
-                    metadataBuilder, metadata.deletion.trigger.time, job.deletion.schedule, WorkflowType.DELETION, log
-                )
+                val result =
+                    tryUpdatingNextExecutionTime(
+                        metadataBuilder, metadata.deletion.trigger.time, job.deletion.schedule, WorkflowType.DELETION, log,
+                    )
                 if (result.updated) {
                     metadataBuilder = result.metadataBuilder
                 }
@@ -89,6 +92,7 @@ object DeletionFinishedState : State {
 
     private fun getSnapshotMissingMessageInDeletionWorkflow() =
         "No snapshots found under policy while getting snapshots to decide if snapshots has been deleted."
+
     private fun getSnapshotExceptionInDeletionWorkflow(startedDeleteSnapshots: List<String>) =
         "Caught exception while getting snapshots to decide if snapshots [$startedDeleteSnapshots] has been deleted."
 }

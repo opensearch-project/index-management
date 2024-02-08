@@ -55,8 +55,9 @@ class FieldCapsFilterTests : OpenSearchTestCase() {
     fun `test rewrite unmerged response discarding existing response`() {
         val fieldCapFilter = FieldCapsFilter(clusterService, settings, indexNameExpressionResolver)
         val originalIsmResponse = ISMFieldCapabilitiesResponse(arrayOf(), mapOf(), listOf(randomISMFieldCapabilitiesIndexResponse()))
-        val rewrittenResponse = fieldCapFilter.rewriteResponse(originalIsmResponse.toFieldCapabilitiesResponse(), setOf(rollupIndex), true) as
-            FieldCapabilitiesResponse
+        val rewrittenResponse =
+            fieldCapFilter.rewriteResponse(originalIsmResponse.toFieldCapabilitiesResponse(), setOf(rollupIndex), true) as
+                FieldCapabilitiesResponse
         val rewrittenIsmResponse = ISMFieldCapabilitiesResponse.fromFieldCapabilitiesResponse(rewrittenResponse)
         assertEquals("Expected merged response to be empty, indices not empty", 0, rewrittenResponse.indices.size)
         assertEquals("Expected merged response to be empty, map is empty", 0, rewrittenResponse.get().size)
@@ -67,8 +68,9 @@ class FieldCapsFilterTests : OpenSearchTestCase() {
         val fieldCapFilter = FieldCapsFilter(clusterService, settings, indexNameExpressionResolver)
         val ismResponse = randomISMFieldCaps()
         val originalIsmResponse = ISMFieldCapabilitiesResponse(ismResponse.indices, ismResponse.responseMap, listOf())
-        val rewrittenResponse = fieldCapFilter.rewriteResponse(originalIsmResponse.toFieldCapabilitiesResponse(), setOf(rollupIndex), true) as
-            FieldCapabilitiesResponse
+        val rewrittenResponse =
+            fieldCapFilter.rewriteResponse(originalIsmResponse.toFieldCapabilitiesResponse(), setOf(rollupIndex), true) as
+                FieldCapabilitiesResponse
         val rewrittenIsmResponse = ISMFieldCapabilitiesResponse.fromFieldCapabilitiesResponse(rewrittenResponse)
         assertTrue("Expected unmerged response to be empty", rewrittenIsmResponse.indexResponses.isEmpty())
     }

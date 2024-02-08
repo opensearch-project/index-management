@@ -10,17 +10,16 @@ import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.settings.Settings
 import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.getRolloverAlias
 import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.getRolloverSkip
-import org.opensearch.indexmanagement.util.OpenForTesting
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Validate
+import org.opensearch.indexmanagement.util.OpenForTesting
 import org.opensearch.monitor.jvm.JvmService
 
 @OpenForTesting
 class ValidateRollover(
     settings: Settings,
     clusterService: ClusterService,
-    jvmService: JvmService
+    jvmService: JvmService,
 ) : Validate(settings, clusterService, jvmService) {
-
     private val logger = LogManager.getLogger(javaClass)
 
     // returns a Validate object with updated validation and step status
@@ -99,10 +98,11 @@ class ValidateRollover(
         val indexAbstraction = metadata.indicesLookup[indexName]
         val isDataStreamIndex = indexAbstraction?.parentDataStream != null
 
-        val rolloverTarget = when {
-            isDataStreamIndex -> indexAbstraction?.parentDataStream?.name
-            else -> metadata.index(indexName).getRolloverAlias()
-        }
+        val rolloverTarget =
+            when {
+                isDataStreamIndex -> indexAbstraction?.parentDataStream?.name
+                else -> metadata.index(indexName).getRolloverAlias()
+            }
 
         if (rolloverTarget == null) {
             val message = getFailedNoValidAliasMessage(indexName)
@@ -117,12 +117,18 @@ class ValidateRollover(
     @Suppress("TooManyFunctions")
     companion object {
         const val name = "validate_rollover"
+
         fun getFailedWriteIndexMessage(index: String) = "Not the write index when rollover [index=$index]"
+
         fun getMissingAliasMessage(index: String) = "Missing alias when rollover [index=$index]"
+
         fun getFailedNoValidAliasMessage(index: String) = "Missing rollover_alias index setting [index=$index]"
+
         fun getAlreadyRolledOverMessage(index: String, alias: String?) =
             "This index has already been rolled over using this alias, treating as a success [index=$index, alias=$alias]"
+
         fun getSkipRolloverMessage(index: String) = "Skipped rollover action for [index=$index]"
+
         fun getValidationPassedMessage(index: String) = "Rollover validation passed for [index=$index]"
     }
 }

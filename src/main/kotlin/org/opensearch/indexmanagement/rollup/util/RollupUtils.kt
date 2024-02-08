@@ -13,10 +13,10 @@ import org.opensearch.cluster.ClusterState
 import org.opensearch.cluster.metadata.IndexMetadata
 import org.opensearch.common.xcontent.LoggingDeprecationHandler
 import org.opensearch.common.xcontent.XContentHelper
-import org.opensearch.core.xcontent.XContentParserUtils.ensureExpectedToken
 import org.opensearch.common.xcontent.XContentType
 import org.opensearch.core.xcontent.NamedXContentRegistry
 import org.opensearch.core.xcontent.XContentParser.Token
+import org.opensearch.core.xcontent.XContentParserUtils.ensureExpectedToken
 import org.opensearch.index.query.BoolQueryBuilder
 import org.opensearch.index.query.BoostingQueryBuilder
 import org.opensearch.index.query.ConstantScoreQueryBuilder
@@ -84,19 +84,21 @@ fun Rollup.isTargetIndexAlias(): Boolean {
 }
 
 fun Rollup.getRollupSearchRequest(metadata: RollupMetadata): SearchRequest {
-    val query = if (metadata.continuous != null) {
-        RangeQueryBuilder(this.getDateHistogram().sourceField)
-            .from(metadata.continuous.nextWindowStartTime.toEpochMilli(), true)
-            .to(metadata.continuous.nextWindowEndTime.toEpochMilli(), false)
-            .format(DATE_FIELD_EPOCH_MILLIS_FORMAT)
-    } else {
-        MatchAllQueryBuilder()
-    }
-    val searchSourceBuilder = SearchSourceBuilder()
-        .trackTotalHits(false)
-        .size(0)
-        .aggregation(this.getCompositeAggregationBuilder(metadata.afterKey))
-        .query(query)
+    val query =
+        if (metadata.continuous != null) {
+            RangeQueryBuilder(this.getDateHistogram().sourceField)
+                .from(metadata.continuous.nextWindowStartTime.toEpochMilli(), true)
+                .to(metadata.continuous.nextWindowEndTime.toEpochMilli(), false)
+                .format(DATE_FIELD_EPOCH_MILLIS_FORMAT)
+        } else {
+            MatchAllQueryBuilder()
+        }
+    val searchSourceBuilder =
+        SearchSourceBuilder()
+            .trackTotalHits(false)
+            .size(0)
+            .aggregation(this.getCompositeAggregationBuilder(metadata.afterKey))
+            .query(query)
     return SearchRequest(this.sourceIndex)
         .source(searchSourceBuilder)
         .allowPartialSearchResults(false)
@@ -109,22 +111,23 @@ fun Rollup.getCompositeAggregationBuilder(afterKey: Map<String, Any>?): Composit
     return CompositeAggregationBuilder(this.id, sources).size(this.pageSize).also { compositeAgg ->
         afterKey?.let { compositeAgg.aggregateAfter(it) }
         this.metrics.forEach { metric ->
-            val subAggs = metric.metrics.flatMap { agg ->
-                when (agg) {
-                    is Average -> {
-                        listOf(
-                            SumAggregationBuilder(metric.targetFieldWithType(agg) + ".sum").field(metric.sourceField),
-                            ValueCountAggregationBuilder(metric.targetFieldWithType(agg) + ".value_count").field(metric.sourceField)
-                        )
+            val subAggs =
+                metric.metrics.flatMap { agg ->
+                    when (agg) {
+                        is Average -> {
+                            listOf(
+                                SumAggregationBuilder(metric.targetFieldWithType(agg) + ".sum").field(metric.sourceField),
+                                ValueCountAggregationBuilder(metric.targetFieldWithType(agg) + ".value_count").field(metric.sourceField),
+                            )
+                        }
+                        is Sum -> listOf(SumAggregationBuilder(metric.targetFieldWithType(agg)).field(metric.sourceField))
+                        is Max -> listOf(MaxAggregationBuilder(metric.targetFieldWithType(agg)).field(metric.sourceField))
+                        is Min -> listOf(MinAggregationBuilder(metric.targetFieldWithType(agg)).field(metric.sourceField))
+                        is ValueCount -> listOf(ValueCountAggregationBuilder(metric.targetFieldWithType(agg)).field(metric.sourceField))
+                        // This shouldn't be possible as rollup will fail to initialize with an unsupported metric
+                        else -> throw IllegalArgumentException("Found unsupported metric aggregation ${agg.type.type}")
                     }
-                    is Sum -> listOf(SumAggregationBuilder(metric.targetFieldWithType(agg)).field(metric.sourceField))
-                    is Max -> listOf(MaxAggregationBuilder(metric.targetFieldWithType(agg)).field(metric.sourceField))
-                    is Min -> listOf(MinAggregationBuilder(metric.targetFieldWithType(agg)).field(metric.sourceField))
-                    is ValueCount -> listOf(ValueCountAggregationBuilder(metric.targetFieldWithType(agg)).field(metric.sourceField))
-                    // This shouldn't be possible as rollup will fail to initialize with an unsupported metric
-                    else -> throw IllegalArgumentException("Found unsupported metric aggregation ${agg.type.type}")
                 }
-            }
             subAggs.forEach { compositeAgg.subAggregation(it) }
         }
     }
@@ -160,8 +163,9 @@ inline fun <reified T> Rollup.findMatchingMetricField(field: String): String {
 fun IndexMetadata.getRollupJobs(): List<Rollup>? {
     val rollupJobs = mutableListOf<Rollup>()
     val source = this.mapping()?.source() ?: return null
-    val xcp = XContentHelper
-        .createParser(NamedXContentRegistry.EMPTY, LoggingDeprecationHandler.INSTANCE, source.compressedReference(), XContentType.JSON)
+    val xcp =
+        XContentHelper
+            .createParser(NamedXContentRegistry.EMPTY, LoggingDeprecationHandler.INSTANCE, source.compressedReference(), XContentType.JSON)
     ensureExpectedToken(Token.START_OBJECT, xcp.nextToken(), xcp) // start of block
     ensureExpectedToken(Token.FIELD_NAME, xcp.nextToken(), xcp) // _doc
     ensureExpectedToken(Token.START_OBJECT, xcp.nextToken(), xcp) // start of _doc block
@@ -199,11 +203,12 @@ fun IndexMetadata.getRollupJobs(): List<Rollup>? {
 // TODO: If we have to set this manually for each aggregation builder then it means we could miss new ones settings in the future
 @Suppress("ComplexMethod", "LongMethod")
 fun Rollup.rewriteAggregationBuilder(aggregationBuilder: AggregationBuilder): AggregationBuilder {
-    val aggFactory = AggregatorFactories.builder().also { factories ->
-        aggregationBuilder.subAggregations.forEach {
-            factories.addAggregator(this.rewriteAggregationBuilder(it))
+    val aggFactory =
+        AggregatorFactories.builder().also { factories ->
+            aggregationBuilder.subAggregations.forEach {
+                factories.addAggregator(this.rewriteAggregationBuilder(it))
+            }
         }
-    }
 
     return when (aggregationBuilder) {
         is TermsAggregationBuilder -> {
@@ -231,20 +236,20 @@ fun Rollup.rewriteAggregationBuilder(aggregationBuilder: AggregationBuilder): Ag
                         "state.sums += doc[\"${this.findMatchingMetricField<Average>(aggregationBuilder.field()) + ".sum"}\"].value; " +
                             "state.counts += doc[\"${this.findMatchingMetricField<Average>(aggregationBuilder.field()) + ".value_count"}\"" +
                             "].value",
-                        emptyMap()
-                    )
+                        emptyMap(),
+                    ),
                 )
                 .combineScript(
                     Script(
                         ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG,
-                        "def d = new double[2]; d[0] = state.sums; d[1] = state.counts; return d", emptyMap()
-                    )
+                        "def d = new double[2]; d[0] = state.sums; d[1] = state.counts; return d", emptyMap(),
+                    ),
                 )
                 .reduceScript(
                     Script(
                         ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG,
-                        "double sum = 0; double count = 0; for (a in states) { sum += a[0]; count += a[1]; } return sum/count", emptyMap()
-                    )
+                        "double sum = 0; double count = 0; for (a in states) { sum += a[0]; count += a[1]; } return sum/count", emptyMap(),
+                    ),
                 )
         }
         is MaxAggregationBuilder -> {
@@ -257,32 +262,32 @@ fun Rollup.rewriteAggregationBuilder(aggregationBuilder: AggregationBuilder): Ag
         }
         is ValueCountAggregationBuilder -> {
             /*
-            * A value count aggs of a pre-computed value count is incorrect as it just returns the number of
-            * pre-computed value counts instead of their sum. Unfortunately can't just use the sum aggregation
-            * because I was not able to find a way to cast the result of that to a long (instead of the returned float)
-            * and the 3893 vs 3893.0 was bothering me.. so this is the next best I can think of. Hopefully there is a better
-            * way and we can use that in the future.
-            * */
+             * A value count aggs of a pre-computed value count is incorrect as it just returns the number of
+             * pre-computed value counts instead of their sum. Unfortunately can't just use the sum aggregation
+             * because I was not able to find a way to cast the result of that to a long (instead of the returned float)
+             * and the 3893 vs 3893.0 was bothering me.. so this is the next best I can think of. Hopefully there is a better
+             * way and we can use that in the future.
+             * */
             ScriptedMetricAggregationBuilder(aggregationBuilder.name)
                 .initScript(Script(ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, "state.valueCounts = []", emptyMap()))
                 .mapScript(
                     Script(
                         ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG,
                         "state.valueCounts.add(doc[\"${this.findMatchingMetricField<ValueCount>(aggregationBuilder.field())}\"].value)",
-                        emptyMap()
-                    )
+                        emptyMap(),
+                    ),
                 )
                 .combineScript(
                     Script(
                         ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG,
-                        "long valueCount = 0; for (vc in state.valueCounts) { valueCount += vc } return valueCount", emptyMap()
-                    )
+                        "long valueCount = 0; for (vc in state.valueCounts) { valueCount += vc } return valueCount", emptyMap(),
+                    ),
                 )
                 .reduceScript(
                     Script(
                         ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG,
-                        "long valueCount = 0; for (vc in states) { valueCount += vc } return valueCount", emptyMap()
-                    )
+                        "long valueCount = 0; for (vc in states) { valueCount += vc } return valueCount", emptyMap(),
+                    ),
                 )
         }
         // We do nothing otherwise, the validation logic should have already verified so not throwing an exception
@@ -294,7 +299,7 @@ fun Rollup.rewriteAggregationBuilder(aggregationBuilder: AggregationBuilder): Ag
 fun Rollup.rewriteQueryBuilder(
     queryBuilder: QueryBuilder,
     fieldNameMappingTypeMap: Map<String, String>,
-    concreteIndexName: String = ""
+    concreteIndexName: String = "",
 ): QueryBuilder {
     return when (queryBuilder) {
         is TermQueryBuilder -> {
@@ -409,7 +414,7 @@ fun Rollup.populateFieldMappings(): Set<RollupFieldMapping> {
 fun SearchSourceBuilder.rewriteSearchSourceBuilder(
     jobs: Set<Rollup>,
     fieldNameMappingTypeMap: Map<String, String>,
-    concreteIndexName: String
+    concreteIndexName: String,
 ): SearchSourceBuilder {
     val ssb = SearchSourceBuilder()
     // can use first() here as all jobs in the set will have a superset of the query's terms
@@ -447,7 +452,7 @@ fun SearchSourceBuilder.rewriteSearchSourceBuilder(
 fun SearchSourceBuilder.rewriteSearchSourceBuilder(
     job: Rollup,
     fieldNameMappingTypeMap: Map<String, String>,
-    concreteIndexName: String
+    concreteIndexName: String,
 ): SearchSourceBuilder {
     return this.rewriteSearchSourceBuilder(setOf(job), fieldNameMappingTypeMap, concreteIndexName)
 }
@@ -456,14 +461,15 @@ fun Rollup.getInitialDocValues(docCount: Long): MutableMap<String, Any?> =
     mutableMapOf(
         Rollup.ROLLUP_DOC_ID_FIELD to this.id,
         Rollup.ROLLUP_DOC_COUNT_FIELD to docCount,
-        Rollup.ROLLUP_DOC_SCHEMA_VERSION_FIELD to this.schemaVersion
+        Rollup.ROLLUP_DOC_SCHEMA_VERSION_FIELD to this.schemaVersion,
     )
 
 fun parseRollup(response: GetResponse, xContentRegistry: NamedXContentRegistry = NamedXContentRegistry.EMPTY): Rollup {
-    val xcp = XContentHelper.createParser(
-        xContentRegistry, LoggingDeprecationHandler.INSTANCE,
-        response.sourceAsBytesRef, XContentType.JSON
-    )
+    val xcp =
+        XContentHelper.createParser(
+            xContentRegistry, LoggingDeprecationHandler.INSTANCE,
+            response.sourceAsBytesRef, XContentType.JSON,
+        )
 
     return xcp.parseWithType(response.id, response.seqNo, response.primaryTerm, Rollup.Companion::parse)
 }

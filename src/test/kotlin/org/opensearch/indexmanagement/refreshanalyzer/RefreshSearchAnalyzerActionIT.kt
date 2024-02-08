@@ -42,9 +42,10 @@ class RefreshSearchAnalyzerActionIT : IndexManagementRestTestCase() {
             writeToFile("$buildDir/testclusters/integTest-$i/config/pacman_synonyms.txt", "hello, hola")
         }
 
-        val settings: Settings = Settings.builder()
-            .loadFromSource(getIndexAnalyzerSettings(), XContentType.JSON)
-            .build()
+        val settings: Settings =
+            Settings.builder()
+                .loadFromSource(getIndexAnalyzerSettings(), XContentType.JSON)
+                .build()
         createIndex(indexName, settings, getAnalyzerMapping())
         ingestData(indexName)
 
@@ -88,9 +89,10 @@ class RefreshSearchAnalyzerActionIT : IndexManagementRestTestCase() {
             writeToFile("$buildDir/testclusters/integTest-$i/config/pacman_synonyms.txt", "hello, hola")
         }
 
-        val settings: Settings = Settings.builder()
-            .loadFromSource(getSearchAnalyzerSettings(), XContentType.JSON)
-            .build()
+        val settings: Settings =
+            Settings.builder()
+                .loadFromSource(getSearchAnalyzerSettings(), XContentType.JSON)
+                .build()
         createIndex(indexName, settings, getAnalyzerMapping())
         ingestData(indexName)
 
@@ -136,9 +138,10 @@ class RefreshSearchAnalyzerActionIT : IndexManagementRestTestCase() {
             writeToFile("$buildDir/testclusters/integTest-$i/config/pacman_synonyms.txt", "hello, hola")
         }
 
-        val settings: Settings = Settings.builder()
-            .loadFromSource(getSearchAnalyzerSettings(), XContentType.JSON)
-            .build()
+        val settings: Settings =
+            Settings.builder()
+                .loadFromSource(getSearchAnalyzerSettings(), XContentType.JSON)
+                .build()
         createIndex(indexName, settings, getAnalyzerMapping(), aliasSettings)
         ingestData(indexName)
 
@@ -184,11 +187,12 @@ class RefreshSearchAnalyzerActionIT : IndexManagementRestTestCase() {
 
         fun ingestData(indexName: String) {
             val request = Request("POST", "/$indexName/_doc?refresh=true")
-            val data: String = """
+            val data: String =
+                """
                 {
                   "title": "hello world..."
                 }
-            """.trimIndent()
+                """.trimIndent()
             request.setJsonEntity(data)
             client().performRequest(request)
         }
@@ -200,69 +204,70 @@ class RefreshSearchAnalyzerActionIT : IndexManagementRestTestCase() {
         }
 
         fun refreshAnalyzer(indexName: String) {
-            val request = Request(
-                "POST",
-                "$REFRESH_SEARCH_ANALYZER_BASE_URI/$indexName"
-            )
+            val request =
+                Request(
+                    "POST",
+                    "$REFRESH_SEARCH_ANALYZER_BASE_URI/$indexName",
+                )
             client().performRequest(request)
         }
 
         fun getSearchAnalyzerSettings(): String {
             return """
-            {
-                "index" : {
-                    "analysis" : {
-                        "analyzer" : {
-                            "my_synonyms" : {
-                                "tokenizer" : "whitespace",
-                                "filter" : ["synonym"]
-                            }
-                        },
-                        "filter" : {
-                            "synonym" : {
-                                "type" : "synonym_graph",
-                                "synonyms_path" : "pacman_synonyms.txt", 
-                                "updateable" : true 
+                {
+                    "index" : {
+                        "analysis" : {
+                            "analyzer" : {
+                                "my_synonyms" : {
+                                    "tokenizer" : "whitespace",
+                                    "filter" : ["synonym"]
+                                }
+                            },
+                            "filter" : {
+                                "synonym" : {
+                                    "type" : "synonym_graph",
+                                    "synonyms_path" : "pacman_synonyms.txt", 
+                                    "updateable" : true 
+                                }
                             }
                         }
                     }
                 }
-            }
             """.trimIndent()
         }
 
         fun getIndexAnalyzerSettings(): String {
             return """
-            {
-                "index" : {
-                    "analysis" : {
-                        "analyzer" : {
-                            "my_synonyms" : {
-                                "tokenizer" : "whitespace",
-                                "filter" : ["synonym"]
-                            }
-                        },
-                        "filter" : {
-                            "synonym" : {
-                                "type" : "synonym_graph",
-                                "synonyms_path" : "pacman_synonyms.txt"
+                {
+                    "index" : {
+                        "analysis" : {
+                            "analyzer" : {
+                                "my_synonyms" : {
+                                    "tokenizer" : "whitespace",
+                                    "filter" : ["synonym"]
+                                }
+                            },
+                            "filter" : {
+                                "synonym" : {
+                                    "type" : "synonym_graph",
+                                    "synonyms_path" : "pacman_synonyms.txt"
+                                }
                             }
                         }
                     }
                 }
-            }
             """.trimIndent()
         }
 
         fun getAnalyzerMapping(): String {
             return """
-            "properties": {
-                    "title": {
-                        "type": "text",
-                        "analyzer" : "standard",
-                        "search_analyzer": "my_synonyms"
+                "properties": {
+                        "title": {
+                            "type": "text",
+                            "analyzer" : "standard",
+                            "search_analyzer": "my_synonyms"
+                        }
                     }
-                }
             """.trimIndent()
         }
     }

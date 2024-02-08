@@ -8,16 +8,15 @@ package org.opensearch.indexmanagement.indexstatemanagement.transport.action.exp
 import org.opensearch.action.ActionRequest
 import org.opensearch.action.ActionRequestValidationException
 import org.opensearch.action.ValidateActions
+import org.opensearch.common.unit.TimeValue
 import org.opensearch.core.common.io.stream.StreamInput
 import org.opensearch.core.common.io.stream.StreamOutput
-import org.opensearch.common.unit.TimeValue
 import org.opensearch.indexmanagement.common.model.rest.SearchParams
 import org.opensearch.indexmanagement.indexstatemanagement.model.ExplainFilter
 import org.opensearch.indexmanagement.indexstatemanagement.util.DEFAULT_INDEX_TYPE
 import java.io.IOException
 
 class ExplainRequest : ActionRequest {
-
     val indices: List<String>
     val local: Boolean
     val clusterManagerTimeout: TimeValue
@@ -36,7 +35,7 @@ class ExplainRequest : ActionRequest {
         explainFilter: ExplainFilter?,
         showPolicy: Boolean,
         validateAction: Boolean,
-        indexType: String
+        indexType: String,
     ) : super() {
         this.indices = indices
         this.local = local
@@ -57,16 +56,17 @@ class ExplainRequest : ActionRequest {
         explainFilter = sin.readOptionalWriteable(::ExplainFilter),
         showPolicy = sin.readBoolean(),
         validateAction = sin.readBoolean(),
-        indexType = sin.readString()
+        indexType = sin.readString(),
     )
 
     override fun validate(): ActionRequestValidationException? {
         var validationException: ActionRequestValidationException? = null
         if (indexType != DEFAULT_INDEX_TYPE && indices.size > 1) {
-            validationException = ValidateActions.addValidationError(
-                MULTIPLE_INDICES_CUSTOM_INDEX_TYPE_ERROR,
-                validationException
-            )
+            validationException =
+                ValidateActions.addValidationError(
+                    MULTIPLE_INDICES_CUSTOM_INDEX_TYPE_ERROR,
+                    validationException,
+                )
         }
         return validationException
     }

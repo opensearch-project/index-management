@@ -3,9 +3,16 @@
 root = true
 
 [*.{kt,kts}]
+ktlint_code_style = intellij_idea
 # we have detekt also checking for max line length. Disable the linter and use only one tool to check for max line length.
-
 # See https://github.com/arturbosch/detekt
-max_line_length=off
+ktlint_standard_max-line-length = disabled
+ktlint_ignore_back_ticked_identifier = true
 
-disabled_rules=import-ordering
+ktlint_standard_function-naming = disabled
+ktlint_standard_property-naming = disabled
+ktlint_standard_function-signature = disabled
+ktlint_standard_value-argument-comment = disabled
+ktlint_standard_argument-list-wrapping = disabled
+ktlint_standard_value-parameter-comment = disabled
+

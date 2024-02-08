@@ -6,18 +6,17 @@
 package org.opensearch.indexmanagement.rollup.resthandler
 
 import org.opensearch.client.ResponseException
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.ROLLUP_JOBS_BASE_URI
 import org.opensearch.indexmanagement.makeRequest
 import org.opensearch.indexmanagement.rollup.action.get.GetRollupsRequest.Companion.DEFAULT_SIZE
 import org.opensearch.indexmanagement.rollup.randomRollup
-import org.opensearch.core.rest.RestStatus
 import org.opensearch.test.junit.annotations.TestLogging
 import java.util.Locale
 
 @TestLogging(value = "level:DEBUG", reason = "Debugging tests")
 @Suppress("UNCHECKED_CAST")
 class RestGetRollupActionIT : RollupRestAPITestCase() {
-
     private val testName = javaClass.simpleName.lowercase(Locale.ROOT)
 
     @Throws(Exception::class)
@@ -26,15 +25,16 @@ class RestGetRollupActionIT : RollupRestAPITestCase() {
         val indexedRollup = getRollup(rollup.id)
         // Schema version and last updated time are updated during the creation so we need to update the original too for comparison
         // Job schedule interval will have a dynamic start time
-        rollup = rollup.copy(
-            schemaVersion = indexedRollup.schemaVersion,
-            jobLastUpdatedTime = indexedRollup.jobLastUpdatedTime,
-            jobSchedule = indexedRollup.jobSchedule,
-            // roles are deprecated and will not be stored or returned
-            roles = listOf(),
-            // user information is hidden and not returned
-            user = null
-        )
+        rollup =
+            rollup.copy(
+                schemaVersion = indexedRollup.schemaVersion,
+                jobLastUpdatedTime = indexedRollup.jobLastUpdatedTime,
+                jobSchedule = indexedRollup.jobSchedule,
+                // roles are deprecated and will not be stored or returned
+                roles = listOf(),
+                // user information is hidden and not returned
+                user = null,
+            )
         assertEquals("Indexed and retrieved rollup differ", rollup, indexedRollup)
     }
 

@@ -4,19 +4,20 @@
  */
 
 @file:Suppress("TopLevelPropertyNaming", "MatchingDeclarationName")
+
 package org.opensearch.indexmanagement.indexstatemanagement.util
 
 import org.opensearch.OpenSearchParseException
 import org.opensearch.action.support.clustermanager.ClusterManagerNodeRequest
+import org.opensearch.common.logging.DeprecationLogger
+import org.opensearch.common.unit.TimeValue
+import org.opensearch.common.xcontent.XContentFactory
 import org.opensearch.core.common.io.stream.StreamInput
 import org.opensearch.core.common.io.stream.StreamOutput
 import org.opensearch.core.common.io.stream.Writeable
-import org.opensearch.common.logging.DeprecationLogger
-import org.opensearch.common.unit.TimeValue
 import org.opensearch.core.xcontent.ToXContent
 import org.opensearch.core.xcontent.ToXContentFragment
 import org.opensearch.core.xcontent.XContentBuilder
-import org.opensearch.common.xcontent.XContentFactory
 import org.opensearch.indexmanagement.indexstatemanagement.model.ChangePolicy
 import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexConfig
 import org.opensearch.indexmanagement.opensearchapi.optionalTimeField
@@ -72,7 +73,6 @@ fun buildInvalidIndexResponse(builder: XContentBuilder, failedIndices: List<Fail
 }
 
 data class FailedIndex(val name: String, val uuid: String, val reason: String) : Writeable, ToXContentFragment {
-
     override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
         builder.startObject()
             .field(INDEX_NAME_FIELD, name)
@@ -90,7 +90,7 @@ data class FailedIndex(val name: String, val uuid: String, val reason: String) :
     constructor(sin: StreamInput) : this(
         name = sin.readString(),
         uuid = sin.readString(),
-        reason = sin.readString()
+        reason = sin.readString(),
     )
 
     override fun writeTo(out: StreamOutput) {
@@ -104,13 +104,14 @@ data class FailedIndex(val name: String, val uuid: String, val reason: String) :
  * Gets the XContentBuilder for partially updating a [ManagedIndexConfig]'s ChangePolicy
  */
 fun getPartialChangePolicyBuilder(
-    changePolicy: ChangePolicy?
+    changePolicy: ChangePolicy?,
 ): XContentBuilder {
-    val builder = XContentFactory.jsonBuilder()
-        .startObject()
-        .startObject(ManagedIndexConfig.MANAGED_INDEX_TYPE)
-        .optionalTimeField(ManagedIndexConfig.LAST_UPDATED_TIME_FIELD, Instant.now())
-        .field(ManagedIndexConfig.CHANGE_POLICY_FIELD, changePolicy)
+    val builder =
+        XContentFactory.jsonBuilder()
+            .startObject()
+            .startObject(ManagedIndexConfig.MANAGED_INDEX_TYPE)
+            .optionalTimeField(ManagedIndexConfig.LAST_UPDATED_TIME_FIELD, Instant.now())
+            .field(ManagedIndexConfig.CHANGE_POLICY_FIELD, changePolicy)
     return builder.endObject().endObject()
 }
 
@@ -119,6 +120,7 @@ const val MASTER_TIMEOUT_DEPRECATED_MESSAGE =
         "To support inclusive language, please use [cluster_manager_timeout] instead."
 const val DUPLICATE_PARAMETER_ERROR_MESSAGE =
     "Please only use one of the request parameters [master_timeout, cluster_manager_timeout]."
+
 fun parseClusterManagerTimeout(request: RestRequest, deprecationLogger: DeprecationLogger, restActionName: String): TimeValue {
     var timeout = request.paramAsTime("cluster_manager_timeout", ClusterManagerNodeRequest.DEFAULT_CLUSTER_MANAGER_NODE_TIMEOUT)
 

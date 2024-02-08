@@ -25,9 +25,8 @@ import java.io.IOException
 data class RollupMetrics(
     val sourceField: String,
     val targetField: String,
-    val metrics: List<Metric>
+    val metrics: List<Metric>,
 ) : ToXContentObject, Writeable {
-
     init {
         require(metrics.size == metrics.distinctBy { it.type }.size) {
             "Cannot have multiple metrics of the same type in a single rollup metric [$metrics]"
@@ -40,7 +39,8 @@ data class RollupMetrics(
     constructor(sin: StreamInput) : this(
         sourceField = sin.readString(),
         targetField = sin.readString(),
-        metrics = sin.let {
+        metrics =
+        sin.let {
             val metricsList = mutableListOf<Metric>()
             val size = it.readVInt()
             repeat(size) { _ ->
@@ -52,11 +52,11 @@ data class RollupMetrics(
                         Metric.Type.MIN -> Min(it)
                         Metric.Type.SUM -> Sum(it)
                         Metric.Type.VALUE_COUNT -> ValueCount(it)
-                    }
+                    },
                 )
             }
             metricsList.toList()
-        }
+        },
     )
 
     override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
@@ -128,7 +128,7 @@ data class RollupMetrics(
             return RollupMetrics(
                 sourceField = requireNotNull(sourceField) { "Source field must not be null" },
                 targetField = requireNotNull(targetField) { "Target field must not be null" },
-                metrics = metrics.toList()
+                metrics = metrics.toList(),
             )
         }
     }

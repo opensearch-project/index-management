@@ -9,6 +9,7 @@ import org.apache.hc.core5.http.ContentType
 import org.apache.hc.core5.http.io.entity.StringEntity
 import org.opensearch.common.settings.Settings
 import org.opensearch.common.xcontent.XContentFactory
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.index.query.QueryBuilders
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.LEGACY_ISM_BASE_URI
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.LEGACY_POLICY_BASE_URI
@@ -18,12 +19,10 @@ import org.opensearch.indexmanagement.indexstatemanagement.util.XCONTENT_WITHOUT
 import org.opensearch.indexmanagement.makeRequest
 import org.opensearch.indexmanagement.opensearchapi.string
 import org.opensearch.indexmanagement.util.NO_ID
-import org.opensearch.core.rest.RestStatus
 import org.opensearch.indexmanagement.waitFor
 import org.opensearch.search.builder.SearchSourceBuilder
 
 class IndexManagementBackwardsCompatibilityIT : IndexManagementRestTestCase() {
-
     companion object {
         private val CLUSTER_TYPE = ClusterType.parse(System.getProperty("tests.rest.bwcsuite"))
         private val CLUSTER_NAME = System.getProperty("tests.clustername")
@@ -82,7 +81,8 @@ class IndexManagementBackwardsCompatibilityIT : IndexManagementRestTestCase() {
     private enum class ClusterType {
         OLD,
         MIXED,
-        UPGRADED;
+        UPGRADED,
+        ;
 
         companion object {
             fun parse(value: String): ClusterType {
@@ -118,19 +118,21 @@ class IndexManagementBackwardsCompatibilityIT : IndexManagementRestTestCase() {
 
         createIndex(INDEX_NAME, Settings.EMPTY)
 
-        val createResponse = client().makeRequest(
-            method = "PUT",
-            endpoint = "$LEGACY_POLICY_BASE_URI/$POLICY_NAME?refresh=true",
-            params = emptyMap(),
-            entity = StringEntity(policyString, ContentType.APPLICATION_JSON)
-        )
+        val createResponse =
+            client().makeRequest(
+                method = "PUT",
+                endpoint = "$LEGACY_POLICY_BASE_URI/$POLICY_NAME?refresh=true",
+                params = emptyMap(),
+                entity = StringEntity(policyString, ContentType.APPLICATION_JSON),
+            )
 
-        val addResponse = client().makeRequest(
-            method = "POST",
-            endpoint = "$LEGACY_ISM_BASE_URI/add/$INDEX_NAME",
-            params = emptyMap(),
-            entity = StringEntity(policyNameString, ContentType.APPLICATION_JSON)
-        )
+        val addResponse =
+            client().makeRequest(
+                method = "POST",
+                endpoint = "$LEGACY_ISM_BASE_URI/add/$INDEX_NAME",
+                params = emptyMap(),
+                entity = StringEntity(policyNameString, ContentType.APPLICATION_JSON),
+            )
 
         assertEquals("Create policy failed", RestStatus.CREATED, createResponse.restStatus())
         assertEquals("Add policy failed", RestStatus.OK, addResponse.restStatus())
@@ -145,23 +147,25 @@ class IndexManagementBackwardsCompatibilityIT : IndexManagementRestTestCase() {
     @Suppress("UNCHECKED_CAST")
     private fun verifyPolicyExists(uri: String) {
         val search = SearchSourceBuilder().query(QueryBuilders.matchAllQuery()).toString()
-        val getResponse = client().makeRequest(
-            "GET",
-            "$uri/$POLICY_NAME",
-            emptyMap(),
-            StringEntity(search, ContentType.APPLICATION_JSON)
-        )
+        val getResponse =
+            client().makeRequest(
+                "GET",
+                "$uri/$POLICY_NAME",
+                emptyMap(),
+                StringEntity(search, ContentType.APPLICATION_JSON),
+            )
         assertEquals("Get policy failed", RestStatus.OK, getResponse.restStatus())
     }
 
     @Throws(Exception::class)
     @Suppress("UNCHECKED_CAST")
     private fun verifyPolicyOnIndex(uri: String) {
-        val getResponse = client().makeRequest(
-            method = "GET",
-            endpoint = "$uri/explain/$INDEX_NAME",
-            params = emptyMap()
-        )
+        val getResponse =
+            client().makeRequest(
+                method = "GET",
+                endpoint = "$uri/explain/$INDEX_NAME",
+                params = emptyMap(),
+            )
 
         assertEquals("Explain Index failed", RestStatus.OK, getResponse.restStatus())
         val responseBody = getResponse.asMap()

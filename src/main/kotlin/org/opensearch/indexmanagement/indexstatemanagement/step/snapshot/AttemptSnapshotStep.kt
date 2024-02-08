@@ -10,6 +10,7 @@ import org.opensearch.ExceptionsHelper
 import org.opensearch.action.admin.cluster.snapshots.create.CreateSnapshotRequest
 import org.opensearch.action.admin.cluster.snapshots.create.CreateSnapshotResponse
 import org.opensearch.common.regex.Regex
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.indexmanagement.indexstatemanagement.action.SnapshotAction
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.SNAPSHOT_DENY_LIST
 import org.opensearch.indexmanagement.opensearchapi.convertToMap
@@ -18,7 +19,6 @@ import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ActionProperties
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepMetaData
-import org.opensearch.core.rest.RestStatus
 import org.opensearch.script.Script
 import org.opensearch.script.ScriptService
 import org.opensearch.script.ScriptType
@@ -31,7 +31,6 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 class AttemptSnapshotStep(private val action: SnapshotAction) : Step(name) {
-
     private val logger = LogManager.getLogger(javaClass)
     private var stepStatus = StepStatus.STARTING
     private var info: Map<String, Any>? = null
@@ -55,22 +54,24 @@ class AttemptSnapshotStep(private val action: SnapshotAction) : Step(name) {
                 info = mutableInfo.toMap()
                 return this
             }
-            val snapshotNameSuffix = "-".plus(
-                LocalDateTime.now(ZoneId.of("UTC"))
-                    .format(DateTimeFormatter.ofPattern("uuuu.MM.dd-HH:mm:ss.SSS", Locale.ROOT))
-            )
+            val snapshotNameSuffix =
+                "-".plus(
+                    LocalDateTime.now(ZoneId.of("UTC"))
+                        .format(DateTimeFormatter.ofPattern("uuuu.MM.dd-HH:mm:ss.SSS", Locale.ROOT)),
+                )
 
             val snapshotScript = Script(ScriptType.INLINE, Script.DEFAULT_TEMPLATE_LANG, snapshot, mapOf())
             // If user intentionally set the snapshot name empty then we are going to honor it
             val defaultSnapshotName = if (snapshot.isBlank()) snapshot else indexName
             snapshotName = compileTemplate(snapshotScript, managedIndexMetadata, defaultSnapshotName, scriptService).plus(snapshotNameSuffix)
 
-            val createSnapshotRequest = CreateSnapshotRequest()
-                .userMetadata(mapOf("snapshot_created" to "Open Distro for Elasticsearch Index Management"))
-                .indices(indexName)
-                .snapshot(snapshotName)
-                .repository(repository)
-                .waitForCompletion(false)
+            val createSnapshotRequest =
+                CreateSnapshotRequest()
+                    .userMetadata(mapOf("snapshot_created" to "Open Distro for Elasticsearch Index Management"))
+                    .indices(indexName)
+                    .snapshot(snapshotName)
+                    .repository(repository)
+                    .waitForCompletion(false)
 
             val response: CreateSnapshotResponse = context.client.admin().cluster().suspendUntil { createSnapshot(createSnapshotRequest, it) }
             when (response.status()) {
@@ -133,14 +134,16 @@ class AttemptSnapshotStep(private val action: SnapshotAction) : Step(name) {
         template: Script,
         managedIndexMetaData: ManagedIndexMetaData,
         defaultValue: String,
-        scriptService: ScriptService
+        scriptService: ScriptService,
     ): String {
-        val contextMap = managedIndexMetaData.convertToMap().filterKeys { key ->
-            key in validTopContextFields
-        }
-        val compiledValue = scriptService.compile(template, TemplateScript.CONTEXT)
-            .newInstance(template.params + mapOf("ctx" to contextMap))
-            .execute()
+        val contextMap =
+            managedIndexMetaData.convertToMap().filterKeys { key ->
+                key in validTopContextFields
+            }
+        val compiledValue =
+            scriptService.compile(template, TemplateScript.CONTEXT)
+                .newInstance(template.params + mapOf("ctx" to contextMap))
+                .execute()
         return if (compiledValue.isBlank()) defaultValue else compiledValue
     }
 
@@ -150,7 +153,7 @@ class AttemptSnapshotStep(private val action: SnapshotAction) : Step(name) {
             actionMetaData = currentActionMetaData?.copy(actionProperties = ActionProperties(snapshotName = snapshotName)),
             stepMetaData = StepMetaData(name, getStepStartTime(currentMetadata).toEpochMilli(), stepStatus),
             transitionTo = null,
-            info = info
+            info = info,
         )
     }
 
@@ -159,10 +162,14 @@ class AttemptSnapshotStep(private val action: SnapshotAction) : Step(name) {
     companion object {
         val validTopContextFields = setOf("index", "indexUuid")
         const val name = "attempt_snapshot"
+
         fun getBlockedMessage(denyList: List<String>, repoName: String, index: String) =
             "Snapshot repository [$repoName] is blocked in $denyList [index=$index]"
+
         fun getFailedMessage(index: String) = "Failed to create snapshot [index=$index]"
+
         fun getFailedConcurrentSnapshotMessage(index: String) = "Concurrent snapshot in progress, retrying next execution [index=$index]"
+
         fun getSuccessMessage(index: String) = "Successfully started snapshot [index=$index]"
     }
 }

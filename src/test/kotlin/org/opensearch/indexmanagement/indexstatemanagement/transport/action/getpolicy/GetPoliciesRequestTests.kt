@@ -11,7 +11,6 @@ import org.opensearch.indexmanagement.common.model.rest.SearchParams
 import org.opensearch.test.OpenSearchTestCase
 
 class GetPoliciesRequestTests : OpenSearchTestCase() {
-
     fun `test get policies request`() {
         val table = SearchParams(20, 0, "policy.policy_id.keyword", "desc", "*")
         val req = GetPoliciesRequest(table)

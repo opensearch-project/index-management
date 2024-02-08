@@ -10,7 +10,6 @@ import org.opensearch.action.support.master.AcknowledgedResponse
 import org.opensearch.core.common.io.stream.Writeable
 
 class UpdateRollupMappingAction : ActionType<AcknowledgedResponse>(NAME, reader) {
-
     companion object {
         const val NAME = "cluster:admin/opendistro/rollup/mapping/update"
         val INSTANCE = UpdateRollupMappingAction()

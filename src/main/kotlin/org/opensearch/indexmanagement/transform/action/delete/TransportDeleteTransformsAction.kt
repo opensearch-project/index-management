@@ -7,7 +7,6 @@ package org.opensearch.indexmanagement.transform.action.delete
 
 import org.apache.logging.log4j.LogManager
 import org.opensearch.OpenSearchStatusException
-import org.opensearch.core.action.ActionListener
 import org.opensearch.action.bulk.BulkRequest
 import org.opensearch.action.bulk.BulkResponse
 import org.opensearch.action.delete.DeleteRequest
@@ -20,33 +19,36 @@ import org.opensearch.client.Client
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.inject.Inject
 import org.opensearch.common.settings.Settings
-import org.opensearch.core.xcontent.NamedXContentRegistry
 import org.opensearch.commons.ConfigConstants
 import org.opensearch.commons.authuser.User
+import org.opensearch.core.action.ActionListener
+import org.opensearch.core.rest.RestStatus
+import org.opensearch.core.xcontent.NamedXContentRegistry
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
 import org.opensearch.indexmanagement.opensearchapi.parseFromGetResponse
 import org.opensearch.indexmanagement.settings.IndexManagementSettings
 import org.opensearch.indexmanagement.transform.model.Transform
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.buildUser
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.userHasPermissionForResource
-import org.opensearch.core.rest.RestStatus
 import org.opensearch.search.fetch.subphase.FetchSourceContext
 import org.opensearch.tasks.Task
 import org.opensearch.transport.TransportService
 
 @Suppress("ReturnCount")
-class TransportDeleteTransformsAction @Inject constructor(
+class TransportDeleteTransformsAction
+@Inject
+constructor(
     transportService: TransportService,
     val client: Client,
     val settings: Settings,
     val clusterService: ClusterService,
     val xContentRegistry: NamedXContentRegistry,
-    actionFilters: ActionFilters
+    actionFilters: ActionFilters,
 ) : HandledTransportAction<DeleteTransformsRequest, BulkResponse>(
-    DeleteTransformsAction.NAME, transportService, actionFilters, ::DeleteTransformsRequest
+    DeleteTransformsAction.NAME, transportService, actionFilters, ::DeleteTransformsRequest,
 ) {
-
     private val log = LogManager.getLogger(javaClass)
+
     @Volatile private var filterByEnabled = IndexManagementSettings.FILTER_BY_BACKEND_ROLES.get(settings)
 
     init {
@@ -64,14 +66,13 @@ class TransportDeleteTransformsAction @Inject constructor(
         val client: Client,
         val request: DeleteTransformsRequest,
         val actionListener: ActionListener<BulkResponse>,
-        val user: User? = buildUser(client.threadPool().threadContext)
+        val user: User? = buildUser(client.threadPool().threadContext),
     ) {
-
         fun start() {
             log.debug(
                 "User and roles string from thread context: ${client.threadPool().threadContext.getTransient<String>(
-                    ConfigConstants.OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT
-                )}"
+                    ConfigConstants.OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT,
+                )}",
             )
             // Use Multi-Get Request
             val getRequest = MultiGetRequest()
@@ -90,8 +91,8 @@ class TransportDeleteTransformsAction @Inject constructor(
                                 if (response.responses.first().isFailed) {
                                     actionListener.onFailure(
                                         OpenSearchStatusException(
-                                            "Cluster missing system index $INDEX_MANAGEMENT_INDEX, cannot execute the request", RestStatus.BAD_REQUEST
-                                        )
+                                            "Cluster missing system index $INDEX_MANAGEMENT_INDEX, cannot execute the request", RestStatus.BAD_REQUEST,
+                                        ),
                                     )
                                     return
                                 }
@@ -103,7 +104,7 @@ class TransportDeleteTransformsAction @Inject constructor(
                         }
 
                         override fun onFailure(e: Exception) = actionListener.onFailure(e)
-                    }
+                    },
                 )
             }
         }
@@ -135,8 +136,8 @@ class TransportDeleteTransformsAction @Inject constructor(
             if (noPermission.isNotEmpty()) {
                 actionListener.onFailure(
                     OpenSearchStatusException(
-                        "Don't have permission to delete some/all transforms in [${request.ids}]", RestStatus.FORBIDDEN
-                    )
+                        "Don't have permission to delete some/all transforms in [${request.ids}]", RestStatus.FORBIDDEN,
+                    ),
                 )
                 return
             }
@@ -144,8 +145,8 @@ class TransportDeleteTransformsAction @Inject constructor(
             if (notTransform.isNotEmpty()) {
                 actionListener.onFailure(
                     OpenSearchStatusException(
-                        "Cannot find transforms $notTransform", RestStatus.BAD_REQUEST
-                    )
+                        "Cannot find transforms $notTransform", RestStatus.BAD_REQUEST,
+                    ),
                 )
                 return
             }
@@ -153,8 +154,8 @@ class TransportDeleteTransformsAction @Inject constructor(
             if (enabledIDs.isNotEmpty()) {
                 actionListener.onFailure(
                     OpenSearchStatusException(
-                        "$enabledIDs transform(s) are enabled, please disable them before deleting them or set force flag", RestStatus.CONFLICT
-                    )
+                        "$enabledIDs transform(s) are enabled, please disable them before deleting them or set force flag", RestStatus.CONFLICT,
+                    ),
                 )
                 return
             }
@@ -173,7 +174,7 @@ class TransportDeleteTransformsAction @Inject constructor(
                     }
 
                     override fun onFailure(e: Exception) = actionListener.onFailure(e)
-                }
+                },
             )
         }
     }

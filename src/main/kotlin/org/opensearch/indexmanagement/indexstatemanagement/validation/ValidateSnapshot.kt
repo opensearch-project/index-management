@@ -3,11 +3,6 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-/*
- * Copyright OpenSearch Contributors
- * SPDX-License-Identifier: Apache-2.0
- */
-
 package org.opensearch.indexmanagement.indexstatemanagement.validation
 
 import org.apache.logging.log4j.LogManager
@@ -23,9 +18,8 @@ import org.opensearch.monitor.jvm.JvmService
 class ValidateSnapshot(
     settings: Settings,
     clusterService: ClusterService,
-    jvmService: JvmService
+    jvmService: JvmService,
 ) : Validate(settings, clusterService, jvmService) {
-
     private val logger = LogManager.getLogger(javaClass)
 
     @Suppress("ReturnSuppressCount", "ReturnCount")
@@ -67,8 +61,11 @@ class ValidateSnapshot(
     @Suppress("TooManyFunctions")
     companion object {
         const val name = "validate_snapshot"
+
         fun getNoIndexMessage(index: String) = "Index [index=$index] does not exist for snapshot action."
+
         fun getIndexNotValidMessage(index: String) = "Index [index=$index] is not valid for snapshot action."
+
         fun getValidationPassedMessage(index: String) = "Snapshot action validation passed for [index=$index]"
     }
 }

@@ -21,7 +21,6 @@ import java.time.Duration
 import java.time.Instant
 
 class WaitForMoveShardsStep(private val action: ShrinkAction) : ShrinkStep(name, true, true, false) {
-
     @Suppress("ReturnCount")
     override suspend fun wrappedExecute(context: StepContext): WaitForMoveShardsStep {
         val indexName = context.metadata.index
@@ -33,8 +32,9 @@ class WaitForMoveShardsStep(private val action: ShrinkAction) : ShrinkStep(name,
         val numShardsInSync = getNumShardsInSync(shardStats, context.clusterService.state(), indexName)
         val nodeToMoveOnto = localShrinkActionProperties.nodeName
         val numShardsOnNode = getNumShardsWithCopyOnNode(shardStats, context.clusterService.state(), nodeToMoveOnto)
-        val numPrimaryShards = context.clusterService.state().metadata.indices[indexName]?.numberOfShards
-            ?: error("numberOfShards should not be null")
+        val numPrimaryShards =
+            context.clusterService.state().metadata.indices[indexName]?.numberOfShards
+                ?: error("numberOfShards should not be null")
 
         // If a copy of each shard is on the node, and all shards are in sync, move on
         if (numShardsOnNode >= numPrimaryShards && numShardsInSync >= numPrimaryShards) {
@@ -98,14 +98,16 @@ class WaitForMoveShardsStep(private val action: ShrinkAction) : ShrinkStep(name,
 
     override fun getUpdatedManagedIndexMetadata(currentMetadata: ManagedIndexMetaData): ManagedIndexMetaData {
         return currentMetadata.copy(
-            actionMetaData = currentMetadata.actionMetaData?.copy(
-                actionProperties = ActionProperties(
-                    shrinkActionProperties = shrinkActionProperties
-                )
+            actionMetaData =
+            currentMetadata.actionMetaData?.copy(
+                actionProperties =
+                ActionProperties(
+                    shrinkActionProperties = shrinkActionProperties,
+                ),
             ),
             stepMetaData = StepMetaData(name, getStepStartTime(currentMetadata).toEpochMilli(), stepStatus),
             transitionTo = null,
-            info = info
+            info = info,
         )
     }
 
@@ -113,7 +115,7 @@ class WaitForMoveShardsStep(private val action: ShrinkAction) : ShrinkStep(name,
         stepContext: StepContext,
         numShardsNotOnNode: Int,
         numShardsNotInSync: Int,
-        nodeToMoveOnto: String
+        nodeToMoveOnto: String,
     ) {
         val managedIndexMetadata = stepContext.metadata
         val indexName = managedIndexMetadata.index
@@ -125,7 +127,7 @@ class WaitForMoveShardsStep(private val action: ShrinkAction) : ShrinkStep(name,
         } else {
             logger.debug(
                 "Shrink action move shards step running on [$indexName], [$numShardsNotOnNode] shards need to be moved, " +
-                    "[$numShardsNotInSync] shards need an in sync replica."
+                    "[$numShardsNotInSync] shards need an in sync replica.",
             )
             info = mapOf("message" to getTimeoutDelay(nodeToMoveOnto))
             stepStatus = StepStatus.CONDITION_NOT_MET
@@ -136,11 +138,17 @@ class WaitForMoveShardsStep(private val action: ShrinkAction) : ShrinkStep(name,
 
     companion object {
         const val name = "wait_for_move_shards_step"
+
         fun getSuccessMessage(node: String) = "The shards successfully moved to $node."
+
         fun getTimeoutFailure(node: String) = "Shrink failed because it took too long to move shards to $node"
+
         fun getTimeoutDelay(node: String) = "Shrink delayed because it took too long to move shards to $node"
-        fun getLoggedTimeoutError(index: String, numShardsNotOnNode: Int, numShardsNotInSync: Int) = "Shrink Action move shards failed on [$index]," +
-            " the action timed out with [$numShardsNotOnNode] shards not yet moved and [$numShardsNotInSync] shards without an in sync replica."
+
+        fun getLoggedTimeoutError(index: String, numShardsNotOnNode: Int, numShardsNotInSync: Int) =
+            "Shrink Action move shards failed on [$index]," +
+                " the action timed out with [$numShardsNotOnNode] shards not yet moved and [$numShardsNotInSync] shards without an in sync replica."
+
         const val FAILURE_MESSAGE = "Shrink failed when waiting for shards to move."
         const val MOVE_SHARDS_TIMEOUT_IN_SECONDS = 43200L // 12hrs in seconds
     }

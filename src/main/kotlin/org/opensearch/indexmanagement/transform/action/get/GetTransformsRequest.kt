@@ -17,16 +17,15 @@ class GetTransformsRequest(
     val from: Int = DEFAULT_FROM,
     val size: Int = DEFAULT_SIZE,
     val sortField: String = DEFAULT_SORT_FIELD,
-    val sortDirection: String = DEFAULT_SORT_DIRECTION
+    val sortDirection: String = DEFAULT_SORT_DIRECTION,
 ) : ActionRequest() {
-
     @Throws(IOException::class)
     constructor(sin: StreamInput) : this(
         searchString = sin.readString(),
         from = sin.readInt(),
         size = sin.readInt(),
         sortField = sin.readString(),
-        sortDirection = sin.readString()
+        sortDirection = sin.readString(),
     )
 
     override fun validate(): ActionRequestValidationException? = null

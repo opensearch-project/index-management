@@ -18,7 +18,6 @@ class SnapshotManagementException(
     cause: Throwable? = null,
     message: String? = null,
 ) : OpenSearchException(message, cause) {
-
     enum class ExceptionKey {
         GENERAL,
         METADATA_INDEXING_FAILURE,
@@ -33,11 +32,12 @@ class SnapshotManagementException(
 
     companion object {
         // Customized user facing exception messages
-        private val exceptionMsgMap: Map<ExceptionKey, String> = mapOf(
-            ExceptionKey.GENERAL to "Caught exception while snapshot management runs. Please check the error log.",
-            ExceptionKey.METADATA_INDEXING_FAILURE to "Failed to update metadata.",
-            ExceptionKey.REPO_MISSING to "The repository provided is missing.",
-        )
+        private val exceptionMsgMap: Map<ExceptionKey, String> =
+            mapOf(
+                ExceptionKey.GENERAL to "Caught exception while snapshot management runs. Please check the error log.",
+                ExceptionKey.METADATA_INDEXING_FAILURE to "Failed to update metadata.",
+                ExceptionKey.REPO_MISSING to "The repository provided is missing.",
+            )
 
         /**
          * Wrap an exception in SnapshotManagementException

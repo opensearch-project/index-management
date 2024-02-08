@@ -8,18 +8,17 @@ package org.opensearch.indexmanagement.indexstatemanagement.validation
 import org.apache.logging.log4j.LogManager
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.settings.Settings
-import org.opensearch.indexmanagement.util.OpenForTesting
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Validate
 import org.opensearch.indexmanagement.transform.settings.TransformSettings
+import org.opensearch.indexmanagement.util.OpenForTesting
 import org.opensearch.monitor.jvm.JvmService
 
 @OpenForTesting
 class ValidateForceMerge(
     settings: Settings,
     clusterService: ClusterService,
-    jvmService: JvmService
+    jvmService: JvmService,
 ) : Validate(settings, clusterService, jvmService) {
-
     private val logger = LogManager.getLogger(javaClass)
 
     @Suppress("ReturnSuppressCount", "ReturnCount")
@@ -46,7 +45,9 @@ class ValidateForceMerge(
     @Suppress("TooManyFunctions")
     companion object {
         const val name = "validate_force_merge"
+
         fun getFailedDataTooLargeMessage(index: String) = "Data too large and is over the allowed limit for index [index=$index]"
+
         fun getValidationPassedMessage(index: String) = "Force merge validation passed for [index=$index]"
     }
 }

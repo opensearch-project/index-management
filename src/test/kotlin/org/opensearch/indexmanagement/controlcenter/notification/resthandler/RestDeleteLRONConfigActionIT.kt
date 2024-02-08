@@ -7,13 +7,13 @@ package org.opensearch.indexmanagement.controlcenter.notification.resthandler
 
 import org.junit.Assert
 import org.opensearch.client.ResponseException
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.indexmanagement.controlcenter.notification.getResourceURI
 import org.opensearch.indexmanagement.controlcenter.notification.nodeIdsInRestIT
 import org.opensearch.indexmanagement.controlcenter.notification.randomLRONConfig
 import org.opensearch.indexmanagement.controlcenter.notification.randomTaskId
 import org.opensearch.indexmanagement.controlcenter.notification.util.getDocID
 import org.opensearch.indexmanagement.makeRequest
-import org.opensearch.core.rest.RestStatus
 
 @Suppress("UNCHECKED_CAST")
 class RestDeleteLRONConfigActionIT : LRONConfigRestTestCase() {
@@ -39,7 +39,7 @@ class RestDeleteLRONConfigActionIT : LRONConfigRestTestCase() {
     }
 
     fun `test delete nonexist LRONConfig response`() {
-        /* index a random doc to create .opensearch-control-center index */
+        // index a random doc to create .opensearch-control-center index
         createLRONConfig(randomLRONConfig(taskId = randomTaskId(nodeId = nodeIdsInRestIT.random())))
         val lronConfig = randomLRONConfig(taskId = randomTaskId(nodeId = nodeIdsInRestIT.random()))
         val response = client().makeRequest("DELETE", getResourceURI(lronConfig.taskId, lronConfig.actionName))

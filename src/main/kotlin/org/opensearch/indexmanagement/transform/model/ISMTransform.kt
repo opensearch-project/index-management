@@ -42,9 +42,8 @@ data class ISMTransform(
     val pageSize: Int,
     val dataSelectionQuery: QueryBuilder = MatchAllQueryBuilder(),
     val groups: List<Dimension>,
-    val aggregations: AggregatorFactories.Builder = AggregatorFactories.builder()
+    val aggregations: AggregatorFactories.Builder = AggregatorFactories.builder(),
 ) : ToXContentObject, Writeable {
-
     init {
         require(pageSize in Transform.MINIMUM_PAGE_SIZE..Transform.MAXIMUM_PAGE_SIZE) {
             "Page size must be between ${Transform.MINIMUM_PAGE_SIZE} and ${Transform.MAXIMUM_PAGE_SIZE}"
@@ -92,7 +91,7 @@ data class ISMTransform(
             continuous = false,
             groups = this.groups,
             aggregations = this.aggregations,
-            user = user
+            user = user,
         )
     }
 
@@ -102,7 +101,8 @@ data class ISMTransform(
         targetIndex = sin.readString(),
         pageSize = sin.readInt(),
         dataSelectionQuery = requireNotNull(sin.readOptionalNamedWriteable(QueryBuilder::class.java)) { "Query cannot be null" },
-        groups = sin.let {
+        groups =
+        sin.let {
             val dimensionList = mutableListOf<Dimension>()
             val size = it.readVInt()
             repeat(size) { _ ->
@@ -112,12 +112,12 @@ data class ISMTransform(
                         Dimension.Type.DATE_HISTOGRAM -> DateHistogram(sin)
                         Dimension.Type.TERMS -> Terms(sin)
                         Dimension.Type.HISTOGRAM -> Histogram(sin)
-                    }
+                    },
                 )
             }
             dimensionList.toList()
         },
-        aggregations = requireNotNull(sin.readOptionalWriteable { AggregatorFactories.Builder(it) }) { "Aggregations cannot be null" }
+        aggregations = requireNotNull(sin.readOptionalWriteable { AggregatorFactories.Builder(it) }) { "Aggregations cannot be null" },
     )
 
     override fun toString(): String {
@@ -177,11 +177,12 @@ data class ISMTransform(
                         val registry = xcp.xContentRegistry
                         val source = xcp.mapOrdered()
                         val xContentBuilder = XContentFactory.jsonBuilder().map(source)
-                        val sourceParser = XContentType.JSON.xContent().createParser(
-                            registry, LoggingDeprecationHandler.INSTANCE,
-                            BytesReference
-                                .bytes(xContentBuilder).streamInput()
-                        )
+                        val sourceParser =
+                            XContentType.JSON.xContent().createParser(
+                                registry, LoggingDeprecationHandler.INSTANCE,
+                                BytesReference
+                                    .bytes(xContentBuilder).streamInput(),
+                            )
                         dataSelectionQuery = AbstractQueryBuilder.parseInnerQueryBuilder(sourceParser)
                     }
                     Transform.GROUPS_FIELD -> {
@@ -201,7 +202,7 @@ data class ISMTransform(
                 pageSize = pageSize,
                 dataSelectionQuery = dataSelectionQuery,
                 groups = groups,
-                aggregations = aggregations
+                aggregations = aggregations,
             )
         }
     }

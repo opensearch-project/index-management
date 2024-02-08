@@ -19,9 +19,8 @@ import org.opensearch.monitor.jvm.JvmService
 class ValidateDelete(
     settings: Settings,
     clusterService: ClusterService,
-    jvmService: JvmService
+    jvmService: JvmService,
 ) : Validate(settings, clusterService, jvmService) {
-
     private val logger = LogManager.getLogger(javaClass)
 
     @Suppress("ReturnSuppressCount", "ReturnCount")
@@ -42,10 +41,11 @@ class ValidateDelete(
         val metadata = clusterService.state().metadata()
         val indexAbstraction = metadata.indicesLookup[indexName]
         val isDataStreamIndex = indexAbstraction?.parentDataStream != null
-        val rolloverTarget = when {
-            isDataStreamIndex -> indexAbstraction?.parentDataStream?.name
-            else -> metadata.index(indexName).getRolloverAlias()
-        }
+        val rolloverTarget =
+            when {
+                isDataStreamIndex -> indexAbstraction?.parentDataStream?.name
+                else -> metadata.index(indexName).getRolloverAlias()
+            }
         return rolloverTarget to isDataStreamIndex
     }
 
@@ -100,9 +100,13 @@ class ValidateDelete(
     @Suppress("TooManyFunctions")
     companion object {
         const val name = "validate_delete"
+
         fun getNoIndexMessage(index: String) = "no such index [index=$index]"
+
         fun getIndexNotValidMessage(index: String) = "delete index [index=$index] not valid"
+
         fun getFailedIsWriteIndexMessage(index: String) = "Index [index=$index] is the write index for data stream and cannot be deleted"
+
         fun getValidationPassedMessage(index: String) = "Delete validation passed for [index=$index]"
     }
 }
