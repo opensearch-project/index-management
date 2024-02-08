@@ -325,7 +325,7 @@ ext.getPluginResource = { download_to_folder, download_from_src ->
 
 // === Setup security test ===
 // This flag indicates the existence of security plugin
-def securityEnabled = System.getProperty("security", "false") == "true"
+def securityEnabled = System.getProperty("security", "false") == "true" || System.getProperty("https", "false") == "true"
 afterEvaluate {
     testClusters.integTest.nodes.each { node ->
         def plugins = node.plugins
