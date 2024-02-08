@@ -34,7 +34,7 @@ import java.nio.charset.StandardCharsets
 /**
  * Service designed for creating dynamic target index mapping based on the date field types of the source index.
  * Creates target index date properties based on the date properties of the source index
- * (ie. if the term grouping is applied on a date field of source index, target index field will have date type also)
+ * (i.e. if the term grouping is applied on a date field of source index, target index field will have date type also)
  */
 object TargetIndexMappingService {
     private val logger = LogManager.getLogger(javaClass)

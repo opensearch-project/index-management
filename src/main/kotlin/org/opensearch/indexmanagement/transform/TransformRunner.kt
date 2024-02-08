@@ -102,20 +102,19 @@ object TransformRunner :
     // TODO: Add circuit breaker checks - [cluster healthy, utilization within limit]
     @Suppress("NestedBlockDepth", "ComplexMethod", "LongMethod", "ReturnCount")
     private suspend fun executeJob(transform: Transform, metadata: TransformMetadata, context: JobExecutionContext) {
-        var newGlobalCheckpoints: Map<ShardId, Long>? = null
-        var newGlobalCheckpointTime: Instant? = null
-        var currentMetadata = metadata
-
-        val transformProcessedBucketLog = TransformProcessedBucketLog()
-        var bucketsToTransform = BucketsToTransform(HashSet(), metadata)
-
-        val transformContext = TransformContext(
-            TransformLockManager(transform, context)
-        )
-
-        // Acquires the lock if there is no running job execution for the given transform; Lock is acquired per transform
+        val transformContext = TransformContext(TransformLockManager(transform, context))
         val transformLockManager = transformContext.transformLockManager
         transformLockManager.acquireLockForScheduledJob()
+
+        var currentMetadata = metadata
+
+        // The global checkpoint is the maximum seqNo synced across per primary shard and its replicas
+        // This is only needed for continuous transform
+        var newGlobalCheckpoints: Map<ShardId, Long>? = null
+        // The time when new checkpoint was generated in continuous transform
+        var newGlobalCheckpointTime: Instant? = null
+        val transformProcessedBucketLog = TransformProcessedBucketLog()
+        var bucketsToTransform = BucketsToTransform(HashSet(), metadata)
         try {
             do {
                 when {
@@ -133,36 +132,36 @@ object TransformRunner :
                             currentMetadata = validatedMetadata
                             return
                         }
-                        // If date was used in term query generate target date field mapping and store it in transform context
-                        val targetIndexDateFieldMappings = TargetIndexMappingService.getTargetMappingsForDates(transform)
-                        transformContext.setTargetDateFieldMappings(targetIndexDateFieldMappings)
+
+                        // If date was used in term query, generate target date field mapping and store it in transform context
+                        transformContext.setTargetDateFieldMappings(TargetIndexMappingService.getTargetMappingsForDates(transform))
 
                         if (transform.continuous) {
-                            // If we have not populated the list of shards to search, do so now
+                            // For continuous transform, we first populate the shards to search
                             if (bucketsToTransform.shardsToSearch == null) {
                                 // Note the timestamp when we got the shard global checkpoints to the user may know what data is included
                                 newGlobalCheckpointTime = Instant.now()
                                 newGlobalCheckpoints = transformSearchService.getShardsGlobalCheckpoint(transform.sourceIndex)
                                 bucketsToTransform = bucketsToTransform.initializeShardsToSearch(
-                                    metadata.shardIDToGlobalCheckpoint,
-                                    newGlobalCheckpoints
+                                    metadata.shardIDToGlobalCheckpoint, newGlobalCheckpoints
                                 )
                             }
-                            // If there are shards to search do it here
-                            if (bucketsToTransform.currentShard != null) {
-                                // Computes aggregation on modified documents for current shard to get modified buckets
+                            // currentShardToSearch is the iterative pointer to the unprocessed shardsToSearch
+                            if (bucketsToTransform.currentShardToSearch != null) {
+                                // Find out the modified buckets for the current shard
                                 bucketsToTransform = getBucketsToTransformIteration(transform, bucketsToTransform, transformContext).also {
                                     currentMetadata = it.metadata
                                 }
-                                // Filter out already processed buckets
+                                // Filter out the already processed buckets from modified buckets
                                 val modifiedBuckets = bucketsToTransform.modifiedBuckets.filter {
                                     transformProcessedBucketLog.isNotProcessed(it)
                                 }.toMutableSet()
                                 // Recompute modified buckets and update them in targetIndex
                                 currentMetadata = recomputeModifiedBuckets(transform, currentMetadata, modifiedBuckets, transformContext)
                                 // Add processed buckets to 'processed set' so that we don't try to reprocess them again
+                                // It's very likely to have duplicated modified buckets from different shards
                                 transformProcessedBucketLog.addBuckets(modifiedBuckets.toList())
-                                // Update TransformMetadata
+
                                 currentMetadata = transformMetadataService.writeMetadata(currentMetadata, true)
                                 bucketsToTransform = bucketsToTransform.copy(metadata = currentMetadata)
                             }
@@ -172,11 +171,11 @@ object TransformRunner :
                             // Update TransformMetadata
                             currentMetadata = transformMetadataService.writeMetadata(currentMetadata, true)
                         }
-                        // we attempt to renew lock for every loop of transform
+                        // Renew lock after every loop of transform
                         transformLockManager.renewLockForScheduledJob()
                     }
                 }
-            } while (bucketsToTransform.currentShard != null || currentMetadata.afterKey != null)
+            } while (bucketsToTransform.currentShardToSearch != null || currentMetadata.afterKey != null)
         } catch (e: Exception) {
             logger.error("Failed to execute the transform job [${transform.id}] because of exception [${e.localizedMessage}]", e)
             currentMetadata = currentMetadata.copy(
@@ -186,30 +185,36 @@ object TransformRunner :
             )
         } finally {
             transformLockManager.lock?.let {
-                // Update the global checkpoints only after execution finishes successfully
+                // Update the global checkpoint for continuous transform only after this job run finishes successfully
                 if (transform.continuous && currentMetadata.status != TransformMetadata.Status.FAILED) {
                     currentMetadata = currentMetadata.copy(
                         shardIDToGlobalCheckpoint = newGlobalCheckpoints,
                         continuousStats = ContinuousTransformStats(newGlobalCheckpointTime, null)
                     )
+                    transformMetadataService.writeMetadata(currentMetadata, true)
                 }
-                transformMetadataService.writeMetadata(currentMetadata, true)
+
+                // If this is a one time transform or continuous transform failed, disable the job
                 if (!transform.continuous || currentMetadata.status == TransformMetadata.Status.FAILED) {
                     logger.info("Disabling the transform job ${transform.id}")
                     updateTransform(transform.copy(enabled = false, enabledAt = null))
                 }
+
                 transformLockManager.releaseLockForScheduledJob()
             }
         }
     }
 
+    /**
+     * Do transform search on modified documents for current shard to find out modified buckets
+     */
     private suspend fun getBucketsToTransformIteration(
         transform: Transform,
         bucketsToTransform: BucketsToTransform,
         transformContext: TransformContext
     ): BucketsToTransform {
         var currentBucketsToTransform = bucketsToTransform
-        val currentShard = bucketsToTransform.currentShard
+        val currentShard = bucketsToTransform.currentShardToSearch
         // Clear modified buckets from previous iteration
         currentBucketsToTransform.modifiedBuckets.clear()
 
@@ -228,21 +233,21 @@ object TransformRunner :
             currentBucketsToTransform = currentBucketsToTransform.copy(
                 metadata = currentBucketsToTransform.metadata.copy(
                     stats = currentBucketsToTransform.metadata.stats.copy(
-                        pagesProcessed = currentBucketsToTransform.metadata.stats.pagesProcessed + 1,
+                        pagesProcessed = currentBucketsToTransform.metadata.stats.pagesProcessed + 1, // TODO reading is here the right place to increment the pagesProcessed?
                         searchTimeInMillis = mergedSearchTime
                     ),
                     afterKey = shardLevelModifiedBuckets.afterKey
                 ),
-                currentShard = currentShard
+                currentShardToSearch = currentShard
             )
         }
         // If finished with this shard, go to the next
         if (currentBucketsToTransform.metadata.afterKey == null) {
             val shardsToSearch = currentBucketsToTransform.shardsToSearch
             currentBucketsToTransform = if (shardsToSearch?.hasNext() == true) {
-                currentBucketsToTransform.copy(currentShard = shardsToSearch.next())
+                currentBucketsToTransform.copy(currentShardToSearch = shardsToSearch.next())
             } else {
-                currentBucketsToTransform.copy(currentShard = null)
+                currentBucketsToTransform.copy(currentShardToSearch = null)
             }
         }
         return currentBucketsToTransform
@@ -318,7 +323,9 @@ object TransformRunner :
                 lastUpdatedAt = Instant.now(),
                 status = TransformMetadata.Status.STARTED
             )
-        } else metadata.copy(lastUpdatedAt = Instant.now(), status = TransformMetadata.Status.STARTED)
+        } else {
+            metadata.copy(lastUpdatedAt = Instant.now(), status = TransformMetadata.Status.STARTED)
+        }
         return updatedMetadata
     }
 
